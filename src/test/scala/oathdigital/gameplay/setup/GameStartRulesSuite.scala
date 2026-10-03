@@ -1,45 +1,47 @@
 package oathdigital.gameplay.setup
 
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Unwrap.{accepted, as, rejected}
 
 class GameStartRulesSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
   private val chronicle = FirstGameSetupFixture.chronicle
   private val orders = FirstGameSetupFixture.orders
 
-  test("a valid Chronicle evolves into a Ready game in Phase.Setup with no pawns or advisers"):
-    val ready = GameStartRules.evolve(catalog, chronicle, orders).toOption.get
+  test("a valid Chronicle evolves into a Ready game in Phase.Setup with the " +
+      "first player active and no pawns or advisers"):
+    val ready = accepted(GameStartRules.evolve(catalog, chronicle, orders))
     assertEquals(ready.game.current.turn.phase, Phase.Setup)
     assertEquals(ready.game.current.turn.activePlayer, orders.firstPlayer)
     assert(ready.game.current.players.forall(_.pawnSite.isEmpty))
     assert(ready.game.current.players.forall(_.advisers.isEmpty))
+
+  test("a started game deals each participant 3 temporary cards"):
+    val ready = accepted(GameStartRules.evolve(catalog, chronicle, orders))
+    // The 3 denizens each player chooses an adviser from during Setup.
     assert(orders.participants.forall(p =>
       ready.game.current.temporaryHands.getOrElse(p.playerId, Vector.empty).size == 3))
 
   test("an edifice stored at an atlas site beyond the 8 in play stays in the " +
       "atlas and is not also in the edifice deck"):
-    val homelandsInPlay = chronicle.atlasBox.flatMap(_.items).toSet
-    val offMapHomeland = catalog.sites.map(_.id)
-      .filterNot(chronicle.atlasBox.map(_.site).contains)
-      .flatMap(site => catalog.sites.find(_.id == site).get.homeland.map {
-        suit =>
-          site -> catalog.edifices.map(e => EdificeId(e.id.value))
-            .find(id => catalog.edifices.find(_.id.value == id.value).get.suit == suit &&
-              !homelandsInPlay.contains(id)).get
-      }).head
-    val (site, edifice) = offMapHomeland
+    // Great Slum is not one of the Chronicle's 8 sites, and Hall of Debate,
+    // its Homeland edifice, is stored at none of them.
+    val site = CatalogNames.site("Great Slum")
+    val edifice = CatalogNames.edifice("Hall of Debate")
+    assert(!chronicle.atlasBox.exists(_.site == site))
+    assert(!chronicle.atlasBox.exists(_.items.contains(edifice)))
     val withStorage = chronicle.copy(
       atlasBox = chronicle.atlasBox :+ StoredSite(site, Vector(edifice)))
-    val ready = GameStartRules.evolve(catalog, withStorage, orders).toOption.get
+    val ready = accepted(GameStartRules.evolve(catalog, withStorage, orders))
     assert(ready.game.campaign.atlas.entries.contains(
       AtlasEntry.StoredSite(site, Vector.empty, Vector.empty, Some(edifice))))
     assert(!ready.game.current.commonCards.edificeDeck.contains(edifice))
 
   test("a non-empty world is refused"):
     val withWorld = chronicle.copy(world = chronicle.atlasBox.take(1))
-    val result = GameStartRules.evolve(catalog, withWorld, orders)
-    assert(result.isLeft)
-    assert(result.left.toOption.get.isInstanceOf[OathViolation.UnsupportedChronicle])
+    as[OathViolation.UnsupportedChronicle](
+      rejected(GameStartRules.evolve(catalog, withWorld, orders)))
 
   test("a stored denizen on an atlas site is refused"):
     val denizen = chronicle.worldDeck.head

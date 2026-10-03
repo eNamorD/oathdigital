@@ -7,14 +7,19 @@ import java.nio.file.Paths
 private final class BindFailedException extends RuntimeException("Bind failed")
 
 class DesktopConsoleSuite extends munit.FunSuite:
+  private val version = "0.1.0-alpha.1"
+  private val dataFolder = Paths.get("/data/oathdigital/data")
   private val settingsFile = Paths.get("/data/oathdigital/oathdigital.properties")
   private val nl = System.lineSeparator
 
+  /** A trusted-alpha server of `version` whose database lives in
+    * `dataFolder`, on the default port 8080 unless `environment` says. */
   private def config(environment: Map[String, String]): ServerConfig =
     ServerConfig.parse(
       Array.empty,
-      environment ++ Map("OATH_MODE" -> "trusted-alpha", "OATH_DATABASE_PATH" -> "/data/oathdigital/data/database"),
-      "0.1.0-alpha.1"
+      environment ++ Map("OATH_MODE" -> "trusted-alpha",
+        "OATH_DATABASE_PATH" -> dataFolder.resolve("database").toString),
+      version
     ).fold(errors => fail(errors.mkString("; ")), identity)
 
   private def launch(lanDetectionFailed: Boolean) =
@@ -25,10 +30,10 @@ class DesktopConsoleSuite extends munit.FunSuite:
     assertEquals(
       DesktopConsole.banner(lanConfig, launch(lanDetectionFailed = false)),
       Vector(
-        "Oath Digital 0.1.0-alpha.1 is running.",
+        s"Oath Digital $version is running.",
         "  Players open:  http://192.168.1.20:8080",
         "  On this computer you can also use: http://localhost:8080",
-        s"  Data folder:   ${Paths.get("/data/oathdigital/data")}",
+        s"  Data folder:   $dataFolder",
         s"  Settings:      $settingsFile",
         "Seat links contain this address. If it changes, players need the new address.",
         "Close this window or press Ctrl-C to stop."
@@ -45,9 +50,9 @@ class DesktopConsoleSuite extends munit.FunSuite:
     assertEquals(
       DesktopConsole.banner(localConfig, launch(lanDetectionFailed = true)),
       Vector(
-        "Oath Digital 0.1.0-alpha.1 is running.",
+        s"Oath Digital $version is running.",
         "  Only this computer can connect: http://127.0.0.1:8080",
-        s"  Data folder:   ${Paths.get("/data/oathdigital/data")}",
+        s"  Data folder:   $dataFolder",
         s"  Settings:      $settingsFile",
         "No local network address found. Set OATH_PUBLIC_BASE_URL in the settings file.",
         "Close this window or press Ctrl-C to stop."

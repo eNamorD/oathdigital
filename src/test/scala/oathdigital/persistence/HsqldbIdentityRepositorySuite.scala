@@ -6,6 +6,7 @@ import java.sql.DriverManager
 import oathdigital.application._
 import oathdigital.application.IdentityFailure._
 import oathdigital.application.MembershipRole._
+import oathdigital.testkit.Unwrap.{accepted, as, rejected}
 
 class HsqldbIdentityRepositorySuite extends munit.FunSuite:
   private def databasePath(label: String): Path =
@@ -16,6 +17,9 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
     OwnedHsqldbIdentityRepository.open(path)
       .fold(error => fail(s"database open failed: $error"), identity)
 
+  /** The schema version every ledger is migrated to. */
+  private val targetVersion = new EventJournalSchema(() => 0L).TargetVersion
+
   private val owner = UserId("user-owner")
   private val player = UserId("user-player")
   private val spectator = UserId("user-spectator")
@@ -24,16 +28,15 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
     val v1Path = databasePath("upgrade-v1")
     seedVersionLedger(v1Path, 1)
     val upgradedV1 = open(v1Path)
-    assertEquals(upgradedV1.schemaVersion, Right(4))
+    assertEquals(upgradedV1.schemaVersion, Right(targetVersion))
     upgradedV1.close()
 
     val v2Path = databasePath("upgrade-v2")
-    val oldDigest = SessionTokenDigest.fromBytes(Vector.fill(32)(9.toByte))
-      .toOption.get
+    val oldDigest = sessionDigest(9)
     seedVersion2(v2Path, oldDigest)
     val upgradedV2 = open(v2Path)
     try
-      assertEquals(upgradedV2.schemaVersion, Right(4))
+      assertEquals(upgradedV2.schemaVersion, Right(targetVersion))
       assertEquals(
         upgradedV2.resolveSession(oldDigest, 150L),
         Left(SessionRevoked)
@@ -44,7 +47,7 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
     val v3Path = databasePath("upgrade-v3")
     seedVersion3(v3Path)
     val upgradedV3 = open(v3Path)
-    try assertEquals(upgradedV3.schemaVersion, Right(4))
+    try assertEquals(upgradedV3.schemaVersion, Right(targetVersion))
     finally upgradedV3.close()
 
   test("seats the trusted game store writes resolve to their game and player after reopen"):
@@ -116,7 +119,8 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
       )
     finally repository.close()
 
-  test("game resources precede streams and memberships enforce seats and roles"):
+  test("memberships enforce game existence, seat occupancy, roles and " +
+      "listing order"):
     val repository = open(databasePath("membership"))
     try
       Vector(owner, player, spectator, UserId("user-other"))
@@ -157,12 +161,12 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
         ),
         Left(DuplicateMembership("game-1", player))
       )
-      assert(repository.addMembership(
+      as[InvalidMembership](rejected(repository.addMembership(
         GameMembership("game-1", spectator, Player, None), 2L
-      ).left.toOption.get.isInstanceOf[InvalidMembership])
-      assert(repository.addMembership(
+      )))
+      as[InvalidMembership](rejected(repository.addMembership(
         GameMembership("game-1", spectator, Spectator, Some("p2")), 2L
-      ).left.toOption.get.isInstanceOf[InvalidMembership])
+      )))
       assertEquals(
         repository.addMembership(
           GameMembership("game-1", spectator, Spectator, None),
@@ -170,6 +174,7 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
         ),
         Right(())
       )
+      // Listed by role (owner, players, spectators), then seat, then user.
       assertEquals(
         repository.listMemberships("game-1"),
         Right(Vector(
@@ -214,74 +219,88 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
       assertEquals(repository.createGame("game-rollback", owner, 3L), Right(()))
     finally repository.close()
 
-  test("sessions resolve only fixed digests and distinguish expiry and revocation"):
+  /** A session created at 100 and last seen then: idle until 200, and at
+    * most until 300 however often it is touched. */
+  private def freshSession(digest: SessionTokenDigest, csrf: Byte) =
+    StoredSession(digest, owner, createdAtMillis = 100L,
+      lastSeenAtMillis = 100L, idleExpiresAtMillis = 200L,
+      absoluteExpiresAtMillis = 300L, revokedAtMillis = None,
+      csrfTokenDigest = Some(csrfDigest(csrf)))
+
+  test("sessions are created once, resolve only by their fixed digest, and " +
+      "revoke"):
     val repository = open(databasePath("sessions"))
-    val digest = SessionTokenDigest.fromBytes(Vector.fill(32)(1.toByte))
-      .toOption.get
-    val second = SessionTokenDigest.fromBytes(Vector.fill(32)(2.toByte))
-      .toOption.get
+    val digest = sessionDigest(1)
+    val second = sessionDigest(2)
     try
       repository.createUser(owner, "Owner", 0L)
-      val session = StoredSession(
-        digest, owner, 100L, 100L, 200L, 300L, None, Some(csrfDigest(1))
-      )
+      val session = freshSession(digest, csrf = 1)
       assertEquals(repository.createSession(session), Right(()))
       assertEquals(repository.createSession(session), Left(DuplicateSession))
       assertEquals(repository.resolveSession(digest, 199L), Right(session))
-      assertEquals(repository.touchSession(digest, 150L, 250L), Right(()))
-      assertEquals(repository.resolveSession(digest, 225L).toOption.get
-        .lastSeenAtMillis, 150L)
-      assert(repository.touchSession(digest, 125L, 290L).left.toOption.get
-        .isInstanceOf[InvalidSession])
-      assertEquals(repository.resolveSession(digest, 250L), Left(SessionExpired))
-      assertEquals(repository.resolveSession(second, 100L), Left(SessionNotFound))
+      assertEquals(repository.resolveSession(second, 100L),
+        Left(SessionNotFound))
 
       val revoked = session.copy(digest = second, idleExpiresAtMillis = 400L,
         absoluteExpiresAtMillis = 500L)
       repository.createSession(revoked)
       assertEquals(repository.revokeSession(second, 150L), Right(()))
-      assertEquals(repository.resolveSession(second, 151L), Left(SessionRevoked))
-      assertEquals(
-        SessionTokenDigest.fromBytes("raw-bearer-token".getBytes.toVector)
-          .left.toOption.get,
-        "session token digest must contain exactly 32 bytes"
-      )
+      assertEquals(repository.resolveSession(second, 151L),
+        Left(SessionRevoked))
     finally repository.close()
+
+  test("touchSession slides the idle expiry and refuses a time before last " +
+      "seen"):
+    val repository = open(databasePath("session-touch"))
+    val digest = sessionDigest(1)
+    try
+      repository.createUser(owner, "Owner", 0L)
+      repository.createSession(freshSession(digest, csrf = 1))
+      assertEquals(repository.touchSession(digest, 150L, 250L), Right(()))
+      assertEquals(accepted(repository.resolveSession(digest, 225L))
+        .lastSeenAtMillis, 150L)
+      as[InvalidSession](rejected(repository.touchSession(digest, 125L, 290L)))
+      // Now 250 is the idle expiry the touch set.
+      assertEquals(repository.resolveSession(digest, 250L),
+        Left(SessionExpired))
+    finally repository.close()
+
+  test("SessionTokenDigest refuses a raw bearer token"):
+    assertEquals(
+      rejected(SessionTokenDigest.fromBytes(
+        "raw-bearer-token".getBytes.toVector)),
+      "session token digest must contain exactly 32 bytes"
+    )
 
   test("session creation rejects inconsistent expiry and revocation times"):
     val repository = open(databasePath("session-times"))
-    val digest = SessionTokenDigest.fromBytes(Vector.fill(32)(3.toByte))
-      .toOption.get
+    val digest = sessionDigest(3)
     try
       repository.createUser(owner, "Owner", 0L)
-      val base = StoredSession(
-        digest, owner, 100L, 100L, 200L, 300L, None, Some(csrfDigest(2))
-      )
-      assert(repository.createSession(
+      val base = freshSession(digest, csrf = 2)
+      as[InvalidSession](rejected(repository.createSession(
         base.copy(idleExpiresAtMillis = 301L)
-      ).left.toOption.get.isInstanceOf[InvalidSession])
-      assert(repository.createSession(
+      )))
+      as[InvalidSession](rejected(repository.createSession(
         base.copy(revokedAtMillis = Some(99L))
-      ).left.toOption.get.isInstanceOf[InvalidSession])
-      assert(repository.createSession(
+      )))
+      as[InvalidSession](rejected(repository.createSession(
         base.copy(csrfTokenDigest = None)
-      ).left.toOption.get.isInstanceOf[InvalidSession])
+      )))
       assertEquals(repository.resolveSession(digest, 100L), Left(SessionNotFound))
     finally repository.close()
 
   test("closed repository maps database faults to typed storage failure"):
     val repository = open(databasePath("storage-failure"))
     repository.close()
-    assert(repository.createUser(owner, "Owner", 0L).left.toOption.get
-      .isInstanceOf[StorageFailure])
-    assert(repository.listMemberships("game-1").left.toOption.get
-      .isInstanceOf[StorageFailure])
+    as[StorageFailure](rejected(repository.createUser(owner, "Owner", 0L)))
+    as[StorageFailure](rejected(repository.listMemberships("game-1")))
 
   test("session schema contains only the digest and never a raw token column"):
     val path = databasePath("digest-only")
     val repository = open(path)
     try
-      val result = repository.sessionColumnNames.toOption.get
+      val result = accepted(repository.sessionColumnNames)
       assert(result.contains("token_digest"))
       assert(!result.exists(name => name == "token" || name.contains("bearer")))
     finally repository.close()
@@ -290,16 +309,19 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
     val path = databasePath("trusted-digest-only")
     val repository = open(path)
     try
-      val columns = repository.trustedSeatColumnNames.toOption.get
+      val columns = accepted(repository.trustedSeatColumnNames)
       assert(columns.contains("token_digest"))
       assert(!columns.exists(name => name == "token" || name.contains("code")))
     finally repository.close()
 
+  private def sessionDigest(value: Byte): SessionTokenDigest =
+    accepted(SessionTokenDigest.fromBytes(Vector.fill(32)(value)))
+
   private def csrfDigest(value: Byte): CsrfTokenDigest =
-    CsrfTokenDigest.fromBytes(Vector.fill(32)(value)).toOption.get
+    accepted(CsrfTokenDigest.fromBytes(Vector.fill(32)(value)))
 
   private def seatDigest(value: Byte): SeatCodeDigest =
-    SeatCodeDigest.fromBytes(Vector.fill(32)(value)).toOption.get
+    accepted(SeatCodeDigest.fromBytes(Vector.fill(32)(value)))
 
   private def seedVersionLedger(path: Path, version: Int): Unit =
     val connection = DriverManager.getConnection(
@@ -358,8 +380,7 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
     finally connection.close()
 
   private def seedVersion3(path: Path): Unit =
-    seedVersion2(path, SessionTokenDigest.fromBytes(Vector.fill(32)(9.toByte))
-      .toOption.get)
+    seedVersion2(path, sessionDigest(9))
     val connection = DriverManager.getConnection(
       s"jdbc:hsqldb:file:${path.toAbsolutePath}", "SA", "")
     try

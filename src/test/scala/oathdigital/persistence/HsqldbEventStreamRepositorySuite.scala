@@ -9,8 +9,11 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 import oathdigital.application.{
   ExpectedStream,
-  RepositoryAppendResult
+  RepositoryAppendResult,
+  RepositoryFailure,
+  StoredEventStream
 }
+import oathdigital.testkit.Unwrap.{accepted, as, present, rejected}
 
 class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
   private given executionContext: ExecutionContext =
@@ -19,8 +22,18 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
   private def databasePath(label: String): Path =
     Files.createTempDirectory(s"oathdigital-$label-").resolve("journal")
 
+  /** The schema version every journal is migrated to. */
+  private val targetVersion = new EventJournalSchema(() => 0L).TargetVersion
+
   private def open(path: Path): OwnedHsqldbEventStreamRepository =
-    OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    OwnedHsqldbEventStreamRepository.open(path)
+      .fold(error => fail(s"database open failed: $error"), identity)
+
+  /** The stream `gameId` as stored; fails with the load's failure or when
+    * there is no such stream. */
+  private def storedStream(repository: OwnedHsqldbEventStreamRepository,
+      gameId: String): StoredEventStream =
+    present(accepted(repository.load(gameId)), s"stream $gameId")
 
   private def seedSchemaVersions(
       path: Path,
@@ -56,16 +69,17 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
   test("schema upgrades from version zero and initialization is idempotent"):
     val repository = open(databasePath("schema"))
     try
-      assertEquals(repository.schemaVersion, Right(4))
+      assertEquals(repository.schemaVersion, Right(targetVersion))
       assertEquals(repository.initializeSchema(), Right(()))
       assertEquals(repository.initializeSchema(), Right(()))
-      assertEquals(repository.schemaVersion, Right(4))
+      assertEquals(repository.schemaVersion, Right(targetVersion))
     finally repository.close()
 
   test("rejects newer and non-contiguous schema ledgers and releases files"):
     Vector(
-      ("newer", Vector(5),
-        "schema version 5 is newer than supported version 4"),
+      ("newer", Vector(targetVersion + 1),
+        s"schema version ${targetVersion + 1} is newer than supported " +
+          s"version $targetVersion"),
       ("gapped", Vector(0, 1),
         "schema version ledger must be contiguous from 1; found 0,1")
     ).foreach { case (label, versions, reason) =>
@@ -110,13 +124,23 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
         ),
         Right(RepositoryAppendResult.Appended(0L, 2))
       )
-      val loaded = repository.load("game-create").toOption.flatten.get
+      val loaded = storedStream(repository, "game-create")
       assertEquals(loaded.gameId, "game-create")
       assertEquals(
         loaded.records,
         Vector("""{"event":"first"}""", """{"event":"second"}""")
       )
       assertEquals(loaded.nextSequence, 2L)
+    finally repository.close()
+
+  test("refuses to create a stream that exists"):
+    val repository = open(databasePath("duplicate"))
+    try
+      repository.append(
+        "game-create",
+        ExpectedStream.MustNotExist,
+        Vector("""{"event":"first"}""")
+      )
       assertEquals(
         repository.append(
           "game-create",
@@ -125,6 +149,11 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
         ),
         Right(RepositoryAppendResult.StreamAlreadyExists)
       )
+    finally repository.close()
+
+  test("refuses to append to a stream that does not exist"):
+    val repository = open(databasePath("missing"))
+    try
       assertEquals(
         repository.append(
           "missing",
@@ -152,7 +181,7 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
         Right(RepositoryAppendResult.Appended(1L, 3))
       )
       assertEquals(
-        repository.load("game-batch").toOption.flatten.get.records,
+        storedStream(repository, "game-batch").records,
         Vector("zero", "one", "two", "three")
       )
     finally repository.close()
@@ -174,7 +203,7 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
         Right(RepositoryAppendResult.SequenceConflict(0L, 1L))
       )
       assertEquals(
-        repository.load("game-conflict").toOption.flatten.get.records,
+        storedStream(repository, "game-conflict").records,
         Vector("zero")
       )
     finally repository.close()
@@ -203,8 +232,7 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
         1
       )
       assertEquals(
-        repository.load("game-create-race")
-          .toOption.flatten.get.records.size,
+        storedStream(repository, "game-create-race").records.size,
         1
       )
     finally repository.close()
@@ -238,8 +266,7 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
         1
       )
       assertEquals(
-        repository.load("game-append-race")
-          .toOption.flatten.get.records.size,
+        storedStream(repository, "game-append-race").records.size,
         2
       )
     finally repository.close()
@@ -247,12 +274,16 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
   test("database failure rolls back stream creation and the entire batch"):
     val repository = open(databasePath("rollback"))
     try
+      // The journal's envelope_json column is NOT NULL, so inserting the
+      // second record fails after the stream row and the first record.
       val result = repository.append(
         "game-rollback",
         ExpectedStream.MustNotExist,
         Vector("valid", null)
       )
-      assert(result.left.toOption.nonEmpty)
+      val failure = as[RepositoryFailure.StorageFailure](rejected(result))
+      assert(failure.message.startsWith("append event stream failed:"),
+        failure)
       assertEquals(repository.load("game-rollback"), Right(None))
     finally repository.close()
 
@@ -269,7 +300,7 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
     val reopened = open(path)
     try
       assertEquals(
-        reopened.load("game-restart").toOption.flatten.get.records,
+        storedStream(reopened, "game-restart").records,
         Vector("zero", "one")
       )
       assertEquals(

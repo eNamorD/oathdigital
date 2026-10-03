@@ -4,7 +4,7 @@ import munit.FunSuite
 import oathdigital.model.OathViolation
 
 class CommandRejectionMessageSuite extends FunSuite:
-  test("negotiation rejections surface their authoritative detail"):
+  test("rejections surface their authoritative detail"):
     assertEquals(CommandRejectionMessage.text(
       OathViolation.NegotiationUnavailable(
         "a promised disclosure is not currently inspectable by its author")),
@@ -12,7 +12,8 @@ class CommandRejectionMessageSuite extends FunSuite:
     assertEquals(CommandRejectionMessage.text(OathViolation.InsufficientFavor(3, 2)),
       "required favor 3 exceeds available 2")
     assertEquals(CommandRejectionMessage.text(
-      OathViolation.InvalidModifierInvocation("no facedown adviser can legally be resolved")),
+      OathViolation.InvalidModifierInvocation(
+        "no facedown adviser can legally be resolved")),
       "no facedown adviser can legally be resolved")
 
   test("unmapped rejections fall back to a stable descriptive shape"):

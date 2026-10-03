@@ -1,19 +1,5 @@
 package oathdigital.server
 
-import java.net.URI
-import java.net.http.{
-  HttpClient,
-  HttpRequest,
-  HttpResponse => JavaHttpResponse
-}
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-
-import akka.actor.typed.{ActorSystem, DispatcherSelector}
-import akka.actor.typed.scaladsl.Behaviors
-import akka.http.scaladsl.Http
-
 import oathdigital.application.{
   GameApplicationService,
   GameCommand,
@@ -22,104 +8,107 @@ import oathdigital.application.{
 }
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.PlayerId
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   DecisionAnswerWire, GameIntent}
+import oathdigital.testkit.{CatalogNames, HttpTestServer}
+import oathdigital.testkit.HttpTestServer.cacheControl
+import oathdigital.testkit.Table.p2
+import oathdigital.testkit.Unwrap.accepted
 
 class GameRoutesSuite extends munit.FunSuite:
-  test("health load malformed request and stale command status mappings"):
-    given system: ActorSystem[Nothing] =
-      ActorSystem[Nothing](Behaviors.empty, "first-game-route-test")
-    val blocking = system.dispatchers.lookup(
-      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")
-    )
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    // GameStarted plus the WalkerParked fact from Setup's immediate first
-    // park (2026-09-21 Chronicle design, slice 2): two records for one
-    // Begin command.
-    val begun = service.handle("route-game", 0L,
-      GameCommand.Begin(chronicle, orders)).toOption.get
-    assertEquals(begun.nextSequence, 2L)
-    val gateway = new GameServerGateway(
-      service,
-      new GameProjector(catalog)
-    )
-    val binding = Await.result(
-      Http().newServerAt("127.0.0.1", 0).bind(
-        DevelopmentRoutes.route(gateway, blocking)
-      ),
-      10.seconds
-    )
-    val base =
-      s"http://127.0.0.1:${binding.localAddress.getPort}"
-    val client = HttpClient.newHttpClient()
+  /** The development routes serving "route-game", begun with p2 first and
+    * parked on p2's Setup pawn placement; `afterBegin` is its next
+    * sequence. */
+  private final case class BegunRoutes(server: HttpTestServer,
+      afterBegin: Long)
 
-    try
-      val index = get(client, s"$base/")
+  private val begunRoutes = FunFixture[BegunRoutes](
+    setup = _ =>
+      val service = new GameApplicationService(catalog,
+        new InMemoryEventStreamRepository)
+      val begun = accepted(service.handle("route-game", 0L,
+        GameCommand.Begin(chronicle, orders.copy(firstPlayer = p2))))
+      // GameStarted plus the WalkerParked fact from Setup's immediate first
+      // park (2026-09-21 Chronicle design, slice 2): two records for one
+      // Begin command.
+      assertEquals(begun.nextSequence, 2L)
+      val gateway = new GameServerGateway(service, new GameProjector(catalog))
+      BegunRoutes(
+        HttpTestServer.start("first-game-route-test")(blocking =>
+          DevelopmentRoutes.route(gateway, blocking)),
+        begun.nextSequence),
+    teardown = _.server.close())
+
+  private val commands = "/api/dev/first-games/route-game/commands?playerId=p2"
+  private val ancientCity = CatalogNames.site("Ancient City").value
+
+  begunRoutes.test("the development shell is served uncached and /health " +
+      "is not a development route"):
+    case BegunRoutes(server, _) =>
+      val index = server.get("/")
       assertEquals(index.statusCode(), 200)
       assertEquals(cacheControl(index),
         Some("no-store, no-cache, must-revalidate, max-age=0"))
       // The pinned, version-free fastLinkJS output directory (build.sbt).
       assert(index.body().contains(
         "./target/fastopt/main.js?dev-cache=no-store-v1"))
-      val stylesheet = get(client, s"$base/styles.css")
+      val stylesheet = server.get("/styles.css")
       assertEquals(stylesheet.statusCode(), 200)
       assertEquals(cacheControl(stylesheet),
         Some("no-store, no-cache, must-revalidate, max-age=0"))
 
-      val health = get(client, s"$base/health")
+      val health = server.get("/health")
       assertEquals(health.statusCode(), 404)
       assertEquals(cacheControl(health), None)
-      val malformed = post(
-        client,
-        s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        """{"expectedNextSequence":1,"intent":{"type":"resolveWalker"}}"""
-      )
-      assertEquals(malformed.statusCode(), 400)
 
-      // "route-game" was already seeded above (the retired dev bootstrap
-      // route no longer exists), so the walker's park is already recorded.
-      val afterBootstrap = begun.nextSequence
-      val history = get(client,
-        s"$base/api/dev/first-games/route-game/events?limit=1")
+  begunRoutes.test("the events history pages from the newest event and " +
+      "refuses a limit above 100"):
+    case BegunRoutes(server, afterBegin) =>
+      val history = server.get("/api/dev/first-games/route-game/events?limit=1")
       assertEquals(history.statusCode(), 200)
       assertEquals(ujson.read(history.body())("events").arr.size, 1)
       assertEquals(ujson.read(history.body())("events")(0)("sequence").num.toLong,
-        afterBootstrap - 1)
+        afterBegin - 1)
       assert(ujson.read(history.body())("warning").str.contains("hidden"))
-      assertEquals(get(client,
-        s"$base/api/dev/first-games/route-game/events?limit=101").statusCode(), 400)
+      // GameRoutes refuses a limit above 100.
+      assertEquals(server.get(
+        "/api/dev/first-games/route-game/events?limit=101").statusCode(), 400)
 
-      val pawnDecision = SetupProcedure.pawnDecisionId(PlayerId("p2"))
-      val stale = post(
-        client,
-        s"$base/api/dev/first-games/route-game/commands?playerId=p2",
+  begunRoutes.test("a malformed command is refused and a stale one conflicts"):
+    case BegunRoutes(server, _) =>
+      val malformed = server.post(commands,
+        """{"expectedNextSequence":1,"intent":{"type":"resolveWalker"}}""")
+      assertEquals(malformed.statusCode(), 400)
+
+      val pawnDecision = SetupProcedure.pawnDecisionId(p2)
+      val stale = server.post(commands,
         s"""{"expectedNextSequence":0,"intent":{"type":"resolveWalker",
            |"decisionId":"$pawnDecision",
-           |"payload":{"kind":"choose-one","optionKind":"site","optionId":"site:ancient-city"}}}""".stripMargin
-      )
+           |"payload":{"kind":"choose-one","optionKind":"site",
+           |"optionId":"$ancientCity"}}}""".stripMargin)
       assertEquals(stale.statusCode(), 409)
       assertEquals(
         ujson.read(stale.body())("error").str,
         "stale-client-position"
       )
 
-      val placed = post(
-        client,
-        s"$base/api/dev/first-games/route-game/commands?playerId=p2",
+  begunRoutes.test("p2 walks Setup through the development API while p3 " +
+      "waits"):
+    case BegunRoutes(server, afterBegin) =>
+      val pawnDecision = SetupProcedure.pawnDecisionId(p2)
+      val placed = server.post(commands,
         ActorlessCommandCodec.encode(ActorlessCommandRequest(
-          afterBootstrap,
+          afterBegin,
           GameIntent.ResolveWalker(pawnDecision,
-            DecisionAnswerWire.ChooseOneWire("site", "site:ancient-city"))
+            DecisionAnswerWire.ChooseOneWire("site", ancientCity))
         ))
       )
       assertEquals(placed.statusCode(), 200)
       assertEquals(ujson.read(placed.body())("phase").str,
         "setup-walker-decision")
       val afterPlaced = ujson.read(placed.body())("nextSequence").num.toLong
-      val placedHistory = get(client,
-        s"$base/api/dev/first-games/route-game/events?limit=2")
+      val placedHistory =
+        server.get("/api/dev/first-games/route-game/events?limit=2")
       assertEquals(placedHistory.statusCode(), 200)
       assertEquals(ujson.read(placedHistory.body())("events").arr.size, 2)
       assertEquals(
@@ -127,14 +116,12 @@ class GameRoutesSuite extends munit.FunSuite:
         afterPlaced - 1
       )
 
-      val adviserDecision = SetupProcedure.adviserDecisionId(PlayerId("p2"))
-      val handOptions = ujson.read(placed.body())("walkerDecision")("query")("options")
-        .arr.map(_("id").str).toVector
+      val adviserDecision = SetupProcedure.adviserDecisionId(p2)
+      val handOptions = ujson.read(placed.body())("walkerDecision")("query")(
+        "options").arr.map(_("id").str).toVector
       val adviser = handOptions.head
       val rejectedAdvisers = handOptions.tail
-      val chosen = post(
-        client,
-        s"$base/api/dev/first-games/route-game/commands?playerId=p2",
+      val chosen = server.post(commands,
         ujson.write(ujson.Obj(
           "expectedNextSequence" -> ujson.Num(afterPlaced.toDouble),
           "intent" -> ujson.Obj("type" -> "resolveWalker",
@@ -148,10 +135,7 @@ class GameRoutesSuite extends munit.FunSuite:
       )
       assertEquals(chosen.statusCode(), 200)
 
-      val reloaded = get(
-        client,
-        s"$base/api/dev/first-games/route-game?playerId=p3"
-      )
+      val reloaded = server.get("/api/dev/first-games/route-game?playerId=p3")
       assertEquals(reloaded.statusCode(), 200)
       assertEquals(
         ujson.read(reloaded.body())("nextSequence").num.toLong,
@@ -160,35 +144,3 @@ class GameRoutesSuite extends munit.FunSuite:
       // p2 is asked Reveal Cards next, so p3 waits on it.
       assertEquals(ujson.read(reloaded.body())("phase").str,
         "setup-walker-waiting")
-    finally
-      Await.result(binding.terminate(5.seconds), 10.seconds)
-      system.terminate()
-      Await.result(system.whenTerminated, 10.seconds)
-
-  private def get(
-      client: HttpClient,
-      url: String
-  ): JavaHttpResponse[String] =
-    client.send(
-      HttpRequest.newBuilder(URI.create(url)).GET().build(),
-      JavaHttpResponse.BodyHandlers.ofString()
-    )
-
-  private def cacheControl(
-      response: JavaHttpResponse[String]
-  ): Option[String] =
-    val value = response.headers().firstValue("Cache-Control")
-    if value.isPresent then Some(value.get()) else None
-
-  private def post(
-      client: HttpClient,
-      url: String,
-      body: String
-  ): JavaHttpResponse[String] =
-    client.send(
-      HttpRequest.newBuilder(URI.create(url))
-        .header("Content-Type", "application/json")
-        .POST(HttpRequest.BodyPublishers.ofString(body))
-        .build(),
-      JavaHttpResponse.BodyHandlers.ofString()
-    )

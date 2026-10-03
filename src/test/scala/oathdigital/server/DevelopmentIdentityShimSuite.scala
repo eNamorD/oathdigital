@@ -6,6 +6,7 @@ import oathdigital.application.{
   UserId
 }
 import oathdigital.server.DevelopmentIdentityShimError.NonLoopbackBinding
+import oathdigital.testkit.Unwrap.{accepted, as, present, rejected}
 
 class DevelopmentIdentityShimSuite extends munit.FunSuite:
   test("shim is absent unless explicitly enabled"):
@@ -15,8 +16,9 @@ class DevelopmentIdentityShimSuite extends munit.FunSuite:
     )
 
   test("enabled shim accepts loopback identity and validates its header"):
-    val authenticator = DevelopmentIdentityShim
-      .configure(true, "127.0.0.1").toOption.flatten.get
+    val authenticator = present(
+      accepted(DevelopmentIdentityShim.configure(true, "127.0.0.1")),
+      "an enabled shim")
     assertEquals(
       authenticator.authenticate(DevelopmentIdentityHeader(Some("user-1"))),
       Right(AuthenticatedUser(UserId("user-1")))
@@ -25,13 +27,12 @@ class DevelopmentIdentityShimSuite extends munit.FunSuite:
       authenticator.authenticate(DevelopmentIdentityHeader(None)),
       Left(AuthenticationFailure.MissingCredential)
     )
-    assert(authenticator.authenticate(
-      DevelopmentIdentityHeader(Some("../../impersonate"))
-    ).left.toOption.get.isInstanceOf[AuthenticationFailure.InvalidCredential])
+    as[AuthenticationFailure.InvalidCredential](rejected(
+      authenticator.authenticate(
+        DevelopmentIdentityHeader(Some("../../impersonate")))))
 
-  test("enabled shim refuses wildcard and non-loopback bindings"):
-    // The host list is DevelopmentTrustBoundarySuite's; one shows the check applies.
-    Vector("0.0.0.0").foreach { host =>
-      assert(DevelopmentIdentityShim.configure(true, host)
-        .left.toOption.get.isInstanceOf[NonLoopbackBinding])
-    }
+  test("enabled shim refuses a wildcard binding"):
+    // The host list is DevelopmentTrustBoundarySuite's; one shows the check
+    // applies.
+    as[NonLoopbackBinding](
+      rejected(DevelopmentIdentityShim.configure(true, "0.0.0.0")))

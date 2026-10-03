@@ -50,7 +50,7 @@ class DesktopLaunchProfileSuite extends munit.FunSuite:
     assertEquals(config.port, 9200)
     assertEquals(config.publicBaseUrl, Some(new URI("http://192.168.1.20:9200")))
 
-  test("a flag alone counts as set for the database path"):
+  test("a --database-path flag stops the desktop default from being set"):
     val arguments = Array("--database-path", "/elsewhere/database")
     val launch = resolve(arguments = arguments)
     assertEquals(launch.environment.get("OATH_DATABASE_PATH"), None)
@@ -80,6 +80,8 @@ class DesktopLaunchProfileSuite extends munit.FunSuite:
   test("browser opening follows settings and environment precedence"):
     assert(!resolve(settings = Map("OATH_OPEN_BROWSER" -> "false")).openBrowser)
     assert(resolve(environment = Map("OATH_OPEN_BROWSER" -> "TRUE"), settings = Map("OATH_OPEN_BROWSER" -> "false")).openBrowser)
+
+  test("an invalid OATH_OPEN_BROWSER is refused"):
     assertEquals(
       DesktopLaunchProfile.resolve(Array.empty, Map("OATH_OPEN_BROWSER" -> "yes"), Map.empty, appData, lan),
       Left("OATH_OPEN_BROWSER: must be true or false")

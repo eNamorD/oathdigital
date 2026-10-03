@@ -3,6 +3,7 @@ package oathdigital.gameplay.setup
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
+import oathdigital.testkit.Unwrap.accepted
 
 class GameStartToWakeSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
@@ -12,14 +13,14 @@ class GameStartToWakeSuite extends munit.FunSuite:
   private val orders = FirstGameSetupFixture.orders
 
   test("beginGame parks on the first player's pawn-placement decision"):
-    val transition = rules.beginGame(OathState.NoGame, chronicle, orders)
-      .toOption.get
+    val transition =
+      accepted(rules.beginGame(OathState.NoGame, chronicle, orders))
     parked.assertParked(transition.state, TriggeredProcedureRef.Setup,
       SetupProcedure.pawnDecisionId(orders.firstPlayer), orders.firstPlayer)
 
   test("replaying the recorded events reproduces the same Ready state with no RNG"):
-    val transition = rules.beginGame(OathState.NoGame, chronicle, orders)
-      .toOption.get
+    val transition =
+      accepted(rules.beginGame(OathState.NoGame, chronicle, orders))
     val replayed = transition.events.foldLeft[Either[OathViolation, OathState]](
       Right(OathState.NoGame)):
       case (Right(state), event) => rules.evolve(state, event)

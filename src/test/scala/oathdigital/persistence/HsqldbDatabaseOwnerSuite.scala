@@ -9,10 +9,14 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 import oathdigital.application._
 import oathdigital.application.MembershipRole.Player
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class HsqldbDatabaseOwnerSuite extends munit.FunSuite:
   private given executionContext: ExecutionContext =
     ExecutionContext.global
+
+  /** The schema version every database is migrated to. */
+  private val targetVersion = new EventJournalSchema(() => 0L).TargetVersion
 
   private def path(label: String): Path =
     Files.createTempDirectory(s"oathdigital-owner-$label-")
@@ -35,16 +39,25 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite:
           "ORDER BY version")
       val ledger = Iterator.continually(rows).takeWhile(_.next())
         .map(row => row.getInt(1) -> row.getLong(2)).toVector
-      assertEquals(ledger, Vector(1 -> 1234L, 2 -> 1234L, 3 -> 1234L, 4 -> 1234L))
+      // One row per schema version, each stamped by the injected clock.
+      assertEquals(ledger,
+        (1 to targetVersion).map(_ -> 1234L).toVector)
     finally connection.close()
+
+  test("adapters do not own the connection (not AutoCloseable)"):
+    val owner = open(path("adapters"))
+    def closeable(adapter: AnyRef) =
+      classOf[AutoCloseable].isAssignableFrom(adapter.getClass)
+    try
+      assert(!closeable(owner.identities))
+      assert(!closeable(owner.eventStreams))
+    finally owner.close()
 
   test("one owner serves identity and journal adapters concurrently"):
     val owner = open(path("concurrent"))
     val identity = owner.identities
     val journal = owner.eventStreams
     try
-      assert(!classOf[AutoCloseable].isAssignableFrom(identity.getClass))
-      assert(!classOf[AutoCloseable].isAssignableFrom(journal.getClass))
       identity.createUser(UserId("owner"), "Owner", 0L)
       identity.createGame("game-shared", UserId("owner"), 1L)
 
@@ -72,7 +85,8 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite:
       assert(Await.result(journalOperation, 20.seconds).isRight)
       assert(Await.result(identityOperation, 20.seconds).isRight)
       assertEquals(
-        journal.load("game-shared").toOption.flatten.get.records,
+        present(accepted(journal.load("game-shared")), "stream game-shared")
+          .records,
         Vector("zero", "one")
       )
       assert(identity.findMembership("game-shared", UserId("player"))
@@ -96,8 +110,8 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite:
     val reopened = open(databasePath)
     try
       assertEquals(
-        reopened.eventStreams.load("game-reopen")
-          .toOption.flatten.get.records,
+        present(accepted(reopened.eventStreams.load("game-reopen")),
+          "stream game-reopen").records,
         Vector("event-zero")
       )
       assertEquals(
@@ -111,7 +125,35 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite:
       )
     finally reopened.close()
 
-  test("reopen retry is limited to the exact lock-heartbeat failure"):
+  /** What one `retryTransientLock` run did: its result, how many times it
+    * attempted the open, and how many times it slept between attempts. */
+  private final case class RetryTrace(
+      result: Either[HsqldbDatabaseOwner.OpenAttemptFailure, Int],
+      attempts: Int, sleeps: Int)
+
+  /** Runs `retryTransientLock` with `attempt`, which receives its 1-based
+    * attempt number, and records the attempts and sleeps. The clock reads
+    * 0 unless `clock` is given; every failure is retryable unless
+    * `retryable` is false. */
+  private def retryRun(
+      attempt: Int => Either[HsqldbDatabaseOwner.OpenAttemptFailure, Int],
+      maxAttempts: Int, deadlineNanos: Long, clock: () => Long = () => 0L,
+      retryable: Boolean = true): RetryTrace =
+    var attempts = 0
+    var sleeps = 0
+    val result = HsqldbDatabaseOwner.retryTransientLock[Int](
+      () => { attempts += 1; attempt(attempts) },
+      maxAttempts = maxAttempts,
+      deadlineNanos = deadlineNanos,
+      nanoTime = clock,
+      sleep = _ => sleeps += 1,
+      retryable = _ => retryable)
+    RetryTrace(result, attempts, sleeps)
+
+  private val transient = HsqldbDatabaseOwner.ConnectionFailure(
+    new RuntimeException("transient"))
+
+  test("only the exact lock-heartbeat exception chain is transient"):
     val exactChain = Vector(
       "java.sql.SQLException" -> "Database lock acquisition failure",
       "org.hsqldb.persist.LockFile$LockHeldExternallyException" ->
@@ -123,107 +165,45 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite:
     assert(!HsqldbDatabaseOwner.isTransientLockHeartbeatChain(
       exactChain.updated(1, exactChain(1)._1 -> "database is corrupt")))
 
-    var attempts = 0
-    var sleeps = 0
-    val failure = HsqldbDatabaseOwner.ConnectionFailure(
-      new RuntimeException("transient"))
-    val result = HsqldbDatabaseOwner.retryTransientLock[Int](
-      () => {
-        attempts += 1
-        Left(failure)
-      },
-      maxAttempts = 2,
-      deadlineNanos = 100L,
-      nanoTime = () => 0L,
-      sleep = _ => sleeps += 1,
-      retryable = _ => true
-    )
-    assertEquals(result, Left(failure))
-    assertEquals(attempts, 2)
-    assertEquals(sleeps, 1)
+  test("reopen retry stops after its last attempt, on a non-lock failure, " +
+      "and when the deadline is exhausted"):
+    val exhausted = retryRun(_ => Left(transient), maxAttempts = 2,
+      deadlineNanos = 100L)
+    assertEquals(exhausted.result, Left(transient))
+    assertEquals(exhausted.attempts, 2)
+    assertEquals(exhausted.sleeps, 1)
 
-    attempts = 0
-    HsqldbDatabaseOwner.retryTransientLock[Int](
-      () => {
-        attempts += 1
-        Left(HsqldbDatabaseOwner.InitializationFailure(
-          RepositoryFailure.StorageFailure("schema failure")))
-      },
-      maxAttempts = 2,
-      deadlineNanos = 100L,
-      nanoTime = () => 0L,
-      sleep = _ => (),
-      retryable = _ => true
-    )
-    assertEquals(attempts, 1)
+    val initializationFailed = retryRun(
+      _ => Left(HsqldbDatabaseOwner.InitializationFailure(
+        RepositoryFailure.StorageFailure("schema failure"))),
+      maxAttempts = 2, deadlineNanos = 100L)
+    assertEquals(initializationFailed.attempts, 1)
 
-    attempts = 0
-    HsqldbDatabaseOwner.retryTransientLock[Int](
-      () => {
-        attempts += 1
-        Left(failure)
-      },
-      maxAttempts = 2,
-      deadlineNanos = 0L,
-      nanoTime = () => 0L,
-      sleep = _ => (),
-      retryable = _ => true
-    )
-    assertEquals(attempts, 1)
+    val pastDeadline = retryRun(_ => Left(transient), maxAttempts = 2,
+      deadlineNanos = 0L)
+    assertEquals(pastDeadline.attempts, 1)
 
-  test("reopen retry returns the first success and rechecks the deadline after backoff"):
-    val failure = HsqldbDatabaseOwner.ConnectionFailure(
-      new RuntimeException("transient"))
+  test("reopen retry returns the first success and rechecks the deadline " +
+      "after backoff"):
+    val recovered = retryRun(
+      attempt => if attempt == 1 then Left(transient) else Right(7),
+      maxAttempts = 3, deadlineNanos = 100L)
+    assertEquals(recovered.result, Right(7))
+    assertEquals(recovered.attempts, 2)
+    assertEquals(recovered.sleeps, 1)
 
-    var attempts = 0
-    var sleeps = 0
-    val recovered = HsqldbDatabaseOwner.retryTransientLock[Int](
-      () => {
-        attempts += 1
-        if attempts == 1 then Left(failure) else Right(7)
-      },
-      maxAttempts = 3,
-      deadlineNanos = 100L,
-      nanoTime = () => 0L,
-      sleep = _ => sleeps += 1,
-      retryable = _ => true
-    )
-    assertEquals(recovered, Right(7))
-    assertEquals(attempts, 2)
-    assertEquals(sleeps, 1)
-
-    attempts = 0
-    sleeps = 0
-    val notRetryable = HsqldbDatabaseOwner.retryTransientLock[Int](
-      () => {
-        attempts += 1
-        Left(failure)
-      },
-      maxAttempts = 3,
-      deadlineNanos = 100L,
-      nanoTime = () => 0L,
-      sleep = _ => sleeps += 1,
-      retryable = _ => false
-    )
-    assertEquals(notRetryable, Left(failure))
-    assertEquals(attempts, 1)
-    assertEquals(sleeps, 0)
-
-    attempts = 0
-    sleeps = 0
+    // The clock reads 0 before the backoff and 200 after it.
     val clock = Iterator(0L, 200L)
-    val expiredDuringBackoff = HsqldbDatabaseOwner.retryTransientLock[Int](
-      () => {
-        attempts += 1
-        Left(failure)
-      },
-      maxAttempts = 3,
-      deadlineNanos = 100L,
-      nanoTime = () => clock.next(),
-      sleep = _ => sleeps += 1,
-      retryable = _ => true
-    )
-    assertEquals(expiredDuringBackoff, Left(failure))
-    assertEquals(attempts, 1)
-    assertEquals(sleeps, 1)
+    val expiredDuringBackoff = retryRun(_ => Left(transient), maxAttempts = 3,
+      deadlineNanos = 100L, clock = () => clock.next())
+    assertEquals(expiredDuringBackoff.result, Left(transient))
+    assertEquals(expiredDuringBackoff.attempts, 1)
+    assertEquals(expiredDuringBackoff.sleeps, 1)
     assert(!clock.hasNext)
+
+  test("reopen retry does not retry a failure the predicate refuses"):
+    val notRetryable = retryRun(_ => Left(transient), maxAttempts = 3,
+      deadlineNanos = 100L, retryable = false)
+    assertEquals(notRetryable.result, Left(transient))
+    assertEquals(notRetryable.attempts, 1)
+    assertEquals(notRetryable.sleeps, 0)

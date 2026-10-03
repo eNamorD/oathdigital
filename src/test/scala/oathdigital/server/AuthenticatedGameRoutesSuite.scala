@@ -1,43 +1,60 @@
 package oathdigital.server
 
-import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse => JavaResponse}
+import java.net.http.HttpResponse
 import java.nio.file.Files
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
+import scala.concurrent.Future
 
-import akka.actor.typed.{ActorSystem, DispatcherSelector}
-import akka.actor.typed.scaladsl.Behaviors
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest => AkkaRequest}
 
 import oathdigital.application._
 import oathdigital.application.MembershipRole._
+import oathdigital.catalog.SiteOnly
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.{DenizenId, PlayerId}
+import oathdigital.model.{ActionRef, DecisionOptionRef, DenizenId}
+import oathdigital.testkit.{CatalogNames, HttpTestServer}
+import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 class AuthenticatedGameRoutesSuite extends munit.FunSuite:
-  test("authenticated Negotiation lets a non-active member author decisions and rejects outsiders"):
-    given system: ActorSystem[Nothing] = ActorSystem[Nothing](
-      Behaviors.empty, "authenticated-negotiation-route-test")
-    val blocking = system.dispatchers.lookup(
-      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
-    val database = HsqldbDatabaseOwner.open(Files.createTempDirectory(
-      "auth-negotiation-route-").resolve("database")).toOption.get
+  private val authenticator = new HttpSessionAuthenticator:
+    override def authenticate(request: AkkaRequest): Future[Either[
+        AuthenticationFailure, AuthenticatedHttpSession]] = Future.successful(
+      request.headers.find(_.name == "X-Test-User").map(header =>
+        Right(AuthenticatedHttpSession(AuthenticatedUser(UserId(header.value)),
+          HttpTestServer.csrfDigest)))
+        .getOrElse(Left(AuthenticationFailure.MissingCredential)))
+
+  /** The authenticated routes over `service` and the memberships in
+    * `identities`. */
+  private def serve(name: String, service: GameApplicationService,
+      identities: IdentityRepository): HttpTestServer =
+    val gateway = new AuthenticatedGameGateway(service,
+      new GameProjector(catalog),
+      new MembershipAuthorizationService(identities), identities,
+      new GeneratedFirstGamePlanFactory(catalog))
+    HttpTestServer.start(name)(blocking => new AuthenticatedGameRoutes(
+      authenticator, new SameOriginCsrfProtection(HttpTestServer.origin),
+      gateway, blocking).route)
+
+  private def openDatabase(label: String): HsqldbDatabaseOwner =
+    accepted(HsqldbDatabaseOwner.open(
+      Files.createTempDirectory(label).resolve("database")))
+
+  test("authenticated Negotiation lets a non-active member author decisions " +
+      "and rejects outsiders"):
+    val database = openDatabase("auth-negotiation-route-")
     val identities = database.identities
     val repository = new InMemoryEventStreamRepository
     val gameId = "auth-negotiation-game"
-    val woken = initialSituation()
-    val actor = woken.ready.game.current.turn.activePlayer
-    val other = woken.ready.game.current.players.find(_.player != actor).get
-    val traveled = woken.endingWake(actor).parkedAfter(
-      GameCommand.StartWalker(oathdigital.model.ActionRef.Travel,
-        StartPayload(actor, Vector.empty,
-          Vector(oathdigital.model.DecisionOptionRef.Site(
-            other.pawnSite.get)))))
+    // initialSituation's pawns: p2, the first player, at Ancient City and
+    // p1 alone at Buried Giant. p2 travels to p1.
+    val traveled = initialSituation().endingWake(p2).parkedAfter(
+      GameCommand.StartWalker(ActionRef.Travel,
+        StartPayload(p2, Vector.empty,
+          Vector(DecisionOptionRef.Site(CatalogNames.site("Buried Giant"))))))
     traveled.seedInto(repository, gameId)
     val ownerUser = UserId("negotiation-owner")
     val actorUser = UserId("negotiation-actor")
@@ -47,52 +64,36 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
       identities.createUser(user, user.value, 0L))
     identities.createGame(gameId, ownerUser, 0L)
     identities.addMembership(GameMembership(gameId, actorUser, Player,
-      Some(actor.value)), 0L)
+      Some(p2.value)), 0L)
     identities.addMembership(GameMembership(gameId, otherUser, Player,
-      Some(other.player.value)), 0L)
-    val csrfDigest = CsrfTokenDigest.fromBytes(SensitiveTokenDigest.sha256("c" * 43))
-      .toOption.get
-    val authenticator = new HttpSessionAuthenticator:
-      override def authenticate(request: AkkaRequest): Future[Either[AuthenticationFailure, AuthenticatedHttpSession]] = Future.successful(
-        request.headers.find(_.name == "X-Test-User").map(header =>
-          Right(AuthenticatedHttpSession(AuthenticatedUser(UserId(header.value)),
-            csrfDigest))).getOrElse(Left(AuthenticationFailure.MissingCredential)))
-    val gateway = new AuthenticatedGameGateway(new GameApplicationService(catalog,
-      repository), new GameProjector(catalog),
-      new MembershipAuthorizationService(identities), identities,
-      new GeneratedFirstGamePlanFactory(catalog))
-    val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
-      new AuthenticatedGameRoutes(authenticator,
-        new SameOriginCsrfProtection("http://127.0.0.1"), gateway, blocking).route),
-      10.seconds)
-    val base = s"http://127.0.0.1:${binding.localAddress.getPort}" +
-      s"/api/authenticated/first-games/$gameId"
-    val client = HttpClient.newHttpClient()
+      Some(p1.value)), 0L)
+    val server = serve("authenticated-negotiation-route-test",
+      new GameApplicationService(catalog, repository), identities)
+    val commands = s"/api/authenticated/first-games/$gameId/commands"
     try
-      def sequenceOf(response: java.net.http.HttpResponse[String]): Long =
+      def sequenceOf(response: HttpResponse[String]): Long =
         ujson.read(response.body())("nextSequence").num.toLong
       var sequence = traveled.nextSequence
-      def send(user: UserId, intent: ujson.Obj) = post(client, base + "/commands",
-        user.value, ujson.write(ujson.Obj("expectedNextSequence" ->
-          ujson.Num(sequence.toDouble), "intent" -> intent)))
+      def send(user: UserId, intent: ujson.Obj) = server.post(commands,
+        ujson.write(ujson.Obj("expectedNextSequence" ->
+          ujson.Num(sequence.toDouble), "intent" -> intent)),
+        Some(user.value))
       def answer(decision: String, payload: ujson.Obj) = ujson.Obj(
         "type" -> "resolveWalker", "decisionId" -> decision, "payload" -> payload)
       val begin = send(actorUser, ujson.Obj("type" -> "startWalker",
         "action" -> "negotiation", "modifiers" -> ujson.Arr(),
         "startArgs" -> ujson.Arr()))
       assertEquals(begin.statusCode(), 200, begin.body()); sequence = sequenceOf(begin)
-      if ujson.read(begin.body())("walkerDecision")("decisionId").str ==
-          "negotiation.negotiators" then
-        val chosen = send(actorUser, answer("negotiation.negotiators",
-          ujson.Obj("kind" -> "choose-many", "options" -> ujson.Arr(ujson.Obj(
-            "optionKind" -> "player", "optionId" -> other.player.value)))))
-        assertEquals(chosen.statusCode(), 200, chosen.body()); sequence = sequenceOf(chosen)
+      // p1 is the only other player at Buried Giant, so there are no
+      // negotiators to choose: the walk parks on the deal.
+      assertEquals(ujson.read(begin.body())("walkerDecision")("decisionId").str,
+        "negotiation.deal")
       val outsiderAttempt = send(outsider, answer("negotiation.deal",
         ujson.Obj("kind" -> "decline-deal")))
       assertEquals(outsiderAttempt.statusCode(), 403)
       val replace = send(otherUser, answer("negotiation.deal", ujson.Obj(
         "kind" -> "propose-terms", "terms" -> ujson.Obj("transfers" ->
-          ujson.Arr(ujson.Obj("recipientPlayerId" -> actor.value, "favor" -> 1,
+          ujson.Arr(ujson.Obj("recipientPlayerId" -> p2.value, "favor" -> 1,
             "relicIds" -> ujson.Arr())), "disclosures" -> ujson.Arr()))))
       assertEquals(replace.statusCode(), 200, replace.body()); sequence = sequenceOf(replace)
       val accept = send(otherUser, answer("negotiation.deal",
@@ -102,138 +103,123 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
         ujson.Obj("kind" -> "decline-deal")))
       assertEquals(decline.statusCode(), 200, decline.body())
       assert(ujson.read(decline.body())("walkerDecision").isNull)
-    
     finally
-      Await.result(binding.terminate(5.seconds), 10.seconds)
-      system.terminate(); Await.result(system.whenTerminated, 10.seconds)
+      server.close()
       database.close()
 
-  test("authenticated routes derive projection scope and command actor"):
-    given system: ActorSystem[Nothing] =
-      ActorSystem[Nothing](Behaviors.empty, "authenticated-route-test")
-    val blocking = system.dispatchers.lookup(
-      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")
-    )
-    val database = HsqldbDatabaseOwner.open(
-      Files.createTempDirectory("auth-route-").resolve("database")
-    ).toOption.get
-    val identities = database.identities
-    val owner = UserId("owner")
-    val p2User = UserId("user-p2")
-    val p3User = UserId("user-p3")
-    val spectator = UserId("spectator")
-    val outsider = UserId("outsider")
-    Vector(owner, p2User, p3User, spectator, outsider)
-      .foreach(user => identities.createUser(user, user.value, 0L))
-    identities.createGame("auth-game", owner, 0L)
-    identities.addMembership(
-      GameMembership("auth-game", p2User, Player, Some("p2")), 0L)
-    identities.addMembership(
-      GameMembership("auth-game", p3User, Player, Some("p3")), 0L)
-    identities.addMembership(
-      GameMembership("auth-game", spectator, Spectator, None), 0L)
+  private val owner = UserId("owner")
+  private val p2User = UserId("user-p2")
+  private val p3User = UserId("user-p3")
+  private val spectator = UserId("spectator")
+  private val outsider = UserId("outsider")
 
-    val events = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, events)
-    val begun = service.handle("auth-game", 0L,
-      GameCommand.Begin(chronicle, orders)).toOption.get
-    val p2Denizens = freshReady.game.current
-      .temporaryHands(PlayerId("p2")).collect { case id: DenizenId => id }
-    val p2Hand = p2Denizens.head
-    val p2HandRest = p2Denizens.tail
-    val csrfToken = "c" * 43
-    val csrfDigest = CsrfTokenDigest.fromBytes(
-      SensitiveTokenDigest.sha256(csrfToken)
-    ).toOption.get
-    val authenticator = new HttpSessionAuthenticator:
-      override def authenticate(request: AkkaRequest) =
-        Future.successful(request.headers.find(_.name == "X-Test-User") match {
-          case Some(header) => Right(AuthenticatedHttpSession(
-            AuthenticatedUser(UserId(header.value)), csrfDigest))
-          case None => Left(AuthenticationFailure.MissingCredential)
-        })
-    val gateway = new AuthenticatedGameGateway(
-      service,
-      new GameProjector(catalog),
-      new MembershipAuthorizationService(identities),
-      identities,
-      new GeneratedFirstGamePlanFactory(catalog)
-    )
-    val binding = Await.result(
-      Http().newServerAt("127.0.0.1", 0).bind(
-        new AuthenticatedGameRoutes(
-          authenticator,
-          new SameOriginCsrfProtection("http://127.0.0.1"),
-          gateway,
-          blocking
-        ).route
-      ),
-      10.seconds
-    )
-    val base = s"http://127.0.0.1:${binding.localAddress.getPort}" +
-      "/api/authenticated/first-games/auth-game"
-    val client = HttpClient.newHttpClient()
+  private val game = "/api/authenticated/first-games/auth-game"
+  private val commands = game + "/commands"
 
-    try
-      assertEquals(get(client, base, None).statusCode(), 401)
-      assertEquals(get(client, base, Some(outsider.value)).statusCode(), 403)
-      assertEquals(get(client, base + "?playerId=p2", Some(p2User.value))
+  /** "auth-game", begun with p2 first and parked on p2's Setup pawn
+    * placement: `owner` owns it, user-p2 and user-p3 hold seats p2 and p3,
+    * `spectator` watches, and `outsider` belongs to none of it.
+    * `afterBegin` is its next sequence. */
+  private final case class BegunAuthGame(server: HttpTestServer,
+      database: HsqldbDatabaseOwner, afterBegin: Long)
+
+  private val begunAuthGame = FunFixture[BegunAuthGame](
+    setup = _ =>
+      val database = openDatabase("auth-route-")
+      val identities = database.identities
+      Vector(owner, p2User, p3User, spectator, outsider)
+        .foreach(user => identities.createUser(user, user.value, 0L))
+      identities.createGame("auth-game", owner, 0L)
+      identities.addMembership(
+        GameMembership("auth-game", p2User, Player, Some("p2")), 0L)
+      identities.addMembership(
+        GameMembership("auth-game", p3User, Player, Some("p3")), 0L)
+      identities.addMembership(
+        GameMembership("auth-game", spectator, Spectator, None), 0L)
+      val service = new GameApplicationService(catalog,
+        new InMemoryEventStreamRepository)
+      val begun = accepted(service.handle("auth-game", 0L,
+        GameCommand.Begin(chronicle, orders.copy(firstPlayer = p2))))
+      BegunAuthGame(serve("authenticated-route-test", service, identities),
+        database, begun.nextSequence),
+    teardown = game =>
+      game.server.close()
+      game.database.close())
+
+  begunAuthGame.test("a projection needs a member's session and takes no " +
+      "playerId"):
+    case BegunAuthGame(server, _, _) =>
+      assertEquals(server.get(game).statusCode(), 401)
+      assertEquals(server.get(game, Some(outsider.value)).statusCode(), 403)
+      assertEquals(server.get(game + "?playerId=p2", Some(p2User.value))
         .statusCode(), 400)
 
+  begunAuthGame.test("the command actor comes from the session and never " +
+      "from the wire"):
+    case BegunAuthGame(server, _, afterBegin) =>
+      def command(intent: ujson.Obj) = server.post(commands,
+        ujson.write(ujson.Obj(
+          "expectedNextSequence" -> ujson.Num(afterBegin.toDouble),
+          "intent" -> intent)), Some(p2User.value))
       // Forge is a walker action (batch-1 Task 3), so the three guarantees
       // this block always made are asserted on `startWalker`/`resolveWalker`
       // instead of the deleted `beginForge`/`completeForge` intents: the
       // actor is derived from the session and never carried on the wire, a
       // spoofed one is rejected outright, and no unknown field rides an
-      // assignment payload.
-      val actorDerivedForge = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(begun.nextSequence.toDouble),
-          "intent" -> ujson.Obj("type" -> "startWalker", "action" -> "forge",
-            "modifiers" -> ujson.Arr()))))
+      // assignment payload. 422: the game is in Setup, so the derived actor
+      // may not Forge or peek yet. 400: the wire refuses a playerId field
+      // and an unknown payload field.
+      val actorDerivedForge = command(ujson.Obj("type" -> "startWalker",
+        "action" -> "forge", "modifiers" -> ujson.Arr()))
       assertEquals(actorDerivedForge.statusCode(), 422, actorDerivedForge.body())
-      val spoofedForgeActor = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(begun.nextSequence.toDouble),
-          "intent" -> ujson.Obj("type" -> "startWalker", "action" -> "forge",
-            "modifiers" -> ujson.Arr(), "playerId" -> "p3"))))
+      val spoofedForgeActor = command(ujson.Obj("type" -> "startWalker",
+        "action" -> "forge", "modifiers" -> ujson.Arr(), "playerId" -> "p3"))
       assertEquals(spoofedForgeActor.statusCode(), 400)
-      val spoofedRelic = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(begun.nextSequence.toDouble),
-          "intent" -> ujson.Obj("type" -> "resolveWalker",
-            "decisionId" -> "forge.assignment",
-            "payload" -> ujson.Obj("kind" -> "partition",
-              "placements" -> ujson.Arr(),
-              "relicId" -> "relic:spoofed")))))
+      val spoofedRelic = command(ujson.Obj("type" -> "resolveWalker",
+        "decisionId" -> "forge.assignment",
+        "payload" -> ujson.Obj("kind" -> "partition",
+          "placements" -> ujson.Arr(),
+          "relicId" -> "relic:spoofed")))
       assertEquals(spoofedRelic.statusCode(), 400, spoofedRelic.body())
-      val actorDerivedMinor = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(begun.nextSequence.toDouble),
-          "intent" -> ujson.Obj("type" -> "peekSiteRelics"))))
+      val actorDerivedMinor = command(ujson.Obj("type" -> "peekSiteRelics"))
       assertEquals(actorDerivedMinor.statusCode(), 422, actorDerivedMinor.body())
-      val spoofedMinorActor = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(begun.nextSequence.toDouble),
-          "intent" -> ujson.Obj("type" -> "peekSiteRelics", "playerId" -> "p3"))))
+      val spoofedMinorActor = command(ujson.Obj("type" -> "peekSiteRelics",
+        "playerId" -> "p3"))
       assertEquals(spoofedMinorActor.statusCode(), 400)
 
-      val pawnDecision = SetupProcedure.pawnDecisionId(PlayerId("p2"))
-      val pawn = post(client, base + "/commands", p2User.value,
-        resolveWalkerBody(begun.nextSequence, pawnDecision, "site",
-          sites.head.value))
+  begunAuthGame.test("p2 walks Setup through the authenticated routes and " +
+      "nobody else sees or answers its decisions"):
+    case BegunAuthGame(server, _, afterBegin) =>
+      // p2 is dealt Wizard's Conclave, Errand Boy and Nature Worship, keeps
+      // Wizard's Conclave, and discards the others.
+      val kept = CatalogNames.denizen("Wizard's Conclave")
+      val discarded = Vector("Errand Boy", "Nature Worship")
+        .map(CatalogNames.denizen(_))
+      assertEquals(freshReady.game.current.temporaryHands(p2)
+        .collect { case id: DenizenId => id }, kept +: discarded)
+      assert(!catalog.denizen(kept).exists(_.isInstanceOf[SiteOnly]))
+
+      val pawnDecision = SetupProcedure.pawnDecisionId(p2)
+      val pawn = server.post(commands,
+        resolveWalkerBody(afterBegin, pawnDecision, "site",
+          CatalogNames.site("Ancient City").value), Some(p2User.value))
       assertEquals(pawn.statusCode(), 200, pawn.body())
       assertEquals(ujson.read(pawn.body())("walkerDecision")("decisionId").str,
-        SetupProcedure.adviserDecisionId(PlayerId("p2")))
+        SetupProcedure.adviserDecisionId(p2))
       assert(ujson.read(pawn.body())("walkerDecision")("query")("options")
         .arr.nonEmpty)
       assertNoHiddenPlan(pawn.body())
       val afterPawn = ujson.read(pawn.body())("nextSequence").num.toLong
 
       Vector(owner, spectator, p3User).foreach { user =>
-        val projection = get(client, base, Some(user.value))
+        val projection = server.get(game, Some(user.value))
         assertEquals(projection.statusCode(), 200)
         assert(ujson.read(projection.body())("walkerDecision").isNull)
         assertNoHiddenPlan(projection.body())
       }
 
-      val adviserDecision = SetupProcedure.adviserDecisionId(PlayerId("p2"))
-      val impersonation = post(client, base + "/commands", p2User.value,
+      val adviserDecision = SetupProcedure.adviserDecisionId(p2)
+      val impersonation = server.post(commands,
         ujson.write(ujson.Obj(
           "expectedNextSequence" -> ujson.Num(afterPawn.toDouble),
           "intent" -> ujson.Obj(
@@ -241,61 +227,52 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
             "playerId" -> "p3",
             "decisionId" -> adviserDecision,
             "payload" -> ujson.Obj("kind" -> "choose-one",
-              "optionKind" -> "denizen", "optionId" -> p2Hand.value)
+              "optionKind" -> "denizen", "optionId" -> kept.value)
           )
-        )))
+        )), Some(p2User.value))
       assertEquals(impersonation.statusCode(), 400)
       Vector(owner, spectator).foreach { user =>
-        assertEquals(post(client, base + "/commands", user.value,
-          resolveWalkerBody(afterPawn, adviserDecision, "denizen", p2Hand.value)
-        ).statusCode(), 403)
+        assertEquals(server.post(commands,
+          resolveWalkerBody(afterPawn, adviserDecision, "denizen", kept.value),
+          Some(user.value)).statusCode(), 403)
       }
 
-      val stale = post(client, base + "/commands", p2User.value,
-        resolveWalkerBody(begun.nextSequence, adviserDecision, "denizen", p2Hand.value))
+      val stale = server.post(commands,
+        resolveWalkerBody(afterBegin, adviserDecision, "denizen", kept.value),
+        Some(p2User.value))
       assertEquals(stale.statusCode(), 409, stale.body())
-      val accepted = post(client, base + "/commands", p2User.value,
+      val accepted = server.post(commands,
         resolveWalkerKeepPartitionBody(afterPawn, adviserDecision, "denizen",
-          p2Hand.value, p2HandRest.map(_.value)))
+          kept.value, discarded.map(_.value)), Some(p2User.value))
       assertEquals(accepted.statusCode(), 200)
-      // Reveal Cards follows, unless the kept adviser is site-only. Only its
-      // owner is offered the card; everyone else sees no decision.
-      if !catalog.denizen(p2Hand).exists(
-          _.isInstanceOf[oathdigital.catalog.SiteOnly]) then
-        val reveal = ujson.read(accepted.body())("walkerDecision")
-        assertEquals(reveal("decisionId").str,
-          SetupProcedure.revealDecisionId(PlayerId("p2")))
-        assert(reveal("query")("options").arr.nonEmpty, reveal)
-        Vector(owner, spectator, p3User).foreach { user =>
-          val projection = get(client, base, Some(user.value))
-          assert(ujson.read(projection.body())("walkerDecision").isNull)
-          assert(!projection.body().contains(p2Hand.value), user)
-        }
+      // Reveal Cards follows, since Wizard's Conclave is not site-only. Only
+      // its owner is offered the card; everyone else sees no decision.
+      val reveal = ujson.read(accepted.body())("walkerDecision")
+      assertEquals(reveal("decisionId").str,
+        SetupProcedure.revealDecisionId(p2))
+      assert(reveal("query")("options").arr.nonEmpty, reveal)
+      Vector(owner, spectator, p3User).foreach { user =>
+        val projection = server.get(game, Some(user.value))
+        assert(ujson.read(projection.body())("walkerDecision").isNull)
+        assert(!projection.body().contains(kept.value), user)
+      }
 
+  begunAuthGame.test("a storage failure answers 500 without its details"):
+    case BegunAuthGame(server, database, _) =>
       database.close()
-      val storage = get(client, base, Some(owner.value))
+      val storage = server.get(game, Some(owner.value))
       assertEquals(storage.statusCode(), 500)
       assertEquals(
         ujson.read(storage.body())("error").str,
         "internal-error"
       )
       assert(!storage.body().toLowerCase.contains("closed"))
-    finally
-      Await.result(binding.terminate(5.seconds), 10.seconds)
-      system.terminate()
-      Await.result(system.whenTerminated, 10.seconds)
-      database.close()
 
   private def assertNoHiddenPlan(body: String): Unit =
     assert(!ujson.read(body).obj.contains("viewerPlayerId"))
     assert(!body.contains("worldDeckOrder"))
     assert(!body.contains("relicOrder"))
     assert(!body.contains("denizenOrder"))
-
-  private def get(client: HttpClient, url: String, user: Option[String]) =
-    val builder = HttpRequest.newBuilder(URI.create(url)).GET()
-    user.foreach(value => builder.header("X-Test-User", value))
-    client.send(builder.build(), JavaResponse.BodyHandlers.ofString())
 
   private def resolveWalkerBody(sequence: Long, decisionId: String,
       optionKind: String, optionId: String): String =
@@ -317,12 +294,3 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
             discardedIds.map(id => ujson.Obj(
               "optionKind" -> optionKind, "optionId" -> id,
               "sectionKey" -> "discard")))))))
-
-  private def post(client: HttpClient, url: String, user: String, body: String) =
-    client.send(HttpRequest.newBuilder(URI.create(url))
-      .header("X-Test-User", user)
-      .header("Origin", "http://127.0.0.1")
-      .header("X-CSRF-Token", "c" * 43)
-      .header("Content-Type", "application/json")
-      .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
-      JavaResponse.BodyHandlers.ofString())

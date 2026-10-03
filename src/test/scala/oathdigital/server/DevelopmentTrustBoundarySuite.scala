@@ -1,13 +1,15 @@
 package oathdigital.server
 
+import oathdigital.testkit.Unwrap.rejected
+
 class DevelopmentTrustBoundarySuite extends munit.FunSuite:
   test("development server binding accepts only explicit loopback hosts"):
     Vector("127.0.0.1", "localhost", "::1").foreach { host =>
       assert(DevelopmentTrustBoundary.validateLoopbackHost(host).isRight)
     }
     Vector("0.0.0.0", "192.168.1.10", "example.com", "").foreach { host =>
-      val error = DevelopmentTrustBoundary
-        .validateLoopbackHost(host).left.toOption.get
+      val error =
+        rejected(DevelopmentTrustBoundary.validateLoopbackHost(host))
       assert(error.contains("loopback"))
     }
 
@@ -15,8 +17,8 @@ class DevelopmentTrustBoundarySuite extends munit.FunSuite:
     assert(DevelopmentTrustBoundary
       .validateIdentifier("game-1:branch_a", "$.gameId").isRight)
     assertEquals(
-      DevelopmentTrustBoundary
-        .validateIdentifier(" ", "$.gameId").left.toOption.get.path,
+      rejected(DevelopmentTrustBoundary.validateIdentifier(" ", "$.gameId"))
+        .path,
       "$.gameId"
     )
     assert(DevelopmentTrustBoundary.validateIdentifier(
