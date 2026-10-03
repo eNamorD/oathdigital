@@ -1,9 +1,11 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Restriction, Transform}
+import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.Table
+import oathdigital.testkit.WalkerStubs.{TestRestrictionPower,
+  TestTransformPower}
 
 /** The restriction traversal selects a `Branch` with the answers recorded so
   * far, so a Restriction hooked inside a subtree that only exists once a
@@ -17,11 +19,8 @@ class RestrictionAnswersSuite extends munit.FunSuite:
   private val no = DecisionOptionRef.Button("no")
   private val violation = OathViolation.CampaignUnavailable("the test forbids it")
 
-  private val forbidding: ContributingPower = new ContributingPower:
-    def id: PowerId = PowerId("test.forbidding")
-    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-    def contributions: Map[PowerWindow, Vector[Contribution]] =
-      Map(nested -> Vector(Restriction((_: PowerCtx, _) => Some(violation))))
+  private val forbidding: ContributingPower = TestRestrictionPower(
+    PowerId("test.forbidding"), nested, (_, _) => Some(violation))
   private val powers = WalkerPowers(Vector(forbidding))
 
   /** A decision, then a subtree that exists only when it was answered "yes". */
@@ -49,12 +48,9 @@ class RestrictionAnswersSuite extends munit.FunSuite:
 
   // ---- What a Transform inserts ----
 
-  private val inserting: ContributingPower = new ContributingPower:
-    def id: PowerId = PowerId("test.inserting")
-    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-    def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
-      PowerWindow.MusterActionEligibility -> Vector(Transform((_, children) =>
-        children :+ Sequence(Vector.empty, Some(nested)))))
+  private val inserting: ContributingPower = TestTransformPower(
+    PowerId("test.inserting"), PowerWindow.MusterActionEligibility,
+    (_, children) => children :+ Sequence(Vector.empty, Some(nested)))
   private val root: Operation =
     Sequence(Vector.empty, Some(PowerWindow.MusterActionEligibility))
 

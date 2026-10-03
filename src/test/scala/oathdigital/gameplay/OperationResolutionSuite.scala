@@ -42,6 +42,7 @@ class OperationResolutionSuite extends munit.FunSuite:
   test("an operation with an impossible and an invalid reason is rejected"):
     // The Order bank's 5 cannot pay 7, and the restriction finds it invalid.
     val impossibleAndInvalid = Gain.Favor(playerId, Suit.Order, 7)
+    /** Stub of OperationRestriction: refuses every operation as Invalid. */
     val invalidRestriction = new OperationRestriction:
       override def reason(state: ReadyGame, operation: CoreOperation): Option[OperationReason] =
         Some(OperationReason("invalid-test", "invalid alongside shortage",

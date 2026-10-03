@@ -11,6 +11,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.protocol._
 import oathdigital.testkit.{CatalogNames, HttpTestServer}
+import oathdigital.testkit.ChronicleShuffles.reversing
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -21,13 +22,6 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
   private val nextGameIds = new java.util.concurrent.ConcurrentLinkedQueue[String]()
   private val gameIds: () => String = () =>
     Option(nextGameIds.poll()).getOrElse(TrustedGameProvisioning.generateGameId())
-
-  /**
-   * Generated games shuffle seating and make the first seat the first player.
-   * Reversing the two requested seats makes p2 the deterministic first player.
-   */
-  private val reversing: ChronicleRandomPort = new ChronicleRandomPort:
-    def shuffle[A](values: Vector[A]): Vector[A] = values.reverse
 
   /** The seat cookie's lifetime: one year, in seconds. */
   private val oneYearSeconds = 365 * 24 * 3600
@@ -536,6 +530,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     * seat links. */
   private def openTrustedServer(database: Path,
       publicOrigin: Option[String] = None): TrustedServer =
+    // Generated games shuffle seating and make the first seat the first
+    // player; reversing the two requested seats makes p2 first.
     val runtime = accepted(ServerRuntime.open(database, reversing, gameIds))
     val config = ServerConfig("127.0.0.1", 8080, publicOrigin.map(URI.create),
       database, ServerMode.TrustedAlpha, None, "test")

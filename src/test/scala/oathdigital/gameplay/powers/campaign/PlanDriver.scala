@@ -13,12 +13,12 @@ import oathdigital.model.OathState.Ready
 import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Unwrap.present
 
-/** Drives a Campaign through the rules with the production battle plans, for the
-  * suites that test one plan through a whole Campaign. Every attack die is a sword
-  * (`winning`) or half a sword (`losing`) and every defense die is blank, whatever
-  * the pool holds, so a suite chooses who wins by the force it commits: a Conquest
-  * against two bandit or player warbands is won by four swords and lost by four
-  * hollow ones.
+/** Drives a Campaign through the rules with the production battle plans, for
+  * the suites that test one plan through a whole Campaign. Every attack die
+  * is a sword (`winningDice`) or half a sword (`losingDice`) and every
+  * defense die is blank, whatever the pool holds, so a suite chooses who
+  * wins by the force it commits: a Conquest against two bandit or player
+  * warbands is won by four swords and lost by four hollow ones.
   */
 object PlanDriver:
   private def dice(attack: AttackDieFace): WalkerDice = (kind, count) =>
@@ -27,11 +27,13 @@ object PlanDriver:
       case DiceKind.Defense => Vector.fill(count)(DefenseDieFace.Blank: DieFace)
     })
 
-  val winning: WalkerDice = dice(AttackDieFace.OneSword)
+  /** Stub of WalkerDice: every attack die is a sword and every defense die
+    * blank. */
+  val winningDice: WalkerDice = dice(AttackDieFace.OneSword)
 
-  /** Alias of WalkerDiceFixture.blanks: every attack die is half a sword and
-    * every defense die blank. */
-  val losing: WalkerDice = WalkerDiceFixture.blanks
+  /** Stub of WalkerDice, the shared WalkerDiceFixture.blanks: every attack die
+    * is half a sword and every defense die blank. */
+  val losingDice: WalkerDice = WalkerDiceFixture.blanks
 
   /** These denizens, by name, after checking that no power of theirs is
     * implemented yet: held as advisers, they offer no battle plan of their

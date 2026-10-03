@@ -13,12 +13,12 @@ object WalkerStubs:
     DecisionOptionRef.Button("continue")
   val stopOption: DecisionOptionRef.Button = DecisionOptionRef.Button("stop")
 
-  /** Test-only composite that hooks a `PowerWindow` on an arbitrary children
-    * vector. `Operation` is deliberately unsealed (unlike `CoreOperation`/
-    * `PrimitiveOperation`, which Scala 2.13 pins to `CoreOperations.scala`)
-    * precisely so a windowed node can be authored outside that file, so a
-    * suite can prove the walker's generic wiring with a tree it builds
-    * itself.
+  /** Stub of Operation: a test-only composite that hooks a `PowerWindow` on
+    * an arbitrary children vector. `Operation` is deliberately unsealed
+    * (unlike `CoreOperation`/`PrimitiveOperation`, which Scala 2.13 pins to
+    * `CoreOperations.scala`) precisely so a windowed node can be authored
+    * outside that file, so a suite can prove the walker's generic wiring
+    * with a tree it builds itself.
     */
   final case class WindowedNode(hook: PowerWindow,
       override val children: Vector[Operation]) extends Operation:
@@ -46,7 +46,8 @@ object WalkerStubs:
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(hook -> Vector(Restriction(fn)))
 
-  /** A `ContributingPower` registering exactly one operation restriction. */
+  /** Stub of ContributingPower registering exactly one operation
+    * restriction. */
   final case class TestOperationRestrictionPower(id: PowerId,
       restriction: OperationRestriction) extends ContributingPower:
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)

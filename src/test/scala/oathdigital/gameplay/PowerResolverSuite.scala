@@ -13,6 +13,7 @@ import oathdigital.model.{MajorActionType, PlayerId, PowerId,
   PowerResolution, PowerWindow, RuleSourceRef, SiteId}
 
 private object PowerResolverSuiteFixtures:
+  /** Stub of PowerFacts: the actor, and whether the Recover slot is empty. */
   final case class RecoverFacts(actor: PlayerId, emptySlot: Boolean)
       extends PowerFacts
 
@@ -22,6 +23,7 @@ class PowerResolverSuite extends munit.FunSuite:
   private val sourceA = RuleSourceRef.Site(SiteId("a"))
   private val sourceZ = RuleSourceRef.Site(SiteId("z"))
 
+  /** Stub of Power: the given id, modifier and handlers. */
   private final case class TestPower(id: PowerId,
       modifier: Option[MajorActionType], handlers: Vector[PowerHandler])
       extends Power
@@ -174,12 +176,15 @@ class PowerResolverSuite extends munit.FunSuite:
     val source = RuleSourceRef.SiteRelic(siteId, relic)
     val indexed = IndexedRuleSource(source, Vector(PowerId("test.site-relic")),
       RuleSourceFace.FaceUp)
+    /** Stub of PowerHandler: player selected at RestStart, inspected by
+      * ReviewedPowerInspector. */
     val handler = new PowerHandler:
       val window: PowerWindow = PowerWindow.RestStart
       val resolution: PowerResolution = PowerResolution.PlayerSelected
       val implemented = true
       def inspect(context: PowerContext) =
         ReviewedPowerInspector.inspect(context)
+    /** Stub of Power: one handler, no modifier. */
     val power = new Power:
       val id = PowerId("test.site-relic")
       val modifier: Option[MajorActionType] = None

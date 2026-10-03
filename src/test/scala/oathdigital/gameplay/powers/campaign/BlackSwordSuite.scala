@@ -13,7 +13,7 @@ class BlackSwordSuite extends munit.FunSuite:
 
   test("an attacker burns two secrets for five attack dice"):
     val b = withSecrets(withRelic(board(warbands = 5, supply = 7), relic), 2)
-    val run = commit(rules(winning), b, 2)
+    val run = commit(rules(winningDice), b, 2)
     assert(awaits(run, b.actor, CampaignIds.attackerPlan))
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, 5)))
@@ -21,14 +21,15 @@ class BlackSwordSuite extends munit.FunSuite:
 
   test("an attacker with one secret is not offered it"):
     val b = withSecrets(withRelic(board(warbands = 5, supply = 7), relic), 1)
-    assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(winningDice), b, 2), b.actor,
+      CampaignIds.sacrifice))
 
   test("a defender is not offered it"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val b = on(withRelicFor(base, base.rival, relic))(
       _.secrets(base.rival, faceUp = 2))
-    val run = commit(rules(winning), b, 2)
+    val run = commit(rules(winningDice), b, 2)
     // The defender holds the title, so its defense is offered and the choice
     // is asked; Black Sword is not among the options.
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))

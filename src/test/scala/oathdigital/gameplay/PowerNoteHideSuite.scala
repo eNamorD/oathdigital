@@ -17,7 +17,8 @@ object PowerNoteHideSuite:
       case DecisionOptionRef.Site(site) => Vector(NoteArg.Site(site))
       case _ => Vector.empty)
 
-  /** Hides `forbidden` at `hook`, and notes each one it hid when `says`. */
+  /** Stub of ContributingPower: hides `forbidden` at `hook`, and notes each
+    * one it hid when `says`. */
   final case class HidingPower(id: PowerId, hook: PowerWindow,
       forbidden: Set[DecisionOptionRef], says: Boolean = true)
       extends ContributingPower:
@@ -27,7 +28,8 @@ object PowerNoteHideSuite:
         (_, ref) => Option.when(forbidden(ref))(hidden),
         (_, ref) => Option.when(says)(hid(ref)))))
 
-  /** Rejects any action whose tree opens `hook`, and says so. */
+  /** Stub of ContributingPower: rejects any action whose tree opens `hook`,
+    * and says so. */
   final case class ForbiddingPower(id: PowerId, hook: PowerWindow)
       extends ContributingPower:
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)

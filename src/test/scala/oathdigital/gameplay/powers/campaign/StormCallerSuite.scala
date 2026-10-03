@@ -20,7 +20,7 @@ class StormCallerSuite extends munit.FunSuite:
 
   test("a defender adds two defense dice, for nothing"):
     val b = defending
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.defensePool, 2)))
@@ -28,7 +28,7 @@ class StormCallerSuite extends munit.FunSuite:
 
   test("it is discarded after the Campaign, and says so"):
     val b = defending
-    val done = commit(rules(winning), b, 4)
+    val done = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(NoteText.said(StormCaller.id, Vector(PlanDiscard.discarded),
@@ -38,11 +38,12 @@ class StormCallerSuite extends munit.FunSuite:
   test("an attacker is not offered it"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(winningDice), b, 2), b.actor,
+      CampaignIds.sacrifice))
 
   test("a bandit defender applies it at its site, and it is discarded"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    val done = commit(rules(winning), b, 4).finishPlanWindows
+    val done = commit(rules(winningDice), b, 4).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.defensePool, 2)))
     assert(Look(done.state).inRegionalDiscard(card))

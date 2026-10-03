@@ -54,16 +54,16 @@ class GreatLevySuite extends munit.FunSuite:
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val funded = holder(base, base.actor)
-    assert(commit(rules(winning), funded, 3).offers(base.actor, base.actor,
+    assert(commit(rules(winningDice), funded, 3).offers(base.actor, base.actor,
       CampaignIds.attackerPlan, ref))
     val b = on(funded)(_.peoplesFavor(Some(base.rival), 1))
-    assert(!commit(rules(winning), b, 3).offers(base.actor, base.actor,
+    assert(!commit(rules(winningDice), b, 3).offers(base.actor, base.actor,
       CampaignIds.attackerPlan, ref))
 
   test("it is not offered to a player with one favor"):
     val base = board(warbands = 5, supply = 7)
     val b = holder(base, base.actor, favor = 1)
-    assert(!commit(rules(winning), b, 2).offers(b.actor, b.actor,
+    assert(!commit(rules(winningDice), b, 2).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("a defender removes three attack dice, and the attack's skulls " +
@@ -95,5 +95,5 @@ class GreatLevySuite extends munit.FunSuite:
   test("a bandit defender never applies it, since it costs"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    assert(!commit(rules(winning), b, 2).finishPlanWindows.ops.contains(
+    assert(!commit(rules(winningDice), b, 2).finishPlanWindows.ops.contains(
       ModifyDicePool(CampaignPlans.appliedMarker(ref), 1)))

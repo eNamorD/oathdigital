@@ -5,8 +5,7 @@ import oathdigital.testkit.Unwrap.{accepted, rejected}
 /** What every `EventEvolution` promises: a fixed initial state, and a fold
   * that is deterministic and refuses an event the state cannot take. The
   * replay engine's running-total fake and the game's `OathRules` both run
-  * it, so the fake cannot drift from the evolution the service really
-  * replays. */
+  * it, so both evolutions keep the same three promises. */
 abstract class EventEvolutionContract[S, E, V] extends munit.FunSuite:
   /** The evolution under test. */
   protected def evolution: EventEvolution[S, E, V]

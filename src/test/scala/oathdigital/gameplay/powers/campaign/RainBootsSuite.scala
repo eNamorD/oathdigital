@@ -52,15 +52,15 @@ class RainBootsSuite extends munit.FunSuite:
   test("without a single shield rolled only the discard is said"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    val done = commit(rules(winning), b, 3)
+    val done = commit(rules(winningDice), b, 3)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(lines(done), Vector(discardedLine))
 
   test("it is offered in a Raid"):
     val b = withAdviser(withEnemyAtOrigin(board(warbands = 5, supply = 7)),
       card, Orientation.FaceUp)
-    assert(commit(rules(winning), b, 3, raid = true).offers(b.actor, b.actor,
-      CampaignIds.attackerPlan, ref))
+    assert(commit(rules(winningDice), b, 3, raid = true)
+      .offers(b.actor, b.actor, CampaignIds.attackerPlan, ref))
 
   test("with Bag of Siegeworks also chosen, the defense is scored the same"):
     val advised = withAdviser(board(warbands = 5, supply = 7), card,

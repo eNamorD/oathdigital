@@ -31,7 +31,7 @@ class RivalKhanSuite extends munit.FunSuite:
   test("an attacker adds four attack dice, and it is discarded " +
       "after the Campaign"):
     val b = attacker(Orientation.FaceUp)
-    val run = commit(rules(losing), b, 3)
+    val run = commit(rules(losingDice), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
@@ -42,7 +42,7 @@ class RivalKhanSuite extends munit.FunSuite:
 
   test("it is not offered when the enemy's nomad adviser is facedown"):
     val b = attacker(Orientation.FaceDown)
-    assert(!commit(rules(losing), b, 3).offers(b.actor, b.actor,
+    assert(!commit(rules(losingDice), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("it is not offered when the enemy's faceup adviser is not a nomad"):
@@ -50,7 +50,7 @@ class RivalKhanSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviser(base, card, Orientation.FaceUp),
       base.rival, planlessCard("Golem Legions"), Orientation.FaceUp)
-    assert(!commit(rules(losing), b, 3).offers(b.actor, b.actor,
+    assert(!commit(rules(losingDice), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("a bandit defender applies it against a nomad adviser, and " +
@@ -58,14 +58,14 @@ class RivalKhanSuite extends munit.FunSuite:
     val base = board(warbands = 5, supply = 7)
     val b = withAdviser(withSiteCard(base, base.origin, card), nomad,
       Orientation.FaceUp)
-    val done = commit(rules(winning), b, 5).finishPlanWindows
+    val done = commit(rules(winningDice), b, 5).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -4)))
     assert(Look(done.state).inRegionalDiscard(card))
 
   test("it is never offered against bandits"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    assert(!commit(rules(losing), b, 2).offers(b.actor, b.actor,
+    assert(!commit(rules(losingDice), b, 2).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("a defender removes four attack dice when the attacker has a nomad " +
@@ -74,7 +74,7 @@ class RivalKhanSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviser(base, nomad, Orientation.FaceUp),
       base.rival, card, Orientation.FaceUp)
-    val run = commit(rules(losing), b, 5)
+    val run = commit(rules(losingDice), b, 5)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -4)))
     assert(Look(run.finishPlanWindows.state).inRegionalDiscard(card))

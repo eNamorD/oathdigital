@@ -15,6 +15,8 @@ class AutomaticRollSuite extends munit.FunSuite:
   private val pool = PoolKey("campaign.attack")
   private val faces: Vector[DieFace] = Vector(AttackDieFace.TwoSwordsSkull,
     AttackDieFace.OneSword, AttackDieFace.HollowSword)
+  /** Stub of WalkerDice: attack faces from `faces`, defense always
+    * OneShield. */
   private val fixed: WalkerDice = (kind, count) => kind match
     case DiceKind.Attack => Right(faces.take(count))
     case DiceKind.Defense => Right(Vector.fill(count)(DefenseDieFace.OneShield))
@@ -53,6 +55,7 @@ class AutomaticRollSuite extends munit.FunSuite:
         "walker has no dice source for an automatic roll")))
 
   test("a source that returns the wrong number of faces is rejected"):
+    // Stub of WalkerDice: always one face, whatever the pool holds.
     val short: WalkerDice = (_, _) => Right(faces.take(1))
     val walk = tree(ModifyDicePool(pool, 3), automatic)
     assertEquals(ProcedureWalker.advance(ready, walk, None, noPowers, short),

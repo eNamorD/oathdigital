@@ -21,7 +21,7 @@ class FearsomeShieldSuite extends munit.FunSuite:
 
   test("a defender burns two secrets and adds two defense dice"):
     val b = defending(3)
-    val run = commit(rules(losing), b, 4)
+    val run = commit(rules(losingDice), b, 4)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     // The dice-pool change and the PayCost.
@@ -39,7 +39,7 @@ class FearsomeShieldSuite extends munit.FunSuite:
   test("with fewer than two faceup secrets the defender cannot pay, and the " +
       "plan is not offered"):
     val b = defending(1)
-    val run = commit(rules(losing), b, 4)
+    val run = commit(rules(losingDice), b, 4)
     // Only the title's plan is left to choose.
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     assert(!run.offered(b.actor).contains(ref))
@@ -54,12 +54,12 @@ class FearsomeShieldSuite extends munit.FunSuite:
     val up = on(withRelicFor(base, base.rival, relic))(
       _.secrets(base.rival, faceUp = 3))
     // Faceup, the same board offers it; facedown, it does not.
-    assert(commit(rules(losing), up, 4).offered(up.actor).contains(ref))
+    assert(commit(rules(losingDice), up, 4).offered(up.actor).contains(ref))
     val down = on(up)(_.relic(up.rival, relic, facedown = true))
-    val facedown = commit(rules(losing), down, 4)
+    val facedown = commit(rules(losingDice), down, 4)
     assert(!facedown.offered(down.actor).contains(ref))
     assertEquals(facedown.ops.count(_.isInstanceOf[PayCost]), 0)
     val attacker = withSecrets(withRelic(board(warbands = 5, supply = 7),
       relic), 3)
-    assert(awaits(commit(rules(losing), attacker, 2), attacker.actor,
+    assert(awaits(commit(rules(losingDice), attacker, 2), attacker.actor,
       CampaignIds.sacrifice))

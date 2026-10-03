@@ -197,6 +197,8 @@ class OperationApplicationSuite extends munit.FunSuite:
     assertEquals(rejection(ready, operation, allowlist), "restricted-operation")
 
   test("restriction registry is checked for each operation"):
+    /** Stub of OperationRestriction: refuses every operation as
+      * power-blocked. */
     val blocking = new OperationRestriction:
       override def reason(ready: ReadyGame, operation: CoreOperation): Option[OperationReason] =
         Some(OperationReason("power-blocked", "test predicate",

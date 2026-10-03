@@ -10,6 +10,7 @@ import oathdigital.testkit.Table.p1
   * and the projection suite (Task 11).
   */
 object PhasePowerFixture:
+  /** Stub of PhasePower: always usable, builds the tree it is given. */
   final case class TestPower(id: PowerId, timing: PowerTiming,
       tree: PlayerId => Operation = _ => BuildOps((_, _) => Right(Vector.empty)),
       override val cost: Cost = Cost.free)

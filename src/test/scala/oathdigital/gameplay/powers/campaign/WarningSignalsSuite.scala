@@ -50,8 +50,8 @@ class WarningSignalsSuite extends munit.FunSuite:
       DistributeAmount(DecisionOptionRef.Site(b.origin), origin),
       DistributeAmount(DecisionOptionRef.Site(secondSite(b)), extra)))
 
-  private def chosen(b: Board): Run = commit(rules(losing), b, 4).pick(b.rival,
-    CampaignIds.defenderPlan, ref)
+  private def chosen(b: Board): Run = commit(rules(losingDice), b, 4)
+    .pick(b.rival, CampaignIds.defenderPlan, ref)
 
   test("choosing it asks the defender to arrange their board and " +
       "every ruled site"):
@@ -125,7 +125,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     assertEquals(lost.winner, Some(false))
     assert(Look(lost.state).inRegionalDiscard(card))
     assert(!Look(lost.state).player(b.rival).advisers.exists(_.id == card))
-    val won = commit(rules(winning), b, 4)
+    val won = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
       .answer(b.rival, decision, keep).finishPlanWindows
     assertEquals(won.winner, Some(true))
@@ -136,7 +136,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
     val b = on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
       _.boardWarbands(base.rival, 3))
-    val run = commit(rules(losing), b, 2, raid = true).pick(b.rival,
+    val run = commit(rules(losingDice), b, 2, raid = true).pick(b.rival,
       CampaignIds.defenderPlan, ref)
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     val done = run.finishPlanWindows
@@ -149,7 +149,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     val spare = secondSite(two)
     val sparse = on(two)(_.warbandsAt(two.origin, two.rival, 1)
       .warbandsAt(spare, two.rival, 1).boardWarbands(two.rival, 0))
-    val run = commit(rules(losing), sparse, 4).pick(sparse.rival,
+    val run = commit(rules(losingDice), sparse, 4).pick(sparse.rival,
       CampaignIds.defenderPlan, ref)
     assert(!awaits(run, sparse.rival, decision))
     assertEquals(said(run.events), Vector.empty)
@@ -159,17 +159,17 @@ class WarningSignalsSuite extends munit.FunSuite:
       "defender's plan"):
     val two = board(extras = 1, warbands = 5, supply = 7)
     val bandit = withSiteCard(two, two.extras.head, card)
-    assert(awaits(commit(rules(losing), bandit, 2), bandit.actor,
+    assert(awaits(commit(rules(losingDice), bandit, 2), bandit.actor,
       CampaignIds.sacrifice))
     val attacker = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    assert(awaits(commit(rules(losing), attacker, 2), attacker.actor,
+    assert(awaits(commit(rules(losingDice), attacker, 2), attacker.actor,
       CampaignIds.sacrifice))
 
   test("the recorded moves replay to the same state, and survive " +
       "the journal wire"):
     val b = defending
-    val g = rules(losing)
+    val g = rules(losingDice)
     val run = commit(g, b, 4).pick(b.rival, CampaignIds.defenderPlan, ref)
       .answer(b.rival, decision,
         arrangement(b, board = 0, origin = 4, extra = 3))
@@ -196,6 +196,6 @@ class WarningSignalsSuite extends munit.FunSuite:
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
     val b = on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
       _.boardWarbands(base.rival, 3))
-    val done = commit(rules(losing), b, 2, raid = true).pick(b.rival,
+    val done = commit(rules(losingDice), b, 2, raid = true).pick(b.rival,
       CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(said(done.events), Vector.empty)

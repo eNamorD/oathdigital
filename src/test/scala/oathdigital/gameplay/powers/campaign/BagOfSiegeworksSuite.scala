@@ -73,7 +73,7 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
 
   test("without a single shield rolled nothing is said"):
     val b = attackerWithBagAndSecret
-    val run = conquestOfAllTargets(b, winning)
+    val run = conquestOfAllTargets(b, winningDice)
     val done = run.pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishPlanWindows
     assertEquals(lines(done), Vector.empty)
@@ -91,5 +91,5 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
   test("a Raid targets no site, so it is not offered"):
     val raid = raidBoard().board
     val b = withSecrets(withRelic(raid, relic), 1)
-    val run = commit(rules(winning), b, 2, raid = true)
+    val run = commit(rules(winningDice), b, 2, raid = true)
     assert(!awaits(run, b.actor, CampaignIds.attackerPlan))

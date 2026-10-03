@@ -36,7 +36,7 @@ class MilitaryParadeSuite extends munit.FunSuite:
       "from each adviser's bank"):
     val b = attacking
     val before = OathState.Ready(b.ready)
-    val done = commit(rules(winning), b, 4)
+    val done = commit(rules(winningDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
     // The facedown arcane adviser has no suit and gives nothing.
@@ -52,7 +52,7 @@ class MilitaryParadeSuite extends munit.FunSuite:
   test("an attacker that loses gains nothing"):
     val b = attacking
     val before = OathState.Ready(b.ready)
-    val done = commit(rules(losing), b, 4)
+    val done = commit(rules(losingDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
     assertEquals(Look(done.state).favor(b.actor), Look(before).favor(b.actor))
@@ -63,7 +63,7 @@ class MilitaryParadeSuite extends munit.FunSuite:
     val b = withAdviser(withAdviserFor(base, base.rival, card,
       Orientation.FaceUp), orders(0), Orientation.FaceUp)
     val before = OathState.Ready(b.ready)
-    val done = commit(rules(losing), b, 4)
+    val done = commit(rules(losingDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
     assertEquals(Look(done.state).favor(b.rival),
@@ -75,7 +75,7 @@ class MilitaryParadeSuite extends munit.FunSuite:
     val advised = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
     val b = withAdviser(advised, honors, Orientation.FaceUp)
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
     assert(run.offers(b.actor, b.actor, CampaignIds.attackerPlan, honorsRef))
     assert(!run.offered(b.actor).contains(ref))
 
@@ -85,7 +85,7 @@ class MilitaryParadeSuite extends munit.FunSuite:
     val b = withAdviser(withSiteCard(base, base.origin, card), orders(0),
       Orientation.FaceUp)
     val before = OathState.Ready(b.ready)
-    val run = commit(rules(losing), b, 2)
+    val run = commit(rules(losingDice), b, 2)
     // It applied the free plan by itself, so nothing was asked of the attacker.
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     val done = run.finishPlanWindows
@@ -97,7 +97,7 @@ class MilitaryParadeSuite extends munit.FunSuite:
   test("the gain is best-effort: an Order bank with one favor gives one"):
     val b = on(attacking)(_.bankFavor(Suit.Order, 1))
     val before = OathState.Ready(b.ready)
-    val done = commit(rules(winning), b, 4)
+    val done = commit(rules(winningDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(Look(done.state).bankFavor(Suit.Order), 0)
     // The two Order advisers get the Order bank's only favor; the Beast

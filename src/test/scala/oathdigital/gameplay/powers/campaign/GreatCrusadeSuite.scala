@@ -33,7 +33,7 @@ class GreatCrusadeSuite extends munit.FunSuite:
       nomads(1), Orientation.FaceDown)
     val b = withSiteCard(withSiteCard(actorRules(advisers, site), site,
       nomads(2)), site, order)
-    val run = commit(rules(winning), b, 2)
+    val run = commit(rules(winningDice), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
@@ -42,7 +42,7 @@ class GreatCrusadeSuite extends munit.FunSuite:
   test("a facedown Great Crusade counts itself, since choosing it reveals it"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceDown)
-    val run = commit(rules(winning), b, 2)
+    val run = commit(rules(winningDice), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 1)))
@@ -50,7 +50,7 @@ class GreatCrusadeSuite extends munit.FunSuite:
   test("it is discarded after the Campaign, and says so"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    val done = commit(rules(winning), b, 2)
+    val done = commit(rules(winningDice), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(line))
@@ -61,7 +61,7 @@ class GreatCrusadeSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviserFor(base, base.rival, card,
       Orientation.FaceUp), base.rival, nomads(0), Orientation.FaceUp)
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
     assert(Look(run.finishPlanWindows.state).inRegionalDiscard(card))
@@ -71,7 +71,7 @@ class GreatCrusadeSuite extends munit.FunSuite:
     val base = board(extras = 1, warbands = 5, supply = 7)
     val b = withSiteCard(withSiteCard(base, base.origin, card),
       base.extras.head, nomads(0))
-    val done = commit(rules(winning), b, 4).finishPlanWindows
+    val done = commit(rules(winningDice), b, 4).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
     assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(line))
@@ -84,7 +84,7 @@ class GreatCrusadeSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviserFor(base, base.rival, card,
       Orientation.FaceUp), base.rival, pledge, Orientation.FaceDown)
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
     val crusadeFirst = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(crusadeFirst.since(run)
       .contains(ModifyDicePool(CampaignIds.attackPool, -1)))

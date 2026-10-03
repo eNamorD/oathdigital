@@ -34,7 +34,7 @@ class PledgeOfDefenseSuite extends munit.FunSuite:
     val b = withSiteCard(withAdviserFor(withAdviserFor(base, base.rival, card,
       Orientation.FaceUp), base.rival, nomads(0), Orientation.FaceUp),
       base.origin, nomads(1))
-    val run = commit(rules(winning), b, 3)
+    val run = commit(rules(winningDice), b, 3)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 3)))
@@ -48,7 +48,7 @@ class PledgeOfDefenseSuite extends munit.FunSuite:
     val base = board(extras = 1, warbands = 5, supply = 7)
     val b = withSiteCard(withSiteCard(base, base.origin, card),
       base.extras.head, nomads(0))
-    val done = commit(rules(winning), b, 2).finishPlanWindows
+    val done = commit(rules(winningDice), b, 2).finishPlanWindows
     assertEquals(banditEffect(done),
       Some(ModifyDicePool(CampaignIds.defensePool, 2)))
     assert(Look(done.state).inRegionalDiscard(card))
@@ -62,7 +62,7 @@ class PledgeOfDefenseSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviserFor(base, base.rival, card,
       Orientation.FaceUp), base.rival, crusade, Orientation.FaceDown)
-    val run = commit(rules(winning), b, 3)
+    val run = commit(rules(winningDice), b, 3)
     val crusadeFirst = run.pick(b.rival, CampaignIds.defenderPlan, crusadeRef)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(crusadeFirst.since(run)

@@ -127,6 +127,7 @@ class RestrictionLookAheadSuite extends munit.FunSuite:
       Sequence(Vector.empty, Some(nested)),
       Decide("test.inner", actor, DecisionQuery.ChooseOne(
         Vector(button("x"), button("y"), button("z"))))))
+    /** Stub of OfferHost: dry-runs `inner`, expands to nothing. */
     val host = new OfferHost:
       override val window: Option[PowerWindow] =
         Some(PowerWindow.CampaignAttackerBattlePlans)

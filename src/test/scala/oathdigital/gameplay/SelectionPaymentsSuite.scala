@@ -12,7 +12,8 @@ import oathdigital.testkit.Table.p1
   * selection, because every selected modifier pays at the start of its action.
   */
 class SelectionPaymentsSuite extends munit.FunSuite:
-  /** A selectable Muster modifier that burns `secrets` secrets when selected. */
+  /** Stub of ContributingPower: a PlayerSelected modifier whose selection
+    * burns `secrets` secrets. */
   private def burning(name: String, secrets: Int): ContributingPower =
     new ContributingPower:
       def id: PowerId = PowerId(name)
@@ -24,6 +25,8 @@ class SelectionPaymentsSuite extends munit.FunSuite:
           Cost(secretBurnt = secrets)))
   private val a = burning("test.burns-a", 1)
   private val b = burning("test.burns-b", 1)
+  /** Stub of ContributingPower: a PlayerSelected modifier whose selection
+    * pays nothing. */
   private val free: ContributingPower = new ContributingPower:
     def id: PowerId = PowerId("test.free")
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)

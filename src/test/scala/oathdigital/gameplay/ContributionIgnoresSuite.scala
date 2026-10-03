@@ -12,6 +12,8 @@ class ContributionIgnoresSuite extends munit.FunSuite:
   private val window = PowerWindow.TravelCost
   private val actor = Table.start.ready.game.current.turn.activePlayer
 
+  /** Stub of ContributingPower: one no-op Transform at TravelCost; ignores
+    * as `ignoring` says. */
   private def power(name: String,
       ignoring: (PowerCtx, ContributingPower) => Boolean = (_, _) => false)
       : ContributingPower = new ContributingPower:
@@ -35,6 +37,8 @@ class ContributionIgnoresSuite extends munit.FunSuite:
   private val other = SpendSupply(actor, 2)
 
   test("a context-free shouldIgnore still ignores, through the default"):
+    // Stub of ContributingPower: contributes nothing; ignores `plain` through
+    // the context-free shouldIgnore.
     val quiet = new ContributingPower:
       def id: PowerId = PowerId("test.quiet")
       def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)

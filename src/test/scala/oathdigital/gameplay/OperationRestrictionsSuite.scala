@@ -178,6 +178,7 @@ class OperationRestrictionsSuite extends munit.FunSuite:
       Location.PlayArea(p2), Location.PlayArea(p1), leaving = Vector(Move(
         Piece.Favor(2), PositionedLocation(Location.OnBanner(Banner.PeoplesFavor)),
         PositionedLocation(Location.FavorBank(Suit.Order)))))
+    /** Stub of OperationRestriction: refuses every Take. */
     val noTake = new OperationRestriction:
       def reason(ready: ReadyGame, operation: CoreOperation)
           : Option[OperationReason] = operation match

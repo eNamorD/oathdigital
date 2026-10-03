@@ -88,6 +88,7 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
     }
 
   test("identity storage failures remain distinct from nonmembership"):
+    /** Stub of IdentityRepository: findMembership returns StorageFailure. */
     val failing = new IdentityRepositoryStub:
       override def findMembership(gameId: String, userId: UserId): Either[IdentityFailure, Option[GameMembership]] =
         Left(IdentityFailure.StorageFailure("database unavailable"))
@@ -133,6 +134,8 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
       test(new MembershipAuthorizationService(identities))
     finally database.close()
 
+  /** Stub of IdentityRepository: every operation fails the test unless a
+    * subclass overrides it. */
   private abstract class IdentityRepositoryStub extends IdentityRepository:
     private def unused[A]: Either[IdentityFailure, A] =
       fail("unexpected identity repository operation")

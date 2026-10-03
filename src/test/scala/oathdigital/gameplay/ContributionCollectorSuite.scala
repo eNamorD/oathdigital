@@ -22,10 +22,9 @@ class ContributionCollectorSuite extends munit.FunSuite:
       operation = Sequence(Vector.empty, Some(window))
     )
 
-  /** Builds a fixture power. `applicableFlag` controls step 2; `windows` is
-    * the set of windows this
-    * power declares contributions at (all mapping to the same
-    * `contributions` vector, sufficient for these tests).
+  /** Stub of ContributingPower: declares `contribs` at every one of
+    * `windows` (the same vector at each, sufficient for these tests), and is
+    * applicable as `applicableFlag` says, which controls step 2.
     */
   private def fixturePower(
       idValue: String,

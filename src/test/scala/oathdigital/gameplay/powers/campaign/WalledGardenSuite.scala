@@ -41,7 +41,7 @@ class WalledGardenSuite extends munit.FunSuite:
       buriedGiant, beastEdifice, EdificeSide.Ruined)
     val b = on(withSiteCard(beastsOut, deepWoods, arcane))(
       _.denizen(beasts(1), at = desolateShore, facedown = true))
-    val run = commit(rules(winning), b, 3)
+    val run = commit(rules(winningDice), b, 3)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 3)))
@@ -52,7 +52,7 @@ class WalledGardenSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = withEdifice(withSiteCard(base, base.origin, card),
       brokenPeaks, beastEdifice, EdificeSide.Intact)
-    val run = commit(rules(winning), b, 3)
+    val run = commit(rules(winningDice), b, 3)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 2)))
@@ -63,9 +63,9 @@ class WalledGardenSuite extends munit.FunSuite:
     val site = brokenPeaks
     val b = withSiteCard(on(base)(_.warbandsAt(site, base.rival, 2)), site,
       card)
-    assert(!commit(rules(winning), b, 3).offers(b.actor, b.rival,
+    assert(!commit(rules(winningDice), b, 3).offers(b.actor, b.rival,
       CampaignIds.defenderPlan, ref))
-    assert(commit(rules(winning), b, 5,
+    assert(commit(rules(winningDice), b, 5,
       targets = Vector(DecisionOptionRef.Site(site))).offers(b.actor, b.rival,
       CampaignIds.defenderPlan, ref))
 
@@ -73,5 +73,5 @@ class WalledGardenSuite extends munit.FunSuite:
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(withSiteCard(base, base.origin, card),
       brokenPeaks, beast)
-    assertEquals(banditEffect(commit(rules(winning), b, 2)),
+    assertEquals(banditEffect(commit(rules(winningDice), b, 2)),
       Some(ModifyDicePool(CampaignIds.defensePool, 2)))

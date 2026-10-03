@@ -24,7 +24,8 @@ class NatureWorshipSuite extends munit.FunSuite:
     withSecrets(advised(base, base.actor, (card -> self) +: others), 1)
 
   private def picked(b: Board): Run =
-    commit(rules(winning), b, 2).pick(b.actor, CampaignIds.attackerPlan, ref)
+    commit(rules(winningDice), b, 2)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
 
   /** The site p1 comes to rule: Broken Peaks, the board's first site after
     * the origin. */
@@ -61,7 +62,8 @@ class NatureWorshipSuite extends munit.FunSuite:
     val base = board(warbands = 5, supply = 7)
     val atSite = withSiteCard(actorRules(base, ruledSite), ruledSite, card)
     val b = withSecrets(atSite, 1)
-    assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(winningDice), b, 2), b.actor,
+      CampaignIds.sacrifice))
 
   test("a defender removes one attack die per beast adviser"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
@@ -69,6 +71,6 @@ class NatureWorshipSuite extends munit.FunSuite:
     val b = on(advised(base, base.rival, Vector(
       card -> Orientation.FaceUp, beasts.head -> Orientation.FaceUp)))(
       _.secrets(base.rival, faceUp = 1))
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))

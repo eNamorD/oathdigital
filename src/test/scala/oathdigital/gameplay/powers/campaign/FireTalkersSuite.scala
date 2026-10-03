@@ -25,7 +25,7 @@ class FireTalkersSuite extends munit.FunSuite:
   test("an attacker holding the Darkest Secret places a secret for three " +
       "attack dice"):
     val b = attackerHoldingFireTalkersAndTheDarkestSecret
-    val picked = commit(rules(winning), b, 2)
+    val picked = commit(rules(winningDice), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, 3)))
     assertEquals(Look(picked.state).adviserTokens(b.actor, card), Tokens(0, 1))
@@ -34,7 +34,8 @@ class FireTalkersSuite extends munit.FunSuite:
   test("it is not offered while another player holds the Darkest Secret"):
     val attacker = attackerHoldingFireTalkersAndTheDarkestSecret
     val b = withDarkestSecret(attacker, attacker.rival)
-    assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(winningDice), b, 2), b.actor,
+      CampaignIds.sacrifice))
 
   test("a defender pays off turn and removes three attack dice"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
@@ -43,7 +44,7 @@ class FireTalkersSuite extends munit.FunSuite:
       _.secrets(base.rival, faceUp = 1))
     val b = withDarkestSecret(armed, base.rival)
     val facedown = b.player(b.rival).board.faceDownSecrets
-    val picked = commit(rules(winning), b, 4)
+    val picked = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))
     // Paid outside the defender's turn, the secret settles at once: it flips

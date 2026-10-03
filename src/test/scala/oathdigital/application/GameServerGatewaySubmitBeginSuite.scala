@@ -10,6 +10,7 @@ import oathdigital.server.{GameHttpWire, GameServerGateway}
 import oathdigital.protocol.projection.{DecisionQueryProjection, GameProjection,
   SiteForcesProjection}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.testkit.ChronicleShuffles.unshuffled
 import oathdigital.testkit.Table.p2
 import oathdigital.testkit.Unwrap.{accepted, present}
 import ParkedServiceFixture.loaded
@@ -24,8 +25,6 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite:
   // shuffled) seating the first player, ignoring the requested
   // `firstPlayer` -- so with an identity shuffle, "p2" must already be
   // first in `participants` to end up first here.
-  private val unshuffled: ChronicleRandomPort = new ChronicleRandomPort:
-    def shuffle[A](values: Vector[A]): Vector[A] = values
   private val config = FirstGameBootstrapConfig(
     participants.sortBy(p => if p.playerId == p2 then 0 else 1), p2)
 

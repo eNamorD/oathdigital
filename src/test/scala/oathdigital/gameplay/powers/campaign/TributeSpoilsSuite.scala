@@ -37,7 +37,7 @@ class TributeSpoilsSuite extends munit.FunSuite:
       "targets, from that card's bank"):
     val b = attacking
     val before = OathState.Ready(b.ready)
-    val done = commit(rules(winning), b, 4)
+    val done = commit(rules(winningDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
     // The favor placed on the card, then two from the Order bank and one from
@@ -52,7 +52,7 @@ class TributeSpoilsSuite extends munit.FunSuite:
   test("an attacker that loses gains nothing"):
     val b = attacking
     val before = OathState.Ready(b.ready)
-    val done = commit(rules(losing), b, 4)
+    val done = commit(rules(losingDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
     assertEquals(Look(done.state).favor(b.actor), 0)
@@ -67,7 +67,7 @@ class TributeSpoilsSuite extends munit.FunSuite:
       Orientation.FaceUp), base.origin, orders(0)))(
       _.relicAt(relic, base.origin).favor(base.rival, 1))
     val before = OathState.Ready(b.ready)
-    val done = commit(rules(losing), b, 4)
+    val done = commit(rules(losingDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
     // Paid off turn, the placed favor went to the Nomad bank; one favor came
@@ -80,6 +80,6 @@ class TributeSpoilsSuite extends munit.FunSuite:
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
     val b = on(withAdviser(withAdviser(base, card, Orientation.FaceUp), honors,
       Orientation.FaceUp))(_.boardWarbands(base.rival, 3).favor(base.actor, 1))
-    val run = commit(rules(winning), b, 4, raid = true)
+    val run = commit(rules(winningDice), b, 4, raid = true)
     assert(run.offers(b.actor, b.actor, CampaignIds.attackerPlan, honorsRef))
     assert(!run.offered(b.actor).contains(ref))

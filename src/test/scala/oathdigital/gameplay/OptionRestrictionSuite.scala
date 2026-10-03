@@ -9,7 +9,8 @@ import oathdigital.model.TestGameFixtures._
 import oathdigital.testkit.Outcomes.parked
 
 object OptionRestrictionSuite:
-  /** A power whose only contribution is one option restriction at one window. */
+  /** Stub of ContributingPower: one OptionRestriction at one window, nothing
+    * else. */
   final case class TestOptionRestrictionPower(id: PowerId, hook: PowerWindow,
       fn: (PowerCtx, DecisionOptionRef) => Option[OathViolation])
       extends ContributingPower:

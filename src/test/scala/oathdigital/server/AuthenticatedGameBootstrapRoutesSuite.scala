@@ -11,16 +11,10 @@ import oathdigital.application.MembershipRole._
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.testkit.{HttpTestServer, Outcomes}
+import oathdigital.testkit.ChronicleShuffles.unshuffled
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
-  /**
-   * This suite asserts the bootstrapped plan keeps the exact participant
-   * order and first player it was sent, so seating must not shuffle.
-   */
-  private val unshuffled: ChronicleRandomPort = new ChronicleRandomPort:
-    def shuffle[A](values: Vector[A]): Vector[A] = values
-
   private val owner = UserId("owner")
   private val otherOwner = UserId("other-owner")
   private val playerUsers = Vector("p1", "p2", "p3").map(id =>
@@ -78,6 +72,8 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
           new GameProjector(catalog),
           new MembershipAuthorizationService(identities),
           identities,
+          // The plan must keep the exact participant order and first player
+          // it was sent, so seating must not shuffle.
           new GeneratedFirstGamePlanFactory(catalog, unshuffled)
         )
         val authenticator = new HttpSessionAuthenticator:

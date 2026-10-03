@@ -24,7 +24,7 @@ class WrestlersSuite extends munit.FunSuite:
   test("a Conquest defender sacrifices a warband at the target site for a " +
       "defense die"):
     val b = conquest
-    val run = commit(rules(losing), b, 4)
+    val run = commit(rules(losingDice), b, 4)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assertEquals(siteForces(picked.state, b),
@@ -36,8 +36,8 @@ class WrestlersSuite extends munit.FunSuite:
 
   test("the sacrificed warband lowers the recorded force by one"):
     val b = conquest
-    val without = commit(rules(losing), b, 4).finishPlanWindows
-    val with_ = commit(rules(losing), b, 4)
+    val without = commit(rules(losingDice), b, 4).finishPlanWindows
+    val with_ = commit(rules(losingDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     val score = (run: Run) => run.result.defenseScore
     // The rival's 2 warbands at the origin, with blank dice; the sacrifice
@@ -48,11 +48,12 @@ class WrestlersSuite extends munit.FunSuite:
   test("it is a defender's plan only"):
     val base = board(warbands = 5, supply = 7)
     val b = withAdviser(base, card, Orientation.FaceUp)
-    assert(awaits(commit(rules(losing), b, 2), b.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(losingDice), b, 2), b.actor,
+      CampaignIds.sacrifice))
 
   test("a bandit defender never uses it, since it costs a warband"):
     val two = board(extras = 1, warbands = 5, supply = 7)
     val b = withSiteCard(two, two.extras.head, card)
-    val run = commit(rules(losing), b, 2)
+    val run = commit(rules(losingDice), b, 2)
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     assert(!run.ops.exists(_.isInstanceOf[Sacrifice]))

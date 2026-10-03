@@ -82,12 +82,12 @@ class GarrisonArmorySuite extends munit.FunSuite:
     val b = on(withAdviserFor(withAdviserFor(base, base.rival, card,
       Orientation.FaceUp), base.rival, provisions, Orientation.FaceUp))(
       _.favor(base.rival, 2))
-    val run = commit(rules(winning), b, 3, raid = true)
+    val run = commit(rules(winningDice), b, 3, raid = true)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     assert(!run.offered(b.actor).contains(ref))
 
   test("a bandit defender never applies it, since it costs"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    assert(!commit(rules(winning), b, 2).finishPlanWindows.ops.contains(
+    assert(!commit(rules(winningDice), b, 2).finishPlanWindows.ops.contains(
       ModifyDicePool(CampaignPlans.appliedMarker(ref), 1)))

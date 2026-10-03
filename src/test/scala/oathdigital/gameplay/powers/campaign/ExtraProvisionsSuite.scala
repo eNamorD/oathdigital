@@ -21,7 +21,7 @@ class ExtraProvisionsSuite extends munit.FunSuite:
 
   test("a defender places a favor, off turn, for one defense die"):
     val b = defender(1)
-    val run = commit(rules(winning), b, 3)
+    val run = commit(rules(winningDice), b, 3)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
     // Paid off turn, the favor goes to the bank at once, not onto the card.
@@ -32,11 +32,11 @@ class ExtraProvisionsSuite extends munit.FunSuite:
 
   test("it is not offered to a defender with no favor"):
     val b = defender(0)
-    assert(!commit(rules(winning), b, 3).offers(b.actor, b.rival,
+    assert(!commit(rules(winningDice), b, 3).offers(b.actor, b.rival,
       CampaignIds.defenderPlan, ref))
 
   test("a bandit defender never applies it, since it costs"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    assert(!commit(rules(winning), b, 2).finishPlanWindows.ops.contains(
+    assert(!commit(rules(winningDice), b, 2).finishPlanWindows.ops.contains(
       ModifyDicePool(CampaignPlans.appliedMarker(ref), 1)))

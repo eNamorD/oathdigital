@@ -7,9 +7,9 @@ import oathdigital.model._
   * are built with `Table`.
   */
 object EconomyFixture:
-  /** Adds the actor's adviser `adviser` to the Muster source decision, which is
-    * exactly what Golem Legions will do; only the acceptance rule stops it
-    * today.
+  /** Stub of ContributingPower for the Muster source: adds the actor's
+    * adviser `adviser` to the Muster source decision, which is exactly what
+    * Golem Legions will do; only the acceptance rule stops it today.
     */
   final case class AddAdviserSource(id: PowerId, adviser: DenizenId)
       extends ContributingPower:
@@ -27,7 +27,8 @@ object EconomyFixture:
           case other => other
         })))
 
-  /** Removes the payment from a Muster's cost window, keeping the Supply. */
+  /** Stub of ContributingPower for the Muster cost window: removes the
+    * payment, keeping the Supply. */
   final case class FreePayment(id: PowerId) extends ContributingPower:
     def source: RuleSourceRef = RuleSourceRef.Banner("test")
     def contributions: Map[PowerWindow, Vector[Contribution]] =

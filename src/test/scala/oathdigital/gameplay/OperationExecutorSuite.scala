@@ -43,6 +43,8 @@ class OperationExecutorSuite extends munit.FunSuite:
 
   test("policy receives the semantic root before primitive execution"):
     var seen = Vector.empty[CoreOperation]
+    /** Spy of OperationPolicy: records each operation it is asked about in
+      * `seen`, refuses all. */
     val rejecting = new OperationPolicy:
       override def validate(state: ReadyGame, operation: CoreOperation): Either[OperationError, Unit] =
         seen :+= operation

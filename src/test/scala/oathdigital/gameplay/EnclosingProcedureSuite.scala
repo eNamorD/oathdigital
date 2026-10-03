@@ -16,7 +16,9 @@ import oathdigital.testkit.Unwrap.accepted
 class EnclosingProcedureSuite extends munit.FunSuite:
   private val seen = ArrayBuffer.empty[(PowerWindow, Option[ProcedureRef])]
 
-  /** A power that records what it is asked at three Muster windows. */
+  /** Spy of ContributingPower: records (window, procedure) in `seen` each
+    * time it is asked if it applies, at three Muster windows; always
+    * applicable. */
   private val probe: ContributingPower = new ContributingPower:
     def id: PowerId = PowerId("test.enclosing-procedure")
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)

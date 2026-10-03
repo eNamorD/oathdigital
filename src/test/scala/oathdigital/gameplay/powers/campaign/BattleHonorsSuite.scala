@@ -28,7 +28,7 @@ class BattleHonorsSuite extends munit.FunSuite:
   test("an attacker that wins gains two favor from the Order bank"):
     val b = attackerHoldingBattleHonors
     val bank = orderBank(asState(b))
-    val done = commit(rules(winning), b, 4)
+    val done = commit(rules(winningDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
     assertEquals(Look(done.state).favor(b.actor),
@@ -37,14 +37,14 @@ class BattleHonorsSuite extends munit.FunSuite:
 
   test("an attacker that loses gains nothing"):
     val b = attackerHoldingBattleHonors
-    val done = commit(rules(losing), b, 4)
+    val done = commit(rules(losingDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(Look(done.state).favor(b.actor),
       Look(asState(b)).favor(b.actor))
 
   test("choosing it costs nothing and changes no dice"):
     val b = attackerHoldingBattleHonors
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(!picked.since(run).exists(op => op.isInstanceOf[PayCost] ||
       op.isInstanceOf[ModifyDicePool]))
@@ -52,19 +52,19 @@ class BattleHonorsSuite extends munit.FunSuite:
   test("a defender that wins gains two favor, and one that " +
       "loses gains nothing"):
     val b = defenderHoldingBattleHonors
-    val won = commit(rules(losing), b, 4)
+    val won = commit(rules(losingDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(won.winner, Some(false))
     assertEquals(Look(won.state).favor(b.rival),
       Look(asState(b)).favor(b.rival) + 2)
-    val lost = commit(rules(winning), b, 4)
+    val lost = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(Look(lost.state).favor(b.rival),
       Look(asState(b)).favor(b.rival))
 
   test("an Order bank with one favor gives one"):
     val b = on(attackerHoldingBattleHonors)(_.bankFavor(Suit.Order, 1))
-    val done = commit(rules(winning), b, 4)
+    val done = commit(rules(winningDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(Look(done.state).favor(b.actor),
       Look(asState(b)).favor(b.actor) + 1)
@@ -79,7 +79,7 @@ class BattleHonorsSuite extends munit.FunSuite:
       "without choosing"):
     val b = banditSiteHoldingBattleHonors
     val bank = orderBank(asState(b))
-    val run = commit(rules(losing), b, 2)
+    val run = commit(rules(losingDice), b, 2)
     // It applied the free plan by itself, so nothing was asked of the attacker.
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     val done = run.finishPlanWindows
@@ -91,13 +91,13 @@ class BattleHonorsSuite extends munit.FunSuite:
   test("a bandit defender that loses gains nothing"):
     val b = banditSiteHoldingBattleHonors
     val bank = orderBank(asState(b))
-    val done = commit(rules(winning), b, 4).finishPlanWindows
+    val done = commit(rules(winningDice), b, 4).finishPlanWindows
     assertEquals(done.winner, Some(true))
     assertEquals(orderBank(done.state), bank)
 
   test("a bandit defender takes the last favor of an Order bank of one"):
     val b = on(banditSiteHoldingBattleHonors)(_.bankFavor(Suit.Order, 1))
-    val done = commit(rules(losing), b, 2).finishPlanWindows
+    val done = commit(rules(losingDice), b, 2).finishPlanWindows
     assertEquals(orderBank(done.state), 0)
 
   private def asState(b: Board): OathState = OathState.Ready(b.ready)

@@ -34,6 +34,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
   test("a synthetic WAKE or ACTION power is projected and legal only in its phase"):
     import oathdigital.gameplay.PhasePowerFixture.{TestPower, card, holding,
       powerId}
+    // TestPower stands in for the power Magician's Code prints, which p1
+    // holds faceup.
     val control = s"usePower:${powerId.value}:${card.value}"
     Vector(PowerTiming.Wake -> Phase.Wake, PowerTiming.Act -> Phase.Act).foreach:
       case (timing, phase) =>
@@ -54,7 +56,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
       "relic's printed name and text"):
     import oathdigital.gameplay.{IndexedRuleSource, RuleSourceIndex}
     import oathdigital.gameplay.PhasePowerFixture.TestPower
-    // p1 holds the Whistle faceup; a test power stands in for its printed one.
+    // p1 holds the Whistle faceup; TestPower stands in for the Whistle's
+    // printed power.
     val relic = CatalogNames.relic("Whistle")
     val held = Table.start.relic(p1, relic).ready
     val sources = RuleSourceIndex.enumerate(catalog, held)
@@ -78,8 +81,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
   test("a phase power used from an edifice at the pawn's site is projected " +
       "and legal with the edifice face's printed name"):
     import oathdigital.gameplay.PhasePowerFixture.{TestPower, card, powerId}
-    // Hall of Debate stands at Ancient City, p1's site, printed with the test
-    // power's power.
+    // Hall of Debate stands at Ancient City, p1's site, printed with the
+    // power Magician's Code prints, which TestPower stands in for.
     val id = CatalogNames.edifice("Hall of Debate")
     val edifice = present(catalog.edifices.find(_.id.value == id.value),
       "Hall of Debate")

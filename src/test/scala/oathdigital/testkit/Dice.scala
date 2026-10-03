@@ -5,7 +5,8 @@ import oathdigital.model.{AttackDieFace, DefenseDieFace}
 
 /** The dice every test that fixes a roll hands the game, so one board comes
   * up the same way every run. Each stub says which faces it rolls; a spy
-  * rolls the same way and counts the defense rolls it was asked for. */
+  * counts the defense rolls it was asked for, and its own doc says which
+  * faces it rolls. */
 object Dice:
   /** Stub of CampaignDicePort: attack always HollowSword, defense always
     * Blank. A defense roll against it fails, so a Recover started with it
@@ -25,7 +26,7 @@ object Dice:
       Vector.fill(count)(DefenseDieFace.TwoShields)
 
   /** Stub of CampaignDicePort: attack always OneSword, defense always
-    * Blank, so a Raid's attacker wins. */
+    * Blank, dice that favour the attacker in a Raid. */
   val raid: CampaignDicePort = new CampaignDicePort:
     def rollAttack(count: Int): Vector[AttackDieFace] =
       Vector.fill(count)(AttackDieFace.OneSword)

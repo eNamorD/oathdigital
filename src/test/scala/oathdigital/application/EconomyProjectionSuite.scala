@@ -94,6 +94,9 @@ class EconomyProjectionSuite extends munit.FunSuite:
       .getOrElse(fail("the action must start"))
     val parked = Outcomes.ready(started.state)
     val context = ScopedProjectionContext(parked, Some(p1))
+    // The stub adds Magician's Code as a second Muster source. It is an
+    // adviser, not a card at p1's site, so MusterSource.resolve refuses it,
+    // and the preview keeps only the sources the walk accepts.
     val withPower = new WalkerDecisionProjector(catalog,
       new GamePresentationProjector(catalog), WalkerPowers(Vector(
         AddAdviserSource(PowerId("test.add-adviser-source"), magiciansCode))))

@@ -23,7 +23,7 @@ class BannerBreakersSuite extends munit.FunSuite:
   test("an attacker places a favor and burns one for three attack dice " +
       "against the Darkest Secret"):
     val b = on(base)(_.darkestSecret(Some(base.rival), 1))
-    val run = commit(rules(winning), b, 3)
+    val run = commit(rules(winningDice), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
     assertEquals(Look(picked.state).adviserTokens(b.actor, card), Tokens(1, 0))
@@ -31,14 +31,14 @@ class BannerBreakersSuite extends munit.FunSuite:
 
   test("it is offered against the People's Favor"):
     val b = on(base)(_.peoplesFavor(Some(base.rival), 1))
-    assert(commit(rules(winning), b, 3).offers(b.actor, b.actor,
+    assert(commit(rules(winningDice), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("it is not offered when the defender holds no banner"):
-    assert(!commit(rules(winning), base, 3).offers(base.actor, base.actor,
+    assert(!commit(rules(winningDice), base, 3).offers(base.actor, base.actor,
       CampaignIds.attackerPlan, ref))
 
   test("it is never offered against bandits"):
     val b = funded(board(warbands = 5, supply = 7))
-    assert(!commit(rules(winning), b, 3).offers(b.actor, b.actor,
+    assert(!commit(rules(winningDice), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))

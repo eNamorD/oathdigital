@@ -1,10 +1,8 @@
 package oathdigital.application
 
-class ChronicleShuffleSuite extends munit.FunSuite:
-  /** Reverses the input so ordering effects are deterministic and visible. */
-  private val reversing: ChronicleRandomPort = new ChronicleRandomPort:
-    def shuffle[A](values: Vector[A]): Vector[A] = values.reverse
+import oathdigital.testkit.ChronicleShuffles.reversing
 
+class ChronicleShuffleSuite extends munit.FunSuite:
   test("implemented-first puts every implemented card ahead of every other"):
     val cards = Vector(1, 2, 3, 4, 5, 6)
     val implemented = Set(2, 4)

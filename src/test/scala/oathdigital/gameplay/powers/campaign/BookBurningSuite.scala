@@ -44,7 +44,7 @@ class BookBurningSuite extends munit.FunSuite:
   test("a won Raid burns every secret but one, the facedown ones first, and " +
       "says so"):
     val b = raid(faceUp = 2, faceDown = 2)
-    val done = playedRaidWithBookBurning(b, winning)
+    val done = playedRaidWithBookBurning(b, winningDice)
     assertEquals(done.winner, Some(true))
     assertEquals(Look(done.state).faceUpSecrets(b.rival), 1)
     assertEquals(Look(done.state).faceDownSecrets(b.rival), 0)
@@ -54,7 +54,7 @@ class BookBurningSuite extends munit.FunSuite:
   test("facedown secrets are turned faceup and burnt in one step, and the " +
       "one left stays facedown"):
     val b = raid(faceUp = 0, faceDown = 3)
-    val done = playedRaidWithBookBurning(b, winning)
+    val done = playedRaidWithBookBurning(b, winningDice)
     assertEquals(Look(done.state).faceUpSecrets(b.rival), 0)
     assertEquals(Look(done.state).faceDownSecrets(b.rival), 1)
     val flipped = done.events.collect {
@@ -67,7 +67,7 @@ class BookBurningSuite extends munit.FunSuite:
   test("a defender with one secret loses nothing, and the line says there " +
       "was none to burn"):
     val b = raid(faceUp = 1, faceDown = 0)
-    val done = playedRaidWithBookBurning(b, winning)
+    val done = playedRaidWithBookBurning(b, winningDice)
     assertEquals(done.winner, Some(true))
     assertEquals(Look(done.state).faceUpSecrets(b.rival), 1)
     assertEquals(Look(done.state).faceDownSecrets(b.rival), 0)
@@ -76,7 +76,7 @@ class BookBurningSuite extends munit.FunSuite:
 
   test("a lost Raid burns nothing and writes nothing"):
     val b = raid(faceUp = 2, faceDown = 2)
-    val done = playedRaidWithBookBurning(b, losing)
+    val done = playedRaidWithBookBurning(b, losingDice)
     assertEquals(done.winner, Some(false))
     assertEquals(Look(done.state).faceUpSecrets(b.rival), 2)
     assertEquals(Look(done.state).faceDownSecrets(b.rival), 2)
@@ -84,7 +84,7 @@ class BookBurningSuite extends munit.FunSuite:
 
   test("choosing it costs nothing and changes no dice"):
     val b = raid(faceUp = 2, faceDown = 0)
-    val run = commit(rules(winning), b, 4, raid = true)
+    val run = commit(rules(winningDice), b, 4, raid = true)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(!picked.since(run).exists(op => op.isInstanceOf[PayCost] ||
       op.isInstanceOf[ModifyDicePool]))
@@ -93,6 +93,6 @@ class BookBurningSuite extends munit.FunSuite:
     val advised = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
     val b = withAdviser(advised, honors, Orientation.FaceUp)
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
     assert(run.offers(b.actor, b.actor, CampaignIds.attackerPlan, honorsRef))
     assert(!run.offered(b.actor).contains(ref))

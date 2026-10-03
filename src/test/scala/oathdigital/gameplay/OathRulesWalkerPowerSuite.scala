@@ -303,6 +303,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
       "walk runs"):
     val ready = Table.start.ready
     val powerId = PowerId("test.inapplicable")
+    /** Stub of ContributingPower: never applicable. */
     val inapplicable = new ContributingPower:
       def id: PowerId = powerId
       def source: RuleSourceRef = RuleSourceRef.GameRule(powerId.value)

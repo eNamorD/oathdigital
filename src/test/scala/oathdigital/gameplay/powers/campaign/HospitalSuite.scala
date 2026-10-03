@@ -45,7 +45,7 @@ class HospitalSuite extends munit.FunSuite:
   test("a defeated attacker's dead are placed on Hospital's site at the end"):
     val base = board(warbands = 5, supply = 7)
     val b = hospitalFor(base, base.actor, hospitalSite)
-    val done = commit(rules(losing), b, 4)
+    val done = commit(rules(losingDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
     // Half of the four survivors die in the losses, then come back to
@@ -64,7 +64,7 @@ class HospitalSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = hospitalFor(base, base.rival, hospitalSite)
     val before = b.player(b.rival).board.warbands
-    val done = commit(rules(winning), b, 4)
+    val done = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
     // Two warbands held the origin: one returns to the board as usual, and
@@ -78,7 +78,7 @@ class HospitalSuite extends munit.FunSuite:
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val b = withSiteCard(base, base.origin, card)
-    val done = commit(rules(winning), b, 4)
+    val done = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
     assert(!done.ops.contains(returned(b, b.rival, 1, b.origin)))
@@ -94,7 +94,7 @@ class HospitalSuite extends munit.FunSuite:
     val fire = CatalogNames.relic("Sticky Fire")
     val held = hospitalFor(base, base.actor, hospitalSite)
     val b = withRelicFor(held, base.rival, fire)
-    val done = commit(rules(losing), b, 4)
+    val done = commit(rules(losingDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref)
       .pick(b.rival, CampaignIds.defenderPlan, DecisionOptionRef.Relic(fire))
       .finishDefenderPlans(b.rival)
@@ -126,7 +126,7 @@ class HospitalSuite extends munit.FunSuite:
       "the end"):
     val b = wrestling
     val before = b.player(b.rival).board.warbands
-    val picked = commit(rules(winning), b, 4)
+    val picked = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
       .pick(b.rival, CampaignIds.defenderPlan, wrestlersRef)
     assert(picked.ops.exists(_.isInstanceOf[Sacrifice]))
@@ -146,7 +146,7 @@ class HospitalSuite extends munit.FunSuite:
 
   test("a sacrifice made before Hospital was chosen is not saved"):
     val b = wrestling
-    val done = commit(rules(winning), b, 4)
+    val done = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, wrestlersRef)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
@@ -159,7 +159,7 @@ class HospitalSuite extends munit.FunSuite:
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
     val b = on(hospitalFor(base, base.rival, hospitalSite))(
       _.boardWarbands(base.rival, 3))
-    val won = commit(rules(winning), b, 4, raid = true)
+    val won = commit(rules(winningDice), b, 4, raid = true)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     // The defeated pawn is moved on before the Campaign ends.
     assert(awaits(won, b.actor, CampaignIds.relocation))
@@ -177,12 +177,13 @@ class HospitalSuite extends munit.FunSuite:
   test("a player who does not rule its site is not offered it"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, hospitalSite, card)
-    assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(winningDice), b, 2), b.actor,
+      CampaignIds.sacrifice))
 
   test("a bandit defender does not use it"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    val run = commit(rules(winning), b, 2)
+    val run = commit(rules(winningDice), b, 2)
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     assert(!ready(run.state).game.current.rollPools.contains(
       CampaignPlans.appliedMarker(ref)))

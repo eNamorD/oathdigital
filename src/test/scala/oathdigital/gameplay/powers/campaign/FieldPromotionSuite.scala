@@ -35,7 +35,7 @@ class FieldPromotionSuite extends munit.FunSuite:
   test("an attacker that wins places a favor on it and gains three warbands, " +
       "and says so"):
     val b = attacking
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assertEquals(Look(picked.state).adviserTokens(b.actor, card), Tokens(1, 0))
     val done = picked.finishPlanWindows
@@ -45,7 +45,7 @@ class FieldPromotionSuite extends munit.FunSuite:
 
   test("an attacker that loses gains nothing and writes nothing"):
     val b = attacking
-    val done = commit(rules(losing), b, 4)
+    val done = commit(rules(losingDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
     assert(!done.ops.exists(_.isInstanceOf[Gain.Warbands]))
@@ -56,7 +56,7 @@ class FieldPromotionSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
       _.favor(base.rival, 1))
-    val picked = commit(rules(losing), b, 4)
+    val picked = commit(rules(losingDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     // Paid off turn, the favor goes to the bank at once, not onto the card.
     assertEquals(Look(picked.state).player(b.rival).board.favor, 0)
@@ -70,7 +70,7 @@ class FieldPromotionSuite extends munit.FunSuite:
     // Every warband of the actor's kind but one is on their board.
     val b = on(base)(_.warbandsInBank(base.actor, 1))
     assertEquals(warbandBank(b.ready, force), 1)
-    val done = commit(rules(winning), b, 4)
+    val done = commit(rules(winningDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
     assertEquals(warbandBank(ready(done.state), force), 0)
@@ -80,14 +80,14 @@ class FieldPromotionSuite extends munit.FunSuite:
     val base = board(warbands = 5, supply = 7)
     val b = on(withAdviser(withAdviser(base, card, Orientation.FaceUp), honors,
       Orientation.FaceUp))(_.favor(base.actor, 0))
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
     assert(run.offers(b.actor, b.actor, CampaignIds.attackerPlan, honorsRef))
     assert(!run.offered(b.actor).contains(ref))
 
   test("a bandit defender never uses it, since it costs a favor"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    val run = commit(rules(losing), b, 2)
+    val run = commit(rules(losingDice), b, 2)
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     assert(!ready(run.state).game.current.rollPools.contains(
       CampaignPlans.appliedMarker(ref)))

@@ -5,8 +5,10 @@ import oathdigital.model.{Cost, DenizenId, EdificeId, PowerId, RelicId,
   SiteId, Suit, Tokens}
 
 /** Cards for suites that graft a power or a name onto a catalog card, or
-  * build a small catalog of their own. Card objects have no `copy`, so a
-  * `…Like` variant rebuilds the card and keeps its printed restriction traits.
+  * build a small catalog of their own. They are stubs of the production
+  * Denizen, Relic, Edifice and Site classes: canned data, no behavior. Card
+  * objects have no `copy`, so a `…Like` variant rebuilds the card and keeps
+  * its printed restriction traits.
   */
 object TestCards:
   def power(id: String, text: String = "Test power."): PrintedPower =

@@ -19,7 +19,7 @@ class BattleAxesSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviser(base, card, Orientation.FaceUp),
       base.rival, beasts(0), Orientation.FaceUp)
-    val run = commit(rules(winning), b, 3)
+    val run = commit(rules(winningDice), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
@@ -33,17 +33,17 @@ class BattleAxesSuite extends munit.FunSuite:
     val site = CatalogNames.site("Broken Peaks")
     val b = withSiteCard(withAdviser(withAdviser(base, card,
       Orientation.FaceUp), beasts(0), Orientation.FaceUp), site, beasts(1))
-    assert(!commit(rules(winning), b, 3).offers(b.actor, b.actor,
+    assert(!commit(rules(winningDice), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("against bandits it holds when a beast card stands at any site " +
       "bandits rule"):
     val base = board(extras = 1, warbands = 5, supply = 7)
     val held = withAdviser(base, card, Orientation.FaceUp)
-    assert(!commit(rules(winning), held, 3).offers(held.actor, held.actor,
+    assert(!commit(rules(winningDice), held, 3).offers(held.actor, held.actor,
       CampaignIds.attackerPlan, ref))
     val b = withSiteCard(held, base.extras.head, beasts(0))
-    assert(commit(rules(winning), b, 3).offers(b.actor, b.actor,
+    assert(commit(rules(winningDice), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("a defender removes two attack dice when the attacker rules " +
@@ -52,7 +52,7 @@ class BattleAxesSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = withAdviser(withAdviserFor(base, base.rival, card,
       Orientation.FaceUp), beasts(0), Orientation.FaceUp)
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
 
@@ -60,8 +60,8 @@ class BattleAxesSuite extends munit.FunSuite:
       "a beast card"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    assert(!commit(rules(winning), b, 4).finishPlanWindows.ops
+    assert(!commit(rules(winningDice), b, 4).finishPlanWindows.ops
       .contains(ModifyDicePool(CampaignIds.attackPool, -2)))
     val armed = withAdviser(b, beasts(0), Orientation.FaceUp)
-    assert(commit(rules(winning), armed, 4).finishPlanWindows.ops
+    assert(commit(rules(winningDice), armed, 4).finishPlanWindows.ops
       .contains(ModifyDicePool(CampaignIds.attackPool, -2)))

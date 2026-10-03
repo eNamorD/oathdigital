@@ -10,10 +10,12 @@ import oathdigital.testkit.Outcomes
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** Driving the card-play walk, shared by the placement suites. The powers
-  * built here are test doubles: they change `PlacementRules` and nothing else.
+  * built here are stubs of ContributingPower: they change `PlacementRules`
+  * and nothing else.
   */
 object PlacementFixture:
-  /** A power that changes the rules every play is planned under. */
+  /** Stub of ContributingPower: changes the rules every play is planned
+    * under (`PlacementRules`), nothing else. */
   def rulePower(name: String)(
       change: PlacementRules => PlacementRules): ContributingPower =
     new ContributingPower:
@@ -27,8 +29,10 @@ object PlacementFixture:
             case _ => ops
           })))
 
+  /** Stub of ContributingPower: changes PlacementRules to discard first. */
   val discardFirst: ContributingPower =
     rulePower("test.discard-first")(_.withSiteDiscardFirst)
+  /** Stub of ContributingPower: changes PlacementRules to two advisers. */
   val limitTwo: ContributingPower =
     rulePower("test.limit-two")(_.limitAdvisers(2))
 

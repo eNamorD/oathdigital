@@ -9,6 +9,8 @@ import oathdigital.model.{OathViolation, WalkerEvent}
   * a typed violation, not a `MatchError`.
   */
 class OathRulesEvolveSuite extends munit.FunSuite:
+  /** Stub of WalkerEvent: an event type OathRules.evolve does not
+    * register. */
   private case object UnregisteredWalkerEvent extends WalkerEvent
 
   test("an unregistered walker event evolves to a typed violation"):

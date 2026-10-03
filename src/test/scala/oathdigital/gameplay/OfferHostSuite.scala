@@ -23,7 +23,8 @@ class OfferHostSuite extends munit.FunSuite:
     CampaignPlanSource.Adviser(p1, DenizenId(name)), name, Vector.empty,
     Vector.empty)
 
-  /** A power that offers what `plan` says, whatever the window's context. */
+  /** Stub of ContributingPower: offers what `plan` says, whatever the
+    * window's context. */
   private final case class Offering(name: String,
       plan: PowerCtx => Option[CampaignPlanOffer]) extends ContributingPower:
     def id: PowerId = PowerId(s"test.$name")
@@ -35,7 +36,8 @@ class OfferHostSuite extends munit.FunSuite:
   private final case class Fold(offers: Vector[OfferedPlan], resuming: Boolean,
       answered: Vector[Answered])
 
-  /** A host that records each fold and expands to a `GainSupply` per offer. */
+  /** Spy of OfferHost: records each fold in `folds` and expands to a
+    * `GainSupply` per offer. */
   private final class Host(gain: Int = 1) extends OfferHost:
     val folds: mutable.Buffer[Fold] = mutable.Buffer.empty
     override val window: Option[PowerWindow] = Some(OfferHostSuite.this.window)
@@ -60,6 +62,8 @@ class OfferHostSuite extends munit.FunSuite:
   test("a host with nothing offered expands to nothing, and a power's other " +
       "window is not gathered"):
     val host = new Host
+    /** Stub of ContributingPower: one Offer, at the defender's plan window
+      * only. */
     val elsewhere = new ContributingPower:
       def id: PowerId = PowerId("test.elsewhere")
       def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
@@ -72,6 +76,8 @@ class OfferHostSuite extends munit.FunSuite:
 
   test("a transform at the host's window runs before the expansion"):
     val host = new Host(gain = 2)
+    /** Stub of ContributingPower: a Transform that adds a GainSupply, and an
+      * Offer, at the host's window. */
     val first = new ContributingPower:
       def id: PowerId = PowerId("test.first")
       def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
@@ -92,6 +98,8 @@ class OfferHostSuite extends munit.FunSuite:
     val question = Decide("test.question", p1, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(DecisionOptionRef.Button("yes"), "Yes"))))
     val seen: mutable.Buffer[(Boolean, Vector[Answered])] = mutable.Buffer.empty
+    /** Spy of OfferHost: records (resuming, answered) in `seen` on each
+      * fold and expands to `question`. */
     val hosted = new OfferHost:
       override val window: Option[PowerWindow] = Some(OfferHostSuite.this.window)
       override val children: Vector[Operation] = Vector.empty
@@ -144,6 +152,8 @@ class OfferHostSuite extends munit.FunSuite:
       "record"):
     val results: mutable.Buffer[Either[OathViolation, Vector[CoreOperation]]] =
       mutable.Buffer.empty
+    /** Spy of OfferHost: records what `pass.applies` answers in `results`;
+      * expands to nothing. */
     val host = new OfferHost:
       override val window: Option[PowerWindow] = Some(OfferHostSuite.this.window)
       override val children: Vector[Operation] = Vector.empty

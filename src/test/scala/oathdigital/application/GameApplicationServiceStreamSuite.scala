@@ -3,6 +3,7 @@ package oathdigital.application
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import oathdigital.serialization.GameEventWire
+import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
@@ -16,6 +17,11 @@ import ParkedServiceFixture.{firstPlayer, loaded, playFacedownAdviser,
   * and what it refuses to append or replay.
   */
 class GameApplicationServiceStreamSuite extends munit.FunSuite:
+  /** Stub of WarExhaustionRandomPort: chooses the first candidate. */
+  private val choosesFirstCandidate: WarExhaustionRandomPort =
+    new WarExhaustionRandomPort:
+      def choose(candidates: Vector[PlayerId]): PlayerId = candidates.head
+
   test("all-Exile powered game persists and replays through round-eight victory"):
     // Stays on the replayed setup: the full game from Setup to round eight is
     // the end-to-end smoke test.
@@ -34,9 +40,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     val poweredOrders = ChronicleFirstGamePlan.dealOrder(poweredChronicle,
       FirstGameBootstrapConfig(orders.participants, orders.firstPlayer))
     var service = new GameApplicationService(catalog, repository,
-      warExhaustionRandomPort = new oathdigital.gameplay.phases.rest.WarExhaustionRandomPort {
-        def choose(candidates: Vector[PlayerId]) = candidates.head
-      })
+      warExhaustionRandomPort = choosesFirstCandidate)
     var position = setupViaService(service, "powered-playability", sites,
       poweredChronicle, poweredOrders)
     var played = Set.empty[PlayerId]
@@ -67,9 +71,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       position = accepted(service.handle("powered-playability",
         position.nextSequence, GameCommand.BeginRest(actor)))
       service = new GameApplicationService(catalog, repository,
-        warExhaustionRandomPort = new oathdigital.gameplay.phases.rest.WarExhaustionRandomPort {
-          def choose(candidates: Vector[PlayerId]) = candidates.head
-        })
+        warExhaustionRandomPort = choosesFirstCandidate)
       val reopened = loaded(service.load("powered-playability"))
       assertEquals(reopened.state, position.state)
       assertEquals(reopened.nextSequence, position.nextSequence)
@@ -242,6 +244,8 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       records)
 
   test("repository and envelope game identity mismatches append nothing"):
+    /** Spy of EventStreamRepository: load returns a canned stream; append
+      * counts its calls, which the second value reads. */
     def repositoryFor(
         storedGameId: String,
         envelopeGameId: String

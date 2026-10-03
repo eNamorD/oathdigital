@@ -20,7 +20,7 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     WalkerPowers(Vector(TestOperationRestrictionPower(
       PowerId("test.restriction"), restriction)))
 
-  /** Refuses every `SpendSupply`. */
+  /** Stub of OperationRestriction: refuses every `SpendSupply`. */
   private val noSpending = new OperationRestriction:
     override def reason(state: ReadyGame, operation: CoreOperation)
         : Option[OperationReason] = operation match
@@ -79,9 +79,9 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
           Vector(Vector[CoreOperation](GainSupply(actor, 1))))
       case other => fail(s"expected a Finished walk, got $other")
 
-  /** Refuses the `Discard.Denizen` composite only, never the `Move`s it holds,
-    * so it can only act if the walker checks the composite before splitting
-    * it. */
+  /** Stub of OperationRestriction: refuses the `Discard.Denizen` composite
+    * only, never the `Move`s it holds, so it can only act if the walker
+    * checks the composite before splitting it. */
   private val wholeDiscard = new OperationRestriction:
     override def reason(state: ReadyGame, operation: CoreOperation)
         : Option[OperationReason] = operation match
@@ -113,6 +113,7 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     // D1 leaves the world deck for S2.
     val source = Table.from(ready).denizen(worldDenizen, at = sites(1))
       .unchecked
+    /** Stub of OperationRestriction: refuses `first` as immune. */
     val immunity = new OperationRestriction:
       override def reason(state: ReadyGame, operation: CoreOperation) =
         Option.when(operation == first)(OperationReason("immune",
@@ -135,6 +136,7 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     val discard = Discard.Denizen(siteDenizen.id,
       PositionedLocation(Location.Site(sites.head)), Region.Cradle,
       Suit.Order, 1, 0, actor)
+    /** Stub of OperationRestriction: refuses every operation as immune. */
     val immunity = new OperationRestriction:
       override def reason(state: ReadyGame, operation: CoreOperation): Option[OperationReason] =
         Some(OperationReason("immune", "site card cannot be discarded",

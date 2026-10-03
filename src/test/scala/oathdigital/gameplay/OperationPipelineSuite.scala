@@ -52,6 +52,7 @@ class OperationPipelineSuite extends munit.FunSuite:
   test("immune optional effect skips while later legal effect executes"):
     val blocked = Gain.Favor(playerId, Suit.Order, 1)
     val legal = Gain.Secrets(playerId, 1)
+    /** Stub of OperationRestriction: refuses `blocked` as immune. */
     val restriction = new OperationRestriction:
       override def reason(state: ReadyGame, operation: CoreOperation) =
         Option.when(operation == blocked)(OperationReason("immune",

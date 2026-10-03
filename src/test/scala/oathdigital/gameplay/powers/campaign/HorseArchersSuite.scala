@@ -21,7 +21,7 @@ class HorseArchersSuite extends munit.FunSuite:
   test("an attacker adds three attack dice, for nothing"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    val run = commit(rules(winning), b, 2)
+    val run = commit(rules(winningDice), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, 3)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
@@ -29,7 +29,7 @@ class HorseArchersSuite extends munit.FunSuite:
   test("it is discarded after a Campaign its user won, and says so"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    val done = commit(rules(winning), b, 2)
+    val done = commit(rules(winningDice), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
     assert(Look(done.state).inRegionalDiscard(card))
@@ -38,7 +38,7 @@ class HorseArchersSuite extends munit.FunSuite:
   test("it is discarded after a Campaign its user lost"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    val done = commit(rules(losing), b, 2)
+    val done = commit(rules(losingDice), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
     assert(Look(done.state).inRegionalDiscard(card))
@@ -48,7 +48,7 @@ class HorseArchersSuite extends munit.FunSuite:
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val b = withAdviserFor(base, base.rival, card, Orientation.FaceUp)
-    val run = commit(rules(winning), b, 4)
+    val run = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))
     assert(Look(run.finishPlanWindows.state).inRegionalDiscard(card))
@@ -56,7 +56,7 @@ class HorseArchersSuite extends munit.FunSuite:
   test("a bandit defender applies it at its site, and it is discarded"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    val done = commit(rules(winning), b, 4).finishPlanWindows
+    val done = commit(rules(winningDice), b, 4).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))
     assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(line))
@@ -64,6 +64,6 @@ class HorseArchersSuite extends munit.FunSuite:
   test("a Campaign that does not choose it leaves it in play and says nothing"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    val done = commit(rules(winning), b, 2).finishPlanWindows
+    val done = commit(rules(winningDice), b, 2).finishPlanWindows
     assert(!Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector.empty)
