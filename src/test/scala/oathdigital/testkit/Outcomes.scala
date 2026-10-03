@@ -1,6 +1,6 @@
 package oathdigital.testkit
 
-import oathdigital.gameplay.walker.WalkerOutcome
+import oathdigital.gameplay.walker.{WalkerOutcome, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.serialization.GameEventWire
@@ -24,6 +24,10 @@ object Outcomes:
   def finished(outcome: Either[OathViolation, WalkerOutcome])(
       using munit.Location): WalkerOutcome.Finished =
     Unwrap.as[WalkerOutcome.Finished](Unwrap.accepted(outcome))
+
+  /** The step a walk recorded; fails with the event when it is another. */
+  def recorded(event: OathEvent)(using munit.Location): WalkerStepRecorded =
+    Unwrap.as[WalkerStepRecorded](event)
 
   /** Every event encodes and decodes back equal; fails naming the first
     * that does not, and why. */

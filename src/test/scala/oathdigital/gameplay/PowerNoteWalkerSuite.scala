@@ -4,6 +4,9 @@ import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
+import oathdigital.testkit.Outcomes.{finished, parked}
+import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Unwrap.present
 
 /** The `Note` node (power log lines design, section 1). */
 class PowerNoteWalkerSuite extends munit.FunSuite:
@@ -13,7 +16,8 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
   private val pool = PoolKey("test-pool")
   private def said(word: String) = PowerNote(source, word, Vector.empty)
   private def note(word: String): Note = Note(power, _ => Some(said(word)))
-  private def noted(word: String) = PowerNoted(power, said(word), covers = false)
+  private def noted(word: String) =
+    PowerNoted(power, said(word), covers = false)
   private def button(key: String) =
     DecisionOption.Button(DecisionOptionRef.Button(key), key)
   private val ask = Decide("ask", actor,
@@ -37,11 +41,13 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
 
   test("a note reads the states around the step before it"):
     var seen = Option.empty[NoteStates]
-    val reading = Note(power, states => { seen = Some(states); Some(said("read")) })
+    val reading = Note(power,
+      states => { seen = Some(states); Some(said("read")) })
     val tree = Sequence(Vector[Operation](ModifyDicePool(pool, 1), reading))
-    assert(ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty).isRight)
-    val states = seen.get
-    val (before, after) = states.previous.get
+    assert(
+      ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty).isRight)
+    val states = present(seen, "the note to have been read")
+    val (before, after) = present(states.previous, "a previous step")
     assertEquals(after, states.now)
     assertEquals(before.game.current.rollPools.get(pool), None)
     assert(after.game.current.rollPools.contains(pool))
@@ -58,46 +64,50 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
     val reading = Note(power, states => { seen = Some(states); None })
     val tree = Sequence(Vector[Operation](ModifyDicePool(pool, 1),
       BuildOps((_, _) => Right(Vector.empty)), reading))
-    assert(ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty).isRight)
-    val (before, after) = seen.get.previous.get
+    assert(
+      ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty).isRight)
+    val states = present(seen, "the note to have been read")
+    val (before, after) = present(states.previous, "a previous step")
     assertEquals(before, after)
     assert(after.game.current.rollPools.contains(pool))
 
   test("a note whose build says nothing journals nothing"):
     val tree = Sequence(Vector[Operation](Note(power, _ => None),
       ModifyDicePool(pool, 1)))
-    val Right(WalkerOutcome.Finished(_, events)) =
-      ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty): @unchecked
+    val events =
+      finished(ProcedureWalker.advance(ready, tree, None,
+        WalkerPowers.empty)).events
     assertEquals(notes(events), Vector.empty)
 
   test("a note in a branch that does not select it is not journaled"):
     val tree = Branch((state, _) =>
       if state.game.current.rollPools.contains(pool) then Vector(note("chosen"))
       else Vector(ModifyDicePool(pool, 1)))
-    val Right(WalkerOutcome.Finished(_, events)) =
-      ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty): @unchecked
+    val events =
+      finished(ProcedureWalker.advance(ready, tree, None,
+        WalkerPowers.empty)).events
     assertEquals(notes(events), Vector.empty)
 
   test("a resumed command journals only the notes after the park"):
     val tree = Sequence(Vector[Operation](note("before"), ask, note("after")))
-    val Right(WalkerOutcome.Parked(pending, first)) =
-      ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty): @unchecked
+    val WalkerOutcome.Parked(pending, first) =
+      parked(ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty))
     assertEquals(notes(first), Vector(noted("before")))
-    val Right(WalkerOutcome.Finished(_, second)) = ProcedureWalker.resolve(ready,
-      tree, pending, yes, WalkerPowers.empty): @unchecked
+    val second = finished(ProcedureWalker.resolve(ready, tree, pending, yes,
+      WalkerPowers.empty)).events
     assertEquals(notes(second), Vector(noted("after")))
 
   test("each new pass of a Repeat journals its note again"):
     val tree = Repeat((_, pending) => pending.answered.size < 2,
       Sequence(Vector[Operation](note("pass"), ask)))
-    val Right(WalkerOutcome.Parked(first, e1)) =
-      ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty): @unchecked
+    val WalkerOutcome.Parked(first, e1) =
+      parked(ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty))
     assertEquals(notes(e1), Vector(noted("pass")))
-    val Right(WalkerOutcome.Parked(second, e2)) = ProcedureWalker.resolve(ready,
-      tree, first, yes, WalkerPowers.empty): @unchecked
+    val WalkerOutcome.Parked(second, e2) = parked(ProcedureWalker.resolve(ready,
+      tree, first, yes, WalkerPowers.empty))
     assertEquals(notes(e2), Vector(noted("pass")))
-    val Right(WalkerOutcome.Finished(_, e3)) = ProcedureWalker.resolve(ready,
-      tree, second, yes, WalkerPowers.empty): @unchecked
+    val e3 = finished(ProcedureWalker.resolve(ready, tree, second, yes,
+      WalkerPowers.empty)).events
     assertEquals(notes(e3), Vector.empty)
 
   test("a Repeat whose pass only notes stops after one pass"):
@@ -111,12 +121,14 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
     val state = OathState.Ready(ready)
     assertEquals(ProcedureWalker.applyRecorded(state, noted("x")), Right(state))
 
-  test("a phase power's selected card, relic, edifice, site or banner is its " +
-      "note source"):
-    assertEquals(PowerSourceRef.of(DecisionOptionRef.Denizen(DenizenId("93"))),
-      Some(PowerSourceRef.Card(DenizenId("93"))))
+  test("a selected card, site or banner is its note source, and a button has " +
+      "none"):
+    val gamblingHall = CatalogNames.denizen("Gambling Hall")
+    assertEquals(PowerSourceRef.of(DecisionOptionRef.Denizen(gamblingHall)),
+      Some(PowerSourceRef.Card(gamblingHall)))
     assertEquals(PowerSourceRef.of(DecisionOptionRef.Site(SiteId("s"))),
       Some(PowerSourceRef.Site(SiteId("s"))))
-    assertEquals(PowerSourceRef.of(DecisionOptionRef.Banner(Banner.DarkestSecret)),
+    assertEquals(
+      PowerSourceRef.of(DecisionOptionRef.Banner(Banner.DarkestSecret)),
       Some(PowerSourceRef.Banner(Banner.DarkestSecret)))
     assertEquals(PowerSourceRef.of(DecisionOptionRef.Button("b")), None)

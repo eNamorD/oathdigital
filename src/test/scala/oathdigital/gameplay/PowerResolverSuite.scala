@@ -3,11 +3,13 @@ package oathdigital.gameplay
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.{ReviewedPowerFacts, ReviewedPowerInspector}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 import oathdigital.model.MajorActionType._
 import oathdigital.model.PowerResolution._
 import oathdigital.model.PowerWindow._
-import oathdigital.model.{MajorActionType, Orientation, PlayerId, PowerId,
+import oathdigital.model.{MajorActionType, PlayerId, PowerId,
   PowerResolution, PowerWindow, RuleSourceRef, SiteId}
 
 private object PowerResolverSuiteFixtures:
@@ -68,24 +70,28 @@ class PowerResolverSuite extends munit.FunSuite:
       recover, modifier = Some(Recover))
     val withoutModifier = power("test.without-modifier",
       Vector(RecoverEligibility), recover)
-    val resolver = new PowerResolver(PowerRegistry(withModifier, withoutModifier))
+    val resolver = new PowerResolver(
+      PowerRegistry(withModifier, withoutModifier))
     val sources = Vector(sourceA -> Vector(withModifier.id, withoutModifier.id))
     val facts = RecoverFacts(PlayerId("p1"), emptySlot = true)
-    assertEquals(resolver.resolve(SearchEligibility, sources, facts).toOption.get
+    assertEquals(accepted(resolver.resolve(SearchEligibility, sources, facts))
       .offered, Vector.empty)
-    assertEquals(resolver.resolve(RecoverEligibility, sources, facts).toOption.get
+    assertEquals(accepted(resolver.resolve(RecoverEligibility, sources, facts))
       .offered.map(_.powerId), Vector(PowerId("test.with-modifier"),
         PowerId("test.without-modifier")))
 
   test("typed facts reach inspectors and inapplicable implemented powers disappear"):
-    val applicable = power("test.applicable", Vector(RecoverEligibility), recover)
-    val inapplicable = power("test.inapplicable", Vector(RecoverEligibility), never)
+    val applicable = power("test.applicable", Vector(RecoverEligibility),
+      recover)
+    val inapplicable = power("test.inapplicable", Vector(RecoverEligibility),
+      never)
     val resolver = new PowerResolver(PowerRegistry(applicable, inapplicable))
     val actor = PlayerId("p1")
-    val result = resolver.resolve(RecoverEligibility, Vector(sourceA -> Vector(
-      applicable.id, inapplicable.id)),
-      RecoverFacts(actor, emptySlot = true)).toOption.get
-    assertEquals(result.offered.map(_.powerId), Vector(PowerId("test.applicable")))
+    val result = accepted(resolver.resolve(RecoverEligibility,
+      Vector(sourceA -> Vector(applicable.id, inapplicable.id)),
+      RecoverFacts(actor, emptySlot = true)))
+    assertEquals(result.offered.map(_.powerId),
+      Vector(PowerId("test.applicable")))
     assertEquals(result.offered.head.inspection.eligiblePlayer, Some(actor))
     assertEquals(result.offered.head.inspection.decisionPlayer, Some(actor))
 
@@ -101,8 +107,9 @@ class PowerResolverSuite extends munit.FunSuite:
       Vector(RestStart), resolution = Automatic)
     val powers = Vector(selected, applicableAutomatic, inapplicableAutomatic,
       implementedAutomatic)
-    val result = new PowerResolver(PowerRegistry(powers*)).resolve(RestStart,
-      Vector(sourceA -> powers.map(_.id)), NoFacts).toOption.get
+    val result = accepted(
+      new PowerResolver(PowerRegistry(powers*)).resolve(RestStart,
+      Vector(sourceA -> powers.map(_.id)), NoFacts))
     assertEquals(result.offered, Vector.empty)
     assertEquals(result.automatic.map(_.powerId),
       Vector(PowerId("test.implemented-automatic")))
@@ -113,13 +120,13 @@ class PowerResolverSuite extends munit.FunSuite:
     val alpha = power("test.alpha", Vector(RecoverEligibility), recover)
     val beta = power("test.beta", Vector(RecoverEligibility), recover)
     val facts = RecoverFacts(PlayerId("p1"), emptySlot = true)
-    val result = new PowerResolver(PowerRegistry(beta, alpha)).resolve(
+    val result = accepted(new PowerResolver(PowerRegistry(beta, alpha)).resolve(
       RecoverEligibility, Vector(sourceZ -> Vector(beta.id,
         alpha.id), sourceA -> Vector(beta.id)), facts)
-      .toOption.get
-    assertEquals(result.offered.map(i => i.source.stableKey -> i.powerId), Vector(
-      "site:a" -> PowerId("test.beta"), "site:z" -> PowerId("test.alpha"),
-      "site:z" -> PowerId("test.beta")))
+      )
+    assertEquals(result.offered.map(i => i.source.stableKey -> i.powerId),
+      Vector("site:a" -> PowerId("test.beta"),
+      "site:z" -> PowerId("test.alpha"), "site:z" -> PowerId("test.beta")))
 
   test("registry rejects duplicates and unknown abilities fail before routing"):
     val first = power("test.same", Vector(RestStart))
@@ -137,9 +144,9 @@ class PowerResolverSuite extends munit.FunSuite:
       PowerHandlers.selected(RestEnd)(inspector)))
     val resolver = new PowerResolver(PowerRegistry(multi))
     val sources = Vector(sourceA -> Vector(multi.id))
-    assertEquals(resolver.resolve(RestStart, sources, NoFacts).toOption.get
+    assertEquals(accepted(resolver.resolve(RestStart, sources, NoFacts))
       .automatic.map(_.powerId), Vector(multi.id))
-    assertEquals(resolver.resolve(RestEnd, sources, NoFacts).toOption.get
+    assertEquals(accepted(resolver.resolve(RestEnd, sources, NoFacts))
       .offered.map(_.powerId), Vector(multi.id))
 
   test("partial inspectors safely reject unrelated facts and factory modes persist"):
@@ -159,31 +166,25 @@ class PowerResolverSuite extends munit.FunSuite:
       RecoverFacts(PlayerId("p1"), emptySlot = true))).applicable)
 
   test("resolver treats a faceup relic at the actor pawn site as accessible"):
-    val base = Table.start.relicAt("Sticky Fire", at = "Broken Peaks").ready
-    val actor = base.game.current.turn.activePlayer
-    val (siteId, relic) = base.game.current.map.inPlay.iterator.flatMap(id =>
-      base.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
-    val players = base.game.current.players.map(player =>
-      if player.player == actor then player.copy(pawnSite = Some(siteId)) else player)
-    val site = base.game.current.map.sites(siteId)
-    val faceup = relic.copy(orientation = Orientation.FaceUp)
-    val changed = base.updateCurrent(_.copy(
-      players = players, map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(siteId, site.copy(relics =
-          faceup +: site.relics.tail)))))
-    val source = RuleSourceRef.SiteRelic(siteId, relic.id)
+    val actor = p1
+    val siteId = CatalogNames.site("Broken Peaks")
+    val relic = CatalogNames.relic("Sticky Fire")
+    val changed = Table.start.pawn(actor, at = siteId)
+      .relicAt(relic, at = siteId, facedown = false).ready
+    val source = RuleSourceRef.SiteRelic(siteId, relic)
     val indexed = IndexedRuleSource(source, Vector(PowerId("test.site-relic")),
       RuleSourceFace.FaceUp)
     val handler = new PowerHandler:
       val window: PowerWindow = PowerWindow.RestStart
       val resolution: PowerResolution = PowerResolution.PlayerSelected
       val implemented = true
-      def inspect(context: PowerContext) = ReviewedPowerInspector.inspect(context)
+      def inspect(context: PowerContext) =
+        ReviewedPowerInspector.inspect(context)
     val power = new Power:
       val id = PowerId("test.site-relic")
       val modifier: Option[MajorActionType] = None
       val handlers: Vector[PowerHandler] = Vector(handler)
-    val result = new PowerResolver(PowerRegistry(power)).resolve(
+    val result = accepted(new PowerResolver(PowerRegistry(power)).resolve(
       PowerWindow.RestStart, Vector(source -> Vector(power.id)),
-      ReviewedPowerFacts(catalog, changed, actor, Map(source -> indexed))).toOption.get
+      ReviewedPowerFacts(catalog, changed, actor, Map(source -> indexed))))
     assertEquals(result.offered.map(_.source), Vector(source))

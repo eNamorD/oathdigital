@@ -6,6 +6,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 /** The global operation restrictions (global operation restrictions design,
   * "Rules"): a locked card cannot be moved or flipped while it shows its lock,
@@ -80,22 +81,24 @@ class OperationRestrictionsSuite extends munit.FunSuite:
     val ready = Table.start.adviser(p1, plainCard).ready
     assertEquals(refusal(ready, discard(plainCard, Location.PlayArea(p1))), None)
 
-  /** The Hall on `side` at p1's site, which p1 rules. */
-  private def edificeAt(side: EdificeSide): (ReadyGame, SiteId) =
-    val home = Table.quietPawnSite(p1)
-    (Table.start.edifice(hall, side, at = home).warbandsAt(home, p1, 1).ready,
-      home)
+  /** The Hall's site, where p1 stands. */
+  private val hallSite = CatalogNames.site("Ancient City")
+
+  /** The Hall on `side` at Ancient City, which p1 rules. */
+  private def edificeAt(side: EdificeSide): ReadyGame =
+    Table.start.pawn(p1, at = hallSite).edifice(hall, side, at = hallSite)
+      .warbandsAt(hallSite, p1, 1).ready
 
   test("an intact edifice is locked, and a ruined one is not"):
     def edificeOps(site: SiteId): Vector[CoreOperation] = Vector(
       Discard.RuinedEdifice(hall, PositionedLocation(Location.Site(site)),
         catalog.suitOf(hall).get, 0, 0, p1),
       Take(Piece.Card(hall), p1, Location.Site(site), Location.PlayArea(p1)))
-    val (intact, site) = edificeAt(EdificeSide.Intact)
-    assertEquals(edificeOps(site).map(refusal(intact, _)),
+    val intact = edificeAt(EdificeSide.Intact)
+    assertEquals(edificeOps(hallSite).map(refusal(intact, _)),
       Vector.fill(2)(Some("locked")))
-    val (ruined, ruinedSite) = edificeAt(EdificeSide.Ruined)
-    assertEquals(edificeOps(ruinedSite).map(refusal(ruined, _)),
+    val ruined = edificeAt(EdificeSide.Ruined)
+    assertEquals(edificeOps(hallSite).map(refusal(ruined, _)),
       Vector.fill(2)(None))
 
   test("a modifier selected for the running action cannot be discarded"):
@@ -117,13 +120,13 @@ class OperationRestrictionsSuite extends munit.FunSuite:
 
   test("the Hall of Ministers refuses an enemy's discard at its ruler's sites, " +
       "relics included, and names the discard's own acting player"):
-    val home = Table.quietPawnSite(p1)
-    val ready = Table.start.edifice(hall, EdificeSide.Intact, at = home)
-      .warbandsAt(home, p1, 1).denizen(plainCard, at = home)
-      .relicAt(drum, at = home).ready
-    val byEnemy = discard(plainCard, Location.Site(home), actor = p2)
+    val ready = Table.start.pawn(p1, at = hallSite)
+      .edifice(hall, EdificeSide.Intact, at = hallSite)
+      .warbandsAt(hallSite, p1, 1).denizen(plainCard, at = hallSite)
+      .relicAt(drum, at = hallSite).ready
+    val byEnemy = discard(plainCard, Location.Site(hallSite), actor = p2)
     val relicByEnemy = Discard.Relic(drum,
-      PositionedLocation(Location.Site(home)), 0, p2)
+      PositionedLocation(Location.Site(hallSite)), 0, p2)
     assertEquals(refusal(ready, byEnemy), Some("discard-immune"))
     assertEquals(refusal(ready, relicByEnemy), Some("discard-immune"))
     assertEquals(refusal(ready, byEnemy.copy(actingPlayer = p1)), None)
@@ -154,14 +157,16 @@ class OperationRestrictionsSuite extends munit.FunSuite:
       Vector[OperationRestriction](HallOfMinisters, GrandScepter))
     assertEquals(GrandScepter.relic, scepter)
 
-  test("the catalog prints a lock for every lock-icon card and only those"):
+  test("the catalog prints a lock for Sealing Ward and Hall of Ministers but " +
+      "not for Errand Boy"):
     val locked = set.printed.collect { case value: LockedCards => value.cards }
       .flatten.toSet
     assert(locked.contains(lockedCard))
     assert(locked.contains(hall))
     assert(!locked.contains(plainCard))
 
-  test("no catalog holds only the powers' restrictions"):
+  test("the empty restriction set refuses nothing, even for a selected " +
+      "modifier"):
     assertEquals(OperationRestrictions.none.active(Vector.empty,
       Vector(PowerId("denizen.wild-cry"))), Vector.empty)
 
@@ -178,9 +183,9 @@ class OperationRestrictionsSuite extends munit.FunSuite:
         case _: Take => Some(OperationReason("test.no-take", "no take",
           OperationReasonKind.Impossible))
         case _ => None
-    def run(restrictions: Vector[OperationRestriction]) = OperationPipeline.run(
-      ready, Vector(take), OperationPolicy.Permissive, restrictions)(Right(_))
-      .toOption.get
+    def run(restrictions: Vector[OperationRestriction]) =
+      accepted(OperationPipeline.run(ready, Vector(take),
+        OperationPolicy.Permissive, restrictions)(Right(_)))
     val order = (state: ReadyGame) => state.banks.favor.getOrElse(Suit.Order, 0)
     val refused = run(Vector(noTake))
     assertEquals(refused.executed, Vector.empty)

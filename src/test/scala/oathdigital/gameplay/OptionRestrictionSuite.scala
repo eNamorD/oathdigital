@@ -6,6 +6,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers
   WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
+import oathdigital.testkit.Outcomes.parked
 
 object OptionRestrictionSuite:
   /** A power whose only contribution is one option restriction at one window. */
@@ -37,16 +38,16 @@ class OptionRestrictionSuite extends munit.FunSuite:
     Vector[Operation](Decide("pick", actor, query, window = Some(window))))
 
   test("without a restriction the parked query is what the tree declared"):
-    val Right(WalkerOutcome.Parked(pending, _)) = ProcedureWalker.advance(ready,
-      optionalPick, None, WalkerPowers.empty): @unchecked
+    val pending = parked(ProcedureWalker.advance(ready,
+      optionalPick, None, WalkerPowers.empty)).tree
     assertEquals(ProcedureWalker.openDecisions(ready, optionalPick, pending,
       WalkerPowers.empty).map(_.query),
       Vector(DecisionQuery.ChooseMany(0, 3, all, Some("Pick"))))
 
   test("a forbidden option is absent from the parked query and from every answer"):
     val powers = WalkerPowers(Vector(forbid("test.no-b", "b")))
-    val Right(WalkerOutcome.Parked(pending, _)) = ProcedureWalker.advance(ready,
-      optionalPick, None, powers): @unchecked
+    val pending = parked(ProcedureWalker.advance(ready,
+      optionalPick, None, powers)).tree
     assertEquals(ProcedureWalker.openDecisions(ready, optionalPick, pending,
       powers).map(_.query), Vector(DecisionQuery.ChooseMany(0, 2,
       Vector(option("a"), option("c")), Some("Pick"))))
@@ -60,8 +61,8 @@ class OptionRestrictionSuite extends munit.FunSuite:
   test("restrictions from two powers compose"):
     val powers = WalkerPowers(Vector(forbid("test.no-a", "a"),
       forbid("test.no-b", "b")))
-    val Right(WalkerOutcome.Parked(pending, _)) = ProcedureWalker.advance(ready,
-      optionalPick, None, powers): @unchecked
+    val pending = parked(ProcedureWalker.advance(ready,
+      optionalPick, None, powers)).tree
     assertEquals(ProcedureWalker.openDecisions(ready, optionalPick, pending,
       powers).map(_.query), Vector(DecisionQuery.ChooseMany(0, 1,
       Vector(option("c")), Some("Pick"))))
@@ -77,8 +78,8 @@ class OptionRestrictionSuite extends munit.FunSuite:
   test("a restriction at another window changes nothing"):
     val elsewhere = TestOptionRestrictionPower(PowerId("test.elsewhere"),
       PowerWindow.ChallengeBannerSelection, (_, _) => Some(blocked))
-    val Right(WalkerOutcome.Parked(pending, _)) = ProcedureWalker.advance(ready,
-      optionalPick, None, WalkerPowers(Vector(elsewhere))): @unchecked
+    val pending = parked(ProcedureWalker.advance(ready,
+      optionalPick, None, WalkerPowers(Vector(elsewhere)))).tree
     assertEquals(ProcedureWalker.openDecisions(ready, optionalPick, pending,
       WalkerPowers(Vector(elsewhere))).map(_.query),
       Vector(DecisionQuery.ChooseMany(0, 3, all, Some("Pick"))))

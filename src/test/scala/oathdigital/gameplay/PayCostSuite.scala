@@ -2,38 +2,30 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class PayCostSuite extends munit.FunSuite:
-  private val base = Table.start.ready
-  private val current = base.game.current
-  private val actor = current.turn.activePlayer
-  private val siteId = current.map.inPlay.head
-  private val denizen = current.commonCards.worldDeck.collectFirst {
-    case id: DenizenId => id }.get
+  private val actor = p1
+  private val denizen = CatalogNames.denizen("Errand Boy")
 
+  /** p1 holds 3 favor and 3 faceup secrets; Errand Boy stands at Ancient
+    * City carrying `tokens`. */
   private def withCard(tokens: Tokens): ReadyGame =
-    base.updateCurrent(c => c.copy(
-      commonCards = c.commonCards.copy(worldDeck =
-        c.commonCards.worldDeck.filterNot(_ == denizen)),
-      players = c.players.map(p => if p.player != actor then p else
-        p.copy(board = p.board.copy(favor = 3, faceUpSecrets = 3))),
-      map = c.map.copy(sites = c.map.sites.updated(siteId,
-        c.map.sites(siteId).copy(denizens = Vector(DenizenState(denizen,
-          Orientation.FaceUp, tokens)))))))
+    Table.start.favor(actor, 3).secrets(actor, faceUp = 3)
+      .denizen(denizen, at = "Ancient City")
+      .tokens(denizen, tokens.favor, tokens.secrets).ready
 
   private def pay(state: ReadyGame, operation: PayCost) =
     OperationPipeline.run(state, Vector(operation),
       OperationPolicy.Permissive, Vector.empty)(Right(_))
 
-  private def tokensOn(state: ReadyGame): Tokens =
-    state.game.current.map.sites(siteId).denizens.collectFirst {
-      case d: DenizenState if d.id == denizen => d.tokens }.get
 
   test("a placed cost is accepted onto an empty card"):
-    val state = pay(withCard(Tokens.empty), PayCost(actor,
-      Location.OnCard(denizen), Cost(favor = 1, secret = 1))).toOption.get.state
-    assertEquals(tokensOn(state), Tokens(1, 1))
+    val state = accepted(pay(withCard(Tokens.empty), PayCost(actor,
+      Location.OnCard(denizen), Cost(favor = 1, secret = 1)))).state
+    assertEquals(Look(state).tokensOn(denizen), Tokens(1, 1))
 
   test("a placed cost onto an occupied card is rejected"):
     assertEquals(pay(withCard(Tokens(1, 0)), PayCost(actor,
@@ -44,15 +36,15 @@ class PayCostSuite extends munit.FunSuite:
         s"${denizen.value} already holds favor or secrets, so a cost cannot be placed on it")))
 
   test("intoOccupied places onto an occupied card"):
-    val state = pay(withCard(Tokens(1, 0)), PayCost(actor,
+    val state = accepted(pay(withCard(Tokens(1, 0)), PayCost(actor,
       Location.OnCard(denizen), Cost(secret = 1), intoOccupied = true))
-      .toOption.get.state
-    assertEquals(tokensOn(state), Tokens(1, 1))
+      ).state
+    assertEquals(Look(state).tokensOn(denizen), Tokens(1, 1))
 
   test("a burnt-only cost ignores what the card holds"):
-    val state = pay(withCard(Tokens(1, 1)), PayCost(actor,
-      Location.OnCard(denizen), Cost(secretBurnt = 1))).toOption.get.state
-    assertEquals(tokensOn(state), Tokens(1, 1))
+    val state = accepted(pay(withCard(Tokens(1, 1)), PayCost(actor,
+      Location.OnCard(denizen), Cost(secretBurnt = 1)))).state
+    assertEquals(Look(state).tokensOn(denizen), Tokens(1, 1))
 
   test("Costs.affordable applies the same rule"):
     val at = Location.OnCard(denizen)

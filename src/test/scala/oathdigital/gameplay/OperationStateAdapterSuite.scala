@@ -3,6 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
+import oathdigital.testkit.Unwrap.rejected
 
 class OperationStateAdapterSuite extends munit.FunSuite:
   private val exile = ForceKind.Exile(lineageId)
@@ -32,8 +33,8 @@ class OperationStateAdapterSuite extends munit.FunSuite:
         SiteId("S9"), SiteCardArea.Denizens), 0)),
       Right(reliquaryRelic -> CardLocation(CardContainer.Reliquary, 0)),
       Right(dispossessed -> CardLocation(CardContainer.Dispossessed, 0))))
-    assert(OperationStateAdapter.card(ready, worldDenizen,
-      Location.PlayArea(playerId)).left.toOption.get
+    assert(rejected(OperationStateAdapter.card(ready, worldDenizen,
+      Location.PlayArea(playerId)))
       .isInstanceOf[OperationError.MissingPiece])
 
   test("temporary hands are not part of a player's play area"):
@@ -43,13 +44,17 @@ class OperationStateAdapterSuite extends munit.FunSuite:
 
     assert(OperationStateAdapter.card(inHand, worldDenizen,
       Location.Hand(playerId)).isRight)
-    assert(OperationStateAdapter.card(inHand, worldDenizen,
-      Location.PlayArea(playerId)).left.toOption.get
+    assert(rejected(OperationStateAdapter.card(inHand, worldDenizen,
+      Location.PlayArea(playerId)))
       .isInstanceOf[OperationError.MissingPiece])
 
   test("piece quantities cover boards sites cards banners and bounded banks"):
     import AvailableQuantity._
 
+    // TestGameFixtures: red holds 1 favor and 3 warbands at S1; D2 and the
+    // People's Favor carry 1 favor each; the Order bank holds 5. The Exile
+    // bank is the printed 14 less red's 3, the Bandit bank the printed 24
+    // less the 8 sites' Bandits.
     assertEquals(OperationStateAdapter.quantity(ready, Piece.Favor(1),
       Location.PlayArea(playerId)), Right(Finite(1)))
     assertEquals(OperationStateAdapter.quantity(ready, Piece.Favor(1),

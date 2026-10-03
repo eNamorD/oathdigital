@@ -6,6 +6,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers
 import oathdigital.model._
 import oathdigital.testkit.WalkerStubs.TestRestrictionPower
 import oathdigital.testkit.Table
+import oathdigital.testkit.Outcomes
 
 /** The walker hides an option whose answer would break a `Restriction`, even
   * when the restriction's window exists only once that answer is given, so a
@@ -45,9 +46,7 @@ class RestrictionLookAheadSuite extends munit.FunSuite:
       DecisionAnswer.ChooseOneAnswer(ref("yes")))
 
   private def parked(tree: Operation): PendingTree =
-    val Right(WalkerOutcome.Parked(pending, _)) =
-      ProcedureWalker.advance(ready, tree, None, powers): @unchecked
-    pending
+    Outcomes.parked(ProcedureWalker.advance(ready, tree, None, powers)).tree
 
   private def parkedQuery(tree: Operation): DecisionQuery =
     ProcedureWalker.openDecisions(ready, tree, parked(tree), powers).head.query

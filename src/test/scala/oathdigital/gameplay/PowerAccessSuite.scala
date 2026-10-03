@@ -1,35 +1,31 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.{p1, p2}
 
 class PowerAccessSuite extends munit.FunSuite:
-  private val base = Table.start.ready
-  private val current = base.game.current
-  private val actor = current.turn.activePlayer
-  private val me = current.players.find(_.player == actor).get
-  private val other = current.players.map(_.player).find(_ != actor).get
-  private val home = me.pawnSite.get
-  private val far = current.map.inPlay.find(_ != home).get
-  private val exile = SiteForces.Occupied(ForceKind.Exile(me.lineage), 1)
-  private val bandit = SiteForces.Occupied(ForceKind.Bandit, 1)
-  private val card = DenizenId(catalog.denizens.head.id.value)
-
-  private def farRuledBy(forces: SiteForces): ReadyGame =
-    base.updateCurrent(c => c.copy(map = c.map.copy(sites =
-      c.map.sites.updated(far, c.map.sites(far).copy(forces = forces)))))
-  private def viaBoard(update: PlayerState => PlayerState): ReadyGame =
-    base.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if p.player == actor then update(p) else p)))
+  private val actor = p1
+  private val other = p2
+  /** p1's pawn site. */
+  private val home = CatalogNames.site("Ancient City")
+  /** A site p1 does not stand at. */
+  private val far = CatalogNames.site("Broken Peaks")
+  private val card = CatalogNames.denizen("Errand Boy")
+  /** p1 standing at Ancient City. */
+  private val base = Table.start.pawn(actor, at = home).ready
+  private val farRuledByActor = Table.start.pawn(actor, at = home)
+    .warbandsAt(far, actor, 1)
+  private val farRuledByBandit = Table.start.pawn(actor, at = home)
+    .bandits(far, 1)
 
   private def siteCard(site: SiteId, state: ReadyGame) = PowerAccess.accessible(
     RuleSourceRef.SiteCard(site, card), RuleSourceFace.FaceUp, state, actor)
 
   test("a site card is usable at the pawn's site and at a ruled site only"):
     assert(siteCard(home, base))
-    assert(!siteCard(far, farRuledBy(bandit)))
-    assert(siteCard(far, farRuledBy(exile)))
+    assert(!siteCard(far, farRuledByBandit.ready))
+    assert(siteCard(far, farRuledByActor.ready))
 
   test("a facedown site card is never usable"):
     assert(!PowerAccess.accessible(RuleSourceRef.SiteCard(home, card),
@@ -40,8 +36,8 @@ class PowerAccessSuite extends munit.FunSuite:
       def edifice(site: SiteId, state: ReadyGame) = PowerAccess.accessible(
         RuleSourceRef.Edifice(site, EdificeId("e")), face, state, actor)
       assert(edifice(home, base), face.toString)
-      assert(edifice(far, farRuledBy(exile)), face.toString)
-      assert(!edifice(far, farRuledBy(bandit)), face.toString)
+      assert(edifice(far, farRuledByActor.ready), face.toString)
+      assert(!edifice(far, farRuledByBandit.ready), face.toString)
     }
 
   test("a relic at a site never grants access"):
@@ -70,45 +66,36 @@ class PowerAccessSuite extends munit.FunSuite:
     def banner(state: ReadyGame) = PowerAccess.accessible(
       RuleSourceRef.Banner(Banner.PeoplesFavor.key), RuleSourceFace.GrandCouncil,
       state, actor)
-    def heldBy(holder: Option[PlayerId]) = base.updateCurrent(c => c.copy(
-      banners = c.banners.copy(peoplesFavor =
-        c.banners.peoplesFavor.copy(holder = holder))))
+    def heldBy(holder: Option[PlayerId]) =
+      Table.start.peoplesFavor(holder, favor = 1).ready
     assert(banner(heldBy(Some(actor))))
     assert(!banner(heldBy(Some(other))))
     assert(!banner(heldBy(None)))
 
   test("locate finds a card the actor may use, and says where it is"):
-    val atHome = base.updateCurrent(c => c.copy(map = c.map.copy(sites =
-      c.map.sites.updated(home, c.map.sites(home).copy(denizens =
-        Vector(DenizenState(card, Orientation.FaceUp, Tokens.empty)))))))
+    val atHome = Table.start.pawn(actor, at = home).denizen(card, at = home)
+      .ready
     assertEquals(PowerAccess.locate(atHome, actor, card),
       Some(PowerAccess.Held.AtSite(home)))
     assertEquals(PowerAccess.siteOf(atHome, actor, card), Some(home))
 
-    val ruledFar = farRuledBy(exile).updateCurrent(c => c.copy(map =
-      c.map.copy(sites = c.map.sites.updated(far, c.map.sites(far).copy(
-        denizens = Vector(DenizenState(card, Orientation.FaceUp, Tokens.empty)))))))
+    val ruledFar = farRuledByActor.denizen(card, at = far).ready
     assertEquals(PowerAccess.locate(ruledFar, actor, card),
       Some(PowerAccess.Held.AtSite(far)))
-    val unruledFar = ruledFar.updateCurrent(c => c.copy(map = c.map.copy(
-      sites = c.map.sites.updated(far, c.map.sites(far).copy(forces = bandit)))))
+    val unruledFar = farRuledByBandit.denizen(card, at = far).ready
     assertEquals(PowerAccess.locate(unruledFar, actor, card), None)
 
-    val adviser = viaBoard(_.copy(advisers = Vector(DenizenState(card,
-      Orientation.FaceUp, Tokens.empty))))
+    val adviser = Table.start.pawn(actor, at = home).adviser(actor, card).ready
     assertEquals(PowerAccess.locate(adviser, actor, card),
       Some(PowerAccess.Held.InPlayArea))
     assertEquals(PowerAccess.siteOf(adviser, actor, card), Some(home))
-    val facedown = viaBoard(_.copy(advisers = Vector(DenizenState(card,
-      Orientation.FaceDown, Tokens.empty))))
+    val facedown = Table.start.adviser(actor, card, facedown = true).ready
     assertEquals(PowerAccess.locate(facedown, actor, card), None)
 
   test("locate finds an edifice at a ruled site, intact or ruined"):
-    val edifice = EdificeId(catalog.edifices.head.id.value)
+    val edifice = CatalogNames.edifice("Hall of Ministers")
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
-      val state = farRuledBy(exile).updateCurrent(c => c.copy(map = c.map.copy(
-        sites = c.map.sites.updated(far, c.map.sites(far).copy(denizens =
-          Vector(EdificeState(edifice, side, Tokens.empty)))))))
+      val state = farRuledByActor.edifice(edifice, side, at = far).ready
       assertEquals(PowerAccess.locate(state, actor, edifice),
         Some(PowerAccess.Held.AtSite(far)), side.toString)
     }

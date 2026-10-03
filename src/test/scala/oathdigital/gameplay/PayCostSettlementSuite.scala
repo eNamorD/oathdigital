@@ -1,85 +1,79 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 class PayCostSettlementSuite extends munit.FunSuite:
-  private val base = Table.start.ready
-  private val current = base.game.current
-  private val active = current.turn.activePlayer
-  private val payer = current.players.map(_.player).find(_ != active).get
-  private val siteId = current.map.inPlay.head
-  private val denizen = current.commonCards.worldDeck.collectFirst {
-    case id: DenizenId => id }.get
-  private val suit = catalog.suitOf(denizen).get
+  private val active = p1
+  private val payer = p2
+  private val denizen = CatalogNames.denizen("Errand Boy")
+  private val suit = Suit.Beast
 
-  private def arranged(cardTokens: Tokens = Tokens.empty): ReadyGame =
-    base.updateCurrent(c => c.copy(
-      commonCards = c.commonCards.copy(worldDeck =
-        c.commonCards.worldDeck.filterNot(_ == denizen)),
-      players = c.players.map(p => if p.player != payer then p else
-        p.copy(board = p.board.copy(favor = 3, faceUpSecrets = 3,
-          faceDownSecrets = 0))),
-      map = c.map.copy(sites = c.map.sites.updated(siteId,
-        c.map.sites(siteId).copy(denizens = Vector(DenizenState(denizen,
-          Orientation.FaceUp, cardTokens)))))))
+  /** p2, off turn, holds 3 favor and 3 faceup secrets; Errand Boy stands at
+    * Ancient City carrying `cardTokens`. */
+  private def offTurnPayer(cardTokens: Tokens = Tokens.empty): Table =
+    Table.start.favor(payer, 3).secrets(payer, faceUp = 3)
+      .denizen(denizen, at = "Ancient City")
+      .tokens(denizen, cardTokens.favor, cardTokens.secrets)
 
   private def run(state: ReadyGame, operation: PayCost) =
     OperationPipeline.run(state, Vector(operation),
       OperationPolicy.Permissive, Vector.empty)(Right(_))
-  private def board(state: ReadyGame, player: PlayerId) =
-    state.game.current.players.find(_.player == player).get.board
-  private def tokensOn(state: ReadyGame): Tokens =
-    state.game.current.map.sites(siteId).denizens.collectFirst {
-      case d: DenizenState if d.id == denizen => d.tokens }.get
   private def offTurnPay(cost: Cost, bank: Option[Suit] = Some(suit),
       intoOccupied: Boolean = false) = PayCost(payer,
     Location.OnCard(denizen), cost, intoOccupied, bank)
 
   test("an off-turn favor payment goes straight to the matching bank"):
-    val start = arranged()
-    val done = run(start, offTurnPay(Cost(favor = 2))).toOption.get
-    assertEquals(tokensOn(done.state), Tokens.empty)
-    assertEquals(board(done.state, payer).favor, 1)
+    val start = offTurnPayer().ready
+    val done = accepted(run(start, offTurnPay(Cost(favor = 2))))
+    assertEquals(Look(done.state).tokensOn(denizen), Tokens.empty)
+    // 3 favor, 2 paid.
+    assertEquals(Look(done.state).favor(payer), 1)
     assertEquals(done.state.banks.favor.getOrElse(suit, 0),
       start.banks.favor.getOrElse(suit, 0) + 2)
 
   test("an off-turn secret payment flips facedown instead of resting on the card"):
-    val done = run(arranged(), offTurnPay(Cost(secret = 2))).toOption.get
-    assertEquals(tokensOn(done.state), Tokens.empty)
-    val after = board(done.state, payer)
+    val done = accepted(run(offTurnPayer().ready, offTurnPay(Cost(secret = 2))))
+    assertEquals(Look(done.state).tokensOn(denizen), Tokens.empty)
+    val after = Look(done.state).player(payer).board
+    // 3 faceup secrets, 2 of them turned facedown.
     assertEquals(after.faceUpSecrets -> after.faceDownSecrets, 1 -> 2)
 
   test("burnt portions are unchanged off-turn"):
-    val done = run(arranged(), offTurnPay(Cost(secretBurnt = 1))).toOption.get
-    val after = board(done.state, payer)
+    val done =
+      accepted(run(offTurnPayer().ready, offTurnPay(Cost(secretBurnt = 1))))
+    val after = Look(done.state).player(payer).board
+    // 3 secrets, 1 burnt.
     assertEquals(after.faceUpSecrets + after.faceDownSecrets, 2)
 
   test("an off-turn payment onto an occupied card is allowed, since nothing rests"):
-    val done = run(arranged(Tokens(1, 1)), offTurnPay(Cost(favor = 1))).toOption.get
-    assertEquals(tokensOn(done.state), Tokens(1, 1))
+    val done = accepted(run(offTurnPayer(Tokens(1, 1)).ready,
+      offTurnPay(Cost(favor = 1))))
+    assertEquals(Look(done.state).tokensOn(denizen), Tokens(1, 1))
 
   test("an off-turn placed favor with no matching bank is rejected"):
-    assertEquals(run(arranged(), offTurnPay(Cost(favor = 1), bank = None))
-      .left.toOption, Some(OathViolation.CoreOperationRejected("no-matching-bank",
-        "favor paid outside the payer's turn needs the card's suit bank")))
-    assert(run(arranged(), offTurnPay(Cost(secret = 1), bank = None)).isRight)
+    assertEquals(run(offTurnPayer().ready, offTurnPay(Cost(favor = 1),
+      bank = None)).left.toOption,
+      Some(OathViolation.CoreOperationRejected("no-matching-bank",
+      "favor paid outside the payer's turn needs the card's suit bank")))
+    assert(run(offTurnPayer().ready,
+      offTurnPay(Cost(secret = 1), bank = None)).isRight)
 
   test("the recorded operation is the requested one, and replay reaches the same state"):
-    val start = arranged()
+    val start = offTurnPayer().ready
     val requested = offTurnPay(Cost(favor = 1, secret = 1))
-    val first = run(start, requested).toOption.get
+    val first = accepted(run(start, requested))
     assertEquals(first.executed, Vector[CoreOperation](requested))
-    val replayed = OperationPipeline.run(start, first.executed,
-      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get
+    val replayed = accepted(OperationPipeline.run(start, first.executed,
+      OperationPolicy.Permissive, Vector.empty)(Right(_)))
     assertEquals(replayed.state, first.state)
 
   test("the active player's payment still rests on the card"):
-    val start = arranged().updateCurrent(c => c.copy(players = c.players.map(p =>
-      if p.player != active then p else
-        p.copy(board = p.board.copy(favor = 3, faceUpSecrets = 3)))))
-    val done = run(start, PayCost(active, Location.OnCard(denizen),
-      Cost(favor = 1, secret = 1), matchingBank = Some(suit))).toOption.get
-    assertEquals(tokensOn(done.state), Tokens(1, 1))
+    val start = offTurnPayer().favor(active, 3).secrets(active, faceUp = 3)
+      .ready
+    val done = accepted(run(start, PayCost(active, Location.OnCard(denizen),
+      Cost(favor = 1, secret = 1), matchingBank = Some(suit))))
+    assertEquals(Look(done.state).tokensOn(denizen), Tokens(1, 1))

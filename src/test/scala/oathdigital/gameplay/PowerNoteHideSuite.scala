@@ -6,6 +6,7 @@ import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerOutcome,
   WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.Table
+import oathdigital.testkit.Outcomes.{finished, parked}
 
 object PowerNoteHideSuite:
   val hideSource: PowerSourceRef = PowerSourceRef.Site(SiteId("test-site"))
@@ -53,27 +54,28 @@ class PowerNoteHideSuite extends munit.FunSuite:
   test("each option a power hides is noted before the decision parks"):
     val powers = WalkerPowers(Vector(HidingPower(hider, window,
       Set(site("b"), site("c")))))
-    val Right(WalkerOutcome.Parked(_, events)) =
-      ProcedureWalker.advance(ready, pick(ready), None, powers): @unchecked
+    val events =
+      parked(ProcedureWalker.advance(ready, pick(ready), None, powers)).events
     assertEquals(notes(events), Vector[OathEvent](
       PowerNoted(hider, hid(site("b")), covers = false),
       PowerNoted(hider, hid(site("c")), covers = false)))
 
   test("answering the decision does not note the hidden options again"):
-    val powers = WalkerPowers(Vector(HidingPower(hider, window, Set(site("b")))))
+    val powers = WalkerPowers(
+      Vector(HidingPower(hider, window, Set(site("b")))))
     val tree = pick(ready)
-    val Right(WalkerOutcome.Parked(pending, _)) =
-      ProcedureWalker.advance(ready, tree, None, powers): @unchecked
-    val Right(WalkerOutcome.Finished(_, events)) = ProcedureWalker.resolve(ready,
-      tree, pending, Answered("pick", DecisionAnswer.ChooseOneAnswer(site("a")),
-        actor), powers): @unchecked
+    val pending =
+      parked(ProcedureWalker.advance(ready, tree, None, powers)).tree
+    val events = finished(ProcedureWalker.resolve(ready, tree, pending,
+      Answered("pick", DecisionAnswer.ChooseOneAnswer(site("a")), actor),
+      powers)).events
     assertEquals(notes(events), Vector.empty)
 
   test("a power that says nothing hides silently"):
     val powers = WalkerPowers(Vector(HidingPower(hider, window, Set(site("b")),
       says = false)))
-    val Right(WalkerOutcome.Parked(_, events)) =
-      ProcedureWalker.advance(ready, pick(ready), None, powers): @unchecked
+    val events =
+      parked(ProcedureWalker.advance(ready, pick(ready), None, powers)).events
     assertEquals(notes(events), Vector.empty)
 
   test("an option the look-ahead hides is noted by the restriction it would break"):
@@ -89,13 +91,13 @@ class PowerNoteHideSuite extends munit.FunSuite:
           ref == DecisionOptionRef.Button("yes")
         case _ => false
       } then Vector(Sequence(Vector.empty, Some(nested))) else Vector.empty)))
-    val Right(WalkerOutcome.Parked(pending, events)) =
-      ProcedureWalker.advance(ready, tree, None, powers): @unchecked
+    val WalkerOutcome.Parked(pending, events) =
+      parked(ProcedureWalker.advance(ready, tree, None, powers))
     assertEquals(notes(events), Vector[OathEvent](PowerNoted(forbidder,
       PowerNote(hideSource, "forbade", Vector.empty), covers = false)))
-    val Right(WalkerOutcome.Finished(_, answered)) = ProcedureWalker.resolve(
+    val WalkerOutcome.Finished(_, answered) = finished(ProcedureWalker.resolve(
       ready, tree, pending, Answered("ask", DecisionAnswer.ChooseOneAnswer(
-        DecisionOptionRef.Button("no")), actor), powers): @unchecked
+        DecisionOptionRef.Button("no")), actor), powers))
     assertEquals(notes(answered), Vector.empty)
 
   test("a restriction on a tree with no decision to narrow writes no note"):
@@ -105,6 +107,6 @@ class PowerNoteHideSuite extends munit.FunSuite:
       PowerWindow.CampaignActionEligibility)))
     val tree = Sequence(Vector[Operation](ModifyDicePool(PoolKey("p"), 1)),
       Some(PowerWindow.CampaignActionEligibility))
-    val Right(WalkerOutcome.Finished(_, events)) =
-      ProcedureWalker.advance(ready, tree, None, powers): @unchecked
+    val events =
+      finished(ProcedureWalker.advance(ready, tree, None, powers)).events
     assertEquals(notes(events), Vector.empty)

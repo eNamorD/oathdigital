@@ -2,29 +2,29 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.Outcomes.finished
+import oathdigital.testkit.Table.p1
 
 /** When a `Repeat` stops. Its guard reads only state and answers, so a pass that
   * records nothing and asks nothing cannot change what the guard reads, and the
   * loop ends instead of repeating for ever.
   */
 class RepeatPassSuite extends munit.FunSuite:
-  private val actor = Table.start.ready.game.current.turn.activePlayer
-  private val low: ReadyGame = Table.start.ready.updateCurrent(current =>
-    current.copy(players = current.players.map(p =>
-      if p.player == actor then p.copy(board = p.board.copy(supply = SupplyTrack(1)))
-      else p)))
+  private val actor = p1
+  /** p1's Supply down to 1, so a gain shows. */
+  private val supplyOfOne: ReadyGame = Table.start.supply(p1, 1).ready
 
-  private def supply(state: ReadyGame): Int = state.game.current.players
-    .find(_.player == actor).get.board.supply.supply
+  private def supply(state: ReadyGame): Int = Look(state).supply(actor)
 
-  private def run(tree: Operation) = ProcedureWalker.advance(low, tree, None,
-    WalkerPowers.empty)
+  private def run(tree: Operation) = ProcedureWalker.advance(supplyOfOne, tree,
+    None, WalkerPowers.empty)
 
   test("a pass that records nothing ends the loop, and the walk goes on"):
-    val Right(WalkerOutcome.Finished(after, events)) = run(Sequence(Vector[Operation](
-      Repeat((_, _) => true, Sequence(Vector.empty)),
-      GainSupply(actor, 1)))): @unchecked
+    val WalkerOutcome.Finished(after, events) = finished(run(Sequence(
+      Vector[Operation](Repeat((_, _) => true, Sequence(Vector.empty)),
+        GainSupply(actor, 1)))))
+    // 1 + 1 gained.
     assertEquals(supply(after), 2)
     assertEquals(events.size, 1)
 
