@@ -11,11 +11,11 @@ import akka.http.scaladsl.model.headers.{Cookie, HttpCookiePair, RawHeader}
 
 import oathdigital.application._
 import oathdigital.persistence.HsqldbDatabaseOwner
+import oathdigital.testkit.HttpTestServer.{csrfDigest, csrfToken}
 import oathdigital.testkit.Unwrap.accepted
 
 class SessionSecuritySuite extends munit.FunSuite:
   private val cookieName = "oath_session"
-  private val csrfToken = "c" * 43
 
   test("session cookie authentication accepts a live session and collapses " +
       "every failure to invalid"):
@@ -29,7 +29,7 @@ class SessionSecuritySuite extends munit.FunSuite:
       identities, cookieName, () => 150L, executionContext)
 
     // Now is 150: an idle expiry of 140 has passed and 300 has not, and a
-    // session revoked at 120 is revoked.
+    // session revoked at 120 was revoked before now.
     val valid = "v" * 43
     val expired = "e" * 43
     val revoked = "r" * 43
@@ -133,9 +133,6 @@ class SessionSecuritySuite extends munit.FunSuite:
     }
     intercept[IllegalArgumentException]:
       new SameOriginCsrfProtection("http://localhost.evil.example")
-
-  private def csrfDigest: CsrfTokenDigest =
-    accepted(CsrfTokenDigest.fromBytes(SensitiveTokenDigest.sha256(csrfToken)))
 
   /** A session for `rawToken`, created and last seen at 100, that expires
     * absolutely at 300. */

@@ -33,7 +33,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
   private val oneYearSeconds = 365 * 24 * 3600
 
   /** "trusted", begun with p2 first and parked on p2's Setup pawn
-    * placement, behind a trusted gateway. */
+    * placement, behind a trusted gateway; `afterBegin` is the sequence after
+    * Begin. */
   private final case class TrustedGatewayGame(service: GameApplicationService,
       gateway: TrustedGameGateway, afterBegin: Long)
 
@@ -46,8 +47,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       new TrustedGameGateway(service, new GameProjector(catalog)),
       begun.nextSequence)
 
-  private val p2Seat = TrustedSeat("trusted", "p2")
-  private val p3Seat = TrustedSeat("trusted", "p3")
+  private val trustedP2Seat = TrustedSeat("trusted", "p2")
+  private val trustedP3Seat = TrustedSeat("trusted", "p3")
 
   /** p2's answer to its pawn placement: Ancient City. */
   private def placeP2Pawn(afterBegin: Long): ActorlessCommandRequest =
@@ -59,41 +60,49 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
         s""""decisionId":"$pawnDecision","payload":{"kind":"choose-one",""" +
         s""""optionKind":"site","optionId":"$ancientCity"}}}"""))
 
-  test("the trusted gateway projects only the seat's own decision"):
+  test("the trusted gateway projects only the seat's own view"):
     val TrustedGatewayGame(service, gateway, _) = begunTrustedGame()
-    assertEquals(accepted(gateway.load("trusted", p3Seat)).viewerPlayerId,
+    assertEquals(
+      accepted(gateway.load("trusted", trustedP3Seat)).viewerPlayerId,
       Some("p3"))
     val development = new GameProjector(catalog).project("trusted",
       present(accepted(service.load("trusted")), "the trusted game"), p2)
     assertEquals(development.viewerPlayerId, None)
     assert(!oathdigital.protocol.projection.GameProjectionCodec.encode(development)
       .contains("viewerPlayerId"))
-    assert(accepted(gateway.load("trusted", p2Seat)).walkerDecision.nonEmpty)
-    assert(accepted(gateway.load("trusted", p3Seat)).walkerDecision.isEmpty)
+    assert(accepted(gateway.load("trusted", trustedP2Seat)).walkerDecision
+      .nonEmpty)
+    assert(accepted(gateway.load("trusted", trustedP3Seat)).walkerDecision
+      .isEmpty)
 
   test("the trusted gateway binds the command actor to the seat"):
     val TrustedGatewayGame(service, gateway, afterBegin) = begunTrustedGame()
     val placed = accepted(
-      gateway.submit("trusted", p2Seat, placeP2Pawn(afterBegin)))
+      gateway.submit("trusted", trustedP2Seat, placeP2Pawn(afterBegin)))
     assertEquals(placed.viewerPlayerId, Some("p2"))
     assert(placed.walkerDecision.nonEmpty)
     assertEquals(
       present(accepted(service.load("trusted")), "the trusted game")
         .nextSequence,
       placed.nextSequence)
+    // A fresh load after the answer shows p2's next decision to p2 only.
+    assert(accepted(gateway.load("trusted", trustedP2Seat)).walkerDecision
+      .nonEmpty)
+    assert(accepted(gateway.load("trusted", trustedP3Seat)).walkerDecision
+      .isEmpty)
     assert(GameHttpWire.decodeCommand("""{"expectedNextSequence":2,"intent":{"type":"resolveWalker","playerId":"p3","decisionId":"setup.pawn-placement.p3","payload":{"kind":"choose-one","optionKind":"site","optionId":"S1"}}}""").isLeft)
 
   test("the trusted gateway refuses another game and a stale position"):
     val TrustedGatewayGame(_, gateway, afterBegin) = begunTrustedGame()
     val command = placeP2Pawn(afterBegin)
-    assertEquals(gateway.load("other", p2Seat),
+    assertEquals(gateway.load("other", trustedP2Seat),
       Left(TrustedSeatFailure.Forbidden))
-    assertEquals(gateway.submit("other", p2Seat, command),
+    assertEquals(gateway.submit("other", trustedP2Seat, command),
       Left(TrustedSeatFailure.Forbidden))
-    assertEquals(gateway.log("other", p2Seat, 0L),
+    assertEquals(gateway.log("other", trustedP2Seat, 0L),
       Left(TrustedSeatFailure.Forbidden))
-    val placed = accepted(gateway.submit("trusted", p2Seat, command))
-    assertEquals(gateway.submit("trusted", p2Seat, command),
+    val placed = accepted(gateway.submit("trusted", trustedP2Seat, command))
+    assertEquals(gateway.submit("trusted", trustedP2Seat, command),
       Left(TrustedSeatFailure.Application(GameApplicationError.StaleClientPosition(
         afterBegin, placed.nextSequence))))
 
@@ -106,15 +115,15 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val gateway = new TrustedGameGateway(service, new GameProjector(catalog))
     val sequence = act.nextSequence
     val request = MajorActionPreviewRequest(sequence, "travel")
-    val p2Seat = TrustedSeat("preview", p2.value)
-    assert(gateway.preview("preview", p2Seat, request).isRight)
+    val previewP2Seat = TrustedSeat("preview", p2.value)
+    assert(gateway.preview("preview", previewP2Seat, request).isRight)
     assertEquals(
       gateway.preview("preview", TrustedSeat("preview", p1.value), request)
         .left.toOption,
       Some(TrustedSeatFailure.Application(GameApplicationError.CommandRejected(
         oathdigital.model.OathViolation.InvalidModifierInvocation(
           "major-action preview is unavailable for this actor or phase")))))
-    assertEquals(gateway.preview("other", p2Seat, request),
+    assertEquals(gateway.preview("other", previewP2Seat, request),
       Left(TrustedSeatFailure.Forbidden))
     assertEquals(
       present(accepted(service.load("preview")), "the preview game")
@@ -155,11 +164,23 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       assertEquals(loaded.statusCode(), 200, loaded.body())
     }
 
-  /** p2's seat code in "game-a", p1's, the sequence p2's seat loaded at, and
-    * the command that answers p2's parked pawn placement with the first
-    * offered site. */
-  private final case class SeatPark(code: String, otherCode: String,
+  /** p2's seat code in "game-a", p1's seat code, the sequence p2's seat
+    * loaded at, and the command that answers p2's parked pawn placement with
+    * the first offered site. */
+  private final case class SeatPark(code: String, p1Code: String,
       currentSequence: Long, command: String)
+
+  /** The command that answers the decision parked in `loaded`, a seat's
+    * projection, with its first offered site. */
+  private def answerFirstOfferedSite(loaded: JavaResponse[String]): String =
+    val projection = ujson.read(loaded.body())
+    val decision = projection("walkerDecision")
+    ujson.write(ujson.Obj(
+      "expectedNextSequence" -> projection("nextSequence"),
+      "intent" -> ujson.Obj("type" -> "resolveWalker",
+        "decisionId" -> decision("decisionId").str,
+        "payload" -> ujson.Obj("kind" -> "choose-one", "optionKind" -> "site",
+          "optionId" -> decision("query")("options")(0)("id").str))))
 
   /** Creates "game-a" and loads p2's seat, the first player under
     * `reversing`. */
@@ -169,17 +190,9 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val loaded = send(server, "/games/game-a/api",
       cookie = Some(s"oath_seat=$code"))
     assertEquals(loaded.statusCode(), 200, loaded.body())
-    val decision = ujson.read(loaded.body())("walkerDecision")
-    val decisionId = decision("decisionId").str
-    val site = decision("query")("options")(0)("id").str
     val currentSequence = ujson.read(loaded.body())("nextSequence").num.toLong
-    val command = ujson.write(ujson.Obj(
-      "expectedNextSequence" -> ujson.Num(currentSequence.toDouble),
-      "intent" -> ujson.Obj("type" -> "resolveWalker",
-        "decisionId" -> decisionId,
-        "payload" -> ujson.Obj("kind" -> "choose-one", "optionKind" -> "site",
-          "optionId" -> site))))
-    SeatPark(code, codeOf(created, "p1"), currentSequence, command)
+    SeatPark(code, codeOf(created, "p1"), currentSequence,
+      answerFirstOfferedSite(loaded))
 
   test("a seat's commands refuse a spoofed actor and a stale position, then " +
       "accept the seat's answer"):
@@ -206,16 +219,16 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       assert(ujson.read(reloaded.body())("walkerDecision")("query")("options").arr.nonEmpty)
     }
 
-  test("the other seat sees no decision and no seat response leaks the code " +
+  test("the other seat sees no decision, and no seat response leaks the code " +
       "or the plan"):
     withServer() { (server, _) =>
-      val SeatPark(code, otherCode, _, command) = p2SeatParked(server)
+      val SeatPark(code, p1Code, _, command) = p2SeatParked(server)
       val api = "/games/game-a/api"
       val answered = send(server, api + "/commands", Some(command),
         Some(s"oath_seat=$code"))
       assertEquals(answered.statusCode(), 200, answered.body())
       val reloaded = send(server, api, cookie = Some(s"oath_seat=$code"))
-      val other = send(server, api, cookie = Some(s"oath_seat=$otherCode"))
+      val other = send(server, api, cookie = Some(s"oath_seat=$p1Code"))
       assertEquals(other.statusCode(), 200)
       assert(ujson.read(other.body())("walkerDecision").isNull)
       Vector(answered.body(), reloaded.body(), other.body()).foreach { body =>
@@ -279,8 +292,9 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     }
 
   /** "origin-game", created from the configured HTTPS origin, with p2's
-    * seat cookie, an endWake command and a travel preview, each expecting
-    * sequence position 1 or 0 as written. */
+    * seat cookie, an endWake command expecting sequence 0 and a travel
+    * preview expecting 1. The game is at 2 (GameStarted and WalkerParked),
+    * so both are stale. */
   private final case class OriginGame(code: String, cookie: Option[String],
       command: String, preview: String)
 
@@ -294,7 +308,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       """{"expectedNextSequence":0,"intent":{"type":"endWake"}}""",
       """{"expectedNextSequence":1,"action":"travel"}""")
 
-  test("trusted endpoints reject queries and cross-origin mutations while accepting configured or missing Origin"):
+  test("trusted endpoints reject queries and cross-origin mutations"):
     withServer(Some("https://games.example.test")) { (server, _) =>
       Vector("https://evil.example.test", "null", "https://games.example.test.evil", "http://games.example.test").foreach { origin =>
         assertEquals(send(server, "/games", Some(requestBody),
@@ -319,7 +333,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       }
     }
 
-  test("stale commands and previews are refused with 409"):
+  test("stale commands and previews are refused with 409 under the " +
+      "configured Origin or none"):
     withServer(Some("https://games.example.test")) { (server, _) =>
       val OriginGame(_, cookie, command, preview) = originGame(server)
       assertEquals(send(server, "/games/origin-game/api/commands",
@@ -430,14 +445,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       assertEquals(otherSeat.statusCode(), 200, otherSeat.body())
       assertEquals(ujson.read(otherSeat.body())("viewerPlayerId").str, "p1")
       assert(ujson.read(otherSeat.body())("walkerDecision").isNull)
-      val decisionId = ujson.read(restored.body())("walkerDecision")("decisionId").str
-      val site = ujson.read(restored.body())("walkerDecision")("query")("options")(0)("id").str
       val currentSequence = ujson.read(restored.body())("nextSequence").num.toLong
-      val command = ujson.write(ujson.Obj(
-        "expectedNextSequence" -> ujson.Num(currentSequence.toDouble),
-        "intent" -> ujson.Obj("type" -> "resolveWalker", "decisionId" -> decisionId,
-          "payload" -> ujson.Obj("kind" -> "choose-one", "optionKind" -> "site",
-            "optionId" -> site))))
+      val command = answerFirstOfferedSite(restored)
       // 422: p1 does not own the parked pawn decision.
       assertEquals(send(current.server, api + "/commands", Some(command),
         Some(otherCookie)).statusCode(), 422)
@@ -513,14 +522,18 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     body.fold(server.get(path, cookie = cookie))(value =>
       server.post(path, value, origin = origin, csrf = None, cookie = cookie))
 
-  /** The production routes over a runtime opened on `database`, trusted-alpha
-    * on 127.0.0.1:8080, with `publicOrigin` as the public base URL. */
+  /** A started trusted-alpha server and the runtime behind it; `close` stops
+    * both. */
   private final case class TrustedServer(server: HttpTestServer,
       runtime: ServerRuntime):
     def close(): Unit =
       try server.close()
       finally runtime.close()
 
+  /** The production routes over a runtime opened on `database`, trusted-alpha
+    * and configured for 127.0.0.1:8080 with `publicOrigin` as the public base
+    * URL. The server binds a free port, so 8080 shows only in origins and
+    * seat links. */
   private def openTrustedServer(database: Path,
       publicOrigin: Option[String] = None): TrustedServer =
     val runtime = accepted(ServerRuntime.open(database, reversing, gameIds))

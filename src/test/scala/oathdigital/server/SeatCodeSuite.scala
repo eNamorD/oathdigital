@@ -32,7 +32,7 @@ class SeatCodeSuite extends munit.FunSuite:
     assertEquals(first.digest, second.digest)
     assertEquals(first.digest.bytes.length, 32)
 
-  test("a seat code digest must be exactly 32 bytes"):
+  test("a seat code digest refuses 31 bytes"):
     assertEquals(
       SeatCodeDigest.fromBytes(Vector.fill(31)(0.toByte)),
       Left("seat code digest must contain exactly 32 bytes")

@@ -44,4 +44,3 @@ class ProductionFrontendRoutesSuite extends munit.FunSuite:
       assertEquals(
         server.get("/assets/fonts/missing.woff2").statusCode(), 404)
     finally server.close()
-

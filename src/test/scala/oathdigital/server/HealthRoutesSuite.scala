@@ -56,4 +56,3 @@ class HealthRoutesSuite extends munit.FunSuite:
     assertEquals(response.statusCode(), status)
     assertEquals(response.body(), body)
     assertEquals(cacheControl(response), Some("no-store"))
-

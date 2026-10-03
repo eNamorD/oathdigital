@@ -15,12 +15,13 @@ import oathdigital.application.CsrfTokenDigest
 import oathdigital.server.SensitiveTokenDigest
 
 /** A route served on a free loopback port for one test, with a client that
-  * talks to it. `get` and `post` take a path under `base`; `post` sends the
-  * same-origin `Origin` and the `csrfToken` header unless told otherwise
-  * (the development routes ignore both), a `user` as the X-Test-User
-  * header the suites' authenticators read, and a `cookie` as the Cookie
-  * header. `close` unbinds the route and stops its actor system, even when
-  * unbinding fails. */
+  * talks to it. `get` and `post` take a path under `base`, and also a `user`
+  * sent as the X-Test-User header the suites' authenticators read and a
+  * `cookie` sent as the whole Cookie header value (such as
+  * `oath_seat=<code>`). `post` also sends the same-origin `Origin` and
+  * `csrfToken` as the X-CSRF-Token header unless told otherwise (the
+  * development routes ignore both). `close` unbinds the route and stops its
+  * actor system, even when unbinding fails. */
 final class HttpTestServer private (system: ActorSystem[Nothing],
     binding: Http.ServerBinding):
   val base: String = s"http://127.0.0.1:${binding.localAddress.getPort}"

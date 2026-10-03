@@ -12,6 +12,9 @@ class ServerRoutesSuite extends munit.FunSuite:
     * seat links. */
   private val listenPort = 8080
 
+  /** A loopback port that is not the listen port. */
+  private val otherPort = 9090
+
   /** A two-player create-game request, Red and Blue. */
   private val createGameBody = """{"participants":[""" +
     """{"playerId":"Red","color":"red"},""" +
@@ -105,7 +108,7 @@ class ServerRoutesSuite extends munit.FunSuite:
       try
         assertEquals(
           create(s"http://example.com:$listenPort").statusCode(), 403)
-        assertEquals(create("http://localhost:9090").statusCode(), 403)
+        assertEquals(create(s"http://localhost:$otherPort").statusCode(), 403)
         assertEquals(create(s"http://127.0.0.1:$listenPort").statusCode(), 201)
         val created = create(s"http://localhost:$listenPort")
         assertEquals(created.statusCode(), 201)
@@ -141,7 +144,7 @@ class ServerRoutesSuite extends munit.FunSuite:
             assert(created.body().contains(
               s"\"http://203.0.113.7:$listenPort/s/"), origin)
           }
-        Seq("http://localhost:9090", s"https://localhost:$listenPort",
+        Seq(s"http://localhost:$otherPort", s"https://localhost:$listenPort",
             s"http://192.168.1.20:$listenPort",
             s"http://example.com:$listenPort")
           .foreach(origin =>
@@ -158,7 +161,8 @@ class ServerRoutesSuite extends munit.FunSuite:
       finally server.close()
     finally runtime.close()
 
-  /** A server listening on 127.0.0.1 at `listenPort`. */
+  /** A ServerConfig that says the server listens on 127.0.0.1 at
+    * `listenPort`. */
   private def config(
       mode: ServerMode,
       authenticatedRouteMount: Option[AuthenticatedRouteMountConfiguration] = None,
