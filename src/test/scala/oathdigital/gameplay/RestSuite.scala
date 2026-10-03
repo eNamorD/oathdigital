@@ -48,7 +48,8 @@ class RestSuite extends munit.FunSuite:
     val rested = Look(after).player(p1)
 
     assertEquals(rested.board.faceDownSecrets, 0)
-    // 1 faceup, the 2 facedown revealed, and the 6 secrets on p1's cards:
+    // 1 faceup, the 2 facedown revealed, and the 6 secrets on the cards p1
+    // controls:
     // 2 on Wrestlers, 1 on Errand Boy, 3 on Dowsing Sticks.
     assertEquals(rested.board.faceUpSecrets, 1 + 2 + 6)
     assertEquals(rested.board.supply, SupplyTrack.full)
@@ -71,8 +72,9 @@ class RestSuite extends munit.FunSuite:
 
   test("Rest globally cleans every in-play denizen and relic"):
     // Ancient City is p1's site, Dunes a site p1 rules, Golden Valley one
-    // p1 neither stands at nor rules. The denizens span four suits, so their
-    // returned favor reaches more than one bank.
+    // p1 neither stands at nor rules. The denizens and the edifice span four
+    // suits (Beast, Nomad, Order, Discord), so their returned favor reaches
+    // more than one bank.
     val ruled = CatalogNames.site("Dunes")
     val outside = CatalogNames.site("Golden Valley")
     val adviser = CatalogNames.denizen("Errand Boy")         // Beast
@@ -220,12 +222,11 @@ class RestSuite extends munit.FunSuite:
     val roundEight = Table.from(act).turn(last, Phase.Act).unchecked
       .updateCurrent(c => c.copy(tracks = c.tracks.copy(round = 8)))
 
-    /** Stub of WarExhaustionRandomPort: always picks the last candidate. */
-    val lastCandidate = new OathRules(catalog, warExhaustionRandomPort =
+    val deterministic = new OathRules(catalog, warExhaustionRandomPort =
       new WarExhaustionRandomPort {
         def choose(candidates: Vector[PlayerId]) = candidates.last
       })
-    val finished = accepted(rest(Ready(roundEight), last, lastCandidate))
+    val finished = accepted(rest(Ready(roundEight), last, deterministic))
     assert(finished.events.exists(_.isInstanceOf[OathEvent.RoundEnded]))
     assert(finished.events.exists(
       _.isInstanceOf[OathEvent.WarExhaustionResolved]))
@@ -236,7 +237,7 @@ class RestSuite extends munit.FunSuite:
     }, "the War Exhaustion result")
     assertEquals(result.kind, VictoryKind.RandomSelection)
     assertEquals(result.winner, result.randomCandidates.last)
-    assertEquals(rejected(rest(finished.state, last, lastCandidate)),
+    assertEquals(rejected(rest(finished.state, last, deterministic)),
       OathViolation.GameEnded)
     val projection = new oathdigital.application.GameProjector(catalog).project(
       "round-eight", oathdigital.application.LoadedGame(

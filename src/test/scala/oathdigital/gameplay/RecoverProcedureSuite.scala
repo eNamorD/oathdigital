@@ -40,10 +40,6 @@ class RecoverProcedureSuite extends munit.FunSuite
   private def recoverBoard: Table = Table.start.pawn(actor, at = recoverSite)
     .relicAt(relic, at = recoverSite)
 
-  private def recoverable: ReadyGame =
-    assertEquals(RecoverRules.difficulty(catalog, recoverSite),
-      Some(difficulty))
-    recoverBoard.ready
 
   private def recordedSteps(events: Vector[OathEvent])
       : Vector[WalkerStepRecorded] = events.map(as[WalkerStepRecorded](_))
@@ -65,8 +61,12 @@ class RecoverProcedureSuite extends munit.FunSuite
   private val highRoll: Vector[DieFace] =
     Vector(DefenseDieFace.TwoShields, DefenseDieFace.TwoShields)
 
+  test("Fair Isle's Recover difficulty is the one the tests assume"):
+    assertEquals(RecoverRules.difficulty(catalog, recoverSite),
+      Some(difficulty))
+
   test("Recover eligibility ignores player role and altered Foundations"):
-    val base = recoverable
+    val base = recoverBoard.ready
     val campaign = base.game.campaign
     val lineage = campaign.lineages(Look(base).player(actor).lineage)
     val altered = FoundationState(FoundationFace.Altered,
@@ -90,7 +90,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
   test("single-roll success parks the relic decision, then moves a facedown " +
       "relic into the play area for one supply"):
-    val ready = recoverable
+    val ready = recoverBoard.ready
     val pool = RecoverProcedure.recoverPool
     val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
 
@@ -164,7 +164,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
   test("multi-roll success: a failed roll parks Continue/Stop; Continue rolls " +
       "again and the cumulative score reaches the difficulty"):
-    val ready = recoverable
+    val ready = recoverBoard.ready
     val pool = RecoverProcedure.recoverPool
     val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
 
@@ -215,7 +215,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
   test("stop after a failed roll ends the walk with no relic and one supply " +
       "spent"):
-    val ready = recoverable
+    val ready = recoverBoard.ready
     val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
 
     val choiceWalk = expectParked(
@@ -289,7 +289,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
   test("resolving the relic decision with a relic the site does not hold is " +
       "rejected"):
-    val ready = recoverable
+    val ready = recoverBoard.ready
     val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
 
     val relicWalk = expectParked(
@@ -353,7 +353,7 @@ class RecoverProcedureSuite extends munit.FunSuite
   // -------------------------------------------------------------------------
 
   test("the continue/stop decision declares exactly two labelled buttons"):
-    val ready = recoverable
+    val ready = recoverBoard.ready
     val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
 
     val choiceWalk = expectParked(
@@ -415,7 +415,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     // `Branch` omits the continue/stop node once the recovery has succeeded,
     // so a stale answer finds no matching `Decide` to resume at and is
     // rejected before any query is consulted.
-    val ready = recoverable
+    val ready = recoverBoard.ready
     val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
 
     // The roll succeeds, so the walk parks at the RELIC decision instead.
@@ -442,7 +442,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
   test("the tree windows exactly its root, its pool-opening node, and its " +
       "relic-moving node; every other node carries none"):
-    val ready = recoverable
+    val ready = recoverBoard.ready
     val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
     val pool = RecoverProcedure.recoverPool
 
@@ -453,8 +453,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     // traversals cover every node the declared tree can ever produce.
     // No Table step records a roll outcome.
     val succeededState = ready.updateCurrent(_.copy(rollOutcomes = Map(
-      pool -> RollOutcome(pool, count = 2, faces = Vector(
-        DefenseDieFace.TwoShields, DefenseDieFace.TwoShields), skulls = 0,
+      pool -> RollOutcome(pool, count = 2, faces = highRoll, skulls = 0,
         score = difficulty))))
 
     val observed = allNodes(tree, ready, actor) ++

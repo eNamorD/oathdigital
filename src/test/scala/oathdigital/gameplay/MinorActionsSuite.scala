@@ -65,10 +65,11 @@ class MinorActionsSuite extends munit.FunSuite:
     parked.assertResumed(peeked.state, Phase.Act, p1)
     assertEquals(rules.evolve(Ready(base), event), Right(Ready(expected)))
 
-    // p1 remembers Dowsing Sticks at Broken Peaks from a peek before it
-    // left; the new peek adds to that memory. A peek replays only against
-    // the relics the site holds now, and `Table.knowsRelicAt` records only
-    // a relic still there, so the memory is a narrow patch.
+    // p1 remembers Dowsing Sticks at Broken Peaks from a peek made before
+    // Dowsing Sticks left the site; the new peek adds to that memory. A peek
+    // replays only against the relics the site holds now, and
+    // `Table.knowsRelicAt` records only a relic still there, so the memory is
+    // a narrow patch.
     val dowsingSticks = CatalogNames.relic("Dowsing Sticks")
     val withPriorKnowledge = base.copy(knowledge = base.knowledge.copy(
       siteRelics = Map(p1 -> Map(brokenPeaks -> Vector(dowsingSticks)))))
@@ -77,10 +78,11 @@ class MinorActionsSuite extends munit.FunSuite:
         brokenPeaks -> (Vector(dowsingSticks) ++ event.relics)))))
     assertEquals(MinorActions.evolve(catalog, Ready(withPriorKnowledge), event,
       Vector.empty), Right(Ready(expectedMerged)))
-    // A peek replays only against the relics the site holds now.
     val changedSite = minorBoard.relicAt(dowsingSticks, at = brokenPeaks).ready
-    assert(MinorActions.evolve(catalog, Ready(changedSite), event, Vector.empty)
-      .isLeft)
+    assertEquals(MinorActions.evolve(catalog, Ready(changedSite), event,
+      Vector.empty).left.toOption,
+      Some(OathViolation.MinorActionOutcomeMismatch(
+        "recorded site relic peek does not match the pawn's site")))
 
   test("owned relic reveal uses core operation and preserves replay"):
     val revealCommand = MinorActionCommand.RevealOwnedRelic(p1, cursedCauldron)
@@ -93,7 +95,7 @@ class MinorActionsSuite extends munit.FunSuite:
 
     val revealEvent = present(revealed.events.collectFirst {
       case event: OwnedRelicRevealed => event }, "the reveal event")
-    val expected = minorBoard.relic(p1, cursedCauldron).ready
+    val expected = minorBoard.relic(p1, cursedCauldron, facedown = false).ready
     assertEquals(revealedReady, expected)
     assertEquals(revealed.events, Vector(revealEvent))
     parked.assertResumed(revealed.state, Phase.Act, p1)
@@ -110,7 +112,8 @@ class MinorActionsSuite extends munit.FunSuite:
       OwnedRelicRevealed(p1, stickyFire), Vector.empty).left.toOption,
       Some(OathViolation.MinorActionUnavailable(
         "relic is not held by the actor")))
-    val alreadyFaceUp = minorBoard.relic(p1, cursedCauldron).ready
+    val alreadyFaceUp = minorBoard.relic(p1, cursedCauldron, facedown = false)
+      .ready
     assertEquals(MinorActions.evolve(catalog, Ready(alreadyFaceUp),
       revealEvent, Vector.empty).left.toOption,
       Some(OathViolation.MinorActionOutcomeMismatch(

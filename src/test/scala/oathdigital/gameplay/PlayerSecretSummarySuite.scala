@@ -61,7 +61,7 @@ class PlayerSecretSummarySuite extends munit.FunSuite:
     assertEquals(accepted(PlayerSecretSummary.derive(corrupt,
       inactive)).committed, 0)
     val projected = new oathdigital.application.GameProjector(catalog)
-      .projectPublic("cross-player-secrets", oathdigital.application.LoadedGame(
-        OathState.Ready(corrupt), 9L))
+      .projectPublic("cross-player-secrets",
+        oathdigital.application.LoadedGame(OathState.Ready(corrupt), 9L))
     assertEquals(projected.playerBoards.find(_.playerId == actor.value)
       .map(_.committedSecrets), Some(2))

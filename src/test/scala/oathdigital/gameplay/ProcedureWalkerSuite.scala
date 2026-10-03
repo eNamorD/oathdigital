@@ -4,10 +4,10 @@ import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Restriction, Transform}
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
-import oathdigital.testkit.PowerStubs
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.TestGameFixtures._
+import oathdigital.testkit.PowerStubs
 
 object ProcedureWalkerSuite:
   val continueOption: DecisionOptionRef.Button =
@@ -36,7 +36,6 @@ object ProcedureWalkerSuite:
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(hook -> Vector(Transform(fn)))
-
 
   /** A minimal `ContributingPower` contributing exactly one `Restriction` at
     * one window.
