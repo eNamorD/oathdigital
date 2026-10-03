@@ -16,8 +16,8 @@ class GameLogCampaignSuite extends munit.FunSuite:
     val script = raid
     val all = lines(script)
     val defender = script.players.find(player => player != script.actor &&
-      all.exists(_.startsWith(s"Started Campaign: Raid against " +
-        s"${playerLabel(player)}")))
+      all.exists(_.startsWith(
+        s"Started Campaign: Raid against ${playerLabel(player)}")))
       .get
     val expected = Vector(
       s"Started Campaign: Raid against ${playerLabel(defender)}",
@@ -72,8 +72,8 @@ class GameLogCampaignSuite extends munit.FunSuite:
     val shown = texts(entries.filter(_.sequence >= steps.size))
     assert(shown.contains(s"${playerLabel(defender)} activated a Denizen"),
       shown)
-    val revealed = s"${playerLabel(defender)} revealed "
-    assert(shown.exists(line => line.startsWith(revealed)
+    val revealedPrefix = s"${playerLabel(defender)} revealed "
+    assert(shown.exists(line => line.startsWith(revealedPrefix)
       && line != s"${playerLabel(defender)} revealed a Denizen"), shown)
 
   test("a plan the bandits apply is named like any other activation"):

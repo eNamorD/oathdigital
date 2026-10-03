@@ -135,6 +135,8 @@ object LogScripts:
       case (step, index) => step.copy(event = step.event.copy(index = index.toLong))
     }
 
+  /** `format` over `withoutNotes`: the log of the script as a power that
+    * writes no note would leave it. */
   def formatWithoutNotes(script: Script, viewer: Option[PlayerId])(using
       munit.Location): Vector[LogEntry] =
     formatter.format(withoutNotes(script.history.steps), viewer)
@@ -198,14 +200,15 @@ object LogScripts:
     * is given, else by default (the first button, discard). */
   def facedownAdviser(name: String, placement: Option[String])
       (using munit.Location): Script =
+    val conclave = CatalogNames.denizen("Wizard's Conclave")
     val (service, acted) = atTable(name, Table.start
-      .adviser(p1, "Wizard's Conclave", facedown = true).banditsRefilled)
+      .adviser(p1, conclave, facedown = true).banditsRefilled)
     val act = placement.fold(acted)(key => acted.withAnswers {
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
         ChooseOneAnswer(DecisionOptionRef.Button(key))
     })
-    start(act, ActionRef.PlayFacedownAdviser, DecisionOptionRef.Denizen(
-      CatalogNames.denizen("Wizard's Conclave")))
+    start(act, ActionRef.PlayFacedownAdviser,
+      DecisionOptionRef.Denizen(conclave))
     Script(name, service, p1)
 
   /** Deep Woods with a card to Muster or Trade from: a first game deals no
@@ -375,9 +378,10 @@ object LogScripts:
 
   /** The partner shows the actor its facedown adviser. */
   def negotiationDisclosed(using munit.Location): Script =
+    val birdsong = CatalogNames.denizen("Birdsong")
     val (service, parked, actor, partner) = negotiating(
-      "negotiation-disclosed", _.adviser(p2, "Birdsong", facedown = true))
-    val adviser: WorldCardId = CatalogNames.denizen("Birdsong")
+      "negotiation-disclosed", _.adviser(p2, birdsong, facedown = true))
+    val adviser: WorldCardId = birdsong
     parked
       .parkedAfter(deal(partner, ProposeTerms(NegotiationTerms(Vector.empty,
         Vector(NegotiationDisclosure(actor,

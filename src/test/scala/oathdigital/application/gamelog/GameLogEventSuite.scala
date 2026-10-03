@@ -36,6 +36,7 @@ class GameLogEventSuite extends munit.FunSuite:
   test("a site peek names the relics for the peeker only"):
     val script = recordedEventsBoard
     val state = ready(script.history.steps.last.after)
+    // The board's relic at Broken Peaks.
     val (site, relics) = state.game.current.map.sites.collectFirst {
       case (id, site) if site.relics.nonEmpty => id -> site.relics.map(_.id)
     }.get

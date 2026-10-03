@@ -9,7 +9,7 @@ import oathdigital.model._
 import LogScripts._
 
 /** Lines no cheap script reaches: each is driven by one recorded batch
-  * appended to the board script, the way the victory headlines are, so the
+  * appended to `recordedEventsBoard`, the way the victory headlines are, so the
   * rule is read against real state. */
 class GameLogRareLinesSuite extends munit.FunSuite:
   private lazy val script = recordedEventsBoard
@@ -19,6 +19,7 @@ class GameLogRareLinesSuite extends munit.FunSuite:
     case other => fail(s"expected a ready game, got $other")
   private lazy val actor = script.actor
   private lazy val other = script.players.find(_ != actor).get
+  // The board's relic at Broken Peaks.
   private lazy val (site, relic) = ready.game.current.map.sites.collectFirst {
     case (id, state) if state.relics.nonEmpty => id -> state.relics.head.id
   }.get
@@ -46,8 +47,8 @@ class GameLogRareLinesSuite extends munit.FunSuite:
       Bury(BuryableCard.Relic(relic), PositionedLocation(Location.Site(site))),
       Peek(other, relic, Location.Site(site)),
       Reveal(relic, Location.Site(site)))
-    assert(lines.contains(s"${playerLabel(other)} gained 2 favor from the " +
-      "Arcane bank"),
+    val otherName = playerLabel(other)
+    assert(lines.contains(s"$otherName gained 2 favor from the Arcane bank"),
       lines)
     assert(lines.contains("Gained 1 secret"), lines)
     // Both cards, counted by their backs: an observer sees no names.

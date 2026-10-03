@@ -28,9 +28,8 @@ class GameLogDetailSuite extends munit.FunSuite:
   test("an arranged favor gain reads as a gain from its bank"):
     val script = trade
     val all = lines(script)
-    assert(all.contains(
-      s"${playerLabel(script.actor)} gained 1 favor from the " +
-        "Discord bank"), all)
+    val actor = playerLabel(script.actor)
+    assert(all.contains(s"$actor gained 1 favor from the Discord bank"), all)
 
   test("Trade's own gain is its action line, not a second gain line"):
     val all = lines(trade)

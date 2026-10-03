@@ -15,8 +15,9 @@ import oathdigital.testkit.Table.{p1, p2, p3}
   *
   * Each park states its board as `Table` steps and builds its own service,
   * begun at that table, so the stream holds only what the park's commands
-  * journaled. A park returns the service and repository with the position,
-  * for a test that goes on to drive or reload it.
+  * journaled. A park returns the service and repository with the position
+  * and the journaled situation to play on from, for a test that goes on to
+  * drive or reload it.
   */
 object ParkedServiceFixture:
   /** The parked decision, as these fixtures rebuild it: the same catalog and
@@ -116,7 +117,9 @@ object ParkedServiceFixture:
       ChronicleFirstGamePlan.dealOrder(newChronicle, config))
 
   /** A park: the service and journal it was driven through, the position it
-    * stopped at, and the journaled situation parked there, to play on from. */
+    * stopped at, and the journaled situation parked there, to play on from.
+    * `accepted.events` are the parking command's only; `situation.events`
+    * hold every event since the table. */
   final case class ParkedGame(service: GameApplicationService,
       repository: InMemoryEventStreamRepository, accepted: GameAccepted,
       situation: Situation)

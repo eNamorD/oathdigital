@@ -42,9 +42,9 @@ class GameLogExchangeSuite extends munit.FunSuite:
     assert(!shown(Some(script.actor)).endsWith("(slot 1)"),
       shown(Some(script.actor)))
     assert(!shown(Some(partner)).endsWith("(slot 1)"), shown(Some(partner)))
+    val (giver, recipient) = (playerLabel(partner), playerLabel(script.actor))
     assertEquals(shown(Some(third)),
-      s"${playerLabel(partner)} showed ${playerLabel(script.actor)} " +
-        "facedown adviser (slot 1)")
+      s"$giver showed $recipient facedown adviser (slot 1)")
 
   test("a used power is named by its source card, once"):
     val all = texts(formatWithoutNotes(silverTongue, None).filter(_.depth == 1))
