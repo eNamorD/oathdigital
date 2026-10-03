@@ -11,7 +11,7 @@ import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
 
 class HttpGameClientSuite extends FunSuite:
   test("trusted client uses canonical cookie APIs and actorless bodies"):
-    val transport = new StubTransport(Vector(
+    val transport = transportAnsweringInOrder(Vector(
       Right(TransportResponse(200, projectionJson(7))),
       Right(TransportResponse(200, """{"nextSequence":7,"action":"trade","modifiers":[],"ignoredRules":[],"targets":[]}""")),
       Right(TransportResponse(200, projectionJson(8)))))
@@ -38,7 +38,7 @@ class HttpGameClientSuite extends FunSuite:
     }
 
   test("a 409 is a stale position, and the client does not retry the command"):
-    val transport = new StubTransport(Vector(
+    val transport = transportAnsweringInOrder(Vector(
       Right(TransportResponse(409, """{"error":"stale-client-position","message":"position changed"}"""))))
     val client = new TrustedHttpGameClient(transport)
     client.submit("game-1", "red-exile", 7, GameIntent.RevealOwnedRelic("relic:a"))
@@ -58,7 +58,7 @@ class HttpGameClientSuite extends FunSuite:
       DecisionAnswerWire.ChooseOneWire("site", opaqueSite))
     val adviserCommand = oathdigital.protocol.GameIntent.ResolveWalker("setup.adviser-choice.red-exile",
       DecisionAnswerWire.ChooseOneWire("denizen", opaqueAdviser))
-    val transport = new StubTransport(Vector(
+    val transport = transportAnsweringInOrder(Vector(
       Right(TransportResponse(200, projectionJson(
         sequence = 2,
         phase = "setup-walker-decision",
@@ -284,7 +284,8 @@ class HttpGameClientSuite extends FunSuite:
   private val logPage = """{"gameId":"g","after":3,"nextSequence":5,"entries":[{"sequence":3,"ordinal":0,"kind":"turn","depth":0,"spans":[{"kind":"player","text":"Red","id":"red"},{"kind":"text","text":"'s turn"}]}]}"""
 
   test("the trusted client reads the log after a cursor on the seat's path"):
-    val transport = new StubTransport(Vector(Right(TransportResponse(200, logPage))))
+    val transport = transportAnsweringInOrder(
+      Vector(Right(TransportResponse(200, logPage))))
     new TrustedHttpGameClient(transport).loadLog("my game", "ignored", 3L).map { result =>
       assertEquals(transport.requests.map(r => r.method -> r.url).toVector,
         Vector("GET" -> "/games/my%20game/api/log/3"))
@@ -292,7 +293,8 @@ class HttpGameClientSuite extends FunSuite:
     }
 
   test("the development client reads the log for the selected seat"):
-    val transport = new StubTransport(Vector(Right(TransportResponse(200, logPage))))
+    val transport = transportAnsweringInOrder(
+      Vector(Right(TransportResponse(200, logPage))))
     new HttpGameClient(transport).loadLog("g", "red exile", 0L).map { result =>
       assertEquals(transport.requests.map(_.url).toVector,
         Vector("/api/dev/first-games/g/log/0?playerId=red%20exile"))
@@ -300,7 +302,7 @@ class HttpGameClientSuite extends FunSuite:
     }
 
   test("a log failure is a client failure, never a thrown decode"):
-    val transport = new StubTransport(Vector(
+    val transport = transportAnsweringInOrder(Vector(
       Right(TransportResponse(400, """{"error":"malformed-request","message":"bad"}""")),
       Right(TransportResponse(200, "{"))))
     val client = new TrustedHttpGameClient(transport)
@@ -310,22 +312,12 @@ class HttpGameClientSuite extends FunSuite:
       client.loadLog("g", "", 0L)
     }.map(garbled => assert(garbled.isLeft))
 
-  private final case class RecordedRequest(method: String, url: String,
-      body: Option[String])
-
-  /** Stub of `JsonTransport` with a spy: answers the queued responses in
-    * order and records each request in `requests`.
+  /** A `ScriptedTransport` (a spy and stub of `JsonTransport`) whose script
+    * answers `responses` in order, one per request; it records each request
+    * in `requests`.
     */
-  private final class StubTransport(
+  private def transportAnsweringInOrder(
       responses: Vector[Either[GameClientFailure, TransportResponse]]
-  ) extends JsonTransport:
-    private val remaining = mutable.Queue(responses*)
-    val requests = mutable.ArrayBuffer.empty[RecordedRequest]
-
-    override def request(
-        method: String,
-        url: String,
-        body: Option[String]
-    ) =
-      requests += RecordedRequest(method, url, body)
-      Future.successful(remaining.dequeue())
+  ): ScriptedTransport =
+    val remaining = mutable.Queue(responses*)
+    ScriptedTransport((_, _, _) => Future.successful(remaining.dequeue()))

@@ -7,8 +7,8 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 /** What every `PollClock` promises: a task runs once when its delay is up,
   * and a task that was cancelled never runs. `FakePollClock`, which the
   * polling suites use, and `BrowserPollClock`, over real timers, both run
-  * it, so the fake cannot drift from the real clock. Each test returns the
-  * `Future` that `timeComesFor` completes.
+  * it, so the fake cannot drift from the real clock. Each test returns a
+  * `Future` built on the one `timeComesFor` completes.
   */
 private[frontend] abstract class PollClockContract[C <: PollClock]
     extends munit.FunSuite:

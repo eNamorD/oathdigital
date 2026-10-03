@@ -1,10 +1,10 @@
 package oathdigital.frontend
 
-/** What every `LogStore` promises (the trait's doc): a key that was written
-  * reads back its value, and a second write to a key replaces the first.
-  * `FakeLogStore`, which the log suites use, and `LogStore.browser`, over a
-  * working `localStorage`, both run it, so the fake cannot drift from the
-  * real store.
+/** What every `LogStore` promises: a key that was written reads back its
+  * value, a second write to a key replaces the first, and a key that was
+  * never written reads as nothing. `FakeLogStore`, which the log suites
+  * use, and `LogStore.browser`, over a working `localStorage`, both run it,
+  * so the fake cannot drift from the real store.
   */
 private[frontend] abstract class LogStoreContract extends munit.FunSuite:
   /** A new, empty store. */

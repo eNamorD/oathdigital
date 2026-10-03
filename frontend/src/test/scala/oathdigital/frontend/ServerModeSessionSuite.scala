@@ -86,21 +86,14 @@ class ServerModeSessionSuite extends FunSuite:
 
   test("development root retains query loading and raw history"):
     TestBrowser.use("?gameId=existing&playerId=red"): browser =>
-      val requests = ArrayBuffer.empty[(String, String)]
-      // Spy and stub of JsonTransport: records (method, url) pairs, the record
-      // type the asserts read, not ScriptedTransport's RecordedRequest;
-      // answers events and game loads.
-      val transport = new JsonTransport:
-        def request(method: String, url: String, body: Option[String])
-            : Future[Either[GameClientFailure, TransportResponse]] =
-          requests += method -> url
-          val json = if url.contains("/events") then """{"events":[]}"""
-            else encodedGame(viewer = None)
-          Future.successful(Right(TransportResponse(200, json)))
+      val transport = ScriptedTransport((_, url, _) =>
+        val json = if url.contains("/events") then """{"events":[]}"""
+          else encodedGame(viewer = None)
+        Future.successful(Right(TransportResponse(200, json))))
       Main.start(browser.mount, "/", trustedAlpha = false,
         withEmptyLogPage(transport))
       browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
-        assertEquals(requests.toVector,
+        assertEquals(transport.requests.map(r => r.method -> r.url).toVector,
           Vector("GET" -> "/api/dev/first-games/existing?playerId=red",
             "GET" -> "/api/dev/first-games/existing/events?limit=25",
             "GET" -> "/api/dev/first-games/existing?playerId=red"))
@@ -250,29 +243,23 @@ class ServerModeSessionSuite extends FunSuite:
   test("trusted UI reloads after command conflict without retrying or " +
       "changing seat"):
     TestBrowser.use(): browser =>
-      val requests = ArrayBuffer.empty[(String, String)]
       val responses = scala.collection.mutable.Queue(
         TransportResponse(200, encodedBlueWake()),
         TransportResponse(409,
           """{"error":"stale-client-position","message":"position changed"}"""),
         TransportResponse(200, encodedGame(nextSequence = 2L)))
-      // Spy and stub of JsonTransport: records (method, url) pairs, the record
-      // type the asserts read, not ScriptedTransport's RecordedRequest;
-      // answers from the queued responses.
-      val transport = new JsonTransport:
-        def request(method: String, url: String, body: Option[String])
-            : Future[Either[GameClientFailure, TransportResponse]] =
-          requests += method -> url
-          Future.successful(Right(responses.dequeue()))
+      val transport = ScriptedTransport((_, _, _) =>
+        Future.successful(Right(responses.dequeue())))
       Main.start(browser.mount, "/games/my%20game", trustedAlpha = true,
         withEmptyLogPage(transport))
       browser.settle.flatMap { _ =>
         browser.click("wake-action")
         browser.settle
       }.map { _ =>
-        assertEquals(requests.toVector, Vector("GET" -> "/games/my%20game/api",
-          "POST" -> "/games/my%20game/api/commands",
-          "GET" -> "/games/my%20game/api"))
+        assertEquals(transport.requests.map(r => r.method -> r.url).toVector,
+          Vector("GET" -> "/games/my%20game/api",
+            "POST" -> "/games/my%20game/api/commands",
+            "GET" -> "/games/my%20game/api"))
         assert(browser.byClass("seat-identity").head.textContent
           .contains("Blue Exile"))
         assert(browser.text.contains("Waiting for"))
@@ -304,17 +291,13 @@ class ServerModeSessionSuite extends FunSuite:
     test(s"trusted same-sequence poll rejects $label viewer and disables " +
         "old controls"):
       TestBrowser.use(): browser =>
-        val requests = ArrayBuffer.empty[(String, String)]
-        // Spy and stub of JsonTransport: records (method, url) pairs, the
-        // record type the asserts read, not ScriptedTransport's
-        // RecordedRequest; the reply to a load depends on how many it holds.
-        val transport = new JsonTransport:
-          def request(method: String, url: String, body: Option[String])
-              : Future[Either[GameClientFailure, TransportResponse]] =
-            requests += method -> url
-            Future.successful(Right(TransportResponse(200,
-              if requests.size == 1 then encodedBlueWake()
-              else encodedBlueWake(viewer = viewer))))
+        // The script reads `requests`: the transport records before it replies.
+        val requests = ArrayBuffer.empty[RecordedRequest]
+        val transport = ScriptedTransport(
+          (_, _, _) => Future.successful(Right(TransportResponse(200,
+            if requests.size == 1 then encodedBlueWake()
+            else encodedBlueWake(viewer = viewer)))),
+          requests)
         Main.start(browser.mount, "/games/my%20game", trustedAlpha = true,
           withEmptyLogPage(transport))
         browser.settle.flatMap { _ =>
@@ -329,7 +312,7 @@ class ServerModeSessionSuite extends FunSuite:
             assert(browser.byClass("wake-action").isEmpty)
             oldControl.onclick(js.Dynamic.literal())
             browser.tick()
-            assertEquals(requests.toVector, Vector(
+            assertEquals(requests.map(r => r.method -> r.url).toVector, Vector(
               "GET" -> "/games/my%20game/api",
               "GET" -> "/games/my%20game/api"))
           }

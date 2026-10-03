@@ -24,9 +24,18 @@ class BrowserLogStoreSuite extends LogStoreContract:
     val storage = js.Dynamic.literal(getItem = getItem, setItem = setItem)
     jsObject.defineProperty(window, "localStorage",
       js.Dynamic.literal(value = storage, configurable = true))
-    present(LogStore.browser, "a store over the installed localStorage")
+    // A fixture whose setup throws is never released, so put the storage
+    // back here if there is no store to release.
+    try present(LogStore.browser, "a store over the installed localStorage")
+    catch
+      case error: Throwable =>
+        putBackLocalStorage()
+        throw error
 
   override protected def release(store: LogStore): Unit =
+    putBackLocalStorage()
+
+  private def putBackLocalStorage(): Unit =
     if js.isUndefined(replaced) then js.special.delete(window, "localStorage")
     else jsObject.defineProperty(window, "localStorage", replaced)
     ()
