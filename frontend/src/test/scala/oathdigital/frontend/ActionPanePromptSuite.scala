@@ -55,7 +55,8 @@ class ActionPanePromptSuite extends munit.FunSuite:
     assertEquals(result.prompt, scraped(result.element))
 
   test("no question in flight is an empty prompt"):
-    // A Travel target is offered but not activated, so no question is asked.
+    // Travel is offered but no board-target draft exists (empty drafts), so
+    // no question is asked.
     val result = pane(projection(open = true, offered = Vector(travel)),
       SessionDrafts.empty)
     assertEquals(result.prompt, "")

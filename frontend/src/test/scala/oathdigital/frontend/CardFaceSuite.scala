@@ -33,6 +33,7 @@ class CardFaceSuite extends munit.FunSuite:
     }
 
   test("a face-up card shows its summary with no field names"):
+    // favor and secrets restate faceUp's values so the counts read locally.
     val node = CardFace.render(faceUp.copy(favor = 2, secrets = 1))
     assertEquals(firstMatch(node, ".card-name").map(_.textContent),
       Some("Old Oak"))
@@ -79,6 +80,8 @@ class CardFaceSuite extends munit.FunSuite:
     * it belongs to the overlay, not to the little face.
     */
   test("a relic face carries its defense as dice, and not its printed value"):
+    // relicValue and defense restate knowable's values so the 3 and the
+    // "defense 1" read locally.
     val relic = CardFace.render(knowable.copy(orientation = Some("face-up"),
       relicValue = Some(3), defense = Some(1)))
     assertEquals(all(relic, ".card-defense .token-glyph")

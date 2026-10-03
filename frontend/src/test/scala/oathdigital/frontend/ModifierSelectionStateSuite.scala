@@ -154,7 +154,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
   private val startRecover = GameIntent.StartWalker("recover", Vector.empty)
 
   /** Recover's preview offering Catacombs, a modifier that comes from a card
-    * at site `site:a`; the card's catalog id is `catacombs`.
+    * at site `site:a`. `catacombs` is a readable stand-in id for this
+    * fixture, not the catalog's id.
     */
   private val catacombs = PreviewModifier(
     "site-card:site:a:denizen:catacombs", "denizen.catacombs", "Catacombs")
