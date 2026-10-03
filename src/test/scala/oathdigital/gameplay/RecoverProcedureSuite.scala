@@ -40,7 +40,6 @@ class RecoverProcedureSuite extends munit.FunSuite
   private def recoverBoard: Table = Table.start.pawn(actor, at = recoverSite)
     .relicAt(relic, at = recoverSite)
 
-
   private def recordedSteps(events: Vector[OathEvent])
       : Vector[WalkerStepRecorded] = events.map(as[WalkerStepRecorded](_))
 
