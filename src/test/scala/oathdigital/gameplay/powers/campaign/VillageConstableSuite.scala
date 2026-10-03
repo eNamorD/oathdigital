@@ -44,8 +44,9 @@ class VillageConstableSuite extends munit.FunSuite:
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
 
-  test("a bandit defender applies it unless the attacker holds the People's " +
-      "Favor"):
+  test("a bandit defender applies it unless the attacker holds " +
+
+      "the People's Favor"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
     assert(commit(rules(winning), b, 4).finishPlanWindows.ops

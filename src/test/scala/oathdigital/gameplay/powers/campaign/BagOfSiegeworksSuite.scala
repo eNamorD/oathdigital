@@ -40,8 +40,9 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(
     BagOfSiegeworks.id, Vector(BagOfSiegeworks.ignored), run.events)
 
-  test("a single shield scores nothing; two shields and doublers score as " +
-      "usual"):
+  test("a single shield scores nothing; two shields and doublers " +
+
+      "score as usual"):
     import DefenseDieFace._
     assertEquals(BagOfSiegeworks.score(Vector(Blank, OneShield, Doubler)), 0)
     assertEquals(BagOfSiegeworks.score(Vector(TwoShields, OneShield, Doubler)),

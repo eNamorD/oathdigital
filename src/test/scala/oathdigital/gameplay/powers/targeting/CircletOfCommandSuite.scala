@@ -3,10 +3,9 @@ package oathdigital.gameplay.powers.targeting
 import oathdigital.gameplay.CampaignFixture.{RaidBoard, raidBoard}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
-import oathdigital.gameplay.powerresolver.PowerCtx
+import oathdigital.gameplay.powerresolver.{OptionRestriction, PowerCtx}
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.powerresolver.OptionRestriction
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
@@ -103,8 +102,8 @@ class CircletOfCommandSuite extends munit.FunSuite:
       RuleSourceRef.Adviser(p1, conspiracy))
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       Vector.empty)
-    val parked = Outcomes.parked(ProcedureWalker.advance(ready, hook, None,
-      powers))
+    val advanced = ProcedureWalker.advance(ready, hook, None, powers)
+    val parked = Outcomes.parked(advanced)
     val decide = present(ProcedureWalker.parkedDecide(ready, hook, parked.tree,
       powers), "the target decision")
     ConspiracyWalk(ready,

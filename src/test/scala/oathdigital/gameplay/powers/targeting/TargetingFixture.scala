@@ -28,7 +28,7 @@ object TargetingFixture:
   val challengeTable: Table = Table.start
     .favor(Table.p1, 6).secrets(Table.p1, faceUp = 6, faceDown = 4)
     .peoplesFavor(Some(Table.p2), favor = 2)
-    .pawn(Table.p2, at = Table.quietPawnSite(Table.p1))
+    .pawn(Table.p2, at = "Ancient City")
 
   def ready(transition: OathTransition)(using munit.Location): ReadyGame =
     Outcomes.ready(transition.state)

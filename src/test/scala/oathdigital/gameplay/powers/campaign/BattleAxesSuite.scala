@@ -25,8 +25,9 @@ class BattleAxesSuite extends munit.FunSuite:
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
 
-  test("the user's own beast card and one at a site nobody rules count " +
-      "nothing"):
+  test("the user's own beast card and one at a site nobody " +
+
+      "rules count nothing"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     // Nobody rules Broken Peaks: the board has no extra sites.
@@ -46,8 +47,9 @@ class BattleAxesSuite extends munit.FunSuite:
     assert(commit(rules(winning), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
-  test("a defender removes two attack dice when the attacker rules a beast " +
-      "card"):
+  test("a defender removes two attack dice when the attacker rules " +
+
+      "a beast card"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val b = withAdviser(withAdviserFor(base, base.rival, card,
@@ -56,8 +58,9 @@ class BattleAxesSuite extends munit.FunSuite:
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
 
-  test("a bandit defender applies it only when the attacker rules a beast " +
-      "card"):
+  test("a bandit defender applies it only when the attacker rules " +
+
+      "a beast card"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
     assert(!commit(rules(winning), b, 4).finishPlanWindows.ops

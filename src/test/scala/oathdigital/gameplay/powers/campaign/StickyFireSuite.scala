@@ -171,9 +171,9 @@ class StickyFireSuite extends munit.FunSuite:
       .pick(b.actor, decision, StickyFire.yes)
     // The Raid's own losses kill one of the three first; the burn kills the
     // two left, and its line says what the burn did.
+    val rival = b.rival.value
     assertEquals(said(done.events), Vector(NoteText.Said("burned",
-      s"Killed 2 ${b.rival.value} warbands, and ${b.rival.value} gained 1 " +
-        "favor.",
+      s"Killed 2 $rival warbands, and $rival gained 1 favor.",
       covers = false)))
 
   test("a winner with no favor to give writes only the kill"):

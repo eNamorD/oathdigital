@@ -78,8 +78,9 @@ class InsectSwarmSuite extends munit.FunSuite:
     val b = attackerHolds(0)
     assert(awaits(commit(rules(losing), b, 4), b.actor, CampaignIds.sacrifice))
 
-  test("a plan whose own cost and the added favor cannot both be paid is not " +
-      "offered"):
+  test("a plan whose own cost and the added favor cannot both be paid " +
+
+      "is not offered"):
     val base = attackerHolds(1)
     // Extra Provisions places a favor of its own, so it needs two.
     val b = withAdviserFor(base, base.rival, provisions, Orientation.FaceUp)
@@ -125,8 +126,9 @@ class InsectSwarmSuite extends munit.FunSuite:
     on(withAdviser(withAdviserFor(base, base.rival, swarm, Orientation.FaceUp),
       honors, Orientation.FaceUp))(_.favor(base.actor, attackerFavor))
 
-  test("an attacker's plan costs one more favor, burnt from the attacker's " +
-      "board"):
+  test("an attacker's plan costs one more favor, burnt from " +
+
+      "the attacker's board"):
     val b = defenderHolds(1)
     val run = commit(rules(winning), b, 4)
     val option = run.options(b.actor).find(_.ref == ref(honors)).get

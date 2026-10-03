@@ -53,8 +53,9 @@ class WarningSignalsSuite extends munit.FunSuite:
   private def chosen(b: Board): Run = commit(rules(losing), b, 4).pick(b.rival,
     CampaignIds.defenderPlan, ref)
 
-  test("choosing it asks the defender to arrange their board and every ruled " +
-      "site"):
+  test("choosing it asks the defender to arrange their board and " +
+
+      "every ruled site"):
     val b = defending
     val run = chosen(b)
     assert(awaits(run, b.rival, decision))
@@ -82,8 +83,9 @@ class WarningSignalsSuite extends munit.FunSuite:
     assertEquals(forcesAt(moved.state, secondSite(b)), exile(b, 1))
     assertEquals(Look(moved.state).player(b.rival).board.warbands, 5)
 
-  test("the defense is scored with the force the rearrangement left at the " +
-      "target"):
+  test("the defense is scored with the force the rearrangement left " +
+
+      "at the target"):
     val b = defending
     val done = chosen(b).answer(b.rival, decision, arrangement(b, board = 0,
       origin = 4, extra = 3)).finishPlanWindows
@@ -102,8 +104,9 @@ class WarningSignalsSuite extends munit.FunSuite:
     assert(run.refused(b.rival, decision, arrangement(b, board = 3, origin = 2,
       extra = 2)).isEmpty)
 
-  test("the query names the board and each ruled site, with what each holds " +
-      "now"):
+  test("the query names the board and each ruled site, with what " +
+
+      "each holds now"):
     val b = defending
     val slots = chosen(b).query(b.actor) match
       case DecisionQuery.Distribute(slots, min, max, _, _) =>
@@ -175,8 +178,9 @@ class WarningSignalsSuite extends munit.FunSuite:
     assert(awaits(commit(rules(losing), attacker, 2), attacker.actor,
       CampaignIds.sacrifice))
 
-  test("the recorded moves replay to the same state, and survive the journal " +
-      "wire"):
+  test("the recorded moves replay to the same state, and survive " +
+
+      "the journal wire"):
     val b = defending
     val g = rules(losing)
     val run = commit(g, b, 4).pick(b.rival, CampaignIds.defenderPlan, ref)

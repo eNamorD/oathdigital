@@ -15,9 +15,10 @@ import oathdigital.testkit.Unwrap.present
 class MercenariesSuite extends munit.FunSuite:
   private val card = cardWith("denizen.mercenaries")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  /** Mercenaries' suit: its placed favor comes from, and returns to, that
-    * bank. */
-  private val mercenariesSuit = present(catalog.suitOf(card), "a suit")
+  /** Mercenaries' suit: the bank its placed favor comes from and returns
+    * to. */
+  private val mercenariesSuit = present(catalog.suitOf(card),
+    "the suit of Mercenaries")
 
   private def funded(b: Board, who: PlayerId, favor: Int): Board =
     on(b)(_.favor(who, favor))
@@ -88,8 +89,8 @@ class MercenariesSuite extends munit.FunSuite:
     val siteRegion = current.map.regionOf(ruled).get
     val b = funded(withSiteCard(actorRules(base, ruled), ruled, card),
       base.actor, 2)
-    val done = commit(rules(losing), b,
-      0).pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
+    val done = commit(rules(losing), b, 0)
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assert(discarded(done.state))
     assertEquals(ready(done.state).game.current.map.sites(ruled).denizens,
       Vector.empty)

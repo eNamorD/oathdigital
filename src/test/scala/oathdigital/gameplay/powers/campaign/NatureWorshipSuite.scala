@@ -50,17 +50,17 @@ class NatureWorshipSuite extends munit.FunSuite:
 
   test("at a site its user rules it counts the beast advisers but not itself"):
     val base = board(warbands = 5, supply = 7)
-    val site = ruledSite
-    val b = withSecrets(
-      advised(withSiteCard(actorRules(base, site), site, card), base.actor,
+    val atSite = withSiteCard(actorRules(base, ruledSite), ruledSite, card)
+    val b = withSecrets(advised(atSite, base.actor,
       Vector(beasts.head -> Orientation.FaceUp)), 1)
     assert(picked(b).ops.contains(ModifyDicePool(CampaignIds.attackPool, 1)))
 
-  test("at a site with no beast adviser it would add nothing, so it is not " +
-      "offered"):
+  test("at a site with no beast adviser it would add nothing, so it " +
+
+      "is not offered"):
     val base = board(warbands = 5, supply = 7)
-    val site = ruledSite
-    val b = withSecrets(withSiteCard(actorRules(base, site), site, card), 1)
+    val atSite = withSiteCard(actorRules(base, ruledSite), ruledSite, card)
+    val b = withSecrets(atSite, 1)
     assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
 
   test("a defender removes one attack die per beast adviser"):
