@@ -1,14 +1,16 @@
 package oathdigital.gameplay
 
 import oathdigital.application.{GameProjector, LoadedGame}
-import oathdigital.gameplay.actions.{CardPlay, VisionRules}
+import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model._
-import oathdigital.testkit.Table
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{Look, Outcomes, Table}
+import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class VisionPlaySuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
@@ -21,99 +23,71 @@ class VisionPlaySuite extends munit.FunSuite:
   private val faceup = DecisionAnswer.ChooseOneAnswer(
     DecisionOptionRef.Button("adviser-faceup"))
 
-  private def placeId(card: VisionId) = s"cardplay.place.${card.kind}.${card.value}"
+  private def placeId(card: VisionId) =
+    PlacementFixture.cardPlayDecisionId(card, "place")
+  private val actor = p1
 
-  private def acting: ReadyGame = Table.start.ready
-
-  private def player(ready: ReadyGame, id: PlayerId): PlayerState =
-    ready.game.current.players.find(_.player == id).get
-
-  private def readyOf(state: OathState): ReadyGame = state match
-    case Ready(ready) => ready
-    case other => fail(s"expected a ready state, got $other")
-
-  /** A `ReadyGame` with `newVision` first in the world deck and Search
-    * started, so the walk parks on `newVision`'s own `cardplay.place.*`
-    * decision with nothing else drawn. `revealed`, if given, is the actor's
-    * revealed Vision before the play.
+  /** `newVision` tops the world deck and p1's world Search has started, so
+    * the walk parks on `newVision`'s own `cardplay.place.*` decision with
+    * nothing else drawn. `revealed`, if given, is p1's revealed Vision before
+    * the play.
     */
   private def visionInTemporaryHand(revealed: Option[VisionId] = None)
       : OathState =
-    val base = acting
-    val current = base.game.current
-    val actor = current.turn.activePlayer
-    val deck = current.commonCards.worldDeck
-    val initial = base.updateCurrent(_.copy(
-      players = current.players.map(p => if p.player == actor then p.copy(
-        revealedVision = revealed.map(id =>
-          VisionState(id, Orientation.FaceUp))) else p),
-      commonCards = current.commonCards.copy(worldDeck =
-        Vector(newVision) ++ deck.filterNot(id =>
-          id == newVision || revealed.contains(id)))))
-    rules.startWalker(Ready(initial), ActionRef.Search, actor,
-      startArgs = Vector(DecisionOptionRef.Button("search:world")))
-      .toOption.get.state
+    val stacked = Table.start.worldDeckTop(newVision)
+    val initial = revealed.fold(stacked)(stacked.revealedVision(actor, _))
+      .ready
+    accepted(rules.startWalker(Ready(initial), ActionRef.Search, actor,
+      startArgs = Vector(DecisionOptionRef.Button("search:world")))).state
 
   /** The `Decide` node the walk is parked on, rebuilt the same way the
     * projector reads a parked position. */
   private def parkedPlacement(state: OathState): Decide =
-    val ready = readyOf(state)
+    val ready = Outcomes.ready(state)
     val current = ready.game.current
-    val procedure = current.walkerProcedure.get
-    val pending = current.walkerPending.get
-    val tree = WalkerProcedureRegistry.rebuild(procedure, catalog, ready,
-      current.turn.activePlayer, current.walkerStartArgs).toOption.get
-    ProcedureWalker.parkedDecide(ready, tree, pending, WalkerPowers.empty).get
+    val procedure = present(current.walkerProcedure, "the parked procedure")
+    val pending = present(current.walkerPending, "the parked walk")
+    val tree = accepted(WalkerProcedureRegistry.rebuild(procedure, catalog,
+      ready, actor, current.walkerStartArgs))
+    present(ProcedureWalker.parkedDecide(ready, tree, pending,
+      WalkerPowers.empty), "the parked decision")
 
   private def answerPlacementResult(state: OathState, ref: DecisionOptionRef)
       : Either[OathViolation, OathState] =
-    val actor = readyOf(state).game.current.turn.activePlayer
     rules.resolveWalker(state, actor, placeId(newVision),
       DecisionAnswer.ChooseOneAnswer(ref)).map(_.state)
 
   private def answerPlacement(state: OathState, ref: DecisionOptionRef)
-      : OathState = answerPlacementResult(state, ref).toOption.get
+      : OathState = accepted(answerPlacementResult(state, ref))
 
   private def walkerIsFinished(state: OathState): Boolean =
-    readyOf(state).game.current.walkerPending.isEmpty
+    Outcomes.ready(state).game.current.walkerPending.isEmpty
 
   private def revealedVisionOf(state: OathState): Option[VisionState] =
-    val ready = readyOf(state)
-    player(ready, ready.game.current.turn.activePlayer).revealedVision
+    Look(state).player(actor).revealedVision
 
-  private def nextRegionDiscards(state: OathState): Vector[WorldCardId] =
-    val ready = readyOf(state)
-    val current = ready.game.current
-    val actor = player(ready, current.turn.activePlayer)
-    actor.pawnSite.flatMap(current.map.regionOf).map(CardPlay.nextRegion)
-      .map(current.commonCards.discard).getOrElse(Vector.empty)
+  /** p1 stands at Ancient City, in the Cradle: its next region is the
+    * Provinces, where p1's discards go. */
+  private def provincesDiscard(state: OathState): Vector[WorldCardId] =
+    Outcomes.ready(state).game.current.commonCards.discard(Region.Provinces)
 
-  test("a Conspiracy kept faceup from Search parks on its target, takes it " +
-      "and leaves the game"):
-    val base = acting
-    val current = base.game.current
-    val actor = current.turn.activePlayer
-    val site = player(base, actor).pawnSite
-    val enemy = current.players.find(_.player != actor).get.player
-    val deck = current.commonCards.worldDeck
-    val initial = base.updateCurrent(_.copy(
-      players = current.players.map(p =>
-        if p.player == enemy then p.copy(pawnSite = site) else p),
-      banners = current.banners.copy(
-        peoplesFavor = current.banners.peoplesFavor.copy(holder = Some(enemy)),
-        darkestSecret = current.banners.darkestSecret.copy(holder = None)),
-      commonCards = current.commonCards.copy(worldDeck =
-        Vector(conspiracy) ++ deck.filterNot(_ == conspiracy))))
-    val started = rules.startWalker(OathState.Ready(initial), ActionRef.Search,
-      actor, startArgs = Vector(DecisionOptionRef.Button("search:world")))
-      .toOption.get
-    val parked = rules.resolveWalker(started.state, actor, placeId(conspiracy),
-      faceup).toOption.get
+  test("a Conspiracy kept faceup from Search parks on its target, which only " +
+      "its owner sees, takes it and leaves the game"):
+    // p2, the enemy, shares p1's site, Ancient City, and holds the People's
+    // Favor; Conspiracy tops the deck.
+    val enemy = p2
+    val initial = Table.start.pawn(enemy, "Ancient City")
+      .peoplesFavor(Some(enemy), favor = 1).darkestSecret(None, secrets = 1)
+      .worldDeckTop(conspiracy).ready
+    val started = accepted(
+      rules.startWalker(OathState.Ready(initial), ActionRef.Search, actor,
+        startArgs = Vector(DecisionOptionRef.Button("search:world"))))
+    val parked = accepted(
+      rules.resolveWalker(started.state, actor, placeId(conspiracy), faceup))
     walkerParked.assertParked(parked.state, ActionRef.Search,
       "cardplay.conspiracy.target", actor)
-    val OathState.Ready(waiting) = parked.state: @unchecked
-    assertEquals(waiting.game.current.temporaryHands(actor),
-      Vector[WorldCardId](conspiracy))
+    assertEquals(Outcomes.ready(parked.state)
+      .game.current.temporaryHands(actor), Vector[WorldCardId](conspiracy))
 
     val projector = new GameProjector(catalog)
     val loaded = LoadedGame(parked.state, 11)
@@ -126,69 +100,49 @@ class VisionPlaySuite extends munit.FunSuite:
       Some(Vector(("banner", "peoples-favor"))))
     assertEquals(hidden.walkerDecision, None)
 
-    val resolved = rules.resolveWalker(parked.state, actor,
+    val resolved = accepted(rules.resolveWalker(parked.state, actor,
       "cardplay.conspiracy.target", DecisionAnswer.ChooseOneAnswer(
-        DecisionOptionRef.Banner(Banner.PeoplesFavor))).toOption.get
-    val OathState.Ready(after) = resolved.state: @unchecked
+        DecisionOptionRef.Banner(Banner.PeoplesFavor))))
+    val after = Outcomes.ready(resolved.state)
     assertEquals(after.game.current.banners.peoplesFavor.holder, Some(actor))
     assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
     assertEquals(after.game.current.walkerPending, None)
-    assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
+    assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
 
   test("Reveal is a facedown Vision played faceup: it replaces the revealed " +
       "Vision and costs no Supply"):
-    val base = acting
-    val current = base.game.current
-    val actor = current.turn.activePlayer
     val old = VisionRules.Conquest
     val revealed = VisionRules.Faith
-    val staged = base.updateCurrent(_.copy(
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(id =>
-          id == old || id == revealed)),
-      players = current.players.map(p => if p.player == actor then p.copy(
-        advisers = p.advisers :+ VisionState(revealed, Orientation.FaceDown),
-        revealedVision = Some(VisionState(old, Orientation.FaceUp))) else p)))
-    val before = player(staged, actor)
-    val origin = staged.game.current.map.regionOf(before.pawnSite.get).get
-    val destination = origin match
-      case Region.Cradle => Region.Provinces
-      case Region.Provinces => Region.Hinterland
-      case Region.Hinterland => Region.Cradle
-    val started = rules.startWalker(OathState.Ready(staged),
+    val staged = Table.start.adviser(actor, revealed, facedown = true)
+      .revealedVision(actor, old).ready
+    val before = Look(staged).player(actor)
+    val started = accepted(rules.startWalker(OathState.Ready(staged),
       ActionRef.PlayFacedownAdviser, actor,
-      startArgs = Vector(DecisionOptionRef.Vision(revealed))).toOption.get
-    val done = rules.resolveWalker(started.state, actor, placeId(revealed),
-      faceup).toOption.get
-    val OathState.Ready(after) = done.state: @unchecked
-    val updated = player(after, actor)
+      startArgs = Vector(DecisionOptionRef.Vision(revealed))))
+    val done = accepted(
+      rules.resolveWalker(started.state, actor, placeId(revealed), faceup))
+    val after = Outcomes.ready(done.state)
+    val updated = Look(after).player(actor)
     assertEquals(updated.board.supply, before.board.supply)
     assertEquals(updated.revealedVision.map(_.id), Some(revealed))
     assert(!updated.advisers.exists(_.id == revealed))
-    assert(after.game.current.commonCards.discard(destination).contains(old))
+    assert(provincesDiscard(done.state).contains(old))
     assertEquals(after.game.current.walkerPending, None)
 
   test("a Conspiracy played from a facedown adviser through the service " +
       "with nothing to take is boxed"):
-    val base = acting
-    val current = base.game.current
-    val actor = current.turn.activePlayer
-    val staged = base.updateCurrent(_.copy(
-      players = current.players.map(p =>
-        if p.player == actor then p.copy(advisers = p.advisers :+
-          VisionState(conspiracy, Orientation.FaceDown))
-        else p.copy(pawnSite = None)),
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(_ == conspiracy))))
-    val started = rules.startWalker(OathState.Ready(staged),
+    // p1 holds Conspiracy facedown; on the quiet table no one shares p1's
+    // site, so it has nothing to take.
+    val staged = Table.start.adviser(actor, conspiracy, facedown = true).ready
+    val started = accepted(rules.startWalker(OathState.Ready(staged),
       ActionRef.PlayFacedownAdviser, actor,
-      startArgs = Vector(DecisionOptionRef.Vision(conspiracy))).toOption.get
-    val done = rules.resolveWalker(started.state, actor, placeId(conspiracy),
-      faceup).toOption.get
-    val OathState.Ready(after) = done.state: @unchecked
-    assert(!player(after, actor).advisers.exists(_.id == conspiracy))
+      startArgs = Vector(DecisionOptionRef.Vision(conspiracy))))
+    val done = accepted(
+      rules.resolveWalker(started.state, actor, placeId(conspiracy), faceup))
+    val after = Outcomes.ready(done.state)
+    assert(!Look(after).player(actor).advisers.exists(_.id == conspiracy))
     assertEquals(after.game.current.walkerPending, None)
-    assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
+    assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
 
   test("a Vision's placement offers Discard and both adviser plays, " +
       "never a site"):
@@ -206,7 +160,7 @@ class VisionPlaySuite extends munit.FunSuite:
     val after = answerPlacement(state, DecisionOptionRef.Button("adviser-faceup"))
     assertEquals(walkerIsFinished(after), true)
     assertEquals(revealedVisionOf(after).map(_.id), Some(newVision))
-    assert(nextRegionDiscards(after).contains(existingVision))
+    assert(provincesDiscard(after).contains(existingVision))
 
   test("a Vision answer naming a site is rejected -- it is not declared"):
     val state = visionInTemporaryHand()

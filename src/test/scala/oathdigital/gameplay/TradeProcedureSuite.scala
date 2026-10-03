@@ -2,10 +2,11 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class TradeProcedureSuite extends munit.FunSuite:
   private val favor = Vector[DecisionOptionRef](DecisionOptionRef.Button("favor"))
@@ -16,21 +17,19 @@ class TradeProcedureSuite extends munit.FunSuite:
     * (Arcane) and nothing else. p1 has 4 favor and 2 faceup secrets, and
     * the Arcane bank holds 5. */
   private def atAlchemist: Table = Table.start
-    .denizen(alchemist, at = Table.quietPawnSite(p1))
+    .denizen(alchemist, at = "Ancient City")
     .favor(p1, 4).secrets(p1, faceUp = 2)
     .bankFavor(Suit.Arcane, 5)
 
-  private def trade(ready: ReadyGame, args: Vector[DecisionOptionRef]): ReadyGame =
-    val tree = TradeProcedure.build(catalog, ready, p1, args)
-      .getOrElse(fail("a legal Trade must build"))
-    val pending = ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty)
-      .getOrElse(fail("the Trade tree must walk to its source decision"))
-      .asInstanceOf[WalkerOutcome.Parked].tree
-    ProcedureWalker.resolve(ready, tree, pending, Answered(
-      TradeProcedure.decisionId,
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(alchemist)), p1),
-      WalkerPowers.empty).getOrElse(fail("the answer must be accepted"))
-      .asInstanceOf[WalkerOutcome.Finished].treeless
+  private def trade(ready: ReadyGame, args: Vector[DecisionOptionRef])
+      : ReadyGame =
+    val tree = accepted(TradeProcedure.build(catalog, ready, p1, args))
+    val pending = Outcomes.parked(
+      ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty)).tree
+    val answer = Answered(TradeProcedure.decisionId,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(alchemist)), p1)
+    Outcomes.finished(ProcedureWalker.resolve(ready, tree, pending, answer,
+      WalkerPowers.empty)).treeless
 
   test("Trade for favor moves a secret and its yield is capped by the bank"):
     val ready = atAlchemist

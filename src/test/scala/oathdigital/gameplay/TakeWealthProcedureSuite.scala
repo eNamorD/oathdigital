@@ -9,60 +9,10 @@ import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.Table
-
-/** Take Wealth's board setup and command, extracted from
-  * `TakeWealthProcedureSuite` (batch 1, Task 8) so
-  * `OathkeeperProcedureSuite` can drive the same Wake board its park test
-  * needs, without a second definition of "a Wake board with a takeable
-  * resource" drifting from this one.
-  */
-object TakeWealthFixture extends munit.Assertions:
-  val favorArg: Vector[DecisionOptionRef] = Vector(
-    DecisionOptionRef.Button("favor"))
-  val secretArg: Vector[DecisionOptionRef] = Vector(
-    DecisionOptionRef.Button("secret"))
-
-  /** p1's Wake on the quiet table. */
-  private def freshBase: ReadyGame =
-    Table.start.turn(Table.p1, Phase.Wake).ready
-
-  /** The active player's pawn site holds `favor`/`secrets`; `sharedEnemy`
-    * parks another player's pawn on it. Mirrors `WakeSuite`'s board so the
-    * gates this suite asserts are the gates the legacy path asserted.
-    *
-    * `from` is the game to start from, defaulting to a fresh first-game
-    * setup -- `OathkeeperProcedureSuite`'s park test instead starts from a
-    * game already `ruled` for a tie.
-    */
-  def wakeReady(from: ReadyGame = freshBase, favor: Int = 1, secrets: Int = 1,
-      sharedEnemy: Boolean = false): ReadyGame =
-    val current = from.game.current
-    val actor = current.turn.activePlayer
-    val site = current.players.find(_.player == actor).flatMap(_.pawnSite).get
-    val players = current.players.map { player =>
-      if sharedEnemy && player.player != actor then player.copy(
-        pawnSite = Some(site))
-      else player
-    }
-    from.updateCurrent(_.copy(
-      players = players,
-      map = current.map.copy(sites = current.map.sites.updated(site,
-        current.map.sites(site).copy(tokens = Tokens(favor, secrets))))))
-
-  private def actor(ready: ReadyGame): PlayerId =
-    ready.game.current.turn.activePlayer
-
-  def take(rules: OathRules, ready: ReadyGame,
-      args: Vector[DecisionOptionRef] = favorArg)
-      : Either[OathViolation, OathTransition] =
-    rules.startWalker(Ready(ready), ActionRef.TakeWealth, actor(ready),
-      Vector.empty, args)
-
-  def accepted(rules: OathRules, ready: ReadyGame,
-      args: Vector[DecisionOptionRef] = favorArg): OathTransition =
-    take(rules, ready, args).fold(error => fail(s"take rejected: $error"),
-      identity)
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, TakeWealthFixture,
+  Table}
+import oathdigital.testkit.Table.{p1, p2, p3}
+import oathdigital.testkit.Unwrap.{accepted, rejected}
 
 /** Take Wealth on the generic walker (batch 1, Tasks 7-8).
   *
@@ -80,46 +30,51 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
 
   private val favorArg = TakeWealthFixture.favorArg
   private val secretArg = TakeWealthFixture.secretArg
+  private val actor = p1
+  // p1's site on the quiet table.
+  private val home = CatalogNames.site("Ancient City")
 
-  private def wake(favor: Int = 1, secrets: Int = 1,
+  /** p1's Wake on the quiet table, Ancient City holding `favor` and
+    * `secrets`; with `sharedEnemy`, p2 and p3 stand there too. */
+  private def wake(favor: Int, secrets: Int,
       sharedEnemy: Boolean = false): ReadyGame =
-    TakeWealthFixture.wakeReady(favor = favor, secrets = secrets,
-      sharedEnemy = sharedEnemy)
+    TakeWealthFixture.wakeReady(Table.start.turn(actor, Phase.Wake).ready,
+      favor = favor, secrets = secrets, sharedEnemy = sharedEnemy)
 
-  private def actor(ready: ReadyGame): PlayerId =
-    ready.game.current.turn.activePlayer
-  private def pawnSite(ready: ReadyGame): SiteId =
-    ready.game.current.players.find(_.player == actor(ready))
-      .flatMap(_.pawnSite).get
   private def board(ready: ReadyGame): PlayerBoardState =
-    ready.game.current.players.find(_.player == actor(ready)).get.board
+    Look(ready).player(actor).board
 
   private def take(ready: ReadyGame,
       args: Vector[DecisionOptionRef] = favorArg)
       : Either[OathViolation, OathTransition] =
     TakeWealthFixture.take(rules, ready, args)
 
-  private def accepted(ready: ReadyGame,
+  private def took(ready: ReadyGame,
       args: Vector[DecisionOptionRef] = favorArg): OathTransition =
-    TakeWealthFixture.accepted(rules, ready, args)
+    accepted(take(ready, args))
+
+  /** A stocked site, an empty favor, an empty secret, an enemy pawn, and
+    * `taken`, a site already taken from this turn. */
+  private def boards(taken: ReadyGame): Vector[ReadyGame] = Vector(
+    wake(favor = 1, secrets = 1), wake(favor = 0, secrets = 1),
+    wake(favor = 1, secrets = 0),
+    wake(favor = 1, secrets = 1, sharedEnemy = true), taken)
 
   private def after(transition: OathTransition): ReadyGame =
-    transition.state match
-      case Ready(value) => value
-      case other => fail(s"expected Ready, got $other")
+    Outcomes.ready(transition.state)
 
   test("a take moves the favor, records its use and ends a Wake with nothing left"):
-    val ready = wake()
-    val site = pawnSite(ready)
+    val ready = wake(favor = 1, secrets = 1)
+    val site = home
     val before = board(ready).favor
-    val transition = accepted(ready)
+    val transition = took(ready)
     val state = after(transition)
 
     assertEquals(board(state).favor, before + 1)
     assertEquals(state.game.current.map.sites(site).tokens.favor, 0)
     assert(state.game.current.turn.usedPowers.contains(
       TakeWealthLimit.useRef(site)))
-    parked.assertResumed(transition.state, Phase.Act, actor(ready))
+    parked.assertResumed(transition.state, Phase.Act, actor)
     assertEquals(transition.events.collect {
       case oathdigital.gameplay.walker.WalkerCompleted(procedure) => procedure
     }, Vector(ActionRef.TakeWealth, PhaseTransitionRef.EndWake))
@@ -127,26 +82,22 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     assertEquals(state.game.current.walkerProcedure, None)
 
   test("a take moves a face-up secret"):
-    val ready = wake()
+    val ready = wake(favor = 1, secrets = 1)
     val before = board(ready).faceUpSecrets
-    val state = after(accepted(ready, secretArg))
+    val state = after(took(ready, secretArg))
     assertEquals(board(state).faceUpSecrets, before + 1)
-    assertEquals(state.game.current.map.sites(pawnSite(ready)).tokens.secrets, 0)
+    assertEquals(state.game.current.map.sites(home).tokens.secrets, 0)
 
   test("a completed Take Wealth runs the action boundary before Wake ends"):
     // An empty site with capacity makes the boundary observable; the
     // precondition proves it has something to do here.
-    val base = wake()
-    val empty = base.game.current.map.inPlay.find(id =>
-      catalog.sites.find(_.id == id).exists(_.capacity > 0)).get
-    val ready = base.updateCurrent(_.copy(map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(empty,
-          base.game.current.map.sites(empty).copy(
-            forces = SiteForces.Empty)))))
+    // Ancient City, capacity 3, holds no bandits.
+    val ready = Table.from(wake(favor = 1, secrets = 1))
+      .bandits("Ancient City", 0).unchecked
     assert(StateBasedEvaluation.banditRefill(catalog, Ready(ready))
       .toOption.flatten.nonEmpty,
       "precondition: the boundary would refill bandits in this state")
-    val result = accepted(ready)
+    val result = took(ready)
     val refilled = result.events.indexWhere(_.isInstanceOf[BanditsRefilled])
     assertEquals(result.events.collect { case event: BanditsRefilled => event }.size, 1)
     assert(refilled >= 0 && refilled < result.events.indexWhere {
@@ -154,41 +105,36 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
         procedure == PhaseTransitionRef.EndWake
       case _ => false
     }, result.events.toString)
-    parked.assertResumed(result.state, Phase.Act,
-      ready.game.current.turn.activePlayer)
+    parked.assertResumed(result.state, Phase.Act, actor)
 
   test("a second take at the same site this turn is refused by the walker"):
-    val ready = wake(favor = 2)
+    val ready = wake(favor = 2, secrets = 1)
     // The take ends Wake; put the turn back in Wake to try the site again.
-    val took = after(accepted(ready))
-    val once = took.updateCurrent(current => current.copy(turn =
-      current.turn.copy(phase = Phase.Wake)))
-    val site = once.game.current.players.find(_.player == actor(once))
-      .flatMap(_.pawnSite).get
+    val tookOnce = after(took(ready))
+    val once = Table.from(tookOnce).backInPhase(Phase.Wake).unchecked
     assertEquals(take(once).left.toOption,
-      Some(PowerAlreadyUsed(TakeWealthLimit.useRef(site))))
+      Some(PowerAlreadyUsed(TakeWealthLimit.useRef(home))))
 
   test("a take outside the Wake phase is rejected"):
-    val ready = wake()
-    val inAct = ready.updateCurrent(_.copy(turn = ready.game.current.turn.copy(
-        phase = Phase.Act)))
-    assertEquals(take(inAct).left.toOption.get,
+    val ready = wake(favor = 1, secrets = 1)
+    val inAct = Table.from(ready).turn(actor, Phase.Act).unchecked
+    assertEquals(rejected(take(inAct)),
       WrongPhase(Phase.Wake, Phase.Act): OathViolation)
 
   test("an enemy pawn at the site blocks the take"):
-    assertEquals(take(wake(sharedEnemy = true)).left.toOption, Some(EnemyPawnBlocksTakeWealth(SiteId("site:ancient-city"),
-      Vector(PlayerId("p2"), PlayerId("p3")))))
+    assertEquals(take(wake(favor = 1, secrets = 1, sharedEnemy = true))
+      .left.toOption, Some(EnemyPawnBlocksTakeWealth(home, Vector(p2, p3))))
 
   test("the requested resource must be present at the site"):
-    val ready = wake(favor = 0)
-    assertEquals(take(ready).left.toOption.get,
-      ResourceUnavailable(pawnSite(ready), WakeResource.Favor): OathViolation)
+    val ready = wake(favor = 0, secrets = 1)
+    assertEquals(rejected(take(ready)),
+      ResourceUnavailable(home, WakeResource.Favor): OathViolation)
 
   test("the start selection must name exactly one known resource"):
-    val ready = wake()
+    val ready = wake(favor = 1, secrets = 1)
     assertEquals(Vector(
       Vector.empty[DecisionOptionRef],
-      Vector[DecisionOptionRef](DecisionOptionRef.Site(pawnSite(ready))),
+      Vector[DecisionOptionRef](DecisionOptionRef.Site(home)),
       favorArg ++ secretArg,
       Vector[DecisionOptionRef](DecisionOptionRef.Button("warbands"))
     ).map(args => take(ready, args).left.toOption), Vector(
@@ -215,11 +161,10 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     // `candidates` is the gameplay-owned answer the projector consumes, so
     // it is proved against the command directly rather than only through the
     // projection below.
-    val taken = after(accepted(wake(favor = 2)))
-    Vector(wake(), wake(favor = 0), wake(secrets = 0),
-      wake(sharedEnemy = true), taken).foreach { ready =>
+    val taken = after(took(wake(favor = 2, secrets = 1)))
+    boards(taken).foreach { ready =>
       assertEquals(TakeWealthProcedure.candidates(catalog, ready,
-        actor(ready), powers),
+        actor, powers),
         WakeResource.all.filter(resource => take(ready,
           TakeWealthProcedure.selection(resource)).isRight))
     }
@@ -232,12 +177,11 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     // copy of the rule says so. What this adds over the candidates test above
     // is the projector's half -- that it consumes them and names them as the
     // controls a client binds.
-    val taken = after(accepted(wake(favor = 2)))
-    Vector(wake(), wake(favor = 0), wake(secrets = 0),
-      wake(sharedEnemy = true), taken).foreach { ready =>
+    val taken = after(took(wake(favor = 2, secrets = 1)))
+    boards(taken).foreach { ready =>
       val projection = new oathdigital.application.GameProjector(catalog)
         .project("take-wealth", oathdigital.application.LoadedGame(
-          Ready(ready), 9), actor(ready))
+          Ready(ready), 9), actor)
       assertEquals(projection.legalControls.contains("takeFavor"),
         take(ready).isRight, "takeFavor")
       assertEquals(projection.legalControls.contains("takeSecret"),
@@ -245,19 +189,19 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     }
 
   test("the declared tree is the take and its use record under one window"):
-    val ready = wake()
-    val site = pawnSite(ready)
-    assertEquals(TakeWealthProcedure.build(catalog, ready, actor(ready),
+    val ready = wake(favor = 1, secrets = 1)
+    val site = home
+    assertEquals(TakeWealthProcedure.build(catalog, ready, actor,
       favorArg), Right(Sequence(Vector(
-        Take(Piece.Favor(1), actor(ready), Location.Site(site),
-          Location.PlayArea(actor(ready))),
+        Take(Piece.Favor(1), actor, Location.Site(site),
+          Location.PlayArea(actor)),
         RecordPowerUse(TakeWealthLimit.useRef(site))),
       Some(PowerWindow.WakeTakeWealth))))
 
   test("the recorded operations are the resource move and the use record"):
-    val ready = wake()
-    val site = pawnSite(ready)
-    val recorded = accepted(ready).events.takeWhile {
+    val ready = wake(favor = 1, secrets = 1)
+    val site = home
+    val recorded = took(ready).events.takeWhile {
       case _: oathdigital.gameplay.walker.WalkerCompleted => false
       case _ => true
     }.collect {
@@ -265,5 +209,5 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     }.flatten
     assertEquals(recorded, Vector(
       Move(Piece.Favor(1), PositionedLocation(Location.Site(site)),
-        PositionedLocation(Location.PlayArea(actor(ready)))),
+        PositionedLocation(Location.PlayArea(actor))),
       RecordPowerUse(TakeWealthLimit.useRef(site))))

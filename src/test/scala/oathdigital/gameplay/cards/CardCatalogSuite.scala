@@ -3,7 +3,8 @@ package oathdigital.gameplay.cards
 import oathdigital.catalog.{AdviserOnly, ExecutableCatalog, Locked,
   PrintedPower, PrintsPowers, SiteOnly}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.model.{CardId, EdificeId, PowerId, RelicId}
+import oathdigital.model.{CardId, PowerId, RelicId}
+import oathdigital.testkit.CatalogNames
 
 /** The printed-corpus checks `validate-component-catalog.py` ran on the JSON,
   * now run on the Scala catalog. Suits, edifice faces and the single Grand
@@ -22,12 +23,17 @@ class CardCatalogSuite extends munit.FunSuite:
     "suit-hearth", "suit-nomad", "suit-order", "sword")
   private val symbol = "\\[([a-z-]+)\\]".r
 
+  // The counts are the printed component list's, as
+  // `validate-component-catalog.py` counted it.
   test("the catalog holds every printed component"):
-    assertEquals(Vector(catalog.denizens.size, catalog.relics.size,
-      catalog.edifices.size, catalog.legacies.size, catalog.sites.size),
-      Vector(255, 48, 30, 36, 24))
+    assertEquals(Map("denizens" -> catalog.denizens.size,
+      "relics" -> catalog.relics.size, "edifices" -> catalog.edifices.size,
+      "legacies" -> catalog.legacies.size, "sites" -> catalog.sites.size),
+      Map("denizens" -> 255, "relics" -> 48, "edifices" -> 30,
+        "legacies" -> 36, "sites" -> 24))
 
   test("printed ids are the expected sets"):
+    // Denizens are numbered 1 to 258; the list prints no card 94, 110 or 174.
     assertEquals(catalog.denizens.map(_.id.value).toSet,
       ((1 to 258).toSet -- Set(94, 110, 174)).map(_.toString))
     assertEquals(catalog.relics.map(_.id.value).toSet,
@@ -67,6 +73,8 @@ class CardCatalogSuite extends munit.FunSuite:
       case _: AdviserOnly => "adviser-only"
       case _ => "unrestricted"
     val counts = catalog.denizens.groupBy(kind).view.mapValues(_.size).toMap
+    // The printed corpus's restrictions; the four counts sum to the 255
+    // denizens.
     assertEquals(counts, Map("unrestricted" -> 133, "site-only" -> 51,
       "adviser-only" -> 40, "locked-adviser-only" -> 31))
     assert(catalog.edifices.forall(e => e.intact.isInstanceOf[Locked] &&
@@ -110,7 +118,8 @@ class CardCatalogSuite extends munit.FunSuite:
       PhasePowerCatalog.default(catalog).powers.map(_.id)).toSet
     // The Grand Scepter and the Hall of Ministers are implemented as
     // operation restrictions, not as registered powers.
-    val restrictions = Set[CardId](RelicId("grand-scepter"), EdificeId("E16"))
+    val restrictions = Set[CardId](RelicId("grand-scepter"),
+      CatalogNames.edifice("Hall of Ministers"))
     def held(card: AnyRef): Boolean =
       card.getClass.getPackageName == "oathdigital.catalog.holding"
     def implemented(id: CardId, printed: Vector[PrintedPower]): Boolean =

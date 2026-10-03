@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
 
 /** Take Wealth's once-per-turn-per-site limit, proved against contribution
   * collection before Wake owns a walker tree (batch-1 Task 6). The rule is
@@ -21,30 +21,30 @@ import oathdigital.testkit.Table
   * indistinguishable from a correct one in every green assertion.
   */
 class TakeWealthPowerSuite extends munit.FunSuite:
-  private val baseReady = Table.start.ready
-  private val actor = baseReady.game.current.turn.activePlayer
+  private val actor = Table.p1
   private val powers: Vector[ContributingPower] = Vector(TakeWealthLimit)
 
-  private val inPlay = baseReady.game.current.map.inPlay.sortBy(_.value)
-  private val site = inPlay.headOption.getOrElse(fail("no site in play"))
-  private val otherSite = inPlay.lift(1).getOrElse(fail("one site in play"))
+  // p1's site on the quiet table, and another in-play site.
+  private val site = CatalogNames.site("Ancient City")
+  private val otherSite = CatalogNames.site("Broken Peaks")
 
   /** The pawn stands at `pawn` and this turn has already used `used`. */
   private def ready(pawn: Option[SiteId],
       used: Set[PowerUseRef] = Set.empty): ReadyGame =
-    baseReady.updateCurrent(_.copy(
-        turn = baseReady.game.current.turn.copy(usedPowers = used),
-        players = baseReady.game.current.players.map { player =>
-          if player.player == actor then player.copy(pawnSite = pawn)
-          else player
-        }))
+    val placed = pawn.fold(Table.start)(Table.start.pawn(actor, _)).ready
+    // No Table step removes a pawn or records a used power.
+    placed.updateCurrent(c => c.copy(
+      turn = c.turn.copy(usedPowers = used),
+      players = c.players.map { player =>
+        if player.player == actor then player.copy(pawnSite = pawn)
+        else player
+      }))
 
   /** The turn advance, as `Rest` performs it: a whole new `TurnState`, which
     * is why `usedPowers` is turn-scoped without anything clearing it.
     */
   private def advanceTurn(state: ReadyGame): ReadyGame =
-    state.updateCurrent(_.copy(
-      turn = TurnState(actor, Phase.Wake, Set.empty)))
+    Table.from(state).turn(actor, Phase.Wake).unchecked
 
   /** Task 7's root shape: the take, under the Wake take-wealth window. */
   private def takeNode(from: SiteId): Sequence =

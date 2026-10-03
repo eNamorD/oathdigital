@@ -5,7 +5,8 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.travel.TravelSitePowers
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
-import oathdigital.testkit.{Table, TestCards}
+import oathdigital.testkit.{CatalogNames, Look, Table, TestCards}
+import oathdigital.testkit.Unwrap.present
 
 /** Travel terrain rules are proved against contribution collection, before
   * Travel owns a walker tree. Every cost node has R25's real shape: a
@@ -13,33 +14,32 @@ import oathdigital.testkit.{Table, TestCards}
   */
 class TravelSitePowersSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
-  private val baseReady = Table.start.ready
-  private val actor = baseReady.game.current.turn.activePlayer
+  private val actor = Table.p1
   private val powers = TravelSitePowers.all
 
+  /** The first catalog site whose handler ends in `suffix`. */
   private def site(suffix: String): SiteId = catalog.sites.find(
     _.handlers.exists(_.value.endsWith(suffix))).fold(fail(s"missing $suffix"))(_.id)
   private def powerId(siteId: SiteId, suffix: String): PowerId =
-    catalog.sites.find(_.id == siteId).fold(
-      fail(s"missing $siteId"))(_.handlers.find(_.value.endsWith(suffix)).get)
+    present(catalog.site(siteId).flatMap(_.handlers.find(_.value
+      .endsWith(suffix))), s"the $suffix handler of $siteId")
 
-  private val plain = site(".plains")
-  private val otherPlain = catalog.sites.filter(
-    _.handlers.exists(_.value.endsWith(".plains"))).map(_.id).find(_ != plain)
-    .getOrElse(fail("missing a second plains site"))
-  private val mountain = site(".mountain")
-  private val coast = site(".coast")
-  private val island = site(".island")
-  private val pass = site(".pass")
+  // Two Plains sites and the terrain sites, each the first in the catalog
+  // whose handler names that terrain.
+  private val plain = CatalogNames.site("Buried Giant")
+  private val otherPlain = CatalogNames.site("Dunes")
+  private val mountain = CatalogNames.site("Broken Peaks")
+  private val coast = CatalogNames.site("Desolate Shore")
+  private val island = CatalogNames.site("Fair Isle")
+  private val pass = CatalogNames.site("Narrow Pass")
+  private val rockyCoast = CatalogNames.site("Rocky Coast")
 
-  private def readyAt(source: SiteId, map: MapState = baseReady.game.current.map)
+  /** p1's Act on the quiet table, p1 at `source`, the map as given. */
+  private def readyAt(source: SiteId, map: Option[MapState] = None)
       : ReadyGame =
-    baseReady.updateCurrent(_.copy(
-      map = map,
-      players = baseReady.game.current.players.map { player =>
-        if player.player == actor then player.copy(pawnSite = Some(source))
-        else player
-      }))
+    val placed = Table.start.pawn(actor, source).ready
+    // No Table step lays out regions.
+    map.fold(placed)(laid => placed.updateCurrent(_.copy(map = laid)))
 
   private def costNode(source: SiteId, destination: SiteId, base: Int): Sequence =
     Sequence(Vector(
@@ -79,12 +79,18 @@ class TravelSitePowersSuite extends munit.FunSuite:
     * something that no longer exists was never an option; keeping the numbers
     * it produced is the whole point of having run the comparison.
     */
-  test("terrain transforms reproduce the retired terrain fold's parity table"):
+  test("terrain transforms give the printed Travel cost on each route"):
+    assertEquals(site(".plains"), plain)
+    assertEquals(site(".mountain"), mountain)
+    assertEquals(site(".coast"), coast)
+    assertEquals(site(".island"), island)
+    assertEquals(site(".pass"), pass)
+    assertEquals(site(".rocky-coast.coast"), rockyCoast)
     val routes = Vector(
       (plain, mountain, 2, 3),                        // Mountain adds 1
       (plain, island, 2, 4),                          // Island adds 2
       (plain, otherPlain, 2, 2),                      // no terrain
-      (coast, site(".rocky-coast.coast"), 2, 1),      // coast route replaces
+      (coast, rockyCoast, 2, 1),                      // coast route replaces
       (coast, island, 2, 1),                          // coast route beats +2
       (coast, plain, 2, 2)                            // coastal source, plain
     )                                                 // destination: no replace
@@ -110,7 +116,7 @@ class TravelSitePowersSuite extends munit.FunSuite:
       passForces: SiteForces = SiteForces.Occupied(ForceKind.Bandit, 1))
       : MapState =
     def state(id: SiteId, forces: SiteForces): SiteState =
-      val definition = catalog.sites.find(_.id == id).get
+      val definition = present(catalog.site(id), id.value)
       SiteState(forces, Vector.empty, Vector.empty, definition.startingResources)
     MapState(Vector(source), Vector(pass, destination), Vector.empty, Map(
       source -> state(source, SiteForces.Empty),
@@ -136,19 +142,19 @@ class TravelSitePowersSuite extends munit.FunSuite:
 
   test("Narrow Pass restricts cross-region travel but permits coast route"):
     val blockedDestination = otherPlain
-    val blockedReady = readyAt(plain, passMap(plain, blockedDestination))
+    val blockedReady = readyAt(plain, Some(passMap(plain, blockedDestination)))
     assertEquals(passViolation(blockedReady,
       eligibilityTree(plain, blockedDestination)),
       Some(OathViolation.TravelPassBlocked(pass, blockedDestination)))
 
-    val coastReady = readyAt(coast, passMap(coast, island))
+    val coastReady = readyAt(coast, Some(passMap(coast, island)))
     assertEquals(passViolation(coastReady, eligibilityTree(coast, island)), None)
 
   test("Narrow Pass fails closed when its ruler lineage is corrupt"):
     val destination = otherPlain
-    val unknownReady = readyAt(plain, passMap(plain, destination,
-      SiteForces.Occupied(ForceKind.Exile(LineageId("missing")), 1)))
-    val actorState = unknownReady.game.current.players.find(_.player == actor).get
+    val unknownReady = readyAt(plain, Some(passMap(plain, destination,
+      SiteForces.Occupied(ForceKind.Exile(LineageId("missing")), 1))))
+    val actorState = Look(unknownReady).player(actor)
     val duplicateReady = unknownReady.updateCurrent(_.copy(
         map = passMap(plain, destination,
           SiteForces.Occupied(ForceKind.Exile(actorState.lineage), 1)),
@@ -162,7 +168,7 @@ class TravelSitePowersSuite extends munit.FunSuite:
 
   test("unknown terrain-suffixed handlers never fabricate Travel powers"):
     val fixturePower = PowerId("site.fixture-site.coast")
-    val fixtureSite = TestCards.siteLike(catalog.sites.find(_.id == plain).get)(
+    val fixtureSite = TestCards.siteLike(present(catalog.site(plain), "plain"))(
       id = SiteId("site:fixture-site"), handlers = Vector(fixturePower))
     val augmented = catalog.copy(sites = catalog.sites :+ fixtureSite)
 
