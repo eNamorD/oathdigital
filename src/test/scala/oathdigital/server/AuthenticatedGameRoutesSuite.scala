@@ -3,10 +3,6 @@ package oathdigital.server
 import java.net.http.HttpResponse
 import java.nio.file.Files
 
-import scala.concurrent.Future
-
-import akka.http.scaladsl.model.{HttpRequest => AkkaRequest}
-
 import oathdigital.application._
 import oathdigital.application.MembershipRole._
 import oathdigital.catalog.SiteOnly
@@ -14,19 +10,12 @@ import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.{ActionRef, DecisionOptionRef, DenizenId}
-import oathdigital.testkit.{CatalogNames, HttpTestServer}
+import oathdigital.testkit.{CatalogNames, HeaderAuthenticator,
+  HttpTestServer}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
 class AuthenticatedGameRoutesSuite extends munit.FunSuite:
-  private val authenticator = new HttpSessionAuthenticator:
-    override def authenticate(request: AkkaRequest): Future[Either[
-        AuthenticationFailure, AuthenticatedHttpSession]] = Future.successful(
-      request.headers.find(_.name == "X-Test-User").map(header =>
-        Right(AuthenticatedHttpSession(AuthenticatedUser(UserId(header.value)),
-          HttpTestServer.csrfDigest)))
-        .getOrElse(Left(AuthenticationFailure.MissingCredential)))
-
   /** The authenticated routes over `service` and the memberships in
     * `identities`. */
   private def serve(name: String, service: GameApplicationService,
@@ -36,7 +25,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
       new MembershipAuthorizationService(identities), identities,
       new GeneratedFirstGamePlanFactory(catalog))
     HttpTestServer.start(name)(blocking => new AuthenticatedGameRoutes(
-      authenticator, new SameOriginCsrfProtection(HttpTestServer.origin),
+      HeaderAuthenticator, new SameOriginCsrfProtection(HttpTestServer.origin),
       gateway, blocking).route)
 
   private def openDatabase(label: String): HsqldbDatabaseOwner =

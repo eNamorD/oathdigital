@@ -222,10 +222,12 @@ class RestSuite extends munit.FunSuite:
     val roundEight = Table.from(act).turn(last, Phase.Act).unchecked
       .updateCurrent(c => c.copy(tracks = c.tracks.copy(round = 8)))
 
-    val deterministic = new OathRules(catalog, warExhaustionRandomPort =
-      new WarExhaustionRandomPort {
-        def choose(candidates: Vector[PlayerId]) = candidates.last
-      })
+    // Stub of WarExhaustionRandomPort: always picks the last candidate.
+    val lastCandidateStub = new WarExhaustionRandomPort {
+      def choose(candidates: Vector[PlayerId]) = candidates.last
+    }
+    val deterministic = new OathRules(catalog,
+      warExhaustionRandomPort = lastCandidateStub)
     val finished = accepted(rest(Ready(roundEight), last, deterministic))
     assert(finished.events.exists(_.isInstanceOf[OathEvent.RoundEnded]))
     assert(finished.events.exists(

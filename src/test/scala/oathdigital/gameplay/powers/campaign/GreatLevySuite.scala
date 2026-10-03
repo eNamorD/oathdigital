@@ -4,7 +4,7 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.walker.WalkerDice
+import oathdigital.gameplay.WalkerDiceFixture.skullThenSwords
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look}
 
@@ -19,14 +19,6 @@ class GreatLevySuite extends munit.FunSuite:
     DecisionOptionRef.Denizen(outriders)
   private val line = NoteText.Said("ignored", "Skulls ignored.", covers = false)
 
-  /** The first attack die two swords and a skull, the rest one sword; every
-    * defense die blank. */
-  private val skull: WalkerDice = (kind, count) => Right(kind match
-    case DiceKind.Attack => Vector.tabulate(count)(index =>
-      (if index == 0 then AttackDieFace.TwoSwordsSkull
-       else AttackDieFace.OneSword): DieFace)
-    case DiceKind.Defense => Vector.fill(count)(DefenseDieFace.Blank: DieFace))
-
   /** `who` holds The Great Levy and `favor` favor. */
   private def holder(b: Board, who: PlayerId, favor: Int = 2): Board =
     on(withAdviserFor(b, who, card, Orientation.FaceUp))(_.favor(who, favor))
@@ -38,7 +30,7 @@ class GreatLevySuite extends munit.FunSuite:
       "skull, and says so"):
     val base = board(warbands = 5, supply = 7)
     val b = holder(base, base.actor)
-    val run = commit(rules(skull), b, 2)
+    val run = commit(rules(skullThenSwords), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
@@ -71,7 +63,7 @@ class GreatLevySuite extends munit.FunSuite:
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val b = holder(base, base.rival)
-    val run = commit(rules(skull), b, 4)
+    val run = commit(rules(skullThenSwords), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))
     // One die is left, and it rolls the skull.
@@ -82,7 +74,7 @@ class GreatLevySuite extends munit.FunSuite:
   test("with Outriders also chosen, the attack is scored the same"):
     val base = board(warbands = 5, supply = 7)
     val b = withAdviser(holder(base, base.actor), outriders, Orientation.FaceUp)
-    val done = commit(rules(skull), b, 2)
+    val done = commit(rules(skullThenSwords), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, outridersRef)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.result.skullLosses, 0)

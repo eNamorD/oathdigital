@@ -195,6 +195,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     // later action's payload can't be exhaustively matched at compile time.
     // A shape this codec doesn't know must fail the append path as a
     // WireError, exactly like an unrecognized value on the decode side.
+    // Stub of WalkerStepPayload: a payload shape the codec has no case for.
     case object UnknownStepPayload extends WalkerStepPayload
     val event = WalkerStepRecorded("0", UnknownStepPayload,
       Vector.empty, Vector.empty)

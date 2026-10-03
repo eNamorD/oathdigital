@@ -29,6 +29,37 @@ object WalkerDiceFixture:
       case DiceKind.Defense => DefenseDieFace.TwoShields: DieFace
     }))
 
+  /** Stub of WalkerDice: every attack die a sword; the defense dice are
+    * `faces`, in turn, starting over when the pool is larger than `faces`.
+    */
+  def swordsCyclingDefense(faces: DefenseDieFace*): WalkerDice =
+    (kind, count) => Right(kind match
+      case DiceKind.Attack =>
+        Vector.fill(count)(AttackDieFace.OneSword: DieFace)
+      case DiceKind.Defense =>
+        Vector.tabulate(count)(index => faces(index % faces.size): DieFace))
+
+  /** Stub of WalkerDice: every attack die a sword; the first defense die a
+    * single shield and the rest two shields, so a pool of three holds one
+    * single shield and two double shields.
+    */
+  val swordsSingleThenDoubleShields: WalkerDice = (kind, count) =>
+    Right(kind match
+      case DiceKind.Attack =>
+        Vector.fill(count)(AttackDieFace.OneSword: DieFace)
+      case DiceKind.Defense => Vector.tabulate(count)(index =>
+        (if index == 0 then DefenseDieFace.OneShield
+         else DefenseDieFace.TwoShields): DieFace))
+
+  /** Stub of WalkerDice: the first attack die two swords and a skull, the
+    * rest one sword; every defense die blank.
+    */
+  val skullThenSwords: WalkerDice = (kind, count) => Right(kind match
+    case DiceKind.Attack => Vector.tabulate(count)(index =>
+      (if index == 0 then AttackDieFace.TwoSwordsSkull
+       else AttackDieFace.OneSword): DieFace)
+    case DiceKind.Defense => Vector.fill(count)(DefenseDieFace.Blank: DieFace))
+
   /** Stub of WalkerDice: dice that return exactly these faces, and fail
     * loudly on a wrong count. */
   def dice(attack: Vector[AttackDieFace] = Vector.empty,
@@ -53,3 +84,14 @@ object WalkerDiceFixture:
       if queue.isEmpty then Left(OathViolation.InvalidEventOrder(
         "the scripted dice source ran out of rolls"))
       else Right(queue.dequeue())
+
+  /** Stub of WalkerDice: shuffle answers `order(count)` for a pile of `count`
+    * cards, and every roll fails, so a walk that rolls instead of shuffling
+    * is refused.
+    */
+  def shufflingBy(order: Int => Vector[Int]): WalkerDice = new WalkerDice:
+    def roll(kind: DiceKind, count: Int)
+        : Either[OathViolation, Vector[DieFace]] =
+      Left(OathViolation.InvalidEventOrder("this dice source never rolls"))
+    override def shuffle(count: Int): Either[OathViolation, Vector[Int]] =
+      Right(order(count))

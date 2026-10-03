@@ -247,9 +247,10 @@ class TravelProcedureSuite extends munit.FunSuite:
       Vector(DecisionOptionRef.Site(SiteId("missing")))))
       .isInstanceOf[SiteNotInPlay])
 
-  /** A player-selected Transform that raises any Travel pay node by two.
-    * Fixture-only: it exists so the suite can tell "offered" from "selected"
-    * with a number, which no production Travel power can do today.
+  /** Stub of ContributingPower: raises any Travel pay node by two,
+    * player-selected. It exists so the suite can tell "offered" from
+    * "selected" with a number, which no production Travel power can do
+    * today.
     */
   private final case class SurchargePower(id: PowerId)
       extends ContributingPower:

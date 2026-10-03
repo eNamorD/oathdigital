@@ -2,15 +2,11 @@ package oathdigital.server
 
 import java.nio.file.Files
 
-import scala.concurrent.Future
-
-import akka.http.scaladsl.model.{HttpRequest => AkkaRequest}
-
 import oathdigital.application._
 import oathdigital.application.MembershipRole._
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.testkit.{HttpTestServer, Outcomes}
+import oathdigital.testkit.{HeaderAuthenticator, HttpTestServer, Outcomes}
 import oathdigital.testkit.ChronicleShuffles.unshuffled
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -76,18 +72,9 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
           // it was sent, so seating must not shuffle.
           new GeneratedFirstGamePlanFactory(catalog, unshuffled)
         )
-        val authenticator = new HttpSessionAuthenticator:
-          override def authenticate(request: AkkaRequest) =
-            Future.successful(
-              request.headers.find(_.name == "X-Test-User") match {
-                case Some(header) => Right(AuthenticatedHttpSession(
-                  AuthenticatedUser(UserId(header.value)),
-                  HttpTestServer.csrfDigest))
-                case None => Left(AuthenticationFailure.MissingCredential)
-              })
         val server = HttpTestServer.start("authenticated-bootstrap-test")(
           blocking => new AuthenticatedGameRoutes(
-            authenticator,
+            HeaderAuthenticator,
             new SameOriginCsrfProtection(HttpTestServer.origin),
             gateway,
             blocking
@@ -230,6 +217,9 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
       "actor"
     ).foreach(field => assert(!body.contains(field)))
 
+  /** Spy of EventStreamRepository: delegates to an
+    * InMemoryEventStreamRepository, which is a fake, and counts the appends
+    * in `appendCalls`. */
   private final class CountingEventStreamRepository
       extends EventStreamRepository:
     private val delegate = new InMemoryEventStreamRepository

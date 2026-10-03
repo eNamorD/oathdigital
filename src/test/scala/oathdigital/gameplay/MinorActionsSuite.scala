@@ -166,13 +166,14 @@ class MinorActionsSuite extends munit.FunSuite:
       SiteForces.Occupied(ForceKind.Exile(lineage), 1))
 
   test("minor actions run under the global restrictions"):
-    val refuseAll = new OperationRestriction:
+    // Stub of OperationRestriction: refuses every operation.
+    val refuseAllStub = new OperationRestriction:
       override def reason(state: ReadyGame, operation: CoreOperation)
           : Option[OperationReason] = Some(OperationReason("refused",
         "every operation is refused", OperationReasonKind.Impossible))
     assert(MinorActions.handle(catalog, Ready(base),
       MinorActionCommand.MoveWarbands(p1, toSite = true, 2),
-      Vector(refuseAll)).isLeft)
+      Vector(refuseAllStub)).isLeft)
 
   test("source-scoped fallback and replay use the recorded off-turn actor"):
     // p2, not the active player, holds Revelation faceup.

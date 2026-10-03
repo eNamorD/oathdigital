@@ -6,10 +6,11 @@ import oathdigital.gameplay.actions.campaign.{CampaignIds,
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   Transform}
-import oathdigital.gameplay.powers.campaign.{BattlePlan, PlanContext, PlanUse}
+import oathdigital.gameplay.powers.campaign.{BattlePlan, PlanContext,
+  PlanDriver, PlanUse}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
-  WalkerDice, WalkerPowers}
+  WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
@@ -28,7 +29,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
   private val outriders = CatalogNames.denizen("Outriders")
   private val watchdog = CatalogNames.denizen("Watchdog")
 
-  /** A plan that costs and does what the test says, from a denizen of its user.
+  /** Stub of BattlePlan: offers the costs and effects the test names, from a
+    * denizen of its user.
     */
   private final case class Plan(name: String, card: DenizenId,
       planSides: Set[CampaignPlanSide],
@@ -44,13 +46,6 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
         effects))
     override def later: Map[PowerWindow, PlanUse => Vector[Operation]] =
       afterwards
-
-  /** Every attack die a sword and every defense die blank, whatever the pool.
-    */
-  private val swords: WalkerDice = (kind, count) => Right(kind match {
-    case DiceKind.Attack => Vector.fill(count)(AttackDieFace.OneSword: DieFace)
-    case DiceKind.Defense => Vector.fill(count)(DefenseDieFace.Blank: DieFace)
-  })
 
   private val attacker = Set[CampaignPlanSide](CampaignPlanSide.Attacker)
   private val defender = Set[CampaignPlanSide](CampaignPlanSide.Defender)
@@ -387,7 +382,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
 
   // ---- other powers change what a plan costs ------------------------------
 
-  /** Every attacker plan costs one more secret, placed on its card. */
+  /** Stub of ContributingPower: adds one secret, placed on its card, to every
+    * attacker plan. */
   private final case class Surcharge() extends ContributingPower:
     def id: PowerId = PowerId("test.surcharge")
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
@@ -450,7 +446,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
           Vector[Operation](GainSupply(use.actor, 1)))))
     val plans = Vector[ContributingPower](plan)
     def finished(chooses: Boolean): Int =
-      val g = rulesWith(plans, swords)
+      val g = rulesWith(plans, PlanDriver.winningDice)
       val forced = startedAndCommitted(g, b, force = 4).forced
       val next =
         if chooses then pick(g, forced, b.actor, CampaignIds.attackerPlan,

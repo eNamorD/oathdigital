@@ -179,8 +179,9 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       Some(p1))
     assertEquals(banners(done.state).darkestSecret.secrets, 6)
 
-  /** Adds Darkest Secret to the banner decision and widens the amount by two,
-    * which is exactly what a power hooking those windows would do.
+  /** Stub of ContributingPower: adds Darkest Secret to the banner decision and
+    * widens the amount by two, which is exactly what a power hooking those
+    * windows would do.
     */
   private final case class WidenChallenge(id: PowerId) extends ContributingPower:
     def source: RuleSourceRef = RuleSourceRef.Banner("test")
@@ -236,7 +237,8 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       .peoplesFavor(None, favor = 2).ready
     val tree = ChallengeProcedure.build(catalog, board, p1, Vector.empty)
       .getOrElse(fail("the tree must build"))
-    val noBannerTaken = new OperationRestriction:
+    // Stub of OperationRestriction: a banner Take is impossible.
+    val noBannerTakenStub = new OperationRestriction:
       override def reason(ready: ReadyGame,
           operation: CoreOperation): Option[OperationReason] = operation match
         case Take(Piece.Banner(_), _, _, _, _, _, _) => Some(OperationReason(
@@ -248,7 +250,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
       def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
       override def operationRestrictions: Vector[OperationRestriction] =
-        Vector(noBannerTaken)
+        Vector(noBannerTakenStub)
     val powers = WalkerPowers(Vector(restricting))
     assert(ProcedureWalker.advance(board, tree, None, powers).isLeft)
 

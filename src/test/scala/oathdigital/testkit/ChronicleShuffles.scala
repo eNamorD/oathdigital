@@ -2,8 +2,9 @@ package oathdigital.testkit
 
 import oathdigital.application.ChronicleRandomPort
 
-/** The Chronicle shuffles tests hand a setup, so the order a game is dealt in
-  * is the same every run. Both are stubs: canned answers, no record of calls.
+/** Stubs of ChronicleRandomPort (canned answers, no record of calls) that keep
+  * a generated game's seating and card order the same every run: `reversing`
+  * reverses every shuffle, `unshuffled` leaves it as given.
   */
 object ChronicleShuffles:
   /** Stub of ChronicleRandomPort: shuffle reverses its input, so ordering

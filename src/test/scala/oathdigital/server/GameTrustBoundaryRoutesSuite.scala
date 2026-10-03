@@ -15,6 +15,8 @@ class GameTrustBoundaryRoutesSuite extends munit.FunSuite:
 
   test("route validates identity actor and internal-error boundaries"):
     val secret = "internal-database-password-and-path"
+    // Stub of EventStreamRepository: every call fails with a StorageFailure
+    // carrying the secret.
     val repository = new EventStreamRepository:
       override def load(gameId: String): Either[RepositoryFailure, Option[StoredEventStream]] =
         Left(RepositoryFailure.StorageFailure(secret))

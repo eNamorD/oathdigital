@@ -154,14 +154,15 @@ class CatacombsContributionSuite extends munit.FunSuite:
 
   test("a Restriction-only power does not make relic-less Recover illegal"):
     val fixture = reliclessSite(secrets = 2)
-    val restrictionOnly = new ContributingPower:
+    // Stub of ContributingPower: forbids nothing.
+    val stubRestriction = new ContributingPower:
       def id: PowerId = PowerId("test.restriction-only")
       def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
       def contributions: Map[PowerWindow, Vector[Contribution]] =
         Map(PowerWindow.RecoverActionEligibility -> Vector(
           Restriction((_, _) => None)))
     val restrictedRules = new OathRules(catalog,
-      walkerPowerCatalog = WalkerPowers(Vector(restrictionOnly)),
+      walkerPowerCatalog = WalkerPowers(Vector(stubRestriction)),
       walkerDice = WalkerDiceFixture.blanks)
     val unrestricted = new OathRules(catalog, walkerPowerCatalog =
       WalkerPowers.empty, walkerDice = WalkerDiceFixture.blanks)

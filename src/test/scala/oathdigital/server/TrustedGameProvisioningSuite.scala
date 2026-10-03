@@ -191,6 +191,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
 
   test("bootstrap preparation performs no repository IO, matches ordinary " +
       "handle and parks on the first player's pawn placement"):
+    // Stub of EventStreamRepository: any load or append fails the test.
     val untouched = new EventStreamRepository:
       def load(id: String): Either[RepositoryFailure, Option[StoredEventStream]] = fail("preparation must not read storage")
       def append(id: String, expected: ExpectedStream, records: Vector[String]): Either[RepositoryFailure, RepositoryAppendResult] =

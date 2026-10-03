@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerDice}
@@ -21,13 +21,9 @@ class ClayRattleSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Relic(rattle)
   private val cradle = SearchSource.RegionalDiscard(Region.Cradle)
 
-  /** Reverses every pile it shuffles, and never rolls. */
-  private val reversing: WalkerDice = new WalkerDice:
-    def roll(kind: DiceKind, count: Int)
-        : Either[OathViolation, Vector[DieFace]] =
-      Left(OathViolation.InvalidEventOrder("Clay Rattle never rolls"))
-    override def shuffle(count: Int): Either[OathViolation, Vector[Int]] =
-      Right((0 until count).reverse.toVector)
+  /** Stub of WalkerDice: shuffle reverses every pile, roll fails. */
+  private val reversing: WalkerDice =
+    WalkerDiceFixture.shufflingBy(count => (0 until count).reverse.toVector)
   private val shuffling = rules(reversing)
 
   /** p1's Act holding Clay Rattle and `faceUp` faceup secrets. The Cradle
@@ -104,12 +100,9 @@ class ClayRattleSuite extends munit.FunSuite:
     assert(answered.isLeft)
 
   test("a source whose order is not a permutation of the pile is refused"):
-    val repeating: WalkerDice = new WalkerDice:
-      def roll(kind: DiceKind, count: Int)
-          : Either[OathViolation, Vector[DieFace]] =
-        Left(OathViolation.InvalidEventOrder("Clay Rattle never rolls"))
-      override def shuffle(count: Int): Either[OathViolation, Vector[Int]] =
-        Right(Vector.fill(count)(0))
+    // Stub of WalkerDice: shuffle returns a non-permutation (all zeros).
+    val repeating: WalkerDice =
+      WalkerDiceFixture.shufflingBy(count => Vector.fill(count)(0))
     val answered = shuffled(cradle, under = rules(repeating)).answered
     assert(answered.isLeft)
 

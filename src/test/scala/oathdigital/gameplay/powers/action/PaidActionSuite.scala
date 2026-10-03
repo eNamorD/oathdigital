@@ -11,6 +11,8 @@ class PaidActionSuite extends munit.FunSuite:
     persistent = false, cost = Cost(favor = 2, secretBurnt = 1),
     text = "**ACTION:** Do the example.")
 
+  /** Stub of PaidAction (an abstract class): build returns an empty
+    * Sequence; only id and cost are read. */
   private object Example extends PaidAction(printed):
     def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
         : Either[OathViolation, Operation] = Right(Sequence(Vector.empty))

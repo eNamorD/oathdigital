@@ -4,7 +4,7 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.walker.WalkerDice
+import oathdigital.gameplay.WalkerDiceFixture.swordsSingleThenDoubleShields
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look}
 
@@ -21,14 +21,6 @@ class RainBootsSuite extends munit.FunSuite:
   private val discardedLine = NoteText.Said("discarded",
     "Discarded after the Campaign.", covers = false)
 
-  /** Every attack die a sword. The first defense die a single shield, the
-    * rest two shields: the origin rolls one of each. */
-  private val shields: WalkerDice = (kind, count) => Right(kind match
-    case DiceKind.Attack => Vector.fill(count)(AttackDieFace.OneSword: DieFace)
-    case DiceKind.Defense => Vector.tabulate(count)(index =>
-      (if index == 0 then DefenseDieFace.OneShield
-       else DefenseDieFace.TwoShields): DieFace))
-
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(
     RainBoots.id, Vector(SingleShields.ignored, PlanDiscard.discarded),
     run.events)
@@ -37,7 +29,7 @@ class RainBootsSuite extends munit.FunSuite:
       "discarded, and both are said"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    val run = commit(rules(shields), b, 3)
+    val run = commit(rules(swordsSingleThenDoubleShields), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
     val done = picked.finishPlanWindows
@@ -66,7 +58,7 @@ class RainBootsSuite extends munit.FunSuite:
     val advised = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
     val b = withSecrets(withRelic(advised, bag), 1)
-    val done = commit(rules(shields), b, 3)
+    val done = commit(rules(swordsSingleThenDoubleShields), b, 3)
       .pick(b.actor, CampaignIds.attackerPlan, bagRef)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.result.defenseScore, 4)
@@ -78,7 +70,8 @@ class RainBootsSuite extends munit.FunSuite:
       "keeps the card"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
-    val done = commit(rules(shields), b, 3).finishPlanWindows
+    val done = commit(rules(swordsSingleThenDoubleShields), b, 3)
+      .finishPlanWindows
     assertEquals(done.result.defenseScore, 5)
     assert(!Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector.empty)

@@ -81,8 +81,9 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
   test("a phase power used from an edifice at the pawn's site is projected " +
       "and legal with the edifice face's printed name"):
     import oathdigital.gameplay.PhasePowerFixture.{TestPower, card, powerId}
-    // Hall of Debate stands at Ancient City, p1's site, printed with the
-    // power Magician's Code prints, which TestPower stands in for.
+    // Hall of Debate stands at Ancient City, p1's site; the copied catalog
+    // grafts onto its intact face the power Magician's Code prints, which
+    // TestPower stands in for.
     val id = CatalogNames.edifice("Hall of Debate")
     val edifice = present(catalog.edifices.find(_.id.value == id.value),
       "Hall of Debate")

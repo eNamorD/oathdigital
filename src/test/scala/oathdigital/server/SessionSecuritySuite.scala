@@ -64,6 +64,8 @@ class SessionSecuritySuite extends munit.FunSuite:
 
   test("database session resolution runs on the supplied blocking executor"):
     @volatile var resolutionThread = ""
+    // Spy of IdentityRepository: resolveSession records the thread it ran on
+    // in `resolutionThread` and answers SessionNotFound.
     val repository = new IdentityRepositoryStub:
       override def resolveSession(digest: SessionTokenDigest, now: Long): Either[IdentityFailure, StoredSession] =
         resolutionThread = Thread.currentThread().getName
@@ -164,6 +166,8 @@ class SessionSecuritySuite extends munit.FunSuite:
       request: HttpRequest
   ) = Await.result(authenticator.authenticate(request), 5.seconds)
 
+  /** Stub of IdentityRepository: every call fails the test, so a subclass
+    * overrides the one operation it expects. */
   private abstract class IdentityRepositoryStub extends IdentityRepository:
     private def unused[A]: Either[IdentityFailure, A] =
       fail("unexpected identity repository operation")

@@ -4,8 +4,9 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.walker.WalkerDice
+import oathdigital.gameplay.WalkerDiceFixture.swordsCyclingDefense
 import oathdigital.model._
+import oathdigital.model.DefenseDieFace.{Doubler, OneShield, TwoShields}
 import oathdigital.testkit.{CatalogNames, Look}
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 
@@ -19,14 +20,6 @@ class GarrisonArmorySuite extends munit.FunSuite:
   private val provisions = CatalogNames.denizen("Extra Provisions")
   private val twoAdded = NoteText.Said("added",
     "Warbands on the targets added 2 more defense.", covers = false)
-
-  /** Every attack die a sword; the defense dice are `faces`, in turn. */
-  private def defense(faces: DefenseDieFace*): WalkerDice = (kind, count) =>
-    Right(kind match
-      case DiceKind.Attack =>
-        Vector.fill(count)(AttackDieFace.OneSword: DieFace)
-      case DiceKind.Defense =>
-        Vector.tabulate(count)(index => faces(index % faces.size): DieFace))
 
   /** The other player rules the origin with two warbands and holds Garrison
     * Armory and a favor. */
@@ -42,7 +35,7 @@ class GarrisonArmorySuite extends munit.FunSuite:
   test("a defender places a favor, off turn, and the targets' warbands add " +
       "their defense twice, and it says so"):
     val b = defender
-    val run = commit(rules(defense(DefenseDieFace.TwoShields)), b, 5)
+    val run = commit(rules(swordsCyclingDefense(TwoShields)), b, 5)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     // Paid off turn, the favor goes to the bank at once, not onto the card.
     assertEquals(Look(picked.state).adviserTokens(b.rival, card), Tokens.empty)
@@ -53,16 +46,16 @@ class GarrisonArmorySuite extends munit.FunSuite:
     assertEquals(lines(done), Vector(twoAdded))
 
   test("the doubler multiplies the dice only"):
-    val done = commit(rules(defense(DefenseDieFace.TwoShields,
-      DefenseDieFace.Doubler)), defender, 5)
+    val done = commit(rules(swordsCyclingDefense(TwoShields,
+      Doubler)), defender, 5)
       .pick(defender.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     // Two shields doubled is 4; the warbands add 2, then 2 more, undoubled.
     assertEquals(done.result.defenseScore, 8)
 
   test("single shields are ignored before the warbands are added"):
     val b = withSecrets(withRelic(defender, bag), 1)
-    val bagged = commit(rules(defense(DefenseDieFace.OneShield,
-      DefenseDieFace.TwoShields)), b, 5)
+    val bagged = commit(rules(swordsCyclingDefense(OneShield,
+      TwoShields)), b, 5)
       .pick(b.actor, CampaignIds.attackerPlan, bagRef)
     val attackDone =
       if awaits(bagged, b.actor, CampaignIds.attackerPlan) then

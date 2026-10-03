@@ -17,6 +17,8 @@ import oathdigital.testkit.Unwrap.accepted
   */
 class CardPlayHooksSuite extends munit.FunSuite:
   private val probeId = PowerId("test.card-play-hooks")
+  /** Stub of ContributingPower: adds 1 Supply in the faceup window and 2 in
+    * the facedown window. */
   private val probe: ContributingPower = new ContributingPower:
     def id: PowerId = probeId
     def source: RuleSourceRef = RuleSourceRef.GameRule(probeId.value)

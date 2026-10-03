@@ -26,6 +26,8 @@ class ConspiracyTargetWindowSuite extends munit.FunSuite:
     .relic(p2, "Cracked Horn").relic(p2, "Bandit Crown")
     .hand(p1, conspiracy).ready
 
+  /** Stub of ContributingPower: at the Conspiracy target window it keeps only
+    * the options that pass `keep`. */
   private def removing(keep: DecisionOptionRef => Boolean): ContributingPower =
     new ContributingPower:
       def id: PowerId = PowerId("test.conspiracy-window")

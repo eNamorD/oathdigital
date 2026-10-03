@@ -4,6 +4,7 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
+import oathdigital.gameplay.WalkerDiceFixture.swordsCyclingDefense
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look}
@@ -19,11 +20,10 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
   private val pattern = Vector(DefenseDieFace.OneShield,
     DefenseDieFace.TwoShields, DefenseDieFace.Doubler, DefenseDieFace.Blank)
 
-  /** Every attack die a sword; the defense dice cycle through `pattern`. */
-  private val shields: WalkerDice = (kind, count) => Right(kind match
-    case DiceKind.Attack => Vector.fill(count)(AttackDieFace.OneSword: DieFace)
-    case DiceKind.Defense =>
-      Vector.tabulate(count)(index => pattern(index % pattern.size): DieFace))
+  /** Stub of WalkerDice: every attack die a sword; the defense dice cycle
+    * through `pattern`. */
+  private val shields: WalkerDice =
+    swordsCyclingDefense(pattern*)
 
   /** The attacker holds the Bag, a faceup secret and 5 warbands; two further
     * bandit sites can be targeted with the origin, so the defense rolls at

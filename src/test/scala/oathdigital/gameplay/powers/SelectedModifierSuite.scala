@@ -15,7 +15,10 @@ class SelectedModifierSuite extends munit.FunSuite:
 
   private val card = CatalogNames.denizen("Tents")
 
-  /** A test double on a catalog modifier id, so its resolution is the catalog's. */
+  /** Stub of SelectedModifier: on a catalog modifier id (the Tents id unless
+    * `idValue` says another), so its resolution is the catalog's; the card,
+    * cost and actions are the ones passed in, its effects are empty, and
+    * `appliesAt` answers `applies`. */
   private final case class Probe(cardId: CardId, override val cost: Cost,
       actions: Set[MajorActionType], idValue: String = "denizen.tents",
       applies: Boolean = true)
@@ -92,6 +95,8 @@ class SelectedModifierSuite extends munit.FunSuite:
     assertEquals(free.selectionPayments(ready, actor), Vector.empty)
 
   test("a payment and an effect at the same window keep the payment first"):
+    // Stub of SelectedModifier: the Tents id, a cost of one favor and one
+    // Transform that changes nothing.
     val both = new SelectedModifier:
       def catalog = oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
       def cardId: CardId = card
