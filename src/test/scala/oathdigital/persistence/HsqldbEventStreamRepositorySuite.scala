@@ -2,12 +2,9 @@ package oathdigital.persistence
 
 import java.nio.file.{Files, Path}
 import java.sql.DriverManager
-import java.util.concurrent.CountDownLatch
-
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
 
 import oathdigital.application.{
+  EventStreamRepositoryContract,
   ExpectedStream,
   RepositoryAppendResult,
   RepositoryFailure,
@@ -15,9 +12,13 @@ import oathdigital.application.{
 }
 import oathdigital.testkit.Unwrap.{accepted, as, present, rejected}
 
-class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
-  private given executionContext: ExecutionContext =
-    ExecutionContext.global
+class HsqldbEventStreamRepositorySuite
+    extends EventStreamRepositoryContract[OwnedHsqldbEventStreamRepository]:
+  protected def make() = open(databasePath("contract"))
+
+  override protected def release(
+      repository: OwnedHsqldbEventStreamRepository): Unit =
+    repository.close()
 
   private def databasePath(label: String): Path =
     Files.createTempDirectory(s"oathdigital-$label-").resolve("journal")
@@ -113,26 +114,6 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
       ))
     )
 
-  test("creates a stream and loads exact records in sequence order"):
-    val repository = open(databasePath("create"))
-    try
-      assertEquals(
-        repository.append(
-          "game-create",
-          ExpectedStream.MustNotExist,
-          Vector("""{"event":"first"}""", """{"event":"second"}""")
-        ),
-        Right(RepositoryAppendResult.Appended(0L, 2))
-      )
-      val loaded = storedStream(repository, "game-create")
-      assertEquals(loaded.gameId, "game-create")
-      assertEquals(
-        loaded.records,
-        Vector("""{"event":"first"}""", """{"event":"second"}""")
-      )
-      assertEquals(loaded.nextSequence, 2L)
-    finally repository.close()
-
   test("refuses to create a stream that exists"):
     val repository = open(databasePath("duplicate"))
     try
@@ -161,113 +142,6 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
           Vector("missing")
         ),
         Right(RepositoryAppendResult.StreamNotFound)
-      )
-    finally repository.close()
-
-  test("appends an ordered multi-event batch atomically"):
-    val repository = open(databasePath("batch"))
-    try
-      repository.append(
-        "game-batch",
-        ExpectedStream.MustNotExist,
-        Vector("zero")
-      )
-      assertEquals(
-        repository.append(
-          "game-batch",
-          ExpectedStream.AtNextSequence(1L),
-          Vector("one", "two", "three")
-        ),
-        Right(RepositoryAppendResult.Appended(1L, 3))
-      )
-      assertEquals(
-        storedStream(repository, "game-batch").records,
-        Vector("zero", "one", "two", "three")
-      )
-    finally repository.close()
-
-  test("sequence conflict writes no part of a proposed batch"):
-    val repository = open(databasePath("conflict"))
-    try
-      repository.append(
-        "game-conflict",
-        ExpectedStream.MustNotExist,
-        Vector("zero")
-      )
-      assertEquals(
-        repository.append(
-          "game-conflict",
-          ExpectedStream.AtNextSequence(0L),
-          Vector("stale-one", "stale-two")
-        ),
-        Right(RepositoryAppendResult.SequenceConflict(0L, 1L))
-      )
-      assertEquals(
-        storedStream(repository, "game-conflict").records,
-        Vector("zero")
-      )
-    finally repository.close()
-
-  test("concurrent creation race has one winner and no partial stream"):
-    val repository = open(databasePath("create-race"))
-    try
-      val start = new CountDownLatch(1)
-      val attempts = Vector("left", "right").map { record =>
-        Future:
-          start.await()
-          repository.append(
-            "game-create-race",
-            ExpectedStream.MustNotExist,
-            Vector(record)
-          )
-      }
-      start.countDown()
-      val results = Await.result(Future.sequence(attempts), 20.seconds)
-
-      assertEquals(results.count(_.exists(
-        _.isInstanceOf[RepositoryAppendResult.Appended])), 1)
-      assertEquals(
-        results.count(_ == Right(
-          RepositoryAppendResult.StreamAlreadyExists)),
-        1
-      )
-      assertEquals(
-        storedStream(repository, "game-create-race").records.size,
-        1
-      )
-    finally repository.close()
-
-  test("concurrent same-position appends have one winner and one conflict"):
-    val repository = open(databasePath("append-race"))
-    try
-      repository.append(
-        "game-append-race",
-        ExpectedStream.MustNotExist,
-        Vector("zero")
-      )
-      val start = new CountDownLatch(1)
-      val attempts = Vector("left", "right").map { record =>
-        Future:
-          start.await()
-          repository.append(
-            "game-append-race",
-            ExpectedStream.AtNextSequence(1L),
-            Vector(record)
-          )
-      }
-      start.countDown()
-      val results = Await.result(Future.sequence(attempts), 20.seconds)
-
-      assertEquals(results.count(_.exists(
-        _.isInstanceOf[RepositoryAppendResult.Appended])), 1)
-      assertEquals(
-        results.count(_ == Right(
-          RepositoryAppendResult.SequenceConflict(1L, 2L))),
-        1
-      )
-      assertEquals(
-        storedStream(repository, "game-append-race").records.size,
-        2
       )
     finally repository.close()
 
