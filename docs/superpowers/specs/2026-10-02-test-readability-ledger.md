@@ -71,8 +71,8 @@ half.
 ### Contract suites
 
 Four fakes have a contract suite that the fake and the real implementation both
-pass. None found a divergence, so no fake changed and `src/main`, `shared/` and
-`frontend/src/main` carry no change from this plan.
+pass. None found a divergence, so no fake changed and `src/main`,
+`shared/src/main` and `frontend/src/main` carry no change from this plan.
 
 - `EventStreamRepositoryContract` (Task 37): 7 shared tests run against
   `InMemoryEventStreamRepository` and `HsqldbEventStreamRepository`. This closes
@@ -100,12 +100,13 @@ at a time. 160 were caught, 2 survived.
   bug, spawned as its own task; and the spectator seat (01-3), for which no test
   seeds a spectator with a seat.
 
-Two more gaps came out of reviews and are not rows in the table: `PowerId`
-accepts a lowercase start (Task 36), and a stream suite does not pin which
+Two more gaps came out of mutations that were reported but are not rows in the
+table: no test pins that `PowerId` rejects a capital first letter (its only
+negative case also lacks a dot; Task 36), and a stream suite does not pin which
 candidate a choice picks (Task 38b, `choosesFirstCandidate`, 01-038).
 
 Open follow-ups for the user (post-plan chips): the spectator seat, the
-`PowerId` lowercase start, and the stream-suite candidate choice.
+`PowerId` capital start, and the stream-suite candidate choice.
 
 ### Brittleness
 
