@@ -296,6 +296,7 @@ the real class, so it needs no contract.
   production code). The doubles around it need no contract: 01-057 (spy with a
   canned load), 09-028 (`CountingEventStreamRepository`, a spy over this fake),
   09-055 and 09-080 (stubs that fail every call).
+  Done in 35503c9e: both run `EventStreamRepositoryContract`.
 - `InMemoryEventJournal` (src/main/scala/oathdigital/engine/Engine.scala:28)
   implements `EventJournal`; `git grep` finds no other `EventJournal`
   implementation (the Hsqldb store implements `EventStreamRepository`, and
@@ -558,6 +559,9 @@ guard, one at a time, and records the result here.
 | 36 | shared/src/main/scala/oathdigital/protocol/TrustedGameProtocolCodec.scala:28: the id length limit 128 becomes 129 | TrustedGameProtocolSuite: invalid player ids are refused | caught |
 | 36 | src/main/scala/oathdigital/model/Identity.scala:44: `PowerId.fromValue` accepts any non-empty string | OpaqueIdSuite: blank ids and a malformed power id are rejected; PowerId.fromValue answers None instead of throwing | caught |
 | 36 | src/main/scala/oathdigital/serialization/GameEventWire.scala:117: the expected stream position ignores the start sequence | GameEventWireEnvelopeSuite: single-event and batch writers preserve nonzero absolute sequences | caught |
+| contract-repository | src/main/scala/oathdigital/application/EventStreamRepository.scala:77: the SequenceConflict branch also appends the stale batch | InMemoryEventStreamRepositorySuite: a sequence conflict writes no part of the batch | caught |
+| contract-repository | src/main/scala/oathdigital/application/EventStreamRepository.scala:66: MustNotExist on an existing stream returns Appended | InMemoryEventStreamRepositorySuite: creating a stream that exists, or appending to one that does not, is refused | caught |
+| contract-repository | src/main/scala/oathdigital/application/EventStreamRepository.scala:54: load returns the records reversed | InMemoryEventStreamRepositorySuite: creates a stream and loads its records in order | caught |
 
 ## Shared fixtures
 
