@@ -11,15 +11,16 @@ import akka.http.scaladsl.model.headers.{Cookie, HttpCookiePair, RawHeader}
 
 import oathdigital.application._
 import oathdigital.persistence.HsqldbDatabaseOwner
+import oathdigital.testkit.Unwrap.accepted
 
 class SessionSecuritySuite extends munit.FunSuite:
   private val cookieName = "oath_session"
   private val csrfToken = "c" * 43
 
-  test("session cookie authentication collapses expected failures to invalid"):
-    val database = HsqldbDatabaseOwner.open(
-      Files.createTempDirectory("session-auth-").resolve("database")
-    ).toOption.get
+  test("session cookie authentication accepts a live session and collapses " +
+      "every failure to invalid"):
+    val database = accepted(HsqldbDatabaseOwner.open(
+      Files.createTempDirectory("session-auth-").resolve("database")))
     val identities = database.identities
     val user = UserId("session-user")
     identities.createUser(user, "Session User", 0L)
@@ -27,12 +28,17 @@ class SessionSecuritySuite extends munit.FunSuite:
     val authenticator = new SessionCookieAuthenticator(
       identities, cookieName, () => 150L, executionContext)
 
+    // Now is 150: an idle expiry of 140 has passed and 300 has not, and a
+    // session revoked at 120 is revoked.
     val valid = "v" * 43
     val expired = "e" * 43
     val revoked = "r" * 43
-    identities.createSession(session(valid, user, 300L, None))
-    identities.createSession(session(expired, user, 140L, None))
-    identities.createSession(session(revoked, user, 300L, Some(120L)))
+    identities.createSession(session(valid, user, idleExpiresAtMillis = 300L,
+      revokedAtMillis = None))
+    identities.createSession(session(expired, user, idleExpiresAtMillis = 140L,
+      revokedAtMillis = None))
+    identities.createSession(session(revoked, user, idleExpiresAtMillis = 300L,
+      revokedAtMillis = Some(120L)))
 
     try
       assertEquals(authenticate(authenticator, HttpRequest()),
@@ -46,18 +52,12 @@ class SessionSecuritySuite extends munit.FunSuite:
           Left(AuthenticationFailure.InvalidCredential("invalid session"))
         )
       }
-      val accepted = authenticate(authenticator, requestWithCookie(valid))
-        .toOption.get
-      assertEquals(accepted.principal, AuthenticatedUser(user))
-      assertEquals(
-        accepted.csrfTokenDigest,
-        CsrfTokenDigest.fromBytes(SensitiveTokenDigest.sha256(csrfToken))
-          .toOption.get
-      )
+      val live = accepted(authenticate(authenticator, requestWithCookie(valid)))
+      assertEquals(live.principal, AuthenticatedUser(user))
+      assertEquals(live.csrfTokenDigest, csrfDigest)
       assert(!malformed.toString.contains("short"))
       assertEquals(
-        identities.resolveSession(sessionDigest(valid), 150L).toOption.get
-          .digest,
+        accepted(identities.resolveSession(sessionDigest(valid), 150L)).digest,
         sessionDigest(valid)
       )
     finally database.close()
@@ -85,10 +85,8 @@ class SessionSecuritySuite extends munit.FunSuite:
       executor.awaitTermination(5L, TimeUnit.SECONDS)
 
   test("same-origin CSRF validation uses fixed token digests"):
-    val digest = CsrfTokenDigest.fromBytes(
-      SensitiveTokenDigest.sha256(csrfToken)).toOption.get
     val session = AuthenticatedHttpSession(
-      AuthenticatedUser(UserId("user")), digest)
+      AuthenticatedUser(UserId("user")), csrfDigest)
     val protection = new SameOriginCsrfProtection("https://oath.example")
     val valid = HttpRequest(headers = List(
       RawHeader("Origin", "https://oath.example"),
@@ -107,8 +105,6 @@ class SessionSecuritySuite extends munit.FunSuite:
       Vector.fill(32)(1.toByte), Vector.fill(32)(1.toByte)))
     assert(!SensitiveTokenDigest.constantTimeEquals(
       Vector.fill(32)(1.toByte), Vector.fill(32)(2.toByte)))
-    intercept[IllegalArgumentException]:
-      new SameOriginCsrfProtection("http://localhost.evil.example")
 
   test("CSRF public origins allow HTTPS and explicit loopback HTTP only"):
     Vector(
@@ -135,27 +131,33 @@ class SessionSecuritySuite extends munit.FunSuite:
         origin
       )
     }
+    intercept[IllegalArgumentException]:
+      new SameOriginCsrfProtection("http://localhost.evil.example")
 
+  private def csrfDigest: CsrfTokenDigest =
+    accepted(CsrfTokenDigest.fromBytes(SensitiveTokenDigest.sha256(csrfToken)))
+
+  /** A session for `rawToken`, created and last seen at 100, that expires
+    * absolutely at 300. */
   private def session(
       rawToken: String,
       user: UserId,
-      idleExpiry: Long,
-      revokedAt: Option[Long]
+      idleExpiresAtMillis: Long,
+      revokedAtMillis: Option[Long]
   ) = StoredSession(
     sessionDigest(rawToken),
     user,
-    100L,
-    100L,
-    idleExpiry,
-    300L,
-    revokedAt,
-    Some(CsrfTokenDigest.fromBytes(
-      SensitiveTokenDigest.sha256(csrfToken)).toOption.get)
+    createdAtMillis = 100L,
+    lastSeenAtMillis = 100L,
+    idleExpiresAtMillis = idleExpiresAtMillis,
+    absoluteExpiresAtMillis = 300L,
+    revokedAtMillis = revokedAtMillis,
+    csrfTokenDigest = Some(csrfDigest)
   )
 
   private def sessionDigest(rawToken: String): SessionTokenDigest =
-    SessionTokenDigest.fromBytes(SensitiveTokenDigest.sha256(rawToken))
-      .toOption.get
+    accepted(
+      SessionTokenDigest.fromBytes(SensitiveTokenDigest.sha256(rawToken)))
 
   private def requestWithCookie(rawToken: String): HttpRequest =
     HttpRequest(headers = List(Cookie(HttpCookiePair(cookieName, rawToken))))

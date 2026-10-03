@@ -17,27 +17,30 @@ import oathdigital.server.SensitiveTokenDigest
 /** A route served on a free loopback port for one test, with a client that
   * talks to it. `get` and `post` take a path under `base`; `post` sends the
   * same-origin `Origin` and the `csrfToken` header unless told otherwise
-  * (the development routes ignore both), and a `user` as the X-Test-User
-  * header the suites' authenticators read. `close` unbinds the route and
-  * stops its actor system, even when unbinding fails. */
+  * (the development routes ignore both), a `user` as the X-Test-User
+  * header the suites' authenticators read, and a `cookie` as the Cookie
+  * header. `close` unbinds the route and stops its actor system, even when
+  * unbinding fails. */
 final class HttpTestServer private (system: ActorSystem[Nothing],
     binding: Http.ServerBinding):
   val base: String = s"http://127.0.0.1:${binding.localAddress.getPort}"
   private val client = HttpClient.newHttpClient()
 
-  def get(path: String, user: Option[String] = None)
-      : HttpResponse[String] =
+  def get(path: String, user: Option[String] = None,
+      cookie: Option[String] = None): HttpResponse[String] =
     val builder = HttpRequest.newBuilder(URI.create(base + path)).GET()
     user.foreach(value => builder.header("X-Test-User", value))
+    cookie.foreach(value => builder.header("Cookie", value))
     client.send(builder.build(), HttpResponse.BodyHandlers.ofString())
 
   def post(path: String, body: String, user: Option[String] = None,
       origin: Option[String] = Some(HttpTestServer.origin),
-      csrf: Option[String] = Some(HttpTestServer.csrfToken))
-      : HttpResponse[String] =
+      csrf: Option[String] = Some(HttpTestServer.csrfToken),
+      cookie: Option[String] = None): HttpResponse[String] =
     val builder = HttpRequest.newBuilder(URI.create(base + path))
       .header("Content-Type", "application/json")
     user.foreach(value => builder.header("X-Test-User", value))
+    cookie.foreach(value => builder.header("Cookie", value))
     origin.foreach(value => builder.header("Origin", value))
     csrf.foreach(value => builder.header("X-CSRF-Token", value))
     client.send(builder.POST(HttpRequest.BodyPublishers.ofString(body)).build(),

@@ -4,16 +4,15 @@ import oathdigital.model.PlayerColor
 
 import java.net.{CookieManager, CookiePolicy, URI}
 import java.net.http.{HttpClient, HttpRequest, HttpResponse => JavaResponse}
-import java.nio.file.Files
-import scala.concurrent.Await
-import scala.concurrent.duration._
+import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._
-import akka.actor.typed.{ActorSystem, DispatcherSelector}
-import akka.actor.typed.scaladsl.Behaviors
-import akka.http.scaladsl.Http
 import oathdigital.application._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.protocol._
+import oathdigital.testkit.{CatalogNames, HttpTestServer}
+import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class TrustedSeatRoutesSuite extends munit.FunSuite:
   /** The server generates game IDs. These tests name the ID each creation
@@ -30,108 +29,196 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
   private val reversing: ChronicleRandomPort = new ChronicleRandomPort:
     def shuffle[A](values: Vector[A]): Vector[A] = values.reverse
 
-  test("trusted gateway projects only the seat and binds command identity"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val begun = service.handle("trusted", 0L,
-      GameCommand.Begin(chronicle, orders)).toOption.get
-    val gateway = new TrustedGameGateway(service, new GameProjector(catalog))
-    val seat = TrustedSeat("trusted", "p2")
-    val pawnDecision = oathdigital.gameplay.setup.SetupProcedure
-      .pawnDecisionId(oathdigital.model.PlayerId("p2"))
-    val command = GameHttpWire.decodeCommand(s"""{"expectedNextSequence":${begun.nextSequence},"intent":{"type":"resolveWalker","decisionId":"$pawnDecision","payload":{"kind":"choose-one","optionKind":"site","optionId":"${sites.head.value}"}}}""").toOption.get
-    val accepted = gateway.submit("trusted", seat, command).toOption.get
-    assertEquals(accepted.viewerPlayerId, Some("p2"))
-    assertEquals(gateway.load("trusted", TrustedSeat("trusted", "p3"))
-      .toOption.get.viewerPlayerId, Some("p3"))
+  /** The seat cookie's lifetime: one year, in seconds. */
+  private val oneYearSeconds = 365 * 24 * 3600
+
+  /** "trusted", begun with p2 first and parked on p2's Setup pawn
+    * placement, behind a trusted gateway. */
+  private final case class TrustedGatewayGame(service: GameApplicationService,
+      gateway: TrustedGameGateway, afterBegin: Long)
+
+  private def begunTrustedGame(): TrustedGatewayGame =
+    val service = new GameApplicationService(catalog,
+      new InMemoryEventStreamRepository)
+    val begun = accepted(service.handle("trusted", 0L,
+      GameCommand.Begin(chronicle, orders.copy(firstPlayer = p2))))
+    TrustedGatewayGame(service,
+      new TrustedGameGateway(service, new GameProjector(catalog)),
+      begun.nextSequence)
+
+  private val p2Seat = TrustedSeat("trusted", "p2")
+  private val p3Seat = TrustedSeat("trusted", "p3")
+
+  /** p2's answer to its pawn placement: Ancient City. */
+  private def placeP2Pawn(afterBegin: Long): ActorlessCommandRequest =
+    val pawnDecision = SetupProcedure.pawnDecisionId(p2)
+    val ancientCity = CatalogNames.site("Ancient City").value
+    accepted(GameHttpWire.decodeCommand(
+      s"""{"expectedNextSequence":$afterBegin,""" +
+        s""""intent":{"type":"resolveWalker",""" +
+        s""""decisionId":"$pawnDecision","payload":{"kind":"choose-one",""" +
+        s""""optionKind":"site","optionId":"$ancientCity"}}}"""))
+
+  test("the trusted gateway projects only the seat's own decision"):
+    val TrustedGatewayGame(service, gateway, _) = begunTrustedGame()
+    assertEquals(accepted(gateway.load("trusted", p3Seat)).viewerPlayerId,
+      Some("p3"))
     val development = new GameProjector(catalog).project("trusted",
-      service.load("trusted").toOption.flatten.get, oathdigital.model.PlayerId("p2"))
+      present(accepted(service.load("trusted")), "the trusted game"), p2)
     assertEquals(development.viewerPlayerId, None)
     assert(!oathdigital.protocol.projection.GameProjectionCodec.encode(development)
       .contains("viewerPlayerId"))
-    assert(accepted.walkerDecision.nonEmpty)
-    assert(gateway.load("trusted", seat).toOption.get.walkerDecision.nonEmpty)
-    assert(gateway.load("trusted", TrustedSeat("trusted", "p3")).toOption.get.walkerDecision.isEmpty)
-    assertEquals(gateway.load("other", seat), Left(TrustedSeatFailure.Forbidden))
-    assertEquals(gateway.submit("other", seat, command), Left(TrustedSeatFailure.Forbidden))
-    assertEquals(gateway.log("other", seat, 0L), Left(TrustedSeatFailure.Forbidden))
-    assertEquals(gateway.submit("trusted", seat, command),
-      Left(TrustedSeatFailure.Application(GameApplicationError.StaleClientPosition(
-        begun.nextSequence, accepted.nextSequence))))
-    assertEquals(service.load("trusted").toOption.flatten.get.nextSequence,
-      accepted.nextSequence)
+    assert(accepted(gateway.load("trusted", p2Seat)).walkerDecision.nonEmpty)
+    assert(accepted(gateway.load("trusted", p3Seat)).walkerDecision.isEmpty)
+
+  test("the trusted gateway binds the command actor to the seat"):
+    val TrustedGatewayGame(service, gateway, afterBegin) = begunTrustedGame()
+    val placed = accepted(
+      gateway.submit("trusted", p2Seat, placeP2Pawn(afterBegin)))
+    assertEquals(placed.viewerPlayerId, Some("p2"))
+    assert(placed.walkerDecision.nonEmpty)
+    assertEquals(
+      present(accepted(service.load("trusted")), "the trusted game")
+        .nextSequence,
+      placed.nextSequence)
     assert(GameHttpWire.decodeCommand("""{"expectedNextSequence":2,"intent":{"type":"resolveWalker","playerId":"p3","decisionId":"setup.pawn-placement.p3","payload":{"kind":"choose-one","optionKind":"site","optionId":"S1"}}}""").isLeft)
+
+  test("the trusted gateway refuses another game and a stale position"):
+    val TrustedGatewayGame(_, gateway, afterBegin) = begunTrustedGame()
+    val command = placeP2Pawn(afterBegin)
+    assertEquals(gateway.load("other", p2Seat),
+      Left(TrustedSeatFailure.Forbidden))
+    assertEquals(gateway.submit("other", p2Seat, command),
+      Left(TrustedSeatFailure.Forbidden))
+    assertEquals(gateway.log("other", p2Seat, 0L),
+      Left(TrustedSeatFailure.Forbidden))
+    val placed = accepted(gateway.submit("trusted", p2Seat, command))
+    assertEquals(gateway.submit("trusted", p2Seat, command),
+      Left(TrustedSeatFailure.Application(GameApplicationError.StaleClientPosition(
+        afterBegin, placed.nextSequence))))
 
   test("trusted preview binds resolved actor and rejects a different game"):
     val repository = new InMemoryEventStreamRepository
-    val woken = initialSituation()
-    val ready = woken.ready
-    val actor = ready.game.current.turn.activePlayer
-    val act = woken.endingWake(actor)
+    // initialSituation's first player is p2; p1 is another seat.
+    val act = initialSituation().endingWake(p2)
     act.seedInto(repository, "preview")
     val service = new GameApplicationService(catalog, repository)
     val gateway = new TrustedGameGateway(service, new GameProjector(catalog))
     val sequence = act.nextSequence
     val request = MajorActionPreviewRequest(sequence, "travel")
-    assert(gateway.preview("preview", TrustedSeat("preview", actor.value), request).isRight)
-    val other = ready.game.current.players.find(_.player != actor).get.player.value
-    assertEquals(gateway.preview("preview", TrustedSeat("preview", other), request)
-      .left.toOption, Some(TrustedSeatFailure.Application(GameApplicationError.CommandRejected(
+    val p2Seat = TrustedSeat("preview", p2.value)
+    assert(gateway.preview("preview", p2Seat, request).isRight)
+    assertEquals(
+      gateway.preview("preview", TrustedSeat("preview", p1.value), request)
+        .left.toOption,
+      Some(TrustedSeatFailure.Application(GameApplicationError.CommandRejected(
         oathdigital.model.OathViolation.InvalidModifierInvocation(
           "major-action preview is unavailable for this actor or phase")))))
-    assertEquals(gateway.preview("other", TrustedSeat("preview", actor.value), request),
+    assertEquals(gateway.preview("other", p2Seat, request),
       Left(TrustedSeatFailure.Forbidden))
-    assertEquals(service.load("preview").toOption.flatten.get.nextSequence, sequence)
+    assertEquals(
+      present(accepted(service.load("preview")), "the preview game")
+        .nextSequence,
+      sequence)
 
-  test("creation returns ordered public links; exchange scopes an HttpOnly cookie and reloads private API"):
-    withServer() { (base, _) =>
-      val client = HttpClient.newHttpClient()
-      val created = create(client, base, "game-a")
+  test("creation returns ordered public links"):
+    withServer() { (server, _) =>
+      val created = create(server, "game-a")
       assertEquals(created.gameId, "game-a")
       assertEquals(created.seats.map(_.playerId), Vector("p1", "p2"))
       assert(created.seats.forall(_.url.startsWith("http://127.0.0.1:8080/s/")))
-      val code = URI.create(created.seats(1).url).getPath.stripPrefix("/s/")
-      val entry = send(client, base, s"/s/$code")
+    }
+
+  test("a seat link exchanges for an HttpOnly cookie scoped to its game and " +
+      "redirects without the code"):
+    withServer() { (server, _) =>
+      val code = codeOf(create(server, "game-a"), "p2")
+      val entry = send(server, s"/s/$code")
       assertEquals(entry.statusCode(), 303, entry.body())
       assertEquals(entry.headers().firstValue("Location").orElse(""), "/games/game-a")
       assert(!entry.body().contains(code))
       assert(!entry.headers().firstValue("Location").orElse("").contains(code))
       val cookie = entry.headers().firstValue("Set-Cookie").orElse("")
       assertCookie(cookie, code, "/games/game-a", secure = false)
-      val canonical = send(client, base, "/games/game-a", cookie = Some(s"oath_seat=$code"))
+    }
+
+  test("the seat's cookie loads the canonical page and the private API"):
+    withServer() { (server, _) =>
+      val code = codeOf(create(server, "game-a"), "p2")
+      val canonical = send(server, "/games/game-a",
+        cookie = Some(s"oath_seat=$code"))
       assertEquals(canonical.statusCode(), 200, canonical.body())
       assert(canonical.body().contains("/assets/main.js"))
       assert(!canonical.body().contains(code))
-      val api = "/games/game-a/api"
-      val loaded = send(client, base, api, cookie = Some(s"oath_seat=$code"))
+      val loaded = send(server, "/games/game-a/api",
+        cookie = Some(s"oath_seat=$code"))
       assertEquals(loaded.statusCode(), 200, loaded.body())
-      val decisionId = ujson.read(loaded.body())("walkerDecision")("decisionId").str
-      val site = ujson.read(loaded.body())("walkerDecision")("query")("options")(0)("id").str
-      val currentSequence = ujson.read(loaded.body())("nextSequence").num.toLong
-      val command = ujson.write(ujson.Obj(
-        "expectedNextSequence" -> ujson.Num(currentSequence.toDouble),
-        "intent" -> ujson.Obj("type" -> "resolveWalker", "decisionId" -> decisionId,
-          "payload" -> ujson.Obj("kind" -> "choose-one", "optionKind" -> "site",
-            "optionId" -> site))))
+    }
+
+  /** p2's seat code in "game-a", p1's, the sequence p2's seat loaded at, and
+    * the command that answers p2's parked pawn placement with the first
+    * offered site. */
+  private final case class SeatPark(code: String, otherCode: String,
+      currentSequence: Long, command: String)
+
+  /** Creates "game-a" and loads p2's seat, the first player under
+    * `reversing`. */
+  private def p2SeatParked(server: HttpTestServer): SeatPark =
+    val created = create(server, "game-a")
+    val code = codeOf(created, "p2")
+    val loaded = send(server, "/games/game-a/api",
+      cookie = Some(s"oath_seat=$code"))
+    assertEquals(loaded.statusCode(), 200, loaded.body())
+    val decision = ujson.read(loaded.body())("walkerDecision")
+    val decisionId = decision("decisionId").str
+    val site = decision("query")("options")(0)("id").str
+    val currentSequence = ujson.read(loaded.body())("nextSequence").num.toLong
+    val command = ujson.write(ujson.Obj(
+      "expectedNextSequence" -> ujson.Num(currentSequence.toDouble),
+      "intent" -> ujson.Obj("type" -> "resolveWalker",
+        "decisionId" -> decisionId,
+        "payload" -> ujson.Obj("kind" -> "choose-one", "optionKind" -> "site",
+          "optionId" -> site))))
+    SeatPark(code, codeOf(created, "p1"), currentSequence, command)
+
+  test("a seat's commands refuse a spoofed actor and a stale position, then " +
+      "accept the seat's answer"):
+    withServer() { (server, _) =>
+      val SeatPark(code, _, currentSequence, command) = p2SeatParked(server)
+      val api = "/games/game-a/api"
       val spoofed = command.replace("\"type\":\"resolveWalker\"",
         "\"type\":\"resolveWalker\",\"playerId\":\"p1\"")
-      assertEquals(send(client, base, api + "/commands", Some(spoofed), Some(s"oath_seat=$code")).statusCode(), 400)
-      val stale = send(client, base, api + "/commands", Some(command.replace(
+      assertEquals(send(server, api + "/commands", Some(spoofed),
+        Some(s"oath_seat=$code")).statusCode(), 400)
+      val stale = send(server, api + "/commands", Some(command.replace(
         s""""expectedNextSequence":$currentSequence,""", """"expectedNextSequence":0,""")),
         Some(s"oath_seat=$code"))
       assertEquals(stale.statusCode(), 409, stale.body())
-      assertEquals(ujson.read(send(client, base, api, cookie = Some(s"oath_seat=$code")).body())("nextSequence").num,
+      assertEquals(ujson.read(send(server, api,
+        cookie = Some(s"oath_seat=$code")).body())("nextSequence").num,
         currentSequence.toDouble)
-      val accepted = send(client, base, api + "/commands", Some(command), Some(s"oath_seat=$code"))
-      assertEquals(accepted.statusCode(), 200, accepted.body())
-      assert(ujson.read(accepted.body())("walkerDecision")("query")("options").arr.nonEmpty)
-      val reloaded = send(client, base, api, cookie = Some(s"oath_seat=$code"))
+      val answered = send(server, api + "/commands", Some(command),
+        Some(s"oath_seat=$code"))
+      assertEquals(answered.statusCode(), 200, answered.body())
+      assert(ujson.read(answered.body())("walkerDecision")("query")("options")
+        .arr.nonEmpty)
+      val reloaded = send(server, api, cookie = Some(s"oath_seat=$code"))
       assert(ujson.read(reloaded.body())("walkerDecision")("query")("options").arr.nonEmpty)
-      val otherCode = URI.create(created.seats.head.url).getPath.stripPrefix("/s/")
-      val other = send(client, base, api, cookie = Some(s"oath_seat=$otherCode"))
+    }
+
+  test("the other seat sees no decision and no seat response leaks the code " +
+      "or the plan"):
+    withServer() { (server, _) =>
+      val SeatPark(code, otherCode, _, command) = p2SeatParked(server)
+      val api = "/games/game-a/api"
+      val answered = send(server, api + "/commands", Some(command),
+        Some(s"oath_seat=$code"))
+      assertEquals(answered.statusCode(), 200, answered.body())
+      val reloaded = send(server, api, cookie = Some(s"oath_seat=$code"))
+      val other = send(server, api, cookie = Some(s"oath_seat=$otherCode"))
       assertEquals(other.statusCode(), 200)
       assert(ujson.read(other.body())("walkerDecision").isNull)
-      Vector(accepted.body(), reloaded.body(), other.body()).foreach { body =>
+      Vector(answered.body(), reloaded.body(), other.body()).foreach { body =>
         assert(!body.contains(code))
         assert(!body.contains("denizenOrder"))
         assert(!body.contains("relicOrder"))
@@ -139,200 +226,207 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     }
 
   test("the log route pages for the seat's cookie and checks the cursor"):
-    withServer() { (base, _) =>
-      val client = HttpClient.newHttpClient()
-      val created = create(client, base, "log-game")
-      val code = URI.create(created.seats(1).url).getPath.stripPrefix("/s/")
+    withServer() { (server, _) =>
+      val code = codeOf(create(server, "log-game"), "p2")
       val cookie = Some(s"oath_seat=$code")
-      val page = send(client, base, "/games/log-game/api/log/0", cookie = cookie)
+      val page = send(server, "/games/log-game/api/log/0", cookie = cookie)
       assertEquals(page.statusCode(), 200, page.body())
       assertEquals(page.headers().firstValue("Cache-Control").orElse(""), "no-store")
-      val decoded = oathdigital.protocol.projection.LogPageCodec
-        .decode(page.body()).toOption.get
+      val decoded = accepted(oathdigital.protocol.projection.LogPageCodec
+        .decode(page.body()))
       assertEquals(decoded.after, 0L)
-      assertEquals(send(client, base, "/games/log-game/api/log/0").statusCode(), 403)
-      assertEquals(send(client, base, "/games/log-game/api/log/-1",
+      assertEquals(send(server, "/games/log-game/api/log/0").statusCode(), 403)
+      assertEquals(send(server, "/games/log-game/api/log/-1",
         cookie = cookie).statusCode(), 400)
-      assertEquals(send(client, base,
+      assertEquals(send(server,
         s"/games/log-game/api/log/${decoded.nextSequence + 1}",
         cookie = cookie).statusCode(), 400)
-      assertEquals(send(client, base, "/games/log-game/api/log/0?x=1",
+      assertEquals(send(server, "/games/log-game/api/log/0?x=1",
         cookie = cookie).statusCode(), 400)
     }
 
   test("HTTPS public origin sets Secure even when the proxy connection uses HTTP"):
-    withServer(Some("https://games.example.test")) { (base, _) =>
-      val client = HttpClient.newHttpClient()
-      val created = create(client, base, "tls")
+    withServer(Some("https://games.example.test")) { (server, _) =>
+      val created = create(server, "tls")
       assert(created.seats.forall(_.url.startsWith("https://games.example.test/s/")))
-      val code = URI.create(created.seats.head.url).getPath.stripPrefix("/s/")
-      val exchanged = send(client, base, s"/s/$code")
+      val code = codeOf(created, "p1")
+      val exchanged = send(server, s"/s/$code")
       assertEquals(exchanged.statusCode(), 303)
       assertCookie(exchanged.headers().firstValue("Set-Cookie").orElse(""), code, "/games/tls", secure = true)
     }
 
   test("invalid links are generic and canonical pages recover absent, malformed, wrong-game and missing-game cookies"):
-    withServer() { (base, _) =>
-      val client = HttpClient.newHttpClient()
-      val created = create(client, base, "private-game")
-      val code = URI.create(created.seats.head.url).getPath.stripPrefix("/s/")
-      val invalid = send(client, base, "/s/malformed-secret")
-      val unknown = send(client, base, "/s/AAAAAAAAAAAAAAAAAAAAAA")
+    withServer() { (server, _) =>
+      val code = codeOf(create(server, "private-game"), "p1")
+      val invalid = send(server, "/s/malformed-secret")
+      val unknown = send(server, "/s/AAAAAAAAAAAAAAAAAAAAAA")
       assertEquals(invalid.statusCode(), 404)
       assertEquals(invalid.body(), unknown.body())
       assert(!invalid.body().contains("malformed-secret"))
       assert(!invalid.body().contains("private-game"))
       assert(invalid.headers().firstValue("Set-Cookie").isEmpty)
-      val recovery = send(client, base, "/games/private-game")
+      val recovery = send(server, "/games/private-game")
       assertEquals(recovery.statusCode(), 403)
       assert(recovery.body().contains("assigned seat link"))
       Vector(None, Some("oath_seat=broken"), Some(s"oath_seat=$code")).foreach { cookie =>
-        val response = send(client, base, "/games/another-game", cookie = cookie)
+        val response = send(server, "/games/another-game", cookie = cookie)
         assertEquals(response.statusCode(), 403)
         assertEquals(response.body(), recovery.body())
         assert(!response.body().contains(code))
-        assertEquals(send(client, base, "/games/another-game/api", cookie = cookie).statusCode(), 403)
+        assertEquals(send(server, "/games/another-game/api",
+          cookie = cookie).statusCode(), 403)
       }
     }
 
+  /** "origin-game", created from the configured HTTPS origin, with p2's
+    * seat cookie, an endWake command and a travel preview, each expecting
+    * sequence position 1 or 0 as written. */
+  private final case class OriginGame(code: String, cookie: Option[String],
+      command: String, preview: String)
+
+  private def originGame(server: HttpTestServer): OriginGame =
+    val created = send(server, "/games", Some(creationBody("origin-game")),
+      origin = Some("https://games.example.test"))
+    assertEquals(created.statusCode(), 201, created.body())
+    val code = codeOf(
+      accepted(TrustedGameCreateResponseCodec.decode(created.body())), "p2")
+    OriginGame(code, Some(s"oath_seat=$code"),
+      """{"expectedNextSequence":0,"intent":{"type":"endWake"}}""",
+      """{"expectedNextSequence":1,"action":"travel"}""")
+
   test("trusted endpoints reject queries and cross-origin mutations while accepting configured or missing Origin"):
-    withServer(Some("https://games.example.test")) { (base, _) =>
-      val client = HttpClient.newHttpClient()
-      val body = creationBody("origin-game")
+    withServer(Some("https://games.example.test")) { (server, _) =>
       Vector("https://evil.example.test", "null", "https://games.example.test.evil", "http://games.example.test").foreach { origin =>
-        assertEquals(send(client, base, "/games", Some(body), origin = Some(origin)).statusCode(), 403)
+        assertEquals(send(server, "/games", Some(requestBody),
+          origin = Some(origin)).statusCode(), 403)
       }
-      val accepted = send(client, base, "/games", Some(body), origin = Some("https://games.example.test"))
-      assertEquals(accepted.statusCode(), 201, accepted.body())
-      val created = TrustedGameCreateResponseCodec.decode(accepted.body()).toOption.get
-      val code = URI.create(created.seats(1).url).getPath.stripPrefix("/s/")
-      val cookie = Some(s"oath_seat=$code")
-      val command = """{"expectedNextSequence":0,"intent":{"type":"endWake"}}"""
-      val preview = """{"expectedNextSequence":1,"action":"travel"}"""
+      val OriginGame(code, cookie, command, preview) = originGame(server)
       Vector("/games", s"/s/$code", "/games/origin-game", "/games/origin-game/api",
         "/games/origin-game/api/commands", "/games/origin-game/api/preview").foreach { path =>
-        val payload = if path == "/games" then Some(body) else if path.endsWith("commands") then Some(command)
-          else if path.endsWith("preview") then Some(preview) else None
-        val result = send(client, base, path + "?playerId=p1", payload, cookie)
+        val payload =
+          if path == "/games" then Some(requestBody)
+          else if path.endsWith("commands") then Some(command)
+          else if path.endsWith("preview") then Some(preview)
+          else None
+        val result = send(server, path + "?playerId=p1", payload, cookie)
         assertEquals(result.statusCode(), 400, result.body())
         assert(!result.body().contains(code))
       }
       Vector("commands" -> command, "preview" -> preview).foreach { case (endpoint, payload) =>
-        assertEquals(send(client, base, s"/games/origin-game/api/$endpoint", Some(payload), cookie,
+        assertEquals(send(server, s"/games/origin-game/api/$endpoint",
+          Some(payload), cookie,
           Some("https://evil.example.test")).statusCode(), 403)
       }
-      assertEquals(send(client, base, "/games/origin-game/api/commands", Some(command), cookie,
+    }
+
+  test("stale commands and previews are refused with 409"):
+    withServer(Some("https://games.example.test")) { (server, _) =>
+      val OriginGame(_, cookie, command, preview) = originGame(server)
+      assertEquals(send(server, "/games/origin-game/api/commands",
+        Some(command), cookie,
         Some("https://games.example.test")).statusCode(), 409)
-      assertEquals(send(client, base, "/games/origin-game/api/preview",
+      assertEquals(send(server, "/games/origin-game/api/preview",
         Some(preview.replace(":1,", ":0,")), cookie).statusCode(), 409)
-      assertEquals(send(client, base, "/games/origin-game/api/preview",
+    }
+
+  test("a preview body with a playerId is refused"):
+    withServer(Some("https://games.example.test")) { (server, _) =>
+      val OriginGame(_, cookie, _, preview) = originGame(server)
+      assertEquals(send(server, "/games/origin-game/api/preview",
         Some(preview.dropRight(1) + ",\"playerId\":\"p1\"}"), cookie).statusCode(), 400)
     }
 
   test("colon game IDs use the same encoded cookie redirect and API paths"):
-    withServer() { (base, _) =>
-      val client = HttpClient.newHttpClient()
-      val created = create(client, base, "alpha:one")
-      val entry = send(client, base, URI.create(created.seats(1).url).getPath)
+    withServer() { (server, _) =>
+      val created = create(server, "alpha:one")
+      val entry = send(server, URI.create(seatLink(created, "p2")).getPath)
       assertEquals(entry.statusCode(), 303)
       assertEquals(entry.headers().firstValue("Location").orElse(""), "/games/alpha%3Aone")
       val cookie = entry.headers().firstValue("Set-Cookie").orElse("")
       assert(cookie.contains("Path=/games/alpha%3Aone;"), cookie)
       val credential = cookie.takeWhile(_ != ';')
-      assertEquals(send(client, base, "/games/alpha%3Aone", cookie = Some(credential)).statusCode(), 200)
-      val loaded = send(client, base, "/games/alpha%3Aone/api", cookie = Some(credential))
+      assertEquals(send(server, "/games/alpha%3Aone",
+        cookie = Some(credential)).statusCode(), 200)
+      val loaded = send(server, "/games/alpha%3Aone/api",
+        cookie = Some(credential))
       assertEquals(loaded.statusCode(), 200, loaded.body())
       assertEquals(ujson.read(loaded.body())("gameId").str, "alpha:one")
       assertEquals(ujson.read(loaded.body())("viewerPlayerId").str, "p2")
     }
 
   test("trailing game slash redirects to the same encoded canonical page"):
-    withServer() { (base, _) =>
-      val client = HttpClient.newHttpClient()
+    withServer() { (server, _) =>
       Vector("alpha", "alpha:one").foreach { game =>
-        val created = create(client, base, game)
-        val entry = send(client, base, URI.create(created.seats.head.url).getPath)
+        val created = create(server, game)
+        val entry = send(server, URI.create(seatLink(created, "p1")).getPath)
         val cookie = entry.headers().firstValue("Set-Cookie").orElse("").takeWhile(_ != ';')
         val path = if game == "alpha" then "/games/alpha" else "/games/alpha%3Aone"
-        val redirected = send(client, base, path + "/", cookie = Some(cookie))
+        val redirected = send(server, path + "/", cookie = Some(cookie))
         assertEquals(redirected.statusCode(), 303, redirected.body())
         assertEquals(redirected.headers().firstValue("Location").orElse(""), path)
-        assertEquals(send(client, base, path, cookie = Some(cookie)).statusCode(), 200)
+        assertEquals(send(server, path, cookie = Some(cookie)).statusCode(),
+          200)
       }
     }
 
   test("same-name cookies for two game paths coexist and restore each seat"):
-    withServer() { (base, _) =>
+    withServer() { (server, _) =>
+      // A browser-like client that stores and sends the cookies it is set.
       val cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL)
       val client = HttpClient.newBuilder().cookieHandler(cookies).build()
+      def browse(path: String) = client.send(
+        HttpRequest.newBuilder(URI.create(server.base + path)).GET().build(),
+        JavaResponse.BodyHandlers.ofString())
       Vector("one", "two").foreach { game =>
-        val created = create(client, base, game)
-        val path = URI.create(created.seats(1).url).getPath
-        assertEquals(send(client, base, path).statusCode(), 303)
+        val created = create(server, game)
+        val path = URI.create(seatLink(created, "p2")).getPath
+        assertEquals(browse(path).statusCode(), 303)
       }
       assertEquals(cookies.getCookieStore.getCookies.asScala.map(_.getPath).toSet,
         Set("/games/one", "/games/two"))
       Vector("one", "two").foreach { game =>
-        assertEquals(send(client, base, s"/games/$game").statusCode(), 200)
-        val loaded = send(client, base, s"/games/$game/api")
+        assertEquals(browse(s"/games/$game").statusCode(), 200)
+        val loaded = browse(s"/games/$game/api")
         assertEquals(loaded.statusCode(), 200, loaded.body())
         assertEquals(ujson.read(loaded.body())("gameId").str, game)
       }
     }
 
   test("seat links and cookies restore private seats after the runtime reopens"):
-    given system: ActorSystem[Nothing] =
-      ActorSystem[Nothing](Behaviors.empty, "trusted-seat-restart-test")
-    val blocking = system.dispatchers.lookup(
-      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val database = Files.createTempDirectory("trusted-seat-restart-").resolve("database")
-    val config = ServerConfig("127.0.0.1", 8080, None, database,
-      ServerMode.TrustedAlpha, None, "test")
-    val client = HttpClient.newHttpClient()
-
-    def openServer(): (ServerRuntime, akka.http.scaladsl.Http.ServerBinding, String) =
-      val runtime = ServerRuntime.open(database, reversing, gameIds).toOption.get
-      val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
-        ServerRoutes.route(runtime, blocking, config, ServerReadiness.starting("test"))), 10.seconds)
-      (runtime, binding, s"http://127.0.0.1:${binding.localAddress.getPort}")
-
-    def closeServer(runtime: ServerRuntime, binding: akka.http.scaladsl.Http.ServerBinding): Unit =
-      Await.result(binding.terminate(5.seconds), 10.seconds)
-      runtime.close()
-
-    var current = openServer()
+    var current = openTrustedServer(database)
     try
-      val created = create(client, current._3, "restart-game")
-      val firstCode = URI.create(created.seats.head.url).getPath.stripPrefix("/s/")
-      val secondCode = URI.create(created.seats(1).url).getPath.stripPrefix("/s/")
-      val secondEntry = send(client, current._3, s"/s/$secondCode")
+      val created = create(current.server, "restart-game")
+      val firstCode = codeOf(created, "p1")
+      val secondCode = codeOf(created, "p2")
+      val secondEntry = send(current.server, s"/s/$secondCode")
       assertEquals(secondEntry.statusCode(), 303)
       val retainedCookie = secondEntry.headers().firstValue("Set-Cookie").orElse("")
         .takeWhile(_ != ';')
       assert(retainedCookie.nonEmpty)
-      val beforeRestart = send(client, current._3, "/games/restart-game/api",
+      val beforeRestart = send(current.server, "/games/restart-game/api",
         cookie = Some(retainedCookie))
       assertEquals(beforeRestart.statusCode(), 200, beforeRestart.body())
       assertEquals(ujson.read(beforeRestart.body())("viewerPlayerId").str, "p2")
 
-      closeServer(current._1, current._2)
-      current = openServer()
+      current.close()
+      current = openTrustedServer(database)
 
-      val originalLink = send(client, current._3, s"/s/$secondCode")
+      val originalLink = send(current.server, s"/s/$secondCode")
       assertEquals(originalLink.statusCode(), 303)
       assertEquals(originalLink.headers().firstValue("Location").orElse(""), "/games/restart-game")
       val reenteredCookie = originalLink.headers().firstValue("Set-Cookie").orElse("")
         .takeWhile(_ != ';')
       val api = "/games/restart-game/api"
-      val restored = send(client, current._3, api, cookie = Some(retainedCookie))
+      val restored = send(current.server, api, cookie = Some(retainedCookie))
       assertEquals(restored.statusCode(), 200, restored.body())
       assertEquals(ujson.read(restored.body())("viewerPlayerId").str, "p2")
-      val reentered = send(client, current._3, api, cookie = Some(reenteredCookie))
+      val reentered = send(current.server, api, cookie = Some(reenteredCookie))
       assertEquals(reentered.statusCode(), 200, reentered.body())
       assertEquals(ujson.read(reentered.body())("viewerPlayerId").str, "p2")
 
       val otherCookie = s"oath_seat=$firstCode"
-      val otherSeat = send(client, current._3, api, cookie = Some(otherCookie))
+      val otherSeat = send(current.server, api, cookie = Some(otherCookie))
       assertEquals(otherSeat.statusCode(), 200, otherSeat.body())
       assertEquals(ujson.read(otherSeat.body())("viewerPlayerId").str, "p1")
       assert(ujson.read(otherSeat.body())("walkerDecision").isNull)
@@ -344,23 +438,19 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
         "intent" -> ujson.Obj("type" -> "resolveWalker", "decisionId" -> decisionId,
           "payload" -> ujson.Obj("kind" -> "choose-one", "optionKind" -> "site",
             "optionId" -> site))))
-      assertEquals(send(client, current._3, api + "/commands", Some(command),
+      // 422: p1 does not own the parked pawn decision.
+      assertEquals(send(current.server, api + "/commands", Some(command),
         Some(otherCookie)).statusCode(), 422)
-      assertEquals(ujson.read(send(client, current._3, api,
+      assertEquals(ujson.read(send(current.server, api,
         cookie = Some(retainedCookie)).body())("nextSequence").num,
         currentSequence.toDouble)
-      assertEquals(send(client, current._3, api + "/commands", Some(command),
+      assertEquals(send(current.server, api + "/commands", Some(command),
         Some(retainedCookie)).statusCode(), 200)
-    finally
-      closeServer(current._1, current._2)
-      system.terminate()
-      Await.result(system.whenTerminated, 10.seconds)
+    finally current.close()
 
   test("storage failures never expose seat credentials in responses or log events"):
-    withServer() { (base, runtime) =>
-      val client = HttpClient.newHttpClient()
-      val created = create(client, base, "failure")
-      val code = URI.create(created.seats.head.url).getPath.stripPrefix("/s/")
+    withServer() { (server, runtime) =>
+      val code = codeOf(create(server, "failure"), "p1")
       val logger = org.slf4j.LoggerFactory.getLogger("oathdigital.server.TrustedSeatRoutes")
         .asInstanceOf[ch.qos.logback.classic.Logger]
       val captured = new ch.qos.logback.core.read.ListAppender[ch.qos.logback.classic.spi.ILoggingEvent]
@@ -368,7 +458,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       try
         runtime.close()
         Vector(s"/s/$code", "/games/failure", "/games/failure/api").foreach { path =>
-          val failed = send(client, base, path, cookie = Some(s"oath_seat=$code"))
+          val failed = send(server, path, cookie = Some(s"oath_seat=$code"))
           assertEquals(failed.statusCode(), 500)
           assert(!failed.body().contains(code))
           assert(!failed.body().toLowerCase.contains("closed"))
@@ -384,38 +474,71 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
 
   private def assertCookie(raw: String, code: String, path: String, secure: Boolean): Unit =
     val attributes = raw.split(";\\s*").toSet
-    val expected = Set(s"oath_seat=$code", s"Path=$path", "HttpOnly", "SameSite=Lax", "Max-Age=31536000")
+    val expected = Set(s"oath_seat=$code", s"Path=$path", "HttpOnly",
+      "SameSite=Lax",
+      s"Max-Age=$oneYearSeconds")
     assertEquals(attributes, if secure then expected + "Secure" else expected)
 
-  private def creationBody(gameId: String): String =
-    nextGameIds.add(gameId)
+  /** A two-seat create request, p1 Red and p2 Blue. */
+  private val requestBody: String =
     TrustedGameCreateRequestCodec.encode(TrustedGameCreateRequest(Vector(BootstrapParticipantRequest("p1", PlayerColor.Red),
       BootstrapParticipantRequest("p2", PlayerColor.Blue))))
 
-  private def create(client: HttpClient, base: String, gameId: String): TrustedGameCreateResponse =
-    val response = send(client, base, "/games", Some(creationBody(gameId)))
+  /** `requestBody`, with `gameId` queued as the ID its creation receives. */
+  private def creationBody(gameId: String): String =
+    nextGameIds.add(gameId)
+    requestBody
+
+  private def create(server: HttpTestServer,
+    gameId: String): TrustedGameCreateResponse =
+    val response = send(server, "/games", Some(creationBody(gameId)))
     assertEquals(response.statusCode(), 201, response.body())
-    TrustedGameCreateResponseCodec.decode(response.body()).toOption.get
+    accepted(TrustedGameCreateResponseCodec.decode(response.body()))
 
-  private def send(client: HttpClient, base: String, path: String, body: Option[String] = None,
+  /** `player`'s public seat link in `created`. */
+  private def seatLink(created: TrustedGameCreateResponse,
+    player: String): String =
+    present(created.seats.find(_.playerId == player), s"$player's seat").url
+
+  /** The raw seat code in `player`'s link. */
+  private def codeOf(created: TrustedGameCreateResponse,
+    player: String): String =
+    URI.create(seatLink(created, player)).getPath.stripPrefix("/s/")
+
+  /** A GET, or a POST of `body`, with an optional seat cookie and Origin; no
+    * CSRF token, which the seat routes do not use. */
+  private def send(server: HttpTestServer, path: String,
+    body: Option[String] = None,
       cookie: Option[String] = None, origin: Option[String] = None): JavaResponse[String] =
-    val builder = HttpRequest.newBuilder(URI.create(base + path))
-    cookie.foreach(builder.header("Cookie", _))
-    origin.foreach(builder.header("Origin", _))
-    body.fold(builder.GET())(value => builder.header("Content-Type", "application/json")
-      .POST(HttpRequest.BodyPublishers.ofString(value)))
-    client.send(builder.build(), JavaResponse.BodyHandlers.ofString())
+    body.fold(server.get(path, cookie = cookie))(value =>
+      server.post(path, value, origin = origin, csrf = None, cookie = cookie))
 
-  private def withServer(origin: Option[String] = None)(body: (String, ServerRuntime) => Unit): Unit =
-    given system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty, "trusted-seat-route-test")
-    val blocking = system.dispatchers.lookup(DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
-    val database = Files.createTempDirectory("trusted-seat-routes-").resolve("database")
-    val runtime = ServerRuntime.open(database, reversing, gameIds).toOption.get
-    val config = ServerConfig("127.0.0.1", 8080, origin.map(URI.create), database,
-      ServerMode.TrustedAlpha, None, "test")
-    val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
-      ServerRoutes.route(runtime, blocking, config, ServerReadiness.starting("test"))), 10.seconds)
-    try body(s"http://127.0.0.1:${binding.localAddress.getPort}", runtime)
-    finally
-      Await.result(binding.terminate(5.seconds), 10.seconds)
-      runtime.close(); system.terminate(); Await.result(system.whenTerminated, 10.seconds)
+  /** The production routes over a runtime opened on `database`, trusted-alpha
+    * on 127.0.0.1:8080, with `publicOrigin` as the public base URL. */
+  private final case class TrustedServer(server: HttpTestServer,
+      runtime: ServerRuntime):
+    def close(): Unit =
+      try server.close()
+      finally runtime.close()
+
+  private def openTrustedServer(database: Path,
+      publicOrigin: Option[String] = None): TrustedServer =
+    val runtime = accepted(ServerRuntime.open(database, reversing, gameIds))
+    val config = ServerConfig("127.0.0.1", 8080, publicOrigin.map(URI.create),
+      database, ServerMode.TrustedAlpha, None, "test")
+    try
+      TrustedServer(HttpTestServer.start("trusted-seat-route-test")(blocking =>
+        ServerRoutes.route(runtime, blocking, config,
+          ServerReadiness.starting("test"))), runtime)
+    catch
+      case error: Throwable =>
+        runtime.close()
+        throw error
+
+  private def withServer(publicOrigin: Option[String] = None)(
+      body: (HttpTestServer, ServerRuntime) => Unit): Unit =
+    val trusted = openTrustedServer(
+      Files.createTempDirectory("trusted-seat-routes-").resolve("database"),
+      publicOrigin)
+    try body(trusted.server, trusted.runtime)
+    finally trusted.close()

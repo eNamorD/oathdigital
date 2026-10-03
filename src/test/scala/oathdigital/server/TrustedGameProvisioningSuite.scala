@@ -12,6 +12,7 @@ import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.protocol._
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class TrustedGameProvisioningSuite extends munit.FunSuite:
   /** The parked decision, as this suite rebuilds it: the same catalog and
@@ -26,11 +27,12 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
     BootstrapParticipantRequest("p1", PlayerColor.Red),
     BootstrapParticipantRequest("p2", PlayerColor.Blue)))
   private val codes = Vector("AAAAAAAAAAAAAAAAAAAAAA", "AQEBAQEBAQEBAQEBAQEBAQ",
-    "AgICAgICAgICAgICAgICAg", "AwMDAwMDAwMDAwMDAwMDAw").map(SeatCode.parse(_).toOption.get)
+    "AgICAgICAgICAgICAgICAg", "AwMDAwMDAwMDAwMDAwMDAw")
+    .map(raw => accepted(SeatCode.parse(raw)))
 
   private def withDatabase(body: (HsqldbDatabaseOwner, Connection) => Unit): Unit =
     val path: Path = Files.createTempDirectory("trusted-provisioning-").resolve("games")
-    val owner = HsqldbDatabaseOwner.open(path).toOption.get
+    val owner = accepted(HsqldbDatabaseOwner.open(path))
     val connection = DriverManager.getConnection(s"jdbc:hsqldb:file:$path", "SA", "")
     try body(owner, connection)
     finally { connection.close(); owner.close() }
@@ -41,16 +43,28 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       new GeneratedFirstGamePlanFactory(catalog), owner.trustedGames, generate, () => 1234L,
       gameIds)
 
-  private def rows(connection: Connection, gameId: String): Vector[Int] =
-    Vector("game_resources", "trusted_seats", "event_streams", "event_entries").map { table =>
-      val statement = connection.prepareStatement(s"SELECT COUNT(*) FROM $table WHERE game_id = ?")
+  /** How many rows `gameId` has in each table a trusted game writes. */
+  private final case class StoredRows(resources: Int, seats: Int, streams: Int,
+      entries: Int)
+
+  private val nothingStored = StoredRows(0, 0, 0, 0)
+
+  /** A two-seat game begun with two events: one resource, two seats, one
+    * stream, and its GameStarted and WalkerParked entries. */
+  private val twoSeatGameStored = StoredRows(1, 2, 1, 2)
+
+  private def rows(connection: Connection, gameId: String): StoredRows =
+    def count(table: String): Int =
+      val statement = connection.prepareStatement(
+        s"SELECT COUNT(*) FROM $table WHERE game_id = ?")
       try
         statement.setString(1, gameId)
         val result = statement.executeQuery()
         result.next()
         result.getInt(1)
       finally statement.close()
-    }
+    StoredRows(count("game_resources"), count("trusted_seats"),
+      count("event_streams"), count("event_entries"))
 
   test("creates ordered links, digest-only seats and replayable journal in one commit"):
     withDatabase { (owner, connection) =>
@@ -62,7 +76,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       // GameStarted plus the WalkerParked fact from Setup's immediate first
       // park (2026-09-21 Chronicle design, slice 2): two event entries for
       // one bootstrap, not the legacy one.
-      assertEquals(rows(connection, gameId), Vector(1, 2, 1, 2))
+      assertEquals(rows(connection, gameId), twoSeatGameStored)
       codes.take(2).zipWithIndex.foreach { case (code, index) =>
         assertEquals(owner.identities.resolveTrustedSeat(code.digest),
           Right(TrustedSeat(gameId, s"p${index + 1}")))
@@ -78,7 +92,8 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       finally statement.close()
       val loaded = new GameApplicationService(catalog, owner.eventStreams).load(gameId)
       assertEquals(loaded.toOption.flatten.map(_.nextSequence), Some(2L))
-      val journal = owner.eventStreams.load(gameId).toOption.flatten.get.records.mkString
+      val journal = present(accepted(owner.eventStreams.load(gameId)),
+        s"stream $gameId").records.mkString
       codes.foreach(code => assert(!journal.contains(code.raw)))
     }
 
@@ -93,7 +108,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       assertEquals(response.map(_.gameId), Right("fresh"))
       assertEquals(response.map(_.seats.map(_.url)), Right(codes.drop(2).map(code =>
         s"https://games.test/s/${code.raw}")))
-      assertEquals(rows(connection, "fresh"), Vector(1, 2, 1, 2))
+      assertEquals(rows(connection, "fresh"), twoSeatGameStored)
     }
 
   test("generated game IDs are distinct and follow the identifier rule"):
@@ -112,11 +127,13 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
         .create(request, "http://localhost:8080"), Left(TrustedGameFailure.DuplicateGame))
       assertEquals(draws, TrustedGameProvisioning.MaxGameIdAttempts)
       assertEquals(rows(connection, gameId), before)
-      val collisionCodes = Vector(codes(2), codes.head).iterator
+      // The second game draws the first game's p1 code again for its p2.
+      val firstGameP1Code = codes.head
+      val collisionCodes = Vector(codes(2), firstGameP1Code).iterator
       val collision = provision(owner, () => collisionCodes.next(), () => "collision").create(
         request, "http://localhost:8080")
       assertEquals(collision, Left(TrustedGameFailure.CodeCollision))
-      assertEquals(rows(connection, "collision"), Vector(0, 0, 0, 0))
+      assertEquals(rows(connection, "collision"), nothingStored)
       codes.foreach(code => assert(!collision.toString.contains(code.raw)))
     }
 
@@ -128,8 +145,11 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       val failed = provision(owner, () => { count += 1; codes(2) }, () => "exhausted").create(
         request, "https://games.test")
       assertEquals(failed, Left(TrustedGameFailure.CodeCollision))
-      assertEquals(count, 9)
-      assertEquals(rows(connection, "exhausted"), Vector(0, 0, 0, 0))
+      // p1 takes the code once; p2 then collides on every draw until
+      // TrustedGameProvisioning's per-seat limit of 8 attempts.
+      val perSeatAttempts = 8
+      assertEquals(count, 1 + perSeatAttempts)
+      assertEquals(rows(connection, "exhausted"), nothingStored)
     }
 
   test("event insertion failure rolls back game resource, seats and stream"):
@@ -140,7 +160,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       val generated = codes.iterator
       val failed = provision(owner, () => generated.next()).create(request, "https://games.test")
       assertEquals(failed, Left(TrustedGameFailure.StorageFailure))
-      assertEquals(rows(connection, gameId), Vector(0, 0, 0, 0))
+      assertEquals(rows(connection, gameId), nothingStored)
       codes.foreach(code => assert(!failed.toString.contains(code.raw)))
     }
 
@@ -151,13 +171,13 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
         request.copy(participants = request.participants.updated(1,
           request.participants(1).copy(color = PlayerColor.Red)))).foreach { invalid =>
         assertEquals(service.create(invalid, "https://games.test"), Left(TrustedGameFailure.InvalidRequest))
-        assertEquals(rows(connection, gameId), Vector(0, 0, 0, 0))
+        assertEquals(rows(connection, gameId), nothingStored)
       }
       Vector("https://user:secret@games.test", "https://games.test/path", "https://games.test?q=secret",
         "ftp://games.test", "https://games.test/#secret").foreach { origin =>
         assertEquals(service.create(request, origin), Left(TrustedGameFailure.InvalidRequest))
       }
-      assertEquals(rows(connection, gameId), Vector(0, 0, 0, 0))
+      assertEquals(rows(connection, gameId), nothingStored)
     }
 
   test("code generator exceptions are generic and cannot leak credentials"):
@@ -166,26 +186,28 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
         .create(request, "https://games.test")
       assertEquals(failed, Left(TrustedGameFailure.StorageFailure))
       assert(!failed.toString.contains(codes.head.raw))
-      assertEquals(rows(connection, gameId), Vector(0, 0, 0, 0))
+      assertEquals(rows(connection, gameId), nothingStored)
     }
 
-  test("bootstrap preparation performs no repository IO and matches ordinary handle"):
+  test("bootstrap preparation performs no repository IO, matches ordinary " +
+      "handle and parks on the first player's pawn placement"):
     val untouched = new EventStreamRepository:
       def load(id: String): Either[RepositoryFailure, Option[StoredEventStream]] = fail("preparation must not read storage")
       def append(id: String, expected: ExpectedStream, records: Vector[String]): Either[RepositoryFailure, RepositoryAppendResult] =
         fail("preparation must not write storage")
     val config = FirstGameBootstrapConfig(participants, orders.firstPlayer)
     val dealt = ChronicleFirstGamePlan.dealOrder(chronicle, config)
-    val prepared = new GameApplicationService(catalog, untouched)
-      .prepareBootstrap("prepared", chronicle, config).toOption.get
+    val prepared = accepted(new GameApplicationService(catalog, untouched)
+      .prepareBootstrap("prepared", chronicle, config))
     val journal = new InMemoryEventStreamRepository
-    val accepted = new GameApplicationService(catalog, journal)
-      .handle("prepared", 0L, GameCommand.Begin(chronicle, dealt)).toOption.get
-    assertEquals(prepared.state, accepted.state)
-    assertEquals(prepared.events, accepted.events)
-    parkedAssertions.assertParked(accepted.state, TriggeredProcedureRef.Setup,
+    val handled = accepted(new GameApplicationService(catalog, journal)
+      .handle("prepared", 0L, GameCommand.Begin(chronicle, dealt)))
+    assertEquals(prepared.state, handled.state)
+    assertEquals(prepared.events, handled.events)
+    parkedAssertions.assertParked(handled.state, TriggeredProcedureRef.Setup,
       SetupProcedure.pawnDecisionId(orders.firstPlayer), orders.firstPlayer)
-    assertEquals(prepared.records, journal.load("prepared").toOption.flatten.get.records)
+    assertEquals(prepared.records,
+      present(accepted(journal.load("prepared")), "stream prepared").records)
 
   test("store rejects invalid seat and record input without throwing or persisting rows"):
     withDatabase { (owner, connection) =>
@@ -193,7 +215,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
         Vector("record"), 0L), Left(TrustedGameStoreFailure.InvalidInput))
       assertEquals(owner.trustedGames.create("invalid", Vector(codes.head.digest -> "p1"),
         Vector.empty, 0L), Left(TrustedGameStoreFailure.InvalidInput))
-      assertEquals(rows(connection, "invalid"), Vector(0, 0, 0, 0))
+      assertEquals(rows(connection, "invalid"), nothingStored)
     }
 
   test("store preserves record order and rolls back even after an earlier event row was inserted"):
@@ -207,5 +229,5 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       finally statement.close()
       assertEquals(owner.trustedGames.create("partial", Vector(codes(1).digest -> "p1"),
         Vector("first", "second"), 0L), Left(TrustedGameStoreFailure.StorageFailure))
-      assertEquals(rows(connection, "partial"), Vector(0, 0, 0, 0))
+      assertEquals(rows(connection, "partial"), nothingStored)
     }

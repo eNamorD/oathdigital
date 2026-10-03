@@ -3,6 +3,8 @@ package oathdigital.server
 import java.net.URI
 import java.nio.file.Paths
 
+import oathdigital.testkit.Unwrap.rejected
+
 class ServerConfigSuite extends munit.FunSuite:
   private val version = "0.1.0-alpha.1"
 
@@ -90,11 +92,7 @@ class ServerConfigSuite extends munit.FunSuite:
       Array("--authenticated-public-origin", "http://localhost:8080")
     )
     partialConfigurations.foreach { arguments =>
-      val errors = ServerConfig.parse(
-        arguments,
-        Map.empty,
-        version
-      ).left.toOption.get
+      val errors = parseErrors(arguments)
       assertEquals(errors.size, 1)
       assert(errors.head.contains(
         "authenticated routes require both session cookie name and public origin"
@@ -108,50 +106,35 @@ class ServerConfigSuite extends munit.FunSuite:
       )
     )
     partialEnvironments.foreach { environment =>
-      val errors = ServerConfig.parse(
-        Array.empty,
-        environment,
-        version
-      ).left.toOption.get
+      val errors = parseErrors(Array.empty, environment)
       assertEquals(errors.size, 1)
       assert(errors.head.contains(
         "authenticated routes require both session cookie name and public origin"
       ))
     }
 
-  test("authenticated public origin enforces the CSRF origin policy"):
+  test("authenticated public origin accepts https://play.example.com and " +
+      "refuses a path"):
     // The origin table is SessionSecuritySuite's; one accept and one reject
     // show the configuration applies it.
-    Vector("https://play.example.com").foreach { origin =>
-      val config = parse(Array(
-        "--session-cookie-name", "oath_session",
-        "--authenticated-public-origin", origin
-      ))
-      assertEquals(
-        config.authenticatedRouteMount.map(_.publicOrigin),
-        Some(origin)
-      )
-    }
+    val config = parse(Array(
+      "--session-cookie-name", "oath_session",
+      "--authenticated-public-origin", "https://play.example.com"
+    ))
+    assertEquals(
+      config.authenticatedRouteMount.map(_.publicOrigin),
+      Some("https://play.example.com")
+    )
 
-    Vector("https://play.example.com/path").foreach { origin =>
-      val errors = ServerConfig.parse(
-        Array(
-          "--session-cookie-name", "oath_session",
-          "--authenticated-public-origin", origin
-        ),
-        Map.empty,
-        version
-      ).left.toOption.get
-      assertEquals(errors.size, 1)
-      assert(errors.head.startsWith("--authenticated-public-origin:"))
-    }
+    val errors = parseErrors(Array(
+      "--session-cookie-name", "oath_session",
+      "--authenticated-public-origin", "https://play.example.com/path"
+    ))
+    assertEquals(errors.size, 1)
+    assert(errors.head.startsWith("--authenticated-public-origin:"))
 
   test("unknown options and missing values return usage for every error"):
-    val errors = ServerConfig.parse(
-      Array("--mystery", "value", "--port", "--mode"),
-      Map.empty,
-      version
-    ).left.toOption.get
+    val errors = parseErrors(Array("--mystery", "value", "--port", "--mode"))
 
     assertEquals(errors.size, 3)
     assert(errors(0).startsWith("missing value for --port"))
@@ -160,15 +143,11 @@ class ServerConfigSuite extends munit.FunSuite:
     errors.foreach(error => assert(error.contains(ServerConfig.usage)))
 
   test("syntax and validation errors share canonical option order"):
-    val errors = ServerConfig.parse(
-      Array(
-        "--mode",
-        "--host", "bad host",
-        "--port", "0"
-      ),
-      Map.empty,
-      version
-    ).left.toOption.get
+    val errors = parseErrors(Array(
+      "--mode",
+      "--host", "bad host",
+      "--port", "0"
+    ))
 
     assertEquals(errors.size, 3)
     assert(errors(0).startsWith("--host:"))
@@ -176,17 +155,13 @@ class ServerConfigSuite extends munit.FunSuite:
     assert(errors(2).startsWith("missing value for --mode"))
 
   test("invalid values return all errors in stable option order"):
-    val errors = ServerConfig.parse(
-      Array(
-        "--mode", "production",
-        "--database-path", " ",
-        "--public-base-url", "ftp://example.com/path?query=yes#fragment",
-        "--port", "70000",
-        "--host", "bad host"
-      ),
-      Map.empty,
-      version
-    ).left.toOption.get
+    val errors = parseErrors(Array(
+      "--mode", "production",
+      "--database-path", " ",
+      "--public-base-url", "ftp://example.com/path?query=yes#fragment",
+      "--port", "70000",
+      "--host", "bad host"
+    ))
 
     assertEquals(errors.map(_.takeWhile(_ != ':')), Vector(
       "--host",
@@ -198,11 +173,7 @@ class ServerConfigSuite extends munit.FunSuite:
 
   test("ports must be decimal integers from 1 through 65535"):
     Vector("", "zero", "0", "-1", "65536").foreach { value =>
-      val error = ServerConfig.parse(
-        Array("--port", value),
-        Map.empty,
-        version
-      ).left.toOption.get
+      val error = parseErrors(Array("--port", value))
       assert(error.exists(_.startsWith("--port:")), clues(value, error))
     }
     Vector("1", "65535").foreach { value =>
@@ -211,12 +182,10 @@ class ServerConfigSuite extends munit.FunSuite:
 
   test("bind host must be a non-blank host without whitespace"):
     Vector("", " ", "bad host", "host/path").foreach { host =>
-      val errors = ServerConfig.parse(
-        Array("--host", host, "--mode", "trusted-alpha",
-          "--public-base-url", "http://localhost:8080"),
-        Map.empty,
-        version
-      ).left.toOption.get
+      // Trusted-alpha with a public base URL keeps the loopback and
+      // public-URL checks quiet, so only the host's own error remains.
+      val errors = parseErrors(Array("--host", host, "--mode", "trusted-alpha",
+        "--public-base-url", "http://localhost:8080"))
       assert(errors.exists(_.startsWith("--host:")), clues(host, errors))
     }
 
@@ -230,34 +199,23 @@ class ServerConfigSuite extends munit.FunSuite:
       Paths.get("var/database").toAbsolutePath.normalize)
 
     val invalidPath = "bad\u0000path"
-    val errors = ServerConfig.parse(
-      Array("--database-path", invalidPath),
-      Map.empty,
-      version
-    ).left.toOption.get
+    val errors = parseErrors(Array("--database-path", invalidPath))
     assertEquals(errors.map(_.takeWhile(_ != ':')), Vector("--database-path"))
 
   test("the retired catalog path option is an unknown option"):
-    val errors = ServerConfig.parse(Array("--catalog-path", "catalog.json"),
-      Map.empty, version).left.toOption.get
+    val errors = parseErrors(Array("--catalog-path", "catalog.json"))
     assert(errors.exists(_.startsWith("unknown option --catalog-path")), errors)
 
-  test("development mode rejects non-loopback bind hosts"):
-    // The host list is DevelopmentTrustBoundarySuite's; one shows the check applies.
-    Vector("0.0.0.0").foreach { host =>
-      val errors = ServerConfig.parse(
-        Array("--host", host), Map.empty, version
-      ).left.toOption.get
-      assert(errors.exists(error =>
-        error.startsWith("--host:") && error.contains("loopback")))
-    }
+  test("development mode rejects a wildcard bind host"):
+    // The host list is DevelopmentTrustBoundarySuite's; one shows the check
+    // applies.
+    val errors = parseErrors(Array("--host", "0.0.0.0"))
+    assert(errors.exists(error =>
+      error.startsWith("--host:") && error.contains("loopback")))
 
   test("trusted-alpha requires a public base URL for non-loopback binding"):
-    val errors = ServerConfig.parse(
-      Array("--mode", "trusted-alpha", "--host", "0.0.0.0"),
-      Map.empty,
-      version
-    ).left.toOption.get
+    val errors =
+      parseErrors(Array("--mode", "trusted-alpha", "--host", "0.0.0.0"))
 
     assert(errors.exists(error =>
       error.startsWith("--public-base-url:") && error.contains("required")))
@@ -293,12 +251,16 @@ class ServerConfigSuite extends munit.FunSuite:
       "https://play.example.com?query=yes",
       "https://play.example.com#fragment"
     ).foreach { value =>
-      val errors = ServerConfig.parse(
-        Array("--public-base-url", value), Map.empty, version
-      ).left.toOption.get
+      val errors = parseErrors(Array("--public-base-url", value))
       assert(errors.exists(_.startsWith("--public-base-url:")),
         clues(value, errors))
     }
+
+  /** The errors `arguments` and `environment` parse to; fails with the
+    * configuration when they parse cleanly. */
+  private def parseErrors(arguments: Array[String],
+      environment: Map[String, String] = Map.empty): Vector[String] =
+    rejected(ServerConfig.parse(arguments, environment, version))
 
   private def parse(
       arguments: Array[String],

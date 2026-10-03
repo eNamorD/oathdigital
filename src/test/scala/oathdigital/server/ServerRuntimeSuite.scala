@@ -6,6 +6,7 @@ import java.nio.file.Files
 
 import oathdigital.application.TrustedSeat
 import oathdigital.protocol._
+import oathdigital.testkit.Unwrap.accepted
 
 class ServerRuntimeSuite extends munit.FunSuite:
   private val request = TrustedGameCreateRequest(Vector(
@@ -14,15 +15,14 @@ class ServerRuntimeSuite extends munit.FunSuite:
     BootstrapParticipantRequest("p3", PlayerColor.Yellow)))
 
   test("trusted-game provisioning draws a randomized board"):
-    val runtime = ServerRuntime.open(
-      Files.createTempDirectory("server-runtime-wiring-").resolve("database")
-    ).toOption.get
+    val runtime = accepted(ServerRuntime.open(
+      Files.createTempDirectory("server-runtime-wiring-").resolve("database")))
     try
       def siteOrder(): Vector[String] =
-        val gameId = runtime.trustedGameProvisioning
-          .create(request, "https://games.example.test").toOption.get.gameId
+        val gameId = accepted(runtime.trustedGameProvisioning
+          .create(request, "https://games.example.test")).gameId
         val seat = TrustedSeat(gameId, "p2")
-        val projection = runtime.trustedGame.load(gameId, seat).toOption.get
+        val projection = accepted(runtime.trustedGame.load(gameId, seat))
         projection.world.flatMap(_.sites).map(_.siteId)
       val orders = Vector.fill(4)(siteOrder())
       assert(orders.distinct.size > 1,
