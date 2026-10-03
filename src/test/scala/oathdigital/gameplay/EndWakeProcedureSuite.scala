@@ -27,9 +27,9 @@ class EndWakeProcedureSuite extends munit.FunSuite:
   private val parked = new ParkedDecisionAssertions(catalog)
 
   /** The first game just after Setup, in its first player's Wake. With
-    * `sharedEnemy`, the other two players stand at the active player's site,
-    * so an Oathkeeper or a combat check at that site would have someone to
-    * reach. */
+    * `sharedEnemy`, the other two players stand at the active player's site:
+    * End Wake must journal only its own two events, and stay legal, whoever
+    * stands there, since nothing in it reads other pawns. */
   private def firstGameWake(sharedEnemy: Boolean = false): OathState =
     val active = Look(initialReady).active
     val activeSite = Look(initialReady).pawn(active)
@@ -65,7 +65,7 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     // board is set up to make it fire and the first assertion proves it
     // would; without that, the second passes for the wrong reason. Ancient
     // City, capacity 3, is emptied of its bandits.
-    val state = Ready(Table.from(Outcomes.ready(firstGameWake()))
+    val state = Ready(Table.from(initialReady)
       .bandits("Ancient City", 0).unchecked)
 
     assert(StateBasedEvaluation.banditRefill(catalog, state)
@@ -107,7 +107,7 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     // scoped. That is only true while both stay that way, which is what this
     // pins: a gate added to one side and not the other shows up here.
     val inWake = firstGameWake()
-    val inAct = Ready(Table.from(Outcomes.ready(inWake))
+    val inAct = Ready(Table.from(initialReady)
       .backInPhase(Phase.Act).unchecked)
     Vector(inWake, firstGameWake(sharedEnemy = true), inAct).foreach { state =>
       val projection = new oathdigital.application.GameProjector(catalog)

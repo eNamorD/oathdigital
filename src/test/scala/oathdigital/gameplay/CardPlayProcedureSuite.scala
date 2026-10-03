@@ -26,16 +26,16 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     * Ancient City, which holds no card, and holds no adviser. */
   private def handState: ReadyGame = Table.start.hand(actor, card).ready
 
-  private def build(ready: ReadyGame, played: WorldCardId = card): Operation =
-    accepted(CardPlayProcedure.build(catalog, ready, actor, played,
-      CardPlayProcedure.Origin.TemporaryHand))
+  private def build(ready: ReadyGame): Operation =
+    PlacementFixture.build(ready, actor, card)
 
   /** The placement decision the card play opens with. */
-  private def placement(tree: Operation): Decide =
+  private def placementDecision(tree: Operation): Decide =
     as[Decide](present(tree.children.headOption, "the placement decision"))
 
   private def placementOptions(tree: Operation): Vector[DecisionOptionRef] =
-    as[DecisionQuery.ChooseOne](placement(tree).query).options.map(_.ref)
+    as[DecisionQuery.ChooseOne](placementDecision(tree).query).options
+      .map(_.ref)
 
   test("CardPlay exposes legal placement choices in decision order"):
     val choices = CardPlay.legalChoices(catalog, handState, actor, card,
@@ -73,11 +73,10 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val full = others.foldLeft(Table.start.hand(actor, card))(
       _.adviser(actor, _, facedown = true)).ready
     val tree = build(full)
-    val decision = placement(tree)
+    val decision = placementDecision(tree)
     assert(placementOptions(tree)
       .contains(DecisionOptionRef.Button("adviser-faceup")))
-    val parked = Outcomes.parked(
-      ProcedureWalker.advance(full, tree, None, noPowers)).tree
+    val parked = PlacementFixture.park(full, tree, noPowers)
     val faceupButton = DecisionOptionRef.Button("adviser-faceup")
     val faceupAnswer = Answered(decision.decisionId,
       DecisionAnswer.ChooseOneAnswer(faceupButton), actor)
@@ -86,9 +85,11 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val replacement = present(
       ProcedureWalker.parkedDecide(full, tree, replacementPark, noPowers),
       "the replacement decision")
-    val faceup = present(CardPlay.legalChoices(catalog, full, actor, card,
-      CardPlay.Origin.TemporaryHand).find(_.placement ==
-      SearchPlacement.Adviser(Orientation.FaceUp, None)), "the faceup choice")
+    val faceupPlacement = SearchPlacement.Adviser(Orientation.FaceUp, None)
+    val choices = CardPlay.legalChoices(catalog, full, actor, card,
+      CardPlay.Origin.TemporaryHand)
+    val faceup = present(choices.find(_.placement == faceupPlacement),
+      "the faceup choice")
     val replacementOptions =
       as[DecisionQuery.ChooseOne](replacement.query).options.map(_.ref)
     assertEquals(replacementOptions, faceup.replacements.map {
@@ -113,9 +114,8 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       card, SearchPlacement.Site(None), CardPlay.Origin.TemporaryHand))
     assert(planned.exists { case value: Play => value.required; case _ => false })
     val tree = build(ready)
-    val parked = Outcomes.parked(
-      ProcedureWalker.advance(ready, tree, None, noPowers)).tree
-    val siteAnswer = Answered(placement(tree).decisionId,
+    val parked = PlacementFixture.park(ready, tree, noPowers)
+    val siteAnswer = Answered(placementDecision(tree).decisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("site")), actor)
     val result = Outcomes.finished(
       ProcedureWalker.resolve(ready, tree, parked, siteAnswer, noPowers))
@@ -187,7 +187,8 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       .contains(DecisionOptionRef.Button("site")))
 
   test("the placement decision labels its four buttons"):
-    val query = as[DecisionQuery.ChooseOne](placement(build(handState)).query)
+    val decision = placementDecision(build(handState))
+    val query = as[DecisionQuery.ChooseOne](decision.query)
     val labels = query.options.collect {
       case DecisionOption.Button(ref, label) => ref.key -> label
     }.toMap
@@ -200,9 +201,9 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     // capacity 3. The test puts the Hall there and has `ruler` rule the site.
     val home = CatalogNames.site("Deep Woods")
     assertEquals(CardPlay.homelandSuit(catalog, home), Some(Suit.Beast))
-    val beastCard = CatalogNames.denizen("Threatening Roar")
-    val fillers = Vector("Fae Merchant", "Second Chance")
-      .map(CatalogNames.denizen(_))
+    val beastCard = others.head
+    assertEquals(catalog.suitOf(beastCard), Some(Suit.Beast))
+    val fillers = others.tail
     /** Deep Woods full with the fillers and the Hall, ruled by `ruler`. */
     def ruledBy(ruler: PlayerId) = fillers.foldLeft(Table.start
       .pawn(actor, home).hand(actor, beastCard))(_.denizen(_, at = home))

@@ -64,7 +64,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     val started = start(board).getOrElse(fail("a legal Challenge must start"))
     assert(started.events.last.isInstanceOf[WalkerParked])
     assertEquals(Look(started.state).supply(p1), 7 - 1)
-    assertEquals(Outcomes.ready(started.state).game.current.banners,
+    assertEquals(banners(started.state),
       board.game.current.banners)
 
   test("only banners the actor could take are offered"):

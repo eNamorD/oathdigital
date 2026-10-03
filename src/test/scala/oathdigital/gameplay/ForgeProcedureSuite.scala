@@ -50,6 +50,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     val ready = forgeBoard().ready
     val cost = present(catalog.site(forgeSite).flatMap(_.forgeRequirements),
       "Deep Woods' printed Forge cost")
+    assertEquals(cost, Tokens(1, 2))
     Forgeable(ready, Look(ready).player(actor), forgeSite,
       forgeDenizens.map(SiteDenizenTarget(forgeSite, _)), cost,
       ready.game.current.commonCards.relicDeck.head)
@@ -122,7 +123,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       pending: PendingTree, placements: Vector[DecisionPlacement])
       : Either[OathViolation, WalkerOutcome] =
     ProcedureWalker.resolve(state, tree, pending,
-      answerOf(placements, f.actor.player), noPowers)
+      answerOf(placements, actor), noPowers)
 
   private def rejection(outcome: Either[OathViolation, WalkerOutcome])
       : String = outcome match
@@ -136,14 +137,14 @@ class ForgeProcedureSuite extends munit.FunSuite
   test("build rejects an actor whose pawn is not at a site"):
     val f = forgeable
     assertEquals(rejects(ForgeProcedure.build(catalog,
-      withoutPawn(f.ready), f.actor.player)),
-      OathViolation.PawnSiteMissing(f.actor.player): OathViolation)
+      withoutPawn(f.ready), actor)),
+      OathViolation.PawnSiteMissing(actor): OathViolation)
 
   test("build rejects a site the actor does not rule"):
     val f = forgeable
     val contested = Table.from(f.ready).bandits(f.siteId, 1).unchecked
     assertEquals(
-      rejects(ForgeProcedure.build(catalog, contested, f.actor.player)),
+      rejects(ForgeProcedure.build(catalog, contested, actor)),
       OathViolation.ForgeUnavailable(
         "actor does not rule their pawn site"): OathViolation)
 
@@ -154,7 +155,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(catalog.site(plain).flatMap(_.forgeRequirements), None)
     val state = Table.from(f.ready).warbandsAt(plain, actor, 1)
       .pawn(actor, plain).unchecked
-    assertEquals(rejects(ForgeProcedure.build(catalog, state, f.actor.player)),
+    assertEquals(rejects(ForgeProcedure.build(catalog, state, actor)),
       OathViolation.ForgeUnavailable(
         "site has no printed Forge cost"): OathViolation)
 
@@ -164,33 +165,32 @@ class ForgeProcedureSuite extends munit.FunSuite
       if definition.id != f.siteId then definition
       else TestCards.siteLike(definition)(
         forgeRequirements = Some(Tokens(1, 1)))))
-    assertEquals(rejects(ForgeProcedure.build(altered, f.ready, f.actor.player)),
+    assertEquals(rejects(ForgeProcedure.build(altered, f.ready, actor)),
       OathViolation.ForgeUnavailable(
         "printed Forge cost must contain three resources"): OathViolation)
 
   test("build rejects a site without exactly three empty faceup denizens"):
-    val f = forgeable
     val short = forgeBoard(forgeDenizens.drop(1)).ready
-    assertEquals(rejects(ForgeProcedure.build(catalog, short, f.actor.player)),
+    assertEquals(rejects(ForgeProcedure.build(catalog, short, actor)),
       OathViolation.ForgeUnavailable(
         "site must contain exactly three empty denizens"): OathViolation)
     // A denizen carrying a token is not empty, so a full-capacity site whose
     // denizens are not all bare fails the same gate.
     val tokened = forgeBoard().tokens(forgeDenizens.head, favor = 1).ready
     assertEquals(rejects(ForgeProcedure.build(catalog, tokened,
-      f.actor.player)), OathViolation.ForgeUnavailable(
+      actor)), OathViolation.ForgeUnavailable(
         "site must contain exactly three empty denizens"): OathViolation)
 
   test("build rejects an actor with no supply"):
     val f = forgeable
     assertEquals(rejects(ForgeProcedure.build(catalog,
-      Table.from(f.ready).supply(actor, 0).unchecked, f.actor.player)),
+      Table.from(f.ready).supply(actor, 0).unchecked, actor)),
       OathViolation.InsufficientSupply(1, 0): OathViolation)
 
   test("build rejects an empty relic deck"):
     val f = forgeable
     val empty = Table.from(f.ready).relicDeckEmptied.unchecked
-    assertEquals(rejects(ForgeProcedure.build(catalog, empty, f.actor.player)),
+    assertEquals(rejects(ForgeProcedure.build(catalog, empty, actor)),
       OathViolation.ForgeUnavailable("relic deck is empty"): OathViolation)
 
   test("build rejects an actor who cannot fund the printed cost from " +
@@ -202,7 +202,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       Table.from(f.ready).favor(actor, favor)
         .secrets(actor, faceUp = faceUp, faceDown = faceDown).unchecked
     def build(state: ReadyGame) =
-      ForgeProcedure.build(catalog, state, f.actor.player)
+      ForgeProcedure.build(catalog, state, actor)
     assert(build(withFunds(f.cost.favor, f.cost.secrets)).isRight,
       "exactly enough of each resource is affordable")
     assertEquals(rejects(build(withFunds(f.cost.favor - 1, f.cost.secrets))),
@@ -221,7 +221,7 @@ class ForgeProcedureSuite extends munit.FunSuite
   test("a successful build roots at ForgeActionEligibility and pays one " +
       "supply at a ForgeCost-windowed first leaf"):
     val f = forgeable
-    val tree = accepted(ForgeProcedure.build(catalog, f.ready, f.actor.player))
+    val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
 
     assertEquals(tree.window,
       Some(PowerWindow.ForgeActionEligibility): Option[PowerWindow])
@@ -229,7 +229,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(first.window, Some(PowerWindow.ForgeCost): Option[PowerWindow])
     assertEquals(as[BuildOps](first).build(f.ready,
       PendingTree(Vector.empty, Vector.empty)),
-      Right(Vector[CoreOperation](SpendSupply(f.actor.player, 1)))
+      Right(Vector[CoreOperation](SpendSupply(actor, 1)))
         : Either[OathViolation, Vector[CoreOperation]])
 
     // The walk records exactly that one leaf before parking. A windowed leaf
@@ -241,14 +241,14 @@ class ForgeProcedureSuite extends munit.FunSuite
     val steps = park.steps
     assertEquals(steps.map(_.nodeId), Vector("0.0"))
     assertEquals(steps.head.ops,
-      Vector[CoreOperation](SpendSupply(f.actor.player, 1)))
+      Vector[CoreOperation](SpendSupply(actor, 1)))
     assertEquals(Look(atPark).supply(actor), SupplyTrack.Maximum - 1)
 
   test("walking the tree parks at forge.assignment, owned by the actor, " +
       "declaring the panel's heading and confirm label, both sections with " +
       "their printed minima, and one option per live target"):
     val f = forgeable
-    val tree = accepted(ForgeProcedure.build(catalog, f.ready, f.actor.player))
+    val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
     val park = parkAtAssignment(f.ready, tree)
     val pending = park.pending
     val atPark = park.state
@@ -257,16 +257,15 @@ class ForgeProcedureSuite extends munit.FunSuite
     val decide = ProcedureWalker.parkedDecide(atPark, tree, pending, noPowers)
       .getOrElse(fail("expected the park to resolve to a Decide"))
     assertEquals(decide.decisionId, ForgeProcedure.assignmentDecisionId)
-    assertEquals(decide.owner, f.actor.player)
+    assertEquals(decide.owner, actor)
 
     val partition = as[DecisionQuery.Partition](decide.query)
     // The panel's own copy, declared beside the sections it frames.
     assertEquals(partition.heading, Some("Forge a relic"))
     assertEquals(partition.confirmLabel, Some("Complete Forge"))
-    assertEquals(partition.sections,
-      Vector(
+    assertEquals(partition.sections, Vector(
       DecisionSection(ForgeProcedure.favorSectionKey, "Pay Favor",
-      f.cost.favor),
+        f.cost.favor),
       DecisionSection(ForgeProcedure.secretSectionKey, "Pay Secret",
         f.cost.secrets)))
     assertEquals(partition.options, f.targets.map(target =>
@@ -279,9 +278,8 @@ class ForgeProcedureSuite extends munit.FunSuite
 
   test("a three-favor or three-secret site declares no Decide node at all " +
       "and resolves its forced split without parking"):
-    // The setup fixture deals no single-resource forge site into play, so
-    // the printed cost is overridden on the site it does deal -- exactly as
-    // the neighbouring cost tests already do.
+    // Deep Woods' printed cost is overridden to a single resource, exactly
+    // as the neighbouring cost tests do.
     Vector(Tokens(3, 0), Tokens(0, 3)).foreach { printed =>
       val base = forgeable
       val altered = catalog.copy(sites = catalog.sites.map(definition =>
@@ -291,7 +289,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       val f = base.copy(cost = printed)
       assert(!ForgeProcedure.parks(f.cost), s"${f.cost} should not park")
       val tree = accepted(
-        ForgeProcedure.build(altered, f.ready, f.actor.player))
+        ForgeProcedure.build(altered, f.ready, actor))
       // The decision lives inside a `Branch`, so its absence shows as the
       // branch's absence from the root's children.
       assert(tree.children.forall(!_.isInstanceOf[Branch]),
@@ -308,10 +306,10 @@ class ForgeProcedureSuite extends munit.FunSuite
         else ForgeProcedure.secretSectionKey
       assertEquals(steps.map(_.nodeId), Vector("0.0", "1"))
       assertEquals(steps(1).ops, f.targets.map(target =>
-        expectedPayment(f.actor.player, target.denizenId, section)) :+
+        expectedPayment(actor, target.denizenId, section)) :+
         Play(f.relic,
           PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
-          Location.PlayArea(f.actor.player), Orientation.FaceDown))
+          Location.PlayArea(actor), Orientation.FaceDown))
       assertEquals(
         finalState.game.current.map.sites(f.siteId).denizens.collect {
           case d: DenizenState => d.tokens },
@@ -327,7 +325,7 @@ class ForgeProcedureSuite extends munit.FunSuite
   test("the assignment decision rejects stale, duplicate, incomplete, " +
       "minimum-violating, unknown-section and choose-one answers"):
     val f = forgeable
-    val tree = accepted(ForgeProcedure.build(catalog, f.ready, f.actor.player))
+    val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
     val park = parkAtAssignment(f.ready, tree)
     val pending = park.pending
     val atPark = park.state
@@ -366,14 +364,14 @@ class ForgeProcedureSuite extends munit.FunSuite
     // A choose-one answer to a partition question is rejected on shape.
     assert(rejection(ProcedureWalker.resolve(atPark, tree, pending,
       Answered(ForgeProcedure.assignmentDecisionId,
-        DecisionAnswer.ChooseOneAnswer(legal.head.option), f.actor.player),
+        DecisionAnswer.ChooseOneAnswer(legal.head.option), actor),
       noPowers))
       .contains("expects a partition answer"))
 
   test("an answer from a player who is not the parked actor is rejected " +
       "as the wrong player"):
     val f = forgeable
-    val tree = accepted(ForgeProcedure.build(catalog, f.ready, f.actor.player))
+    val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
     val park = parkAtAssignment(f.ready, tree)
     val pending = park.pending
     val atPark = park.state
@@ -381,13 +379,13 @@ class ForgeProcedureSuite extends munit.FunSuite
 
     assertEquals(ProcedureWalker.resolve(atPark, tree,
       pending, answerOf(legalPlacements(f), other), noPowers),
-      Left(OathViolation.WrongPlayer(f.actor.player, other))
+      Left(OathViolation.WrongPlayer(actor, other))
         : Either[OathViolation, WalkerOutcome])
 
   test("a denizen that gains a token after the park leaves too few " +
       "targets, so the Forge cannot be answered"):
     val f = forgeable
-    val tree = accepted(ForgeProcedure.build(catalog, f.ready, f.actor.player))
+    val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
     val park = parkAtAssignment(f.ready, tree)
     val pending = park.pending
     val atPark = park.state
@@ -396,7 +394,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     val moved = Table.from(atPark).tokens(f.targets.head.denizenId, favor = 1)
       .unchecked
 
-    assertEquals(ForgeProcedure.eligibleTargets(moved, f.actor.player),
+    assertEquals(ForgeProcedure.eligibleTargets(moved, actor),
       f.targets.drop(1))
 
     // Losing a target does not merely invalidate the old answer: the printed
@@ -413,7 +411,7 @@ class ForgeProcedureSuite extends munit.FunSuite
   test("a legal answer finishes the walk with three player-funded " +
       "PayCosts and the relic play, consulting no suit bank"):
     val f = forgeable
-    val tree = accepted(ForgeProcedure.build(catalog, f.ready, f.actor.player))
+    val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
     val park = parkAtAssignment(f.ready, tree)
     val pending = park.pending
     val atPark = park.state
@@ -428,15 +426,15 @@ class ForgeProcedureSuite extends munit.FunSuite
 
     val expected: Vector[CoreOperation] = legal.map { placement =>
       val denizen = as[DecisionOptionRef.Denizen](placement.option).id
-      expectedPayment(f.actor.player, denizen, placement.sectionKey)
+      expectedPayment(actor, denizen, placement.sectionKey)
     } :+ Play(f.relic,
       PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
-      Location.PlayArea(f.actor.player), Orientation.FaceDown)
+      Location.PlayArea(actor), Orientation.FaceDown)
 
     assertEquals(steps.map(_.nodeId), Vector("1.0", "2"))
     assertEquals(steps.head.payload,
       ChoicePayload(ForgeProcedure.assignmentDecisionId,
-        PartitionAnswer(legal), f.actor.player): WalkerStepPayload)
+        PartitionAnswer(legal), actor): WalkerStepPayload)
     assertEquals(steps.head.ops, Vector.empty[CoreOperation])
     assertEquals(steps(1).ops, expected)
 
@@ -460,7 +458,7 @@ class ForgeProcedureSuite extends munit.FunSuite
   test("the section a target is placed in decides which resource it " +
       "receives, whatever the site's own printed split"):
     val f = forgeable
-    val tree = accepted(ForgeProcedure.build(catalog, f.ready, f.actor.player))
+    val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
     val park = parkAtAssignment(f.ready, tree)
     val pending = park.pending
     val atPark = park.state
@@ -477,7 +475,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     val steps = finished.steps
     assertEquals(steps(1).ops.init, placements.map { placement =>
       val denizen = as[DecisionOptionRef.Denizen](placement.option).id
-      expectedPayment(f.actor.player, denizen, placement.sectionKey)
+      expectedPayment(actor, denizen, placement.sectionKey)
     })
     assertEquals(finalState.game.current.map.sites(f.siteId).denizens.collect {
       case denizen: DenizenState => denizen.tokens
@@ -494,16 +492,16 @@ class ForgeProcedureSuite extends munit.FunSuite
       "answerable"):
     val f = forgeable
     val poor = Table.from(f.ready).supply(actor, 1).unchecked
-    val tree = accepted(ForgeProcedure.build(catalog, poor, f.actor.player))
+    val tree = accepted(ForgeProcedure.build(catalog, poor, actor))
     val park = parkAtAssignment(poor, tree)
     val pending = park.pending
     val atPark = park.state
     assertEquals(Look(atPark).supply(actor), 0)
 
     // Re-running the start gate here would strand a legally started Forge.
-    assertEquals(rejects(ForgeProcedure.build(catalog, atPark, f.actor.player)),
+    assertEquals(rejects(ForgeProcedure.build(catalog, atPark, actor)),
       OathViolation.InsufficientSupply(1, 0): OathViolation)
-    val resumed = ForgeProcedure.rebuild(catalog, atPark, f.actor.player)
+    val resumed = ForgeProcedure.rebuild(catalog, atPark, actor)
     assert(resumed.isRight,
       s"resume derivation must not re-run the start-only supply gate: $resumed")
 
@@ -523,18 +521,19 @@ class ForgeProcedureSuite extends munit.FunSuite
   test("eligibleTargets is the same set the start gate derives, and empty " +
       "without a pawn"):
     val f = forgeable
-    assertEquals(ForgeProcedure.eligibleTargets(f.ready, f.actor.player),
-      accepted(ForgeRules.validate(catalog, f.ready, f.actor, f.siteId))._1)
-    assertEquals(ForgeProcedure.eligibleTargets(f.ready, f.actor.player),
+    assertEquals(ForgeProcedure.eligibleTargets(f.ready, actor),
+      accepted(ForgeRules.validate(catalog, f.ready, f.actorState,
+        f.siteId))._1)
+    assertEquals(ForgeProcedure.eligibleTargets(f.ready, actor),
       f.targets)
     assertEquals(ForgeProcedure.eligibleTargets(
-      withoutPawn(f.ready), f.actor.player),
+      withoutPawn(f.ready), actor),
       Vector.empty[SiteDenizenTarget])
 
   test("the forged relic is the authoritative deck top, read at execution " +
       "time rather than closed over by the tree"):
     val f = forgeable
-    val tree = accepted(ForgeProcedure.build(catalog, f.ready, f.actor.player))
+    val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
     val park = parkAtAssignment(f.ready, tree)
     val pending = park.pending
     val atPark = park.state
@@ -552,7 +551,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       .steps
     assertEquals(steps(1).ops.last, Play(newTop,
       PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
-      Location.PlayArea(f.actor.player),
+      Location.PlayArea(actor),
       Orientation.FaceDown): CoreOperation)
 
     // An emptied deck fails the leaf rather than forging nothing silently.
@@ -573,7 +572,7 @@ class ForgeProcedureSuite extends munit.FunSuite
   test("the tree windows exactly its root and its supply payment; every " +
       "other node carries none"):
     val f = forgeable
-    val tree = accepted(ForgeProcedure.build(catalog, f.ready, f.actor.player))
+    val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
     val windowed = allNodes(tree).filter(_.window.isDefined)
 
     assertEquals(windowed.size, 2,
@@ -591,6 +590,6 @@ object ForgeProcedureSuite:
     * built out of. Declared outside the suite class so its case-class type
     * test carries no unchecked outer reference.
     */
-  final case class Forgeable(ready: ReadyGame, actor: PlayerState,
+  final case class Forgeable(ready: ReadyGame, actorState: PlayerState,
       siteId: SiteId, targets: Vector[SiteDenizenTarget], cost: Tokens,
       relic: RelicId)

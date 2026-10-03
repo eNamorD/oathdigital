@@ -5,7 +5,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted, WalkerParked}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -39,9 +39,8 @@ class EconomyWalkerSuite extends munit.FunSuite:
     rules.resolveWalker(state, actor, decisionId,
       DecisionAnswer.ChooseOneAnswer(ref))
 
-  private def current(state: OathState): CurrentGameState = state match
-    case Ready(ready) => ready.game.current
-    case other => fail(s"expected a ready game, got $other")
+  private def current(state: OathState): CurrentGameState =
+    Outcomes.ready(state).game.current
 
   test("starting Muster parks on the source decision and changes nothing yet"):
     val started = start(atAlchemist.ready)
@@ -60,8 +59,8 @@ class EconomyWalkerSuite extends munit.FunSuite:
     val answered = accepted(
       answer(started.state, p1, MusterProcedure.decisionId, card))
     val after = Look(answered.state)
-    // 1 favor goes onto Alchemist, Muster costs 1 Supply, and it gains 2
-    // warbands.
+    // 1 favor goes onto Alchemist and Muster costs 1 Supply. It gains one
+    // warband, plus one for the matching adviser, Magician's Code.
     assertEquals(after.favor(p1), 4 - 1)
     assertEquals(after.supply(p1), 7 - 1)
     assertEquals(after.boardWarbands(p1), 3 + 2)

@@ -31,7 +31,7 @@ class CardPlayHooksSuite extends munit.FunSuite:
   // An unrestricted denizen whose power these tests do not use.
   private val card = CatalogNames.denizen("Errand Boy")
 
-  /** p1 holds `held` in a temporary hand, with Supply 3. */
+  /** p1 holds `held` in a temporary hand, with `startSupply` Supply. */
   private def inHand(held: WorldCardId): ReadyGame =
     Table.start.hand(actor, held).supply(actor, startSupply).ready
 

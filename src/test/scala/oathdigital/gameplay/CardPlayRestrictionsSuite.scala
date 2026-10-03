@@ -28,7 +28,7 @@ class CardPlayRestrictionsSuite extends munit.FunSuite:
     val choices = CardPlay.legalChoices(catalog, ready, actor, card,
       CardPlay.Origin.TemporaryHand)
     choices.find(choice => matches(choice.placement)).getOrElse(fail(
-      s"no such placement; offered ${choices.map(_.placement)}"))
+      s"no placement matches for $card; offered ${choices.map(_.placement)}"))
 
   private def siteChoice(ready: ReadyGame, card: DenizenId): CardPlay.Choice =
     choiceFor(ready, card, _.isInstanceOf[SearchPlacement.Site])

@@ -28,9 +28,10 @@ class HomelandRuleSuite extends munit.FunSuite:
 
   /** The site choice `card` offers; fails listing the placements offered. */
   private def offeredSite(ready: ReadyGame, card: String): CardPlay.Choice =
-    siteChoice(ready, card).getOrElse(fail("no site placement; offered " +
-      CardPlay.legalChoices(catalog, ready, p1, CatalogNames.denizen(card),
-        CardPlay.Origin.TemporaryHand).map(_.placement)))
+    val choices = CardPlay.legalChoices(catalog, ready, p1,
+      CatalogNames.denizen(card), CardPlay.Origin.TemporaryHand)
+    choices.find(_.placement.isInstanceOf[SearchPlacement.Site]).getOrElse(
+      fail(s"no site placement; offered ${choices.map(_.placement)}"))
 
   /** p1 stands at Deep Woods, which p1 rules and which holds `cards`, with
     * `card` in hand to play. */
