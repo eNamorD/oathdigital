@@ -11,13 +11,24 @@ import oathdigital.model._
   */
 object WalkerDiceFixture:
   /** Stub of WalkerDice: nothing scored, whatever the pool holds (every
-    * attack die a hollow sword, every defense die blank). A Recover roll
+    * attack die a hollow sword, every defense die blank). The twin of
+    * `Dice.blanks`. A Recover roll
     * fails and leaves the player the continue-or-stop choice; a Campaign
     * attack is lost.
     */
   val blanks: WalkerDice = (kind, count) => Right(Vector.fill(count)(
     kind match {
       case DiceKind.Attack => AttackDieFace.HollowSword: DieFace
+      case DiceKind.Defense => DefenseDieFace.Blank: DieFace
+    }))
+
+  /** Stub of WalkerDice: every attack die a sword and every defense die
+    * blank, dice that favour the attacker in a Raid or a Conquest. The
+    * twin of `Dice.raid`.
+    */
+  val raid: WalkerDice = (kind, count) => Right(Vector.fill(count)(
+    kind match {
+      case DiceKind.Attack => AttackDieFace.OneSword: DieFace
       case DiceKind.Defense => DefenseDieFace.Blank: DieFace
     }))
 

@@ -21,15 +21,9 @@ import oathdigital.testkit.Unwrap.present
   * warbands is won by four swords and lost by four hollow ones.
   */
 object PlanDriver:
-  private def dice(attack: AttackDieFace): WalkerDice = (kind, count) =>
-    Right(kind match {
-      case DiceKind.Attack => Vector.fill(count)(attack: DieFace)
-      case DiceKind.Defense => Vector.fill(count)(DefenseDieFace.Blank: DieFace)
-    })
-
-  /** Stub of WalkerDice: every attack die is a sword and every defense die
-    * blank. */
-  val winningDice: WalkerDice = dice(AttackDieFace.OneSword)
+  /** Stub of WalkerDice, the shared WalkerDiceFixture.raid: every attack die
+    * is a sword and every defense die blank. */
+  val winningDice: WalkerDice = WalkerDiceFixture.raid
 
   /** Stub of WalkerDice, the shared WalkerDiceFixture.blanks: every attack die
     * is half a sword and every defense die blank. */

@@ -10,7 +10,7 @@ class GameLogDetailSuite extends munit.FunSuite:
   test("each Recover roll posts a Rolled line whose dice travel as a dice span"):
     val entries = format(recoverFailed, None)
     val rolls = entries.filter(_.kind == LogKind.Roll)
-    // Two rolls: the first try and the one continue. Dice.blank rolls every
+    // Two rolls: the first try and the one continue. Dice.blanks rolls every
     // defense die Blank.
     assertEquals(rolls.size, 2, texts(entries))
     rolls.foreach { roll =>

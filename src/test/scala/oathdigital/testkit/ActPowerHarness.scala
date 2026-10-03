@@ -33,11 +33,13 @@ object ActPowerHarness:
       phasePowerCatalog = PhasePowerCatalog.default(catalog),
       walkerDice = dice)
 
-  /** Dice that show exactly these defense faces. */
+  /** Stub of WalkerDice: the defense dice show exactly these faces, a defense
+    * pool of another size fails, and no attack die may be rolled. */
   def defenseDice(faces: DefenseDieFace*): WalkerDice =
     WalkerDiceFixture.dice(defense = faces.toVector)
 
-  /** Dice that show exactly these attack faces. */
+  /** Stub of WalkerDice: the attack dice show exactly these faces, an attack
+    * pool of another size fails, and no defense die may be rolled. */
   def attackDice(faces: AttackDieFace*): WalkerDice =
     WalkerDiceFixture.dice(attack = faces.toVector)
 

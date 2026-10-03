@@ -311,7 +311,7 @@ object LogScripts:
   /** Dice that fail every Recover roll: continue once, then stop. */
   def recoverFailed(using munit.Location): Script =
     val (service, act) = recovering("recover-failed",
-      Dice.blank)
+      Dice.blanks)
     val actor = Look(act.ready).active
     def answer(key: String) = GameCommand.ResolveWalker(actor, TreeDecision(
       RecoverProcedure.choiceDecisionId,

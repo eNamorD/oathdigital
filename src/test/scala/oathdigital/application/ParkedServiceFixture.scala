@@ -189,9 +189,9 @@ object ParkedServiceFixture:
 
   /** A Recover parked in Act on its continue-or-stop choice on
     * [[recoverTable]]. The service rolls `dice`, and the default
-    * `Dice.blank` fail the roll, so it parks on the choice instead of
+    * `Dice.blanks` fail the roll, so it parks on the choice instead of
     * landing wherever a random port would send it. */
-  def recoverChoicePark(gameId: String, dice: CampaignDicePort = Dice.blank)(
+  def recoverChoicePark(gameId: String, dice: CampaignDicePort = Dice.blanks)(
       using munit.Location): RecoverChoicePark =
     val (service, repository, act) = journaled(recoverTable, gameId, dice)
     val parked = act.parkedAfter(

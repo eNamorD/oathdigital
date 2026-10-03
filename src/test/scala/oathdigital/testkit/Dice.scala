@@ -3,15 +3,18 @@ package oathdigital.testkit
 import oathdigital.application.CampaignDicePort
 import oathdigital.model.{AttackDieFace, DefenseDieFace}
 
-/** The dice every test that fixes a roll hands the game, so one board comes
-  * up the same way every run. Each stub says which faces it rolls; a spy
-  * counts the defense rolls it was asked for, and its own doc says which
-  * faces it rolls. */
+/** The CampaignDicePort doubles for the tests that fix a roll through the
+  * application service or a Situation, so one board comes up the same way
+  * every run. Each stub says which faces it rolls; a spy counts the defense
+  * rolls it was asked for, and its own doc says which faces it rolls. A
+  * test that drives the rules directly hands them a WalkerDice from
+  * `WalkerDiceFixture` instead, whose `blanks` and `raid` are the twins of
+  * the two stubs of those names here. */
 object Dice:
   /** Stub of CampaignDicePort: attack always HollowSword, defense always
     * Blank. A defense roll against it fails, so a Recover started with it
     * parks on the continue-or-stop choice. */
-  val blank: CampaignDicePort = new CampaignDicePort:
+  val blanks: CampaignDicePort = new CampaignDicePort:
     def rollAttack(count: Int): Vector[AttackDieFace] =
       Vector.fill(count)(AttackDieFace.HollowSword)
     def rollDefense(count: Int): Vector[DefenseDieFace] =

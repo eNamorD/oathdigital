@@ -17,7 +17,7 @@ class SituationSuite extends munit.FunSuite:
       : (GameApplicationService, InMemoryEventStreamRepository) =
     val repository = new InMemoryEventStreamRepository
     (new GameApplicationService(catalog, repository,
-      campaignDicePort = Dice.blank), repository)
+      campaignDicePort = Dice.blanks), repository)
 
   private def journaled(gameId: String)
       : (SituationDriver, InMemoryEventStreamRepository) =
@@ -65,7 +65,7 @@ class SituationSuite extends munit.FunSuite:
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
     val byRules = Situation.wake(
-      Situation.productionRules(catalog, Dice.blank))
+      Situation.productionRules(catalog, Dice.blanks))
       .after(steps*)
     val byJournal = Situation.wake(driver).after(steps*)
     assertEquals(byJournal.state, byRules.state)
@@ -76,12 +76,12 @@ class SituationSuite extends munit.FunSuite:
 
   test("the rules and journaled adapters agree from a table"):
     val table = Table.start
-    val (service, repository) = table.service(campaignDice = Dice.blank)
+    val (service, repository) = table.service(campaignDice = Dice.blanks)
     val steps = Vector[GameCommand | Step](GameCommand.StartWalker(
       ActionRef.Search, StartPayload(p1, Vector.empty,
         Vector(DecisionOptionRef.Button("search:world")))))
     val byRules = table.situation(
-      Situation.productionRules(catalog, Dice.blank))
+      Situation.productionRules(catalog, Dice.blanks))
       .after(steps*)
     val byJournal = table.situation(Situation.journaled(service, catalog,
       repository, "table")).after(steps*)
@@ -152,7 +152,7 @@ class SituationSuite extends munit.FunSuite:
     // ParkedServiceFixture.recoverChoicePark's table, under the rules the
     // service builds and dice that fail every Recover roll.
     val parked = ParkedServiceFixture.recoverTable
-      .situation(Situation.productionRules(catalog, Dice.blank))
+      .situation(Situation.productionRules(catalog, Dice.blanks))
       .parkedAfter(GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
     new ParkedDecisionAssertions(catalog, WalkerPowerCatalog.default(catalog),
       PhasePowerCatalog.default(catalog)).assertParked(parked.state,
