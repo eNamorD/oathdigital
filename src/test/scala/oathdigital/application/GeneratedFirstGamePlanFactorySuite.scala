@@ -38,8 +38,8 @@ class GeneratedFirstGamePlanFactorySuite extends munit.FunSuite:
     assert(implementedFirst(dealtRelics, relics), dealtRelics.toString)
     assert(current.map.inPlay.flatMap(current.map.sites(_).denizens).forall {
       case edifice: EdificeState =>
-        val printed = present(
-          catalog.edifices.find(_.id.value == edifice.id.value), edifice.id.value)
+        val printed = present(catalog.edifices
+          .find(_.id.value == edifice.id.value), edifice.id.value)
         ImplementedCardCatalog.homelandEdifice(catalog, printed.suit, status)
           .forall(_ == edifice.id)
       case _ => true

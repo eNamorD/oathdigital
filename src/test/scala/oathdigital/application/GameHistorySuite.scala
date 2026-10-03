@@ -3,11 +3,10 @@ package oathdigital.application
 import oathdigital.gameplay.setup.FirstGameSetupFixture.{catalog, chronicle, orders}
 import oathdigital.model.OathState
 import oathdigital.testkit.Unwrap.accepted
-import oathdigital.application.ParkedServiceFixture.loaded
+import ParkedServiceFixture.loaded
 
 class GameHistorySuite extends munit.FunSuite:
-  test("history is the scanned journal: one step per event, ending on the " +
-      "stored state"):
+  test("history is the scanned journal: one step per event, ending on the loaded state"):
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val begun = accepted(service.handle("history", 0L,

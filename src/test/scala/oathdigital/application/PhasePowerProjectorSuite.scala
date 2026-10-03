@@ -11,7 +11,7 @@ import oathdigital.testkit.Unwrap.present
 
 class PhasePowerProjectorSuite extends munit.FunSuite:
   private val projector = new GameProjector(catalog)
-  private val silverTongue = CatalogNames.denizen("Silver Tongue").value
+  private val silverTongueId = CatalogNames.denizen("Silver Tongue").value
 
   test("a usable REST power is projected and legal for its active player only"):
     // Golem Legions (Arcane) shows at p1's site, and the Arcane bank holds 3
@@ -21,10 +21,10 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     val own =
       projector.project("phase-powers", LoadedGame(Ready(ready), 30L), p1)
     assertEquals(own.phasePowers.map(p => p.powerId -> p.source.id),
-      Vector(SilverTongue.id.value -> silverTongue))
+      Vector(SilverTongue.id.value -> silverTongueId))
     assert(own.phasePowers.head.rulesText.nonEmpty)
     assert(own.legalControls.contains(
-      s"usePower:${SilverTongue.id.value}:$silverTongue"))
+      s"usePower:denizen.silver-tongue:$silverTongueId"))
     assert(own.legalControls.contains("finishRest"))
     val theirs = projector.project("phase-powers", LoadedGame(Ready(ready), 30L),
       p2)
@@ -113,7 +113,7 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     val ready = SilverTongueFixture.silverTongueRest(Vector("Golem Legions"),
       Set(Suit.Arcane))
     val drifted = catalog.copy(denizens = catalog.denizens.filterNot(_.id.value ==
-      silverTongue))
+      silverTongueId))
     val projected = new GameProjector(drifted).project("drifted-rest",
       LoadedGame(Ready(ready), 30L), p1)
 
@@ -156,13 +156,13 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     val ready = RiverFixture.staged(rivers =
       Vector(RiverFixture.riverbank, RiverFixture.tidalMarshes),
       phase = Phase.Wake)
-    val ancientCity = CatalogNames.site("Ancient City").value
+    val ancientCityId = CatalogNames.site("Ancient City").value
     val projected =
       projector.project("river", LoadedGame(Ready(ready), 30L), p1)
     assertEquals(projected.phasePowers.filter(_.powerId ==
       "site.ancient-city.river").map(p =>
       (p.source.kind, p.source.id, p.name, p.rulesText)), Vector(("site",
-      ancientCity, "River",
+      ancientCityId, "River",
       "WAKE: You may place your pawn at another River. This is not a Travel action.")))
     assert(projected.legalControls.contains(
-      s"usePower:site.ancient-city.river:$ancientCity"))
+      s"usePower:site.ancient-city.river:$ancientCityId"))

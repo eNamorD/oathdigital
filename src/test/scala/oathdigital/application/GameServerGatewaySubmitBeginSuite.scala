@@ -12,7 +12,7 @@ import oathdigital.protocol.projection.{DecisionQueryProjection, GameProjection,
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.testkit.Table.p2
 import oathdigital.testkit.Unwrap.{accepted, present}
-import oathdigital.application.ParkedServiceFixture.loaded
+import ParkedServiceFixture.loaded
 
 /** `GameServerGateway.submit` with `GameCommand.Begin` is what the
   * development and trusted bootstrap paths both reduce to once a Chronicle
@@ -30,7 +30,7 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite:
     participants.sortBy(p => if p.playerId == p2 then 0 else 1), p2)
 
   /** A game begun through the gateway, journaled in HSQL at `path`: the plan
-    * it was dealt from and the projection p2 is returned. */
+    * it was dealt from and the projection returned to p2. */
   private final case class BegunGame(path: Path, plan: FirstGamePlan,
       projection: GameProjection)
 

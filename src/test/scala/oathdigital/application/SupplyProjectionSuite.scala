@@ -5,10 +5,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.protocol.projection.{GameProjection, SupplyBandProjection}
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.Look
-import oathdigital.testkit.Outcomes
 
 /** What the Supply track promises the client.
   *

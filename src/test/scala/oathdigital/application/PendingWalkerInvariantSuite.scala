@@ -8,7 +8,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.application.ParkedServiceFixture.loaded
+import ParkedServiceFixture.loaded
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Unwrap.present

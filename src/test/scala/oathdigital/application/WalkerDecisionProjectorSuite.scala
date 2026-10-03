@@ -296,6 +296,48 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assert(mine.offeredOptions.head.card.exists(!_.hidden))
     assertEquals(projects(base, p1, Vector(slot(p2, 9))), None)
 
+  private val threateningRoar = CatalogNames.denizen("Threatening Roar")
+
+  /** A temporary hand is the one player area whose cards carry no state,
+    * so `orientationOf` reports no orientation for them. A disclosure rule
+    * phrased as "not facedown" therefore reads that absence as public and
+    * hands every drawn card to any viewer -- the same trap a deck card
+    * falls into, in an area that otherwise looks like a board slot.
+    * `identifiesCard` settles a hand on ownership alone, and these are its
+    * two controls.
+    *
+    * The card is MOVED out of the world deck rather than copied into a
+    * hand: `CardIndex.from` rejects a duplicate outright, which would leave
+    * the projector with no index and suppress the decision for the wrong
+    * reason, passing the non-owner case while proving nothing.
+    *
+    * p1's park at Broken Peaks with Threatening Roar moved off the top of
+    * the world deck into `holder`'s hand.
+    */
+  private def parkedWithHandOf(holder: PlayerId)(using munit.Location)
+      : ScopedProjectionContext =
+    val context = parked(ActionRef.Recover, Some(facedownRelicSite),
+      steps = _.worldDeckTop(threateningRoar).hand(holder, threateningRoar))
+    assert(CardIndex.from(context.ready.game).isRight,
+      "moving the card must leave the index consistent, not duplicated")
+    context
+
+  test("a temporary hand is identifiable only to the player holding it"):
+    // The decision's owner drew it: the option projects with its name.
+    val projected = projects(parkedWithHandOf(p1), p1, Vector(
+      DecisionOption.Denizen(DecisionOptionRef.Denizen(threateningRoar))))
+      .getOrElse(
+        fail("a card in the decision owner's own hand must project"))
+    assertEquals(projected.offeredOptions.map(_.id),
+      Vector(threateningRoar.value))
+    assert(projected.offeredOptions.forall(_.card.exists(!_.hidden)))
+
+    // Another player drew it: same card, same container, same absent
+    // orientation -- and the whole decision is suppressed.
+    assertEquals(projects(parkedWithHandOf(p2), p1, Vector(
+      DecisionOption.Denizen(DecisionOptionRef.Denizen(threateningRoar)))),
+      None)
+
   /** The other half of "cannot be presented": a card that IS in
     * authoritative state but that this viewer may not identify.
     *
@@ -312,48 +354,11 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * relics Recover offers sit at the acting player's own site, and the
     * denizens Forge offers are faceup.
     */
-  /** A temporary hand is the one player area whose cards carry no state,
-    * so `orientationOf` reports no orientation for them. A disclosure rule
-    * phrased as "not facedown" therefore reads that absence as public and
-    * hands every drawn card to any viewer -- the same trap a deck card
-    * falls into, in an area that otherwise looks like a board slot.
-    * `identifiesCard` settles a hand on ownership alone, and these are its
-    * two controls.
-    *
-    * The card is MOVED out of the world deck rather than copied into a
-    * hand: `CardIndex.from` rejects a duplicate outright, which would leave
-    * the projector with no index and suppress the decision for the wrong
-    * reason, passing the non-owner case while proving nothing.
-    */
-  private val drawn = CatalogNames.denizen("Threatening Roar")
-
-  /** p1's park at Broken Peaks with Threatening Roar moved out of the world
-    * deck into `holder`'s hand. */
-  private def withHand(holder: PlayerId)(using munit.Location)
-      : ScopedProjectionContext =
-    val context = parked(ActionRef.Recover, Some(facedownRelicSite),
-      steps = _.hand(holder, drawn))
-    assert(CardIndex.from(context.ready.game).isRight,
-      "moving the card must leave the index consistent, not duplicated")
-    context
-
-  test("a temporary hand is identifiable only to the player holding it"):
-    // The decision's owner drew it: the option projects with its name.
-    val projected = projects(withHand(p1), p1, Vector(
-      DecisionOption.Denizen(DecisionOptionRef.Denizen(drawn)))).getOrElse(
-        fail("a card in the decision owner's own hand must project"))
-    assertEquals(projected.offeredOptions.map(_.id), Vector(drawn.value))
-    assert(projected.offeredOptions.forall(_.card.exists(!_.hidden)))
-
-    // Another player drew it: same card, same container, same absent
-    // orientation -- and the whole decision is suppressed.
-    assertEquals(projects(withHand(p2), p1, Vector(
-      DecisionOption.Denizen(DecisionOptionRef.Denizen(drawn)))), None)
-
   test("a card the decision's owner may not identify suppresses the " +
       "projection, even though the card is really in play"):
-    val context = parked(ActionRef.Recover,
-      Some(facedownRelicSite))
+    val inDeck = CatalogNames.relic("Dowsing Sticks")
+    val context = parked(ActionRef.Recover, Some(facedownRelicSite),
+      steps = _.relicDeckTop(inDeck))
     // Cursed Cauldron: a facedown relic at Dunes, where p1's pawn is not,
     // and which p1 has never peeked at.
     val elsewhere = cursedCauldron
@@ -370,8 +375,6 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
 
     // A card still in a deck has no orientation to be facedown at all, so
     // it has to be rejected by its container rather than by its face.
-    // Dowsing Sticks tops the relic deck.
-    val inDeck = CatalogNames.relic("Dowsing Sticks")
     assertEquals(context.ready.game.current.commonCards.relicDeck.headOption,
       Some(inDeck))
     assertEquals(projects(context, p1, Vector(
@@ -410,12 +413,11 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     // declares no confirm label, so there is no field left to find absent.
     assert(query.isInstanceOf[DecisionQueryProjection.ChooseOne])
 
-  /** Task 5: a parked `Decide` owned by a player other than the active one.
-    * `owner` is who [[WalkerDecisionProjector.project]] must show the
-    * decision to and [[WalkerDecisionProjector.waiting]] must name; `active`
-    * gets only the public waiting projection, same as any spectator.
-    */
-  /** In p1's Act, a decision p2 owns, and the projector that walks it. */
+  /** In p1's Act, a parked `Decide` p2 owns, and the projector that walks
+    * it. p2 is who [[WalkerDecisionProjector.project]] must show the
+    * decision to and [[WalkerDecisionProjector.waiting]] must name; p1, the
+    * active player, gets only the public waiting projection, same as any
+    * spectator. */
   private final case class OffTurnPark(ready: ReadyGame,
       projector: WalkerDecisionProjector)
 
@@ -440,12 +442,11 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(projector.waiting(ctx(Some(active))), waiting)
     assertEquals(projector.waiting(ctx(None)), waiting)
 
-  /** Task 7: the production Oathkeeper tree parked on a tie. The tree comes
-    * from the default `declaredTree`, so the registry entry, the awaited
-    * player and the Player-option presentation are all the real ones.
-    */
-  /** It is p1's Act. p2 holds the title while p1 and p3 each rule a site:
-    * a tie p2 breaks. */
+  /** The production Oathkeeper tree parked on a tie: it is p1's Act, and
+    * p2 holds the title while p1 and p3 each rule a site, a tie p2 breaks.
+    * The tree comes from the default `declaredTree`, so the registry entry,
+    * the awaited player and the Player-option presentation are all the real
+    * ones. */
   private def parkedOathkeeperTie(using munit.Location): ReadyGame =
     Table.start.oathkeeper(Some(p2))
       .warbandsAt("Dunes", p1, 1).warbandsAt("Fair Isle", p3, 1)
@@ -555,7 +556,9 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(subjects.map(s => (s.cardId, s.cardKind, s.hidden)),
       Vector(("hidden", "denizen", true)))
 
-  /** The actor of every `CampaignFixture` board. */
+  /** The actor of every `CampaignFixture` board. Both Campaign parks below
+    * use its board with 5 warbands and a Supply of 7: p1 campaigns against
+    * the 2 Bandits at its origin. */
   private val attacker: PlayerId = p1
 
   /** Task 8: the battle-plan window is a `Repeat` -- it re-asks
