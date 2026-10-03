@@ -55,7 +55,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     AskedToDiscard(tree, placed.tree)
 
   /** Answers the discard decision with `ref`, returning the finished game. */
-  private def discard(ready: ReadyGame, asked: AskedToDiscard,
+  private def answerDiscardQuestion(ready: ReadyGame, asked: AskedToDiscard,
       ref: DecisionOptionRef): ReadyGame =
     as[WalkerOutcome.Finished](answer(ready, asked.tree, asked.pending, powers,
       cardPlayDecisionId(card, "replace"), ref, p1)).treeless
@@ -74,14 +74,15 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     val asked = toDiscardDecision(ready)
     assertEquals(options(ready, asked.tree, asked.pending, powers),
       Vector(noReplacement, DecisionOptionRef.Denizen(kept)))
-    val done = discard(ready, asked, noReplacement)
+    val done = answerDiscardQuestion(ready, asked, noReplacement)
     assertEquals(Look(done).cardsAt(home), Vector[CardId](kept, card))
     assertEquals(done.game.current.temporaryHands(p1), Vector.empty)
 
   test("choosing a site card discards it with the standard returns"):
     val ready = playing(kept).tokens(kept, favor = 1, secrets = 1).ready
     val asked = toDiscardDecision(ready)
-    val done = discard(ready, asked, DecisionOptionRef.Denizen(kept))
+    val done = answerDiscardQuestion(ready, asked,
+      DecisionOptionRef.Denizen(kept))
     assertEquals(Look(done).cardsAt(home), Vector[CardId](card))
     // Ancient City is in the Cradle, so the discard goes to the Provinces.
     assertEquals(done.game.current.commonCards.discard(Region.Provinces).last,
@@ -103,7 +104,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     val asked = toDiscardDecision(ready)
     assert(!options(ready, asked.tree, asked.pending, powers)
       .contains(noReplacement))
-    val done = discard(ready, asked, DecisionOptionRef.Denizen(fillers.head))
+    val done = answerDiscardQuestion(ready, asked,
+      DecisionOptionRef.Denizen(fillers.head))
     assertEquals(Look(done).cardsAt(home).size, 3)
     assert(Look(done).cardsAt(home).contains(card))
 
@@ -122,7 +124,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     assertEquals(options(ready, asked.tree, asked.pending, powers).toSet,
       Set[DecisionOptionRef](noReplacement, DecisionOptionRef.Denizen(kept),
         ruined))
-    val done = discard(ready, asked, ruined)
+    val done = answerDiscardQuestion(ready, asked, ruined)
     assertEquals(Look(done).cardsAt(home), Vector[CardId](kept, card))
     assertEquals(done.game.current.commonCards.edificeDeck.last, hall)
 

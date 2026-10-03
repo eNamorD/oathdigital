@@ -44,6 +44,11 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
   private def atRoundEnd(table: Table): ReadyGame =
     table.turn(p1, Phase.RoundEnd).ready
 
+  /** The last event `endRound` journals for `table` at Round End. */
+  private def lastEventAtRoundEnd(table: Table,
+      pick: Vector[PlayerId] => PlayerId): OathEvent =
+    accepted(StateBasedEvaluation.endRound(Ready(atRoundEnd(table)), pick)).last
+
   private def withGoal(ready: ReadyGame, goal: OathkeeperGoal): ReadyGame =
     // No Table step sets the campaign's Oathkeeper goal.
     ready.updateCampaign(_.copy(oathkeeperGoal = goal))
@@ -178,18 +183,17 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
   test("round-eight War Exhaustion applies Usurper then Oathkeeper then random fallback"):
     val usurper = preparedTable(Vector.empty, holder = Some(p2),
       side = TitleSide.Usurper, round = 8)
-    assertEquals(accepted(StateBasedEvaluation.endRound(
-      Ready(atRoundEnd(usurper)), pickFirstCandidate)).last,
+    assertEquals(lastEventAtRoundEnd(usurper, pickFirstCandidate),
       WarExhaustionResolved(p2, VictoryKind.Usurper, None, Vector.empty))
 
     val keeper = preparedTable(Vector.empty, holder = Some(p3), round = 8)
-    assertEquals(accepted(StateBasedEvaluation.endRound(
-      Ready(atRoundEnd(keeper)), pickFirstCandidate)).last,
+    assertEquals(lastEventAtRoundEnd(keeper, pickFirstCandidate),
       WarExhaustionResolved(p3, VictoryKind.Oathkeeper, None, Vector.empty))
 
-    val base = atRoundEnd(preparedTable(Vector.empty, round = 8))
-    val random = as[WarExhaustionResolved](accepted(
-      StateBasedEvaluation.endRound(Ready(base), pickSecondCandidate)).last)
+    val roundEight = preparedTable(Vector.empty, round = 8)
+    val base = atRoundEnd(roundEight)
+    val random = as[WarExhaustionResolved](
+      lastEventAtRoundEnd(roundEight, pickSecondCandidate))
     assertEquals(random.kind, VictoryKind.RandomSelection)
     assertEquals(random.winner, random.randomCandidates(1))
     assert(rules.evolve(Ready(base), random).isLeft,
@@ -197,17 +201,18 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     val afterRound = accepted(rules.evolve(Ready(base), RoundEnded(8, None)))
     assert(rules.evolve(afterRound, random.copy(
       randomCandidates = random.randomCandidates.reverse)).isLeft)
-    assertEquals(rules.evolve(afterRound, random).map(
-      Outcomes.ready(_).game.current.result), Right(Some(GameResult(
-        random.winner, VictoryKind.RandomSelection))))
+    val result = rules.evolve(afterRound, random)
+      .map(Outcomes.ready(_).game.current.result)
+    assertEquals(result,
+      Right(Some(GameResult(random.winner, VictoryKind.RandomSelection))))
 
   test("all printed Visionary outcomes resolve in printed priority order"):
-    val conquestState = preparedTable(Vector(p1), round = 8)
-    val rebellionState = preparedTable(Vector.empty, round = 8)
+    val conquestTable = preparedTable(Vector(p1), round = 8)
+    val rebellionTable = preparedTable(Vector.empty, round = 8)
       .peoplesFavor(Some(p1), favor = 1)
     val cases = Vector(
-      VisionRules.Conquest -> conquestState,
-      VisionRules.Rebellion -> rebellionState,
+      VisionRules.Conquest -> conquestTable,
+      VisionRules.Rebellion -> rebellionTable,
       VisionRules.Sanctuary -> preparedTable(Vector.empty, round = 8)
         .relic(p1, "Dowsing Sticks", facedown = true),
       VisionRules.Faith -> preparedTable(Vector.empty, round = 8)
@@ -215,19 +220,17 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     )
     cases.foreach { case (vision, table) =>
       val state = table.revealedVision(p1, vision).visionsDrawn(3)
-      assertEquals(accepted(StateBasedEvaluation.endRound(
-        Ready(atRoundEnd(state)), pickFirstCandidate)).last,
+      assertEquals(lastEventAtRoundEnd(state, pickFirstCandidate),
         WarExhaustionResolved(p1, VictoryKind.Visionary,
           Some(vision), Vector.empty), clue(vision))
     }
 
     // p1 qualifies for Conquest and Rebellion; p1 reveals Conquest and p2
     // Rebellion. Conquest comes first in the printed order.
-    val combined = conquestState.peoplesFavor(Some(p1), favor = 1)
+    val combined = conquestTable.peoplesFavor(Some(p1), favor = 1)
       .revealedVision(p1, VisionRules.Conquest)
       .revealedVision(p2, VisionRules.Rebellion).visionsDrawn(3)
-    assertEquals(accepted(StateBasedEvaluation.endRound(
-      Ready(atRoundEnd(combined)), pickFirstCandidate)).last,
+    assertEquals(lastEventAtRoundEnd(combined, pickFirstCandidate),
       WarExhaustionResolved(p1, VictoryKind.Visionary,
         Some(VisionRules.Conquest), Vector.empty))
 
@@ -238,17 +241,15 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
         .revealedVision(p1, VisionRules.Conquest).visionsDrawn(count)
 
     Vector(0, 2).foreach { count =>
-      val event = accepted(StateBasedEvaluation.endRound(Ready(atRoundEnd(
-        withCount(count, Some(p2)))), pickFirstCandidate)).last
+      val event = lastEventAtRoundEnd(withCount(count, Some(p2)),
+        pickFirstCandidate)
       assertEquals(event, WarExhaustionResolved(p2,
         VictoryKind.Oathkeeper, None, Vector.empty), clue(count))
-      val random = as[WarExhaustionResolved](accepted(
-        StateBasedEvaluation.endRound(Ready(atRoundEnd(withCount(count, None))),
-          pickLastCandidate)).last)
+      val random = as[WarExhaustionResolved](
+        lastEventAtRoundEnd(withCount(count, None), pickLastCandidate))
       assertEquals(random.kind, VictoryKind.RandomSelection, clue(count))
     }
-    assertEquals(accepted(StateBasedEvaluation.endRound(Ready(atRoundEnd(
-      withCount(3, None))), pickFirstCandidate)).last,
+    assertEquals(lastEventAtRoundEnd(withCount(3, None), pickFirstCandidate),
       WarExhaustionResolved(p1, VictoryKind.Visionary,
         Some(VisionRules.Conquest), Vector.empty))
 
@@ -259,10 +260,10 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
 
   test("once the game has a result, every command is refused at the lifecycle gate"):
     // No Table step ends the game.
-    def finished(phase: Phase) = preparedTable(Vector.empty).turn(p1, phase)
+    def endedGame(phase: Phase) = preparedTable(Vector.empty).turn(p1, phase)
       .ready.updateCurrent(_.copy(
         result = Some(GameResult(p1, VictoryKind.Usurper))))
-    val act = finished(Phase.Act)
+    val act = endedGame(Phase.Act)
     // p1 stands at Ancient City and would travel to Broken Peaks.
     val destination = CatalogNames.site("Broken Peaks")
     assertEquals(rules.startWalker(Ready(act), ActionRef.Travel, p1,
@@ -270,7 +271,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
       Left(OathViolation.GameEnded))
     assertEquals(rules.startWalker(Ready(act), ActionRef.Forge, p1),
       Left(OathViolation.GameEnded))
-    assertEquals(rules.startWalker(Ready(finished(Phase.Wake)),
+    assertEquals(rules.startWalker(Ready(endedGame(Phase.Wake)),
       PhaseTransitionRef.EndWake, p1), Left(OathViolation.GameEnded))
 
   test("state-based operation policy permits only bandit-bank refills"):

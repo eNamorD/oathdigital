@@ -18,14 +18,17 @@ class TravelSitePowersSuite extends munit.FunSuite:
   private val powers = TravelSitePowers.all
 
   /** The first catalog site whose handler ends in `suffix`. */
-  private def site(suffix: String): SiteId = catalog.sites.find(
-    _.handlers.exists(_.value.endsWith(suffix))).fold(fail(s"missing $suffix"))(_.id)
+  private def site(suffix: String): SiteId =
+    def handles(handler: PowerId) = handler.value.endsWith(suffix)
+    catalog.sites.find(_.handlers.exists(handles))
+      .fold(fail(s"missing $suffix"))(_.id)
   private def powerId(siteId: SiteId, suffix: String): PowerId =
     present(catalog.site(siteId).flatMap(_.handlers.find(_.value
       .endsWith(suffix))), s"the $suffix handler of $siteId")
 
-  // Two Plains sites and the terrain sites, each the first in the catalog
-  // whose handler names that terrain.
+  // The first two Plains sites, and the first site of each terrain, in
+  // catalog order; Rocky Coast is the site whose coast handler the coast
+  // route test names.
   private val plain = CatalogNames.site("Buried Giant")
   private val otherPlain = CatalogNames.site("Dunes")
   private val mountain = CatalogNames.site("Broken Peaks")
@@ -81,6 +84,8 @@ class TravelSitePowersSuite extends munit.FunSuite:
     */
   test("terrain transforms give the printed Travel cost on each route"):
     assertEquals(site(".plains"), plain)
+    assert(catalog.site(otherPlain).exists(_.handlers.exists(
+      _.value.endsWith(".plains"))))
     assertEquals(site(".mountain"), mountain)
     assertEquals(site(".coast"), coast)
     assertEquals(site(".island"), island)
@@ -155,6 +160,8 @@ class TravelSitePowersSuite extends munit.FunSuite:
     val unknownReady = readyAt(plain, Some(passMap(plain, destination,
       SiteForces.Occupied(ForceKind.Exile(LineageId("missing")), 1))))
     val actorState = Look(unknownReady).player(actor)
+    // No Table step adds a seat: a second player sharing p1's lineage makes
+    // the pass ruler ambiguous.
     val duplicateReady = unknownReady.updateCurrent(_.copy(
         map = passMap(plain, destination,
           SiteForces.Occupied(ForceKind.Exile(actorState.lineage), 1)),

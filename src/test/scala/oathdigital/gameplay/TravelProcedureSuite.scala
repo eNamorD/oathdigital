@@ -39,18 +39,18 @@ class TravelProcedureSuite extends munit.FunSuite:
   /** p1's Act on a re-laid map. The Cradle holds `source` and the coast
     * (Desolate Shore); the Provinces hold Dunes, the mountain (Broken Peaks)
     * and the pass (Narrow Pass); the Hinterland holds Salt Flats, the island
-    * (Fair Isle) and Shrouded Woods. Every site with a printed capacity holds
-    * a bandit stack of it, the pass `passForces`, and every site its printed
-    * starting wealth. p1 stands at `source` with `supply` Supply; p2 and p3
-    * stand on the next two sites. The printed base is 1 within the Cradle, 2
-    * from the Cradle to the Provinces, 4 from the Cradle to the Hinterland.
-    * The layout is for the default source; a source already on the list
-    * shifts every later site up one place.
+    * (Fair Isle) and Shrouded Woods. The pass holds one bandit, every other
+    * site with a printed capacity a bandit stack of it, and every site its
+    * printed starting wealth. p1 stands at `source` with `supply` Supply; p2
+    * stands on the layout's third site (Dunes) and p3 on its fourth (Broken
+    * Peaks). The printed base is 1 within the Cradle, 2 from the Cradle to
+    * the Provinces, 4 from the Cradle to the Hinterland. The layout is for
+    * the default source; a source already on the list shifts every later
+    * site up one place.
     */
   private def travelBoard(
       supply: Int,
-      source: SiteId = cradlePlains,
-      passForces: SiteForces = SiteForces.Occupied(ForceKind.Bandit, 1)
+      source: SiteId = cradlePlains
   ): ReadyGame =
     val initial = Table.start.supply(actor, supply).ready
     val chosen = Vector(source, coast, provincePlains, mountain, pass,
@@ -60,7 +60,7 @@ class TravelProcedureSuite extends munit.FunSuite:
     val states = ids.map { id =>
       val definition = present(catalog.site(id), id.value)
       id -> SiteState(
-        if id == pass then passForces
+        if id == pass then SiteForces.Occupied(ForceKind.Bandit, 1)
         else if definition.capacity == 0 then SiteForces.Empty
         else SiteForces.Occupied(ForceKind.Bandit, definition.capacity),
         Vector.empty, Vector.empty, definition.startingResources)
@@ -85,6 +85,11 @@ class TravelProcedureSuite extends munit.FunSuite:
   // (a) candidate simulation matches StartWalker for every terrain case.
 
   test("simulated candidate cost equals the printed table on a plain route"):
+    Vector(cradlePlains, provincePlains, hinterlandPlains,
+      secondHinterlandPlains).foreach { site =>
+      assert(catalog.site(site).exists(_.handlers.exists(
+        _.value.endsWith(".plains"))), site.value)
+    }
     Vector("coast" -> coast, "island" -> island, "mountain" -> mountain,
       "pass" -> pass).foreach { (power, site) =>
       assertEquals(terrainSite(power), Some(site), power)
@@ -116,7 +121,9 @@ class TravelProcedureSuite extends munit.FunSuite:
     val ready = passRuled(travelBoard(supply = 7, source = coast))
     assertEquals(ready.game.current.map.provinces,
       Vector(mountain, pass, hinterlandPlains))
-    assertEquals(simulate(ready, hinterlandPlains), Some(2))
+    // Salt Flats lies in the Provinces on this shifted layout.
+    val shiftedProvincePlains = hinterlandPlains
+    assertEquals(simulate(ready, shiftedProvincePlains), Some(2))
 
   test("StartWalker spends exactly the cost the candidate simulation showed"):
     val ready = passRuled(travelBoard(supply = 7))
@@ -162,9 +169,9 @@ class TravelProcedureSuite extends munit.FunSuite:
     assertEquals(simulate(ready, destination), None)
 
     val rules = new OathRules(catalog, walkerPowerCatalog = powers)
-    val rejected = rules.startWalker(Ready(ready), ActionRef.Travel, actor,
+    val result = rules.startWalker(Ready(ready), ActionRef.Travel, actor,
       Vector.empty, Vector(DecisionOptionRef.Site(destination)))
-    assertEquals(rejected.map(_ => ()), Left(OathViolation.CoreOperationRejected(
+    assertEquals(result.map(_ => ()), Left(OathViolation.CoreOperationRejected(
       "insufficient-supply", "a supply spend of 1 exceeds the 0 available")))
 
   test("simulation omits every destination the actor cannot afford"):

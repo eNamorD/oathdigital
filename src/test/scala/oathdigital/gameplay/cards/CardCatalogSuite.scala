@@ -3,7 +3,7 @@ package oathdigital.gameplay.cards
 import oathdigital.catalog.{AdviserOnly, ExecutableCatalog, Locked,
   PrintedPower, PrintsPowers, SiteOnly}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.model.{CardId, PowerId, RelicId}
+import oathdigital.model.{CardId, PowerId}
 import oathdigital.testkit.CatalogNames
 
 /** The printed-corpus checks `validate-component-catalog.py` ran on the JSON,
@@ -118,7 +118,7 @@ class CardCatalogSuite extends munit.FunSuite:
       PhasePowerCatalog.default(catalog).powers.map(_.id)).toSet
     // The Grand Scepter and the Hall of Ministers are implemented as
     // operation restrictions, not as registered powers.
-    val restrictions = Set[CardId](RelicId("grand-scepter"),
+    val restrictions = Set[CardId](CatalogNames.relic("The Grand Scepter"),
       CatalogNames.edifice("Hall of Ministers"))
     def held(card: AnyRef): Boolean =
       card.getClass.getPackageName == "oathdigital.catalog.holding"

@@ -55,7 +55,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
 
   /** A stocked site, an empty favor, an empty secret, an enemy pawn, and
     * `taken`, a site already taken from this turn. */
-  private def boards(taken: ReadyGame): Vector[ReadyGame] = Vector(
+  private def oneBoardPerTakeGate(taken: ReadyGame): Vector[ReadyGame] = Vector(
     wake(favor = 1, secrets = 1), wake(favor = 0, secrets = 1),
     wake(favor = 1, secrets = 0),
     wake(favor = 1, secrets = 1, sharedEnemy = true), taken)
@@ -65,15 +65,14 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
 
   test("a take moves the favor, records its use and ends a Wake with nothing left"):
     val ready = wake(favor = 1, secrets = 1)
-    val site = home
     val before = board(ready).favor
     val transition = took(ready)
     val state = after(transition)
 
     assertEquals(board(state).favor, before + 1)
-    assertEquals(state.game.current.map.sites(site).tokens.favor, 0)
+    assertEquals(state.game.current.map.sites(home).tokens.favor, 0)
     assert(state.game.current.turn.usedPowers.contains(
-      TakeWealthLimit.useRef(site)))
+      TakeWealthLimit.useRef(home)))
     parked.assertResumed(transition.state, Phase.Act, actor)
     assertEquals(transition.events.collect {
       case oathdigital.gameplay.walker.WalkerCompleted(procedure) => procedure
@@ -162,7 +161,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     // it is proved against the command directly rather than only through the
     // projection below.
     val taken = after(took(wake(favor = 2, secrets = 1)))
-    boards(taken).foreach { ready =>
+    oneBoardPerTakeGate(taken).foreach { ready =>
       assertEquals(TakeWealthProcedure.candidates(catalog, ready,
         actor, powers),
         WakeResource.all.filter(resource => take(ready,
@@ -178,7 +177,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     // is the projector's half -- that it consumes them and names them as the
     // controls a client binds.
     val taken = after(took(wake(favor = 2, secrets = 1)))
-    boards(taken).foreach { ready =>
+    oneBoardPerTakeGate(taken).foreach { ready =>
       val projection = new oathdigital.application.GameProjector(catalog)
         .project("take-wealth", oathdigital.application.LoadedGame(
           Ready(ready), 9), actor)
@@ -190,17 +189,15 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
 
   test("the declared tree is the take and its use record under one window"):
     val ready = wake(favor = 1, secrets = 1)
-    val site = home
     assertEquals(TakeWealthProcedure.build(catalog, ready, actor,
       favorArg), Right(Sequence(Vector(
-        Take(Piece.Favor(1), actor, Location.Site(site),
+        Take(Piece.Favor(1), actor, Location.Site(home),
           Location.PlayArea(actor)),
-        RecordPowerUse(TakeWealthLimit.useRef(site))),
+        RecordPowerUse(TakeWealthLimit.useRef(home))),
       Some(PowerWindow.WakeTakeWealth))))
 
   test("the recorded operations are the resource move and the use record"):
     val ready = wake(favor = 1, secrets = 1)
-    val site = home
     val recorded = took(ready).events.takeWhile {
       case _: oathdigital.gameplay.walker.WalkerCompleted => false
       case _ => true
@@ -208,6 +205,6 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
       case step: oathdigital.gameplay.walker.WalkerStepRecorded => step.ops
     }.flatten
     assertEquals(recorded, Vector(
-      Move(Piece.Favor(1), PositionedLocation(Location.Site(site)),
+      Move(Piece.Favor(1), PositionedLocation(Location.Site(home)),
         PositionedLocation(Location.PlayArea(actor))),
-      RecordPowerUse(TakeWealthLimit.useRef(site))))
+      RecordPowerUse(TakeWealthLimit.useRef(home))))

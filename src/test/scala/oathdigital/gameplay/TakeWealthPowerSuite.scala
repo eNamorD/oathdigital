@@ -28,17 +28,18 @@ class TakeWealthPowerSuite extends munit.FunSuite:
   private val site = CatalogNames.site("Ancient City")
   private val otherSite = CatalogNames.site("Broken Peaks")
 
-  /** The pawn stands at `pawn` and this turn has already used `used`. */
+  /** The pawn stands at `pawn`, or nowhere, and this turn has already used
+    * `used`. */
   private def ready(pawn: Option[SiteId],
       used: Set[PowerUseRef] = Set.empty): ReadyGame =
-    val placed = pawn.fold(Table.start)(Table.start.pawn(actor, _)).ready
     // No Table step removes a pawn or records a used power.
-    placed.updateCurrent(c => c.copy(
-      turn = c.turn.copy(usedPowers = used),
-      players = c.players.map { player =>
-        if player.player == actor then player.copy(pawnSite = pawn)
-        else player
-      }))
+    val placed = pawn match
+      case Some(site) => Table.start.pawn(actor, site).ready
+      case None => Table.start.ready.updateCurrent(c => c.copy(
+        players = c.players.map(player =>
+          if player.player == actor then player.copy(pawnSite = None)
+          else player)))
+    placed.updateCurrent(c => c.copy(turn = c.turn.copy(usedPowers = used)))
 
   /** The turn advance, as `Rest` performs it: a whole new `TurnState`, which
     * is why `usedPowers` is turn-scoped without anything clearing it.
