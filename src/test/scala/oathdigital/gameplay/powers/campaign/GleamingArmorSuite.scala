@@ -31,9 +31,9 @@ class GleamingArmorSuite extends munit.FunSuite:
   private def attackerHolds(defenderSecrets: Int): Board =
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    on(withAdviserFor(withAdviser(base, armor, Orientation.FaceUp), base.rival,
-      watchdog,
-      Orientation.FaceUp))(_.secrets(base.rival, faceUp = defenderSecrets))
+    val held = withAdviserFor(withAdviser(base, armor, Orientation.FaceUp),
+      base.rival, watchdog, Orientation.FaceUp)
+    on(held)(_.secrets(base.rival, faceUp = defenderSecrets))
 
   test("a defender's plan costs one more secret, which turns facedown at " +
       "once because it is paid off turn"):
@@ -69,8 +69,8 @@ class GleamingArmorSuite extends munit.FunSuite:
   test("without Gleaming Armor the same plans are free"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val b = on(withAdviserFor(base, base.rival, watchdog,
-      Orientation.FaceUp))(_.secrets(base.rival, faceUp = 0))
+    val held = withAdviserFor(base, base.rival, watchdog, Orientation.FaceUp)
+    val b = on(held)(_.secrets(base.rival, faceUp = 0))
     val run = commit(rules(losing), b, 4)
     // The Watchdog, the title's plan and Finish.
     assertEquals(run.options(b.actor).map(price), Vector.fill(3)(OptionPrice()))
@@ -78,9 +78,9 @@ class GleamingArmorSuite extends munit.FunSuite:
   test("a facedown Gleaming Armor is not active"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val b = on(withAdviserFor(withAdviser(base, armor, Orientation.FaceDown),
-      base.rival, watchdog,
-      Orientation.FaceUp))(_.secrets(base.rival, faceUp = 0))
+    val held = withAdviserFor(withAdviser(base, armor, Orientation.FaceDown),
+      base.rival, watchdog, Orientation.FaceUp)
+    val b = on(held)(_.secrets(base.rival, faceUp = 0))
     // The Watchdog, the title's plan and Finish.
     assertEquals(commit(rules(losing), b, 4).options(b.actor).map(price),
       Vector.fill(3)(OptionPrice()))
@@ -122,8 +122,9 @@ class GleamingArmorSuite extends munit.FunSuite:
   private def defenderHolds(attackerSecrets: Int): Board =
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    on(withRelic(withAdviserFor(base, base.rival, armor, Orientation.FaceUp),
-      brass))(_.secrets(base.actor, faceUp = attackerSecrets))
+    val held = withRelic(
+      withAdviserFor(base, base.rival, armor, Orientation.FaceUp), brass)
+    on(held)(_.secrets(base.actor, faceUp = attackerSecrets))
 
   test("an attacker's plan costs one more secret, placed onto its card"):
     val b = defenderHolds(2)
@@ -147,9 +148,9 @@ class GleamingArmorSuite extends munit.FunSuite:
   test("the holder's own plans are not taxed"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val b = on(withAdviserFor(withAdviserFor(base, base.rival, armor,
-      Orientation.FaceUp), base.rival, watchdog,
-      Orientation.FaceUp))(_.secrets(base.rival, faceUp = 0))
+    val armored = withAdviserFor(base, base.rival, armor, Orientation.FaceUp)
+    val held = withAdviserFor(armored, base.rival, watchdog, Orientation.FaceUp)
+    val b = on(held)(_.secrets(base.rival, faceUp = 0))
     val run = commit(rules(losing), b, 4)
     // The Watchdog, the title's plan and Finish.
     assertEquals(run.options(b.actor).map(price), Vector.fill(3)(OptionPrice()))
@@ -173,9 +174,9 @@ class GleamingArmorSuite extends munit.FunSuite:
   test("the holder's own plan is not taxed, and writes nothing"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val b = on(withAdviserFor(withAdviserFor(base, base.rival, armor,
-      Orientation.FaceUp), base.rival, watchdog,
-      Orientation.FaceUp))(_.secrets(base.rival, faceUp = 0))
+    val armored = withAdviserFor(base, base.rival, armor, Orientation.FaceUp)
+    val held = withAdviserFor(armored, base.rival, watchdog, Orientation.FaceUp)
+    val b = on(held)(_.secrets(base.rival, faceUp = 0))
     val picked = commit(rules(losing), b, 4).pick(b.rival,
       CampaignIds.defenderPlan, DecisionOptionRef.Denizen(watchdog))
     assertEquals(said(picked.events), Vector.empty)

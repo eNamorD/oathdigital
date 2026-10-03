@@ -73,7 +73,6 @@ class FieldPromotionSuite extends munit.FunSuite:
     val base = attacking
     val force = kind(base, base.actor)
     // Every warband of the actor's kind but one is on their board.
-    // All but one of the lineage's warbands go onto p1's board.
     val b = on(base)(_.warbandsInBank(base.actor, 1))
     assertEquals(warbandBank(b.ready, force), 1)
     val done = commit(rules(winning), b, 4)
