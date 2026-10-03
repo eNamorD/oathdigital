@@ -6,7 +6,7 @@ import oathdigital.application.AuthorizationFailure._
 import oathdigital.application.ProjectionScope._
 import oathdigital.model.{PlayerId, RelicId}
 import oathdigital.persistence.HsqldbDatabaseOwner
-import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.Unwrap.{accepted, rejected}
 
 class MembershipAuthorizationServiceSuite extends munit.FunSuite:
   private val ownerUser = UserId("owner-user")
@@ -97,6 +97,19 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
         .resolve("game", AuthenticatedUser(playerUser)),
       Left(StorageFailure("database unavailable"))
     )
+
+  List(MembershipRole.Owner, MembershipRole.Spectator).foreach: role =>
+    test(s"a $role membership that occupies a player seat is corrupt"):
+      /** Stub of IdentityRepository: findMembership returns a membership
+        * of `role` that holds seat p1. */
+      val seated = new IdentityRepositoryStub:
+        override def findMembership(gameId: String, userId: UserId): Either[IdentityFailure, Option[GameMembership]] =
+          Right(Some(GameMembership(gameId, userId, role, Some("p1"))))
+      assertEquals(
+        rejected(new MembershipAuthorizationService(seated)
+          .resolve("game", AuthenticatedUser(UserId("seated-user")))),
+        CorruptMembership("non-player membership occupies a player seat")
+      )
 
   /** A fresh identity database with four users: ownerUser owns game-1,
     * where playerUser sits as p1 and spectatorUser watches; outsider owns
