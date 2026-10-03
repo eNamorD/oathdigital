@@ -1,13 +1,9 @@
 package oathdigital.engine
 
-class EventReplayEngineSuite extends munit.FunSuite:
-  /** Adds each event to a running total; a negative event is corrupt. */
-  private object Totals extends EventEvolution[Int, Int, String]:
-    val initialState = 0
-    def evolve(state: Int, event: Int): Either[String, Int] =
-      if event < 0 then Left(s"negative $event") else Right(state + event)
+import oathdigital.testkit.RunningTotalEvolution
 
-  private val engine = new EventReplayEngine(Totals)
+class EventReplayEngineSuite extends munit.FunSuite:
+  private val engine = new EventReplayEngine(RunningTotalEvolution)
   private def recorded(events: Int*) = events.toVector.zipWithIndex.map {
     case (event, index) => RecordedEvent(index.toLong, event) }
 
