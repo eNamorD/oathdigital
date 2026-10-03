@@ -8,9 +8,12 @@ class OpaqueIdSuite extends munit.FunSuite:
     intercept[IllegalArgumentException](LineageId(""))
     intercept[IllegalArgumentException](DecisionId(""))
     // A power id is two or more dot-separated lowercase segments;
-    // "Not-A-Power" has capitals and no dot, "site.coast" is well formed.
+    // "Not-A-Power" has capitals and no dot, "site.coast" is well formed,
+    // and "Site.coast" differs from it only by its capital first letter.
     intercept[IllegalArgumentException](PowerId("Not-A-Power"))
     assertEquals(PowerId.fromValue("Not-A-Power"), None)
+    intercept[IllegalArgumentException](PowerId("Site.coast"))
+    assertEquals(PowerId.fromValue("Site.coast"), None)
     assertEquals(PowerId.fromValue("site.coast").map(_.value), Some("site.coast"))
 
   test("an id prints as its raw string"):
