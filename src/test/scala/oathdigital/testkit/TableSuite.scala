@@ -137,6 +137,13 @@ class TableSuite extends munit.FunSuite:
       Table.start.boardWarbands(p1, 12).warbandsAt("Dunes", p1, 3).ready)
     assert(exiles.getMessage.contains("15 warbands"), exiles.getMessage)
 
+  test("warbandsInBank fills the board until the bank holds exactly n"):
+    // A lineage prints 14: 2 at a site and 4 left in the bank leave 8 for
+    // the board.
+    val table = Table.start.warbandsAt("Ancient City", p1, 2)
+      .warbandsInBank(p1, 4)
+    assertEquals(Look(table.ready).boardWarbands(p1), 8)
+
   test("an edifice named by one face must be placed on that side"):
     val failure = intercept[munit.FailException](Table.start.edifice(
       "Hallowed Spring", EdificeSide.Ruined, at = "Dunes"))

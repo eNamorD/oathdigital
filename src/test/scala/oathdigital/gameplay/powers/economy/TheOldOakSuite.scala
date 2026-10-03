@@ -1,12 +1,12 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.model._
-import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
+  Look, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class TheOldOakSuite extends munit.FunSuite:
   import SearchFixture.rules
@@ -14,55 +14,54 @@ class TheOldOakSuite extends munit.FunSuite:
   private val oak = CatalogNames.denizen("The Old Oak")
   // A plain Beast adviser, and another plain Beast card at the site.
   private val adviser = CatalogNames.denizen("Errand Boy")
-  private val otherBeast = SearchFixture.anyPlainDenizensOf(Suit.Beast)
-    .filterNot(_ == adviser).head
+  private val otherBeast = CatalogNames.denizen("Fae Merchant")
   private val modifiers = Vector(TheOldOak.id)
 
   /** p1 holds Errand Boy as an adviser, faceup unless `facedown`, and stands
     * at Ancient City with The Old Oak and another Beast card. p1 has 2 favor,
     * which a Trade for secrets costs, and the start's 1 faceup secret. */
   private def board(facedown: Boolean = false): ReadyGame = Table.start
-    .favor(p1, 2).adviser(p1, adviser, facedown = facedown)
-    .denizen(oak, at = Table.quietPawnSite(p1))
-    .denizen(otherBeast, at = Table.quietPawnSite(p1)).ready
+    .favor(p1, 2).secrets(p1, faceUp = 1)
+    .adviser(p1, adviser, facedown = facedown)
+    .pawn(p1, at = "Ancient City").denizen(oak, at = "Ancient City")
+    .denizen(otherBeast, at = "Ancient City").ready
 
   private def secrets(ready: ReadyGame): Int =
     Look(ready).faceUpSecrets(p1) + Look(ready).faceDownSecrets(p1)
 
-  /** Trades for `resource` with `card` and returns the result and the whole
-    * journal. */
+  /** Trades for `resource` with `card`. */
   private def trade(ready: ReadyGame, selected: Vector[PowerId],
       card: DenizenId, resource: String = "secret")
-      : (OathTransition, ReadyGame) =
-    val started = rules.startWalker(Ready(ready), ActionRef.Trade, p1,
-      selected, Vector(DecisionOptionRef.Button(resource))).toOption.get
-    val done = rules.resolveWalker(started.state, p1, TradeProcedure.decisionId,
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(card)))
-      .toOption.get
-    (started.copy(events = started.events ++ done.events),
-      done.state.asInstanceOf[Ready].value)
+      : EconomyActions.Completed =
+    EconomyActions.trade(rules, ready, p1, selected, resource,
+      DecisionOptionRef.Denizen(card))
+
+  // Below, the 1 first is p1's starting faceup secret; a Trade for secrets
+  // gains 1 per matching adviser, and The Old Oak 1 more.
 
   test("trading with The Old Oak for secrets with a faceup beast adviser " +
       "gains one more secret"):
     val ready = board()
-    val (transition, result) = trade(ready, modifiers, oak)
+    val done = trade(ready, modifiers, oak)
+    val result = done.result
     assertEquals(secrets(result), 1 + 1 + 1)
-    assertEquals(secrets(trade(ready, Vector.empty, oak)._2), 1 + 1)
-    assertEquals(ActPowerHarness.replayed(rules, ready, transition.events),
+    assertEquals(secrets(trade(ready, Vector.empty, oak).result), 1 + 1)
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.journal.events),
       result)
-    assertWireRoundTrips(transition.events)
+    assertWireRoundTrips(done.journal.events)
 
   test("without a faceup beast adviser it gains nothing"):
-    assertEquals(secrets(trade(board(facedown = true), modifiers, oak)._2), 1)
+    val traded = trade(board(facedown = true), modifiers, oak)
+    assertEquals(secrets(traded.result), 1)
 
   test("trading with another card, or for favor, gains no extra secret"):
-    assertEquals(secrets(trade(board(), modifiers, otherBeast)._2), 1 + 1)
+    assertEquals(secrets(trade(board(), modifiers, otherBeast).result), 1 + 1)
     // A Trade for favor pays the faceup secret and gains favor only.
-    assertEquals(secrets(trade(board(), modifiers, oak, "favor")._2), 0)
+    assertEquals(secrets(trade(board(), modifiers, oak, "favor").result), 0)
 
   test("it is a Trade modifier, offered when the card is in reach"):
     val offered = (ready: ReadyGame, action: ActionRef) =>
-      rules.offerableWalkerPowers(ready, p1, action).toOption.get.map(_.id)
+      accepted(rules.offerableWalkerPowers(ready, p1, action)).map(_.id)
     assert(offered(board(), ActionRef.Trade).contains(TheOldOak.id))
     assert(!offered(board(), ActionRef.Muster).contains(TheOldOak.id))
     val without = Table.start.adviser(p1, adviser).ready
@@ -70,9 +69,9 @@ class TheOldOakSuite extends munit.FunSuite:
 
   test("several faceup beast advisers still add only one secret to the " +
       "base gain, which is one per matching adviser"):
-    val third = SearchFixture.anyPlainDenizensOf(Suit.Beast)
-      .filterNot(card => card == adviser || card == otherBeast).head
-    val ready = Table.start.favor(p1, 2).adviser(p1, adviser)
-      .adviser(p1, third).denizen(oak, at = Table.quietPawnSite(p1)).ready
-    assertEquals(secrets(trade(ready, Vector.empty, oak)._2), 1 + 2)
-    assertEquals(secrets(trade(ready, modifiers, oak)._2), 1 + 2 + 1)
+    val third = CatalogNames.denizen("Second Chance")
+    val ready = Table.start.favor(p1, 2).secrets(p1, faceUp = 1)
+      .adviser(p1, adviser).adviser(p1, third)
+      .pawn(p1, at = "Ancient City").denizen(oak, at = "Ancient City").ready
+    assertEquals(secrets(trade(ready, Vector.empty, oak).result), 1 + 2)
+    assertEquals(secrets(trade(ready, modifiers, oak).result), 1 + 2 + 1)

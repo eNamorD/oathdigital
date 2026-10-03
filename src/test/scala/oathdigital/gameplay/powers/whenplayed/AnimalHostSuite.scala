@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{NoteText, PlayerFacts, SearchFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
 import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.{p1, p2}
@@ -10,9 +10,6 @@ class AnimalHostSuite extends munit.FunSuite:
 
   private val power = registered[AnimalHost]
   private val host = power.cardId
-  private val beast = SearchFixture.anyPlainDenizensOf(Suit.Beast)
-  private val hearth = SearchFixture.anyPlainDenizensOf(Suit.Hearth)
-  private val beastEdifices = edificesOf(Suit.Beast)
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
@@ -21,45 +18,44 @@ class AnimalHostSuite extends munit.FunSuite:
     s"${p1.value} gained $n ${if n == 1 then "warband" else "warbands"}.",
     covers = false)
 
-  /** `table` with p1's warband bank holding only `left`. */
-  private def banking(table: Table, left: Int): Table =
-    val ready = table.ready
-    val kind = PlayerFacts.forceKind(ready, p1).toOption.get
-    table.boardWarbands(p1, ready.banks.warbandSupply(kind) - left)
-
   test("as an adviser it counts the Beast cards at every site, whoever " +
       "rules them"):
-    // Four count: a denizen at p1's site, a ruined edifice at a bandit site,
-    // and an intact edifice and a denizen at p2's site. A Hearth card and
-    // p2's Beast adviser do not.
+    // Four Beast cards count: Errand Boy at p1's site, the Ruined School at a
+    // bandit site, and the Oaken Fortress and Fae Merchant at p2's site.
+    // Homesteaders (Hearth) and p2's Beast adviser Second Chance do not.
     val ready = Table.start.adviser(p1, host)
-      .denizen(beast(0), at = homeSite).denizen(hearth(0), at = homeSite)
+      .denizen("Errand Boy", at = homeSite)
+      .denizen("Homesteaders", at = homeSite)
       .bandits(nearSite, 2)
-      .edifice(beastEdifices(0), EdificeSide.Ruined, at = nearSite)
-      .edifice(beastEdifices(1), EdificeSide.Intact, at = awaySite)
-      .denizen(beast(1), at = awaySite).warbandsAt(awaySite, p2, 1)
-      .adviser(p2, beast(2)).ready
+      .edifice("Ruined School", EdificeSide.Ruined, at = nearSite)
+      .edifice("Oaken Fortress", EdificeSide.Intact, at = awaySite)
+      .denizen("Fae Merchant", at = awaySite).warbandsAt(awaySite, p2, 1)
+      .adviser(p2, "Second Chance").ready
     val done = Outcomes.finished(play(ready, power, host))
     assertEquals(Look(done.treeless).boardWarbands(p1), 3 + 4)
     assertEquals(replayed(ready, done.events), done.treeless)
     assertEquals(said(done.events), Vector(gained(4)))
 
   test("played to a site it counts itself"):
+    // Animal Host itself and Errand Boy.
     val ready = Table.start.denizen(host, at = homeSite)
-      .denizen(beast(0), at = nearSite).ready
+      .denizen("Errand Boy", at = nearSite).ready
     val done = Outcomes.finished(fire(ready, power, hookAt(host, homeSite)))
     assertEquals(Look(done.treeless).boardWarbands(p1), 3 + 2)
     assertEquals(said(done.events), Vector(gained(2)))
 
   test("the gain takes what the bank holds"):
-    val ready = banking(Table.start.adviser(p1, host)
-      .denizen(beast(0), at = homeSite).denizen(beast(1), at = nearSite),
-      left = 1).ready
+    // Two Beast cards, but p1's bank holds 1 warband.
+    val ready = Table.start.adviser(p1, host)
+      .denizen("Errand Boy", at = homeSite)
+      .denizen("Fae Merchant", at = nearSite)
+      .warbandsInBank(p1, 1).ready
     val done = Outcomes.finished(play(ready, power, host))
     assertEquals(said(done.events), Vector(gained(1)))
 
   test("with no Beast card at a site it gains none, and the line says so"):
-    val ready = Table.start.adviser(p1, host).adviser(p1, beast(0)).ready
+    // Errand Boy is p1's adviser, at no site.
+    val ready = Table.start.adviser(p1, host).adviser(p1, "Errand Boy").ready
     val done = Outcomes.finished(play(ready, power, host))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector(NoteText.Said("none",

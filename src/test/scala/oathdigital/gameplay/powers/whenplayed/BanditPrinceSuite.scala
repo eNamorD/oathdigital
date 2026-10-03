@@ -1,9 +1,10 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{NoteText, PlayerFacts}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
 import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.as
 
 class BanditPrinceSuite extends munit.FunSuite:
   import WhenPlayedHarness._
@@ -15,7 +16,7 @@ class BanditPrinceSuite extends munit.FunSuite:
   private val start = Table.start.adviser(p1, prince)
   /** Bandits hold p1's site (2) and a site in another region (1). */
   private val bandited = start.bandits(homeSite, 2).bandits(awaySite, 1)
-  private val mine = PlayerFacts.forceKind(start.ready, p1).toOption.get
+  private val mine = Look(start.ready).forceKind(p1)
   /** The two bandit sites, in map order. */
   private val sites: Vector[SiteId] =
     start.ready.game.current.map.inPlay.filter(Set(homeSite, awaySite))
@@ -25,11 +26,6 @@ class BanditPrinceSuite extends munit.FunSuite:
 
   private def choose(chosen: Vector[SiteId]): DecisionAnswer =
     DecisionAnswer.ChooseManyAnswer(chosen.map(DecisionOptionRef.Site(_)))
-
-  /** `table` with p1's warband bank holding only `left`. */
-  private def banking(table: Table, left: Int): Table =
-    val ready = table.ready
-    table.boardWarbands(p1, ready.banks.warbandSupply(mine) - left)
 
   private def replacedAt(site: SiteId): NoteText.Said =
     val n = if site == homeSite then 2 else 1
@@ -50,6 +46,7 @@ class BanditPrinceSuite extends munit.FunSuite:
     val after = Look(done.treeless)
     assertEquals(after.forces(homeSite), SiteForces.Occupied(mine, 2))
     assertEquals(after.forces(awaySite), SiteForces.Occupied(mine, 1))
+    // The replacing warbands come from the bank, so p1's board keeps its 3.
     assertEquals(after.boardWarbands(p1), 3)
     assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
     assertEquals(said(done.events), sites.map(replacedAt))
@@ -68,10 +65,10 @@ class BanditPrinceSuite extends munit.FunSuite:
       "No site was ruled by bandits.", covers = false)))
 
   test("sites holding more bandits than the bank holds warbands are refused"):
-    val ready = banking(bandited, left = 2).ready
+    val ready = bandited.warbandsInBank(p1, 2).ready
     val first = Outcomes.parked(play(ready, power, prince))
-    val offered = question(ready, power, played, first.tree).query
-      .asInstanceOf[DecisionQuery.ChooseMany].options
+    val query = question(ready, power, played, first.tree).query
+    val offered = as[DecisionQuery.ChooseMany](query).options
     assertEquals(offered.size, 2)
     assert(resume(ready, power, played, first.tree, BanditPrince.decisionId,
       choose(sites)).isLeft)
@@ -85,7 +82,7 @@ class BanditPrinceSuite extends munit.FunSuite:
       choose(Vector(nearSite))).isLeft)
 
   test("with an empty bank no site can be replaced, so nothing is asked"):
-    val ready = banking(bandited, left = 0).ready
+    val ready = bandited.warbandsInBank(p1, 0).ready
     val done = Outcomes.finished(play(ready, power, prince))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector.empty)

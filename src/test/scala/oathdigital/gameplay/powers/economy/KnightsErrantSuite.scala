@@ -1,10 +1,9 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.{CampaignFixture, OathRules}
+import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
-import oathdigital.gameplay.powers.targeting.TargetingFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerPowers, WalkerProcedureRegistry}
@@ -12,16 +11,19 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseAmountAnswer,
   ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
+  Table}
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 class KnightsErrantSuite extends munit.FunSuite:
   private val knights = CatalogNames.denizen("Knights Errant")
   private val alchemist = CatalogNames.denizen("Alchemist")
   private val modifiers = Vector(KnightsErrant.id)
+  private val ancientCity = CatalogNames.site("Ancient City")
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-    walkerDice = CampaignFixture.anyDice)
+    walkerDice = WalkerDiceFixture.blanks)
 
   /** The parked decision, as this file rebuilds it: the same catalog and
     * walker power catalog `rules` was built with.
@@ -34,29 +36,30 @@ class KnightsErrantSuite extends munit.FunSuite:
     * legal, unless `campaignLegal` is false. p1 has `supply` Supply, 4 favor
     * and 3 warbands.
     */
-  private def staged(supply: Int = 1, campaignLegal: Boolean = true): Table =
+  private def staged(supply: Int, campaignLegal: Boolean = true): Table =
     Table.start
+      .pawn(p1, ancientCity)
       .adviser(p1, knights)
-      .denizen(alchemist, at = Table.quietPawnSite(p1))
-      .bandits(Table.quietPawnSite(p1), if campaignLegal then 2 else 0)
+      .denizen(alchemist, at = ancientCity)
+      .bandits(ancientCity, if campaignLegal then 2 else 0)
       .supply(p1, supply).favor(p1, 4)
 
   private def ready(transition: OathTransition): ReadyGame =
-    transition.state.asInstanceOf[Ready].value
+    Outcomes.ready(transition.state)
 
   /** Starts a Muster with `selected` and answers its source. */
   private def musterFrom(state: ReadyGame, selected: Vector[PowerId])
       : OathTransition =
-    val started = rules.startWalker(Ready(state), ActionRef.Muster, p1,
-      selected).toOption.get
-    val done = rules.resolveWalker(started.state, p1,
+    val started = accepted(rules.startWalker(Ready(state), ActionRef.Muster, p1,
+      selected))
+    val done = accepted(rules.resolveWalker(started.state, p1,
       MusterProcedure.decisionId,
-      ChooseOneAnswer(DecisionOptionRef.Denizen(alchemist))).toOption.get
+      ChooseOneAnswer(DecisionOptionRef.Denizen(alchemist))))
     done.copy(events = started.events ++ done.events)
 
   private def answer(from: OathTransition, id: String, choice: DecisionAnswer)
       : OathTransition =
-    val next = rules.resolveWalker(from.state, p1, id, choice).toOption.get
+    val next = accepted(rules.resolveWalker(from.state, p1, id, choice))
     next.copy(events = from.events ++ next.events)
 
   private def parkedOn(transition: OathTransition): String =
@@ -65,12 +68,13 @@ class KnightsErrantSuite extends munit.FunSuite:
   private def query(transition: OathTransition): DecisionQuery =
     val state = ready(transition)
     val current = state.game.current
-    val tree = WalkerProcedureRegistry.rebuild(ActionRef.Muster, catalog, state,
-      p1, current.walkerStartArgs).toOption.get
+    val tree = accepted(WalkerProcedureRegistry.rebuild(ActionRef.Muster,
+      catalog, state, p1, current.walkerStartArgs))
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       current.walkerModifiers)
-    ProcedureWalker.parkedDecide(state, tree, current.walkerPending.get, powers)
-      .get.query
+    val pending = present(current.walkerPending, "a parked walker decision")
+    present(ProcedureWalker.parkedDecide(state, tree, pending, powers),
+      "the parked decision's query").query
 
   /** Answers the optional-targets decision with none, if it is asked. */
   private def toForce(transition: OathTransition): OathTransition =
@@ -78,40 +82,43 @@ class KnightsErrantSuite extends munit.FunSuite:
       answer(transition, CampaignIds.targets, ChooseManyAnswer(Vector.empty))
     else transition
 
-  /** The warbands the actor has once the Muster has gained: the matching-adviser
-    * bonus depends on the cards drawn, so it is read from a Muster without the
-    * power.
+  /** The warbands the actor has once the Muster has gained: the
+    * matching-adviser bonus depends on the cards drawn, so it is read from a
+    * Muster without the power.
     */
   private def afterMuster: Int =
-    Look(ready(musterFrom(staged().ready, Vector.empty))).boardWarbands(p1)
+    val plain = musterFrom(staged(supply = 1).ready, Vector.empty)
+    Look(ready(plain)).boardWarbands(p1)
 
   private val campaign = ChooseOneAnswer(KnightsErrant.campaignOption)
   private val decline = ChooseOneAnswer(KnightsErrant.declineOption)
 
   test("after the gain it asks whether to campaign, as a Muster decision"):
-    val asked = musterFrom(staged().ready, modifiers)
+    val asked = musterFrom(staged(supply = 1).ready, modifiers)
     parked.assertParked(asked.state, ActionRef.Muster, KnightsErrant.decisionId,
       p1)
-    assertEquals(query(asked).asInstanceOf[DecisionQuery.ChooseOne].options
-      .map(_.ref), Vector[DecisionOptionRef](KnightsErrant.campaignOption,
-      KnightsErrant.declineOption))
+    val options = as[DecisionQuery.ChooseOne](query(asked)).options.map(_.ref)
+    assertEquals(options, Vector[DecisionOptionRef](
+      KnightsErrant.campaignOption, KnightsErrant.declineOption))
     // The Muster's own gain has already happened.
     assertEquals(Look(ready(asked)).boardWarbands(p1), afterMuster)
 
   test("declining ends the Muster with no Campaign"):
-    val done = answer(musterFrom(staged().ready, modifiers),
+    val done = answer(musterFrom(staged(supply = 1).ready, modifiers),
       KnightsErrant.decisionId, decline)
     assertEquals(ready(done).game.current.walkerProcedure, None)
     assertEquals(ready(done).game.current.lastCampaignResult, None)
+    // The Muster spends p1's only Supply.
     assertEquals(Look(ready(done)).supply(p1), 0)
 
   test("nothing is asked when no Campaign is legal"):
-    val done = musterFrom(staged(campaignLegal = false).ready, modifiers)
+    val noCampaign = staged(supply = 1, campaignLegal = false).ready
+    val done = musterFrom(noCampaign, modifiers)
     assertEquals(ready(done).game.current.walkerPending, None)
     assertEquals(Look(ready(done)).boardWarbands(p1), afterMuster)
 
   test("without the selection the Muster ends as before"):
-    val done = musterFrom(staged().ready, Vector.empty)
+    val done = musterFrom(staged(supply = 1).ready, Vector.empty)
     assertEquals(ready(done).game.current.walkerPending, None)
 
   test("the Campaign sees the warbands the Muster gained and costs no Supply"):
@@ -119,7 +126,7 @@ class KnightsErrantSuite extends munit.FunSuite:
     val forced = toForce(answer(musterFrom(start, modifiers),
       KnightsErrant.decisionId, campaign))
     parked.assertParked(forced.state, ActionRef.Muster, CampaignIds.force, p1)
-    assertEquals(query(forced).asInstanceOf[DecisionQuery.ChooseAmount].max,
+    assertEquals(as[DecisionQuery.ChooseAmount](query(forced)).max,
       afterMuster)
     // 1 Supply less the Muster's 1: the Campaign's 2 was not spent.
     assertEquals(Look(ready(forced)).supply(p1), 0)
@@ -129,19 +136,19 @@ class KnightsErrantSuite extends munit.FunSuite:
     assert(rules.startWalker(Ready(alone), ActionRef.Campaign, p1).isLeft)
 
   test("a Campaign run this way finishes, and the Muster ends after it"):
-    val forced = toForce(answer(musterFrom(staged().ready, modifiers),
+    val start = staged(supply = 1).ready
+    val forced = toForce(answer(musterFrom(start, modifiers),
       KnightsErrant.decisionId, campaign))
     val done = answer(forced, CampaignIds.force, ChooseAmountAnswer(0))
     val result = ready(done)
     assertEquals(result.game.current.walkerProcedure, None)
     assert(result.game.current.lastCampaignResult.nonEmpty)
-    assertEquals(ActPowerHarness.replayed(rules, staged().ready, done.events),
-      result)
+    assertEquals(ActPowerHarness.replayed(rules, start, done.events), result)
 
   test("it cannot be selected for a Campaign, or for any other action"):
-    val state = staged().ready
-    val offered = (action: ActionRef) => rules.offerableWalkerPowers(state,
-      p1, action).toOption.get.map(_.id)
+    val state = staged(supply = 1).ready
+    val offered = (action: ActionRef) =>
+      accepted(rules.offerableWalkerPowers(state, p1, action)).map(_.id)
     assert(offered(ActionRef.Muster).contains(KnightsErrant.id))
     assert(!offered(ActionRef.Campaign).contains(KnightsErrant.id))
     assert(!offered(ActionRef.Trade).contains(KnightsErrant.id))
@@ -154,10 +161,12 @@ class KnightsErrantSuite extends munit.FunSuite:
 
   test("Vow of Peace forbids the nested Campaign, so the look-ahead hides " +
       "the option, and declining is still allowed"):
-    val asked = musterFrom(staged().adviser(p1, "Vow of Peace").ready, modifiers)
+    val vowed = staged(supply = 1).adviser(p1, "Vow of Peace").ready
+    val asked = musterFrom(vowed, modifiers)
     assertEquals(parkedOn(asked), KnightsErrant.decisionId)
-    assertEquals(query(asked).asInstanceOf[DecisionQuery.ChooseOne].options
-      .map(_.ref), Vector[DecisionOptionRef](KnightsErrant.declineOption))
+    val options = as[DecisionQuery.ChooseOne](query(asked)).options.map(_.ref)
+    assertEquals(options,
+      Vector[DecisionOptionRef](KnightsErrant.declineOption))
     assertEquals(campaigning(asked), Left(OathViolation.InvalidEventOrder(
       s"decision ${KnightsErrant.decisionId} does not offer the selected " +
         "option")))
@@ -168,13 +177,16 @@ class KnightsErrantSuite extends munit.FunSuite:
       "the nested Campaign, so the look-ahead hides the option"):
     // Nobody rules the site, so a Conquest is not legal. An enemy pawn stands
     // there, so a Raid is, and the Rotting Fortress protects that enemy.
-    val site = Table.quietPawnSite(p1)
-    val base = staged(campaignLegal = false).pawn(p2, at = site).ready
-    val fortified = TargetingFixture.fortressAt(base, EdificeSide.Ruined, site)
+    val board = staged(supply = 1, campaignLegal = false)
+      .pawn(p2, at = ancientCity)
+    val base = board.ready
+    val fortified = board
+      .edifice("Rotting Fortress", EdificeSide.Ruined, at = ancientCity).ready
     val asked = musterFrom(fortified, modifiers)
     assertEquals(parkedOn(asked), KnightsErrant.decisionId)
-    assertEquals(query(asked).asInstanceOf[DecisionQuery.ChooseOne].options
-      .map(_.ref), Vector[DecisionOptionRef](KnightsErrant.declineOption))
+    val options = as[DecisionQuery.ChooseOne](query(asked)).options.map(_.ref)
+    assertEquals(options,
+      Vector[DecisionOptionRef](KnightsErrant.declineOption))
     assertEquals(campaigning(asked), Left(OathViolation.InvalidEventOrder(
       s"decision ${KnightsErrant.decisionId} does not offer the selected " +
         "option")))
@@ -189,12 +201,12 @@ class KnightsErrantSuite extends munit.FunSuite:
     NoteText.said(power.id, power.noteKeys, events)
 
   test("choosing to campaign writes the Knights' line after the choice"):
-    val asked = musterFrom(staged().ready, modifiers)
+    val asked = musterFrom(staged(supply = 1).ready, modifiers)
     assertEquals(said(asked.events), Vector.empty)
     val chosen = answer(asked, KnightsErrant.decisionId, campaign)
     assertEquals(said(chosen.events), Vector(NoteText.Said("campaigns",
       "p1 campaigns for no Supply.", covers = false)))
 
   test("declining writes nothing"):
-    assertEquals(said(answer(musterFrom(staged().ready, modifiers),
+    assertEquals(said(answer(musterFrom(staged(supply = 1).ready, modifiers),
       KnightsErrant.decisionId, decline).events), Vector.empty)

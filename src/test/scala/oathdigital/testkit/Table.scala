@@ -226,6 +226,16 @@ final case class Table private (private val game: ReadyGame,
   def boardWarbands(player: PlayerId, n: Int): Table =
     onBoard(player)(_.copy(warbands = n))
 
+  /** `player`'s board takes warbands from their bank, or gives them back,
+    * until the bank holds exactly `n`: the bank is the printed supply less
+    * every board and site of that force.
+    */
+  def warbandsInBank(player: PlayerId, n: Int)(using munit.Location): Table =
+    val kind = PlayerForceKind.of(game, playerOf(player)).getOrElse(
+      munit.Assertions.fail(s"$player has no warbands of their own"))
+    val bank = game.banks.warbandSupply.getOrElse(kind, 0) - inPlay(kind)
+    boardWarbands(player, playerOf(player).board.warbands + bank - n)
+
   def bandits(at: String | SiteId, n: Int)(using munit.Location): Table =
     forces(at, n, ForceKind.Bandit)
 
@@ -335,14 +345,18 @@ final case class Table private (private val game: ReadyGame,
     (placed -- game.banks.warbandSupply.keySet).foreach(kind =>
       munit.Assertions.fail(s"$kind has warbands at a site but no printed supply"))
     game.banks.warbandSupply.foreach { case (kind, printed) =>
-      val inPlay = game.game.current.players.filter(p =>
-        PlayerForceKind.of(game, p).contains(kind)).map(_.board.warbands).sum +
-        game.game.current.map.sites.values.map(_.forces).collect {
-          case SiteForces.Occupied(`kind`, count) => count }.sum
-      if inPlay > printed then munit.Assertions.fail(
-        s"$kind: $inPlay warbands in play, more than the $printed printed")
+      if inPlay(kind) > printed then munit.Assertions.fail(
+        s"$kind: ${inPlay(kind)} warbands in play, more than the $printed " +
+          "printed")
     }
     game
+
+  /** Warbands of `kind` on boards and at sites. */
+  private def inPlay(kind: ForceKind): Int =
+    game.game.current.players.filter(p =>
+      PlayerForceKind.of(game, p).contains(kind)).map(_.board.warbands).sum +
+      game.game.current.map.sites.values.map(_.forces).collect {
+        case SiteForces.Occupied(`kind`, count) => count }.sum
 
   def state(using munit.Location): OathState = Ready(ready)
 

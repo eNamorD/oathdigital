@@ -3,44 +3,28 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
   Transform}
-import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** The window on Conspiracy's target decision: a power can remove targets, and
   * when it removes every one the decision is not asked and nothing is taken.
   */
 class ConspiracyTargetWindowSuite extends munit.FunSuite:
-  import PowerFixture._
-
   private val conspiracy = VisionRules.Conspiracy
-  private val enemy: PlayerId = quietTable.game.current.players.map(_.player)
-    .find(_ != actor).get
-  private val relics = Vector(RelicId("R10"), RelicId("R11"))
+  private val relics = Vector(CatalogNames.relic("Cracked Horn"),
+    CatalogNames.relic("Bandit Crown"))
 
-  /** The actor holds Conspiracy in a temporary hand. The enemy stands on the
-    * actor's site holding `relics`, faceup.
+  /** p1 holds Conspiracy in a temporary hand. p2 stands on p1's site, Ancient
+    * City, holding Cracked Horn and Bandit Crown faceup.
     */
-  private def staged: ReadyGame =
-    val current = quietTable.game.current
-    val site = Look(quietTable).player(actor).pawnSite
-    quietTable.updateCurrent(_.copy(
-      players = current.players.map(p =>
-        if p.player == enemy then p.copy(pawnSite = site,
-          relics = relics.map(RelicState(_, Orientation.FaceUp, Tokens.empty)))
-        else p),
-      banners = current.banners.copy(
-        peoplesFavor = current.banners.peoplesFavor.copy(holder = None),
-        darkestSecret = current.banners.darkestSecret.copy(holder = None)),
-      commonCards = current.commonCards.copy(
-        worldDeck = current.commonCards.worldDeck.filterNot(_ == conspiracy),
-        relicDeck = current.commonCards.relicDeck.filterNot(relics.contains)),
-      map = current.map.copy(sites = current.map.sites.map { case (id, s) =>
-        id -> s.copy(relics = s.relics.filterNot(r => relics.contains(r.id))) }),
-      temporaryHands = current.temporaryHands.updated(actor,
-        Vector(conspiracy))))
+  private val staged: ReadyGame = Table.start
+    .pawn(p2, "Ancient City")
+    .relic(p2, "Cracked Horn").relic(p2, "Bandit Crown")
+    .hand(p1, conspiracy).ready
 
   private def removing(keep: DecisionOptionRef => Boolean): ContributingPower =
     new ContributingPower:
@@ -60,37 +44,41 @@ class ConspiracyTargetWindowSuite extends munit.FunSuite:
           })))
 
   private def hook: CardPlayedFaceup =
-    CardPlayedFaceup(conspiracy, RuleSourceRef.Adviser(actor, conspiracy))
+    CardPlayedFaceup(conspiracy, RuleSourceRef.Adviser(p1, conspiracy))
+
+  /** Conspiracy's When Played power, with `power` beside it. */
+  private def powers(power: Option[ContributingPower]): WalkerPowers =
+    WalkerPowers(ConspiracyWhenPlayed +: power.toVector)
 
   private def walk(power: Option[ContributingPower])
-      : (WalkerPowers, WalkerOutcome) =
-    val powers = WalkerPowers(ConspiracyWhenPlayed +: power.toVector)
-    (powers, ProcedureWalker.advance(staged, hook, None, powers).toOption.get)
+      : Either[OathViolation, WalkerOutcome] =
+    ProcedureWalker.advance(staged, hook, None, powers(power))
+
+  /** The target decision the walk parks on, with `power` beside it. */
+  private def targetDecision(power: Option[ContributingPower]) =
+    val parked = Outcomes.parked(walk(power))
+    present(ProcedureWalker.parkedDecide(staged, hook, parked.tree,
+      powers(power)), "the parked target decision")
 
   test("the target decision carries the Conspiracy target window"):
-    val (powers, parked) = walk(None)
-    val decide = ProcedureWalker.parkedDecide(staged, hook,
-      parked.asInstanceOf[WalkerOutcome.Parked].tree, powers).get
+    val decide = targetDecision(None)
     assertEquals(decide.window, Some(PowerWindow.ConspiracyTargetSelection))
-    assertEquals(decide.query.asInstanceOf[DecisionQuery.ChooseOne].options
-      .map(_.ref), Vector[DecisionOptionRef](
-      DecisionOptionRef.RelicSlot(enemy, 0),
-      DecisionOptionRef.RelicSlot(enemy, 1)))
+    val options = as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref)
+    assertEquals(options, Vector[DecisionOptionRef](
+      DecisionOptionRef.RelicSlot(p2, 0),
+      DecisionOptionRef.RelicSlot(p2, 1)))
 
   test("a power at the window removes the targets it forbids"):
-    val only = DecisionOptionRef.RelicSlot(enemy, 1)
-    val (powers, parked) = walk(Some(removing(_ == only)))
-    val decide = ProcedureWalker.parkedDecide(staged, hook,
-      parked.asInstanceOf[WalkerOutcome.Parked].tree, powers).get
-    assertEquals(decide.query.asInstanceOf[DecisionQuery.ChooseOne].options
-      .map(_.ref), Vector[DecisionOptionRef](only))
+    val only = DecisionOptionRef.RelicSlot(p2, 1)
+    val decide = targetDecision(Some(removing(_ == only)))
+    val options = as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref)
+    assertEquals(options, Vector[DecisionOptionRef](only))
 
   test("when every target is removed nothing is asked and nothing is taken, " +
       "and the card still leaves the game"):
-    val (_, outcome) = walk(Some(removing(_ => false)))
-    val done = outcome.asInstanceOf[WalkerOutcome.Finished].treeless
-    assertEquals(Look(done).player(enemy).relics.map(_.id), relics)
-    assertEquals(Look(done).player(actor).relics, Look(staged).player(actor)
-      .relics)
-    assertEquals(done.game.current.temporaryHands(actor), Vector.empty)
-    assert(!CardIndex.from(done.game).toOption.get.ids.contains(conspiracy))
+    val done = Outcomes.finished(walk(Some(removing(_ => false)))).treeless
+    assertEquals(Look(done).player(p2).relics.map(_.id), relics)
+    assertEquals(Look(done).player(p1).relics,
+      Look(staged).player(p1).relics)
+    assertEquals(done.game.current.temporaryHands(p1), Vector.empty)
+    assert(!accepted(CardIndex.from(done.game)).ids.contains(conspiracy))

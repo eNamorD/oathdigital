@@ -1,263 +1,226 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.actions.{BannerRules, VisionRules}
+import oathdigital.gameplay.PlacementFixture.cardPlayDecisionId
+import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
-  WalkerPowers, WalkerStepRecorded}
+  WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
+  Table}
+import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.{accepted, as}
 
 class ConspiracyWhenPlayedSuite extends munit.FunSuite:
+  import WhenPlayedHarness.replayed
+
   private val powers = WalkerPowers(Vector(ConspiracyWhenPlayed))
   private val conspiracy = VisionRules.Conspiracy
-  private val placeId = s"cardplay.place.${conspiracy.kind}.${conspiracy.value}"
+  private val placeId = cardPlayDecisionId(conspiracy, "place")
   private val faceup = DecisionOptionRef.Button("adviser-faceup")
+  private val crackedHorn = CatalogNames.relic("Cracked Horn")
+  private val banditCrown = CatalogNames.relic("Bandit Crown")
 
-  private final case class Staged(ready: ReadyGame, actor: PlayerId,
-      enemy: PlayerId, origin: CardPlayProcedure.Origin)
+  /** The game, and where p1 plays Conspiracy from. */
+  private final case class Staged(ready: ReadyGame,
+      origin: CardPlayProcedure.Origin)
 
-  /** The actor holds Conspiracy at `origin`. The enemy stands on the actor's
-    * site unless `shared` is false, and holds `relics`. No banner has a holder
-    * until `edit` gives one.
-    */
-  private def fixture(relics: Vector[RelicState] = Vector.empty,
-      shared: Boolean = true,
-      origin: CardPlayProcedure.Origin = CardPlayProcedure.Origin.TemporaryHand)
-      (edit: (ReadyGame, PlayerId) => ReadyGame = (ready, _) => ready)
-      : Staged =
-    val base = Table.start.ready
-    val current = base.game.current
-    val actor = current.turn.activePlayer
-    val site = current.players.find(_.player == actor).get.pawnSite
-    val enemy = current.players.find(_.player != actor).get.player
-    val fromHand = origin == CardPlayProcedure.Origin.TemporaryHand
-    val staged = base.updateCurrent(_.copy(
-      players = current.players.map { player =>
-        if player.player == enemy then player.copy(
-          pawnSite = if shared then site else None, relics = relics)
-        else if player.player == actor && !fromHand then player.copy(advisers =
-          player.advisers :+ VisionState(conspiracy, Orientation.FaceDown))
-        else player
-      },
-      banners = current.banners.copy(
-        peoplesFavor = current.banners.peoplesFavor.copy(holder = None),
-        darkestSecret = current.banners.darkestSecret.copy(holder = None)),
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(_ == conspiracy)),
-      temporaryHands = if fromHand then
-        current.temporaryHands.updated(actor, Vector(conspiracy))
-      else current.temporaryHands))
-    Staged(edit(staged, enemy), actor, enemy, origin)
+  /** p1 plays Conspiracy from a temporary hand. */
+  private def fromHand(table: Table): Staged =
+    Staged(table.hand(p1, conspiracy).ready,
+      CardPlayProcedure.Origin.TemporaryHand)
 
-  private def treeFor(f: Staged): Operation = (f.origin match {
+  /** p1 plays Conspiracy from a facedown adviser. */
+  private def fromFacedownAdviser(table: Table): Staged =
+    Staged(table.adviser(p1, conspiracy, facedown = true).ready,
+      CardPlayProcedure.Origin.FacedownAdviser)
+
+  /** p2 stands on p1's site, Ancient City. */
+  private val sharedSite = Table.start.pawn(p2, "Ancient City")
+
+  private def treeFor(f: Staged): Operation = accepted(f.origin match {
     case CardPlayProcedure.Origin.TemporaryHand =>
-      CardPlayProcedure.build(catalog, f.ready, f.actor, conspiracy, f.origin)
+      CardPlayProcedure.build(catalog, f.ready, p1, conspiracy, f.origin)
     case CardPlayProcedure.Origin.FacedownAdviser =>
-      CardPlayProcedure.rebuildFacedown(catalog, f.ready, f.actor,
+      CardPlayProcedure.rebuildFacedown(catalog, f.ready, p1,
         Vector(DecisionOptionRef.Vision(conspiracy)))
-  }).toOption.get
-
-  private def parked(outcome: Either[OathViolation, WalkerOutcome]): PendingTree =
-    outcome.toOption.get.asInstanceOf[WalkerOutcome.Parked].tree
-
-  private def finished(outcome: Either[OathViolation, WalkerOutcome])
-      : WalkerOutcome.Finished =
-    outcome.toOption.get.asInstanceOf[WalkerOutcome.Finished]
+  })
 
   private def answer(f: Staged, tree: Operation, at: PendingTree, id: String,
-      ref: DecisionOptionRef) =
+      ref: DecisionOptionRef): Either[OathViolation, WalkerOutcome] =
     ProcedureWalker.resolve(f.ready, tree, at, Answered(id,
-      DecisionAnswer.ChooseOneAnswer(ref), f.actor), powers)
+      DecisionAnswer.ChooseOneAnswer(ref), p1), powers)
 
-  /** Plays Conspiracy faceup and returns the tree with the position parked on
-    * the target decision.
-    */
-  private def atTarget(f: Staged): (Operation, PendingTree) =
+  /** The play's tree, and the position parked on the placement decision. */
+  private def atPlacement(f: Staged): (Operation, PendingTree) =
     val tree = treeFor(f)
-    val place = parked(ProcedureWalker.advance(f.ready, tree, None, powers))
-    (tree, parked(answer(f, tree, place, placeId, faceup)))
+    (tree, Outcomes.parked(ProcedureWalker.advance(f.ready, tree, None,
+      powers)).tree)
 
-  private def targetOptions(f: Staged, tree: Operation, at: PendingTree) =
-    ProcedureWalker.parkedDecide(f.ready, tree, at, powers).map(decide =>
-      (decide.decisionId, decide.owner, decide.query
-        .asInstanceOf[DecisionQuery.ChooseOne].options.map(_.ref)))
+  /** The play's tree, and the position parked on the target decision. */
+  private final case class AtTarget(tree: Operation, at: PendingTree)
 
-  private def recorded(done: WalkerOutcome.Finished): Vector[CoreOperation] =
-    done.events.collect { case step: WalkerStepRecorded => step.ops }.flatten
+  /** Plays Conspiracy faceup and parks on the target decision. */
+  private def atTarget(f: Staged): AtTarget =
+    val (tree, place) = atPlacement(f)
+    val placed = answer(f, tree, place, placeId, faceup)
+    AtTarget(tree, Outcomes.parked(placed).tree)
 
-  private def replayed(f: Staged, done: WalkerOutcome.Finished): ReadyGame =
-    OperationPipeline.run(f.ready, recorded(done),
-      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get.state
+  private final case class TargetDecision(decisionId: String, owner: PlayerId,
+      options: Vector[DecisionOptionRef])
 
-  private def player(ready: ReadyGame, id: PlayerId): PlayerState =
-    ready.game.current.players.find(_.player == id).get
+  private def targetDecision(f: Staged, target: AtTarget)
+      : Option[TargetDecision] =
+    ProcedureWalker.parkedDecide(f.ready, target.tree, target.at, powers)
+      .map(decide => TargetDecision(decide.decisionId, decide.owner,
+        as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref)))
+
+  /** Answers the target decision with `ref`, to the end of the play. */
+  private def take(f: Staged, target: AtTarget, ref: DecisionOptionRef)
+      : WalkerOutcome.Finished =
+    Outcomes.finished(answer(f, target.tree, target.at,
+      ConspiracyWhenPlayed.decisionId, ref))
 
   test("Conspiracy takes an opaque relic slot and leaves the game"):
-    val relic = RelicState(RelicId("conspiracy-relic"), Orientation.FaceDown,
-      Tokens.empty)
-    val f = fixture(Vector(relic))()
-    val (tree, at) = atTarget(f)
-    assertEquals(targetOptions(f, tree, at), Some((
-      ConspiracyWhenPlayed.decisionId, f.actor,
-      Vector[DecisionOptionRef](DecisionOptionRef.RelicSlot(f.enemy, 0)))))
-    val done = finished(answer(f, tree, at, ConspiracyWhenPlayed.decisionId,
-      DecisionOptionRef.RelicSlot(f.enemy, 0)))
+    val f = fromHand(sharedSite.relic(p2, crackedHorn, facedown = true))
+    val target = atTarget(f)
+    assertEquals(targetDecision(f, target), Some(TargetDecision(
+      ConspiracyWhenPlayed.decisionId, p1,
+      Vector[DecisionOptionRef](DecisionOptionRef.RelicSlot(p2, 0)))))
+    val done = take(f, target, DecisionOptionRef.RelicSlot(p2, 0))
     val after = done.treeless
-    assert(player(after, f.actor).relics.exists(_.id == relic.id))
-    assert(!player(after, f.enemy).relics.exists(_.id == relic.id))
-    assertEquals(after.game.current.temporaryHands(f.actor), Vector.empty)
-    assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
-    assertEquals(replayed(f, done), after)
+    assert(Look(after).player(p1).relics.exists(_.id == crackedHorn))
+    assert(!Look(after).player(p2).relics.exists(_.id == crackedHorn))
+    assertEquals(after.game.current.temporaryHands(p1), Vector.empty)
+    assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
+    assertEquals(replayed(f.ready, done.events), after)
 
   test("Conspiracy taking the Peoples Favor returns its favor in the " +
       "least-bank order and takes the banner"):
-    val f = fixture()((ready, enemy) => {
-      val current = ready.game.current
-      ready.copy(banks = ready.banks.copy(favor = ready.banks.favor.map {
-        case (suit, count) => suit -> math.max(0, count - 2) }))
-        .updateCurrent(_.copy(banners = current.banners.copy(peoplesFavor =
-          current.banners.peoplesFavor.copy(holder = Some(enemy), favor = 2))))
-    })
-    val (tree, at) = atTarget(f)
-    assertEquals(targetOptions(f, tree, at), Some((
-      ConspiracyWhenPlayed.decisionId, f.actor,
-      Vector[DecisionOptionRef](DecisionOptionRef.Banner(Banner.PeoplesFavor)))))
-    val done = finished(answer(f, tree, at, ConspiracyWhenPlayed.decisionId,
-      DecisionOptionRef.Banner(Banner.PeoplesFavor)))
+    // The banner's 2 favor go back one at a time, each to the bank holding
+    // the least.
+    val f = fromHand(sharedSite.peoplesFavor(Some(p2), 2)
+      .bankFavor(Suit.Discord, 0).bankFavor(Suit.Arcane, 2)
+      .bankFavor(Suit.Order, 3).bankFavor(Suit.Hearth, 4)
+      .bankFavor(Suit.Beast, 5).bankFavor(Suit.Nomad, 6))
+    val target = atTarget(f)
+    val banner = DecisionOptionRef.Banner(Banner.PeoplesFavor)
+    assertEquals(targetDecision(f, target), Some(TargetDecision(
+      ConspiracyWhenPlayed.decisionId, p1, Vector[DecisionOptionRef](banner))))
+    val done = take(f, target, banner)
     val after = done.treeless
-    assertEquals(after.game.current.banners.peoplesFavor.holder, Some(f.actor))
+    assertEquals(after.game.current.banners.peoplesFavor.holder, Some(p1))
     assertEquals(after.game.current.banners.peoplesFavor.favor, 0)
-    assertEquals(after.banks.favor.values.sum, f.ready.banks.favor.values.sum + 2)
+    assertEquals(after.banks.favor.values.sum, 0 + 2 + 3 + 4 + 5 + 6 + 2)
     // The favor returns as the banner Take's children.
-    val returned = recorded(done).flatMap(Operation.flatten).collect:
-      case Move(Piece.Favor(1), _,
-          PositionedLocation(Location.FavorBank(suit), _), _) => suit
-    assertEquals(returned, BannerRules.raidFavorReturn(f.ready.banks.favor, 2))
-    assertEquals(after.game.current.temporaryHands(f.actor), Vector.empty)
-    assertEquals(replayed(f, done), after)
+    val returned = PhasePowerHarness.ops(done.events)
+      .flatMap(Operation.flatten).collect:
+        case Move(Piece.Favor(1), _,
+            PositionedLocation(Location.FavorBank(suit), _), _) => suit
+    // Discord holds the least before each favor: 0, then 1.
+    assertEquals(returned, Vector(Suit.Discord, Suit.Discord))
+    assertEquals(after.game.current.temporaryHands(p1), Vector.empty)
+    assertEquals(replayed(f.ready, done.events), after)
 
   test("Conspiracy taking the Darkest Secret burns every secret and takes " +
       "the banner"):
-    val f = fixture()((ready, enemy) => {
-      val current = ready.game.current
-      ready.updateCurrent(_.copy(banners = current.banners.copy(darkestSecret =
-        current.banners.darkestSecret.copy(holder = Some(enemy), secrets = 3))))
-    })
+    val f = fromHand(sharedSite.darkestSecret(Some(p2), 3))
     def siteSecrets(ready: ReadyGame): Int =
       ready.game.current.map.sites.valuesIterator.map { site =>
         site.tokens.secrets + site.denizens.collect {
           case card: DenizenState => card.tokens.secrets
         }.sum
       }.sum
-    val (tree, at) = atTarget(f)
-    val done = finished(answer(f, tree, at, ConspiracyWhenPlayed.decisionId,
-      DecisionOptionRef.Banner(Banner.DarkestSecret)))
+    val done = take(f, atTarget(f),
+      DecisionOptionRef.Banner(Banner.DarkestSecret))
     val after = done.treeless
     assertEquals(after.game.current.banners.darkestSecret.secrets, 0)
-    assertEquals(after.game.current.banners.darkestSecret.holder, Some(f.actor))
+    assertEquals(after.game.current.banners.darkestSecret.holder, Some(p1))
     // The burn returns the secrets to the untracked shared bank; none lands on
     // a site.
     assertEquals(siteSecrets(after), siteSecrets(f.ready))
-    assert(recorded(done).contains(Take(Piece.Banner(Banner.DarkestSecret),
-      f.actor, Location.PlayArea(f.enemy), Location.PlayArea(f.actor),
+    val ops = PhasePowerHarness.ops(done.events)
+    assert(ops.contains(Take(Piece.Banner(Banner.DarkestSecret),
+      p1, Location.PlayArea(p2), Location.PlayArea(p1),
       leaving = Vector(Burn.secrets(3,
         PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))))),
-      recorded(done).toString)
-    assertEquals(replayed(f, done), after)
+      ops.toString)
+    assertEquals(replayed(f.ready, done.events), after)
 
   test("with no legal target Conspiracy asks nothing and only leaves the game"):
-    val f = fixture(shared = false)()
-    val tree = treeFor(f)
-    val place = parked(ProcedureWalker.advance(f.ready, tree, None, powers))
-    val done = finished(answer(f, tree, place, placeId, faceup))
+    // p2 stands at Broken Peaks, away from p1, and no banner has a holder.
+    val f = fromHand(Table.start)
+    val (tree, place) = atPlacement(f)
+    val done = Outcomes.finished(answer(f, tree, place, placeId, faceup))
     val after = done.treeless
-    assertEquals(after.game.current.temporaryHands(f.actor), Vector.empty)
-    assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
-    assertEquals(recorded(done), Vector[CoreOperation](Move(
-      Piece.Card(conspiracy), PositionedLocation(Location.Hand(f.actor)),
+    assertEquals(after.game.current.temporaryHands(p1), Vector.empty)
+    assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector[CoreOperation](Move(
+      Piece.Card(conspiracy), PositionedLocation(Location.Hand(p1)),
       PositionedLocation(Location.SharedBank))))
 
   test("a target the current state does not offer is rejected at the decision"):
-    val relics = Vector("first", "second").map(id => RelicState(
-      RelicId(s"conspiracy-$id"), Orientation.FaceDown, Tokens.empty))
-    val f = fixture(relics)()
-    val (tree, at) = atTarget(f)
-    assertEquals(targetOptions(f, tree, at).map(_._3), Some(Vector[DecisionOptionRef](
-      DecisionOptionRef.RelicSlot(f.enemy, 0),
-      DecisionOptionRef.RelicSlot(f.enemy, 1))))
-    Vector[DecisionOptionRef](DecisionOptionRef.RelicSlot(f.enemy, 2),
-      DecisionOptionRef.RelicSlot(f.actor, 0),
+    val f = fromHand(sharedSite.relic(p2, crackedHorn, facedown = true)
+      .relic(p2, banditCrown, facedown = true))
+    val target = atTarget(f)
+    assertEquals(targetDecision(f, target).map(_.options),
+      Some(Vector[DecisionOptionRef](DecisionOptionRef.RelicSlot(p2, 0),
+        DecisionOptionRef.RelicSlot(p2, 1))))
+    Vector[DecisionOptionRef](DecisionOptionRef.RelicSlot(p2, 2),
+      DecisionOptionRef.RelicSlot(p1, 0),
       DecisionOptionRef.Banner(Banner.PeoplesFavor)).foreach { ref =>
-      assert(answer(f, tree, at, ConspiracyWhenPlayed.decisionId, ref).isLeft,
-        ref.toString)
+      assert(answer(f, target.tree, target.at, ConspiracyWhenPlayed.decisionId,
+        ref).isLeft, ref.toString)
     }
 
   test("discarding a Conspiracy does not play it"):
-    val relic = RelicState(RelicId("kept-relic"), Orientation.FaceDown,
-      Tokens.empty)
-    val f = fixture(Vector(relic))()
-    val tree = treeFor(f)
-    val place = parked(ProcedureWalker.advance(f.ready, tree, None, powers))
-    val done = finished(answer(f, tree, place, placeId,
+    val f = fromHand(sharedSite.relic(p2, crackedHorn, facedown = true))
+    val (tree, place) = atPlacement(f)
+    val done = Outcomes.finished(answer(f, tree, place, placeId,
       DecisionOptionRef.Button("discard")))
-    assert(player(done.treeless, f.enemy).relics.exists(_.id == relic.id))
-    assert(CardIndex.from(done.treeless.game).toOption.get.ids
+    assert(Look(done.treeless).player(p2).relics.exists(_.id == crackedHorn))
+    assert(accepted(CardIndex.from(done.treeless.game)).ids
       .contains(conspiracy))
 
   test("a Conspiracy played from a facedown adviser takes its target and " +
       "leaves the revealed Vision alone"):
-    val relic = RelicState(RelicId("facedown-route-relic"), Orientation.FaceDown,
-      Tokens.empty)
-    val f = fixture(Vector(relic),
-      origin = CardPlayProcedure.Origin.FacedownAdviser)()
-    val revealedBefore = player(f.ready, f.actor).revealedVision
-    val (tree, at) = atTarget(f)
-    assertEquals(targetOptions(f, tree, at).map(_._3), Some(Vector[DecisionOptionRef](
-      DecisionOptionRef.RelicSlot(f.enemy, 0))))
-    val done = finished(answer(f, tree, at, ConspiracyWhenPlayed.decisionId,
-      DecisionOptionRef.RelicSlot(f.enemy, 0)))
+    val f = fromFacedownAdviser(sharedSite.relic(p2, crackedHorn,
+      facedown = true))
+    val revealedBefore = Look(f.ready).player(p1).revealedVision
+    val target = atTarget(f)
+    assertEquals(targetDecision(f, target).map(_.options),
+      Some(Vector[DecisionOptionRef](DecisionOptionRef.RelicSlot(p2, 0))))
+    val done = take(f, target, DecisionOptionRef.RelicSlot(p2, 0))
     val after = done.treeless
-    assert(player(after, f.actor).relics.exists(_.id == relic.id))
-    assert(!player(after, f.actor).advisers.exists(_.id == conspiracy))
-    assertEquals(player(after, f.actor).revealedVision, revealedBefore)
-    assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
-    assertEquals(replayed(f, done), after)
+    assert(Look(after).player(p1).relics.exists(_.id == crackedHorn))
+    assert(!Look(after).player(p1).advisers.exists(_.id == conspiracy))
+    assertEquals(Look(after).player(p1).revealedVision, revealedBefore)
+    assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
+    assertEquals(replayed(f.ready, done.events), after)
 
   // ---- Lines ----
 
   private def seized(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(ConspiracyWhenPlayed.id, ConspiracyWhenPlayed.noteKeys, events)
+    NoteText.said(ConspiracyWhenPlayed.id, ConspiracyWhenPlayed.noteKeys,
+      events)
 
   test("Conspiracy's line names the relic it seized and its owner"):
-    val relic = RelicState(RelicId("conspiracy-relic"), Orientation.FaceDown,
-      Tokens.empty)
-    val f = fixture(Vector(relic))()
-    val (tree, at) = atTarget(f)
-    val done = finished(answer(f, tree, at, ConspiracyWhenPlayed.decisionId,
-      DecisionOptionRef.RelicSlot(f.enemy, 0)))
+    val f = fromHand(sharedSite.relic(p2, crackedHorn, facedown = true))
+    val done = take(f, atTarget(f), DecisionOptionRef.RelicSlot(p2, 0))
     assertEquals(seized(done.events), Vector(NoteText.Said("seized",
-      s"${f.actor.value} seized conspiracy-relic from ${f.enemy.value}.",
-      covers = false)))
+      s"p1 seized ${crackedHorn.value} from p2.", covers = false)))
 
   test("Conspiracy's line names the banner it seized"):
-    val f = fixture()((ready, enemy) => {
-      val current = ready.game.current
-      ready.updateCurrent(_.copy(banners = current.banners.copy(darkestSecret =
-        current.banners.darkestSecret.copy(holder = Some(enemy), secrets = 3))))
-    })
-    val (tree, at) = atTarget(f)
-    val done = finished(answer(f, tree, at, ConspiracyWhenPlayed.decisionId,
-      DecisionOptionRef.Banner(Banner.DarkestSecret)))
+    val f = fromHand(sharedSite.darkestSecret(Some(p2), 3))
+    val done = take(f, atTarget(f),
+      DecisionOptionRef.Banner(Banner.DarkestSecret))
     assertEquals(seized(done.events), Vector(NoteText.Said("seized",
-      s"${f.actor.value} seized Darkest Secret from ${f.enemy.value}.",
-      covers = false)))
+      "p1 seized Darkest Secret from p2.", covers = false)))
 
   test("a Conspiracy with no target writes no line"):
-    val f = fixture(shared = false)()
-    val tree = treeFor(f)
-    val place = parked(ProcedureWalker.advance(f.ready, tree, None, powers))
-    assertEquals(seized(finished(answer(f, tree, place, placeId, faceup))
-      .events), Vector.empty)
+    val f = fromHand(Table.start)
+    val (tree, place) = atPlacement(f)
+    val done = Outcomes.finished(answer(f, tree, place, placeId, faceup))
+    assertEquals(seized(done.events), Vector.empty)
