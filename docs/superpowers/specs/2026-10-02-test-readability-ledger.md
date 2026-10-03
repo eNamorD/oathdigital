@@ -1,8 +1,130 @@
 # Test readability ledger
 
 Date: 2026-10-02. Spec: [test readability sweep](2026-10-02-test-readability-design.md).
-Status: reviewed and approved by the user on 2026-10-02 (see Review).
+Status: fixed; see Result.
 The survey used twelve areas, not the spec's ten; the plan (Areas) explains the split.
+
+## Result
+
+Plan 2 (tasks 1-41) is done. Every finding row has an outcome, the guards hold,
+and the brittleness check fails 21 tests, the same as after the start-state
+project. Measured on 2026-10-03 at commit c3849030 with
+`.superpowers/readability/metrics.sh`; "before" is the Baseline above.
+
+| Metric | Before | After |
+|---|---|---|
+| suites (root) | 372 | 387 |
+| suites (frontend) | 43 | 45 |
+| replayed setup files (execute()/initialReady) | 7 | 3 |
+| Table.start files | 157 | 213 |
+| state patches (updateCurrent/copy(current =) | 313 | 73 |
+| @unchecked | 158 | 0 |
+| numeric card ids | 84 | 8 |
+| tuple destructures with _ | 69 | 12 |
+| Table.update escapes | 14 | 12 |
+| test files over 800 lines | 4 | 0 |
+| largest test file | 1829 lines (GameApplicationServiceSuite) | 648 lines (WalkerDecisionProjectorSuite) |
+
+All 8 numeric card ids are in `ExecutableCatalogSuite`, which tests the catalog
+itself; `BackendArchitectureSuite` now fails any other test file that has one,
+and fails any test file over 800 lines.
+
+Of the 73 state patches, 21 are in `Table` and `TableSuite`, which implement
+and test the steps. Of the other 52, all but three are the test's subject or
+carry a comment saying that no Table step reaches the state. The three that
+are neither are `GameApplicationServiceProjectionSuite` (the Imperial force on
+Buried Giant) and two in `OperationExecutorSuite` (a site relic in "relic
+discard preserves composite secret orientation semantics", and an emptied site
+in "pawn banner and warband moves update their concrete storage"). They are
+left as they are.
+
+### Rows
+
+The ledger holds 1635 finding rows (1634 counted once: 08-020 duplicates
+00-150). Outcomes:
+
+- fixed: 1527 rows, each naming its commit.
+- kept, with a reason: 107 rows. The survey kept 82; the other 25 were kept at
+  fix time, each with its reason in the Outcome cell.
+- handed to another row: 1 row (06-175), fixed by 00-009's named
+  `ChronicleWithDeckTop`.
+- struck: none.
+
+All 73 R10 rows (test doubles) have an outcome, as does every other row.
+
+### Splits and new tests
+
+The test count rose only through recorded splits, new tests for new testkit
+helpers, contract suites and guards (see the next sections). Net change from
+before Plan 2 to after:
+
+- root: 2551 to 2670 (+119)
+- frontend: 491 to 527 (+36)
+
+Each task's delta is in `.superpowers/readability/progress.md` (tasks 1-33) and
+`.superpowers/sdd/2026-10-02-test-readability-fixes/progress.md` (tasks 34-41).
+The largest: 09-setup-server-persistence (+22 and +10 root), 08-model-catalog
+(+13 root, +7 frontend), 01-service (+11 and +11 root), 12-frontend-b (+10
+frontend) and 11-frontend-a (+5 frontend). A split keeps every assertion in one
+half.
+
+### Contract suites
+
+Four fakes have a contract suite that the fake and the real implementation both
+pass. None found a divergence, so no fake changed and `src/main`, `shared/` and
+`frontend/src/main` carry no change from this plan.
+
+- `EventStreamRepositoryContract` (Task 37): 7 shared tests run against
+  `InMemoryEventStreamRepository` and `HsqldbEventStreamRepository`. This closes
+  the ROADMAP item "Contract suite for `EventStreamRepository`".
+- `EventEvolutionContract` (Task 38): 3 tests run against the fake running-total
+  evolution and `OathRules`.
+- `LogStoreContract` (Task 39): 3 tests run against `FakeLogStore` and the
+  browser log store.
+- `PollClockContract` (Task 39): 2 tests run against `FakePollClock` and
+  `BrowserPollClock`.
+
+Task 37 added 7 root tests (2655 to 2662), Task 38 added 6 (2662 to 2668) and
+Task 39 added 10 frontend tests (517 to 527). Task 40's two guard tests brought
+the root to 2670.
+
+### Mutations
+
+The Mutations table above holds 162 rows, one production or testkit rule broken
+at a time. 160 were caught, 2 survived.
+
+- Caught: 160. Three of those first survived and were caught after the task
+  added the assertion that kills them (MinorActions in 10-2, OperationResolution
+  in 03-1, TwinBrother in 05-3).
+- Survived: BanditPrince (05-2), whose catching assertion exposed a production
+  bug, spawned as its own task; and the spectator seat (01-3), for which no test
+  seeds a spectator with a seat.
+
+Two more gaps came out of reviews and are not rows in the table: `PowerId`
+accepts a lowercase start (Task 36), and a stream suite does not pin which
+candidate a choice picks (Task 38b, `choosesFirstCandidate`, 01-038).
+
+Open follow-ups for the user (post-plan chips): the spectator seat, the
+`PowerId` lowercase start, and the stream-suite candidate choice.
+
+### Brittleness
+
+Making `OathRules.wakeOptionOpen` always true fails 21 of 2670 root tests, no
+more than the 21 it failed after the start-state project. The mutant file was
+restored and `git status --short src/main` printed nothing.
+
+### Test totals
+
+| | Before Plan 2 | After |
+|---|---|---|
+| root | 2551 | 2670 |
+| frontend | 491 | 527 |
+
+The "before" totals were measured, not recorded: no earlier note gives the
+count at the parent of the first Plan 2 commit (23e63216). A scratch worktree at
+that parent ran `./sbtw root/test frontend/test` (root 2551 passed, 0 failed;
+frontend 491 passed, 0 failed once `node_modules` was linked in). The "after"
+totals are from the gate at c3849030.
 
 ## Baseline
 

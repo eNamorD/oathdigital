@@ -1,6 +1,6 @@
 # Test readability sweep
 
-Date: 2026-10-02. Status: designed.
+Date: 2026-10-02. Status: done.
 
 This is the fourth of five test-suite improvement projects from the
 2026-09-27 test audit. The first three are merged:
@@ -198,3 +198,21 @@ Plan 2's tasks, in order:
 - Production changes, except fixing a fake's divergence or a seam a
   contract suite needs.
 - State patches whose subject is the phase or turn.
+
+## Result
+
+The sweep is done; the ledger's Result section has the full account. Headline
+numbers, before to after:
+
+- Every ledger row has an outcome: 1527 fixed, 107 kept, 1 handed to another
+  row, none struck.
+- State patches 313 to 73, `@unchecked` 158 to 0, numeric card ids 84 to 8 (all
+  in the catalog suite), test files over 800 lines 4 to 0.
+  Three state patches are neither the subject nor commented; the ledger lists
+  them.
+- Four fakes have contract suites; none found a divergence, so no production
+  code changed.
+- 162 mutations: 160 caught, 2 survived (BanditPrince, a spectator seat).
+- Brittleness re-check: 21 failures, at the limit.
+- Tests: root 2551 to 2670, frontend 491 to 527, all from recorded splits, new
+  testkit tests, contract suites and guards.
