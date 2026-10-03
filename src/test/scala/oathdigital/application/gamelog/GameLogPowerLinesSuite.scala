@@ -177,7 +177,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       saying(script.actor, NoteArg.Card(hiddenAdviser)))
     def named(viewer: PlayerId) =
       firstSilverTongueLine(ours(noted, Some(viewer))).spans.collect {
-      case shown: LogSpan.Card => shown.id }
+        case shown: LogSpan.Card => shown.id }
     assert(!named(script.actor).contains(hiddenAdviser.value),
       named(script.actor))
     assert(named(hiddenOwner).contains(hiddenAdviser.value), named(hiddenOwner))
