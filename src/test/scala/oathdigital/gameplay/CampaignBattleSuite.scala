@@ -19,18 +19,18 @@ class CampaignBattleSuite extends munit.FunSuite:
   test("a skull costs a warband and its swords only when the warband can " +
       "be paid"):
     // Two single swords and no skull.
-    assertAttack(Vector(OneSword, OneSword), force = 2)(score = 2,
-      skullsLost = 0)
+    assertAttack(Vector(OneSword, OneSword), force = 2)(
+      score = 2, skullsLost = 0)
     // 2 + 1 swords; the one skull is paid by a warband.
-    assertAttack(Vector(TwoSwordsSkull, OneSword), force = 2)(score = 2 + 1,
-      skullsLost = 1)
+    assertAttack(Vector(TwoSwordsSkull, OneSword), force = 2)(
+      score = 2 + 1, skullsLost = 1)
     // Two skulls but one warband: only one skull can be paid, so only its
     // swords count; the other adds nothing.
-    assertAttack(Vector(TwoSwordsSkull, TwoSwordsSkull), force = 1)(score = 2,
-      skullsLost = 1)
+    assertAttack(Vector(TwoSwordsSkull, TwoSwordsSkull), force = 1)(
+      score = 2, skullsLost = 1)
     // No warband pays either skull, so neither die's swords count.
-    assertAttack(Vector(TwoSwordsSkull, TwoSwordsSkull), force = 0)(score = 0,
-      skullsLost = 0)
+    assertAttack(Vector(TwoSwordsSkull, TwoSwordsSkull), force = 0)(
+      score = 0, skullsLost = 0)
 
   test("Outriders ignores every skull and keeps every sword"):
     assertAttack(Vector(TwoSwordsSkull, TwoSwordsSkull), force = 1,

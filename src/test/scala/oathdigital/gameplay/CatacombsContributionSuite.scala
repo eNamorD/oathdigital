@@ -191,9 +191,7 @@ class CatacombsContributionSuite extends munit.FunSuite:
     val after = Outcomes.ready(transition.state)
     val there = after.game.current.map.sites(fixture.site)
     assertEquals(there.relics.map(_.id), Vector(fixture.topRelic))
-    assertEquals(there.denizens.head match {
-      case d: DenizenState => d.tokens.secrets
-      case _ => -1 }, 1)
+    assertEquals(there.denizens.head.tokens.secrets, 1)
 
   test("Catacombs at a site the actor neither rules nor stands on is not " +
       "applicable"):

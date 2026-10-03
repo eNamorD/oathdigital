@@ -49,7 +49,8 @@ object CampaignFixture:
     * catalog. */
   def rules(dice: WalkerDice = WalkerDice.unavailable): OathRules =
     new OathRules(catalog,
-      walkerPowerCatalog = WalkerPowerCatalog.default(catalog), walkerDice = dice)
+      walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
+      walkerDice = dice)
 
   /** Rules with exactly these walker powers, for a suite that tests the plan
     * window with plans of its own.

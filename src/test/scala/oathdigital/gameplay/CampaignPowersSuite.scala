@@ -71,7 +71,8 @@ class CampaignPowersSuite extends munit.FunSuite:
       .ready
 
   private val passPower = TravelSitePowers.all.collectFirst {
-    case power: NarrowPassSitePower => power }.get
+    case power: NarrowPassSitePower => power }.getOrElse(
+      fail("the Narrow Pass power is not registered"))
   private def siteOption(id: SiteId) =
     DecisionOption.Site(DecisionOptionRef.Site(id))
   private val candidates = Vector(pass, buriedGiant, deepWoods, brokenPeaks,
@@ -87,10 +88,10 @@ class CampaignPowersSuite extends munit.FunSuite:
       : Vector[DecisionOption] =
     val tree = targets(options)
     val powers = WalkerPowers(Vector(passPower))
-    val pending = Outcomes.parked(ProcedureWalker.advance(ready, tree, None,
-      powers)).tree
-    present(ProcedureWalker.openDecisions(ready, tree, pending, powers)
-      .headOption, "the targets decision").query match
+    val advanced = ProcedureWalker.advance(ready, tree, None, powers)
+    val pending = Outcomes.parked(advanced).tree
+    val decisions = ProcedureWalker.openDecisions(ready, tree, pending, powers)
+    present(decisions.headOption, "the targets decision").query match
       case many: DecisionQuery.ChooseMany => many.options
       case other => fail(s"expected a choose-many, got $other")
 

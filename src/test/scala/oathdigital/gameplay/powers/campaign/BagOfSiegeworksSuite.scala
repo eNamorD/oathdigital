@@ -7,6 +7,7 @@ import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
 import oathdigital.testkit.Look
+import oathdigital.testkit.Unwrap.present
 
 /** Bag of Siegeworks: a secret placed, in a Conquest, so that every
   * single-shield defense die scores nothing. */
@@ -57,34 +58,37 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
 
   test("the defense is scored without its single shields, and it says so"):
     val b = attackerWithBagAndSecret
-    val done = conquestOfAllTargets(b,
-      shields).pick(b.actor, CampaignIds.attackerPlan, ref)
+    val run = conquestOfAllTargets(b, shields)
+    val done = run.pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishPlanWindows
-    val result = ready(done.state).game.current.lastCampaignResult.get
+    val result = present(ready(done.state).game.current.lastCampaignResult,
+      "a Campaign result")
     assert(result.defenseFaces.contains(DefenseDieFace.OneShield),
       result.defenseFaces)
     // Two bandits at each of the three targets.
-    val force = 2 * (1 + b.extras.size)
+    val banditDefense = 2 * (1 + b.extras.size)
     assertEquals(result.defenseScore,
-      BagOfSiegeworks.score(result.defenseFaces) + force)
-    assert(
-      result.defenseScore < DefenseDieFace.score(result.defenseFaces) + force)
+      BagOfSiegeworks.score(result.defenseFaces) + banditDefense)
+    assert(result.defenseScore <
+      DefenseDieFace.score(result.defenseFaces) + banditDefense)
     assertEquals(lines(done), Vector(line))
 
   test("without a single shield rolled nothing is said"):
     val b = attackerWithBagAndSecret
-    val done = conquestOfAllTargets(b,
-      winning).pick(b.actor, CampaignIds.attackerPlan, ref)
+    val run = conquestOfAllTargets(b, winning)
+    val done = run.pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishPlanWindows
     assertEquals(lines(done), Vector.empty)
 
   test("a Campaign that does not choose it scores the single shields"):
     val b = attackerWithBagAndSecret
     val done = conquestOfAllTargets(b, shields).finishPlanWindows
-    val result = ready(done.state).game.current.lastCampaignResult.get
+    val result = present(ready(done.state).game.current.lastCampaignResult,
+      "a Campaign result")
     // Two bandits at each of the three targets.
+    val banditDefense = 2 * (1 + b.extras.size)
     assertEquals(result.defenseScore,
-      DefenseDieFace.score(result.defenseFaces) + 2 * (1 + b.extras.size))
+      DefenseDieFace.score(result.defenseFaces) + banditDefense)
     assertEquals(lines(done), Vector.empty)
 
   test("a Raid targets no site, so it is not offered"):

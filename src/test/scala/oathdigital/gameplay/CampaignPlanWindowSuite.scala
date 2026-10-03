@@ -79,7 +79,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
       CampaignIds.force, ChooseAmountAnswer(force))))
 
   private def pick(g: OathRules, from: OathTransition, who: PlayerId,
-    id: String, ref: DecisionOptionRef): OathTransition =
+      id: String, ref: DecisionOptionRef): OathTransition =
     accepted(g.resolveWalker(from.state, who, id, ChooseOneAnswer(ref)))
 
   private def parked(plans: Vector[ContributingPower], b: Board,
@@ -141,8 +141,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
       finishOption))
     val picked = pick(g, forced, b.actor, CampaignIds.attackerPlan,
       denizen(outriders))
-    assertEquals(Look(picked.state).tokensOn(outriders),
-      Tokens(2, 0))
+    assertEquals(Look(picked.state).tokensOn(outriders), Tokens(2, 0))
     assertEquals(Look(picked.state).player(b.actor).board.favor, 1)
     assert(
       ops(picked.events).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
@@ -181,8 +180,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
       denizen(outriders))
     val after = Look(picked.state).player(b.actor)
     assertEquals((after.board.favor, after.board.faceUpSecrets), (0, 0))
-    assertEquals(Look(picked.state).tokensOn(outriders),
-      Tokens.empty)
+    assertEquals(Look(picked.state).tokensOn(outriders), Tokens.empty)
     assert(ops(picked.events).contains(PayCost(b.actor,
       Location.OnCard(outriders), Cost(favorBurnt = 1, secretBurnt = 1),
       intoOccupied = true, matchingBank = catalog.suitOf(outriders))))
@@ -244,8 +242,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     val bank = ready(forced.state).banks.favor.getOrElse(suit, 0)
     val picked = pick(g, forced, b.rival, CampaignIds.defenderPlan,
       denizen(outriders))
-    assertEquals(Look(picked.state).tokensOn(outriders),
-      Tokens.empty)
+    assertEquals(Look(picked.state).tokensOn(outriders), Tokens.empty)
     assertEquals(ready(picked.state).banks.favor.getOrElse(suit, 0), bank + 1)
     val after = Look(picked.state).player(b.rival).board
     assertEquals((after.favor, after.faceUpSecrets, after.faceDownSecrets),
@@ -438,8 +435,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
         OptionPrice(secrets = 1)))
     val picked = pick(g, forced, b.actor, CampaignIds.attackerPlan,
       denizen(outriders))
-    assertEquals(Look(picked.state).tokensOn(outriders),
-      Tokens(0, 1))
+    assertEquals(Look(picked.state).tokensOn(outriders), Tokens(0, 1))
     assertEquals(Look(picked.state).player(b.actor).board.faceUpSecrets, 0)
 
   // ---- later windows ------------------------------------------------------
@@ -518,5 +514,6 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     val forced2 = startedAndCommitted(g2, both).forced
     val taken = pick(g2, forced2, both.actor, CampaignIds.attackerPlan,
       denizen(outriders))
-    assertEquals(optionsOf(parked(Vector(plan, second), both, taken))
-      .map(_.ref).toSet, Set(denizen(watchdog), CampaignIds.finish))
+    val left = optionsOf(parked(Vector(plan, second), both, taken))
+    assertEquals(left.map(_.ref).toSet,
+      Set(denizen(watchdog), CampaignIds.finish))
