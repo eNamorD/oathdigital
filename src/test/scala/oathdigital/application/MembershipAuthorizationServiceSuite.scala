@@ -6,6 +6,7 @@ import oathdigital.application.AuthorizationFailure._
 import oathdigital.application.ProjectionScope._
 import oathdigital.model.{PlayerId, RelicId}
 import oathdigital.persistence.HsqldbDatabaseOwner
+import oathdigital.testkit.Unwrap.accepted
 
 class MembershipAuthorizationServiceSuite extends munit.FunSuite:
   private val ownerUser = UserId("owner-user")
@@ -14,7 +15,7 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
   private val outsider = UserId("outsider-user")
 
   test("membership roles produce owner player spectator and nonmember access"):
-    withService { service =>
+    withGameOneMembers { service =>
       assertEquals(
         service.resolve("game-1", AuthenticatedUser(ownerUser)),
         Right(GameAccessContext.Owner("game-1", ownerUser))
@@ -42,7 +43,7 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
     }
 
   test("bootstrap projection and command policies derive authority server-side"):
-    withService { service =>
+    withGameOneMembers { service =>
       assert(service.authorizeBootstrap(
         "game-1", AuthenticatedUser(ownerUser)).isRight)
       assertEquals(
@@ -51,23 +52,23 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
       )
 
       assertEquals(
-        service.authorizeProjection("game-1", AuthenticatedUser(ownerUser))
-          .toOption.get.scope,
+        accepted(service.authorizeProjection("game-1",
+          AuthenticatedUser(ownerUser))).scope,
         PublicOnly
       )
       assertEquals(
-        service.authorizeProjection("game-1", AuthenticatedUser(spectatorUser))
-          .toOption.get.scope,
+        accepted(service.authorizeProjection("game-1",
+          AuthenticatedUser(spectatorUser))).scope,
         PublicOnly
       )
       assertEquals(
-        service.authorizeProjection("game-1", AuthenticatedUser(playerUser))
-          .toOption.get.scope,
+        accepted(service.authorizeProjection("game-1",
+          AuthenticatedUser(playerUser))).scope,
         PlayerPrivate(PlayerId("p1"))
       )
 
-      val actor = service.authorizeCommand(
-        "game-1", AuthenticatedUser(playerUser)).toOption.get
+      val actor = accepted(service.authorizeCommand(
+        "game-1", AuthenticatedUser(playerUser)))
       assertEquals(
         actor.endWake,
         GameCommand.EndWake(PlayerId("p1"))
@@ -96,12 +97,15 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
       Left(StorageFailure("database unavailable"))
     )
 
-  private def withService(
+  /** A fresh identity database with four users: ownerUser owns game-1,
+    * where playerUser sits as p1 and spectatorUser watches; outsider owns
+    * game-2 and belongs to game-1 in no way. */
+  private def withGameOneMembers(
       test: MembershipAuthorizationService => Unit
   ): Unit =
     val path = Files.createTempDirectory("oathdigital-authorization-")
       .resolve("database")
-    val database = HsqldbDatabaseOwner.open(path).toOption.get
+    val database = accepted(HsqldbDatabaseOwner.open(path))
     try
       val identities = database.identities
       Vector(ownerUser, playerUser, spectatorUser, outsider)

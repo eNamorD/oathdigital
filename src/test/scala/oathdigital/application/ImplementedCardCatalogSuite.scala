@@ -19,9 +19,9 @@ class ImplementedCardCatalogSuite extends munit.FunSuite:
   private def relic(id: String, powerIds: Vector[String]) =
     TestCards.relic(RelicId(id), id, powers(powerIds))
 
-  private def edifice(id: String, intact: (String, Vector[String]),
+  private def edifice(id: String, suit: Suit, intact: (String, Vector[String]),
       ruined: (String, Vector[String])) =
-    TestCards.edifice(EdificeId(id), Suit.Hearth, intact._1,
+    TestCards.edifice(EdificeId(id), suit, intact._1,
       powers(intact._2), ruined._1, powers(ruined._2))
 
   private val catalog = ExecutableCatalog(
@@ -36,10 +36,10 @@ class ImplementedCardCatalogSuite extends munit.FunSuite:
       // The Grand Scepter's printed id: never an ordinary relic.
       relic("grand-scepter", Vector("relic.cup-of-plenty.done"))),
     edifices = Vector(
-      edifice("hall-of-debate",
+      edifice("hall-of-debate", Suit.Hearth,
         "Hall of Debate" -> Vector("edifice.hall-of-debate.intact"),
         "Ruined Hall" -> Vector("edifice.hall-of-debate.ruined")),
-      edifice("unwired-edifice",
+      edifice("unwired-edifice", Suit.Hearth,
         "Unwired" -> Vector("edifice.unwired-edifice.intact"),
         "Ruined Unwired" -> Vector("edifice.unwired-edifice.ruined"))),
     legacies = Vector.empty,
@@ -56,5 +56,6 @@ class ImplementedCardCatalogSuite extends munit.FunSuite:
   test("a Homeland's implemented edifice needs both faces implemented"):
     assertEquals(ImplementedCardCatalog.homelandEdifice(catalog, Suit.Hearth, implemented),
       Some(EdificeId("hall-of-debate")))
+    // The catalog holds no Beast edifice.
     assertEquals(ImplementedCardCatalog.homelandEdifice(catalog, Suit.Beast, implemented),
       None)

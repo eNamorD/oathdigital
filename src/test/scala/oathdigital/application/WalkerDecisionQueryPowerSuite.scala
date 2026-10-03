@@ -7,7 +7,9 @@ import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.OathRules
 import oathdigital.model._
 import oathdigital.testkit.Table
+import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.WalkerStubs
+import oathdigital.testkit.Outcomes
 
 /** The point of Task 4, in one suite: a power that transforms a parked
   * decision moves what the projector OFFERS and what the walker ACCEPTS in
@@ -17,10 +19,7 @@ import oathdigital.testkit.WalkerStubs
   * consulted a per-action `validate` closure while the projector ran its own
   * candidate-discovery code -- and they agreed only because both happened to
   * call the same helper. A power could therefore change one without the
-  * other, and nothing failed. The last test below is the negative control
-  * that proves this suite would catch exactly that: it folds the tree for
-  * walking but NOT for projection and asserts the two disagree, which is the
-  * bug this contract exists to make impossible.
+  * other, and nothing failed.
   *
   * Both the tree and the power catalog are injected, through the same two
   * seams `OathRulesWalkerPowerSuite` and [[WalkerDecisionProjectorSuite]]
@@ -38,13 +37,6 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
   private val continueOption = WalkerStubs.continueOption
   private val stopOption = WalkerStubs.stopOption
   private val extraOption = DecisionOptionRef.Button("extra")
-
-  /** A ready game in the Act phase; the injected tree replaces Recover's own
-    * eligibility gates, so the command never consults them.
-    */
-  private def actable: (ReadyGame, PlayerId) =
-    val ready = Table.start.ready
-    (ready, ready.game.current.turn.activePlayer)
 
   /** One windowed composite holding one `Decide`: the transform below sees
     * the composite's children, which is exactly the vector the live walk
@@ -114,7 +106,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
   /** The option keys the projector offers at the park. */
   private def offered(state: oathdigital.model.OathState, actor: PlayerId,
       powers: WalkerPowers): Vector[String] =
-    val Ready(ready) = state: @unchecked
+    val ready = Outcomes.ready(state)
     projector(actor, powers)
       .project(ScopedProjectionContext(ready, Some(actor)))
       .flatMap(_.query).map(_.offeredOptions.map(_.id)).getOrElse(
@@ -123,7 +115,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
   /** The heading the projector offers at the park, if any. */
   private def titled(state: oathdigital.model.OathState, actor: PlayerId,
       powers: WalkerPowers): Option[String] =
-    val Ready(ready) = state: @unchecked
+    val ready = Outcomes.ready(state)
     projector(actor, powers)
       .project(ScopedProjectionContext(ready, Some(actor)))
       .flatMap(_.query).map(_.heading).getOrElse(
@@ -136,51 +128,55 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
       RecoverProcedure.choiceDecisionId,
       DecisionAnswer.ChooseOneAnswer(selected))
 
+  // Each test starts from p1's Act on the quiet table: the injected tree
+  // replaces Recover's own eligibility gates, so the command never consults
+  // them.
+
   test("with no power the projected options and the accepted answers are " +
       "the two the tree declares"):
-    val (ready, actor) = actable
-    val state = parked(ready, actor, WalkerPowers.empty)
-    assertEquals(offered(state, actor, WalkerPowers.empty),
+    val ready = Table.start.ready
+    val state = parked(ready, p1, WalkerPowers.empty)
+    assertEquals(offered(state, p1, WalkerPowers.empty),
       Vector("continue", "stop"))
-    assert(answering(state, actor, WalkerPowers.empty, continueOption).isRight)
-    assert(answering(state, actor, WalkerPowers.empty, extraOption).isLeft)
+    assert(answering(state, p1, WalkerPowers.empty, continueOption).isRight)
+    assert(answering(state, p1, WalkerPowers.empty, extraOption).isLeft)
 
   test("a power that adds an option adds it to the projection and to what " +
       "the walker accepts"):
-    val (ready, actor) = actable
-    val state = parked(ready, actor, adding)
-    assertEquals(offered(state, actor, adding),
+    val ready = Table.start.ready
+    val state = parked(ready, p1, adding)
+    assertEquals(offered(state, p1, adding),
       Vector("continue", "stop", "extra"))
-    assert(answering(state, actor, adding, extraOption).isRight,
+    assert(answering(state, p1, adding, extraOption).isRight,
       "the walker must accept the option the power added")
 
   test("a power that removes an option removes it from the projection and " +
       "from what the walker accepts"):
-    val (ready, actor) = actable
-    val state = parked(ready, actor, removing)
-    assertEquals(offered(state, actor, removing), Vector("stop"))
-    assert(answering(state, actor, removing, continueOption).isLeft,
+    val ready = Table.start.ready
+    val state = parked(ready, p1, removing)
+    assertEquals(offered(state, p1, removing), Vector("stop"))
+    assert(answering(state, p1, removing, continueOption).isLeft,
       "the walker must reject the option the power removed")
-    assert(answering(state, actor, removing, stopOption).isRight,
+    assert(answering(state, p1, removing, stopOption).isRight,
       "the surviving option must still be answerable")
 
   test("a power that rewrites a decision's heading changes what is " +
       "projected, in the same edit that moves its options"):
-    val (ready, actor) = actable
-    assertEquals(titled(parked(ready, actor, WalkerPowers.empty), actor,
+    val ready = Table.start.ready
+    assertEquals(titled(parked(ready, p1, WalkerPowers.empty), p1,
       WalkerPowers.empty), Some("Recover"),
       "the tree's own declared heading is what an unpowered park projects")
 
-    val state = parked(ready, actor, retitling)
-    assertEquals(titled(state, actor, retitling),
+    val state = parked(ready, p1, retitling)
+    assertEquals(titled(state, p1, retitling),
       Some("Abandon the attempt"))
     // The one edit moved both: the option the power dropped is gone from
     // the projection and from what the walker accepts, and the prompt above
     // them is the power's. Copy still decides nothing -- the surviving
     // option is answerable under either title.
-    assertEquals(offered(state, actor, retitling), Vector("stop"))
-    assert(answering(state, actor, retitling, continueOption).isLeft)
-    assert(answering(state, actor, retitling, stopOption).isRight)
+    assertEquals(offered(state, p1, retitling), Vector("stop"))
+    assert(answering(state, p1, retitling, continueOption).isLeft)
+    assert(answering(state, p1, retitling, stopOption).isRight)
 
   /** Task 5: a power that reowns the parked `Decide` moves who may answer it
     * (the walker), who is projected it (`project`) and who the public
@@ -189,31 +185,30 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
     */
   test("a power that reowns a parked Decide moves who may answer it, who is " +
       "projected it, and who the waiting projection names"):
-    val (ready, actor) = actable
-    val other = ready.game.current.players.map(_.player).find(_ != actor).get
+    val ready = Table.start.ready
     val powers = WalkerPowers(Vector(WalkerStubs.TestTransformPower(
       PowerId("test.reowns"), window, (_, ops) => ops.map {
-        case decide: Decide => decide.copy(owner = other)
+        case decide: Decide => decide.copy(owner = p2)
         case op => op
       })))
-    val state = parked(ready, actor, powers)
+    val state = parked(ready, p1, powers)
 
-    assert(rules(actor, powers).resolveWalker(state, other,
+    assert(rules(p1, powers).resolveWalker(state, p2,
       RecoverProcedure.choiceDecisionId,
       DecisionAnswer.ChooseOneAnswer(continueOption)).isRight,
       "the new owner must be accepted")
-    assertEquals(rules(actor, powers).resolveWalker(state, actor,
+    assertEquals(rules(p1, powers).resolveWalker(state, p1,
       RecoverProcedure.choiceDecisionId,
       DecisionAnswer.ChooseOneAnswer(continueOption)),
-      Left(oathdigital.model.OathViolation.WrongPlayer(other, actor)))
+      Left(oathdigital.model.OathViolation.WrongPlayer(p2, p1)))
 
-    val Ready(readyState) = state: @unchecked
-    assert(projector(actor, powers).project(
-      ScopedProjectionContext(readyState, Some(other))).nonEmpty,
+    val readyState = Outcomes.ready(state)
+    assert(projector(p1, powers).project(
+      ScopedProjectionContext(readyState, Some(p2))).nonEmpty,
       "the new owner must be projected the decision")
-    assertEquals(projector(actor, powers).project(
-      ScopedProjectionContext(readyState, Some(actor))), None,
+    assertEquals(projector(p1, powers).project(
+      ScopedProjectionContext(readyState, Some(p1))), None,
       "the former owner must no longer be projected the decision")
-    assertEquals(projector(actor, powers).waiting(
-      ScopedProjectionContext(readyState, Some(actor))).map(_.playerId),
-      Some(other.value))
+    assertEquals(projector(p1, powers).waiting(
+      ScopedProjectionContext(readyState, Some(p1))).map(_.playerId),
+      Some(p2.value))

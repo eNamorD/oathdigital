@@ -32,14 +32,15 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
     .relicAt(siteRelic, at = site)
     .knowsRelicAt(p1, siteRelic, at = site)
 
-  private def parkedDeal(table: Table, terms: Option[NegotiationTerms] = None,
-      who: Vector[PlayerId] = Vector.empty): OathState =
+  /** p1's Negotiation with `who`, parked on the deal, with `terms` proposed
+    * when given. */
+  private def parkedDeal(table: Table, who: Vector[PlayerId],
+      terms: Option[NegotiationTerms] = None): OathState =
     val started = rules.startWalker(table.state, ActionRef.Negotiation, p1)
       .getOrElse(fail("Negotiation must start"))
     val chosen = rules.resolveWalker(started.state, p1,
       NegotiationDeal.negotiatorsDecisionId, ChooseManyAnswer(
-        (if who.isEmpty then Vector(p2, p3) else who)
-          .map(DecisionOptionRef.Player(_)))).getOrElse(fail("negotiators"))
+        who.map(DecisionOptionRef.Player(_)))).getOrElse(fail("negotiators"))
     terms.fold(chosen.state)(value => rules.resolveWalker(chosen.state, p1,
       dealId, ProposeTerms(value)).getOrElse(fail("terms")).state)
 
@@ -53,7 +54,7 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
       .getOrElse(fail("the deal must be projected"))
 
   test("the actor and every co-owner get the full decision with editing inputs"):
-    val state = parkedDeal(gathered)
+    val state = parkedDeal(gathered, who = Vector(p2, p3))
     Vector(p1, p2, p3).foreach { viewer =>
       val projection = view(state, viewer)
       assertEquals(projection.walkerWaiting, None, viewer.value)
@@ -87,7 +88,7 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
       Vector(NegotiationTransfer(p2, 3, Vector(p1Relic))),
       Vector(NegotiationDisclosure(p2,
         NegotiationDisclosureRef.HeldRelic(p1, p1Relic))))
-    val state = parkedDeal(gathered, Some(terms), Vector(p2))
+    val state = parkedDeal(gathered, Vector(p2), Some(terms))
     val author = deal(view(state, p1))
     assertEquals(author.transfers.head.favor, 3)
     assertEquals(author.transfers.head.relicCount, 1)
@@ -106,8 +107,8 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
     }
 
   test("acceptances and the right to accept are projected"):
-    val proposed = parkedDeal(gathered, Some(NegotiationTerms(
-      Vector(NegotiationTransfer(p2, 1, Vector.empty)))), Vector(p2))
+    val proposed = parkedDeal(gathered, Vector(p2), Some(NegotiationTerms(
+      Vector(NegotiationTransfer(p2, 1, Vector.empty)))))
     assert(deal(view(proposed, p2)).editing.exists(_.canAccept))
     val accepted = rules.resolveWalker(proposed, p2, dealId, AcceptDeal)
       .getOrElse(fail("accept")).state
@@ -123,13 +124,14 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
       .exists(_.actionKind == "negotiation"))
     val alone = gathered.pawn(p2, at = "Dunes").pawn(p3, at = "Dunes")
     assert(!view(alone.state, p1).legalControls.contains("beginNegotiation"))
-    assert(!view(parkedDeal(gathered), p1).legalControls.contains("beginNegotiation"))
+    assert(!view(parkedDeal(gathered, who = Vector(p2, p3)), p1).legalControls
+      .contains("beginNegotiation"))
 
   test("a faceup relic in a transfer is shown to every viewer, public included"):
     val faceUp = gathered.relic(p1, p1Relic).tokens(p1Relic, secrets = 1)
     val terms = NegotiationTerms(Vector(NegotiationTransfer(p2, 1,
       Vector(p1Relic))))
-    val state = parkedDeal(faceUp, Some(terms), Vector(p2))
+    val state = parkedDeal(faceUp, Vector(p2), Some(terms))
     val views = Vector(view(state, p1), view(state, p2),
       view(state, p3),
       projector.projectPublic("negotiation", LoadedGame(state, 30)))

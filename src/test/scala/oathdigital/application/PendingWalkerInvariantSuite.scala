@@ -8,6 +8,10 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.application.ParkedServiceFixture.loaded
+import oathdigital.gameplay.powers.rest.SilverTongue
+import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Unwrap.present
 
 /** The application half of the pending-walker invariant (spec, Testing).
   * Over each of the spec's four parked contexts, one instance of every
@@ -38,8 +42,8 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     GameCommand.MoveWarbands(actor, toSite = true, 1),
     GameCommand.BeginRest(actor),
     GameCommand.FinishRest(actor),
-    GameCommand.UsePower(actor, PowerId("denizen.silver-tongue"),
-      DecisionOptionRef.Denizen(DenizenId("92"))))
+    GameCommand.UsePower(actor, SilverTongue.id,
+      DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))))
 
   test("the sample holds every GameCommand constructor"):
     val source = Files.readString(Paths.get(
@@ -60,7 +64,7 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
   private def assertOnlyItsResume(game: ParkedServiceFixture.ParkedGame,
       gameId: String, players: Vector[PlayerId], resume: GameCommand): Unit =
     val ParkedServiceFixture.ParkedGame(service, repository, parked) = game
-    def records = repository.load(gameId).toOption.flatten.get.records
+    def records = loaded(repository.load(gameId)).records
     val before = records
     for
       player <- players
@@ -94,8 +98,8 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
       "is accepted"):
     val ParkedServiceFixture.LeagueTreatyPark(game, _, ruler) =
       ParkedServiceFixture.leagueTreatyPark("invariant-league-treaty")
-    val decision = parkedAssertions.parkedDecision(game.accepted.state).get
-      .decision
+    val decision = present(parkedAssertions.parkedDecision(game.accepted.state),
+      "the parked decision").decision
     assertOnlyItsResume(game, "invariant-league-treaty", everyone,
       GameCommand.ResolveWalker(ruler, TreeDecision(decision,
         ChooseOneAnswer(DecisionOptionRef.Button("decline")))))
@@ -103,8 +107,8 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
   test("over a Silver Tongue bank choice in Rest, only its answer is accepted"):
     val ParkedServiceFixture.SilverTonguePark(game, active, bank) =
       ParkedServiceFixture.silverTonguePark("invariant-silver-tongue")
-    val decision = parkedAssertions.parkedDecision(game.accepted.state).get
-      .decision
+    val decision = present(parkedAssertions.parkedDecision(game.accepted.state),
+      "the parked decision").decision
     assertOnlyItsResume(game, "invariant-silver-tongue", everyone,
       GameCommand.ResolveWalker(active, TreeDecision(decision,
         ChooseOneAnswer(DecisionOptionRef.FavorBank(bank)))))

@@ -2,65 +2,49 @@ package oathdigital.application
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.Table
-import oathdigital.testkit.Table.p1
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.{p1, p2, p3}
 
 class PresentationLabelsSuite extends munit.FunSuite:
   private val presentation = new GamePresentationProjector(catalog)
 
-  /** A homeland edifice lies at Deep Woods, and p1 holds a facedown
-    * adviser. */
+  /** The ruined Hiding Place and Wrestlers lie at Deep Woods, p1 holds
+    * Wizard's Conclave facedown, and Threatening Roar tops the world deck. */
   private lazy val board: ReadyGame = Table.start
     .edifice("Hiding Place", EdificeSide.Ruined, "Deep Woods")
-    .adviser(p1, "Wizard's Conclave", facedown = true).ready
+    .denizen("Wrestlers", "Deep Woods")
+    .adviser(p1, "Wizard's Conclave", facedown = true)
+    .worldDeckTop("Threatening Roar").ready
 
   test("a player's label is the one the Players strip shows"):
-    val ready = board
-    val player = ready.game.current.players.head.player
-    assertEquals(presentation.playerLabel(player),
-      presentation.readyPlayers(ready).head.displayName)
+    assertEquals(presentation.playerLabel(p1),
+      presentation.readyPlayers(board).head.displayName)
 
   test("a player's label is their ID as typed"):
     Vector("roman", "red-team", "Pink", "a.b:c").foreach(id =>
       assertEquals(presentation.playerLabel(PlayerId(id)), id))
 
   test("a player option in a decision is labelled with the ID as typed"):
-    val ready = board
-    val player = ready.game.current.players.head.player
     val projector = new WalkerDecisionProjector(catalog, presentation,
       oathdigital.gameplay.walker.WalkerPowers(Vector.empty))
-    assertEquals(projector.optionProjection(ready, None, None,
-      DecisionOption.Player(DecisionOptionRef.Player(player))).map(_.label),
-      Some(player.value))
+    assertEquals(projector.optionProjection(board, None, None,
+      DecisionOption.Player(DecisionOptionRef.Player(p1))).map(_.label),
+      Some(p1.value))
 
   test("a site denizen is identified to everyone; a facedown adviser to its owner only"):
-    val ready = board
-    val current = ready.game.current
-    // The board holds no denizen at a site, only a homeland edifice, which
-    // lies in the same denizen slots.
-    val denizen: CardId = current.map.inPlay
-      .flatMap(current.map.sites(_).denizens).collectFirst {
-        case DenizenState(id, _, _) => id
-        case EdificeState(id, _, _) => id }.get
-    Vector(None, Some(current.players.head.player)).foreach { viewer =>
-      assert(presentation.identifiesAt(ready, viewer, denizen)) }
-    val owner = current.players.find(_.advisers.exists(
-      presentation.adviserOrientation(_) == Orientation.FaceDown)).get
-    val adviser = owner.advisers.find(
-      presentation.adviserOrientation(_) == Orientation.FaceDown).get.id
-    assert(presentation.identifiesAt(ready, Some(owner.player), adviser))
-    val other = current.players.find(_.player != owner.player).get.player
-    assert(!presentation.identifiesAt(ready, Some(other), adviser))
-    assert(!presentation.identifiesAt(ready, None, adviser))
+    val denizen = CatalogNames.denizen("Wrestlers")
+    Vector(None, Some(p1)).foreach { viewer =>
+      assert(presentation.identifiesAt(board, viewer, denizen)) }
+    val adviser = CatalogNames.denizen("Wizard's Conclave")
+    assert(presentation.identifiesAt(board, Some(p1), adviser))
+    assert(!presentation.identifiesAt(board, Some(p2), adviser))
+    assert(!presentation.identifiesAt(board, None, adviser))
 
   test("a card in the world deck is identified to nobody"):
-    val ready = board
-    val top = ready.game.current.commonCards.worldDeck.head
-    ready.game.current.players.map(p => Some(p.player)).foreach { viewer =>
-      assert(!presentation.identifiesAt(ready, viewer, top)) }
+    val top = CatalogNames.denizen("Threatening Roar")
+    Vector(p1, p2, p3).foreach { viewer =>
+      assert(!presentation.identifiesAt(board, Some(viewer), top)) }
 
   test("a card's label is its printed name"):
-    val ready = board
-    val denizen = catalog.denizens.head
-    assertEquals(presentation.cardLabel(ready, DenizenId(denizen.id.value)),
-      denizen.name)
+    assertEquals(presentation.cardLabel(board,
+      CatalogNames.denizen("Errand Boy")), "Errand Boy")

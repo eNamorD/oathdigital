@@ -24,7 +24,7 @@ object WalkerStubs:
       override val children: Vector[Operation]) extends Operation:
     override def window: Option[PowerWindow] = Some(hook)
 
-  /** A minimal `ContributingPower` contributing exactly one `Transform` at
+  /** Stub of ContributingPower contributing exactly one `Transform` at
     * one window -- enough to prove the walker's gather/fold wiring without
     * pulling in the real power catalog.
     */
@@ -36,7 +36,7 @@ object WalkerStubs:
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(hook -> Vector(Transform(fn)))
 
-  /** A minimal `ContributingPower` contributing exactly one `Restriction` at
+  /** Stub of ContributingPower contributing exactly one `Restriction` at
     * one window.
     */
   final case class TestRestrictionPower(id: PowerId, hook: PowerWindow,

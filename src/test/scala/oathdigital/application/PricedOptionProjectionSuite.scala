@@ -3,20 +3,19 @@ package oathdigital.application
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.p1
 
 /** An option that states its price projects as the option it wraps, with the
   * price worded as details.
   */
 class PricedOptionProjectionSuite extends munit.FunSuite:
-  private val base = Table.start.ready
-  private val actor = base.game.current.turn.activePlayer
-  private val site = base.game.current.map.inPlay.head
+  private val actor = p1
+  private val site = CatalogNames.site("Ancient City")
 
+  /** The options p1 is offered by a parked decision offering `options`. */
   private def projected(options: Vector[DecisionOption]) =
-    val ready: ReadyGame = base.updateCurrent(_.copy(
-      walkerProcedure = Some(ActionRef.Recover),
-      walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
+    val ready = Table.start.parkedWalker(ActionRef.Recover).ready
     val tree = Sequence(Decide("test.priced", actor,
       DecisionQuery.ChooseOne(options)))
     new WalkerDecisionProjector(catalog, new GamePresentationProjector(catalog),

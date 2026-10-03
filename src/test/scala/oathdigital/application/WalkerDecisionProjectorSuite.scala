@@ -13,6 +13,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.model._
 import oathdigital.protocol.projection.{DecisionQueryProjection,
   WalkerDecisionProjection, WalkerWaitingProjection}
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Batch-1 Task 3, ruling R18 (P4), second consulting call site.
   *
@@ -45,33 +46,30 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * facedown at Dunes, away from every pawn. p1 holds a facedown Wrestlers
     * and p2 a facedown Birdsong, whose three-digit id (176) cannot turn up
     * in a projection by chance. */
-  private val board: ReadyGame = Table.start
+  private val board: Table = Table.start
     .relicAt("Sticky Fire", at = "Broken Peaks")
     .relicAt("Cursed Cauldron", at = "Dunes")
     .adviser(p1, "Wrestlers", facedown = true)
     .adviser(p2, "Birdsong", facedown = true)
-    .ready
 
-  /** A ready game parked on `rollTree`'s single node, owned by `action`.
+  private val stickyFire = CatalogNames.relic("Sticky Fire")
+  private val cursedCauldron = CatalogNames.relic("Cursed Cauldron")
+  private val wrestlers = CatalogNames.denizen("Wrestlers")
+  private val birdsong = CatalogNames.denizen("Birdsong")
+
+  /** p1's view of `board`, continued by `steps`, parked on the first node
+    * of the tree `action` is given, in p1's Act.
     *
-    * `atSite` moves the acting player's pawn, which the disclosure tests
-    * below need: `identifiesCard` names a site's facedown relics to a
-    * viewer standing there, so proving both sides of that clause means
-    * choosing where the pawn stands.
+    * `atSite` moves p1's pawn, which the disclosure tests below need:
+    * `identifiesCard` names a site's facedown relics to a viewer standing
+    * there, so proving both sides of that clause means choosing where the
+    * pawn stands.
     */
-  private def parked(action: ActionRef, atSite: Option[SiteId] = None)
-      : (ScopedProjectionContext, PlayerId) =
-    val base = board
-    val actor = base.game.current.turn.activePlayer
-    val moved = atSite.fold(base.game.current.players)(site =>
-      base.game.current.players.map(player =>
-        if player.player == actor then player.copy(pawnSite = Some(site))
-        else player))
-    val ready: ReadyGame = base.updateCurrent(_.copy(
-        players = moved,
-        walkerProcedure = Some(action),
-        walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
-    (ScopedProjectionContext(ready, Some(actor)), actor)
+  private def parked(action: ActionRef, atSite: Option[SiteId] = None,
+      steps: Table => Table = identity)(using munit.Location)
+      : ScopedProjectionContext =
+    val staged = steps(atSite.fold(board)(site => board.pawn(p1, at = site)))
+    ScopedProjectionContext(staged.parkedWalker(action).ready, Some(p1))
 
   /** Where `board`'s facedown relic lies, so the disclosure tests can stand
     * the pawn where Recover's own option shape is observable. The board
@@ -92,7 +90,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       "nothing, rather than a projection naming a sentinel"):
     // Control: the same tree, the same park, the same projector -- under
     // Recover, whose entry DOES declare a roll decision id.
-    val (recoverContext, _) = parked(ActionRef.Recover)
+    val recoverContext = parked(ActionRef.Recover)
     val projected = projector.project(recoverContext).getOrElse(
       fail("Recover's Roll park must project a roll decision"))
     assertEquals(projected.action, ActionRef.Recover.key)
@@ -100,7 +98,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(projected.kind, "roll")
 
     // Forge declares none, so there is nothing to project at all.
-    val (forgeContext, _) = parked(ActionRef.Forge)
+    val forgeContext = parked(ActionRef.Forge)
     // WalkerProcedureRegistrySuite pins the accessor's typed rejection.
     assertEquals(projector.project(forgeContext), None)
 
@@ -125,11 +123,13 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       (_, _, _, _, _) => Right(tree))
 
   test("a parked distribution projects its slots, bounds, suggestions and total"):
-    val (context, actor) = parked(ActionRef.Recover)
-    val tree = Sequence(Decide("test.distribute", actor, DecisionQuery.Distribute.exactly(
-      Vector(DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 2, Some(2)),
-        DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 6, Some(0))),
-      total = 2, heading = Some("League Treaty"), confirmLabel = "Move favor")))
+    val context = parked(ActionRef.Recover)
+    val slots = Vector(
+      DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 2, Some(2)),
+      DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 6, Some(0)))
+    val tree = Sequence(Decide("test.distribute", p1,
+      DecisionQuery.Distribute.exactly(slots, total = 2,
+        heading = Some("League Treaty"), confirmLabel = "Move favor")))
     val query = projectorFor(tree).project(context).flatMap(_.query) match
       case Some(distribute: DecisionQueryProjection.Distribute) => distribute
       case other => fail(s"expected a distribution, got $other")
@@ -141,8 +141,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(query.confirmLabel, "Move favor")
 
   test("a ranged distribution projects both totals"):
-    val (context, actor) = parked(ActionRef.Recover)
-    val tree = Sequence(Decide("test.distribute", actor, DecisionQuery.Distribute(
+    val context = parked(ActionRef.Recover)
+    val tree = Sequence(Decide("test.distribute", p1, DecisionQuery.Distribute(
       Vector(DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 3, None),
         DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 3, None)),
       minTotal = 0, maxTotal = 3, heading = Some("Place force"),
@@ -153,9 +153,9 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(query.minTotal -> query.maxTotal, 0 -> 3)
 
   test("a parked choose-many projects its options and count"):
-    val (context, actor) = parked(ActionRef.Recover)
+    val context = parked(ActionRef.Recover)
     val siteIds = context.ready.game.current.map.sites.keys.toVector.take(3)
-    val tree = Sequence(Decide("test.many", actor, DecisionQuery.ChooseMany(2, 2,
+    val tree = Sequence(Decide("test.many", p1, DecisionQuery.ChooseMany(2, 2,
       siteIds.map(id => DecisionOption.Site(DecisionOptionRef.Site(id))),
       Some("Choose sites"))))
     val query = projectorFor(tree).project(context).flatMap(_.query) match
@@ -166,8 +166,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(query.heading, Some("Choose sites"))
 
   test("a parked choose-amount projects its bounds and confirm label"):
-    val (context, actor) = parked(ActionRef.Recover)
-    val tree = Sequence(Decide("test.amount", actor, DecisionQuery.ChooseAmount(
+    val context = parked(ActionRef.Recover)
+    val tree = Sequence(Decide("test.amount", p1, DecisionQuery.ChooseAmount(
       3, 6, Some("Place more than 2 favor"), "Take banner")))
     val query = projectorFor(tree).project(context).flatMap(_.query) match
       case Some(amount: DecisionQueryProjection.ChooseAmount) => amount
@@ -177,12 +177,10 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(query.offeredOptions, Vector.empty)
 
   test("a banner is named as it is printed, and counts what it holds"):
-    val (base, actor) = parked(ActionRef.Recover)
     val option = DecisionOption.Banner(DecisionOptionRef.Banner(Banner.DarkestSecret))
-    val unclaimed = base.copy(ready = base.ready.updateCurrent(current =>
-      current.copy(banners = current.banners.copy(darkestSecret =
-        current.banners.darkestSecret.copy(holder = None, secrets = 3)))))
-    val query = projects(unclaimed, actor, Vector(option))
+    val unclaimed = parked(ActionRef.Recover,
+      steps = _.darkestSecret(None, secrets = 3))
+    val query = projects(unclaimed, p1, Vector(option))
       .getOrElse(fail("an unclaimed banner must project"))
     // No owner in the label: the banner is one object on the table, and who
     // holds it is read off the board. The count names the resource it takes.
@@ -195,101 +193,79 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       options: Vector[DecisionOption]) =
     projectorFor(decideTree(options, actor)).project(context).flatMap(_.query)
 
-  private def relicAtActorSite(context: ScopedProjectionContext,
-      actor: PlayerId): RelicId =
-    val site = context.ready.game.current.players.find(_.player == actor)
-      .flatMap(_.pawnSite).getOrElse(fail("the actor must have a pawn site"))
-    context.ready.game.current.map.sites(site).relics.map(_.id).headOption
-      .getOrElse(fail(s"the actor's site $site must hold a relic"))
-
   test("a declared option whose id is absent from authoritative state " +
       "suppresses the whole decision projection"):
-    val (context, actor) = parked(ActionRef.Recover,
+    val context = parked(ActionRef.Recover,
       Some(facedownRelicSite))
     val ready = context.ready
-    val present = relicAtActorSite(context, actor)
+    val present = stickyFire
     val absent = RelicId("relic:not-on-this-board")
-    assert(!CardIndex.from(ready.game).toOption.get.ids.contains(absent),
+    assert(!accepted(CardIndex.from(ready.game)).ids.contains(absent),
       "the fixture must not actually hold the absent relic")
 
     // Control: the same shape, the same park, with an option the board
     // really holds -- so the suppression below is the absent id and not the
     // substituted tree.
-    val live = projects(context, actor, Vector(
+    val live = projects(context, p1, Vector(
       DecisionOption.Relic(DecisionOptionRef.Relic(present)))).getOrElse(
         fail("a present relic option must project"))
     assertEquals(live.offeredOptions.map(_.id), Vector(present.value))
 
     // One unpresentable option among two takes the whole projection with
     // it: not a one-option query, and not a blank second option.
-    assertEquals(projects(context, actor, Vector(
+    assertEquals(projects(context, p1, Vector(
       DecisionOption.Relic(DecisionOptionRef.Relic(present)),
       DecisionOption.Relic(DecisionOptionRef.Relic(absent)))), None)
 
   test("a badged option projects its badge and keeps its price"):
-    val (context, actor) = parked(ActionRef.Recover, Some(facedownRelicSite))
-    val present = relicAtActorSite(context, actor)
+    val context = parked(ActionRef.Recover, Some(facedownRelicSite))
+    val present = stickyFire
     val option = DecisionOption.Badged(DecisionOption.Priced(
       DecisionOption.Relic(DecisionOptionRef.Relic(present)),
       OptionPrice(favor = 1)), "Battle Plan")
-    val projected = projectorFor(decideTree(Vector.empty, actor))
-      .optionProjection(context.ready, Some(actor),
+    val projected = projectorFor(decideTree(Vector.empty, p1))
+      .optionProjection(context.ready, Some(p1),
         CardIndex.from(context.ready.game).toOption, option)
     assertEquals(projected.flatMap(_.badge), Some("Battle Plan"))
     assert(projected.exists(_.details.nonEmpty))
 
   test("an edifice option projects its label and details from the card's side, " +
       "and one that is not at a site suppresses the decision"):
-    val (base, actor) = parked(ActionRef.Recover)
-    val hall = EdificeId("E16")
-    val current = base.ready.game.current
-    assert(current.commonCards.edificeDeck.contains(hall),
+    val base = parked(ActionRef.Recover)
+    val hall = CatalogNames.edifice("Hall of Ministers")
+    assert(base.ready.game.current.commonCards.edificeDeck.contains(hall),
       "the fixture must still hold the hall in the edifice deck")
-    val siteId = current.players.find(_.player == actor).get.pawnSite.get
-    val site = current.map.sites(siteId)
-    val placed = base.copy(ready = base.ready.updateCurrent(_.copy(
-      commonCards = current.commonCards.copy(
-        edificeDeck = current.commonCards.edificeDeck.filterNot(_ == hall)),
-      map = current.map.copy(sites = current.map.sites.updated(siteId,
-        site.copy(denizens = site.denizens :+
-          EdificeState(hall, EdificeSide.Intact, Tokens.empty)))))))
+    // The Hall moves from the edifice deck to Ancient City, p1's site.
+    val placed = parked(ActionRef.Recover,
+      steps = _.edifice(hall, EdificeSide.Intact, at = "Ancient City"))
     val option = DecisionOption.Edifice(DecisionOptionRef.Edifice(hall))
 
-    val query = projects(placed, actor, Vector(option))
+    val query = projects(placed, p1, Vector(option))
       .getOrElse(fail("an edifice at a site must project"))
     assertEquals(query.offeredOptions.map(row => (row.kind, row.id)),
-      Vector(("edifice", "E16")))
+      Vector(("edifice", hall.value)))
     assert(query.offeredOptions.head.label.nonEmpty)
     assert(query.offeredOptions.head.card.nonEmpty)
 
     // Control: the same option while the hall still sits in the deck has no
     // located state to describe, so the whole decision is suppressed.
-    assertEquals(projects(base, actor, Vector(option)), None)
+    assertEquals(projects(base, p1, Vector(option)), None)
 
   test("a relic slot and a banner project from live state, and one the state " +
       "no longer holds suppresses the decision"):
-    val (base, actor) = parked(ActionRef.Recover)
-    val current = base.ready.game.current
-    val enemy = current.players.find(_.player != actor).get
-    val relic = RelicState(RelicId("slot-relic"), Orientation.FaceDown,
-      Tokens.empty)
-    val placed = base.copy(ready = base.ready.updateCurrent(_.copy(
-      players = current.players.map(player =>
-        if player.player == enemy.player then player.copy(relics = Vector(relic))
-        else player),
-      banners = current.banners.copy(
-        peoplesFavor = current.banners.peoplesFavor.copy(
-          holder = Some(enemy.player)),
-        darkestSecret = current.banners.darkestSecret.copy(holder = None)))))
-    val slot = DecisionOption.RelicSlot(
-      DecisionOptionRef.RelicSlot(enemy.player, 0))
+    // p2 holds Cracked Horn facedown and the People's Favor; the Darkest
+    // Secret is unclaimed.
+    val placed = parked(ActionRef.Recover, steps = _
+      .relic(p2, "Cracked Horn", facedown = true)
+      .peoplesFavor(Some(p2), favor = 1).darkestSecret(None, secrets = 1))
+    val slot = DecisionOption.RelicSlot(DecisionOptionRef.RelicSlot(p2, 0))
     val held = DecisionOption.Banner(
       DecisionOptionRef.Banner(Banner.PeoplesFavor))
 
-    val query = projects(placed, actor, Vector(slot, held))
+    val query = projects(placed, p1, Vector(slot, held))
       .getOrElse(fail("a held relic slot and banner must project"))
     assertEquals(query.offeredOptions.map(row => (row.kind, row.id)),
-      Vector(("relic-slot", s"${enemy.player.value}:0"),
+      Vector(("relic-slot", s"${p2.value}:0"),
         ("banner", "peoples-favor")))
     assert(query.offeredOptions.forall(row =>
       row.card.isEmpty && row.label.nonEmpty))
@@ -297,28 +273,28 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
 
     // Control: a slot past the owner's relics has no live state to describe,
     // so it suppresses the whole decision. An unclaimed banner is presentable.
-    assertEquals(projects(placed, actor, Vector(DecisionOption.RelicSlot(
-      DecisionOptionRef.RelicSlot(enemy.player, 1)))), None)
-    assert(projects(placed, actor, Vector(DecisionOption.Banner(
+    assertEquals(projects(placed, p1, Vector(DecisionOption.RelicSlot(
+      DecisionOptionRef.RelicSlot(p2, 1)))), None)
+    assert(projects(placed, p1, Vector(DecisionOption.Banner(
       DecisionOptionRef.Banner(Banner.DarkestSecret)))).nonEmpty)
 
   test("an adviser slot is the card to a viewer who identifies it, a card " +
       "back to anyone else, and a slot past the advisers suppresses it"):
-    val (base, actor) = parked(ActionRef.Recover)
-    val enemy = base.ready.game.current.players.find(_.player != actor).get
+    val base = parked(ActionRef.Recover)
     def slot(owner: PlayerId, at: Int) = DecisionOption.AdviserSlot(
       DecisionOptionRef.AdviserSlot(owner, at))
-    val theirs = projects(base, actor, Vector(slot(enemy.player, 0)))
+    val theirs = projects(base, p1, Vector(slot(p2, 0)))
       .getOrElse(fail("another player's facedown adviser must project"))
     val row = theirs.offeredOptions.head
-    assertEquals((row.kind, row.id), ("adviser-slot", s"${enemy.player.value}:0"))
+    assertEquals((row.kind, row.id), ("adviser-slot", s"${p2.value}:0"))
     assert(row.card.exists(_.hidden), row.toString)
-    assert(!row.toString.contains(enemy.advisers.head.id.value), row.toString)
+    // p2's facedown adviser is Birdsong.
+    assert(!row.toString.contains(birdsong.value), row.toString)
     assert(row.label.contains("facedown adviser"), row.label)
-    val mine = projects(base, actor, Vector(slot(actor, 0)))
+    val mine = projects(base, p1, Vector(slot(p1, 0)))
       .getOrElse(fail("the viewer's own adviser must project"))
     assert(mine.offeredOptions.head.card.exists(!_.hidden))
-    assertEquals(projects(base, actor, Vector(slot(enemy.player, 9))), None)
+    assertEquals(projects(base, p1, Vector(slot(p2, 9))), None)
 
   /** The other half of "cannot be presented": a card that IS in
     * authoritative state but that this viewer may not identify.
@@ -349,86 +325,64 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * the projector with no index and suppress the decision for the wrong
     * reason, passing the non-owner case while proving nothing.
     */
-  private def withHand(context: ScopedProjectionContext, holder: PlayerId)
-      : (ScopedProjectionContext, WorldCardId) =
-    val current = context.ready.game.current
-    val drawn = current.commonCards.worldDeck.headOption.getOrElse(
-      fail("the fixture must leave a card on the world deck"))
-    val moved = current.copy(
-      commonCards = current.commonCards.copy(
-        worldDeck = current.commonCards.worldDeck.drop(1)),
-      temporaryHands = current.temporaryHands.updated(holder, Vector(drawn)))
-    val ready = context.ready.copy(game = context.ready.game.copy(current = moved))
-    assert(CardIndex.from(ready.game).isRight,
+  private val drawn = CatalogNames.denizen("Threatening Roar")
+
+  /** p1's park at Broken Peaks with Threatening Roar moved out of the world
+    * deck into `holder`'s hand. */
+  private def withHand(holder: PlayerId)(using munit.Location)
+      : ScopedProjectionContext =
+    val context = parked(ActionRef.Recover, Some(facedownRelicSite),
+      steps = _.hand(holder, drawn))
+    assert(CardIndex.from(context.ready.game).isRight,
       "moving the card must leave the index consistent, not duplicated")
-    (context.copy(ready = ready), drawn)
+    context
 
   test("a temporary hand is identifiable only to the player holding it"):
-    val (base, actor) = parked(ActionRef.Recover, Some(facedownRelicSite))
-    val other = base.ready.game.current.players.map(_.player)
-      .find(_ != actor).get
-
     // The decision's owner drew it: the option projects with its name.
-    val (own, ownCard) = withHand(base, actor)
-    val projected = projects(own, actor, Vector(
-      DecisionOption.Denizen(DecisionOptionRef.Denizen(
-        DenizenId(ownCard.value))))).getOrElse(
-          fail("a card in the decision owner's own hand must project"))
-    assertEquals(projected.offeredOptions.map(_.id), Vector(ownCard.value))
+    val projected = projects(withHand(p1), p1, Vector(
+      DecisionOption.Denizen(DecisionOptionRef.Denizen(drawn)))).getOrElse(
+        fail("a card in the decision owner's own hand must project"))
+    assertEquals(projected.offeredOptions.map(_.id), Vector(drawn.value))
     assert(projected.offeredOptions.forall(_.card.exists(!_.hidden)))
 
     // Another player drew it: same card, same container, same absent
     // orientation -- and the whole decision is suppressed.
-    val (others, othersCard) = withHand(base, other)
-    assertEquals(projects(others, actor, Vector(
-      DecisionOption.Denizen(DecisionOptionRef.Denizen(
-        DenizenId(othersCard.value))))), None)
+    assertEquals(projects(withHand(p2), p1, Vector(
+      DecisionOption.Denizen(DecisionOptionRef.Denizen(drawn)))), None)
 
   test("a card the decision's owner may not identify suppresses the " +
       "projection, even though the card is really in play"):
-    val (context, actor) = parked(ActionRef.Recover,
+    val context = parked(ActionRef.Recover,
       Some(facedownRelicSite))
-    val current = context.ready.game.current
-    val actorSite = current.players.find(_.player == actor)
-      .flatMap(_.pawnSite).get
-
-    // A facedown relic at a site the actor's pawn is not at, and which the
-    // actor has never peeked at.
-    val elsewhere = current.map.sites.collect {
-      case (siteId, site) if siteId != actorSite => site.relics.collect:
-        case relic if relic.orientation == Orientation.FaceDown => relic.id
-    }.flatten.headOption.getOrElse(
-      fail("the fixture board must hold a facedown relic away from the actor"))
-    assert(!context.ready.knowledge.siteRelics.getOrElse(actor, Map.empty)
+    // Cursed Cauldron: a facedown relic at Dunes, where p1's pawn is not,
+    // and which p1 has never peeked at.
+    val elsewhere = cursedCauldron
+    assert(!context.ready.knowledge.siteRelics.getOrElse(p1, Map.empty)
       .values.flatten.toVector.contains(elsewhere))
-    assertEquals(projects(context, actor, Vector(
+    assertEquals(projects(context, p1, Vector(
       DecisionOption.Relic(DecisionOptionRef.Relic(elsewhere)))), None)
 
     // Another player's facedown adviser: present in state, owned by someone
     // else, and not covered by the actor's recorded knowledge.
-    val othersAdviser = current.players.filter(_.player != actor)
-      .flatMap(_.advisers).collectFirst {
-        case adviser: DenizenState
-            if adviser.orientation == Orientation.FaceDown => adviser.id
-      }.getOrElse(fail("the fixture must deal another player a facedown adviser"))
-    assertEquals(projects(context, actor, Vector(
+    val othersAdviser = birdsong
+    assertEquals(projects(context, p1, Vector(
       DecisionOption.Denizen(DecisionOptionRef.Denizen(othersAdviser)))), None)
 
     // A card still in a deck has no orientation to be facedown at all, so
     // it has to be rejected by its container rather than by its face.
-    val inDeck = current.commonCards.relicDeck.headOption.getOrElse(
-      fail("the fixture must leave a relic on the deck"))
-    assertEquals(projects(context, actor, Vector(
+    // Dowsing Sticks tops the relic deck.
+    val inDeck = CatalogNames.relic("Dowsing Sticks")
+    assertEquals(context.ready.game.current.commonCards.relicDeck.headOption,
+      Some(inDeck))
+    assertEquals(projects(context, p1, Vector(
       DecisionOption.Relic(DecisionOptionRef.Relic(inDeck)))), None)
 
     // Control, so the three suppressions above are the disclosure rule and
     // not the substituted tree: the actor's OWN facedown adviser projects,
     // by the ownership clause rather than the site clause the first test
     // exercises. The card details carry its real name, not a placeholder.
-    val ownAdviser = current.players.find(_.player == actor).get.advisers
-      .collectFirst { case adviser: DenizenState => adviser.id }
-      .getOrElse(fail("the actor must hold an adviser"))
-    val projected = projects(context, actor, Vector(
+    val ownAdviser = wrestlers
+    val projected = projects(context, p1, Vector(
       DecisionOption.Denizen(DecisionOptionRef.Denizen(ownAdviser))))
       .getOrElse(fail("the actor's own adviser must project"))
     assertEquals(projected.offeredOptions.map(_.id), Vector(ownAdviser.value))
@@ -446,9 +400,9 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * (`WalkerPanelSupport.decisionHeading`); nothing here supplies one.
     */
   test("a query declaring no heading projects it as absent"):
-    val (context, actor) = parked(ActionRef.Recover, Some(facedownRelicSite))
-    val present = relicAtActorSite(context, actor)
-    val query = projects(context, actor, Vector(
+    val context = parked(ActionRef.Recover, Some(facedownRelicSite))
+    val present = stickyFire
+    val query = projects(context, p1, Vector(
       DecisionOption.Relic(DecisionOptionRef.Relic(present)))).getOrElse(
         fail("a present relic option must project"))
     assertEquals(query.heading, None)
@@ -461,25 +415,23 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * decision to and [[WalkerDecisionProjector.waiting]] must name; `active`
     * gets only the public waiting projection, same as any spectator.
     */
-  private def parkedOffTurn: (ReadyGame, PlayerId, PlayerId,
-      WalkerDecisionProjector) =
-    val base = board
-    val active = base.game.current.turn.activePlayer
-    val owner = base.game.current.players.map(_.player).find(_ != active).get
-    val tree: Operation = Sequence(Decide("test.off-turn", owner,
+  /** In p1's Act, a decision p2 owns, and the projector that walks it. */
+  private final case class OffTurnPark(ready: ReadyGame,
+      projector: WalkerDecisionProjector)
+
+  private def parkedOffTurn(using munit.Location): OffTurnPark =
+    val tree: Operation = Sequence(Decide("test.off-turn", p2,
       DecisionQuery.ChooseOne(Vector(DecisionOption.Button(
         DecisionOptionRef.Button("ok"), "OK")), heading = Some("Answer"))))
-    val ready = base.updateCurrent(_.copy(
-        walkerProcedure = Some(ActionRef.Recover),
-        walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
-    val projector = new WalkerDecisionProjector(catalog,
-      new GamePresentationProjector(catalog), WalkerPowers.empty,
-      (_, _, _, _, _) => Right(tree))
-    (ready, active, owner, projector)
+    OffTurnPark(board.parkedWalker(ActionRef.Recover).ready,
+      new WalkerDecisionProjector(catalog,
+        new GamePresentationProjector(catalog), WalkerPowers.empty,
+        (_, _, _, _, _) => Right(tree)))
 
   test("only the awaited player sees the decision; everyone else, the active " +
       "player and spectators included, sees who is being waited on"):
-    val (ready, active, owner, projector) = parkedOffTurn
+    val OffTurnPark(ready, projector) = parkedOffTurn
+    val (active, owner) = (p1, p2)
     def ctx(viewer: Option[PlayerId]) = ScopedProjectionContext(ready, viewer)
     assert(projector.project(ctx(Some(owner))).nonEmpty)
     assertEquals(projector.project(ctx(Some(active))), None)
@@ -492,23 +444,17 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * from the default `declaredTree`, so the registry entry, the awaited
     * player and the Player-option presentation are all the real ones.
     */
-  private def parkedOathkeeperTie: (ReadyGame, PlayerId, PlayerId,
-      Vector[PlayerId]) =
-    // It is p1's Act. p2 holds the title while p1 and p3 each rule a site:
-    // a tie p2 breaks.
-    val (active, holder, leaders) =
-      (p1, p2, Vector(p1, p3))
-    val ruled = Table.start.oathkeeper(Some(holder))
+  /** It is p1's Act. p2 holds the title while p1 and p3 each rule a site:
+    * a tie p2 breaks. */
+  private def parkedOathkeeperTie(using munit.Location): ReadyGame =
+    Table.start.oathkeeper(Some(p2))
       .warbandsAt("Dunes", p1, 1).warbandsAt("Fair Isle", p3, 1)
-      .ready
-    val ready = ruled.updateCurrent(_.copy(
-        walkerProcedure = Some(TriggeredProcedureRef.Oathkeeper),
-        walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
-    (ready, active, holder, leaders)
+      .parkedWalker(TriggeredProcedureRef.Oathkeeper).ready
 
   test("a parked Oathkeeper tie shows the holder the tied leaders and names " +
       "the holder to everyone else"):
-    val (ready, active, holder, leaders) = parkedOathkeeperTie
+    val ready = parkedOathkeeperTie
+    val (active, holder, leaders) = (p1, p2, Vector(p1, p3))
     def ctx(viewer: Option[PlayerId]) = ScopedProjectionContext(ready, viewer)
     val projector = new WalkerDecisionProjector(catalog,
       new GamePresentationProjector(catalog), WalkerPowers.empty)
@@ -526,7 +472,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * tree is substituted, and within it only one candidate.
     */
   test("an Oathkeeper candidate who holds no seat suppresses the projection"):
-    val (ready, _, holder, _) = parkedOathkeeperTie
+    val ready = parkedOathkeeperTie
+    val holder = p2
     def ctx(viewer: Option[PlayerId]) = ScopedProjectionContext(ready, viewer)
     val unseated = PlayerId("unseated")
     assert(!ready.game.current.players.exists(_.player == unseated))
@@ -557,26 +504,23 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * cards in hand; the lookup is exercised on its own here, with the card
     * where a real facedown adviser would be: in the actor's own `advisers`.
     */
-  private val facedownAdviserCard = DenizenId("denizen:vow-of-peace")
+  private val facedownAdviserCard = CatalogNames.denizen("Vow of Peace")
 
   private def placementId(card: DenizenId): String =
     s"cardplay.place.${card.kind}.${card.value}"
 
-  private def facedownAdviserPlacement: (ScopedProjectionContext, PlayerId) =
-    val (context, actor) = parked(ActionRef.PlayFacedownAdviser)
-    val withAdviser = context.copy(ready = context.ready.updateCurrent(
-      current => current.copy(players = current.players.map(player =>
-        if player.player == actor then player.copy(advisers = player.advisers :+
-          DenizenState(facedownAdviserCard, Orientation.FaceDown, Tokens.empty))
-        else player))))
-    (withAdviser, actor)
+  /** p1 holds Vow of Peace facedown, parked on its placement. */
+  private def facedownAdviserPlacement(using munit.Location)
+      : ScopedProjectionContext =
+    parked(ActionRef.PlayFacedownAdviser,
+      steps = _.adviser(p1, facedownAdviserCard, facedown = true))
 
   test("a placement decision names the card being placed"):
-    val (context, actor) = facedownAdviserPlacement
-    val subjects = projector.subjectCards(context.ready, Some(actor),
+    val context = facedownAdviserPlacement
+    val subjects = projector.subjectCards(context.ready, Some(p1),
       placementId(facedownAdviserCard))
     assertEquals(subjects.map(s => (s.cardId, s.hidden)),
-      Vector(("denizen:vow-of-peace", false)))
+      Vector((facedownAdviserCard.value, false)))
 
   /** `PlayFacedownAdviser` parks with the actor as its only owner, so there
     * is no co-owner fixture that reaches the projector as a non-owning
@@ -585,8 +529,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * has none to name.
     */
   test("a decision that is about no card names no subject"):
-    val (context, actor) = facedownAdviserPlacement
-    assertEquals(projector.subjectCards(context.ready, Some(actor),
+    val context = facedownAdviserPlacement
+    assertEquals(projector.subjectCards(context.ready, Some(p1),
       "test.decide"), Vector.empty)
 
   /** The redaction check the brief's own hidden-viewer test would have
@@ -604,12 +548,15 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     */
   test("a placement naming a card absent from authoritative state projects " +
       "it hidden, not with its real identity and not dropped"):
-    val (context, actor) = parked(ActionRef.PlayFacedownAdviser)
+    val context = parked(ActionRef.PlayFacedownAdviser)
     val missing = DenizenId("denizen:not-on-board")
-    val subjects = projector.subjectCards(context.ready, Some(actor),
+    val subjects = projector.subjectCards(context.ready, Some(p1),
       placementId(missing))
     assertEquals(subjects.map(s => (s.cardId, s.cardKind, s.hidden)),
       Vector(("hidden", "denizen", true)))
+
+  /** The actor of every `CampaignFixture` board. */
+  private val attacker: PlayerId = p1
 
   /** Task 8: the battle-plan window is a `Repeat` -- it re-asks
     * `campaign.attacker-plan` after every pick until the actor finishes, so
@@ -618,9 +565,6 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * drives (start, force, pick Sticky Fire), rather than hand-assembling a
     * `PendingTree`, so this proves what a real second pass looks like.
     */
-  /** The actor of every `CampaignFixture` board. */
-  private val attacker: PlayerId = p1
-
   private lazy val campaignWithOnePlanPlayed: ReadyGame =
     val relic = CatalogNames.relic("Sticky Fire")
     // A second, free attacker plan (Outriders) so at least one option besides
@@ -660,14 +604,13 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(projected.toVector.flatMap(_.answeredOptions), Vector.empty)
 
   test("a button answered at the same decision is omitted, not labelled"):
-    val (context, actor) = parked(ActionRef.Recover)
     val continue = DecisionOption.Button(DecisionOptionRef.Button("continue"),
       "Continue")
     val stop = DecisionOption.Button(DecisionOptionRef.Button("stop"), "Stop")
-    val withAnswer = context.copy(ready = context.ready.updateCurrent(_.copy(
-      walkerPending = Some(PendingTree(Vector("0"), Vector(
-        Answered("test.decide", ChooseOneAnswer(continue.ref), actor)))))))
-    val projected = projectorFor(decideTree(Vector(continue, stop), actor))
+    val withAnswer = ScopedProjectionContext(board.parkedWalker(
+      ActionRef.Recover, answered = Vector(Answered("test.decide",
+        ChooseOneAnswer(continue.ref), p1))).ready, Some(p1))
+    val projected = projectorFor(decideTree(Vector(continue, stop), p1))
       .project(withAnswer)
     assertEquals(projected.map(_.decisionId), Some("test.decide"))
     assertEquals(projected.toVector.flatMap(_.answeredOptions), Vector.empty)
@@ -678,8 +621,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     */
   private lazy val campaignAtSacrifice: ReadyGame =
     val b = CampaignFixture.board(warbands = 5, supply = 7)
-    val defense = Vector.fill(catalog.sites.find(_.id == b.origin).get.defense)(
-      DefenseDieFace.Blank)
+    val defense = Vector.fill(present(catalog.sites.find(_.id == b.origin),
+      "the origin").defense)(DefenseDieFace.Blank)
     val g = CampaignFixture.rules(CampaignFixture.dice(
       Vector(AttackDieFace.TwoSwordsSkull, AttackDieFace.OneSword), defense))
     val started = g.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)

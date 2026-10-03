@@ -16,7 +16,7 @@ class GamePresentationProjectorDiscardSuite extends munit.FunSuite:
   // Appended in this order, so Scryer is on top.
   private val table = Table.start.discarded(Region.Cradle, "Magician's Code", "Scryer")
 
-  test("a discard pile projects its cards top first, as backs"):
+  test("a discard pile projects each card as a back and the top card's kind"):
     val region = cradle(table.ready, p2)
     assertEquals(region.discardCards.size, region.discardCount)
     assertEquals(region.discardCards.take(2).map(_.cardId), Vector("hidden", "hidden"))
@@ -26,6 +26,7 @@ class GamePresentationProjectorDiscardSuite extends munit.FunSuite:
 
   test("a peeked card shows its face to the peeker and a back to others"):
     val scryer = CatalogNames.worldCard("Scryer")
+    // No Table step records a viewer's knowledge of a denizen.
     val peeked = table.update(ready => ready.copy(knowledge = ready.knowledge.copy(
       advisers = ready.knowledge.advisers.updated(p1, Vector(scryer))))).ready
     assertEquals(cradle(peeked, p1).discardCards.take(2).map(_.name),

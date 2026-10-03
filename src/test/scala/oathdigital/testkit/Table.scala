@@ -323,7 +323,7 @@ final case class Table private (private val game: ReadyGame,
 
   /** A walker procedure for `action`, parked at step `path` of its tree
     * ("0" is the tree's first step), with `answered` already recorded. */
-  def parkedWalker(action: ActionRef, path: String = "0",
+  def parkedWalker(action: ProcedureRef, path: String = "0",
       answered: Vector[Answered] = Vector.empty): Table =
     update(_.updateCurrent(_.copy(walkerProcedure = Some(action),
       walkerPending = Some(PendingTree(Vector(path), answered)))))

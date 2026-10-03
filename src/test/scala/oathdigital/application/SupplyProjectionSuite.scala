@@ -5,8 +5,10 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.protocol.projection.{GameProjection, SupplyBandProjection}
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Look
+import oathdigital.testkit.Outcomes
 
 /** What the Supply track promises the client.
   *
@@ -29,7 +31,7 @@ class SupplyProjectionSuite extends munit.FunSuite:
     val completed = rules
       .startWalker(Ready(board), PhaseTransitionRef.BeginRest, actor)
       .getOrElse(fail("Rest must run"))
-    val Ready(after) = completed.state: @unchecked
+    val after = Outcomes.ready(completed.state)
     Look(after).supply(actor)
 
   private def preview(board: ReadyGame, actor: PlayerId): Int =
@@ -71,6 +73,8 @@ class SupplyProjectionSuite extends munit.FunSuite:
     assertEquals(Some(mine.restSupplyBase), projected.restSupplyGain)
 
   test("the band table is the engine's, in the engine's order"):
+    // 9 or more banked warbands return 6 Supply, 4 to 8 return 5, and 0 to 3
+    // return 4.
     assertEquals(project(Table.start.ready, p1).supplyBands, Vector(
       SupplyBandProjection(9, None, 6), SupplyBandProjection(4, Some(8), 5),
       SupplyBandProjection(0, Some(3), 4)))

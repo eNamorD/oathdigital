@@ -3,6 +3,7 @@ package oathdigital.application
 import oathdigital.gameplay.powers.PowerImplementationStatus
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, GameStartRules}
 import oathdigital.model._
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class GeneratedFirstGamePlanFactorySuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
@@ -18,15 +19,16 @@ class GeneratedFirstGamePlanFactorySuite extends munit.FunSuite:
     def implementedFirst[A](cards: Vector[A], implemented: A => Boolean): Boolean =
       cards.dropWhile(implemented).forall(card => !implemented(card))
 
-    val plan = factory.build(config).toOption.get
+    val plan = accepted(factory.build(config))
     val orders = ChronicleFirstGamePlan.dealOrder(plan.chronicle, plan.resolvedConfig)
-    val current = GameStartRules.evolve(catalog, plan.chronicle, orders)
-      .toOption.get.game.current
+    val current = accepted(
+      GameStartRules.evolve(catalog, plan.chronicle, orders)).game.current
     val dealtWorld: Vector[WorldCardId] =
       Region.all.flatMap(current.commonCards.discard) ++
         plan.resolvedConfig.participants.flatMap(p => current.temporaryHands(p.playerId)) ++
         current.commonCards.worldDeck
     val worldDenizens = dealtWorld.collect { case id: DenizenId => id }
+    // 2 seeded discards in each of the 3 regions.
     assert(worldDenizens.take(6).forall(denizens), "seeded discards")
     assert(implementedFirst(worldDenizens, denizens), worldDenizens.toString)
 
@@ -36,14 +38,15 @@ class GeneratedFirstGamePlanFactorySuite extends munit.FunSuite:
     assert(implementedFirst(dealtRelics, relics), dealtRelics.toString)
     assert(current.map.inPlay.flatMap(current.map.sites(_).denizens).forall {
       case edifice: EdificeState =>
-        ImplementedCardCatalog.homelandEdifice(catalog,
-          catalog.edifices.find(_.id.value == edifice.id.value).get.suit, status)
+        val printed = present(
+          catalog.edifices.find(_.id.value == edifice.id.value), edifice.id.value)
+        ImplementedCardCatalog.homelandEdifice(catalog, printed.suit, status)
           .forall(_ == edifice.id)
       case _ => true
     }, "a Homeland in play carries its suit's implemented edifice")
 
   test("seating order and first player are shuffled, keeping every participant"):
-    val plans = Vector.fill(30)(factory.build(config).toOption.get.resolvedConfig)
+    val plans = Vector.fill(30)(accepted(factory.build(config)).resolvedConfig)
     plans.foreach { resolved =>
       assertEquals(resolved.participants.toSet, config.participants.toSet)
       assertEquals(resolved.firstPlayer, resolved.participants.head.playerId)

@@ -5,7 +5,8 @@ import oathdigital.model.Suit
 class SitePowerTextSuite extends munit.FunSuite:
   test("each Homeland is named for its suit and shares the Homeland text"):
     val texts = Suit.all.map { suit =>
-      val printed = SitePowerText.of(s"homeland-${suit.key}").get
+      val printed = SitePowerText.of(s"homeland-${suit.key}")
+        .getOrElse(fail(s"no site text for $suit"))
       assertEquals(printed.label, s"${suit.key.capitalize} Homeland")
       printed.text
     }
