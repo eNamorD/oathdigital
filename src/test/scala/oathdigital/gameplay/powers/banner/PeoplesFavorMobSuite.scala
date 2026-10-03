@@ -44,7 +44,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
   private def searchAtAncientCityHolding(siteCards: Vector[DenizenId],
     favor: ReadyGame => ReadyGame = (r => Table.from(r)
         .peoplesFavor(Some(actor), 1).unchecked)): ReadyGame =
-    favor(siteCards.foldLeft(SearchFixture.staged(drawn))(atActorsSite))
+    favor(
+      siteCards.foldLeft(SearchFixture.staged(drawn, supply = 5))(atActorsSite))
 
   private def decisionId(kind: String) =
     PlacementFixture.cardPlayDecisionId(played, kind)
@@ -195,7 +196,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       Orientation.FaceDown)
     val started = accepted(
       rules.startWalker(OathState.Ready(ready), ActionRef.PlayFacedownAdviser,
-      actor, Vector.empty, Vector(DecisionOptionRef.Denizen(played))))
+        actor, Vector.empty, Vector(DecisionOptionRef.Denizen(played))))
     val placed = accepted(place(started, played, "site"))
     assert(asksToDiscard(placed))
 
@@ -218,13 +219,13 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val place = PlacementFixture.cardPlayDecisionId(played, "place")
     val faceup = as[WalkerOutcome.Parked](
       PlacementFixture.answer(ready, tree, parkedTree, powers, place,
-      DecisionOptionRef.Button("adviser-faceup"), who))
+        DecisionOptionRef.Button("adviser-faceup"), who))
     assertEquals(PlacementFixture.options(ready, tree, faceup.tree, powers).toSet,
       Set[DecisionOptionRef](DecisionOptionRef.Denizen(adviser)))
     // The site still offers the optional discard, under the same walk.
     val site = as[WalkerOutcome.Parked](
       PlacementFixture.answer(ready, tree, parkedTree, powers, place,
-      DecisionOptionRef.Button("site"), who))
+        DecisionOptionRef.Button("site"), who))
     assertEquals(PlacementFixture.options(ready, tree, site.tree, powers).head,
       noDiscard)
     assert(powers.powers.exists(_.id == SilverTongue.id))

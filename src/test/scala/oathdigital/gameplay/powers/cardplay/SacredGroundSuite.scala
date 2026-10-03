@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{CatalogNames, Table}
 
 /** E08 never appears in a generated game (the Nomad Homeland takes E06), so
   * each test places it by hand.
@@ -13,8 +13,9 @@ class SacredGroundSuite extends munit.FunSuite:
   import VisionPlayFixture._
 
   private val e08: EdificeId = SacredGroundCard.id
-  private val elsewhere: SiteId =
-    quietTable.game.current.map.inPlay.find(_ != actorsSite(quietTable)).get
+  // p1 stands at Ancient City on the quiet table; Broken Peaks is elsewhere.
+  private val home = CatalogNames.site("Ancient City")
+  private val elsewhere = CatalogNames.site("Broken Peaks")
 
   private def withE08(ready: ReadyGame, site: SiteId,
       side: EdificeSide = EdificeSide.Intact): ReadyGame =
@@ -22,7 +23,8 @@ class SacredGroundSuite extends munit.FunSuite:
 
   private def search(site: SiteId, vision: VisionId = VisionRules.Faith,
       side: EdificeSide = EdificeSide.Intact): OathTransition =
-    searched(withE08(SearchFixture.staged(Vector(vision)), site, side), vision)
+    searched(withE08(SearchFixture.staged(Vector(vision), supply = 5), site,
+      side), vision)
 
   test("a player whose pawn is elsewhere cannot play a Vision faceup"):
     val parkedAt = search(elsewhere)
@@ -33,14 +35,13 @@ class SacredGroundSuite extends munit.FunSuite:
       "adviser-faceup").isLeft)
 
   test("a player whose pawn is at Sacred Ground plays freely"):
-    assert(offered(search(actorsSite(quietTable))).contains("adviser-faceup"))
+    assert(offered(search(home)).contains("adviser-faceup"))
 
   test("the site's ruler is bound like everyone else"):
-    val ruled = withE08(SearchFixture.staged(Vector(VisionRules.Faith)),
-      elsewhere).updateCurrent(c => c.copy(map = c.map.copy(sites =
-      c.map.sites.updated(elsewhere, c.map.sites(elsewhere).copy(forces =
-        SiteForces.Occupied(ForceKind.Exile(Look(quietTable).player(actor)
-          .lineage), 2))))))
+    // p1 rules Broken Peaks, where Sacred Ground stands, with 2 warbands.
+    val ruled = Table.from(withE08(SearchFixture.staged(
+      Vector(VisionRules.Faith), supply = 5), elsewhere))
+      .warbandsAt(elsewhere, actor, 2).unchecked
     assert(!offered(searched(ruled, VisionRules.Faith))
       .contains("adviser-faceup"))
 

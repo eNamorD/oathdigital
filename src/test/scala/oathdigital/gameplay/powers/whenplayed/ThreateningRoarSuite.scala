@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.p1
 
 class ThreateningRoarSuite extends munit.FunSuite:
@@ -10,9 +10,9 @@ class ThreateningRoarSuite extends munit.FunSuite:
 
   private val power = registered[ThreateningRoar]
   private val roar = power.cardId
-  private val beast = SearchFixture.denizensOf(Suit.Beast)
-  private val nomad = SearchFixture.denizensOf(Suit.Nomad)
-  private val hearth = SearchFixture.denizensOf(Suit.Hearth)
+  private val beast = SearchFixture.anyPlainDenizensOf(Suit.Beast)
+  private val nomad = SearchFixture.anyPlainDenizensOf(Suit.Nomad)
+  private val hearth = SearchFixture.anyPlainDenizensOf(Suit.Hearth)
   private val beastEdifices = edificesOf(Suit.Beast)
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
@@ -32,7 +32,7 @@ class ThreateningRoarSuite extends munit.FunSuite:
       .edifice(ruined, EdificeSide.Ruined, at = nearSite)
       .edifice(intact, EdificeSide.Intact, at = nearSite)
       .denizen(beast(1), at = awaySite).ready
-    val done = finished(play(ready, power, roar))
+    val done = Outcomes.finished(play(ready, power, roar))
     val after = Look(done.treeless)
     assertEquals(after.cardsAt(homeSite), Vector[CardId](hearth(0)))
     assertEquals(after.cardsAt(nearSite), Vector[CardId](intact))
@@ -44,14 +44,14 @@ class ThreateningRoarSuite extends munit.FunSuite:
   test("played to a site it discards itself with the rest"):
     val ready = Table.start.denizen(roar, at = homeSite)
       .denizen(nomad(0), at = homeSite).ready
-    val done = finished(fire(ready, power, hookAt(roar, homeSite)))
+    val done = Outcomes.finished(fire(ready, power, hookAt(roar, homeSite)))
     assertEquals(Look(done.treeless).cardsAt(homeSite), Vector.empty)
     assertEquals(said(done.events), Vector(discarded(Vector(roar, nomad(0)))))
 
   test("with nothing to discard it says so"):
     val ready = Table.start.adviser(p1, roar)
       .denizen(hearth(0), at = homeSite).ready
-    val done = finished(play(ready, power, roar))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(play(ready, power, roar))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector(NoteText.Said("none",
       "Nothing was discarded.", covers = true)))

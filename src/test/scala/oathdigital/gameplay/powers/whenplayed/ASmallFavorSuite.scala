@@ -4,7 +4,7 @@ import oathdigital.gameplay.powers.{PlayerFacts, PowerFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness}
 
 class ASmallFavorSuite extends munit.FunSuite:
   import PowerFixture._
@@ -19,27 +19,27 @@ class ASmallFavorSuite extends munit.FunSuite:
     assert(WalkerPowerCatalog.default(catalog).powers.contains(power))
 
   test("playing it gains four warbands"):
-    val done = finished(play(staged, power, card))
+    val done = Outcomes.finished(play(staged, power, card))
     assertEquals(Look(done.treeless).player(actor).board.warbands,
       Look(staged).player(actor).board.warbands + 4)
     assertEquals(replayed(staged, done.events), done.treeless)
 
   test("the gain is capped by the warband bank"):
     val short = leaveInBank(asAdviser(quietTable, card), kind, 2)
-    val done = finished(play(short, power, card))
+    val done = Outcomes.finished(play(short, power, card))
     assertEquals(Look(done.treeless).player(actor).board.warbands,
       Look(short).player(actor).board.warbands + 2)
     assertEquals(warbandBank(done.treeless, kind), 0)
 
   test("an empty bank gains nothing and records nothing"):
     val empty = leaveInBank(asAdviser(quietTable, card), kind, 0)
-    val done = finished(play(empty, power, card))
+    val done = Outcomes.finished(play(empty, power, card))
     assertEquals(Look(done.treeless).player(actor).board.warbands,
       Look(empty).player(actor).board.warbands)
-    assertEquals(recorded(done.events), Vector.empty)
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
 
   test("another card being played does nothing"):
     val other = DenizenId("1")
     val ready = asAdviser(staged, other)
-    val done = finished(play(ready, power, other))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(play(ready, power, other))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)

@@ -25,7 +25,7 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
 
   test("a searched Family Heirloom played faceup asks its question and keeps " +
       "the relic"):
-    val ready = staged(Vector(heirloom))
+    val ready = staged(Vector(heirloom), supply = 5)
     val top = ready.game.current.commonCards.relicDeck.head
     val done = (for
       started <- start(ready)
@@ -37,7 +37,7 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
 
   test("a searched Family Heirloom played faceup can put the relic on the " +
       "bottom of the deck"):
-    val ready = staged(Vector(heirloom))
+    val ready = staged(Vector(heirloom), supply = 5)
     val top = ready.game.current.commonCards.relicDeck.head
     val done = (for
       started <- start(ready)
@@ -50,8 +50,9 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
 
   test("a facedown Family Heirloom played faceup asks its question and keeps " +
       "the relic"):
-    val ready = PowerFixture.inPhase(PowerFixture.asAdviser(staged(Vector.empty),
-      heirloom, Orientation.FaceDown), Phase.Act)
+    val ready = PowerFixture.inPhase(
+      PowerFixture.asAdviser(staged(Vector.empty, supply = 5), heirloom,
+        Orientation.FaceDown), Phase.Act)
     val top = ready.game.current.commonCards.relicDeck.head
     val done = (for
       started <- rules.startWalker(OathState.Ready(ready),
@@ -64,8 +65,9 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
 
   test("a replacement is answered before the card is played, and the " +
       "question after the play still resolves"):
-    val fillers = denizensOf(Suit.Arcane).take(6)
-    val full = fillers.foldLeft(staged(Vector(heirloom)))((ready, id) =>
+    val fillers = anyPlainDenizensOf(Suit.Arcane).take(6)
+    val drawn = staged(Vector(heirloom), supply = 5)
+    val full = fillers.foldLeft(drawn)((ready, id) =>
       if Look(ready).player(PowerFixture.actor).advisers.size >= 3 then ready
       else PowerFixture.asAdviser(ready, id))
     val current = Look(full).player(PowerFixture.actor).advisers.map(_.id)

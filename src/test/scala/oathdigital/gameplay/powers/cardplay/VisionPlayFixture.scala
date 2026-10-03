@@ -18,7 +18,7 @@ object VisionPlayFixture:
     result.fold(error => throw new AssertionError(error.toString), identity)
 
   /** A Search that drew `vision`, parked on its placement. `ready` must come
-    * from `SearchFixture.staged(Vector(vision))`. The events are the whole
+    * from `SearchFixture.staged(Vector(vision), ...)`. The events are the whole
     * Search's so far: with one card drawn the placement is reached in the
     * command that starts it, and its notes are journaled there.
     */

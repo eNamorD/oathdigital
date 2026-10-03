@@ -4,7 +4,7 @@ import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.walker.ProcedureWalker
 import oathdigital.gameplay.WalkerRecordedOpsReducer
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness}
 
 class FamilyHeirloomSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer:
@@ -22,7 +22,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
       powers(power))
 
   private def atChoice =
-    val first = parked(play(staged, power, card))
+    val first = Outcomes.parked(play(staged, power, card))
     (first, foldRecordedOps(staged, first.events, "the draw did not replay"))
 
   test("the relic is drawn facedown to the player and the choice is theirs"):
@@ -39,13 +39,14 @@ class FamilyHeirloomSuite extends munit.FunSuite
 
   test("taking it keeps the relic"):
     val (first, state) = atChoice
-    val done = finished(answer(state, first.tree, FamilyHeirloom.keep))
+    val done = Outcomes.finished(answer(state, first.tree, FamilyHeirloom.keep))
     assert(Look(done.treeless).player(actor).relics.exists(_.id == top))
     assertEquals(replayed(staged, first.events ++ done.events), done.treeless)
 
   test("putting it on the bottom returns it to the relic deck"):
     val (first, state) = atChoice
-    val done = finished(answer(state, first.tree, FamilyHeirloom.bottom))
+    val done = Outcomes.finished(
+      answer(state, first.tree, FamilyHeirloom.bottom))
     assert(!Look(done.treeless).player(actor).relics.exists(_.id == top))
     assertEquals(done.treeless.game.current.commonCards.relicDeck.last, top)
     assertEquals(replayed(staged, first.events ++ done.events), done.treeless)
@@ -57,7 +58,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
         val (first, state) = atChoice
         assertEquals(NoteText.said(power.id, power.noteKeys, first.events),
           Vector.empty)
-        val done = finished(answer(state, first.tree, choice))
+        val done = Outcomes.finished(answer(state, first.tree, choice))
         assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
           Vector(NoteText.Said(choice.key,
             s"${actor.value} drew ${top.value} and $end", covers = true)))
@@ -69,8 +70,8 @@ class FamilyHeirloomSuite extends munit.FunSuite
       current.commonCards.copy(relicDeck = Vector.empty)))
       .updateCampaign(c => c.copy(reliquary = c.reliquary ++
         current.commonCards.relicDeck))
-    val done = finished(play(emptied, power, card))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(play(emptied, power, card))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(Look(done.treeless).player(actor).relics, Look(emptied)
       .player(actor).relics)
 

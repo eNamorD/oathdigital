@@ -4,21 +4,29 @@ import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
 
 class GossipSuite extends munit.FunSuite:
   import PowerFixture._
   import SearchFixture._
 
-  private val gossip = DenizenId("99")
-  private val plain = denizensOf(Suit.Arcane).take(3)
-  private val holder = PhasePowerHarness.others(quietTable).head
+  private val gossip = CatalogNames.denizen("Gossip")
+  // Three Arcane denizens whose powers these tests do not use; p1 plays the
+  // first, Ward of Silence.
+  private val plain = Vector("Ward of Silence", "Arcane Brokers",
+    "Arcane Armor").map(CatalogNames.denizen(_))
+  private val holder = Table.p2
 
-  /** `holder` holds a faceup Gossip, and the actor Searches. */
+  /** `holder` holds a faceup Gossip, the Discord bank holds 3 favor, and the
+    * actor Searches. */
+  private def heldTable(top: Vector[WorldCardId],
+      orientation: Orientation = Orientation.FaceUp): Table =
+    Table.from(SearchFixture.staged(top, supply = 5)).adviser(holder, gossip,
+      facedown = orientation == Orientation.FaceDown)
+      .bankFavor(Suit.Discord, 3)
   private def held(top: Vector[WorldCardId],
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    Table.from(SearchFixture.staged(top)).adviser(holder, gossip,
-      facedown = orientation == Orientation.FaceDown).unchecked
+    heldTable(top, orientation).unchecked
 
   private def favor(ready: ReadyGame, id: PlayerId): Int =
     Look(ready).player(id).board.favor
@@ -31,7 +39,7 @@ class GossipSuite extends munit.FunSuite:
     val done = play(ready, Vector.empty, plain.head, "adviser-facedown")
     val after = SearchFixture.after(done)
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
-    assertEquals(discordBank(after), discordBank(ready) - 1)
+    assertEquals(discordBank(after), 3 - 1)
     assertEquals(ActPowerHarness.replayed(rules, ready, done.events), after)
 
   test("a facedown Vision counts too"):
@@ -49,7 +57,7 @@ class GossipSuite extends munit.FunSuite:
     }
 
   test("the holder's own facedown play gains nothing"):
-    val ready = asAdviser(SearchFixture.staged(plain), gossip)
+    val ready = asAdviser(SearchFixture.staged(plain, supply = 5), gossip)
     val after = SearchFixture.after(play(ready, Vector.empty, plain.head,
       "adviser-facedown"))
     assertEquals(favor(after, actor), favor(ready, actor))
@@ -62,8 +70,7 @@ class GossipSuite extends munit.FunSuite:
     assertEquals(favor(after, holder), favor(ready, holder))
 
   test("an empty Discord bank gives nothing"):
-    val ready = held(plain).copy(banks = quietTable.banks.copy(favor =
-      quietTable.banks.favor.updated(Suit.Discord, 0)))
+    val ready = heldTable(plain).bankFavor(Suit.Discord, 0).unchecked
     val after = SearchFixture.after(play(ready, Vector.empty, plain.head,
       "adviser-facedown"))
     assertEquals(favor(after, holder), favor(ready, holder))

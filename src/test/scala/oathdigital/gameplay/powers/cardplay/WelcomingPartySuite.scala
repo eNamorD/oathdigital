@@ -5,21 +5,29 @@ import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
 
 class WelcomingPartySuite extends munit.FunSuite:
   import PowerFixture._
   import SearchFixture._
 
-  private val party = DenizenId("50")
+  private val party = CatalogNames.denizen("Welcoming Party")
   private val modifiers = Vector(WelcomingParty.id)
-  private val plain = denizensOf(Suit.Arcane).take(3)
+  // Three Arcane denizens whose powers these tests do not use; p1 plays the
+  // first, Ward of Silence.
+  private val plain = Vector("Ward of Silence", "Arcane Brokers",
+    "Arcane Armor").map(CatalogNames.denizen(_))
+  // p1's site on the quiet table.
+  private val home = CatalogNames.site("Ancient City")
 
+  /** p1 at Ancient City beside Welcoming Party, the deck topped by `top`. */
+  private def partyAtHome(top: Vector[WorldCardId]): Table =
+    Table.from(SearchFixture.staged(top, supply = 5)).pawn(actor, home)
+      .denizen(party, at = home)
   private def withParty(top: Vector[WorldCardId]): ReadyGame =
-    atActorsSite(SearchFixture.staged(top), party)
+    partyAtHome(top).unchecked
 
-  private def favor(ready: ReadyGame): Int = Look(ready).player(actor)
-    .board.favor
+  private def favor(ready: ReadyGame): Int = Look(ready).favor(actor)
   private def hearthBank(ready: ReadyGame): Int =
     ready.banks.favor.getOrElse(Suit.Hearth, 0)
 
@@ -39,6 +47,8 @@ class WelcomingPartySuite extends munit.FunSuite:
     val after = SearchFixture.after(play(ready, modifiers, plain.head,
       "adviser-faceup"))
     assertEquals(hearthBank(after), hearthBank(ready) - 1)
+    // An adviser play takes no favor from the card's own suit bank, only 1
+    // from the Hearth bank.
     assertEquals(favor(after), favor(ready) + 1)
 
   test("a card drawn by a Search and placed facedown is not played faceup, so " +
@@ -67,18 +77,19 @@ class WelcomingPartySuite extends munit.FunSuite:
       "adviser-faceup"))
     assertEquals(hearthBank(unselected), hearthBank(ready))
 
-  test("a Vision is not a denizen, and a card does not trigger on its own play"):
+  test("it applies only to another denizen played faceup from a Search"):
     val power = WelcomingParty.forCatalog(catalog)
     val vision = CardPlayedFaceup(VisionRules.Faith,
       RuleSourceRef.Adviser(actor, VisionRules.Faith))
-    val ctx = PowerCtx(atActorsSite(quietTable, party), actor, power.source,
+    val ctx = PowerCtx(Table.start.denizen(party, at = home).ready, actor,
+      power.source,
       PowerWindow.ActionCardPlayedFaceup, Vector.empty, vision,
       Some(ActionRef.Search))
     assert(!power.applicable(ctx))
     assert(!power.applicable(ctx.copy(operation = CardPlayedFaceup(party,
-      RuleSourceRef.SiteCard(actorsSite(quietTable), party)))))
+      RuleSourceRef.SiteCard(home, party)))))
     val played = CardPlayedFaceup(plain.head,
-      RuleSourceRef.SiteCard(actorsSite(quietTable), plain.head))
+      RuleSourceRef.SiteCard(home, plain.head))
     assert(power.applicable(ctx.copy(operation = played)))
     assert(!power.applicable(ctx.copy(operation = played,
       procedure = Some(ActionRef.PlayFacedownAdviser))))
@@ -88,8 +99,7 @@ class WelcomingPartySuite extends munit.FunSuite:
       window = PowerWindow.ActionCardPlayedFacedown)))
 
   test("an empty Hearth bank gives nothing"):
-    val ready = withParty(plain).copy(banks = quietTable.banks.copy(favor =
-      quietTable.banks.favor.updated(Suit.Hearth, 0)))
+    val ready = partyAtHome(plain).bankFavor(Suit.Hearth, 0).unchecked
     val after = SearchFixture.after(play(ready, modifiers, plain.head,
       "adviser-faceup"))
     assertEquals(favor(after), favor(ready))

@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.p1
 
 class SaladDaysSuite extends munit.FunSuite:
@@ -32,13 +32,13 @@ class SaladDaysSuite extends munit.FunSuite:
   test("with four stocked banks it asks for three, and takes 1 favor from " +
       "each"):
     val ready = staged(four*)
-    val first = parked(play(ready, power, salad))
+    val first = Outcomes.parked(play(ready, power, salad))
     val decide = question(ready, power, played, first.tree)
     assertEquals(decide.decisionId, SaladDays.decisionId)
     assertEquals(decide.query, DecisionQuery.ChooseMany(3, 3,
       four.map((suit, _) => DecisionOption.FavorBank(
         DecisionOptionRef.FavorBank(suit))), decide.query.heading))
-    val done = finished(resume(ready, power, played, first.tree,
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
       SaladDays.decisionId, choose(Suit.Discord, Suit.Hearth, Suit.Beast)))
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
     assertEquals(banks(done.treeless, Suit.Discord, Suit.Order, Suit.Hearth,
@@ -49,25 +49,25 @@ class SaladDaysSuite extends munit.FunSuite:
 
   test("with three stocked banks it takes 1 from each without asking"):
     val ready = staged(Suit.Arcane -> 1, Suit.Order -> 2, Suit.Nomad -> 5)
-    val done = finished(play(ready, power, salad))
+    val done = Outcomes.finished(play(ready, power, salad))
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
     assertEquals(banks(done.treeless, Suit.Arcane, Suit.Order, Suit.Nomad),
       Vector(0, 1, 4))
 
   test("with two stocked banks it takes 1 from each"):
-    val done = finished(play(staged(Suit.Order -> 2, Suit.Nomad -> 5), power,
-      salad))
+    val done = Outcomes.finished(
+      play(staged(Suit.Order -> 2, Suit.Nomad -> 5), power, salad))
     assertEquals(Look(done.treeless).favor(p1), 1 + 2)
 
   test("with every bank empty it gains nothing, and the line says so"):
-    val done = finished(play(staged(), power, salad))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(play(staged(), power, salad))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
       Vector(NoteText.Said("none", "Every favor bank was empty.",
         covers = false)))
 
   test("an empty bank is not a choice"):
     val ready = staged(four*)
-    val first = parked(play(ready, power, salad))
+    val first = Outcomes.parked(play(ready, power, salad))
     assert(resume(ready, power, played, first.tree, SaladDays.decisionId,
       choose(Suit.Discord, Suit.Arcane, Suit.Beast)).isLeft)

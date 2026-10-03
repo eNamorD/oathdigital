@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, PlayerFacts}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class KeyToTheCitySuite extends munit.FunSuite:
@@ -26,7 +26,7 @@ class KeyToTheCitySuite extends munit.FunSuite:
   test("an absent ruler's warbands are killed, and the actor gains and " +
       "places one"):
     val ready = start.warbandsAt(homeSite, p2, 2).ready
-    val done = finished(fire(ready, power, played))
+    val done = Outcomes.finished(fire(ready, power, played))
     val after = Look(done.treeless)
     assertEquals(after.forces(homeSite), SiteForces.Occupied(mine, 1))
     assertEquals(after.boardWarbands(p1), 3)
@@ -34,7 +34,8 @@ class KeyToTheCitySuite extends munit.FunSuite:
     assertEquals(said(done.events), Vector(killedTwo, placed))
 
   test("bandits are killed too"):
-    val done = finished(fire(start.bandits(homeSite, 3).ready, power, played))
+    val done = Outcomes.finished(
+      fire(start.bandits(homeSite, 3).ready, power, played))
     assertEquals(Look(done.treeless).forces(homeSite),
       SiteForces.Occupied(mine, 1))
     assertEquals(said(done.events), Vector(NoteText.Said("bandits",
@@ -42,22 +43,22 @@ class KeyToTheCitySuite extends munit.FunSuite:
       placed))
 
   test("an empty site only receives the warband"):
-    val done = finished(fire(start.ready, power, played))
+    val done = Outcomes.finished(fire(start.ready, power, played))
     assertEquals(Look(done.treeless).forces(homeSite),
       SiteForces.Occupied(mine, 1))
     assertEquals(said(done.events), Vector(placed))
 
   test("the actor rules the site and stands there, so nothing happens"):
     val ready = start.warbandsAt(homeSite, p1, 2).ready
-    val done = finished(fire(ready, power, played))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(fire(ready, power, played))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector(NoteText.Said("guarded",
       s"${p1.value} was at ${homeSite.value}.", covers = false)))
 
   test("a ruler whose pawn stands at the site keeps it"):
     val ready = start.warbandsAt(homeSite, p2, 2).pawn(p2, homeSite).ready
     val theirs = PlayerFacts.forceKind(ready, p2).toOption.get
-    val done = finished(fire(ready, power, played))
+    val done = Outcomes.finished(fire(ready, power, played))
     assertEquals(Look(done.treeless).forces(homeSite),
       SiteForces.Occupied(theirs, 2))
     assertEquals(said(done.events), Vector(NoteText.Said("guarded",
@@ -68,7 +69,7 @@ class KeyToTheCitySuite extends munit.FunSuite:
     val supply = start.ready.banks.warbandSupply(mine)
     val ready = start.warbandsAt(homeSite, p2, 2).boardWarbands(p1, 0)
       .warbandsAt(awaySite, p1, supply).ready
-    val done = finished(fire(ready, power, played))
+    val done = Outcomes.finished(fire(ready, power, played))
     assertEquals(Look(done.treeless).forces(homeSite), SiteForces.Empty)
     assertEquals(said(done.events), Vector(killedTwo,
       NoteText.Said("unplaced", s"${p1.value} had no warband to place.",

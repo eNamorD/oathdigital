@@ -9,14 +9,15 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.Unwrap.accepted
 
 class VowOfObedienceSuite extends munit.FunSuite:
   import PowerFixture._
   import VisionPlayFixture._
 
-  private val vow = DenizenId("121")
-  private val other = PhasePowerHarness.others(quietTable).head
+  private val vow = CatalogNames.denizen("Vow of Obedience")
+  private val other = Table.p2
 
   private def holding(ready: ReadyGame, owner: PlayerId = actor,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
@@ -26,7 +27,7 @@ class VowOfObedienceSuite extends munit.FunSuite:
 
   private def search(vision: VisionId, arrange: ReadyGame => ReadyGame)
       : OathTransition =
-    val ready = arrange(SearchFixture.staged(Vector(vision)))
+    val ready = arrange(SearchFixture.staged(Vector(vision), supply = 5))
     searched(ready, vision)
 
   test("a faceup holder's Search does not offer a Vision faceup, and refuses it"):
@@ -84,38 +85,35 @@ class VowOfObedienceSuite extends munit.FunSuite:
     * holding favor.
     */
   private def resting(stocked: Map[Suit, Int]): ReadyGame =
-    val ready = inPhase(holding(quietTable), Phase.Rest)
-    ready.copy(banks = ready.banks.copy(favor =
-      Suit.all.map(suit => suit -> stocked.getOrElse(suit, 0)).toMap))
+    Suit.all.foldLeft(Table.start.turn(actor, Phase.Rest).adviser(actor, vow))(
+      (table, suit) => table.bankFavor(suit, stocked.getOrElse(suit, 0))).ready
 
-  private def rest(ready: ReadyGame): OathTransition = restRules.startWalker(
-    Ready(ready), use, actor, Vector.empty, Vector(source)).fold(
-    error => throw new AssertionError(error.toString), identity)
+  private def rest(ready: ReadyGame): OathTransition = accepted(
+    restRules.startWalker(Ready(ready), use, actor, Vector.empty,
+      Vector(source)))
 
   test("REST: several stocked banks ask which one to take a favor from"):
     val ready = resting(Map(Suit.Arcane -> 3, Suit.Order -> 3))
     val choice = VowOfObedience.choiceDecisionId(ready, actor)
     val started = rest(ready)
     restParked.assertParked(started.state, use, choice, actor)
-    val taken = restRules.resolveWalker(started.state, actor, choice,
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(Suit.Order)))
-      .toOption.get
+    val taken = accepted(restRules.resolveWalker(started.state, actor, choice,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(Suit.Order))))
     val after = SearchFixture.after(taken)
     assertEquals(after.banks.favor(Suit.Order), 2)
     assertEquals(after.banks.favor(Suit.Arcane), 3)
-    assertEquals(Look(after).player(actor).board.favor, Look(ready)
-      .player(actor).board.favor + 1)
+    assertEquals(Look(after).favor(actor), Look(ready).favor(actor) + 1)
 
   test("REST: one stocked bank is taken without asking"):
     val ready = resting(Map(Suit.Hearth -> 2))
     val after = SearchFixture.after(rest(ready))
     assertEquals(after.banks.favor(Suit.Hearth), 1)
-    assertEquals(Look(after).player(actor).board.favor, Look(ready)
-      .player(actor).board.favor + 1)
+    assertEquals(Look(after).favor(actor), Look(ready).favor(actor) + 1)
 
   test("REST: with every bank empty the power is not offered"):
     assert(!PhasePowerProcedure.usable(catalog, resting(Map.empty), actor,
-      PhasePowerCatalog.default(catalog), WalkerPowers.empty).exists(_.power.id == VowOfObedience.id))
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty)
+      .exists(_.power.id == VowOfObedience.id))
 
   test("REST: the take is written as its own line, covering the generic one"):
     val done = rest(resting(Map(Suit.Hearth -> 2)))

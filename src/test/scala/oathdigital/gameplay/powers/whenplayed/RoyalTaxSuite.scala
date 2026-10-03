@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class RoyalTaxSuite extends munit.FunSuite:
@@ -27,7 +27,7 @@ class RoyalTaxSuite extends munit.FunSuite:
   test("each player at a site p1 rules in p1's region gives 2 favor, or " +
       "what they hold"):
     val ready = staged(held = 1)
-    val done = finished(play(ready, power, tax))
+    val done = Outcomes.finished(play(ready, power, tax))
     val after = Look(done.treeless)
     assertEquals(after.favor(p1), 1 + 2 + 1)
     assertEquals(after.favor(p2), 1)
@@ -36,7 +36,7 @@ class RoyalTaxSuite extends munit.FunSuite:
     assertEquals(said(done.events), Vector(took(2, p2), took(1, p3)))
 
   test("a player with no favor is named, and nothing is taken from them"):
-    val done = finished(play(staged(held = 0), power, tax))
+    val done = Outcomes.finished(play(staged(held = 0), power, tax))
     assertEquals(Look(done.treeless).favor(p1), 1 + 2)
     assertEquals(said(done.events), Vector(took(2, p2), NoteText.Said("broke",
       s"${p3.value} had no favor to take.", covers = false)))
@@ -46,7 +46,7 @@ class RoyalTaxSuite extends munit.FunSuite:
     // p1 rules in another region.
     val ready = Table.start.adviser(p1, tax).warbandsAt(awaySite, p1, 1)
       .pawn(p2, nearSite).pawn(p3, awaySite).ready
-    val done = finished(play(ready, power, tax))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(play(ready, power, tax))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector(NoteText.Said("none",
       "No player could be taxed.", covers = false)))

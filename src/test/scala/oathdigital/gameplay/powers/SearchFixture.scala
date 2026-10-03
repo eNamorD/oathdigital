@@ -5,7 +5,8 @@ import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Table, TestCards}
+import oathdigital.testkit.{CatalogNames, Outcomes, Table, TestCards}
+import oathdigital.testkit.Unwrap.accepted
 
 /** Drives a real Search through the rules, with the production walker powers,
   * for the suites of the modifiers and triggers that act on it. It builds on
@@ -18,13 +19,13 @@ object SearchFixture:
   val rules: OathRules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
 
-  def after(transition: OathTransition): ReadyGame =
-    transition.state.asInstanceOf[Ready].value
+  def after(transition: OathTransition)(using munit.Location): ReadyGame =
+    Outcomes.ready(transition.state)
 
   /** The quiet table's p1 in Act at an empty Ancient City, the world deck
     * topped by `top`, with `supply` Supply.
     */
-  def staged(top: Vector[WorldCardId], supply: Int = 5): ReadyGame =
+  def staged(top: Vector[WorldCardId], supply: Int): ReadyGame =
     Table.start.worldDeckTop(top*).supply(actor, supply).ready
 
   /** Eight Discord denizens for the world deck. None is played faceup, so
@@ -34,13 +35,14 @@ object SearchFixture:
     "Scryer", "Bandit Paymaster", "Unstable Summon", "Dark Enforcer",
     "Spoiled Supplies", "Blackmail").map(CatalogNames.denizen(_))
 
-  /** The plain denizens of `suit` (unrestricted, with no production walker
+  /** Any plain denizens of `suit` (unrestricted, with no production walker
     * power of their own) that no player and no site holds: in the world deck,
     * or not dealt at all. `staged` puts a card that is not dealt on top of the
-    * deck.
+    * deck. For a test where the card is arbitrary; a test that rests on the
+    * card names it.
     */
-  def denizensOf(suit: Suit): Vector[DenizenId] =
-    val index = CardIndex.from(quietTable.game).toOption.get
+  def anyPlainDenizensOf(suit: Suit): Vector[DenizenId] =
+    val index = accepted(CardIndex.from(quietTable.game))
     val powered = WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet
     catalog.denizens.filter(d => d.suit == suit &&
       !d.powers.exists(power => powered(power.id)) &&
@@ -59,7 +61,9 @@ object SearchFixture:
     case id: DenizenId => DecisionOptionRef.Denizen(id)
     case id: VisionId => DecisionOptionRef.Vision(id)
 
-  /** Keeps `kept` from the drawn hand and discards the others. */
+  /** Keeps `kept` from the drawn hand and discards the others. With only one
+    * card drawn there is no question, and the transition comes back with no
+    * events of its own. */
   def keep(from: OathTransition, kept: WorldCardId)
       : Either[OathViolation, OathTransition] =
     val drawn = after(from).game.current.temporaryHands(actor)

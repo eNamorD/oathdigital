@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.p1
 
 class GreatHerdSuite extends munit.FunSuite:
@@ -11,7 +11,7 @@ class GreatHerdSuite extends munit.FunSuite:
   private val power = registered[GreatHerd]
   private val herd = power.cardId
   private val played = hookAt(herd, homeSite)
-  private val nomad = SearchFixture.denizensOf(Suit.Nomad)
+  private val nomad = SearchFixture.anyPlainDenizensOf(Suit.Nomad)
   private val nomadEdifices = edificesOf(Suit.Nomad)
   /** Great Herd is site-only: it stands at p1's site. */
   private val start = Table.start.denizen(herd, at = homeSite)
@@ -32,7 +32,7 @@ class GreatHerdSuite extends munit.FunSuite:
     val ready = start.denizen(nomad(0), at = nearSite)
       .denizen(nomad(1), at = homeSite)
       .edifice(nomadEdifices(0), EdificeSide.Intact, at = awaySite).ready
-    val first = parked(fire(ready, power, played))
+    val first = Outcomes.parked(fire(ready, power, played))
     assertEquals(question(ready, power, played, first.tree).decisionId,
       GreatHerd.decisionId)
     assertEquals(offered(ready, first.tree),
@@ -41,8 +41,8 @@ class GreatHerdSuite extends munit.FunSuite:
   test("the swap moves each card to the other's site with its tokens"):
     val ready = start.denizen(nomad(0), at = nearSite)
       .tokens(nomad(0), favor = 1, secrets = 2).ready
-    val first = parked(fire(ready, power, played))
-    val done = finished(resume(ready, power, played, first.tree,
+    val first = Outcomes.parked(fire(ready, power, played))
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
       GreatHerd.decisionId, pick(DecisionOptionRef.Denizen(nomad(0)))))
     val after = Look(done.treeless)
     assertEquals(after.cardsAt(homeSite), Vector[CardId](nomad(0)))
@@ -56,10 +56,10 @@ class GreatHerdSuite extends munit.FunSuite:
   test("a ruined Nomad edifice can be swapped too"):
     val ruined = nomadEdifices(0)
     val ready = start.edifice(ruined, EdificeSide.Ruined, at = awaySite).ready
-    val first = parked(fire(ready, power, played))
+    val first = Outcomes.parked(fire(ready, power, played))
     assertEquals(offered(ready, first.tree),
       Vector(DecisionOptionRef.Edifice(ruined), GreatHerd.keep))
-    val done = finished(resume(ready, power, played, first.tree,
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
       GreatHerd.decisionId, pick(DecisionOptionRef.Edifice(ruined))))
     assertEquals(Look(done.treeless).cardsAt(homeSite),
       Vector[CardId](ruined))
@@ -67,15 +67,15 @@ class GreatHerdSuite extends munit.FunSuite:
 
   test("keeping Great Herd changes nothing and writes nothing"):
     val ready = start.denizen(nomad(0), at = nearSite).ready
-    val first = parked(fire(ready, power, played))
-    val done = finished(resume(ready, power, played, first.tree,
+    val first = Outcomes.parked(fire(ready, power, played))
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
       GreatHerd.decisionId, pick(GreatHerd.keep)))
-    assertEquals(recorded(done.events), Vector.empty)
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector.empty)
 
   test("with no Nomad card at another site nothing is asked, and the line " +
       "says so"):
-    val done = finished(fire(start.denizen(nomad(1), at = homeSite).ready,
-      power, played))
+    val done = Outcomes.finished(
+      fire(start.denizen(nomad(1), at = homeSite).ready, power, played))
     assertEquals(said(done.events), Vector(NoteText.Said("none",
       "No Nomad card could be swapped.", covers = false)))

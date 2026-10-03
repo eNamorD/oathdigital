@@ -14,7 +14,7 @@ class TheOldOakSuite extends munit.FunSuite:
   private val oak = CatalogNames.denizen("The Old Oak")
   // A plain Beast adviser, and another plain Beast card at the site.
   private val adviser = CatalogNames.denizen("Errand Boy")
-  private val otherBeast = SearchFixture.denizensOf(Suit.Beast)
+  private val otherBeast = SearchFixture.anyPlainDenizensOf(Suit.Beast)
     .filterNot(_ == adviser).head
   private val modifiers = Vector(TheOldOak.id)
 
@@ -70,7 +70,7 @@ class TheOldOakSuite extends munit.FunSuite:
 
   test("several faceup beast advisers still add only one secret to the " +
       "base gain, which is one per matching adviser"):
-    val third = SearchFixture.denizensOf(Suit.Beast)
+    val third = SearchFixture.anyPlainDenizensOf(Suit.Beast)
       .filterNot(card => card == adviser || card == otherBeast).head
     val ready = Table.start.favor(p1, 2).adviser(p1, adviser)
       .adviser(p1, third).denizen(oak, at = Table.quietPawnSite(p1)).ready

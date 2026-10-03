@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.p1
 
 class TownMeetingSuite extends munit.FunSuite:
@@ -11,7 +11,7 @@ class TownMeetingSuite extends munit.FunSuite:
   private val power = registered[TownMeeting]
   private val meeting = power.cardId
   private val played = hook(meeting)
-  private val hearth = SearchFixture.denizensOf(Suit.Hearth)
+  private val hearth = SearchFixture.anyPlainDenizensOf(Suit.Hearth)
 
   /** `table` with every bank empty except `stocks`. */
   private def banks(table: Table, stocks: (Suit, Int)*): Table =
@@ -31,10 +31,10 @@ class TownMeetingSuite extends munit.FunSuite:
 
   test("with more than X favor across two banks it asks for the split"):
     val ready = banks(ruling, Suit.Order -> 2, Suit.Hearth -> 2).ready
-    val first = parked(play(ready, power, meeting))
+    val first = Outcomes.parked(play(ready, power, meeting))
     assertEquals(question(ready, power, played, first.tree).decisionId,
       TownMeeting.decisionId)
-    val done = finished(resume(ready, power, played, first.tree,
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
       TownMeeting.decisionId, DecisionAnswer.DistributeAnswer(Vector(
         DistributeAmount(DecisionOptionRef.FavorBank(Suit.Order), 1),
         DistributeAmount(DecisionOptionRef.FavorBank(Suit.Hearth), 2)))))
@@ -45,7 +45,7 @@ class TownMeetingSuite extends munit.FunSuite:
     assertEquals(said(done.events), Vector(gained(3)))
 
   test("with X or less in all it takes everything without asking"):
-    val done = finished(play(banks(ruling, Suit.Order -> 1,
+    val done = Outcomes.finished(play(banks(ruling, Suit.Order -> 1,
       Suit.Hearth -> 1).ready, power, meeting))
     assertEquals(Look(done.treeless).favor(p1), 1 + 2)
     assertEquals(said(done.events), Vector(gained(2)))
@@ -53,12 +53,12 @@ class TownMeetingSuite extends munit.FunSuite:
   test("ruling no Hearth card it takes nothing, and the line says so"):
     val ready = banks(Table.start.denizen(meeting, at = homeSite),
       Suit.Hearth -> 5).ready
-    val done = finished(fire(ready, power, hookAt(meeting, homeSite)))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(fire(ready, power, hookAt(meeting, homeSite)))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector(NoteText.Said("none",
       s"${p1.value} ruled no Hearth card.", covers = false)))
 
   test("with every bank empty it takes nothing, and the line says so"):
-    val done = finished(play(banks(ruling).ready, power, meeting))
+    val done = Outcomes.finished(play(banks(ruling).ready, power, meeting))
     assertEquals(said(done.events), Vector(NoteText.Said("empty",
       "Every favor bank was empty.", covers = false)))

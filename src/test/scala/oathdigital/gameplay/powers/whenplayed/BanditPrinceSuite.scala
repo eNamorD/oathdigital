@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, PlayerFacts}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.p1
 
 class BanditPrinceSuite extends munit.FunSuite:
@@ -40,12 +40,12 @@ class BanditPrinceSuite extends munit.FunSuite:
   test("it offers every bandit site, and replaces the bandits at the sites " +
       "chosen"):
     val ready = bandited.ready
-    val first = parked(play(ready, power, prince))
+    val first = Outcomes.parked(play(ready, power, prince))
     val decide = question(ready, power, played, first.tree)
     assertEquals(decide.decisionId, BanditPrince.decisionId)
     assertEquals(decide.query, DecisionQuery.ChooseMany(0, 2, sites.map(site =>
       DecisionOption.Site(DecisionOptionRef.Site(site))), decide.query.heading))
-    val done = finished(resume(ready, power, played, first.tree,
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
       BanditPrince.decisionId, choose(sites)))
     val after = Look(done.treeless)
     assertEquals(after.forces(homeSite), SiteForces.Occupied(mine, 2))
@@ -56,20 +56,20 @@ class BanditPrinceSuite extends munit.FunSuite:
 
   test("declining replaces nothing and writes nothing"):
     val ready = bandited.ready
-    val first = parked(play(ready, power, prince))
-    val done = finished(resume(ready, power, played, first.tree,
+    val first = Outcomes.parked(play(ready, power, prince))
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
       BanditPrince.decisionId, choose(Vector.empty)))
-    assertEquals(recorded(done.events), Vector.empty)
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector.empty)
 
   test("with no bandit site nothing is asked, and the line says so"):
-    val done = finished(play(start.ready, power, prince))
+    val done = Outcomes.finished(play(start.ready, power, prince))
     assertEquals(said(done.events), Vector(NoteText.Said("none",
       "No site was ruled by bandits.", covers = false)))
 
   test("sites holding more bandits than the bank holds warbands are refused"):
     val ready = banking(bandited, left = 2).ready
-    val first = parked(play(ready, power, prince))
+    val first = Outcomes.parked(play(ready, power, prince))
     val offered = question(ready, power, played, first.tree).query
       .asInstanceOf[DecisionQuery.ChooseMany].options
     assertEquals(offered.size, 2)
@@ -80,12 +80,12 @@ class BanditPrinceSuite extends munit.FunSuite:
 
   test("a site the bandits do not rule is refused"):
     val ready = bandited.ready
-    val first = parked(play(ready, power, prince))
+    val first = Outcomes.parked(play(ready, power, prince))
     assert(resume(ready, power, played, first.tree, BanditPrince.decisionId,
       choose(Vector(nearSite))).isLeft)
 
   test("with an empty bank no site can be replaced, so nothing is asked"):
     val ready = banking(bandited, left = 0).ready
-    val done = finished(play(ready, power, prince))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(play(ready, power, prince))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector.empty)

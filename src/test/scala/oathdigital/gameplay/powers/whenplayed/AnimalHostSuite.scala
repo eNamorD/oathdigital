@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, PlayerFacts, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class AnimalHostSuite extends munit.FunSuite:
@@ -10,8 +10,8 @@ class AnimalHostSuite extends munit.FunSuite:
 
   private val power = registered[AnimalHost]
   private val host = power.cardId
-  private val beast = SearchFixture.denizensOf(Suit.Beast)
-  private val hearth = SearchFixture.denizensOf(Suit.Hearth)
+  private val beast = SearchFixture.anyPlainDenizensOf(Suit.Beast)
+  private val hearth = SearchFixture.anyPlainDenizensOf(Suit.Hearth)
   private val beastEdifices = edificesOf(Suit.Beast)
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
@@ -39,7 +39,7 @@ class AnimalHostSuite extends munit.FunSuite:
       .edifice(beastEdifices(1), EdificeSide.Intact, at = awaySite)
       .denizen(beast(1), at = awaySite).warbandsAt(awaySite, p2, 1)
       .adviser(p2, beast(2)).ready
-    val done = finished(play(ready, power, host))
+    val done = Outcomes.finished(play(ready, power, host))
     assertEquals(Look(done.treeless).boardWarbands(p1), 3 + 4)
     assertEquals(replayed(ready, done.events), done.treeless)
     assertEquals(said(done.events), Vector(gained(4)))
@@ -47,7 +47,7 @@ class AnimalHostSuite extends munit.FunSuite:
   test("played to a site it counts itself"):
     val ready = Table.start.denizen(host, at = homeSite)
       .denizen(beast(0), at = nearSite).ready
-    val done = finished(fire(ready, power, hookAt(host, homeSite)))
+    val done = Outcomes.finished(fire(ready, power, hookAt(host, homeSite)))
     assertEquals(Look(done.treeless).boardWarbands(p1), 3 + 2)
     assertEquals(said(done.events), Vector(gained(2)))
 
@@ -55,12 +55,12 @@ class AnimalHostSuite extends munit.FunSuite:
     val ready = banking(Table.start.adviser(p1, host)
       .denizen(beast(0), at = homeSite).denizen(beast(1), at = nearSite),
       left = 1).ready
-    val done = finished(play(ready, power, host))
+    val done = Outcomes.finished(play(ready, power, host))
     assertEquals(said(done.events), Vector(gained(1)))
 
   test("with no Beast card at a site it gains none, and the line says so"):
     val ready = Table.start.adviser(p1, host).adviser(p1, beast(0)).ready
-    val done = finished(play(ready, power, host))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(play(ready, power, host))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector(NoteText.Said("none",
       s"${p1.value} gained no warbands.", covers = false)))

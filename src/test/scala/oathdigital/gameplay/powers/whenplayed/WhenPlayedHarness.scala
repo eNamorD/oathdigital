@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powers.whenplayed
 
+import oathdigital.testkit.PhasePowerHarness
+import oathdigital.testkit.Unwrap.{accepted, present}
 import scala.reflect.ClassTag
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy,
@@ -9,7 +11,7 @@ import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.PowerFixture.{actor, quietTable}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
-  WalkerPowers, WalkerStepRecorded}
+  WalkerPowers}
 import oathdigital.model._
 
 /** Drives a When Played power through its `CardPlayed` hook, the way the
@@ -38,8 +40,10 @@ object WhenPlayedHarness:
 
   /** The question parked at `tree`, as the walker offers it. */
   def question(ready: ReadyGame, power: ContributingPower,
-      hook: CardPlayedFaceup, tree: PendingTree): Decide =
-    ProcedureWalker.parkedDecide(ready, hook, tree, powers(power)).get
+      hook: CardPlayedFaceup, tree: PendingTree)(using munit.Location)
+      : Decide =
+    present(ProcedureWalker.parkedDecide(ready, hook, tree, powers(power)),
+      "the parked question")
 
   /** Resumes `tree` with the actor's `answer` to `decisionId`. */
   def resume(ready: ReadyGame, power: ContributingPower,
@@ -48,21 +52,12 @@ object WhenPlayedHarness:
     ProcedureWalker.resolve(ready, hook, tree,
       Answered(decisionId, answer, actor), powers(power))
 
-  def finished(outcome: Either[OathViolation, WalkerOutcome])
-      : WalkerOutcome.Finished =
-    outcome.toOption.get.asInstanceOf[WalkerOutcome.Finished]
-
-  def parked(outcome: Either[OathViolation, WalkerOutcome])
-      : WalkerOutcome.Parked =
-    outcome.toOption.get.asInstanceOf[WalkerOutcome.Parked]
-
-  def recorded(events: Vector[OathEvent]): Vector[CoreOperation] =
-    events.collect { case step: WalkerStepRecorded => step.ops }.flatten
-
-  /** The state a journal replay of `events` reaches from `from`. */
+  /** The state `events`' recorded operations reach from `from`. The hook is
+    * walked bare, outside any action, so its steps replay as operations
+    * rather than through the rules' journal evolve. */
   def replayed(from: ReadyGame, events: Vector[OathEvent]): ReadyGame =
-    OperationPipeline.run(from, recorded(events),
-      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get.state
+    accepted(OperationPipeline.run(from, PhasePowerHarness.ops(events),
+      OperationPolicy.Permissive, Vector.empty)(Right(_))).state
 
   /** The power of type `P` that the default walker catalog registers, so a
     * suite fails when its power is not wired in. */

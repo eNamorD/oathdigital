@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class RiotsSuite extends munit.FunSuite:
@@ -10,9 +10,9 @@ class RiotsSuite extends munit.FunSuite:
 
   private val power = registered[Riots]
   private val riots = power.cardId
-  private val hearth = SearchFixture.denizensOf(Suit.Hearth)
-  private val beast = SearchFixture.denizensOf(Suit.Beast)
-  private val nomad = SearchFixture.denizensOf(Suit.Nomad)
+  private val hearth = SearchFixture.anyPlainDenizensOf(Suit.Hearth)
+  private val beast = SearchFixture.anyPlainDenizensOf(Suit.Beast)
+  private val nomad = SearchFixture.anyPlainDenizensOf(Suit.Nomad)
   private val orderEdifices = edificesOf(Suit.Order)
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
@@ -44,7 +44,7 @@ class RiotsSuite extends munit.FunSuite:
   test("it discards every denizen and ruined edifice in the region, then " +
       "burns as many favor from a held People's Favor"):
     val ready = staged.peoplesFavor(Some(p2), 5).ready
-    val done = finished(play(ready, power, riots))
+    val done = Outcomes.finished(play(ready, power, riots))
     val after = Look(done.treeless)
     assertEquals(after.cardsAt(homeSite), Vector.empty)
     assertEquals(after.cardsAt(nearSite), Vector[CardId](orderEdifices(1)))
@@ -58,19 +58,21 @@ class RiotsSuite extends munit.FunSuite:
   test("played to a site it discards and counts itself"):
     val ready = Table.start.denizen(riots, at = homeSite)
       .denizen(hearth(0), at = homeSite).peoplesFavor(None, 5).ready
-    val done = finished(fire(ready, power, hookAt(riots, homeSite)))
+    val done = Outcomes.finished(fire(ready, power, hookAt(riots, homeSite)))
     assertEquals(Look(done.treeless).cardsAt(homeSite), Vector.empty)
     assertEquals(onBanner(done.treeless), 3)
     assertEquals(said(done.events),
       Vector(discarded(Vector(riots, hearth(0))), burned(2)))
 
   test("the burn takes what the People's Favor holds"):
-    val done = finished(play(staged.peoplesFavor(None, 1).ready, power, riots))
+    val done = Outcomes.finished(
+      play(staged.peoplesFavor(None, 1).ready, power, riots))
     assertEquals(onBanner(done.treeless), 0)
     assertEquals(said(done.events), Vector(discarded(targets), burned(1)))
 
   test("an empty People's Favor burns nothing, and the line says so"):
-    val done = finished(play(staged.peoplesFavor(None, 0).ready, power, riots))
+    val done = Outcomes.finished(
+      play(staged.peoplesFavor(None, 0).ready, power, riots))
     assertEquals(said(done.events), Vector(discarded(targets),
       NoteText.Said("unburned", "The People's Favor had no favor to burn.",
         covers = false)))
@@ -78,8 +80,8 @@ class RiotsSuite extends munit.FunSuite:
   test("with nothing to discard it burns nothing"):
     val ready = Table.start.adviser(p1, riots)
       .denizen(hearth(1), at = awaySite).peoplesFavor(None, 5).ready
-    val done = finished(play(ready, power, riots))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(play(ready, power, riots))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(onBanner(done.treeless), 5)
     assertEquals(said(done.events), Vector(NoteText.Said("none",
       "Nothing was discarded.", covers = true)))

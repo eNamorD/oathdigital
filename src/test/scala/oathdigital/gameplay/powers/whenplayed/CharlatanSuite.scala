@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class CharlatanSuite extends munit.FunSuite:
@@ -25,7 +25,7 @@ class CharlatanSuite extends munit.FunSuite:
 
   test("it burns all but one secret from a held Darkest Secret"):
     val ready = withBanner(Some(p2), 4)
-    val done = finished(play(ready, power, charlatan))
+    val done = Outcomes.finished(play(ready, power, charlatan))
     assertEquals(onBanner(done.treeless), 1)
     assertEquals(done.treeless.game.current.banners.darkestSecret.holder,
       Some(p2))
@@ -34,11 +34,11 @@ class CharlatanSuite extends munit.FunSuite:
       "Burned 3 secrets from the Darkest Secret.", covers = false)))
 
   test("a single secret stays, and the line says none was burned"):
-    val done = finished(play(withBanner(None, 1), power, charlatan))
+    val done = Outcomes.finished(play(withBanner(None, 1), power, charlatan))
     assertEquals(onBanner(done.treeless), 1)
-    assertEquals(recorded(done.events), Vector.empty)
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector(none))
 
   test("an empty Darkest Secret burns nothing"):
-    val done = finished(play(withBanner(None, 0), power, charlatan))
+    val done = Outcomes.finished(play(withBanner(None, 0), power, charlatan))
     assertEquals(said(done.events), Vector(none))

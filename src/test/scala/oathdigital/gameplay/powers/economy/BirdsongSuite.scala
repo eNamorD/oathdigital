@@ -1,12 +1,12 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.model._
-import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
+  Look, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class BirdsongSuite extends munit.FunSuite:
   import SearchFixture.rules
@@ -25,50 +25,51 @@ class BirdsongSuite extends munit.FunSuite:
   private def at(source: DenizenId, facedown: Boolean = false): ReadyGame =
     Table.start
       .adviser(p1, birdsong, facedown = facedown)
-      .denizen("Alchemist", at = Table.quietPawnSite(p1))
-      .denizen(source, at = Table.quietPawnSite(p1))
-      .favor(p1, 4).secrets(p1, faceUp = 2)
+      .pawn(p1, at = "Ancient City")
+      .denizen("Alchemist", at = "Ancient City")
+      .denizen(source, at = "Ancient City")
+      .favor(p1, 4).secrets(p1, faceUp = 2).supply(p1, 7)
       .ready
 
-  /** Trades for favor with `card`, returning the result and the journal. */
+  /** Trades for favor with `card`. */
   private def trade(ready: ReadyGame, selected: Vector[PowerId],
-      card: DenizenId): (OathTransition, ReadyGame) =
-    val started = rules.startWalker(Ready(ready), ActionRef.Trade, p1,
-      selected, Vector(DecisionOptionRef.Button("favor"))).toOption.get
-    val done = rules.resolveWalker(started.state, p1, TradeProcedure.decisionId,
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(card)))
-      .toOption.get
-    (started.copy(events = started.events ++ done.events),
-      done.state.asInstanceOf[Ready].value)
+      card: DenizenId): EconomyActions.Completed =
+    EconomyActions.trade(rules, ready, p1, selected, "favor",
+      DecisionOptionRef.Denizen(card))
 
-  test("trading with a beast card spends no Supply"):
+  test("trading with a beast card spends no Supply and otherwise costs the " +
+      "same"):
     val ready = at(beast)
-    val (transition, result) = trade(ready, modifiers, beast)
+    val traded = trade(ready, modifiers, beast)
+    val result = traded.result
     assertEquals(Look(result).supply(p1), 7)
     // The selection itself is free: favor and secrets match the same Trade
     // without it.
-    val (_, plain) = trade(ready, Vector.empty, beast)
+    val plain = trade(ready, Vector.empty, beast).result
     assertEquals(Look(result).favor(p1), Look(plain).favor(p1))
     assertEquals(Look(result).faceUpSecrets(p1), Look(plain).faceUpSecrets(p1))
-    assertEquals(ActPowerHarness.replayed(rules, ready, transition.events),
-      result)
-    assertWireRoundTrips(transition.events)
+    assertEquals(ActPowerHarness.replayed(rules, ready,
+      traded.journal.events), result)
+    assertWireRoundTrips(traded.journal.events)
 
   test("trading with a nomad card spends no Supply"):
-    assertEquals(Look(trade(at(nomad), modifiers, nomad)._2).supply(p1), 7)
+    assertEquals(Look(trade(at(nomad), modifiers, nomad).result).supply(p1), 7)
 
   test("trading with a card of another suit pays the Supply"):
-    assertEquals(Look(trade(at(order), modifiers, order)._2).supply(p1), 6)
+    // A Trade costs 1 Supply: 7 - 1.
+    assertEquals(Look(trade(at(order), modifiers, order).result).supply(p1),
+      7 - 1)
 
   test("without the selection a beast card pays the Supply"):
-    assertEquals(Look(trade(at(beast), Vector.empty, beast)._2).supply(p1), 6)
+    assertEquals(Look(trade(at(beast), Vector.empty, beast).result).supply(p1),
+      7 - 1)
 
   test("it may be selected whatever the site holds, and only for a Trade"):
-    val offered = (action: ActionRef) => rules.offerableWalkerPowers(at(order),
-      p1, action).toOption.get.map(_.id)
+    val offered = (action: ActionRef) => accepted(
+      rules.offerableWalkerPowers(at(order), p1, action)).map(_.id)
     assert(offered(ActionRef.Trade).contains(Birdsong.id))
     assert(!offered(ActionRef.Muster).contains(Birdsong.id))
 
   test("a facedown Birdsong is not offered"):
-    assert(!rules.offerableWalkerPowers(at(beast, facedown = true), p1,
-      ActionRef.Trade).toOption.get.map(_.id).contains(Birdsong.id))
+    assert(!accepted(rules.offerableWalkerPowers(at(beast, facedown = true), p1,
+      ActionRef.Trade)).map(_.id).contains(Birdsong.id))

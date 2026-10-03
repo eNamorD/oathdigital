@@ -4,8 +4,8 @@ import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
-import oathdigital.testkit.Table.{p2, p3}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
+import oathdigital.testkit.Table.{p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
 class TruthfulHarpSuite extends munit.FunSuite:
@@ -21,7 +21,7 @@ class TruthfulHarpSuite extends munit.FunSuite:
   /** p1's Act at Ancient City holding Truthful Harp faceup, with 5 Supply
     * and the world deck topped by `top`. */
   private def withHarp(top: Vector[WorldCardId]): ReadyGame =
-    withRelic(SearchFixture.staged(top), harp)
+    withRelic(SearchFixture.staged(top, supply = 5), harp)
 
   private def hand(transition: OathTransition): Vector[WorldCardId] =
     SearchFixture.after(transition).game.current.temporaryHands(actor)
@@ -74,7 +74,8 @@ class TruthfulHarpSuite extends munit.FunSuite:
       assertEquals(known(started, viewer), Vector.empty[WorldCardId]))
 
   test("a facedown Harp cannot be selected"):
-    val facedown = withRelic(SearchFixture.staged(discordCards.take(7)), harp,
+    val facedown = withRelic(
+      SearchFixture.staged(discordCards.take(7), supply = 5), harp,
       Orientation.FaceDown)
     assertEquals(start(facedown, onlyHarp).left.toOption,
       Some(OathViolation.InvalidEventOrder(

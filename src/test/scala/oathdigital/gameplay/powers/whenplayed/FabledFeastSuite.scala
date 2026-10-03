@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.p1
 
 class FabledFeastSuite extends munit.FunSuite:
@@ -11,7 +11,7 @@ class FabledFeastSuite extends munit.FunSuite:
   private val power = registered[FabledFeast]
   private val feast = power.cardId
   private val played = hook(feast)
-  private val hearth = SearchFixture.denizensOf(Suit.Hearth)
+  private val hearth = SearchFixture.anyPlainDenizensOf(Suit.Hearth)
 
   /** `table` with every bank empty except `stocks`. */
   private def banks(table: Table, stocks: (Suit, Int)*): Table =
@@ -37,14 +37,14 @@ class FabledFeastSuite extends munit.FunSuite:
 
   test("with two stocked banks it asks which, and takes X favor from it"):
     val ready = banks(ruling, Suit.Order -> 5, Suit.Hearth -> 2).ready
-    val first = parked(play(ready, power, feast))
+    val first = Outcomes.parked(play(ready, power, feast))
     val decide = question(ready, power, played, first.tree)
     assertEquals(decide.decisionId, FabledFeast.decisionId)
     assertEquals(decide.query, DecisionQuery.ChooseOne(
       Vector(Suit.Order, Suit.Hearth).map(suit =>
         DecisionOption.FavorBank(DecisionOptionRef.FavorBank(suit))),
       decide.query.heading))
-    val done = finished(resume(ready, power, played, first.tree,
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
       FabledFeast.decisionId, bankAnswer(Suit.Order)))
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
     assertEquals(done.treeless.banks.favor(Suit.Order), 2)
@@ -53,33 +53,33 @@ class FabledFeastSuite extends munit.FunSuite:
 
   test("a short bank gives what it holds"):
     val ready = banks(ruling, Suit.Order -> 5, Suit.Hearth -> 2).ready
-    val first = parked(play(ready, power, feast))
-    val done = finished(resume(ready, power, played, first.tree,
+    val first = Outcomes.parked(play(ready, power, feast))
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
       FabledFeast.decisionId, bankAnswer(Suit.Hearth)))
     assertEquals(Look(done.treeless).favor(p1), 1 + 2)
     assertEquals(said(done.events), Vector(took(2, Suit.Hearth)))
 
   test("one stocked bank is taken from without asking"):
-    val done = finished(play(banks(ruling, Suit.Nomad -> 5).ready, power,
-      feast))
+    val done = Outcomes.finished(
+      play(banks(ruling, Suit.Nomad -> 5).ready, power, feast))
     assertEquals(said(done.events), Vector(took(3, Suit.Nomad)))
 
   test("played to a site p1 rules it counts itself"):
     val ready = banks(Table.start.denizen(feast, at = homeSite)
       .warbandsAt(homeSite, p1, 1), Suit.Hearth -> 5).ready
-    val done = finished(fire(ready, power, hookAt(feast, homeSite)))
+    val done = Outcomes.finished(fire(ready, power, hookAt(feast, homeSite)))
     assertEquals(said(done.events), Vector(took(1, Suit.Hearth)))
 
   test("played to a site nobody rules, with no other Hearth card, it takes " +
       "nothing"):
     val ready = banks(Table.start.denizen(feast, at = homeSite),
       Suit.Hearth -> 5).ready
-    val done = finished(fire(ready, power, hookAt(feast, homeSite)))
-    assertEquals(recorded(done.events), Vector.empty)
+    val done = Outcomes.finished(fire(ready, power, hookAt(feast, homeSite)))
+    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(done.events), Vector(NoteText.Said("none",
       s"${p1.value} ruled no Hearth card.", covers = false)))
 
   test("with every bank empty it takes nothing, and the line says so"):
-    val done = finished(play(banks(ruling).ready, power, feast))
+    val done = Outcomes.finished(play(banks(ruling).ready, power, feast))
     assertEquals(said(done.events), Vector(NoteText.Said("empty",
       "Every favor bank was empty.", covers = false)))

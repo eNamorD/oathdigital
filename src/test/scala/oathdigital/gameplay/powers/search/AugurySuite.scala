@@ -86,6 +86,7 @@ class AugurySuite extends munit.FunSuite:
 
   test("it is not offered when the card is out of reach"):
     // `staged` leaves Augury off the table: no player or site holds it.
-    assertEquals(start(SearchFixture.staged(discordCards.take(6)), modifiers)
+    assertEquals(
+      start(SearchFixture.staged(discordCards.take(6), supply = 5), modifiers)
       .left.toOption, Some(OathViolation.InvalidEventOrder(
         "power denizen.augury is not applicable to this search")))
