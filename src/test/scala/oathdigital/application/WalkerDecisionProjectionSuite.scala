@@ -353,8 +353,8 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     * to name.
     *
     * Forge is driven to a real park through `ForgeWalkerFixture` -- the
-    * same board and the same commands `GameApplicationServiceSuite` runs
-    * its end-to-end Forge against -- rather than through a hand-built
+    * same board and the same commands `GameApplicationServiceForgeSuite`
+    * runs its end-to-end Forge against -- rather than through a hand-built
     * `Decide`, because the fact under test is that copy authored in
     * `ForgeProcedure` survives the rebuild, the power fold and the
     * projection untouched. A synthetic query would assert the pass-through

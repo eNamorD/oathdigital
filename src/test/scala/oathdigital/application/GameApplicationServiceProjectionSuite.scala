@@ -93,7 +93,8 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     * Imperial warband, Deep Woods 3 Bandits, and Desolate Shore 4 of p2's
     * warbands. The Cradle discard pile shows Fae Merchant and the Provinces
     * pile Conspiracy; the Hinterland's is empty. No Table step places
-    * Imperial warbands, so they are patched in. */
+    * Imperial warbands, and `ready` refuses them (Imperial has no printed
+    * supply), so they are patched in after `ready`. */
   private val siteDetails: ReadyGame =
     val table = Table.start
       .warbandsAt(ancientCity, p1, 2)

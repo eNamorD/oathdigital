@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters._
 
 class BackendArchitectureSuite extends munit.FunSuite:
@@ -269,41 +269,49 @@ class BackendArchitectureSuite extends munit.FunSuite:
     */
   private val MaxLines = 800
 
+  private def scalaFilesUnder(roots: Vector[Path]): Vector[Path] =
+    roots.flatMap { root =>
+      val stream = Files.walk(root)
+      try stream.iterator.asScala.filter(_.toString.endsWith(".scala")).toVector
+      finally stream.close()
+    }
+
   test("every production Scala file stays at or below 800 lines"):
     val roots = Vector(Paths.get("src/main/scala"),
       Paths.get("frontend/src/main/scala"), Paths.get("shared/src/main/scala"))
-    val oversized = roots.flatMap(root => Files.walk(root).iterator.asScala)
-      .filter(_.toString.endsWith(".scala")).flatMap { path =>
-        val lines = Files.readAllLines(path).size
-        Option.when(lines > MaxLines)(s"$path:$lines")
-      }.sorted
+    val oversized = scalaFilesUnder(roots).flatMap { path =>
+      val lines = Files.readAllLines(path).size
+      Option.when(lines > MaxLines)(s"$path:$lines")
+    }.sorted
     assertEquals(oversized, Vector.empty)
 
-  test("all test Scala files stay bounded"):
+  test("every test Scala file stays at or below 800 lines"):
     val roots = Vector(Paths.get("src/test/scala"),
       Paths.get("frontend/src/test/scala"), Paths.get("shared/src/test/scala"))
-    val oversized = roots.flatMap(root => Files.walk(root).iterator.asScala)
-      .filter(_.toString.endsWith(".scala")).flatMap { path =>
-        val lines = Files.readAllLines(path).size
-        Option.when(lines > 800)(s"$path:$lines")
-      }.sorted
+    val oversized = scalaFilesUnder(roots).flatMap { path =>
+      val lines = Files.readAllLines(path).size
+      Option.when(lines > MaxLines)(s"$path:$lines")
+    }.sorted
     assertEquals(oversized, Vector.empty)
 
-  test(
-    "tests name cards, not numeric ids, outside the wire and catalog suites"):
-    // A numeric id hides which card a test means; CatalogNames names it. The
-    // exempt suites test the ids themselves (spec, rubric R5).
+  test("tests name catalog cards, not their ids, outside the catalog suite"):
+    // A catalog id hides which card a test means; CatalogNames names it. The
+    // catalog prints a denizen as digits and a relic or edifice as its letter
+    // and two digits (relic R08, edifice E16). A plain-id fixture card such
+    // as relic R3 is not a catalog id and is not matched. The exempt suite
+    // tests the ids themselves (spec, rubric R5). This file is scanned too,
+    // so a comment here must not spell a whole id construction.
     val exempt = Set(
       // Ledger 08-049: the numeric id of the Alchemist is the subject.
       "src/test/scala/oathdigital/catalog/ExecutableCatalogSuite.scala")
-    val numericId =
-      "(Denizen|Relic|Edifice|Vision|Card|Site|WorldCard)Id\\(\"[0-9]+\"\\)".r
+    val catalogId = (
+      """(Denizen|Vision|Site)Id\("[0-9]+"\)|""" +
+        """(Relic|Edifice)Id\("[RE][0-9]{2}"\)""").r
     val roots = Vector(Paths.get("src/test/scala"),
       Paths.get("frontend/src/test/scala"), Paths.get("shared/src/test/scala"))
-    val offenders = roots.flatMap(root => Files.walk(root).iterator.asScala)
-      .filter(_.toString.endsWith(".scala"))
+    val offenders = scalaFilesUnder(roots)
       .filterNot(path => exempt(path.toString))
-      .filter(path => numericId.findFirstIn(Files.readString(path)).nonEmpty)
+      .filter(path => catalogId.findFirstIn(Files.readString(path)).nonEmpty)
       .map(_.toString).sorted
     assertEquals(offenders, Vector.empty)
 

@@ -74,8 +74,9 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
   /** Where `board`'s facedown relic lies, so the disclosure tests can stand
     * the pawn where Recover's own option shape is observable. The board
     * carries no site denizens at all, which is why Forge's faceup-denizen
-    * shape is proven end to end in `GameApplicationServiceSuite` rather than
-    * here.
+    * shape is proven end to end in `GameApplicationServiceForgeSuite` ("a
+    * parked Forge projects its assignment prompt to the actor only") rather
+    * than here.
     */
   private val facedownRelicSite: SiteId = CatalogNames.site("Broken Peaks")
 

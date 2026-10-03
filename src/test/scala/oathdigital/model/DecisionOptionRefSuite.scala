@@ -1,7 +1,10 @@
 package oathdigital.model
 
+import oathdigital.testkit.CatalogNames
+
 class DecisionOptionRefSuite extends munit.FunSuite:
-  private val hall = DecisionOptionRef.Edifice(EdificeId("E16"))
+  private val hall = DecisionOptionRef.Edifice(
+    CatalogNames.edifice("Hall of Ministers"))
 
   test("an edifice reference spells itself as a kind and id pair and parses back"):
     assertEquals((hall.kind, hall.wireId), ("edifice", "E16"))

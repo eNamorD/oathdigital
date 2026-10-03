@@ -3,6 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
+import oathdigital.testkit.Table
 import oathdigital.testkit.Unwrap.accepted
 
 /** The shape guard through the two interfaces that cross it: the resolver's
@@ -36,10 +37,9 @@ class OperationApplicationSuite extends munit.FunSuite:
     assertEquals(reasons.head.kind, OperationReasonKind.Impossible)
 
   test("wrong requested stack source position is an invalid-stack-position"):
-    // No Table step lays plain-id cards in the world deck, so the deck is
-    // set here: D5 lies under D1.
-    val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
-        worldDeck = Vector(worldDenizen, extraDenizen))))
+    // D5 lies under D1.
+    val source = Table.from(ready)
+      .worldDeckTop(worldDenizen, extraDenizen).unchecked
     val operation = Move(
       Piece.Card(extraDenizen),
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),

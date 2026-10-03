@@ -39,7 +39,7 @@ class TableSessionSuite extends munit.FunSuite:
     * It computes no answer: each call returns a promise that the test
     * completes through `answerLoad` and its siblings, oldest first.
     */
-  private final class FakeClient extends GameClient:
+  private final class RecordingClient extends GameClient:
     var loads = Vector.empty[Load]
     var submits = Vector.empty[Submit]
     var previews = Vector.empty[Preview]
@@ -100,7 +100,7 @@ class TableSessionSuite extends munit.FunSuite:
     def reload(): Unit = reloads += 1
 
   private final class Fixture(trusted: Boolean, player: String = "red"):
-    val client = new FakeClient
+    val client = new RecordingClient
     val clock = new FakePollClock
     val navigation = new RecordingNavigation
     var redraws = 0

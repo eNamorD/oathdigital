@@ -25,8 +25,7 @@ class OperationExecutorSuite extends munit.FunSuite:
     val once = accepted(executor.execute(ready, AdvanceVisionsDrawn))
     assertEquals(once.game.current.tracks.visionsDrawn,
       ready.game.current.tracks.visionsDrawn + 1)
-    val maximum = ready.updateCurrent(_.copy(tracks = ready.game.current.tracks.copy(
-        visionsDrawn = Int.MaxValue)))
+    val maximum = Table.from(ready).visionsDrawn(Int.MaxValue).unchecked
     assertEquals(rejectionCode(maximum, AdvanceVisionsDrawn),
       "visions-drawn-overflow")
 
@@ -87,9 +86,8 @@ class OperationExecutorSuite extends munit.FunSuite:
       Left(OperationError.EmptyOperationBatch))
 
   test("Draw removes a top prefix and preserves top-first hand order"):
-    // No Table step stacks plain-id cards in a deck, so the deck is set here.
-    val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
-        worldDeck = Vector(worldDenizen, extraDenizen))))
+    val source = Table.from(ready)
+      .worldDeckTop(worldDenizen, extraDenizen).unchecked
     val draw = Draw(playerId, Vector(worldDenizen, extraDenizen),
       Location.Deck(CardDeck.World), Location.Hand(playerId))
     val result = accepted(executor.execute(source, draw))
@@ -99,11 +97,7 @@ class OperationExecutorSuite extends munit.FunSuite:
       Vector(worldDenizen, extraDenizen))
 
   test("a drained temporary hand keeps its always-keyed empty vector"):
-    val source = ready.updateCurrent(_.copy(
-        commonCards = ready.game.current.commonCards.copy(
-          worldDeck = ready.game.current.commonCards.worldDeck.filterNot(
-            _ == worldDenizen)),
-        temporaryHands = Map(playerId -> Vector(worldDenizen))))
+    val source = Table.from(ready).hand(playerId, worldDenizen).unchecked
     val discard = Move(
       Piece.Card(worldDenizen),
       PositionedLocation(Location.Hand(playerId)),
@@ -119,9 +113,8 @@ class OperationExecutorSuite extends munit.FunSuite:
       Vector(worldDenizen))
 
   test("deck and regional-discard stack conventions preserve insertion order"):
-    // No Table step stacks plain-id cards in a deck, so the deck is set here.
-    val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
-        worldDeck = Vector(worldDenizen, extraDenizen))))
+    val source = Table.from(ready)
+      .worldDeckTop(worldDenizen, extraDenizen).unchecked
     def discard(id: DenizenId) = Move(
       Piece.Card(id),
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),
@@ -195,12 +188,9 @@ class OperationExecutorSuite extends munit.FunSuite:
       .exists(_.id == siteDenizen.id))
 
   test("relic discard preserves composite secret orientation semantics"):
-    val relic = siteRelic.copy(tokens = Tokens(0, 1))
-    val source = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
-        ready.game.current.map.sites.updated(sites(1),
-          ready.game.current.map.sites(sites(1)).copy(relics = Vector(relic))))))
+    val source = Table.from(ready).tokens(siteRelic.id, secrets = 1).unchecked
     val discard = Discard.Relic(
-      relic.id,
+      siteRelic.id,
       PositionedLocation(Location.Site(sites(1))),
       secrets = 1,
       actingPlayer = playerId
@@ -208,7 +198,7 @@ class OperationExecutorSuite extends munit.FunSuite:
     val result = accepted(executor.execute(source, discard))
     val actor = Look(result).player(playerId)
 
-    assertEquals(result.game.current.setAsideRelics, Vector(relic.id))
+    assertEquals(result.game.current.setAsideRelics, Vector(siteRelic.id))
     // Red's own faceup secret, and the relic's secret taken facedown.
     assertEquals(actor.board.faceUpSecrets -> actor.board.faceDownSecrets,
       1 -> 1)
@@ -378,10 +368,7 @@ class OperationExecutorSuite extends munit.FunSuite:
       .exists(_.orientation == Orientation.FaceUp))
 
   test("pawn banner and warband moves update their concrete storage"):
-    val destination = ready.game.current.map.sites(sites(2))
-    val movable = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
-        ready.game.current.map.sites.updated(sites(2),
-          destination.copy(forces = SiteForces.Empty)))))
+    val movable = Table.from(ready).bandits(sites(2), 0).unchecked
     val moves = Vector[CoreOperation](
       Move(Piece.Pawn(playerId),
         PositionedLocation(Location.Site(sites.head)),

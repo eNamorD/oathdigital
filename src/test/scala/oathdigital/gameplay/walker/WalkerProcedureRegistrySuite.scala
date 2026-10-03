@@ -89,11 +89,9 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
     *    `OathRulesWalkerPowerSuite`, "a Roll park under an action declaring
     *    no roll decision id rejects the whole command with the accessor's
     *    typed Left, appending nothing".
-    *  - `WalkerDecisionProjector` --
-    *    `GameApplicationServiceSuite`, "walker Forge completes through
-    *    StartWalker/ResolveWalker alone and replays to the same final
-    *    state", which asserts the parked Forge decision carries no
-    *    `rollOutcome`.
+    *  - `WalkerDecisionProjector` -- `WalkerDecisionProjectorSuite`, "a Roll
+    *    park under an action declaring no roll decision id projects nothing,
+    *    rather than a projection naming a sentinel".
     */
   test("rollDecisionId rejects an action whose entry declares none, and " +
       "still answers for the action that has one"):

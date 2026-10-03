@@ -7,6 +7,7 @@ import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
   PartitionAnswer}
 import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
   encodedStream, encodedStreamThatRoundTrips}
+import oathdigital.testkit.CatalogNames
 
 /** Walker decision answers on the wire: every answer and option reference kind
   * round trips on a recorded step and on a park, and deleted legacy tags are
@@ -55,7 +56,8 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       .map(id => DecisionOptionRef.Denizen(DenizenId(s"denizen:$id")))
       .zip(Vector("pay-favor", "pay-secret", "pay-favor"))
       .map { case (option, section) => DecisionPlacement(option, section) })
-    val chooseOne = ChooseOneAnswer(DecisionOptionRef.Relic(RelicId("R01")))
+    val chooseOne = ChooseOneAnswer(
+      DecisionOptionRef.Relic(CatalogNames.relic("Sticky Fire")))
     val distribute = DistributeAnswer(Vector(
       DistributeAmount(DecisionOptionRef.FavorBank(Suit.Arcane), 0),
       DistributeAmount(DecisionOptionRef.FavorBank(Suit.Nomad), 3)))
@@ -121,9 +123,10 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       DecisionOptionRef.Player(PlayerId("blue")),
       DecisionOptionRef.Site(SiteId("site:s1")),
       DecisionOptionRef.Denizen(DenizenId("denizen:d1")),
-      DecisionOptionRef.Relic(RelicId("R01")),
+      DecisionOptionRef.Relic(CatalogNames.relic("Sticky Fire")),
       DecisionOptionRef.Vision(VisionId("vision:v1")),
-      DecisionOptionRef.Edifice(EdificeId("E16")),
+      DecisionOptionRef.Edifice(
+        CatalogNames.edifice("Hall of Ministers")),
       DecisionOptionRef.Deck(CardDeck.Relic),
       DecisionOptionRef.FavorBank(Suit.Hearth),
       DecisionOptionRef.RelicSlot(PlayerId("blue"), 0),

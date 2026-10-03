@@ -4,9 +4,8 @@ import oathdigital.model.PlayerColor
 
 import scala.concurrent.Future
 
-/** The fixtures that the ServerMode* suites split out of ServerModeUiSuite
-  * share: the log-filtering transport and the two-seat
-  * projection.
+/** The fixtures that the ServerMode* suites share: the log-filtering
+  * transport and the two-seat projection.
   */
 private[frontend] object ServerModeFixtures:
   /** Stub of `JsonTransport` over `inner`: answers every log request with an

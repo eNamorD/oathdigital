@@ -39,8 +39,8 @@ import oathdigital.model._
   *  - `RecoverProcedureSuite` pins one live walk's tree/ops/state against
   *    hand-written expected values; it never reconstructs state by replay nor
   *    re-derives a second, independent set of ops to diff against the first.
-  *  - `GameApplicationServiceSuite` ("walker Recover persists every park and
-  *    replays to legacy-equivalent state", :69-174) proves *final replayed
+  *  - `GameApplicationServiceRecoverSuite` ("walker Recover persists every
+  *    park and replays to the same final state") proves *final replayed
   *    state* equals *final live state* after a full app-service replay, and
   *    separately pins the recorded ops as literals. It never compares
   *    recorded ops against an ops derivation obtained by re-walking a

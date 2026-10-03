@@ -295,7 +295,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
   // -------------------------------------------------------------------------
   // The untested `validateModifiers` branch: a known, PlayerSelected power
   // id whose `applicable` returns false must reject distinctly from an
-  // unknown id (already covered in GameApplicationServiceSuite), before the
+  // unknown id (already covered in GameApplicationServiceRecoverSuite,
+  // "StartWalker rejects an unknown power id in modifiers..."), before the
   // walk ever starts.
   // -------------------------------------------------------------------------
 

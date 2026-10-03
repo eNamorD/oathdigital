@@ -9,9 +9,6 @@ import org.scalajs.dom
   * not change the box, or the board shifts under the player mid-decision.
   */
 class SiteBoxLayoutSuite extends munit.FunSuite:
-  private def all(node: dom.Element, selector: String): Vector[dom.Element] =
-    node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
-
   private val site = GameSite("site:woods", "Deep Woods",
     looseFavor = 0, looseSecrets = 0, denizenCapacity = 3, relicCapacity = 0,
     denizens = Vector.empty, relics = GameSiteRelics(0), defense = 0)
@@ -35,11 +32,11 @@ class SiteBoxLayoutSuite extends munit.FunSuite:
     * at the same height on a site nobody stands on as on one they do.
     */
   test("a site nobody stands on still draws its pawn row"):
-    val empty = all(world(projection()), ".site-pawns")
+    val empty = Dom.all(world(projection()), ".site-pawns")
     assertEquals(empty.size, 1)
     assertEquals(empty.head.childNodes.length, 0)
-    val occupied = all(world(projection(Vector(GamePawn("red", "site:woods")))),
-      ".site-pawns")
+    val occupied = Dom.all(
+      world(projection(Vector(GamePawn("red", "site:woods")))), ".site-pawns")
     assertEquals(occupied.size, 1)
     assert(occupied.head.textContent.contains("Red"), occupied.head.textContent)
 
@@ -53,8 +50,9 @@ class SiteBoxLayoutSuite extends munit.FunSuite:
           BoardTargetRef.Site("site:woods"), "Deep Woods", Vector("Supply 2"))))),
       Some("travel"), Set.empty)
     val node = world(projection(), Some(targets))
-    val badges = all(node, ".target-detail-badge")
+    val badges = Dom.all(node, ".target-detail-badge")
     assertEquals(badges.size, 1)
     assertEquals(badges.head.parentNode.asInstanceOf[dom.Element]
       .getAttribute("class").contains("site"), true)
-    assertEquals(all(node, ".site-details .target-detail-badge"), Vector.empty)
+    assertEquals(Dom.all(node, ".site-details .target-detail-badge"),
+      Vector.empty)

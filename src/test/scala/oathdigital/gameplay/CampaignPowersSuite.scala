@@ -67,6 +67,7 @@ class CampaignPowersSuite extends munit.FunSuite:
     }.toMap
     MapState(cradle, provinces, hinterland, states)
   private def withPawnAt(site: SiteId, map: MapState = passMap): ReadyGame =
+    // No Table step lays out regions, so the map is replaced.
     Table.from(initial.updateCurrent(_.copy(map = map))).pawn(actor, at = site)
       .ready
 

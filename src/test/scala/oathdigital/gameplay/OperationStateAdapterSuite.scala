@@ -3,6 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
+import oathdigital.testkit.Table
 import oathdigital.testkit.Unwrap.rejected
 
 class OperationStateAdapterSuite extends munit.FunSuite:
@@ -38,9 +39,7 @@ class OperationStateAdapterSuite extends munit.FunSuite:
       .isInstanceOf[OperationError.MissingPiece])
 
   test("temporary hands are not part of a player's play area"):
-    val inHand = ready.updateCurrent(_.copy(
-        commonCards = ready.game.current.commonCards.copy(worldDeck = Vector.empty),
-        temporaryHands = Map(playerId -> Vector(worldDenizen))))
+    val inHand = Table.from(ready).hand(playerId, worldDenizen).unchecked
 
     assert(OperationStateAdapter.card(inHand, worldDenizen,
       Location.Hand(playerId)).isRight)
