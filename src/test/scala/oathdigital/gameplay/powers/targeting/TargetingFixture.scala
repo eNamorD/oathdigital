@@ -7,7 +7,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
   WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Outcomes}
+import oathdigital.testkit.{CatalogNames, Outcomes, Table}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Shared reading for the suites of the rules that keep a player from being
@@ -21,6 +21,14 @@ object TargetingFixture:
   val fortress: EdificeId = CatalogNames.edifice("Oaken Fortress")
   /** The relic whose holder's banners and relics cannot be targeted. */
   val circlet: RelicId = CatalogNames.relic("Circlet of Command")
+
+  /** p1, in Act at Ancient City, can afford a Challenge (6 favor, 6 faceup
+    * and 4 facedown secrets) against p2, who stands there holding the
+    * People's Favor with 2 favor. */
+  val challengeTable: Table = Table.start
+    .favor(Table.p1, 6).secrets(Table.p1, faceUp = 6, faceDown = 4)
+    .peoplesFavor(Some(Table.p2), favor = 2)
+    .pawn(Table.p2, at = Table.quietPawnSite(Table.p1))
 
   def ready(transition: OathTransition)(using munit.Location): ReadyGame =
     Outcomes.ready(transition.state)

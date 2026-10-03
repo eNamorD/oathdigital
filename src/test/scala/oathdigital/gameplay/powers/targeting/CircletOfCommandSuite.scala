@@ -1,17 +1,17 @@
 package oathdigital.gameplay.powers.targeting
 
-import oathdigital.gameplay.CampaignFixture
 import oathdigital.gameplay.CampaignFixture.{RaidBoard, raidBoard}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
-  WalkerPowers}
+import oathdigital.gameplay.powerresolver.OptionRestriction
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.Unwrap.{accepted, as, present}
 import oathdigital.testkit.Table.{p1, p2}
 
 class CircletOfCommandSuite extends munit.FunSuite:
@@ -32,9 +32,9 @@ class CircletOfCommandSuite extends munit.FunSuite:
     val held = circletSide.fold(b.ready)(side => Table.from(b.ready)
       .relic(holder, circlet, facedown = side == Orientation.FaceDown)
       .unchecked)
-    val started = start(held, ActionRef.Campaign, b.actor).toOption.get
-    rules.resolveWalker(started.state, b.actor, CampaignIds.kind, raid)
-      .toOption.get
+    val started = accepted(start(held, ActionRef.Campaign, b.actor))
+    accepted(
+      rules.resolveWalker(started.state, b.actor, CampaignIds.kind, raid))
 
   private def raidTargets(circletSide: Option[Orientation],
       attacker: Boolean = false): Vector[DecisionOptionRef] =
@@ -44,7 +44,8 @@ class CircletOfCommandSuite extends munit.FunSuite:
       "target the Circlet"):
     val RaidBoard(b, relic) = raidBoard()
     assertEquals(raidTargets(None).toSet, Set[DecisionOptionRef](
-      DecisionOptionRef.Relic(relic), DecisionOptionRef.Banner(Banner.PeoplesFavor),
+      DecisionOptionRef.Relic(relic),
+      DecisionOptionRef.Banner(Banner.PeoplesFavor),
       DecisionOptionRef.Banner(Banner.DarkestSecret)))
     assertEquals(raidTargets(Some(Orientation.FaceUp)),
       Vector[DecisionOptionRef](DecisionOptionRef.Relic(circlet)))
@@ -65,18 +66,14 @@ class CircletOfCommandSuite extends munit.FunSuite:
 
   /** p1 challenges at Ancient City, where p2 stands holding People's Favor
     * and, on `circletSide`, the Circlet. */
-  private def challenge(circletSide: Option[Orientation])
-      : (PlayerId, OathTransition) =
-    val table = Table.start
-      .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
-      .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = Table.quietPawnSite(p1))
-    val held = circletSide.fold(table)(side => table.relic(p2, circlet,
-      facedown = side == Orientation.FaceDown))
-    (p2, start(held.ready, ActionRef.Challenge, p1).toOption.get)
+  private def challenge(circletSide: Option[Orientation]): OathTransition =
+    val held = circletSide.fold(challengeTable)(side => challengeTable
+      .relic(p2, circlet, facedown = side == Orientation.FaceDown))
+    accepted(start(held.ready, ActionRef.Challenge, p1))
 
   private def challengeBanners(circletSide: Option[Orientation])
       : Vector[DecisionOptionRef] =
-    optionsAt(challenge(circletSide)._2, ActionRef.Challenge)
+    optionsAt(challenge(circletSide), ActionRef.Challenge)
 
   test("a Challenge may name any banner: the Circlet protects only a " +
       "Campaign's targets"):
@@ -87,51 +84,45 @@ class CircletOfCommandSuite extends munit.FunSuite:
   // ---- Conspiracy ----
 
   private val conspiracy = VisionRules.Conspiracy
-  private val other = RelicId("R10")
+  private val crackedHorn = CatalogNames.relic("Cracked Horn")
 
-  /** The actor plays Conspiracy at a site the enemy shares; the enemy holds the
-    * Circlet, one other relic and the People's Favor banner. Returns the
-    * target options and the walk's events.
-    */
-  private def conspiracyTargets(circletSide: Orientation)
-      : (ReadyGame, PlayerId, Vector[DecisionOptionRef], Vector[OathEvent]) =
-    val base = PowerFixture.quietTable
-    val actor = PowerFixture.actor
-    val enemy = base.game.current.players.map(_.player).find(_ != actor).get
-    val site = Look(base).player(PowerFixture.actor).pawnSite
-    val staged = Table.from(base).hand(actor, conspiracy)
-      .unchecked.updateCurrent(c => c.copy(
-        players = c.players.map(p => if p.player == enemy then
-          p.copy(pawnSite = site) else p),
-        banners = c.banners.copy(
-          peoplesFavor = c.banners.peoplesFavor.copy(holder = Some(enemy)),
-          darkestSecret = c.banners.darkestSecret.copy(holder = None))))
-    val ready = Table.from(staged).relic(enemy, other)
-      .relic(enemy, circlet, facedown = circletSide == Orientation.FaceDown)
-      .unchecked
-    val hook = CardPlayedFaceup(conspiracy, RuleSourceRef.Adviser(actor, conspiracy))
+  /** The game a Conspiracy walk ran on, the target options it parked on, and
+    * its events. */
+  private final case class ConspiracyWalk(ready: ReadyGame,
+      options: Vector[DecisionOptionRef], events: Vector[OathEvent])
+
+  /** p1 plays Conspiracy at Ancient City, where p2 stands holding Cracked
+    * Horn, the Circlet on `circletSide` and the People's Favor. */
+  private def conspiracyTargets(circletSide: Orientation): ConspiracyWalk =
+    val ready = Table.start.pawn(p2, at = "Ancient City")
+      .peoplesFavor(Some(p2), favor = 1).hand(p1, conspiracy)
+      .relic(p2, crackedHorn)
+      .relic(p2, circlet, facedown = circletSide == Orientation.FaceDown)
+      .ready
+    val hook = CardPlayedFaceup(conspiracy,
+      RuleSourceRef.Adviser(p1, conspiracy))
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       Vector.empty)
-    val parked = ProcedureWalker.advance(ready, hook, None, powers).toOption.get
-    val (options, events) = parked match
-      case WalkerOutcome.Parked(pending, events) =>
-        (ProcedureWalker.parkedDecide(ready, hook, pending, powers).get.query
-          .asInstanceOf[DecisionQuery.ChooseOne].options.map(_.ref), events)
-      case _ => (Vector.empty, Vector.empty)
-    (ready, enemy, options, events)
+    val parked = Outcomes.parked(ProcedureWalker.advance(ready, hook, None,
+      powers))
+    val decide = present(ProcedureWalker.parkedDecide(ready, hook, parked.tree,
+      powers), "the target decision")
+    ConspiracyWalk(ready,
+      as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref),
+      parked.events)
 
   test("Conspiracy may take any of the holder's relics and banners"):
-    val (ready, enemy, options, _) = conspiracyTargets(Orientation.FaceUp)
-    assertEquals(Look(ready).player(enemy).relics.map(_.id),
-      Vector(other, circlet))
-    assertEquals(options.toSet, Set[DecisionOptionRef](
-      DecisionOptionRef.RelicSlot(enemy, 0), DecisionOptionRef.RelicSlot(enemy, 1),
+    val walk = conspiracyTargets(Orientation.FaceUp)
+    assertEquals(Look(walk.ready).player(p2).relics.map(_.id),
+      Vector(crackedHorn, circlet))
+    assertEquals(walk.options.toSet, Set[DecisionOptionRef](
+      DecisionOptionRef.RelicSlot(p2, 0), DecisionOptionRef.RelicSlot(p2, 1),
       DecisionOptionRef.Banner(Banner.PeoplesFavor)))
 
   test("a facedown Circlet leaves every target open"):
-    val (_, enemy, options, _) = conspiracyTargets(Orientation.FaceDown)
-    assertEquals(options.toSet, Set[DecisionOptionRef](
-      DecisionOptionRef.RelicSlot(enemy, 0), DecisionOptionRef.RelicSlot(enemy, 1),
+    val walk = conspiracyTargets(Orientation.FaceDown)
+    assertEquals(walk.options.toSet, Set[DecisionOptionRef](
+      DecisionOptionRef.RelicSlot(p2, 0), DecisionOptionRef.RelicSlot(p2, 1),
       DecisionOptionRef.Banner(Banner.PeoplesFavor)))
 
   test("the Circlet's rule ignores an option that is not a banner or a relic"):
@@ -140,8 +131,8 @@ class CircletOfCommandSuite extends munit.FunSuite:
     val ctx = PowerCtx(ready, p1, power.source,
       PowerWindow.CampaignTargetSelection, Vector.empty,
       Decide("x", p1, DecisionQuery.ChooseOne(Vector.empty)))
-    val restriction = power.contributions(PowerWindow.CampaignTargetSelection)
-      .head.asInstanceOf[oathdigital.gameplay.powerresolver.OptionRestriction]
+    val restriction = as[OptionRestriction](
+      power.contributions(PowerWindow.CampaignTargetSelection).head)
     assertEquals(restriction.fn(ctx, DecisionOptionRef.Site(SiteId("s"))), None)
 
   // ---- Lines ----
@@ -155,14 +146,16 @@ class CircletOfCommandSuite extends munit.FunSuite:
   test("the Raid targets the Circlet hides name their holder, once each"):
     val b = raidBoard().board
     val said = hidden(raidKind(Some(Orientation.FaceUp)).events)
+    // The relic, the People's Favor and the Darkest Secret.
     assertEquals(said.size, 3)
     assertEquals(said.distinct, Vector(shielded(b.rival)))
     assertEquals(hidden(raidKind(Some(Orientation.FaceDown)).events),
       Vector.empty)
 
   test("a Challenge writes no Circlet line"):
-    assertEquals(hidden(challenge(Some(Orientation.FaceUp))._2.events),
+    assertEquals(hidden(challenge(Some(Orientation.FaceUp)).events),
       Vector.empty)
 
   test("a Conspiracy writes no Circlet line"):
-    assertEquals(hidden(conspiracyTargets(Orientation.FaceUp)._4), Vector.empty)
+    assertEquals(hidden(conspiracyTargets(Orientation.FaceUp).events),
+      Vector.empty)

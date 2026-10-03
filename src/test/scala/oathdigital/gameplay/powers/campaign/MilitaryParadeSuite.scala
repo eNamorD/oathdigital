@@ -41,7 +41,8 @@ class MilitaryParadeSuite extends munit.FunSuite:
       case (b, (adviser, face)) => withAdviserFor(b, b.rival, adviser, face) }
     withAdviser(held, card, Orientation.FaceUp)
 
-  test("an attacker that wins gains a favor per faceup adviser of the enemy, from each adviser's bank"):
+  test("an attacker that wins gains a favor per faceup adviser of the enemy, " +
+      "from each adviser's bank"):
     val b = attacking
     val before = OathState.Ready(b.ready)
     val done = commit(rules(winning), b, 4)
@@ -81,7 +82,8 @@ class MilitaryParadeSuite extends munit.FunSuite:
     assert(run.offers(b.actor, b.actor, CampaignIds.attackerPlan, honorsRef))
     assert(!run.offered(b.actor).contains(ref))
 
-  test("a bandit defender that wins moves the favor from the banks to the shared bank, without choosing"):
+  test("a bandit defender that wins takes the favor from the Order bank, " +
+      "without choosing"):
     val base = board(warbands = 5, supply = 7)
     val b = withAdviser(withSiteCard(base, base.origin, card), orders(0),
       Orientation.FaceUp)
@@ -100,4 +102,6 @@ class MilitaryParadeSuite extends munit.FunSuite:
     val done = commit(rules(winning), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(bank(done.state, Suit.Order), 0)
-    assertEquals(favor(done.state, b.actor), favor(before, b.actor) + 2)
+    // The two Order advisers get the Order bank's only favor; the Beast
+    // adviser gets 1 from the Beast bank.
+    assertEquals(favor(done.state, b.actor), favor(before, b.actor) + 1 + 1)

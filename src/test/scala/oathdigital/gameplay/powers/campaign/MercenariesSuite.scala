@@ -7,14 +7,17 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
+import oathdigital.testkit.Unwrap.present
 
-/** Mercenaries: a favor placed for three more attack dice, or three fewer for the
-  * attacker when it defends, and gone when its user is defeated.
-  */
+/** Mercenaries: a favor placed for three more attack dice, or three fewer for
+  * the attacker when it defends, and gone when its user is defeated. */
 class MercenariesSuite extends munit.FunSuite:
   private val card = cardWith("denizen.mercenaries")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
+  /** Mercenaries' suit: its placed favor comes from, and returns to, that
+    * bank. */
+  private val mercenariesSuit = present(catalog.suitOf(card), "a suit")
 
   private def funded(b: Board, who: PlayerId, favor: Int): Board =
     on(b)(_.favor(who, favor))
@@ -48,16 +51,17 @@ class MercenariesSuite extends munit.FunSuite:
     assertEquals(adviserTokens(done.state, b.actor), Some(Tokens(1, 0)))
     assert(!discarded(done.state))
 
-  test("an attacker that is defeated discards Mercenaries, and its favor returns to the bank"):
+  test("an attacker that is defeated discards Mercenaries, and its favor " +
+      "returns to the bank"):
     val b = attackerBoard
-    val before = b.ready.banks.favor.getOrElse(Suit.Discord, 0)
+    val before = b.ready.banks.favor.getOrElse(mercenariesSuit, 0)
     val done = commit(rules(losing), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(ready(done.state).game.current.lastCampaignResult.map(
       _.attackerWins), Some(false))
     assertEquals(adviserTokens(done.state, b.actor), None)
     assert(discarded(done.state))
-    assertEquals(ready(done.state).banks.favor.getOrElse(Suit.Discord, 0),
+    assertEquals(ready(done.state).banks.favor.getOrElse(mercenariesSuit, 0),
       before + 1)
     assertEquals(Look(done.state).player(b.actor).board.favor, 1)
 
@@ -65,23 +69,27 @@ class MercenariesSuite extends munit.FunSuite:
     ready(state).game.current.commonCards.regionalDiscards.getOrElse(region,
       Vector.empty)
 
-  test("an adviser is discarded to the region after the region of its holder's pawn"):
+  test("an adviser is discarded to the region after the region of its " +
+      "holder's pawn"):
     val b = attackerBoard
     val own = b.ready.game.current.map.regionOf(b.origin).get
     val done = commit(rules(losing), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assert(pile(done.state, CardPlay.nextRegion(own)).contains(card))
 
-  test("a card at a site the attacker rules is discarded from the site, to the region after the site's own"):
+  test("a card at a site the attacker rules is discarded from the site, to " +
+      "the region after the site's own"):
     val base = board(warbands = 5, supply = 7)
     val current = base.ready.game.current
     val pawnRegion = current.map.regionOf(base.origin).get
-    val ruled = current.map.inPlay.find(site =>
-      current.map.regionOf(site).exists(_ != pawnRegion)).get
+    // Buried Giant, in the Provinces, away from p1's Cradle site.
+    val ruled = CatalogNames.site("Buried Giant")
+    assert(!current.map.regionOf(ruled).contains(pawnRegion))
     val siteRegion = current.map.regionOf(ruled).get
-    val b = funded(withSiteCard(actorRules(base, ruled), ruled, card), base.actor, 2)
-    val done = commit(rules(losing), b, 0).pick(b.actor, CampaignIds.attackerPlan,
-      ref).finishPlanWindows
+    val b = funded(withSiteCard(actorRules(base, ruled), ruled, card),
+      base.actor, 2)
+    val done = commit(rules(losing), b,
+      0).pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assert(discarded(done.state))
     assertEquals(ready(done.state).game.current.map.sites(ruled).denizens,
       Vector.empty)
@@ -92,13 +100,14 @@ class MercenariesSuite extends munit.FunSuite:
     val b = funded(attackerBoard, attackerBoard.actor, 0)
     assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
 
-  private def defending(warbands: Int = 8): Board =
+  private def defending(warbands: Int): Board =
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = warbands, supply = 7))
     funded(withAdviserFor(base, base.rival, card, Orientation.FaceUp),
       base.rival, 2)
 
-  test("a defender pays at once and takes away the dice the attacker would roll, down to none"):
+  test("a defender pays at once and takes away the dice the attacker would " +
+      "roll, down to none"):
     val b = defending(warbands = 2)
     val run = commit(rules(winning), b, 2)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
@@ -107,8 +116,8 @@ class MercenariesSuite extends munit.FunSuite:
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
     assertEquals(adviserTokens(picked.state, b.rival), Some(Tokens.empty))
     assertEquals(Look(picked.state).player(b.rival).board.favor, 1)
-    assertEquals(ready(picked.state).banks.favor.getOrElse(Suit.Discord, 0),
-      ready(run.state).banks.favor.getOrElse(Suit.Discord, 0) + 1)
+    assertEquals(ready(picked.state).banks.favor.getOrElse(mercenariesSuit, 0),
+      ready(run.state).banks.favor.getOrElse(mercenariesSuit, 0) + 1)
 
   test("a defender that wins keeps Mercenaries"):
     val b = defending(warbands = 2)
@@ -120,7 +129,7 @@ class MercenariesSuite extends munit.FunSuite:
     assert(!discarded(done.state))
 
   test("a defender that is defeated discards Mercenaries"):
-    val b = defending()
+    val b = defending(warbands = 8)
     val done = commit(rules(winning), b, 8)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(ready(done.state).game.current.lastCampaignResult.map(

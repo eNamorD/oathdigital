@@ -46,10 +46,11 @@ class InsectSwarmSuite extends munit.FunSuite:
   private def attackerHolds(defenderFavor: Int): Board =
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    on(withAdviserFor(withAdviser(base, swarm, Orientation.FaceUp),
-      base.rival, watchdog, Orientation.FaceUp))(_.favor(base.rival, defenderFavor))
+    on(withAdviserFor(withAdviser(base, swarm, Orientation.FaceUp), base.rival,
+      watchdog, Orientation.FaceUp))(_.favor(base.rival, defenderFavor))
 
-  test("a defender's plan costs one more favor, burnt even though it is paid off turn"):
+  test("a defender's plan costs one more favor, burnt even though it is paid " +
+      "off turn"):
     val b = attackerHolds(1)
     val suit = catalog.suitOf(watchdog).get
     val run = commit(rules(losing), b, 4)
@@ -64,7 +65,8 @@ class InsectSwarmSuite extends munit.FunSuite:
     assertEquals(tokensOn(picked.state, b.rival, watchdog),
       Some(Tokens.empty))
 
-  test("the title's plan burns a favor from its user's board, since it has no card"):
+  test("the title's plan burns a favor from its user's board, since it has " +
+      "no card"):
     val b = attackerHolds(1)
     val run = commit(rules(losing), b, 4)
     val title = run.options(b.actor).find(_.ref == titleRef).get
@@ -76,7 +78,8 @@ class InsectSwarmSuite extends munit.FunSuite:
     val b = attackerHolds(0)
     assert(awaits(commit(rules(losing), b, 4), b.actor, CampaignIds.sacrifice))
 
-  test("a plan whose own cost and the added favor cannot both be paid is not offered"):
+  test("a plan whose own cost and the added favor cannot both be paid is not " +
+      "offered"):
     val base = attackerHolds(1)
     // Extra Provisions places a favor of its own, so it needs two.
     val b = withAdviserFor(base, base.rival, provisions, Orientation.FaceUp)
@@ -90,10 +93,12 @@ class InsectSwarmSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val b = on(withAdviserFor(withAdviser(base, swarm, Orientation.FaceDown),
       base.rival, watchdog, Orientation.FaceUp))(_.favor(base.rival, 0))
+    // The Watchdog, the title's plan and Finish.
     assertEquals(commit(rules(losing), b, 4).options(b.actor).map(price),
       Vector.fill(3)(OptionPrice()))
 
-  test("bandits are enemies too: a bandit defender is taxed, cannot pay, and applies no plan"):
+  test("bandits are enemies too: a bandit defender is taxed, cannot pay, and " +
+      "applies no plan"):
     val base = board(warbands = 5, supply = 7)
     val free = withSiteCard(base, base.origin, watchdog)
     val taxed = withAdviser(free, swarm, Orientation.FaceUp)
@@ -120,7 +125,8 @@ class InsectSwarmSuite extends munit.FunSuite:
     on(withAdviser(withAdviserFor(base, base.rival, swarm, Orientation.FaceUp),
       honors, Orientation.FaceUp))(_.favor(base.actor, attackerFavor))
 
-  test("an attacker's plan costs one more favor, burnt from the attacker's board"):
+  test("an attacker's plan costs one more favor, burnt from the attacker's " +
+      "board"):
     val b = defenderHolds(1)
     val run = commit(rules(winning), b, 4)
     val option = run.options(b.actor).find(_.ref == ref(honors)).get
@@ -150,6 +156,7 @@ class InsectSwarmSuite extends munit.FunSuite:
     val b = on(withAdviserFor(withAdviserFor(base, base.rival, swarm,
       Orientation.FaceUp), base.rival, watchdog, Orientation.FaceUp))(
       _.favor(base.rival, 0))
+    // The Watchdog, the title's plan and Finish.
     assertEquals(commit(rules(losing), b, 4).options(b.actor).map(price),
       Vector.fill(3)(OptionPrice()))
 

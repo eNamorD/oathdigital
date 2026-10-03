@@ -131,10 +131,7 @@ class FortressRulesSuite extends munit.FunSuite:
       : Vector[DecisionOptionRef] =
     // p1 challenges at Ancient City, where p2 stands holding People's Favor.
     val site = Table.quietPawnSite(p1)
-    val held = Table.start
-      .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
-      .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = site)
-      .ready
+    val held = challengeTable.ready
     val staged = Table.from(held).edifice(fortress, side, at = site)
     val ready = (if ruled then staged.warbandsAt(site, p2, 2) else staged)
       .unchecked
@@ -185,10 +182,7 @@ class FortressRulesSuite extends munit.FunSuite:
 
   test("a banner a protected player holds is named by its holder"):
     // p1 challenges at Ancient City, where p2 stands holding People's Favor.
-    val held = Table.start
-      .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
-      .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = Table.quietPawnSite(p1))
-      .ready
+    val held = challengeTable.ready
     val staged = Table.from(held).edifice(fortress, EdificeSide.Ruined,
       at = Table.quietPawnSite(p1)).unchecked
     assertEquals(hidden(rotting, start(staged, ActionRef.Challenge, p1)

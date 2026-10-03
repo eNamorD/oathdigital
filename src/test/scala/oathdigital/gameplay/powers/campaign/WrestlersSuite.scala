@@ -20,7 +20,8 @@ class WrestlersSuite extends munit.FunSuite:
   private def siteForces(state: OathState, b: Board): SiteForces =
     ready(state).game.current.map.sites(b.origin).forces
 
-  test("a Conquest defender sacrifices a warband at the target site for a defense die"):
+  test("a Conquest defender sacrifices a warband at the target site for a " +
+      "defense die"):
     val b = conquest
     val run = commit(rules(losing), b, 4)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
@@ -29,7 +30,8 @@ class WrestlersSuite extends munit.FunSuite:
       SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), 1))
     assertEquals(picked.since(run).map(_.getClass.getSimpleName),
       Vector("Sacrifice", "ModifyDicePool"))
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
 
   test("the sacrificed warband lowers the recorded force by one"):
     val b = conquest
@@ -38,8 +40,10 @@ class WrestlersSuite extends munit.FunSuite:
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     val score = (run: Run) => ready(run.state).game.current.lastCampaignResult
       .get.defenseScore
+    // The rival's 2 warbands at the origin, with blank dice; the sacrifice
+    // takes one.
     assertEquals(score(without), 2)
-    assertEquals(score(with_), 1)
+    assertEquals(score(with_), 2 - 1)
 
   test("it is a defender's plan only"):
     val base = board(warbands = 5, supply = 7)

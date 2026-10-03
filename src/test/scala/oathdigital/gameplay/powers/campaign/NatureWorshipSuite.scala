@@ -4,7 +4,7 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Nature Worship: a secret placed for one attack die, added or removed, per
   * faceup beast adviser its user has, itself included. */
@@ -26,8 +26,9 @@ class NatureWorshipSuite extends munit.FunSuite:
   private def picked(b: Board): Run =
     commit(rules(winning), b, 2).pick(b.actor, CampaignIds.attackerPlan, ref)
 
-  private def ruledSite(b: Board): SiteId =
-    b.ready.game.current.map.inPlay.find(_ != b.origin).get
+  /** The site p1 comes to rule: Broken Peaks, the board's first site after
+    * the origin. */
+  private val ruledSite = CatalogNames.site("Broken Peaks")
 
   test("it counts itself and every other faceup beast adviser"):
     val b = attacker(Orientation.FaceUp, beasts.map(_ -> Orientation.FaceUp))
@@ -49,14 +50,16 @@ class NatureWorshipSuite extends munit.FunSuite:
 
   test("at a site its user rules it counts the beast advisers but not itself"):
     val base = board(warbands = 5, supply = 7)
-    val site = ruledSite(base)
-    val b = withSecrets(advised(withSiteCard(actorRules(base, site), site, card),
-      base.actor, Vector(beasts.head -> Orientation.FaceUp)), 1)
+    val site = ruledSite
+    val b = withSecrets(
+      advised(withSiteCard(actorRules(base, site), site, card), base.actor,
+      Vector(beasts.head -> Orientation.FaceUp)), 1)
     assert(picked(b).ops.contains(ModifyDicePool(CampaignIds.attackPool, 1)))
 
-  test("at a site with no beast adviser it would add nothing, so it is not offered"):
+  test("at a site with no beast adviser it would add nothing, so it is not " +
+      "offered"):
     val base = board(warbands = 5, supply = 7)
-    val site = ruledSite(base)
+    val site = ruledSite
     val b = withSecrets(withSiteCard(actorRules(base, site), site, card), 1)
     assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
 

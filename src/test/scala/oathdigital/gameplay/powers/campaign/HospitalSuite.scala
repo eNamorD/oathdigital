@@ -100,9 +100,8 @@ class HospitalSuite extends munit.FunSuite:
     val done = commit(rules(losing), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref)
       .pick(b.rival, CampaignIds.defenderPlan, DecisionOptionRef.Relic(fire))
-      .pick(b.rival, CampaignIds.defenderPlan, CampaignIds.finish)
-      .answer(b.actor, CampaignIds.sacrifice,
-        DecisionAnswer.ChooseAmountAnswer(0))
+      .finishDefenderPlans(b.rival)
+      .declineSacrifice(b.actor)
       .pick(b.rival, StickyFire.decisionId, StickyFire.yes).finishPlanWindows
     assertEquals(winner(done), Some(false))
     // The two the defeat kills, then the three Sticky Fire kills from the

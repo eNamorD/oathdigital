@@ -4,6 +4,7 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
 
 /** Village Constable: a free, site-only plan for two attack dice, added or
   * removed, unless the enemy holds the People's Favor. */
@@ -14,14 +15,16 @@ class VillageConstableSuite extends munit.FunSuite:
   /** The actor also rules a site outside the Campaign, where Village
     * Constable stands. */
   private def attacker(b: Board): Board =
-    val site = b.ready.game.current.map.inPlay.find(_ != b.origin).get
+    // Broken Peaks: these boards have no extras, so nobody else rules it.
+    val site = CatalogNames.site("Broken Peaks")
     withSiteCard(actorRules(b, site), site, card)
 
   test("an attacker adds two attack dice against bandits, for nothing"):
     val b = attacker(board(warbands = 5, supply = 7))
     val run = commit(rules(winning), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
 
   test("it is not offered while the defender holds the People's Favor"):
@@ -41,7 +44,8 @@ class VillageConstableSuite extends munit.FunSuite:
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
 
-  test("a bandit defender applies it unless the attacker holds the People's Favor"):
+  test("a bandit defender applies it unless the attacker holds the People's " +
+      "Favor"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
     assert(commit(rules(winning), b, 4).finishPlanWindows.ops

@@ -38,7 +38,8 @@ class PledgeOfDefenseSuite extends munit.FunSuite:
       base.origin, nomads(1))
     val run = commit(rules(winning), b, 3)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 3)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 3)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
     val done = picked.finishPlanWindows
     assert(discarded(done.state))

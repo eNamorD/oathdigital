@@ -184,10 +184,7 @@ class LostTongueSuite extends munit.FunSuite:
   /** p1 challenges at Ancient City, where p2 stands holding Lost Tongue and
     * People's Favor; p1 holds a faceup nomad adviser when `nomad`. */
   private def challengeBanners(nomad: Boolean): Vector[DecisionOptionRef] =
-    val table = Table.start
-      .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
-      .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = Table.quietPawnSite(p1))
-      .adviser(p2, tongue)
+    val table = challengeTable.adviser(p2, tongue)
     val ready = if nomad then table.adviser(p1, nomadCard).ready else table.ready
     optionsAt(start(ready, ActionRef.Challenge, p1).toOption.get,
       ActionRef.Challenge)

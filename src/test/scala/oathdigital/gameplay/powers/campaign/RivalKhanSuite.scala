@@ -35,7 +35,8 @@ class RivalKhanSuite extends munit.FunSuite:
     val b = attacker(Orientation.FaceUp)
     val run = commit(rules(losing), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
     val done = picked.finishPlanWindows
     assert(discarded(done.state))

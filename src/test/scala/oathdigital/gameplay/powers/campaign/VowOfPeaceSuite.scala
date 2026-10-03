@@ -19,16 +19,18 @@ class VowOfPeaceSuite extends munit.FunSuite:
   /** Every decision the Campaign parks on until it ends, answering the plan
     * windows with Finish and every amount with zero.
     */
-  private def asked(run: Run): Vector[String] =
+  private def decisionsUntilTheCampaignEnds(run: Run): Vector[String] =
     parked.parkedDecision(run.state) match
       case Some(facts) if facts.decision == CampaignIds.attackerPlan ||
           facts.decision == CampaignIds.defenderPlan =>
-        facts.decision +: asked(run.answer(facts.awaiting, facts.decision,
-          DecisionAnswer.ChooseOneAnswer(CampaignIds.finish)))
+        val next = run.answer(facts.awaiting, facts.decision,
+          DecisionAnswer.ChooseOneAnswer(CampaignIds.finish))
+        facts.decision +: decisionsUntilTheCampaignEnds(next)
       case Some(facts) if facts.decision == CampaignIds.sacrifice ||
           facts.decision == CampaignIds.placement =>
-        facts.decision +: asked(run.answer(facts.awaiting, facts.decision,
-          DecisionAnswer.ChooseAmountAnswer(0)))
+        val next = run.answer(facts.awaiting, facts.decision,
+          DecisionAnswer.ChooseAmountAnswer(0))
+        facts.decision +: decisionsUntilTheCampaignEnds(next)
       case Some(facts) => Vector(facts.decision)
       case None => Vector.empty
 
@@ -38,7 +40,7 @@ class VowOfPeaceSuite extends munit.FunSuite:
       rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7)),
       Orientation.FaceUp)
     val run = commit(rules(losing), defended, 2)
-    assert(!asked(run).contains(CampaignIds.sacrifice))
+    assert(!decisionsUntilTheCampaignEnds(run).contains(CampaignIds.sacrifice))
     val done = ready(run.finishPlanWindows.state)
     assert(done.game.current.lastCampaignResult.nonEmpty)
 
@@ -46,25 +48,25 @@ class VowOfPeaceSuite extends munit.FunSuite:
     val raided = withEnemyAtOrigin(board(warbands = 5, supply = 7))
     val run = commit(rules(losing), defendedBy(raided, Orientation.FaceUp), 2,
       raid = true)
-    assert(!asked(run).contains(CampaignIds.sacrifice))
+    assert(!decisionsUntilTheCampaignEnds(run).contains(CampaignIds.sacrifice))
 
   test("an attacker against anyone else is still asked"):
     val against = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    assert(asked(commit(rules(losing), against, 2))
+    assert(decisionsUntilTheCampaignEnds(commit(rules(losing), against, 2))
       .contains(CampaignIds.sacrifice))
 
   test("a facedown Vow of Peace protects no one"):
     val against = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val defended = defendedBy(against, Orientation.FaceDown)
-    assert(asked(commit(rules(losing), defended, 2))
+    assert(decisionsUntilTheCampaignEnds(commit(rules(losing), defended, 2))
       .contains(CampaignIds.sacrifice))
 
   test("a holder who is not the defender is not protected"):
     val defended = defendedBy(board(warbands = 5, supply = 7),
       Orientation.FaceUp)
-    assert(asked(commit(rules(losing), defended, 2))
+    assert(decisionsUntilTheCampaignEnds(commit(rules(losing), defended, 2))
       .contains(CampaignIds.sacrifice))
 
   test("the defender's own sacrifice is unaffected"):

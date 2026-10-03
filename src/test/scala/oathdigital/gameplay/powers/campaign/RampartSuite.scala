@@ -27,16 +27,11 @@ class RampartSuite extends munit.FunSuite:
     val two = rivalRulesOriginAndHoldsOathkeeper(
       board(extras = 1, warbands = 5, supply = 7))
     val extra = two.extras.head
-    val lineage = two.player(two.rival).lineage
-    val ruled = two.copy(ready = two.ready.updateCurrent(current =>
-      current.copy(map = current.map.copy(sites = current.map.sites.updated(
-        extra, current.map.sites(extra).copy(forces = SiteForces.Occupied(
-          ForceKind.Exile(lineage), 2)))))))
+    // The rival rules the untargeted extra site too, with 2 warbands.
+    val ruled = on(two)(_.warbandsAt(extra, two.rival, 2))
     val staged = withEdifice(ruled, extra, edifice, face)
     if !pawnThere then staged
-    else staged.copy(ready = staged.ready.updateCurrent(current => current.copy(
-      players = current.players.map(p =>
-        if p.player == staged.rival then p.copy(pawnSite = Some(extra)) else p))))
+    else on(staged)(_.pawn(staged.rival, at = extra))
 
   private val edificeRef: DecisionOptionRef =
     DecisionOptionRef.Edifice(edifice)
@@ -49,14 +44,16 @@ class RampartSuite extends munit.FunSuite:
     assertEquals(picked.since(run), Vector[CoreOperation](
       ModifyDicePool(defensePool, 2)))
 
-  test("Towering Rampart at a site that is neither targeted nor the ruler's pawn's is not offered"):
+  test("Towering Rampart at a site that is neither targeted nor the ruler's " +
+      "pawn's is not offered"):
     val b = untargeted(EdificeSide.Intact, pawnThere = false)
     val run = commit(rules(losing), b, 4)
     // Only the title's plan is left to choose.
     assertEquals(run.offered(b.actor), Vector[DecisionOptionRef](
       DecisionOptionRef.Button("title"), CampaignIds.finish))
 
-  test("Towering Rampart is offered where the ruler's pawn stands, though the site is not targeted"):
+  test("Towering Rampart is offered where the ruler's pawn stands, though " +
+      "the site is not targeted"):
     val b = untargeted(EdificeSide.Intact, pawnThere = true)
     val run = commit(rules(losing), b, 4)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, edificeRef)
@@ -70,13 +67,14 @@ class RampartSuite extends munit.FunSuite:
     assertEquals(picked.since(run), Vector[CoreOperation](
       ModifyDicePool(defensePool, 1)))
 
-  test("Cracked Rampart is not offered where the site is not targeted, whatever the pawn does"):
+  test("Cracked Rampart is not offered where the site is not targeted, " +
+      "whatever the pawn does"):
     val b = untargeted(EdificeSide.Ruined, pawnThere = true)
     assertEquals(commit(rules(losing), b, 4).offered(b.actor),
       Vector[DecisionOptionRef](DecisionOptionRef.Button("title"),
         CampaignIds.finish))
 
-  test("the intact face is the Towering plan and the ruined face the Cracked plan, never both"):
+  test("a chosen Rampart plan is not offered again"):
     val b = targeted(EdificeSide.Intact)
     val picked = commit(rules(losing), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, edificeRef)

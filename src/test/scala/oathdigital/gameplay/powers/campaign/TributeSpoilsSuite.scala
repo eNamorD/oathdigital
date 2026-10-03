@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Look
@@ -20,7 +19,8 @@ class TributeSpoilsSuite extends munit.FunSuite:
   private val orders = planless("Martial Culture", "Code of Honor", "Palanquin")
   // Beast, on either face: Hallowed Spring intact, Hiding Place ruined.
   private val beastEdifice = CatalogNames.edifice("Hallowed Spring")
-  private val relic = catalog.relics.head.name
+  // A relic at the site, which Tribute Spoils does not count.
+  private val relic = "Sticky Fire"
 
   private def favor(state: OathState, who: PlayerId): Int =
     Look(state).player(who).board.favor
@@ -42,7 +42,8 @@ class TributeSpoilsSuite extends munit.FunSuite:
     on(cards)(_.denizen(orders(2), at = base.origin, facedown = true)
       .favor(base.actor, 1))
 
-  test("an attacker that wins a Conquest gains a favor per card at the targets, from that card's bank"):
+  test("an attacker that wins a Conquest gains a favor per card at the " +
+      "targets, from that card's bank"):
     val b = attacking
     val before = OathState.Ready(b.ready)
     val done = commit(rules(winning), b, 4)
@@ -64,7 +65,8 @@ class TributeSpoilsSuite extends munit.FunSuite:
     assertEquals(favor(done.state, b.actor), 0)
     assertEquals(bank(done.state, Suit.Order), bank(before, Suit.Order))
 
-  test("a defender that wins gains for the cards at its own targeted site, and a relic counts nothing"):
+  test("a defender that wins gains for the cards at its own targeted site, " +
+      "and a relic counts nothing"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val b = on(withSiteCard(withAdviserFor(base, base.rival, card,

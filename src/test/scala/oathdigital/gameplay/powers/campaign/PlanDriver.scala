@@ -79,6 +79,14 @@ object PlanDriver:
     def pick(who: PlayerId, id: String, ref: DecisionOptionRef): Run =
       answer(who, id, ChooseOneAnswer(ref))
 
+    /** `attacker` sacrifices no warband. */
+    def declineSacrifice(attacker: PlayerId): Run =
+      answer(attacker, CampaignIds.sacrifice, ChooseAmountAnswer(0))
+
+    /** `defender` chooses no more plans: Finish in the defender's window. */
+    def finishDefenderPlans(defender: PlayerId): Run =
+      pick(defender, CampaignIds.defenderPlan, CampaignIds.finish)
+
     /** The parked decision's query, as `actor`'s Campaign builds it. */
     def query(actor: PlayerId): DecisionQuery =
       val current = ready(state)
