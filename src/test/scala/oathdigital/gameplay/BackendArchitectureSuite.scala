@@ -279,6 +279,34 @@ class BackendArchitectureSuite extends munit.FunSuite:
       }.sorted
     assertEquals(oversized, Vector.empty)
 
+  test("all test Scala files stay bounded"):
+    val roots = Vector(Paths.get("src/test/scala"),
+      Paths.get("frontend/src/test/scala"), Paths.get("shared/src/test/scala"))
+    val oversized = roots.flatMap(root => Files.walk(root).iterator.asScala)
+      .filter(_.toString.endsWith(".scala")).flatMap { path =>
+        val lines = Files.readAllLines(path).size
+        Option.when(lines > 800)(s"$path:$lines")
+      }.sorted
+    assertEquals(oversized, Vector.empty)
+
+  test(
+    "tests name cards, not numeric ids, outside the wire and catalog suites"):
+    // A numeric id hides which card a test means; CatalogNames names it. The
+    // exempt suites test the ids themselves (spec, rubric R5).
+    val exempt = Set(
+      // Ledger 08-049: the numeric id of the Alchemist is the subject.
+      "src/test/scala/oathdigital/catalog/ExecutableCatalogSuite.scala")
+    val numericId =
+      "(Denizen|Relic|Edifice|Vision|Card|Site|WorldCard)Id\\(\"[0-9]+\"\\)".r
+    val roots = Vector(Paths.get("src/test/scala"),
+      Paths.get("frontend/src/test/scala"), Paths.get("shared/src/test/scala"))
+    val offenders = roots.flatMap(root => Files.walk(root).iterator.asScala)
+      .filter(_.toString.endsWith(".scala"))
+      .filterNot(path => exempt(path.toString))
+      .filter(path => numericId.findFirstIn(Files.readString(path)).nonEmpty)
+      .map(_.toString).sorted
+    assertEquals(offenders, Vector.empty)
+
   test("inner production packages do not import outer adapters"):
     val constraints = Vector(
       Paths.get("src/main/scala/oathdigital/model") -> Vector(

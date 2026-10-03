@@ -6,16 +6,19 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}
 import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire,
   DistributeAmountWire, GameIntent}
+import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Unwrap.rejected
 
 class GameHttpWireSuite extends munit.FunSuite:
   test("the usePower intent binds to a UsePower command for the requester"):
+    val silverTongue = CatalogNames.denizen("Silver Tongue")
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
-        oathdigital.protocol.WalkerStartArgWire("denizen", "92"))),
+        oathdigital.protocol.WalkerStartArgWire(
+          "denizen", silverTongue.value))),
       Right(GameCommand.UsePower(PlayerId("actor-1"),
         PowerId("denizen.silver-tongue"),
-        DecisionOptionRef.Denizen(DenizenId("92")))))
+        DecisionOptionRef.Denizen(silverTongue))))
 
   test("usePower refuses an invalid power id and a non-denizen target"):
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
