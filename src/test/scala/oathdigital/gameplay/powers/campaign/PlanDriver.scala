@@ -28,7 +28,9 @@ object PlanDriver:
     })
 
   val winning: WalkerDice = dice(AttackDieFace.OneSword)
-  /** The shared blanks: every attack die half a sword. */
+
+  /** Alias of WalkerDiceFixture.blanks: every attack die is half a sword and
+    * every defense die blank. */
   val losing: WalkerDice = WalkerDiceFixture.blanks
 
   /** These denizens, by name, after checking that no power of theirs is

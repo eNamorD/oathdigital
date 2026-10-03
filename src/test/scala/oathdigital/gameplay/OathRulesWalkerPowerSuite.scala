@@ -100,8 +100,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     // A `Left` carries no transition at all: nothing is appended and the
     // caller's state is untouched.
     assertEquals(
-      rules(p1, forbidding).startWalker(Ready(ready), ActionRef.Recover,
-        p1),
+      rules(p1, forbidding).startWalker(Ready(ready), ActionRef.Recover, p1),
       Left(violation))
 
   test("a restriction rejects a real walker resume command, appending no " +
@@ -112,8 +111,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
       case Right(transition) => transition
       case other => fail(s"expected the unrestricted start to run, got $other")
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption),
-      p1)
+      DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption), p1)
 
     // Control: the resume is legal from this parked state.
     val resumed = rules(p1, WalkerPowers.empty)
@@ -146,8 +144,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
       case Right(transition) => transition
       case other => fail(s"expected the unrestricted start to run, got $other")
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption),
-      p1)
+      DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption), p1)
 
     // The intruder is rejected with WrongPlayer -- a `Left` carries no
     // transition, so nothing is appended to the actor's parked action.
@@ -200,8 +197,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     val power = insertingPower(powerId, p1, PowerResolution.PlayerSelected)
     val rulesInstance = rules(p1, WalkerPowers(Vector(power)))
 
-    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover,
-        p1, Vector(powerId)) match
+    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover, p1,
+        Vector(powerId)) match
       case Right(transition) => transition
       case other => fail(s"expected the modifier-selected start to run, got $other")
     // The transform fired at start: the inserted SpendSupply ran before the
@@ -214,8 +211,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     assertEquals(atFirstPark.game.current.walkerModifiers, Vector(powerId))
 
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption),
-      p1)
+      DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption), p1)
     // Without ruling I's fix, `walkerResumeContext` would fold this command
     // with an EMPTY modifiers vector: the SpendSupply would no longer be
     // prepended, the folded vector would shift back by one, and this resume
@@ -266,16 +262,15 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     val power = insertingPower(powerId, p1, PowerResolution.PlayerSelected)
     val rulesInstance = rules(p1, WalkerPowers(Vector(power)))
 
-    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover,
-        p1, Vector(powerId)) match
+    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover, p1,
+        Vector(powerId)) match
       case Right(transition) => transition
       case other => fail(s"expected the modifier-selected start to run, got $other")
     val atFirstPark = Outcomes.ready(started.state)
     assertEquals(atFirstPark.game.current.walkerModifiers, Vector(powerId))
 
     val firstAnswer = Answered(RecoverProcedure.choiceDecisionId,
-      DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption),
-      p1)
+      DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption), p1)
     val afterFirst = rulesInstance.resolveWalker(started.state, p1,
         firstAnswer.decisionId, firstAnswer.answer) match
       case Right(transition) => transition
@@ -285,8 +280,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     assertEquals(atSecondPark.game.current.walkerModifiers, Vector(powerId))
 
     val secondAnswer = Answered(RecoverProcedure.relicDecisionId,
-      DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption),
-      p1)
+      DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption), p1)
     val finished = rulesInstance.resolveWalker(afterFirst.state, p1,
         secondAnswer.decisionId, secondAnswer.answer) match
       case Right(transition) => transition
@@ -452,8 +446,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
 
     // Control: the identical tree under Recover, whose entry DOES declare a
     // roll decision id, parks and is handed that id's continuation.
-    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover,
-        p1) match
+    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover, p1)
+      match
       case Right(transition) => transition
       case other => fail(s"expected the Recover roll park to run, got $other")
     val startedReady = Outcomes.ready(started.state)

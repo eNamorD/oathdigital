@@ -31,8 +31,8 @@ class AutomaticRollSuite extends munit.FunSuite:
       case Right(WalkerOutcome.Finished(done, events)) =>
         assertEquals(done.game.current.rollOutcomes(pool),
           RollOutcome(pool, 3, faces, skulls = 1, score = 3))
-        val payloads = events.collect {
-          case step: WalkerStepRecorded => step.payload }
+        val payloads = events.collect:
+          case step: WalkerStepRecorded => step.payload
         assertEquals(payloads.count(_.isInstanceOf[RollPayload]), 1)
         assert(payloads.contains(RollPayload(pool, faces, automatic = true)))
         assertEquals(events.size, 3)

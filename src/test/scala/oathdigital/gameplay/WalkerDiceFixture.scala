@@ -29,7 +29,8 @@ object WalkerDiceFixture:
       case DiceKind.Defense => DefenseDieFace.TwoShields: DieFace
     }))
 
-  /** Dice that return exactly these faces, and fail loudly on a wrong count. */
+  /** Stub of WalkerDice: dice that return exactly these faces, and fail
+    * loudly on a wrong count. */
   def dice(attack: Vector[AttackDieFace] = Vector.empty,
       defense: Vector[DefenseDieFace] = Vector.empty): WalkerDice =
     (kind, count) => kind match

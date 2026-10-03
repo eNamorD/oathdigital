@@ -24,7 +24,6 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     */
   private val noPowers: WalkerPowers = WalkerPowers.empty
 
-
   /** The powers of one test power that registers `restriction`. */
   private def restricting(restriction: OperationRestriction): WalkerPowers =
     WalkerPowers(Vector(TestOperationRestrictionPower(
@@ -47,7 +46,6 @@ class ProcedureWalkerSuite extends munit.FunSuite:
       case other => fail(s"expected a Finished walk, got $other")
     assert(ProcedureWalker.advance(ready, Sequence(Vector(SpendSupply(actor, 1))),
       None, restricting(noSpending)).isLeft)
-
 
   private val decide: Decide = Decide(
     decisionId = "recover.choice",

@@ -15,13 +15,12 @@ import oathdigital.testkit.Unwrap.as
   * host, in which order, and how a host is told the walk is resuming inside it.
   */
 class OfferHostSuite extends munit.FunSuite:
-  private val actor = p1
   /** The start with p1's Supply down to 1, so each gain shows. */
   private val supplyOfOne = Table.start.supply(p1, 1).ready
   private val window = PowerWindow.CampaignAttackerBattlePlans
 
   private def offer(name: String): CampaignPlanOffer = CampaignPlanOffer(
-    CampaignPlanSource.Adviser(actor, DenizenId(name)), name, Vector.empty,
+    CampaignPlanSource.Adviser(p1, DenizenId(name)), name, Vector.empty,
     Vector.empty)
 
   /** A power that offers what `plan` says, whatever the window's context. */
@@ -44,7 +43,7 @@ class OfferHostSuite extends munit.FunSuite:
     def expand(offers: Vector[OfferedPlan], pass: OfferHost.Pass)
         : Vector[Operation] =
       folds += Fold(offers, pass.resuming, pass.answered)
-      offers.map(_ => GainSupply(actor, gain))
+      offers.map(_ => GainSupply(p1, gain))
 
   test("a host is handed the offers of the powers hooked at its window, in " +
       "power order"):
@@ -77,20 +76,20 @@ class OfferHostSuite extends munit.FunSuite:
       def id: PowerId = PowerId("test.first")
       def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
       def contributions: Map[PowerWindow, Vector[Contribution]] = Map(window ->
-        Vector(Transform((_, children) => children :+ GainSupply(actor, 1)),
+        Vector(Transform((_, children) => children :+ GainSupply(p1, 1)),
           Offer(_ => Some(offer("x")))))
     val done = finished(ProcedureWalker.advance(supplyOfOne, host, None,
       WalkerPowers(Vector(first))))
     // 1 at the start, 1 from the transform and 2 from the expansion.
-    assertEquals(Look(done.treeless).supply(actor), 4)
+    assertEquals(Look(done.treeless).supply(p1), 4)
     // The transform's gain is recorded before the expansion's.
     assertEquals(done.events.map(as[WalkerStepRecorded](_).ops),
-      Vector(Vector[CoreOperation](GainSupply(actor, 1)),
-        Vector[CoreOperation](GainSupply(actor, 2))))
+      Vector(Vector[CoreOperation](GainSupply(p1, 1)),
+        Vector[CoreOperation](GainSupply(p1, 2))))
 
   test("a host is told the walk is resuming inside it, and sees the answers " +
       "recorded so far"):
-    val question = Decide("test.question", actor, DecisionQuery.ChooseOne(
+    val question = Decide("test.question", p1, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(DecisionOptionRef.Button("yes"), "Yes"))))
     val seen: mutable.Buffer[(Boolean, Vector[Answered])] = mutable.Buffer.empty
     val hosted = new OfferHost:
@@ -108,7 +107,7 @@ class OfferHostSuite extends munit.FunSuite:
     assertEquals(seen.toVector, Vector((false, Vector.empty[Answered]),
       (true, Vector.empty[Answered])))
     val answer = Answered("test.question", DecisionAnswer.ChooseOneAnswer(
-      DecisionOptionRef.Button("yes")), actor)
+      DecisionOptionRef.Button("yes")), p1)
     assert(ProcedureWalker.resolve(supplyOfOne, tree, pending, answer,
       WalkerPowers.empty).isRight)
     // The resume folds the host again, inside it.
@@ -119,7 +118,7 @@ class OfferHostSuite extends munit.FunSuite:
 
   test("an offer reads the decisions answered before its window in its " +
       "context"):
-    val question = Decide("test.question", actor, DecisionQuery.ChooseOne(
+    val question = Decide("test.question", p1, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(DecisionOptionRef.Button("yes"), "Yes"))))
     val host = new Host
     val reading = Offering("reader", ctx => Option.when(ctx.answered.exists(
@@ -134,7 +133,7 @@ class OfferHostSuite extends munit.FunSuite:
       Vector("answered")))
     ProcedureWalker.resolve(supplyOfOne, tree, pending,
       Answered("test.question",
-        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("yes")), actor),
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("yes")), p1),
       powers)
     // The answer check reuses the park's verdict, so only the walk that goes
     // on folds the host again.
@@ -150,14 +149,14 @@ class OfferHostSuite extends munit.FunSuite:
       override val children: Vector[Operation] = Vector.empty
       def expand(offers: Vector[OfferedPlan], pass: OfferHost.Pass)
           : Vector[Operation] =
-        results += pass.applies(GainSupply(actor, 1))
-        results += pass.applies(SpendSupply(actor, 6))
-        results += pass.applies(Sequence(Vector[Operation](GainSupply(actor, 1),
-          Decide("test.question", actor, DecisionQuery.ChooseOne(Vector(
+        results += pass.applies(GainSupply(p1, 1))
+        results += pass.applies(SpendSupply(p1, 6))
+        results += pass.applies(Sequence(Vector[Operation](GainSupply(p1, 1),
+          Decide("test.question", p1, DecisionQuery.ChooseOne(Vector(
             DecisionOption.Button(DecisionOptionRef.Button("yes"), "Yes")))))))
         Vector.empty
     ProcedureWalker.advance(supplyOfOne, host, None, WalkerPowers.empty)
-    assertEquals(results(0), Right(Vector[CoreOperation](GainSupply(actor, 1))))
+    assertEquals(results(0), Right(Vector[CoreOperation](GainSupply(p1, 1))))
     assertEquals(results(1), Left(OathViolation.CoreOperationRejected(
       "insufficient-supply", "a supply spend of 6 exceeds the 1 available")))
-    assertEquals(results(2), Right(Vector[CoreOperation](GainSupply(actor, 1))))
+    assertEquals(results(2), Right(Vector[CoreOperation](GainSupply(p1, 1))))

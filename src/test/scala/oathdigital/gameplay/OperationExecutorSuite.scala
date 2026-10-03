@@ -52,7 +52,7 @@ class OperationExecutorSuite extends munit.FunSuite:
     assertEquals(OperationPipeline.run(ready, Vector(reveal), rejecting,
       Vector.empty)(Right(_)),
       Left(OathViolation.CoreOperationRejected("restricted-operation",
-      "blocked by test policy")))
+        "blocked by test policy")))
     assertEquals(seen, Vector(reveal))
 
   test("ordered batches apply staged state in order"):
@@ -280,6 +280,7 @@ class OperationExecutorSuite extends munit.FunSuite:
       Piece.Warbands(redForce, 1),
       PositionedLocation(Location.Site(sites.head))
     )
+    // S1 holds 1 Bandit, and red has warbands to spare.
     val replaced = accepted(executor.execute(ready, replace))
     assertEquals(replaced.game.current.map.sites(sites.head).forces,
       SiteForces.Occupied(redForce, 1))
@@ -390,6 +391,7 @@ class OperationExecutorSuite extends munit.FunSuite:
         PositionedLocation(Location.PlayArea(playerId)),
         PositionedLocation(Location.Site(sites(2))))
     )
+    // Red's pawn leaves S1, and 2 of red's 3 warbands go to S3.
     val result = accepted(executor.executeAll(movable, moves))
 
     assertEquals(Look(result).player(playerId).pawnSite,

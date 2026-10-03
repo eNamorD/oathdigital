@@ -265,7 +265,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
       "shared/src/main/scala/oathdigital/protocol/BootstrapProtocolCodec.scala")))
 
   /** The hard limit docs/architecture/codebase-structure.md sets for a
-    * production file, so no file grows past what a reader can review whole.
+    * production file, also enforced by scripts/check-architecture.py.
     */
   private val MaxLines = 800
 

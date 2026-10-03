@@ -12,7 +12,6 @@ import oathdigital.testkit.Table
   * player is never refused a choice they were offered.
   */
 class RestrictionLookAheadSuite extends munit.FunSuite:
-
   private val ready = Table.start.ready
   private val actor = ready.game.current.turn.activePlayer
   private val nested = PowerWindow.CampaignActionEligibility
