@@ -10,6 +10,7 @@ import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 /** `PowerCtx.procedure`: the procedure a window is walked for. */
 class EnclosingProcedureSuite extends munit.FunSuite:
@@ -33,7 +34,8 @@ class EnclosingProcedureSuite extends munit.FunSuite:
   /** p1 stands at Ancient City with the Alchemist; the start's 1 favor and
     * 7 Supply pay for a Muster from it. */
   private def staged: ReadyGame =
-    Table.start.denizen("Alchemist", at = Table.quietPawnSite(p1)).ready
+    Table.start.pawn(p1, at = "Ancient City")
+      .denizen("Alchemist", at = "Ancient City").ready
 
   test("a modifier is selected for the procedure that will run it"):
     seen.clear()
@@ -44,12 +46,12 @@ class EnclosingProcedureSuite extends munit.FunSuite:
   test("the command that starts a procedure has not recorded it yet, and a " +
       "resume walks its windows for it"):
     seen.clear()
-    val started = rules.startWalker(Ready(staged), ActionRef.Muster, p1,
-      Vector(probe.id)).toOption.get
+    val started = accepted(rules.startWalker(Ready(staged), ActionRef.Muster,
+      p1, Vector(probe.id)))
     assert(seen.contains(PowerWindow.MusterSourceSelection -> None), seen.toString)
     seen.clear()
-    rules.resolveWalker(started.state, p1, MusterProcedure.decisionId,
+    accepted(rules.resolveWalker(started.state, p1, MusterProcedure.decisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(
-        CatalogNames.denizen("Alchemist")))).toOption.get
+        CatalogNames.denizen("Alchemist")))))
     assert(seen.contains(PowerWindow.MusterCost -> Some(ActionRef.Muster)),
       seen.toString)

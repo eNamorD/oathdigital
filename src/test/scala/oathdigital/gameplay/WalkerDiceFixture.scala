@@ -9,8 +9,10 @@ import oathdigital.model._
   * handing faces to a parked roll afterwards.
   */
 object WalkerDiceFixture:
-  /** Nothing scored, whatever the pool holds: a Recover roll that fails and
-    * leaves the player the continue-or-stop choice.
+  /** Stub of WalkerDice: nothing scored, whatever the pool holds (every
+    * attack die a hollow sword, every defense die blank). A Recover roll
+    * fails and leaves the player the continue-or-stop choice; a Campaign
+    * attack is lost.
     */
   val blanks: WalkerDice = (kind, count) => Right(Vector.fill(count)(
     kind match {
@@ -18,8 +20,8 @@ object WalkerDiceFixture:
       case DiceKind.Defense => DefenseDieFace.Blank: DieFace
     }))
 
-  /** Two shields on every defense die, which carries one Recover roll past
-    * any difficulty the fixtures use.
+  /** Stub of WalkerDice: two shields on every defense die, which carries one
+    * Recover roll past any difficulty the fixtures use.
     */
   val shields: WalkerDice = (kind, count) => Right(Vector.fill(count)(
     kind match {
@@ -38,10 +40,11 @@ object WalkerDiceFixture:
         OathViolation.InvalidEventOrder(
           s"test dice: ${defense.size} defense faces for a pool of $count"))
 
-  /** Faces handed out one roll at a time, so a test can script a failed roll
-    * and then a successful one. Running out is a violation rather than a
-    * repeat of the last roll, so a walk that rolls more often than the test
-    * meant fails instead of passing on borrowed faces.
+  /** Stub of WalkerDice: faces handed out one roll at a time, so a test can
+    * script a failed roll and then a successful one. Running out is a
+    * violation rather than a repeat of the last roll, so a walk that rolls
+    * more often than the test meant fails instead of passing on borrowed
+    * faces.
     */
   def scripted(rolls: Vector[DieFace]*): WalkerDice =
     val queue = scala.collection.mutable.Queue(rolls*)

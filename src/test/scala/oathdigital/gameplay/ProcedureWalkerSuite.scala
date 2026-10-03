@@ -1,59 +1,14 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Restriction, Transform}
+import oathdigital.gameplay.powerresolver.{PowerCtx, Transform}
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.TestGameFixtures._
 import oathdigital.testkit.PowerStubs
-
-object ProcedureWalkerSuite:
-  val continueOption: DecisionOptionRef.Button =
-    DecisionOptionRef.Button("continue")
-  val stopOption: DecisionOptionRef.Button = DecisionOptionRef.Button("stop")
-
-  /** Test-only composite that hooks a `PowerWindow` on an arbitrary children
-    * vector. `Operation` is deliberately unsealed (unlike `CoreOperation`/
-    * `PrimitiveOperation`, which Scala 2.13 pins to `CoreOperations.scala`)
-    * precisely so a windowed node can be authored outside that file -- Task 4
-    * wires real windows onto Recover's own tree; this suite proves the
-    * walker's generic wiring with a tree it builds itself.
-    */
-  final case class WindowedNode(hook: PowerWindow,
-      override val children: Vector[Operation]) extends Operation:
-    override def window: Option[PowerWindow] = Some(hook)
-
-  /** A minimal `ContributingPower` contributing exactly one `Transform` at
-    * one window -- enough to prove the walker's gather/fold wiring without
-    * pulling in the real power catalog.
-    */
-  final case class TestTransformPower(id: PowerId, hook: PowerWindow,
-      fn: (PowerCtx, Vector[Operation]) => Vector[Operation],
-      override val resolution: PowerResolution = PowerResolution.Automatic)
-      extends ContributingPower:
-    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-    def contributions: Map[PowerWindow, Vector[Contribution]] =
-      Map(hook -> Vector(Transform(fn)))
-
-  /** A minimal `ContributingPower` contributing exactly one `Restriction` at
-    * one window.
-    */
-  final case class TestRestrictionPower(id: PowerId, hook: PowerWindow,
-      fn: (PowerCtx, Operation) => Option[OathViolation])
-      extends ContributingPower:
-    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-    def contributions: Map[PowerWindow, Vector[Contribution]] =
-      Map(hook -> Vector(Restriction(fn)))
-
-  /** A `ContributingPower` registering exactly one operation restriction. */
-  final case class TestOperationRestrictionPower(id: PowerId,
-      restriction: OperationRestriction) extends ContributingPower:
-    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-    def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
-    override def operationRestrictions: Vector[OperationRestriction] =
-      Vector(restriction)
+import oathdigital.testkit.WalkerStubs._
 
 /** Task 3 spec: ProcedureWalker auto-walks delta leaves (recording one
   * `WalkerStepRecorded` per executed leaf), parks at Decide/Roll, honors
@@ -69,7 +24,6 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     */
   private val noPowers: WalkerPowers = WalkerPowers.empty
 
-  import ProcedureWalkerSuite.TestOperationRestrictionPower
 
   /** The powers of one test power that registers `restriction`. */
   private def restricting(restriction: OperationRestriction): WalkerPowers =
@@ -94,7 +48,6 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     assert(ProcedureWalker.advance(ready, Sequence(Vector(SpendSupply(actor, 1))),
       None, restricting(noSpending)).isLeft)
 
-  import ProcedureWalkerSuite.{continueOption, stopOption}
 
   private val decide: Decide = Decide(
     decisionId = "recover.choice",
@@ -700,7 +653,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
   // attribution, restriction rejection at command entry, and the
   // replay-never-consults-contributions guarantee. Recover's own tree carries
   // no window yet (Task 4), so these trees are built ad hoc with
-  // `ProcedureWalkerSuite.WindowedNode` (composites) and a `Decide` carrying a
+  // `WalkerStubs.WindowedNode` (composites) and a `Decide` carrying a
   // `window` (the one leaf kind that can declare one today).
   // -------------------------------------------------------------------------
 
@@ -722,8 +675,8 @@ class ProcedureWalkerSuite extends munit.FunSuite:
 
   private def transformPower(id: String, hook: PowerWindow)(
       fn: (PowerCtx, Vector[Operation]) => Vector[Operation])
-      : ProcedureWalkerSuite.TestTransformPower =
-    ProcedureWalkerSuite.TestTransformPower(PowerId(id), hook, fn)
+      : TestTransformPower =
+    TestTransformPower(PowerId(id), hook, fn)
 
   private def recordedStep(event: OathEvent): WalkerStepRecorded = event match
     case step: WalkerStepRecorded => step
@@ -739,7 +692,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
       "child's own node id, whether or not a transform fired"):
     val powerId = PowerId("test.prepend-move")
     val power = transformPower(powerId.value, testWindow)((_, ops) => move +: ops)
-    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(adjust))
+    val windowed = WindowedNode(testWindow, Vector(adjust))
     val tree: Operation = Sequence(windowed)
 
     // No power fires: one event per declared child, at the child's node id.
@@ -774,7 +727,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     }
     val power = transformPower("test.prepend-move", testWindow)(
       (_, ops) => move +: ops)
-    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow,
+    val windowed = WindowedNode(testWindow,
       Vector(Repeat(guard, adjust)))
     val tree: Operation = Sequence(windowed)
 
@@ -800,7 +753,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     }
     val power = transformPower("test.prepend-move", testWindow)(
       (_, ops) => move +: ops)
-    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(branch))
+    val windowed = WindowedNode(testWindow, Vector(branch))
     val tree: Operation = Sequence(windowed)
 
     val (finalState, steps) = finishedSteps(
@@ -864,7 +817,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
       otherWindow -> Vector(Transform(keep))))
     val powers = WalkerPowers(Vector(outer, inner))
     val hooked = decide.copy(window = Some(otherWindow))
-    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow,
+    val windowed = WindowedNode(testWindow,
       Vector(adjust, hooked))
     val tree: Operation = Sequence(windowed)
 
@@ -892,9 +845,9 @@ class ProcedureWalkerSuite extends munit.FunSuite:
   test("a Restriction's violation is collected before any node runs"):
     val violation: OathViolation = OathViolation.InvalidEventOrder(
       "test restriction forbids this action")
-    val power = ProcedureWalkerSuite.TestRestrictionPower(
+    val power = TestRestrictionPower(
       PowerId("test.forbid"), testWindow, (_, _) => Some(violation))
-    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(adjust))
+    val windowed = WindowedNode(testWindow, Vector(adjust))
     val tree: Operation = Sequence(windowed)
     val powers = WalkerPowers(Vector(power))
 
@@ -908,10 +861,10 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     // would never see this window at all.
     val violation: OathViolation = OathViolation.InvalidEventOrder(
       "test restriction forbids this branch")
-    val power = ProcedureWalkerSuite.TestRestrictionPower(
+    val power = TestRestrictionPower(
       PowerId("test.forbid"), testWindow, (_, _) => Some(violation))
     val branch = Branch((_: ReadyGame, _: PendingTree) => Vector[Operation](
-      ProcedureWalkerSuite.WindowedNode(testWindow, Vector(adjust))))
+      WindowedNode(testWindow, Vector(adjust))))
     val tree: Operation = Sequence(branch)
 
     assertEquals(ProcedureWalker.restrictionViolations(tree,
@@ -921,7 +874,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
       "the live walk when no powers are present at replay"):
     val powerId = PowerId("test.prepend-move")
     val power = transformPower(powerId.value, testWindow)((_, ops) => move +: ops)
-    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(adjust))
+    val windowed = WindowedNode(testWindow, Vector(adjust))
     val tree: Operation = Sequence(windowed)
 
     val (finalState, steps) = finishedSteps(
@@ -957,7 +910,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     val power = transformPower(powerId.value, testWindow)((_, ops) => adjust +: ops)
     // Declared children of `windowed` are `Vector(decide)` -- one element, at
     // declared index 0.
-    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(decide))
+    val windowed = WindowedNode(testWindow, Vector(decide))
     val tree: Operation = Sequence(windowed)
     val powers = WalkerPowers(Vector(power))
 
@@ -990,7 +943,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     val power = transformPower(powerId.value, testWindow)((_, ops) => adjust +: ops)
     // Declared children are `Vector(ModifyDicePool(...), defenseRoll)` -- the
     // Roll at declared index 1.
-    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow,
+    val windowed = WindowedNode(testWindow,
       Vector(ModifyDicePool(recoverPool, 2), defenseRoll))
     val tree: Operation = Sequence(windowed)
     val powers = WalkerPowers(Vector(power))

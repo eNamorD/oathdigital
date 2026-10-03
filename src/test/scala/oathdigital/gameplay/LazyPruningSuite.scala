@@ -7,6 +7,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Outcomes.parked
 
 /** The walker hides an option from which no path reaches a legal end, and
   * stops looking at hidden information (global operation restrictions
@@ -21,7 +22,8 @@ class LazyPruningSuite extends munit.FunSuite:
   private val next = "test.next"
   private def button(key: String) =
     DecisionOption.Button(DecisionOptionRef.Button(key), key)
-  private def ref(key: String): DecisionOptionRef = DecisionOptionRef.Button(key)
+  private def ref(key: String): DecisionOptionRef =
+    DecisionOptionRef.Button(key)
 
   private def discardLocked(required: Boolean): Operation =
     Discard.Denizen(lockedCard, PositionedLocation(Location.PlayArea(p1)),
@@ -93,8 +95,8 @@ class LazyPruningSuite extends munit.FunSuite:
 
   test("a hidden option is refused when it is answered anyway"):
     val tree = discarding(required = true)
-    val Right(WalkerOutcome.Parked(pending, _)) =
-      ProcedureWalker.advance(ready, tree, None, powers): @unchecked
+    val pending = parked(
+      ProcedureWalker.advance(ready, tree, None, powers)).tree
     assertEquals(ProcedureWalker.resolve(ready, tree, pending,
       Answered(ask, DecisionAnswer.ChooseOneAnswer(ref("discard")), p1),
       powers), Left(OathViolation.InvalidEventOrder(
@@ -106,8 +108,8 @@ class LazyPruningSuite extends munit.FunSuite:
       Decide(ask, p1, DecisionQuery.ChooseOne(Vector(button("a"),
         button("b")))),
       BuildOps((_, _) => { builds += 1; Right(Vector.empty) })))
-    val Right(WalkerOutcome.Parked(pending, _)) =
-      ProcedureWalker.advance(ready, tree, None, powers): @unchecked
+    val pending = parked(
+      ProcedureWalker.advance(ready, tree, None, powers)).tree
     val searched = builds
     assert(searched > 0, "the park's search must reach the build")
     ProcedureWalker.openDecisions(ready, tree, pending, powers)
@@ -117,8 +119,8 @@ class LazyPruningSuite extends munit.FunSuite:
   test("a verdict is not reused for another state"):
     val tree = discarding(required = true)
     def offeredIn(state: ReadyGame): Vector[DecisionOptionRef] =
-      val Right(WalkerOutcome.Parked(pending, _)) =
-        ProcedureWalker.advance(state, tree, None, powers): @unchecked
+      val pending = parked(
+        ProcedureWalker.advance(state, tree, None, powers)).tree
       ProcedureWalker.openDecisions(state, tree, pending, powers).head.query
         match
           case DecisionQuery.ChooseOne(options, _) => options.map(_.ref)

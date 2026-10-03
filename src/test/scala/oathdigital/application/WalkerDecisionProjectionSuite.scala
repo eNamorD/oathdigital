@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.model._
-import oathdigital.gameplay.{OathRules, ProcedureWalkerSuite, WalkerDiceFixture}
+import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
 import oathdigital.testkit.CatacombsGame
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
@@ -14,6 +14,7 @@ import oathdigital.protocol.projection.{DecisionOptionProjection,
   DecisionQueryProjection, DecisionSectionProjection, GameProjectionCodec,
   WalkerDecisionProjection, WalkerRollOutcomeProjection}
 import oathdigital.testkit.Table
+import oathdigital.testkit.WalkerStubs
 
 /** Task 7 (Recover slice, controller ruling (b)) established the
   * application-projector surface: [[WalkerDecisionProjector]] plus the
@@ -92,7 +93,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     * way a Recover can still park on a roll -- and the projector has to
     * describe that park for the client that must answer it.
     */
-  private val parkingRoll = ProcedureWalkerSuite.TestTransformPower(
+  private val parkingRoll = WalkerStubs.TestTransformPower(
     PowerId("test.parked-roll"), PowerWindow.RecoverBeforeFirstRoll,
     (_, ops) => ops :+ Roll(RecoverProcedure.recoverPool,
       DiceSpec(DiceKind.Defense)))

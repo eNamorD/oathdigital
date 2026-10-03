@@ -196,9 +196,13 @@ class BackendArchitectureSuite extends munit.FunSuite:
         declaresContribution.findFirstIn(Files.readString(path)).isEmpty)
       .toVector
     // The exemption narrows the guard; it must not empty it. A refactor that
-    // left nothing scanned would pass this test while checking nothing.
-    assert(scanned.size >= 5,
-      s"the inventory scan covers too few files to be meaningful: $scanned")
+    // left nothing scanned would pass this test while checking nothing, so
+    // the legacy inventories the guard was written for must still be scanned.
+    val legacyInventories = Vector("ActionPowers", "CampaignPowers",
+      "RecoverPowers", "RestPowers", "TradePowers")
+    val scannedNames = scanned.map(_.getFileName.toString.stripSuffix(".scala"))
+    assertEquals(legacyInventories.filterNot(scannedNames.contains),
+      Vector.empty, s"the inventory scan misses legacy inventories: $scanned")
     val offenders = scanned.filter { path =>
       val text = Files.readString(path)
       text.contains("Set(") || text.contains("Map(") ||
@@ -260,13 +264,18 @@ class BackendArchitectureSuite extends munit.FunSuite:
     assert(Files.exists(Paths.get(
       "shared/src/main/scala/oathdigital/protocol/BootstrapProtocolCodec.scala")))
 
-  test("all production Scala files stay bounded"):
+  /** The hard limit docs/architecture/codebase-structure.md sets for a
+    * production file, so no file grows past what a reader can review whole.
+    */
+  private val MaxLines = 800
+
+  test("every production Scala file stays at or below 800 lines"):
     val roots = Vector(Paths.get("src/main/scala"),
       Paths.get("frontend/src/main/scala"), Paths.get("shared/src/main/scala"))
     val oversized = roots.flatMap(root => Files.walk(root).iterator.asScala)
       .filter(_.toString.endsWith(".scala")).flatMap { path =>
         val lines = Files.readAllLines(path).size
-        Option.when(lines > 800)(s"$path:$lines")
+        Option.when(lines > MaxLines)(s"$path:$lines")
       }.sorted
     assertEquals(oversized, Vector.empty)
 

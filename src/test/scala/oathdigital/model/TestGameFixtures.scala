@@ -1,5 +1,27 @@
 package oathdigital.model
 
+import oathdigital.testkit.Table
+
+/** A small hand-built game with plain ids and no catalog, for the model and
+  * operation suites that build states no Table step reaches.
+  *
+  * The board: 8 sites S1 to S8 (Cradle S1 and S2, Provinces S3 to S5,
+  * Hinterland S6 to S8), each ruled by 1 Bandit. S1 holds the faceup denizen
+  * D2 with 1 favor on it, and S2 holds the facedown relic R1. The Atlas
+  * stores site S9 with the intact edifice E1.
+  *
+  * One player, red (`player-red`, lineage `red`, an Exile), stands at S1 with
+  * 1 favor, 1 faceup secret, no facedown secret, 3 warbands on the board, a
+  * full Supply of 7 and the facedown Vision V1 as adviser. Red is active in
+  * the Wake of round 1.
+  *
+  * The world deck holds only D1; the relic, edifice and legacy decks are
+  * empty. The Reliquary holds R2, D3 is dispossessed and D4 is the Arcane
+  * reserve. Both banners are unheld: the People's Favor with 1 favor, the
+  * Darkest Secret with 1 secret.
+  *
+  * `ready` seats it with [[ReadyGames.of]]: 5 favor in every suit bank.
+  */
 object TestGameFixtures:
   val playerId: PlayerId = PlayerId("player-red")
   val lineageId: LineageId = LineageId("red")
@@ -126,3 +148,25 @@ object TestGameFixtures:
 
   /** `game` seated at the table: see [[ReadyGames.of]]. */
   val ready: ReadyGame = ReadyGames.of(game)
+
+  val blueId: PlayerId = PlayerId("player-blue")
+  val blueLineage: LineageId = LineageId("blue")
+
+  /** `game` with a second player seated, which no Table step can do: blue
+    * (lineage `blue`, an Exile) stands at S2 with 2 favor, 1 faceup secret,
+    * no facedown secret, 2 warbands on the board, a full Supply of 7 and
+    * `blueRelics`. Red holds the People's Favor, which carries 1 favor.
+    * Seated by [[ReadyGames.of]], so every suit bank holds 5 favor.
+    */
+  def redAndBlue(blueRelics: Vector[RelicState] = Vector.empty): ReadyGame =
+    val blue = PlayerState(blueId, blueLineage, pawnSite = Some(sites(1)),
+      board = PlayerBoardState(favor = 2, faceUpSecrets = 1,
+        faceDownSecrets = 0, warbands = 2, supply = SupplyTrack.full),
+      advisers = Vector.empty, relics = blueRelics, revealedVision = None)
+    val seated = game.copy(
+      campaign = game.campaign.copy(lineages = game.campaign.lineages.updated(
+        blueLineage, LineageState(blueLineage, Some(blueId), Role.Exile,
+          Vector.empty, Vector.empty))),
+      current = game.current.copy(players = game.current.players :+ blue))
+    Table.from(ReadyGames.of(seated)).peoplesFavor(Some(playerId), favor = 1)
+      .unchecked

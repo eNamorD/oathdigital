@@ -4,9 +4,10 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerParked, WalkerPowers}
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.{OathRules, ProcedureWalkerSuite}
+import oathdigital.gameplay.OathRules
 import oathdigital.model._
 import oathdigital.testkit.Table
+import oathdigital.testkit.WalkerStubs
 
 /** The point of Task 4, in one suite: a power that transforms a parked
   * decision moves what the projector OFFERS and what the walker ACCEPTS in
@@ -34,8 +35,8 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
 
   private val window: PowerWindow = PowerWindow.RecoverModifierSelection
 
-  private val continueOption = ProcedureWalkerSuite.continueOption
-  private val stopOption = ProcedureWalkerSuite.stopOption
+  private val continueOption = WalkerStubs.continueOption
+  private val stopOption = WalkerStubs.stopOption
   private val extraOption = DecisionOptionRef.Button("extra")
 
   /** A ready game in the Act phase; the injected tree replaces Recover's own
@@ -50,7 +51,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
     * folds and the projector re-folds on its way to the park.
     */
   private def tree(actor: PlayerId): Operation =
-    Sequence(ProcedureWalkerSuite.WindowedNode(window, Vector(Decide(
+    Sequence(WalkerStubs.WindowedNode(window, Vector(Decide(
       decisionId = RecoverProcedure.choiceDecisionId,
       owner = actor,
       query = DecisionQuery.ChooseOne(Vector(
@@ -65,7 +66,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
     */
   private def rewriting(id: String)(
       change: DecisionQuery.ChooseOne => DecisionQuery.ChooseOne) =
-    WalkerPowers(Vector(ProcedureWalkerSuite.TestTransformPower(PowerId(id),
+    WalkerPowers(Vector(WalkerStubs.TestTransformPower(PowerId(id),
       window, (_, ops) => ops.map {
         case decide: Decide => decide.query match {
           case query: DecisionQuery.ChooseOne =>
@@ -190,7 +191,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
       "projected it, and who the waiting projection names"):
     val (ready, actor) = actable
     val other = ready.game.current.players.map(_.player).find(_ != actor).get
-    val powers = WalkerPowers(Vector(ProcedureWalkerSuite.TestTransformPower(
+    val powers = WalkerPowers(Vector(WalkerStubs.TestTransformPower(
       PowerId("test.reowns"), window, (_, ops) => ops.map {
         case decide: Decide => decide.copy(owner = other)
         case op => op

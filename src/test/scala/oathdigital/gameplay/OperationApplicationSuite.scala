@@ -3,40 +3,19 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
+import oathdigital.testkit.Unwrap.accepted
 
 /** The shape guard through the two interfaces that cross it: the resolver's
   * `OperationApplication.validate`, which reports every reason, and
   * `OperationPipeline.run`, whose rejection is the first of them.
   */
 class OperationApplicationSuite extends munit.FunSuite:
-  private val blueId = PlayerId("player-blue")
-  private val blueLineage = LineageId("blue")
   private val redForce = ForceKind.Exile(lineageId)
   private val extraDenizen = DenizenId("D5")
 
-  private val bluePlayer = PlayerState(
-    blueId,
-    blueLineage,
-    Some(sites(1)),
-    PlayerBoardState(2, 1, 0, 2, SupplyTrack.full),
-    Vector.empty,
-    Vector.empty,
-    None
-  )
-
-  private val ready =
-    val current = game.current.copy(
-      players = game.current.players :+ bluePlayer,
-      banners = game.current.banners.copy(
-        peoplesFavor = game.current.banners.peoplesFavor.copy(
-          holder = Some(playerId)))
-    )
-    val campaign = game.campaign.copy(lineages = game.campaign.lineages.updated(
-      blueLineage,
-      LineageState(blueLineage, Some(blueId), Role.Exile,
-        Vector.empty, Vector.empty)
-    ))
-    ReadyGames.of(game.copy(campaign = campaign, current = current))
+  /** Red and blue (see [[TestGameFixtures.redAndBlue]]): red's pawn at S1
+    * and a full Supply of 7; 5 favor in every suit bank. */
+  private val ready = redAndBlue()
 
   private val codes = (values: Vector[OperationReason]) =>
     values.map(_.code)
@@ -48,6 +27,7 @@ class OperationApplicationSuite extends munit.FunSuite:
       case other => fail(s"expected a CoreOperationRejected, got $other")
 
   test("short favor bank rejects the drawn amount as insufficient-pieces"):
+    // The Order bank holds 5 of the 7 asked for.
     val operation = Gain.Favor(playerId, Suit.Order, 7)
     val reasons = OperationApplication.validate(ready, operation)
 
@@ -56,6 +36,8 @@ class OperationApplicationSuite extends munit.FunSuite:
     assertEquals(reasons.head.kind, OperationReasonKind.Impossible)
 
   test("wrong requested stack source position is an invalid-stack-position"):
+    // No Table step lays plain-id cards in the world deck, so the deck is
+    // set here: D5 lies under D1.
     val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
         worldDeck = Vector(worldDenizen, extraDenizen))))
     val operation = Move(
@@ -82,6 +64,7 @@ class OperationApplicationSuite extends munit.FunSuite:
 
   test("orienting an edifice into a site is an unsupported-orientation"):
     val edifice = EdificeId("E2")
+    // No Table step stacks a plain-id edifice deck.
     val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
         edificeDeck = Vector(edifice))))
     val operation = Move(
@@ -115,6 +98,7 @@ class OperationApplicationSuite extends munit.FunSuite:
       (OperationReasonKind.Invalid, "incompatible-location")))
 
   test("a supply spend beyond the track is an insufficient-supply"):
+    // Red's Supply is full at 7.
     assertEquals(codes(OperationApplication.validate(ready,
       SpendSupply(playerId, 8))), Vector("insufficient-supply"))
     assertEquals(rejection(ready, SpendSupply(playerId, 8)),
@@ -133,6 +117,7 @@ class OperationApplicationSuite extends munit.FunSuite:
         Location.SharedBank, 0)))
 
   test("moving a pawn that is not at the source site is a missing-piece"):
+    // Red's pawn stands at S1, not S3.
     val operation = Move(Piece.Pawn(playerId),
       PositionedLocation(Location.Site(sites(2))),
       PositionedLocation(Location.Site(sites(3))))
@@ -142,6 +127,7 @@ class OperationApplicationSuite extends munit.FunSuite:
     assertEquals(rejection(ready, operation), "missing-piece")
 
   test("a pawn with no prior site may move from the player area to a site"):
+    // No Table step takes a pawn off the map.
     val unplaced = ready.updateCurrent(_.copy(players = ready.game.current.players.map {
       player => if player.player == playerId then player.copy(pawnSite = None) else player
     }))
@@ -177,7 +163,7 @@ class OperationApplicationSuite extends munit.FunSuite:
       (reasons.headOption, pipeline) match
         case (None, Right(after)) =>
           assertEquals(after.state.game,
-            raw.execute(ready, operation).toOption.get.game)
+            accepted(raw.execute(ready, operation)).game)
         case (Some(reason), Right(after))
             if reason.kind == OperationReasonKind.Impossible &&
               !operation.required =>

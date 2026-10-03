@@ -3,16 +3,21 @@ package oathdigital.gameplay
 import scala.collection.mutable
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, Offer, OfferHost, PowerCtx, Transform}
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
+  WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.Outcomes.{finished, parked}
+import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.as
 
 /** The `Offer` contribution and the node that hosts it: what the walker hands a
   * host, in which order, and how a host is told the walk is resuming inside it.
   */
 class OfferHostSuite extends munit.FunSuite:
-  private val ready = Table.start.ready
-  private val actor = ready.game.current.turn.activePlayer
+  private val actor = p1
+  /** The start with p1's Supply down to 1, so each gain shows. */
+  private val supplyOfOne = Table.start.supply(p1, 1).ready
   private val window = PowerWindow.CampaignAttackerBattlePlans
 
   private def offer(name: String): CampaignPlanOffer = CampaignPlanOffer(
@@ -27,34 +32,34 @@ class OfferHostSuite extends munit.FunSuite:
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(window -> Vector(Offer(plan)))
 
+  /** What a host was handed on one fold. */
+  private final case class Fold(offers: Vector[OfferedPlan], resuming: Boolean,
+      answered: Vector[Answered])
+
   /** A host that records each fold and expands to a `GainSupply` per offer. */
   private final class Host(gain: Int = 1) extends OfferHost:
-    val folds: mutable.Buffer[(Vector[OfferedPlan], Boolean, Vector[Answered])] =
-      mutable.Buffer.empty
+    val folds: mutable.Buffer[Fold] = mutable.Buffer.empty
     override val window: Option[PowerWindow] = Some(OfferHostSuite.this.window)
     override val children: Vector[Operation] = Vector.empty
     def expand(offers: Vector[OfferedPlan], pass: OfferHost.Pass)
         : Vector[Operation] =
-      folds += ((offers, pass.resuming, pass.answered))
+      folds += Fold(offers, pass.resuming, pass.answered)
       offers.map(_ => GainSupply(actor, gain))
 
-  private def low(state: ReadyGame): ReadyGame = state.updateCurrent(current =>
-    current.copy(players = current.players.map(p =>
-      if p.player == actor then p.copy(board = p.board.copy(supply = SupplyTrack(1)))
-      else p)))
-
-  test("a host is handed the offers of the powers hooked at its window, in power order"):
+  test("a host is handed the offers of the powers hooked at its window, in " +
+      "power order"):
     val host = new Host
     val powers = WalkerPowers(Vector(Offering("b", _ => Some(offer("b"))),
       Offering("a", _ => Some(offer("a"))), Offering("none", _ => None)))
-    val outcome = ProcedureWalker.advance(low(ready), host, None, powers)
+    val outcome = ProcedureWalker.advance(supplyOfOne, host, None, powers)
     assert(outcome.isRight)
-    assertEquals(host.folds.toVector.map(_._1.map(_.power.value)), Vector(
+    assertEquals(host.folds.toVector.map(_.offers.map(_.power.value)), Vector(
       Vector("test.a", "test.b")))
-    assertEquals(host.folds.head._2, false)
-    assertEquals(host.folds.head._3, Vector.empty[Answered])
+    assertEquals(host.folds.head.resuming, false)
+    assertEquals(host.folds.head.answered, Vector.empty[Answered])
 
-  test("a host with nothing offered expands to nothing, and a power's other window is not gathered"):
+  test("a host with nothing offered expands to nothing, and a power's other " +
+      "window is not gathered"):
     val host = new Host
     val elsewhere = new ContributingPower:
       def id: PowerId = PowerId("test.elsewhere")
@@ -62,8 +67,9 @@ class OfferHostSuite extends munit.FunSuite:
       def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
         PowerWindow.CampaignDefenderBattlePlans -> Vector(Offer(_ =>
           Some(offer("elsewhere")))))
-    ProcedureWalker.advance(low(ready), host, None, WalkerPowers(Vector(elsewhere)))
-    assertEquals(host.folds.head._1, Vector.empty[OfferedPlan])
+    ProcedureWalker.advance(supplyOfOne, host, None,
+      WalkerPowers(Vector(elsewhere)))
+    assertEquals(host.folds.head.offers, Vector.empty[OfferedPlan])
 
   test("a transform at the host's window runs before the expansion"):
     val host = new Host(gain = 2)
@@ -73,17 +79,17 @@ class OfferHostSuite extends munit.FunSuite:
       def contributions: Map[PowerWindow, Vector[Contribution]] = Map(window ->
         Vector(Transform((_, children) => children :+ GainSupply(actor, 1)),
           Offer(_ => Some(offer("x")))))
-    val Right(WalkerOutcome.Finished(after, events)) = ProcedureWalker.advance(
-      low(ready), host, None, WalkerPowers(Vector(first))): @unchecked
-    assertEquals(after.game.current.players.find(_.player == actor).get
-      .board.supply.supply, 4)
+    val done = finished(ProcedureWalker.advance(supplyOfOne, host, None,
+      WalkerPowers(Vector(first))))
+    // 1 at the start, 1 from the transform and 2 from the expansion.
+    assertEquals(Look(done.treeless).supply(actor), 4)
     // The transform's gain is recorded before the expansion's.
-    assertEquals(events.map(_.asInstanceOf[
-      oathdigital.gameplay.walker.WalkerStepRecorded].ops),
+    assertEquals(done.events.map(as[WalkerStepRecorded](_).ops),
       Vector(Vector[CoreOperation](GainSupply(actor, 1)),
         Vector[CoreOperation](GainSupply(actor, 2))))
 
-  test("a host is told the walk is resuming inside it, and sees the answers recorded so far"):
+  test("a host is told the walk is resuming inside it, and sees the answers " +
+      "recorded so far"):
     val question = Decide("test.question", actor, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(DecisionOptionRef.Button("yes"), "Yes"))))
     val seen: mutable.Buffer[(Boolean, Vector[Answered])] = mutable.Buffer.empty
@@ -95,24 +101,24 @@ class OfferHostSuite extends munit.FunSuite:
         seen += ((pass.resuming, pass.answered))
         Vector(question)
     val tree = Sequence(Vector[Operation](hosted))
-    val state = low(ready)
-    val Right(WalkerOutcome.Parked(pending, _)) = ProcedureWalker.advance(state,
-      tree, None, WalkerPowers.empty): @unchecked
+    val pending = parked(ProcedureWalker.advance(supplyOfOne, tree, None,
+      WalkerPowers.empty)).tree
     // The first fold is the walk's own. The park's search then walks on from
     // the question, which folds the host again, inside it.
     assertEquals(seen.toVector, Vector((false, Vector.empty[Answered]),
       (true, Vector.empty[Answered])))
     val answer = Answered("test.question", DecisionAnswer.ChooseOneAnswer(
       DecisionOptionRef.Button("yes")), actor)
-    assert(ProcedureWalker.resolve(state, tree, pending, answer,
+    assert(ProcedureWalker.resolve(supplyOfOne, tree, pending, answer,
       WalkerPowers.empty).isRight)
     // The resume folds the host again, inside it.
     assertEquals(seen.toVector.last, (true, Vector.empty[Answered]))
     // The parked decision is found through the same fold.
-    assertEquals(ProcedureWalker.parkedDecide(state, tree, pending,
+    assertEquals(ProcedureWalker.parkedDecide(supplyOfOne, tree, pending,
       WalkerPowers.empty).map(_.decisionId), Some("test.question"))
 
-  test("an offer reads the decisions answered before its window in its context"):
+  test("an offer reads the decisions answered before its window in its " +
+      "context"):
     val question = Decide("test.question", actor, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(DecisionOptionRef.Button("yes"), "Yes"))))
     val host = new Host
@@ -120,22 +126,23 @@ class OfferHostSuite extends munit.FunSuite:
       _.decisionId == "test.question"))(offer("answered")))
     val tree = Sequence(Vector[Operation](question, host))
     val powers = WalkerPowers(Vector(reading))
-    val state = low(ready)
-    val Right(WalkerOutcome.Parked(pending, _)) = ProcedureWalker.advance(state,
-      tree, None, powers): @unchecked
+    val pending =
+      parked(ProcedureWalker.advance(supplyOfOne, tree, None, powers)).tree
     // Only the park's search reaches the host, and it does so with the
     // hypothetical answer in the context.
-    assertEquals(host.folds.toVector.map(_._1.map(_.offer.label)), Vector(
+    assertEquals(host.folds.toVector.map(_.offers.map(_.offer.label)), Vector(
       Vector("answered")))
-    ProcedureWalker.resolve(state, tree, pending, Answered("test.question",
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("yes")), actor),
+    ProcedureWalker.resolve(supplyOfOne, tree, pending,
+      Answered("test.question",
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("yes")), actor),
       powers)
     // The answer check reuses the park's verdict, so only the walk that goes
     // on folds the host again.
-    assertEquals(host.folds.toVector.map(_._1.map(_.offer.label)), Vector(
+    assertEquals(host.folds.toVector.map(_.offers.map(_.offer.label)), Vector(
       Vector("answered"), Vector("answered")))
 
-  test("a host can ask whether an operation would run, and what it would record"):
+  test("a host can ask whether an operation would run, and what it would " +
+      "record"):
     val results: mutable.Buffer[Either[OathViolation, Vector[CoreOperation]]] =
       mutable.Buffer.empty
     val host = new OfferHost:
@@ -149,8 +156,7 @@ class OfferHostSuite extends munit.FunSuite:
           Decide("test.question", actor, DecisionQuery.ChooseOne(Vector(
             DecisionOption.Button(DecisionOptionRef.Button("yes"), "Yes")))))))
         Vector.empty
-    val state = low(ready)
-    ProcedureWalker.advance(state, host, None, WalkerPowers.empty)
+    ProcedureWalker.advance(supplyOfOne, host, None, WalkerPowers.empty)
     assertEquals(results(0), Right(Vector[CoreOperation](GainSupply(actor, 1))))
     assertEquals(results(1), Left(OathViolation.CoreOperationRejected(
       "insufficient-supply", "a supply spend of 6 exceeds the 1 available")))

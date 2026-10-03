@@ -4,6 +4,7 @@ import oathdigital.gameplay.powerresolver.{OfferHost, PowerCtx}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers,
   WalkerSimulation}
 import oathdigital.model._
+import oathdigital.testkit.WalkerStubs.TestRestrictionPower
 import oathdigital.testkit.Table
 
 /** The walker hides an option whose answer would break a `Restriction`, even
@@ -11,7 +12,6 @@ import oathdigital.testkit.Table
   * player is never refused a choice they were offered.
   */
 class RestrictionLookAheadSuite extends munit.FunSuite:
-  import ProcedureWalkerSuite.TestRestrictionPower
 
   private val ready = Table.start.ready
   private val actor = ready.game.current.turn.activePlayer

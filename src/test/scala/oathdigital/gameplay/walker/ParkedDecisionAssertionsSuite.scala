@@ -1,12 +1,13 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.{OathRules, ProcedureWalkerSuite, WalkerDiceFixture}
+import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.Table
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.WalkerStubs
 
 /** `ParkedDecisionAssertions` is tested here, driving a real `RecoverProcedure`
   * through a real `OathRules` rather than constructing a `PendingTree` by
@@ -64,7 +65,7 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
   // window, ahead of the declared body.
   test("a Roll park reports the procedure's declared roll decision id"):
     val (ready, actor) = recoverable
-    val insertRoll = ProcedureWalkerSuite.TestTransformPower(
+    val insertRoll = WalkerStubs.TestTransformPower(
       PowerId("test.insert-roll"), PowerWindow.RecoverActionEligibility,
       (_, ops) => Roll(PoolKey("test.recover-roll"),
         DiceSpec(DiceKind.Defense)) +: ops)
@@ -93,13 +94,13 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
     val (ready, actor) = recoverable
     val owner = ready.game.current.players.map(_.player)
       .find(_ != actor).get
-    val insertOwned = ProcedureWalkerSuite.TestTransformPower(
+    val insertOwned = WalkerStubs.TestTransformPower(
       PowerId("test.insert-owned-decide"), PowerWindow.RecoverActionEligibility,
       (_, ops) => Decide(
         decisionId = RecoverProcedure.choiceDecisionId,
         owner = owner,
         query = DecisionQuery.ChooseOne(Vector(
-          DecisionOption.Button(ProcedureWalkerSuite.continueOption,
+          DecisionOption.Button(WalkerStubs.continueOption,
             "Continue")))) +: ops)
     val powers = WalkerPowers(Vector(insertOwned))
     val rules = new OathRules(catalog, walkerPowerCatalog = powers,
@@ -128,14 +129,14 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
     val (ready, actor) = recoverable
     val owner = ready.game.current.players.map(_.player)
       .find(_ != actor).get
-    val insertOwned = ProcedureWalkerSuite.TestTransformPower(
+    val insertOwned = WalkerStubs.TestTransformPower(
       PowerId("test.insert-owned-decide-unread"),
       PowerWindow.RecoverActionEligibility,
       (_, ops) => Decide(
         decisionId = RecoverProcedure.choiceDecisionId,
         owner = owner,
         query = DecisionQuery.ChooseOne(Vector(
-          DecisionOption.Button(ProcedureWalkerSuite.continueOption,
+          DecisionOption.Button(WalkerStubs.continueOption,
             "Continue")))) +: ops)
     val powers = WalkerPowers(Vector(insertOwned))
     val rules = new OathRules(catalog, walkerPowerCatalog = powers,

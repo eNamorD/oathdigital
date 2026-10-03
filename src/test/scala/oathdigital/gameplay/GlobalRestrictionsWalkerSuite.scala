@@ -27,12 +27,14 @@ class GlobalRestrictionsWalkerSuite extends munit.FunSuite:
 
   test("a relic discard at a Hall-protected site is skipped, as Broken " +
       "Forge's is"):
-    val home = Table.quietPawnSite(p1)
-    val ready = Table.start.edifice(hall, EdificeSide.Intact, at = home)
-      .warbandsAt(home, p1, 1).relicAt(drum, at = home).ready
+    // p1 rules Ancient City, where the Hall stands, and p2 discards its relic.
+    val hallSite = CatalogNames.site("Ancient City")
+    val ready = Table.start.pawn(p1, at = hallSite)
+      .edifice(hall, EdificeSide.Intact, at = hallSite)
+      .warbandsAt(hallSite, p1, 1).relicAt(drum, at = hallSite).ready
     unchanged(ready, Sequence(Vector(BuildOps((_, _) => Right(Vector(
-      Discard.Relic(drum, PositionedLocation(Location.Site(home)), 0, p2)))))),
-      powers)
+      Discard.Relic(drum, PositionedLocation(Location.Site(hallSite)), 0,
+        p2)))))), powers)
 
   test("a modifier selected for the command protects its card on the " +
       "action's first walk"):

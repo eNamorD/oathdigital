@@ -44,6 +44,8 @@ class CoOwnedDecideSuite extends munit.FunSuite:
 
   test("the park names every owner and one open decision"):
     val pending = parkedAt(ProcedureWalker.advance(ready, loop, None, noPowers))
+    // Sequence child 0 is the Repeat, its body is the Branch (child 0), whose
+    // selected child 0 is the shared Decide.
     assertEquals(pending.at, Vector("0", "0", "0"))
     assertEquals(ProcedureWalker.openDecisions(ready, loop, pending, noPowers),
       Vector(shared))
@@ -66,6 +68,7 @@ class CoOwnedDecideSuite extends munit.FunSuite:
       answer(guest, go), noPowers))
     val third = parkedAt(ProcedureWalker.resolve(ready, loop, second,
       answer(owner, go), noPowers))
+    // Back at the shared Decide inside the Repeat and the Branch.
     assertEquals(third.at, Vector("0", "0", "0"))
     assertEquals(third.answered.map(_.by), Vector(guest, owner))
     ProcedureWalker.resolve(ready, loop, third, answer(guest, stop), noPowers) match

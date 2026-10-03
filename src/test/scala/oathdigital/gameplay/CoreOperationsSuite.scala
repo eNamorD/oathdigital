@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
+import oathdigital.testkit.Unwrap.rejected
 
 class CoreOperationsSuite extends munit.FunSuite:
   private val red = PlayerId("red")
@@ -193,7 +194,7 @@ class CoreOperationsSuite extends munit.FunSuite:
       FlipSecrets(red, 1, SecretSide.FaceUp, SecretSide.FaceDown)))
 
   test("invalid descriptions can be converted to typed replay failures"):
-    val failure = OperationError.describe(Piece.Favor(0)).left.toOption.get
+    val failure = rejected(OperationError.describe(Piece.Favor(0)))
     assertEquals(failure.code, "invalid-description")
     assertEquals(failure.toViolation,
       OathViolation.CoreOperationRejected("invalid-description",

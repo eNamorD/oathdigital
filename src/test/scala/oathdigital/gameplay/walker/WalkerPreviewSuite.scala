@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.ProcedureWalkerSuite.TestTransformPower
+import oathdigital.testkit.WalkerStubs.TestTransformPower
 import oathdigital.gameplay.walker.WalkerSimulation.PreviewOutcome
 import oathdigital.model._
 import oathdigital.testkit.Table

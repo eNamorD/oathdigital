@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.CampaignFixture.Board
 import oathdigital.gameplay.powers.{PowerImplementationStatus, WalkerPowerCatalog}
@@ -28,7 +28,8 @@ object PlanDriver:
     })
 
   val winning: WalkerDice = dice(AttackDieFace.OneSword)
-  val losing: WalkerDice = dice(AttackDieFace.HollowSword)
+  /** The shared blanks: every attack die half a sword. */
+  val losing: WalkerDice = WalkerDiceFixture.blanks
 
   /** These denizens, by name, after checking that no power of theirs is
     * implemented yet: held as advisers, they offer no battle plan of their
