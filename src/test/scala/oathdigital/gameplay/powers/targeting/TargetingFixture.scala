@@ -1,70 +1,41 @@
 package oathdigital.gameplay.powers.targeting
 
-import oathdigital.gameplay.{CampaignFixture, OathRules}
+import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers, WalkerProcedureRegistry}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
+  WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Outcomes}
+import oathdigital.testkit.Unwrap.{accepted, present}
 
-/** Shared staging and reading for the suites of the rules that keep a player
-  * from being targeted.
+/** Shared reading for the suites of the rules that keep a player from being
+  * targeted.
   */
 object TargetingFixture:
-  val rules: OathRules = CampaignFixture.rules(powers = true)
-  val fortress: EdificeId = EdificeId("E28")
-  val circlet: RelicId = RelicId("R15")
+  /** Rules with the walker power catalog, so the printed protections apply. */
+  val rules: OathRules = new OathRules(catalog,
+    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  /** The Fortress edifice: Oaken Fortress intact, Rotting Fortress ruined. */
+  val fortress: EdificeId = CatalogNames.edifice("Oaken Fortress")
+  val circlet: RelicId = CatalogNames.relic("Circlet of Command")
 
-  def ready(transition: OathTransition): ReadyGame =
-    transition.state.asInstanceOf[Ready].value
-
-  def playerOf(state: ReadyGame, id: PlayerId): PlayerState =
-    state.game.current.players.find(_.player == id).get
-
-  /** The Fortress on `side` at `site`, taken from wherever it was. */
-  def fortressAt(state: ReadyGame, side: EdificeSide, site: SiteId): ReadyGame =
-    Table.from(state).edifice(fortress, side, at = site).unchecked
-
-  /** `site` ruled by `ruler`. */
-  def ruledBy(state: ReadyGame, site: SiteId, ruler: PlayerId): ReadyGame =
-    state.updateCurrent(c => c.copy(map = c.map.copy(sites =
-      c.map.sites.updated(site, c.map.sites(site).copy(forces =
-        SiteForces.Occupied(ForceKind.Exile(playerOf(state, ruler).lineage),
-          2))))))
-
-  def unruled(state: ReadyGame, site: SiteId): ReadyGame =
-    state.updateCurrent(c => c.copy(map = c.map.copy(sites =
-      c.map.sites.updated(site, c.map.sites(site).copy(forces =
-        SiteForces.Empty)))))
-
-  def pawnAt(state: ReadyGame, player: PlayerId, site: SiteId): ReadyGame =
-    state.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if p.player == player then p.copy(pawnSite = Some(site)) else p)))
-
-  /** `player` holds the relic, faceup or facedown. */
-  def holds(state: ReadyGame, player: PlayerId, relic: RelicId,
-      orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    Table.from(state)
-      .relic(player, relic, facedown = orientation == Orientation.FaceDown)
-      .unchecked
-
-  /** `player` holds a faceup adviser of `suit`. */
-  def adviserOf(state: ReadyGame, player: PlayerId, suit: Suit): ReadyGame =
-    val card = DenizenId(catalog.denizens.find(_.suit == suit).get.id.value)
-    Table.from(state).adviser(player, card).unchecked
+  def ready(transition: OathTransition)(using munit.Location): ReadyGame =
+    Outcomes.ready(transition.state)
 
   /** The options of the decision a parked walk of `procedure` is waiting on. */
-  def optionsAt(transition: OathTransition, procedure: ProcedureRef)
-      : Vector[DecisionOptionRef] =
+  def optionsAt(transition: OathTransition, procedure: ProcedureRef)(
+      using munit.Location): Vector[DecisionOptionRef] =
     val state = ready(transition)
     val current = state.game.current
-    val tree = WalkerProcedureRegistry.rebuild(procedure, catalog, state,
-      current.turn.activePlayer, current.walkerStartArgs).toOption.get
+    val tree = accepted(WalkerProcedureRegistry.rebuild(procedure, catalog,
+      state, current.turn.activePlayer, current.walkerStartArgs))
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       current.walkerModifiers)
-    ProcedureWalker.parkedDecide(state, tree, current.walkerPending.get, powers)
-      .get.query match
+    val pending = present(current.walkerPending, "a parked walker decision")
+    present(ProcedureWalker.parkedDecide(state, tree, pending, powers),
+      "the parked decision").query match
       case one: DecisionQuery.ChooseOne => one.options.map(_.ref)
       case many: DecisionQuery.ChooseMany => many.options.map(_.ref)
       case other => throw new AssertionError(s"unexpected query $other")

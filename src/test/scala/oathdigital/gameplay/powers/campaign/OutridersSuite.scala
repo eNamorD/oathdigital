@@ -12,17 +12,18 @@ import oathdigital.model._
   */
 class OutridersSuite extends munit.FunSuite:
   private val card = cardWith("denizen.outriders")
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(card))
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val power = Outriders
 
   /** The attacker holds Outriders, Campaigns with two warbands, chooses it,
     * and rolls `attack`. */
   private def rolled(attack: Vector[AttackDieFace]): Run =
-    val b = withAdviser(board(), card, Orientation.FaceUp)
+    val b = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
     val defense = Vector.fill(catalog.sites.find(_.id == b.origin).get.defense)(
       DefenseDieFace.Blank)
     commit(rules(dice(attack, defense)), b, 2)
-      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
 
   private def said(run: Run): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, run.events)

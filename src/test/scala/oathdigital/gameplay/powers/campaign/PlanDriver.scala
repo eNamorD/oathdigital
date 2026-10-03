@@ -10,6 +10,7 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.CatalogNames
 
 /** Drives a Campaign through the rules with the production battle plans, for the
   * suites that test one plan through a whole Campaign. Every attack die is a sword
@@ -28,20 +29,20 @@ object PlanDriver:
   val winning: WalkerDice = dice(AttackDieFace.OneSword)
   val losing: WalkerDice = dice(AttackDieFace.HollowSword)
 
-  /** `count` denizens of `suit` whose powers do nothing yet, to hold as
-    * advisers without offering a plan of their own. */
-  def inert(suit: Suit, count: Int): Vector[String] =
+  /** These denizens, by name, after checking that no power of theirs is
+    * implemented yet: held as advisers, they offer no battle plan of their
+    * own. */
+  def planless(names: String*)(using munit.Location): Vector[DenizenId] =
     val implemented = PowerImplementationStatus.implemented(catalog)
-    catalog.denizens.filter(card => card.suit == suit &&
-      card.powers.forall(power => !implemented(power.id)))
-      .map(_.id.value).take(count)
+    names.toVector.map { name =>
+      val id = CatalogNames.denizen(name)
+      val card = catalog.denizens.find(_.id.value == id.value).get
+      assert(card.powers.forall(power => !implemented(power.id)),
+        s"$name has an implemented power, so it may offer a battle plan")
+      id
+    }
 
-  def ready(state: OathState): ReadyGame = state match
-    case Ready(value) => value
-    case other => throw new IllegalStateException(s"not a ready game: $other")
-
-  def player(state: OathState, id: PlayerId): PlayerState =
-    ready(state).game.current.players.find(_.player == id).get
+  export oathdigital.testkit.Outcomes.ready
 
   /** The parked decision, as this file's suites rebuild it: the same catalog
     * and walker power catalog `CampaignFixture.rules(dice, powers = true)`
@@ -105,13 +106,14 @@ object PlanDriver:
     /** Finishes every plan window, sacrifices nothing and places nothing, until
       * the Campaign ends or asks something else.
       */
-    def finish: Run = parked.parkedDecision(state) match
+    def finishPlanWindows: Run = parked.parkedDecision(state) match
       case Some(facts) => facts.decision match
         case CampaignIds.attackerPlan | CampaignIds.defenderPlan =>
           answer(facts.awaiting, facts.decision,
-            ChooseOneAnswer(CampaignIds.finish)).finish
+            ChooseOneAnswer(CampaignIds.finish)).finishPlanWindows
         case CampaignIds.sacrifice | CampaignIds.placement =>
-          answer(facts.awaiting, facts.decision, ChooseAmountAnswer(0)).finish
+          answer(facts.awaiting, facts.decision, ChooseAmountAnswer(0))
+            .finishPlanWindows
         case _ => this
       case None => this
 

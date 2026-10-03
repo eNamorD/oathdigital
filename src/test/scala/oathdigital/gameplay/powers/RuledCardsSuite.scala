@@ -19,14 +19,14 @@ class RuledCardsSuite extends munit.FunSuite:
     RuledCards.of(catalog, b.ready, ruler, Suit.Nomad).toSet
 
   test("a player rules their faceup advisers, not their facedown ones"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val b = on(base)(_.adviser(base.actor, convoys)
       .adviser(base.actor, vowOfKinship, facedown = true))
     assertEquals(nomadsOf(b, SiteRuler.Player(b.actor)), Set[CardId](convoys))
 
   test("a player rules the faceup denizens and the edifices, on either " +
       "face, at the sites they rule"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val site = CatalogNames.site("Broken Peaks")
     // A facedown denizen has no suit, and an order card is not a nomad card.
     val b = on(actorRules(base, site))(_
@@ -41,7 +41,7 @@ class RuledCardsSuite extends munit.FunSuite:
       "does"):
     // Two Bandits rule Ancient City, p1's site, and Broken Peaks; p1 rules
     // nothing.
-    val base = board(extras = 1)
+    val base = board(extras = 1, warbands = 5, supply = 7)
     val b = on(base)(_.denizen(convoys, at = "Ancient City")
       .denizen(vowOfKinship, at = "Broken Peaks"))
     assertEquals(nomadsOf(b, SiteRuler.Bandits),

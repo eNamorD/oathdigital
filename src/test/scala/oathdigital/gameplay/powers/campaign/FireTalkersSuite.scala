@@ -4,12 +4,13 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.Look
 
 /** Fire Talkers: a secret placed for three attack dice, added or removed,
   * offered only while its user holds the Darkest Secret. */
 class FireTalkersSuite extends munit.FunSuite:
   private val card = cardWith("denizen.fire-talkers")
-  private val id = DenizenId(card)
+  private val id = card
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
 
   private def withDarkestSecret(b: Board, who: PlayerId): Board =
@@ -18,11 +19,12 @@ class FireTalkersSuite extends munit.FunSuite:
         current.banners.darkestSecret.copy(holder = Some(who))))))
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
-    player(state, who).advisers.collectFirst {
+    Look(state).player(who).advisers.collectFirst {
       case held: DenizenState if held.id == id => held.tokens }
 
   private def attacker: Board =
-    val b = withSecrets(withAdviser(board(), card, Orientation.FaceUp), 1)
+    val b = withSecrets(
+      withAdviser(board(warbands = 5, supply = 7), card, Orientation.FaceUp), 1)
     withDarkestSecret(b, b.actor)
 
   test("an attacker holding the Darkest Secret places a secret for three attack dice"):
@@ -31,24 +33,26 @@ class FireTalkersSuite extends munit.FunSuite:
       .pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, 3)))
     assertEquals(adviserTokens(picked.state, b.actor), Some(Tokens(0, 1)))
-    assertEquals(player(picked.state, b.actor).board.faceUpSecrets, 0)
+    assertEquals(Look(picked.state).player(b.actor).board.faceUpSecrets, 0)
 
   test("it is not offered while another player holds the Darkest Secret"):
-    val b = withDarkestSecret(attacker, attacker.other)
+    val b = withDarkestSecret(attacker, attacker.rival)
     assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
 
   test("a defender pays off turn and removes three attack dice"):
-    val base = againstPlayer(board())
-    val armed = replacePlayer(withAdviserFor(base, base.other, card,
-      Orientation.FaceUp), base.other)(p =>
-      p.copy(board = p.board.copy(faceUpSecrets = 1)))
-    val b = withDarkestSecret(armed, base.other)
-    val facedown = player(OathState.Ready(b.ready), b.other).board.faceDownSecrets
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val armed = on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
+      _.secrets(base.rival, faceUp = 1))
+    val b = withDarkestSecret(armed, base.rival)
+    val facedown = Look(
+      OathState.Ready(b.ready)).player(b.rival).board.faceDownSecrets
     val picked = commit(rules(winning), b, 4)
-      .pick(b.other, CampaignIds.defenderPlan, ref)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))
     // Paid outside the defender's turn, the secret settles at once: it flips
     // facedown instead of resting on the card.
-    assertEquals(adviserTokens(picked.state, b.other), Some(Tokens.empty))
-    assertEquals(player(picked.state, b.other).board.faceUpSecrets, 0)
-    assertEquals(player(picked.state, b.other).board.faceDownSecrets, facedown + 1)
+    assertEquals(adviserTokens(picked.state, b.rival), Some(Tokens.empty))
+    assertEquals(Look(picked.state).player(b.rival).board.faceUpSecrets, 0)
+    assertEquals(Look(picked.state).player(b.rival).board.faceDownSecrets,
+      facedown + 1)

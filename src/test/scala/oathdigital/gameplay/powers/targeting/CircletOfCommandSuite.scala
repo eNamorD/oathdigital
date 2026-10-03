@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.targeting
 
 import oathdigital.gameplay.CampaignFixture
-import oathdigital.gameplay.CampaignFixture.raidBoard
+import oathdigital.gameplay.CampaignFixture.{RaidBoard, raidBoard}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powerresolver.PowerCtx
@@ -27,9 +27,11 @@ class CircletOfCommandSuite extends munit.FunSuite:
     */
   private def raidKind(circletSide: Option[Orientation],
       attacker: Boolean = false): OathTransition =
-    val (b, _) = raidBoard()
-    val held = circletSide.fold(b.ready)(side =>
-      holds(b.ready, if attacker then b.actor else b.other, circlet, side))
+    val b = raidBoard().board
+    val holder = if attacker then b.actor else b.rival
+    val held = circletSide.fold(b.ready)(side => Table.from(b.ready)
+      .relic(holder, circlet, facedown = side == Orientation.FaceDown)
+      .unchecked)
     val started = start(held, ActionRef.Campaign, b.actor).toOption.get
     rules.resolveWalker(started.state, b.actor, CampaignIds.kind, raid)
       .toOption.get
@@ -40,7 +42,7 @@ class CircletOfCommandSuite extends munit.FunSuite:
 
   test("a Raid may not target the holder's other relics or banners, but may " +
       "target the Circlet"):
-    val (b, relic) = raidBoard()
+    val RaidBoard(b, relic) = raidBoard()
     assertEquals(raidTargets(None).toSet, Set[DecisionOptionRef](
       DecisionOptionRef.Relic(relic), DecisionOptionRef.Banner(Banner.PeoplesFavor),
       DecisionOptionRef.Banner(Banner.DarkestSecret)))
@@ -48,14 +50,14 @@ class CircletOfCommandSuite extends munit.FunSuite:
       Vector[DecisionOptionRef](DecisionOptionRef.Relic(circlet)))
 
   test("a facedown Circlet protects nothing"):
-    val (_, relic) = raidBoard()
+    val relic = raidBoard().relic
     assert(raidTargets(Some(Orientation.FaceDown))
       .contains(DecisionOptionRef.Relic(relic)))
 
   test("the holder's own Raid is not restricted by their Circlet"):
     // The defender holds no Circlet; the attacker does. The defender's things
     // stay targetable: the Circlet protects only its holder.
-    val (_, relic) = raidBoard()
+    val relic = raidBoard().relic
     assert(raidTargets(Some(Orientation.FaceUp), attacker = true)
       .contains(DecisionOptionRef.Relic(relic)))
 
@@ -104,7 +106,9 @@ class CircletOfCommandSuite extends munit.FunSuite:
         banners = c.banners.copy(
           peoplesFavor = c.banners.peoplesFavor.copy(holder = Some(enemy)),
           darkestSecret = c.banners.darkestSecret.copy(holder = None))))
-    val ready = holds(holds(staged, enemy, other), enemy, circlet, circletSide)
+    val ready = Table.from(staged).relic(enemy, other)
+      .relic(enemy, circlet, facedown = circletSide == Orientation.FaceDown)
+      .unchecked
     val hook = CardPlayedFaceup(conspiracy, RuleSourceRef.Adviser(actor, conspiracy))
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       Vector.empty)
@@ -132,7 +136,7 @@ class CircletOfCommandSuite extends munit.FunSuite:
 
   test("the Circlet's rule ignores an option that is not a banner or a relic"):
     val power = CircletOfCommand.forCatalog(catalog)
-    val ready = holds(PowerFixture.quietTable, PowerFixture.actor, circlet)
+    val ready = Table.start.relic(p1, circlet).ready
     val ctx = PowerCtx(ready, PowerFixture.actor, power.source,
       PowerWindow.CampaignTargetSelection, Vector.empty,
       Decide("x", PowerFixture.actor, DecisionQuery.ChooseOne(Vector.empty)))
@@ -149,10 +153,10 @@ class CircletOfCommandSuite extends munit.FunSuite:
     s"${holder.value}'s banners and relics cannot be targeted.", covers = false)
 
   test("the Raid targets the Circlet hides name their holder, once each"):
-    val (b, _) = raidBoard()
+    val b = raidBoard().board
     val said = hidden(raidKind(Some(Orientation.FaceUp)).events)
     assertEquals(said.size, 3)
-    assertEquals(said.distinct, Vector(shielded(b.other)))
+    assertEquals(said.distinct, Vector(shielded(b.rival)))
     assertEquals(hidden(raidKind(Some(Orientation.FaceDown)).events),
       Vector.empty)
 

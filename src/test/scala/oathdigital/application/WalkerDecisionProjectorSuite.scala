@@ -629,7 +629,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     // rather than repeat it (see `CampaignPlanWindowSuite`'s "rebuilt after
     // each pick" test), and there would be nothing to prove a repeat against.
     val b = CampaignFixture.withAdviser(CampaignFixture.withRelic(
-      CampaignFixture.board(), relic), CampaignFixture.cardWith("denizen.outriders"),
+      CampaignFixture.board(warbands = 5, supply = 7), relic), CampaignFixture.cardWith("denizen.outriders"),
       Orientation.FaceUp)
     val g = CampaignFixture.rules()
     val started = g.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
@@ -637,7 +637,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     val forced = g.resolveWalker(started.state, b.actor, CampaignIds.force,
       ChooseAmountAnswer(2)).getOrElse(fail("the force must be accepted"))
     val picked = g.resolveWalker(forced.state, b.actor, CampaignIds.attackerPlan,
-      ChooseOneAnswer(DecisionOptionRef.Relic(RelicId(relic))))
+      ChooseOneAnswer(DecisionOptionRef.Relic(relic)))
       .fold(e => fail(s"the Sticky Fire plan must be accepted: $e"), identity)
     picked.state match
       case Ready(ready) => ready
@@ -677,7 +677,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * costs one warband, so one is still left to sacrifice.
     */
   private lazy val campaignAtSacrifice: ReadyGame =
-    val b = CampaignFixture.board()
+    val b = CampaignFixture.board(warbands = 5, supply = 7)
     val defense = Vector.fill(catalog.sites.find(_.id == b.origin).get.defense)(
       DefenseDieFace.Blank)
     val g = CampaignFixture.rules(CampaignFixture.dice(

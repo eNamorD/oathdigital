@@ -9,14 +9,15 @@ import oathdigital.model._
   * only while the enemy rules a beast card. */
 class BattleAxesSuite extends munit.FunSuite:
   private val card = cardWith("denizen.battle-axes")
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(card))
-  private val beasts = inert(Suit.Beast, 2)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
+  private val beasts = planless("Errand Boy", "Small Friends")
 
   test("an attacker adds two attack dice, for nothing, when the defender " +
       "rules a beast card"):
-    val base = againstPlayer(board())
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviser(base, card, Orientation.FaceUp),
-      base.other, beasts(0), Orientation.FaceUp)
+      base.rival, beasts(0), Orientation.FaceUp)
     val run = commit(rules(winning), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
@@ -24,7 +25,8 @@ class BattleAxesSuite extends munit.FunSuite:
 
   test("the user's own beast card and one at a site nobody rules count " +
       "nothing"):
-    val base = againstPlayer(board())
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
     val site = base.ready.game.current.map.inPlay.find(_ != base.origin).get
     val b = withSiteCard(withAdviser(withAdviser(base, card,
       Orientation.FaceUp), beasts(0), Orientation.FaceUp), site, beasts(1))
@@ -33,7 +35,7 @@ class BattleAxesSuite extends munit.FunSuite:
 
   test("against bandits it holds when a beast card stands at any site " +
       "bandits rule"):
-    val base = board(extras = 1)
+    val base = board(extras = 1, warbands = 5, supply = 7)
     val held = withAdviser(base, card, Orientation.FaceUp)
     assert(!commit(rules(winning), held, 3).offers(held.actor, held.actor,
       CampaignIds.attackerPlan, ref))
@@ -43,19 +45,20 @@ class BattleAxesSuite extends munit.FunSuite:
 
   test("a defender removes two attack dice when the attacker rules a beast " +
       "card"):
-    val base = againstPlayer(board())
-    val b = withAdviser(withAdviserFor(base, base.other, card,
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val b = withAdviser(withAdviserFor(base, base.rival, card,
       Orientation.FaceUp), beasts(0), Orientation.FaceUp)
     val run = commit(rules(winning), b, 4)
-      .pick(b.other, CampaignIds.defenderPlan, ref)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
 
   test("a bandit defender applies it only when the attacker rules a beast " +
       "card"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    assert(!commit(rules(winning), b, 4).finish.ops
+    assert(!commit(rules(winning), b, 4).finishPlanWindows.ops
       .contains(ModifyDicePool(CampaignIds.attackPool, -2)))
     val armed = withAdviser(b, beasts(0), Orientation.FaceUp)
-    assert(commit(rules(winning), armed, 4).finish.ops
+    assert(commit(rules(winning), armed, 4).finishPlanWindows.ops
       .contains(ModifyDicePool(CampaignIds.attackPool, -2)))

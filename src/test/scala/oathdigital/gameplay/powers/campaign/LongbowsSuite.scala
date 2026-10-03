@@ -9,10 +9,11 @@ import oathdigital.model._
   * defends. */
 class LongbowsSuite extends munit.FunSuite:
   private val card = cardWith("denizen.longbows")
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(card))
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   test("an attacker adds one attack die, for nothing"):
-    val b = withAdviser(board(), card, Orientation.FaceUp)
+    val b = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
     val run = commit(rules(winning), b, 2)
     assert(awaits(run, b.actor, CampaignIds.attackerPlan))
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
@@ -20,15 +21,16 @@ class LongbowsSuite extends munit.FunSuite:
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
 
   test("a defender removes one attack die"):
-    val base = againstPlayer(board())
-    val b = withAdviserFor(base, base.other, card, Orientation.FaceUp)
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val b = withAdviserFor(base, base.rival, card, Orientation.FaceUp)
     val run = commit(rules(winning), b, 2)
-    assert(awaits(run, b.other, CampaignIds.defenderPlan))
-    val picked = run.pick(b.other, CampaignIds.defenderPlan, ref)
+    assert(awaits(run, b.rival, CampaignIds.defenderPlan))
+    val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, -1)))
 
   test("a bandit defender applies it at a site the bandits rule"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
     val run = commit(rules(winning), b, 2)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -1)))

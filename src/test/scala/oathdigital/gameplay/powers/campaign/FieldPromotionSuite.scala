@@ -6,16 +6,17 @@ import oathdigital.gameplay.powers.{NoteText, PlayerFacts}
 import oathdigital.gameplay.powers.PowerFixture.warbandBank
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.Look
 
 /** Field Promotion: a plan for either side, a favor placed, that gains three
   * warbands if its user wins, or what their supply holds. */
 class FieldPromotionSuite extends munit.FunSuite:
   private val card = cardWith("denizen.field-promotion")
-  private val id = DenizenId(card)
+  private val id = card
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
   private val honors = cardWith("denizen.battle-honors")
   private val honorsRef: DecisionOptionRef =
-    DecisionOptionRef.Denizen(DenizenId(honors))
+    DecisionOptionRef.Denizen(honors)
 
   private def kind(b: Board, who: PlayerId): ForceKind =
     PlayerFacts.forceKind(b.ready, who).toOption.get
@@ -32,17 +33,17 @@ class FieldPromotionSuite extends munit.FunSuite:
 
   /** The attacker holds Field Promotion and a favor. */
   private def attacking: Board =
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     on(withAdviser(base, card, Orientation.FaceUp))(_.favor(base.actor, 1))
 
   test("an attacker that wins places a favor on it and gains three warbands, and says so"):
     val b = attacking
     val run = commit(rules(winning), b, 4)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assertEquals(player(picked.state, b.actor).advisers.collectFirst {
+    assertEquals(Look(picked.state).player(b.actor).advisers.collectFirst {
       case held: DenizenState if held.id == id => held.tokens },
       Some(Tokens(1, 0)))
-    val done = picked.finish
+    val done = picked.finishPlanWindows
     assertEquals(winner(done), Some(true))
     assert(done.ops.contains(Gain.Warbands(b.actor, kind(b, b.actor), 3)))
     assertEquals(lines(done), Vector(gained(b.actor, 3)))
@@ -50,38 +51,38 @@ class FieldPromotionSuite extends munit.FunSuite:
   test("an attacker that loses gains nothing and writes nothing"):
     val b = attacking
     val done = commit(rules(losing), b, 4)
-      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(winner(done), Some(false))
     assert(!done.ops.exists(_.isInstanceOf[Gain.Warbands]))
     assertEquals(lines(done), Vector.empty)
 
   test("a defender that wins pays off turn and gains three warbands"):
-    val base = againstPlayer(board())
-    val b = on(withAdviserFor(base, base.other, card, Orientation.FaceUp))(
-      _.favor(base.other, 1))
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val b = on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
+      _.favor(base.rival, 1))
     val picked = commit(rules(losing), b, 4)
-      .pick(b.other, CampaignIds.defenderPlan, ref)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
     // Paid off turn, the favor goes to the bank at once, not onto the card.
-    assertEquals(player(picked.state, b.other).board.favor, 0)
-    val done = picked.finish
+    assertEquals(Look(picked.state).player(b.rival).board.favor, 0)
+    val done = picked.finishPlanWindows
     assertEquals(winner(done), Some(false))
-    assertEquals(lines(done), Vector(gained(b.other, 3)))
+    assertEquals(lines(done), Vector(gained(b.rival, 3)))
 
   test("a short supply gives what it holds"):
     val base = attacking
     val force = kind(base, base.actor)
     // Every warband of the actor's kind but one is on their board.
-    val b = replacePlayer(base, base.actor)(p => p.copy(board = p.board.copy(
-      warbands = p.board.warbands + warbandBank(base.ready, force) - 1)))
+    val b = on(base)(_.warbandsInBank(base.actor, 1))
     assertEquals(warbandBank(b.ready, force), 1)
     val done = commit(rules(winning), b, 4)
-      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(winner(done), Some(true))
     assertEquals(warbandBank(ready(done.state), force), 0)
     assertEquals(lines(done), Vector(gained(b.actor, 1)))
 
   test("an attacker with no favor is not offered it"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val b = on(withAdviser(withAdviser(base, card, Orientation.FaceUp), honors,
       Orientation.FaceUp))(_.favor(base.actor, 0))
     val run = commit(rules(winning), b, 4)
@@ -89,7 +90,7 @@ class FieldPromotionSuite extends munit.FunSuite:
     assert(!run.offered(b.actor).contains(ref))
 
   test("a bandit defender never uses it, since it costs a favor"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
     val run = commit(rules(losing), b, 2)
     assert(awaits(run, b.actor, CampaignIds.sacrifice))

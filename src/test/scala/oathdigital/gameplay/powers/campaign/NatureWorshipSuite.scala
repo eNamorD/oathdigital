@@ -4,23 +4,24 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.Look
 
 /** Nature Worship: a secret placed for one attack die, added or removed, per
   * faceup beast adviser its user has, itself included. */
 class NatureWorshipSuite extends munit.FunSuite:
   private val card = cardWith("denizen.nature-worship")
-  private val id = DenizenId(card)
+  private val id = card
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
-  private val beasts = inert(Suit.Beast, 2)
+  private val beasts = planless("Errand Boy", "Small Friends")
 
   private def advised(b: Board, who: PlayerId,
-      cards: Vector[(String, Orientation)]): Board =
+      cards: Vector[(DenizenId, Orientation)]): Board =
     cards.foldLeft(b) { case (done, (held, side)) =>
       withAdviserFor(done, who, held, side) }
 
   private def attacker(self: Orientation,
-      others: Vector[(String, Orientation)]): Board =
-    val base = board()
+      others: Vector[(DenizenId, Orientation)]): Board =
+    val base = board(warbands = 5, supply = 7)
     withSecrets(advised(base, base.actor, (card -> self) +: others), 1)
 
   private def picked(b: Board): Run =
@@ -38,7 +39,7 @@ class NatureWorshipSuite extends munit.FunSuite:
       Vector(beasts.head -> Orientation.FaceUp))
     val run = picked(b)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, 2)))
-    assert(player(run.state, b.actor).advisers.exists {
+    assert(Look(run.state).player(b.actor).advisers.exists {
       case DenizenState(`id`, Orientation.FaceUp, _) => true
       case _ => false })
 
@@ -48,23 +49,24 @@ class NatureWorshipSuite extends munit.FunSuite:
     assert(picked(b).ops.contains(ModifyDicePool(CampaignIds.attackPool, 1)))
 
   test("at a site its user rules it counts the beast advisers but not itself"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val site = ruledSite(base)
     val b = withSecrets(advised(withSiteCard(actorRules(base, site), site, card),
       base.actor, Vector(beasts.head -> Orientation.FaceUp)), 1)
     assert(picked(b).ops.contains(ModifyDicePool(CampaignIds.attackPool, 1)))
 
   test("at a site with no beast adviser it would add nothing, so it is not offered"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val site = ruledSite(base)
     val b = withSecrets(withSiteCard(actorRules(base, site), site, card), 1)
     assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
 
   test("a defender removes one attack die per beast adviser"):
-    val base = againstPlayer(board())
-    val b = replacePlayer(advised(base, base.other, Vector(
-      card -> Orientation.FaceUp, beasts.head -> Orientation.FaceUp)),
-      base.other)(p => p.copy(board = p.board.copy(faceUpSecrets = 1)))
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val b = on(advised(base, base.rival, Vector(
+      card -> Orientation.FaceUp, beasts.head -> Orientation.FaceUp)))(
+      _.secrets(base.rival, faceUp = 1))
     val run = commit(rules(winning), b, 4)
-      .pick(b.other, CampaignIds.defenderPlan, ref)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))

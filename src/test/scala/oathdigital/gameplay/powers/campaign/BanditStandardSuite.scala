@@ -10,7 +10,7 @@ import oathdigital.model._
   * bandits in a Conquest. */
 class BanditStandardSuite extends munit.FunSuite:
   private val relic = relicWith("relic.bandit-standard")
-  private val ref: DecisionOptionRef = DecisionOptionRef.Relic(RelicId(relic))
+  private val ref: DecisionOptionRef = DecisionOptionRef.Relic(relic)
 
   /** A site other than the origin, in the origin's region when `same` is set
     * and in another region otherwise. */
@@ -21,7 +21,8 @@ class BanditStandardSuite extends munit.FunSuite:
 
   test("an attacker adds one attack die per bandit warband in their pawn's " +
       "region, for nothing"):
-    val base = againstPlayer(board())
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
     val b = on(withRelic(base, relic))(_.bandits(site(base, same = true), 3)
       .bandits(site(base, same = false), 2))
     val run = commit(rules(winning), b, 3)
@@ -30,18 +31,19 @@ class BanditStandardSuite extends munit.FunSuite:
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
 
   test("it is not offered in a Conquest against bandits"):
-    val b = withRelic(board(), relic)
+    val b = withRelic(board(warbands = 5, supply = 7), relic)
     assert(!commit(rules(winning), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("it is not offered when the region holds no bandit"):
-    val base = againstPlayer(board())
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
     val b = on(withRelic(base, relic))(_.bandits(site(base, same = false), 2))
     assert(!commit(rules(winning), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("it is used in a Raid, counting the bandits at the pawn's site"):
-    val b = withRelic(withEnemyAtOrigin(board()), relic)
+    val b = withRelic(withEnemyAtOrigin(board(warbands = 5, supply = 7)), relic)
     val run = commit(rules(winning), b, 3, raid = true)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))

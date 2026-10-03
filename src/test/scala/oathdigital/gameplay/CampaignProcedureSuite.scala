@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.CampaignFixture.{Board, actorRules, againstPlayer, board, cardWith, relicWith, rules, withAdviser, withEnemyAtOrigin, withRelic, withSecrets, withSiteCard}
+import oathdigital.gameplay.CampaignFixture.{Board, actorRules, rivalRulesOriginAndHoldsOathkeeper, board, cardWith, relicWith, rules, withAdviser, withEnemyAtOrigin, withRelic, withSecrets, withSiteCard}
 import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -12,7 +12,7 @@ import oathdigital.model.OathState.Ready
 
 /** Campaign through the rules, as a client drives it. */
 class CampaignProcedureSuite extends munit.FunSuite:
-  private val r = rules(CampaignFixture.anyDice)
+  private val r = rules(WalkerDiceFixture.blanks)
 
   /** `r` is built with the default walker power catalog (`rules`'s
     * `powers = true` default), so this reads the park the same way.
@@ -56,7 +56,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       .board.supply.supply
 
   test("with one legal kind, no extra target and force to commit, the start parks on the force"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val started = start(b).getOrElse(fail("Campaign must start"))
     parked.assertParked(started.state, ActionRef.Campaign, CampaignIds.force,
       b.actor)
@@ -68,7 +68,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(supply(started.state, b.actor), 5)
 
   test("extra same-ruler sites are offered as optional targets, in map order"):
-    val b = board(extras = 2)
+    val b = board(extras = 2, warbands = 5, supply = 7)
     val started = start(b).getOrElse(fail("Campaign must start"))
     parked.assertParked(started.state, ActionRef.Campaign, CampaignIds.targets,
       b.actor)
@@ -81,7 +81,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       b.actor)
 
   test("the empty selection is a valid targets answer"):
-    val b = board(extras = 1)
+    val b = board(extras = 1, warbands = 5, supply = 7)
     val started = start(b).toOption.get
     val answered = answer(started.state, b.actor, CampaignIds.targets,
       ChooseManyAnswer(Vector.empty)).toOption.get
@@ -89,10 +89,10 @@ class CampaignProcedureSuite extends munit.FunSuite:
       b.actor)
 
   test("a pawn shared with an enemy offers both kinds; a lone enemy is the Raid defender"):
-    val shared = withEnemyAtOrigin(board())
+    val shared = withEnemyAtOrigin(board(warbands = 5, supply = 7))
     val b = shared.copy(ready = shared.ready.updateCurrent(current =>
       current.copy(players = current.players.map(p =>
-        if p.player == shared.other then p.copy(relics = Vector(RelicState(
+        if p.player == shared.rival then p.copy(relics = Vector(RelicState(
           RelicId("r-raid"), Orientation.FaceUp, Tokens.empty))) else p))))
     val started = start(b).toOption.get
     parked.assertParked(started.state, ActionRef.Campaign, CampaignIds.kind,
@@ -108,7 +108,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       b.actor)
 
   test("with neither a ruled pawn site nor an enemy pawn, no Campaign starts or is offered"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val unruled = b.ready.updateCurrent(current => current.copy(map =
       current.map.copy(sites = current.map.sites.updated(b.origin,
         current.map.sites(b.origin).copy(forces = SiteForces.Empty)))))
@@ -120,14 +120,14 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assert(CampaignProcedure.startable(catalog, b.ready, b.actor, WalkerPowers.empty))
 
   test("a Campaign the actor cannot pay for is not offered and does not start"):
-    val b = board(supply = 1)
+    val b = board(supply = 1, warbands = 5)
     assertEquals(start(b).left.toOption, Some(OathViolation.CoreOperationRejected("insufficient-supply",
       "a supply spend of 2 exceeds the 1 available")))
     assert(!CampaignProcedure.startable(catalog, b.ready, b.actor,
       WalkerPowers.empty))
 
   test("committing force gathers the attack pool and the printed defense pool"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val started = start(b).toOption.get
     val done = answer(started.state, b.actor, CampaignIds.force,
       ChooseAmountAnswer(3)).getOrElse(fail("the force must be accepted"))
@@ -140,7 +140,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       b.actor)
 
   test("zero force is legal and gathers no attack pool"):
-    val b = board(warbands = 0)
+    val b = board(warbands = 0, supply = 7)
     val started = start(b).toOption.get
     assertEquals(parkedDecision(b, started).query, DecisionQuery.ChooseAmount(0, 0,
       Some("Commit warbands to the Campaign: 0 to 0, each adds one attack die"),
@@ -153,14 +153,14 @@ class CampaignProcedureSuite extends munit.FunSuite:
     })
 
   test("more force than the board holds is rejected"):
-    val b = board(warbands = 2)
+    val b = board(warbands = 2, supply = 7)
     val started = start(b).toOption.get
     assertEquals(answer(started.state, b.actor, CampaignIds.force,
       ChooseAmountAnswer(3)).left.toOption, Some(OathViolation.InvalidEventOrder(
       "decision campaign.force amount 3 is outside 0..2")))
 
   test("a held battle-plan relic does not block the start: its plan is chosen at the plan step"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val bag = catalog.relicWithPower(PowerId("relic.bag-of-siegeworks")).get
     val held = RelicId(bag.id.value)
     // The relic leaves the deck and any site, so the card index stays valid.
@@ -178,7 +178,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       ActionRef.Campaign, CampaignIds.force, b.actor)
 
   test("a faceup Vow of Peace stops the start, through the walker power catalog"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val vow = catalog.denizenWithPower(PowerId("denizen.vow-of-peace")).get
     val holding = b.ready.updateCurrent(current => current.copy(players =
       current.players.map(p => if p.player == b.actor then p.copy(advisers = Vector(
@@ -200,39 +200,40 @@ class CampaignProcedureSuite extends munit.FunSuite:
       .getOrElse(fail("the force must be accepted"))
 
   test("an attacker plan is offered after the force, with Finish, and a pick applies its effects"):
-    val b = withSecrets(withRelic(board(), brass), 2)
+    val b = withSecrets(withRelic(board(warbands = 5, supply = 7), brass), 2)
     val plans = atPlans(b)
     parked.assertParked(plans.state, ActionRef.Campaign,
       CampaignIds.attackerPlan, b.actor)
     assertEquals(parkedDecision(b, plans).query, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Priced(
         DecisionOption.Badged(DecisionOption.Relic(DecisionOptionRef.Relic(
-          RelicId(brass))), "Attack Plan"),
+          brass)), "Attack Plan"),
         OptionPrice(secrets = 1)),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Choose a battle plan, or finish")))
     val picked = answer(plans.state, b.actor, CampaignIds.attackerPlan,
-      planPick(DecisionOptionRef.Relic(RelicId(brass)))).toOption.get
+      planPick(DecisionOptionRef.Relic(brass))).toOption.get
     assert(ops(picked.events).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
     assert(ops(picked.events).contains(PayCost(b.actor,
-      Location.OnCard(RelicId(brass)), Cost(secret = 1), intoOccupied = true)))
+      Location.OnCard(brass), Cost(secret = 1), intoOccupied = true)))
     // Nothing else can be chosen, so the window finishes by itself and the
     // walk goes on to the sacrifice.
     parked.assertParked(picked.state, ActionRef.Campaign, CampaignIds.sacrifice,
       b.actor)
 
   test("two plans are chosen one at a time, each source once, and Finish ends the window"):
-    val b = withSecrets(withRelic(withAdviser(board(), outriders,
-      Orientation.FaceUp), brass), 1)
+    val advised = withAdviser(board(warbands = 5, supply = 7), outriders,
+      Orientation.FaceUp)
+    val b = withSecrets(withRelic(advised, brass), 1)
     val plans = atPlans(b)
     val first = answer(plans.state, b.actor, CampaignIds.attackerPlan,
-      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).toOption.get
+      planPick(DecisionOptionRef.Denizen(outriders))).toOption.get
     parked.assertParked(first.state, ActionRef.Campaign,
       CampaignIds.attackerPlan, b.actor)
     assertEquals(parkedDecision(b, first).query, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Priced(
         DecisionOption.Badged(DecisionOption.Relic(DecisionOptionRef.Relic(
-          RelicId(brass))), "Attack Plan"),
+          brass)), "Attack Plan"),
         OptionPrice(secrets = 1)),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Choose a battle plan, or finish")))
@@ -241,42 +242,44 @@ class CampaignProcedureSuite extends munit.FunSuite:
       .filter(_.pool == CampaignIds.attackPool), Vector.empty)
 
   test("a plan already chosen is rejected when chosen again"):
-    val b = withSecrets(withRelic(withAdviser(board(), outriders,
-      Orientation.FaceUp), brass), 1)
+    val advised = withAdviser(board(warbands = 5, supply = 7), outriders,
+      Orientation.FaceUp)
+    val b = withSecrets(withRelic(advised, brass), 1)
     val first = answer(atPlans(b).state, b.actor, CampaignIds.attackerPlan,
-      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).toOption.get
+      planPick(DecisionOptionRef.Denizen(outriders))).toOption.get
     assertEquals(answer(first.state, b.actor, CampaignIds.attackerPlan,
-      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).left.toOption,
+      planPick(DecisionOptionRef.Denizen(outriders))).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "decision campaign.attacker-plan does not offer the selected option")))
 
   test("a facedown Outriders is revealed when chosen"):
-    val b = withAdviser(board(), outriders, Orientation.FaceDown)
+    val b = withAdviser(board(warbands = 5, supply = 7), outriders,
+      Orientation.FaceDown)
     val done = answer(atPlans(b).state, b.actor, CampaignIds.attackerPlan,
-      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).toOption.get
-    assert(ops(done.events).contains(Move(Piece.Card(DenizenId(outriders)),
+      planPick(DecisionOptionRef.Denizen(outriders))).toOption.get
+    assert(ops(done.events).contains(Move(Piece.Card(outriders),
       PositionedLocation(Location.PlayArea(b.actor)),
       PositionedLocation(Location.PlayArea(b.actor)),
       resultingOrientation = Some(Orientation.FaceUp))))
 
   test("a player defender owns the defender window and the attacker cannot answer it"):
-    val b = againstPlayer(board())
+    val b = rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7))
     val plans = atPlans(b)
     parked.assertParked(plans.state, ActionRef.Campaign,
-      CampaignIds.defenderPlan, b.other)
+      CampaignIds.defenderPlan, b.rival)
     assertEquals(parkedDecision(b, plans).query, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Badged(DecisionOption.Button(DecisionOptionRef.Button("title"),
         "Oathkeeper title: add 1 defense die"), "Defense Plan"),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Defender: choose a battle plan, or finish")))
     assert(answer(plans.state, b.actor, CampaignIds.defenderPlan, finish).isLeft)
-    val picked = answer(plans.state, b.other, CampaignIds.defenderPlan,
+    val picked = answer(plans.state, b.rival, CampaignIds.defenderPlan,
       planPick(DecisionOptionRef.Button("title"))).toOption.get
     assert(ops(picked.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
 
   test("a bandit defender applies its cost-free plans by itself"):
     val watchdog = cardWith("denizen.watchdog")
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     assert(base.ready.game.current.map.regionOf(base.origin).contains(Region.Cradle),
       "the fixture's origin must be in the Cradle for Watchdog")
     val b = withSiteCard(base, base.origin, watchdog)
@@ -311,7 +314,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       case _ => false
 
   test("a Conquest victory rolls both dice by itself, records the result and places the survivors"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val game = rules(CampaignFixture.dice(sword(4), blanks(b)))
     val start = committed(game, b, 4)
     assert(start.events.exists(isAutomaticRoll(CampaignIds.attackPool)))
@@ -340,7 +343,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(ready(placed.state).game.current.rollPools, Map.empty[PoolKey, DicePoolState])
 
   test("the recorded events replay to the same state as the live walk"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val game = rules(CampaignFixture.dice(sword(4), blanks(b)))
     val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
       .toOption.get
@@ -359,7 +362,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(replayed, Right(placed.state))
 
   test("a defeat kills the skull and sacrifice losses and half the survivors, and the bandits stay"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val game = rules(CampaignFixture.dice(sword(2), blanks(b)))
     val start = committed(game, b, 2)
     val done = game.resolveWalker(start.state, b.actor, CampaignIds.sacrifice,
@@ -370,7 +373,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     parked.assertResumed(done.state, Phase.Act, b.actor)
 
   test("a sacrifice adds one attack per warband and can turn a defeat into a victory"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val game = rules(CampaignFixture.dice(sword(2), blanks(b)))
     val start = committed(game, b, 2)
     val won = game.resolveWalker(start.state, b.actor, CampaignIds.sacrifice,
@@ -381,7 +384,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       b.actor)
 
   test("the sacrifice decision is bounded by the force the skulls left, and shows the roll"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val faces = Vector(AttackDieFace.TwoSwordsSkull, AttackDieFace.OneSword)
     val game = rules(CampaignFixture.dice(faces, blanks(b)))
     val start = committed(game, b, 2)
@@ -389,7 +392,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       Some(CampaignBattle.sacrificeHeading(1)), "Sacrifice"))
 
   test("zero force asks no sacrifice, and the attacker loses with nothing to kill"):
-    val b = board(warbands = 0)
+    val b = board(warbands = 0, supply = 7)
     val game = rules(CampaignFixture.dice(Vector.empty, blanks(b)))
     val done = committed(game, b, 0)
     parked.assertResumed(done.state, Phase.Act, b.actor)
@@ -398,20 +401,21 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(boardWarbands(done.state, b.actor), 0)
 
   test("a player defender keeps half the killed force, returned to its board"):
-    val b = againstPlayer(board())
+    val b = rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7))
     val game = rules(CampaignFixture.dice(sword(4), blanks(b)))
-    val before = boardWarbands(Ready(b.ready), b.other)
+    val before = boardWarbands(Ready(b.ready), b.rival)
     val start = committed(game, b, 4)
     // The defender may choose plans first; finish that window.
-    val afterPlans = game.resolveWalker(start.state, b.other,
+    val afterPlans = game.resolveWalker(start.state, b.rival,
       CampaignIds.defenderPlan, ChooseOneAnswer(CampaignIds.finish)).toOption.get
     val sacrificed = game.resolveWalker(afterPlans.state, b.actor,
       CampaignIds.sacrifice, ChooseAmountAnswer(0)).toOption.get
-    assertEquals(result(sacrificed.state).defender, CampaignDefender.Player(b.other))
-    assertEquals(boardWarbands(sacrificed.state, b.other), before + 1)
+    assertEquals(result(sacrificed.state).defender,
+      CampaignDefender.Player(b.rival))
+    assertEquals(boardWarbands(sacrificed.state, b.rival), before + 1)
 
   test("several targets are placed with one distribution, and the rest stay on the board"):
-    val b = board(extras = 1)
+    val b = board(extras = 1, warbands = 5, supply = 7)
     val game = rules(CampaignFixture.dice(sword(5),
       Vector.fill(printed(b) + catalog.sites.find(_.id == b.extras.head).get.defense)(
         DefenseDieFace.Blank)))
@@ -445,22 +449,23 @@ class CampaignProcedureSuite extends munit.FunSuite:
 
   test("a site card is a plan only for the site's ruler, and is never revealed"):
     val outriders = cardWith("denizen.outriders")
-    val two = board(extras = 1)
+    val two = board(extras = 1, warbands = 5, supply = 7)
     val ruled = two.extras.head
     val b = withSiteCard(actorRules(two, ruled), ruled, outriders)
     val plans = atPlans(b)
     parked.assertParked(plans.state, ActionRef.Campaign,
       CampaignIds.attackerPlan, b.actor)
     val done = answer(plans.state, b.actor, CampaignIds.attackerPlan,
-      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).toOption.get
+      planPick(DecisionOptionRef.Denizen(outriders))).toOption.get
     assert(!ops(done.events).exists(_.isInstanceOf[Reveal]))
     // The same card at the origin, which the bandits rule, is not the attacker's.
-    val atOrigin = withSiteCard(board(), board().origin, outriders)
+    val atOrigin = withSiteCard(board(warbands = 5, supply = 7),
+      board(warbands = 5, supply = 7).origin, outriders)
     parked.assertParked(atPlans(atOrigin).state, ActionRef.Campaign,
       CampaignIds.sacrifice, atOrigin.actor)
 
   test("a victory with nothing placed refills the bandits at the action boundary"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val game = rules(CampaignFixture.dice(sword(3), blanks(b)))
     val start = committed(game, b, 3)
     val sacrificed = game.resolveWalker(start.state, b.actor, CampaignIds.sacrifice,

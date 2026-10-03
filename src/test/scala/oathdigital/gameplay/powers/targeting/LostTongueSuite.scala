@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.targeting
 
-import oathdigital.gameplay.CampaignFixture.raidBoard
+import oathdigital.gameplay.CampaignFixture.{RaidBoard, raidBoard}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
@@ -43,11 +43,11 @@ class LostTongueSuite extends munit.FunSuite:
     */
   private def raidKind(side: Orientation, nomad: Boolean)
       : (PlayerId, RelicId, OathTransition) =
-    val (b, relic) = raidBoard()
-    val held = adviser(b.ready, b.other, tongue, side)
+    val RaidBoard(b, relic) = raidBoard()
+    val held = adviser(b.ready, b.rival, tongue, side)
     val ready = if nomad then adviser(held, b.actor, nomadCard) else held
     val started = start(ready, ActionRef.Campaign, b.actor).toOption.get
-    (b.other, relic, rules.resolveWalker(started.state, b.actor,
+    (b.rival, relic, rules.resolveWalker(started.state, b.actor,
       CampaignIds.kind, raid).toOption.get)
 
   private def allTargets(relic: RelicId): Set[DecisionOptionRef] = Set(
@@ -129,8 +129,10 @@ class LostTongueSuite extends munit.FunSuite:
           peoplesFavor = c.banners.peoplesFavor.copy(holder = Some(enemy),
             favor = 2),
           darkestSecret = c.banners.darkestSecret.copy(holder = None))))
-    val held = adviser(if withRelic then holds(staged, enemy, relic) else staged,
-      enemy, tongue)
+    val holding =
+      if withRelic then Table.from(staged).relic(enemy, relic).unchecked
+      else staged
+    val held = adviser(holding, enemy, tongue)
     (if nomad then adviser(held, actor, nomadCard) else held, actor, enemy)
 
   /** The target options and the pending tree, both empty when nothing was

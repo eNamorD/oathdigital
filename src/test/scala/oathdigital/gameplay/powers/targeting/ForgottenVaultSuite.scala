@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.targeting
 
-import oathdigital.gameplay.CampaignFixture.raidBoard
+import oathdigital.gameplay.CampaignFixture.{RaidBoard, raidBoard}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, WalkerPowerCatalog}
@@ -31,7 +31,8 @@ class ForgottenVaultSuite extends munit.FunSuite:
       ruler: Option[PlayerId]): ReadyGame =
     val site = state.game.current.map.inPlay.find(_ != avoid).get
     val placed = PowerFixture.atSite(state, vault, site)
-    ruler.fold(placed)(ruledBy(placed, site, _))
+    ruler.fold(placed)(r =>
+      Table.from(placed).warbandsAt(site, r, 2).unchecked)
 
   // ---- Raid ----
 
@@ -44,15 +45,15 @@ class ForgottenVaultSuite extends munit.FunSuite:
     */
   private def raidTargets(ruler: Ruler)
       : (PlayerId, RelicId, Vector[DecisionOptionRef], Vector[OathEvent]) =
-    val (b, relic) = raidBoard()
+    val RaidBoard(b, relic) = raidBoard()
     val held = vaultAt(b.ready, b.origin, ruler match
-      case Ruler.Defender => Some(b.other)
+      case Ruler.Defender => Some(b.rival)
       case Ruler.Attacker => Some(b.actor)
       case Ruler.Bandits => None)
     val started = start(held, ActionRef.Campaign, b.actor).toOption.get
     val kind = rules.resolveWalker(started.state, b.actor, CampaignIds.kind, raid)
       .toOption.get
-    (b.other, relic, optionsAt(kind, ActionRef.Campaign), kind.events)
+    (b.rival, relic, optionsAt(kind, ActionRef.Campaign), kind.events)
 
   test("a Raid may not target the ruler's relics, but may target their banners"):
     val (defender, relic, options, events) = raidTargets(Ruler.Defender)
@@ -96,7 +97,9 @@ class ForgottenVaultSuite extends munit.FunSuite:
           peoplesFavor = c.banners.peoplesFavor.copy(
             holder = Option.when(banner)(enemy)),
           darkestSecret = c.banners.darkestSecret.copy(holder = None))))
-    val ready = vaultAt(holds(staged, enemy, other, side), site.get, Some(enemy))
+    val holding = Table.from(staged)
+      .relic(enemy, other, facedown = side == Orientation.FaceDown).unchecked
+    val ready = vaultAt(holding, site.get, Some(enemy))
     val hook = CardPlayedFaceup(conspiracy, RuleSourceRef.Adviser(actor, conspiracy))
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       Vector.empty)

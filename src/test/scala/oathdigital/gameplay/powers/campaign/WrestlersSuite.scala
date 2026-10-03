@@ -10,11 +10,12 @@ import oathdigital.model._
   */
 class WrestlersSuite extends munit.FunSuite:
   private val card = cardWith("denizen.wrestlers")
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(card))
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   private def conquest: Board =
-    val base = againstPlayer(board())
-    withAdviserFor(base, base.other, card, Orientation.FaceUp)
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    withAdviserFor(base, base.rival, card, Orientation.FaceUp)
 
   private def siteForces(state: OathState, b: Board): SiteForces =
     ready(state).game.current.map.sites(b.origin).forces
@@ -22,31 +23,31 @@ class WrestlersSuite extends munit.FunSuite:
   test("a Conquest defender sacrifices a warband at the target site for a defense die"):
     val b = conquest
     val run = commit(rules(losing), b, 4)
-    assert(awaits(run, b.other, CampaignIds.defenderPlan))
-    val picked = run.pick(b.other, CampaignIds.defenderPlan, ref)
+    assert(awaits(run, b.rival, CampaignIds.defenderPlan))
+    val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assertEquals(siteForces(picked.state, b),
-      SiteForces.Occupied(ForceKind.Exile(b.player(b.other).lineage), 1))
+      SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), 1))
     assertEquals(picked.since(run).map(_.getClass.getSimpleName),
       Vector("Sacrifice", "ModifyDicePool"))
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
 
   test("the sacrificed warband lowers the recorded force by one"):
     val b = conquest
-    val without = commit(rules(losing), b, 4).finish
+    val without = commit(rules(losing), b, 4).finishPlanWindows
     val with_ = commit(rules(losing), b, 4)
-      .pick(b.other, CampaignIds.defenderPlan, ref).finish
+      .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     val score = (run: Run) => ready(run.state).game.current.lastCampaignResult
       .get.defenseScore
     assertEquals(score(without), 2)
     assertEquals(score(with_), 1)
 
   test("it is a defender's plan only"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val b = withAdviser(base, card, Orientation.FaceUp)
     assert(awaits(commit(rules(losing), b, 2), b.actor, CampaignIds.sacrifice))
 
   test("a bandit defender never uses it, since it costs a warband"):
-    val two = board(extras = 1)
+    val two = board(extras = 1, warbands = 5, supply = 7)
     val b = withSiteCard(two, two.extras.head, card)
     val run = commit(rules(losing), b, 2)
     assert(awaits(run, b.actor, CampaignIds.sacrifice))

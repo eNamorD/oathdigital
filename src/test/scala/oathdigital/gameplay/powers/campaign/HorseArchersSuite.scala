@@ -10,7 +10,7 @@ import oathdigital.model._
   * card is discarded after the Campaign whoever won. */
 class HorseArchersSuite extends munit.FunSuite:
   private val card = cardWith("denizen.horse-archers")
-  private val id = DenizenId(card)
+  private val id = card
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
@@ -25,46 +25,51 @@ class HorseArchersSuite extends munit.FunSuite:
     ready(run.state).game.current.lastCampaignResult.map(_.attackerWins)
 
   test("an attacker adds three attack dice, for nothing"):
-    val b = withAdviser(board(), card, Orientation.FaceUp)
+    val b = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
     val run = commit(rules(winning), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, 3)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
 
   test("it is discarded after a Campaign its user won, and says so"):
-    val b = withAdviser(board(), card, Orientation.FaceUp)
+    val b = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
     val done = commit(rules(winning), b, 2)
-      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(winner(done), Some(true))
     assert(discarded(done.state))
     assertEquals(lines(done), Vector(line))
 
   test("it is discarded after a Campaign its user lost"):
-    val b = withAdviser(board(), card, Orientation.FaceUp)
+    val b = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
     val done = commit(rules(losing), b, 2)
-      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(winner(done), Some(false))
     assert(discarded(done.state))
     assertEquals(lines(done), Vector(line))
 
   test("a defender removes three attack dice, and it is discarded"):
-    val base = againstPlayer(board())
-    val b = withAdviserFor(base, base.other, card, Orientation.FaceUp)
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val b = withAdviserFor(base, base.rival, card, Orientation.FaceUp)
     val run = commit(rules(winning), b, 4)
-      .pick(b.other, CampaignIds.defenderPlan, ref)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))
-    assert(discarded(run.finish.state))
+    assert(discarded(run.finishPlanWindows.state))
 
   test("a bandit defender applies it at its site, and it is discarded"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    val done = commit(rules(winning), b, 4).finish
+    val done = commit(rules(winning), b, 4).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))
     assert(discarded(done.state))
     assertEquals(lines(done), Vector(line))
 
   test("a Campaign that does not choose it leaves it in play and says nothing"):
-    val b = withAdviser(board(), card, Orientation.FaceUp)
-    val done = commit(rules(winning), b, 2).finish
+    val b = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
+    val done = commit(rules(winning), b, 2).finishPlanWindows
     assert(!discarded(done.state))
     assertEquals(lines(done), Vector.empty)

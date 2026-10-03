@@ -6,6 +6,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.walker.{WalkerDice, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.testkit.Look
 
 /** Book Burning: a free attacker's plan, offered only in a Raid. If the attacker
   * wins, every secret on the defender's board is burnt but one, the facedown
@@ -13,31 +14,31 @@ import oathdigital.model._
   */
 class BookBurningSuite extends munit.FunSuite:
   private val card = cardWith("denizen.book-burning")
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(card))
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val honors = cardWith("denizen.battle-honors")
   private val honorsRef: DecisionOptionRef =
-    DecisionOptionRef.Denizen(DenizenId(honors))
+    DecisionOptionRef.Denizen(honors)
 
   /** The other player stands at the origin with three warbands on their board
     * and the given secrets. The attacker holds Book Burning and four warbands.
     */
   private def raid(faceUp: Int, faceDown: Int): Board =
-    val base = withEnemyAtOrigin(board(warbands = 4))
-    withAdviser(on(base)(_.boardWarbands(base.other, 3)
-      .secrets(base.other, faceUp = faceUp, faceDown = faceDown)),
+    val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
+    withAdviser(on(base)(_.boardWarbands(base.rival, 3)
+      .secrets(base.rival, faceUp = faceUp, faceDown = faceDown)),
       card, Orientation.FaceUp)
 
   /** A Raid with Book Burning chosen, played to its end. A beaten defender's
     * pawn goes to the first site offered. */
   private def burned(b: Board, dice: WalkerDice): Run =
     val run = commit(rules(dice), b, 4, raid = true)
-      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     if awaits(run, b.actor, CampaignIds.relocation) then
-      run.pick(b.actor, CampaignIds.relocation, run.offered(b.actor).head).finish
+      run.pick(b.actor, CampaignIds.relocation, run.offered(b.actor).head).finishPlanWindows
     else run
 
   private def secrets(run: Run, who: PlayerId): (Int, Int) =
-    val held = player(run.state, who).board
+    val held = Look(run.state).player(who).board
     held.faceUpSecrets -> held.faceDownSecrets
 
   private def winner(run: Run): Option[Boolean] =
@@ -50,34 +51,34 @@ class BookBurningSuite extends munit.FunSuite:
     val b = raid(faceUp = 2, faceDown = 2)
     val done = burned(b, winning)
     assertEquals(winner(done), Some(true))
-    assertEquals(secrets(done, b.other), (1, 0))
+    assertEquals(secrets(done, b.rival), (1, 0))
     assertEquals(lines(done), Vector(NoteText.Said("burned",
-      s"Burned 3 secrets from ${b.other.value}'s board.", covers = false)))
+      s"Burned 3 secrets from ${b.rival.value}'s board.", covers = false)))
 
   test("facedown secrets are turned faceup and burnt in one step, and the one left stays facedown"):
     val b = raid(faceUp = 0, faceDown = 3)
     val done = burned(b, winning)
-    assertEquals(secrets(done, b.other), (0, 1))
+    assertEquals(secrets(done, b.rival), (0, 1))
     val flipped = done.events.collect {
       case step: WalkerStepRecorded
           if step.ops.exists(_.isInstanceOf[FlipSecrets]) => step.ops }
     assertEquals(flipped, Vector(Vector[CoreOperation](
-      FlipSecrets(b.other, 2, SecretSide.FaceDown, SecretSide.FaceUp),
-      Burn.secrets(2, PositionedLocation(Location.PlayArea(b.other))))))
+      FlipSecrets(b.rival, 2, SecretSide.FaceDown, SecretSide.FaceUp),
+      Burn.secrets(2, PositionedLocation(Location.PlayArea(b.rival))))))
 
   test("a defender with one secret loses nothing, and the line says there was none to burn"):
     val b = raid(faceUp = 1, faceDown = 0)
     val done = burned(b, winning)
     assertEquals(winner(done), Some(true))
-    assertEquals(secrets(done, b.other), (1, 0))
+    assertEquals(secrets(done, b.rival), (1, 0))
     assertEquals(lines(done), Vector(NoteText.Said("none",
-      s"${b.other.value} had no secret to burn.", covers = false)))
+      s"${b.rival.value} had no secret to burn.", covers = false)))
 
   test("a lost Raid burns nothing and writes nothing"):
     val b = raid(faceUp = 2, faceDown = 2)
     val done = burned(b, losing)
     assertEquals(winner(done), Some(false))
-    assertEquals(secrets(done, b.other), (2, 2))
+    assertEquals(secrets(done, b.rival), (2, 2))
     assertEquals(lines(done), Vector.empty)
 
   test("choosing it costs nothing and changes no dice"):
@@ -88,8 +89,9 @@ class BookBurningSuite extends munit.FunSuite:
       op.isInstanceOf[ModifyDicePool]))
 
   test("it is not offered in a Conquest"):
-    val b = withAdviser(withAdviser(board(), card, Orientation.FaceUp), honors,
+    val advised = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
+    val b = withAdviser(advised, honors, Orientation.FaceUp)
     val run = commit(rules(winning), b, 4)
     assert(run.offers(b.actor, b.actor, CampaignIds.attackerPlan, honorsRef))
     assert(!run.offered(b.actor).contains(ref))

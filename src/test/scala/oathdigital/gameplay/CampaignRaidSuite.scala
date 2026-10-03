@@ -40,18 +40,18 @@ class CampaignRaidSuite extends munit.FunSuite:
     (game, started, kind, targeted, forced, sacrificed)
 
   test("the Raid's defense is the pawn, the targeted relic and banner, plus the board force"):
-    val (b, relic) = raidBoard()
+    val RaidBoard(b, relic) = raidBoard()
     val (_, _, _, _, _, sacrificed) = walk(b, relic, attack = 4)
     val result = ready(sacrificed.state).game.current.lastCampaignResult.get
     assertEquals(result.kind, CampaignKind.Raid)
     assertEquals(result.raidTargets, Vector[CampaignRaidTarget](
-      CampaignRaidTarget.Pawn(b.other), CampaignRaidTarget.Relic(b.other, relic),
-      CampaignRaidTarget.Banner(b.other, Banner.PeoplesFavor)))
+      CampaignRaidTarget.Pawn(b.rival), CampaignRaidTarget.Relic(b.rival, relic),
+      CampaignRaidTarget.Banner(b.rival, Banner.PeoplesFavor)))
     assertEquals(result.defenseScore, 3)
     assertEquals(result.attackerWins, true)
 
   test("a Raid victory transfers in the printed order and then asks where the pawn goes"):
-    val (b, relic) = raidBoard()
+    val RaidBoard(b, relic) = raidBoard()
     val (game, _, _, _, _, sacrificed) = walk(b, relic, attack = 4)
     parked.assertParked(sacrificed.state, ActionRef.Campaign,
       CampaignIds.relocation, b.actor)
@@ -62,13 +62,13 @@ class CampaignRaidSuite extends munit.FunSuite:
       Some(b.actor))
     assertEquals(after.game.current.banners.peoplesFavor.favor, 0)
     assertEquals(favorInBanks(sacrificed.state) - favorInBanks(Ready(b.ready)), 3)
-    assertEquals(player(sacrificed.state, b.other).advisers, Vector.empty)
-    assertEquals(player(sacrificed.state, b.other).relics, Vector.empty)
+    assertEquals(player(sacrificed.state, b.rival).advisers, Vector.empty)
+    assertEquals(player(sacrificed.state, b.rival).relics, Vector.empty)
     assertEquals(after.game.current.setAsideRelics,
       Vector(RelicId("raid-facedown-relic")))
-    assertEquals(player(sacrificed.state, b.other).board.favor, 3)
-    assertEquals(player(sacrificed.state, b.other).board.warbands, 2)
-    assertEquals(player(sacrificed.state, b.other).pawnSite, Some(b.origin))
+    assertEquals(player(sacrificed.state, b.rival).board.favor, 3)
+    assertEquals(player(sacrificed.state, b.rival).board.warbands, 2)
+    assertEquals(player(sacrificed.state, b.rival).pawnSite, Some(b.origin))
     val destination = after.game.current.map.inPlay.find(_ != b.origin).get
     val options = after.game.current.map.inPlay.filterNot(_ == b.origin)
       .map(site => DecisionOption.Site(DecisionOptionRef.Site(site)))
@@ -80,12 +80,12 @@ class CampaignRaidSuite extends munit.FunSuite:
       DecisionQuery.ChooseOne(options, Some("Move the defeated pawn to another site")))
     val done = game.resolveWalker(sacrificed.state, b.actor, CampaignIds.relocation,
       ChooseOneAnswer(DecisionOptionRef.Site(destination))).toOption.get
-    assertEquals(player(done.state, b.other).pawnSite, Some(destination))
+    assertEquals(player(done.state, b.rival).pawnSite, Some(destination))
     parked.assertResumed(done.state, Phase.Act, b.actor)
     assertEquals(ready(done.state).game.current.walkerPending, None)
 
   test("the pawn cannot be relocated to its own site"):
-    val (b, relic) = raidBoard()
+    val RaidBoard(b, relic) = raidBoard()
     val (game, _, _, _, _, sacrificed) = walk(b, relic, attack = 4)
     assertEquals(game.resolveWalker(sacrificed.state, b.actor,
       CampaignIds.relocation, ChooseOneAnswer(DecisionOptionRef.Site(b.origin)))
@@ -93,18 +93,18 @@ class CampaignRaidSuite extends munit.FunSuite:
         "decision campaign.relocation does not offer the selected option")))
 
   test("a Raid defeat transfers nothing, moves no pawn and kills half the survivors"):
-    val (b, relic) = raidBoard(defenderWarbands = 9)
+    val RaidBoard(b, relic) = raidBoard(defenderWarbands = 9)
     val (_, _, _, _, _, done) = walk(b, relic, attack = 4)
     parked.assertResumed(done.state, Phase.Act, b.actor)
     assertEquals(player(done.state, b.actor).relics.exists(_.id == relic), false)
-    assertEquals(player(done.state, b.other).pawnSite, Some(b.origin))
-    assertEquals(player(done.state, b.other).board.warbands, 9)
+    assertEquals(player(done.state, b.rival).pawnSite, Some(b.origin))
+    assertEquals(player(done.state, b.rival).board.warbands, 9)
     assertEquals(player(done.state, b.actor).board.warbands, 2)
 
   test("several enemy pawns at the site ask which to Raid"):
-    val (b, relic) = raidBoard()
+    val RaidBoard(b, relic) = raidBoard()
     val third = b.ready.game.current.players.map(_.player)
-      .find(id => id != b.actor && id != b.other)
+      .find(id => id != b.actor && id != b.rival)
     assert(third.nonEmpty, "the fixture needs a third player")
     val crowded = b.copy(ready = b.ready.updateCurrent(current => current.copy(
       players = current.players.map(p =>
@@ -117,11 +117,11 @@ class CampaignRaidSuite extends munit.FunSuite:
     parked.assertParked(kind.state, ActionRef.Campaign, CampaignIds.defender,
       b.actor)
     val chosen = game.resolveWalker(kind.state, b.actor, CampaignIds.defender,
-      ChooseOneAnswer(DecisionOptionRef.Player(b.other))).toOption.get
+      ChooseOneAnswer(DecisionOptionRef.Player(b.rival))).toOption.get
     parked.assertParked(chosen.state, ActionRef.Campaign, CampaignIds.targets, b.actor)
 
   test("the Raid's recorded events replay to the same state as the live walk"):
-    val (b, relic) = raidBoard()
+    val RaidBoard(b, relic) = raidBoard()
     val (game, started, kind, targeted, forced, sacrificed) =
       walk(b, relic, attack = 4)
     val destination = ready(sacrificed.state).game.current.map.inPlay

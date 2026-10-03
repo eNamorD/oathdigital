@@ -22,7 +22,7 @@ class CampaignPlansSuite extends munit.FunSuite:
     PlanContext(b.ready, setupOf(b), side)
 
   private def defending(b: Board): PlanContext = PlanContext(b.ready,
-    setupOf(b).copy(defender = CampaignDefender.Player(b.other)),
+    setupOf(b).copy(defender = CampaignDefender.Player(b.rival)),
     CampaignPlanSide.Defender)
 
   private val outriders = Outriders
@@ -33,71 +33,75 @@ class CampaignPlansSuite extends munit.FunSuite:
   private val watchdogCard = cardWith("denizen.watchdog")
 
   test("Outriders is an attacker's plan from any adviser of the attacker, in either orientation"):
-    val up = withAdviser(board(), outridersCard, Orientation.FaceUp)
-    val down = withAdviser(board(), outridersCard, Orientation.FaceDown)
+    val up = withAdviser(board(warbands = 5, supply = 7), outridersCard,
+      Orientation.FaceUp)
+    val down = withAdviser(board(warbands = 5, supply = 7), outridersCard,
+      Orientation.FaceDown)
     Vector(up, down).foreach { b =>
       val offer = outriders.plan(context(b, CampaignPlanSide.Attacker)).get
       assertEquals(offer.source, CampaignPlanSource.Adviser(b.actor,
-        DenizenId(outridersCard)))
+        outridersCard))
       assertEquals((offer.costs, offer.effects), (Vector.empty, Vector.empty))
       assertEquals(CampaignPlans.refOf(offer.source),
-        DecisionOptionRef.Denizen(DenizenId(outridersCard)))
+        DecisionOptionRef.Denizen(outridersCard))
     }
     assertEquals(outriders.sides, Set[CampaignPlanSide](CampaignPlanSide.Attacker))
 
   test("a plan is used only by the ruler of its source: a card at the origin does not count unless the attacker rules it"):
-    val b = withSiteCard(board(), board().origin, outridersCard)
+    val b = withSiteCard(board(warbands = 5, supply = 7),
+      board(warbands = 5, supply = 7).origin, outridersCard)
     assertEquals(outriders.plan(context(b, CampaignPlanSide.Attacker)), None)
     // The attacker rules a second site, and the card stands there.
-    val two = board(extras = 1)
+    val two = board(extras = 1, warbands = 5, supply = 7)
     val ruled = two.extras.head
     val staged = withSiteCard(actorRules(two, ruled), ruled, outridersCard)
     assertEquals(outriders.plan(context(staged, CampaignPlanSide.Attacker))
       .map(_.source), Some(CampaignPlanSource.SiteCard(ruled,
-        DenizenId(outridersCard))))
+        outridersCard)))
 
   test("a card held by another player is not offered"):
-    val b = board()
+    val b = board(warbands = 5, supply = 7)
     val elsewhere = b.copy(ready = withAdviser(b, outridersCard,
       Orientation.FaceUp).ready.updateCurrent(current => current.copy(
       players = current.players.map(p => if p.player == b.actor then
         p.copy(advisers = Vector.empty) else p.copy(advisers = Vector(
-        DenizenState(DenizenId(outridersCard), Orientation.FaceUp,
+        DenizenState(outridersCard, Orientation.FaceUp,
           Tokens.empty)))))))
     assertEquals(outriders.plan(context(elsewhere, CampaignPlanSide.Attacker)),
       None)
 
   test("Brass Army costs a secret placed onto a faceup relic, occupied or not, and adds four attack dice"):
-    val offer = brass.plan(context(withSecrets(withRelic(board(), brassCard), 1),
+    val offer = brass.plan(context(withSecrets(withRelic(board(warbands = 5, supply = 7), brassCard), 1),
       CampaignPlanSide.Attacker)).get
     assertEquals(offer.costs, Vector[CampaignPlanCost](CampaignPlanCost.Secret(1)))
     assertEquals(offer.effects, Vector[CampaignPlanEffect](
       CampaignPlanEffect.AddAttackDice(4)))
     // Whether the attacker can pay is not the offer's business.
-    assert(brass.plan(context(withSecrets(withRelic(board(), brassCard), 0),
+    val occupied = withRelic(board(warbands = 5, supply = 7), brassCard)
+    assert(brass.plan(context(withSecrets(occupied, 0),
       CampaignPlanSide.Attacker)).nonEmpty)
-    val occupied = withRelic(board(), brassCard)
     val holding = occupied.copy(ready = occupied.ready.updateCurrent(current =>
       current.copy(players = current.players.map(p => p.copy(relics =
         p.relics.map(r => r.copy(tokens = Tokens(1, 1))))))))
     assert(brass.plan(context(holding, CampaignPlanSide.Attacker)).nonEmpty)
-    assertEquals(brass.plan(context(board(), CampaignPlanSide.Attacker)), None)
+    val bare = board(warbands = 5, supply = 7)
+    assertEquals(brass.plan(context(bare, CampaignPlanSide.Attacker)), None)
 
   test("Brass Army needs the relic faceup"):
-    val b = withRelic(board(), brassCard)
+    val b = withRelic(board(warbands = 5, supply = 7), brassCard)
     val down = b.copy(ready = b.ready.updateCurrent(current => current.copy(
       players = current.players.map(p => p.copy(relics = p.relics.map(r =>
         r.copy(orientation = Orientation.FaceDown)))))))
     assertEquals(brass.plan(context(down, CampaignPlanSide.Attacker)), None)
 
   test("Watchdog adds a defense die when a target is in the Cradle, for a ruler of its card"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     assert(base.ready.game.current.map.regionOf(base.origin).contains(Region.Cradle),
       "the fixture's origin must be in the Cradle")
     val bandits = withSiteCard(base, base.origin, watchdogCard)
     val offer = watchdog.plan(context(bandits, CampaignPlanSide.Defender)).get
     assertEquals(offer.source, CampaignPlanSource.SiteCard(base.origin,
-      DenizenId(watchdogCard)))
+      watchdogCard))
     assertEquals(offer.effects, Vector[CampaignPlanEffect](
       CampaignPlanEffect.AddDefenseDice(1)))
     // A Raid targets no site.
@@ -107,23 +111,26 @@ class CampaignPlansSuite extends munit.FunSuite:
     assertEquals(watchdog.plan(raid), None)
 
   test("a player defender uses Watchdog from an adviser, and a card at a site the attacker's enemy does not rule is not theirs"):
-    val b = againstPlayer(board())
+    val b = rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7))
     val held = b.copy(ready = withAdviser(b, watchdogCard, Orientation.FaceUp)
       .ready.updateCurrent(current => current.copy(players = current.players.map(
-        p => if p.player == b.other then p.copy(advisers = Vector(DenizenState(
-          DenizenId(watchdogCard), Orientation.FaceUp, Tokens.empty)))
+        p => if p.player == b.rival then p.copy(advisers = Vector(DenizenState(
+          watchdogCard, Orientation.FaceUp, Tokens.empty)))
         else p.copy(advisers = Vector.empty)))))
     assertEquals(watchdog.plan(defending(held)).map(_.source),
-      Some(CampaignPlanSource.Adviser(b.other, DenizenId(watchdogCard))))
-    val siteCard = withSiteCard(againstPlayer(board()), b.origin, watchdogCard)
+      Some(CampaignPlanSource.Adviser(b.rival, watchdogCard)))
+    val siteCard = withSiteCard(
+      rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7)),
+      b.origin, watchdogCard)
     assertEquals(watchdog.plan(defending(siteCard)).map(_.source),
-      Some(CampaignPlanSource.SiteCard(b.origin, DenizenId(watchdogCard))))
+      Some(CampaignPlanSource.SiteCard(b.origin, watchdogCard)))
     // The card stands at a site the attacker's pawn is at but the defender does not rule.
-    val unruled = withSiteCard(board(), b.origin, watchdogCard)
+    val unruled = withSiteCard(board(warbands = 5, supply = 7), b.origin,
+      watchdogCard)
     assertEquals(watchdog.plan(defending(unruled)), None)
 
   test("the title adds one defense die to an Oathkeeper and two to a Usurper, and only for a defender who holds it"):
-    val b = againstPlayer(board())
+    val b = rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7))
     def titled(side: TitleSide): Option[CampaignPlanOffer] =
       val state = b.copy(ready = b.ready.updateCurrent(c => c.copy(title =
         c.title.copy(side = side))))
@@ -133,14 +140,14 @@ class CampaignPlansSuite extends munit.FunSuite:
     assertEquals(titled(TitleSide.Usurper).get.effects,
       Vector[CampaignPlanEffect](CampaignPlanEffect.AddDefenseDice(2)))
     assertEquals(titled(TitleSide.Oathkeeper).get.source,
-      CampaignPlanSource.Title(b.other))
+      CampaignPlanSource.Title(b.rival))
     assertEquals(CampaignPlans.refOf(titled(TitleSide.Oathkeeper).get.source),
       DecisionOptionRef.Button("title"))
     assertEquals(titled(TitleSide.Oathkeeper).get.label,
       "Oathkeeper title: add 1 defense die")
     assertEquals(TitleDefensePlan.plan.plan(context(b, CampaignPlanSide.Attacker)),
       None)
-    assertEquals(TitleDefensePlan.plan.plan(context(board(), CampaignPlanSide.Defender)),
+    assertEquals(TitleDefensePlan.plan.plan(context(board(warbands = 5, supply = 7), CampaignPlanSide.Defender)),
       None)
 
   test("plans are listed with the title first, then advisers, relics, and cards at sites, then by key"):

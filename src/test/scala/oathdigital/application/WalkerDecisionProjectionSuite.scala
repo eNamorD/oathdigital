@@ -363,7 +363,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       Some(other))), None)
 
   test("a Campaign force decision carries no roll"):
-    val b = oathdigital.gameplay.CampaignFixture.board()
+    val b = oathdigital.gameplay.CampaignFixture.board(warbands = 5, supply = 7)
     val game = oathdigital.gameplay.CampaignFixture.rules()
     val started = game.startWalker(OathState.Ready(b.ready), ActionRef.Campaign,
       b.actor).toOption.get

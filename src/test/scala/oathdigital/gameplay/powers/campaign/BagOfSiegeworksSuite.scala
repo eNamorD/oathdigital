@@ -6,12 +6,13 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
+import oathdigital.testkit.Look
 
 /** Bag of Siegeworks: a secret placed, in a Conquest, so that every
   * single-shield defense die scores nothing. */
 class BagOfSiegeworksSuite extends munit.FunSuite:
   private val relic = relicWith("relic.bag-of-siegeworks")
-  private val ref: DecisionOptionRef = DecisionOptionRef.Relic(RelicId(relic))
+  private val ref: DecisionOptionRef = DecisionOptionRef.Relic(relic)
   private val line = NoteText.Said("ignored", "Single shields ignored.",
     covers = false)
 
@@ -26,7 +27,8 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
 
   /** The attacker holds the Bag and a secret; two further bandit sites can be
     * targeted with the origin, so the defense rolls at least three dice. */
-  private def holder: Board = withSecrets(withRelic(board(extras = 2), relic), 1)
+  private def holder: Board = withSecrets(
+    withRelic(board(extras = 2, warbands = 5, supply = 7), relic), 1)
 
   private def conquest(b: Board, dice: WalkerDice): Run =
     commit(rules(dice), b, 5, targets = b.extras.map(DecisionOptionRef.Site(_)))
@@ -45,12 +47,12 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
     val run = conquest(b, shields)
     assert(awaits(run, b.actor, CampaignIds.attackerPlan))
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assertEquals(player(picked.state, b.actor).board.faceUpSecrets, 0)
+    assertEquals(Look(picked.state).player(b.actor).board.faceUpSecrets, 0)
 
   test("the defense is scored without its single shields, and it says so"):
     val b = holder
     val done = conquest(b, shields).pick(b.actor, CampaignIds.attackerPlan, ref)
-      .finish
+      .finishPlanWindows
     val result = ready(done.state).game.current.lastCampaignResult.get
     assert(result.defenseFaces.contains(DefenseDieFace.OneShield),
       result.defenseFaces)
@@ -63,19 +65,19 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
   test("without a single shield rolled nothing is said"):
     val b = holder
     val done = conquest(b, winning).pick(b.actor, CampaignIds.attackerPlan, ref)
-      .finish
+      .finishPlanWindows
     assertEquals(lines(done), Vector.empty)
 
   test("a Campaign that does not choose it scores the single shields"):
     val b = holder
-    val done = conquest(b, shields).finish
+    val done = conquest(b, shields).finishPlanWindows
     val result = ready(done.state).game.current.lastCampaignResult.get
     assertEquals(result.defenseScore,
       DefenseDieFace.score(result.defenseFaces) + 2 * (1 + b.extras.size))
     assertEquals(lines(done), Vector.empty)
 
   test("a Raid targets no site, so it is not offered"):
-    val (raid, _) = raidBoard()
+    val raid = raidBoard().board
     val b = withSecrets(withRelic(raid, relic), 1)
     val run = commit(rules(winning), b, 2, raid = true)
     assert(!awaits(run, b.actor, CampaignIds.attackerPlan))

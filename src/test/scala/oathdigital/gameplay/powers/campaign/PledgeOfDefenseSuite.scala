@@ -11,9 +11,9 @@ import oathdigital.model._
   * Campaign. */
 class PledgeOfDefenseSuite extends munit.FunSuite:
   private val card = cardWith("denizen.pledge-of-defense")
-  private val id = DenizenId(card)
+  private val id = card
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
-  private val nomads = inert(Suit.Nomad, 2)
+  private val nomads = planless("Convoys", "Vow of Kinship")
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
 
@@ -31,25 +31,26 @@ class PledgeOfDefenseSuite extends munit.FunSuite:
 
   test("a defender adds one defense die per nomad card they rule, counting " +
       "itself, and it is discarded"):
-    val base = againstPlayer(board())
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
     // The defender rules the origin, where a nomad card stands.
-    val b = withSiteCard(withAdviserFor(withAdviserFor(base, base.other, card,
-      Orientation.FaceUp), base.other, nomads(0), Orientation.FaceUp),
+    val b = withSiteCard(withAdviserFor(withAdviserFor(base, base.rival, card,
+      Orientation.FaceUp), base.rival, nomads(0), Orientation.FaceUp),
       base.origin, nomads(1))
     val run = commit(rules(winning), b, 3)
-    val picked = run.pick(b.other, CampaignIds.defenderPlan, ref)
+    val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 3)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
-    val done = picked.finish
+    val done = picked.finishPlanWindows
     assert(discarded(done.state))
     assertEquals(lines(done), Vector(line))
 
   test("a bandit defender counts the nomad cards at every site bandits " +
       "rule, and it is discarded"):
-    val base = board(extras = 1)
+    val base = board(extras = 1, warbands = 5, supply = 7)
     val b = withSiteCard(withSiteCard(base, base.origin, card),
       base.extras.head, nomads(0))
-    val done = commit(rules(winning), b, 2).finish
+    val done = commit(rules(winning), b, 2).finishPlanWindows
     assertEquals(banditEffect(done),
       Some(ModifyDicePool(CampaignIds.defensePool, 2)))
     assert(discarded(done.state))
@@ -58,15 +59,16 @@ class PledgeOfDefenseSuite extends munit.FunSuite:
   test("a facedown nomad plan the defender chose first is revealed and " +
       "counts, and one chosen after does not"):
     val crusade = cardWith("denizen.great-crusade")
-    val crusadeRef: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(crusade))
-    val base = againstPlayer(board())
-    val b = withAdviserFor(withAdviserFor(base, base.other, card,
-      Orientation.FaceUp), base.other, crusade, Orientation.FaceDown)
+    val crusadeRef: DecisionOptionRef = DecisionOptionRef.Denizen(crusade)
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val b = withAdviserFor(withAdviserFor(base, base.rival, card,
+      Orientation.FaceUp), base.rival, crusade, Orientation.FaceDown)
     val run = commit(rules(winning), b, 3)
-    val crusadeFirst = run.pick(b.other, CampaignIds.defenderPlan, crusadeRef)
-      .pick(b.other, CampaignIds.defenderPlan, ref)
+    val crusadeFirst = run.pick(b.rival, CampaignIds.defenderPlan, crusadeRef)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(crusadeFirst.since(run)
       .contains(ModifyDicePool(CampaignIds.defensePool, 2)))
-    val pledgeFirst = run.pick(b.other, CampaignIds.defenderPlan, ref)
+    val pledgeFirst = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(pledgeFirst.since(run)
       .contains(ModifyDicePool(CampaignIds.defensePool, 1)))

@@ -12,10 +12,10 @@ import oathdigital.model._
   * the Campaign. */
 class RainBootsSuite extends munit.FunSuite:
   private val card = cardWith("denizen.rain-boots")
-  private val id = DenizenId(card)
+  private val id = card
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
   private val bag = relicWith("relic.bag-of-siegeworks")
-  private val bagRef: DecisionOptionRef = DecisionOptionRef.Relic(RelicId(bag))
+  private val bagRef: DecisionOptionRef = DecisionOptionRef.Relic(bag)
   private val ignored = NoteText.Said("ignored", "Single shields ignored.",
     covers = false)
   private val discardedLine = NoteText.Said("discarded",
@@ -41,11 +41,12 @@ class RainBootsSuite extends munit.FunSuite:
 
   test("the defense is scored without its single shields, the card is " +
       "discarded, and both are said"):
-    val b = withAdviser(board(), card, Orientation.FaceUp)
+    val b = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
     val run = commit(rules(shields), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
-    val done = picked.finish
+    val done = picked.finishPlanWindows
     // A single shield and two shields, plus the two bandits: the single
     // shield scores nothing.
     assertEquals(result(done).defenseScore,
@@ -55,22 +56,25 @@ class RainBootsSuite extends munit.FunSuite:
     assertEquals(lines(done), Vector(ignored, discardedLine))
 
   test("without a single shield rolled only the discard is said"):
-    val b = withAdviser(board(), card, Orientation.FaceUp)
+    val b = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
     val done = commit(rules(winning), b, 3)
-      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(lines(done), Vector(discardedLine))
 
   test("it is offered in a Raid"):
-    val b = withAdviser(withEnemyAtOrigin(board()), card, Orientation.FaceUp)
+    val b = withAdviser(withEnemyAtOrigin(board(warbands = 5, supply = 7)),
+      card, Orientation.FaceUp)
     assert(commit(rules(winning), b, 3, raid = true).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("with Bag of Siegeworks also chosen, the defense is scored the same"):
-    val b = withSecrets(withRelic(withAdviser(board(), card,
-      Orientation.FaceUp), bag), 1)
+    val advised = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
+    val b = withSecrets(withRelic(advised, bag), 1)
     val done = commit(rules(shields), b, 3)
       .pick(b.actor, CampaignIds.attackerPlan, bagRef)
-      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(result(done).defenseScore, 4)
     assertEquals(lines(done), Vector(ignored, discardedLine))
     assertEquals(NoteText.said(BagOfSiegeworks.id,
@@ -78,8 +82,9 @@ class RainBootsSuite extends munit.FunSuite:
 
   test("a Campaign that does not choose it scores the single shields and " +
       "keeps the card"):
-    val b = withAdviser(board(), card, Orientation.FaceUp)
-    val done = commit(rules(shields), b, 3).finish
+    val b = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
+    val done = commit(rules(shields), b, 3).finishPlanWindows
     assertEquals(result(done).defenseScore, 5)
     assert(!discarded(done.state))
     assertEquals(lines(done), Vector.empty)

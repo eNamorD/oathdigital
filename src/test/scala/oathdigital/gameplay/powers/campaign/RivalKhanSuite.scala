@@ -11,9 +11,9 @@ import oathdigital.model._
   * Campaign. */
 class RivalKhanSuite extends munit.FunSuite:
   private val card = cardWith("denizen.rival-khan")
-  private val id = DenizenId(card)
+  private val id = card
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
-  private val nomad = inert(Suit.Nomad, 1).head
+  private val nomad = planless("Convoys").head
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
 
@@ -26,8 +26,9 @@ class RivalKhanSuite extends munit.FunSuite:
   /** The actor holds Rival Khan; the defender, a player, holds a nomad
     * adviser on `enemy`'s face. */
   private def attacker(enemy: Orientation): Board =
-    val base = againstPlayer(board())
-    withAdviserFor(withAdviser(base, card, Orientation.FaceUp), base.other,
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    withAdviserFor(withAdviser(base, card, Orientation.FaceUp), base.rival,
       nomad, enemy)
 
   test("an attacker adds four attack dice, and it is discarded after the " +
@@ -37,7 +38,7 @@ class RivalKhanSuite extends munit.FunSuite:
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
-    val done = picked.finish
+    val done = picked.finishPlanWindows
     assert(discarded(done.state))
     assertEquals(lines(done), Vector(line))
 
@@ -47,32 +48,35 @@ class RivalKhanSuite extends munit.FunSuite:
       CampaignIds.attackerPlan, ref))
 
   test("it is not offered when the enemy's faceup adviser is not a nomad"):
-    val base = againstPlayer(board())
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviser(base, card, Orientation.FaceUp),
-      base.other, inert(Suit.Arcane, 1).head, Orientation.FaceUp)
+      base.rival, planless("Golem Legions").head, Orientation.FaceUp)
     assert(!commit(rules(losing), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("a bandit defender applies it against a nomad adviser, and it is " +
       "discarded"):
-    val base = board()
+    val base = board(warbands = 5, supply = 7)
     val b = withAdviser(withSiteCard(base, base.origin, card), nomad,
       Orientation.FaceUp)
-    val done = commit(rules(winning), b, 5).finish
+    val done = commit(rules(winning), b, 5).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -4)))
     assert(discarded(done.state))
 
   test("it is never offered against bandits"):
-    val b = withAdviser(board(), card, Orientation.FaceUp)
+    val b = withAdviser(board(warbands = 5, supply = 7), card,
+      Orientation.FaceUp)
     assert(!commit(rules(losing), b, 2).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
   test("a defender removes four attack dice when the attacker has a nomad " +
       "adviser, and it is discarded"):
-    val base = againstPlayer(board())
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviser(base, nomad, Orientation.FaceUp),
-      base.other, card, Orientation.FaceUp)
+      base.rival, card, Orientation.FaceUp)
     val run = commit(rules(losing), b, 5)
-      .pick(b.other, CampaignIds.defenderPlan, ref)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -4)))
-    assert(discarded(run.finish.state))
+    assert(discarded(run.finishPlanWindows.state))

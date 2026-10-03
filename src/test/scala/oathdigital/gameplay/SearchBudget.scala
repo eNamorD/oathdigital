@@ -29,9 +29,9 @@ object SearchBudget:
     }.min
 
   def main(args: Array[String]): Unit =
-    val r = rules(CampaignFixture.anyDice)
+    val r = rules(WalkerDiceFixture.blanks)
     val walkerPowers = WalkerPowerCatalog.default(catalog)
-    val b = board(extras = 3)
+    val b = board(extras = 3, warbands = 5, supply = 7)
     def started: ReadyGame =
       r.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor) match
         case Right(transition) => transition.state match
