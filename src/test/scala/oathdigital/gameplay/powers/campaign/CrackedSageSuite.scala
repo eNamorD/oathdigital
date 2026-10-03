@@ -49,7 +49,8 @@ class CrackedSageSuite extends munit.FunSuite:
     val b = funded(withAdviser(base, card, Orientation.FaceUp), base.actor)
     assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
 
-  test("a defender removes four attack dice when the attacker has an arcane adviser"):
+  test("a defender removes four attack dice when the attacker has an arcane " +
+      "adviser"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val b = funded(withAdviserFor(withAdviser(base, arcane, Orientation.FaceUp),

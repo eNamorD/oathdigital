@@ -12,22 +12,23 @@ class FireTalkersSuite extends munit.FunSuite:
   private val card = cardWith("denizen.fire-talkers")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
+  /** `who` holds the Darkest Secret, with its 1 secret. */
   private def withDarkestSecret(b: Board, who: PlayerId): Board =
-    b.copy(ready = b.ready.updateCurrent(current => current.copy(banners =
-      current.banners.copy(darkestSecret =
-        current.banners.darkestSecret.copy(holder = Some(who))))))
+    on(b)(_.darkestSecret(Some(who), secrets = 1))
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
     Look(state).player(who).advisers.collectFirst {
       case held: DenizenState if held.id == card => held.tokens }
 
-  private def attacker: Board =
+  /** p1 holds Fire Talkers faceup, 1 faceup secret and the Darkest Secret. */
+  private def attackerHoldingFireTalkersAndTheDarkestSecret: Board =
     val b = withSecrets(
       withAdviser(board(warbands = 5, supply = 7), card, Orientation.FaceUp), 1)
     withDarkestSecret(b, b.actor)
 
-  test("an attacker holding the Darkest Secret places a secret for three attack dice"):
-    val b = attacker
+  test("an attacker holding the Darkest Secret places a secret for three " +
+      "attack dice"):
+    val b = attackerHoldingFireTalkersAndTheDarkestSecret
     val picked = commit(rules(winning), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, 3)))
@@ -35,6 +36,7 @@ class FireTalkersSuite extends munit.FunSuite:
     assertEquals(Look(picked.state).player(b.actor).board.faceUpSecrets, 0)
 
   test("it is not offered while another player holds the Darkest Secret"):
+    val attacker = attackerHoldingFireTalkersAndTheDarkestSecret
     val b = withDarkestSecret(attacker, attacker.rival)
     assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
 

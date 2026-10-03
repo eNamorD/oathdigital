@@ -17,7 +17,9 @@ class CrackingGroundSuite extends munit.FunSuite:
     val run = commit(rules(winning), b, 2,
       targets = Vector(DecisionOptionRef.Site(b.extras.head)))
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
+    // Two targeted sites: the origin plus the extra site.
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
 
   test("it is not offered in a Raid, which targets no site"):

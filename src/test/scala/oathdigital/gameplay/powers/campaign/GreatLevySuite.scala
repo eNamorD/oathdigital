@@ -47,7 +47,8 @@ class GreatLevySuite extends munit.FunSuite:
     val b = holder(base, base.actor)
     val run = commit(rules(skull), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
     assertEquals(adviserTokens(picked.state, b.actor), Some(Tokens(2, 0)))
     assertEquals(Look(picked.state).player(b.actor).board.favor, 0)
     val done = picked.finishPlanWindows

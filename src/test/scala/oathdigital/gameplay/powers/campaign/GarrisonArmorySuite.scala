@@ -23,7 +23,8 @@ class GarrisonArmorySuite extends munit.FunSuite:
   /** Every attack die a sword; the defense dice are `faces`, in turn. */
   private def defense(faces: DefenseDieFace*): WalkerDice = (kind, count) =>
     Right(kind match
-      case DiceKind.Attack => Vector.fill(count)(AttackDieFace.OneSword: DieFace)
+      case DiceKind.Attack =>
+        Vector.fill(count)(AttackDieFace.OneSword: DieFace)
       case DiceKind.Defense =>
         Vector.tabulate(count)(index => faces(index % faces.size): DieFace))
 

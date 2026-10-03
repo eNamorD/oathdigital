@@ -19,32 +19,33 @@ class FearsomeShieldSuite extends munit.FunSuite:
     on(withRelicFor(base, base.rival, relic))(
       _.secrets(base.rival, faceUp = secrets, faceDown = 0))
 
-  private def secretsOf(state: OathState, who: PlayerId): (Int, Int) =
-    val held = Look(state).player(who).board
-    held.faceUpSecrets -> held.faceDownSecrets
-
   test("a defender burns two secrets and adds two defense dice"):
     val b = defending(3)
     val run = commit(rules(losing), b, 4)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
+    // The dice-pool change and the PayCost.
     assertEquals(picked.since(run).size, 2)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 2)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 2)))
     assert(picked.ops.contains(PayCost(b.rival, Location.OnCard(relic),
       Cost(secretBurnt = 2), intoOccupied = true)))
-    assertEquals(secretsOf(picked.state, b.rival), (1, 0))
+    assertEquals(Look(picked.state).faceUpSecrets(b.rival), 1)
+    assertEquals(Look(picked.state).faceDownSecrets(b.rival), 0)
     // Nothing rests on the relic.
     assertEquals(Look(picked.state).player(b.rival).relics.map(_.tokens),
       Vector(Tokens.empty))
 
-  test("with fewer than two faceup secrets the defender cannot pay, and the plan is not offered"):
+  test("with fewer than two faceup secrets the defender cannot pay, and the " +
+      "plan is not offered"):
     val b = defending(1)
     val run = commit(rules(losing), b, 4)
     // Only the title's plan is left to choose.
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     assert(!run.offered(b.actor).contains(ref))
     val done = run.finishPlanWindows
-    assertEquals(secretsOf(done.state, b.rival), (1, 0))
+    assertEquals(Look(done.state).faceUpSecrets(b.rival), 1)
+    assertEquals(Look(done.state).faceDownSecrets(b.rival), 0)
     assert(!done.ops.exists(_.isInstanceOf[PayCost]))
 
   test("the relic must be faceup, and it is not the attacker's plan"):

@@ -4,6 +4,7 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
 
 /** Battle Axes: a free plan for two attack dice, added or removed, offered
   * only while the enemy rules a beast card. */
@@ -20,14 +21,16 @@ class BattleAxesSuite extends munit.FunSuite:
       base.rival, beasts(0), Orientation.FaceUp)
     val run = commit(rules(winning), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
 
   test("the user's own beast card and one at a site nobody rules count " +
       "nothing"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val site = base.ready.game.current.map.inPlay.find(_ != base.origin).get
+    // Nobody rules Broken Peaks: the board has no extra sites.
+    val site = CatalogNames.site("Broken Peaks")
     val b = withSiteCard(withAdviser(withAdviser(base, card,
       Orientation.FaceUp), beasts(0), Orientation.FaceUp), site, beasts(1))
     assert(!commit(rules(winning), b, 3).offers(b.actor, b.actor,

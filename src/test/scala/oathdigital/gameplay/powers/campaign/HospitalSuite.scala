@@ -5,7 +5,7 @@ import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Hospital: once chosen, each of its user's warbands the Campaign kills is
   * saved, and placed on Hospital's site at the end of the Campaign if the
@@ -19,15 +19,11 @@ class HospitalSuite extends munit.FunSuite:
 
   /** `who` rules `site` with two warbands, and Hospital stands there. */
   private def hospitalFor(b: Board, who: PlayerId, site: SiteId): Board =
-    val held = b.copy(ready = b.ready.updateCurrent(current => current.copy(
-      map = current.map.copy(sites = current.map.sites.updated(site,
-        current.map.sites(site).copy(forces =
-          SiteForces.Occupied(kind(b, who), 2)))))))
-    withSiteCard(held, site, card)
+    withSiteCard(on(b)(_.warbandsAt(site, who, 2)), site, card)
 
-  /** A site that is neither the origin nor a bandit-ruled extra. */
-  private def spare(b: Board): SiteId = b.ready.game.current.map.inPlay
-    .find(site => site != b.origin && !b.extras.contains(site)).get
+  /** Hospital's site: neither the origin nor a bandit-ruled extra, so nobody
+    * else rules it on these boards. */
+  private val hospitalSite = CatalogNames.site("Broken Peaks")
 
   private def forces(state: OathState, site: SiteId): SiteForces =
     ready(state).game.current.map.sites(site).forces
@@ -51,7 +47,7 @@ class HospitalSuite extends munit.FunSuite:
 
   test("a defeated attacker's dead are placed on Hospital's site at the end"):
     val base = board(warbands = 5, supply = 7)
-    val site = spare(base)
+    val site = hospitalSite
     val b = hospitalFor(base, base.actor, site)
     val done = commit(rules(losing), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
@@ -61,14 +57,16 @@ class HospitalSuite extends munit.FunSuite:
     assert(done.ops.contains(Kill(Piece.Warbands(kind(b, b.actor), 2),
       PositionedLocation(Location.PlayArea(b.actor)))))
     assert(done.ops.contains(returned(b, b.actor, 2, site)))
-    assertEquals(forces(done.state, site), SiteForces.Occupied(kind(b, b.actor), 4))
+    assertEquals(forces(done.state, site),
+      SiteForces.Occupied(kind(b, b.actor), 4))
     assertEquals(Look(done.state).player(b.actor).board.warbands, 3)
     assertEquals(lines(done), Vector(placed(2, b.actor, site)))
 
-  test("a defeated defender keeps the returned half on its board, and the rest go to Hospital's site"):
+  test("a defeated defender keeps the returned half on its board, and the " +
+      "rest go to Hospital's site"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val site = spare(base)
+    val site = hospitalSite
     val b = hospitalFor(base, base.rival, site)
     val before = b.player(b.rival).board.warbands
     val done = commit(rules(winning), b, 4)
@@ -98,20 +96,22 @@ class HospitalSuite extends munit.FunSuite:
   test("the warbands Sticky Fire kills are saved too"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val site = spare(base)
+    val site = hospitalSite
     val fire = relicWith("relic.sticky-fire")
     val b = withRelicFor(hospitalFor(base, base.actor, site), base.rival, fire)
     val done = commit(rules(losing), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref)
       .pick(b.rival, CampaignIds.defenderPlan, DecisionOptionRef.Relic(fire))
       .pick(b.rival, CampaignIds.defenderPlan, CampaignIds.finish)
-      .answer(b.actor, CampaignIds.sacrifice, DecisionAnswer.ChooseAmountAnswer(0))
+      .answer(b.actor, CampaignIds.sacrifice,
+        DecisionAnswer.ChooseAmountAnswer(0))
       .pick(b.rival, StickyFire.decisionId, StickyFire.yes).finishPlanWindows
     assertEquals(winner(done), Some(false))
     // The two the defeat kills, then the three Sticky Fire kills from the
     // board, all come back to Hospital's site.
     assertEquals(Look(done.state).player(b.actor).board.warbands, 0)
-    assertEquals(forces(done.state, site), SiteForces.Occupied(kind(b, b.actor), 7))
+    assertEquals(forces(done.state, site),
+      SiteForces.Occupied(kind(b, b.actor), 7))
     assertEquals(lines(done), Vector(placed(5, b.actor, site)))
 
   private val wrestlers = cardWith("denizen.wrestlers")
@@ -122,15 +122,16 @@ class HospitalSuite extends munit.FunSuite:
     * which sacrifices a warband from the origin, the only target. The
     * attacker wins: four swords against the one warband left and blank dice.
     */
-  private def wrestling: (Board, SiteId) =
+  private def wrestling: Board =
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val site = spare(base)
-    (withAdviserFor(hospitalFor(base, base.rival, site), base.rival, wrestlers,
-      Orientation.FaceUp), site)
+    withAdviserFor(hospitalFor(base, base.rival, hospitalSite), base.rival,
+      wrestlers, Orientation.FaceUp)
 
-  test("a sacrifice made after Hospital was chosen is saved, and placed at the end"):
-    val (b, site) = wrestling
+  test("a sacrifice made after Hospital was chosen is saved, and placed at " +
+      "the end"):
+    val b = wrestling
+    val site = hospitalSite
     val before = b.player(b.rival).board.warbands
     val picked = commit(rules(winning), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
@@ -151,7 +152,8 @@ class HospitalSuite extends munit.FunSuite:
     assertEquals(lines(done), Vector(placed(1, b.rival, site)))
 
   test("a sacrifice made before Hospital was chosen is not saved"):
-    val (b, site) = wrestling
+    val b = wrestling
+    val site = hospitalSite
     val done = commit(rules(winning), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, wrestlersRef)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
@@ -160,9 +162,10 @@ class HospitalSuite extends munit.FunSuite:
       SiteForces.Occupied(kind(b, b.rival), 2))
     assertEquals(lines(done), Vector.empty)
 
-  test("a Raid defender's dead from the board are placed on Hospital's site at the end"):
+  test("a Raid defender's dead from the board are placed on Hospital's site " +
+      "at the end"):
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
-    val site = spare(base)
+    val site = hospitalSite
     val b = on(hospitalFor(base, base.rival, site))(
       _.boardWarbands(base.rival, 3))
     val won = commit(rules(winning), b, 4, raid = true)
@@ -182,7 +185,7 @@ class HospitalSuite extends munit.FunSuite:
 
   test("a player who does not rule its site is not offered it"):
     val base = board(warbands = 5, supply = 7)
-    val b = withSiteCard(base, spare(base), card)
+    val b = withSiteCard(base, hospitalSite, card)
     assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
 
   test("a bandit defender does not use it"):

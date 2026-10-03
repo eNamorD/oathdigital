@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
 
 /** Great Crusade: a free plan for one attack die per nomad card its user
   * rules, counting itself, added or removed, and the card is discarded after
@@ -26,7 +27,8 @@ class GreatCrusadeSuite extends munit.FunSuite:
   test("an attacker adds one attack die per nomad card they rule, counting " +
       "itself, for nothing"):
     val base = board(warbands = 5, supply = 7)
-    val site = base.ready.game.current.map.inPlay.find(_ != base.origin).get
+    // p1 rules Broken Peaks too.
+    val site = CatalogNames.site("Broken Peaks")
     // A facedown nomad adviser and an order card at a ruled site count nothing.
     val advisers = withAdviserFor(withAdviser(withAdviser(base, card,
       Orientation.FaceUp), nomads(0), Orientation.FaceUp), base.actor,
@@ -35,7 +37,8 @@ class GreatCrusadeSuite extends munit.FunSuite:
       nomads(2)), site, order)
     val run = commit(rules(winning), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
 
   test("a facedown Great Crusade counts itself, since choosing it reveals it"):
@@ -43,7 +46,8 @@ class GreatCrusadeSuite extends munit.FunSuite:
       Orientation.FaceDown)
     val run = commit(rules(winning), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 1)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 1)))
 
   test("it is discarded after the Campaign, and says so"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,

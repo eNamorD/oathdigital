@@ -30,14 +30,19 @@ class EncirclementSuite extends munit.FunSuite:
       case held: DenizenState if held.id == card => held.tokens }
 
   test("an attacker whose force is larger places a favor for two attack dice"):
-    val b = attacker(board(warbands = 5, supply = 7))
+    // 3 warbands beat the two bandits that rule the origin.
+    val base = board(warbands = 5, supply = 7)
+    val b = attacker(on(base)(_.bandits(base.origin, 2)))
     val run = commit(rules(winning), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
     assertEquals(adviserTokens(picked.state, b.actor), Some(Tokens(1, 0)))
 
   test("it is not offered when the forces are equal"):
-    val b = attacker(board(warbands = 5, supply = 7))
+    // 2 warbands tie the two bandits that rule the origin.
+    val base = board(warbands = 5, supply = 7)
+    val b = attacker(on(base)(_.bandits(base.origin, 2)))
     assert(!commit(rules(winning), b, 2).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 

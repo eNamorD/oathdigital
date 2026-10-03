@@ -30,7 +30,8 @@ class DisgracedCaptainSuite extends munit.FunSuite:
       Orientation.FaceUp)
     val run = commit(rules(winning), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
     assertEquals(adviserTokens(picked.state, b.actor), Some(Tokens(1, 0)))
     assertEquals(Look(picked.state).player(b.actor).board.favor, 0)
 

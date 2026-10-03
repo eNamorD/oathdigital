@@ -8,24 +8,16 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.Look
 
-/** Gleaming Armor: while its faceup holder is in a Campaign, every plan the enemy
-  * chooses costs one more secret, placed onto its card, or turned facedown for the
-  * title's plan. A plan the enemy cannot afford with it is not offered, and the
-  * option states the price with it.
-  */
+/** Gleaming Armor: while its faceup holder is in a Campaign, every plan the
+  * enemy chooses costs one more secret, placed onto its card, or turned
+  * facedown for the title's plan. A plan the enemy cannot afford with it is not
+  * offered, and the option states the price with it. */
 class GleamingArmorSuite extends munit.FunSuite:
   private val armor = cardWith("denizen.gleaming-armor")
   private val watchdog = cardWith("denizen.watchdog")
   private val honors = cardWith("denizen.battle-honors")
   private val brass = relicWith("relic.brass-army.campaign")
   private val titleRef: DecisionOptionRef = DecisionOptionRef.Button("title")
-
-  private def secrets(b: Board, who: PlayerId, faceUp: Int): Board =
-    on(b)(_.secrets(who, faceUp = faceUp, faceDown = 0))
-
-  private def held(state: OathState, who: PlayerId): (Int, Int) =
-    val board = Look(state).player(who).board
-    board.faceUpSecrets -> board.faceDownSecrets
 
   private def price(option: DecisionOption): OptionPrice = option match
     case DecisionOption.Priced(_, price) => price
@@ -39,10 +31,12 @@ class GleamingArmorSuite extends munit.FunSuite:
   private def attackerHolds(defenderSecrets: Int): Board =
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    secrets(withAdviserFor(withAdviser(base, armor, Orientation.FaceUp),
-      base.rival, watchdog, Orientation.FaceUp), base.rival, defenderSecrets)
+    on(withAdviserFor(withAdviser(base, armor, Orientation.FaceUp), base.rival,
+      watchdog,
+      Orientation.FaceUp))(_.secrets(base.rival, faceUp = defenderSecrets))
 
-  test("a defender's plan costs one more secret, which turns facedown at once because it is paid off turn"):
+  test("a defender's plan costs one more secret, which turns facedown at " +
+      "once because it is paid off turn"):
     val b = attackerHolds(1)
     val run = commit(rules(losing), b, 4)
     val options = run.options(b.actor)
@@ -51,18 +45,21 @@ class GleamingArmorSuite extends munit.FunSuite:
     assertEquals(price(watchdogOption), OptionPrice(secrets = 1))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan,
       DecisionOptionRef.Denizen(watchdog))
-    assertEquals(held(picked.state, b.rival), (0, 1))
+    assertEquals(Look(picked.state).faceUpSecrets(b.rival), 0)
+    assertEquals(Look(picked.state).faceDownSecrets(b.rival), 1)
     assertEquals(Look(picked.state).player(b.rival).advisers.collectFirst {
       case card: DenizenState if card.id == watchdog => card.tokens },
       Some(Tokens.empty))
 
-  test("the title's plan costs a faceup secret turned facedown, since it has no card"):
+  test("the title's plan costs a faceup secret turned facedown, since it has " +
+      "no card"):
     val b = attackerHolds(1)
     val run = commit(rules(losing), b, 4)
     val title = run.options(b.actor).find(_.ref == titleRef).get
     assertEquals(price(title), OptionPrice(secrets = 1))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, titleRef)
-    assertEquals(held(picked.state, b.rival), (0, 1))
+    assertEquals(Look(picked.state).faceUpSecrets(b.rival), 0)
+    assertEquals(Look(picked.state).faceDownSecrets(b.rival), 1)
 
   test("a plan the defender cannot afford with the added cost is not offered"):
     val b = attackerHolds(0)
@@ -72,20 +69,24 @@ class GleamingArmorSuite extends munit.FunSuite:
   test("without Gleaming Armor the same plans are free"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val b = secrets(withAdviserFor(base, base.rival, watchdog, Orientation.FaceUp),
-      base.rival, 0)
+    val b = on(withAdviserFor(base, base.rival, watchdog,
+      Orientation.FaceUp))(_.secrets(base.rival, faceUp = 0))
     val run = commit(rules(losing), b, 4)
+    // The Watchdog, the title's plan and Finish.
     assertEquals(run.options(b.actor).map(price), Vector.fill(3)(OptionPrice()))
 
   test("a facedown Gleaming Armor is not active"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val b = secrets(withAdviserFor(withAdviser(base, armor, Orientation.FaceDown),
-      base.rival, watchdog, Orientation.FaceUp), base.rival, 0)
+    val b = on(withAdviserFor(withAdviser(base, armor, Orientation.FaceDown),
+      base.rival, watchdog,
+      Orientation.FaceUp))(_.secrets(base.rival, faceUp = 0))
+    // The Watchdog, the title's plan and Finish.
     assertEquals(commit(rules(losing), b, 4).options(b.actor).map(price),
       Vector.fill(3)(OptionPrice()))
 
-  test("bandits are enemies too: a bandit defender is taxed, cannot pay, and applies no plan"):
+  test("bandits are enemies too: a bandit defender is taxed, cannot pay, and " +
+      "applies no plan"):
     val two = board(extras = 1, warbands = 5, supply = 7)
     val free = withSiteCard(withSiteCard(two, two.origin, watchdog),
       two.extras.head, honors)
@@ -97,8 +98,8 @@ class GleamingArmorSuite extends munit.FunSuite:
       case _ => false
     def orderBank(state: OathState): Int =
       ready(state).banks.favor.getOrElse(Suit.Order, 0)
-    // Without the holder the bandit applies both plans by itself: Watchdog's die
-    // and a record of each, on top of the printed defense.
+    // Without the holder the bandit applies both plans by itself: Watchdog's
+    // die and a record of each, on top of the printed defense.
     val plain = commit(rules(losing), free, 2)
     val armored = commit(rules(losing), taxed, 2)
     assert(awaits(plain, free.actor, CampaignIds.sacrifice))
@@ -112,7 +113,8 @@ class GleamingArmorSuite extends munit.FunSuite:
     val lost = armored.finishPlanWindows
     assertEquals(ready(won.state).game.current.lastCampaignResult.map(
       _.attackerWins), Some(false))
-    assertEquals(orderBank(won.state), orderBank(OathState.Ready(free.ready)) - 2)
+    assertEquals(orderBank(won.state),
+      orderBank(OathState.Ready(free.ready)) - 2)
     assertEquals(orderBank(lost.state), orderBank(OathState.Ready(free.ready)))
 
   // ---- the defender holds it: the attacker's plans cost more ---------------
@@ -120,8 +122,8 @@ class GleamingArmorSuite extends munit.FunSuite:
   private def defenderHolds(attackerSecrets: Int): Board =
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    secrets(withRelic(withAdviserFor(base, base.rival, armor, Orientation.FaceUp),
-      brass), base.actor, attackerSecrets)
+    on(withRelic(withAdviserFor(base, base.rival, armor, Orientation.FaceUp),
+      brass))(_.secrets(base.actor, faceUp = attackerSecrets))
 
   test("an attacker's plan costs one more secret, placed onto its card"):
     val b = defenderHolds(2)
@@ -133,9 +135,11 @@ class GleamingArmorSuite extends munit.FunSuite:
       DecisionOptionRef.Relic(brass))
     assertEquals(Look(picked.state).player(b.actor).relics.map(_.tokens),
       Vector(Tokens(0, 2)))
-    assertEquals(held(picked.state, b.actor), (0, 0))
+    assertEquals(Look(picked.state).faceUpSecrets(b.actor), 0)
+    assertEquals(Look(picked.state).faceDownSecrets(b.actor), 0)
 
-  test("an attacker with only the secret Brass Army needs cannot pay the added cost, so it is not offered"):
+  test("an attacker with only the secret Brass Army needs cannot pay the " +
+      "added cost, so it is not offered"):
     val b = defenderHolds(1)
     assert(
       awaits(commit(rules(winning), b, 2), b.rival, CampaignIds.defenderPlan))
@@ -143,9 +147,11 @@ class GleamingArmorSuite extends munit.FunSuite:
   test("the holder's own plans are not taxed"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val b = secrets(withAdviserFor(withAdviserFor(base, base.rival, armor,
-      Orientation.FaceUp), base.rival, watchdog, Orientation.FaceUp), base.rival, 0)
+    val b = on(withAdviserFor(withAdviserFor(base, base.rival, armor,
+      Orientation.FaceUp), base.rival, watchdog,
+      Orientation.FaceUp))(_.secrets(base.rival, faceUp = 0))
     val run = commit(rules(losing), b, 4)
+    // The Watchdog, the title's plan and Finish.
     assertEquals(run.options(b.actor).map(price), Vector.fill(3)(OptionPrice()))
 
   // ---- Lines ----
@@ -167,8 +173,9 @@ class GleamingArmorSuite extends munit.FunSuite:
   test("the holder's own plan is not taxed, and writes nothing"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val b = secrets(withAdviserFor(withAdviserFor(base, base.rival, armor,
-      Orientation.FaceUp), base.rival, watchdog, Orientation.FaceUp), base.rival, 0)
+    val b = on(withAdviserFor(withAdviserFor(base, base.rival, armor,
+      Orientation.FaceUp), base.rival, watchdog,
+      Orientation.FaceUp))(_.secrets(base.rival, faceUp = 0))
     val picked = commit(rules(losing), b, 4).pick(b.rival,
       CampaignIds.defenderPlan, DecisionOptionRef.Denizen(watchdog))
     assertEquals(said(picked.events), Vector.empty)

@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
-import oathdigital.gameplay.powers.{NoteText, PlayerFacts}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.PowerFixture.warbandBank
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
@@ -18,7 +18,7 @@ class FieldPromotionSuite extends munit.FunSuite:
     DecisionOptionRef.Denizen(honors)
 
   private def kind(b: Board, who: PlayerId): ForceKind =
-    PlayerFacts.forceKind(b.ready, who).toOption.get
+    Look(b.ready).forceKind(who)
 
   private def winner(run: Run): Option[Boolean] =
     ready(run.state).game.current.lastCampaignResult.map(_.attackerWins)
@@ -35,7 +35,8 @@ class FieldPromotionSuite extends munit.FunSuite:
     val base = board(warbands = 5, supply = 7)
     on(withAdviser(base, card, Orientation.FaceUp))(_.favor(base.actor, 1))
 
-  test("an attacker that wins places a favor on it and gains three warbands, and says so"):
+  test("an attacker that wins places a favor on it and gains three warbands, " +
+      "and says so"):
     val b = attacking
     val run = commit(rules(winning), b, 4)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
@@ -72,6 +73,7 @@ class FieldPromotionSuite extends munit.FunSuite:
     val base = attacking
     val force = kind(base, base.actor)
     // Every warband of the actor's kind but one is on their board.
+    // All but one of the lineage's warbands go onto p1's board.
     val b = on(base)(_.warbandsInBank(base.actor, 1))
     assertEquals(warbandBank(b.ready, force), 1)
     val done = commit(rules(winning), b, 4)
