@@ -7,7 +7,7 @@ import oathdigital.model._
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.p1
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.WalkerStubs
+import oathdigital.testkit.{PowerStubs, WalkerStubs}
 
 /** `ParkedDecisionAssertions` is tested here, driving a real `RecoverProcedure`
   * through a real `OathRules` rather than constructing a `PendingTree` by
@@ -45,7 +45,7 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
   // REAL, registry-built Recover tree at its `RecoverActionEligibility`
   // window, ahead of the declared body.
   test("a Roll park reports the procedure's declared roll decision id"):
-    val insertRoll = WalkerStubs.TestTransformPower(
+    val insertRoll = PowerStubs.TransformStub(
       PowerId("test.insert-roll"), PowerWindow.RecoverActionEligibility,
       (_, ops) => Roll(PoolKey("test.recover-roll"),
         DiceSpec(DiceKind.Defense)) +: ops)
@@ -73,7 +73,7 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
   test("an off-turn owner is reported, not the active player"):
     val owner = recoverable.game.current.players.map(_.player)
       .find(_ != p1).get
-    val insertOwned = WalkerStubs.TestTransformPower(
+    val insertOwned = PowerStubs.TransformStub(
       PowerId("test.insert-owned-decide"), PowerWindow.RecoverActionEligibility,
       (_, ops) => Decide(
         decisionId = RecoverProcedure.choiceDecisionId,
@@ -107,7 +107,7 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
       "parked"):
     val owner = recoverable.game.current.players.map(_.player)
       .find(_ != p1).get
-    val insertOwned = WalkerStubs.TestTransformPower(
+    val insertOwned = PowerStubs.TransformStub(
       PowerId("test.insert-owned-decide-unread"),
       PowerWindow.RecoverActionEligibility,
       (_, ops) => Decide(

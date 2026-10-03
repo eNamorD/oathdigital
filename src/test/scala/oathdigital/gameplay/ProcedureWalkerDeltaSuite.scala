@@ -7,7 +7,7 @@ import oathdigital.model._
 import oathdigital.model.TestGameFixtures.{ready as _, _}
 import oathdigital.testkit.Table
 import oathdigital.testkit.Outcomes.recorded
-import oathdigital.testkit.WalkerStubs._
+import oathdigital.testkit.PowerStubs.OperationRestrictionStub
 import oathdigital.testkit.ProcedureWalkerFixture._
 
 /** ProcedureWalker's delta leaves: a walk records one
@@ -17,7 +17,7 @@ import oathdigital.testkit.ProcedureWalkerFixture._
 class ProcedureWalkerDeltaSuite extends munit.FunSuite:
   /** The powers of one test power that registers `restriction`. */
   private def restricting(restriction: OperationRestriction): WalkerPowers =
-    WalkerPowers(Vector(TestOperationRestrictionPower(
+    WalkerPowers(Vector(OperationRestrictionStub(
       PowerId("test.restriction"), restriction)))
 
   /** Stub of OperationRestriction: refuses every `SpendSupply`. */

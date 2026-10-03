@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.testkit.WalkerStubs.TestTransformPower
+import oathdigital.testkit.PowerStubs.TransformStub
 import oathdigital.gameplay.walker.WalkerSimulation.PreviewOutcome
 import oathdigital.model._
 import oathdigital.testkit.{Outcomes, Table}
@@ -81,7 +81,7 @@ class WalkerPreviewSuite extends munit.FunSuite:
 
   test("a transform on the decision's window changes what is previewed"):
     val ready = withSupply(5)
-    val addExtra = TestTransformPower(PowerId("test.add-extra"), hooked,
+    val addExtra = TransformStub(PowerId("test.add-extra"), hooked,
       (_, operations) => operations.map {
         case decide: Decide => decide.query match {
           case DecisionQuery.ChooseOne(options, heading) =>

@@ -8,6 +8,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 // ProcedureWalkerFixture's ready, with S3 cleared, replaces the fixture's.
 import oathdigital.model.TestGameFixtures.{ready as _, _}
 import oathdigital.testkit.PowerStubs
+import oathdigital.testkit.PowerStubs.{RestrictionStub, TransformStub}
 import oathdigital.testkit.Outcomes.{finished, recorded}
 import oathdigital.testkit.WalkerStubs._
 import oathdigital.testkit.ProcedureWalkerFixture._
@@ -44,8 +45,8 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
 
   private def transformPower(id: String, hook: PowerWindow)(
       fn: (PowerCtx, Vector[Operation]) => Vector[Operation])
-      : TestTransformPower =
-    TestTransformPower(PowerId(id), hook, fn)
+      : TransformStub =
+    TransformStub(PowerId(id), hook, fn)
 
   /** A finished walk's state and the steps it recorded. */
   private final case class FinishedSteps(state: ReadyGame,
@@ -216,7 +217,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
   test("a Restriction's violation is collected before any node runs"):
     val violation: OathViolation = OathViolation.InvalidEventOrder(
       "test restriction forbids this action")
-    val power = TestRestrictionPower(
+    val power = RestrictionStub(
       PowerId("test.forbid"), testWindow, (_, _) => Some(violation))
     val windowed = WindowedNode(testWindow, Vector(spendOneSupply))
     val tree: Operation = Sequence(windowed)
@@ -232,7 +233,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
     // would never see this window at all.
     val violation: OathViolation = OathViolation.InvalidEventOrder(
       "test restriction forbids this branch")
-    val power = TestRestrictionPower(
+    val power = RestrictionStub(
       PowerId("test.forbid"), testWindow, (_, _) => Some(violation))
     val branch = Branch((_: ReadyGame, _: PendingTree) => Vector[Operation](
       WindowedNode(testWindow, Vector(spendOneSupply))))
@@ -272,7 +273,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
   // composite's own declared `children`. `OathRulesWalker.checkAnswerable`
   // is the only caller;
   // these tests drive `parkedRoll`/`parkedDecide` directly, synthetically,
-  // exactly like Task 3's own `WindowedNode`/`TestTransformPower` doubles --
+  // exactly like Task 3's own `WindowedNode`/`TransformStub` doubles --
   // no dependency on Recover or the catalog.
   // -------------------------------------------------------------------------
 

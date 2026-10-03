@@ -4,8 +4,7 @@ import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.Table
-import oathdigital.testkit.WalkerStubs.{TestRestrictionPower,
-  TestTransformPower}
+import oathdigital.testkit.PowerStubs.{RestrictionStub, TransformStub}
 
 /** The restriction traversal selects a `Branch` with the answers recorded so
   * far, so a Restriction hooked inside a subtree that only exists once a
@@ -19,7 +18,7 @@ class RestrictionAnswersSuite extends munit.FunSuite:
   private val no = DecisionOptionRef.Button("no")
   private val violation = OathViolation.CampaignUnavailable("the test forbids it")
 
-  private val forbidding: ContributingPower = TestRestrictionPower(
+  private val forbidding: ContributingPower = RestrictionStub(
     PowerId("test.forbidding"), nested, (_, _) => Some(violation))
   private val powers = WalkerPowers(Vector(forbidding))
 
@@ -48,7 +47,7 @@ class RestrictionAnswersSuite extends munit.FunSuite:
 
   // ---- What a Transform inserts ----
 
-  private val inserting: ContributingPower = TestTransformPower(
+  private val inserting: ContributingPower = TransformStub(
     PowerId("test.inserting"), PowerWindow.MusterActionEligibility,
     (_, children) => children :+ Sequence(Vector.empty, Some(nested)))
   private val root: Operation =

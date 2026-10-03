@@ -8,7 +8,7 @@ import oathdigital.gameplay.OathRules
 import oathdigital.model._
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.WalkerStubs
+import oathdigital.testkit.{PowerStubs, WalkerStubs}
 import oathdigital.testkit.Outcomes
 
 /** The point of Task 4, in one suite: a power that transforms a parked
@@ -58,7 +58,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
     */
   private def rewriting(id: String)(
       change: DecisionQuery.ChooseOne => DecisionQuery.ChooseOne) =
-    WalkerPowers(Vector(WalkerStubs.TestTransformPower(PowerId(id),
+    WalkerPowers(Vector(PowerStubs.TransformStub(PowerId(id),
       window, (_, ops) => ops.map {
         case decide: Decide => decide.query match {
           case query: DecisionQuery.ChooseOne =>
@@ -186,7 +186,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
   test("a power that reowns a parked Decide moves who may answer it, who is " +
       "projected it, and who the waiting projection names"):
     val ready = Table.start.ready
-    val powers = WalkerPowers(Vector(WalkerStubs.TestTransformPower(
+    val powers = WalkerPowers(Vector(PowerStubs.TransformStub(
       PowerId("test.reowns"), window, (_, ops) => ops.map {
         case decide: Decide => decide.copy(owner = p2)
         case op => op

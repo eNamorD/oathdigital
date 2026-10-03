@@ -4,7 +4,7 @@ import oathdigital.gameplay.powerresolver.{OfferHost, PowerCtx}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers,
   WalkerSimulation}
 import oathdigital.model._
-import oathdigital.testkit.WalkerStubs.TestRestrictionPower
+import oathdigital.testkit.PowerStubs.RestrictionStub
 import oathdigital.testkit.Table
 import oathdigital.testkit.Outcomes
 
@@ -22,7 +22,7 @@ class RestrictionLookAheadSuite extends munit.FunSuite:
     DecisionOption.Button(DecisionOptionRef.Button(key), key)
   private def ref(key: String): DecisionOptionRef = DecisionOptionRef.Button(key)
 
-  private val forbidding = TestRestrictionPower(PowerId("test.forbidding"),
+  private val forbidding = RestrictionStub(PowerId("test.forbidding"),
     nested, (_, _) => Some(violation))
   private val powers = WalkerPowers(Vector(forbidding))
 
@@ -121,7 +121,7 @@ class RestrictionLookAheadSuite extends munit.FunSuite:
 
   test("the walk inside a probe does not probe its own decisions"):
     var calls = 0
-    val counting = TestRestrictionPower(PowerId("test.counting"), nested,
+    val counting = RestrictionStub(PowerId("test.counting"), nested,
       (_, _) => { calls += 1; None })
     val inner: Operation = Sequence(Vector[Operation](
       Sequence(Vector.empty, Some(nested)),
@@ -148,7 +148,7 @@ class RestrictionLookAheadSuite extends munit.FunSuite:
     assertEquals(calls, 2)
 
   test("a Restriction reads the answers so far from its context"):
-    val reading = TestRestrictionPower(PowerId("test.reading"), nested,
+    val reading = RestrictionStub(PowerId("test.reading"), nested,
       (ctx: PowerCtx, _) => Option.when(ctx.answered.exists(
         _.decisionId == ask))(violation))
     val root = Sequence(Vector.empty, Some(nested))

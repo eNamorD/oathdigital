@@ -56,7 +56,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
       walkerTree = (_, _, _, _, _, _) => Right(hookedTree(actor)))
 
   private def forbidding: WalkerPowers = WalkerPowers(Vector(
-    WalkerStubs.TestRestrictionPower(PowerId("test.forbid"), window,
+    PowerStubs.RestrictionStub(PowerId("test.forbid"), window,
       (_, _) => Some(violation))))
 
   test("startWalker rejects a requester who is not the active player before " +
@@ -186,8 +186,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
   // -------------------------------------------------------------------------
 
   private def insertingPower(id: PowerId, actor: PlayerId,
-      resolution: PowerResolution): WalkerStubs.TestTransformPower =
-    WalkerStubs.TestTransformPower(id, window,
+      resolution: PowerResolution): PowerStubs.TransformStub =
+    PowerStubs.TransformStub(id, window,
       (_, ops) => SpendSupply(actor, 1) +: ops, resolution)
 
   test("a player-selected modifier chosen at StartWalker is still folded on " +

@@ -15,7 +15,7 @@ import oathdigital.protocol.projection.{DecisionOptionProjection,
   WalkerDecisionProjection, WalkerRollOutcomeProjection}
 import oathdigital.testkit.{CatalogNames, Dice}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.WalkerStubs
+import oathdigital.testkit.PowerStubs
 import oathdigital.testkit.Unwrap.{accepted, present}
 import oathdigital.application.ParkedServiceFixture.loaded
 import oathdigital.testkit.Outcomes
@@ -92,7 +92,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     * way a Recover can still park on a roll -- and the projector has to
     * describe that park for the client that must answer it.
     */
-  private val parkingRoll = WalkerStubs.TestTransformPower(
+  private val parkingRoll = PowerStubs.TransformStub(
     PowerId("test.parked-roll"), PowerWindow.RecoverBeforeFirstRoll,
     (_, ops) => ops :+ Roll(RecoverProcedure.recoverPool,
       DiceSpec(DiceKind.Defense)))
