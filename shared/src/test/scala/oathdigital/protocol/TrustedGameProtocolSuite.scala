@@ -31,37 +31,61 @@ class TrustedGameProtocolSuite extends munit.FunSuite:
     assertEquals(TrustedGameCreateRequestCodec.decode(ujson.write(lineage)).left.toOption
       .map(_.path), Some("$.participants[0].lineageId"))
 
-  test("invalid identifiers, duplicates, and empty participants fail"):
+  test("invalid player ids are refused"):
+    // An id holds at most 128 characters, starts with a letter or a digit
+    // and has no path or query characters such as "/" or "?".
     Vector("", " ", "a/b", "a?b", "a" * 129).foreach { invalid =>
-      assert(TrustedGameCreateRequestCodec.decode(json.replace("p1", invalid)).isLeft)
+      assert(TrustedGameCreateRequestCodec.decode(
+        json.replace("p1", invalid)).isLeft)
     }
+
+  test("duplicate and empty participants are refused"):
+    val twice = Vector(request.participants.head, request.participants.head)
     Vector(request.copy(participants = Vector.empty),
-      request.copy(participants = Vector(request.participants.head, request.participants.head)))
-      .foreach { invalid =>
-      assert(TrustedGameCreateRequestCodec.decode(TrustedGameCreateRequestCodec.encode(invalid)).isLeft)
+      request.copy(participants = twice)).foreach { invalid =>
+      assert(TrustedGameCreateRequestCodec.decode(
+        TrustedGameCreateRequestCodec.encode(invalid)).isLeft)
     }
+
+  test("an unknown colour is refused at its path"):
     // A colour outside the closed set is refused where it enters.
     Vector("", "green").foreach { invalid =>
       assertEquals(TrustedGameCreateRequestCodec.decode(
         json.replace("\"red\"", s"\"$invalid\"")).left.toOption.map(_.path),
         Some("$.participants[0].color"))
     }
-    Vector("[]", "null", "{", json.replace("\"p1\"", "12")).foreach { invalid =>
+
+  test("malformed JSON, a non-object root and a numeric id are refused"):
+    Vector("[]", "null", "{", json.replace("\"p1\"", "12")).foreach {
+      invalid =>
       assert(TrustedGameCreateRequestCodec.decode(invalid).isLeft)
     }
 
-  test("response contains only ordered game and seat links with strict decoding"):
-    val response = TrustedGameCreateResponse("game-1", Vector(
-      TrustedSeatLink("p2", "https://example.test/s/code2"),
-      TrustedSeatLink("p1", "https://example.test/s/code1")))
-    val encoded = """{"gameId":"game-1","seats":[{"playerId":"p2","url":"https://example.test/s/code2"},{"playerId":"p1","url":"https://example.test/s/code1"}]}"""
-    assertEquals(TrustedGameCreateResponseCodec.encode(response), encoded)
-    assertEquals(TrustedGameCreateResponseCodec.decode(encoded), Right(response))
-    val extra = ujson.read(encoded)
+  private val seatResponse = TrustedGameCreateResponse("game-1", Vector(
+    TrustedSeatLink("p2", "https://example.test/s/code2"),
+    TrustedSeatLink("p1", "https://example.test/s/code1")))
+  private val seatResponseJson =
+    """{"gameId":"game-1","seats":[""" +
+      """{"playerId":"p2","url":"https://example.test/s/code2"},""" +
+      """{"playerId":"p1","url":"https://example.test/s/code1"}]}"""
+
+  test("response writes ordered game and seat links and decodes them back"):
+    assertEquals(TrustedGameCreateResponseCodec.encode(seatResponse),
+      seatResponseJson)
+    assertEquals(TrustedGameCreateResponseCodec.decode(seatResponseJson),
+      Right(seatResponse))
+
+  test("an extra seat field is refused"):
+    val extra = ujson.read(seatResponseJson)
     extra("seats")(0)("code") = "secret"
     assert(TrustedGameCreateResponseCodec.decode(ujson.write(extra)).isLeft)
-    val missing = ujson.read(encoded)
+
+  test("a missing url is refused"):
+    val missing = ujson.read(seatResponseJson)
     missing("seats")(0).obj.remove("url")
     assert(TrustedGameCreateResponseCodec.decode(ujson.write(missing)).isLeft)
+
+  test("an extra root field is refused"):
+    val extra = ujson.read(seatResponseJson)
     extra.obj("unexpected") = ujson.Bool(true)
     assert(TrustedGameCreateResponseCodec.decode(ujson.write(extra)).isLeft)

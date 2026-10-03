@@ -1,9 +1,12 @@
 package oathdigital.model
 
+import oathdigital.testkit.Unwrap.accepted
+
 class PlayerSetupStateSuite extends munit.FunSuite:
   import TestGameFixtures._
 
   test("a player may exist before placing their pawn"):
+    // Patched with copy: the player's pawn site is the subject.
     val unplacedGame = game.copy(
       current = game.current.copy(
         players = Vector(player.copy(pawnSite = None))
@@ -13,6 +16,8 @@ class PlayerSetupStateSuite extends munit.FunSuite:
     assertEquals(DomainValidation.validate(unplacedGame), Vector.empty)
 
   test("a placed pawn must still reference an in-play site"):
+    // Patched with copy: the pawn site is the subject, and the state is
+    // invalid on purpose.
     val invalidSite = SiteId("not-in-play")
     val invalidGame = game.copy(
       current = game.current.copy(
@@ -27,6 +32,8 @@ class PlayerSetupStateSuite extends munit.FunSuite:
     )
 
   test("multiple starting advisers retain order and derived locations"):
+    // Patched with copy: the lineage's starting advisers are the subject,
+    // and no Table step sets them.
     val first = DenizenState(
       DenizenId("D-start-1"),
       Orientation.FaceDown,
@@ -45,7 +52,7 @@ class PlayerSetupStateSuite extends munit.FunSuite:
       )
     )
 
-    val index = CardIndex.from(updatedGame).toOption.get
+    val index = accepted(CardIndex.from(updatedGame))
 
     assertEquals(
       index.locationOf(first.id),

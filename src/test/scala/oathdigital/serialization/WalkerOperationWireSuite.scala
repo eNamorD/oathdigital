@@ -1,68 +1,58 @@
 package oathdigital.serialization
 
-import oathdigital.engine.RecordedEvent
+import oathdigital.gameplay.actions.VisionRules
 import oathdigital.model._
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.walker.{DeltaMeaning, RollPayload,
   WalkerStepPayload, WalkerStepRecorded}
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
+  encodedStream, recordedOperation}
+import oathdigital.testkit.Table
+import oathdigital.testkit.Unwrap.{accepted, as}
 
 /** Walker step events on the wire: the operations, locations, pieces and
   * payloads a recorded step carries, and the typed errors for ones the codec
   * cannot write. */
 class WalkerOperationWireSuite extends munit.FunSuite:
-  test("recorded Visions Drawn advancement round trips without an amount"):
-    val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
-      DeltaMeaning.OperationApplied("vision")), Vector(AdvanceVisionsDrawn),
-      Vector.empty)
-    val encoded = GameEventWire.encodeEvent("walker", 0, event)
-      .toOption.get
+  test("recorded Visions Drawn advancement round trips without an amount " +
+      "and replays as one more Vision drawn"):
+    val event = recordedOperation("vision", AdvanceVisionsDrawn)
+    val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
     assertEquals(ujson.read(encoded)("payload")("ops")(0),
       ujson.Obj("kind" -> "advance-visions-drawn"))
-    val decoded = GameEventWire.decode(encoded).toOption.get.event
-      .asInstanceOf[WalkerStepRecorded]
-    val base = TestGameFixtures.ready
-    val replayed = OperationPipeline.run(base, decoded.ops,
-      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get.state
+    val decoded = as[WalkerStepRecorded](
+      accepted(GameEventWire.decode(encoded)).event)
+    val base = Table.start.ready
+    val replayed = accepted(OperationPipeline.run(base, decoded.ops,
+      OperationPolicy.Permissive, Vector.empty)(Right(_))).state
     assertEquals(replayed.game.current.tracks.visionsDrawn,
       base.game.current.tracks.visionsDrawn + 1)
 
   test("reduced optional spend is canonical in memory and on the wire"):
-    import oathdigital.model.TestGameFixtures.{playerId, ready => base}
-    val one = base.updateCurrent(_.copy(players = base.game.current.players.map { player =>
-        player.copy(board = player.board.copy(supply = SupplyTrack(1)))
-      }))
-    val run = OperationPipeline.run(one,
-      Vector(SpendSupply(playerId, 3, required = false)),
-      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get
+    val one = Table.start.supply(Table.p1, 1).ready
+    val run = accepted(OperationPipeline.run(one,
+      Vector(SpendSupply(Table.p1, 3, required = false)),
+      OperationPolicy.Permissive, Vector.empty)(Right(_)))
     val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
-      DeltaMeaning.SupplySpent(playerId, 1)), run.executed, Vector.empty)
-    val encoded = GameEventWire.encodeEvent("walker", 0, event)
-      .toOption.get
+      DeltaMeaning.SupplySpent(Table.p1, 1)), run.executed, Vector.empty)
+    val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
     assert(!ujson.read(encoded)("payload")("ops")(0).obj.contains("required"))
 
   test("a recorded move of a Vision to the shared bank round trips and replays"):
-    val base = initialReady
-    val current = base.game.current
-    val actor = current.turn.activePlayer
-    val card = VisionId("vision:conspiracy")
-    val prepared = base.updateCurrent(_.copy(
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(_ == card)),
-      temporaryHands = current.temporaryHands.updated(actor, Vector(card))))
+    val actor = Table.p1
+    val card = VisionRules.Conspiracy
+    val prepared = Table.start.hand(actor, card).ready
     val box = Move(Piece.Card(card), PositionedLocation(Location.Hand(actor)),
       PositionedLocation(Location.SharedBank))
-    val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
-      DeltaMeaning.OperationApplied("box")), Vector(box), Vector.empty)
-    val encoded = GameEventWire.encodeEvent("walker", 0, event)
-      .toOption.get
+    val event = recordedOperation("box", box)
+    val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
-    val decoded = GameEventWire.decode(encoded).toOption.get.event
-      .asInstanceOf[WalkerStepRecorded]
-    val replayed = OperationPipeline.run(prepared, decoded.ops,
-      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get.state
+    val decoded = as[WalkerStepRecorded](
+      accepted(GameEventWire.decode(encoded)).event)
+    val replayed = accepted(OperationPipeline.run(prepared, decoded.ops,
+      OperationPolicy.Permissive, Vector.empty)(Right(_))).state
     assertEquals(replayed.game.current.temporaryHands(actor), Vector.empty)
 
   test("walker delta events round-trip independent semantic facts"):
@@ -85,11 +75,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move),
         Vector.empty))
 
-    val encoded = GameEventWire.encodeStream("walker", events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index.toLong, event)
-      }).toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      events)
+    val encoded = assertStreamRoundTrips("walker", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("step")("meaning")("kind").str).toVector,
       Vector("dice-pool-modified", "supply-spent", "relic-acquired"))
@@ -99,13 +85,10 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     // one caller), so a codec that ignored the value and decoded `Act`
     // unconditionally would pass every other test in the tree. Rest is used
     // here for exactly that reason.
-    val event: OathEvent = WalkerStepRecorded("0",
-      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied(
-        "enter-phase")), Vector(EnterPhase(Phase.Rest)), Vector.empty)
-    val encoded = GameEventWire.encodeEvent("phase", 0L, event)
-      .toOption.get
+    val event = recordedOperation("enter-phase", EnterPhase(Phase.Rest))
+    val encoded = accepted(GameEventWire.encodeEvent("phase", 0L, event))
     assertEquals(encoded("payload")("ops")(0)("phase").str, "rest")
-    assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
+    assertEquals(accepted(GameEventWire.decode(encoded)).event, event)
 
   test("Catacombs' recorded batch round-trips: a relic move off the top of " +
       "the relic deck and a cost placed on a card"):
@@ -129,9 +112,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         PayCost(player, Location.OnCard(denizen), Cost(secret = 1))),
       Vector(PowerId("denizen.catacombs")))
 
-    val encoded = GameEventWire.encodeStream("walker", Vector(RecordedEvent(0L, event))).toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      Vector(event))
+    val encoded = assertStreamRoundTrips("walker", Vector(event))
     val ops = ujson.read(encoded).arr.head("payload")("ops").arr
     assertEquals(ops.map(_("kind").str).toVector, Vector("move", "pay-cost"))
     assertEquals(ops(0)("from")("location")("deck").str, "relic")
@@ -169,28 +150,20 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Location.Dispossessed)
     // `PayCost` carries a bare `Location`, so it exercises each variant
     // without the stack-position wrapper or `Move`'s from/to constraints.
-    val events = locations.map(location => WalkerStepRecorded("0",
-      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
-      Vector(PayCost(player, location, Cost(favor = 1))),
-      Vector.empty): OathEvent)
+    val events = locations.map(location => recordedOperation("pay",
+      PayCost(player, location, Cost(favor = 1))))
 
-    val encoded = GameEventWire.encodeStream("walker", events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index.toLong, event)
-      }).toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      events)
+    val encoded = assertStreamRoundTrips("walker", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("placedAt")("kind").str).toVector.distinct.size,
       locations.map(_.getClass.getSimpleName).distinct.size)
 
-  test("an unknown walker location kind, deck or negative cost decodes to a " +
-      "typed WireError"):
+  test("an unknown walker location kind, deck, operation kind or negative " +
+      "cost decodes to a typed WireError"):
     val player = PlayerId("red")
-    val event: OathEvent = WalkerStepRecorded("0",
-      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
-      Vector(PayCost(player, Location.Deck(CardDeck.Relic), Cost(secret = 1))),
-      Vector.empty)
-    val encoded = GameEventWire.encodeStream("walker", Vector(RecordedEvent(0L, event))).toOption.get
+    val event = recordedOperation("pay",
+      PayCost(player, Location.Deck(CardDeck.Relic), Cost(secret = 1)))
+    val encoded = encodedStream("walker", Vector(event))
     assert(GameEventWire.decodeStream(encoded).isRight)
 
     Vector[ujson.Value => Unit](
@@ -212,9 +185,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Vector(ModifyDicePool(pool, 2)),
       Vector(PowerId("power.one"), PowerId("power.two")))
 
-    val encoded = GameEventWire.encodeStream("walker", Vector(RecordedEvent(0L, event))).toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      Vector(event))
+    val encoded = assertStreamRoundTrips("walker", Vector(event))
     assertEquals(ujson.read(encoded).arr.head("payload")("contributions").arr
       .map(_.str).toVector, Vector("power.one", "power.two"))
 
@@ -320,15 +291,10 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       SetOathkeeper(Some(PlayerId("red"))),
       SetOathkeeper(None))
 
-    val events = operations.map(operation => WalkerStepRecorded("0",
-      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("op")),
-      Vector(operation), Vector.empty): OathEvent)
+    val events = operations.map(operation =>
+      recordedOperation("op", operation))
 
-    val encoded = GameEventWire.encodeStream("walker-ops", events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index.toLong, event)
-      }).toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      events)
+    val encoded = assertStreamRoundTrips("walker-ops", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("kind").str).toVector.distinct.size,
       operations.map(_.getClass.getSimpleName).distinct.size)
@@ -341,10 +307,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       WalkerStepRecorded("2", RollPayload(PoolKey("campaign.defense"),
         Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank),
         automatic = true), Vector.empty, Vector.empty))
-    val encoded = GameEventWire.encodeStream("walker-rolls", events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index.toLong, event) }).toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      events)
+    val encoded = assertStreamRoundTrips("walker-rolls", events)
     // `automatic` is written only when set, so a parked roll's wire form is
     // unchanged.
     assertEquals(ujson.read(encoded).arr.map(
@@ -366,16 +329,10 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Piece.Favor(1),
       Piece.Secrets(2),
       Piece.Warbands(ForceKind.Exile(lineage), 3))
-    val events = pieces.map(piece => WalkerStepRecorded("0",
-      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("take")),
-      Vector(Take(piece, player, Location.SharedBank,
-        Location.PlayArea(player))), Vector.empty): OathEvent)
+    val events = pieces.map(piece => recordedOperation("take",
+      Take(piece, player, Location.SharedBank, Location.PlayArea(player))))
 
-    val encoded = GameEventWire.encodeStream("walker-pieces", events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index.toLong, event)
-      }).toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      events)
+    val encoded = assertStreamRoundTrips("walker-pieces", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("piece")("kind").str).toVector.distinct.size,
       pieces.map(_.getClass.getSimpleName).distinct.size)
@@ -394,14 +351,8 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         Location.PlayArea(player), leaving = leaving),
       Take(Piece.Banner(Banner.DarkestSecret), player, Location.PlayArea(holder),
         Location.PlayArea(player)))
-    val events = takes.map(take => WalkerStepRecorded("0",
-      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("take")),
-      Vector(take), Vector.empty): OathEvent)
-    val encoded = GameEventWire.encodeStream("take-leaving", events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index.toLong, event)
-      }).toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      events)
+    val events = takes.map(take => recordedOperation("take", take))
+    val encoded = assertStreamRoundTrips("take-leaving", events)
     val ops = ujson.read(encoded).arr.map(_("payload")("ops")(0))
     assertEquals(ops(0)("leaving").arr.size, 2)
     assert(!ops(1).obj.contains("leaving"))
@@ -425,9 +376,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Branch((_, _) => Vector.empty),
       Sequence(Vector(SpendSupply(player, 1))))
     nodes.foreach { node =>
-      val event: OathEvent = WalkerStepRecorded("0",
-        WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("bad")),
-        Vector(node), Vector.empty)
+      val event = recordedOperation("bad", node)
       GameEventWire.encodeEvent("walker", 0, event) match
         case Left(_: WireError) => ()
         case Right(value) => fail(s"expected a typed WireError for $node, " +

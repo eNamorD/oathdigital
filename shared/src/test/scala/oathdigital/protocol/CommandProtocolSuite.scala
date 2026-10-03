@@ -1,5 +1,7 @@
 package oathdigital.protocol
 
+import oathdigital.testkit.Unwrap.rejected
+
 class CommandProtocolSuite extends munit.FunSuite:
   import GameIntent._
 
@@ -41,7 +43,7 @@ class CommandProtocolSuite extends munit.FunSuite:
     ResolveWalker("negotiation.deal", DecisionAnswerWire.DeclineDealWire)
   )
 
-  test("usePower names exactly one power and one source"):
+  test("a usePower intent with an unknown field is rejected"):
     val json = """{"type":"usePower","powerId":"denizen.silver-tongue",""" +
       """"source":{"optionKind":"denizen","optionId":"92"},"extra":1}"""
     assert(CommandIntentCodec.decode(ujson.read(json), "$").isLeft)
@@ -64,7 +66,7 @@ class CommandProtocolSuite extends munit.FunSuite:
   test("actor injection is rejected at command identity fields"):
     Vector("playerId", "actor", "actorId", "actorPlayerId").foreach { field =>
       val json = s"""{"expectedNextSequence":0,"intent":{"type":"endWake","$field":"spoof"}}"""
-      val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+      val failure = rejected(ActorlessCommandCodec.decode(json))
       assertEquals(failure.path, s"$$.intent.$field")
       assert(failure.isInstanceOf[ProtocolDecodeFailure.ActorInjection])
     }
@@ -74,7 +76,7 @@ class CommandProtocolSuite extends munit.FunSuite:
       "finishCampaignPlans", "chooseCampaignSacrifice", "placeCampaignForce",
       "relocateCampaignRaidPawn").foreach { tag =>
       val json = s"""{"expectedNextSequence":0,"intent":{"type":"$tag"}}"""
-      val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+      val failure = rejected(ActorlessCommandCodec.decode(json))
       assertEquals(failure.path, "$.intent.type", tag)
       assert(failure.message.contains("unknown intent type"), tag)
     }
@@ -86,22 +88,22 @@ class CommandProtocolSuite extends munit.FunSuite:
       """{"expectedNextSequence":0,"intent":{"type":"discardFacedownAdviser","adviser":{"kind":"denizen","id":"d1"}}}""",
       """{"expectedNextSequence":0,"intent":{"type":"playFacedownAdviser","adviser":{"kind":"denizen","id":"d1"},"placement":{"kind":"site","replace":null}}}"""
     ).foreach { json =>
-      val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+      val failure = rejected(ActorlessCommandCodec.decode(json))
       assertEquals(failure.path, "$.intent.type")
       assert(failure.message.contains("unknown intent type"))
     }
 
   test("malformed fields and structural duplicates retain exact paths"):
-    assertEquals(ActorlessCommandCodec.decode("{").left.toOption.get.path, "$")
+    assertEquals(rejected(ActorlessCommandCodec.decode("{")).path, "$")
     // Travel's destination moved onto `StartWalker`'s start selection
     // (batch-1 Task 5), so the path a malformed one reports moved with it --
     // still exact, and now indexed because a selection is a list.
     val missing = """{"expectedNextSequence":8,"intent":{"type":"startWalker",""" +
       """"action":"travel","modifiers":[],"startArgs":[{"optionKind":"site"}]}}"""
-    assertEquals(ActorlessCommandCodec.decode(missing).left.toOption.get.path,
+    assertEquals(rejected(ActorlessCommandCodec.decode(missing)).path,
       "$.intent.startArgs[0].optionId")
     val duplicate = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker","decisionId":"negotiation.deal","payload":{"kind":"propose-terms","terms":{"transfers":[{"recipientPlayerId":"p2","favor":1,"relicIds":[]},{"recipientPlayerId":"p2","favor":2,"relicIds":[]}],"disclosures":[]}}}}"""
-    assertEquals(ActorlessCommandCodec.decode(duplicate).left.toOption.get.path,
+    assertEquals(rejected(ActorlessCommandCodec.decode(duplicate)).path,
       "$.intent.payload.terms.transfers")
 
   test("ordered modifier transport preserves click order and rejects duplicates"):
@@ -114,13 +116,13 @@ class CommandProtocolSuite extends munit.FunSuite:
       Right(request))
     val duplicate = request.copy(orderedModifiers = Vector(modifiers.head,
       modifiers.head))
-    assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(duplicate))
-      .left.toOption.get.path, "$.orderedModifiers")
+    assertEquals(rejected(ActorlessCommandCodec.decode(
+      ActorlessCommandCodec.encode(duplicate))).path, "$.orderedModifiers")
 
   test("an unknown decision-payload kind decodes to a typed error, not an exception"):
     val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
       """"decisionId":"recover.choice","payload":{"kind":"recover-teleport"}}}"""
-    val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+    val failure = rejected(ActorlessCommandCodec.decode(json))
     assertEquals(failure.path, "$.intent.payload.kind")
     assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
     assert(failure.message.contains("unknown decision answer"))
@@ -131,7 +133,7 @@ class CommandProtocolSuite extends munit.FunSuite:
     val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
       s""""decisionId":"forge.assignment","payload":{"kind":"partition",""" +
       s""""placements":[$row,$row]}}}"""
-    val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+    val failure = rejected(ActorlessCommandCodec.decode(json))
     assertEquals(failure.path, "$.intent.payload.placements")
     // The engine rejects a duplicated placement too (`DecisionQueries`);
     // catching it at the transport keeps the two rules the same shape.
@@ -150,16 +152,16 @@ class CommandProtocolSuite extends munit.FunSuite:
     val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
       """"decisionId":"d","payload":{"kind":"distribute",""" +
       s""""amounts":[$row,$row]}}}"""
-    assertEquals(ActorlessCommandCodec.decode(json).left.toOption.get.path,
+    assertEquals(rejected(ActorlessCommandCodec.decode(json)).path,
       "$.intent.payload.amounts")
 
   test("an unknown walker intent type is rejected without throwing"):
     val json = """{"expectedNextSequence":0,"intent":{"type":"teleportWalker"}}"""
-    val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+    val failure = rejected(ActorlessCommandCodec.decode(json))
     assertEquals(failure.path, "$.intent.type")
     assert(failure.message.contains("unknown intent type"))
 
-  test("major-action preview protocol is actorless and round trips a response"):
+  test("a major-action preview request and response round trip"):
     val request = MajorActionPreviewRequest(7, "trade",
       Map("resource" -> "favor"), Vector(
         ModifierInvocation("adviser", "d2", None, "denizen.second")))

@@ -1,17 +1,14 @@
 package oathdigital.serialization
 
-import oathdigital.gameplay.walker.{DeltaMeaning, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.serialization.WalkerWireEvents.recordedOperation
+import oathdigital.testkit.Unwrap.accepted
 
 class PayCostWireSuite extends munit.FunSuite:
   private val player = PlayerId("red")
-  private def event(operation: CoreOperation): OathEvent = WalkerStepRecorded(
-    "0", WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
-    Vector(operation), Vector.empty)
   private def roundTrip(operation: CoreOperation): ujson.Value =
-    val original = event(operation)
-    val encoded = GameEventWire.encodeEvent("walker", 0, original)
-      .toOption.get
+    val original = recordedOperation("pay", operation)
+    val encoded = accepted(GameEventWire.encodeEvent("walker", 0, original))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(original))
     ujson.read(encoded)("payload")("ops")(0)
 

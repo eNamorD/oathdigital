@@ -3,8 +3,16 @@ package oathdigital.protocol
 import oathdigital.model.PlayerColor
 
 import oathdigital.protocol.projection._
+import oathdigital.testkit.Unwrap
 
 class ProjectionProtocolSuite extends munit.FunSuite:
+  /** Fails unless `candidate` encodes and decodes back to itself. */
+  private def assertRoundTrips(candidate: GameProjection)(
+      using munit.Location): Unit =
+    assertEquals(
+      GameProjectionCodec.decode(GameProjectionCodec.encode(candidate)),
+      Right(candidate))
+
   private val hidden = CardDetailsProjection("hidden", "denizen", "Unknown",
     hidden = true)
   private val known = CardDetailsProjection("known", "denizen", "Known",
@@ -35,7 +43,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     worldDeckCount = 5,
     worldDeckTopCardKind = Some("denizen"),
     playerBoards = Vector(PlayerBoardProjection("red", 3, 2, 1, 1, 2, 4, 4,
-      Some("site:a"), Vector(hidden), Vector(known), None)),
+      Some("site:a"), advisers = Vector(hidden), Vector(known), None)),
     // A decided game and an unheld banner: the optional fields the other
     // fixtures leave empty.
     oathkeeper = Some(OathkeeperProjection("supremacy", Some("red"), "oathkeeper",
@@ -49,7 +57,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     phasePowers = Vector(PhasePowerProjection("denizen.silver-tongue",
       DecisionOptionProjection("denizen", "92", "Silver Tongue"),
       "Silver Tongue", "Take a favor.")),
-    tracks = Some(GameTracksProjection(4, 3, false, 4, "red")),
+    tracks = Some(GameTracksProjection(round = 4, 3, false, 4, "red")),
     relicDeckCount = 21,
     temporaryHandPreview = Vector(known),
     // A partition query, the form with the most to carry: two sections with
@@ -70,34 +78,28 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     walkerWaiting = Some(WalkerWaitingProjection("blue", Some("Choose the Oathkeeper"))),
     supplyMaximum = 7, restSupplyGain = Some(3))
 
-  test("populated player-scoped projections round-trip exactly on both runtimes"):
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(projection)),
-      Right(projection))
+  test("a fully populated projection round-trips exactly"):
+    assertRoundTrips(projection)
+
+  test("the populated projection holds a hidden adviser, round 4 and a " +
+      "one-card hand preview"):
     assert(projection.playerBoards.head.advisers.head.hidden)
     assertEquals(projection.playerBoards.head.advisers.head.name, "Unknown")
     assertEquals(projection.tracks.map(_.round), Some(4))
     assertEquals(projection.temporaryHandPreview.map(_.cardId), Vector("known"))
 
-  /** Task 5b: a decision's panel copy is two OPTIONAL strings, so the
-    * absent case has to round-trip as faithfully as the present one. The
-    * populated projection above covers the present case; this covers a
-    * query that declares neither, which is what every choose-one park
-    * that has nothing to title itself sends.
-    */
   /** The Rest preview is offered only to the player who can end the Act, so
     * its absence is the common case and has to survive the trip too.
     */
   test("a projection with no Rest preview round-trips as absent"):
     val without = projection.copy(restSupplyGain = None)
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(without)),
-      Right(without))
+    assertRoundTrips(without)
 
   test("a region's discard cards round-trip, hidden and known alike"):
     val withPile = projection.copy(world = projection.world.map(region =>
       region.copy(discardCards = Vector(known, hidden), discardCount = 2,
         discardTopCardKind = Some("denizen"))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(withPile)),
-      Right(withPile))
+    assertRoundTrips(withPile)
 
   test("a board's bag figures and the Supply bands round-trip"):
     val withBag = projection.copy(
@@ -105,8 +107,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
         printedWarbands = 14, siteWarbands = 3, restSupplyBase = 5)),
       supplyBands = Vector(SupplyBandProjection(9, None, 6),
         SupplyBandProjection(4, Some(8), 5), SupplyBandProjection(0, Some(3), 4)))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(withBag)),
-      Right(withBag))
+    assertRoundTrips(withBag)
 
   test("a payload without bag figures or bands decodes to zero and none"):
     val raw = ujson.read(GameProjectionCodec.encode(projection))
@@ -126,14 +127,19 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     assertEquals(decoded.map(_.world.map(_.discardCards)),
       Right(projection.world.map(_ => Vector.empty)))
 
+  /** Task 5b: a decision's panel copy is two OPTIONAL strings, so the
+    * absent case has to round-trip as faithfully as the present one. The
+    * populated projection above covers the present case; this covers a
+    * query that declares neither, which is what every choose-one park
+    * that has nothing to title itself sends.
+    */
   test("a decision query declaring no panel copy round-trips as absent"):
     val bare = DecisionQueryProjection.ChooseOne(
       Vector(DecisionOptionProjection("button", "stop", "Stop")))
     assertEquals(bare.heading, None)
     val without = projection.copy(walkerDecision =
       projection.walkerDecision.map(_.copy(query = Some(bare))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(without)),
-      Right(without))
+    assertRoundTrips(without)
 
   /** A parked roll is the one decision shape that carries a pool and a
     * count instead of a query, so those two fields have no other coverage.
@@ -144,8 +150,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
         pool = Some("recover"), count = Some(2),
         rollOutcome = Some(WalkerRollOutcomeProjection("recover",
           Vector.empty, 0, Some(3))))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(rolling)),
-      Right(rolling))
+    assertRoundTrips(rolling)
 
   /** Task 8: the answers already recorded at a repeated decision, described
     * as options -- the plan window's own "what has already been applied"
@@ -159,8 +164,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     val repeated = projection.copy(walkerDecision = Some(
       WalkerDecisionProjection("campaign", "campaign.attacker-plan",
         "decide", answeredOptions = Vector(played))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(repeated)),
-      Right(repeated))
+    assertRoundTrips(repeated)
 
   test("a choose-one option round-trips its details and defaults them to none"):
     val annotated = DecisionQueryProjection.ChooseOne(Vector(
@@ -170,15 +174,13 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     assertEquals(annotated.options.last.details, Vector.empty)
     val carrying = projection.copy(walkerDecision =
       projection.walkerDecision.map(_.copy(query = Some(annotated))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
-      Right(carrying))
+    assertRoundTrips(carrying)
 
   test("a card defaults to implemented and round-trips implemented = false"):
     assert(known.implemented)
     val unimplemented = known.copy(cardId = "stub", implemented = false)
     val withStub = projection.copy(temporaryHandPreview = Vector(unimplemented))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(withStub)),
-      Right(withStub))
+    assertRoundTrips(withStub)
 
   test("a negotiate query and a waiting deal round trip with and without editing"):
     val card = CardDetailsProjection("r1", "relic", "Relic One",
@@ -196,8 +198,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     val carrying = projection.copy(
       walkerDecision = projection.walkerDecision.map(_.copy(query = Some(query))),
       walkerWaiting = Some(waiting))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
-      Right(carrying))
+    assertRoundTrips(carrying)
 
   test("choose-many and choose-amount queries round-trip their counts and bounds"):
     def site(id: String) = DecisionOptionProjection("site", id, id)
@@ -210,8 +211,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     Vector[DecisionQueryProjection](many, amount).foreach { query =>
       val carrying = projection.copy(walkerDecision =
         projection.walkerDecision.map(_.copy(query = Some(query))))
-      assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
-        Right(carrying))
+      assertRoundTrips(carrying)
     }
 
   test("a distribute query round-trips its slots, suggestions and total"):
@@ -223,8 +223,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       heading = Some("League Treaty"))
     val carrying = projection.copy(walkerDecision =
       projection.walkerDecision.map(_.copy(query = Some(distribute))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
-      Right(carrying))
+    assertRoundTrips(carrying)
 
   test("a ranged distribute query round-trips both totals"):
     def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
@@ -235,21 +234,19 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       heading = Some("Place force"))
     val carrying = projection.copy(walkerDecision =
       projection.walkerDecision.map(_.copy(query = Some(distribute))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
-      Right(carrying))
+    assertRoundTrips(carrying)
 
-  /** A partition is the one form whose confirm label is optional, so the
-    * absent case needs a trip of its own -- the fixture above carries one.
-    */
   test("an inspect query round-trips its cards, its done button and its heading"):
     val inspect = DecisionQueryProjection.Inspect(Vector(known, hidden),
       DecisionOptionProjection("button", "done", "Done"),
       heading = Some("Scryer: the Cradle discard pile"))
     val carrying = projection.copy(walkerDecision =
       projection.walkerDecision.map(_.copy(query = Some(inspect))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
-      Right(carrying))
+    assertRoundTrips(carrying)
 
+  /** A partition is the one form whose confirm label is optional, so the
+    * absent case needs a trip of its own -- the fixture above carries one.
+    */
   test("a partition declaring no confirm label round-trips as absent"):
     val unlabelled = DecisionQueryProjection.Partition(
       Vector(DecisionSectionProjection("keep", "Keep", 1, Some(1)),
@@ -258,8 +255,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     assertEquals(unlabelled.confirmLabel, None)
     val without = projection.copy(walkerDecision =
       projection.walkerDecision.map(_.copy(query = Some(unlabelled))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(without)),
-      Right(without))
+    assertRoundTrips(without)
 
   /** The types rule out a form outside the vocabulary and a field one form
     * lends another, so only JSON from outside can carry either. The fixture's
@@ -288,16 +284,14 @@ class ProjectionProtocolSuite extends munit.FunSuite:
   test("walkerWaiting round-trips with an absent heading, for a Roll park"):
     val rolling = projection.copy(walkerWaiting =
       Some(WalkerWaitingProjection("blue", heading = None)))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(rolling)),
-      Right(rolling))
+    assertRoundTrips(rolling)
 
   test("warbands of every player colour round-trip"):
     PlayerColor.all.foreach { color =>
       val carrying = projection.copy(world = projection.world.map(region =>
         region.copy(sites = region.sites.map(_.copy(forces = Some(
           SiteForcesProjection.Exile(2, "red", color, s"${color.key} warbands")))))))
-      assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
-        Right(carrying))
+      assertRoundTrips(carrying)
     }
 
   /** The types rule out an unknown colour or a force whose parts disagree, so
@@ -319,11 +313,13 @@ class ProjectionProtocolSuite extends munit.FunSuite:
   test("projection decoder reports exact nested paths and unexpected fields"):
     val wrong = ujson.read(GameProjectionCodec.encode(projection))
     wrong("world")(0)("sites")(0)("relics")("facedownCount") = "one"
-    assertEquals(GameProjectionCodec.decode(ujson.write(wrong)).left.toOption.get.path,
+    assertEquals(
+      Unwrap.rejected(GameProjectionCodec.decode(ujson.write(wrong))).path,
       "$.world[0].sites[0].relics.facedownCount")
     val extra = ujson.read(GameProjectionCodec.encode(projection))
     extra("playerBoards")(0)("privateCardId") = "injected"
-    assertEquals(GameProjectionCodec.decode(ujson.write(extra)).left.toOption.get.path,
+    assertEquals(
+      Unwrap.rejected(GameProjectionCodec.decode(ujson.write(extra))).path,
       "$.playerBoards[0].privateCardId")
 
   test("bootstrap requests round-trip and reject malformed exact fields"):
@@ -334,10 +330,12 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       Right(request))
     val unexpected = ujson.read(FirstGameBootstrapCodec.encode(request))
     unexpected("participants")(0)("actorPlayerId") = "red"
-    assertEquals(FirstGameBootstrapCodec.decode(ujson.write(unexpected)).left.toOption.get.path,
+    assertEquals(Unwrap.rejected(
+      FirstGameBootstrapCodec.decode(ujson.write(unexpected))).path,
       "$.participants[0].actorPlayerId")
     // The server derives the lineage from the color, so a request naming one is refused.
     val lineage = ujson.read(FirstGameBootstrapCodec.encode(request))
     lineage("participants")(0)("lineageId") = "red-lineage"
-    assertEquals(FirstGameBootstrapCodec.decode(ujson.write(lineage)).left.toOption.get.path,
+    assertEquals(Unwrap.rejected(
+      FirstGameBootstrapCodec.decode(ujson.write(lineage))).path,
       "$.participants[0].lineageId")

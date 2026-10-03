@@ -4,6 +4,7 @@ import oathdigital.gameplay.cards.NewFoundations
 import oathdigital.model.{DenizenId, EdificeId, LegacyId, PowerId, RelicId,
   SiteId, Suit}
 import oathdigital.testkit.TestCards
+import oathdigital.testkit.Unwrap.present
 
 class ExecutableCatalogSuite extends munit.FunSuite:
   private val catalog = NewFoundations.catalog
@@ -57,7 +58,8 @@ class ExecutableCatalogSuite extends munit.FunSuite:
     assertEquals(catalog.suitOf(RelicId("R01")), None)
 
   test("a copied catalog indexes its own components"):
-    val alchemist = catalog.denizen(DenizenId("9")).get
+    val alchemist = present(catalog.denizen(DenizenId("9")),
+      "the Alchemist, denizen 9")
     val renamed = catalog.copy(denizens = catalog.denizens.map(d =>
       if d.id == alchemist.id then TestCards.denizenLike(d)(name = "Renamed")
       else d))
@@ -65,7 +67,8 @@ class ExecutableCatalogSuite extends munit.FunSuite:
     assertEquals(catalog.denizen(DenizenId("9")).map(_.name), Some("Alchemist"))
 
   test("the first of two components sharing an ID wins, as a scan would"):
-    val alchemist = catalog.denizen(DenizenId("9")).get
+    val alchemist = present(catalog.denizen(DenizenId("9")),
+      "the Alchemist, denizen 9")
     val shadowed = catalog.copy(denizens =
       alchemist +: (TestCards.denizenLike(alchemist)(name = "Shadow") +: catalog.denizens))
     assertEquals(shadowed.denizen(DenizenId("9")).map(_.name), Some("Alchemist"))

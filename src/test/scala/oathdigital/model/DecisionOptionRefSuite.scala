@@ -37,6 +37,8 @@ class DecisionOptionRefSuite extends munit.FunSuite:
     assertEquals((adviser.kind, adviser.wireId), ("adviser-slot", "blue:1"))
     assertEquals(DecisionOptionRef.fromWire(adviser.kind, adviser.wireId),
       Some(adviser))
+
+  test("an adviser slot owner may contain a colon and still round trips"):
     val odd = DecisionOptionRef.AdviserSlot(PlayerId("a:b"), 0)
     assertEquals(DecisionOptionRef.fromWire(odd.kind, odd.wireId), Some(odd))
 

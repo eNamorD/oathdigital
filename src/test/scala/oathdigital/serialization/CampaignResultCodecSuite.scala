@@ -1,8 +1,9 @@
 package oathdigital.serialization
 
-import oathdigital.engine.RecordedEvent
-import oathdigital.gameplay.walker.{WalkerStepPayload, DeltaMeaning, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
+  recordedOperation}
+import oathdigital.testkit.Unwrap.accepted
 
 class CampaignResultCodecSuite extends munit.FunSuite:
   private val conquest = CampaignResult(PlayerId("red"), CampaignKind.Conquest,
@@ -25,22 +26,15 @@ class CampaignResultCodecSuite extends munit.FunSuite:
 
   test("a recorded Campaign result round trips through the wire for both kinds"):
     val events = Vector(conquest, raid, empty).map(result =>
-      WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
-        DeltaMeaning.OperationApplied("campaign")),
-        Vector(RecordCampaignResult(result)), Vector.empty): OathEvent)
-    val encoded = GameEventWire.encodeStream("campaign-result", events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index.toLong, event) }).toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      events)
+      recordedOperation("campaign", RecordCampaignResult(result)))
+    val encoded = assertStreamRoundTrips("campaign-result", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("kind").str).toVector.distinct,
       Vector("record-campaign-result"))
 
   test("a malformed recorded result is a typed decode failure, not an exception"):
-    val encoded = GameEventWire.encodeEvent("campaign-result", 0,
-      WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
-        DeltaMeaning.OperationApplied("campaign")),
-        Vector(RecordCampaignResult(conquest)), Vector.empty)).toOption.get
+    val encoded = accepted(GameEventWire.encodeEvent("campaign-result", 0,
+      recordedOperation("campaign", RecordCampaignResult(conquest))))
     val json = ujson.read(encoded)
     json("payload")("ops")(0)("result")("attackFaces") = ujson.Arr("not-a-face")
     assert(GameEventWire.decode(json.toString).isLeft)

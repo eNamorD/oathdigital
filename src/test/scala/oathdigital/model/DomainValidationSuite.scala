@@ -4,6 +4,7 @@ class DomainValidationSuite extends munit.FunSuite:
   import TestGameFixtures._
 
   test("campaign maps retain their structural identities and required slots"):
+    // Patched with copy, not a Table step: the state is invalid on purpose.
     val wrongId = LineageId("wrong-state-id")
     val invalid = game.copy(
       campaign = game.campaign.copy(
@@ -20,6 +21,8 @@ class DomainValidationSuite extends munit.FunSuite:
     )
 
   test("a site definition occupies only one place in the world"):
+    // sites.head is on the map, so an Atlas copy of it is also
+    // SiteInMapAndAtlas.
     val duplicateStoredSite = AtlasEntry.StoredSite(
       sites.head,
       Vector.empty,
@@ -37,6 +40,7 @@ class DomainValidationSuite extends munit.FunSuite:
     assert(problems.contains(DomainProblem.SiteInMapAndAtlas(sites.head)))
 
   test("holders and Exile forces reference current aggregate identities"):
+    // Patched with copy, not a Table step: the state is invalid on purpose.
     val absentPlayer = PlayerId("absent-player")
     val absentLineage = LineageId("absent-lineage")
     val occupied = game.current.map.sites(sites.head).copy(
@@ -73,6 +77,8 @@ class DomainValidationSuite extends munit.FunSuite:
     assert(problems.contains(DomainProblem.UnknownTitleHolder(absentPlayer)))
 
   test("duplicate identity problems have deterministic ID order"):
+    // The advisers are cleared so the copies repeat only the player ids, not
+    // the fixture's adviser card.
     val alpha = player.copy(
       player = PlayerId("alpha"),
       advisers = Vector.empty

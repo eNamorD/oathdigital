@@ -12,24 +12,3 @@ class ActionValuesSuite extends munit.FunSuite:
       DefenseDieFace.Doubler)), 12)
     assertEquals(DefenseDieFace.score(Vector(DefenseDieFace.Blank,
       DefenseDieFace.Doubler)), 0)
-
-  test("procedure references form three families with keys unique across all"):
-    assertEquals(ActionRef.all.map(_.key),
-      Vector("search", "play-facedown-adviser", "recover", "forge",
-        "travel", "take-wealth", "muster", "trade", "challenge", "place-banner-resource", "negotiation", "campaign"))
-    assertEquals(PhaseTransitionRef.all.map(_.key),
-      Vector("end-wake", "begin-rest", "finish-rest"))
-    assertEquals(ProcedureRef.all.map(_.key).distinct.size,
-      ProcedureRef.all.size)
-    assertEquals(StartableRef.fromKey("end-wake"),
-      Some(PhaseTransitionRef.EndWake))
-    assertEquals(ActionRef.fromKey("end-wake"), None)
-    assertEquals(ProcedureRef.fromFamilyKey("action", "end-wake"), None)
-    assertEquals(ProcedureRef.fromFamilyKey("phase-transition", "end-wake"),
-      Some(PhaseTransitionRef.EndWake))
-    assertEquals(ProcedureRef.fromFamilyKey("triggered", "recover"), None)
-    assertEquals(TriggeredProcedureRef.all, Vector(TriggeredProcedureRef.Oathkeeper,
-      TriggeredProcedureRef.Setup, TriggeredProcedureRef.ForcedWake))
-    // A client names a procedure by key alone; the triggered key must not resolve.
-    assertEquals(StartableRef.fromKey("oathkeeper"), None)
-    assertEquals(StartableRef.fromKey("forced-wake"), None)

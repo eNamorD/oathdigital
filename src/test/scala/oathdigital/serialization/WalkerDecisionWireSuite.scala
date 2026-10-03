@@ -1,11 +1,12 @@
 package oathdigital.serialization
 
-import oathdigital.engine.RecordedEvent
 import oathdigital.model._
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
   PartitionAnswer}
+import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
+  encodedStream}
 
 /** Walker decision answers on the wire: every answer and option reference kind
   * round trips on a recorded step and on a park, and deleted legacy tags are
@@ -18,18 +19,14 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
     val events = Vector[OathEvent](WalkerStepRecorded("1",
       ChoicePayload("challenge.ribbon-site", answer, player), Vector.empty,
       Vector.empty))
-    val encoded = GameEventWire.encodeStream("forge", events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
-      .toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+    assertStreamRoundTrips("forge", events)
 
   test("a choose-amount answer round trips through the journal"):
     val player = PlayerId("red")
     val events = Vector[OathEvent](WalkerStepRecorded("2",
       ChoicePayload("challenge.amount", DecisionAnswer.ChooseAmountAnswer(4),
         player), Vector.empty, Vector.empty))
-    val encoded = GameEventWire.encodeStream("forge", events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
-      .toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+    assertStreamRoundTrips("forge", events)
 
   test("walker choice steps round trip the negotiation answers"):
     val red = PlayerId("red"); val blue = PlayerId("blue")
@@ -46,9 +43,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       DecisionAnswer.AcceptDeal, DecisionAnswer.DeclineDeal).map(answer =>
       WalkerStepRecorded("0.0.0", ChoicePayload("negotiation.deal", answer,
         red), Vector.empty, Vector.empty): OathEvent)
-    val encoded = GameEventWire.encodeStream("forge", events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
-      .toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+    assertStreamRoundTrips("forge", events)
 
   test("every generic walker decision answer round trips on the step and on " +
       "the park"):
@@ -78,15 +73,17 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
         ChoicePayload("league-treaty.distribute", distribute, player),
         Vector.empty, Vector.empty),
       WalkerParked(ActionRef.Forge, Vector("2"), answered,
-        Vector.empty, Vector.empty),
-      // Batch-1 Task 5: the only action that makes a start selection does not
-      // park, so this park is synthetic -- it exists to round-trip the field,
-      // which no production journal exercises yet.
+        Vector.empty, Vector.empty))
+    assertStreamRoundTrips("forge", events)
+
+  test("a parked Travel round trips its start selection"):
+    // Batch-1 Task 5: the only action that makes a start selection does not
+    // park, so this park is synthetic -- it exists to round-trip the field,
+    // which no production journal exercises yet.
+    val events = Vector[OathEvent](
       WalkerParked(ActionRef.Travel, Vector("0"), Vector.empty,
         Vector.empty, Vector(DecisionOptionRef.Site(SiteId("site:dest")))))
-    val encoded = GameEventWire.encodeStream("forge", events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
-      .toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+    assertStreamRoundTrips("forge", events)
 
   test("a procedure reference round-trips with its family, and a reference " +
       "under the wrong family or an unknown family is rejected"):
@@ -101,10 +98,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
         Vector.empty, Vector.empty, Vector.empty),
       WalkerCompleted(TriggeredProcedureRef.Oathkeeper),
       WalkerCompleted(ActionRef.UsePower(PowerId("denizen.silver-tongue"))))
-    val encoded = GameEventWire.encodeStream("families", events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index, event) }).toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      events)
+    val encoded = assertStreamRoundTrips("families", events)
     assert(ujson.read(encoded).arr.head.toString.contains(
       "\"family\":\"phase-transition\""))
     assert(ujson.read(encoded).arr(2).toString.contains(
@@ -139,10 +133,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       WalkerStepRecorded(index.toString,
         ChoicePayload("d", ChooseOneAnswer(ref), player), Vector.empty,
         Vector.empty): OathEvent }
-    val encoded = GameEventWire.encodeStream("refs", events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
-      .toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      events)
+    assertStreamRoundTrips("refs", events)
 
   test("a journalled answer carrying a deleted legacy tag is rejected with a " +
       "typed decode failure"):
@@ -151,7 +142,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       ChoicePayload("recover.choice",
         ChooseOneAnswer(DecisionOptionRef.Button("continue")), player),
       Vector.empty, Vector.empty)
-    val encoded = GameEventWire.encodeStream("legacy", Vector(RecordedEvent(0L, event))).toOption.get
+    val encoded = encodedStream("legacy", Vector(event))
     Vector("recover-choice", "recover-relic", "forge-assignment").foreach { tag =>
       val mutated = ujson.read(encoded).arr
       mutated.head("payload")("step")("payload")("kind") = tag

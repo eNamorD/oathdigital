@@ -23,11 +23,15 @@ class LogPageCodecSuite extends munit.FunSuite:
     assertEquals(LogPageCodec.decode(LogPageCodec.encode(dice)), Right(dice))
 
   test("a text span carries no id, value or unit on the wire"):
-    val json = ujson.read(LogPageCodec.encode(page))
-    val text = json("entries")(0)("spans")(1).obj
+    val oneSpan = LogPageWire("g", 0, 9, Vector(LogEntryWire(7, 0, "turn", 0,
+      Vector(LogSpanWire("text", "'s turn")))))
+    val json = ujson.read(LogPageCodec.encode(oneSpan))
+    val text = json("entries")(0)("spans")(0).obj
     assertEquals(text.keySet.toSet, Set("kind", "text"))
 
   test("an unexpected field is rejected at its path"):
+    // Entry 0 has ordinal 0 and entry 1 has ordinal 1, so the replace hits
+    // only entry 0 and the path is entries[0].
     val json = LogPageCodec.encode(page).replace("\"ordinal\":0",
       "\"ordinal\":0,\"extra\":1")
     assertEquals(LogPageCodec.decode(json).left.map(_.path),

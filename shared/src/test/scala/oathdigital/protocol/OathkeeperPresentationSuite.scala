@@ -28,6 +28,6 @@ class OathkeeperPresentationSuite extends munit.FunSuite:
     * from the model: this suite also compiles for Scala.js, where the model
     * is not on the frontend's source whitelist.
     */
-  test("the map covers every goal the model declares"):
+  test("the map has exactly the four printed goal keys"):
     assertEquals(OathkeeperPresentation.byGoal.keySet,
       Set("supremacy", "protection", "the-people", "devotion"))
