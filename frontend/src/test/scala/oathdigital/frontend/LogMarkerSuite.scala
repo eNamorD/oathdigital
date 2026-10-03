@@ -92,6 +92,7 @@ class LogMarkerSuite extends munit.FunSuite:
     assertEquals(timer.live, 0)
 
   test("a browser that refuses storage gives no store"):
+    // TestBrowser's localStorage getter throws, as a refusing browser does.
     val browser = new TestBrowser()
     try assertEquals(LogStore.browser, None)
     finally browser.close()

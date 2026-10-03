@@ -2,6 +2,7 @@ package oathdigital.frontend
 
 
 import munit.FunSuite
+import oathdigital.testkit.Unwrap.{accepted, present}
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -16,20 +17,22 @@ class HttpGameClientSuite extends FunSuite:
       Right(TransportResponse(200, projectionJson(8)))))
     val client = new TrustedHttpGameClient(transport)
     client.load("game /?", "seat-must-not-travel").flatMap { loaded =>
-      assertEquals(loaded.toOption.get.nextSequence, 7L)
+      assertEquals(accepted(loaded).nextSequence, 7L)
       client.preview("game /?", "seat-must-not-travel",
         MajorActionPreviewRequest(7, "trade", Map("resource" -> "favor")))
     }.flatMap { preview =>
-      assertEquals(preview.toOption.get.nextSequence, 7L)
+      assertEquals(accepted(preview).nextSequence, 7L)
       client.submit("game /?", "seat-must-not-travel", 7, GameIntent.RevealOwnedRelic("relic:a"))
     }.map { submitted =>
-      assertEquals(submitted.toOption.get.nextSequence, 8L)
-      assertEquals(transport.requests.map(r => r._1 -> r._2).toVector, Vector(
-        "GET" -> "/games/game%20%2F%3F/api",
-        "POST" -> "/games/game%20%2F%3F/api/preview",
-        "POST" -> "/games/game%20%2F%3F/api/commands"))
-      assertEquals(transport.requests.head._3, None)
-      assertEquals(ActorlessCommandCodec.decode(transport.requests.last._3.get),
+      assertEquals(accepted(submitted).nextSequence, 8L)
+      assertEquals(transport.requests.map(r => r.method -> r.url).toVector,
+        Vector(
+          "GET" -> "/games/game%20%2F%3F/api",
+          "POST" -> "/games/game%20%2F%3F/api/preview",
+          "POST" -> "/games/game%20%2F%3F/api/commands"))
+      assertEquals(transport.requests.head.body, None)
+      assertEquals(ActorlessCommandCodec.decode(
+        present(transport.requests.last.body, "the submitted command body")),
         Right(ActorlessCommandRequest(7, GameIntent.RevealOwnedRelic("relic:a"))))
       assert(!transport.requests.toString.contains("seat-must-not-travel"))
     }
@@ -42,7 +45,7 @@ class HttpGameClientSuite extends FunSuite:
       .map { result =>
         assert(result.left.toOption.exists(
           _.isInstanceOf[GameClientFailure.StalePosition]), result.toString)
-        assertEquals(transport.requests.map(_._1).toVector, Vector("POST"))
+        assertEquals(transport.requests.map(_.method).toVector, Vector("POST"))
       }
   test("pawn and adviser commands preserve explicit sequence and opaque IDs"):
     // Setup's pawn placement and adviser choice are generic walker decisions
@@ -80,30 +83,32 @@ class HttpGameClientSuite extends FunSuite:
         client.submit(
           "game-1",
           "red-exile",
-          pawn.toOption.get.nextSequence,
+          accepted(pawn).nextSequence,
           adviserCommand
         )
       }
       .map { _ =>
-        val setupBody = transport.requests.head._3.get
+        val setupBody = present(transport.requests.head.body,
+          "the pawn command body")
         assertEquals(ujson.read(setupBody).obj.keySet,
           Set("expectedNextSequence", "intent"))
         assertEquals(ActorlessCommandCodec.decode(setupBody),
           Right(ActorlessCommandRequest(1L, GameIntent.ResolveWalker(
             "setup.pawn-placement.red-exile",
             DecisionAnswerWire.ChooseOneWire("site", opaqueSite)))))
-        assert(transport.requests(1)._3.exists(_.contains(opaqueAdviser)))
-        assert(transport.requests(1)._3.exists(
+        assert(transport.requests(1).body.exists(_.contains(opaqueAdviser)))
+        assert(transport.requests(1).body.exists(
           _.contains("\"expectedNextSequence\":2")
         ))
       }
 
-  test("typed board-target actions decode sites and reject malformed refs"):
+  test("board-target actions decode sites and reject an unknown kind, a " +
+      "maximum over one and an extra field"):
     val actions = """[{"actionKind":"travel","prompt":"Choose a destination","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site","siteId":"site:c"},"label":"Site C","details":[]}]}]"""
     val json = projectionJson(sequence = 10)
       .replace("\"boardTargetActions\":[]",
         s"\"boardTargetActions\":$actions")
-    val decoded = GameJson.decodeProjection(json).toOption.get
+    val decoded = accepted(GameJson.decodeProjection(json))
       .boardTargetActions.head
     assertEquals(decoded.minimum -> decoded.maximum, 1 -> 1)
     assertEquals(decoded.candidates.map(_.target), Vector(
@@ -177,7 +182,7 @@ class HttpGameClientSuite extends FunSuite:
         "\"nextSequence\":9007199254740991"
       )
     )
-    assertEquals(maximum.toOption.get.nextSequence, 9007199254740991L)
+    assertEquals(accepted(maximum).nextSequence, 9007199254740991L)
 
     val unsafe = GameJson.decodeProjection(
       projectionJson(sequence = 1).replace(
@@ -266,7 +271,7 @@ class HttpGameClientSuite extends FunSuite:
       gameId: String = "game-1",
       activePlayer: String = "red-exile"
   ): GameProjection =
-    GameJson.decodeProjection(
+    accepted(GameJson.decodeProjection(
       projectionJson(sequence = 2).replace(
         "\"gameId\":\"game-1\"",
         s"\"gameId\":\"$gameId\""
@@ -274,14 +279,14 @@ class HttpGameClientSuite extends FunSuite:
         "\"activeParticipantId\":\"red-exile\"",
         s"\"activeParticipantId\":\"$activePlayer\""
       )
-    ).toOption.get
+    ))
 
   private val logPage = """{"gameId":"g","after":3,"nextSequence":5,"entries":[{"sequence":3,"ordinal":0,"kind":"turn","depth":0,"spans":[{"kind":"player","text":"Red","id":"red"},{"kind":"text","text":"'s turn"}]}]}"""
 
   test("the trusted client reads the log after a cursor on the seat's path"):
     val transport = new StubTransport(Vector(Right(TransportResponse(200, logPage))))
     new TrustedHttpGameClient(transport).loadLog("my game", "ignored", 3L).map { result =>
-      assertEquals(transport.requests.map(r => r._1 -> r._2).toVector,
+      assertEquals(transport.requests.map(r => r.method -> r.url).toVector,
         Vector("GET" -> "/games/my%20game/api/log/3"))
       assertEquals(result.map(_.entries.map(_.sequence)), Right(Vector(3L)))
     }
@@ -289,7 +294,7 @@ class HttpGameClientSuite extends FunSuite:
   test("the development client reads the log for the selected seat"):
     val transport = new StubTransport(Vector(Right(TransportResponse(200, logPage))))
     new HttpGameClient(transport).loadLog("g", "red exile", 0L).map { result =>
-      assertEquals(transport.requests.map(_._2).toVector,
+      assertEquals(transport.requests.map(_.url).toVector,
         Vector("/api/dev/first-games/g/log/0?playerId=red%20exile"))
       assert(result.isRight)
     }
@@ -305,17 +310,19 @@ class HttpGameClientSuite extends FunSuite:
       client.loadLog("g", "", 0L)
     }.map(garbled => assert(garbled.isLeft))
 
+  private final case class RecordedRequest(method: String, url: String,
+      body: Option[String])
+
   private final class StubTransport(
       responses: Vector[Either[GameClientFailure, TransportResponse]]
   ) extends JsonTransport:
     private val remaining = mutable.Queue(responses*)
-    val requests =
-      mutable.ArrayBuffer.empty[(String, String, Option[String])]
+    val requests = mutable.ArrayBuffer.empty[RecordedRequest]
 
     override def request(
         method: String,
         url: String,
         body: Option[String]
     ) =
-      requests += ((method, url, body))
+      requests += RecordedRequest(method, url, body)
       Future.successful(remaining.dequeue())

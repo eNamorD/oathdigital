@@ -2,9 +2,9 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{DecisionAnswerWire, DistributeAmountWire,
   GameIntent => Intent}
+import Dom.{click, one}
 import ParkedDecision.Surface
 import org.scalajs.dom
-import scala.scalajs.js
 
 /** The Distribute panel at the DOM: rows, steppers, Shift+click and the
   * confirm button's enablement, all read off the rendered tree.
@@ -31,17 +31,8 @@ class DistributePanelRenderSuite extends munit.FunSuite:
       canControl, panel, ui)
     panel
 
-  private def one(root: dom.Element, selector: String): dom.Element =
-    val found = root.querySelectorAll(selector)
-    assertEquals(found.length, 1, s"expected exactly one $selector")
-    found(0).asInstanceOf[dom.Element]
-
   private def amount(panel: dom.Element, item: String): String =
     one(panel, s"""[data-option-id="$item"] .distribute-amount""").textContent
-
-  private def click(element: dom.Element, shift: Boolean = false): Unit =
-    element.dispatchEvent(new dom.MouseEvent("click", js.Dynamic.literal(
-      bubbles = true, shiftKey = shift).asInstanceOf[dom.MouseEventInit]))
 
   test("the panel renders one row per slot at its suggested amount"):
     val panel = render(new RecordingControls(), opened())
@@ -58,24 +49,29 @@ class DistributePanelRenderSuite extends munit.FunSuite:
   test("a plain click steps by one and a Shift+click drains or fills"):
     val ui = new RecordingControls()
     def staged(): dom.Element = render(ui, ui.drafts.distribute)
+    // Arcane opens at 2, so one step down is 1.
     click(one(render(ui, opened()),
       """[data-option-id="favor-bank:arcane"] .distribute-decrement"""))
     assertEquals(amount(staged(), "favor-bank:arcane"), "1")
     click(one(staged(), """[data-option-id="favor-bank:arcane"] .distribute-decrement"""),
       shift = true)
     assertEquals(amount(staged(), "favor-bank:arcane"), "0")
+    // Nothing is placed now, so filling nomad takes the 2 that remain.
     click(one(staged(), """[data-option-id="favor-bank:nomad"] .distribute-increment"""),
       shift = true)
     assertEquals(amount(staged(), "favor-bank:nomad"), "2")
-    assert(ui.staged.size >= 3)
+    // One stage per click.
+    assertEquals(ui.staged.size, 3)
 
   test("confirm is enabled exactly when nothing remains and submits the amounts"):
     val ui = new RecordingControls()
+    // Arcane 2 steps down to 1, leaving 1 to place, so confirm is disabled.
     click(one(render(ui, opened()),
       """[data-option-id="favor-bank:arcane"] .distribute-decrement"""))
     val short = render(ui, ui.drafts.distribute)
     val confirm = one(short, ".distribute-confirm").asInstanceOf[dom.html.Button]
     assert(confirm.disabled)
+    // Nomad 0 steps up to 1: arcane 1 + nomad 1 places all 2.
     click(one(short, """[data-option-id="favor-bank:nomad"] .distribute-increment"""))
     val ready = one(render(ui, ui.drafts.distribute), ".distribute-confirm")
       .asInstanceOf[dom.html.Button]

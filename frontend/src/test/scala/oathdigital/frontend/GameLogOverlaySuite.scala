@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
+import Dom.{click, press}
 import org.scalajs.dom
-import scala.scalajs.js
 import oathdigital.protocol.projection.{LogEntryWire, LogSpanWire}
 
 /** The Log pane's heading opens the whole log over the table (spec,
@@ -19,15 +19,13 @@ class GameLogOverlaySuite extends munit.FunSuite:
 
   private val entries = Vector(entry(0, "round", 0, "Setup"),
     entry(3, "turn", 0, "Red's turn"), entry(5, "action", 1, "Started Travel"))
+  private val searched = entry(8, "action", 1, "Started Search")
 
-  private def press(node: dom.Element, key: String): Unit =
-    node.dispatchEvent(new dom.KeyboardEvent("keydown",
-      js.Dynamic.literal(key = key, bubbles = true)
-        .asInstanceOf[dom.KeyboardEventInit]))
+  /** Where the shell keeps Red's place in game g's log. */
+  private val redSeenKey = "oath.log.seen.g.red"
 
-  private def click(node: dom.Element): Unit =
-    node.dispatchEvent(new dom.MouseEvent("click",
-      new dom.MouseEventInit { bubbles = true }))
+  /** An observer has no seat, so its key ends at the game. */
+  private val observerSeenKey = "oath.log.seen.g."
 
   private def withShell(store: Option[LogStore] = None)
       (body: (TestBrowser, GameTableShell) => Unit): Unit =
@@ -138,7 +136,8 @@ class GameLogOverlaySuite extends munit.FunSuite:
     }
 
   test("the stored marker places the divider in the pane and the overlay alike"):
-    val store = FakeStore(Map("oath.log.seen.g.red" -> "3"))
+    // Marker 3 means seen through Red's turn, the second entry.
+    val store = FakeStore(Map(redSeenKey -> entries(1).sequence.toString))
     withShell(Some(store)) { (browser, shell) =>
       shell.showLog("g", "red", Vector.empty, Map.empty)
       shell.showLog("g", "red", entries, Map.empty)
@@ -155,19 +154,20 @@ class GameLogOverlaySuite extends munit.FunSuite:
       shell.showLog("g", "red", entries, Map.empty)
       // jsdom lays nothing out, so every list is at its end.
       browser.tick()
-      assertEquals(store.values, Map("oath.log.seen.g.red" -> "5"))
-      shell.showLog("g", "red", entries :+ entry(8, "action", 1, "Started Search"),
-        Map.empty)
+      assertEquals(store.values,
+        Map(redSeenKey -> entries.last.sequence.toString))
+      shell.showLog("g", "red", entries :+ searched, Map.empty)
       dom.window.dispatchEvent(new dom.Event("pagehide"))
-      assertEquals(store.values, Map("oath.log.seen.g.red" -> "8"))
+      assertEquals(store.values, Map(redSeenKey -> searched.sequence.toString))
     }
 
   test("an observer seat keeps no marker and sees no divider"):
-    val store = FakeStore(Map("oath.log.seen.g." -> "3"))
+    val store = FakeStore(Map(observerSeenKey -> entries(1).sequence.toString))
     withShell(Some(store)) { (browser, shell) =>
       shell.showLog("g", "", Vector.empty, Map.empty)
       shell.showLog("g", "", entries, Map.empty)
       assertEquals(browser.mount.querySelectorAll(".log-divider").length, 0)
       browser.tick()
-      assertEquals(store.values, Map("oath.log.seen.g." -> "3"))
+      assertEquals(store.values,
+        Map(observerSeenKey -> entries(1).sequence.toString))
     }

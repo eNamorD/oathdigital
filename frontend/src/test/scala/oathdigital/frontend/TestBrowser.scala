@@ -64,5 +64,9 @@ private[frontend] final class TestBrowser(search: String = ""):
   def urls: Vector[String] = browser.urls.asInstanceOf[js.Array[String]].toVector
   def copied: Vector[String] = browser.copied.asInstanceOf[js.Array[String]].toVector
   def close(): Unit = { browser.close(); () }
+  /** Lets the Future callbacks queued so far run: each of 12 chained hops
+    * gives them one more turn of the JS microtask queue, enough for the
+    * longest callback chain the UI suites wait on.
+    */
   def settle: Future[Unit] = (1 to 12).foldLeft(Future.successful(())):
     (previous, _) => previous.flatMap(_ => Future.successful(()))

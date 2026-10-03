@@ -2,6 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.MajorActionPreviewResponse
+import TestProjections.actingProjection
 import org.scalajs.dom
 
 /** The prompt the action pane reports is the text the old DOM scrape
@@ -12,14 +13,14 @@ import org.scalajs.dom
   */
 class ActionPanePromptSuite extends munit.FunSuite:
   private val context = BoardSelectionContext("game", "red", 1L)
-  private val travel = BoardTargetAction("travel", "Choose a destination", 1, 1,
-    autoActivate = true, Vector(BoardTargetCandidate(
+  private val travel = BoardTargetAction("travel", "Choose a destination",
+    minimum = 1, maximum = 1, autoActivate = true, Vector(BoardTargetCandidate(
       BoardTargetRef.Site("site:woods"), "Deep Woods", Vector.empty)))
-  private def projection(open: Boolean): GameProjection =
-    GameProjection("game", 1L, "act", Some("red"),
-      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-      Vector.empty, Vector.empty, Vector.empty, ready = true, completed = false,
-      actionSelectionOpen = open, boardTargetActions = Vector(travel))
+  private def projection(open: Boolean,
+      offered: Vector[BoardTargetAction]): GameProjection =
+    actingProjection(
+      players = Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)))
+      .copy(actionSelectionOpen = open, boardTargetActions = offered)
   private val presentation = ServerUiSupport.ViewerPresentation(
     showGameplayControls = true, None, None, playerId = "red")
   private def pane(value: GameProjection, drafts: SessionDrafts)
@@ -34,23 +35,28 @@ class ActionPanePromptSuite extends munit.FunSuite:
   test("the prompt is the active board target's instruction"):
     val drafts = SessionDrafts.empty.copy(boardTargets = Some(
       BoardTargetSelectionState(context, Vector(travel), Some("travel"), Set.empty)))
-    val result = pane(projection(open = false), drafts)
+    val result = pane(projection(open = false, offered = Vector(travel)),
+      drafts)
     assertEquals(result.prompt, "Choose a destination")
     assertEquals(result.prompt, scraped(result.element))
 
   test("the prompt is the modifier confirm while ordering"):
-    val draft = ModifierFlowDraft(None, Some("travel"), Map.empty,
-      MajorActionPreviewResponse(1L, "travel", Vector.empty, Vector.empty,
-        Vector.empty),
-      ModifierSelectionState.reconcile(None,
+    val draft = ModifierFlowDraft(command = None, actionKind = Some("travel"),
+      baseParameters = Map.empty,
+      preview = MajorActionPreviewResponse(nextSequence = 1L, action = "travel",
+        modifiers = Vector.empty, ignoredRules = Vector.empty,
+        targets = Vector.empty),
+      selection = ModifierSelectionState.reconcile(None,
         ModifierSelectionContext("game", "red", 1L, "travel"), Vector.empty, "p"),
-      ModifierFlowStage.Ordering)
-    val result = pane(projection(open = true),
+      stage = ModifierFlowStage.Ordering)
+    val result = pane(projection(open = true, offered = Vector(travel)),
       SessionDrafts.empty.copy(modifiers = Some(draft)))
     assertEquals(result.prompt, "Confirm modifier order")
     assertEquals(result.prompt, scraped(result.element))
 
   test("no question in flight is an empty prompt"):
-    val result = pane(projection(open = true), SessionDrafts.empty)
+    // A Travel target is offered but not activated, so no question is asked.
+    val result = pane(projection(open = true, offered = Vector(travel)),
+      SessionDrafts.empty)
     assertEquals(result.prompt, "")
     assertEquals(result.prompt, scraped(result.element))

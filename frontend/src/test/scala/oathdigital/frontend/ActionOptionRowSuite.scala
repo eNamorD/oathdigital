@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
-
+import TestProjections.actingProjection
 import org.scalajs.dom
 
 /** Action Selection lists each option on its own line: a row of buttons
@@ -12,20 +12,28 @@ import org.scalajs.dom
   * others rather than loose above End Act.
   */
 class ActionOptionRowSuite extends munit.FunSuite:
+  /** Silver Tongue's catalog id. */
+  private val silverTongueId = "92"
   private val silverTongue = PhasePowerState("denizen.silver-tongue",
-    DecisionOptionState("denizen", "92", "Silver Tongue"),
+    DecisionOptionState("denizen", silverTongueId, "Silver Tongue"),
     "Silver Tongue", "Take a favor.")
 
+  /** The Act pane for Red. Unless `legalControls` says otherwise she may
+    * only Recover (the one major row). She stands at a site with relics to
+    * peek at and up to 2 warbands to move onto the site and 1 off it (the
+    * minor rows: Peek, then two warband moves).
+    */
   private def panel(powers: Vector[PhasePowerState] = Vector.empty,
       legalControls: Vector[String] = Vector("beginRecover")): dom.Element =
     ActionDecisionRenderer.actionsPanel(
-      GameProjection("game", 1L, "act", Some("red"),
-        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-        Vector.empty, Vector.empty, legalControls, ready = true,
-        completed = false, actionSelectionOpen = true,
+      actingProjection(
+        players = Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
+        legalControls = legalControls).copy(
+        actionSelectionOpen = true,
         phasePowers = powers,
         minorActions = Some(MinorActionsState(Vector.empty,
-          canPeekSiteRelics = true, Vector.empty, Some("site:a"), 2, 1))),
+          canPeekSiteRelics = true, Vector.empty, Some("site:a"),
+          maxBoardToSite = 2, maxSiteToBoard = 1))),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
         None, playerId = "red"),
       ParkedDecision.Routed(None, None), canControl = true, SessionDrafts.empty,
@@ -45,7 +53,8 @@ class ActionOptionRowSuite extends munit.FunSuite:
 
   test("a power's action is listed as a minor action, not beside End Act"):
     val acting = panel(Vector(silverTongue),
-      Vector("beginRecover", "usePower:denizen.silver-tongue:92"))
+      Vector("beginRecover",
+        s"usePower:denizen.silver-tongue:$silverTongueId"))
     assertEquals(acting.querySelectorAll(
       ".action-group-minor .phase-power").length, 1)
     // Nothing is left loose: every power button the panel draws is inside a
@@ -54,6 +63,7 @@ class ActionOptionRowSuite extends munit.FunSuite:
     assert(rows("minor", acting).map(_.textContent).contains("Silver Tongue"))
 
   test("a warband move keeps its count and its button on one row"):
+    // Skip the Peek row; the other two minor rows are the warband moves.
     val moves = rows("minor").drop(1)
     assertEquals(moves.length, 2)
     moves.foreach { row =>

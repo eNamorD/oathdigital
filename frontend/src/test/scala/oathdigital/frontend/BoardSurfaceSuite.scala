@@ -2,9 +2,10 @@ package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent}
+import Dom.{click, one, press}
 import ParkedDecision.{Routed, Surface}
+import TestProjections.actingProjection
 import org.scalajs.dom
-import scala.scalajs.js
 
 /** The board as the surface for a parked decision. A site is picked by
   * clicking it; a card inside the site is read by clicking it; the two never
@@ -37,15 +38,15 @@ class BoardSurfaceSuite extends munit.FunSuite:
 
   private def projection(parked: Option[WalkerDecisionState] = Some(decision))
       : GameProjection =
-    GameProjection("game", 1L, "setup-walker-decision", Some("red"), Vector(red),
-      Vector(GameRegion("cradle", Vector(woods, city))), Vector.empty,
-      Vector.empty, ready = false, completed = false, walkerDecision = parked)
+    actingProjection(phase = "setup-walker-decision", players = Vector(red),
+      world = Vector(GameRegion("cradle", Vector(woods, city))), ready = false)
+      .copy(walkerDecision = parked)
 
   private def surface(confirm: Boolean): Surface.Board =
     Surface.Board(decision, query, confirm)
 
-  private def world(ui: RecordingControls, board: Option[Surface.Board] =
-      Some(surface(confirm = true)), draft: Option[WalkerBoardDraft] = None,
+  private def world(ui: RecordingControls, board: Option[Surface.Board],
+      draft: Option[WalkerBoardDraft] = None,
       targets: Option[BoardTargetSelectionState] = None): dom.Element =
     WorldBoardRenderer.world(projection(), board, canControl = true,
       SessionDrafts.empty.copy(context = Some(context), board = draft,
@@ -60,21 +61,8 @@ class BoardSurfaceSuite extends munit.FunSuite:
       SessionDrafts.empty.copy(context = Some(context), board = draft), ui)
     panel
 
-  private def one(root: dom.Element, selector: String): dom.Element =
-    val found = root.querySelectorAll(selector)
-    assertEquals(found.length, 1, s"expected one $selector")
-    found(0).asInstanceOf[dom.Element]
-
   private def site(root: dom.Element, label: String): dom.Element =
     one(root, s"""article[aria-label="$label"]""")
-
-  private def click(node: dom.Element): Unit =
-    node.dispatchEvent(new dom.MouseEvent("click", js.Dynamic.literal(
-      bubbles = true).asInstanceOf[dom.MouseEventInit]))
-
-  private def press(node: dom.Element, key: String): Unit =
-    node.dispatchEvent(new dom.KeyboardEvent("keydown", js.Dynamic.literal(
-      bubbles = true, key = key).asInstanceOf[dom.KeyboardEventInit]))
 
   /** Records what the board-selection path chooses, which `RecordingControls`
     * drops.
@@ -86,21 +74,24 @@ class BoardSurfaceSuite extends munit.FunSuite:
 
   test("a click on a card inside a site reads the card, not the site"):
     val ui = new RecordingControls()
-    click(one(world(ui), "button.card-face"))
+    val root = world(ui, Some(surface(confirm = true)))
+    click(one(root, "button.card-face"))
     assertEquals(ui.staged, Vector.empty)
     assertEquals(ui.submitted, Vector.empty)
 
   test("Enter on a card inside a site does not pick the site"):
     val ui = new RecordingControls()
-    press(one(world(ui), "button.card-face"), "Enter")
+    val root = world(ui, Some(surface(confirm = true)))
+    press(one(root, "button.card-face"), "Enter")
     assertEquals(ui.staged, Vector.empty)
     assertEquals(ui.submitted, Vector.empty)
 
   test("a card click inside a board-selection target does not choose it"):
     val ui = new SelectingView
     val targets = BoardTargetSelectionState(context,
-      Vector(BoardTargetAction("travel", "Choose a destination", 1, 1,
-        autoActivate = true, Vector(BoardTargetCandidate(
+      Vector(BoardTargetAction("travel", "Choose a destination",
+        minimum = 1, maximum = 1, autoActivate = true,
+        Vector(BoardTargetCandidate(
           BoardTargetRef.Site("site:woods"), "Deep Woods", Vector.empty)))),
       Some("travel"), Set.empty)
     val root = world(ui, board = None, targets = Some(targets))
@@ -111,24 +102,30 @@ class BoardSurfaceSuite extends munit.FunSuite:
 
   test("with confirm, a site click drafts the pick and submits nothing"):
     val ui = new RecordingControls()
-    click(site(world(ui), "Deep Woods"))
+    val root = world(ui, Some(surface(confirm = true)))
+    click(site(root, "Deep Woods"))
     assertEquals(ui.drafts.board, Some(woodsDraft))
     assertEquals(ui.submitted, Vector.empty)
     assertEquals(ui.staged.size, 1)
 
   test("a second click on the drafted site clears the draft"):
     val ui = new RecordingControls()
-    click(site(world(ui, draft = Some(woodsDraft)), "Deep Woods"))
+    val root = world(ui, Some(surface(confirm = true)),
+      draft = Some(woodsDraft))
+    click(site(root, "Deep Woods"))
     assertEquals(ui.staged, Vector(Draft.Board(None)))
 
   test("a click on another site moves the draft"):
     val ui = new RecordingControls()
-    click(site(world(ui, draft = Some(woodsDraft)), "Ancient City"))
+    val root = world(ui, Some(surface(confirm = true)),
+      draft = Some(woodsDraft))
+    click(site(root, "Ancient City"))
     assertEquals(ui.drafts.board, Some(woodsDraft.copy(option = cityOption)))
 
   test("the drafted site is drawn selected"):
     val ui = new RecordingControls()
-    val root = world(ui, draft = Some(woodsDraft))
+    val root = world(ui, Some(surface(confirm = true)),
+      draft = Some(woodsDraft))
     assert(site(root, "Deep Woods").getAttribute("class")
       .contains("board-target-selected"))
     assertEquals(site(root, "Deep Woods").getAttribute("aria-pressed"), "true")
@@ -166,7 +163,8 @@ class BoardSurfaceSuite extends munit.FunSuite:
     assertEquals(one(panel, ".board-draft").textContent,
       "Choose a site on the board.")
 
-  test("a draft survives a refresh and dies with its decision or sequence"):
+  test("a draft survives a refresh unchanged; it dies with its sequence, " +
+      "decision id, options or parked decision; none appears from nothing"):
     val kept = WalkerBoardDraft.reconcile(Some(woodsDraft), context,
       Some(decision))
     assertEquals(kept, Some(woodsDraft))

@@ -9,17 +9,21 @@ class DistributeDecisionStateSuite extends munit.FunSuite:
     DistributeSlotBounds("arcane", 0, 2),
     DistributeSlotBounds("discord", 0, 2),
     DistributeSlotBounds("nomad", 1, 6))
-  private val atMinimums = DistributeDecisionState.opened(slots, 5, 5, None)
+  // Five to place in all; nomad's minimum of 1 is placed on opening.
+  private val atMinimums = DistributeDecisionState.opened(slots,
+    minTotal = 5, maxTotal = 5, suggested = None)
 
   test("a draft with no suggestions opens at the minimums"):
     assertEquals(slots.map(s => atMinimums.amount(s.item)), Vector(0, 0, 1))
+    // 5 to place, less nomad's minimum of 1, leaves 4.
     assertEquals(atMinimums.remaining, 4)
     assert(!atMinimums.canConfirm)
 
   test("a draft with suggestions opens at them"):
-    val suggested = DistributeDecisionState.opened(slots, 5, 5,
-      Some(Vector(2, 2, 1)))
+    val suggested = DistributeDecisionState.opened(slots,
+      minTotal = 5, maxTotal = 5, suggested = Some(Vector(2, 2, 1)))
     assertEquals(slots.map(s => suggested.amount(s.item)), Vector(2, 2, 1))
+    // 2 + 2 + 1 places all 5, so nothing remains.
     assert(suggested.canConfirm)
 
   test("increment stops at the slot maximum and decrement at its minimum"):
@@ -30,16 +34,19 @@ class DistributeDecisionStateSuite extends munit.FunSuite:
     assertEquals(atMinimums.increment("missing"), atMinimums)
 
   test("increment stops when nothing remains"):
+    // Filling nomad places the 4 that remain, so nothing remains.
     val spent = atMinimums.fill("nomad")
     assertEquals(spent.remaining, 0)
     assertEquals(spent.increment("arcane"), spent)
 
   test("fill is limited by what remains"):
+    // Nomad holds 1 and 4 remain, so the fill raises it to 5.
     val partly = atMinimums.fill("nomad")
     assertEquals(partly.amount("nomad"), 5)
     assertEquals(partly.remaining, 0)
 
   test("fill is limited by the slot maximum"):
+    // Arcane's maximum is 2, below the 4 that remain; 4 - 2 leaves 2.
     val capped = atMinimums.fill("arcane")
     assertEquals(capped.amount("arcane"), 2)
     assertEquals(capped.remaining, 2)
@@ -49,17 +56,20 @@ class DistributeDecisionStateSuite extends munit.FunSuite:
     assertEquals(spent.fill("discord"), spent)
 
   test("drain lowers a slot to its minimum"):
+    // Nomad's minimum is 1; draining returns the 4 it was filled with.
     val drained = atMinimums.fill("nomad").drain("nomad")
     assertEquals(drained.amount("nomad"), 1)
     assertEquals(drained.remaining, 4)
 
   test("confirmation is enabled exactly when nothing remains"):
     assert(!atMinimums.increment("arcane").canConfirm)
+    // Arcane 2 + discord 2 + nomad 1 places all 5.
     assert(atMinimums.fill("arcane").fill("discord").canConfirm)
 
   test("a range confirms at any allocation between its minimum and maximum"):
     val two = Vector(DistributeSlotBounds("a", 0, 3), DistributeSlotBounds("b", 0, 3))
-    val open = DistributeDecisionState.opened(two, 1, 3, None)
+    val open = DistributeDecisionState.opened(two,
+      minTotal = 1, maxTotal = 3, suggested = None)
     assert(!open.canConfirm)
     val one = open.increment("a")
     assert(one.canConfirm)

@@ -1,5 +1,6 @@
 package oathdigital.frontend
 
+import Dom.all
 import org.scalajs.dom
 
 /** The seven faces the engine projects for both dice, drawn as the symbols
@@ -7,9 +8,6 @@ import org.scalajs.dom
   * rolled.
   */
 class DieFaceSuite extends munit.FunSuite:
-  private def all(node: dom.Element, selector: String): Vector[dom.Element] =
-    node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
-
   private def glyphs(node: dom.Element): Vector[String] =
     all(node, ".token-glyph").map(_.getAttribute("aria-label"))
 
@@ -30,11 +28,17 @@ class DieFaceSuite extends munit.FunSuite:
     assertEquals(glyphs(DieFace.face("doubler")), Vector.empty)
     assertEquals(DieFace.face("doubler").textContent, "×2")
 
-  test("every face keeps the words it used to be printed as"):
-    assertEquals(DieFace.face("two-swords-skull").getAttribute("aria-label"),
-      "two swords and a skull")
-    assertEquals(DieFace.face("blank").getAttribute("aria-label"), "blank")
-    assertEquals(DieFace.face("doubler").getAttribute("aria-label"), "doubler")
+  test("each face's accessible name is its printed words"):
+    Vector("one-sword" -> "one sword", "hollow-sword" -> "hollow sword",
+      "two-swords-skull" -> "two swords and a skull",
+      "one-shield" -> "one shield", "two-shields" -> "two shields",
+      "blank" -> "blank", "doubler" -> "doubler").foreach {
+      (face, printedWords) =>
+        assertEquals(DieFace.face(face).getAttribute("aria-label"),
+          printedWords)
+    }
+
+  test("a face is an img"):
     assertEquals(DieFace.face("one-shield").getAttribute("role"), "img")
 
   /** A face the catalog grows later is shown as itself rather than dropped,

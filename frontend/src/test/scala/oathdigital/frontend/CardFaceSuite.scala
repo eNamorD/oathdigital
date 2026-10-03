@@ -1,5 +1,6 @@
 package oathdigital.frontend
 
+import Dom.{all, firstMatch}
 import org.scalajs.dom
 
 /** `CardFace` is the one place a projected `CardDetails` becomes DOM, so
@@ -7,12 +8,6 @@ import org.scalajs.dom
   * Runs under jsdom (`Test / jsEnv` in `build.sbt`).
   */
 class CardFaceSuite extends munit.FunSuite:
-  private def all(node: dom.Element, selector: String): Vector[dom.Element] =
-    node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
-
-  private def one(node: dom.Element, selector: String): Option[dom.Element] =
-    all(node, selector).headOption
-
   private val faceUp = CardDetails("d1", "denizen", "Old Oak",
     suit = Some("order"), restrictions = Some("site-only"),
     rulesText = Some("**ACTION:** Gain [favor]."),
@@ -38,9 +33,10 @@ class CardFaceSuite extends munit.FunSuite:
     }
 
   test("a face-up card shows its summary with no field names"):
-    val node = CardFace.render(faceUp)
-    assertEquals(one(node, ".card-name").map(_.textContent), Some("Old Oak"))
-    assertEquals(one(node, ".card-restriction").map(_.textContent),
+    val node = CardFace.render(faceUp.copy(favor = 2, secrets = 1))
+    assertEquals(firstMatch(node, ".card-name").map(_.textContent),
+      Some("Old Oak"))
+    assertEquals(firstMatch(node, ".card-restriction").map(_.textContent),
       Some("site-only"))
     assertEquals(all(node, ".card-tokens .token-glyph")
       .map(_.getAttribute("aria-label")), Vector("favor", "secret"))
@@ -51,13 +47,11 @@ class CardFaceSuite extends munit.FunSuite:
 
   test("a face carries its initials for the zoomed-out map, out of the accessible name"):
     val node = CardFace.render(faceUp)
-    val short = one(node, ".card-name-short")
+    val short = firstMatch(node, ".card-name-short")
     assertEquals(short.map(_.textContent), Some("OO"))
     assertEquals(short.flatMap(s => Option(s.getAttribute("aria-hidden"))), Some("true"))
     assertEquals(node.getAttribute("aria-label"), "Old Oak")
     assertEquals(node.getAttribute("title"), "Old Oak")
-    assert(!CardFace.render(hidden).hasAttribute("title"))
-    assertEquals(one(CardFace.render(hidden), ".card-name-short"), None)
 
   test("initials take each word's first character as written, or a lone word's first two"):
     assertEquals(CardFace.initials("Rotting Fortress"), "RF")
@@ -85,7 +79,8 @@ class CardFaceSuite extends munit.FunSuite:
     * it belongs to the overlay, not to the little face.
     */
   test("a relic face carries its defense as dice, and not its printed value"):
-    val relic = CardFace.render(knowable.copy(orientation = Some("face-up")))
+    val relic = CardFace.render(knowable.copy(orientation = Some("face-up"),
+      relicValue = Some(3), defense = Some(1)))
     assertEquals(all(relic, ".card-defense .token-glyph")
       .map(_.getAttribute("aria-label")), Vector("defense die"))
     assertEquals(relic.querySelector(".card-defense").getAttribute("aria-label"),
@@ -102,19 +97,24 @@ class CardFaceSuite extends munit.FunSuite:
     val node = CardFace.render(hidden)
     assert(node.classList.contains("card-face-down"))
     assert(!node.classList.contains("card-face-knowable"))
-    assertEquals(one(node, ".card-back-letter").map(_.textContent), Some("V"))
+    assertEquals(firstMatch(node, ".card-back-letter").map(_.textContent),
+      Some("V"))
     assertEquals(node.getAttribute("aria-label"), "Facedown vision")
     assertEquals(all(node, ".card-name"), Vector.empty)
     assertEquals(all(node, ".card-header"), Vector.empty)
     assertEquals(node.textContent, "V")
+    assert(!node.hasAttribute("title"))
+    assertEquals(firstMatch(node, ".card-name-short"), None)
 
   /** The suit word is gone: the glyph carries the suit, and it is coloured by
     * the same custom property the word used to be.
     */
   test("a suited card leads with its suit glyph, then its name"):
     val node = CardFace.render(faceUp)
-    val header = one(node, ".card-header").getOrElse(fail("no card header"))
-    val glyph = one(header, ".token-glyph").getOrElse(fail("no suit glyph"))
+    val header = firstMatch(node, ".card-header")
+      .getOrElse(fail("no card header"))
+    val glyph = firstMatch(header, ".token-glyph")
+      .getOrElse(fail("no suit glyph"))
     assertEquals(glyph.getAttribute("aria-label"), "order suit")
     assertEquals(glyph.getAttribute("class"), "token-glyph token-suit-order")
     assertEquals(header.firstChild, glyph)
@@ -126,18 +126,22 @@ class CardFaceSuite extends munit.FunSuite:
     assert(!node.textContent.contains("order"), node.textContent)
 
   test("a card with no suit shows its name alone in the header"):
-    val header = one(CardFace.render(knowable.copy(orientation = Some("face-up"),
-      defense = None)), ".card-header").getOrElse(fail("no card header"))
+    val bare = CardFace.render(knowable.copy(orientation = Some("face-up"),
+      defense = None))
+    val header = firstMatch(bare, ".card-header")
+      .getOrElse(fail("no card header"))
     assertEquals(all(header, ".token-glyph"), Vector.empty)
-    assertEquals(one(header, ".card-name").map(_.textContent), Some("Ancient Crown"))
-    assertEquals(header.firstChild, one(header, ".card-name").orNull)
+    assertEquals(firstMatch(header, ".card-name").map(_.textContent),
+      Some("Ancient Crown"))
+    assertEquals(header.firstChild, firstMatch(header, ".card-name").orNull)
 
   /** The dice ride the header's right end, so a name that wraps is laid out
     * beside them rather than under them.
     */
   test("defense dice sit at the end of the header, after the name"):
-    val header = one(CardFace.render(knowable.copy(orientation = Some("face-up"))),
-      ".card-header").getOrElse(fail("no card header"))
+    val relic = CardFace.render(knowable.copy(orientation = Some("face-up")))
+    val header = firstMatch(relic, ".card-header")
+      .getOrElse(fail("no card header"))
     assertEquals(header.lastChild.asInstanceOf[dom.Element].getAttribute("class"),
       "card-defense")
 
@@ -165,19 +169,23 @@ class CardFaceSuite extends munit.FunSuite:
       "Facedown denizen", orientation = Some("face-down"), hidden = true))
     val visionBack = CardFace.render(CardDetails("hidden", "vision",
       "Facedown vision", orientation = Some("face-down"), hidden = true))
-    assertEquals(one(denizenBack, ".card-back-letter").map(_.textContent), Some("D"))
-    assertEquals(one(visionBack, ".card-back-letter").map(_.textContent), Some("V"))
+    assertEquals(firstMatch(denizenBack, ".card-back-letter")
+      .map(_.textContent), Some("D"))
+    assertEquals(firstMatch(visionBack, ".card-back-letter")
+      .map(_.textContent), Some("V"))
 
   test("a knowable back carries the pip and a hover-only summary"):
     val node = CardFace.render(knowable)
     assert(node.classList.contains("card-face-down"))
     assert(node.classList.contains("card-face-knowable"))
-    assertEquals(one(node, ".card-back-letter").map(_.textContent), Some("R"))
+    assertEquals(firstMatch(node, ".card-back-letter").map(_.textContent),
+      Some("R"))
     assertEquals(all(node, ".card-knowable-pip").size, 1)
-    assertEquals(one(node, ".card-hover-summary .card-name").map(_.textContent),
+    assertEquals(firstMatch(node, ".card-hover-summary .card-name")
+      .map(_.textContent),
       Some("Ancient Crown"))
 
-  test("the unimplemented marker survives the redesign"):
+  test("an unimplemented card is marked by class, accessible name and badge"):
     val node = CardFace.render(faceUp.copy(implemented = false))
     assert(node.classList.contains("card-face-unimplemented"))
     assertEquals(node.getAttribute("aria-label"), "Old Oak (unimplemented)")

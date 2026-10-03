@@ -1,13 +1,12 @@
 package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
+import Dom.all
+import TestProjections.actingProjection
 import org.scalajs.dom
 
 /** A region's discard pile opens as a card list, top first. */
 class DiscardPileSuite extends munit.FunSuite:
-  private def all(node: dom.Element, selector: String): Vector[dom.Element] =
-    node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
-
   private val site = GameSite("site:woods", "Deep Woods", looseFavor = 0,
     looseSecrets = 0, denizenCapacity = 3, relicCapacity = 0,
     denizens = Vector.empty, relics = GameSiteRelics(0), defense = 0)
@@ -18,11 +17,10 @@ class DiscardPileSuite extends munit.FunSuite:
     suit = Some("arcane"))
 
   private def projection(pile: Vector[CardDetails]): GameProjection =
-    GameProjection("game", 1L, "act", Some("red"),
-      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-      Vector(GameRegion("cradle", Vector(site), pile.size,
-        pile.headOption.map(_.cardKind), pile)),
-      Vector.empty, Vector.empty, ready = true, completed = false)
+    actingProjection(
+      players = Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
+      world = Vector(GameRegion("cradle", Vector(site), pile.size,
+        pile.headOption.map(_.cardKind), pile)))
 
   private def world(pile: Vector[CardDetails]): dom.Element =
     WorldBoardRenderer.world(projection(pile), None, canControl = true,
@@ -51,4 +49,5 @@ class DiscardPileSuite extends munit.FunSuite:
     val pile = discard(world(Vector.empty))
     assert(pile.disabled)
     assertEquals(all(pile, ".pile-empty").size, 1)
-    assertEquals(pile.textContent.contains("x0"), true)
+    // The pile shows its count as x<n>.
+    assertEquals(all(pile, ".pile-count").map(_.textContent), Vector("x0"))
