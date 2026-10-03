@@ -92,13 +92,13 @@ case object BanditPrince extends WhenPlayedPower:
     val actor = ctx.activePlayer
     Vector(Branch((live, _) =>
       val sites = banditSites(live)
+      val fits = affordable(live, actor, sites)
       if sites.isEmpty then Vector(Note(id, _ =>
         Some(none(PowerSourceRef.Card(cardId)))))
-      else if affordable(live, actor, sites).isEmpty then Vector.empty
+      else if fits.isEmpty then Vector.empty
       else Vector(
-        Decide(decisionId, actor, DecisionQuery.ChooseMany(0, sites.size,
-          affordable(live, actor, sites).map(site =>
-            DecisionOption.Site(DecisionOptionRef.Site(site))),
+        Decide(decisionId, actor, DecisionQuery.ChooseMany(0, fits.size,
+          fits.map(site => DecisionOption.Site(DecisionOptionRef.Site(site))),
           heading = Some("Bandit Prince: choose the sites whose bandits your " +
             "warbands replace"))),
         BuildOps((ready, pending) => replace(ready, actor, pending)),

@@ -75,6 +75,16 @@ class BanditPrinceSuite extends munit.FunSuite:
     assert(resume(ready, power, played, first.tree, BanditPrince.decisionId,
       choose(Vector(homeSite))).isRight)
 
+  test("only the sites that fit the bank are offered, and the question is " +
+      "still asked"):
+    // With 1 left, the 2 bandits at p1's site no longer fit; the 1 away does.
+    val tight = bandited.warbandsInBank(p1, 1).ready
+    val asked = Outcomes.parked(play(tight, power, prince))
+    val fitting = as[DecisionQuery.ChooseMany](
+      question(tight, power, played, asked.tree).query).options
+    assertEquals(fitting.map(_.ref), Vector[DecisionOptionRef](
+      DecisionOptionRef.Site(awaySite)))
+
   test("a site the bandits do not rule is refused"):
     val ready = bandited.ready
     val first = Outcomes.parked(play(ready, power, prince))
