@@ -39,7 +39,8 @@ object ParkedServiceFixture:
 
   /** [[Situation.endingWake]] from an accepted position of `service`: ends
     * `player`'s Wake unless it has already ended by itself for having
-    * nothing to decide. */
+    * nothing to decide. A park the End Wake reaches is answered by default,
+    * as `Situation.after` answers it. */
   def endingWake(service: GameApplicationService, gameId: String,
       from: GameAccepted, player: PlayerId)(using munit.Location)
       : GameAccepted =
@@ -128,8 +129,7 @@ object ParkedServiceFixture:
     * Rest, which finishes Rest and parks on p2's destination decision.
     * Broken Peaks' secrets give p2's coming Wake an option, so that Wake
     * waits once p2 has answered. */
-  def leagueTreatyPark(gameId: String)(using munit.Location)
-      : LeagueTreatyPark =
+  def leagueTreatyPark(gameId: String)(using munit.Location): LeagueTreatyPark =
     val treatyCard = CatalogNames.denizen("League Treaty")
     val base = Table.start
     val suit = catalog.suitOf(treatyCard).get
@@ -186,8 +186,7 @@ object ParkedServiceFixture:
     * rule a site with one warband (the other 2 stay on their boards). The
     * holder must pick between the two tied leaders after p1's Travel to
     * Buried Giant. Bandits fill the empty sites first, so the refill that
-    * follows a first command does not journal an event of its own. The
-    * returned players are the mover, the holder and the second leader. */
+    * follows a first command does not journal an event of its own. */
   def oathkeeperTiePark(gameId: String)(using munit.Location)
       : OathkeeperTiePark =
     val table = Table.start
@@ -217,7 +216,7 @@ object ParkedServiceFixture:
     * refill is journaled after the first command. Every favor bank starts with at
     * least 3 favor, so Begin Rest stops at the Rest action, and using Silver
     * Tongue parks on its bank choice. The returned suit is the first site
-    * card's, Order, which that choice offers. */
+    * card's, which that choice offers. */
   def silverTonguePark(gameId: String,
       dice: CampaignDicePort = CampaignDicePort.random)(
       using munit.Location): SilverTonguePark =

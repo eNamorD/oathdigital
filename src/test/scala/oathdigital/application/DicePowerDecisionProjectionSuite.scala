@@ -19,6 +19,10 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite:
   private val projector = new WalkerDecisionProjector(catalog,
     new GamePresentationProjector(catalog))
 
+  private val fae = CatalogNames.denizen("Fae Merchant")
+  private val whistle = CatalogNames.relic("Whistle")
+  private val dowsingSticks = CatalogNames.relic("Dowsing Sticks")
+
   private def owner(state: ReadyGame) =
     projector.project(ScopedProjectionContext(state, Some(p1)))
   private def other(state: ReadyGame) =
@@ -40,10 +44,6 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite:
       Vector("favor-bank"))
     assertEquals(projection.query.get.offeredOptions.size, Suit.all.size)
     assertEquals(other(parked), None)
-
-  private val fae = CatalogNames.denizen("Fae Merchant")
-  private val whistle = CatalogNames.relic("Whistle")
-  private val dowsingSticks = CatalogNames.relic("Dowsing Sticks")
 
   test("Fae Merchant names both eligible relics to its owner, including the " +
       "facedown one just taken"):

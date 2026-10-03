@@ -78,8 +78,10 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
     val registry = accepted(ReviewedPowerCatalog.registry(catalog))
     // The Broken Forge, the Great Forge's ruined face, has a walker-only power.
     val brokenForge = CatalogNames.edifice("Broken Forge")
-    val walkerOnly = present(catalog.edifices.find(_.id.value ==
-      brokenForge.value), "the Broken Forge").ruined.powers.head.id
+    val greatForge = present(catalog.edifices.find(
+      _.id.value == brokenForge.value), "the Broken Forge")
+    val walkerOnly =
+      present(greatForge.ruined.powers.headOption, "its ruined power").id
     assert(registry.lookup(walkerOnly).isEmpty && status(walkerOnly))
     val stub = ReviewedPowerCatalog.powers.find(_.handlers.exists(!_.implemented))
       .map(_.id).filterNot(status)

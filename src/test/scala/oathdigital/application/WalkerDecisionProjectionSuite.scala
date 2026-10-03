@@ -110,8 +110,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       case other => fail(s"expected the parking start to run, got $other")
     val Ready(ready) = started.state: @unchecked
     val actor = fixture.actor
-    val other = ready.game.current.players.map(_.player)
-      .find(_ != Table.p1).get
+    val other = ready.game.current.players.map(_.player).find(_ != actor).get
 
     val projector = new WalkerDecisionProjector(catalog, presentation, powers)
     val owner = ScopedProjectionContext(ready, Some(actor))
@@ -142,8 +141,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       new FixedRecoverDice(Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)))
 
     val Ready(ready) = rolled.state: @unchecked
-    val other = ready.game.current.players.map(_.player)
-      .find(_ != Table.p1).get
+    val other = ready.game.current.players.map(_.player).find(_ != actor).get
     val owner = ScopedProjectionContext(ready, Some(actor))
     // Both dice came up Blank: score 0, still short of the difficulty --
     // this is exactly the feedback the continue/stop choice needs (I5).
@@ -193,8 +191,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       new FixedRecoverDice(Vector(DefenseDieFace.TwoShields,
         DefenseDieFace.Doubler)))
     val Ready(ready) = rolled.state: @unchecked
-    val other = ready.game.current.players.map(_.player)
-      .find(_ != Table.p1).get
+    val other = ready.game.current.players.map(_.player).find(_ != actor).get
     val owner = ScopedProjectionContext(ready, Some(actor))
 
     val siteId = ready.game.current.players.find(_.player == actor).get.pawnSite.get
@@ -337,11 +334,13 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       "procedure declares, beside the sections it already declared"):
     val ForgeWalkerFixture.ParkedForge(forgeCatalog, started) =
       ForgeWalkerFixture.parkedForge("walker-projection-forge")
+    val actor = Table.p1
+    val forgeSite = ForgeWalkerFixture.forgeSite
     val Ready(ready) = started.state: @unchecked
     val projector = new WalkerDecisionProjector(forgeCatalog,
       new GamePresentationProjector(forgeCatalog))
     val decision = projector.project(ScopedProjectionContext(ready,
-      Some(Table.p1))).getOrElse(
+      Some(actor))).getOrElse(
         fail("the parked actor must be offered the Forge decision"))
     assertEquals(decision.decisionId, ForgeProcedure.assignmentDecisionId)
     val query = decision.query match
@@ -352,8 +351,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     assertEquals(query.confirmLabel, Some("Complete Forge"))
     // The copy arrives beside the sections, not instead of them: one prompt
     // frame and the minima it frames, from the same declaration.
-    val printed = forgeCatalog.sites
-      .find(_.id == ForgeWalkerFixture.forgeSite).get
+    val printed = forgeCatalog.sites.find(_.id == forgeSite).get
       .forgeRequirements.get
     assertEquals(query.sections, Vector(
       DecisionSectionProjection(ForgeProcedure.favorSectionKey, "Pay Favor",
@@ -363,8 +361,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
 
     // And it is owner-private like every other field of this projection:
     // copy is prompt text for the player being asked, not public table talk.
-    val other = ready.game.current.players.map(_.player)
-      .find(_ != Table.p1).get
+    val other = ready.game.current.players.map(_.player).find(_ != actor).get
     assertEquals(projector.project(ScopedProjectionContext(ready,
       Some(other))), None)
 
