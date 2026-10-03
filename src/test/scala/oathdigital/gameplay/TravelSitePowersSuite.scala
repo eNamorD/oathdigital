@@ -27,8 +27,8 @@ class TravelSitePowersSuite extends munit.FunSuite:
       .endsWith(suffix))), s"the $suffix handler of $siteId")
 
   // The first two Plains sites, and the first site of each terrain, in
-  // catalog order; Rocky Coast is the site whose coast handler the coast
-  // route test names.
+  // catalog order; Rocky Coast is a second coast site, with its own
+  // `.rocky-coast.coast` handler.
   private val plain = CatalogNames.site("Buried Giant")
   private val otherPlain = CatalogNames.site("Dunes")
   private val mountain = CatalogNames.site("Broken Peaks")

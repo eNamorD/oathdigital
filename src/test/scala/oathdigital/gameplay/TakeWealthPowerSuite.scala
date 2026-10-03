@@ -34,7 +34,7 @@ class TakeWealthPowerSuite extends munit.FunSuite:
       used: Set[PowerUseRef] = Set.empty): ReadyGame =
     // No Table step removes a pawn or records a used power.
     val placed = pawn match
-      case Some(site) => Table.start.pawn(actor, site).ready
+      case Some(standingAt) => Table.start.pawn(actor, standingAt).ready
       case None => Table.start.ready.updateCurrent(c => c.copy(
         players = c.players.map(player =>
           if player.player == actor then player.copy(pawnSite = None)
