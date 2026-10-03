@@ -35,6 +35,7 @@ case object GamblingHall extends PaidAction(GamblingHallCard.power):
   /** What the total took from the chosen bank, which a thin bank caps. */
   val gained: NoteKey = NoteSupport.gainedFromKey("gained")
   override def noteKeys: Vector[NoteKey] = Vector(rolled, gained)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector(

@@ -39,6 +39,7 @@ case object ConspiracyWhenPlayed extends ContributingPower:
     case _ => false
 
   override def noteKeys: Vector[NoteKey] = Vector(seized)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   /** "{Red} seized {relic or banner} from {Blue}." */
   val seized: NoteKey = NoteKey("seized", Vector(NotePart.Arg(0),

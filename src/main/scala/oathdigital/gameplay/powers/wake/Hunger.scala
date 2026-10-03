@@ -40,6 +40,7 @@ final case class Hunger private (catalog: ExecutableCatalog)
   override def forced: Boolean = true
 
   override def noteKeys: Vector[NoteKey] = Vector(buried, spared)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def usable(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Boolean = true

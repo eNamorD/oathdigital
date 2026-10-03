@@ -178,5 +178,9 @@ trait NotingPower:
     * reads "River: ..." wherever it was used. */
   def noteSource: Option[String] = None
   /** The ids of this power's decisions whose answer its notes tell, so the
-    * log posts no "Chose ..." line for them. */
+    * log posts no "Chose ..." line for them. List a decision when every line
+    * the power can write after it names the answer, "nothing to kill"
+    * lines included. Leave out a decision whose answer can leave no line
+    * (a declined offer) or whose line does not name it (a rearrangement),
+    * and one with a per-game id, which this exact-id set cannot match. */
   def narratedDecisions: Set[String] = Set.empty

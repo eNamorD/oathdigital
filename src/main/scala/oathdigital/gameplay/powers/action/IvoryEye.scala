@@ -32,6 +32,7 @@ case object IvoryEye extends PaidAction(IvoryEyeCard.power):
     NotePart.Text(" peeked at "), NotePart.Arg(1), NotePart.Text(" in "),
     NotePart.Arg(2), NotePart.Text("'s advisers.")))
   override def noteKeys: Vector[NoteKey] = Vector(peeked)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   /** The option for the facedown adviser in position `slot` of `owner`'s
     * advisers.

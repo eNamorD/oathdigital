@@ -31,6 +31,7 @@ case object CharmingFriend extends PaidAction(CharmingFriendCard.power):
     NotePart.Text(" had no favor to take.")))
   override def noteKeys: Vector[NoteKey] =
     Vector(NoteSupport.took, nobody, broke)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

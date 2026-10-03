@@ -30,6 +30,7 @@ case object BarbedNet extends PaidAction(BarbedNetCard.power):
   /** "{site} held no relic." */
   val bare: NoteKey = take.bare
   override def noteKeys: Vector[NoteKey] = take.keys
+  override def narratedDecisions: Set[String] = take.narrated
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] =

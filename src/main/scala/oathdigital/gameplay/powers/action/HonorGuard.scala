@@ -32,6 +32,7 @@ final case class HonorGuard private (catalog: ExecutableCatalog)
   import HonorGuard._
 
   override def noteKeys: Vector[NoteKey] = Vector(buried, spared)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

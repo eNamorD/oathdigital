@@ -38,6 +38,7 @@ final case class TwinBrother private (catalog: ExecutableCatalog)
   def id: PowerId = TwinBrother.id
 
   override def noteKeys: Vector[NoteKey] = Vector(swapped)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
     val actor = ctx.activePlayer

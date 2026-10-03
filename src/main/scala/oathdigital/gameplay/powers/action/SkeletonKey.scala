@@ -28,6 +28,7 @@ case object SkeletonKey extends PaidAction(SkeletonKeyCard.power):
   private val take = new SiteRelicTake(id, decisionId,
     "Skeleton Key: take a relic from your site", hinterland)
   override def noteKeys: Vector[NoteKey] = take.keys :+ away
+  override def narratedDecisions: Set[String] = take.narrated
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(

@@ -28,6 +28,7 @@ final case class CrystalVial(catalog: ExecutableCatalog)
   import CrystalVial._
 
   override def noteKeys: Vector[NoteKey] = Vector(buried)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

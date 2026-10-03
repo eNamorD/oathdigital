@@ -34,6 +34,7 @@ final case class ArmedMob private (catalog: ExecutableCatalog)
   import ArmedMob._
 
   override def noteKeys: Vector[NoteKey] = Vector(discarded, nobody, bare)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

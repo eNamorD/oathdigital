@@ -30,8 +30,6 @@ From the playtest of 2026-10-01:
   does not loop back. Have them reload with the cache disabled and open
   `/health/ready` in a private window, then check the port forward and the
   host firewall.
-- [ ] **Hide a decision's own log line when its effect has one.** "Chose
-  Blue" followed by "Wolves: Killed 1 Blue warband." repeats the decision.
 - [ ] **List relic details in a Negotiation.**
 - [ ] **Review the action buttons.** They feel unresponsive, and some appear
   for things the player does not expect.

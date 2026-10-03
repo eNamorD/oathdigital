@@ -31,6 +31,8 @@ final class SiteRelicTake(power: PowerId, decisionId: String, heading: String,
   val bare: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no relic.")))
   def keys: Vector[NoteKey] = Vector(peeked, took, bare)
+  /** The relic choice, which the take's line names. */
+  def narrated: Set[String] = Set(decisionId)
 
   def steps(player: PlayerId, source: DecisionOptionRef): Vector[Operation] =
     Vector[Operation](

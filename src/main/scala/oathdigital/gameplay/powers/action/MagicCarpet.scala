@@ -30,6 +30,8 @@ case object MagicCarpet extends PaidAction(MagicCarpetCard.power):
   val discarded: NoteKey = NoteKey("discarded", Vector(
     NotePart.Text("Discarded.")))
   override def noteKeys: Vector[NoteKey] = Vector(placed, givenAway, discarded)
+  override def narratedDecisions: Set[String] =
+    Set(siteDecisionId, fateDecisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match

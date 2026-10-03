@@ -2,7 +2,10 @@ package oathdigital.application.gamelog
 
 import oathdigital.engine.ReplayStep
 import oathdigital.gameplay.actions.{PlacementRules, RuleNotes, VisionRules}
+import oathdigital.gameplay.powers.action.{DreamThief, GamblingHall, MagicCarpet,
+  QuickExit, Wolves}
 import oathdigital.gameplay.powers.rest.SilverTongue
+import oathdigital.gameplay.powers.wake.Hunger
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
@@ -337,16 +340,24 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       CardWord.Named(LogSpan.Card(hiddenAdviser.value,
         presentation.cardLabel(last, hiddenAdviser))))
 
-  test("Wolves writes its kill as the action line, after the choice it answers"):
+  test("Wolves writes its kill as the action line, with no Chose line before it"):
     val script = wolves
     val entries = format(script, None).filter(_.depth == 1)
     val all = texts(entries)
     val kill = all.indexWhere(_.startsWith("Wolves: Killed 1 "))
-    assert(kill > 0, all)
-    assert(all(kill - 1).startsWith("Chose "), all)
+    assert(kill >= 0, all)
+    assert(!all.exists(_.startsWith("Chose ")), all)
     assert(all(kill).endsWith(" warband."), all(kill))
     assert(!all.exists(_.startsWith("Used ")), all)
     assertEquals(entries(kill).kind, LogKind.Action)
+
+  test("a power whose lines name each of its answers narrates every decision"):
+    val narrated = NoteWordings.default(catalog).narrated
+    Vector(QuickExit.targetDecisionId, QuickExit.siteDecisionId,
+      DreamThief.firstDecisionId, DreamThief.secondDecisionId,
+      MagicCarpet.siteDecisionId, MagicCarpet.fateDecisionId,
+      Wolves.decisionId, Hunger.decisionId, GamblingHall.decisionId)
+      .foreach(id => assert(narrated(id), id))
 
   test("a game rule's line is worded from RuleNotes"):
     assertEquals(NoteWordings.default(catalog).template(RuleNotes.homelandDiscard,

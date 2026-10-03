@@ -24,6 +24,7 @@ case object ClayRattle extends PaidAction(ClayRattleCard.power):
   val shuffled: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" shuffled the "), NotePart.Arg(1), NotePart.Text(".")))
   override def noteKeys: Vector[NoteKey] = Vector(shuffled)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   /** The piles it may shuffle, in the order they are offered. */
   val piles: Vector[SearchSource] =

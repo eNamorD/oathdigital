@@ -39,6 +39,7 @@ case object BookOfRecords extends PaidAction(BookOfRecordsCard.power):
   val nobody: NoteKey = NoteKey("used.none", Vector(
     NotePart.Text("No player at the site held a banner.")))
   override def noteKeys: Vector[NoteKey] = Vector(took, empty, nobody)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

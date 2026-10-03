@@ -41,6 +41,7 @@ case object SiegeEngines extends PaidAction(SiegeEnginesCard.power):
   val spared: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" had no warband to kill.")))
   override def noteKeys: Vector[NoteKey] = Vector(killed, bandits, spared)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

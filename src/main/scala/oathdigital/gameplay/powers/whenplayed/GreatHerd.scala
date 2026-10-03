@@ -32,6 +32,7 @@ final case class GreatHerd private (catalog: ExecutableCatalog)
   def id: PowerId = GreatHerd.id
 
   override def noteKeys: Vector[NoteKey] = Vector(swapped, none)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
     val actor = ctx.activePlayer

@@ -30,6 +30,7 @@ final case class SecondChance private (catalog: ExecutableCatalog)
 
   override def noteKeys: Vector[NoteKey] =
     Vector(gained, killedOnly, spared, nobody)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

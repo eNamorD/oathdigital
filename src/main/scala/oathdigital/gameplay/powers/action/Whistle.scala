@@ -29,6 +29,7 @@ case object Whistle extends PaidAction(WhistleCard.power):
   val nobody: NoteKey = NoteKey("used.none", Vector(
     NotePart.Text("No pawn could be pulled.")))
   override def noteKeys: Vector[NoteKey] = Vector(pulled, nobody)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match

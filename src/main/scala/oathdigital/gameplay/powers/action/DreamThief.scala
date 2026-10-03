@@ -37,6 +37,8 @@ case object DreamThief extends PaidAction(DreamThiefCard.power):
   val nothing: NoteKey = NoteKey("used.none", Vector(
     NotePart.Text("No two facedown advisers could be swapped.")))
   override def noteKeys: Vector[NoteKey] = Vector(swapped, nothing)
+  override def narratedDecisions: Set[String] =
+    Set(firstDecisionId, secondDecisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

@@ -34,6 +34,7 @@ case object WhisperingLeaves extends PaidAction(WhisperingLeavesCard.power):
   val broke: NoteKey = NoteKey("used.empty", Vector(NotePart.Arg(0),
     NotePart.Text(" had no favor to place.")))
   override def noteKeys: Vector[NoteKey] = Vector(placed, broke)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match

@@ -34,6 +34,7 @@ case object Scryer extends PaidAction(ScryerCard.power):
     NotePart.Text(" peeked at the "), NotePart.Arg(1),
     NotePart.Text(", which was empty.")))
   override def noteKeys: Vector[NoteKey] = Vector(peeked, peekedEmpty)
+  override def narratedDecisions: Set[String] = Set(pileDecisionId)
 
   /** The regions whose discard piles it may peek at, in the order offered. */
   val piles: Vector[Region] = Region.all

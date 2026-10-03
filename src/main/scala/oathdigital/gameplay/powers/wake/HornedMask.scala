@@ -40,6 +40,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
   def id: PowerId = HornedMask.id
   def timing: PowerTiming = PowerTiming.Wake
   override def noteKeys: Vector[NoteKey] = Vector(took, taken)
+  override def narratedDecisions: Set[String] = Set(denizenDecisionId)
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = true
 

@@ -32,6 +32,7 @@ case object SleightOfHand extends PaidAction(SleightOfHandCard.power):
   val nobody: NoteKey = NoteKey("used.none", Vector(
     NotePart.Text("No player could be robbed.")))
   override def noteKeys: Vector[NoteKey] = Vector(NoteSupport.took, nobody)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

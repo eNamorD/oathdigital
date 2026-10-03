@@ -31,6 +31,7 @@ case object Enchantress extends PaidAction(EnchantressCard.power):
   val nothing: NoteKey = NoteKey("used.none", Vector(
     NotePart.Text("No faceup adviser could be swapped.")))
   override def noteKeys: Vector[NoteKey] = Vector(swapped, nothing)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match

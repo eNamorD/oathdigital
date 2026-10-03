@@ -33,6 +33,8 @@ case object QuickExit extends PaidAction(QuickExitCard.power):
     NotePart.Text("No other pawn was at "), NotePart.Arg(0),
     NotePart.Text(".")))
   override def noteKeys: Vector[NoteKey] = Vector(placed, nobody)
+  override def narratedDecisions: Set[String] =
+    Set(targetDecisionId, siteDecisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
