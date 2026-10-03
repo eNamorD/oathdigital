@@ -2,8 +2,9 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{GameIntent => Intent, PreviewModifier}
 
-/** An `ActionControls` that records what was staged and submitted instead
-  * of touching a session, shared by every panel render suite. `drafts` is
+/** Spy of `ActionControls`: records what was staged and submitted instead
+  * of touching a session, shared by every panel render suite. `stage` and
+  * `submitCommand` record; every other method is a no-op stub. `drafts` is
   * the draft set the stages so far leave, from `empty`, so a suite re-renders
   * a panel from exactly what the panel staged.
   */

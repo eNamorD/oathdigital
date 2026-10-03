@@ -8,7 +8,7 @@ import TestProjections.actingProjection
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-/** The modifier flow over a fake host: which preview each entry sends, which
+/** The modifier flow over a host spy: which preview each entry sends, which
   * step or exit each answer applies, what is sent, and what is redrawn.
   */
 class ModifierFlowSuite extends munit.FunSuite:
@@ -50,6 +50,10 @@ class ModifierFlowSuite extends munit.FunSuite:
       context = ModifierSelectionContext("game", "red", 9, action))
     fresh.copy(selection = fresh.selection.toggle(modifier), stage = stage)
 
+  /** Spy of `FlowHost`: records redraws, failures, sent commands and preview
+    * requests. It computes no preview: `answer` completes the oldest one the
+    * test is waiting on.
+    */
   private final class Host(var currentDrafts: SessionDrafts) extends FlowHost:
     var displayedProjection: Option[GameProjection] = Some(projection)
     val currentGameId = "game"

@@ -9,8 +9,8 @@ import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js.timers.setTimeout
 
-/** The table session over a fake client, a manual poll clock and a recording
-  * navigation: which loads it makes, how it routes and fails, when it polls,
+/** The table session over a client spy, a fake poll clock and a navigation
+  * spy: which loads it makes, how it routes and fails, when it polls,
   * and what it shows. The jsdom suite proves the wiring; this proves the
   * session.
   */
@@ -35,7 +35,10 @@ class TableSessionSuite extends munit.FunSuite:
   /** A session the navigation was told to show. */
   private final case class Shown(gameId: String, playerId: String)
 
-  /** Records every call and answers each through a promise, oldest first. */
+  /** Spy of `GameClient`: records every load, submit, preview and log load.
+    * It computes no answer: each call returns a promise that the test
+    * completes through `answerLoad` and its siblings, oldest first.
+    */
   private final class FakeClient extends GameClient:
     var loads = Vector.empty[Load]
     var submits = Vector.empty[Submit]
@@ -84,21 +87,9 @@ class TableSessionSuite extends munit.FunSuite:
       pendingLogs = pendingLogs.tail
       promise.success(result)
 
-  /** Holds the latest scheduled poll; `fire` runs it as if its delay passed. */
-  private final class ManualClock extends PollClock:
-    var delays = Vector.empty[Int]
-    private var latest = Option.empty[() => Unit]
-    def schedule(delayMillis: Int)(task: () => Unit) =
-      delays :+= delayMillis
-      latest = Some(task)
-      new PollCancellation:
-        def cancel(): Unit = if latest.contains(task) then latest = None
-    def pending: Boolean = latest.nonEmpty
-    def fire(): Unit =
-      val task = latest.get
-      latest = None
-      task()
-
+  /** Spy of `Navigation`: records the sessions shown, the start-overs and
+    * the reloads.
+    */
   private final class RecordingNavigation extends Navigation:
     var shown = Vector.empty[Shown]
     var startedOver = 0
@@ -110,7 +101,7 @@ class TableSessionSuite extends munit.FunSuite:
 
   private final class Fixture(trusted: Boolean, player: String = "red"):
     val client = new FakeClient
-    val clock = new ManualClock
+    val clock = new FakePollClock
     val navigation = new RecordingNavigation
     var redraws = 0
     val session = new TableSession(client, trusted, "g", player, clock,
@@ -162,8 +153,8 @@ class TableSessionSuite extends munit.FunSuite:
       assertEquals(session.viewedConnection, ServerConnectionState.Connected)
       assert(session.controlsAvailable)
       // The session polls at the poller's visible interval, 5000 ms.
-      assertEquals(fixture.clock.delays, Vector(5000))
-      assert(fixture.clock.pending)
+      assertEquals(fixture.clock.delaysAsked, Vector(5000))
+      assert(fixture.clock.hasPendingTask)
       // open, loadExisting, and the displayed snapshot.
       assertEquals(fixture.redraws, 3)
     }
@@ -185,13 +176,13 @@ class TableSessionSuite extends munit.FunSuite:
       assertEquals(fixture.client.loads,
         Vector(Load("g", "red"), Load("g", "blue")))
       assertEquals(fixture.session.viewedDrafts, SessionDrafts.empty)
-      assert(!fixture.clock.pending)
+      assert(!fixture.clock.hasPendingTask)
       fixture.client.answerLoad(Right(snapshot(1, active = "blue", ready = false)))
       settle()
     }.map { _ =>
       assertEquals(fixture.session.viewedDrafts.context,
         Some(BoardSelectionContext("g", "blue", 1)))
-      assert(fixture.clock.pending)
+      assert(fixture.clock.hasPendingTask)
     }
 
   test("a transient load failure disconnects, and reconnect loads again"):
@@ -215,38 +206,38 @@ class TableSessionSuite extends munit.FunSuite:
 
   test("a trusted seat refused by a poll clears the projection and needs its seat link"):
     seated().flatMap { fixture =>
-      fixture.clock.fire()
+      fixture.clock.fireNext()
       val refused = GameClientFailure.HttpFailure(401, "unauthorized", "no seat")
       fixture.client.answerLoad(Left(refused))
       settle().map { _ =>
         assertEquals(fixture.session.viewedProjection, None)
         assertEquals(fixture.session.shownFailure, Some(refused))
         assert(TableSession.needsSeatLink(fixture.session.trusted, refused))
-        assert(!fixture.clock.pending)
+        assert(!fixture.clock.hasPendingTask)
       }
     }
 
   test("a development 403 on a poll keeps the position on display and keeps polling"):
     displayed(2).flatMap { fixture =>
-      fixture.clock.fire()
+      fixture.clock.fireNext()
       val refused = GameClientFailure.HttpFailure(403, "forbidden", "no")
       fixture.client.answerLoad(Left(refused))
       settle().map { _ =>
         assertEquals(fixture.session.viewedProjection.map(_.nextSequence), Some(2L))
         assertEquals(fixture.session.shownFailure, Some(refused))
-        assert(fixture.clock.pending)
+        assert(fixture.clock.hasPendingTask)
       }
     }
 
   test("a poll at the same position keeps polling, and an advancing one is displayed"):
     displayed(2).flatMap { fixture =>
       val before = fixture.redraws
-      fixture.clock.fire()
+      fixture.clock.fireNext()
       fixture.client.answerLoad(Right(snapshot(2)))
       settle().flatMap { _ =>
         assertEquals(fixture.redraws, before)
-        assert(fixture.clock.pending)
-        fixture.clock.fire()
+        assert(fixture.clock.hasPendingTask)
+        fixture.clock.fireNext()
         fixture.client.answerLoad(Right(snapshot(3)))
         settle()
       }.map { _ =>
@@ -254,7 +245,7 @@ class TableSessionSuite extends munit.FunSuite:
         assertEquals(fixture.session.viewedDrafts.context,
           Some(BoardSelectionContext("g", "red", 3)))
         assertEquals(fixture.redraws, before + 1)
-        assert(fixture.clock.pending)
+        assert(fixture.clock.hasPendingTask)
       }
     }
 
@@ -263,7 +254,7 @@ class TableSessionSuite extends munit.FunSuite:
     */
   test("an unsupported projection stops polling, keeps the position and asks for a reload"):
     displayed(2).flatMap { fixture =>
-      fixture.clock.fire()
+      fixture.clock.fireNext()
       val unsupported = GameClientFailure.UnsupportedProjection(
         "$.walkerDecision.query.form", "unknown decision form 'choose-two'")
       fixture.client.answerLoad(Left(unsupported))
@@ -271,7 +262,7 @@ class TableSessionSuite extends munit.FunSuite:
         assertEquals(fixture.session.viewedProjection.map(_.nextSequence), Some(2L))
         assertEquals(fixture.session.shownFailure, Some(unsupported))
         assert(fixture.session.clientOutOfDate)
-        assert(!fixture.clock.pending)
+        assert(!fixture.clock.hasPendingTask)
       }
     }
 
@@ -283,7 +274,7 @@ class TableSessionSuite extends munit.FunSuite:
     */
   test("recovering past the unparseable park clears the out-of-date notice"):
     displayed(2).flatMap { fixture =>
-      fixture.clock.fire()
+      fixture.clock.fireNext()
       fixture.client.answerLoad(Left(GameClientFailure.UnsupportedProjection(
         "$.walkerDecision.query.form", "unknown decision form 'choose-two'")))
       settle().flatMap { _ =>
@@ -294,7 +285,7 @@ class TableSessionSuite extends munit.FunSuite:
       }.flatMap { _ =>
         assert(!fixture.session.clientOutOfDate)
         assertEquals(fixture.session.shownFailure, None)
-        fixture.clock.fire()
+        fixture.clock.fireNext()
         fixture.client.answerLoad(Left(
           GameClientFailure.HttpFailure(500, "internal", "boom")))
         settle()
@@ -307,23 +298,23 @@ class TableSessionSuite extends munit.FunSuite:
 
   test("an ordinary decode failure keeps polling and asks for no reload"):
     displayed(2).flatMap { fixture =>
-      fixture.clock.fire()
+      fixture.clock.fireNext()
       fixture.client.answerLoad(Left(
         GameClientFailure.DecodeFailure("$.phase", "expected string")))
       settle().map { _ =>
         assert(!fixture.session.clientOutOfDate)
-        assert(fixture.clock.pending)
+        assert(fixture.clock.hasPendingTask)
       }
     }
 
   test("a transient poll failure disconnects and stops polling"):
     displayed(2).flatMap { fixture =>
-      fixture.clock.fire()
+      fixture.clock.fireNext()
       val down = GameClientFailure.NetworkFailure("down")
       fixture.client.answerLoad(Left(down))
       settle().map { _ =>
         assertEquals(fixture.session.viewedConnection, ServerConnectionState.Disconnected(down))
-        assert(!fixture.clock.pending)
+        assert(!fixture.clock.hasPendingTask)
       }
     }
 
@@ -344,13 +335,13 @@ class TableSessionSuite extends munit.FunSuite:
 
   test("a trusted snapshot for another viewer stops the session and asks for the seat link"):
     seated().flatMap { fixture =>
-      fixture.clock.fire()
+      fixture.clock.fireNext()
       fixture.client.answerLoad(Right(snapshot(1, viewer = Some("blue"))))
       settle().map { _ =>
         assertEquals(fixture.session.viewedProjection, None)
         assertEquals(fixture.session.shownFailure, Some(GameClientFailure.HttpFailure(403,
           "seat-changed", "Open your assigned seat link.")))
-        assert(!fixture.clock.pending)
+        assert(!fixture.clock.hasPendingTask)
       }
     }
 
@@ -445,12 +436,12 @@ class TableSessionSuite extends munit.FunSuite:
     displayed(3).flatMap { fixture =>
       fixture.client.answerLog(Right(page(0, 3)))
       settle().flatMap { _ =>
-        fixture.clock.fire()
+        fixture.clock.fireNext()
         fixture.client.answerLoad(Right(snapshot(3)))
         settle()
       }.flatMap { _ =>
         assertEquals(fixture.client.logs.size, 1)
-        fixture.clock.fire()
+        fixture.clock.fireNext()
         fixture.client.answerLoad(Right(snapshot(5)))
         settle()
       }.map { _ =>
@@ -464,7 +455,7 @@ class TableSessionSuite extends munit.FunSuite:
       settle().flatMap { _ =>
         assertEquals(fixture.session.viewedLog, Vector.empty)
         assertEquals(fixture.session.shownFailure, None)
-        fixture.clock.fire()
+        fixture.clock.fireNext()
         fixture.client.answerLoad(Right(snapshot(4)))
         settle()
       }.map { _ =>

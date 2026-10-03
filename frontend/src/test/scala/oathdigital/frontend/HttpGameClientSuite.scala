@@ -313,6 +313,9 @@ class HttpGameClientSuite extends FunSuite:
   private final case class RecordedRequest(method: String, url: String,
       body: Option[String])
 
+  /** Stub of `JsonTransport` with a spy: answers the queued responses in
+    * order and records each request in `requests`.
+    */
   private final class StubTransport(
       responses: Vector[Either[GameClientFailure, TransportResponse]]
   ) extends JsonTransport:

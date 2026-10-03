@@ -64,8 +64,9 @@ class BoardSurfaceSuite extends munit.FunSuite:
   private def site(root: dom.Element, label: String): dom.Element =
     one(root, s"""article[aria-label="$label"]""")
 
-  /** Records what the board-selection path chooses, which `RecordingControls`
-    * drops.
+  /** Spy of `ActionControls`, through `RecordingControls`: also records what
+    * the board-selection path chooses (`handleSelection`), which
+    * `RecordingControls` drops.
     */
   private final class SelectingView extends RecordingControls:
     var chosen: Vector[BoardSelectionResult] = Vector.empty

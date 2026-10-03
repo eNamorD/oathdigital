@@ -9,11 +9,6 @@ import oathdigital.protocol.projection.{LogEntryWire, LogSpanWire}
   * Runs the real shell in `TestBrowser`, which stubs what the map needs.
   */
 class GameLogOverlaySuite extends munit.FunSuite:
-  private final class FakeStore(initial: Map[String, String]) extends LogStore:
-    var values = initial
-    def read(key: String): Option[String] = values.get(key)
-    def write(key: String, value: String): Unit = values += key -> value
-
   private def entry(sequence: Long, kind: String, depth: Int, text: String) =
     LogEntryWire(sequence, 0, kind, depth, Vector(LogSpanWire("text", text)))
 
@@ -137,7 +132,8 @@ class GameLogOverlaySuite extends munit.FunSuite:
 
   test("the stored marker places the divider in the pane and the overlay alike"):
     // Marker 3 means seen through Red's turn, the second entry.
-    val store = FakeStore(Map(redSeenKey -> entries(1).sequence.toString))
+    val store = FakeLogStore(
+      Map(redSeenKey -> entries(1).sequence.toString))
     withShell(Some(store)) { (browser, shell) =>
       shell.showLog("g", "red", Vector.empty, Map.empty)
       shell.showLog("g", "red", entries, Map.empty)
@@ -149,7 +145,7 @@ class GameLogOverlaySuite extends munit.FunSuite:
     }
 
   test("a second at the end writes the marker; leaving the page flushes a pending one"):
-    val store = FakeStore(Map.empty)
+    val store = FakeLogStore(Map.empty)
     withShell(Some(store)) { (browser, shell) =>
       shell.showLog("g", "red", entries, Map.empty)
       // jsdom lays nothing out, so every list is at its end.
@@ -162,7 +158,8 @@ class GameLogOverlaySuite extends munit.FunSuite:
     }
 
   test("an observer seat keeps no marker and sees no divider"):
-    val store = FakeStore(Map(observerSeenKey -> entries(1).sequence.toString))
+    val store = FakeLogStore(
+      Map(observerSeenKey -> entries(1).sequence.toString))
     withShell(Some(store)) { (browser, shell) =>
       shell.showLog("g", "", Vector.empty, Map.empty)
       shell.showLog("g", "", entries, Map.empty)

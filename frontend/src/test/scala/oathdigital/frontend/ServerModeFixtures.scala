@@ -13,15 +13,18 @@ private[frontend] object ServerModeFixtures:
   final case class RecordedRequest(method: String, url: String,
       body: Option[String])
 
-  /** Answers every log request with an empty page and passes every other
+  /** Stub of `JsonTransport` over `inner`: answers every log request with an
+    * empty page, a canned answer it does not record, and passes every other
     * request to `inner`, so a test that counts, lists or queues requests sees
     * only the requests it is about. */
-  def quietLog(inner: JsonTransport): JsonTransport = new JsonTransport:
-    def request(method: String, url: String, body: Option[String])
-        : Future[Either[GameClientFailure, TransportResponse]] =
-      if url.contains("/log/") then Future.successful(Right(TransportResponse(200,
-        """{"gameId":"quiet","after":0,"nextSequence":0,"entries":[]}""")))
-      else inner.request(method, url, body)
+  def withEmptyLogPage(inner: JsonTransport): JsonTransport =
+    new JsonTransport:
+      def request(method: String, url: String, body: Option[String])
+          : Future[Either[GameClientFailure, TransportResponse]] =
+        if url.contains("/log/") then
+          Future.successful(Right(TransportResponse(200,
+            """{"gameId":"quiet","after":0,"nextSequence":0,"entries":[]}""")))
+        else inner.request(method, url, body)
 
   /** The fixed two-seat game "game-1" at sequence 8, at `phase` with exactly
     * `legalControls` legal. Its seats are "red-exile" (shown as "Red Exile",

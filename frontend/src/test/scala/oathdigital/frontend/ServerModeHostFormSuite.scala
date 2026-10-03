@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
-import oathdigital.frontend.ServerModeFixtures.{RecordedRequest, quietLog}
+import oathdigital.frontend.ServerModeFixtures.{RecordedRequest,
+  withEmptyLogPage}
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{BootstrapParticipantRequest,
   TrustedGameCreateRequestCodec}
@@ -20,6 +21,9 @@ class ServerModeHostFormSuite extends FunSuite:
     """{"playerId":"Red","url":"https://oath.test/s/red-code"},""" +
     """{"playerId":"Blue","url":"https://oath.test/s/blue-code"}]}"""
 
+  /** Spy and stub of `JsonTransport`: records every request into `requests`
+    * and answers each with `status` and `body`.
+    */
   private def hostTransport(
       requests: ArrayBuffer[RecordedRequest],
       status: Int = 201,
@@ -63,7 +67,7 @@ class ServerModeHostFormSuite extends FunSuite:
   private def startHostForm(browser: TestBrowser,
       requests: ArrayBuffer[RecordedRequest] = ArrayBuffer.empty): Unit =
     Main.start(browser.mount, "/", trustedAlpha = true,
-      quietLog(hostTransport(requests)))
+      withEmptyLogPage(hostTransport(requests)))
 
   test("trusted root posts host form and displays ordered copyable " +
       "seat links"):
@@ -193,7 +197,7 @@ class ServerModeHostFormSuite extends FunSuite:
     TestBrowser.use(): browser =>
       val requests = ArrayBuffer.empty[RecordedRequest]
       Main.start(browser.mount, "/", trustedAlpha = true,
-        quietLog(hostTransport(requests, 409,
+        withEmptyLogPage(hostTransport(requests, 409,
           """{"error":"game-already-exists",""" +
             """"message":"Game already exists"}""")))
       browser.click("create-trusted-game")
@@ -216,7 +220,7 @@ class ServerModeHostFormSuite extends FunSuite:
       val requests = ArrayBuffer.empty[RecordedRequest]
       val opened = ArrayBuffer.empty[String]
       Main.start(browser.mount, "/", trustedAlpha = false,
-        quietLog(hostTransport(requests)), navigate = opened += _)
+        withEmptyLogPage(hostTransport(requests)), navigate = opened += _)
       assertEquals(requests.size, 0)
       assertEquals(hostColors(browser), Vector("red", "blue"))
       assert(!browser.text.contains("assigned link"))

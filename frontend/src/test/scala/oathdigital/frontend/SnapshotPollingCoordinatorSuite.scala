@@ -74,31 +74,3 @@ class SnapshotPollingCoordinatorSuite extends FunSuite:
     assertEquals(requests.toVector, Vector(current))
     assert(!poller.complete(old, continuePolling = true))
     assert(poller.complete(current, continuePolling = true))
-
-  private final class FakePollClock extends PollClock:
-    private final class Entry(
-        val delay: Int,
-        val task: () => Unit,
-        var cancelled: Boolean
-    )
-    private val entries = mutable.ArrayBuffer.empty[Entry]
-
-    override def schedule(delayMillis: Int)(task: () => Unit) =
-      val entry = new Entry(delayMillis, task, cancelled = false)
-      entries += entry
-      new PollCancellation:
-        override def cancel(): Unit = entry.cancelled = true
-
-    def activeDelays: Vector[Int] =
-      entries.filterNot(_.cancelled).map(_.delay).toVector
-
-    def latestIndex: Int = entries.size - 1
-
-    def fireNext(): Unit =
-      val entry = entries.find(!_.cancelled).getOrElse(
-        fail("no active timer")
-      )
-      entry.cancelled = true
-      entry.task()
-
-    def fireEvenIfCancelled(index: Int): Unit = entries(index).task()
