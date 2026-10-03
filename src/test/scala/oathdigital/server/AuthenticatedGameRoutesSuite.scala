@@ -10,8 +10,8 @@ import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.{ActionRef, DecisionOptionRef, DenizenId}
-import oathdigital.testkit.{CatalogNames, TestUserHeaderAuthenticator,
-  HttpTestServer}
+import oathdigital.testkit.{CatalogNames, HttpTestServer,
+  TestUserHeaderAuthenticator}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -25,7 +25,8 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
       new MembershipAuthorizationService(identities), identities,
       new GeneratedFirstGamePlanFactory(catalog))
     HttpTestServer.start(name)(blocking => new AuthenticatedGameRoutes(
-      TestUserHeaderAuthenticator, new SameOriginCsrfProtection(HttpTestServer.origin),
+      TestUserHeaderAuthenticator,
+      new SameOriginCsrfProtection(HttpTestServer.origin),
       gateway, blocking).route)
 
   private def openDatabase(label: String): HsqldbDatabaseOwner =

@@ -6,7 +6,8 @@ import oathdigital.application._
 import oathdigital.application.MembershipRole._
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.testkit.{TestUserHeaderAuthenticator, HttpTestServer, Outcomes}
+import oathdigital.testkit.{HttpTestServer, Outcomes,
+  TestUserHeaderAuthenticator}
 import oathdigital.testkit.ChronicleShuffles.unshuffled
 import oathdigital.testkit.Unwrap.{accepted, present}
 
