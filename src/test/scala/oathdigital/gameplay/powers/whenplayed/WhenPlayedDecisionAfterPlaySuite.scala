@@ -50,9 +50,10 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
 
   test("a facedown Family Heirloom played faceup asks its question and keeps " +
       "the relic"):
-    val ready = PowerFixture.inPhase(
-      PowerFixture.asAdviser(staged(Vector.empty, supply = 5), heirloom,
-        Orientation.FaceDown), Phase.Act)
+    val drawing = staged(Vector.empty, supply = 5)
+    val asAdviser = PowerFixture.asAdviser(drawing, heirloom,
+      Orientation.FaceDown)
+    val ready = PowerFixture.inPhase(asAdviser, Phase.Act)
     val top = ready.game.current.commonCards.relicDeck.head
     val done = (for
       started <- rules.startWalker(OathState.Ready(ready),

@@ -8,7 +8,9 @@ import oathdigital.model.OathState.Ready
 /** Muster and Trade driven through the rules to the end: start, then answer
   * the source decision. Each fails with the violation or the state it got. */
 object EconomyActions:
-  /** A completed economy action: its whole journal, and the game it left. */
+  /** A completed economy action and the game it left. `journal` carries every
+    * event of the action, but its `state` is the started one, not the end's.
+    */
   final case class Completed(journal: OathTransition, result: ReadyGame)
 
   /** `actor` Musters from `card` with `selected` powers. */

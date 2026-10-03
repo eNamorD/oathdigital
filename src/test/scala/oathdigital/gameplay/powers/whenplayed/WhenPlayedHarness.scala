@@ -1,7 +1,5 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.testkit.PhasePowerHarness
-import oathdigital.testkit.Unwrap.{accepted, present}
 import scala.reflect.ClassTag
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy,
@@ -13,6 +11,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.PhasePowerHarness
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Drives a When Played power through its `CardPlayed` hook, the way the
   * Dazzle and Conspiracy suites do. The actor is `PowerFixture.actor`, p1.

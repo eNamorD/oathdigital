@@ -44,8 +44,9 @@ class WildCrySuite extends munit.FunSuite:
     assert(!offered(ActionRef.Muster).contains(WildCry.id))
 
   test("it is not offered when the card is facedown or out of reach"):
-    val facedown = Table.from(SearchFixture.staged(Vector(beastCard) ++ others,
-      supply = 5)).adviser(actor, wildCry, facedown = true).unchecked
+    val drawing = SearchFixture.staged(Vector(beastCard) ++ others, supply = 5)
+    val facedown = Table.from(drawing).adviser(actor, wildCry, facedown = true)
+      .unchecked
     assertEquals(start(facedown, modifiers).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "power denizen.wild-cry is not applicable to this search")))
@@ -61,8 +62,7 @@ class WildCrySuite extends munit.FunSuite:
     val ready = withCry(beastCard)
     val done = play(ready, modifiers, beastCard, "site")
     val after = SearchFixture.after(done)
-    assertEquals(Look(after).supply(actor),
-      supplyAfterCost + 1)
+    assertEquals(Look(after).supply(actor), supplyAfterCost + 1)
     assertEquals(warbands(after), warbands(ready) + 2)
     assert(done.events.collect { case step: WalkerStepRecorded => step }
       .exists(_.contributions.contains(WildCry.id)))
@@ -71,31 +71,30 @@ class WildCrySuite extends munit.FunSuite:
 
   test("a beast denizen played as a faceup adviser gains the same"):
     val ready = withCry(beastCard)
-    val after = SearchFixture.after(play(ready, modifiers, beastCard,
-      "adviser-faceup"))
-    assertEquals(Look(after).supply(actor),
-      supplyAfterCost + 1)
+    val played = play(ready, modifiers, beastCard, "adviser-faceup")
+    val after = SearchFixture.after(played)
+    assertEquals(Look(after).supply(actor), supplyAfterCost + 1)
     assertEquals(warbands(after), warbands(ready) + 2)
 
-  test("a facedown play, a discard, another suit and no selection gain nothing"):
+  test("a facedown play, a discard, another suit and no selection gain " +
+      "nothing"):
     val ready = withCry(beastCard)
     Vector("adviser-facedown", "discard").foreach { button =>
       val after = SearchFixture.after(play(ready, modifiers, beastCard, button))
-      assertEquals(Look(after).supply(actor),
-        supplyAfterCost, button)
+      assertEquals(Look(after).supply(actor), supplyAfterCost, button)
       assertEquals(warbands(after), warbands(ready), button)
     }
     val hearth = others.head
-    val hearthFirst = Table.from(SearchFixture.staged(
-      Vector(hearth, beastCard, others(1)), supply = 5))
-      .denizen(wildCry, at = home).unchecked
+    val drawingHearth = SearchFixture.staged(
+      Vector(hearth, beastCard, others(1)), supply = 5)
+    val hearthFirst = Table.from(drawingHearth).denizen(wildCry, at = home)
+      .unchecked
     val other = SearchFixture.after(
       play(hearthFirst, modifiers, hearth, "site"))
     assertEquals(Look(other).supply(actor), supplyAfterCost)
-    val unselected = SearchFixture.after(play(ready, Vector.empty, beastCard,
-      "site"))
-    assertEquals(Look(unselected).supply(actor),
-      supplyAfterCost)
+    val playedPlain = play(ready, Vector.empty, beastCard, "site")
+    val unselected = SearchFixture.after(playedPlain)
+    assertEquals(Look(unselected).supply(actor), supplyAfterCost)
     assertEquals(warbands(unselected), warbands(ready))
 
   test("a card does not trigger on its own play"):
@@ -117,8 +116,7 @@ class WildCrySuite extends munit.FunSuite:
     val ready = leaveInBank(withCry(beastCard), kind, 1)
     val after = SearchFixture.after(play(ready, modifiers, beastCard, "site"))
     assertEquals(warbands(after), warbands(ready) + 1)
-    assertEquals(Look(after).supply(actor),
-      supplyAfterCost + 1)
+    assertEquals(Look(after).supply(actor), supplyAfterCost + 1)
 
   test("Wild Cry cannot be discarded while it is selected: it is not offered " +
       "as the replacement of a faceup adviser"):

@@ -36,8 +36,8 @@ class WelcomingPartySuite extends munit.FunSuite:
     val ready = withParty(plain)
     val done = play(ready, modifiers, plain.head, "site")
     val after = SearchFixture.after(done)
-    // The play itself also gains 1 favor from the card's own suit bank (Arcane),
-    // so Hearth is the only bank the power touches.
+    // The play itself also gains 1 favor from the card's own suit bank
+    // (Arcane), so Hearth is the only bank the power touches.
     assertEquals(hearthBank(after), hearthBank(ready) - 1)
     assertEquals(favor(after), favor(ready) + 2)
     assertEquals(ActPowerHarness.replayed(rules, ready, done.events), after)
@@ -51,8 +51,8 @@ class WelcomingPartySuite extends munit.FunSuite:
     // from the Hearth bank.
     assertEquals(favor(after), favor(ready) + 1)
 
-  test("a card drawn by a Search and placed facedown is not played faceup, so " +
-      "it gains nothing"):
+  test("a card drawn by a Search and placed facedown is not played faceup, " +
+      "so it gains nothing"):
     val ready = withParty(plain)
     val done = play(ready, modifiers, plain.head, "adviser-facedown")
     val after = SearchFixture.after(done)
@@ -64,7 +64,8 @@ class WelcomingPartySuite extends munit.FunSuite:
     val card = plain.head
     val ready = asAdviser(withParty(plain.drop(1)), card, Orientation.FaceDown)
     Vector("adviser-faceup", "site").foreach { button =>
-      val after = SearchFixture.after(playFacedown(ready, modifiers, card, button))
+      val played = playFacedown(ready, modifiers, card, button)
+      val after = SearchFixture.after(played)
       assertEquals(hearthBank(after), hearthBank(ready), button)
     }
 

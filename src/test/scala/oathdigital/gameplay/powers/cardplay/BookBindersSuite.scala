@@ -37,9 +37,9 @@ class BookBindersSuite extends munit.FunSuite:
       banks).unchecked
 
   /** Book Binders' holder answers its bank question with `suit`. */
-  private def holderChooses(placed: OathTransition, choice: String,
+  private def holderChooses(placed: OathTransition, decisionId: String,
       suit: Suit): OathTransition =
-    accepted(SearchFixture.rules.resolveWalker(placed.state, holder, choice,
+    accepted(SearchFixture.rules.resolveWalker(placed.state, holder, decisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(suit))))
 
   private def faceup(ready: ReadyGame): OathTransition =
@@ -106,7 +106,6 @@ class BookBindersSuite extends munit.FunSuite:
 
   test("the Conspiracy still resolves when Book Binders' own take drains " +
       "the bank it emptied, which used to shift the target decision's index"):
-    val relic = targetRelic
     // Two banks stocked; the one Book Binders' holder picks (Arcane, holding
     // only 1) empties, leaving only Order stocked -- the shape-changing case
     // the fix covers, since Book Binders' own contribution used to be 2 nodes
@@ -136,12 +135,11 @@ class BookBindersSuite extends munit.FunSuite:
     assertEquals(after.banks.favor(Suit.Arcane), 0)
     assertEquals(after.banks.favor(Suit.Order), 5)
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
-    assert(Look(after).player(actor).relics.exists(_.id == relic))
-    assert(!Look(after).player(holder).relics.exists(_.id == relic))
+    assert(Look(after).player(actor).relics.exists(_.id == targetRelic))
+    assert(!Look(after).player(holder).relics.exists(_.id == targetRelic))
 
   test("the Conspiracy still resolves, and the holder still gains favor, " +
       "when Book Binders' own take drains the only stocked bank"):
-    val relic = targetRelic
     // Exactly one bank stocked, holding 2 or fewer favor: Book Binders' own
     // take asks nothing (FavorBankChoice.take auto-takes a single bank) and
     // drains it to zero within the SAME command that places the Vision, so
@@ -164,8 +162,8 @@ class BookBindersSuite extends munit.FunSuite:
     assertEquals(after.game.current.walkerPending, None)
     assertEquals(after.banks.favor(Suit.Hearth), 0)
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
-    assert(Look(after).player(actor).relics.exists(_.id == relic))
-    assert(!Look(after).player(holder).relics.exists(_.id == relic))
+    assert(Look(after).player(actor).relics.exists(_.id == targetRelic))
+    assert(!Look(after).player(holder).relics.exists(_.id == targetRelic))
 
   test("a facedown Vision played from the advisers gives the holder favor " +
       "too, off turn, pinning the rebuildFacedown settle path"):

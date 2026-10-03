@@ -30,7 +30,8 @@ class VowOfObedienceSuite extends munit.FunSuite:
     val ready = arrange(SearchFixture.staged(Vector(vision), supply = 5))
     searched(ready, vision)
 
-  test("a faceup holder's Search does not offer a Vision faceup, and refuses it"):
+  test("a faceup holder's Search does not offer a Vision faceup, and " +
+      "refuses it"):
     val parkedAt = search(VisionRules.Faith, holding(_))
     assert(!offered(parkedAt).contains("adviser-faceup"))
     assert(offered(parkedAt).contains("discard"))

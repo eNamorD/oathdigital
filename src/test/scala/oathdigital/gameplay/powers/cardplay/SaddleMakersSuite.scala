@@ -48,7 +48,8 @@ class SaddleMakersSuite extends munit.FunSuite:
 
   test("an order card played to a site counts too"):
     val ready = held(order)
-    val after = SearchFixture.after(play(ready, Vector.empty, order.head, "site"))
+    val played = play(ready, Vector.empty, order.head, "site")
+    val after = SearchFixture.after(played)
     assertEquals(favor(after, holder), favor(ready, holder) + 2)
 
   test("a card of another suit, a facedown play and a discard gain nothing"):
@@ -97,7 +98,8 @@ class SaddleMakersSuite extends munit.FunSuite:
       "writes no line"):
     val low = heldTable(nomad).bankFavor(Suit.Nomad, 1).unchecked
     val one = play(low, Vector.empty, nomad.head, "adviser-faceup")
-    assertEquals(favor(SearchFixture.after(one), holder), favor(low, holder) + 1)
+    val afterOne = SearchFixture.after(one)
+    assertEquals(favor(afterOne, holder), favor(low, holder) + 1)
     assertEquals(said(one.events), Vector(NoteText.Said("gained",
       s"${holder.value} gained 1 favor from the Nomad bank.", covers = true)))
     val empty = heldTable(nomad).bankFavor(Suit.Nomad, 0).unchecked

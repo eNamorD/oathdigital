@@ -48,9 +48,9 @@ class BirdsongSuite extends munit.FunSuite:
     val plain = trade(ready, Vector.empty, beast).result
     assertEquals(Look(result).favor(p1), Look(plain).favor(p1))
     assertEquals(Look(result).faceUpSecrets(p1), Look(plain).faceUpSecrets(p1))
-    assertEquals(ActPowerHarness.replayed(rules, ready,
-      traded.journal.events), result)
-    assertWireRoundTrips(traded.journal.events)
+    val events = traded.journal.events
+    assertEquals(ActPowerHarness.replayed(rules, ready, events), result)
+    assertWireRoundTrips(events)
 
   test("trading with a nomad card spends no Supply"):
     assertEquals(Look(trade(at(nomad), modifiers, nomad).result).supply(p1), 7)

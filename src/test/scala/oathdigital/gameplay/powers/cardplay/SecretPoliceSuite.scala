@@ -11,19 +11,18 @@ class SecretPoliceSuite extends munit.FunSuite:
 
   private val police = CatalogNames.denizen("Secret Police")
   private val other = Table.p2
-  // p1 stands at Ancient City on the quiet table; Broken Peaks is elsewhere.
   private val home = CatalogNames.site("Ancient City")
   private val elsewhere = CatalogNames.site("Broken Peaks")
 
-  /** Secret Police faceup at `at`, on `table`. */
+  /** Secret Police faceup at `at`, on `table`; p1's pawn at Ancient City. */
   private def policeAt(table: Table, at: SiteId): Table =
-    table.denizen(police, at = at)
+    table.pawn(actor, home).denizen(police, at = at)
 
   /** A Search drawing `vision`, on the quiet table as `arrange` lays it. */
   private def search(vision: VisionId = VisionRules.Faith)(
       arrange: Table => Table): OathTransition =
-    searched(arrange(Table.from(SearchFixture.staged(Vector(vision),
-      supply = 5))).unchecked, vision)
+    val drawing = SearchFixture.staged(Vector(vision), supply = 5)
+    searched(arrange(Table.from(drawing)).unchecked, vision)
 
   test("an enemy at a site its ruler rules cannot play a Vision faceup"):
     // p2 rules Ancient City, where the Police stand and p1's pawn is.

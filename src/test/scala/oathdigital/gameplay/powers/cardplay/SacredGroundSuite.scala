@@ -23,8 +23,8 @@ class SacredGroundSuite extends munit.FunSuite:
 
   private def search(site: SiteId, vision: VisionId = VisionRules.Faith,
       side: EdificeSide = EdificeSide.Intact): OathTransition =
-    searched(withE08(SearchFixture.staged(Vector(vision), supply = 5), site,
-      side), vision)
+    val drawing = SearchFixture.staged(Vector(vision), supply = 5)
+    searched(withE08(drawing, site, side), vision)
 
   test("a player whose pawn is elsewhere cannot play a Vision faceup"):
     val parkedAt = search(elsewhere)
@@ -39,8 +39,9 @@ class SacredGroundSuite extends munit.FunSuite:
 
   test("the site's ruler is bound like everyone else"):
     // p1 rules Broken Peaks, where Sacred Ground stands, with 2 warbands.
-    val ruled = Table.from(withE08(SearchFixture.staged(
-      Vector(VisionRules.Faith), supply = 5), elsewhere))
+    val drawingFaith = SearchFixture.staged(Vector(VisionRules.Faith),
+      supply = 5)
+    val ruled = Table.from(withE08(drawingFaith, elsewhere))
       .warbandsAt(elsewhere, actor, 2).unchecked
     assert(!offered(searched(ruled, VisionRules.Faith))
       .contains("adviser-faceup"))
@@ -68,4 +69,5 @@ class SacredGroundSuite extends munit.FunSuite:
       covers = false)))
 
   test("the Conspiracy, which Sacred Ground excepts, reads no line"):
-    assertEquals(hidden(search(elsewhere, VisionRules.Conspiracy)), Vector.empty)
+    assertEquals(hidden(search(elsewhere, VisionRules.Conspiracy)),
+      Vector.empty)

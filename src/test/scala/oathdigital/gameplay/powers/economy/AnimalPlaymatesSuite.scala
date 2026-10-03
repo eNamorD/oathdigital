@@ -46,9 +46,9 @@ class AnimalPlaymatesSuite extends munit.FunSuite:
       .result
     assertEquals(Look(result).favor(p1), Look(plain).favor(p1))
     assertEquals(Look(result).faceUpSecrets(p1), Look(plain).faceUpSecrets(p1))
-    assertEquals(ActPowerHarness.replayed(rules, ready,
-      mustered.journal.events), result)
-    assertWireRoundTrips(mustered.journal.events)
+    val events = mustered.journal.events
+    assertEquals(ActPowerHarness.replayed(rules, ready, events), result)
+    assertWireRoundTrips(events)
 
   test("mustering on a beast edifice spends no Supply"):
     val ready = advised().edifice(beastEdifice, EdificeSide.Intact,
