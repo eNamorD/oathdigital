@@ -4,7 +4,10 @@ import oathdigital.model.PlayerColor
 
 import scala.concurrent.Future
 
-/** Fixtures the server-mode UI suites share. */
+/** The fixtures that the ServerMode* suites split out of ServerModeUiSuite
+  * share: the log-filtering transport, the request record and the two-seat
+  * projection.
+  */
 private[frontend] object ServerModeFixtures:
   /** One request a test transport received. */
   final case class RecordedRequest(method: String, url: String,
@@ -20,14 +23,14 @@ private[frontend] object ServerModeFixtures:
         """{"gameId":"quiet","after":0,"nextSequence":0,"entries":[]}""")))
       else inner.request(method, url, body)
 
-  /** The two-seat game the presentation suites read, at `phase` with exactly
+  /** The fixed two-seat game "game-1" at sequence 8, at `phase` with exactly
     * `legalControls` legal. Its seats are "red-exile" (shown as "Red Exile",
     * Red) and "blue-exile" (shown as "Blue Exile", Blue);
     * `activeParticipantId` says whose turn it is, red-exile unless a test
     * names another. A test that depends on the phase passes it, because the
     * default, "wake", is only a default.
     */
-  def projection(
+  def twoSeatProjection(
       legalControls: Set[String],
       phase: String = "wake",
       activeParticipantId: String = "red-exile",

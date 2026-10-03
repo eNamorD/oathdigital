@@ -32,7 +32,7 @@ class SiteFaceSuite extends munit.FunSuite:
   /** Salt Flats holds one denizen and two facedown relics, no loose tokens;
     * a test that depends on its defense or Recover difficulty sets them.
     */
-  private val saltFlats = GameSite("site:mine", "Salt Flats",
+  private val saltFlats = GameSite("site:salt-flats", "Salt Flats",
     looseFavor = 0, looseSecrets = 0, denizenCapacity = 1, relicCapacity = 2,
     denizens = Vector(denizen("denizen:dune", "Dune", "nomad")),
     relics = GameSiteRelics(2), defense = 0,

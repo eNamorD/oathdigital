@@ -1,6 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.frontend.ServerModeFixtures.projection
+import oathdigital.frontend.ServerModeFixtures.twoSeatProjection
 
 import munit.FunSuite
 
@@ -11,7 +11,8 @@ class ViewerPresentationSuite extends FunSuite:
 
   test("Take Wealth actions use the active-player labels and commands"):
     val actions = ServerUiSupport.takeWealthActions(
-      projection(Set("takeFavor", "takeSecret", "endWake"), phase = "wake"),
+      twoSeatProjection(Set("takeFavor", "takeSecret", "endWake"),
+        phase = "wake"),
       "red-exile"
     )
 
@@ -32,7 +33,7 @@ class ViewerPresentationSuite extends FunSuite:
   test("unavailable Take Wealth actions are absent"):
     assertEquals(
       ServerUiSupport.takeWealthActions(
-        projection(Set("endWake"), phase = "wake"),
+        twoSeatProjection(Set("endWake"), phase = "wake"),
         "red-exile"
       ),
       Vector.empty
@@ -40,7 +41,7 @@ class ViewerPresentationSuite extends FunSuite:
 
   test("blocked Take Wealth resource is absent while the legal one remains"):
     val actions = ServerUiSupport.takeWealthActions(
-      projection(Set("takeSecret", "endWake"), phase = "wake"),
+      twoSeatProjection(Set("takeSecret", "endWake"), phase = "wake"),
       "red-exile"
     )
 
@@ -49,14 +50,15 @@ class ViewerPresentationSuite extends FunSuite:
   test("already-used Take Wealth actions are absent from a later phase"):
     assertEquals(
       ServerUiSupport.takeWealthActions(
-        projection(Set("takeFavor", "takeSecret"), phase = "act-action-selection"),
+        twoSeatProjection(Set("takeFavor", "takeSecret"),
+          phase = "act-action-selection"),
         "red-exile"
       ),
       Vector.empty
     )
 
   test("inactive Wake viewer waits and receives no gameplay controls"):
-    val value = projection(
+    val value = twoSeatProjection(
       Set("takeFavor", "takeSecret", "endWake"),
       phase = "wake",
       activeParticipantId = "red-exile"
@@ -79,7 +81,7 @@ class ViewerPresentationSuite extends FunSuite:
     * each waiting on the other.
     */
   test("an off-turn owner of a parked walker decision keeps gameplay controls"):
-    val value = projection(Set.empty, activeParticipantId = "red-exile")
+    val value = twoSeatProjection(Set.empty, activeParticipantId = "red-exile")
       .copy(walkerDecision = Some(ForgeFixture.parked))
     val owner = ServerUiSupport.viewerPresentation(value, "blue-exile")
     assert(owner.showGameplayControls)
@@ -87,7 +89,7 @@ class ViewerPresentationSuite extends FunSuite:
     assertEquals(owner.waitingForDisplayName, None)
 
   test("the active participant waits for the walker decision's off-turn owner"):
-    val value = projection(Set.empty, activeParticipantId = "red-exile")
+    val value = twoSeatProjection(Set.empty, activeParticipantId = "red-exile")
       .copy(walkerWaiting = Some(WalkerWaitingState("blue-exile",
         Some("Choose the Oathkeeper"))))
     val active = ServerUiSupport.viewerPresentation(value, "red-exile")
@@ -96,7 +98,8 @@ class ViewerPresentationSuite extends FunSuite:
     assertEquals(active.waitingForDisplayName, Some("Blue Exile"))
 
   test("inactive Act viewer sees no action-selection controls"):
-    val value = projection(Set("beginRest"), phase = "act-action-selection")
+    val value = twoSeatProjection(Set("beginRest"),
+      phase = "act-action-selection")
       .copy(actionSelectionOpen = true,
         legalSearchSources = Vector(LegalSearchSource("world", None, 2)))
     val inactive = ServerUiSupport.viewerPresentation(value, "blue-exile")
@@ -120,7 +123,7 @@ class ViewerPresentationSuite extends FunSuite:
       heading = Some("Choose your starting site"))
     val pawnDecision = WalkerDecisionState("setup", "setup.pawn-placement.blue-exile",
       "decide", query = Some(pawnQuery))
-    val value = projection(
+    val value = twoSeatProjection(
       Set.empty,
       phase = "setup-walker-decision",
       activeParticipantId = "red-exile",
@@ -137,7 +140,7 @@ class ViewerPresentationSuite extends FunSuite:
     val query = DecisionQueryState.ChooseOne(Vector(vote))
     val decision = WalkerDecisionState("setup", "setup.some-decision.blue-exile",
       "decide", query = Some(query))
-    val value = projection(
+    val value = twoSeatProjection(
       Set.empty,
       phase = "setup-walker-decision",
       activeParticipantId = "red-exile",
@@ -152,7 +155,7 @@ class ViewerPresentationSuite extends FunSuite:
     // The Game Log names the phase, and the Act prompt went stale after the
     // first action, so neither phase prints its own instruction.
     Vector("wake", "act-action-selection").foreach { phase =>
-      val value = projection(Set.empty, phase = phase)
+      val value = twoSeatProjection(Set.empty, phase = phase)
       val status = ActionDecisionRenderer.status(value,
         ServerUiSupport.viewerPresentation(value, "red-exile"))
       assertEquals(status.textContent, "", phase)

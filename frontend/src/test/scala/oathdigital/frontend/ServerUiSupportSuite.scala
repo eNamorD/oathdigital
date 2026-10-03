@@ -1,6 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.frontend.ServerModeFixtures.projection
+import oathdigital.frontend.ServerModeFixtures.twoSeatProjection
 import oathdigital.model.PlayerColor
 import oathdigital.testkit.Unwrap.present
 
@@ -90,9 +90,9 @@ class ServerUiSupportSuite extends FunSuite:
 
   test("winner banner class resolves the winner's stable color token"):
     assertEquals(ServerUiSupport.winnerColorClass(
-      projection(Set.empty), "red-exile"), "player-red")
+      twoSeatProjection(Set.empty), "red-exile"), "player-red")
     assertEquals(ServerUiSupport.winnerColorClass(
-      projection(Set.empty), "missing"), "player-neutral")
+      twoSeatProjection(Set.empty), "missing"), "player-neutral")
 
   test("visible target detail badges contain details without duplicating names"):
     val candidate = BoardTargetCandidate(BoardTargetRef.Site("site:a"),

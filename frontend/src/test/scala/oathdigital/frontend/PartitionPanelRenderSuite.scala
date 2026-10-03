@@ -1,8 +1,8 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.Dom.{all, one}
 import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire,
   GameIntent => Intent}
-import oathdigital.frontend.Dom.{all, one}
 import oathdigital.testkit.Unwrap.as
 import ParkedDecision.Surface
 import org.scalajs.dom
