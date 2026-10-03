@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
+import oathdigital.gameplay.WalkerDiceFixture.swordsCyclingDefense
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.WalkerDiceFixture.swordsCyclingDefense
 import oathdigital.model._
 import oathdigital.model.DefenseDieFace.{Doubler, OneShield, TwoShields}
 import oathdigital.testkit.{CatalogNames, Look}

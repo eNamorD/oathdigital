@@ -6,7 +6,7 @@ import oathdigital.application._
 import oathdigital.application.MembershipRole._
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.testkit.{HeaderAuthenticator, HttpTestServer, Outcomes}
+import oathdigital.testkit.{TestUserHeaderAuthenticator, HttpTestServer, Outcomes}
 import oathdigital.testkit.ChronicleShuffles.unshuffled
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -74,7 +74,7 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
         )
         val server = HttpTestServer.start("authenticated-bootstrap-test")(
           blocking => new AuthenticatedGameRoutes(
-            HeaderAuthenticator,
+            TestUserHeaderAuthenticator,
             new SameOriginCsrfProtection(HttpTestServer.origin),
             gateway,
             blocking

@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
+import oathdigital.gameplay.WalkerDiceFixture.swordsCyclingDefense
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.WalkerDiceFixture.swordsCyclingDefense
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look}
@@ -19,11 +19,6 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
 
   private val pattern = Vector(DefenseDieFace.OneShield,
     DefenseDieFace.TwoShields, DefenseDieFace.Doubler, DefenseDieFace.Blank)
-
-  /** Stub of WalkerDice: every attack die a sword; the defense dice cycle
-    * through `pattern`. */
-  private val shields: WalkerDice =
-    swordsCyclingDefense(pattern*)
 
   /** The attacker holds the Bag, a faceup secret and 5 warbands; two further
     * bandit sites can be targeted with the origin, so the defense rolls at
@@ -49,7 +44,8 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
 
   test("an attacker places a secret on the relic"):
     val b = attackerWithBagAndSecret
-    val run = conquestOfAllTargets(b, shields)
+    val run = conquestOfAllTargets(b,
+      swordsCyclingDefense(pattern*))
     assert(awaits(run, b.actor, CampaignIds.attackerPlan))
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assertEquals(Look(picked.state).player(b.actor).board.faceUpSecrets, 0)
@@ -57,7 +53,8 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
 
   test("the defense is scored without its single shields, and it says so"):
     val b = attackerWithBagAndSecret
-    val run = conquestOfAllTargets(b, shields)
+    val run = conquestOfAllTargets(b,
+      swordsCyclingDefense(pattern*))
     val done = run.pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishPlanWindows
     val result = done.result
@@ -80,7 +77,8 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
 
   test("a Campaign that does not choose it scores the single shields"):
     val b = attackerWithBagAndSecret
-    val done = conquestOfAllTargets(b, shields).finishPlanWindows
+    val done = conquestOfAllTargets(b,
+      swordsCyclingDefense(pattern*)).finishPlanWindows
     val result = done.result
     // Two bandits at each of the three targets.
     val banditDefense = 2 * (1 + b.extras.size)

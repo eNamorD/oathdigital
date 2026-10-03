@@ -16,7 +16,7 @@ import oathdigital.server.SensitiveTokenDigest
 
 /** A route served on a free loopback port for one test, with a client that
   * talks to it. `get` and `post` take a path under `base`, and also a `user`
-  * sent as the X-Test-User header the suites' authenticators read and a
+  * sent as the X-Test-User header `TestUserHeaderAuthenticator` reads and a
   * `cookie` sent as the whole Cookie header value (such as
   * `oath_seat=<code>`). `post` also sends the same-origin `Origin` and
   * `csrfToken` as the X-CSRF-Token header unless told otherwise (the

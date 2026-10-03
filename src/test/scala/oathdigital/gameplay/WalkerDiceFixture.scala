@@ -6,7 +6,8 @@ import oathdigital.model._
 /** Dice for the walks that roll by themselves. A tree with an automatic
   * `Roll` asks its dice source mid-command, so a test that drives such a
   * tree has to say what the dice show before the walk starts rather than
-  * handing faces to a parked roll afterwards.
+  * handing faces to a parked roll afterwards. `shufflingBy` stands in for
+  * the walker's shuffle source, which answers the order of a pile.
   */
 object WalkerDiceFixture:
   /** Stub of WalkerDice: nothing scored, whatever the pool holds (every
