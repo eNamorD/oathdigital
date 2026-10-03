@@ -127,9 +127,9 @@ class HungerSuite extends munit.FunSuite:
     assert(t.events.contains(WalkerCompleted(PhaseTransitionRef.EndWake)))
 
   test("a Hunger revealed in Setup's Reveal Cards runs at the first Wake"):
-    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
-      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders,
-      Vector(card))
+    val ParkedServiceFixture.ChronicleWithDeckTop(chronicle, orders) =
+      ParkedServiceFixture.withWorldDeckTop(FirstGameSetupFixture.chronicle,
+        FirstGameSetupFixture.orders, Vector(card))
     val hungerRef = DecisionOptionRef.Denizen(card)
     val keepAndReveal: Answers =
       case park if park.decisionId ==

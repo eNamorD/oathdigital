@@ -2,7 +2,7 @@ package oathdigital.application
 
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.testkit.{Table, TestCards}
+import oathdigital.testkit.{CatalogNames, Table, TestCards}
 import oathdigital.testkit.Table.p1
 
 /** The board a walker Forge is driven from, shared by every suite that needs
@@ -16,12 +16,15 @@ import oathdigital.testkit.Table.p1
   */
 object ForgeWalkerFixture:
 
-  /** The one non-homeland site with a printed Forge cost. Every homeland
-    * site restricts which denizens may be played there, and the Forge needs
-    * three. */
+  /** Ancient City: the one non-homeland site with a printed Forge cost
+    * (three favor). Every homeland site restricts which denizens may be
+    * played there, and the Forge needs three. */
   lazy val forgeSite: SiteId =
-    catalog.sites.find(site => site.forgeRequirements.nonEmpty &&
-      site.homeland.isEmpty).get.id
+    val ancientCity = CatalogNames.site("Ancient City")
+    require(catalog.sites.filter(site => site.forgeRequirements.nonEmpty &&
+      site.homeland.isEmpty).map(_.id) == Vector(ancientCity),
+      "Ancient City must be the one non-homeland forgeable site")
+    ancientCity
 
   /** p1 stands at the Forge site and rules it with one warband (the other
     * two stay on the board). The site holds three faceup denizens with no
@@ -62,19 +65,19 @@ object ForgeWalkerFixture:
       : (GameApplicationService, InMemoryEventStreamRepository) =
     forgeTable.service(catalog = cat)
 
+  /** A parked Forge: the catalog it ran under (the assertions need its
+    * printed cost) and the parked position. p1 forges at [[forgeSite]]. */
+  final case class ParkedForge(catalog: oathdigital.catalog.ExecutableCatalog,
+      started: GameAccepted)
+
   /** The position a mixed-cost Forge PARKS from: the fixture board above,
     * under [[mixedForgeCostCatalog]], after the `StartWalker` that spends
     * Supply and stops at the assignment decision.
-    *
-    * Returns the catalog it ran under (the assertions need its printed
-    * cost), the parked position, the actor and the site.
     */
-  def parkedForge(gameId: String)
-      : (oathdigital.catalog.ExecutableCatalog, GameAccepted, PlayerId,
-        SiteId) =
+  def parkedForge(gameId: String): ParkedForge =
     val forgeCatalog = mixedForgeCostCatalog
     val (service, _) = forgeService(forgeCatalog)
     val started = service.handle(gameId, 0L,
       GameCommand.StartWalker(ActionRef.Forge, StartPayload(p1)))
       .fold(error => throw AssertionError(s"Forge refused: $error"), identity)
-    (forgeCatalog, started, p1, forgeSite)
+    ParkedForge(forgeCatalog, started)

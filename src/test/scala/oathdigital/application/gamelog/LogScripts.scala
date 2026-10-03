@@ -160,8 +160,8 @@ object LogScripts:
     * active player's Travel, and the holder's choice of the next
     * Oathkeeper. */
   def oathkeeper(using munit.Location): Script =
-    val (game, active, _, _) = ParkedServiceFixture.oathkeeperTiePark(
-      "oathkeeper")
+    val ParkedServiceFixture.OathkeeperTiePark(game, active, _, _) =
+      ParkedServiceFixture.oathkeeperTiePark("oathkeeper")
     Situation(game.accepted.state, Vector.empty, game.accepted.nextSequence,
       Situation.journaled(game.service, catalog, game.repository,
         "oathkeeper")).after()
@@ -407,8 +407,8 @@ object LogScripts:
 
   /** Silver Tongue used in Rest, its bank choice answered by default. */
   def usePower(using munit.Location): Script =
-    val (game, actor, _) = ParkedServiceFixture.silverTonguePark("use-power",
-      steadyDice)
+    val ParkedServiceFixture.SilverTonguePark(game, actor, _) =
+      ParkedServiceFixture.silverTonguePark("use-power", steadyDice)
     Situation(game.accepted.state, Vector.empty, game.accepted.nextSequence,
       Situation.journaled(game.service, catalog, game.repository,
         "use-power")).after()

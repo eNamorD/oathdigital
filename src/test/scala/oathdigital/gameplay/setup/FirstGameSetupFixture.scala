@@ -112,6 +112,10 @@ object FirstGameSetupFixture:
       throw AssertionError(s"the setup events do not replay: $violation"),
       identity), events)
 
+  /** The world cards Setup deals before the deck top: 6 for the seeded
+    * regional discards and 3 for each participant's hand. */
+  def dealtBeforeDeckTop(participants: Int): Int = 6 + participants * 3
+
   /** The game `setupThroughWake()` sets up. Immutable, so suites share one. */
   lazy val initialReady: ReadyGame =
     Outcomes.ready(setupThroughWake().state)
@@ -124,9 +128,9 @@ object FirstGameSetupFixture:
 private object ChronicleFixtureDealOrder:
   def dealOrder(denizens: Vector[DenizenId], participantCount: Int)
       : Vector[WorldCardId] =
-    // Set aside first: 3 cards for each participant's hand and 6 for the
-    // seeded regional discards.
-    val remaining = denizens.drop(6 + participantCount * 3)
+    // Set aside first: the cards dealt before the deck top.
+    val remaining = denizens.drop(
+      FirstGameSetupFixture.dealtBeforeDeckTop(participantCount))
     // Then the 10+2 and 15+3 packets: 10 cards and 2 Visions, 15 cards and the
     // other 3 Visions, and the rest of the deck below them.
     remaining.take(10) ++ FirstGameRulesData.visions.take(2) ++

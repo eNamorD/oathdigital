@@ -1,6 +1,5 @@
 package oathdigital.application.gamelog
 
-import oathdigital.application.ParkedServiceFixture
 import oathdigital.engine.ReplayStep
 import oathdigital.gameplay.actions.{PlacementRules, RuleNotes}
 import oathdigital.gameplay.powers.rest.SilverTongue
@@ -8,15 +7,17 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
 import LogScripts._
 
 /** Lines powers write about themselves (power log lines design, section 2).
   * The notes are journaled into real scripts, as Silver Tongue's, whose
   * wording this suite supplies. */
 class GameLogPowerLinesSuite extends munit.FunSuite:
+  private val silverTongue = CatalogNames.denizen("Silver Tongue")
   private type Steps = Vector[ReplayStep[OathState, OathEvent]]
   private val power = SilverTongue.id
-  private val card = PowerSourceRef.Card(ParkedServiceFixture.silverTongueCard)
+  private val card = PowerSourceRef.Card(silverTongue)
   private val said = NoteKey("said", Vector(NotePart.Arg(0),
     NotePart.Text(" said "), NotePart.Arg(1), NotePart.Text(".")))
   private val took = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
@@ -167,7 +168,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       case _: VisionId => "a Vision"
       case _ => "a Denizen"
     val listed = inserted(steps, take(steps), saying(script.actor,
-      NoteArg.Cards(Vector(ParkedServiceFixture.silverTongueCard, hidden))))
+      NoteArg.Cards(Vector(silverTongue, hidden))))
     assertEquals(text(ours(listed, Some(script.actor)).head),
       s"Silver Tongue: ${name(script.actor)} said Silver Tongue and $back.")
     val banner = inserted(steps, take(steps), saying(script.actor,
@@ -183,12 +184,12 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       case other => fail(s"expected a ready game, got $other")
     val deck = last.game.current.commonCards.worldDeck.take(5)
     val listed = inserted(steps, take(steps), saying(script.actor,
-      NoteArg.Cards(ParkedServiceFixture.silverTongueCard +: deck)))
+      NoteArg.Cards(silverTongue +: deck)))
     val entry = ours(listed, Some(script.actor)).head
     val lists = entry.spans.collect { case cards: LogSpan.Cards => cards }
     assertEquals(lists.map(_.text), Vector("6 cards"))
     assertEquals(lists.head.cards.map(card => card.hidden -> card.cardId),
-      (false -> ParkedServiceFixture.silverTongueCard.value) +:
+      (false -> silverTongue.value) +:
         deck.map(_ => true -> "hidden"))
     assertEquals(text(entry),
       s"Silver Tongue: ${name(script.actor)} said 6 cards.")

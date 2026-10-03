@@ -7,7 +7,8 @@ import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerParked}
 import oathdigital.model._
-import oathdigital.testkit.{Situation, SituationDriver, Table}
+import oathdigital.testkit.{CatalogNames, Situation, SituationDriver,
+  Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** Real games parked on a walker through the application service.
@@ -18,9 +19,6 @@ import oathdigital.testkit.Table.{p1, p2, p3}
   * for a test that goes on to drive or reload it.
   */
 object ParkedServiceFixture:
-  val treatyCard: DenizenId = DenizenId("237")
-  val silverTongueCard: DenizenId = DenizenId("92")
-
   /** The parked decision, as these fixtures rebuild it: the same catalog and
     * power catalogs `GameApplicationService` builds its rules with
     * (`GameApplicationService.scala:87-90`).
@@ -39,16 +37,14 @@ object ParkedServiceFixture:
     accepted(woken(Situation.journaled(service, catalog, gameId),
       placementSites, setupChronicle, setupOrders))
 
-  /** Ends `player`'s Wake through `service` from `from`, unless that Wake
-    * has already ended by itself for having nothing to decide. */
+  /** [[Situation.endingWake]] from an accepted position of `service`: ends
+    * `player`'s Wake unless it has already ended by itself for having
+    * nothing to decide. */
   def endingWake(service: GameApplicationService, gameId: String,
-      from: GameAccepted, player: PlayerId): GameAccepted =
-    from.state match
-      case OathState.Ready(ready) if ready.game.current.turn.phase == Phase.Wake =>
-        service.handle(gameId, from.nextSequence, GameCommand.EndWake(player))
-          .fold(error => throw new AssertionError(s"End Wake rejected: $error"),
-            identity)
-      case _ => from
+      from: GameAccepted, player: PlayerId)(using munit.Location)
+      : GameAccepted =
+    accepted(Situation(from.state, Vector.empty, from.nextSequence,
+      Situation.journaled(service, catalog, gameId)).endingWake(player))
 
   private def woken(driver: SituationDriver, placementSites: Vector[SiteId],
       setupChronicle: Chronicle, setupOrders: SetupOrders): Situation =
@@ -64,14 +60,18 @@ object ParkedServiceFixture:
   private def accepted(situation: Situation): GameAccepted =
     GameAccepted(situation.state, situation.events, situation.nextSequence)
 
+  /** A Chronicle and the deal order built from it. */
+  final case class ChronicleWithDeckTop(chronicle: Chronicle,
+      orders: SetupOrders)
+
   /** `cards`, in order, become the top of the world deck. A card already
     * dealt by setup swaps places with the card it displaces, and the world
     * deck order is rebuilt with `ChronicleFirstGamePlan`'s own interleaving
     * of visions -- the same production splice, not a duplicate of it.
     */
   def withWorldDeckTop(baseChronicle: Chronicle, baseOrders: SetupOrders,
-      cards: Vector[DenizenId]): (Chronicle, SetupOrders) =
-    val dealt = 6 + baseOrders.participants.size * 3
+      cards: Vector[DenizenId]): ChronicleWithDeckTop =
+    val dealt = dealtBeforeDeckTop(baseOrders.participants.size)
     val targets = (dealt until dealt + cards.size).toSet
     val worldDeck = cards.zipWithIndex.foldLeft(baseChronicle.worldDeck):
       case (current, (card, offset)) =>
@@ -87,12 +87,31 @@ object ParkedServiceFixture:
     val newChronicle = baseChronicle.copy(worldDeck = worldDeck)
     val config = FirstGameBootstrapConfig(baseOrders.participants,
       baseOrders.firstPlayer)
-    (newChronicle, ChronicleFirstGamePlan.dealOrder(newChronicle, config))
+    ChronicleWithDeckTop(newChronicle,
+      ChronicleFirstGamePlan.dealOrder(newChronicle, config))
 
   /** A park: the service and journal it was driven through, and the
     * position it stopped at. */
   final case class ParkedGame(service: GameApplicationService,
       repository: InMemoryEventStreamRepository, accepted: GameAccepted)
+
+  /** League Treaty's park: `resting` began Rest, `ruler` is asked. */
+  final case class LeagueTreatyPark(game: ParkedGame, resting: PlayerId,
+      ruler: PlayerId)
+
+  /** A Recover choice park: `actor` is asked; `seats` are every seated
+    * player. */
+  final case class RecoverChoicePark(game: ParkedGame, actor: PlayerId,
+      seats: Vector[PlayerId])
+
+  /** The Oathkeeper tie park: `mover` travelled, `holder` is asked, and
+    * `secondLeader` is the leader other than the mover. */
+  final case class OathkeeperTiePark(game: ParkedGame, mover: PlayerId,
+      holder: PlayerId, secondLeader: PlayerId)
+
+  /** Silver Tongue's park: `actor` is asked, offered `offeredSuit`'s bank. */
+  final case class SilverTonguePark(game: ParkedGame, actor: PlayerId,
+      offeredSuit: Suit)
 
   /** A fresh service begun at `table`, and the journaled situation there. */
   private def journaled(table: Table, gameId: String,
@@ -110,7 +129,8 @@ object ParkedServiceFixture:
     * Broken Peaks' secrets give p2's coming Wake an option, so that Wake
     * waits once p2 has answered. */
   def leagueTreatyPark(gameId: String)(using munit.Location)
-      : (ParkedGame, PlayerId, PlayerId) =
+      : LeagueTreatyPark =
+    val treatyCard = CatalogNames.denizen("League Treaty")
     val base = Table.start
     val suit = catalog.suitOf(treatyCard).get
     val table = base
@@ -125,7 +145,8 @@ object ParkedServiceFixture:
     parkedAssertions.assertParked(parked.state, PhaseTransitionRef.FinishRest,
       LeagueTreatyContribution.destinationDecisionId(table.ready, p1,
         Table.quietPawnSite(p1), treatyCard), p2)
-    (ParkedGame(service, repository, accepted(parked, act)), p1, p2)
+    LeagueTreatyPark(ParkedGame(service, repository, accepted(parked, act)),
+      p1, p2)
 
   /** Defense dice that always come up blank. A Recover started with these
     * fails its roll, so it parks on the continue-or-stop choice instead of
@@ -152,14 +173,14 @@ object ParkedServiceFixture:
     * `failingDice` fail the roll, so it parks on the choice instead of
     * landing wherever a random port would send it. */
   def recoverChoicePark(gameId: String, dice: CampaignDicePort = failingDice)(
-      using munit.Location): (ParkedGame, PlayerId, Vector[PlayerId]) =
+      using munit.Location): RecoverChoicePark =
     val (service, repository, act) = journaled(recoverTable, gameId, dice)
     val parked = act.parkedAfter(
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
     parkedAssertions.assertParked(parked.state, ActionRef.Recover,
       RecoverProcedure.choiceDecisionId, p1)
-    (ParkedGame(service, repository, accepted(parked, act)), p1,
-      orders.participants.map(_.playerId))
+    RecoverChoicePark(ParkedGame(service, repository, accepted(parked, act)),
+      p1, orders.participants.map(_.playerId))
 
   /** The off-turn Oathkeeper tie: p3 holds the title, and p1 and p2 each
     * rule a site with one warband (the other 2 stay on their boards). The
@@ -168,7 +189,7 @@ object ParkedServiceFixture:
     * follows a first command does not journal an event of its own. The
     * returned players are the mover, the holder and the second leader. */
   def oathkeeperTiePark(gameId: String)(using munit.Location)
-      : (ParkedGame, PlayerId, PlayerId, PlayerId) =
+      : OathkeeperTiePark =
     val table = Table.start
       .oathkeeper(Some(p3))
       .warbandsAt("Ancient City", p1, 1)
@@ -186,7 +207,8 @@ object ParkedServiceFixture:
     }, s"expected a triggered Oathkeeper park, got ${parked.events.last}")
     parkedAssertions.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,
       OathkeeperProcedure.recipientDecisionId, p3)
-    (ParkedGame(service, repository, accepted(parked, act)), p1, p3, p2)
+    OathkeeperTiePark(ParkedGame(service, repository, accepted(parked, act)),
+      mover = p1, holder = p3, secondLeader = p2)
 
   /** Silver Tongue as p1's faceup adviser, with Wrestlers (Order) and
     * Bandit Chief (Discord) faceup at p1's pawn site. p2 holds a facedown
@@ -195,10 +217,10 @@ object ParkedServiceFixture:
     * refill is journaled after the first command. Every favor bank starts with at
     * least 3 favor, so Begin Rest stops at the Rest action, and using Silver
     * Tongue parks on its bank choice. The returned suit is the first site
-    * card's, which that choice offers. */
+    * card's, Order, which that choice offers. */
   def silverTonguePark(gameId: String,
       dice: CampaignDicePort = CampaignDicePort.random)(
-      using munit.Location): (ParkedGame, PlayerId, Suit) =
+      using munit.Location): SilverTonguePark =
     val table = Table.start
       .adviser(p1, "Silver Tongue")
       .denizen("Wrestlers", "Ancient City")
@@ -209,7 +231,10 @@ object ParkedServiceFixture:
     val resting = act.after(GameCommand.BeginRest(p1))
     parkedAssertions.assertResumed(resting.state, Phase.Rest, p1)
     val parked = resting.parkedAfter(GameCommand.UsePower(p1,
-      SilverTongue.id, DecisionOptionRef.Denizen(silverTongueCard)))
+      SilverTongue.id,
+      DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))))
     parkedAssertions.assertParked(parked.state, ActionRef.UsePower(SilverTongue.id),
       SilverTongue.choiceDecisionId(resting.ready, p1), p1)
-    (ParkedGame(service, repository, accepted(parked, resting)), p1, Suit.Order)
+    // Wrestlers, the first site card, is an Order card.
+    SilverTonguePark(ParkedGame(service, repository, accepted(parked, resting)),
+      p1, Suit.Order)

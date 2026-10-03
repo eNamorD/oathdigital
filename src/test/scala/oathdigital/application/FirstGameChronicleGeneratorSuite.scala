@@ -3,28 +3,36 @@ package oathdigital.application
 import oathdigital.gameplay.operations.TheGrandScepterCard
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.powers.{PowerImplementationStatus, ReviewedPowerCatalog}
-import oathdigital.model.{Chronicle, DenizenId, EdificeId, PowerId, Suit}
+import oathdigital.model.{CardId, Chronicle, DenizenId, EdificeId, Suit}
+import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
   private val status = PowerImplementationStatus.implemented(catalog)
   private val random = ChronicleRandomPort.random
   private val policy = ShufflePolicy.implementedFirst
 
-  private def generated: Chronicle =
-    FirstGameChronicleGenerator.generate(catalog, status, random, policy)
-      .toOption.get
+  private def generated(using munit.Location): Chronicle =
+    accepted(FirstGameChronicleGenerator.generate(catalog, status, random,
+      policy))
+
+  /** The printed suit of `card`; fails naming a card the catalog lacks. */
+  private def suitOf(card: CardId)(using munit.Location): Suit =
+    present(catalog.suitOf(card), s"${card.value} in the catalog")
 
   test("the atlas box holds all 24 sites, each Homeland carrying its suit's edifice"):
     val chronicle = generated
     assertEquals(chronicle.atlasBox.map(_.site).toSet, catalog.sites.map(_.id).toSet)
     assertEquals(chronicle.atlasBox.map(_.site).distinct.size, 24)
     catalog.sites.foreach { site =>
-      val stored = chronicle.atlasBox.find(_.site == site.id).get
+      val stored = present(chronicle.atlasBox.find(_.site == site.id),
+        s"${site.name} in the atlas box")
       site.homeland match
         case Some(suit) =>
           assertEquals(stored.items.size, 1)
-          val edificeId = stored.items.head.asInstanceOf[oathdigital.model.EdificeId]
-          assertEquals(catalog.edifices.find(_.id.value == edificeId.value).get.suit, suit)
+          stored.items.head match
+            case edifice: EdificeId => assertEquals(suitOf(edifice), suit)
+            case other => fail(s"${site.name} stores $other, not an edifice")
         case None => assertEquals(stored.items, Vector.empty)
     }
 
@@ -37,8 +45,7 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
     assert(rest.forall(id => !implemented(id)),
       "no unimplemented denizen may precede an implemented one")
     Suit.all.foreach { suit =>
-      val suited = chronicle.worldDeck.filter(id =>
-        catalog.denizens.find(_.id.value == id.value).get.suit == suit)
+      val suited = chronicle.worldDeck.filter(id => suitOf(id) == suit)
       assertEquals(suited.size, 10)
     }
 
@@ -52,8 +59,7 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
     assertEquals(chronicle.worldDeck.toSet intersect chronicle.dispossessed.toSet,
       Set.empty[oathdigital.model.DenizenId])
     Suit.all.foreach { suit =>
-      val suited = chronicle.dispossessed.filter(id =>
-        catalog.denizens.find(_.id.value == id.value).get.suit == suit)
+      val suited = chronicle.dispossessed.filter(id => suitOf(id) == suit)
       assertEquals(suited.size, 2)
     }
 
@@ -69,8 +75,11 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
 
   test("implemented means what the UI marker reads, not presence in the " +
       "reviewed registry: a walker-only power counts, a declared stub does not"):
-    val registry = ReviewedPowerCatalog.registry(catalog).toOption.get
-    val walkerOnly = PowerId("edifice.e06.ruined")
+    val registry = accepted(ReviewedPowerCatalog.registry(catalog))
+    // The Broken Forge, the Great Forge's ruined face, has a walker-only power.
+    val brokenForge = CatalogNames.edifice("Broken Forge")
+    val walkerOnly = present(catalog.edifices.find(_.id.value ==
+      brokenForge.value), "the Broken Forge").ruined.powers.head.id
     assert(registry.lookup(walkerOnly).isEmpty && status(walkerOnly))
     val stub = ReviewedPowerCatalog.powers.find(_.handlers.exists(!_.implemented))
       .map(_.id).filterNot(status)
@@ -85,7 +94,7 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
     val chronicle = generated
     chronicle.atlasBox.flatMap(_.items).collect { case id: EdificeId => id }
       .foreach { id =>
-        val suit = catalog.edifices.find(_.id.value == id.value).get.suit
+        val suit = suitOf(id)
         ImplementedCardCatalog.homelandEdifice(catalog, suit, status)
           .foreach(expected => assertEquals(id, expected))
       }
@@ -99,6 +108,7 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
       assertEquals(suited.count(deck), suited.size min 10, s"$suit")
     }
 
-  test("two runs land different atlas orders: the port is actually consulted"):
+  test("five generated atlas orders are not all the same: the port is " +
+      "consulted"):
     val orders = Vector.fill(5)(generated.atlasBox.map(_.site))
     assert(orders.distinct.size > 1, "24 shuffled sites should not repeat every time")

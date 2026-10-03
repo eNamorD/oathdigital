@@ -18,14 +18,17 @@ class CardKnowledgeSuite extends munit.FunSuite:
     .relicAt("Sticky Fire", at = "Dunes")
     .adviser(Table.p1, "Wrestlers", facedown = true)
     .ready
-  private val current = board.game.current
   private val (site, relic) =
     (CatalogNames.site("Dunes"), CatalogNames.relic("Sticky Fire"))
   private val (owner, other, third) = (Table.p1, Table.p2, Table.p3)
 
+  /** `op` executed on `ready`; fails with the refusal. */
+  private def executed(ready: ReadyGame, op: CoreOperation)(
+      using munit.Location): ReadyGame =
+    executor.execute(ready, op).fold(error => fail(s"$op: $error"), identity)
+
   private def run(ops: CoreOperation*)(using munit.Location): ReadyGame =
-    ops.foldLeft(board) { (ready, op) =>
-      executor.execute(ready, op).fold(error => fail(s"$op: $error"), identity) }
+    ops.foldLeft(board)(executed)
 
   private def knows(ready: ReadyGame, player: PlayerId, id: CardId) =
     presentation.identifiesAt(ready, Some(player), id)
@@ -55,28 +58,24 @@ class CardKnowledgeSuite extends munit.FunSuite:
       .foreach(known => assert(!known.values.exists(_.contains(relic)), known))
     assert(!buried.knowledge.siteRelics.values.exists(_.values
       .exists(_.contains(relic))))
-    val back = executor.execute(buried, Move(Piece.Card(relic),
+    val back = executed(buried, Move(Piece.Card(relic),
       PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Bottom),
       PositionedLocation(Location.PlayArea(owner)), Some(Orientation.FaceDown)))
-      .toOption.get
     assert(!knows(back, other, relic))
 
   test("a face-down adviser shuffled into the world deck is forgotten"):
-    val adviser = current.players.find(_.player == owner).get.advisers
-      .collectFirst { case DenizenState(id, Orientation.FaceDown, _) => id }.get
+    val adviser = CatalogNames.denizen("Wrestlers")
     val peeked = run(Peek(other, adviser, Location.PlayArea(owner)))
     assert(knows(peeked, other, adviser))
-    val gone = executor.execute(peeked, Move(Piece.Card(adviser),
+    val gone = executed(peeked, Move(Piece.Card(adviser),
       PositionedLocation(Location.PlayArea(owner)),
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Bottom)))
-      .toOption.get
     assert(!gone.knowledge.advisers.values.exists(_.contains(adviser)))
 
   /** Every card pile is face down at the table: no one tracks a card once it
     * enters one, so its knowledge is cleared as for a deck. */
   test("a face-down adviser discarded or dispossessed is forgotten by everyone"):
-    val adviser = current.players.find(_.player == owner).get.advisers
-      .collectFirst { case DenizenState(id, Orientation.FaceDown, _) => id }.get
+    val adviser = CatalogNames.denizen("Wrestlers")
     val peeked = run(Peek(other, adviser, Location.PlayArea(owner)))
     Vector(
       PositionedLocation(Location.RegionalDiscard(Region.Cradle),
@@ -92,15 +91,15 @@ class CardKnowledgeSuite extends munit.FunSuite:
   /** Scryer and Oracular Pig peek into a pile. A card entering a pile is
     * forgotten, so a record of a card still in one comes from such a peek. */
   test("a card peeked in the world deck or a discard pile is named to its peeker alone"):
-    val Vector(top, next) = current.commonCards.worldDeck.take(2): @unchecked
-    val staged = board.updateCurrent(c => c.copy(commonCards =
-      c.commonCards.copy(worldDeck = c.commonCards.worldDeck.filterNot(_ == next),
-        regionalDiscards = c.commonCards.regionalDiscards.updated(Region.Cradle,
-          c.commonCards.discard(Region.Cradle) :+ next))))
+    // Threatening Roar tops the world deck; Fae Merchant lies in the Cradle
+    // discard pile.
+    val top = CatalogNames.denizen("Threatening Roar")
+    val next = CatalogNames.denizen("Fae Merchant")
+    val staged = Table.from(board).worldDeckTop(top)
+      .discarded(Region.Cradle, next).unchecked
     val peeked = Vector(Peek(owner, top, Location.Deck(CardDeck.World)),
       Peek(owner, next, Location.RegionalDiscard(Region.Cradle)))
-      .foldLeft(staged)((ready, op) =>
-        executor.execute(ready, op).fold(error => fail(s"$op: $error"), identity))
+      .foldLeft(staged)(executed)
     Vector[CardId](top, next).foreach { card =>
       assert(!knows(staged, owner, card), s"$card before the peek")
       assert(knows(peeked, owner, card), s"$card to its peeker")

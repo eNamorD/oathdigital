@@ -66,8 +66,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
 
   test("beginRest through the service parks the off-turn League Treaty ruler " +
       "and survives reload"):
-    val (game, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
-      "game-league-treaty")
+    val ParkedServiceFixture.LeagueTreatyPark(game, active, ruler) =
+      ParkedServiceFixture.leagueTreatyPark("game-league-treaty")
     val (service, parked) = (game.service, game.accepted)
     val reloaded = new GameApplicationService(catalog, game.repository,
       genesis = service.genesis).load("game-league-treaty").toOption.flatten.get
@@ -1020,7 +1020,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
   test("an off-turn Oathkeeper tie parks through the application service " +
       "and survives reload"):
     val gameId = "game-oathkeeper-tie"
-    val (game, active, holder, leaderB) =
+    val ParkedServiceFixture.OathkeeperTiePark(game, active, holder, leaderB) =
       ParkedServiceFixture.oathkeeperTiePark(gameId)
     val (service, repository, parked) = (game.service, game.repository,
       game.accepted)

@@ -109,8 +109,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     assert(projected.legalControls.contains("finishRest"))
 
   test("real League Treaty and Silver Tongue parks project their panels"):
-    val (treatyGame, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
-      "project-league-treaty")
+    val ParkedServiceFixture.LeagueTreatyPark(treatyGame, active, ruler) =
+      ParkedServiceFixture.leagueTreatyPark("project-league-treaty")
     val treatyPark = treatyGame.accepted
     val treatyOwner = projector.project("project-league-treaty",
       LoadedGame(treatyPark.state, treatyPark.nextSequence), ruler)
@@ -124,8 +124,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     assertEquals(treatyWaiter.walkerDecision, None)
     assertEquals(treatyWaiter.walkerWaiting.map(_.playerId), Some(ruler.value))
 
-    val (tongueGame, tongueActor, _) = ParkedServiceFixture.silverTonguePark(
-      "project-silver-tongue")
+    val ParkedServiceFixture.SilverTonguePark(tongueGame, tongueActor, _) =
+      ParkedServiceFixture.silverTonguePark("project-silver-tongue")
     val tonguePark = tongueGame.accepted
     val tongueOwner = projector.project("project-silver-tongue",
       LoadedGame(tonguePark.state, tonguePark.nextSequence), tongueActor)

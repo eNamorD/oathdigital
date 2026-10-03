@@ -6,7 +6,7 @@ import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.protocol.projection.DecisionOptionProjection
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class EconomyProjectionSuite extends munit.FunSuite:
@@ -23,7 +23,7 @@ class EconomyProjectionSuite extends munit.FunSuite:
     * (Arcane) and nothing else. p1 has 4 favor and 2 faceup secrets, and
     * the Arcane bank holds 5. */
   private def atAlchemist: Table = Table.start
-    .denizen(alchemist, at = Table.quietPawnSite(p1))
+    .pawn(p1, at = "Ancient City").denizen(alchemist, at = "Ancient City")
     .favor(p1, 4).secrets(p1, faceUp = 2)
     .bankFavor(Suit.Arcane, 5)
 
@@ -50,11 +50,15 @@ class EconomyProjectionSuite extends munit.FunSuite:
 
   test("a control is offered only while a source survives the preview"):
     val oneFavor = atAlchemist.favor(p1, 1).ready
+    // Muster pays 1 favor and Trade for favor 1 secret, but Trade for
+    // secrets pays 2 favor, one of them burnt.
     assert(controls(oneFavor, p1).contains("beginMuster"))
     assert(controls(oneFavor, p1).contains("beginTradeFavor"))
     assert(!controls(oneFavor, p1).contains("beginTradeSecret"))
+    // Every action spends 1 Supply.
     assert(!controls(atAlchemist.supply(p1, 0).ready, p1).exists(control =>
       control == "beginMuster" || control.startsWith("beginTrade")))
+    // Trade for favor pays a faceup secret.
     assert(!controls(atAlchemist.secrets(p1, faceUp = 0).ready, p1)
       .contains("beginTradeFavor"))
 
@@ -63,12 +67,17 @@ class EconomyProjectionSuite extends munit.FunSuite:
       ActionRef.Muster, Vector.empty)
     assertEquals(options.map(option => (option.kind, option.id)),
       Vector(("denizen", alchemist.value)))
+    // Muster gains a warband per matching adviser plus one: Magician's Code
+    // matches Alchemist's Arcane, so 2.
     assertEquals(options.map(_.details),
       Vector(Vector("1 Supply", "+2 warbands")))
     assert(options.head.label.nonEmpty)
 
   test("a parked Trade shows its yield in the resource it gains"):
     val board = withMatchingAdviser.bankFavor(Suit.Arcane, 1).ready
+    // Trade for favor would gain 1 plus 1 per matching adviser, but the
+    // Arcane bank holds only 1; Trade for secrets gains 1 per matching
+    // adviser.
     assertEquals(parkedOptions(board, ActionRef.Trade, favor).map(_.details),
       Vector(Vector("1 Supply", "+1 favor")))
     assertEquals(parkedOptions(board, ActionRef.Trade, secret).map(_.details),
@@ -81,11 +90,10 @@ class EconomyProjectionSuite extends munit.FunSuite:
 
   test("an option the preview drops is not shown"):
     val board = withMatchingAdviser.ready
-    val actor = p1
-    val started = rules.startWalker(Ready(board), ActionRef.Muster, actor)
+    val started = rules.startWalker(Ready(board), ActionRef.Muster, p1)
       .getOrElse(fail("the action must start"))
-    val parked = started.state.asInstanceOf[Ready].value
-    val context = ScopedProjectionContext(parked, Some(actor))
+    val parked = Outcomes.ready(started.state)
+    val context = ScopedProjectionContext(parked, Some(p1))
     val withPower = new WalkerDecisionProjector(catalog,
       new GamePresentationProjector(catalog), WalkerPowers(Vector(
         AddAdviserSource(PowerId("test.add-adviser-source"), magiciansCode))))
