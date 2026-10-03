@@ -177,8 +177,8 @@ class ForgeProcedureSuite extends munit.FunSuite
     // A denizen carrying a token is not empty, so a full-capacity site whose
     // denizens are not all bare fails the same gate.
     val tokened = forgeBoard().tokens(forgeDenizens.head, favor = 1).ready
-    assertEquals(rejects(ForgeProcedure.build(catalog, tokened,
-      actor)), OathViolation.ForgeUnavailable(
+    assertEquals(rejects(ForgeProcedure.build(catalog, tokened, actor)),
+      OathViolation.ForgeUnavailable(
         "site must contain exactly three empty denizens"): OathViolation)
 
   test("build rejects an actor with no supply"):
@@ -524,10 +524,8 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(ForgeProcedure.eligibleTargets(f.ready, actor),
       accepted(ForgeRules.validate(catalog, f.ready, f.actorState,
         f.siteId))._1)
-    assertEquals(ForgeProcedure.eligibleTargets(f.ready, actor),
-      f.targets)
-    assertEquals(ForgeProcedure.eligibleTargets(
-      withoutPawn(f.ready), actor),
+    assertEquals(ForgeProcedure.eligibleTargets(f.ready, actor), f.targets)
+    assertEquals(ForgeProcedure.eligibleTargets(withoutPawn(f.ready), actor),
       Vector.empty[SiteDenizenTarget])
 
   test("the forged relic is the authoritative deck top, read at execution " +

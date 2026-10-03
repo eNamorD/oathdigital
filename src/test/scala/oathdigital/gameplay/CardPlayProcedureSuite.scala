@@ -34,8 +34,8 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     as[Decide](present(tree.children.headOption, "the placement decision"))
 
   private def placementOptions(tree: Operation): Vector[DecisionOptionRef] =
-    as[DecisionQuery.ChooseOne](placementDecision(tree).query).options
-      .map(_.ref)
+    as[DecisionQuery.ChooseOne](
+      placementDecision(tree).query).options.map(_.ref)
 
   test("CardPlay exposes legal placement choices in decision order"):
     val choices = CardPlay.legalChoices(catalog, handState, actor, card,
