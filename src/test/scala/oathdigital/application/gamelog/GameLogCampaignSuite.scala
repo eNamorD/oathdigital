@@ -1,11 +1,12 @@
 package oathdigital.application.gamelog
 
-import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
   WalkerCompleted, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Table.p2
 import LogScripts._
 
 class GameLogCampaignSuite extends munit.FunSuite:
@@ -15,10 +16,8 @@ class GameLogCampaignSuite extends munit.FunSuite:
   test("a Raid tells its targets, pools, dice, totals, winner and losses in order"):
     val script = raid
     val all = lines(script)
-    val defender = script.players.find(player => player != script.actor &&
-      all.exists(_.startsWith(
-        s"Started Campaign: Raid against ${playerLabel(player)}")))
-      .get
+    // The raid script's p1 raids p2, who shares its site.
+    val defender = p2
     val expected = Vector(
       s"Started Campaign: Raid against ${playerLabel(defender)}",
       s"Targets: ${playerLabel(defender)}'s pawn",
@@ -47,15 +46,9 @@ class GameLogCampaignSuite extends munit.FunSuite:
   test("a battle plan answer names who activated it; a flipped plan card names itself"):
     val script = recordedEventsBoard
     val steps = script.history.steps
-    val last = steps.last.after
-    val ready = last match
-      case OathState.Ready(ready) => ready
-      case other => fail(s"expected a ready game, got $other")
-    // Any other player whose adviser is a face-down Denizen: the board's p2.
-    val (defender, plan) = ready.game.current.players
-      .filter(_.player != script.actor).flatMap(player => player.advisers
-        .collectFirst { case DenizenState(id, Orientation.FaceDown, _) =>
-          player.player -> id }).head
+    // The board's p2 holds Birdsong facedown; it defends with it as a plan.
+    val defender = p2
+    val plan = CatalogNames.denizen("Birdsong")
     val tail = Vector[OathEvent](
       WalkerStepRecorded("plan", ChoicePayload(CampaignIds.defenderPlan,
         ChooseOneAnswer(DecisionOptionRef.Denizen(plan)), defender),
@@ -66,9 +59,7 @@ class GameLogCampaignSuite extends munit.FunSuite:
           PositionedLocation(Location.PlayArea(defender)),
           Some(Orientation.FaceUp))), Vector.empty),
       WalkerCompleted(ActionRef.Campaign))
-    val entries = formatter.format(steps ++ tail.zipWithIndex.map {
-      case (event, index) => ReplayStep(RecordedEvent(steps.size.toLong + index,
-        event), last, last) }, None)
+    val entries = formatAppended(script, tail)
     val shown = texts(entries.filter(_.sequence >= steps.size))
     assert(shown.contains(s"${playerLabel(defender)} activated a Denizen"),
       shown)
@@ -79,23 +70,16 @@ class GameLogCampaignSuite extends munit.FunSuite:
   test("a plan the bandits apply is named like any other activation"):
     val script = recordedEventsBoard
     val steps = script.history.steps
-    val last = steps.last.after
-    val ready = last match
-      case OathState.Ready(ready) => ready
-      case other => fail(s"expected a ready game, got $other")
-    // The board holds a homeland edifice among a site's cards; a site card
-    // is what a bandit plan's source is.
-    val edifice = ready.game.current.map.sites.values.flatMap(_.denizens)
-      .collectFirst { case held: EdificeState => held.id }.get
+    // The board's ruined Hiding Place at Deep Woods, a site card, which is
+    // what a bandit plan's source is.
+    val edifice = CatalogNames.edifice("Hiding Place")
     val tail = Vector[OathEvent](
       WalkerStepRecorded("bandit-plan", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.OperationApplied("plan")), Vector(ModifyDicePool(
           CampaignPlans.appliedMarker(DecisionOptionRef.Edifice(edifice)), 1)),
         Vector.empty),
       WalkerCompleted(ActionRef.Campaign))
-    val entries = formatter.format(steps ++ tail.zipWithIndex.map {
-      case (event, index) => ReplayStep(RecordedEvent(steps.size.toLong + index,
-        event), last, last) }, None)
+    val entries = formatAppended(script, tail)
     val shown = texts(entries.filter(_.sequence >= steps.size))
     // A site card is public, so even an observer reads its name.
     assert(shown.exists(line => line.startsWith("The bandits activated ") &&
@@ -104,9 +88,9 @@ class GameLogCampaignSuite extends munit.FunSuite:
 
   test("a total a plan rewrites in the same segment is told once, as rewritten"):
     // Outriders ignores the skulls: it writes the attack again after the cap.
+    // Only the board's last state is read.
     val script = recordedEventsBoard
     val steps = script.history.steps
-    val last = steps.last.after
     val tail = Vector[OathEvent](
       WalkerStepRecorded("attack-result", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.OperationApplied("attack")), Vector(
@@ -114,9 +98,7 @@ class GameLogCampaignSuite extends munit.FunSuite:
           ModifyRollOutcome(CampaignIds.attackPool, Some(0), Some(8))),
         Vector.empty),
       WalkerCompleted(ActionRef.Campaign))
-    val entries = formatter.format(steps ++ tail.zipWithIndex.map {
-      case (event, index) => ReplayStep(RecordedEvent(steps.size.toLong + index,
-        event), last, last) }, None)
+    val entries = formatAppended(script, tail)
     val attacks = texts(entries.filter(_.sequence >= steps.size))
       .filter(_.startsWith("Attack: "))
     assertEquals(attacks, Vector("Attack: 8"))

@@ -1,27 +1,15 @@
 package oathdigital.application.gamelog
 
-import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.operations.OperationExecutor
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Look, Outcomes}
+import oathdigital.testkit.Table.{p2, p3}
+import oathdigital.testkit.Unwrap.accepted
 import LogScripts._
 
 class GameLogEventSuite extends munit.FunSuite:
   private def lines(entries: Vector[LogEntry]) =
     texts(entries.filter(_.depth == 1))
-
-  /** `script`'s journal with one event appended, from its last state to
-    * `after`. */
-  private def ending(script: Script, event: OathEvent,
-      after: OathState => OathState = identity, viewer: Option[PlayerId])
-      : Vector[LogEntry] =
-    val steps = script.history.steps
-    val last = steps.last.after
-    formatter.format(steps :+ ReplayStep(RecordedEvent(steps.size.toLong,
-      event), last, after(last)), viewer)
-
-  private def ready(state: OathState): ReadyGame = state match
-    case OathState.Ready(ready) => ready
-    case other => fail(s"expected a ready game, got $other")
 
   test("a revealed relic is named for everyone"):
     val script = revealRelic
@@ -35,23 +23,22 @@ class GameLogEventSuite extends munit.FunSuite:
 
   test("a site peek names the relics for the peeker only"):
     val script = recordedEventsBoard
-    val state = ready(script.history.steps.last.after)
+    val state = Outcomes.ready(script.history.steps.last.after)
     // The board's relic at Broken Peaks.
-    val (site, relics) = state.game.current.map.sites.collectFirst {
-      case (id, site) if site.relics.nonEmpty => id -> site.relics.map(_.id)
-    }.get
+    val site = CatalogNames.site("Broken Peaks")
+    val relics = Look(state).relicsAt(site)
     val peeker = script.actor
-    val peeked = (state: OathState) => OathState.Ready(relics.foldLeft(ready(state))(
-      (known, relic) => new OperationExecutor().execute(known,
-        Peek(peeker, relic, Location.Site(site))).toOption.get))
+    val peeked = (state: OathState) => OathState.Ready(relics.foldLeft(
+      Outcomes.ready(state))((known, relic) => accepted(new OperationExecutor()
+        .execute(known, Peek(peeker, relic, Location.Site(site))))))
     val event = OathEvent.SiteRelicsPeeked(peeker, site, relics)
-    val mine = ending(script, event, peeked, Some(peeker)).last
+    val mine = formatAppended(script, Vector(event), Some(peeker), peeked).last
     assert(mine.spans.exists(_.isInstanceOf[LogSpan.Card]), mine.spans)
     assert(text(mine).startsWith("Peeked at "), text(mine))
-    // A player whose pawn stands at the site sees its relics anyway.
-    val other = state.game.current.players.find(player =>
-      player.player != peeker && !player.pawnSite.contains(site)).map(_.player)
-    val theirs = ending(script, event, peeked, other).last
+    // p2's pawn stands at Broken Peaks, so p2 sees its relics anyway; p3's
+    // does not.
+    assertEquals(Look(state).pawn(p2), site)
+    val theirs = formatAppended(script, Vector(event), Some(p3), peeked).last
     // The peeker is the active player, so the subject is left out.
     assertEquals(text(theirs), "Peeked at " +
       (if relics.size == 1 then "a Relic" else s"${relics.size} Relics") +
@@ -59,13 +46,16 @@ class GameLogEventSuite extends munit.FunSuite:
 
   test("warbands moved, bandits returned and a new Usurper each post one line"):
     val script = recordedEventsBoard
-    val state = ready(script.history.steps.last.after)
-    val site = state.game.current.map.inPlay.head
-    val other = script.players.find(_ != script.actor).get
+    val site = CatalogNames.site("Ancient City")
+    val other = script.otherSeat
+    // A moved-warbands line reads only who moved, which way and how many;
+    // the prior counts are the event's record of the board.
     val cases = Vector(
-      OathEvent.WarbandsMoved(script.actor, site, true, 2, 3, 1) ->
+      OathEvent.WarbandsMoved(script.actor, site, toSite = true, amount = 2,
+        priorBoardWarbands = 3, priorSiteWarbands = 1) ->
         s"Moved 2 warbands to ${presentation.siteLabel(site)}",
-      OathEvent.WarbandsMoved(other, site, false, 1, 3, 2) ->
+      OathEvent.WarbandsMoved(other, site, toSite = false, amount = 1,
+        priorBoardWarbands = 3, priorSiteWarbands = 2) ->
         (s"${playerLabel(other)} moved 1 warband from " +
           presentation.siteLabel(site)),
       OathEvent.BanditsRefilled(Vector(site -> 1)) ->
@@ -73,5 +63,5 @@ class GameLogEventSuite extends munit.FunSuite:
       OathEvent.UsurperFlipped(other) ->
         s"${playerLabel(other)} became the Usurper")
     cases.foreach { case (event, expected) =>
-      assertEquals(lines(ending(script, event, viewer = None)).last, expected)
+      assertEquals(lines(formatAppended(script, Vector(event))).last, expected)
     }

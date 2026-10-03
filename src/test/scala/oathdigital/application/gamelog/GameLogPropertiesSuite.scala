@@ -2,6 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked}
 import oathdigital.model._
+import oathdigital.testkit.Unwrap.{accepted, present}
 import LogScripts._
 
 /** What holds for every script (spec, "Testing"). The scripts are built once
@@ -73,7 +74,7 @@ class GameLogPropertiesSuite extends munit.FunSuite:
   test("scan ends on the state load reconstructs"):
     scripts.foreach { script =>
       assertEquals(script.history.steps.last.after,
-        script.service.load(script.name).toOption.flatten.get.state,
+        present(accepted(script.service.load(script.name)), script.name).state,
         script.name)
     }
 

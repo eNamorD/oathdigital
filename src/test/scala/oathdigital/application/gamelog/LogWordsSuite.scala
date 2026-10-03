@@ -11,6 +11,8 @@ class LogWordsSuite extends munit.FunSuite:
     assertEquals(LogWords.backOf(EdificeId("edifice:x")), "Edifice")
     assertEquals(LogWords.backOf(LegacyId("legacy:x")), "Legacy")
     assertEquals(LogWords.backOf(DenizenId("denizen:x")), "Denizen")
+
+  test("a kind's plural follows its spelling"):
     assertEquals(LogWords.plural("Legacy"), "Legacies")
     assertEquals(LogWords.plural("Relic"), "Relics")
 

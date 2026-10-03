@@ -7,22 +7,19 @@ class GameLogActionLineSuite extends munit.FunSuite:
   private def lines(script: Script, viewer: Option[PlayerId]): Vector[String] =
     texts(format(script, viewer).filter(_.depth == 1))
 
-  private def other(script: Script): PlayerId =
-    script.players.find(_ != script.actor).get
-
   private val backs = Set("a Denizen", "a Vision", "a Relic")
 
   test("Search: the searcher reads the cards; everyone else reads their backs"):
     val script = search
     val mine = lines(script, Some(script.actor))
-    val theirs = lines(script, Some(other(script)))
+    val theirs = lines(script, Some(script.otherSeat))
     assert(mine.exists(_.startsWith("Started Search")), mine)
-    val drew = mine.find(_.startsWith("Drew ")).get
+    val drew = lineStarting(mine, "Drew ")
     assert(drew.contains(" from the World Deck and kept "), drew)
-    val seen = theirs.find(_.startsWith("Drew ")).get
+    val seen = lineStarting(theirs, "Drew ")
     assert(backs.exists(back => seen.contains(back.stripPrefix("a "))), seen)
-    val entries = format(script, Some(other(script)))
-    val drawn = entries.find(entry => text(entry).startsWith("Drew ")).get
+    val entries = format(script, Some(script.otherSeat))
+    val drawn = entryStarting(entries, "Drew ")
     assert(!drawn.spans.exists(_.isInstanceOf[LogSpan.Card]), drawn.spans)
 
   test("Muster: the start line waits for the cost, then names the card"):
@@ -31,6 +28,7 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val start = mine.indexWhere(_.startsWith("Started Muster"))
     val mustered = mine.indexWhere(_.startsWith("Mustered "))
     assert(start >= 0 && mustered > start, mine)
+    // Muster's printed cost: 1 Supply.
     assert(mine(start).endsWith("−1 Supply"), mine(start))
     assert("^Mustered \\d+ warbands? with .+$".r.matches(mine(mustered)),
       mine(mustered))
@@ -42,6 +40,7 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val start = mine.indexWhere(_.startsWith("Started Muster"))
     val mustered = mine.indexWhere(_.startsWith("Mustered "))
     assert(start >= 0 && mustered > start, mine)
+    // Muster's printed cost: 1 Supply.
     assert(mine(start).endsWith("−1 Supply"), mine(start))
 
   test("Trade: the start line waits for the cost, then says what it bought"):
@@ -54,12 +53,14 @@ class GameLogActionLineSuite extends munit.FunSuite:
   test("Take Wealth: one line naming the site, and no start line"):
     val script = takeWealth
     val mine = lines(script, None)
+    // The take-wealth script lays one favor at p2's site.
     assert(mine.exists(line => line.startsWith("Took 1 favor from ")), mine)
     assert(!mine.exists(_.startsWith("Started")), mine)
 
   test("a failed Recover: start line, one continued spend, then the failure"):
     val script = recoverFailed
     val mine = lines(script, None)
+    // Recover's printed cost, paid again for the one continue: 1 Supply.
     assert(mine.exists(line => line.startsWith("Started Recover") &&
       line.endsWith("−1 Supply")), mine)
     assertEquals(mine.count(_ == "Continued Recover −1 Supply"), 1, mine)
@@ -67,11 +68,10 @@ class GameLogActionLineSuite extends munit.FunSuite:
 
   test("a successful Recover names the relic to the recoverer only"):
     val script = recoverSucceeded
-    val mine = format(script, Some(script.actor))
-      .find(entry => text(entry).startsWith("Recovered ")).get
+    val mine = entryStarting(format(script, Some(script.actor)), "Recovered ")
     assert(mine.spans.exists(_.isInstanceOf[LogSpan.Card]), mine.spans)
-    val theirs = format(script, Some(other(script)))
-      .find(entry => text(entry).startsWith("Recovered ")).get
+    val theirs =
+      entryStarting(format(script, Some(script.otherSeat)), "Recovered ")
     // The other seat reads that a relic was recovered, never which.
     assertEquals(theirs.spans.filterNot(_.isInstanceOf[LogSpan.Site]), Vector[LogSpan](
       LogSpan.Text("Recovered "), LogSpan.Text("a Relic"), LogSpan.Text(" at ")))
@@ -85,7 +85,7 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val forged = format(script, Some(script.actor))
       .filter(entry => text(entry).startsWith("Forged ")).last
     assert(forged.spans.exists(_.isInstanceOf[LogSpan.Card]), forged.spans)
-    assert(lines(script, Some(other(script))).contains("Forged a Relic"))
+    assert(lines(script, Some(script.otherSeat)).contains("Forged a Relic"))
 
   test("Campaign: a start line naming kind and defender, and the winner"):
     val all = lines(raid, None)

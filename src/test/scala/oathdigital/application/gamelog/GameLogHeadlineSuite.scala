@@ -1,16 +1,22 @@
 package oathdigital.application.gamelog
 
-import oathdigital.application.GameCommand
-import oathdigital.engine.{RecordedEvent, ReplayStep}
+import oathdigital.application.{GameApplicationService, GameCommand}
+import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{Situation, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.{accepted, present}
 import LogScripts._
 
 class GameLogHeadlineSuite extends munit.FunSuite:
   private def headlines(entries: Vector[LogEntry]): Vector[String] =
     texts(entries.filter(_.depth == 0))
+
+  /** The journal steps of stream `id`; fails with the error or the missing
+    * stream. */
+  private def historyOf(service: GameApplicationService, id: String) =
+    present(accepted(service.history(id)), s"history of $id").steps
 
   test("setup opens the log and hands the first turn to Round 1"):
     val script = woken
@@ -29,8 +35,8 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val (service, repository) = table.service()
     table.situation(Situation.journaled(service, catalog, repository, "t"))
       .after(GameCommand.EndWake(p1))
-    val entries = formatter.format(service.history("t").toOption.flatten.get
-      .steps, Some(p1))
+    val entries = formatter.format(historyOf(service, "t"), Some(p1))
+    // No River is in play, so p1's Wake has nothing to decide.
     assertEquals(texts(entries).take(5), Vector("Round 1",
       s"${playerLabel(p1)}'s turn", "Wake", "Nothing happened in Wake", "Act"))
     assertEquals(entries.take(3).map(entry => (entry.sequence, entry.ordinal)),
@@ -42,7 +48,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val (service, repository) = table.service()
     table.situation(Situation.journaled(service, catalog, repository, "t"))
       .after(GameCommand.BeginRest(p1))
-    val steps = service.history("t").toOption.flatten.get.steps
+    val steps = historyOf(service, "t")
     val whole = formatter.format(steps, Some(p1))
     assertEquals(texts(whole).take(3), Vector("Round 1",
       s"${playerLabel(p1)}'s turn", "Act"))
@@ -97,8 +103,11 @@ class GameLogHeadlineSuite extends munit.FunSuite:
       Vector("Took", "Act"), all.toString)
 
   test("the turn headline names the player with a player span"):
+    // Only the board's actor is read.
     val script = recordedEventsBoard
-    val turn = format(script, None).find(_.kind == LogKind.Turn).get
+    val entries = format(script, None)
+    val turn = entries.find(_.kind == LogKind.Turn).getOrElse(
+      fail(s"no turn headline in ${texts(entries)}"))
     assertEquals(turn.spans, Vector(
       LogSpan.Player(script.actor.value, playerLabel(script.actor)),
       LogSpan.Text("'s turn")))
@@ -110,19 +119,12 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     entries.groupBy(_.sequence).values.foreach { same =>
       assertEquals(same.map(_.ordinal), same.indices.toVector) }
 
-  /** `script`'s journal with `events` appended on its last state: the
-    * formatter reads a victory from its event alone. */
-  private def ending(script: Script, events: OathEvent*): Vector[LogEntry] =
-    val steps = script.history.steps
-    val last = steps.last.after
-    formatter.format(steps ++ events.zipWithIndex.map { case (event, index) =>
-      ReplayStep(RecordedEvent(steps.size.toLong + index, event), last, last)
-    }, None)
-
   test("each victory posts one victory headline naming the winner"):
+    // Only the board's actor and last state are read: the formatter reads a
+    // victory from its event alone.
     val script = recordedEventsBoard
     val winner = script.actor
-    val vision = VisionId("vision:vision-of-faith")
+    val vision = VisionRules.Faith
     val headlines = Vector(
       OathEvent.UsurperVictory(winner) -> " won as the Usurper",
       OathEvent.VisionVictory(winner, vision) -> " won with Vision of Faith",
@@ -137,13 +139,16 @@ class GameLogHeadlineSuite extends munit.FunSuite:
       OathEvent.WarExhaustionResolved(winner, VictoryKind.RandomSelection, None,
         Vector.empty) -> " won by random selection")
     headlines.foreach { case (event, rest) =>
-      val last = ending(script, event).last
+      val last = formatAppended(script, Vector(event)).last
       assertEquals(last.kind, LogKind.Victory)
       assertEquals(last.depth, 0)
       assertEquals(text(last), playerLabel(winner) + rest)
     }
 
   test("the last round's end posts no round headline"):
+    // Only the board's journal is read. A game has 8 rounds, so the 8th
+    // round's end names no next round.
     val script = recordedEventsBoard
     val before = format(script, None)
-    assertEquals(ending(script, OathEvent.RoundEnded(8, None)), before)
+    assertEquals(formatAppended(script, Vector(OathEvent.RoundEnded(8, None))),
+      before)

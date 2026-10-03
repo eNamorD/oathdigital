@@ -2,11 +2,18 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.Table
+import oathdigital.testkit.Table.{p2, p3}
 import LogScripts._
 
+/** The negotiation scripts stand p2 with the actor, p1, at Ancient City:
+  * p2 is the partner and p3 the bystander. */
 class GameLogExchangeSuite extends munit.FunSuite:
   private def lines(script: Script): Vector[String] =
     texts(format(script, None).filter(_.depth == 1))
+
+  private val partner = p2
+  private val bystander = p3
 
   test("a declined negotiation names who ended it, and nothing else"):
     val script = negotiationDeclined
@@ -20,13 +27,13 @@ class GameLogExchangeSuite extends munit.FunSuite:
     val all = lines(script)
     val negotiated = all.filter(_.startsWith("Negotiated with "))
     assertEquals(negotiated.size, 1, all)
-    val partner = script.players.filterNot(_ == script.actor).map(playerLabel)
-    assert(partner.exists(negotiated.head.contains), negotiated.head)
+    assert(negotiated.head.contains(playerLabel(partner)), negotiated.head)
 
   test("an agreed deal's favor transfer names giver and recipient"):
     val script = negotiationAgreed
-    val partner = script.players.find(player => player != script.actor &&
-      lines(script).contains(s"Negotiated with ${playerLabel(player)}")).get
+    assert(lines(script).contains(s"Negotiated with ${playerLabel(partner)}"),
+      lines(script))
+    // The script's deal gives the partner one favor.
     assert(lines(script).contains(
       s"${playerLabel(script.actor)} gave 1 favor to ${playerLabel(partner)}"),
       lines(script))
@@ -34,16 +41,16 @@ class GameLogExchangeSuite extends munit.FunSuite:
   test("a disclosed adviser is named to its owner and recipient, by slot to others"):
     val script = negotiationDisclosed
     val shown = (viewer: Option[PlayerId]) =>
-      texts(format(script, viewer)).find(_.contains(" showed ")).get
-    val partner = script.players.find(player => player != script.actor &&
-      shown(None).startsWith(playerLabel(player))).get
-    val third = script.players.find(player => player != script.actor &&
-      player != partner).get
+      val all = texts(format(script, viewer))
+      all.find(_.contains(" showed ")).getOrElse(
+        fail(s"no disclosure line for $viewer in $all"))
+    assert(shown(None).startsWith(playerLabel(partner)), shown(None))
+    // Birdsong is p2's only adviser, so it is slot 1.
     assert(!shown(Some(script.actor)).endsWith("(slot 1)"),
       shown(Some(script.actor)))
     assert(!shown(Some(partner)).endsWith("(slot 1)"), shown(Some(partner)))
     val (giver, recipient) = (playerLabel(partner), playerLabel(script.actor))
-    assertEquals(shown(Some(third)),
+    assertEquals(shown(Some(bystander)),
       s"$giver showed $recipient facedown adviser (slot 1)")
 
   test("a used power is named by its source card, once"):
@@ -53,11 +60,9 @@ class GameLogExchangeSuite extends munit.FunSuite:
     assert(all.contains("Used Silver Tongue"), all)
 
   test("a banner's power is named by its banner, not its id"):
-    val script = recordedEventsBoard
-    val ready = script.history.steps.last.after match
-      case OathState.Ready(ready) => ready
-      case other => fail(s"expected a ready game, got $other")
+    // Any ready state will do: a banner's name is the same on every board.
+    val ready = Table.start.ready
     val words = new LogWords(catalog, presentation)
-    assertEquals(words.power(ready, script.actor,
+    assertEquals(words.power(ready, Table.p1,
       PowerId("banner.darkest-secret.wandering-flame.move"), None)
       .map(_.text).mkString, "Darkest Secret")

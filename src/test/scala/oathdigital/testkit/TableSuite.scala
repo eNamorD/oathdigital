@@ -9,6 +9,7 @@ import oathdigital.gameplay.setup.{FirstGameSetupFixture, GameStartRules}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import Table.{p1, p2, p3}
+import Unwrap.{accepted, present}
 
 /** `Table` builds rule-test states from the real game start without the
   * setup walk. These tests pin what the quiet table holds, that every step
@@ -16,7 +17,8 @@ import Table.{p1, p2, p3}
   * result as a real game. */
 class TableSuite extends munit.FunSuite:
 
-  test("the quiet table: p1's Act, each pawn on its own site, nothing at the sites and no advisers"):
+  test("the quiet table: p1's Act, each pawn on its own site, nothing at the " +
+      "sites, and no advisers, relics, hands, discards, Oathkeeper or banners"):
     val look = Look(Table.start.ready)
     assertEquals(look.active, p1)
     assertEquals(look.phase, Phase.Act)
@@ -51,7 +53,8 @@ class TableSuite extends munit.FunSuite:
       Look(held.ready).forces(CatalogNames.site("Ancient City")))
     assertEquals(look.forces(CatalogNames.site("Broken Peaks")),
       SiteForces.Occupied(ForceKind.Bandit,
-        catalog.site(CatalogNames.site("Broken Peaks")).get.capacity))
+        present(catalog.site(CatalogNames.site("Broken Peaks")),
+          "Broken Peaks").capacity))
 
   test("relicDeckTop puts relics on top of the relic deck, first named on top"):
     val ready = Table.start.relicDeckTop("Dowsing Sticks", "Sticky Fire").ready
@@ -69,14 +72,17 @@ class TableSuite extends munit.FunSuite:
       look.supply(p1)), (1, 1, 3, 7))
 
   test("the quiet table holds exactly the cards the game started with"):
-    val started = GameStartRules.evolve(catalog, FirstGameSetupFixture.chronicle,
-      FirstGameSetupFixture.orders).toOption.get
-    assertEquals(CardIndex.from(Table.start.ready.game).toOption.get.ids,
-      CardIndex.from(started.game).toOption.get.ids)
+    val started = accepted(GameStartRules.evolve(catalog,
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders))
+    assertEquals(accepted(CardIndex.from(Table.start.ready.game)).ids,
+      accepted(CardIndex.from(started.game)).ids)
 
   test("placing a card takes it out of the zone that held it"):
-    val dealt = Table.start.ready.game.current.commonCards.worldDeck
-      .collectFirst { case id: DenizenId => id }.get
+    // Threatening Roar tops the quiet table's world deck.
+    val dealt = CatalogNames.denizen("Threatening Roar")
+    assertEquals(
+      Table.start.ready.game.current.commonCards.worldDeck.headOption,
+      Some(dealt))
     val advised = Table.start.adviser(p1, dealt)
     assert(!advised.ready.game.current.commonCards.worldDeck.contains(dealt))
     val moved = advised.denizen(dealt, at = "Dunes")
@@ -84,14 +90,10 @@ class TableSuite extends munit.FunSuite:
     assertEquals(Look(moved.ready).cardsAt("Dunes"), Vector(dealt))
 
   test("placing a card takes it from a discard, a player's relics and every viewer's memory"):
-    val discarded = Table.start.update(_.updateCurrent(c => c.copy(
-      commonCards = c.commonCards.copy(
-        worldDeck = c.commonCards.worldDeck.filterNot(
-          _ == CatalogNames.denizen("Alchemist")),
-        regionalDiscards = c.commonCards.regionalDiscards.updated(
-          Region.Cradle, Vector(CatalogNames.denizen("Alchemist")))))))
+    val discarded = Table.start.discarded(Region.Cradle, "Alchemist")
     val placed = discarded.adviser(p1, "Alchemist").ready
     assertEquals(placed.game.current.commonCards.discard(Region.Cradle), Vector.empty)
+    // No Table step records knowledge of a held relic.
     val peeked = Table.start.relic(p2, "Brass Horse", facedown = true)
       .update(r => r.copy(knowledge = r.knowledge.copy(heldRelics =
         Map(p1 -> Vector(CatalogNames.relic("Brass Horse"))))))
@@ -100,9 +102,10 @@ class TableSuite extends munit.FunSuite:
     assertEquals(moved.knowledge.heldRelics(p1), Vector.empty)
 
   test("a card the first game did not deal joins the table"):
-    val inGame = CardIndex.from(Table.start.ready.game).toOption.get.ids
-    val outside = catalog.denizens.map(d => DenizenId(d.id.value))
-      .find(id => !inGame(id)).get
+    val inGame = accepted(CardIndex.from(Table.start.ready.game)).ids
+    // The first game does not deal Forced Labor.
+    val outside = CatalogNames.denizen("Forced Labor")
+    assert(!inGame(outside))
     val ready = Table.start.adviser(p1, outside).ready
     assertEquals(Look(ready).advisers(p1), Vector(outside))
 
@@ -129,8 +132,9 @@ class TableSuite extends munit.FunSuite:
     intercept[munit.FailException](lost.ready)
 
   test("more warbands than the printed supply are rejected when the state is read"):
+    // Bandits print 24, so 25 at one site are one too many.
     val bandits = intercept[munit.FailException](
-      Table.start.bandits("Dunes", 25).ready)
+      Table.start.bandits("Dunes", MaterialBankState.BanditWarbands + 1).ready)
     assert(bandits.getMessage.contains("Bandit"), bandits.getMessage)
     // A lineage prints 14: 12 on the board and 3 at a site are one too many.
     val exiles = intercept[munit.FailException](
@@ -158,6 +162,7 @@ class TableSuite extends munit.FunSuite:
     assertEquals(Look(returned.ready).boardWarbands(p1), 8)
 
   test("an edifice named by one face must be placed on that side"):
+    // Hiding Place is the ruined face of Hallowed Spring.
     val failure = intercept[munit.FailException](Table.start.edifice(
       "Hallowed Spring", EdificeSide.Ruined, at = "Dunes"))
     assert(failure.getMessage.contains("Hiding Place"), failure.getMessage)
@@ -234,10 +239,14 @@ class TableSuite extends munit.FunSuite:
     assertEquals(Look(rested.state).active, p2)
 
   test("real commands run from a table: Muster from a denizen at the pawn's site"):
-    val mustered = Table.start.denizen("Alchemist", at = Table.quietPawnSite(p1))
+    val mustered = Table.start.pawn(p1, "Ancient City")
+      .denizen("Alchemist", at = "Ancient City")
       .situation(Situation.rules(catalog))
       .after(GameCommand.StartWalker(ActionRef.Muster, StartPayload(p1)))
     val look = Look(mustered.state)
+    // From the quiet start of 1 favor, 3 warbands and 7 Supply: the favor
+    // moves onto the card, one warband joins the board, and Muster costs
+    // 1 Supply.
     assertEquals((look.favor(p1), look.boardWarbands(p1), look.supply(p1)), (0, 4, 6))
     assertEquals(look.tokensOn("Alchemist"), Tokens(1, 0))
 

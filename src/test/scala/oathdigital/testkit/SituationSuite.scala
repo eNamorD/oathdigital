@@ -11,6 +11,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.{catalog, chronicle,
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class SituationSuite extends munit.FunSuite:
   /** Dice that always come up the same way, so two adapters given them
@@ -34,12 +35,11 @@ class SituationSuite extends munit.FunSuite:
 
   /** `ready` once its Wake has ended. */
   private def inAct(ready: ReadyGame): ReadyGame =
-    ready.updateCurrent(current => current.copy(turn =
-      current.turn.copy(phase = Phase.Act)))
+    Table.from(ready).backInPhase(Phase.Act).unchecked
 
   private def recordCount(repository: InMemoryEventStreamRepository,
       gameId: String): Int =
-    repository.load(gameId).toOption.flatten.get.records.size
+    present(accepted(repository.load(gameId)), s"stream $gameId").records.size
 
   test("wake is the fixture's first game: the first player's Wake, with " +
       "nothing to decide, ended; pawns on the first sites and one adviser each"):
@@ -64,9 +64,11 @@ class SituationSuite extends munit.FunSuite:
     // draw and the card play all cross the adapters' seams.
     val (driver, repository) = journaled("agree")
     val actor = orders.firstPlayer
-    val other = FirstGameSetupFixture.initialReady.game.current.players
-      .map(_.player).find(player => player != actor && !FirstGameSetupFixture
-        .initialReady.game.current.title.holder.contains(player)).get
+    // The first player is p2 and nobody holds the Oathkeeper title, so p1
+    // is the one the arrangement makes Oathkeeper.
+    val other = p1
+    assertEquals(FirstGameSetupFixture.initialReady.game.current.title.holder,
+      None)
     val steps = Vector[GameCommand | Step](
       Step.Arrange(Vector(SetOathkeeper(Some(other)))),
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
@@ -123,10 +125,11 @@ class SituationSuite extends munit.FunSuite:
 
   test("an Arrange step crosses the replay path on both adapters"):
     val (driver, repository) = journaled("arrange")
+    // Nobody holds the Oathkeeper title after the wake, so p1 can be made
+    // Oathkeeper.
     def assertArranges(situation: Situation): Unit =
-      val holder = situation.ready.game.current.players.map(_.player)
-        .find(player => !situation.ready.game.current.title.holder
-          .contains(player)).get
+      val holder = p1
+      assertEquals(situation.ready.game.current.title.holder, None)
       val arranged = situation.after(Step.Arrange(Vector(
         SetOathkeeper(Some(holder)))))
       assertEquals(arranged.events.size, situation.events.size + 1)
@@ -148,7 +151,7 @@ class SituationSuite extends munit.FunSuite:
     assertEquals(arranged.nextSequence, 1L)
     assertEquals(recordCount(repository, "first"), 1)
     assertEquals(arranged.ready.game.current.title.holder, Some(p1))
-    assertEquals(service.load("first").toOption.flatten.get.state,
+    assertEquals(present(accepted(service.load("first")), "stream first").state,
       arranged.state)
 
   test("the rules adapter parks a Recover on its continue-or-stop choice " +

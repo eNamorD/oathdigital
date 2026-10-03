@@ -10,6 +10,8 @@ class GameLogDetailSuite extends munit.FunSuite:
   test("each Recover roll posts a Rolled line whose dice travel as a dice span"):
     val entries = format(recoverFailed, None)
     val rolls = entries.filter(_.kind == LogKind.Roll)
+    // Two rolls: the first try and the one continue. failingDice roll every
+    // defense die Blank.
     assertEquals(rolls.size, 2, texts(entries))
     rolls.foreach { roll =>
       assertEquals(roll.spans.head, LogSpan.Text("Rolled "))
@@ -19,16 +21,20 @@ class GameLogDetailSuite extends munit.FunSuite:
       assertEquals(dice.head.text, dice.head.faces.map(_ => "blank")
         .mkString(", "))
     }
+
+  test("a Recover roll posts after its start line"):
     // The roll sits between the spend it bought and the next choice.
     val all = lines(recoverFailed)
     assert(all.indexWhere(_.startsWith("Rolled ")) >
       all.indexWhere(_.startsWith("Started Recover")), all)
+
   // Trade's favor is arranged in the first player's turn, before their
   // Rest, so its gain names the second player, whose turn it is not yet.
   test("an arranged favor gain reads as a gain from its bank"):
     val script = trade
     val all = lines(script)
     val actor = playerLabel(script.actor)
+    // The trade script moves one favor from the first suit's bank, Discord.
     assert(all.contains(s"$actor gained 1 favor from the Discord bank"), all)
 
   test("Trade's own gain is its action line, not a second gain line"):

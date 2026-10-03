@@ -14,7 +14,7 @@ class GameLogGoldenSuite extends munit.FunSuite:
   named.foreach { case (name, build) =>
     test(s"$name reads exactly as its golden log for the actor and another seat"):
       val script = build()
-      val other = script.players.find(_ != script.actor).get
+      val other = script.otherSeat
       Vector("actor" -> script.actor, "other" -> other).foreach {
         case (seat, viewer) =>
           val actual = GoldenLog.render(format(script, Some(viewer)))

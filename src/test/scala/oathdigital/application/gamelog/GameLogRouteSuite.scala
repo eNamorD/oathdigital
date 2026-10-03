@@ -1,28 +1,24 @@
 package oathdigital.application.gamelog
 
-import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse => JavaResponse}
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import akka.actor.typed.{ActorSystem, DispatcherSelector}
-import akka.actor.typed.scaladsl.Behaviors
-import akka.http.scaladsl.Http
 import oathdigital.application._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.model.PlayerId
 import oathdigital.protocol.projection.LogPageCodec
 import oathdigital.server.{DevelopmentRoutes, GameServerGateway}
+import oathdigital.testkit.HttpTestServer
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class GameLogRouteSuite extends munit.FunSuite:
   test("the projector pages the log after a sequence, and refuses past the end"):
     val script = LogScripts.round
     val history = script.history
     val projector = new GameProjector(catalog)
-    val whole = projector.logPage("round", history, 0L, script.actor).get
+    val whole = present(projector.logPage("round", history, 0L, script.actor),
+      "the whole log page")
     assertEquals(whole.nextSequence, history.nextSequence)
     assert(whole.entries.nonEmpty)
     val after = whole.entries(whole.entries.size / 2).sequence
-    val tail = projector.logPage("round", history, after, script.actor).get
+    val tail = present(projector.logPage("round", history, after, script.actor),
+      s"the log page after $after")
     assertEquals(tail.entries, whole.entries.filter(_.sequence >= after))
     assertEquals(tail.after, after)
     assertEquals(projector.logPage("round", history, history.nextSequence,
@@ -31,35 +27,31 @@ class GameLogRouteSuite extends munit.FunSuite:
       script.actor), None)
 
   test("the development route binds playerId, checks the cursor, and leaves raw events alone"):
-    given system: ActorSystem[Nothing] =
-      ActorSystem[Nothing](Behaviors.empty, "game-log-route-test")
-    val blocking = system.dispatchers.lookup(
-      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val script = LogScripts.woken
     val gateway = new GameServerGateway(script.service,
       new GameProjector(catalog))
-    val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
-      DevelopmentRoutes.route(gateway, blocking)), 10.seconds)
-    val base = s"http://127.0.0.1:${binding.localAddress.getPort}"
-    val client = HttpClient.newHttpClient()
-    def get(path: String) = client.send(HttpRequest.newBuilder(
-      URI.create(base + path)).GET().build(), JavaResponse.BodyHandlers.ofString())
+    val server = HttpTestServer.start("game-log-route-test")(blocking =>
+      DevelopmentRoutes.route(gateway, blocking))
+    val playerId = script.actor.value
     try
-      val page = get(s"/api/dev/first-games/woken/log/0?playerId=${script.actor.value}")
+      val page =
+        server.get(s"/api/dev/first-games/woken/log/0?playerId=$playerId")
       assertEquals(page.statusCode(), 200, page.body())
-      val decoded = LogPageCodec.decode(page.body()).toOption.get
+      val decoded = accepted(LogPageCodec.decode(page.body()))
       assertEquals(decoded.gameId, "woken")
       assertEquals(decoded.entries.head.spans.head.text, "Setup")
-      assertEquals(get(s"/api/dev/first-games/woken/log/-1?playerId=p1")
+      assertEquals(server.get(
+        s"/api/dev/first-games/woken/log/-1?playerId=$playerId").statusCode(),
+        400)
+      // 99999 is past the journal's last sequence.
+      assertEquals(server.get(
+        s"/api/dev/first-games/woken/log/99999?playerId=$playerId")
         .statusCode(), 400)
-      assertEquals(get(s"/api/dev/first-games/woken/log/99999?playerId=p1")
-        .statusCode(), 400)
-      assertEquals(get(s"/api/dev/first-games/woken/log/x?playerId=p1")
-        .statusCode(), 400)
-      val events = get("/api/dev/first-games/woken/events?limit=5")
+      assertEquals(server.get(
+        s"/api/dev/first-games/woken/log/x?playerId=$playerId").statusCode(),
+        400)
+      // The development events endpoint marks raw events as unsupported.
+      val events = server.get("/api/dev/first-games/woken/events?limit=5")
       assertEquals(events.statusCode(), 200)
       assert(events.body().contains("\"warning\""))
-    finally
-      Await.result(binding.terminate(5.seconds), 10.seconds)
-      system.terminate()
-      Await.result(system.whenTerminated, 10.seconds)
+    finally server.close()

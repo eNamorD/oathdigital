@@ -11,13 +11,15 @@ import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
-import oathdigital.gameplay.setup.FirstGameSetupFixture
+import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
-import oathdigital.testkit.{CatalogNames, Look, Park, Situation, Step, Table}
+import oathdigital.testkit.{Answers, CatalogNames, Look, Park, Situation, Step,
+  Table}
+import oathdigital.testkit.Unwrap.as
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** A journal built by real play through `GameApplicationService` on every
@@ -34,6 +36,12 @@ final case class Script(name: String, service: GameApplicationService,
     history.steps.last.after match
       case OathState.Ready(ready) => ready.game.current.players.map(_.player)
       case other => munit.Assertions.fail(s"$name is not ready: $other")
+
+  /** The first seated player who is not the actor: p2 when p1 acts, p1
+    * otherwise. */
+  def otherSeat(using munit.Location): PlayerId =
+    players.find(_ != actor).getOrElse(munit.Assertions.fail(
+      s"$name has no player besides $actor among $players"))
 
 object LogScripts:
   /** Every attack die a sword, every defense die two shields, so a script
@@ -64,13 +72,29 @@ object LogScripts:
     * that replays Setup, so its log carries the setup lines. Pawns are spread
     * one per site. */
   def woken(using munit.Location): Script =
+    wokenAnswering("woken", PartialFunction.empty)
+
+  /** As `woken`, with every Reveal Cards answered by revealing every card it
+    * offers. */
+  def revealedSetup(using munit.Location): Script =
+    wokenAnswering("revealed", {
+      case park if park.decisionId ==
+          SetupProcedure.revealDecisionId(park.awaiting) =>
+        val offered = as[DecisionQuery.ChooseMany](park.decide.query).options
+        DecisionAnswer.ChooseManyAnswer(offered.map(_.ref))
+    })
+
+  /** Setup to the first player's Wake on stream `name`, pawns spread one per
+    * site, `answers` answering the parks they match first. */
+  private def wokenAnswering(name: String, answers: Answers)(
+      using munit.Location): Script =
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository,
       campaignDicePort = steadyDice)
     val situation = Situation.wake(Situation.journaled(service, catalog,
-      repository, "woken").withAnswers(
-        Situation.pawnsAt(FirstGameSetupFixture.sites)))
-    Script("woken", service, Look(situation.ready).active)
+      repository, name).withAnswers(
+        answers orElse Situation.pawnsAt(FirstGameSetupFixture.sites)))
+    Script(name, service, Look(situation.ready).active)
 
   /** The first player wakes, travels and rests; every other player rests;
     * Round 2 begins. */
@@ -113,6 +137,20 @@ object LogScripts:
 
   def texts(entries: Vector[LogEntry]): Vector[String] = entries.map(text)
 
+  /** The first of `lines` that starts with `prefix`; fails with the lines. */
+  def lineStarting(lines: Vector[String], prefix: String)(
+      using munit.Location): String =
+    lines.find(_.startsWith(prefix)).getOrElse(munit.Assertions.fail(
+      s"no line starts with '$prefix' in $lines"))
+
+  /** The first of `entries` whose text starts with `prefix`; fails with the
+    * entries' texts. */
+  def entryStarting(entries: Vector[LogEntry], prefix: String)(
+      using munit.Location): LogEntry =
+    entries.find(entry => text(entry).startsWith(prefix)).getOrElse(
+      munit.Assertions.fail(
+        s"no entry starts with '$prefix' in ${texts(entries)}"))
+
   def playerLabel(player: PlayerId): String = presentation.playerLabel(player)
 
   /** `steps` with `events` journaled right after position `after`. Each
@@ -137,6 +175,21 @@ object LogScripts:
 
   /** `format` over `withoutNotes`: the log of the script as a power that
     * writes no note would leave it. */
+  /** `script`'s log for `viewer` with `events` journaled after its last
+    * step. Each appended step starts from the script's last state and ends
+    * in `lastStateAfter` of it: unchanged unless a test gives the change the
+    * event stands for. */
+  def formatAppended(script: Script, events: Vector[OathEvent],
+      viewer: Option[PlayerId] = None,
+      lastStateAfter: OathState => OathState = identity)(
+      using munit.Location): Vector[LogEntry] =
+    val steps = script.history.steps
+    val last = steps.last.after
+    formatter.format(steps ++ events.zipWithIndex.map { case (event, index) =>
+      ReplayStep(RecordedEvent(steps.size.toLong + index, event), last,
+        lastStateAfter(last))
+    }, viewer)
+
   def formatWithoutNotes(script: Script, viewer: Option[PlayerId])(using
       munit.Location): Vector[LogEntry] =
     formatter.format(withoutNotes(script.history.steps), viewer)
