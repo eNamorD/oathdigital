@@ -113,8 +113,8 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
   private val spectator = UserId("spectator")
   private val outsider = UserId("outsider")
 
-  private val game = "/api/authenticated/first-games/auth-game"
-  private val commands = game + "/commands"
+  private val gamePath = "/api/authenticated/first-games/auth-game"
+  private val commandsPath = gamePath + "/commands"
 
   /** "auth-game", begun with p2 first and parked on p2's Setup pawn
     * placement: `owner` owns it, user-p2 and user-p3 hold seats p2 and p3,
@@ -123,41 +123,52 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
   private final case class BegunAuthGame(server: HttpTestServer,
       database: HsqldbDatabaseOwner, afterBegin: Long)
 
+  /** `body`'s result; closes `database` and rethrows if `body` fails, since
+    * munit runs a fixture's teardown only after its setup succeeds. */
+  private def closingOnFailure[A](database: HsqldbDatabaseOwner)(
+      body: => A): A =
+    try body
+    catch
+      case error: Throwable =>
+        database.close()
+        throw error
+
   private val begunAuthGame = FunFixture[BegunAuthGame](
     setup = _ =>
       val database = openDatabase("auth-route-")
-      val identities = database.identities
-      Vector(owner, p2User, p3User, spectator, outsider)
-        .foreach(user => identities.createUser(user, user.value, 0L))
-      identities.createGame("auth-game", owner, 0L)
-      identities.addMembership(
-        GameMembership("auth-game", p2User, Player, Some("p2")), 0L)
-      identities.addMembership(
-        GameMembership("auth-game", p3User, Player, Some("p3")), 0L)
-      identities.addMembership(
-        GameMembership("auth-game", spectator, Spectator, None), 0L)
-      val service = new GameApplicationService(catalog,
-        new InMemoryEventStreamRepository)
-      val begun = accepted(service.handle("auth-game", 0L,
-        GameCommand.Begin(chronicle, orders.copy(firstPlayer = p2))))
-      BegunAuthGame(serve("authenticated-route-test", service, identities),
-        database, begun.nextSequence),
-    teardown = game =>
-      game.server.close()
-      game.database.close())
+      closingOnFailure(database):
+        val identities = database.identities
+        Vector(owner, p2User, p3User, spectator, outsider)
+          .foreach(user => identities.createUser(user, user.value, 0L))
+        identities.createGame("auth-game", owner, 0L)
+        identities.addMembership(
+          GameMembership("auth-game", p2User, Player, Some("p2")), 0L)
+        identities.addMembership(
+          GameMembership("auth-game", p3User, Player, Some("p3")), 0L)
+        identities.addMembership(
+          GameMembership("auth-game", spectator, Spectator, None), 0L)
+        val service = new GameApplicationService(catalog,
+          new InMemoryEventStreamRepository)
+        val begun = accepted(service.handle("auth-game", 0L,
+          GameCommand.Begin(chronicle, orders.copy(firstPlayer = p2))))
+        BegunAuthGame(serve("authenticated-route-test", service, identities),
+          database, begun.nextSequence),
+    teardown = begun =>
+      begun.server.close()
+      begun.database.close())
 
   begunAuthGame.test("a projection needs a member's session and takes no " +
       "playerId"):
     case BegunAuthGame(server, _, _) =>
-      assertEquals(server.get(game).statusCode(), 401)
-      assertEquals(server.get(game, Some(outsider.value)).statusCode(), 403)
-      assertEquals(server.get(game + "?playerId=p2", Some(p2User.value))
+      assertEquals(server.get(gamePath).statusCode(), 401)
+      assertEquals(server.get(gamePath, Some(outsider.value)).statusCode(), 403)
+      assertEquals(server.get(gamePath + "?playerId=p2", Some(p2User.value))
         .statusCode(), 400)
 
-  begunAuthGame.test("the command actor comes from the session and never " +
-      "from the wire"):
+  begunAuthGame.test("actorless commands reach the rules and a playerId on " +
+      "the wire is refused"):
     case BegunAuthGame(server, _, afterBegin) =>
-      def command(intent: ujson.Obj) = server.post(commands,
+      def command(intent: ujson.Obj) = server.post(commandsPath,
         ujson.write(ujson.Obj(
           "expectedNextSequence" -> ujson.Num(afterBegin.toDouble),
           "intent" -> intent)), Some(p2User.value))
@@ -187,8 +198,9 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
         "playerId" -> "p3"))
       assertEquals(spoofedMinorActor.statusCode(), 400)
 
-  begunAuthGame.test("p2 walks Setup through the authenticated routes and " +
-      "nobody else sees or answers its decisions"):
+  begunAuthGame.test("p2 walks Setup through the authenticated routes, " +
+      "nobody else sees or answers its decisions, and a stale position " +
+      "conflicts"):
     case BegunAuthGame(server, _, afterBegin) =>
       // p2 is dealt Wizard's Conclave, Errand Boy and Nature Worship, keeps
       // Wizard's Conclave, and discards the others.
@@ -200,7 +212,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
       assert(!catalog.denizen(kept).exists(_.isInstanceOf[SiteOnly]))
 
       val pawnDecision = SetupProcedure.pawnDecisionId(p2)
-      val pawn = server.post(commands,
+      val pawn = server.post(commandsPath,
         resolveWalkerBody(afterBegin, pawnDecision, "site",
           CatalogNames.site("Ancient City").value), Some(p2User.value))
       assertEquals(pawn.statusCode(), 200, pawn.body())
@@ -212,14 +224,14 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
       val afterPawn = ujson.read(pawn.body())("nextSequence").num.toLong
 
       Vector(owner, spectator, p3User).foreach { user =>
-        val projection = server.get(game, Some(user.value))
+        val projection = server.get(gamePath, Some(user.value))
         assertEquals(projection.statusCode(), 200)
         assert(ujson.read(projection.body())("walkerDecision").isNull)
         assertNoHiddenPlan(projection.body())
       }
 
       val adviserDecision = SetupProcedure.adviserDecisionId(p2)
-      val impersonation = server.post(commands,
+      val impersonation = server.post(commandsPath,
         ujson.write(ujson.Obj(
           "expectedNextSequence" -> ujson.Num(afterPawn.toDouble),
           "intent" -> ujson.Obj(
@@ -232,27 +244,27 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
         )), Some(p2User.value))
       assertEquals(impersonation.statusCode(), 400)
       Vector(owner, spectator).foreach { user =>
-        assertEquals(server.post(commands,
+        assertEquals(server.post(commandsPath,
           resolveWalkerBody(afterPawn, adviserDecision, "denizen", kept.value),
           Some(user.value)).statusCode(), 403)
       }
 
-      val stale = server.post(commands,
+      val stale = server.post(commandsPath,
         resolveWalkerBody(afterBegin, adviserDecision, "denizen", kept.value),
         Some(p2User.value))
       assertEquals(stale.statusCode(), 409, stale.body())
-      val accepted = server.post(commands,
+      val keptResponse = server.post(commandsPath,
         resolveWalkerKeepPartitionBody(afterPawn, adviserDecision, "denizen",
           kept.value, discarded.map(_.value)), Some(p2User.value))
-      assertEquals(accepted.statusCode(), 200)
+      assertEquals(keptResponse.statusCode(), 200)
       // Reveal Cards follows, since Wizard's Conclave is not site-only. Only
       // its owner is offered the card; everyone else sees no decision.
-      val reveal = ujson.read(accepted.body())("walkerDecision")
+      val reveal = ujson.read(keptResponse.body())("walkerDecision")
       assertEquals(reveal("decisionId").str,
         SetupProcedure.revealDecisionId(p2))
       assert(reveal("query")("options").arr.nonEmpty, reveal)
       Vector(owner, spectator, p3User).foreach { user =>
-        val projection = server.get(game, Some(user.value))
+        val projection = server.get(gamePath, Some(user.value))
         assert(ujson.read(projection.body())("walkerDecision").isNull)
         assert(!projection.body().contains(kept.value), user)
       }
@@ -260,7 +272,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
   begunAuthGame.test("a storage failure answers 500 without its details"):
     case BegunAuthGame(server, database, _) =>
       database.close()
-      val storage = server.get(game, Some(owner.value))
+      val storage = server.get(gamePath, Some(owner.value))
       assertEquals(storage.statusCode(), 500)
       assertEquals(
         ujson.read(storage.body())("error").str,

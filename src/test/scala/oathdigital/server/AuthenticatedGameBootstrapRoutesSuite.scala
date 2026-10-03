@@ -30,8 +30,10 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
 
   private val bootstrap =
     "/api/authenticated/first-games/bootstrap-game/bootstrap"
-  /** The provisioned seats, p2 first. */
-  private val valid = bootstrapBody(Vector("p2", "p3", "p1"), "p2")
+
+  /** A bootstrap request seating p2, p3 and p1, the provisioned seats, with
+    * p2 first. */
+  private val seatingBody = bootstrapBody(Vector("p2", "p3", "p1"), "p2")
 
   /** "bootstrap-game" is provisioned but not yet begun: `owner` owns it,
     * user-p1 to user-p3 hold seats p1 to p3, and `spectator` watches.
@@ -41,49 +43,60 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
       database: HsqldbDatabaseOwner, service: GameApplicationService,
       events: CountingEventStreamRepository)
 
+  /** `body`'s result; closes `database` and rethrows if `body` fails, since
+    * munit runs a fixture's teardown only after its setup succeeds. */
+  private def closingOnFailure[A](database: HsqldbDatabaseOwner)(
+      body: => A): A =
+    try body
+    catch
+      case error: Throwable =>
+        database.close()
+        throw error
+
   private val provisioned = FunFixture[ProvisionedGame](
     setup = _ =>
       val database = accepted(HsqldbDatabaseOwner.open(
         Files.createTempDirectory("auth-bootstrap-").resolve("database")))
-      val identities = database.identities
-      (Vector(owner, otherOwner, spectator, outsider) ++
-        playerUsers.map(_._2)).foreach(user =>
-        identities.createUser(user, user.value, 0L))
-      identities.createGame("bootstrap-game", owner, 0L)
-      identities.createGame("other-game", otherOwner, 0L)
-      playerUsers.foreach { case (playerId, userId) =>
+      closingOnFailure(database):
+        val identities = database.identities
+        (Vector(owner, otherOwner, spectator, outsider) ++
+          playerUsers.map(_._2)).foreach(user =>
+          identities.createUser(user, user.value, 0L))
+        identities.createGame("bootstrap-game", owner, 0L)
+        identities.createGame("other-game", otherOwner, 0L)
+        playerUsers.foreach { case (playerId, userId) =>
+          identities.addMembership(GameMembership(
+            "bootstrap-game", userId, Player, Some(playerId)), 0L)
+        }
         identities.addMembership(GameMembership(
-          "bootstrap-game", userId, Player, Some(playerId)), 0L)
-      }
-      identities.addMembership(GameMembership(
-        "bootstrap-game", spectator, Spectator, None), 0L)
+          "bootstrap-game", spectator, Spectator, None), 0L)
 
-      val events = new CountingEventStreamRepository
-      val service = new GameApplicationService(catalog, events)
-      val gateway = new AuthenticatedGameGateway(
-        service,
-        new GameProjector(catalog),
-        new MembershipAuthorizationService(identities),
-        identities,
-        new GeneratedFirstGamePlanFactory(catalog, unshuffled)
-      )
-      val authenticator = new HttpSessionAuthenticator:
-        override def authenticate(request: AkkaRequest) =
-          Future.successful(
-            request.headers.find(_.name == "X-Test-User") match {
-              case Some(header) => Right(AuthenticatedHttpSession(
-                AuthenticatedUser(UserId(header.value)),
-                HttpTestServer.csrfDigest))
-              case None => Left(AuthenticationFailure.MissingCredential)
-            })
-      val server = HttpTestServer.start("authenticated-bootstrap-test")(
-        blocking => new AuthenticatedGameRoutes(
-          authenticator,
-          new SameOriginCsrfProtection(HttpTestServer.origin),
-          gateway,
-          blocking
-        ).route)
-      ProvisionedGame(server, database, service, events),
+        val events = new CountingEventStreamRepository
+        val service = new GameApplicationService(catalog, events)
+        val gateway = new AuthenticatedGameGateway(
+          service,
+          new GameProjector(catalog),
+          new MembershipAuthorizationService(identities),
+          identities,
+          new GeneratedFirstGamePlanFactory(catalog, unshuffled)
+        )
+        val authenticator = new HttpSessionAuthenticator:
+          override def authenticate(request: AkkaRequest) =
+            Future.successful(
+              request.headers.find(_.name == "X-Test-User") match {
+                case Some(header) => Right(AuthenticatedHttpSession(
+                  AuthenticatedUser(UserId(header.value)),
+                  HttpTestServer.csrfDigest))
+                case None => Left(AuthenticationFailure.MissingCredential)
+              })
+        val server = HttpTestServer.start("authenticated-bootstrap-test")(
+          blocking => new AuthenticatedGameRoutes(
+            authenticator,
+            new SameOriginCsrfProtection(HttpTestServer.origin),
+            gateway,
+            blocking
+          ).route)
+        ProvisionedGame(server, database, service, events),
     teardown = game =>
       game.server.close()
       game.database.close())
@@ -94,7 +107,7 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
       assertEquals(server.post(bootstrap, "not-json").statusCode(), 401)
       Vector(playerUsers.head._2, spectator, outsider, otherOwner).foreach:
         user => assertEquals(
-          server.post(bootstrap, valid, Some(user.value)).statusCode(),
+          server.post(bootstrap, seatingBody, Some(user.value)).statusCode(),
           403
         )
 
@@ -126,9 +139,10 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
         None -> Some(csrfToken),
         Some("http://evil.example") -> Some(csrfToken),
         Some(HttpTestServer.origin) -> None,
-        Some(HttpTestServer.origin) -> Some("w" * 43)
+        // A well-formed token whose digest is not the session's.
+        Some(HttpTestServer.origin) -> Some("w" * csrfToken.length)
       ).foreach { case (origin, csrf) =>
-        val denied = server.post(bootstrap, valid, Some(owner.value),
+        val denied = server.post(bootstrap, seatingBody, Some(owner.value),
           origin, csrf)
         assertEquals(denied.statusCode(), 403)
         assertEquals(
@@ -140,7 +154,7 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
 
   provisioned.test("a bootstrap carrying a hidden plan field is refused"):
     case ProvisionedGame(server, _, _, _) =>
-      val hiddenInput = ujson.read(valid).obj
+      val hiddenInput = ujson.read(seatingBody).obj
       hiddenInput("worldDeckOrder") = ujson.Arr("card:injected")
       assertEquals(
         server.post(bootstrap, ujson.write(hiddenInput), Some(owner.value))
@@ -151,7 +165,7 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
   provisioned.test("the owner's bootstrap begins the game in the sent seat " +
       "order and replays it"):
     case ProvisionedGame(server, _, service, _) =>
-      val created = server.post(bootstrap, valid, Some(owner.value))
+      val created = server.post(bootstrap, seatingBody, Some(owner.value))
       assertEquals(created.statusCode(), 200, created.body())
       assertNoHiddenPlan(created.body())
       assertEquals(
@@ -175,10 +189,11 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
       "the first wrote it"):
     case ProvisionedGame(server, _, _, events) =>
       assertEquals(
-        server.post(bootstrap, valid, Some(owner.value)).statusCode(), 200)
+        server.post(bootstrap, seatingBody, Some(owner.value)).statusCode(),
+        200)
       val firstHistory = present(accepted(events.load("bootstrap-game")),
         "the bootstrapped journal")
-      val duplicate = server.post(bootstrap, valid, Some(owner.value))
+      val duplicate = server.post(bootstrap, seatingBody, Some(owner.value))
       assertEquals(duplicate.statusCode(), 409, duplicate.body())
       assertEquals(events.appendCalls, 1)
       assertEquals(
@@ -190,7 +205,7 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
   provisioned.test("a storage failure answers 500 without its details"):
     case ProvisionedGame(server, database, _, _) =>
       database.close()
-      val storage = server.post(bootstrap, valid, Some(owner.value))
+      val storage = server.post(bootstrap, seatingBody, Some(owner.value))
       assertEquals(storage.statusCode(), 500)
       assertEquals(ujson.read(storage.body())("error").str, "internal-error")
       assert(!storage.body().toLowerCase.contains("closed"))

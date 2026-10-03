@@ -31,6 +31,8 @@ class GameStartRulesSuite extends munit.FunSuite:
     val edifice = CatalogNames.edifice("Hall of Debate")
     assert(!chronicle.atlasBox.exists(_.site == site))
     assert(!chronicle.atlasBox.exists(_.items.contains(edifice)))
+    assertEquals(catalog.sites.find(_.id == site).flatMap(_.homeland),
+      catalog.edifices.find(_.id.value == edifice.value).map(_.suit))
     val withStorage = chronicle.copy(
       atlasBox = chronicle.atlasBox :+ StoredSite(site, Vector(edifice)))
     val ready = accepted(GameStartRules.evolve(catalog, withStorage, orders))

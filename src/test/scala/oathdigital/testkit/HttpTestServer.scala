@@ -16,9 +16,10 @@ import oathdigital.server.SensitiveTokenDigest
 
 /** A route served on a free loopback port for one test, with a client that
   * talks to it. `get` and `post` take a path under `base`; `post` sends the
-  * same-origin `Origin` and the `csrfToken` header unless told otherwise,
-  * and a `user` as the X-Test-User header the suites' authenticators read.
-  * `close` unbinds the route and stops its actor system. */
+  * same-origin `Origin` and the `csrfToken` header unless told otherwise
+  * (the development routes ignore both), and a `user` as the X-Test-User
+  * header the suites' authenticators read. `close` unbinds the route and
+  * stops its actor system, even when unbinding fails. */
 final class HttpTestServer private (system: ActorSystem[Nothing],
     binding: Http.ServerBinding):
   val base: String = s"http://127.0.0.1:${binding.localAddress.getPort}"
@@ -43,34 +44,44 @@ final class HttpTestServer private (system: ActorSystem[Nothing],
       HttpResponse.BodyHandlers.ofString())
 
   def close(): Unit =
-    Await.result(binding.terminate(5.seconds), 10.seconds)
-    system.terminate()
-    Await.result(system.whenTerminated, 10.seconds)
+    try Await.result(binding.terminate(5.seconds), 10.seconds)
+    finally
+      system.terminate()
+      Await.result(system.whenTerminated, 10.seconds)
 
 object HttpTestServer:
-  /** The origin every server here is served from. */
+  /** The origin the suites configure SameOriginCsrfProtection with, and
+    * that `post` sends as Origin. */
   val origin = "http://127.0.0.1"
 
-  /** The CSRF token `post` sends by default: 43 characters, the length of
-    * a real one. */
+  /** The CSRF token `post` sends by default: 43 characters, the shortest
+    * token SessionSecurity accepts (43 to 128). */
   val csrfToken: String = "c" * 43
 
-  /** The digest a test session holds for `csrfToken`. */
+  /** The digest a test session holds for `csrfToken`. The token is a
+    * well-formed constant, so building its digest cannot fail. */
   val csrfDigest: CsrfTokenDigest = CsrfTokenDigest.fromBytes(
     SensitiveTokenDigest.sha256(csrfToken))
     .fold(error => throw new IllegalStateException(error), identity)
 
   /** Boots an actor system named `name` and binds the route `routeOn`
-    * builds from the system's blocking dispatcher. */
+    * builds from the system's blocking dispatcher. Stops the system if the
+    * route cannot be built or bound. */
   def start(name: String)(
       routeOn: ExecutionContextExecutor => Route): HttpTestServer =
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, name)
-    val blocking = system.dispatchers.lookup(
-      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
-    val binding = Await.result(
-      Http().newServerAt("127.0.0.1", 0).bind(routeOn(blocking)), 10.seconds)
-    new HttpTestServer(system, binding)
+    try
+      val blocking = system.dispatchers.lookup(
+        DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
+      val binding = Await.result(
+        Http().newServerAt("127.0.0.1", 0).bind(routeOn(blocking)),
+        10.seconds)
+      new HttpTestServer(system, binding)
+    catch
+      case error: Throwable =>
+        system.terminate()
+        throw error
 
   /** The response's Cache-Control header, if it has one. */
   def cacheControl(response: HttpResponse[String]): Option[String] =

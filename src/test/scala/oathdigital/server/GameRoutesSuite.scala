@@ -39,7 +39,8 @@ class GameRoutesSuite extends munit.FunSuite:
         begun.nextSequence),
     teardown = _.server.close())
 
-  private val commands = "/api/dev/first-games/route-game/commands?playerId=p2"
+  private val p2Commands =
+    "/api/dev/first-games/route-game/commands?playerId=p2"
   private val ancientCity = CatalogNames.site("Ancient City").value
 
   begunRoutes.test("the development shell is served uncached and /health " +
@@ -76,12 +77,12 @@ class GameRoutesSuite extends munit.FunSuite:
 
   begunRoutes.test("a malformed command is refused and a stale one conflicts"):
     case BegunRoutes(server, _) =>
-      val malformed = server.post(commands,
+      val malformed = server.post(p2Commands,
         """{"expectedNextSequence":1,"intent":{"type":"resolveWalker"}}""")
       assertEquals(malformed.statusCode(), 400)
 
       val pawnDecision = SetupProcedure.pawnDecisionId(p2)
-      val stale = server.post(commands,
+      val stale = server.post(p2Commands,
         s"""{"expectedNextSequence":0,"intent":{"type":"resolveWalker",
            |"decisionId":"$pawnDecision",
            |"payload":{"kind":"choose-one","optionKind":"site",
@@ -96,7 +97,7 @@ class GameRoutesSuite extends munit.FunSuite:
       "waits"):
     case BegunRoutes(server, afterBegin) =>
       val pawnDecision = SetupProcedure.pawnDecisionId(p2)
-      val placed = server.post(commands,
+      val placed = server.post(p2Commands,
         ActorlessCommandCodec.encode(ActorlessCommandRequest(
           afterBegin,
           GameIntent.ResolveWalker(pawnDecision,
@@ -119,9 +120,13 @@ class GameRoutesSuite extends munit.FunSuite:
       val adviserDecision = SetupProcedure.adviserDecisionId(p2)
       val handOptions = ujson.read(placed.body())("walkerDecision")("query")(
         "options").arr.map(_("id").str).toVector
-      val adviser = handOptions.head
-      val rejectedAdvisers = handOptions.tail
-      val chosen = server.post(commands,
+      // p2 is dealt Wizard's Conclave, Errand Boy and Nature Worship and keeps
+      // Wizard's Conclave, which is not site-only, so Reveal Cards follows.
+      val adviser = CatalogNames.denizen("Wizard's Conclave").value
+      val rejectedAdvisers = Vector("Errand Boy", "Nature Worship")
+        .map(CatalogNames.denizen(_).value)
+      assertEquals(handOptions, adviser +: rejectedAdvisers)
+      val chosen = server.post(p2Commands,
         ujson.write(ujson.Obj(
           "expectedNextSequence" -> ujson.Num(afterPlaced.toDouble),
           "intent" -> ujson.Obj("type" -> "resolveWalker",
