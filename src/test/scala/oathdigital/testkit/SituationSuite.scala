@@ -1,8 +1,7 @@
 package oathdigital.testkit
 
-import oathdigital.application.{CampaignDicePort, GameApplicationService,
-  GameCommand, InMemoryEventStreamRepository, ParkedServiceFixture,
-  StartPayload}
+import oathdigital.application.{GameApplicationService, GameCommand,
+  InMemoryEventStreamRepository, ParkedServiceFixture, StartPayload}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
@@ -14,19 +13,11 @@ import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 class SituationSuite extends munit.FunSuite:
-  /** Dice that always come up the same way, so two adapters given them
-    * reach the same board. */
-  private val blankDice: CampaignDicePort = new CampaignDicePort:
-    def rollAttack(count: Int): Vector[AttackDieFace] =
-      Vector.fill(count)(AttackDieFace.HollowSword)
-    def rollDefense(count: Int): Vector[DefenseDieFace] =
-      Vector.fill(count)(DefenseDieFace.Blank)
-
   private def journaledService()
       : (GameApplicationService, InMemoryEventStreamRepository) =
     val repository = new InMemoryEventStreamRepository
     (new GameApplicationService(catalog, repository,
-      campaignDicePort = blankDice), repository)
+      campaignDicePort = Dice.blank), repository)
 
   private def journaled(gameId: String)
       : (SituationDriver, InMemoryEventStreamRepository) =
@@ -73,7 +64,8 @@ class SituationSuite extends munit.FunSuite:
       Step.Arrange(Vector(SetOathkeeper(Some(other)))),
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
-    val byRules = Situation.wake(Situation.productionRules(catalog, blankDice))
+    val byRules = Situation.wake(
+      Situation.productionRules(catalog, Dice.blank))
       .after(steps*)
     val byJournal = Situation.wake(driver).after(steps*)
     assertEquals(byJournal.state, byRules.state)
@@ -84,11 +76,12 @@ class SituationSuite extends munit.FunSuite:
 
   test("the rules and journaled adapters agree from a table"):
     val table = Table.start
-    val (service, repository) = table.service(campaignDice = blankDice)
+    val (service, repository) = table.service(campaignDice = Dice.blank)
     val steps = Vector[GameCommand | Step](GameCommand.StartWalker(
       ActionRef.Search, StartPayload(p1, Vector.empty,
         Vector(DecisionOptionRef.Button("search:world")))))
-    val byRules = table.situation(Situation.productionRules(catalog, blankDice))
+    val byRules = table.situation(
+      Situation.productionRules(catalog, Dice.blank))
       .after(steps*)
     val byJournal = table.situation(Situation.journaled(service, catalog,
       repository, "table")).after(steps*)
@@ -159,7 +152,7 @@ class SituationSuite extends munit.FunSuite:
     // ParkedServiceFixture.recoverChoicePark's table, under the rules the
     // service builds and dice that fail every Recover roll.
     val parked = ParkedServiceFixture.recoverTable
-      .situation(Situation.productionRules(catalog, blankDice))
+      .situation(Situation.productionRules(catalog, Dice.blank))
       .parkedAfter(GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
     new ParkedDecisionAssertions(catalog, WalkerPowerCatalog.default(catalog),
       PhasePowerCatalog.default(catalog)).assertParked(parked.state,

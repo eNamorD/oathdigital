@@ -13,7 +13,7 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.protocol.projection.{DecisionOptionProjection,
   DecisionQueryProjection, DecisionSectionProjection, GameProjectionCodec,
   WalkerDecisionProjection, WalkerRollOutcomeProjection}
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Dice}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.WalkerStubs
 import oathdigital.testkit.Unwrap.{accepted, present}
@@ -47,16 +47,6 @@ import oathdigital.testkit.Outcomes
 class WalkerDecisionProjectionSuite extends munit.FunSuite:
   private def presentation = new GamePresentationProjector(catalog)
   private def walkerDecisions = new WalkerDecisionProjector(catalog, presentation)
-  /** The faces a Recover roll shows. Recover rolls as the walker walks, so
-    * the dice come from the walker's own source -- the campaign port --
-    * rather than from the port a parked roll command would have asked.
-    */
-  private final class FixedRecoverDice(faces: Vector[DefenseDieFace])
-      extends CampaignDicePort:
-    def rollAttack(count: Int): Vector[AttackDieFace] =
-      Vector.fill(count)(AttackDieFace.HollowSword)
-    def rollDefense(count: Int): Vector[DefenseDieFace] = faces
-
   /** The continue/stop query as `RecoverProcedure` declares it: two button
     * options, in declaration order, carrying the action's own prompt copy.
     * A button has no game object behind it, so it projects no card details.
@@ -154,7 +144,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     * walk parks on the continue/stop choice. */
   private def recoverFailingItsRoll(gameId: String)(using munit.Location) =
     startedRolling(gameId,
-      new FixedRecoverDice(Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)))
+      Dice.defending(Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)))
 
   /** The choice park's roll feedback: this is exactly what the
     * continue/stop choice needs (I5). */
@@ -217,7 +207,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     * so the walk parks on the relic choice. */
   private def recoverMeetingItsDifficulty(gameId: String)(
       using munit.Location) =
-    startedRolling(gameId, new FixedRecoverDice(
+    startedRolling(gameId, Dice.defending(
       Vector(DefenseDieFace.TwoShields, DefenseDieFace.Doubler)))
 
   /** The relic park's query: one option per facedown relic at Broken Peaks,

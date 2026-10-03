@@ -299,7 +299,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val actor = playerLabel(script.actor)
     val rolled = all.filter(_.startsWith(s"Gambling Hall: $actor rolled "))
     assertEquals(rolled.size, 1, all)
-    // Gambling Hall rolls 4 defense dice and steadyDice makes each two
+    // Gambling Hall rolls 4 defense dice and Dice.steady makes each two
     // shields: 4 x 2 = 8.
     assert(rolled.head.endsWith(", Total: 8"), rolled.head)
     val gained = all.filter(_.startsWith(s"Gambling Hall: $actor gained "))

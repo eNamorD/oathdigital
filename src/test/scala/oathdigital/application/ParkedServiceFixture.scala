@@ -7,7 +7,7 @@ import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerParked}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Situation, SituationDriver,
+import oathdigital.testkit.{CatalogNames, Dice, Situation, SituationDriver,
   Table, Unwrap}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
@@ -177,16 +177,6 @@ object ParkedServiceFixture:
       ParkedGame(service, repository, accepted(parked, act), parked),
       p1, p2)
 
-  /** Defense dice that always come up blank. A Recover started with these
-    * fails its roll, so it parks on the continue-or-stop choice instead of
-    * landing wherever a random port would send it.
-    */
-  val failingDice: CampaignDicePort = new CampaignDicePort:
-    def rollAttack(count: Int): Vector[AttackDieFace] =
-      Vector.fill(count)(AttackDieFace.HollowSword)
-    def rollDefense(count: Int): Vector[DefenseDieFace] =
-      Vector.fill(count)(DefenseDieFace.Blank)
-
   /** p1 at Broken Peaks, where Recover has difficulty 4, holding two
     * facedown relics. p2 stands at Deep Woods (any site but Broken Peaks
     * would do), since a player at the site sees the relics lying there and
@@ -199,9 +189,9 @@ object ParkedServiceFixture:
 
   /** A Recover parked in Act on its continue-or-stop choice on
     * [[recoverTable]]. The service rolls `dice`, and the default
-    * `failingDice` fail the roll, so it parks on the choice instead of
+    * `Dice.blank` fail the roll, so it parks on the choice instead of
     * landing wherever a random port would send it. */
-  def recoverChoicePark(gameId: String, dice: CampaignDicePort = failingDice)(
+  def recoverChoicePark(gameId: String, dice: CampaignDicePort = Dice.blank)(
       using munit.Location): RecoverChoicePark =
     val (service, repository, act) = journaled(recoverTable, gameId, dice)
     val parked = act.parkedAfter(

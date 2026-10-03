@@ -17,8 +17,8 @@ import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
-import oathdigital.testkit.{Answers, CatalogNames, Look, Park, Situation, Step,
-  Table}
+import oathdigital.testkit.{Answers, CatalogNames, Dice, Look, Park,
+  Situation, Step, Table}
 import oathdigital.testkit.Unwrap.as
 import oathdigital.testkit.Table.{p1, p2, p3}
 
@@ -44,14 +44,6 @@ final case class Script(name: String, service: GameApplicationService,
       s"$name has no player besides $actor among $players"))
 
 object LogScripts:
-  /** Every attack die a sword, every defense die two shields, so a script
-    * reaches the same board every run. */
-  val steadyDice: CampaignDicePort = new CampaignDicePort:
-    def rollAttack(count: Int): Vector[AttackDieFace] =
-      Vector.fill(count)(AttackDieFace.OneSword)
-    def rollDefense(count: Int): Vector[DefenseDieFace] =
-      Vector.fill(count)(DefenseDieFace.TwoShields)
-
   /** A short journal on a table, for the suites that append their own
     * recorded events to a real board and read the lines they post. The board
     * holds the facts those suites lean on, each stated here: a relic lying at
@@ -90,7 +82,7 @@ object LogScripts:
       using munit.Location): Script =
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = steadyDice)
+      campaignDicePort = Dice.steady)
     val situation = Situation.wake(Situation.journaled(service, catalog,
       repository, name).withAnswers(
         answers orElse Situation.pawnsAt(FirstGameSetupFixture.sites)))
@@ -198,7 +190,8 @@ object LogScripts:
     * journaled situation there. A script's table ends with `banditsRefilled`,
     * or its first command journals the bandit refill as well and the log
     * reads a "Bandits returned" line no script means to test. */
-  def atTable(name: String, table: Table, dice: CampaignDicePort = steadyDice)(
+  def atTable(name: String, table: Table,
+      dice: CampaignDicePort = Dice.steady)(
       using munit.Location): (GameApplicationService, Situation) =
     val (service, repository) = table.service(campaignDice = dice)
     (service, table.situation(Situation.journaled(service, catalog, repository,
@@ -318,7 +311,7 @@ object LogScripts:
   /** Dice that fail every Recover roll: continue once, then stop. */
   def recoverFailed(using munit.Location): Script =
     val (service, act) = recovering("recover-failed",
-      ParkedServiceFixture.failingDice)
+      Dice.blank)
     val actor = Look(act.ready).active
     def answer(key: String) = GameCommand.ResolveWalker(actor, TreeDecision(
       RecoverProcedure.choiceDecisionId,
@@ -331,14 +324,14 @@ object LogScripts:
 
   /** Steady dice succeed at once; the relic decision is answered by default. */
   def recoverSucceeded(using munit.Location): Script =
-    val (service, act) = recovering("recover-succeeded", steadyDice)
+    val (service, act) = recovering("recover-succeeded", Dice.steady)
     start(act, ActionRef.Recover)
     Script("recover-succeeded", service, Look(act.ready).active)
 
   /** A successful Recover, then the recovered relic revealed as a minor
     * action. */
   def revealRelic(using munit.Location): Script =
-    val (service, act) = recovering("reveal-relic", steadyDice)
+    val (service, act) = recovering("reveal-relic", Dice.steady)
     val actor = Look(act.ready).active
     val recovered = start(act, ActionRef.Recover)
     val relic = Look(recovered.ready).relics(actor) match
@@ -369,13 +362,6 @@ object LogScripts:
     start(start(act, ActionRef.Challenge), ActionRef.PlaceBannerResource)
     Script("banners", service, p1)
 
-  /** Attack dice all swords, defense dice all blank. */
-  val raidDice: CampaignDicePort = new CampaignDicePort:
-    def rollAttack(count: Int): Vector[AttackDieFace] =
-      Vector.fill(count)(AttackDieFace.OneSword)
-    def rollDefense(count: Int): Vector[DefenseDieFace] =
-      Vector.fill(count)(DefenseDieFace.Blank)
-
   /** A Raid on p2, whose pawn shares p1's site and who holds a facedown
     * adviser to lose. Every board warband goes into the force and every
     * survivor is sacrificed, so the attack is twice the force against the
@@ -384,7 +370,7 @@ object LogScripts:
   def raid(using munit.Location): Script =
     val (service, act) = atTable("raid", Table.start
       .pawn(p2, "Ancient City")
-      .adviser(p2, "Birdsong", facedown = true).banditsRefilled, raidDice)
+      .adviser(p2, "Birdsong", facedown = true).banditsRefilled, Dice.raid)
     act.withAnswers {
       case park if park.decisionId == CampaignIds.kind =>
         ChooseOneAnswer(DecisionOptionRef.Button("raid"))
@@ -446,7 +432,7 @@ object LogScripts:
   /** Silver Tongue used in Rest, its bank choice answered by default. */
   def silverTongue(using munit.Location): Script =
     val ParkedServiceFixture.SilverTonguePark(game, actor, _) =
-      ParkedServiceFixture.silverTonguePark("use-power", steadyDice)
+      ParkedServiceFixture.silverTonguePark("use-power", Dice.steady)
     game.situation.after()
     Script("use-power", game.service, actor)
 
@@ -460,7 +446,7 @@ object LogScripts:
     Script("augury", service, p1)
 
   /** Gambling Hall at p1's site, used in Act by a player holding two favor.
-    * Gambling Hall rolls 4 defense dice and steadyDice makes each two
+    * Gambling Hall rolls 4 defense dice and Dice.steady makes each two
     * shields, so they total 8, and the richest bank is chosen so the gain is
     * never empty. */
   def gamblingHall(using munit.Location): Script =

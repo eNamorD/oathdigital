@@ -14,7 +14,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.OathRules
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Dice, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{accepted, present}
 import ParkedServiceFixture.{firstPlayer, loaded, parkedAssertions,
@@ -56,44 +56,19 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
   private val catacombsTable = Table.start.pawn(p1, "Dunes")
     .denizen("Catacombs", "Dunes").relicDeckTop(dowsingSticks)
 
-  /** Recover rolls as the walker walks, so its dice come from the walker's
-    * own source -- the campaign port -- rather than from the port a parked
-    * roll command would have asked. `calls` counts the defense rolls, which
-    * is what every Recover test here cares about.
-    */
-  private final class CountingRecoverDice extends CampaignDicePort:
-    var calls = 0
-    def rollAttack(count: Int): Vector[AttackDieFace] =
-      Vector.fill(count)(AttackDieFace.HollowSword)
-    def rollDefense(count: Int): Vector[DefenseDieFace] =
-      calls += 1
-      Vector(DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
-
-  private final class FixedRecoverDice(faces: Vector[DefenseDieFace])
-      extends CampaignDicePort:
-    var calls = 0
-    def rollAttack(count: Int): Vector[AttackDieFace] =
-      Vector.fill(count)(AttackDieFace.HollowSword)
-    def rollDefense(count: Int): Vector[DefenseDieFace] =
-      calls += 1
-      faces
-
-  private final class ScriptedRecoverDice(
-      rolls: Vector[Vector[DefenseDieFace]]) extends CampaignDicePort:
-    var calls = 0
-    def rollAttack(count: Int): Vector[AttackDieFace] =
-      Vector.fill(count)(AttackDieFace.HollowSword)
-    def rollDefense(count: Int): Vector[DefenseDieFace] =
-      val faces = rolls(calls)
-      calls += 1
-      faces
+  /** Two shields and a Doubler: they reach the difficulty of Broken Peaks,
+    * and Recover rolls them as the walker walks, so the dice come from the
+    * walker's own source -- the campaign port -- rather than from the port a
+    * parked roll command would have asked. */
+  private val meetingTheDifficulty =
+    Vector(DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
 
   test("walker Recover persists every park and replays to the same final state"):
     // p1 stands at Broken Peaks, difficulty 4, with two facedown relics.
     val recoverSite = CatalogNames.site("Broken Peaks")
     val actor = p1
 
-    val walkerDice = new CountingRecoverDice
+    val walkerDice = new Dice.CountingDefense(meetingTheDifficulty)
     val (walkerService, walkerRepository) = ParkedServiceFixture.recoverTable
       .service(campaignDice = walkerDice)
 
@@ -173,8 +148,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       "events, while empty modifiers still starts Recover exactly as today"):
     val actor = p1
     val (service, _) = ParkedServiceFixture.recoverTable.service(
-      campaignDice = new FixedRecoverDice(Vector(DefenseDieFace.TwoShields,
-        DefenseDieFace.Doubler)))
+      campaignDice = Dice.defending(meetingTheDifficulty))
 
     // No `ContributingPower` is registered yet (Task 5 ports the first one),
     // so any non-empty `modifiers` names an id the catalog cannot recognize:
@@ -199,8 +173,8 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       RecoverProcedure.relicDecisionId, actor)
 
   test("walker Continue answer and the roll it buys survive reload"):
-    val dice = new FixedRecoverDice(Vector(DefenseDieFace.Blank,
-      DefenseDieFace.Blank))
+    val dice = new Dice.CountingDefense(
+      Vector(DefenseDieFace.Blank, DefenseDieFace.Blank))
     val (service, repository) = ParkedServiceFixture.recoverTable
       .service(campaignDice = dice)
     val actor = p1
@@ -272,7 +246,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank))
 
     val walkerRepository = new InMemoryEventStreamRepository
-    val walkerDice = new ScriptedRecoverDice(rolls)
+    val walkerDice = new Dice.ScriptedDefense(rolls)
     val walkerService = new GameApplicationService(catalog, walkerRepository,
       campaignDicePort = walkerDice)
     val walkerSetup = setupViaService(walkerService,
@@ -340,7 +314,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     // caller from steering which dice get rolled. Pin the ordering directly
     // by proving the port is untouched on a mismatch, not just that the
     // command is rejected.
-    val dice = new CountingRecoverDice
+    val dice = new Dice.CountingDefense(meetingTheDifficulty)
     val (service, _) = ParkedServiceFixture.recoverTable
       .service(campaignDice = dice)
     val actor = p1
@@ -368,7 +342,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     // of `Location.Deck(CardDeck.Relic)` and a `PayCost` at
     // `Location.OnCard`, none of which the walker codec used to encode.
     val (service, repository) = catacombsTable
-      .service(campaignDice = new CountingRecoverDice)
+      .service(campaignDice = new Dice.CountingDefense(meetingTheDifficulty))
     val gameId = "catacombs-walker-persisted"
     val actor = p1
     val before = Outcomes.ready(catacombsTable.state)
@@ -431,7 +405,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
   test("preview offers the walker Catacombs contribution, and " +
       "OathRules.startWalker accepts exactly the offered id (Task 9a)"):
     val (service, _) = catacombsTable
-      .service(campaignDice = new CountingRecoverDice)
+      .service(campaignDice = new Dice.CountingDefense(meetingTheDifficulty))
     val gameId = "catacombs-walker-preview"
     val actor = p1
     val preview = accepted(service.preview(gameId, 0L, actor,
@@ -474,7 +448,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     // A legacy action's preview is untouched: still resolved through
     // `PowerRuntime`, not the walker catalog.
     val (service, _) = catacombsTable
-      .service(campaignDice = new CountingRecoverDice)
+      .service(campaignDice = new Dice.CountingDefense(meetingTheDifficulty))
     val travelPreview = service.preview("catacombs-travel-preview", 0L, p1,
       ActionKind.Travel, Vector.empty)
     assert(travelPreview.isRight)
