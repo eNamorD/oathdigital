@@ -82,8 +82,3 @@ object WhenPlayedHarness:
     val bySite = cards.toMap
     quietTable.game.current.map.inPlay.flatMap(bySite.getOrElse(_,
       Vector.empty))
-
-  /** The edifices of `suit` in the quiet table's edifice deck. */
-  def edificesOf(suit: Suit): Vector[EdificeId] =
-    quietTable.game.current.commonCards.edificeDeck
-      .filter(catalog.suitOf(_).contains(suit))

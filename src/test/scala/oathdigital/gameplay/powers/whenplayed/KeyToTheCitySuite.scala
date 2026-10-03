@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{NoteText, PlayerFacts}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
 import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.{p1, p2}
@@ -13,7 +13,7 @@ class KeyToTheCitySuite extends munit.FunSuite:
   private val played = hookAt(key, homeSite)
   /** Key to the City is site-only: it stands at p1's site. */
   private val start = Table.start.denizen(key, at = homeSite)
-  private val mine = PlayerFacts.forceKind(start.ready, p1).toOption.get
+  private val mine = Look(start.ready).forceKind(p1)
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
@@ -57,7 +57,7 @@ class KeyToTheCitySuite extends munit.FunSuite:
 
   test("a ruler whose pawn stands at the site keeps it"):
     val ready = start.warbandsAt(homeSite, p2, 2).pawn(p2, homeSite).ready
-    val theirs = PlayerFacts.forceKind(ready, p2).toOption.get
+    val theirs = Look(ready).forceKind(p2)
     val done = Outcomes.finished(fire(ready, power, played))
     assertEquals(Look(done.treeless).forces(homeSite),
       SiteForces.Occupied(theirs, 2))

@@ -1,95 +1,96 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{PlayerFacts, PowerFixture,
-  WalkerPowerCatalog}
+import oathdigital.gameplay.powers.PowerFixture.warbandBank
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ProcedureWalker
 import oathdigital.gameplay.WalkerRecordedOpsReducer
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
+  Table}
+import oathdigital.testkit.Table.p1
 
 class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
-  import PowerFixture._
   import WhenPlayedHarness._
 
   private val power = Garrison
   private val card = power.cardId
-  private val kind = PlayerFacts.forceKind(quietTable, actor).toOption.get
+  private val played = hook(card)
+  private val kind = Look(Table.start.ready).forceKind(p1)
+  private val sites = Vector("Ancient City", "Broken Peaks", "Buried Giant")
+    .map(CatalogNames.site(_))
 
-  /** The actor rules exactly `counts.size` sites, holding `counts` warbands
-    * each. Every other site is emptied. Returns the state and the sites in
-    * value order.
+  /** p1 holds Garrison, rules the first `counts.size` of Ancient City, Broken
+    * Peaks and Buried Giant with `counts` warbands each, and has `onBoard`
+    * warbands on the board.
     */
-  private def ruling(counts: Vector[Int], onBoard: Int)
-      : (ReadyGame, Vector[SiteId]) =
-    val current = quietTable.game.current
-    val sites = current.map.inPlay.toVector.sortBy(_.value).take(counts.size)
-    val cleared = current.map.sites.map { case (id, site) =>
-      id -> site.copy(forces = SiteForces.Empty) }
-    val ruled = sites.zip(counts).foldLeft(cleared) { case (all, (id, n)) =>
-      all.updated(id, all(id).copy(forces = SiteForces.Occupied(kind, n))) }
-    val staged = asAdviser(quietTable, card)
-      .updateCurrent(_.copy(map = current.map.copy(sites = ruled)))
-    (Table.from(staged).boardWarbands(actor, onBoard).unchecked, sites)
+  private def ruling(counts: Vector[Int], onBoard: Int): ReadyGame =
+    sites.zip(counts).foldLeft(Table.start.adviser(p1, card)) {
+      case (table, (site, n)) => table.warbandsAt(site, p1, n)
+    }.boardWarbands(p1, onBoard).ready
 
   private def forcesAt(ready: ReadyGame, site: SiteId): SiteForces =
     ready.game.current.map.sites(site).forces
+
+  private def chooseSites(chosen: SiteId*): DecisionAnswer =
+    DecisionAnswer.ChooseManyAnswer(
+      chosen.toVector.map(DecisionOptionRef.Site(_)))
 
   test("Garrison is in the default walker catalog"):
     assert(WalkerPowerCatalog.default(catalog).powers.contains(power))
 
   test("it gains one warband per ruled site and puts one on each"):
-    val (ready, sites) = ruling(Vector(1, 1, 1), onBoard = 5)
+    val ready = ruling(Vector(1, 1, 1), onBoard = 5)
     val done = Outcomes.finished(play(ready, power, card))
     sites.foreach(site => assertEquals(forcesAt(done.treeless, site),
       SiteForces.Occupied(kind, 2)))
-    assertEquals(Look(done.treeless).player(actor).board.warbands, 5)
+    // 5 on the board, 3 gained from the bank and 3 placed.
+    assertEquals(Look(done.treeless).player(p1).board.warbands, 5)
     assertEquals(replayed(ready, done.events), done.treeless)
 
   test("a player who rules no site gains and places nothing"):
-    val (ready, _) = ruling(Vector.empty, onBoard = 5)
+    val ready = ruling(Vector.empty, onBoard = 5)
     val done = Outcomes.finished(play(ready, power, card))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(Look(done.treeless).player(actor).board.warbands, 5)
+    assertEquals(Look(done.treeless).player(p1).board.warbands, 5)
 
   test("a short bank leaves a short board, and the player chooses the sites"):
-    // 13 warbands sit at the three ruled sites and none on the board, so the
-    // bank holds one and the gain is capped at one.
-    val (ready, sites) = ruling(Vector(4, 4, 5), onBoard = 0)
+    // 13 of the lineage's 14 warbands sit at the three ruled sites and none
+    // on the board, so the bank holds one and the gain is capped at one.
+    val ready = ruling(Vector(4, 4, 5), onBoard = 0)
     assertEquals(warbandBank(ready, kind), 1)
     val first = Outcomes.parked(play(ready, power, card))
     val atChoice = foldRecordedOps(ready, first.events, "gain did not replay")
-    assertEquals(Look(atChoice).player(actor).board.warbands, 1)
-    val decide = ProcedureWalker.parkedDecide(atChoice, hook(card), first.tree,
-      powers(power)).get
+    assertEquals(Look(atChoice).player(p1).board.warbands, 1)
+    val decide = question(atChoice, power, played, first.tree)
     assertEquals(decide.decisionId, Garrison.decisionId)
-    assertEquals(decide.owner, actor)
+    assertEquals(decide.owner, p1)
     assertEquals(decide.query, DecisionQuery.ChooseMany(1, 1, sites.map(site =>
       DecisionOption.Site(DecisionOptionRef.Site(site))),
       decide.query.heading))
 
-    val chosen = sites(1)
-    val done = Outcomes.finished(ProcedureWalker.resolve(atChoice, hook(card),
-      first.tree, Answered(Garrison.decisionId, DecisionAnswer.ChooseManyAnswer(
-        Vector(DecisionOptionRef.Site(chosen))), actor), powers(power)))
-    assertEquals(forcesAt(done.treeless, chosen), SiteForces.Occupied(kind, 5))
-    assertEquals(forcesAt(done.treeless, sites.head), SiteForces.Occupied(kind, 4))
-    assertEquals(forcesAt(done.treeless, sites(2)), SiteForces.Occupied(kind, 5))
-    assertEquals(Look(done.treeless).player(actor).board.warbands, 0)
+    val brokenPeaks = sites(1)
+    val done = Outcomes.finished(resume(atChoice, power, played, first.tree,
+      Garrison.decisionId, chooseSites(brokenPeaks)))
+    assertEquals(forcesAt(done.treeless, brokenPeaks),
+      SiteForces.Occupied(kind, 4 + 1))
+    assertEquals(forcesAt(done.treeless, sites.head),
+      SiteForces.Occupied(kind, 4))
+    assertEquals(forcesAt(done.treeless, sites(2)),
+      SiteForces.Occupied(kind, 5))
+    assertEquals(Look(done.treeless).player(p1).board.warbands, 0)
     assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
 
   test("an empty board and an empty bank ask nothing"):
-    val (ready, _) = ruling(Vector(5, 5, 4), onBoard = 0)
+    // All 14 of the lineage's warbands are at the sites.
+    val ready = ruling(Vector(5, 5, 4), onBoard = 0)
     assertEquals(warbandBank(ready, kind), 0)
     val done = Outcomes.finished(play(ready, power, card))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
 
   test("a choice naming an unruled site is rejected"):
-    val (ready, sites) = ruling(Vector(4, 4, 5), onBoard = 0)
+    val ready = ruling(Vector(4, 4, 5), onBoard = 0)
     val first = Outcomes.parked(play(ready, power, card))
     val atChoice = foldRecordedOps(ready, first.events, "gain did not replay")
-    val unruled = quietTable.game.current.map.inPlay.toVector
-      .find(!sites.contains(_)).get
-    assert(ProcedureWalker.resolve(atChoice, hook(card), first.tree,
-      Answered(Garrison.decisionId, DecisionAnswer.ChooseManyAnswer(
-        Vector(DecisionOptionRef.Site(unruled))), actor), powers(power)).isLeft)
+    val unruled = CatalogNames.site("Deep Woods")
+    assert(resume(atChoice, power, played, first.tree, Garrison.decisionId,
+      chooseSites(unruled)).isLeft)

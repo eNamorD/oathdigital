@@ -11,10 +11,11 @@ class RoyalTaxSuite extends munit.FunSuite:
   private val power = registered[RoyalTax.type]
   private val tax = power.cardId
 
-  /** Royal Tax as p1's adviser. p1 rules its own site and another site in
-    * its region. p2 stands at the other site with 3 favor, and p3 at p1's
-    * site with `held`. */
+  /** Royal Tax as p1's adviser, p1 holding 1 favor. p1 rules its own site
+    * and another site in its region. p2 stands at the other site with 3
+    * favor, and p3 at p1's site with `held`. */
   private def staged(held: Int): ReadyGame = Table.start.adviser(p1, tax)
+    .favor(p1, 1)
     .warbandsAt(homeSite, p1, 1).warbandsAt(nearSite, p1, 1)
     .pawn(p2, nearSite).favor(p2, 3).pawn(p3, homeSite).favor(p3, held).ready
 
@@ -29,14 +30,16 @@ class RoyalTaxSuite extends munit.FunSuite:
     val ready = staged(held = 1)
     val done = Outcomes.finished(play(ready, power, tax))
     val after = Look(done.treeless)
+    // p1's 1, then 2 from p2 and p3's only 1.
     assertEquals(after.favor(p1), 1 + 2 + 1)
-    assertEquals(after.favor(p2), 1)
+    assertEquals(after.favor(p2), 3 - 2)
     assertEquals(after.favor(p3), 0)
     assertEquals(replayed(ready, done.events), done.treeless)
     assertEquals(said(done.events), Vector(took(2, p2), took(1, p3)))
 
   test("a player with no favor is named, and nothing is taken from them"):
     val done = Outcomes.finished(play(staged(held = 0), power, tax))
+    // p1's 1 and p2's 2.
     assertEquals(Look(done.treeless).favor(p1), 1 + 2)
     assertEquals(said(done.events), Vector(took(2, p2), NoteText.Said("broke",
       s"${p3.value} had no favor to take.", covers = false)))

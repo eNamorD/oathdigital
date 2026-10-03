@@ -1,80 +1,91 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture}
-import oathdigital.gameplay.walker.ProcedureWalker
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.WalkerRecordedOpsReducer
+import oathdigital.gameplay.walker.WalkerOutcome
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
+  Table}
+import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.as
 
 class FamilyHeirloomSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer:
-  import PowerFixture._
   import WhenPlayedHarness._
 
   private val power = FamilyHeirloom
   private val card = power.cardId
-  private val staged = asAdviser(quietTable, card)
-  private val top = staged.game.current.commonCards.relicDeck.head
+  private val played = hook(card)
+  private val top = CatalogNames.relic("Dowsing Sticks")
+  /** p1 holds Family Heirloom faceup, and Dowsing Sticks tops the relic
+    * deck. */
+  private val staged = Table.start.adviser(p1, card).relicDeckTop(top).ready
 
-  private def answer(ready: ReadyGame, tree: PendingTree, ref: DecisionOptionRef) =
-    ProcedureWalker.resolve(ready, hook(card), tree, Answered(
-      FamilyHeirloom.decisionId, DecisionAnswer.ChooseOneAnswer(ref), actor),
-      powers(power))
+  private def answer(ready: ReadyGame, tree: PendingTree,
+      ref: DecisionOptionRef) =
+    resume(ready, power, played, tree, FamilyHeirloom.decisionId,
+      DecisionAnswer.ChooseOneAnswer(ref))
 
-  private def atChoice =
+  /** The walk parked on the keep-or-bottom choice, and the state the draw
+    * reached. */
+  private final case class AtChoice(first: WalkerOutcome.Parked,
+      state: ReadyGame)
+
+  private def atChoice: AtChoice =
     val first = Outcomes.parked(play(staged, power, card))
-    (first, foldRecordedOps(staged, first.events, "the draw did not replay"))
+    AtChoice(first, foldRecordedOps(staged, first.events,
+      "the draw did not replay"))
 
   test("the relic is drawn facedown to the player and the choice is theirs"):
-    val (first, state) = atChoice
-    assert(Look(state).player(actor).relics.exists(relic =>
+    val at = atChoice
+    assert(Look(at.state).player(p1).relics.exists(relic =>
       relic.id == top && relic.orientation == Orientation.FaceDown))
-    assert(!state.game.current.commonCards.relicDeck.contains(top))
-    val decide = ProcedureWalker.parkedDecide(state, hook(card), first.tree,
-      powers(power)).get
+    assert(!at.state.game.current.commonCards.relicDeck.contains(top))
+    val decide = question(at.state, power, played, at.first.tree)
     assertEquals(decide.decisionId, FamilyHeirloom.decisionId)
-    assertEquals(decide.owner, actor)
-    assertEquals(decide.query.asInstanceOf[DecisionQuery.ChooseOne].options
-      .map(_.ref), Vector(FamilyHeirloom.keep, FamilyHeirloom.bottom))
+    assertEquals(decide.owner, p1)
+    assertEquals(as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref),
+      Vector(FamilyHeirloom.keep, FamilyHeirloom.bottom))
 
   test("taking it keeps the relic"):
-    val (first, state) = atChoice
-    val done = Outcomes.finished(answer(state, first.tree, FamilyHeirloom.keep))
-    assert(Look(done.treeless).player(actor).relics.exists(_.id == top))
-    assertEquals(replayed(staged, first.events ++ done.events), done.treeless)
+    val at = atChoice
+    val done = Outcomes.finished(answer(at.state, at.first.tree,
+      FamilyHeirloom.keep))
+    assert(Look(done.treeless).player(p1).relics.exists(_.id == top))
+    assertEquals(replayed(staged, at.first.events ++ done.events),
+      done.treeless)
 
   test("putting it on the bottom returns it to the relic deck"):
-    val (first, state) = atChoice
-    val done = Outcomes.finished(
-      answer(state, first.tree, FamilyHeirloom.bottom))
-    assert(!Look(done.treeless).player(actor).relics.exists(_.id == top))
+    val at = atChoice
+    val done = Outcomes.finished(answer(at.state, at.first.tree,
+      FamilyHeirloom.bottom))
+    assert(!Look(done.treeless).player(p1).relics.exists(_.id == top))
     assertEquals(done.treeless.game.current.commonCards.relicDeck.last, top)
-    assertEquals(replayed(staged, first.events ++ done.events), done.treeless)
+    assertEquals(replayed(staged, at.first.events ++ done.events),
+      done.treeless)
 
-  test("it writes the relic it drew and what became of it, covering the burial"):
+  test("it writes the relic it drew and what became of it, covering the " +
+      "burial"):
     Vector(FamilyHeirloom.keep -> "kept it.",
         FamilyHeirloom.bottom -> "put it on the bottom of the relic deck.")
       .foreach { case (choice, end) =>
-        val (first, state) = atChoice
-        assertEquals(NoteText.said(power.id, power.noteKeys, first.events),
+        val at = atChoice
+        assertEquals(NoteText.said(power.id, power.noteKeys, at.first.events),
           Vector.empty)
-        val done = Outcomes.finished(answer(state, first.tree, choice))
+        val done = Outcomes.finished(answer(at.state, at.first.tree, choice))
         assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
           Vector(NoteText.Said(choice.key,
-            s"${actor.value} drew ${top.value} and $end", covers = true)))
+            s"p1 drew ${top.value} and $end", covers = true)))
       }
 
   test("an empty relic deck does nothing and asks nothing"):
-    val current = staged.game.current
-    val emptied = staged.updateCurrent(_.copy(commonCards =
-      current.commonCards.copy(relicDeck = Vector.empty)))
-      .updateCampaign(c => c.copy(reliquary = c.reliquary ++
-        current.commonCards.relicDeck))
+    val emptied = Table.start.adviser(p1, card).relicDeckEmptied.ready
     val done = Outcomes.finished(play(emptied, power, card))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(Look(done.treeless).player(actor).relics, Look(emptied)
-      .player(actor).relics)
+    assertEquals(Look(done.treeless).player(p1).relics,
+      Look(emptied).player(p1).relics)
 
   test("a choice that is not offered is rejected"):
-    val (first, state) = atChoice
-    assert(answer(state, first.tree, DecisionOptionRef.Button("elsewhere")).isLeft)
+    val at = atChoice
+    assert(answer(at.state, at.first.tree,
+      DecisionOptionRef.Button("elsewhere")).isLeft)

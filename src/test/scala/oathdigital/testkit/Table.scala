@@ -300,6 +300,12 @@ final case class Table private (private val game: ReadyGame,
   def bankFavor(suit: Suit, n: Int): Table =
     update(r => r.copy(banks = r.banks.copy(favor = r.banks.favor.updated(suit, n))))
 
+  /** Exactly `stocks` hold favor; every other bank is empty. */
+  def banksHoldingOnly(stocks: (Suit, Int)*): Table =
+    val held = stocks.toMap
+    Suit.all.foldLeft(this)((table, suit) =>
+      table.bankFavor(suit, held.getOrElse(suit, 0)))
+
   /** The relic deck moved, in order, to the end of the campaign's
     * reliquary: a game whose relic deck has run out. No relic is lost. */
   def relicDeckEmptied: Table = update { r =>

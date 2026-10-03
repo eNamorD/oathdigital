@@ -137,6 +137,15 @@ class TableSuite extends munit.FunSuite:
       Table.start.boardWarbands(p1, 12).warbandsAt("Dunes", p1, 3).ready)
     assert(exiles.getMessage.contains("15 warbands"), exiles.getMessage)
 
+  test("banksHoldingOnly stocks the banks named and empties the rest"):
+    val banks = Table.start.banksHoldingOnly(Suit.Order -> 5, Suit.Hearth -> 2)
+      .ready.banks.favor
+    assertEquals(Suit.all.map(banks(_)), Suit.all.map {
+      case Suit.Order => 5
+      case Suit.Hearth => 2
+      case _ => 0
+    })
+
   test("warbandsInBank fills the board until the bank holds exactly n"):
     // A lineage prints 14: 2 at a site and 4 left in the bank leave 8 for
     // the board.

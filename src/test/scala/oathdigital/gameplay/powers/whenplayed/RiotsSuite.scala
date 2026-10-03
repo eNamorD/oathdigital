@@ -1,8 +1,9 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{NoteText, SearchFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
+  Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class RiotsSuite extends munit.FunSuite:
@@ -10,10 +11,12 @@ class RiotsSuite extends munit.FunSuite:
 
   private val power = registered[Riots]
   private val riots = power.cardId
-  private val hearth = SearchFixture.anyPlainDenizensOf(Suit.Hearth)
-  private val beast = SearchFixture.anyPlainDenizensOf(Suit.Beast)
-  private val nomad = SearchFixture.anyPlainDenizensOf(Suit.Nomad)
-  private val orderEdifices = edificesOf(Suit.Order)
+  private val homesteaders = CatalogNames.denizen("Homesteaders")
+  private val landWarden = CatalogNames.denizen("Land Warden")
+  private val errandBoy = CatalogNames.denizen("Errand Boy")
+  private val wildMounts = CatalogNames.denizen("Wild Mounts")
+  private val hallOfBandits = CatalogNames.edifice("Hall of Bandits")
+  private val relicPatrols = CatalogNames.edifice("Relic Patrols")
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
@@ -28,18 +31,19 @@ class RiotsSuite extends munit.FunSuite:
   private def onBanner(ready: ReadyGame): Int =
     ready.game.current.banners.peoplesFavor.favor
 
-  /** Riots as p1's adviser, with four discardable cards in p1's region, an
-    * intact edifice there and a denizen in another region. */
+  /** Riots as p1's adviser, with four discardable cards in p1's region
+    * (Homesteaders, Errand Boy, Wild Mounts and the ruined Hall of Bandits),
+    * the intact Relic Patrols there and Land Warden in another region. */
   private def staged: Table = Table.start.adviser(p1, riots)
-    .denizen(hearth(0), at = homeSite).denizen(beast(0), at = homeSite)
-    .denizen(nomad(0), at = nearSite)
-    .edifice(orderEdifices(0), EdificeSide.Ruined, at = nearSite)
-    .edifice(orderEdifices(1), EdificeSide.Intact, at = nearSite)
-    .denizen(hearth(1), at = awaySite)
+    .denizen(homesteaders, at = homeSite).denizen(errandBoy, at = homeSite)
+    .denizen(wildMounts, at = nearSite)
+    .edifice("Hall of Bandits", EdificeSide.Ruined, at = nearSite)
+    .edifice("Relic Patrols", EdificeSide.Intact, at = nearSite)
+    .denizen(landWarden, at = awaySite)
 
   private val targets: Vector[CardId] = inMapOrder(
-    homeSite -> Vector(hearth(0), beast(0)),
-    nearSite -> Vector(nomad(0), orderEdifices(0)))
+    homeSite -> Vector(homesteaders, errandBoy),
+    nearSite -> Vector(wildMounts, hallOfBandits))
 
   test("it discards every denizen and ruined edifice in the region, then " +
       "burns as many favor from a held People's Favor"):
@@ -47,9 +51,10 @@ class RiotsSuite extends munit.FunSuite:
     val done = Outcomes.finished(play(ready, power, riots))
     val after = Look(done.treeless)
     assertEquals(after.cardsAt(homeSite), Vector.empty)
-    assertEquals(after.cardsAt(nearSite), Vector[CardId](orderEdifices(1)))
-    assertEquals(after.cardsAt(awaySite), Vector[CardId](hearth(1)))
-    assertEquals(onBanner(done.treeless), 1)
+    assertEquals(after.cardsAt(nearSite), Vector[CardId](relicPatrols))
+    assertEquals(after.cardsAt(awaySite), Vector[CardId](landWarden))
+    // 5 on the banner, less 1 per card discarded.
+    assertEquals(onBanner(done.treeless), 5 - 4)
     assertEquals(done.treeless.game.current.banners.peoplesFavor.holder,
       Some(p2))
     assertEquals(replayed(ready, done.events), done.treeless)
@@ -57,12 +62,13 @@ class RiotsSuite extends munit.FunSuite:
 
   test("played to a site it discards and counts itself"):
     val ready = Table.start.denizen(riots, at = homeSite)
-      .denizen(hearth(0), at = homeSite).peoplesFavor(None, 5).ready
+      .denizen(homesteaders, at = homeSite).peoplesFavor(None, 5).ready
     val done = Outcomes.finished(fire(ready, power, hookAt(riots, homeSite)))
     assertEquals(Look(done.treeless).cardsAt(homeSite), Vector.empty)
-    assertEquals(onBanner(done.treeless), 3)
+    // Riots and Homesteaders are discarded: 5 - 2.
+    assertEquals(onBanner(done.treeless), 5 - 2)
     assertEquals(said(done.events),
-      Vector(discarded(Vector(riots, hearth(0))), burned(2)))
+      Vector(discarded(Vector(riots, homesteaders)), burned(2)))
 
   test("the burn takes what the People's Favor holds"):
     val done = Outcomes.finished(
@@ -79,7 +85,7 @@ class RiotsSuite extends munit.FunSuite:
 
   test("with nothing to discard it burns nothing"):
     val ready = Table.start.adviser(p1, riots)
-      .denizen(hearth(1), at = awaySite).peoplesFavor(None, 5).ready
+      .denizen(landWarden, at = awaySite).peoplesFavor(None, 5).ready
     val done = Outcomes.finished(play(ready, power, riots))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(onBanner(done.treeless), 5)

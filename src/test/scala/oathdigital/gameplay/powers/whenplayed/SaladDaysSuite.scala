@@ -12,12 +12,10 @@ class SaladDaysSuite extends munit.FunSuite:
   private val salad = power.cardId
   private val played = hook(salad)
 
-  /** Salad Days as p1's adviser, each bank holding what `stocks` gives it
-    * and every other bank empty. */
+  /** Salad Days as p1's adviser, p1 holding 1 favor, and exactly `stocks`
+    * holding favor. */
   private def staged(stocks: (Suit, Int)*): ReadyGame =
-    val held = stocks.toMap
-    Suit.all.foldLeft(Table.start.adviser(p1, salad))((table, suit) =>
-      table.bankFavor(suit, held.getOrElse(suit, 0))).ready
+    Table.start.adviser(p1, salad).favor(p1, 1).banksHoldingOnly(stocks*).ready
 
   private def banks(ready: ReadyGame, suits: Suit*): Vector[Int] =
     suits.toVector.map(ready.banks.favor.getOrElse(_, 0))
@@ -40,6 +38,7 @@ class SaladDaysSuite extends munit.FunSuite:
         DecisionOptionRef.FavorBank(suit))), decide.query.heading))
     val done = Outcomes.finished(resume(ready, power, played, first.tree,
       SaladDays.decisionId, choose(Suit.Discord, Suit.Hearth, Suit.Beast)))
+    // p1's 1 favor and 1 from each of the three banks chosen.
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
     assertEquals(banks(done.treeless, Suit.Discord, Suit.Order, Suit.Hearth,
       Suit.Beast), Vector(1, 1, 2, 0))
@@ -50,6 +49,7 @@ class SaladDaysSuite extends munit.FunSuite:
   test("with three stocked banks it takes 1 from each without asking"):
     val ready = staged(Suit.Arcane -> 1, Suit.Order -> 2, Suit.Nomad -> 5)
     val done = Outcomes.finished(play(ready, power, salad))
+    // p1's 1 favor and 1 from each stocked bank.
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
     assertEquals(banks(done.treeless, Suit.Arcane, Suit.Order, Suit.Nomad),
       Vector(0, 1, 4))
@@ -57,6 +57,7 @@ class SaladDaysSuite extends munit.FunSuite:
   test("with two stocked banks it takes 1 from each"):
     val done = Outcomes.finished(
       play(staged(Suit.Order -> 2, Suit.Nomad -> 5), power, salad))
+    // p1's 1 favor and 1 from each stocked bank.
     assertEquals(Look(done.treeless).favor(p1), 1 + 2)
 
   test("with every bank empty it gains nothing, and the line says so"):
