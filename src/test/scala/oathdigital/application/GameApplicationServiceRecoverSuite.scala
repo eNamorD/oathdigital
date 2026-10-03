@@ -14,16 +14,11 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.OathRules
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
-import ParkedServiceFixture.{parkedAssertions, replayingSecond,
-  setupViaService}
-import oathdigital.testkit.{Look, Outcomes}
-import oathdigital.testkit.Unwrap.accepted
-import ParkedServiceFixture.loaded
-import oathdigital.testkit.Unwrap.present
-import ParkedServiceFixture.firstPlayer
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Unwrap.{accepted, present}
+import ParkedServiceFixture.{firstPlayer, loaded, parkedAssertions,
+  replayingSecond, setupViaService}
 
 /** The application service drives a walker Recover, its dice and Catacombs
   * through persisted parks and reloads.
@@ -197,8 +192,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     // before this task) starts and parks exactly as the suite's other walker
     // tests already pin.
     val started = accepted(service.handle("walker-unknown-modifier", 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
-      )
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))))
     assert(started.events.nonEmpty)
     assert(started.events.last.isInstanceOf[WalkerParked])
     parkedAssertions.assertParked(started.state, ActionRef.Recover,
@@ -287,8 +281,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       "walker-cross-roll-doubler", walkerSetup, actor)
     val walkerFirst = accepted(walkerService.handle("walker-cross-roll-doubler",
       walkerAct.nextSequence,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
-      )
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))))
     val walkerAfterFirst = Outcomes.ready(walkerFirst.state)
     assertEquals(walkerAfterFirst.game.current.rollOutcomes(
       RecoverProcedure.recoverPool).score, 1)
@@ -352,8 +345,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       .service(campaignDice = dice)
     val actor = p1
     val started = accepted(service.handle("walker-pool-mismatch", 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
-      )
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))))
 
     // The start rolled once on its way to the park; a roll command naming
     // a pool the walker is not parked on must add nothing to that count.
@@ -421,19 +413,17 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
 
     // Replay from the journal alone reproduces the same state: the ops did
     // not merely encode, they decode back to the operations that built it.
-    val reloaded = loaded(replayingSecond(service, repository)
-      .load(gameId))
+    val reloaded = loaded(replayingSecond(service, repository).load(gameId))
     assertEquals(reloaded.state, started.state)
     assertEquals(reloaded.nextSequence, started.nextSequence)
 
     // And the walk still finishes on the reloaded stream.
     val atRelic = Outcomes.ready(reloaded.state)
-    val recovered = topRelic
     assertEquals(atRelic.game.current.map.sites(siteId).relics.head.id,
-      recovered)
+      topRelic)
     val finished = accepted(service.handle(gameId, reloaded.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
-        ChooseOneAnswer(DecisionOptionRef.Relic(recovered))))))
+        ChooseOneAnswer(DecisionOptionRef.Relic(topRelic))))))
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
     assertEquals(loaded(replayingSecond(service, repository).load(gameId)
       ).state, finished.state)

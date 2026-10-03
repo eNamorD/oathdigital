@@ -2,19 +2,17 @@ package oathdigital.application
 
 import java.nio.file.Files
 
-import oathdigital.protocol.projection.DecisionQueryProjection
+import oathdigital.protocol.projection.{DecisionQueryProjection,
+  GameProjection}
 import oathdigital.model._
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ProposeTerms}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.{Look, Outcomes}
-import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.Unwrap.{accepted, present}
 import ParkedServiceFixture.loaded
-import oathdigital.testkit.CatalogNames
-import oathdigital.testkit.Unwrap.present
 
 /** A game reopened from HSQL keeps its Rest cleanup, private relic
   * knowledge and Negotiation state.
@@ -73,12 +71,14 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
       val other = ready.game.current.players.find(_.player != actor).get.player
       val siteId = Look(ready).player(actor).pawnSite.get
       val projector = new GameProjector(catalog)
-      assert(projector.project(gameId, stored, actor).world.flatMap(_.sites)
-        .find(_.siteId == siteId.value).get.relics.knownRelics.nonEmpty)
-      assertEquals(projector.project(gameId, stored, other).world.flatMap(_.sites)
-        .find(_.siteId == siteId.value).get.relics.knownRelics, Vector.empty)
-      assertEquals(projector.projectPublic(gameId, stored).world.flatMap(_.sites)
-        .find(_.siteId == siteId.value).get.relics.knownRelics, Vector.empty)
+      def knownAt(projection: GameProjection) = present(
+        projection.world.flatMap(_.sites).find(_.siteId == siteId.value),
+        "the peeked site").relics.knownRelics
+      assert(knownAt(projector.project(gameId, stored, actor)).nonEmpty)
+      assertEquals(knownAt(projector.project(gameId, stored, other)),
+        Vector.empty)
+      assertEquals(knownAt(projector.projectPublic(gameId, stored)),
+        Vector.empty)
     finally reopened.close()
 
   /** p1 holds Wizard's Conclave facedown and will travel to p2's site to
@@ -129,8 +129,7 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
     val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(
       error => fail(s"failed to reopen Negotiation repository: $error"), identity)
     try
-      val stored = loaded(negotiationService(reopened)
-        .load(gameId))
+      val stored = loaded(negotiationService(reopened).load(gameId))
       assertEquals(stored.state, parked.state)
       val seen = present(new GameProjector(catalog).project(gameId, stored, p2)
         .walkerDecision.flatMap(_.query).collect {
@@ -163,8 +162,7 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
     val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(
       error => fail(s"failed to reopen Negotiation repository: $error"), identity)
     try
-      val stored = loaded(negotiationService(reopened)
-        .load(gameId))
+      val stored = loaded(negotiationService(reopened).load(gameId))
       assertEquals(stored.state, completed.state)
       val projector = new GameProjector(catalog)
       assertEquals(projector.project(gameId, stored, p1).walkerDecision, None)

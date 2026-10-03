@@ -1,20 +1,16 @@
 package oathdigital.application
 
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import oathdigital.serialization.GameEventWire
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.Table
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p2
-import ParkedServiceFixture.{firstPlayer, replayingSecond, setupViaService}
-import oathdigital.testkit.{Look, Outcomes}
-import oathdigital.testkit.Unwrap.{accepted, rejected}
-import ParkedServiceFixture.loaded
-import oathdigital.testkit.Unwrap.as
-import ParkedServiceFixture.playFacedownAdviser
+import oathdigital.testkit.Unwrap.{accepted, as, rejected}
+import ParkedServiceFixture.{firstPlayer, loaded, playFacedownAdviser,
+  replayingSecond, setupViaService}
 
 /** The application service's stream: what it appends, at which position,
   * and what it refuses to append or replay.
@@ -58,6 +54,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         position, actor)
       if !played(actor) then
         val act = Outcomes.ready(position.state)
+        // Each seat plays whichever adviser it kept in Setup.
         val adviser =
           as[WorldCardId](Look(act).player(actor).advisers.head.id)
         position = accepted(service.handle("powered-playability",
@@ -114,9 +111,10 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     assert(reloaded.state.isInstanceOf[Ready])
     val records = loaded(repository.load("game-v2")).records
     assertEquals(records.size, 29)
-    assertEquals(records.groupMapReduce(ujson.read(_)("eventType").str)(_ =>
-      1)(_ + _), Map("setup.game-started" -> 1, "walker.parked" -> 9,
-      "walker.step-recorded" -> 17, "walker.completed" -> 2))
+    val eventType = (record: String) => ujson.read(record)("eventType").str
+    assertEquals(records.groupMapReduce(eventType)(_ => 1)(_ + _),
+      Map("setup.game-started" -> 1, "walker.parked" -> 9,
+        "walker.step-recorded" -> 17, "walker.completed" -> 2))
     assert(records.forall(record =>
       ujson.read(record)("formatVersion").num.toInt ==
         GameEventWire.FormatVersion))
@@ -140,8 +138,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     assertEquals(wealth.nextSequence, 5L)
     assertEquals(
       service.handle("game-wake", 0L, GameCommand.EndWake(active)),
-      Left(GameApplicationError.StaleClientPosition(0L, 5L))
-    )
+      Left(GameApplicationError.StaleClientPosition(0L, 5L)))
     val reloaded = loaded(replayingSecond(service, repository)
       .load("game-wake"))
     val after = Outcomes.ready(reloaded.state)
@@ -172,8 +169,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       GameCommand.ResolveWalker(firstPlayer, TreeDecision(
         SetupProcedure.pawnDecisionId(firstPlayer),
         ChooseOneAnswer(DecisionOptionRef.Site(
-          CatalogNames.site("Ancient City")))))
-    )
+          CatalogNames.site("Ancient City"))))))
 
     assertEquals(
       service.handle(
@@ -181,23 +177,28 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         1L,
         GameCommand.ResolveWalker(firstPlayer, TreeDecision(
           SetupProcedure.adviserDecisionId(firstPlayer),
-          // Wizard's Conclave is in p2's dealt hand.
-          ChooseOneAnswer(DecisionOptionRef.Denizen(
-            CatalogNames.denizen("Wizard's Conclave")))))
+          // p2 keeps Wizard's Conclave from its dealt hand.
+          PartitionAnswer(Vector(
+            DecisionPlacement(DecisionOptionRef.Denizen(
+              CatalogNames.denizen("Wizard's Conclave")),
+              SetupProcedure.adviserKeepKey),
+            DecisionPlacement(DecisionOptionRef.Denizen(
+              CatalogNames.denizen("Errand Boy")),
+              SetupProcedure.adviserDiscardKey),
+            DecisionPlacement(DecisionOptionRef.Denizen(
+              CatalogNames.denizen("Nature Worship")),
+              SetupProcedure.adviserDiscardKey)))))
       ),
-      Left(GameApplicationError.StaleClientPosition(1L, 2L))
-    )
+      Left(GameApplicationError.StaleClientPosition(1L, 2L)))
     assertEquals(
       loaded(repository.load("game-stale-v2")).nextSequence,
-      2L
-    )
+      2L)
 
   test("malformed v1 envelopes are rejected without reinterpretation"):
     val repository = new InMemoryEventStreamRepository
     repository.seed(
       "game-v1",
-      Vector(ujson.write(ujson.Obj("formatVersion" -> 1)))
-    )
+      Vector(ujson.write(ujson.Obj("formatVersion" -> 1))))
     val result = new GameApplicationService(catalog, repository)
       .load("game-v1")
 
@@ -222,8 +223,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         "game-replay-corrupt",
         1L,
         OathEvent.IgnoredRulesRecorded(firstPlayer, ActionKind.Rest,
-          badDiagnostics)
-      ))
+          badDiagnostics)))
     ).map(ujson.write(_))
     repository.seed("game-replay-corrupt", records)
 
@@ -236,13 +236,10 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       Left(GameApplicationError.ReplayFailure(
         1L,
         oathdigital.model.OathViolation.InvalidEventOrder(
-          "ignored-rule diagnostics do not match authoritative discovery")
-      ))
-    )
+          "ignored-rule diagnostics do not match authoritative discovery"))))
     assertEquals(
       loaded(repository.load("game-replay-corrupt")).records,
-      records
-    )
+      records)
 
   test("repository and envelope game identity mismatches append nothing"):
     def repositoryFor(
@@ -253,13 +250,11 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       val record = accepted(GameEventWire.encodeEvent(
         envelopeGameId,
         0L,
-        OathEvent.GameStarted(chronicle, orders)
-      ))
+        OathEvent.GameStarted(chronicle, orders)))
       val repository = new EventStreamRepository:
         override def load(gameId: String): Either[RepositoryFailure, Option[StoredEventStream]] = Right(Some(StoredEventStream(
           storedGameId,
-          Vector(ujson.write(record))
-        )))
+          Vector(ujson.write(record)))))
         override def append(
             gameId: String,
             expected: ExpectedStream,
@@ -281,9 +276,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         ),
         Left(GameApplicationError.StreamIdentityMismatch(
           "game-a",
-          "game-b"
-        ))
-      )
+          "game-b")))
       assertEquals(appendCalls(), 0)
     }
 
@@ -292,8 +285,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     val record = accepted(GameEventWire.encodeEvent(
       "game-missing-zero",
       1L,
-      OathEvent.GameStarted(chronicle, orders)
-    ))
+      OathEvent.GameStarted(chronicle, orders)))
     repository.seed("game-missing-zero", Vector(ujson.write(record)))
 
     assertEquals(
@@ -301,6 +293,4 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         .load("game-missing-zero"),
       Left(GameApplicationError.CodecFailure(
         EventCodecFailure("invalid-sequence", "$[0].sequence",
-          "expected 0 but found 1")
-      ))
-    )
+          "expected 0 but found 1"))))

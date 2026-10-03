@@ -12,11 +12,10 @@ import oathdigital.server.GameHttpWire
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.application.ForgeWalkerFixture.{forgeService, forgeSite,
   forgeTable, mixedForgeCostCatalog}
-import ParkedServiceFixture.{parkedAssertions, replayingSecond}
-import ParkedServiceFixture.loaded
 import oathdigital.testkit.{CatalogNames, Look, Outcomes}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.present
+import ParkedServiceFixture.{loaded, parkedAssertions, replayingSecond}
 
 /** The application service drives a walker Forge through
   * `StartWalker`/`ResolveWalker` alone, and its journal replays to the same
@@ -58,7 +57,7 @@ class GameApplicationServiceForgeSuite extends munit.FunSuite:
     mixedForgeCostCatalog, WalkerPowerCatalog.default(mixedForgeCostCatalog),
     PhasePowerCatalog.default(mixedForgeCostCatalog))
 
-  /** The prompt `viewer` is projected for the stream's current position. */
+  /** The projection `viewer` gets at the stream's current position. */
   private def projected(run: ParkedForgeRun, gameId: String,
       viewer: PlayerId)(using munit.Location): GameProjection =
     new GameProjector(mixedForgeCostCatalog).project(gameId,
@@ -228,6 +227,9 @@ class GameApplicationServiceForgeSuite extends munit.FunSuite:
     answered(run, gameId)
     val projector = new GameProjector(mixedForgeCostCatalog)
     val replayed = loaded(run.service.load(gameId))
+    // p1 holds the forged Dowsing Sticks, which no one else may see.
+    assertEquals(Look(Outcomes.ready(replayed.state)).player(p1).relics.last.id,
+      dowsingSticks)
     val otherJson = GameHttpWire.encodeProjection(
       projector.project(gameId, replayed, p2))
     assert(!otherJson.contains(dowsingSticks.value))

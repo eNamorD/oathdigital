@@ -12,15 +12,11 @@ import oathdigital.server.GameHttpWire
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.Table
-import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.{Look, Outcomes}
-import oathdigital.testkit.Unwrap.accepted
-import ParkedServiceFixture.optionRef
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.testkit.CatalogNames
-import oathdigital.testkit.Unwrap.present
-import ParkedServiceFixture.firstPlayer
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.{accepted, present}
+import ParkedServiceFixture.{firstPlayer, optionRef}
 
 /** The application service's projections: who sees which decision, site,
   * hand and preview.
@@ -38,7 +34,6 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       .adviser(p2, "Birdsong", facedown = true)
     val (service, _) = table.service()
     val active = p2
-    val projector = new GameProjector(catalog)
     val stored = LoadedGame(table.state, 0L)
 
     val own = projector.project("game-projection-wake", stored, active)
@@ -52,13 +47,11 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     val ended = accepted(service.handle(
       "game-projection-wake",
       0L,
-      GameCommand.EndWake(active)
-    ))
+      GameCommand.EndWake(active)))
     val act = projector.project(
       "game-projection-wake",
       LoadedGame(ended.state, ended.nextSequence),
-      active
-    )
+      active)
     assertEquals(act.phase, "act-action-selection")
     assert(act.actionSelectionOpen)
     // Broken Peaks also holds a relic: Recover and a peek are offered.
@@ -197,20 +190,17 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       assert(json.contains(s"\"worldDeckTopCardKind\":\"${card.kind}\"")))
 
   test("every site projects its printed Recover difficulty or Forge cost"):
-    assertEquals(ownDetails.world.flatMap(_.sites).map(site => site.siteId ->
-      (site.forgeCost.map(cost => Tokens(cost.favor, cost.secrets)),
-        site.recoverDifficulty)).toMap,
-      Vector[(String, (Option[Tokens], Option[Int]))](
-        "Ancient City" -> (Some(Tokens(3, 0)), None),
-        "Broken Peaks" -> (None, Some(4)),
-        "Buried Giant" -> (None, Some(6)),
-        "Deep Woods" -> (Some(Tokens(1, 2)), None),
-        "Desolate Shore" -> (None, Some(5)),
-        "Dunes" -> (None, Some(4)),
-        "Fair Isle" -> (None, Some(3)),
-        "Golden Valley" -> (Some(Tokens(3, 0)), None))
-        .map((name, printed) => CatalogNames.site(name).value -> printed)
-        .toMap)
+    val sites = ownDetails.world.flatMap(_.sites)
+    def byName[A](printed: (String, A)*) = printed.map((name, value) =>
+      CatalogNames.site(name).value -> value).toMap
+    assertEquals(sites.flatMap(site => site.forgeCost.map(cost =>
+      site.siteId -> Tokens(cost.favor, cost.secrets))).toMap,
+      byName("Ancient City" -> Tokens(3, 0), "Deep Woods" -> Tokens(1, 2),
+        "Golden Valley" -> Tokens(3, 0)))
+    assertEquals(sites.flatMap(site => site.recoverDifficulty.map(
+      site.siteId -> _)).toMap,
+      byName("Broken Peaks" -> 4, "Buried Giant" -> 6, "Desolate Shore" -> 5,
+        "Dunes" -> 4, "Fair Isle" -> 3))
 
   /** The hand is a preview, not a question: it is drawn while the walker is
     * asking about something else (the starting site), and goes quiet the
@@ -264,13 +254,12 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     val actor = p1
     val started = accepted(service.handle(gameId, 0L,
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
-        Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
-      )
+        Vector.empty, Vector(DecisionOptionRef.Button("search:world"))))))
     val afterDraw = Outcomes.ready(started.state)
     val drawn = afterDraw.game.current.temporaryHands(actor)
-    val (kept, merchant, secondChance) = (CatalogNames.denizen(
-      "Threatening Roar"), CatalogNames.denizen("Fae Merchant"),
-      CatalogNames.denizen("Second Chance"))
+    val kept = CatalogNames.denizen("Threatening Roar")
+    val merchant = CatalogNames.denizen("Fae Merchant")
+    val secondChance = CatalogNames.denizen("Second Chance")
     assertEquals(drawn, Vector[WorldCardId](kept, merchant, secondChance))
     // Keep Threatening Roar and discard the other two.
     val assignments = Vector(DecisionPlacement(optionRef(kept), "keep"),
@@ -313,10 +302,10 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     assertEquals(placing.temporaryHandPreview.map(c => (c.cardId, c.hidden)),
       Vector((adviser.value, false)))
 
-  /** p2's dealt hand in the fixture's first game. */
-  private val (wizardsConclave, errandBoyCard, natureWorship) = (
-    CatalogNames.denizen("Wizard's Conclave"), CatalogNames.denizen(
-      "Errand Boy"), CatalogNames.denizen("Nature Worship"))
+  /** p2's dealt hand in the fixture's first game: Wizard's Conclave, Errand
+    * Boy and Nature Worship. */
+  private val wizardsConclave = CatalogNames.denizen("Wizard's Conclave")
+  private val natureWorship = CatalogNames.denizen("Nature Worship")
 
   /** The fixture's first game begun, and the first player, p2, placed at
     * Ancient City: p2 is now asked which adviser to keep. */
@@ -342,7 +331,7 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
 
     // Each seat is dealt 3 advisers.
     assertEquals(privateIds.size, 3)
-    assertEquals(privateIds, Vector(wizardsConclave, errandBoyCard,
+    assertEquals(privateIds, Vector(wizardsConclave, errandBoy,
       natureWorship).map(_.value))
     assertEquals(own.temporaryHandPreview, Vector.empty)
     assertEquals(other.walkerDecision, None)
@@ -356,12 +345,10 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     privateIds.foreach(id => assert(!exposedValues.contains(id), id))
     assertEquals(
       exposedValues.intersect(chronicle.relicDeck.map(_.value).toSet),
-      Set.empty[String]
-    )
+      Set.empty[String])
     assertEquals(
       exposedValues.intersect(orders.worldDeckOrder.map(_.value).toSet),
-      Set.empty[String]
-    )
+      Set.empty[String])
 
   test("after the adviser choice the next seat is asked for its pawn"):
     val service = new GameApplicationService(catalog,
@@ -374,7 +361,7 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
         PartitionAnswer(Vector(
           DecisionPlacement(DecisionOptionRef.Denizen(wizardsConclave),
             SetupProcedure.adviserKeepKey),
-          DecisionPlacement(DecisionOptionRef.Denizen(errandBoyCard),
+          DecisionPlacement(DecisionOptionRef.Denizen(errandBoy),
             SetupProcedure.adviserDiscardKey),
           DecisionPlacement(DecisionOptionRef.Denizen(natureWorship),
             SetupProcedure.adviserDiscardKey)))))))
@@ -383,7 +370,8 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     // names the card.
     val waiting = projector.projectPublic("game-next-seat",
       LoadedGame(chosen.state, chosen.nextSequence))
-    assertEquals(waiting.walkerWaiting.map(_.playerId), Some("p2"))
+    assertEquals(waiting.walkerWaiting.map(_.playerId),
+      Some(firstPlayer.value))
     assert(!GameHttpWire.encodeProjection(waiting)
       .contains(wizardsConclave.value))
     val revealing = accepted(service.handle("game-next-seat",
