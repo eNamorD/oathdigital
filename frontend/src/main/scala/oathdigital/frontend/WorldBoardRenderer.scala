@@ -4,8 +4,9 @@ import org.scalajs.dom
 import ServerUiSupport._
 
 private[frontend] object WorldBoardRenderer:
- def players(value: GameProjection, playerId: String): dom.Element =
-   playerBoards(value, playerId)
+ def players(value: GameProjection, playerId: String,
+     options: BoardOptions = BoardOptions.none): dom.Element =
+   playerBoards(value, playerId, options)
 
  /** A resource as its glyph and its count, with the sentence the words used
    * to carry kept as the accessible name.
@@ -28,7 +29,8 @@ private[frontend] object WorldBoardRenderer:
    viewer.map(id => players.indexWhere(_.playerId == id)).filter(_ > 0)
      .fold(players)(at => players.drop(at) ++ players.take(at))
 
- def playerBoards(value: GameProjection, playerId: String): dom.Element =
+ def playerBoards(value: GameProjection, playerId: String,
+     options: BoardOptions = BoardOptions.none): dom.Element =
    val panel = element("section", "panel player-boards")
    // The seat the client holds, not the projection's viewer: a trusted
    // session adopts its seat from that viewer before it renders and refuses
@@ -44,7 +46,10 @@ private[frontend] object WorldBoardRenderer:
      // One line for who and what they hold: the pane is a strip across the
      // top of the table, so every line it spends is a line of card.
      val identity = element("h3", "player-identity")
-     identity.appendChild(playerReference(value, player.playerId))
+     val name = playerReference(value, player.playerId)
+     options.decorate(name,
+       Vector(BoardOptionViews.key("player", player.playerId)))
+     identity.appendChild(name)
      identity.appendChild(text("span", "player-role", player.role))
      section.appendChild(identity)
      value.playerBoards.find(_.playerId == player.playerId).foreach { board =>
@@ -94,18 +99,33 @@ private[frontend] object WorldBoardRenderer:
      // has, and a relic's square box already says which card is which.
      val cards = element("div", "board-cards")
      cards.setAttribute("aria-label", "Cards in play")
-     board.advisers.foreach(card => cards.appendChild(CardFace.render(card)))
-     board.relics.foreach(card => cards.appendChild(CardFace.render(card)))
+     board.advisers.zipWithIndex.foreach((card, at) => cards.appendChild(
+       options.card(CardFace.render(card), card,
+         boardCardKeys("adviser-slot", player.playerId, at, card))))
+     board.relics.zipWithIndex.foreach((card, at) => cards.appendChild(
+       options.card(CardFace.render(card), card,
+         boardCardKeys("relic-slot", player.playerId, at, card))))
      section.appendChild(cards)
      board.banners.foreach { banner =>
-       section.appendChild(text("p", s"player-banner banner-${banner.key}",
+       val mark = text("p", s"player-banner banner-${banner.key}",
          s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-           holds(banner)))
+           holds(banner))
+       options.decorate(mark,
+         Vector(BoardOptionViews.key("banner", banner.key)))
+       section.appendChild(mark)
      }
      }
      panel.appendChild(section)
    }
    panel
+
+ /** The keys a card on a player board answers to: its slot, and the card
+   * itself when the viewer may know which card it is.
+   */
+ private def boardCardKeys(slot: String, playerId: String, at: Int,
+     card: CardDetails): Vector[String] =
+   BoardOptionViews.key(slot, s"$playerId:$at") +:
+     Option.unless(card.hidden)(BoardOptions.cardKey(card)).toVector
 
  /** True for a click or key press that landed on a card inside a site. A
    * card face is a button of its own that opens the inspector, and its
@@ -147,7 +167,8 @@ private[frontend] object WorldBoardRenderer:
      board: Option[ParkedDecision.Surface.Board],
      canControl: Boolean,
      drafts: SessionDrafts,
-     controls: TableControls
+     controls: TableControls,
+     options: BoardOptions = BoardOptions.none
  ): dom.Element =
    val panel = element("section", "panel world")
    panel.setAttribute("aria-label", "The World")
@@ -198,6 +219,8 @@ private[frontend] object WorldBoardRenderer:
              surface.decision, option))
          })
        }
+       options.decorate(control,
+         Vector(BoardOptionViews.key("site", site.siteId)))
        control.appendChild(siteHeading(site))
        candidate.flatMap(candidateDetailBadge).foreach(control.appendChild)
        val pawns = element("div", "site-pawns")
@@ -205,13 +228,15 @@ private[frontend] object WorldBoardRenderer:
          val marker = element("span", "pawn")
          marker.appendChild(dom.document.createTextNode("● "))
          marker.appendChild(playerReference(value, pawn.playerId))
+         options.decorate(marker,
+           Vector(BoardOptionViews.key("player", pawn.playerId)))
          pawns.appendChild(marker)
        }
        // Appended whether or not anyone stands here: the row holds its line
        // of height either way, so the cards below it sit at the same place in
        // every site on the board.
        control.appendChild(pawns)
-       control.appendChild(siteDetails(site))
+       control.appendChild(siteDetails(site, options))
        sites.appendChild(control)
      }
      section.appendChild(sites)
@@ -220,8 +245,8 @@ private[frontend] object WorldBoardRenderer:
      regions.appendChild(section)
    }
    panel.appendChild(regions)
-   panel.appendChild(favorBanks(value))
-   panel.appendChild(sharedBank(value))
+   panel.appendChild(favorBanks(value, options))
+   panel.appendChild(sharedBank(value, options))
    panel
 
  private[frontend] final case class RoundSegment(path: String, labelX: Double,
@@ -288,7 +313,8 @@ private[frontend] object WorldBoardRenderer:
        s"Usurper locked until round ${track.limiterRound}"))
    section
 
- private def favorBanks(value: GameProjection): dom.Element =
+ private def favorBanks(value: GameProjection,
+     options: BoardOptions): dom.Element =
    val banks = element("div", "favor-banks")
    banks.setAttribute("aria-label", "Favor banks")
    value.favorBanks.foreach { bank =>
@@ -298,6 +324,8 @@ private[frontend] object WorldBoardRenderer:
      box.appendChild(RulesTextRenderer.glyph(s"suit-${bank.suit}"))
      box.appendChild(dom.document.createTextNode(
        s"${bank.suit.capitalize}: ${bank.count}"))
+     options.decorate(box,
+       Vector(BoardOptionViews.key("favor-bank", bank.suit)))
      banks.appendChild(box)
    }
    banks
@@ -309,7 +337,8 @@ private[frontend] object WorldBoardRenderer:
      if banner.resources == 1 then "1 secret" else s"${banner.resources} secrets"
    case _ => s"${banner.resources} favor"
 
- private def sharedBank(value: GameProjection): dom.Element =
+ private def sharedBank(value: GameProjection,
+     options: BoardOptions): dom.Element =
    val section = element("section", "shared-bank")
    section.appendChild(text("h3", "", "Shared Bank"))
    value.oathkeeper.foreach(oath =>
@@ -318,8 +347,11 @@ private[frontend] object WorldBoardRenderer:
          s"${oath.side.capitalize}: ${oath.holderPlayerId.getOrElse("unheld")}")))
    section.appendChild(pileDisplay("Relic deck", value.relicDeckCount, None))
    value.banners.foreach { banner =>
-     section.appendChild(text("p", s"shared-banner banner-${banner.key}",
+     val mark = text("p", s"shared-banner banner-${banner.key}",
        s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-         holds(banner)))
+         holds(banner))
+     options.decorate(mark,
+       Vector(BoardOptionViews.key("banner", banner.key)))
+     section.appendChild(mark)
    }
    section

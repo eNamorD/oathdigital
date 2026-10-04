@@ -44,24 +44,32 @@ private[frontend] object ServerUiSupport:
     Vector(RulesTextRenderer.glyph(token),
       text("span", "site-token-count", count.toString))
 
-  private[frontend] def siteDetails(site: GameSite): dom.Element =
+  private[frontend] def siteDetails(site: GameSite,
+      options: BoardOptions = BoardOptions.none): dom.Element =
     val presentation = SiteCardPresentation.from(site)
     val details = element("div", "site-details")
     // Denizens and relics share one row: capacity and relic slots always sum
     // to three, so one row holds every card a site can ever have.
     val cards = element("div", "site-cards")
     site.denizens.foreach { denizen =>
-      val card = denizen.details.fold[dom.Element](
-        facedownCard("denizen"))(CardFace.render)
-      card.setAttribute("data-denizen-id", denizen.denizenId)
-      cards.appendChild(card)
+      denizen.details match
+        case Some(details) =>
+          val face = CardFace.render(details)
+          face.setAttribute("data-denizen-id", denizen.denizenId)
+          cards.appendChild(options.card(face, details,
+            Vector(BoardOptions.cardKey(details))))
+        case None =>
+          val back = facedownCard("denizen")
+          back.setAttribute("data-denizen-id", denizen.denizenId)
+          cards.appendChild(back)
     }
     (site.denizens.size until site.denizenCapacity)
       .foreach(_ => cards.appendChild(emptySlot("denizen")))
     // A peeked relic is a real card sitting face-down: CardFace gives it the
     // knowable pip and the hover reveal, in the same box as an unknown one.
-    presentation.peekedRelics.foreach(value =>
-      cards.appendChild(CardFace.render(value.card)))
+    presentation.peekedRelics.foreach(value => cards.appendChild(options.card(
+      CardFace.render(value.card), value.card,
+      Vector(BoardOptions.cardKey(value.card)))))
     (0 until presentation.unknownRelicCount)
       .foreach(_ => cards.appendChild(facedownCard("relic")))
     (site.relics.facedownCount until site.relicCapacity)
