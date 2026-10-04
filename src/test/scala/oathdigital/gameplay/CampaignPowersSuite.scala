@@ -93,7 +93,7 @@ class CampaignPowersSuite extends munit.FunSuite:
     val pending = Outcomes.parked(advanced).tree
     val decisions = ProcedureWalker.openDecisions(ready, tree, pending, powers)
     present(decisions.headOption, "the targets decision").query match
-      case many: DecisionQuery.ChooseMany => many.options
+      case many: DecisionQuery.ChooseMany => many.options.filter(_.available)
       case other => fail(s"expected a choose-many, got $other")
 
   test("Pass keeps its own site targetable and removes the other sites in " +

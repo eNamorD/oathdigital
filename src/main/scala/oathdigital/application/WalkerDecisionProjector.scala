@@ -193,7 +193,11 @@ private[application] final class WalkerDecisionProjector(
           .map(outcome => option.option -> outcome))
         val query = decide.query match
           case one: DecisionQuery.ChooseOne =>
-            one.copy(options = accepted.map(_._1))
+            // An unavailable option was never previewed, and keeps its place
+            // and its reason.
+            val playable = accepted.map(_._1.ref).toSet
+            one.copy(options = one.options.filter(option =>
+              !option.available || playable(option.ref)))
           case other => other
         (query, accepted.map { case (option, outcome) =>
           option.ref -> OperationDetails.of(outcome.operations) }.toMap)

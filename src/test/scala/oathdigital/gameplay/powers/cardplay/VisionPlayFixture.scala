@@ -42,7 +42,7 @@ object VisionPlayFixture:
   def offered(from: OathTransition): Vector[String] =
     ParkedNode.of(from.state, catalog, WalkerPowerCatalog.default(catalog)) match
       case Right(Some(ParkedNode.Decision(_, decide, _))) => decide.query match
-        case DecisionQuery.ChooseOne(options, _) => options.map(_.ref).collect {
+        case DecisionQuery.ChooseOne(options, _) => options.filter(_.available).map(_.ref).collect {
           case DecisionOptionRef.Button(key) => key }
         case other => throw new AssertionError(s"not a choose-one: $other")
       case other => throw new AssertionError(s"not parked on a decision: $other")

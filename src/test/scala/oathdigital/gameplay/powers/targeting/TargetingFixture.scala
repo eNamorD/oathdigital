@@ -45,8 +45,8 @@ object TargetingFixture:
     val pending = present(current.walkerPending, "a parked walker decision")
     present(ProcedureWalker.parkedDecide(state, tree, pending, powers),
       "the parked decision").query match
-      case one: DecisionQuery.ChooseOne => one.options.map(_.ref)
-      case many: DecisionQuery.ChooseMany => many.options.map(_.ref)
+      case one: DecisionQuery.ChooseOne => one.options.filter(_.available).map(_.ref)
+      case many: DecisionQuery.ChooseMany => many.options.filter(_.available).map(_.ref)
       case other => throw new AssertionError(s"unexpected query $other")
 
   def start(state: ReadyGame, procedure: ActionRef, actor: PlayerId)

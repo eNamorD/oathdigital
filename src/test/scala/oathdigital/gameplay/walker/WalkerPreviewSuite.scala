@@ -107,6 +107,17 @@ class WalkerPreviewSuite extends munit.FunSuite:
       WalkerSimulation.previewParked(ready, action, parked.tree, WalkerPowers.empty),
       WalkerSimulation.preview(action, ready, WalkerPowers.empty))
 
+  test("an option shown as unavailable is not previewed"):
+    val ready = withSupply(2)
+    val action = Sequence(Vector[Operation](Decide("pick", p1,
+      DecisionQuery.ChooseOne(Vector(DecisionOption.Button(cheap, "Cheap"),
+        DecisionOption.Unavailable(DecisionOption.Button(dear, "Dear"),
+          OptionReason.Written("Too dear")))))))
+    val parked = Outcomes.parked(
+      ProcedureWalker.advance(ready, action, None, WalkerPowers.empty))
+    assertEquals(WalkerSimulation.previewParked(ready, action, parked.tree,
+      WalkerPowers.empty).map(_.map(_.option.ref)), Right(Vector(cheap)))
+
   test("starts is true for a tree a start would walk and false for one it rejects"):
     val ready = withSupply(2)
     val spend = Sequence(Vector[Operation](SpendSupply(p1, 1)))

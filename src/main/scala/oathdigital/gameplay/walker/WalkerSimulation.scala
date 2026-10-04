@@ -112,8 +112,8 @@ object WalkerSimulation:
             OathViolation.InvalidEventOrder(
               "a previewed tree finished without parking on a decision"))
 
-  /** Previews the decision `pending` is parked on: each `ChooseOne` option is
-    * answered as the decision's owner, against a copy of the parked position,
+  /** Previews the decision `pending` is parked on: each available `ChooseOne`
+    * option is answered as the decision's owner, against a copy of the parked position,
     * and the walk continues until it finishes or parks again. Nothing is
     * persisted. Any other query shape is rejected.
     */
@@ -126,8 +126,9 @@ object WalkerSimulation:
         .flatMap { decide =>
           decide.query match
             case DecisionQuery.ChooseOne(options, _) =>
-              Right(options.map(option => PreviewedOption(option,
-                answer(state, tree, pending, powers, decide, option))))
+              Right(options.filter(_.available).map(option =>
+                PreviewedOption(option,
+                  answer(state, tree, pending, powers, decide, option))))
             case _ => Left(OathViolation.InvalidEventOrder(
               s"decision ${decide.decisionId} is not a choose-one, so it " +
                 "cannot be previewed"))

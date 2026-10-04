@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DecisionAnswer, DieFace, Note, NoteStates, OathState, OathViolation, Operation, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -430,25 +430,36 @@ object ProcedureWalker:
         narrowAt(decide, ctx, path).flatMap:
           case Some(narrowed) =>
             // Reached fresh, so this is the only time it is asked this pass.
-            val hidden = if cursor.nonEmpty then Vector.empty
-              else WalkerPowerGather.lookAheadNotes(ctx.root, decide, narrowed,
-                ctx.state, ctx.activePlayer, ctx.powers, ctx.answered,
-                ctx.procedure)
-            runNarrowed(narrowed, ctx.copy(events = ctx.events ++ hidden), path,
-              cursor, resume, contributions, strict)
+            val hidden = if cursor.nonEmpty then Vector.empty else narrowed.notes
+            runNarrowed(narrowed.decide, ctx.copy(events = ctx.events ++ hidden),
+              path, cursor, resume, contributions, strict)
           case None if cursor.isEmpty => Right(Done(ctx))
           case None => Left(OathViolation.InvalidEventOrder(
             s"decision ${decide.decisionId} has nothing left to offer"))
       case _ => runNarrowed(leaf, ctx, path, cursor, resume, contributions,
         strict)
 
+  /** A decision as the look-ahead leaves it: narrowed, with each option it
+    * hid that a restriction's note explains kept as unavailable, and those
+    * notes, which the walk journals when it reaches the decision fresh.
+    */
+  private final case class Narrowed(decide: Decide, notes: Vector[PowerNoted])
+
   /** `decide` narrowed to the options from which some path reaches a legal
-    * end (global operation restrictions design, "Lazy pruning"), or as
+    * end (global operation restrictions design, "Lazy pruning"), each hidden
+    * option a restriction's note explains kept as unavailable, or as
     * declared when the powers do not search. */
   private def narrowAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
-      : Either[OathViolation, Option[Decide]] =
-    if !ctx.powers.probing then Right(Some(decide))
-    else WalkerSearch.narrow(decide, verdict(decide, ctx, path))
+      : Either[OathViolation, Option[Narrowed]] =
+    if !ctx.powers.probing then Right(Some(Narrowed(decide, Vector.empty)))
+    else WalkerSearch.narrow(decide, verdict(decide, ctx, path)).map(_.map {
+      cut =>
+        val noted = WalkerPowerGather.lookAheadNoted(ctx.root, decide, cut,
+          ctx.state, ctx.activePlayer, ctx.powers, ctx.answered, ctx.procedure)
+        val reasons: Map[DecisionOptionRef, OptionReason] = noted.map(
+          (ref, note) => ref -> OptionReason.Noted(note.power, note.note)).toMap
+        Narrowed(WalkerSearch.explained(decide, cut, reasons), noted.map(_._2))
+    })
 
   /** A search at a decision it reaches. Back at a decision it already stands
     * at in the same state, it stops: the loop leads on exactly when the first
@@ -504,7 +515,8 @@ object ProcedureWalker:
     val ctx = WalkCtx(strip(state), Vector.empty,
       state.game.current.turn.activePlayer, pending.answered, powers,
       WalkerDice.placeholder, state.game.current.walkerProcedure, action)
-    narrowAt(decide, ctx, pending.at).toOption.flatten.getOrElse(decide)
+    narrowAt(decide, ctx, pending.at).toOption.flatten.map(_.decide)
+      .getOrElse(decide)
 
   /** Whether the leaf is where a decision is asked: reached fresh, or at the
     * cursor's end while an answer resumes. A plain resume only re-parks it.

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, Restriction}
-import oathdigital.model.{Answered, Branch, Decide, DecisionAnswer, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
+import oathdigital.model.{Answered, Branch, Decide, DecisionAnswer, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -84,12 +84,24 @@ private[walker] object WalkerPowerGather:
               gathered.order, Vector.empty)
           case _ => (folded, gathered.order, Vector.empty)
 
-  /** The options of a choose-one or choose-many decision, in order. */
+  /** The options of a choose-one or choose-many decision that a player may
+    * choose, in order. */
   private def optionRefs(decide: Decide): Vector[DecisionOptionRef] =
-    decide.query match
-      case one: DecisionQuery.ChooseOne => one.options.map(_.ref)
-      case many: DecisionQuery.ChooseMany => many.options.map(_.ref)
-      case _ => Vector.empty
+    WalkerSearch.choosable(decide)
+
+  /** The note of the first power in `restrictions` that forbids `ref`, when
+    * that power says why.
+    */
+  private def firstNote(restrictions: Vector[(PowerId, OptionRestriction)],
+      ctxFor: ContributingPower => PowerCtx,
+      byId: Map[PowerId, ContributingPower])(ref: DecisionOptionRef)
+      : Option[PowerNoted] =
+    restrictions.find { case (id, restriction) =>
+      restriction.fn(ctxFor(byId(id)), ref).nonEmpty
+    }.flatMap { case (id, restriction) =>
+      restriction.note(ctxFor(byId(id)), ref)
+        .map(PowerNoted(id, _, covers = false))
+    }
 
   /** For each option a restriction forbids, the note of the first power
     * that forbids it. */
@@ -99,14 +111,7 @@ private[walker] object WalkerPowerGather:
       byId: Map[PowerId, ContributingPower]): Vector[PowerNoted] =
     if restrictions.isEmpty then Vector.empty
     else ops.collect { case decide: Decide => decide }.flatMap(decide =>
-      optionRefs(decide).flatMap { ref =>
-        restrictions.find { case (id, restriction) =>
-          restriction.fn(ctxFor(byId(id)), ref).nonEmpty
-        }.flatMap { case (id, restriction) =>
-          restriction.note(ctxFor(byId(id)), ref)
-            .map(PowerNoted(id, _, covers = false))
-        }
-      })
+      optionRefs(decide).flatMap(firstNote(restrictions, ctxFor, byId)))
 
   private def permits(restrictions: Vector[(PowerId, OptionRestriction)],
       ctxFor: ContributingPower => PowerCtx,
@@ -115,7 +120,8 @@ private[walker] object WalkerPowerGather:
       restriction.fn(ctxFor(byId(id)), ref).isEmpty
     }
 
-  /** Removes the forbidden options from every `Decide` in `ops`; see
+  /** Removes the forbidden options from every `Decide` in `ops`, keeping one
+    * as unavailable when the restriction that forbids it notes why; see
     * [[OptionRestriction]] for what happens when nothing is left.
     */
   private def restrictOptions(ops: Vector[Operation],
@@ -126,7 +132,9 @@ private[walker] object WalkerPowerGather:
     else
       val permitted = permits(restrictions, ctxFor, byId)
       ops.flatMap:
-        case decide: Decide => WalkerSearch.narrowed(decide, permitted).toVector
+        case decide: Decide => WalkerSearch.narrowed(decide, permitted, ref =>
+          firstNote(restrictions, ctxFor, byId)(ref).map(noted =>
+            OptionReason.Noted(noted.power, noted.note))).toVector
         case other => Vector(other)
 
   /** A required decision with every option forbidden cannot be answered: the
@@ -137,9 +145,9 @@ private[walker] object WalkerPowerGather:
       ctx: ContributingPower => PowerCtx,
       byId: Map[PowerId, ContributingPower]): Vector[OathViolation] =
     val required: Option[Vector[DecisionOptionRef]] = decide.query match
-      case one: DecisionQuery.ChooseOne => Some(one.options.map(_.ref))
+      case _: DecisionQuery.ChooseOne => Some(optionRefs(decide))
       case many: DecisionQuery.ChooseMany if many.min >= 1 =>
-        Some(many.options.map(_.ref))
+        Some(optionRefs(decide))
       case _ => None
     required.filter(_.nonEmpty).toVector.flatMap { refs =>
       val verdicts = refs.map(ref => restrictions.flatMap {
@@ -237,16 +245,17 @@ private[walker] object WalkerPowerGather:
       activePlayer, answered)
 
   /** The notes the look-ahead writes for the options `narrowed` no longer
-    * offers: for each, the note of the restriction whose violation answering
-    * it would add. The walker asks only at a decision reached fresh.
+    * offers, each with its option: the note of the restriction whose
+    * violation answering it would add. Empty without a power that restricts,
+    * since only a restriction can explain a hidden option.
     */
-  def lookAheadNotes(root: Operation, decide: Decide, narrowed: Decide,
+  def lookAheadNoted(root: Operation, decide: Decide, narrowed: Decide,
       state: ReadyGame, activePlayer: PlayerId, powers: WalkerPowers,
       answered: Vector[Answered], procedure: Option[ProcedureRef])
-      : Vector[PowerNoted] =
+      : Vector[(DecisionOptionRef, PowerNoted)] =
     val offered = optionRefs(narrowed).toSet
     val hidden = optionRefs(decide).filterNot(offered)
-    if hidden.isEmpty then Vector.empty
+    if hidden.isEmpty || !powers.hasRestrictions then Vector.empty
     else
       val quiet = powers.quiet
       val seen = state.updateCurrent(_.copy(walkerPending = None,
@@ -262,7 +271,7 @@ private[walker] object WalkerPowerGather:
         found(answered :+ Answered(decide.decisionId, answer, decide.owner))
           .find(breach => !baseline(breach.violation))
           .flatMap(breach => breach.restriction.note(breach.ctx, ref)
-            .map(PowerNoted(breach.power, _, covers = false)))
+            .map(note => ref -> PowerNoted(breach.power, note, covers = false)))
       }
 
   /** Resolves the node addressed by `pending.at` (a child-index path rooted
