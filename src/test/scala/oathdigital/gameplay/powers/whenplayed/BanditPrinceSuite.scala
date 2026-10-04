@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.NoteText
+import oathdigital.gameplay.powers.{NoteText, PlayerFacts}
 import oathdigital.model._
 import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.p1
@@ -39,8 +39,17 @@ class BanditPrinceSuite extends munit.FunSuite:
     val first = Outcomes.parked(play(ready, power, prince))
     val decide = question(ready, power, played, first.tree)
     assertEquals(decide.decisionId, BanditPrince.decisionId)
-    assertEquals(decide.query, DecisionQuery.ChooseMany(0, 2, sites.map(site =>
-      DecisionOption.Site(DecisionOptionRef.Site(site))), decide.query.heading))
+    val query = as[DecisionQuery.ChooseMany](decide.query)
+    assertEquals((query.min, query.max), (0, 2))
+    assertEquals(query.options, sites.map(site =>
+      DecisionOption.Site(DecisionOptionRef.Site(site))))
+    assertEquals(query.summary,
+      Some(DecisionSummary("Replace bandits at", "site", "sites")))
+    // The limit is what p1's bank holds, the warbands the replacement draws.
+    assertEquals(query.tallies, Vector(DecisionTally("Warbands needed",
+      "warbands", Map(DecisionOptionRef.Site(homeSite) -> 2,
+        DecisionOptionRef.Site(awaySite) -> 1),
+      Some(PlayerFacts.banked(ready, mine)))))
     val done = Outcomes.finished(resume(ready, power, played, first.tree,
       BanditPrince.decisionId, choose(sites)))
     val after = Look(done.treeless)
@@ -68,7 +77,7 @@ class BanditPrinceSuite extends munit.FunSuite:
     val ready = bandited.warbandsInBank(p1, 2).ready
     val first = Outcomes.parked(play(ready, power, prince))
     val query = question(ready, power, played, first.tree).query
-    val offered = as[DecisionQuery.ChooseMany](query).options
+    val offered = as[DecisionQuery.ChooseMany](query).options.filter(_.available)
     assertEquals(offered.size, 2)
     assert(resume(ready, power, played, first.tree, BanditPrince.decisionId,
       choose(sites)).isLeft)
@@ -82,8 +91,14 @@ class BanditPrinceSuite extends munit.FunSuite:
     val asked = Outcomes.parked(play(tight, power, prince))
     val fitting = as[DecisionQuery.ChooseMany](
       question(tight, power, played, asked.tree).query).options
+      .filter(_.available)
     assertEquals(fitting.map(_.ref), Vector[DecisionOptionRef](
       DecisionOptionRef.Site(awaySite)))
+    assertEquals(as[DecisionQuery.ChooseMany](question(tight, power, played,
+      asked.tree).query).options.collect {
+      case DecisionOption.Unavailable(inner, OptionReason.Written(reason)) =>
+        inner.ref -> reason }, Vector(DecisionOptionRef.Site(homeSite) ->
+      "Needs 2 warbands; your bank holds 1"))
 
   test("a site the bandits do not rule is refused"):
     val ready = bandited.ready

@@ -19,9 +19,10 @@ object BanditPrinceCard extends Denizen(DenizenId("226"), "Bandit Prince", Suit.
   * chooses any number of them, or none. At each chosen site a `Replace`
   * swaps all its bandits for the actor's warbands from their bank, in one
   * step. An answer whose sites hold more bandits than the bank holds is
-  * refused, so a site is never half replaced. The walker's search hides a
-  * site whose bandits alone exceed the bank; with none left the question is
-  * not asked. One line per site tells the replacement, in answer order, and
+  * refused, so a site is never half replaced. A site whose bandits alone
+  * exceed the bank is shown unavailable with what it needs, and a tally of
+  * the warbands needed, limited by the bank, guides the choice; the answer's
+  * sum check stays. With no site left that fits, the question is not asked. One line per site tells the replacement, in answer order, and
   * covers that site's Moved line.
   */
 case object BanditPrince extends WhenPlayedPower:
@@ -49,14 +50,10 @@ case object BanditPrince extends WhenPlayedPower:
       case Some(SiteForces.Occupied(`kind`, count)) => count
       case _ => 0
 
-  /** The sites whose bandits alone fit the actor's warband bank. The walker
-    * would hide the others, but only after trying every selection holding
-    * them, which grows with the number of sites. */
-  private def affordable(ready: ReadyGame, actor: PlayerId,
-      sites: Vector[SiteId]): Vector[SiteId] =
-    PlayerFacts.forceKind(ready, actor).toOption.fold(Vector.empty) { kind =>
-      val banked = PlayerFacts.banked(ready, kind)
-      sites.filter(bandits(ready, _) <= banked) }
+  /** The warbands in the actor's bank: what the replacement can draw on. */
+  private def bank(ready: ReadyGame, actor: PlayerId): Int =
+    PlayerFacts.forceKind(ready, actor).toOption
+      .fold(0)(PlayerFacts.banked(ready, _))
 
   /** The sites answered, in answer order. A question the search did not ask
     * reads as none. */
@@ -92,18 +89,33 @@ case object BanditPrince extends WhenPlayedPower:
     val actor = ctx.activePlayer
     Vector(Branch((live, _) =>
       val sites = banditSites(live)
-      val fits = affordable(live, actor, sites)
+      val banked = bank(live, actor)
+      val fits = sites.filter(bandits(live, _) <= banked)
+      def ref(site: SiteId) = DecisionOptionRef.Site(site)
       if sites.isEmpty then Vector(Note(id, _ =>
         Some(none(PowerSourceRef.Card(cardId)))))
       else if fits.isEmpty then Vector.empty
       else Vector(
         Decide(decisionId, actor, DecisionQuery.ChooseMany(0, fits.size,
-          fits.map(site => DecisionOption.Site(DecisionOptionRef.Site(site))),
-          heading = Some("Bandit Prince: choose the sites whose bandits your " +
-            "warbands replace"))),
+          sites.map(site =>
+            if fits.contains(site) then DecisionOption.Site(ref(site))
+            else DecisionOption.Unavailable(DecisionOption.Site(ref(site)),
+              OptionReason.Written(needs(bandits(live, site), banked)))),
+          heading = Some("Bandit Prince: choose the sites whose bandits " +
+            "your warbands replace"),
+          tallies = Vector(DecisionTally("Warbands needed", "warbands",
+            fits.map(site => ref(site) -> bandits(live, site)).toMap,
+            Some(banked))),
+          summary = Some(DecisionSummary("Replace bandits at", "site",
+            "sites")))),
         BuildOps((ready, pending) => replace(ready, actor, pending)),
         Branch((_, pending) => chosen(pending).map(site =>
           Note(id, replacedNote(_, actor, site), covers = true))))))
+
+  /** Why a site's bandits alone are more than the bank holds. */
+  private def needs(count: Int, banked: Int): String =
+    s"Needs $count ${if count == 1 then "warband" else "warbands"}; " +
+      s"your bank holds $banked"
 
   /** The actor's warbands the replacement put at `site`. */
   private def replacedNote(states: NoteStates, actor: PlayerId,
