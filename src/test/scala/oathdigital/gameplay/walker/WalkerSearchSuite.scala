@@ -104,3 +104,30 @@ class WalkerSearchSuite extends munit.FunSuite:
     assert(!WalkerSearch.hides(Flip(card, Location.PlayArea(p1),
       Orientation.FaceDown)))
     assert(!WalkerSearch.hides(GainSupply(p1, 1)))
+
+  private val because = OptionReason.Written("Not now")
+
+  test("an option the search drops is kept unavailable when its reason is known"):
+    val asked = decide(DecisionQuery.ChooseMany(1, 2, abc, None))
+    assertEquals(WalkerSearch.narrowed(asked, _ != ref("b"),
+      found => Option.when(found == ref("b"))(because)).map(_.query),
+      Some(DecisionQuery.ChooseMany(1, 2, Vector(button("a"),
+        DecisionOption.Unavailable(button("b"), because), button("c")), None)))
+
+  test("an option the search drops without a reason is removed"):
+    val asked = decide(DecisionQuery.ChooseMany(1, 2, abc, None))
+    assertEquals(WalkerSearch.narrowed(asked, _ != ref("b")).map(_.query),
+      Some(DecisionQuery.ChooseMany(1, 2, Vector(button("a"), button("c")),
+        None)))
+
+  test("an optional choose-many left with only unavailable options is not asked"):
+    val asked = decide(DecisionQuery.ChooseMany(0, 1, Vector(button("b")), None))
+    assertEquals(WalkerSearch.narrowed(asked, _ => false, _ => Some(because)),
+      None)
+
+  test("an unavailable option is never tried as an answer"):
+    val asked = decide(DecisionQuery.ChooseOne(Vector(button("a"),
+      DecisionOption.Unavailable(button("b"), because))))
+    assertEquals(WalkerSearch.narrow(asked, only(_ => true)),
+      Right(Some(asked)))
+    assertEquals(WalkerSearch.choosable(asked), Vector(ref("a")))

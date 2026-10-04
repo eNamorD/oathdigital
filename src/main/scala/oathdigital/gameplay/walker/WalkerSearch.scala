@@ -1,8 +1,8 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{Decide, DecisionAnswer, DecisionOptionRef,
-  DecisionQuery, Draw, Flip, OathViolation, Operation, Orientation, Peek,
-  Reveal, Roll, Shuffle}
+import oathdigital.model.{Decide, DecisionAnswer, DecisionOption,
+  DecisionOptionRef, DecisionQuery, Draw, Flip, OathViolation, Operation,
+  OptionReason, Orientation, Peek, Reveal, Roll, Shuffle}
 
 /** The lazy pruning's answers and narrowing (global operation restrictions
   * design, "Lazy pruning"), apart from the walk. A verdict says whether one
@@ -44,12 +44,12 @@ private[walker] object WalkerSearch:
       : Either[OathViolation, Option[Decide]] =
     decide.query match
       case one: DecisionQuery.ChooseOne =>
-        val refs = one.options.map(_.ref)
+        val refs = choosable(decide)
         kept(decide, refs, refs.map(ref =>
           ref -> verdict(DecisionAnswer.ChooseOneAnswer(ref))).toMap,
           required = !decide.passWhenEmpty)
       case many: DecisionQuery.ChooseMany =>
-        val refs = many.options.map(_.ref)
+        val refs = choosable(decide)
         kept(decide, refs, refs.map(ref => ref -> survivor(
           selections(refs, many.min, many.max).filter(_.contains(ref))
             .map(DecisionAnswer.ChooseManyAnswer(_)), verdict, None)).toMap,
@@ -85,24 +85,56 @@ private[walker] object WalkerSearch:
           case Left(_) if decide.passWhenEmpty => Right(Reach.Skipped)
           case found => found.map(_ => Reach.Answerable)
 
-  /** `decide` offering only the permitted options. `None` is an optional
-    * choose-many or a choose-one passed when empty, with nothing left, which
-    * is not asked. Other query kinds are returned unchanged.
+  /** `decide` offering only the permitted options. An option `permitted`
+    * refuses is kept as unavailable when `explain` gives its reason, and is
+    * removed otherwise; an option already unavailable stays as it is.
+    * `None` is an optional choose-many or a choose-one passed when empty,
+    * left with no option that may be chosen, which is not asked. Other query
+    * kinds are returned unchanged.
     */
-  def narrowed(decide: Decide,
-      permitted: DecisionOptionRef => Boolean): Option[Decide] =
+  def narrowed(decide: Decide, permitted: DecisionOptionRef => Boolean,
+      explain: DecisionOptionRef => Option[OptionReason] = _ => None)
+      : Option[Decide] =
+    def cut(options: Vector[DecisionOption]): Vector[DecisionOption] =
+      options.flatMap(option =>
+        if !option.available || permitted(option.ref) then Some(option)
+        else explain(option.ref).map(DecisionOption.Unavailable(option, _)))
     decide.query match
       case one: DecisionQuery.ChooseOne =>
-        val options = one.options.filter(o => permitted(o.ref))
-        if decide.passWhenEmpty && options.isEmpty then None
+        val options = cut(one.options)
+        if decide.passWhenEmpty && !options.exists(_.available) then None
         else Some(decide.copy(query = one.copy(options = options)))
       case many: DecisionQuery.ChooseMany =>
-        val options = many.options.filter(o => permitted(o.ref))
-        if many.min == 0 && options.isEmpty then None
+        val options = cut(many.options)
+        val left = options.count(_.available)
+        if many.min == 0 && left == 0 then None
         else Some(decide.copy(query = many.copy(
-          min = math.min(many.min, options.size),
-          max = math.min(many.max, options.size), options = options)))
+          min = math.min(many.min, left), max = math.min(many.max, left),
+          options = options)))
       case _ => Some(decide)
+
+  /** The references of the options a player may choose in a choose-one or a
+    * choose-many, in declared order; empty for any other kind.
+    */
+  def choosable(decide: Decide): Vector[DecisionOptionRef] =
+    decide.query match
+      case one: DecisionQuery.ChooseOne => one.options.filter(_.available)
+        .map(_.ref)
+      case many: DecisionQuery.ChooseMany => many.options.filter(_.available)
+        .map(_.ref)
+      case _ => Vector.empty
+
+  /** `narrowed`, the search's cut of `decide`, with each option it dropped
+    * back in its place as unavailable when `reasons` says why.
+    */
+  def explained(decide: Decide, narrowed: Decide,
+      reasons: Map[DecisionOptionRef, OptionReason]): Decide =
+    if reasons.isEmpty then narrowed
+    else decide.query match
+      case _: DecisionQuery.ChooseOne | _: DecisionQuery.ChooseMany =>
+        val kept = choosable(narrowed).toSet
+        this.narrowed(decide, kept, reasons.get).getOrElse(narrowed)
+      case _ => narrowed
 
   private def kept(decide: Decide, refs: Vector[DecisionOptionRef],
       verdicts: Map[DecisionOptionRef, Either[OathViolation, Unit]],
@@ -117,10 +149,10 @@ private[walker] object WalkerSearch:
     */
   private def answers(decide: Decide): Option[Iterator[DecisionAnswer]] =
     decide.query match
-      case one: DecisionQuery.ChooseOne => Some(one.options.iterator.map(
-        option => DecisionAnswer.ChooseOneAnswer(option.ref)))
+      case _: DecisionQuery.ChooseOne => Some(choosable(decide).iterator
+        .map(DecisionAnswer.ChooseOneAnswer(_)))
       case many: DecisionQuery.ChooseMany => Some(selections(
-        many.options.map(_.ref), many.min, many.max)
+        choosable(decide), many.min, many.max)
         .map(DecisionAnswer.ChooseManyAnswer(_)))
       case amount: DecisionQuery.ChooseAmount => Some(
         (amount.min to amount.max).iterator

@@ -43,8 +43,8 @@ private[gamelog] final class ChoiceWords(words: LogWords,
   private def shown(before: ReadyGame, ref: DecisionOptionRef)
       : Option[String] =
     decisions.parkedDecide(before).toVector.flatMap(_.query match
-      case DecisionQuery.ChooseOne(options, _) => options
-      case DecisionQuery.ChooseMany(_, _, options, _) => options
+      case one: DecisionQuery.ChooseOne => one.options
+      case many: DecisionQuery.ChooseMany => many.options
       case _ => Vector.empty).flatMap(labelled(ref)).headOption
 
   private def labelled(ref: DecisionOptionRef)(option: DecisionOption)
@@ -52,4 +52,5 @@ private[gamelog] final class ChoiceWords(words: LogWords,
     case DecisionOption.Button(button, label) if button == ref => Some(label)
     case DecisionOption.Priced(inner, _) => labelled(ref)(inner)
     case DecisionOption.Badged(inner, _) => labelled(ref)(inner)
+    case DecisionOption.Unavailable(inner, _) => labelled(ref)(inner)
     case _ => None

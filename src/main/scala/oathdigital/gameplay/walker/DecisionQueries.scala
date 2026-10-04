@@ -18,7 +18,8 @@ import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, Dec
   * structurally instead: the tree carrying the query is rebuilt against
   * authoritative state on every command, so an option that no longer exists
   * is simply absent from the query and the answer naming it is rejected
-  * below.
+  * below. An option shown as unavailable is answered the same way: only
+  * available options are offered.
   *
   * Prompt copy never affects submitted answers — not an option's label or a
   * section's. A distribution's heading and confirm label are required so a
@@ -69,6 +70,8 @@ object DecisionQueries:
         _ <- require(refs.nonEmpty, decisionId, "declares no options")
         _ <- require(refs.distinct.size == refs.size, decisionId,
           "declares duplicate options")
+        _ <- require(options.exists(_.available), decisionId,
+          "declares no option that may be chosen")
       yield ()
 
     case DecisionQuery.Inspect(cards, heading, doneLabel) =>
@@ -97,19 +100,28 @@ object DecisionQueries:
           decisionId, "declares an acceptance from outside the deal")
       yield ()
 
-    case DecisionQuery.ChooseMany(min, max, options, _) =>
-      val refs = options.map(_.ref)
+    case many: DecisionQuery.ChooseMany =>
+      val (min, max) = (many.min, many.max)
+      val shown = (many.options ++ many.locked).map(_.ref)
+      val choosable = many.options.count(_.available)
       for
-        _ <- require(refs.distinct.size == refs.size, decisionId,
+        _ <- require(shown.distinct.size == shown.size, decisionId,
           "declares duplicate options")
         _ <- require(max >= 1, decisionId, "declares no selection to make")
         _ <- require(min >= 0 && min <= max, decisionId,
           s"declares a selection range $min..$max")
-        _ <- require(max <= refs.size, decisionId,
+        _ <- require(max <= choosable, decisionId,
           "declares a maximum above its option count")
-        _ <- require(!(min == max && max == refs.size), decisionId,
+        _ <- require(!(min == max && max == choosable), decisionId,
           "declares a selection that already takes every option, leaving " +
             "nothing to decide")
+        _ <- require(many.locked.forall(_.available), decisionId,
+          "declares a locked option that may not be chosen")
+        _ <- require(many.tallies.forall(_.perOption.keySet
+          .subsetOf(shown.toSet)), decisionId,
+          "declares a tally over an option it does not offer")
+        _ <- require(many.tallies.forall(_.limit.forall(_ >= 0)), decisionId,
+          "declares a negative tally limit")
       yield ()
 
     case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel,
@@ -219,8 +231,8 @@ object DecisionQueries:
       : Either[OathViolation, Unit] = query match
     case DecisionQuery.ChooseOne(options, _) => answer match
       case DecisionAnswer.ChooseOneAnswer(selected) =>
-        require(options.map(_.ref).contains(selected), decisionId,
-          "does not offer the selected option")
+        require(options.filter(_.available).map(_.ref).contains(selected),
+          decisionId, "does not offer the selected option")
       case _ =>
         reject(decisionId, "expects a single-choice answer")
 
@@ -230,10 +242,12 @@ object DecisionQueries:
       case _ =>
         reject(decisionId, "expects its Done button")
 
-    case DecisionQuery.ChooseMany(min, max, options, _) => answer match
+    case many: DecisionQuery.ChooseMany => answer match
       case DecisionAnswer.ChooseManyAnswer(selected) =>
+        val (min, max) = (many.min, many.max)
+        val offered = many.options.filter(_.available).map(_.ref)
         for
-          _ <- require(selected.forall(options.map(_.ref).contains),
+          _ <- require(selected.forall(offered.contains),
             decisionId, "does not offer a selected option")
           _ <- require(selected.distinct.size == selected.size, decisionId,
             "selects an option more than once")

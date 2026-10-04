@@ -602,12 +602,16 @@ final case class ModifyRollOutcome(pool: PoolKey, skulls: Option[Int],
   * operation restrictions design, "Empty choices"): the walker then passes
   * it, as it passes an empty optional choose-many, instead of failing the
   * path. With one option left it still parks, so the player confirms it.
+  *
+  * `presentation` says where a client answers it: on the board, where each
+  * option with a place on the table is drawn, or in the Action panel.
   */
 final case class Decide(decisionId: String, owner: PlayerId,
     query: DecisionQuery,
     override val window: Option[PowerWindow] = None,
     coOwners: Vector[PlayerId] = Vector.empty,
-    passWhenEmpty: Boolean = false)
+    passWhenEmpty: Boolean = false,
+    presentation: DecisionPresentation = DecisionPresentation.Board)
     extends PrimitiveOperation:
   require(!passWhenEmpty || query.isInstanceOf[DecisionQuery.ChooseOne],
     "only a choose-one can be passed when empty")

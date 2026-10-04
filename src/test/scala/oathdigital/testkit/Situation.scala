@@ -92,28 +92,29 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
 
 object Situation:
   /** The answer a park gets when the test names none. `ChooseOne`: the first
-    * option. `Partition`: the first option kept in the first section that
+    * available option. `Partition`: the first option kept in the first section that
     * demands one, every other option in another section -- the "keep one,
     * discard the rest" shape of Setup's adviser choice. `ChooseMany`: the
-    * first `min` options. `ChooseAmount`: `min`. Anything else is not
+    * first `min` available options. `ChooseAmount`: `min`. Anything else is not
     * answered by default and fails the walk naming the decision.
     */
   val defaultAnswer: Answers =
-    case Park(Decide(_, _, DecisionQuery.ChooseOne(options, _), _, _, _), _, _, _)
-        if options.nonEmpty =>
-      DecisionAnswer.ChooseOneAnswer(options.head.ref)
+    case Park(Decide(_, _, DecisionQuery.ChooseOne(options, _), _, _, _, _),
+        _, _, _) if options.exists(_.available) =>
+      DecisionAnswer.ChooseOneAnswer(options.filter(_.available).head.ref)
     case Park(Decide(_, _, DecisionQuery.Partition(sections, options, _, _),
-        _, _, _), _, _, _) if sections.nonEmpty && options.nonEmpty =>
+        _, _, _, _), _, _, _) if sections.nonEmpty && options.nonEmpty =>
       val keep = sections.find(_.minRequired > 0).getOrElse(sections.head)
       val discard = sections.find(_.key != keep.key).getOrElse(keep)
       val refs = options.map(_.ref)
       DecisionAnswer.PartitionAnswer(DecisionPlacement(refs.head, keep.key) +:
         refs.tail.map(DecisionPlacement(_, discard.key)))
-    case Park(Decide(_, _, DecisionQuery.ChooseMany(min, _, options, _), _, _, _),
-        _, _, _) if options.size >= min =>
-      DecisionAnswer.ChooseManyAnswer(options.take(min).map(_.ref))
-    case Park(Decide(_, _, DecisionQuery.ChooseAmount(min, _, _, _, _), _, _, _),
-        _, _, _) =>
+    case Park(Decide(_, _, many: DecisionQuery.ChooseMany, _, _, _, _),
+        _, _, _) if many.options.count(_.available) >= many.min =>
+      DecisionAnswer.ChooseManyAnswer(
+        many.options.filter(_.available).take(many.min).map(_.ref))
+    case Park(Decide(_, _, DecisionQuery.ChooseAmount(min, _, _, _, _), _, _,
+        _, _), _, _, _) =>
       DecisionAnswer.ChooseAmountAnswer(min)
 
   /** Setup's pawn placements at `sites`, in placement order: the n-th pawn

@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, DistributeAmount, DistributeSlot, NegotiationBounds, NegotiationDisclosure, NegotiationDisclosureRef, NegotiationTerms, NegotiationTransfer, OathViolation, PlayerId, RelicId, SiteId, Suit}
+import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DecisionTally, DenizenId, DistributeAmount, DistributeSlot, NegotiationBounds, NegotiationDisclosure, NegotiationDisclosureRef, NegotiationTerms, NegotiationTransfer, OathViolation, OptionReason, PlayerId, RelicId, SiteId, Suit}
 
 /** Task 2: the generic decision contract, exercised with hand-built queries
   * and no game state at all.
@@ -574,3 +574,66 @@ class DecisionQuerySuite extends munit.FunSuite:
       invalid("decision recover.choice expects a negotiation answer"))
     assertEquals(acceptsBy(red, DecisionAnswer.AcceptDeal, chooseOne),
       invalid("decision recover.choice expects a single-choice answer"))
+
+  // (k) An unavailable option is shown, and never answerable.
+
+  private val withheldStop = DecisionOption.Unavailable(stopOption,
+    OptionReason.Written("Not now"))
+
+  test("a choose-one refuses an option it shows as unavailable"):
+    val query = DecisionQuery.ChooseOne(Vector(continueOption, withheldStop))
+    assertEquals(wellFormed(query), Right(()))
+    assertEquals(accepts(query, DecisionAnswer.ChooseOneAnswer(stopRef)),
+      invalid(s"decision $decisionId does not offer the selected option"))
+    assertEquals(accepts(query, DecisionAnswer.ChooseOneAnswer(continueRef)),
+      Right(()))
+
+  test("a choose-one whose every option is unavailable is malformed"):
+    assertEquals(wellFormed(DecisionQuery.ChooseOne(Vector(withheldStop))),
+      invalid(s"decision $decisionId declares no option that may be chosen"))
+
+  test("a choose-many counts only the options that may be chosen"):
+    assertEquals(wellFormed(DecisionQuery.ChooseMany(0, 2,
+      Vector(continueOption, withheldStop))),
+      invalid(s"decision $decisionId declares a maximum above its option count"))
+    val fits = DecisionQuery.ChooseMany(0, 1,
+      Vector(continueOption, withheldStop))
+    assertEquals(wellFormed(fits), Right(()))
+    assertEquals(accepts(fits, DecisionAnswer.ChooseManyAnswer(Vector(stopRef))),
+      invalid(s"decision $decisionId does not offer a selected option"))
+
+  // (l) Locked options and tallies.
+
+  test("a locked option may not also be offered"):
+    assertEquals(wellFormed(DecisionQuery.ChooseMany(0, 1,
+      Vector(continueOption, stopOption), locked = Vector(stopOption))),
+      invalid(s"decision $decisionId declares duplicate options"))
+
+  test("a locked option is decided already, so no answer names it"):
+    val query = DecisionQuery.ChooseMany(0, 1,
+      Vector(continueOption, stopOption),
+      locked = Vector(DecisionOption.Relic(relicRef)))
+    assertEquals(wellFormed(query), Right(()))
+    assertEquals(accepts(query, DecisionAnswer.ChooseManyAnswer(
+      Vector(relicRef))),
+      invalid(s"decision $decisionId does not offer a selected option"))
+
+  test("a tally counts only offered and locked options"):
+    val tally = DecisionTally("Defense", "defense", Map(relicRef -> 2))
+    assertEquals(wellFormed(DecisionQuery.ChooseMany(0, 1,
+      Vector(continueOption, stopOption), tallies = Vector(tally))),
+      invalid(s"decision $decisionId declares a tally over an option it " +
+        "does not offer"))
+    assertEquals(wellFormed(DecisionQuery.ChooseMany(0, 1,
+      Vector(continueOption, stopOption),
+      locked = Vector(DecisionOption.Relic(relicRef)),
+      tallies = Vector(tally))), Right(()))
+
+  test("a tally is advice: an answer past its limit is still accepted"):
+    val tally = DecisionTally("Warbands needed", "warbands",
+      Map(continueRef -> 3, stopRef -> 3), Some(4))
+    val query = DecisionQuery.ChooseMany(0, 2,
+      Vector(continueOption, stopOption), tallies = Vector(tally))
+    assertEquals(wellFormed(query), Right(()))
+    assertEquals(accepts(query, DecisionAnswer.ChooseManyAnswer(
+      Vector(continueRef, stopRef))), Right(()))

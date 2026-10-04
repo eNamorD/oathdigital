@@ -155,6 +155,12 @@ object DecisionOptionRef:
   */
 sealed trait DecisionOption extends Product with Serializable:
   def ref: DecisionOptionRef
+
+  /** Whether a player may choose the option now. Only
+    * [[DecisionOption.Unavailable]] says no, and a wrapper asks what it
+    * wraps.
+    */
+  def available: Boolean = true
 object DecisionOption:
   final case class Button(ref: DecisionOptionRef.Button, label: String)
       extends DecisionOption
@@ -182,6 +188,7 @@ object DecisionOption:
   final case class Priced(option: DecisionOption, price: OptionPrice)
       extends DecisionOption:
     def ref: DecisionOptionRef = option.ref
+    override def available: Boolean = option.available
 
   /** An option carrying one short label a client draws as a chip: what kind of
     * thing the option is, as opposed to what choosing it costs. Wrapping for
@@ -192,6 +199,16 @@ object DecisionOption:
   final case class Badged(option: DecisionOption, badge: String)
       extends DecisionOption:
     def ref: DecisionOptionRef = option.ref
+    override def available: Boolean = option.available
+
+  /** An option shown with why it may not be chosen now. `ref` is the wrapped
+    * option's, and the answer check reads only available options, so an
+    * answer naming it is refused as an absent option is.
+    */
+  final case class Unavailable(option: DecisionOption, reason: OptionReason)
+      extends DecisionOption:
+    def ref: DecisionOptionRef = option.ref
+    override def available: Boolean = false
 
   /** The option presenting `ref`, for every kind whose name the projector
     * resolves itself. A button has no such name: its label is authored, so
@@ -221,6 +238,15 @@ final case class OptionPrice(favor: Int = 0, secrets: Int = 0,
     warbands >= 0, "an option price is never negative")
   def isFree: Boolean = this == OptionPrice()
 
+/** Why an option is shown but may not be chosen. It is player text, either
+  * written by the builder that withheld the option, or the note of the
+  * power that hid it, which the projector words as the Game Log does.
+  */
+sealed trait OptionReason extends Product with Serializable
+object OptionReason:
+  final case class Written(text: String) extends OptionReason
+  final case class Noted(power: PowerId, note: PowerNote) extends OptionReason
+
 /** One named bucket a [[DecisionQuery.Partition]] spreads its options across.
   *
   * @param key stable identity, and what a [[DecisionPlacement]] names.
@@ -243,6 +269,33 @@ final case class DecisionSection(key: String, label: String, minRequired: Int,
   */
 final case class DistributeSlot(ref: DecisionOptionRef, minimum: Int,
     maximum: Int, suggested: Option[Int])
+
+/** A running sum a client keeps while a choose-many is answered: each
+  * selected or locked option adds its value. `limit` is the most the sum may
+  * reach, and a client blocks an option while choosing it would pass the
+  * limit. It is advice: the answer check never reads it, so the action that
+  * declares a tally still refuses an answer that breaks it.
+  *
+  * @param label the total's name, "Defending force".
+  * @param unit what a value counts, "warbands", for a row and a limit's
+  *   reason.
+  */
+final case class DecisionTally(label: String, unit: String,
+    perOption: Map[DecisionOptionRef, Int], limit: Option[Int] = None)
+
+/** The line a choose-many's panel states its selection with: "Target 2
+  * sites" is verb "Target", one "site", many "sites".
+  */
+final case class DecisionSummary(verb: String, one: String, many: String):
+  def of(count: Int): String =
+    s"$verb $count ${if count == 1 then one else many}"
+
+/** Where a decision is answered. `Board` puts every option with a place on
+  * the table there; `Panel` keeps the whole decision in the Action panel.
+  */
+enum DecisionPresentation(val key: String):
+  case Board extends DecisionPresentation("board")
+  case Panel extends DecisionPresentation("panel")
 
 /** The question a parked `Decide` asks.
   *
@@ -277,15 +330,21 @@ object DecisionQuery:
   final case class ChooseOne(options: Vector[DecisionOption],
       heading: Option[String] = None) extends DecisionQuery
 
-  /** Pick between `min` and `max` distinct options, inclusive. Well-formed
-    * only when `0 <= min <= max <= options.size`, `max >= 1`, and not the
-    * forced case `min == max == options.size`, which takes every option and
-    * asks nothing. `min == 0` makes the pick optional: the empty selection is
-    * an answer. An exact count is `min == max`.
+  /** Pick between `min` and `max` distinct available options, inclusive.
+    * Well-formed only when `0 <= min <= max <= n`, `max >= 1`, and not the
+    * forced case `min == max == n`, where `n` counts the options that may be
+    * chosen. `min == 0` makes the pick optional: the empty selection is an
+    * answer. An exact count is `min == max`.
+    *
+    * `locked` options are decided already, such as a Campaign's origin: a
+    * client shows them chosen, and no answer names them. `tallies` and
+    * `summary` are display only, like `heading`.
     */
   final case class ChooseMany(min: Int, max: Int,
-      options: Vector[DecisionOption], heading: Option[String] = None)
-      extends DecisionQuery
+      options: Vector[DecisionOption], heading: Option[String] = None,
+      locked: Vector[DecisionOption] = Vector.empty,
+      tallies: Vector[DecisionTally] = Vector.empty,
+      summary: Option[DecisionSummary] = None) extends DecisionQuery
 
   /** Pick an integer from `min` to `max` inclusive. Both labels are required,
     * as on [[Distribute]]: the panel has a confirm step, and a range with no

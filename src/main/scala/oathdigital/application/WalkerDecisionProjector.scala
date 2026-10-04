@@ -234,9 +234,10 @@ private[application] final class WalkerDecisionProjector(
       case DecisionQuery.ChooseOne(options, heading) =>
         described(options).map(projected =>
           DecisionQueryProjection.ChooseOne(projected, heading))
-      case DecisionQuery.ChooseMany(min, max, options, heading) =>
-        described(options).map(projected =>
-          DecisionQueryProjection.ChooseMany(projected, min, max, heading))
+      case many: DecisionQuery.ChooseMany =>
+        described(many.options).map(projected =>
+          DecisionQueryProjection.ChooseMany(projected, many.min, many.max,
+            many.heading))
       case negotiate: DecisionQuery.Negotiate =>
         Some(DecisionQueryProjection.Negotiate(
           deals.project(ready, viewer, negotiate), negotiate.heading))
@@ -297,6 +298,8 @@ private[application] final class WalkerDecisionProjector(
       // whichever order a caller wraps price and badge in.
       case DecisionOption.Badged(inner, badge) => optionProjection(ready,
         viewer, index, inner, details).map(_.copy(badge = Some(badge)))
+      case DecisionOption.Unavailable(inner, _) => optionProjection(ready,
+        viewer, index, inner, details)
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
         if ready.game.current.players.exists(_.player == player.id) then
