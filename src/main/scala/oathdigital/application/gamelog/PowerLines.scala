@@ -32,14 +32,20 @@ private[gamelog] final class PowerLines(words: LogWords,
       viewer: Option[PlayerId]): Option[Posted] = journal.event(at) match
     case PowerNoted(power, note, _) if !repeated(journal, run, at, power, note) =>
       for
-        template <- wordings.template(power, note.key)
         after <- journal.readyAfter(at)
-        seen = states(journal, run, at) :+ after
-      yield Posted.line(kind(run, power, note),
-        wordings.source(power).fold(words.source(note.source, seen, viewer))(
-          named => Vector(Text(named))) ++
-          (Text(": ") +: sentence(template, note.args, seen, viewer)))
+        spans <- spoken(power, note, states(journal, run, at) :+ after, viewer)
+      yield Posted.line(kind(run, power, note), spans)
     case _ => None
+
+  /** "{source}: {sentence}" for `note`, its cards judged at `seen`, or
+    * `None` when `power` declares no template for the note's key.
+    */
+  def spoken(power: PowerId, note: PowerNote, seen: Vector[ReadyGame],
+      viewer: Option[PlayerId]): Option[Vector[LogSpan]] =
+    wordings.template(power, note.key).map(template =>
+      wordings.source(power).fold(words.source(note.source, seen, viewer))(
+        named => Vector(Text(named))) ++
+        (Text(": ") +: sentence(template, note.args, seen, viewer)))
 
   /** The states before `at` that a note's cards are judged at: its action's
     * start, and the step it restates, the last step before it. A generic

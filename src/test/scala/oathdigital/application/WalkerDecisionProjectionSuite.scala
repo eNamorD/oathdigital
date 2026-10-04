@@ -158,7 +158,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       recoverFailingItsRoll("walker-projection-choice").started.state)
     assertEquals(walkerDecisions.project(ScopedProjectionContext(ready,
       Some(p1))), Some(WalkerDecisionProjection(ActionRef.Recover.key,
-      RecoverProcedure.choiceDecisionId, "decide", query = Some(choiceQuery),
+      RecoverProcedure.choiceDecisionId, "decide", presentation = "board", query = Some(choiceQuery),
       rollOutcome = Some(failedRollOutcome(ready)))))
     assertEquals(walkerDecisions.project(ScopedProjectionContext(ready,
       Some(p2))), None)
@@ -187,7 +187,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     val projector = new GameProjector(catalog)
     assertEquals(projector.project(gameId, stored, p1).walkerDecision,
       Some(WalkerDecisionProjection(ActionRef.Recover.key,
-        RecoverProcedure.choiceDecisionId, "decide", query = Some(choiceQuery),
+        RecoverProcedure.choiceDecisionId, "decide", presentation = "board", query = Some(choiceQuery),
         rollOutcome = Some(failedRollOutcome(Outcomes.ready(stored.state))))))
     assertEquals(projector.project(gameId, stored, p2).walkerDecision, None)
 
@@ -232,7 +232,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     * park's feedback shows the successful roll that got here. */
   private def expectedRelicDecision(ready: ReadyGame) =
     WalkerDecisionProjection(
-      ActionRef.Recover.key, RecoverProcedure.relicDecisionId, "decide",
+      ActionRef.Recover.key, RecoverProcedure.relicDecisionId, "decide", presentation = "board",
       query = Some(relicQuery),
       rollOutcome = Some(WalkerRollOutcomeProjection("recover",
         Vector("two-shields", "doubler"), 4,
@@ -337,7 +337,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     val wired = new WalkerDecisionProjector(catalog, presentation,
       WalkerPowerCatalog.default(catalog))
     assertEquals(wired.project(context), Some(WalkerDecisionProjection(
-      ActionRef.Recover.key, RecoverProcedure.choiceDecisionId, "decide",
+      ActionRef.Recover.key, RecoverProcedure.choiceDecisionId, "decide", presentation = "board",
       query = Some(choiceQuery),
       rollOutcome = Some(WalkerRollOutcomeProjection("recover",
         Vector("blank", "blank"), 0,

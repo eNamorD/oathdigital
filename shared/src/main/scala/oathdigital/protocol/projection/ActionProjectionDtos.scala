@@ -93,12 +93,16 @@ object DecisionQueryProjection:
       heading: Option[String] = None) extends DecisionQueryProjection:
     def offeredOptions: Vector[DecisionOptionProjection] = options
 
-  /** Pick between `minOptions` and `maxOptions` of the options. The bounds
-    * count OPTIONS; `ChooseAmount`'s bound a value, which is why they are no
-    * longer one `minimum`/`maximum` pair serving both.
+  /** Pick between `minOptions` and `maxOptions` of the options that are
+    * `available`. The bounds count OPTIONS; `ChooseAmount`'s bound a value,
+    * which is why they are no longer one `minimum`/`maximum` pair serving
+    * both. Options whose `state` is `locked` are decided already and are
+    * never part of the answer. `tallies` and `summary` are display only.
     */
   final case class ChooseMany(options: Vector[DecisionOptionProjection],
-      minOptions: Int, maxOptions: Int, heading: Option[String] = None)
+      minOptions: Int, maxOptions: Int, heading: Option[String] = None,
+      tallies: Vector[DecisionTallyProjection] = Vector.empty,
+      summary: Option[DecisionSummaryProjection] = None)
       extends DecisionQueryProjection:
     def offeredOptions: Vector[DecisionOptionProjection] = options
 
@@ -162,11 +166,16 @@ object DecisionQueryProjection:
   * `badge` is one short label the option carries -- what kind of thing it is,
   * such as `Attack Plan` -- for a client to draw as a chip. It is separate
   * from `details`, which carries consequences and runs together into one line.
+  *
+  * `state` is `available`, `locked` (decided already, shown chosen) or
+  * `unavailable` (shown, with `reason` saying why it may not be chosen now).
   */
 final case class DecisionOptionProjection(kind: String, id: String,
     label: String, card: Option[CardDetailsProjection] = None,
     details: Vector[String] = Vector.empty,
-    badge: Option[String] = None)
+    badge: Option[String] = None,
+    state: String = "available",
+    reason: Option[String] = None)
 
 /** One named bucket a partition spreads its options across: the stable
   * `key` a placement names, the section's prompt copy, and the fewest
@@ -182,6 +191,23 @@ final case class DecisionSectionProjection(key: String, label: String,
   */
 final case class DecisionSlotProjection(option: DecisionOptionProjection,
     minimum: Int, maximum: Int, suggested: Option[Int])
+
+/** A running sum over a choose-many's options: the total's `label`, the
+  * `unit` one value counts in, each option's value by its `kind` and `id`,
+  * and the most the total may reach. Advice for the client; the engine
+  * still refuses an answer that breaks the action's own rule.
+  */
+final case class DecisionTallyProjection(label: String, unit: String,
+    values: Vector[DecisionTallyValueProjection], limit: Option[Int] = None)
+final case class DecisionTallyValueProjection(kind: String, id: String,
+    value: Int)
+
+/** "Target 2 sites": a choose-many's selection, stated. */
+final case class DecisionSummaryProjection(verb: String, one: String,
+    many: String):
+  def of(count: Int): String =
+    s"$verb $count ${if count == 1 then one else many}"
+
 /** Wire projection of a parked generic-walker decision (Task 6:
   * `CurrentGameState.walkerPending`/`walkerProcedure`).
   *
@@ -233,7 +259,12 @@ final case class WalkerDecisionProjection(
       * answer has no query left to read it from. In the plan window that
       * leaves out only the title's own plan.
       */
-    answeredOptions: Vector[DecisionOptionProjection] = Vector.empty
+    answeredOptions: Vector[DecisionOptionProjection] = Vector.empty,
+    /** Where the client answers the decision: `"board"` draws each option
+      * with a place on the table there, `"panel"` keeps it in the Action
+      * panel. A payload without the field was answered in the panel.
+      */
+    presentation: String = "panel"
 )
 /** The roll a parked decision wants shown beside it.
   *

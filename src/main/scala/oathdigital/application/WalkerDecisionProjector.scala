@@ -9,8 +9,10 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
 import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
   DecisionOptionProjection, DecisionQueryProjection,
-  DecisionSectionProjection, DecisionSlotProjection, WalkerDecisionProjection,
-  WalkerRollOutcomeProjection, WalkerWaitingProjection}
+  DecisionSectionProjection, DecisionSlotProjection, DecisionSummaryProjection,
+  DecisionTallyProjection, DecisionTallyValueProjection,
+  WalkerDecisionProjection, WalkerRollOutcomeProjection,
+  WalkerWaitingProjection}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
   * + `walkerProcedure`, Task 6) into the small owner-private
@@ -44,6 +46,7 @@ private[application] final class WalkerDecisionProjector(
       WalkerDecisionProjector.declaredTree,
     phasePowers: PhasePowers = PhasePowers.empty):
   private val deals = new NegotiationDealProjector(presentation)
+  private lazy val reasons = new gamelog.NoteReasons(catalog, presentation)
 
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
     this(catalog, presentation, WalkerPowerCatalog.default(catalog),
@@ -167,7 +170,8 @@ private[application] final class WalkerDecisionProjector(
               rollOutcome = rollOutcome(procedure, ready, awaited,
                 decide.decisionId),
               answeredOptions = answeredOptions(ready, viewer, pending,
-                decide.decisionId)))
+                decide.decisionId),
+              presentation = decide.presentation.key))
         }
 
   /** The decision's query as this viewer is offered it. For a procedure that
@@ -203,6 +207,9 @@ private[application] final class WalkerDecisionProjector(
     * tree that declares a target absent from authoritative state a visible
     * failure rather than a silently broken button.
     *
+    * An unavailable option is the exception: it is shown, never answered, so
+    * one that cannot be presented drops itself.
+    *
     * The projector never filters an option it merely dislikes. Staleness is
     * already handled structurally -- the tree carrying this query was
     * rebuilt against `ready` on this very command, so an option that no
@@ -220,11 +227,15 @@ private[application] final class WalkerDecisionProjector(
     // One index per projection, shared by every option: a Forge partition
     // asks about three denizens and a Recover pick about every site relic.
     val index = CardIndex.from(ready.game).toOption
+    // An available option that cannot be presented suppresses the whole
+    // decision. An unavailable one is only shown, never answered, so it
+    // drops itself instead.
     def described(options: Vector[DecisionOption])
         : Option[Vector[DecisionOptionProjection]] =
-      val projected = options.flatMap(option => optionProjection(ready, viewer,
-        index, option, details.getOrElse(option.ref, Vector.empty)))
-      Option.when(projected.size == options.size)(projected)
+      val projected = options.map(option => option -> optionProjection(ready,
+        viewer, index, option, details.getOrElse(option.ref, Vector.empty)))
+      Option.when(projected.forall((option, row) =>
+        row.nonEmpty || !option.available))(projected.flatMap(_._2))
     // The panel copy rides through untouched, exactly as the options do:
     // it is the action's own declaration, and the projector's whole job
     // here is to describe the transformed query rather than to author
@@ -235,9 +246,18 @@ private[application] final class WalkerDecisionProjector(
         described(options).map(projected =>
           DecisionQueryProjection.ChooseOne(projected, heading))
       case many: DecisionQuery.ChooseMany =>
-        described(many.options).map(projected =>
-          DecisionQueryProjection.ChooseMany(projected, many.min, many.max,
-            many.heading))
+        for
+          offered <- described(many.options)
+          fixed <- described(many.locked)
+        yield DecisionQueryProjection.ChooseMany(
+          fixed.map(_.copy(state = "locked")) ++ offered, many.min, many.max,
+          many.heading,
+          many.tallies.map(tally => DecisionTallyProjection(tally.label,
+            tally.unit, tally.perOption.toVector.map((ref, value) =>
+              DecisionTallyValueProjection(ref.kind, ref.wireId, value))
+              .sortBy(value => (value.kind, value.id)), tally.limit)),
+          many.summary.map(summary => DecisionSummaryProjection(summary.verb,
+            summary.one, summary.many)))
       case negotiate: DecisionQuery.Negotiate =>
         Some(DecisionQueryProjection.Negotiate(
           deals.project(ready, viewer, negotiate), negotiate.heading))
@@ -298,8 +318,9 @@ private[application] final class WalkerDecisionProjector(
       // whichever order a caller wraps price and badge in.
       case DecisionOption.Badged(inner, badge) => optionProjection(ready,
         viewer, index, inner, details).map(_.copy(badge = Some(badge)))
-      case DecisionOption.Unavailable(inner, _) => optionProjection(ready,
-        viewer, index, inner, details)
+      case DecisionOption.Unavailable(inner, reason) => optionProjection(ready,
+        viewer, index, inner, details).map(_.copy(state = "unavailable",
+          reason = Some(reasonText(ready, viewer, reason))))
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
         if ready.game.current.players.exists(_.player == player.id) then
@@ -416,6 +437,15 @@ private[application] final class WalkerDecisionProjector(
         case Vector("vision", value) => Vector(VisionId(value): CardId)
         case _ => Vector.empty[CardId]
     }.map(shown(ready, viewer, index, _))
+
+  /** An unavailable option's reason as player text: a builder's own words,
+    * or the note of the power that hid it, worded as the Game Log words it.
+    */
+  private def reasonText(ready: ReadyGame, viewer: Option[PlayerId],
+      reason: OptionReason): String = reason match
+    case OptionReason.Written(text) => text
+    case OptionReason.Noted(power, note) =>
+      reasons.text(power, note, ready, viewer).getOrElse("Not on offer now")
 
   /** A card as its viewer may see it: its face when they may identify it,
     * else the redacted back [[GamePresentationProjector.hiddenCard]] gives an

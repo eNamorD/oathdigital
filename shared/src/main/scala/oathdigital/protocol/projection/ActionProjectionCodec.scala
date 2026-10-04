@@ -99,11 +99,12 @@ private[projection] object ActionProjectionCodec:
     "pool" -> stringOption(value.pool), "count" -> intOption(value.count),
     "query" -> option(value.query)(encodeDecisionQuery),
     "rollOutcome" -> option(value.rollOutcome)(encodeRollOutcome),
-    "answeredOptions" -> encoded(value.answeredOptions)(encodeOptionRow))
+    "answeredOptions" -> encoded(value.answeredOptions)(encodeOptionRow),
+    "presentation" -> value.presentation)
   def decodeWalkerDecision(raw: ujson.Value, path: String): Result[WalkerDecisionProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Set("action", "decisionId", "kind", "pool", "count",
-      "query", "rollOutcome", "answeredOptions"), path)
+      "query", "rollOutcome", "answeredOptions", "presentation"), path)
     action <- string(value, "action", path); decision <- string(value, "decisionId", path)
     kind <- string(value, "kind", path); pool <- optionalString(value, "pool", path)
     count <- optionalInt(value, "count", path)
@@ -111,8 +112,9 @@ private[projection] object ActionProjectionCodec:
     rollOutcome <- optionalAbsent(value, "rollOutcome", path)(decodeRollOutcome)
     answeredRaws <- array(value, "answeredOptions", path)
     answered <- traverse(answeredRaws, s"$path.answeredOptions")(decodeOptionRow)
+    presentation <- default(value, "presentation", path, "panel")(string)
   yield WalkerDecisionProjection(action, decision, kind, pool, count, query,
-    rollOutcome, answered)
+    rollOutcome, answered, presentation)
 
   def encodeWalkerWaiting(value: WalkerWaitingProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "heading" -> stringOption(value.heading),
@@ -150,11 +152,13 @@ private[projection] object ActionProjectionCodec:
         "options" -> encoded(options)(encodeOptionRow),
         "heading" -> stringOption(heading))
       case DecisionQueryProjection.ChooseMany(options, minOptions, maxOptions,
-          heading) => ujson.Obj(
+          heading, tallies, summary) => ujson.Obj(
         "form" -> "choose-many",
         "options" -> encoded(options)(encodeOptionRow),
         "minOptions" -> minOptions, "maxOptions" -> maxOptions,
-        "heading" -> stringOption(heading))
+        "heading" -> stringOption(heading),
+        "tallies" -> encoded(tallies)(encodeTally),
+        "summary" -> option(summary)(encodeSummary))
       case DecisionQueryProjection.ChooseAmount(minAmount, maxAmount,
           suggested, confirmLabel, heading) => ujson.Obj(
         "form" -> "choose-amount",
@@ -218,13 +222,53 @@ private[projection] object ActionProjectionCodec:
   private def decodeChooseMany(value: ujson.Obj, path: String)
       : Result[DecisionQueryProjection] = for
     _ <- exact(value, Set("form", "options", "minOptions", "maxOptions",
-      "heading"), path)
+      "heading", "tallies", "summary"), path)
     options <- optionRows(value, path)
     minOptions <- int(value, "minOptions", path)
     maxOptions <- int(value, "maxOptions", path)
     heading <- optionalString(value, "heading", path)
+    tallies <- default(value, "tallies", path,
+      Vector.empty[DecisionTallyProjection])((raw, child) =>
+        array(raw, child).flatMap(traverse(_, child)(decodeTally)))
+    summary <- optionalAbsent(value, "summary", path)(decodeSummary)
   yield DecisionQueryProjection.ChooseMany(options, minOptions, maxOptions,
-    heading)
+    heading, tallies, summary)
+
+  private def encodeTally(tally: DecisionTallyProjection): ujson.Value =
+    ujson.Obj("label" -> tally.label, "unit" -> tally.unit,
+      "values" -> encoded(tally.values)(value => ujson.Obj(
+        "kind" -> value.kind, "id" -> value.id, "value" -> value.value)),
+      "limit" -> intOption(tally.limit))
+
+  private def decodeTally(raw: ujson.Value, path: String)
+      : Result[DecisionTallyProjection] = for
+    value <- obj(raw, path)
+    _ <- exact(value, Set("label", "unit", "values", "limit"), path)
+    label <- string(value, "label", path)
+    unit <- string(value, "unit", path)
+    rows <- array(value, "values", path)
+    values <- traverse(rows, s"$path.values")((row, child) => for
+      entry <- obj(row, child)
+      _ <- exact(entry, Set("kind", "id", "value"), child)
+      kind <- string(entry, "kind", child)
+      id <- string(entry, "id", child)
+      amount <- int(entry, "value", child)
+    yield DecisionTallyValueProjection(kind, id, amount))
+    limit <- optionalInt(value, "limit", path)
+  yield DecisionTallyProjection(label, unit, values, limit)
+
+  private def encodeSummary(summary: DecisionSummaryProjection): ujson.Value =
+    ujson.Obj("verb" -> summary.verb, "one" -> summary.one,
+      "many" -> summary.many)
+
+  private def decodeSummary(raw: ujson.Value, path: String)
+      : Result[DecisionSummaryProjection] = for
+    value <- obj(raw, path)
+    _ <- exact(value, Set("verb", "one", "many"), path)
+    verb <- string(value, "verb", path)
+    one <- string(value, "one", path)
+    many <- string(value, "many", path)
+  yield DecisionSummaryProjection(verb, one, many)
 
   private def decodeChooseAmount(value: ujson.Obj, path: String)
       : Result[DecisionQueryProjection] = for
@@ -320,18 +364,23 @@ private[projection] object ActionProjectionCodec:
     ujson.Obj("kind" -> row.kind, "id" -> row.id, "label" -> row.label,
       "card" -> option(row.card)(encodeCard),
       "details" -> encoded(row.details)(ujson.Str(_)),
-      "badge" -> stringOption(row.badge))
+      "badge" -> stringOption(row.badge), "state" -> row.state,
+      "reason" -> stringOption(row.reason))
 
   private[projection] def decodeOptionRow(raw: ujson.Value, child: String)
       : Result[DecisionOptionProjection] = for
     row <- obj(raw, child)
-    _ <- exact(row, Set("kind", "id", "label", "card", "details", "badge"), child)
+    _ <- exact(row, Set("kind", "id", "label", "card", "details", "badge",
+      "state", "reason"), child)
     kind <- string(row, "kind", child); id <- string(row, "id", child)
     label <- string(row, "label", child)
     card <- optionalAbsent(row, "card", child)(decodeCard)
     details <- stringsOrEmpty(row, "details", child)
     badge <- optionalString(row, "badge", child)
-  yield DecisionOptionProjection(kind, id, label, card, details, badge)
+    state <- default(row, "state", child, "available")(string)
+    reason <- optionalAbsent(row, "reason", child)(string)
+  yield DecisionOptionProjection(kind, id, label, card, details, badge, state,
+    reason)
 
   def encodePhasePower(value: PhasePowerProjection): ujson.Value = ujson.Obj(
     "powerId" -> value.powerId, "source" -> encodeOptionRow(value.source),

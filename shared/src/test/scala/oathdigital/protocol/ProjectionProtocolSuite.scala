@@ -214,6 +214,38 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       assertRoundTrips(carrying)
     }
 
+  test("a board decision's states, reasons, tallies, summary and " +
+      "presentation round-trip"):
+    val origin = DecisionOptionProjection("site", "plains", "Plains",
+      state = "locked")
+    val longbows = DecisionOptionProjection("denizen", "longbows", "Longbows")
+    val wolves = DecisionOptionProjection("site", "wolves", "Wolves",
+      state = "unavailable", reason = Some("Not ruled by the defender"))
+    val many = DecisionQueryProjection.ChooseMany(
+      Vector(origin, longbows, wolves), 0, 1, Some("Targets"),
+      tallies = Vector(DecisionTallyProjection("Defending force", "warbands",
+        Vector(DecisionTallyValueProjection("site", "plains", 2)), Some(4))),
+      summary = Some(DecisionSummaryProjection("Target", "site", "sites")))
+    assertRoundTrips(projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(many),
+        presentation = "board"))))
+
+  test("a decision encoded before board decisions decodes with the old " +
+      "defaults"):
+    val many = DecisionQueryProjection.ChooseMany(
+      Vector(DecisionOptionProjection("site", "plains", "Plains")), 0, 1)
+    val carrying = projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(many))))
+    val json = ujson.read(GameProjectionCodec.encode(carrying))
+    val decision = json("walkerDecision")
+    decision.obj.remove("presentation")
+    decision("query").obj.remove("tallies")
+    decision("query").obj.remove("summary")
+    decision("query")("options").arr.foreach { row =>
+      row.obj.remove("state"); row.obj.remove("reason") }
+    assertEquals(GameProjectionCodec.decode(ujson.write(json)),
+      Right(carrying))
+
   test("a distribute query round-trips its slots, suggestions and total"):
     def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
     val distribute = DecisionQueryProjection.Distribute(

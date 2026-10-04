@@ -12,7 +12,9 @@ import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
 import oathdigital.protocol.projection.{DecisionQueryProjection,
-  WalkerDecisionProjection, WalkerWaitingProjection}
+  DecisionSummaryProjection, DecisionTallyProjection,
+  DecisionTallyValueProjection, WalkerDecisionProjection,
+  WalkerWaitingProjection}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Batch-1 Task 3, ruling R18 (P4), second consulting call site.
@@ -647,3 +649,63 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(outcome.map(_.score), Some(3))
     assertEquals(outcome.flatMap(_.target), None)
     assertEquals(outcome.map(_.detail), Some(Vector("1 skull loss")))
+
+  private def siteRef(name: String): DecisionOptionRef.Site =
+    DecisionOptionRef.Site(CatalogNames.site(name))
+
+  test("an unavailable option projects its state and written reason"):
+    val context = parked(ActionRef.Recover)
+    val tree = Sequence(Decide("test.decide", p1, DecisionQuery.ChooseOne(
+      Vector(DecisionOption.Site(siteRef("Dunes")), DecisionOption.Unavailable(
+        DecisionOption.Site(siteRef("Broken Peaks")),
+        OptionReason.Written("Not ruled by the defender"))))))
+    val options = projectorFor(tree).project(context).flatMap(_.query)
+      .map(_.offeredOptions).getOrElse(fail("expected a projected query"))
+    assertEquals(options.map(o => (o.state, o.reason)), Vector(
+      ("available", None),
+      ("unavailable", Some("Not ruled by the defender"))))
+
+  test("a choose-many projects its locked options, tallies and summary"):
+    val context = parked(ActionRef.Recover)
+    val origin = siteRef("Dunes")
+    val extra = siteRef("Broken Peaks")
+    val tree = Sequence(Decide("test.decide", p1, DecisionQuery.ChooseMany(0,
+      1, Vector(DecisionOption.Site(extra)), Some("Targets"),
+      locked = Vector(DecisionOption.Site(origin)),
+      tallies = Vector(DecisionTally("Defending force", "warbands",
+        Map(origin -> 2, extra -> 1))),
+      summary = Some(DecisionSummary("Target", "site", "sites")))))
+    projectorFor(tree).project(context).flatMap(_.query) match
+      case Some(many: DecisionQueryProjection.ChooseMany) =>
+        assertEquals(many.options.map(o => (o.id, o.state)), Vector(
+          (origin.wireId, "locked"), (extra.wireId, "available")))
+        assertEquals(many.tallies, Vector(DecisionTallyProjection(
+          "Defending force", "warbands", Vector(
+            DecisionTallyValueProjection("site", extra.wireId, 1),
+            DecisionTallyValueProjection("site", origin.wireId, 2))
+            .sortBy(v => (v.kind, v.id)))))
+        assertEquals(many.summary,
+          Some(DecisionSummaryProjection("Target", "site", "sites")))
+      case other => fail(s"expected a choose-many, got $other")
+
+  test("a decide park projects where it is answered"):
+    val context = parked(ActionRef.Recover)
+    val board = Sequence(Decide("test.decide", p1, DecisionQuery.ChooseOne(
+      Vector(DecisionOption.Site(siteRef("Dunes"))))))
+    val panel = Sequence(Decide("test.decide", p1, DecisionQuery.ChooseOne(
+      Vector(DecisionOption.Site(siteRef("Dunes")))),
+      presentation = DecisionPresentation.Panel))
+    assertEquals(projectorFor(board).project(context).map(_.presentation),
+      Some("board"))
+    assertEquals(projectorFor(panel).project(context).map(_.presentation),
+      Some("panel"))
+
+  test("an unavailable option that cannot be presented is dropped, not fatal"):
+    val context = parked(ActionRef.Recover)
+    val absent = DecisionOptionRef.Relic(RelicId("relic:not-on-this-board"))
+    val tree = Sequence(Decide("test.decide", p1, DecisionQuery.ChooseOne(
+      Vector(DecisionOption.Site(siteRef("Dunes")), DecisionOption.Unavailable(
+        DecisionOption.Relic(absent), OptionReason.Written("No"))))))
+    assertEquals(projectorFor(tree).project(context).flatMap(_.query)
+      .map(_.offeredOptions.map(_.id)),
+      Some(Vector(siteRef("Dunes").wireId)))
