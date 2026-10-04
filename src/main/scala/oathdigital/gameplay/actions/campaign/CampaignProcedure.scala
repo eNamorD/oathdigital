@@ -12,7 +12,9 @@ import oathdigital.model._
   * defeated warbands, resolve the victory.
   *
   * Each early decision is built when reached from live state that nothing
-  * before it has changed, plus the answers. After the losses run, every later
+  * before it has changed, plus the answers. Gathering the pools pins the kind
+  * and the defender (`CampaignSetup.pin`), because the battle plans that
+  * follow may change who rules the targets. After the losses run, every later
   * step reads the durable `CampaignResult` and the answers instead, because
   * the losses change the board.
   */
@@ -58,7 +60,8 @@ object CampaignProcedure:
       targetsStep(actor)), Some(PowerWindow.CampaignBeforeTargets)),
     forceStep(state, actor),
     Sequence(Vector[Operation](BuildOps((ready, pending) =>
-      withSetup(ready, actor, pending)(CampaignBattle.gatherPools(catalog, _)))),
+      withSetup(ready, actor, pending)(setup => CampaignSetup.pin(setup) +:
+        CampaignBattle.gatherPools(catalog, setup)))),
       Some(PowerWindow.CampaignGatherPools)),
     CampaignPlanSteps.attacker(catalog, actor),
     CampaignPlanSteps.defender(catalog, actor),

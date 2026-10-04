@@ -57,3 +57,50 @@ class WrestlersSuite extends munit.FunSuite:
     val run = commit(rules(losingDice), b, 2)
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     assert(!run.ops.exists(_.isInstanceOf[Sacrifice]))
+
+  private val shield = CatalogNames.relic("Fearsome Shield")
+
+  /** `conquest`, with the rival's only warband at the origin, and Fearsome
+    * Shield (burn 2 secrets for 2 defense dice) as a second plan they can pay.
+    */
+  private def lastWarbandAtOriginAndShield: Board =
+    on(withRelicFor(conquest, conquest.rival, shield))(_
+      .warbandsAt(conquest.origin, conquest.rival, 1)
+      .secrets(conquest.rival, faceUp = 2))
+
+  /** The actor commits 2 warbands; the rival plays Wrestlers, emptying the
+    * origin, and then Fearsome Shield. */
+  private def wrestledThenShielded(b: Board): Run =
+    val wrestled = commit(rules(winningDice), b, 2)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
+    assertEquals(siteForces(wrestled.state, b), SiteForces.Empty)
+    // The next pass still offers the defender's other plan.
+    assert(wrestled.offers(b.actor, b.rival, CampaignIds.defenderPlan,
+      DecisionOptionRef.Relic(shield)))
+    val shielded = wrestled.pick(b.rival, CampaignIds.defenderPlan,
+      DecisionOptionRef.Relic(shield))
+    assert(shielded.since(wrestled)
+      .contains(ModifyDicePool(CampaignIds.defensePool, 2)))
+    shielded
+
+  test("sacrificing the last warband at the origin leaves the rival the " +
+      "defender for the later plans, the battle and the result"):
+    val b = lastWarbandAtOriginAndShield
+    val result = wrestledThenShielded(b).finishPlanWindows.result
+    assertEquals(result.defender, CampaignDefender.Player(b.rival))
+    assertEquals(result.targetSites, Vector(b.origin))
+    // Two swords against blank defense dice and no warband left to add.
+    assertEquals((result.attackScore, result.defenseScore), (2, 0))
+    assert(result.attackerWins)
+
+  test("an attacker who wins conquers the origin Wrestlers emptied"):
+    val b = lastWarbandAtOriginAndShield
+    val shielded = wrestledThenShielded(b)
+    val placing = shielded.finishDefenderPlans(b.rival)
+      .declineSacrifice(b.actor)
+    assert(awaits(placing, b.actor, CampaignIds.placement))
+    val placed = placing.answer(b.actor, CampaignIds.placement,
+      DecisionAnswer.ChooseAmountAnswer(2))
+    assertEquals(placed.winner, Some(true))
+    assertEquals(siteForces(placed.state, b),
+      SiteForces.Occupied(ForceKind.Exile(b.player(b.actor).lineage), 2))

@@ -4,7 +4,7 @@ import oathdigital.gameplay.CampaignFixture.{Board, actorRules, board, on,
   rivalRulesOriginAndHoldsOathkeeper, rules, withAdviser, withEnemyAtOrigin,
   withRelic, withRelicFor, withSecrets, withSiteCard}
 import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds,
-  CampaignProcedure}
+  CampaignProcedure, CampaignSetup}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
@@ -142,7 +142,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assert(!CampaignProcedure.startable(catalog, b.ready, b.actor,
       WalkerPowers.empty))
 
-  test("committing force gathers the attack pool and the printed defense pool"):
+  test("committing force pins the kind and defender and gathers the attack " +
+      "pool and the printed defense pool"):
     val b = board(warbands = 5, supply = 7)
     val started = accepted(start(b))
     val done = accepted(answer(started.state, b.actor, CampaignIds.force,
@@ -152,8 +153,11 @@ class CampaignProcedureSuite extends munit.FunSuite:
       case pool: ModifyDicePool => pool }
     val defense = Option.when(printed > 0)(
       ModifyDicePool(CampaignIds.defensePool, printed))
-    assertEquals(gathered,
-      Vector(ModifyDicePool(CampaignIds.attackPool, 3)) ++ defense)
+    assertEquals(gathered, Vector(
+      ModifyDicePool(PoolKey("campaign.setup.conquest.bandits"), 1),
+      ModifyDicePool(CampaignIds.attackPool, 3)) ++ defense)
+    assertEquals(CampaignSetup.pinned(ready(done.state)),
+      Some(CampaignKind.Conquest -> CampaignDefender.Bandits))
     // The rolls are automatic, so the walk goes on to the sacrifice.
     parked.assertParked(done.state, ActionRef.Campaign, CampaignIds.sacrifice,
       b.actor)

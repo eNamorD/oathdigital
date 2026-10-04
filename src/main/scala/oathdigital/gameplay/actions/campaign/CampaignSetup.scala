@@ -110,24 +110,66 @@ object CampaignSetup:
         }
       case _ => Vector.empty
 
-  /** The chosen kind: the answer, or the only legal kind when the decision was
-    * omitted.
+  /** The chosen kind: the pinned kind once the pools are gathered; before
+    * that, the answer, or the only legal kind when the decision was omitted.
     */
   def kindOf(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
-      : Option[CampaignKind] =
+      : Option[CampaignKind] = pinned(ready).map(_._1).orElse(
     CampaignAnswers.kind(pending).orElse(legalKinds(ready, actor) match {
       case Vector(only) => Some(only)
       case _ => None
+    }))
+
+  /** The defender: the pinned one once the pools are gathered; before that,
+    * the ruler of the origin (Conquest) or the pawn answered or alone there
+    * (Raid).
+    */
+  def defenderOf(ready: ReadyGame, actor: PlayerId, pending: PendingTree,
+      kind: CampaignKind): Option[CampaignDefender] =
+    pinned(ready).map(_._2).orElse(kind match {
+      case CampaignKind.Conquest => conquestDefender(ready, actor)
+      case CampaignKind.Raid => CampaignAnswers.raidDefender(pending)
+        .orElse(raidDefenders(ready, actor) match {
+          case Vector(only) => Some(only)
+          case _ => None
+        }).map(CampaignDefender.Player(_))
     })
 
-  def defenderOf(ready: ReadyGame, actor: PlayerId, pending: PendingTree,
-      kind: CampaignKind): Option[CampaignDefender] = kind match
-    case CampaignKind.Conquest => conquestDefender(ready, actor)
-    case CampaignKind.Raid => CampaignAnswers.raidDefender(pending)
-      .orElse(raidDefenders(ready, actor) match {
-        case Vector(only) => Some(only)
-        case _ => None
-      }).map(CampaignDefender.Player(_))
+  /** The pool that pins the kind and the defender, written when the pools are
+    * gathered, before any battle plan. The live board names them only until
+    * then: a plan can change it, as Wrestlers empties the origin by
+    * sacrificing its last warband, and the Campaign still goes on against the
+    * defender it was declared against. The pool is never rolled, and it is
+    * cleared with the others when the Campaign ends.
+    */
+  def pin(setup: CampaignSetup): ModifyDicePool =
+    val kind = setup.kind match
+      case CampaignKind.Conquest => "conquest"
+      case CampaignKind.Raid => "raid"
+    val defender = setup.defender match
+      case CampaignDefender.Bandits => "bandits"
+      case CampaignDefender.Player(player) => s"player.${player.value}"
+    ModifyDicePool(PoolKey(s"$PinPrefix$kind.$defender"), 1)
+
+  /** The kind and defender `pin` recorded, or `None` before the pools are
+    * gathered. A player id may hold dots, so it is the rest of the key.
+    */
+  def pinned(ready: ReadyGame): Option[(CampaignKind, CampaignDefender)] =
+    ready.game.current.rollPools.keys.map(_.value)
+      .filter(_.startsWith(PinPrefix)).flatMap(key =>
+        key.stripPrefix(PinPrefix).split("\\.", 3).toList match
+          case kind :: "bandits" :: Nil => kindNamed(kind)
+            .map(_ -> (CampaignDefender.Bandits: CampaignDefender))
+          case kind :: "player" :: player :: Nil => kindNamed(kind)
+            .map(_ -> (CampaignDefender.Player(PlayerId(player)): CampaignDefender))
+          case _ => None).headOption
+
+  private val PinPrefix = "campaign.setup."
+
+  private def kindNamed(name: String): Option[CampaignKind] = name match
+    case "conquest" => Some(CampaignKind.Conquest)
+    case "raid" => Some(CampaignKind.Raid)
+    case _ => None
 
   /** The complete setup, once the force is answered. */
   def setup(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
