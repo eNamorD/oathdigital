@@ -31,7 +31,8 @@ private[frontend] object WalkerSelectionPanels:
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
     panel.appendChild(text("p", "walker-many-instruction",
       if query.minOptions == query.maxOptions then s"Choose ${query.minOptions}."
-      else if query.minOptions == 0 && query.maxOptions >= query.options.size then
+      else if query.minOptions == 0 && query.maxOptions >=
+        query.options.count(_.state == "available") then
         "Choose any number."
       else if query.minOptions == 0 then s"Choose up to ${query.maxOptions}."
       else s"Choose ${query.minOptions} to ${query.maxOptions}."))
@@ -46,13 +47,13 @@ private[frontend] object WalkerSelectionPanels:
       toggle.setAttribute("data-option-id", item)
       toggle.setAttribute("aria-pressed", draft.selected.contains(item).toString)
       toggle.disabled = !canControl
+      toggle.onclick = _ => controls.stage(Draft.Selection(draft.toggle(item)))
+      rows.appendChild(toggle)
       option.state match
         case "locked" =>
           toggle.setAttribute("aria-pressed", "true")
           toggle.disabled = true
         case _ => WalkerPanelSupport.withholds(toggle, option, rows)
-      toggle.onclick = _ => controls.stage(Draft.Selection(draft.toggle(item)))
-      rows.appendChild(toggle)
     }
     panel.appendChild(rows)
     // A choose-many declares no confirm label, so the old

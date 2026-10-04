@@ -240,6 +240,9 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     val blocked = button(panel, """[data-option-id="site:c"]""")
     assert(blocked.disabled)
     assertEquals(blocked.getAttribute("title"), "Not ruled by the defender")
+    // The reason is printed right after the control it explains.
+    assertEquals(blocked.nextElementSibling.textContent,
+      "Not ruled by the defender")
     assertEquals(draft.collect { case d: WalkerChooseManyDraft => d }
       .map(_.toggle("site:c").selected), Some(Vector.empty))
     assertEquals(draft.collect { case d: WalkerChooseManyDraft => d }

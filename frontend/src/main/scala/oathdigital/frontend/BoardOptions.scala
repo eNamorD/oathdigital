@@ -132,7 +132,8 @@ private[frontend] object BoardOptions:
       highlight(key, on = false))
 
   def highlight(key: String, on: Boolean): Unit =
-    dom.document.querySelectorAll(s"""[data-option-ref="$key"]""").toVector
-      .map(_.asInstanceOf[dom.Element]).foreach(node =>
+    dom.document.querySelectorAll("[data-option-ref]").toVector
+      .map(_.asInstanceOf[dom.Element])
+      .filter(_.getAttribute("data-option-ref") == key).foreach(node =>
         if on then node.classList.add("board-option-hover")
         else node.classList.remove("board-option-hover"))
