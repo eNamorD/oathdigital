@@ -157,3 +157,19 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       Vector("img"))
     assertEquals(panel.firstElementChild.getAttribute("class"),
       "walker-roll-faces")
+
+  test("an unavailable option is a disabled control that says why"):
+    val ui = new RecordingControls()
+    val blocked = pub.copy(state = "unavailable",
+      reason = Some("Lost Tongue: Red may not be targeted."))
+    val panel = draw(parked.copy(query = Some(query.copy(
+      options = Vector(oak, blocked)))), ui)
+    val control = all(panel, ".walker-choice").last
+      .asInstanceOf[dom.html.Button]
+    assert(control.disabled)
+    assertEquals(control.getAttribute("title"),
+      "Lost Tongue: Red may not be targeted.")
+    assertEquals(all(panel, ".walker-choice-reason").map(_.textContent),
+      Vector("Lost Tongue: Red may not be targeted."))
+    control.click()
+    assertEquals(ui.submitted, Vector.empty)

@@ -46,6 +46,11 @@ private[frontend] object WalkerSelectionPanels:
       toggle.setAttribute("data-option-id", item)
       toggle.setAttribute("aria-pressed", draft.selected.contains(item).toString)
       toggle.disabled = !canControl
+      option.state match
+        case "locked" =>
+          toggle.setAttribute("aria-pressed", "true")
+          toggle.disabled = true
+        case _ => WalkerPanelSupport.withholds(toggle, option, rows)
       toggle.onclick = _ => controls.stage(Draft.Selection(draft.toggle(item)))
       rows.appendChild(toggle)
     }

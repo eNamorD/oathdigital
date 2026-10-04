@@ -225,3 +225,22 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker(id,
       DecisionAnswerWire.ChooseManyWire(
         chosen.map(DecisionOptionWire("favor-bank", _))))))
+
+  test("a locked option shows pressed and an unavailable one cannot be toggled"):
+    val ui = new RecordingControls()
+    val shown = many.copy(options = Vector(site("a").copy(state = "locked"),
+      site("b"), site("c").copy(state = "unavailable",
+        reason = Some("Not ruled by the defender"))), minOptions = 0,
+      maxOptions = 1)
+    val draft = opened("campaign.targets", shown)
+    val panel = render(ui, draft, "campaign.targets", shown)
+    val locked = button(panel, """[data-option-id="site:a"]""")
+    assertEquals(locked.getAttribute("aria-pressed"), "true")
+    assert(locked.disabled)
+    val blocked = button(panel, """[data-option-id="site:c"]""")
+    assert(blocked.disabled)
+    assertEquals(blocked.getAttribute("title"), "Not ruled by the defender")
+    assertEquals(draft.collect { case d: WalkerChooseManyDraft => d }
+      .map(_.toggle("site:c").selected), Some(Vector.empty))
+    assertEquals(draft.collect { case d: WalkerChooseManyDraft => d }
+      .map(_.toggle("site:a").selected), Some(Vector.empty))
