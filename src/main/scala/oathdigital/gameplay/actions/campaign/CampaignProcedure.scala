@@ -57,7 +57,7 @@ object CampaignProcedure:
     Sequence(Vector[Operation](SpendSupply(actor, CampaignIds.SupplyCost)),
       Some(PowerWindow.CampaignCost)),
     Sequence(Vector[Operation](kindStep(actor), defenderStep(actor),
-      targetsStep(actor)), Some(PowerWindow.CampaignBeforeTargets)),
+      targetsStep(catalog, actor)), Some(PowerWindow.CampaignBeforeTargets)),
     forceStep(state, actor),
     Sequence(Vector[Operation](BuildOps((ready, pending) =>
       withSetup(ready, actor, pending)(setup => CampaignSetup.pin(setup) +:
@@ -152,20 +152,33 @@ object CampaignProcedure:
         window = Some(PowerWindow.CampaignDefenderSelection)))
     })
 
-  /** The optional additions to the mandatory target. */
-  private def targetsStep(actor: PlayerId): Operation = Branch((ready, pending) =>
+  /** The optional additions to the mandatory target, which is shown locked,
+    * with the two sums a player weighs and why every other target is not on
+    * offer.
+    */
+  private def targetsStep(catalog: ExecutableCatalog, actor: PlayerId)
+      : Operation = Branch((ready, pending) =>
     (for
       kind <- CampaignSetup.kindOf(ready, actor, pending)
       defender <- CampaignSetup.defenderOf(ready, actor, pending, kind)
+      origin <- CampaignSetup.originOf(ready, actor)
       options = CampaignSetup.targetOptions(ready, actor, kind, defender)
       if options.nonEmpty
-    yield Vector[Operation](Decide(CampaignIds.targets, actor,
-      DecisionQuery.ChooseMany(0, options.size, options, heading = Some(kind match {
-        case CampaignKind.Conquest =>
-          "Also target these sites ruled by the same defender"
-        case CampaignKind.Raid =>
-          "Also target the defender's faceup relics and banners"
-      })), window = Some(PowerWindow.CampaignTargetSelection))))
+    yield
+      val locked = CampaignTargets.lockedOf(kind, origin, defender).toVector
+      Vector[Operation](Decide(CampaignIds.targets, actor,
+        DecisionQuery.ChooseMany(0, options.size, options ++
+          CampaignTargets.withheld(ready, actor, kind, origin, defender,
+            options), heading = Some(kind match {
+            case CampaignKind.Conquest =>
+              "Also target these sites ruled by the same defender"
+            case CampaignKind.Raid =>
+              "Also target the defender's faceup relics and banners"
+          }), locked = locked,
+          tallies = CampaignTargets.tallies(catalog, ready,
+            (locked ++ options).map(_.ref)),
+          summary = Some(CampaignTargets.summary(kind))),
+        window = Some(PowerWindow.CampaignTargetSelection))))
       .getOrElse(Vector.empty))
 
   /** Always asked, even for zero: a Campaign with no force is legal, and the

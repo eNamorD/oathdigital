@@ -9,15 +9,29 @@ object CampaignBattle:
     * pawn (2), each targeted relic's printed defense and each banner (3).
     */
   def printedDefense(catalog: ExecutableCatalog, setup: CampaignSetup): Int =
+    targetRefs(setup).map(defenseOf(catalog, _)).sum
+
+  /** The printed defense one target adds; the targets question tallies the
+    * same numbers.
+    */
+  def defenseOf(catalog: ExecutableCatalog, target: DecisionOptionRef): Int =
+    target match
+      case DecisionOptionRef.Site(site) => catalog.site(site).fold(0)(_.defense)
+      case _: DecisionOptionRef.Player => 2
+      case DecisionOptionRef.Relic(relic) => catalog.relics
+        .find(_.id.value == relic.value).fold(0)(_.defense)
+      case _: DecisionOptionRef.Banner => 3
+      case _ => 0
+
+  /** The targets of `setup`, as the options that name them. */
+  def targetRefs(setup: CampaignSetup): Vector[DecisionOptionRef] =
     setup.kind match
-      case CampaignKind.Conquest => setup.targetSites
-        .flatMap(site => catalog.site(site)).map(_.defense).sum
-      case CampaignKind.Raid => setup.raidTargets.map {
-        case _: CampaignRaidTarget.Pawn => 2
-        case CampaignRaidTarget.Relic(_, relic) => catalog.relics
-          .find(_.id.value == relic.value).map(_.defense).getOrElse(0)
-        case _: CampaignRaidTarget.Banner => 3
-      }.sum
+      case CampaignKind.Conquest => setup.targetSites.map(DecisionOptionRef.Site(_))
+      case CampaignKind.Raid => setup.raidTargets.map:
+        case CampaignRaidTarget.Pawn(player) => DecisionOptionRef.Player(player)
+        case CampaignRaidTarget.Relic(_, relic) => DecisionOptionRef.Relic(relic)
+        case CampaignRaidTarget.Banner(_, banner) =>
+          DecisionOptionRef.Banner(banner)
 
   /** Both pools, gathered once the force is known. A pool of zero is not
     * created: an empty pool is never rolled.
@@ -65,17 +79,27 @@ object CampaignBattle:
     * Raid defender's board.
     */
   def defenderForce(ready: ReadyGame, setup: CampaignSetup): Int =
-    val current = ready.game.current
     setup.kind match
-      case CampaignKind.Conquest => setup.targetSites.flatMap(current.map.sites.get)
-        .map(_.forces match {
-          case SiteForces.Occupied(_, count) => count
-          case SiteForces.Empty => 0
-        }).sum
+      case CampaignKind.Conquest => setup.targetSites
+        .map(site => forceOf(ready, DecisionOptionRef.Site(site))).sum
       case CampaignKind.Raid => setup.defender match
-        case CampaignDefender.Player(player) => current.players
-          .find(_.player == player).fold(0)(_.board.warbands)
+        case CampaignDefender.Player(player) =>
+          forceOf(ready, DecisionOptionRef.Player(player))
         case CampaignDefender.Bandits => 0
+
+  /** The warbands one target brings to the defense: those at a site, or a
+    * Raid defender's board for their pawn. A relic or a banner brings none.
+    */
+  def forceOf(ready: ReadyGame, target: DecisionOptionRef): Int =
+    val current = ready.game.current
+    target match
+      case DecisionOptionRef.Site(site) => current.map.sites.get(site)
+        .fold(0)(_.forces match
+          case SiteForces.Occupied(_, count) => count
+          case SiteForces.Empty => 0)
+      case DecisionOptionRef.Player(player) => current.players
+        .find(_.player == player).fold(0)(_.board.warbands)
+      case _ => 0
 
   /** The defense is the dice score plus the defender's force. It is written
     * here, before any warband dies, so the victor never reads the board.

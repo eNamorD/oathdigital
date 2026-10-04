@@ -14,7 +14,7 @@ import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
   PhasePowerHarness, Table}
-import oathdigital.testkit.Unwrap.{accepted, present}
+import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** Campaign through the rules, as a client drives it. */
 class CampaignProcedureSuite extends munit.FunSuite:
@@ -86,10 +86,11 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val started = accepted(start(b))
     parked.assertParked(started.state, ActionRef.Campaign, CampaignIds.targets,
       b.actor)
-    assertEquals(parkedDecision(b, started).query,
-      DecisionQuery.ChooseMany(0, 2,
-        b.extras.map(site => DecisionOption.Site(DecisionOptionRef.Site(site))),
-        Some("Also target these sites ruled by the same defender")))
+    val query = as[DecisionQuery.ChooseMany](parkedDecision(b, started).query)
+    assertEquals(query.options.filter(_.available),
+      b.extras.map(site => DecisionOption.Site(DecisionOptionRef.Site(site))))
+    assertEquals((query.min, query.max, query.heading), (0, 2,
+      Some("Also target these sites ruled by the same defender")))
     val chosen = accepted(answer(started.state, b.actor, CampaignIds.targets,
       ChooseManyAnswer(Vector(DecisionOptionRef.Site(b.extras.last)))))
     parked.assertParked(chosen.state, ActionRef.Campaign, CampaignIds.force,
@@ -511,3 +512,70 @@ class CampaignProcedureSuite extends munit.FunSuite:
       case event: OathEvent.BanditsRefilled => event }.get
     assert(game.evolve(sacrificed.state, refill.copy(sites =
       Vector(b.origin -> 99))).isLeft)
+
+  test("a Conquest's targets lock the origin and tally its defense and force"):
+    val b = board(extras = 1, warbands = 5, supply = 7)
+    val query = as[DecisionQuery.ChooseMany](
+      parkedDecision(b, accepted(start(b))).query)
+    val origin = DecisionOptionRef.Site(b.origin)
+    val extra = DecisionOptionRef.Site(b.extras.head)
+    def printed(site: SiteId) = catalog.site(site).fold(0)(_.defense)
+    assertEquals(query.locked, Vector(DecisionOption.Site(origin)))
+    assertEquals(query.summary, Some(DecisionSummary("Target", "site",
+      "sites")))
+    // Two bandits stand at each ruled site.
+    assertEquals(query.tallies, Vector(
+      DecisionTally("Defense dice (before plans and powers)", "defense",
+        Map(origin -> printed(b.origin), extra -> printed(b.extras.head))),
+      DecisionTally("Defending force", "warbands",
+        Map(origin -> 2, extra -> 2))))
+
+  test("a Conquest shows every other site as not on offer, and why"):
+    val base = board(extras = 1, warbands = 5, supply = 7)
+    val inPlay = base.ready.game.current.map.inPlay
+    val mine = inPlay.find(site => site != base.origin &&
+      !base.extras.contains(site)).get
+    val b = on(base)(_.warbandsAt(mine, base.actor, 1))
+    val query = as[DecisionQuery.ChooseMany](
+      parkedDecision(b, accepted(start(b))).query)
+    val reasons = query.options.collect {
+      case DecisionOption.Unavailable(DecisionOption.Site(ref),
+          OptionReason.Written(text)) => ref.id -> text }.toMap
+    assertEquals(reasons.keySet,
+      inPlay.filterNot(site => site == b.origin || b.extras.contains(site))
+        .toSet)
+    assertEquals(reasons(mine), "You rule this site")
+    assert(reasons.removed(mine).values.forall(_ == "Not ruled by the defender"))
+
+  test("a Raid locks the defender's pawn, and shows what it may not take"):
+    val shared = withEnemyAtOrigin(board(warbands = 5, supply = 7))
+    val cauldron = CatalogNames.relic("Cursed Cauldron")
+    val sticks = CatalogNames.relic("Dowsing Sticks")
+    // The rival holds Cursed Cauldron faceup and three warbands; the
+    // bystander holds Dowsing Sticks faceup; the actor holds the Darkest
+    // Secret.
+    val b = on(shared)(_.relic(shared.rival, cauldron)
+      .relic(shared.bystander, sticks).boardWarbands(shared.rival, 3)
+      .darkestSecret(Some(shared.actor), secrets = 1))
+    val started = accepted(start(b))
+    val raid = accepted(answer(started.state, b.actor, CampaignIds.kind,
+      button("raid")))
+    val query = as[DecisionQuery.ChooseMany](parkedDecision(b, raid).query)
+    val pawn = DecisionOptionRef.Player(b.rival)
+    val relic = DecisionOptionRef.Relic(cauldron)
+    assertEquals(query.locked, Vector(DecisionOption.Player(pawn)))
+    assertEquals(query.options.filter(_.available),
+      Vector(DecisionOption.Relic(relic)))
+    assertEquals(query.summary, Some(DecisionSummary("Raid", "target",
+      "targets")))
+    assertEquals(query.tallies.map(_.perOption), Vector(
+      Map(pawn -> 2, relic -> catalog.relics.find(_.id.value == cauldron.value)
+        .fold(0)(_.defense)),
+      Map(pawn -> 3, relic -> 0)))
+    assertEquals(query.options.collect {
+      case DecisionOption.Unavailable(inner, OptionReason.Written(text)) =>
+        inner.ref -> text }, Vector(
+      DecisionOptionRef.Relic(sticks) -> "Not held by the defender",
+      DecisionOptionRef.Banner(Banner.PeoplesFavor) ->
+        "Not held by the defender",
+      DecisionOptionRef.Banner(Banner.DarkestSecret) -> "You hold this banner"))
