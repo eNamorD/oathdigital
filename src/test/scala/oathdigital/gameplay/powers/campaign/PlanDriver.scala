@@ -104,13 +104,22 @@ object PlanDriver:
         current.game.current.walkerPending.get,
         WalkerPowerCatalog.default(catalog)).head.query
 
-    /** The options the parked choice offers. */
+    /** The options the parked choice shows. */
     def options(actor: PlayerId): Vector[DecisionOption] = query(actor) match
       case DecisionQuery.ChooseOne(options, _) => options
       case _ => Vector.empty
 
+    /** The options the parked choice offers that may be chosen. */
     def offered(actor: PlayerId): Vector[DecisionOptionRef] =
-      options(actor).map(_.ref)
+      options(actor).filter(_.available).map(_.ref)
+
+    /** Why the parked choice shows `ref` without offering it. */
+    def withheld(actor: PlayerId, ref: DecisionOptionRef)
+        : Option[OptionReason] =
+      options(actor).collectFirst {
+        case shown: DecisionOption.Unavailable if shown.ref == ref =>
+          shown.reason
+      }
 
     /** Whether the run is parked on the plan decision `id`, awaiting `who`,
       * with `ref` among its options. `actor` is the Campaign's actor, which

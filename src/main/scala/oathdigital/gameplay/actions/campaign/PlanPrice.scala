@@ -33,3 +33,37 @@ private[campaign] object PlanPrice:
       operations: Vector[CoreOperation]): DecisionOption =
     val price = of(offer, operations)
     if price.isFree then option else DecisionOption.Priced(option, price)
+
+  /** Why a plan's dry run could not pay for it, as player text. The payment
+    * fails inside the operation pipeline, which reports only a code, so the
+    * shortfall is read off the user's board against what the plan prints. A
+    * surcharge a power adds is not printed on the plan; a payment that fails
+    * only for it reads as the general line.
+    */
+  def shortfall(ready: ReadyGame, user: PlayerId, offer: CampaignPlanOffer,
+      violation: OathViolation): String = violation match
+    case OathViolation.InsufficientFavor(required, available) =>
+      needs(required, "favor", available)
+    case OathViolation.InsufficientSecrets(required, available) =>
+      needs(required, secretWord(required), available)
+    case _ =>
+      val favor = offer.costs.collect {
+        case CampaignPlanCost.Favor(count) => count
+        case CampaignPlanCost.FavorBurnt(count) => count }.sum
+      val secrets = offer.costs.collect {
+        case CampaignPlanCost.Secret(count) => count
+        case CampaignPlanCost.SecretBurnt(count) => count }.sum
+      ready.game.current.players.find(_.player == user).map(_.board)
+        .flatMap(board =>
+          if board.favor < favor then
+            Some(needs(favor, "favor", board.favor))
+          else if board.faceUpSecrets < secrets then
+            Some(needs(secrets, secretWord(secrets), board.faceUpSecrets))
+          else None)
+        .getOrElse("Cannot be paid for now")
+
+  private def secretWord(count: Int): String =
+    if count == 1 then "secret" else "secrets"
+
+  private def needs(required: Int, what: String, available: Int): String =
+    s"Needs $required $what; you have $available"

@@ -74,3 +74,18 @@ class EncirclementSuite extends munit.FunSuite:
     // The title's defense keeps the window open, so this is a real re-offer.
     assert(awaits(sacrificed, b.rival, CampaignIds.defenderPlan))
     assert(!sacrificed.offers(b.actor, b.rival, CampaignIds.defenderPlan, ref))
+    assertEquals(sacrificed.withheld(b.actor, ref),
+      Some(OptionReason.Written("Your force must be larger than your enemy's")))
+
+  test("a plan its user cannot pay for is shown with what it needs"):
+    // The rival rules the origin with three warbands against two and holds
+    // the title, whose defense keeps the window asked, but has no favor.
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val b = on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
+      _.warbandsAt(base.origin, base.rival, 3).favor(base.rival, 0))
+    val run = commit(rules(winningDice), b, 2)
+    assert(awaits(run, b.rival, CampaignIds.defenderPlan))
+    assert(!run.offers(b.actor, b.rival, CampaignIds.defenderPlan, ref))
+    assertEquals(run.withheld(b.actor, ref),
+      Some(OptionReason.Written("Needs 1 favor; you have 0")))

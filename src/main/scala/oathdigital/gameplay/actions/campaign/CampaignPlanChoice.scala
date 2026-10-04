@@ -11,11 +11,11 @@ import oathdigital.model._
   *
   * What a pass walks:
   *
-  *  - A player asks a decision listing the plans still unchosen that the user
-  *    can pay for (a dry run of each plan says so, with every power's changes
-  *    to its cost, and prices the option from what it recorded), then "Finish".
-  *    Nothing usable means nothing is asked, the pass does nothing, and the
-  *    `Repeat` ends.
+  *  - A player asks a decision listing the plans still unchosen: those the
+  *    user can pay for (a dry run of each says so, with every power's changes
+  *    to its cost, and prices the option from what it recorded), the rest
+  *    shown unavailable with why, then "Finish". Nothing usable means nothing
+  *    is asked, the pass does nothing, and the `Repeat` ends.
   *  - The chosen plan is applied as a [[CampaignPlanApplication]].
   *  - A bandit defender applies every cost-free plan it is offered and can
   *    pay for, without asking.
@@ -52,7 +52,9 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
     */
   private def banditPlans(setup: CampaignSetup, offers: Vector[OfferedPlan],
       pass: OfferHost.Pass): Vector[Operation] = offers
-    .filter(_.offer.costs.isEmpty).map(applicationOf(setup, _))
+    .filter(offered => offered.offer.costs.isEmpty &&
+      offered.offer.withheld.isEmpty)
+    .map(applicationOf(setup, _))
     .filter(application => pass.applies(application).isRight)
 
   private def userPass(setup: CampaignSetup, user: PlayerId,
@@ -60,14 +62,23 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
       : Vector[Operation] =
     val decisionId = CampaignIds.planDecision(side)
     val chosen = CampaignAnswers.picks(pending, decisionId)
+    def unavailable(offered: OfferedPlan, reason: String): DecisionOption =
+      DecisionOption.Unavailable(CampaignPlans.optionOf(offered),
+        OptionReason.Written(reason))
     val listed = offers.filterNot(offered =>
       chosen.contains(CampaignPlans.refOf(offered.offer.source)))
-      .flatMap(offered => pass.applies(applicationOf(setup, offered)).toOption
-        .map(operations => PlanPrice.priced(CampaignPlans.optionOf(offered),
-          offered.offer, operations)))
-    if listed.isEmpty && !pass.resuming then Vector.empty
+      .map(offered => offered.offer.withheld match
+        case Some(reason) => unavailable(offered, reason)
+        case None => pass.applies(applicationOf(setup, offered)) match
+          case Right(operations) => PlanPrice.priced(
+            CampaignPlans.optionOf(offered), offered.offer, operations)
+          case Left(violation) =>
+            unavailable(offered, PlanPrice.shortfall(pass.state, user,
+              offered.offer, violation)))
+    val playable = listed.exists(_.available)
+    if !playable && !pass.resuming then Vector.empty
     else Vector[Operation](
-      Branch((_, _) => if listed.isEmpty then Vector.empty
+      Branch((_, _) => if !playable then Vector.empty
         else Vector(decision(decisionId, user, listed))),
       Branch((_, tree) => CampaignAnswers.lastPick(tree, decisionId) match {
         case None => Vector.empty

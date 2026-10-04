@@ -15,7 +15,8 @@ object EncirclementCard extends Denizen(DenizenId("124"), "Encirclement", Suit.O
   *
   * A favor is placed onto the card. An attacker adds two attack dice; a
   * defender removes two. It is offered only while its user's force is strictly
-  * larger than the enemy's. The attacker's force is the warbands committed:
+  * larger than the enemy's; otherwise it is shown withheld, with that rule as
+  * the reason. The attacker's force is the warbands committed:
   * dice from a plan such as Brass Army are not force. The defender's force is
   * what the defense adds (`CampaignBattle.defenderForce`): the warbands at
   * every target in a Conquest, bandits included, or the defender's board in a
@@ -28,16 +29,22 @@ case object Encirclement extends BattlePlan:
   val id: PowerId = EncirclementCard.power.id
   val Dice: Int = 2
 
+  /** Why the plan is shown but not offered. */
+  val SmallerForce: String = "Your force must be larger than your enemy's"
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
-    context.denizen(cardId).filter(_ => larger(context))
-      .map(source => CampaignPlanOffer(source,
+    context.denizen(cardId).map { source =>
+      val offer = CampaignPlanOffer(source,
         PlanDice.label("Encirclement", context.side, Encirclement.Dice),
         Vector(CampaignPlanCost.Favor(1)),
-        Vector(PlanDice.effect(context.side, Encirclement.Dice))))
+        Vector(PlanDice.effect(context.side, Encirclement.Dice)))
+      if larger(context) then offer
+      else offer.copy(withheld = Some(Encirclement.SmallerForce))
+    }
 
   /** Whether the user's force is strictly larger than the enemy's. */
   private def larger(context: PlanContext): Boolean =

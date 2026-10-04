@@ -104,10 +104,15 @@ object CampaignPlanSource:
   * declaration rather than written by each power: a power already says which
   * windows it offers at, and repeating that in every `plan` body is how the
   * two would drift.
+  *
+  * `withheld` is why the plan stands but cannot be used now, such as
+  * Encirclement's force rule: the plan window shows it unavailable with that
+  * reason, and no one applies it.
   */
 final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
     costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect],
-    sides: Set[CampaignPlanSide] = Set.empty)
+    sides: Set[CampaignPlanSide] = Set.empty,
+    withheld: Option[String] = None)
 
 /** An offer with the power that made it. */
 final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)
