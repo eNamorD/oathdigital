@@ -258,6 +258,43 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   background: #3b3123;
 }
 .board-target-control[aria-pressed="true"]::before { content: "✓ "; }
+/* Board decisions (spec 2026-10-03): an option drawn where it lies. Nothing
+   that is not an option changes, and only an unavailable option is dimmed. */
+.board-option { position: relative; cursor: pointer;
+  border-color: #d2a85e; box-shadow: inset 0 0 0 1px #d2a85e; }
+.board-option:hover, .board-option:focus-visible, .board-option-hover {
+  border-color: #fff2d6; box-shadow: 0 0 0 3px rgba(210, 168, 94, 0.35); }
+.board-option-selected, .board-option-locked {
+  border-color: #8ecbff; box-shadow: inset 0 0 0 2px #8ecbff;
+  background: #243442; }
+.board-option-locked { cursor: default; }
+.board-option-unavailable { opacity: 0.45; cursor: not-allowed;
+  box-shadow: none; }
+/* The badge sits inside the corner: card faces and site boxes clip what
+   overflows them. Small marks (a name, a pawn, a banner) carry the ring
+   alone. */
+.card-face.board-option-selected::before, .site.board-option-selected::before,
+.card-face.board-option-locked::before, .site.board-option-locked::before {
+  position: absolute; top: 3px; left: 3px; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #8ecbff; color: #17140f; font-size: 12px; font-weight: 800; }
+.card-face.board-option-selected::before,
+.site.board-option-selected::before { content: "✓"; }
+.card-face.board-option-locked::before,
+.site.board-option-locked::before { content: "🔒"; }
+/* A card and its inspect button share one box: a button may not hold a
+   button. The button sits over the card's bottom-right corner, where no
+   card content is drawn; the top-right holds defense dice and the pip. */
+.board-option-card { position: relative; display: inline-flex;
+  flex: 0 0 auto; }
+.board-option-inspect { position: absolute; right: 4px; bottom: 4px;
+  z-index: 1; width: 22px; height: 22px; padding: 0;
+  border: 1px solid #d2a85e; border-radius: 50%; background: #211d17;
+  color: #fff2d6; font: inherit; font-size: 12px; font-weight: 800;
+  line-height: 1; cursor: pointer; }
+.board-option-inspect:hover, .board-option-inspect:focus-visible {
+  outline: 2px solid #fff2d6; outline-offset: 1px; }
 /* Three cells so the name is centred on the box, not on what is left over
    after the tokens: equal side columns put it in the middle whether a site
    holds six favor or nothing at all. */
@@ -557,6 +594,42 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .walker-many-option[aria-pressed="true"] { border-color: #fff2d6;
   background: #3b3123; color: #fff2d6; font-weight: 700; }
 .walker-many-option[aria-pressed="true"]::before { content: "✓ "; }
+.board-decision-summary { margin: 0 0 8px; color: #fff2d6; font-weight: 700; }
+.board-decision-rows { margin: 0 0 6px; padding: 0; list-style: none; }
+.board-decision-row, .board-decision-total { display: flex;
+  justify-content: space-between; gap: 8px; margin: 0; padding: 3px 0;
+  border-bottom: 1px dotted #40382c; font-size: 13px; }
+.board-decision-row.board-option-hover { background: #243442; }
+.board-decision-row-values { color: #c4b89f; text-align: right; }
+.board-decision-total b { color: #fff2d6; }
+.board-decision-total-over b { color: #e27f79; }
+.board-decision-rule { margin: 12px 0 6px; border: 0;
+  border-top: 1px solid #40382c; }
+.board-decision-rule-labelled { display: flex; align-items: center; gap: 8px;
+  margin: 12px 0 6px; color: #d5bd8f; font-size: 12px;
+  letter-spacing: 0.06em; text-transform: uppercase; }
+.board-decision-rule-labelled::before, .board-decision-rule-labelled::after {
+  content: ""; flex: 1; border-top: 1px solid #40382c; }
+/* The pane paints every button with its Action face at one class of
+   specificity, and its hover rule at three; these carry the class twice so
+   a board decision's own faces hold. Decide, Clear and an option with no
+   place on the table keep the Action face and only take the full width. */
+.pane-actions .board-decision-decide, .pane-actions .board-decision-loose-option,
+.pane-actions .board-decision-clear { display: block; width: 100%;
+  margin: 6px 0; }
+.pane-actions .board-decision-loose-option[aria-pressed="true"],
+.pane-actions .board-decision-loose-option[aria-pressed="true"]:hover:not(:disabled) {
+  border-color: #8ecbff; background: #243442; }
+.pane-actions .board-decision-confirm,
+.pane-actions .board-decision-confirm:hover:not(:disabled) {
+  display: block; width: 100%; min-height: 44px; border: 0; border-radius: 7px;
+  background: #d2a85e; color: #17140f; font-size: 14px; font-weight: 800; }
+.pane-actions .board-decision-confirm:hover:not(:disabled) {
+  background: #f1c781; }
+.pane-actions .board-decision-confirm:disabled { background: #4a4232;
+  color: #a99f8c; opacity: 1; }
+.board-decision-reason, .walker-choice-reason { margin: 5px 0 0;
+  color: #f1c781; font-size: 12px; }
 /* The amount field and the list of amounts it allows (AmountCombobox). The
    field draws the border, so the input and the toggle inside it have none,
    and the list opens over whatever sits below. */
