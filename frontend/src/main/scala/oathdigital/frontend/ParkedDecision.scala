@@ -24,16 +24,13 @@ private[frontend] object ParkedDecision:
   /** The decision ids the route recognises by name. `kind` alone cannot
     * tell Recover's two decide parks apart (both are `"decide"`); only the
     * id does. The two Recover ids mirror `RecoverProcedure.choiceDecisionId`
-    * and `.relicDecisionId`, and the prefix mirrors
-    * `SetupProcedure.pawnDecisionId`'s (`setup.pawn-placement.<player>`), as
-    * plain strings: those objects live in the JVM-only application sources
+    * and `.relicDecisionId`, as plain strings: those objects live in the JVM-only application sources
     * the frontend cannot depend on, and a `decisionId` already rides the
     * wire as an uninterpreted string on every walker command (see
     * `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`).
     */
   private[frontend] val recoverChoiceDecisionId = "recover.choice"
   private[frontend] val recoverRelicDecisionId = "recover.relic"
-  private val pawnPlacementDecisionIdPrefix = "setup.pawn-placement."
 
   /** The two forms the selection panel answers: toggles for a choose-many,
     * a dropdown for a choose-amount. The query IS the form now, so the
@@ -42,6 +39,9 @@ private[frontend] object ParkedDecision:
     */
   type SelectionForm =
     DecisionQueryState.ChooseMany | DecisionQueryState.ChooseAmount
+
+  /** The two forms a board decision answers: a pick of one, or of several. */
+  type BoardForm = DecisionQueryState.ChooseOne | DecisionQueryState.ChooseMany
 
   /** Which of its parks Recover's panel is at. */
   enum RecoverStep:
@@ -83,14 +83,12 @@ private[frontend] object ParkedDecision:
       */
     case Negotiate(deal: NegotiationDealState,
         editor: Option[(String, NegotiationEditingState)])
-    /** A choose-one answered by clicking a site on the board rather than a
-      * button in the action pane. With `confirm`, the click only drafts the
-      * pick and the pane's Confirm button submits it; without, the click
-      * submits at once. Setup's pawn placement is the one decision routed
-      * here today.
+    /** A choose-one or choose-many answered on the table (board decisions
+      * design): its options are drawn where they lie, by `BoardOptions`,
+      * and the action pane states the selection and confirms it. Every
+      * board-presented decision with an option on the table is routed here.
       */
-    case Board(decision: WalkerDecisionState,
-        query: DecisionQueryState.ChooseOne, confirm: Boolean)
+    case BoardDecision(decision: WalkerDecisionState, query: BoardForm)
 
   /** What one render of one viewer's projection shows for the parked
     * decision: the surface, if this viewer sees one, and the public notice
@@ -104,9 +102,9 @@ private[frontend] object ParkedDecision:
 
   /** Draws the routed surface into the action pane, then the notice, in
     * that order. One exhaustive match: a new surface is a case here and
-    * nothing elsewhere. The board surface is drawn twice over: its sites by
-    * `WorldBoardRenderer`, which takes the `Board` case itself, and its
-    * heading and Confirm by the pane here.
+    * nothing elsewhere. A board decision is drawn twice over: its options by
+    * the table's renderers through `BoardOptions`, its prompt and Confirm by
+    * the pane here.
     *
     * Two panels read past the decision: Recover gates buying dice on the
     * acting player's supply, and the choose-one panel names a player option
@@ -131,15 +129,16 @@ private[frontend] object ParkedDecision:
         surface, drafts.selection, canControl, panel, controls)
       case surface: Surface.Inspect => InspectPanel.render(
         surface, canControl, panel, controls)
-      case surface: Surface.Board => WalkerPanelSupport.renderBoardPanel(
-        surface, drafts.board, canControl, panel, controls)
+      case surface: Surface.BoardDecision => BoardDecisionPanel.render(
+        surface, value, drafts, canControl, panel, controls)
     routed.notice.foreach(notice =>
       panel.appendChild(text("p", "walker-waiting", notice)))
 
   private def surface(value: GameProjection,
       showGameplayControls: Boolean): Option[Surface] =
     value.walkerDecision
-      .flatMap(decision => decisionSurface(decision, showGameplayControls))
+      .flatMap(decision => decisionSurface(decision, value,
+        showGameplayControls))
       .orElse(value.walkerWaiting.flatMap(_.deal)
         .map(Surface.Negotiate(_, None)))
 
@@ -148,10 +147,11 @@ private[frontend] object ParkedDecision:
     * with gameplay controls; the summary is public and its editor is not.
     */
   private def decisionSurface(decision: WalkerDecisionState,
-      showGameplayControls: Boolean): Option[Surface] =
+      value: GameProjection, showGameplayControls: Boolean)
+      : Option[Surface] =
     recoverStep(decision).map(Surface.Recover(decision, _))
       .orElse(decision.query.flatMap(query =>
-        formSurface(decision, query, showGameplayControls)))
+        formSurface(decision, query, value, showGameplayControls)))
       .filter:
         case _: Surface.Negotiate => true
         case _ => showGameplayControls
@@ -178,14 +178,17 @@ private[frontend] object ParkedDecision:
     decision.query.collect { case one: DecisionQueryState.ChooseOne => one }
 
   private def formSurface(decision: WalkerDecisionState,
-      query: DecisionQueryState, showGameplayControls: Boolean)
-      : Option[Surface] =
+      query: DecisionQueryState, value: GameProjection,
+      showGameplayControls: Boolean): Option[Surface] =
     query match
-      // Confirmed from the pane: a pawn is placed once a game and cannot be
-      // moved back, so one click on a crowded board must not commit it.
-      case one: DecisionQueryState.ChooseOne
-          if decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix) =>
-        Some(Surface.Board(decision, one, confirm = true))
+      // On the table: the decision says it is answered there, and the table
+      // draws at least one of its options.
+      case one: DecisionQueryState.ChooseOne if decision.kind == "decide" &&
+          decision.action != "recover" && onTable(decision, one.options, value) =>
+        Some(Surface.BoardDecision(decision, one))
+      case many: DecisionQueryState.ChooseMany
+          if onTable(decision, many.options, value) =>
+        Some(Surface.BoardDecision(decision, many))
       // A Recover choose-one at a decision id Recover's panel does not
       // know is not handed to the generic panel either: there is no
       // answer this client could safely build for it.
@@ -207,6 +210,11 @@ private[frontend] object ParkedDecision:
       case negotiate: DecisionQueryState.Negotiate =>
         Some(Surface.Negotiate(negotiate.deal, negotiate.deal.editing
           .filter(_ => showGameplayControls).map(decision.decisionId -> _)))
+
+  private def onTable(decision: WalkerDecisionState,
+      options: Vector[DecisionOptionState], value: GameProjection): Boolean =
+    decision.presentation == "board" &&
+      options.exists(BoardHomes.has(value, _))
 
   /** The public line shown to every viewer a parked decision is NOT waiting
     * on: who it awaits, and the question's heading when it has one -- `None`

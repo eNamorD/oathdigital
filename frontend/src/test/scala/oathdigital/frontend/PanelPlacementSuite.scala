@@ -26,8 +26,7 @@ class PanelPlacementSuite extends munit.FunSuite:
       .copy(oathkeeper = oathkeeper, tracks = trackState)
 
   private def world(value: GameProjection): dom.Element =
-    WorldBoardRenderer.world(value, None,
-      canControl = true,
+    WorldBoardRenderer.world(value, BoardOptions.none,
       SessionDrafts.empty, new RecordingControls())
 
   test("the oath and its holder are listed in the shared bank"):

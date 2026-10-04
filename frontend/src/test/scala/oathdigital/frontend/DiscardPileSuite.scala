@@ -23,7 +23,7 @@ class DiscardPileSuite extends munit.FunSuite:
         pile.headOption.map(_.cardKind), pile)))
 
   private def world(pile: Vector[CardDetails]): dom.Element =
-    WorldBoardRenderer.world(projection(pile), None, canControl = true,
+    WorldBoardRenderer.world(projection(pile), BoardOptions.none,
       SessionDrafts.empty, new RecordingControls())
 
   private def discard(root: dom.Element): dom.html.Button =

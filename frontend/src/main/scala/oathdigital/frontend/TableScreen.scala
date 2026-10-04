@@ -99,10 +99,13 @@ private[frontend] final class TableScreen(
           drafts.boardTargets.flatMap(_.activeActionKind).getOrElse(""),
           drafts.modifiers.map(_.stage.toString).getOrElse(""),
           pane.prompt).mkString("|")
-        (WorldBoardRenderer.players(value, selectedPlayer),
-          WorldBoardRenderer.world(value, routed.surface.collect {
-            case board: ParkedDecision.Surface.Board => board
-          }, view.controlsAvailable, drafts, controls), decisionKey)
+        val options = routed.surface.collect {
+          case board: ParkedDecision.Surface.BoardDecision => BoardOptions.of(
+            board, drafts, view.controlsAvailable, controls)
+        }.getOrElse(BoardOptions.none)
+        (WorldBoardRenderer.players(value, selectedPlayer, options),
+          WorldBoardRenderer.world(value, options, drafts, controls),
+          decisionKey)
     val development = element("div", "development-content")
     if !view.trusted then
       development.appendChild(DevelopmentRenderer.controls(session))

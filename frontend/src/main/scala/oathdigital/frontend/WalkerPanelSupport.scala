@@ -128,26 +128,6 @@ private[frontend] object WalkerPanelSupport:
         }
         panel.appendChild(relics)
 
-  /** The pane's half of a board surface: the question, what the board draft
-    * holds, and -- when the surface asks for confirmation -- the Confirm
-    * button that submits it. The sites themselves are the board's.
-    */
-  private[frontend] def renderBoardPanel(
-      surface: ParkedDecision.Surface.Board, board: Option[WalkerBoardDraft],
-      canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
-    panel.appendChild(text("h2", "", decisionHeading(surface.query)))
-    val draft = board.filter(_.decisionId == surface.decision.decisionId)
-    panel.appendChild(text("p", "board-draft",
-      draft.fold("Choose a site on the board.")(_.option.label)))
-    if surface.confirm then
-      // A board surface is a choose-one, and a choose-one declares no
-      // confirm label, so the old `getOrElse` fallback was always this string.
-      val confirm = button("Confirm", "walker-board-confirm")
-      confirm.disabled = !canControl || draft.isEmpty
-      confirm.onclick = _ =>
-        draft.foreach(value => controls.submitCommand(value.command))
-      panel.appendChild(confirm)
-
   /** An option shown with why it may not be chosen: its control is disabled,
     * names the reason on hover, and the reason is printed under `after`'s
     * last child so a touch screen can read it too. Any other option is left

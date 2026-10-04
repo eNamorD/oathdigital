@@ -18,7 +18,7 @@ private[frontend] final case class SessionDrafts(
     partition: Option[WalkerPartitionDraft],
     distribute: Option[WalkerDistributeDraft],
     selection: Option[WalkerSelectionDraft],
-    board: Option[WalkerBoardDraft],
+    board: Option[BoardSelectionDraft],
     modifiers: Option[ModifierFlowDraft],
     facedownAdviser: Option[FacedownAdviserDraft]):
 
@@ -37,7 +37,7 @@ private[frontend] final case class SessionDrafts(
         projection.walkerDecision),
       selection = WalkerSelectionDraft.reconcile(selection, context,
         projection.walkerDecision),
-      board = WalkerBoardDraft.reconcile(board, context,
+      board = BoardSelectionDraft.reconcile(board, context,
         projection.walkerDecision),
       modifiers = ModifierFlowDraft.reconcile(modifiers, context),
       facedownAdviser = FacedownAdviserDraft.reconcile(facedownAdviser,
@@ -107,7 +107,7 @@ private[frontend] enum Draft:
   case Partition(value: WalkerPartitionDraft)
   case Distribute(value: WalkerDistributeDraft)
   case Selection(value: WalkerSelectionDraft)
-  case Board(value: Option[WalkerBoardDraft])
+  case Board(value: Option[BoardSelectionDraft])
   case BoardTargets(value: BoardTargetSelectionState)
 
 /** The six ways a viewer leaves the modifier flow. `Cancelled` carries the

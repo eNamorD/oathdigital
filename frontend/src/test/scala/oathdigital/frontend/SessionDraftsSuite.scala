@@ -9,7 +9,6 @@ import oathdigital.testkit.Unwrap.present
   */
 class SessionDraftsSuite extends munit.FunSuite:
   private val context = ForgeFixture.context
-  private val site = (id: String) => DecisionOptionState("site", id, id)
   private val travel = BoardTargetAction("travel", "Choose a destination", 1, 1,
     autoActivate = true, Vector(BoardTargetCandidate(
       BoardTargetRef.Site("site:woods"), "Deep Woods", Vector.empty)))
@@ -68,8 +67,8 @@ class SessionDraftsSuite extends munit.FunSuite:
       .move("denizen:denizen:3", "pay-favor")
     assertEquals(base.staged(Draft.Partition(partition)),
       base.copy(partition = Some(partition)))
-    val board = WalkerBoardDraft(context, "forge-9", ForgeFixture.query,
-      site("site:a"))
+    val board = BoardSelectionDraft(context, "forge-9", ForgeFixture.query,
+      Vector("site:site:a"))
     assertEquals(base.staged(Draft.Board(Some(board))), base.copy(board = Some(board)))
     assertEquals(base.staged(Draft.Board(Some(board))).staged(Draft.Board(None)),
       base.copy(board = None))

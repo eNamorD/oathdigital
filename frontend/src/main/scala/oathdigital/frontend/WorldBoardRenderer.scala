@@ -152,23 +152,15 @@ private[frontend] object WorldBoardRenderer:
        choose()
    })
 
- /** `board` is the board's one surface for a parked decision
-   * (`ParkedDecision.Surface.Board`): a choose-one whose site options are
-   * answered by clicking the site directly on the board rather than through
-   * the generic choose-one button panel. Setup's pawn placement did so from
-   * the start, as the legacy first-game event machine's place-pawn
-   * board-target command did before Task 6 folded Setup onto the generic
-   * walker. A surface that asks for confirmation drafts the pick
-   * (`drafts.board`) for the pane's Confirm button instead of
-   * submitting it.
+ /** The World pane. `options` draws the parked board decision onto its
+   * sites, cards, pawns, banks and banners; the board targets of an
+   * activated Travel still pick sites through `pickable`.
    */
  def world(
      value: GameProjection,
-     board: Option[ParkedDecision.Surface.Board],
-     canControl: Boolean,
+     options: BoardOptions,
      drafts: SessionDrafts,
-     controls: TableControls,
-     options: BoardOptions = BoardOptions.none
+     controls: TableControls
  ): dom.Element =
    val panel = element("section", "panel world")
    panel.setAttribute("aria-label", "The World")
@@ -193,31 +185,16 @@ private[frontend] object WorldBoardRenderer:
        val siteTarget = BoardTargetRef.Site(site.siteId)
        val candidate = drafts.boardTargets.flatMap(
          _.activeAction.flatMap(_.candidates.find(_.target == siteTarget)))
-       val siteOption = board.flatMap(_.query.options.find(option =>
-         option.kind == "site" && option.id == site.siteId))
-       val isSelected = drafts.boardTargets.exists(_.selected(siteTarget)) ||
-         siteOption.exists(option => drafts.board.exists(_.option == option))
-       val control = element("article", siteTargetClasses(
-         candidate.nonEmpty || siteOption.nonEmpty, isSelected))
+       val selected = drafts.boardTargets.exists(_.selected(siteTarget))
+       val control = element("article", siteTargetClasses(candidate.nonEmpty,
+         selected))
        control.setAttribute("aria-label", site.label)
        control.setAttribute("data-target-ref", siteTarget.stableKey)
-       if candidate.nonEmpty || siteOption.nonEmpty then
-         control.setAttribute("aria-pressed", isSelected.toString)
+       if candidate.nonEmpty then
+         control.setAttribute("aria-pressed", selected.toString)
        candidate.foreach { _ =>
          pickable(control, () => drafts.boardTargets.foreach(state =>
            controls.handleSelection(state.choose(siteTarget))))
-       }
-       siteOption.foreach { option =>
-         pickable(control, () => if canControl then board.foreach { surface =>
-           if surface.confirm then
-             // No context means no bound session (a seat change's interim
-             // frame); a pick then stages nothing, as the spec rules.
-             drafts.context.foreach(context => controls.stage(Draft.Board(
-               WalkerBoardDraft.toggle(drafts.board, context,
-                 surface.decision.decisionId, surface.query, option))))
-           else controls.submitCommand(WalkerPanelSupport.resolveChooseOneCommand(
-             surface.decision, option))
-         })
        }
        options.decorate(control,
          Vector(BoardOptionViews.key("site", site.siteId)))

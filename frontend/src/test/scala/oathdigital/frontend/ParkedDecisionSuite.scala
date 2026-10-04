@@ -4,7 +4,7 @@ import oathdigital.model.PlayerColor
 import ParkedDecision.{RecoverStep, Routed, Surface}
 
 /** The route as a pure function of a viewer's projection: one case per query
-  * type and per surface, Recover's parks, pawn placement to the board, an
+  * type and per surface, Recover's parks, board-presented decisions to the board, an
   * observer's deal summary beside the waiting notice, and the parks that
   * render nothing. No DOM: what a surface looks like is the panel suites'
   * business.
@@ -121,13 +121,33 @@ class ParkedDecisionSuite extends munit.FunSuite:
     assertEquals(routeOf(parked("muster", "muster.source", one,
       kind = "roll")).surface, None)
 
-  test("Setup's pawn placement routes to the board, confirmed from the pane"):
-    val site = DecisionOptionState("site", "site:ancient-city", "Ancient City")
-    val pawnQuery = DecisionQueryState.ChooseOne(Vector(site),
-      Some("Choose your starting site"))
-    val pawn = parked("setup", "setup.pawn-placement.p1", pawnQuery)
-    assertEquals(routeOf(pawn).surface,
-      Some(Surface.Board(pawn, pawnQuery, confirm = true)))
+  test("a board-presented decision with an option on the table routes to " +
+      "the board"):
+    // Blue is a player at the table, so the option's home is Blue's name
+    // and pawns.
+    val atBoard = parked("muster", "muster.source", one)
+      .copy(presentation = "board")
+    assertEquals(routeOf(atBoard).surface,
+      Some(Surface.BoardDecision(atBoard, one)))
+    val manyAtBoard = parked("challenge", "challenge.ribbon-site", many)
+      .copy(presentation = "board")
+    assertEquals(routeOf(manyAtBoard).surface,
+      Some(Surface.BoardDecision(manyAtBoard, many)))
+
+  test("a board-presented decision with nothing on the table stays in the " +
+      "panel"):
+    val buttons = DecisionQueryState.ChooseOne(Vector(
+      DecisionOptionState("button", "finish", "Finish")), heading)
+    val decision = parked("campaign", "campaign.attacker-plan", buttons)
+      .copy(presentation = "board")
+    assertEquals(routeOf(decision).surface,
+      Some(Surface.ChooseOne(decision, buttons)))
+
+  test("a panel-presented decision stays in the panel"):
+    val decision = parked("muster", "muster.source", one)
+    assertEquals(decision.presentation, "panel")
+    assertEquals(routeOf(decision).surface,
+      Some(Surface.ChooseOne(decision, one)))
 
   test("a viewer without gameplay controls sees no control surface, only " +
       "a deal's summary"):

@@ -98,6 +98,22 @@ private[frontend] final class BoardOptions(views: Map[String, OptionView],
 private[frontend] object BoardOptions:
   val none: BoardOptions = new BoardOptions(Map.empty, _ => ())
 
+  /** What a pick on the table or in the panel does: stage the board draft
+    * after the click, in the session's current context. Without a context
+    * (a seat change's interim frame) or without control it does nothing.
+    */
+  def stager(surface: ParkedDecision.Surface.BoardDecision,
+      drafts: SessionDrafts, canControl: Boolean,
+      controls: TableControls): DecisionOptionState => Unit =
+    option => if canControl then drafts.context.foreach(context =>
+      controls.stage(Draft.Board(Some(BoardSelectionDraft.click(drafts.board,
+        context, surface.decision.decisionId, surface.query, option)))))
+
+  def of(surface: ParkedDecision.Surface.BoardDecision, drafts: SessionDrafts,
+      canControl: Boolean, controls: TableControls): BoardOptions =
+    new BoardOptions(BoardOptionViews.of(surface.decision, surface.query,
+      drafts.board), stager(surface, drafts, canControl, controls))
+
   /** A card's own option key: its kind as an option names it, and its id. */
   def cardKey(card: CardDetails): String =
     BoardOptionViews.key(card.cardKind match
