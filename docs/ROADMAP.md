@@ -49,20 +49,39 @@ Left behind by earlier phases:
 ### Phase - Card play UI
 
 Playing a card takes too many clicks, found in the playtest of 2026-10-01.
-With several choices, each card has its own "Choose" button and then a
-"Choose Placement" confirmation, and that flow shows known cards facedown.
-Replace it with one interaction: drop the partition buttons and the Choose
-Placement step, place cards by drag and drop, and explain how. The engine
-side is **walker-native card play through card slots** under
-**Powers-related deferred items**; decide whether to do both together.
+Board decisions
+([spec](superpowers/specs/2026-10-03-board-decisions-design.md)) answer a
+decision about the table on the table. Spec 2 builds **walker-native card
+play through card slots** (Powers-related deferred items) on them. Settled
+already:
+
+- Choosing a slot merges the discard: a site slot holding a card the player
+  may replace is an option marked "replace". People's Favor discards only
+  when playing to a site.
+- People's Favor and Homeland together allow up to two discards; spec 2
+  decides how that choice is presented.
+- Playing a facedown adviser starts from the Minor Actions button; the
+  player then picks the adviser on the board.
+- Empty site slots and empty adviser slots need option references; today's
+  adviser slot names an occupied position.
+- Card-play reasons for options not on offer belong to spec 2.
+- Partition decisions keep their drag and drop.
+
+### Phase - Board decision follow-ups
+
+- Move Travel onto board decisions; it still picks its destination through
+  the older board targets.
+- Add reasons to the remaining option builders as playtests find options
+  that people wonder about.
 
 ### Phase - Campaign UI
 
 Found in the playtest of 2026-10-01:
 
-- Target selection: the confirm button looks like every other button. List
-  each target's defense and warbands, and tally them.
-- Results: make it clear what a Campaign's battle did.
+- [x] Target selection: answered on the table, with the mandatory target
+  locked, defense and defending force tallied, a primary Confirm, and a
+  reason for every target not on offer (board decisions, 2026-10-04).
+- [ ] Results: make it clear what a Campaign's battle did.
 
 ### Catalog - to verify
 
@@ -285,7 +304,8 @@ requested UI changes are in the
   discards, Homeland replacement, the revealed-Vision replacement and the
   Silver Tongue limit all become contributions to the slot options. It touches
   Search, facedown-adviser play, Conspiracy, the projections and the frontend,
-  so it needs its own spec. Until then Mob uses a single `PlacementRules` value
+  so it needs its own spec: spec 2 of board decisions, under **Phase - Card
+  play UI**. Until then Mob uses a single `PlacementRules` value
   on `PlacementTree` that carries the adviser limits and a
   "may discard a site card first" permission.
 - [ ] **plan-restricting powers, Bag of Siegeworks and Empire defenders.**
