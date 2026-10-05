@@ -37,6 +37,31 @@ class LogPageCodecSuite extends munit.FunSuite:
     assertEquals(LogPageCodec.decode(json).left.map(_.path),
       Left("$.entries[0].extra"))
 
+  test("an entry's section round-trips, and an entry without one writes null"):
+    val banded = LogPageWire("g", 0, 9, Vector(
+      LogEntryWire(6, 0, "section", 1, Vector(LogSpanWire("text", "Search")),
+        Some(LogSectionWire(6, "search"))),
+      LogEntryWire(7, 0, "turn", 0, Vector(LogSpanWire("text", "Red's turn")))))
+    assertEquals(LogPageCodec.decode(LogPageCodec.encode(banded)), Right(banded))
+    val json = ujson.read(LogPageCodec.encode(banded))
+    assertEquals(json("entries")(0)("section"),
+      ujson.Obj("id" -> ujson.Num(6), "action" -> ujson.Str("search")))
+    assertEquals(json("entries")(1)("section"), ujson.Null)
+
+  test("an entry written before sections decodes with none"):
+    val json = """{"gameId":"g","after":0,"nextSequence":9,"entries":""" +
+      """[{"sequence":7,"ordinal":0,"kind":"turn","depth":0,"spans":[]}]}"""
+    assertEquals(LogPageCodec.decode(json).map(_.entries.map(_.section)),
+      Right(Vector(None)))
+
+  test("a section with an unexpected field is rejected at its path"):
+    val banded = page.copy(entries = Vector(page.entries.head.copy(
+      section = Some(LogSectionWire(4, "travel")))))
+    val json = LogPageCodec.encode(banded).replace("\"action\":\"travel\"",
+      "\"action\":\"travel\",\"extra\":1")
+    assertEquals(LogPageCodec.decode(json).left.map(_.path),
+      Left("$.entries[0].section.extra"))
+
   test("malformed JSON is a decode failure, not an exception"):
     assert(LogPageCodec.decode("{").isLeft)
 

@@ -2,7 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.application._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.protocol.projection.LogPageCodec
+import oathdigital.protocol.projection.{LogPageCodec, LogSectionWire}
 import oathdigital.server.{DevelopmentRoutes, GameServerGateway}
 import oathdigital.testkit.HttpTestServer
 import oathdigital.testkit.Unwrap.{accepted, present}
@@ -25,6 +25,16 @@ class GameLogRouteSuite extends munit.FunSuite:
       script.actor).map(_.entries), Some(Vector.empty))
     assertEquals(projector.logPage("round", history, history.nextSequence + 1,
       script.actor), None)
+
+  test("the log page carries each line's section, and no headline has one"):
+    val script = LogScripts.round
+    val page = present(new GameProjector(catalog).logPage("round",
+      script.history, 0L, script.actor), "the whole log page")
+    val tag = page.entries.find(_.kind == "section").getOrElse(
+      fail(s"no tag in ${page.entries}"))
+    assertEquals(tag.section, Some(LogSectionWire(tag.sequence, "travel")))
+    assert(page.entries.filter(_.depth == 0).forall(_.section.isEmpty),
+      page.entries)
 
   test("the development route binds playerId, checks the cursor, and leaves raw events alone"):
     val script = LogScripts.woken

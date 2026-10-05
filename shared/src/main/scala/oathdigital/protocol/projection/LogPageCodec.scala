@@ -11,7 +11,9 @@ import ProjectionCodecSupport._
   * not break an older page. */
 object LogPageCodec:
   private val PageFields = Set("gameId", "after", "nextSequence", "entries")
-  private val EntryFields = Set("sequence", "ordinal", "kind", "depth", "spans")
+  private val EntryFields = Set("sequence", "ordinal", "kind", "depth", "spans",
+    "section")
+  private val SectionFields = Set("id", "action")
   private val SpanFields = Set("kind", "text", "id", "value", "unit", "cards")
 
   def encode(value: LogPageWire): String = ujson.write(ujson.Obj(
@@ -28,7 +30,9 @@ object LogPageCodec:
   private def encodeEntry(entry: LogEntryWire): ujson.Value = ujson.Obj(
     "sequence" -> ujson.Num(entry.sequence.toDouble),
     "ordinal" -> entry.ordinal, "kind" -> entry.kind, "depth" -> entry.depth,
-    "spans" -> encoded(entry.spans)(encodeSpan))
+    "spans" -> encoded(entry.spans)(encodeSpan),
+    "section" -> option(entry.section)(section => ujson.Obj(
+      "id" -> ujson.Num(section.id.toDouble), "action" -> section.action)))
 
   private def encodeSpan(span: LogSpanWire): ujson.Value = ujson.Obj.from(
     Vector[(String, ujson.Value)]("kind" -> ujson.Str(span.kind),
@@ -60,7 +64,17 @@ object LogPageCodec:
       depth <- int(value, "depth", path)
       rawSpans <- array(value, "spans", path)
       spans <- traverse(rawSpans, s"$path.spans")(decodeSpan)
-    yield LogEntryWire(sequence, ordinal, kind, depth, spans)
+      section <- optionalAbsent(value, "section", path)(decodeSection)
+    yield LogEntryWire(sequence, ordinal, kind, depth, spans, section)
+
+  private def decodeSection(raw: ujson.Value, path: String)
+      : Result[LogSectionWire] =
+    for
+      value <- obj(raw, path)
+      _ <- exact(value, SectionFields, path)
+      id <- long(value, "id", path)
+      action <- string(value, "action", path)
+    yield LogSectionWire(id, action)
 
   private def decodeSpan(raw: ujson.Value, path: String): Result[LogSpanWire] =
     for

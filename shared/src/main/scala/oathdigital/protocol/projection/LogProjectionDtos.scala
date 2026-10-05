@@ -13,9 +13,16 @@ final case class LogSpanWire(kind: String, text: String,
     unit: Option[String] = None,
     cards: Vector[CardDetailsProjection] = Vector.empty)
 
-/** One log entry; `(sequence, ordinal)` is its stable key. */
+/** The action an entry belongs to: `id` is the same for every entry of one
+  * action, `action` its procedure key (`search`, `use-power:<id>`) or
+  * `minor`. A client draws one band per run of entries sharing an `id`. */
+final case class LogSectionWire(id: Long, action: String)
+
+/** One log entry; `(sequence, ordinal)` is its stable key. A `section`
+  * entry is the tag that opens its section's band. */
 final case class LogEntryWire(sequence: Long, ordinal: Int, kind: String,
-    depth: Int, spans: Vector[LogSpanWire])
+    depth: Int, spans: Vector[LogSpanWire],
+    section: Option[LogSectionWire] = None)
 
 /** Every entry with `sequence >= after`, formatted for one seat, and the
   * cursor to ask with next time. */

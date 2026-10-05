@@ -3,7 +3,8 @@ package oathdigital.application.gamelog
 import oathdigital.application.{GameHistory, GamePresentationProjector}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.PlayerId
-import oathdigital.protocol.projection.{LogEntryWire, LogPageWire, LogSpanWire}
+import oathdigital.protocol.projection.{LogEntryWire, LogPageWire,
+  LogSectionWire, LogSpanWire}
 
 /** The log page one seat reads: the whole prefix formatted for that seat,
   * then every entry at or after `after` (spec, "Routes" and "Cost"). */
@@ -20,7 +21,8 @@ private[application] final class GameLogProjector(catalog: ExecutableCatalog,
 
 private[application] object GameLogProjector:
   def wire(entry: LogEntry): LogEntryWire = LogEntryWire(entry.sequence,
-    entry.ordinal, entry.kind.key, entry.depth, entry.spans.map(span))
+    entry.ordinal, entry.kind.key, entry.depth, entry.spans.map(span),
+    entry.section.map(section => LogSectionWire(section.id, section.action)))
 
   def span(value: LogSpan): LogSpanWire = value match
     case LogSpan.Text(text) => LogSpanWire("text", text)
