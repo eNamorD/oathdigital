@@ -2,7 +2,8 @@ package oathdigital.frontend
 
 import org.scalajs.dom
 import scala.scalajs.js
-import oathdigital.protocol.projection.{LogEntryWire, LogSpanWire}
+import oathdigital.protocol.projection.{LogEntryWire, LogSectionWire,
+  LogSpanWire}
 
 class GameLogPaneSuite extends munit.FunSuite:
   private def entry(sequence: Long, kind: String, depth: Int,
@@ -95,6 +96,74 @@ class GameLogPaneSuite extends munit.FunSuite:
     assertEquals(faces(0).getAttribute("aria-label"), "one sword")
     assertEquals(content.querySelector(".die-faces").getAttribute("class"),
       "die-faces log-dice log-dice-attack")
+
+  /** A line of the section `id` for `action`, reading `text`. */
+  private def sectioned(sequence: Long, kind: String, action: String, id: Long,
+      text: String) = LogEntryWire(sequence, 0, kind, 1,
+    Vector(LogSpanWire("text", text)), Some(LogSectionWire(id, action)))
+
+  private val searchTag = sectioned(6, "section", "search", 6, "Search")
+  private val drew = sectioned(7, "action", "search", 6, "Drew Fox")
+  private val played = sectioned(8, "action", "search", 6,
+    "Played Fox to Ruined Keep")
+  private val moved = sectioned(9, "delta", "minor", 9, "Moved 2 warbands")
+
+  /** Each shown item's band classes, in order; "" for an item with none. */
+  private def bands(content: dom.Element): Vector[String] =
+    items(content).map(_.getAttribute("class").split(" ").toVector
+      .filter(_.startsWith("log-band")).mkString(" "))
+
+  test("a redraw bands each section and marks its first and last entry"):
+    val content = box(total = 0, height = 0, scrolled = 0)
+    new GameLogPane(content).show("g|red",
+      Vector(setup, turn, searchTag, drew, played, moved), Map.empty)
+    assertEquals(bands(content), Vector("", "",
+      "log-band log-band-search log-band-start",
+      "log-band log-band-search",
+      "log-band log-band-search log-band-end",
+      "log-band log-band-minor log-band-start log-band-end"))
+    assertEquals(items(content)(2).getAttribute("class"),
+      "log-entry log-line log-section log-band log-band-search log-band-start")
+
+  test("an appended line of the same section takes over the band's end"):
+    val content = box(total = 0, height = 0, scrolled = 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, turn, searchTag, drew), Map.empty)
+    pane.show("g|red", Vector(setup, turn, searchTag, drew, played), Map.empty)
+    assertEquals(bands(content).drop(2), Vector(
+      "log-band log-band-search log-band-start",
+      "log-band log-band-search",
+      "log-band log-band-search log-band-end"))
+
+  test("an appended line of a new section starts a band of its own"):
+    val content = box(total = 0, height = 0, scrolled = 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, turn, searchTag, drew), Map.empty)
+    pane.show("g|red", Vector(setup, turn, searchTag, drew, moved), Map.empty)
+    assertEquals(bands(content).drop(3), Vector(
+      "log-band log-band-search log-band-end",
+      "log-band log-band-minor log-band-start log-band-end"))
+
+  test("the divider splits a band into two pieces"):
+    val content = box(total = 500, height = 100, scrolled = 0)
+    new GameLogPane(content).show("g|red",
+      Vector(setup, turn, searchTag, drew, played), Map.empty, since = Some(6))
+    assertEquals(bands(content), Vector("", "",
+      "log-band log-band-search log-band-start log-band-end",
+      "",
+      "log-band log-band-search log-band-start",
+      "log-band log-band-search log-band-end"))
+
+  test("a facedown adviser takes Search's band; a power's band drops its id"):
+    val content = box(total = 0, height = 0, scrolled = 0)
+    new GameLogPane(content).show("g|red", Vector(
+      sectioned(6, "section", "play-facedown-adviser", 6,
+        "Play facedown adviser"),
+      sectioned(8, "action", "use-power:silver-tongue", 8, "Silver Tongue")),
+      Map.empty)
+    assertEquals(bands(content), Vector(
+      "log-band log-band-search log-band-start log-band-end",
+      "log-band log-band-use-power log-band-start log-band-end"))
 
   test("new entries append; a reader at the end stays at the end"):
     val content = box(total = 500, height = 100, scrolled = 400)

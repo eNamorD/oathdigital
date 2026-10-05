@@ -1049,6 +1049,41 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 /* A roll's dice sit on the line without growing it: the chip is a pixel
    shorter than the line, so it hangs from the line's top. */
 .game-log .log-dice { vertical-align: top; }
+/* The Action Band Rule (DESIGN.md): the lines of one action share a band in
+   that action's color, warm for the aggressive ones, mixed into the Pane
+   fill. The top edge sits on the band's first entry and the bottom edge on
+   its last, so an appended line only moves the bottom edge down. Inside a
+   band a spent cost is Ink Dim: Ink Spent falls under 4.5:1 on a fill. */
+.game-log .log-band { --band: #b8ab92; --band-fill: 6%; --band-edge: 20%;
+  padding-right: 6px;
+  background: color-mix(in srgb, var(--band) var(--band-fill), #211f1b);
+  border: 0 solid color-mix(in srgb, var(--band) var(--band-edge), #211f1b);
+  border-width: 0 1px; }
+.game-log .log-band-campaign, .game-log .log-band-muster,
+.game-log .log-band-challenge, .game-log .log-band-travel,
+.game-log .log-band-search, .game-log .log-band-trade,
+.game-log .log-band-recover, .game-log .log-band-forge {
+  --band-fill: 9%; --band-edge: 28%; }
+.game-log .log-band-campaign { --band: #d47c74; }
+.game-log .log-band-muster { --band: #c2b25c; }
+.game-log .log-band-challenge { --band: #c99a62; }
+.game-log .log-band-travel { --band: #7fb0a8; }
+.game-log .log-band-search { --band: #b88aae; }
+.game-log .log-band-trade { --band: #94b58a; }
+.game-log .log-band-recover { --band: #9f8fc0; }
+.game-log .log-band-forge { --band: #8fa3bd; }
+.game-log .log-band-start { margin-top: 4px; padding-top: 2px;
+  border-top-width: 1px; border-top-left-radius: 4px;
+  border-top-right-radius: 4px; }
+.game-log .log-band-end { margin-bottom: 4px; padding-bottom: 2px;
+  border-bottom-width: 1px; border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px; }
+.game-log .log-band .log-cost { color: #a99f8c; }
+/* A band's tag: the action's name in its color, then what it spent. */
+.game-log .log-section { color: var(--band, #b8ab92); font-size: 11px;
+  font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.game-log .log-section .log-cost { margin-left: .6em; font-size: 12px;
+  font-weight: 400; letter-spacing: normal; text-transform: none; }
 /* Reading aids. In the pane the current turn's headline stays at the top
    while its lines scroll under it; in the overlay the round's does. The
    list is flat, so the latest headline past the top covers the earlier

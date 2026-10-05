@@ -12,6 +12,9 @@ import ServerUiSupport._
   *
   * `headings` makes headlines into headings, for the overlay: a screen reader
   * jumps between them there, while the pane keeps the table's outline short.
+  *
+  * The lines of one action share a band; an append moves the band's end,
+  * never anything above it.
   */
 private[frontend] final class GameLogPane(content: dom.html.Element,
     headings: Boolean = false, scrolled: () => Unit = () => ()):
@@ -44,7 +47,15 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
     if appending then
       if entries.size > shown.size then
         val following = atEnd
-        entries.drop(shown.size).foreach(entry => list.appendChild(item(entry, colors)))
+        // A line that continues the last entry's section moves the band's
+        // end down to itself; anything else starts a band of its own.
+        entries.drop(shown.size).foldLeft(shown.last) { (previous, entry) =>
+          val continues = GameLogPane.sameSection(previous, entry)
+          if continues then Option(list.lastElementChild)
+            .foreach(_.classList.remove("log-band-end"))
+          list.appendChild(item(entry, colors, start = !continues, end = true))
+          entry
+        }
         if following then toEnd() else chip.removeAttribute("hidden")
     else redraw(entries, colors, since)
     key = Some(sessionKey)
@@ -57,9 +68,15 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
     if entries.isEmpty then list.appendChild(headline(GameLogPane.placeholder, "round"))
     val divideAt = since.map(marker => entries.indexWhere(_.sequence > marker))
       .filter(_ >= 0)
+    // The divider ends the band above it and starts the band below it.
     entries.zipWithIndex.foreach { (entry, index) =>
-      if divideAt.contains(index) then list.appendChild(GameLogPane.divider)
-      list.appendChild(item(entry, colors))
+      val divided = divideAt.contains(index)
+      if divided then list.appendChild(GameLogPane.divider)
+      val start = divided ||
+        !entries.lift(index - 1).exists(GameLogPane.sameSection(_, entry))
+      val end = divideAt.contains(index + 1) ||
+        !entries.lift(index + 1).exists(GameLogPane.sameSection(entry, _))
+      list.appendChild(item(entry, colors, start, end))
     }
     divideAt.fold(toEnd())(_ => reveal(list.querySelector(".log-divider")))
 
@@ -103,8 +120,9 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
     content.scrollTop = content.scrollTop + node.getBoundingClientRect().top -
       content.getBoundingClientRect().top - cover
 
-  private def item(entry: LogEntryWire, colors: Map[String, String]): dom.Element =
-    val node = GameLogPane.item(entry, colors)
+  private def item(entry: LogEntryWire, colors: Map[String, String],
+      start: Boolean, end: Boolean): dom.Element =
+    val node = GameLogPane.item(entry, colors, start, end)
     if entry.depth == 0 then headline(node, entry.kind) else node
 
   /** In headings mode the headline's spans move into an `h3`, an `h4` for
@@ -134,12 +152,33 @@ private[frontend] object GameLogPane:
   /** Client-only: where the reader left off (spec, "Divider"). */
   def divider: dom.Element = text("li", "log-divider", "Since you last looked")
 
-  def item(entry: LogEntryWire, colors: Map[String, String]): dom.Element =
+  def item(entry: LogEntryWire, colors: Map[String, String],
+      start: Boolean = true, end: Boolean = true): dom.Element =
     val depth = if entry.depth == 0 then "log-headline" else "log-line"
-    val node = element("li", s"log-entry $depth log-${entry.kind}")
+    val classes = Vector("log-entry", depth, s"log-${entry.kind}") ++
+      band(entry, start, end)
+    val node = element("li", classes.mkString(" "))
     node.setAttribute("title", s"${entry.sequence}.${entry.ordinal}")
     entry.spans.foreach(span => node.appendChild(spanNode(span, colors)))
     node
+
+  /** An entry's band (DESIGN.md, The Action Band Rule): its section's band
+    * class, and an edge where the band starts or ends in this list. */
+  def band(entry: LogEntryWire, start: Boolean, end: Boolean): Vector[String] =
+    entry.section.toVector.flatMap(section =>
+      Vector("log-band", s"log-band-${bandName(section.action)}") ++
+        Option.when(start)("log-band-start") ++ Option.when(end)("log-band-end"))
+
+  /** Playing a facedown adviser continues a Search, so it takes Search's
+    * band; every power shares one band whatever its id. */
+  def bandName(action: String): String =
+    if action == "play-facedown-adviser" then "search"
+    else if action.startsWith("use-power:") then "use-power"
+    else action
+
+  def sameSection(earlier: LogEntryWire, later: LogEntryWire): Boolean =
+    earlier.section.nonEmpty &&
+      earlier.section.map(_.id) == later.section.map(_.id)
 
   private def spanNode(span: LogSpanWire, colors: Map[String, String])
       : dom.Node = span.kind match
