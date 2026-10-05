@@ -470,7 +470,15 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   People's Favor are clickable like other cards, opening their details.
 - [ ] **Match the map's aspect ratio to the physical board.** The rendered
   map's proportions differ from the actual game map's.
-- [ ] **Undo system.**
+- [ ] **Undo system.** A player can take back a step before it commits
+  anything others have seen. No intent exists today to leave a walker once it
+  has started.
+  - [ ] Cancel a started action before any state change: a misclicked Minor
+    Actions button should not commit the player to playing a facedown
+    adviser. Card play spec 2 (board decisions) keeps the facedown-adviser
+    pick before the walker starts, outside the board decision machinery, so
+    that it keeps its Cancel; with undo, that pick can move into the walker
+    as an ordinary board decision.
 - [ ] **In-game chat.**
 - [ ] **Public Chronicle pages.** The winner of a game may write their summary
   of it, and players can browse all the summaries.
