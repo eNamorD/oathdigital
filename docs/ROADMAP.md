@@ -46,39 +46,6 @@ Left behind by earlier phases:
   2026-10-02 moved numeric ids onto it). Move them to direct object
   references such as `AlchemistCard`.
 
-### Phase - Card play UI
-
-Playing a card takes too many clicks, found in the playtest of 2026-10-01.
-Board decisions
-([spec](superpowers/specs/2026-10-03-board-decisions-design.md)) answer a
-decision about the table on the table. Spec 2 builds **walker-native card
-play through card slots** (Powers-related deferred items) on them. Settled
-already:
-
-- Choosing a slot merges the discard: a site slot holding a card the player
-  may replace is an option marked "replace". People's Favor discards only
-  when playing to a site.
-- People's Favor and Homeland together allow up to two discards; spec 2
-  decides how that choice is presented.
-- Playing a facedown adviser starts from the Minor Actions button; the
-  player then picks the adviser on the board.
-- Empty site slots and empty adviser slots need option references; today's
-  adviser slot names an occupied position.
-- Card-play reasons for options not on offer belong to spec 2.
-- Partition decisions keep their drag and drop.
-
-Plan 1 of the [card play slots spec](superpowers/specs/2026-10-04-card-play-slots-design.md)
-landed the engine: card play offers card slots, shown as Action panel rows
-until plan 2 puts them on the board.
-
-- [ ] **Limit cards that count or ignore advisers.** `CardPlayRules` holds
-  one adviser limit that only lowers, plus the played card's own limit, which
-  fits Silver Tongue, Insomnia and Assassin. Family Wagon (removes the limit
-  for Nomad advisers), Pied Piper (ignores the limit), Marriage (counts as
-  one adviser) and Lost Tapestry (facedown Visions do not count) change what
-  counts toward the limit, so they need a counting rule that
-  `CardSlots.adviserSlots` and `AdviserLimit` share.
-
 ### Phase - Board decision follow-ups
 
 - Move Travel onto board decisions; it still picks its destination through
@@ -304,18 +271,13 @@ requested UI changes are in the
   [catalog batch 3 rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md)
   leave it unresolved. A product-owner answer settles it; one bank would
   reuse Fabled Feast's question.
-- [ ] **walker-native card play through card slots.** Card play used to run
-  through legacy `CardPlay.legalChoices` and `plannedOperations` helpers, so a
-  power could not change the placement procedure. The redesign plays a card to
-  a card slot instead of to a site. By default the options are the empty slots
-  at the actor's site and the actor's empty adviser slots. When no adviser slot
-  is empty, slots holding discardable advisers also become options. Site-card
-  discards, Homeland replacement, the revealed-Vision replacement and the
-  Silver Tongue limit all become contributions to the slot options. It touches
-  Search, facedown-adviser play, Conspiracy, the projections and the frontend,
-  so it needs its own spec: spec 2 of board decisions, under **Phase - Card
-  play UI**. Plan 1 of that spec built the engine; plan 2 puts the slots on
-  the board and marks this done.
+- [ ] **Limit cards that count or ignore advisers.** `CardPlayRules` holds
+  one adviser limit that only lowers, plus the played card's own limit, which
+  fits Silver Tongue, Insomnia and Assassin. Family Wagon (removes the limit
+  for Nomad advisers), Pied Piper (ignores the limit), Marriage (counts as
+  one adviser) and Lost Tapestry (facedown Visions do not count) change what
+  counts toward the limit, so they need a counting rule that
+  `CardSlots.adviserSlots` and `AdviserLimit` share.
 - [ ] **plan-restricting powers, Bag of Siegeworks and Empire defenders.**
   Peace Envoy and other powers that restrict which plans a side may choose have
   no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
