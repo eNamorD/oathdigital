@@ -28,6 +28,22 @@ object CardPlayProcedure:
     case `adviserFaceDown` => "Play facedown"
     case other => other.key
 
+  /** How a placement answer plays the card, for the readers that name a play
+    * by what it does rather than by its option: the Game Log, and tests. A
+    * Vision played faceup and a played Conspiracy are `Faceup`.
+    */
+  enum PlayedAs:
+    case Discarded, AtSite, Faceup, Facedown
+
+  /** How the placement option `ref` plays the card; `None` for a ref no
+    * placement decision offers. */
+  def playedAs(ref: DecisionOptionRef): Option[PlayedAs] = ref match
+    case `discard` => Some(PlayedAs.Discarded)
+    case `site` => Some(PlayedAs.AtSite)
+    case `adviserFaceUp` => Some(PlayedAs.Faceup)
+    case `adviserFaceDown` => Some(PlayedAs.Facedown)
+    case _ => None
+
   def buildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for

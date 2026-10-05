@@ -2,12 +2,13 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
-import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** The played-card windows: a faceup play and a facedown play each visit their
   * own window, and a discard visits neither.
@@ -38,9 +39,9 @@ class CardPlayHooksSuite extends munit.FunSuite:
   private def inHand(held: WorldCardId): ReadyGame =
     Table.start.hand(actor, held).supply(actor, startSupply).ready
 
-  /** Plays `played` from `origin` with `button`, returning the finished
-    * walk. */
-  private def play(ready: ReadyGame, played: WorldCardId, button: String,
+  /** Plays `played` from `origin` the way `way` names, returning the
+    * finished walk. */
+  private def play(ready: ReadyGame, played: WorldCardId, way: PlayedAs,
       origin: CardPlayProcedure.Origin = CardPlayProcedure.Origin.TemporaryHand)
       : WalkerOutcome.Finished =
     val tree = accepted(CardPlayProcedure.build(catalog, ready, actor, played,
@@ -48,7 +49,9 @@ class CardPlayHooksSuite extends munit.FunSuite:
     val parked = Outcomes.parked(
       ProcedureWalker.advance(ready, tree, None, powers)).tree
     val answer = Answered(PlacementFixture.cardPlayDecisionId(played, "place"),
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button(button)), actor)
+      DecisionAnswer.ChooseOneAnswer(PlacementPicks.pick(present(
+        ProcedureWalker.parkedDecide(ready, tree, parked, powers),
+        "the placement decision"), way)), actor)
     Outcomes.finished(
       ProcedureWalker.resolve(ready, tree, parked, answer, powers))
 
@@ -60,32 +63,32 @@ class CardPlayHooksSuite extends munit.FunSuite:
       .exists(_.contributions.contains(probeId))
 
   test("a card played to a site visits the faceup window only"):
-    val done = play(inHand(card), card, "site")
+    val done = play(inHand(card), card, PlayedAs.AtSite)
     assertEquals(supplyAfter(done), startSupply + 1)
     assert(attributed(done))
 
   test("a card played as a faceup adviser visits the faceup window only"):
-    val done = play(inHand(card), card, "adviser-faceup")
+    val done = play(inHand(card), card, PlayedAs.Faceup)
     assertEquals(supplyAfter(done), startSupply + 1)
 
   test("a denizen played as a facedown adviser visits the facedown window only"):
-    val done = play(inHand(card), card, "adviser-facedown")
+    val done = play(inHand(card), card, PlayedAs.Facedown)
     assertEquals(supplyAfter(done), startSupply + 2)
     assert(attributed(done))
 
   test("a Vision played as a facedown adviser visits the facedown window"):
     val done = play(inHand(VisionRules.Faith), VisionRules.Faith,
-      "adviser-facedown")
+      PlayedAs.Facedown)
     assertEquals(supplyAfter(done), startSupply + 2)
 
   test("a discard visits neither window"):
-    val done = play(inHand(card), card, "discard")
+    val done = play(inHand(card), card, PlayedAs.Discarded)
     assertEquals(supplyAfter(done), startSupply)
     assert(!attributed(done))
 
   test("a facedown adviser played faceup visits the faceup window"):
     val ready = Table.start.adviser(actor, card, facedown = true)
       .supply(actor, startSupply).ready
-    val done = play(ready, card, "adviser-faceup",
+    val done = play(ready, card, PlayedAs.Faceup,
       CardPlayProcedure.Origin.FacedownAdviser)
     assertEquals(supplyAfter(done), startSupply + 1)

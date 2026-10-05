@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powerresolver.Transform
@@ -7,7 +8,7 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Outcomes, PowerStubs, Table}
+import oathdigital.testkit.{CatalogNames, Outcomes, PlacementPicks, PowerStubs, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 
@@ -96,8 +97,8 @@ class SearchProcedureSuite extends munit.FunSuite:
         startArgs = Vector(DecisionOptionRef.Button("search:world"))))
     val result = accepted(withPowers.resolveWalker(started.state, actor,
       PlacementFixture.cardPlayDecisionId(vision, "place"),
-      DecisionAnswer.ChooseOneAnswer(
-        DecisionOptionRef.Button("adviser-faceup"))))
+      PlacementPicks.parkedAnswer(started.state, PlayedAs.Faceup,
+        WalkerPowerCatalog.default(catalog))))
     val after = Outcomes.ready(result.state)
     assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
     assertEquals(after.game.current.walkerPending, None)
@@ -128,8 +129,8 @@ class SearchProcedureSuite extends munit.FunSuite:
     val placed = accepted(
       withPower.resolveWalker(started.state, actor,
         PlacementFixture.cardPlayDecisionId(vision, "place"),
-        DecisionAnswer.ChooseOneAnswer(
-          DecisionOptionRef.Button("adviser-faceup"))))
+        PlacementPicks.parkedAnswer(started.state, PlayedAs.Faceup,
+          WalkerPowers(Vector(settlePower)))))
     withPowerParked.assertParked(placed.state, ActionRef.Search, settleDecision,
       actor)
     val completed = accepted(

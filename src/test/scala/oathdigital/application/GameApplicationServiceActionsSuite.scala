@@ -1,5 +1,7 @@
 package oathdigital.application
 
+import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model._
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerStepRecorded}
@@ -7,7 +9,7 @@ import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathViolation.WrongPlayer
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 import ParkedServiceFixture.{loaded, optionRef, parkedAssertions,
@@ -85,7 +87,8 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     val discarded = accepted(service.handle("game-minor-replay",
       started.nextSequence, GameCommand.ResolveWalker(actor, TreeDecision(
         s"cardplay.place.${adviser.kind}.${adviser.value}",
-        ChooseOneAnswer(DecisionOptionRef.Button("discard"))))))
+        PlacementPicks.parkedAnswer(started.state, PlayedAs.Discarded,
+          WalkerPowerCatalog.default(catalog))))))
     val beforeRetry = loaded(repository.load("game-minor-replay")).records
     assert(service.handle("game-minor-replay", discarded.nextSequence,
       playFacedownAdviser(actor, adviser)).isLeft)
@@ -292,6 +295,7 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     val completed = accepted(service.handle(gameId, chosen.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(
         s"cardplay.place.${roar.kind}.${roar.value}",
-        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard"))))))
+        PlacementPicks.parkedAnswer(chosen.state, PlayedAs.Discarded,
+          WalkerPowerCatalog.default(catalog))))))
     assertEquals(loaded(replayingSecond(service, repository)
       .load(gameId)).state, completed.state)

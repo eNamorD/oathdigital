@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
@@ -33,21 +34,21 @@ class VowOfObedienceSuite extends munit.FunSuite:
   test("a faceup holder's Search does not offer a Vision faceup, and " +
       "refuses it"):
     val parkedAt = search(VisionRules.Faith, holding(_))
-    assert(!offered(parkedAt).contains("adviser-faceup"))
-    assert(offered(parkedAt).contains("discard"))
-    assert(offered(parkedAt).contains("adviser-facedown"))
+    assert(!offered(parkedAt).contains(PlayedAs.Faceup))
+    assert(offered(parkedAt).contains(PlayedAs.Discarded))
+    assert(offered(parkedAt).contains(PlayedAs.Facedown))
     assert(SearchFixture.place(parkedAt, VisionRules.Faith,
-      "adviser-faceup").isLeft)
+      PlayedAs.Faceup).isLeft)
 
   test("the holder cannot play a facedown Vision faceup either"):
     val parkedAt = fromAdvisers(holding(inPhase(quietTable, Phase.Act)),
       VisionRules.Faith)
-    assert(!offered(parkedAt).contains("adviser-faceup"))
-    assert(offered(parkedAt).contains("discard"))
+    assert(!offered(parkedAt).contains(PlayedAs.Faceup))
+    assert(offered(parkedAt).contains(PlayedAs.Discarded))
 
   test("the Conspiracy is a Vision, so it is forbidden too"):
     val parkedAt = search(VisionRules.Conspiracy, holding(_))
-    assert(!offered(parkedAt).contains("adviser-faceup"))
+    assert(!offered(parkedAt).contains(PlayedAs.Faceup))
 
   private def hidden(from: OathTransition): Vector[NoteText.Said] =
     val power = VowOfObedience
@@ -68,9 +69,9 @@ class VowOfObedienceSuite extends munit.FunSuite:
 
   test("a facedown Vow, or another player's faceup Vow, forbids nothing"):
     assert(offered(search(VisionRules.Faith, holding(_,
-      orientation = Orientation.FaceDown))).contains("adviser-faceup"))
+      orientation = Orientation.FaceDown))).contains(PlayedAs.Faceup))
     assert(offered(search(VisionRules.Faith, holding(_, owner = other)))
-      .contains("adviser-faceup"))
+      .contains(PlayedAs.Faceup))
 
   // ---- REST: Take a favor from any one favor bank ----
 

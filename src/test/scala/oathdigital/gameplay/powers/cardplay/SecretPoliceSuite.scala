@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.model._
@@ -27,41 +28,41 @@ class SecretPoliceSuite extends munit.FunSuite:
   test("an enemy at a site its ruler rules cannot play a Vision faceup"):
     // p2 rules Ancient City, where the Police stand and p1's pawn is.
     val parkedAt = search()(policeAt(_, home).warbandsAt(home, other, 2))
-    assert(!offered(parkedAt).contains("adviser-faceup"))
-    assert(offered(parkedAt).contains("discard"))
-    assert(offered(parkedAt).contains("adviser-facedown"))
+    assert(!offered(parkedAt).contains(PlayedAs.Faceup))
+    assert(offered(parkedAt).contains(PlayedAs.Discarded))
+    assert(offered(parkedAt).contains(PlayedAs.Facedown))
     assert(SearchFixture.place(parkedAt, VisionRules.Faith,
-      "adviser-faceup").isLeft)
+      PlayedAs.Faceup).isLeft)
 
   test("any site the ruler rules binds, not only the Police site"):
     // p2 rules Broken Peaks, where the Police stand, and Ancient City.
     assert(!offered(search()(policeAt(_, elsewhere)
       .warbandsAt(elsewhere, other, 2).warbandsAt(home, other, 2)))
-      .contains("adviser-faceup"))
+      .contains(PlayedAs.Faceup))
 
   test("the Police site's own ruler plays freely"):
     // p1 rules Ancient City, where the Police stand.
     assert(offered(search()(policeAt(_, home).warbandsAt(home, actor, 2)))
-      .contains("adviser-faceup"))
+      .contains(PlayedAs.Faceup))
 
   test("a pawn at a site with a different ruler is not bound"):
     // p2 rules the Police site, Broken Peaks; p1 rules Ancient City.
     assert(offered(search()(policeAt(_, elsewhere)
       .warbandsAt(elsewhere, other, 2).warbandsAt(home, actor, 2)))
-      .contains("adviser-faceup"))
+      .contains(PlayedAs.Faceup))
 
   test("under Bandit rule every player at a Bandit site is bound"):
     assert(!offered(search()(policeAt(_, elsewhere).bandits(elsewhere, 2)
-      .bandits(home, 2))).contains("adviser-faceup"))
+      .bandits(home, 2))).contains(PlayedAs.Faceup))
 
   test("the Conspiracy is forbidden too"):
     assert(!offered(search(VisionRules.Conspiracy)(policeAt(_, home)
-      .warbandsAt(home, other, 2))).contains("adviser-faceup"))
+      .warbandsAt(home, other, 2))).contains(PlayedAs.Faceup))
 
   test("a facedown Vision played from the advisers is bound too"):
     val ready = policeAt(Table.start, home).warbandsAt(home, other, 2).ready
     assert(!offered(fromAdvisers(ready, VisionRules.Faith))
-      .contains("adviser-faceup"))
+      .contains(PlayedAs.Faceup))
 
   private def hidden(from: OathTransition): Vector[NoteText.Said] =
     val power = SecretPolice

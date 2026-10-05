@@ -1,6 +1,8 @@
 package oathdigital.application.gamelog
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -218,37 +220,39 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
         val placed = (run.first until at).reverse.map(index =>
           index -> journal.event(index)).collectFirst {
           case (index, WalkerStepRecorded(_, ChoicePayload(id,
-              ChooseOneAnswer(DecisionOptionRef.Button(key)), _), _, _))
-              if id.startsWith(PlacePrefix) =>
-            (index, id.stripPrefix(PlacePrefix), key)
+              ChooseOneAnswer(ref), _), _, _))
+              if id.startsWith(PlacePrefix) &&
+                CardPlayProcedure.playedAs(ref).nonEmpty =>
+            (index, id.stripPrefix(PlacePrefix), ref)
         }.filter { case (index, _, _) =>
           !(index + 1 until at).exists(between => isDelta(journal.event(between)))
         }
         (for
-          (_, subject, key) <- placed
+          (_, subject, ref) <- placed
           card <- subjectCard(subject)
+          way <- CardPlayProcedure.playedAs(ref)
           before <- journal.readyBefore(at)
           after <- journal.readyAfter(at)
-        yield played(card, key, before, after, run.actor, viewer)).toVector
+        yield played(card, way, before, after, run.actor, viewer)).toVector
       case _ => Vector.empty
 
-  private def played(card: CardId, key: String, before: ReadyGame,
+  private def played(card: CardId, way: PlayedAs, before: ReadyGame,
       after: ReadyGame, actor: PlayerId, viewer: Option[PlayerId]): Posted =
     val named = words.one(words.card(card, before, after, viewer))
-    key match
+    way match
       // Named with its pile, as every other discard line is.
-      case "discard" => action(Vector(Text("Discarded ")) ++ named ++
+      case PlayedAs.Discarded => action(Vector(Text("Discarded ")) ++ named ++
         CardIndex.from(after.game).toOption.flatMap(_.get(card))
           .map(_.location.container).collect {
             case CardContainer.RegionalDiscard(region) =>
               Text(s" to the ${region.key.capitalize} discard")
           }.toVector)
-      case "site" => action(Vector(Text("Played ")) ++ named ++
+      case PlayedAs.AtSite => action(Vector(Text("Played ")) ++ named ++
         LogJournal.pawnSite(before, actor).toVector.flatMap(site =>
           Vector(Text(" to "), words.site(site))))
       // A Vision played faceup takes the revealed Vision slot, not an
       // adviser's.
-      case "adviser-faceup" if card.isInstanceOf[VisionId] =>
+      case PlayedAs.Faceup if card.isInstanceOf[VisionId] =>
         action(Vector(Text("Revealed ")) ++ named)
       case _ => action(Vector(Text("Played ")) ++ named ++
         Vector(Text(" as an adviser")))

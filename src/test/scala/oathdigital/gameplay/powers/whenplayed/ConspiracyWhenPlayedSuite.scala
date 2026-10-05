@@ -3,15 +3,16 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.gameplay.PlacementFixture.cardPlayDecisionId
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+  PlacementPicks, Table}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.Unwrap.{accepted, as}
+import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 class ConspiracyWhenPlayedSuite extends munit.FunSuite:
   import WhenPlayedHarness.replayed
@@ -19,7 +20,6 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
   private val powers = WalkerPowers(Vector(ConspiracyWhenPlayed))
   private val conspiracy = VisionRules.Conspiracy
   private val placeId = cardPlayDecisionId(conspiracy, "place")
-  private val faceup = DecisionOptionRef.Button("adviser-faceup")
   private val crackedHorn = CatalogNames.relic("Cracked Horn")
   private val banditCrown = CatalogNames.relic("Bandit Crown")
 
@@ -63,11 +63,19 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       powers))
     AtPlacement(tree, parked.tree)
 
-  /** Answers the placement decision with `button`. */
-  private def placedAs(f: Staged, button: DecisionOptionRef)
+  /** The option of the parked placement decision that plays the card
+    * `way`. */
+  private def waying(f: Staged, placement: AtPlacement, way: PlayedAs)
+      : DecisionOptionRef =
+    PlacementPicks.pick(present(ProcedureWalker.parkedDecide(f.ready,
+      placement.tree, placement.at, powers), "the placement decision"), way)
+
+  /** Answers the placement decision by playing the card `way`. */
+  private def placedAs(f: Staged, way: PlayedAs)
       : Either[OathViolation, WalkerOutcome] =
     val placement = atPlacement(f)
-    answer(f, placement.tree, placement.at, placeId, button)
+    answer(f, placement.tree, placement.at, placeId,
+      waying(f, placement, way))
 
   /** The play's tree, and the position parked on the target decision. */
   private final case class AtTarget(tree: Operation, at: PendingTree)
@@ -75,7 +83,8 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
   /** Plays Conspiracy faceup and parks on the target decision. */
   private def atTarget(f: Staged): AtTarget =
     val placement = atPlacement(f)
-    val placed = answer(f, placement.tree, placement.at, placeId, faceup)
+    val placed = answer(f, placement.tree, placement.at, placeId,
+      waying(f, placement, PlayedAs.Faceup))
     AtTarget(placement.tree, Outcomes.parked(placed).tree)
 
   private final case class TargetDecision(decisionId: String, owner: PlayerId,
@@ -163,7 +172,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
   test("with no legal target Conspiracy asks nothing and only leaves the game"):
     // p2 stands at Broken Peaks, away from p1, and no banner has a holder.
     val f = fromHand(Table.start)
-    val done = Outcomes.finished(placedAs(f, faceup))
+    val done = Outcomes.finished(placedAs(f, PlayedAs.Faceup))
     val after = done.treeless
     assertEquals(after.game.current.temporaryHands(p1), Vector.empty)
     assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
@@ -187,8 +196,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
 
   test("discarding a Conspiracy does not play it"):
     val f = fromHand(p2AtAncientCity.relic(p2, crackedHorn, facedown = true))
-    val discard = DecisionOptionRef.Button("discard")
-    val done = Outcomes.finished(placedAs(f, discard))
+    val done = Outcomes.finished(placedAs(f, PlayedAs.Discarded))
     assert(Look(done.treeless).player(p2).relics.exists(_.id == crackedHorn))
     assert(accepted(CardIndex.from(done.treeless.game)).ids
       .contains(conspiracy))
@@ -230,5 +238,5 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
 
   test("a Conspiracy with no target writes no line"):
     val f = fromHand(Table.start)
-    val done = Outcomes.finished(placedAs(f, faceup))
+    val done = Outcomes.finished(placedAs(f, PlayedAs.Faceup))
     assertEquals(seized(done.events), Vector.empty)

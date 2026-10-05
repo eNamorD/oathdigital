@@ -2,6 +2,8 @@ package oathdigital.application.gamelog
 
 import oathdigital.application.GamePresentationProjector
 import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
@@ -56,8 +58,8 @@ private[gamelog] final class DetailLines(words: LogWords,
     * discards to the same pile by the same player read as one line. */
   private def deltas(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
-    val placedDiscard = placement(journal, run, at, "discard")
-    val playedFaceup = placement(journal, run, at, "adviser-faceup")
+    val placedDiscard = placement(journal, run, at, PlayedAs.Discarded)
+    val playedFaceup = placement(journal, run, at, PlayedAs.Faceup)
     val found = journal.ops(at).flatMap(step =>
       DetailLines.parts(step.operation).flatMap(part =>
         delta(run, OpStep(part, step.before, step.after), placedDiscard,
@@ -150,14 +152,15 @@ private[gamelog] final class DetailLines(words: LogWords,
       .flatMap(located => GamePresentationProjector.orientationOf(located.state))
       .contains(Orientation.FaceDown)
 
-  /** The card Card Play's last placement answer sent by `key`, which its
+  /** The card Card Play's last placement answer played `way`, which its
     * action line already tells: "Discarded {card}" for the discard, and
     * "Played {card} as an adviser" for a facedown adviser turned faceup. */
-  private def placement(journal: LogJournal, run: Run, at: Int, key: String)
+  private def placement(journal: LogJournal, run: Run, at: Int, way: PlayedAs)
       : Option[CardId] =
     journal.answers(run, at).reverse.collectFirst {
-      case Answered(id, ChooseOneAnswer(DecisionOptionRef.Button(`key`)), _)
-          if id.startsWith(ActionLines.PlacePrefix) =>
+      case Answered(id, ChooseOneAnswer(ref), _)
+          if id.startsWith(ActionLines.PlacePrefix) &&
+            CardPlayProcedure.playedAs(ref).contains(way) =>
         ActionLines.subjectCard(id.stripPrefix(ActionLines.PlacePrefix))
     }.flatten
 

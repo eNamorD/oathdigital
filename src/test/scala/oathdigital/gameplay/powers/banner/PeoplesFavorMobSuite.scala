@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.banner
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.PlacementFixture
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
@@ -54,7 +55,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
   private def toSite(ready: ReadyGame): OathTransition = (for
     started <- start(ready)
     kept <- keep(started, played)
-    placed <- place(kept, played, "site")
+    placed <- place(kept, played, PlayedAs.AtSite)
   yield placed.copy(events = started.events ++ kept.events ++ placed.events))
     .fold(error => throw new AssertionError(error.toString), identity)
 
@@ -123,7 +124,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val fillers = Vector(homesteaders, landWarden, newsFromAfar)
     assertEquals(fillers.size, capacity)
     val full = searchAtAncientCityHolding(fillers)
-    assert(place(accepted(keep(accepted(start(full)), played)), played, "site")
+    assert(place(accepted(keep(accepted(start(full)), played)), played, PlayedAs.AtSite)
       .isRight)
     val asked = toSite(full)
     assert(asksToDiscard(asked))
@@ -136,7 +137,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val attempt = for
       started <- start(without)
       kept <- keep(started, played)
-      placed <- place(kept, played, "site")
+      placed <- place(kept, played, PlayedAs.AtSite)
     yield placed
     assert(attempt.isLeft, "a full site accepts no play without Mob")
 
@@ -197,7 +198,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val started = accepted(
       rules.startWalker(OathState.Ready(ready), ActionRef.PlayFacedownAdviser,
         actor, Vector.empty, Vector(DecisionOptionRef.Denizen(played))))
-    val placed = accepted(place(started, played, "site"))
+    val placed = accepted(place(started, played, PlayedAs.AtSite))
     assert(asksToDiscard(placed))
 
   test("it composes with Silver Tongue's limit of two advisers, both from " +
@@ -238,7 +239,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val selected = Vector(oathdigital.gameplay.powers.cardplay.WelcomingParty.id)
     val started = accepted(start(ready, selected))
     val chosen = accepted(keep(started, played))
-    val asked = accepted(place(chosen, played, "site"))
+    val asked = accepted(place(chosen, played, PlayedAs.AtSite))
     assert(asksToDiscard(asked))
     assert(discardAnswer(asked, DecisionOptionRef.Denizen(party)).isLeft,
       "a card that prints a selected power cannot be discarded")

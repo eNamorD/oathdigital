@@ -1,11 +1,12 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ParkedNode, Table}
+import oathdigital.testkit.{PlacementPicks, Table}
 
 /** The two ways to play a Vision, each stopped at its placement decision, for
   * the suites of the cards that forbid or reward a faceup Vision.
@@ -38,11 +39,8 @@ object VisionPlayFixture:
       ActionRef.PlayFacedownAdviser, actor, Vector.empty,
       Vector(DecisionOptionRef.Vision(vision))))
 
-  /** The buttons of the placement decision the walk is parked on. */
-  def offered(from: OathTransition): Vector[String] =
-    ParkedNode.of(from.state, catalog, WalkerPowerCatalog.default(catalog)) match
-      case Right(Some(ParkedNode.Decision(_, decide, _))) => decide.query match
-        case DecisionQuery.ChooseOne(options, _) => options.filter(_.available).map(_.ref).collect {
-          case DecisionOptionRef.Button(key) => key }
-        case other => throw new AssertionError(s"not a choose-one: $other")
-      case other => throw new AssertionError(s"not parked on a decision: $other")
+  /** How the options of the placement the walk is parked on play the card,
+    * after the restriction look-ahead. */
+  def offered(from: OathTransition)(using munit.Location): Vector[PlayedAs] =
+    PlacementPicks.offered(PlacementPicks.parkedOptions(from.state,
+      WalkerPowerCatalog.default(catalog)))

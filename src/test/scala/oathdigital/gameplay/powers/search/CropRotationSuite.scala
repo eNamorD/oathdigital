@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.search
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.PlacementFixture
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.{NoteText, SearchFixture, WalkerPowerCatalog}
@@ -46,7 +47,7 @@ class CropRotationSuite extends munit.FunSuite:
       : Either[OathViolation, OathTransition] = for
     started <- start(ready, selected)
     kept <- keep(started, played)
-    placed <- place(kept, played, "site")
+    placed <- place(kept, played, PlayedAs.AtSite)
   yield placed.copy(events = started.events ++ kept.events ++ placed.events)
 
   private def asksToDiscard(transition: OathTransition): Boolean =
@@ -110,7 +111,7 @@ class CropRotationSuite extends munit.FunSuite:
     val started = accepted(rules.startWalker(Ready(ready),
       ActionRef.PlayFacedownAdviser, p1, modifiers,
       Vector(DecisionOptionRef.Denizen(played))))
-    assert(asksToDiscard(accepted(place(started, played, "site"))))
+    assert(asksToDiscard(accepted(place(started, played, PlayedAs.AtSite))))
 
   test("its line is written once the discard is answered"):
     val asked = accepted(toSite(staged(Vector(fillers(0)))))

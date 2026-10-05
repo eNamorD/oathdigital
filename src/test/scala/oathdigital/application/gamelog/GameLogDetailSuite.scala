@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model._
 import LogScripts._
 
@@ -55,7 +56,7 @@ class GameLogDetailSuite extends munit.FunSuite:
         .matches(line)), all)
 
   test("a facedown adviser played faceup is told once, by the action line"):
-    val all = lines(facedownAdviser("revealed-adviser", Some("adviser-faceup")))
+    val all = lines(facedownAdviser("revealed-adviser", Some(PlayedAs.Faceup)))
     assert(all.exists(line => line.startsWith("Played ") &&
       line.endsWith(" as an adviser")), all)
     assert(!all.exists(_.startsWith("Revealed ")), all)

@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.search
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
 import oathdigital.model._
@@ -42,7 +43,7 @@ class AugurySuite extends munit.FunSuite:
   test("the player keeps any one of the drawn cards"):
     val top = discordCards.take(6)
     val kept = top(3)
-    val done = play(withAugury(top), modifiers, kept, "adviser-facedown")
+    val done = play(withAugury(top), modifiers, kept, PlayedAs.Facedown)
     val after = SearchFixture.after(done)
     assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
     assert(Look(after).player(actor).advisers.exists(_.id == kept),

@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{PlayerFacts, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -60,7 +61,7 @@ class WildCrySuite extends munit.FunSuite:
 
   test("a beast denizen played to a site gains 1 Supply and 2 warbands"):
     val ready = withCry(beastCard)
-    val done = play(ready, modifiers, beastCard, "site")
+    val done = play(ready, modifiers, beastCard, PlayedAs.AtSite)
     val after = SearchFixture.after(done)
     assertEquals(Look(after).supply(actor), supplyAfterCost + 1)
     assertEquals(warbands(after), warbands(ready) + 2)
@@ -71,7 +72,7 @@ class WildCrySuite extends munit.FunSuite:
 
   test("a beast denizen played as a faceup adviser gains the same"):
     val ready = withCry(beastCard)
-    val played = play(ready, modifiers, beastCard, "adviser-faceup")
+    val played = play(ready, modifiers, beastCard, PlayedAs.Faceup)
     val after = SearchFixture.after(played)
     assertEquals(Look(after).supply(actor), supplyAfterCost + 1)
     assertEquals(warbands(after), warbands(ready) + 2)
@@ -79,7 +80,7 @@ class WildCrySuite extends munit.FunSuite:
   test("a facedown play, a discard, another suit and no selection gain " +
       "nothing"):
     val ready = withCry(beastCard)
-    Vector("adviser-facedown", "discard").foreach { button =>
+    Vector(PlayedAs.Facedown, PlayedAs.Discarded).foreach { button =>
       val after = SearchFixture.after(play(ready, modifiers, beastCard, button))
       assertEquals(Look(after).supply(actor), supplyAfterCost, button)
       assertEquals(warbands(after), warbands(ready), button)
@@ -90,9 +91,9 @@ class WildCrySuite extends munit.FunSuite:
     val hearthFirst = Table.from(drawingHearth).denizen(wildCry, at = home)
       .unchecked
     val other = SearchFixture.after(
-      play(hearthFirst, modifiers, hearth, "site"))
+      play(hearthFirst, modifiers, hearth, PlayedAs.AtSite))
     assertEquals(Look(other).supply(actor), supplyAfterCost)
-    val playedPlain = play(ready, Vector.empty, beastCard, "site")
+    val playedPlain = play(ready, Vector.empty, beastCard, PlayedAs.AtSite)
     val unselected = SearchFixture.after(playedPlain)
     assertEquals(Look(unselected).supply(actor), supplyAfterCost)
     assertEquals(warbands(unselected), warbands(ready))
@@ -114,7 +115,7 @@ class WildCrySuite extends munit.FunSuite:
   test("a warband bank holding only 1 gives 1 warband and 1 Supply"):
     val kind = accepted(PlayerFacts.forceKind(quietTable, actor))
     val ready = leaveInBank(withCry(beastCard), kind, 1)
-    val after = SearchFixture.after(play(ready, modifiers, beastCard, "site"))
+    val after = SearchFixture.after(play(ready, modifiers, beastCard, PlayedAs.AtSite))
     assertEquals(warbands(after), warbands(ready) + 1)
     assertEquals(Look(after).supply(actor), supplyAfterCost + 1)
 
@@ -132,7 +133,7 @@ class WildCrySuite extends munit.FunSuite:
     assertEquals(before.size, 3)
     val started = accepted(start(holding, modifiers))
     val chosen = accepted(keep(started, kept))
-    val asked = accepted(place(chosen, kept, "adviser-faceup"))
+    val asked = accepted(place(chosen, kept, PlayedAs.Faceup))
     assert(replace(asked, kept, wildCry).isLeft, "Wild Cry was discardable")
     val done = accepted(replace(asked, kept, extra))
     val after = Look(SearchFixture.after(done)).player(actor).advisers.map(_.id)

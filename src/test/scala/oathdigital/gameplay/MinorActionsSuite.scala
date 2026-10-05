@@ -1,10 +1,12 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.{MinorActionCommand,
   MinorActionOperationPolicy, MinorActions}
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Journal, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Journal, Look, Outcomes, PlacementPicks, Table}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -39,7 +41,8 @@ class MinorActionsSuite extends munit.FunSuite:
       startArgs = Vector(DecisionOptionRef.Denizen(magiciansCode))))
     val discarded = accepted(rules.resolveWalker(started.state, p1,
       PlacementFixture.cardPlayDecisionId(magiciansCode, "place"),
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard"))))
+      PlacementPicks.parkedAnswer(started.state, PlayedAs.Discarded,
+        WalkerPowers.empty)))
     val after = Outcomes.ready(discarded.state)
     assertEquals(Look(after).supply(p1), Look(base).supply(p1))
     // Broken Peaks is in the Cradle, so the discard goes to the Provinces.
@@ -201,7 +204,8 @@ class MinorActionsSuite extends munit.FunSuite:
       startArgs = Vector(DecisionOptionRef.Denizen(locked))))
     val discarded = accepted(rules.resolveWalker(started.state, p1,
       PlacementFixture.cardPlayDecisionId(locked, "place"),
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard"))))
+      PlacementPicks.parkedAnswer(started.state, PlayedAs.Discarded,
+        WalkerPowers.empty)))
     assertEquals(Look(discarded.state).advisers(p1), Vector.empty)
 
   test("valid setup history replays exactly through a completed minor action"):
@@ -220,7 +224,8 @@ class MinorActionsSuite extends munit.FunSuite:
       })))
     val discarded = accepted(rules.resolveWalker(started.state, active,
       PlacementFixture.cardPlayDecisionId(adviser, "place"),
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard"))))
+      PlacementPicks.parkedAnswer(started.state, PlayedAs.Discarded,
+        WalkerPowers.empty)))
     val events = setupEvents ++ act.events ++ started.events ++ discarded.events
     val replayed = Journal.replayed(rules, events)
     assertEquals(replayed, discarded.state)

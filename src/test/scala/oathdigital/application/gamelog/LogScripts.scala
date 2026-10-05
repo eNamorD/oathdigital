@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.application._
 import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.actions.VisionRules
@@ -18,7 +19,7 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
 import oathdigital.testkit.{Answers, CatalogNames, Dice, Look, Park,
-  Situation, Step, Table}
+  PlacementPicks, Situation, Step, Table}
 import oathdigital.testkit.Unwrap.as
 import oathdigital.testkit.Table.{p1, p2, p3}
 
@@ -242,16 +243,16 @@ object LogScripts:
   def facedownAdviser(using munit.Location): Script =
     facedownAdviser("facedown-adviser", None)
 
-  /** As above, the placement answered with the `placement` button when one
-    * is given, else by default (the first button, discard). */
-  def facedownAdviser(name: String, placement: Option[String])
+  /** As above, the card played as `placement` names when one is given, else
+    * by default (the first option, discard). */
+  def facedownAdviser(name: String, placement: Option[PlayedAs])
       (using munit.Location): Script =
     val conclave = CatalogNames.denizen("Wizard's Conclave")
     val (service, acted) = atTable(name, Table.start
       .adviser(p1, conclave, facedown = true).banditsRefilled)
-    val act = placement.fold(acted)(key => acted.withAnswers {
+    val act = placement.fold(acted)(way => acted.withAnswers {
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
-        ChooseOneAnswer(DecisionOptionRef.Button(key))
+        ChooseOneAnswer(PlacementPicks.pick(park.decide, way))
     })
     start(act, ActionRef.PlayFacedownAdviser,
       DecisionOptionRef.Denizen(conclave))
@@ -483,17 +484,18 @@ object LogScripts:
   /** Oracle at p1's site, used in Act by a player holding three secrets.
     * Vision of Sanctuary tops the world deck; Oracle draws it, and the actor
     * keeps it as a facedown adviser. */
-  def oracle(using munit.Location): Script = oracle("oracle", "adviser-facedown")
+  def oracle(using munit.Location): Script =
+    oracle("oracle", PlayedAs.Facedown)
 
-  /** Oracle, its drawn Vision of Sanctuary placed by `placement`. */
-  def oracle(name: String, placement: String)(using munit.Location): Script =
+  /** Oracle, its drawn Vision of Sanctuary played as `placement` names. */
+  def oracle(name: String, placement: PlayedAs)(using munit.Location): Script =
     val card = CatalogNames.denizen("Oracle")
     val (service, act) = atTable(name, Table.start
       .denizen("Oracle", "Ancient City").secrets(p1, faceUp = 3)
       .worldDeckTop(VisionRules.Sanctuary).banditsRefilled)
     act.withAnswers {
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
-        ChooseOneAnswer(DecisionOptionRef.Button(placement))
+        ChooseOneAnswer(PlacementPicks.pick(park.decide, placement))
     }.after(GameCommand.UsePower(p1, Oracle.id,
       DecisionOptionRef.Denizen(card)))
     Script(name, service, p1)
@@ -540,7 +542,7 @@ object LogScripts:
       .relicDeckTop("Dowsing Sticks").banditsRefilled)
     act.withAnswers {
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
-        ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup"))
+        ChooseOneAnswer(PlacementPicks.pick(park.decide, PlayedAs.Faceup))
       case park if park.decisionId == FamilyHeirloom.decisionId =>
         ChooseOneAnswer(choice)
     }.after(GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,

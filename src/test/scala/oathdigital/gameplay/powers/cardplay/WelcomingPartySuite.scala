@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
@@ -34,7 +35,7 @@ class WelcomingPartySuite extends munit.FunSuite:
   test("a denizen played faceup straight from the draw, to a site, gains 1 " +
       "favor from the Hearth bank"):
     val ready = withParty(plain)
-    val done = play(ready, modifiers, plain.head, "site")
+    val done = play(ready, modifiers, plain.head, PlayedAs.AtSite)
     val after = SearchFixture.after(done)
     // The play itself also gains 1 favor from the card's own suit bank
     // (Arcane), so Hearth is the only bank the power touches.
@@ -45,7 +46,7 @@ class WelcomingPartySuite extends munit.FunSuite:
   test("a card played as a faceup adviser gains it too, of any suit"):
     val ready = withParty(plain)
     val after = SearchFixture.after(play(ready, modifiers, plain.head,
-      "adviser-faceup"))
+      PlayedAs.Faceup))
     assertEquals(hearthBank(after), hearthBank(ready) - 1)
     // An adviser play takes no favor from the card's own suit bank, only 1
     // from the Hearth bank.
@@ -54,7 +55,7 @@ class WelcomingPartySuite extends munit.FunSuite:
   test("a card drawn by a Search and placed facedown is not played faceup, " +
       "so it gains nothing"):
     val ready = withParty(plain)
-    val done = play(ready, modifiers, plain.head, "adviser-facedown")
+    val done = play(ready, modifiers, plain.head, PlayedAs.Facedown)
     val after = SearchFixture.after(done)
     assertEquals(hearthBank(after), hearthBank(ready))
     assertEquals(favor(after), favor(ready))
@@ -63,7 +64,7 @@ class WelcomingPartySuite extends munit.FunSuite:
       "gains nothing, played faceup or to a site"):
     val card = plain.head
     val ready = asAdviser(withParty(plain.drop(1)), card, Orientation.FaceDown)
-    Vector("adviser-faceup", "site").foreach { button =>
+    Vector(PlayedAs.Faceup, PlayedAs.AtSite).foreach { button =>
       val played = playFacedown(ready, modifiers, card, button)
       val after = SearchFixture.after(played)
       assertEquals(hearthBank(after), hearthBank(ready), button)
@@ -72,10 +73,10 @@ class WelcomingPartySuite extends munit.FunSuite:
   test("a discard and an unselected power gain nothing"):
     val ready = withParty(plain)
     val discarded = SearchFixture.after(play(ready, modifiers, plain.head,
-      "discard"))
+      PlayedAs.Discarded))
     assertEquals(hearthBank(discarded), hearthBank(ready))
     val unselected = SearchFixture.after(play(ready, Vector.empty, plain.head,
-      "adviser-faceup"))
+      PlayedAs.Faceup))
     assertEquals(hearthBank(unselected), hearthBank(ready))
 
   test("it applies only to another denizen played faceup from a Search"):
@@ -102,5 +103,5 @@ class WelcomingPartySuite extends munit.FunSuite:
   test("an empty Hearth bank gives nothing"):
     val ready = partyAtHome(plain).bankFavor(Suit.Hearth, 0).unchecked
     val after = SearchFixture.after(play(ready, modifiers, plain.head,
-      "adviser-faceup"))
+      PlayedAs.Faceup))
     assertEquals(favor(after), favor(ready))

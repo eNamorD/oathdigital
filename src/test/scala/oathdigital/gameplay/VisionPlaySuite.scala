@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.WalkerPowerCatalog
@@ -8,7 +9,7 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{Look, Outcomes, Table}
+import oathdigital.testkit.{Look, Outcomes, PlacementPicks, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -20,8 +21,11 @@ class VisionPlaySuite extends munit.FunSuite:
   private val conspiracy = VisionRules.Conspiracy
   private val newVision = VisionRules.Faith
   private val existingVision = VisionRules.Conquest
-  private val faceup = DecisionAnswer.ChooseOneAnswer(
-    DecisionOptionRef.Button("adviser-faceup"))
+  /** The answer that plays the card faceup at the placement `state` is
+    * parked on. */
+  private def faceup(state: OathState): DecisionAnswer.ChooseOneAnswer =
+    PlacementPicks.parkedAnswer(state, PlayedAs.Faceup,
+      WalkerPowerCatalog.default(catalog))
 
   private def placeId(card: VisionId) =
     PlacementFixture.cardPlayDecisionId(card, "place")
@@ -83,7 +87,8 @@ class VisionPlaySuite extends munit.FunSuite:
       rules.startWalker(OathState.Ready(initial), ActionRef.Search, actor,
         startArgs = Vector(DecisionOptionRef.Button("search:world"))))
     val parked = accepted(
-      rules.resolveWalker(started.state, actor, placeId(conspiracy), faceup))
+      rules.resolveWalker(started.state, actor, placeId(conspiracy),
+        faceup(started.state)))
     walkerParked.assertParked(parked.state, ActionRef.Search,
       "cardplay.conspiracy.target", actor)
     assertEquals(Outcomes.ready(parked.state)
@@ -120,7 +125,8 @@ class VisionPlaySuite extends munit.FunSuite:
       ActionRef.PlayFacedownAdviser, actor,
       startArgs = Vector(DecisionOptionRef.Vision(revealed))))
     val done = accepted(
-      rules.resolveWalker(started.state, actor, placeId(revealed), faceup))
+      rules.resolveWalker(started.state, actor, placeId(revealed),
+        faceup(started.state)))
     val after = Outcomes.ready(done.state)
     val updated = Look(after).player(actor)
     assertEquals(updated.board.supply, before.board.supply)
@@ -138,7 +144,8 @@ class VisionPlaySuite extends munit.FunSuite:
       ActionRef.PlayFacedownAdviser, actor,
       startArgs = Vector(DecisionOptionRef.Vision(conspiracy))))
     val done = accepted(
-      rules.resolveWalker(started.state, actor, placeId(conspiracy), faceup))
+      rules.resolveWalker(started.state, actor, placeId(conspiracy),
+        faceup(started.state)))
     val after = Outcomes.ready(done.state)
     assert(!Look(after).player(actor).advisers.exists(_.id == conspiracy))
     assertEquals(after.game.current.walkerPending, None)

@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model._
 import LogScripts._
 
@@ -105,16 +106,16 @@ class GameLogActionLineSuite extends munit.FunSuite:
       .matches(line)), all)
 
   test("a Vision played faceup is revealed, not played as an adviser"):
-    val all = lines(oracle("revealed-vision", "adviser-faceup"), None)
+    val all = lines(oracle("revealed-vision", PlayedAs.Faceup), None)
     assert(all.exists(line => line.startsWith("Revealed ") &&
       line.contains("Vision")), all)
     assert(!all.exists(_.endsWith(" as an adviser")), all)
     assertEquals(all.count(_.startsWith("Revealed ")), 1, all)
 
   test("Play Facedown Adviser: a card placed as an adviser or at the site"):
-    val adviser = facedownAdviser("placed-adviser", Some("adviser-faceup"))
+    val adviser = facedownAdviser("placed-adviser", Some(PlayedAs.Faceup))
     assert(lines(adviser, None).exists(line => line.startsWith("Played ") &&
       line.endsWith(" as an adviser")), lines(adviser, None))
-    val site = facedownAdviser("placed-site", Some("site"))
+    val site = facedownAdviser("placed-site", Some(PlayedAs.AtSite))
     assert(lines(site, None).exists(line => "^Played .+ to .+$".r.matches(line)),
       lines(site, None))

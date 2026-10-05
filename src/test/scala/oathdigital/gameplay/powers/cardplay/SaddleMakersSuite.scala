@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -40,7 +41,7 @@ class SaddleMakersSuite extends munit.FunSuite:
   test("another player's nomad card played as a faceup adviser gains the " +
       "holder 2 favor from the Nomad bank"):
     val ready = held(nomad)
-    val done = play(ready, Vector.empty, nomad.head, "adviser-faceup")
+    val done = play(ready, Vector.empty, nomad.head, PlayedAs.Faceup)
     val after = SearchFixture.after(done)
     assertEquals(favor(after, holder), favor(ready, holder) + 2)
     assertEquals(bank(after, Suit.Nomad), 3 - 2)
@@ -48,15 +49,15 @@ class SaddleMakersSuite extends munit.FunSuite:
 
   test("an order card played to a site counts too"):
     val ready = held(order)
-    val played = play(ready, Vector.empty, order.head, "site")
+    val played = play(ready, Vector.empty, order.head, PlayedAs.AtSite)
     val after = SearchFixture.after(played)
     assertEquals(favor(after, holder), favor(ready, holder) + 2)
 
   test("a card of another suit, a facedown play and a discard gain nothing"):
     val other = SearchFixture.after(play(held(hearth), Vector.empty,
-      hearth.head, "adviser-faceup"))
+      hearth.head, PlayedAs.Faceup))
     assertEquals(favor(other, holder), favor(held(hearth), holder))
-    Vector("adviser-facedown", "discard").foreach { button =>
+    Vector(PlayedAs.Facedown, PlayedAs.Discarded).foreach { button =>
       val ready = held(nomad)
       val after = SearchFixture.after(play(ready, Vector.empty, nomad.head,
         button))
@@ -67,20 +68,20 @@ class SaddleMakersSuite extends munit.FunSuite:
     val ready = Table.start.adviser(holder, saddle)
       .adviser(actor, nomad.head, facedown = true).ready
     val after = SearchFixture.after(playFacedown(ready, Vector.empty,
-      nomad.head, "adviser-faceup"))
+      nomad.head, PlayedAs.Faceup))
     assertEquals(favor(after, holder), favor(ready, holder) + 2)
 
   test("the holder's own play gains nothing"):
     val ready = asAdviser(SearchFixture.staged(nomad, supply = 5), saddle)
     val after = SearchFixture.after(play(ready, Vector.empty, nomad.head,
-      "adviser-faceup"))
+      PlayedAs.Faceup))
     assertEquals(favor(after, actor), favor(ready, actor))
     assertEquals(bank(after, Suit.Nomad), bank(ready, Suit.Nomad))
 
   test("a facedown Saddle Makers is not active"):
     val ready = held(nomad, Orientation.FaceDown)
     val after = SearchFixture.after(play(ready, Vector.empty, nomad.head,
-      "adviser-faceup"))
+      PlayedAs.Faceup))
     assertEquals(favor(after, holder), favor(ready, holder))
 
   // ---- Lines ----
@@ -90,19 +91,19 @@ class SaddleMakersSuite extends munit.FunSuite:
     NoteText.said(power.id, power.noteKeys, events)
 
   test("the holder's gain is Saddle Makers' line"):
-    val done = play(held(nomad), Vector.empty, nomad.head, "adviser-faceup")
+    val done = play(held(nomad), Vector.empty, nomad.head, PlayedAs.Faceup)
     assertEquals(said(done.events), Vector(NoteText.Said("gained",
       s"${holder.value} gained 2 favor from the Nomad bank.", covers = true)))
 
   test("a bank holding 1 favor gives 1, and an empty bank gives nothing and " +
       "writes no line"):
     val low = heldTable(nomad).bankFavor(Suit.Nomad, 1).unchecked
-    val one = play(low, Vector.empty, nomad.head, "adviser-faceup")
+    val one = play(low, Vector.empty, nomad.head, PlayedAs.Faceup)
     val afterOne = SearchFixture.after(one)
     assertEquals(favor(afterOne, holder), favor(low, holder) + 1)
     assertEquals(said(one.events), Vector(NoteText.Said("gained",
       s"${holder.value} gained 1 favor from the Nomad bank.", covers = true)))
     val empty = heldTable(nomad).bankFavor(Suit.Nomad, 0).unchecked
-    val none = play(empty, Vector.empty, nomad.head, "adviser-faceup")
+    val none = play(empty, Vector.empty, nomad.head, PlayedAs.Faceup)
     assertEquals(favor(SearchFixture.after(none), holder), favor(empty, holder))
     assertEquals(said(none.events), Vector.empty)

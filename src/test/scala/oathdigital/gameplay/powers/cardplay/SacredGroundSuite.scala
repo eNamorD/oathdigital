@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.model._
@@ -28,14 +29,14 @@ class SacredGroundSuite extends munit.FunSuite:
 
   test("a player whose pawn is elsewhere cannot play a Vision faceup"):
     val parkedAt = search(elsewhere)
-    assert(!offered(parkedAt).contains("adviser-faceup"))
-    assert(offered(parkedAt).contains("discard"))
-    assert(offered(parkedAt).contains("adviser-facedown"))
+    assert(!offered(parkedAt).contains(PlayedAs.Faceup))
+    assert(offered(parkedAt).contains(PlayedAs.Discarded))
+    assert(offered(parkedAt).contains(PlayedAs.Facedown))
     assert(SearchFixture.place(parkedAt, VisionRules.Faith,
-      "adviser-faceup").isLeft)
+      PlayedAs.Faceup).isLeft)
 
   test("a player whose pawn is at Sacred Ground plays freely"):
-    assert(offered(search(home)).contains("adviser-faceup"))
+    assert(offered(search(home)).contains(PlayedAs.Faceup))
 
   test("the site's ruler is bound like everyone else"):
     // p1 rules Broken Peaks, where Sacred Ground stands, with 2 warbands.
@@ -44,20 +45,20 @@ class SacredGroundSuite extends munit.FunSuite:
     val ruled = Table.from(withE08(drawingFaith, elsewhere))
       .warbandsAt(elsewhere, actor, 2).unchecked
     assert(!offered(searched(ruled, VisionRules.Faith))
-      .contains("adviser-faceup"))
+      .contains(PlayedAs.Faceup))
 
   test("the Conspiracy is excepted"):
     assert(offered(search(elsewhere, VisionRules.Conspiracy))
-      .contains("adviser-faceup"))
+      .contains(PlayedAs.Faceup))
 
   test("the ruined face, Desecrated Ground, forbids nothing"):
     assert(offered(search(elsewhere, side = EdificeSide.Ruined))
-      .contains("adviser-faceup"))
+      .contains(PlayedAs.Faceup))
 
   test("a facedown Vision played from the advisers is bound too"):
     val ready = withE08(inPhase(quietTable, Phase.Act), elsewhere)
     assert(!offered(fromAdvisers(ready, VisionRules.Faith))
-      .contains("adviser-faceup"))
+      .contains(PlayedAs.Faceup))
 
   private def hidden(from: OathTransition): Vector[NoteText.Said] =
     val power = SacredGround

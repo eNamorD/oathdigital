@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.search
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -45,7 +46,7 @@ class TruthfulHarpSuite extends munit.FunSuite:
       "facedown as an adviser, as usual"):
     val top = discordCards.take(7)
     val ready = withHarp(top)
-    val done = play(ready, onlyHarp, top(4), "adviser-facedown")
+    val done = play(ready, onlyHarp, top(4), PlayedAs.Facedown)
     val advisers = Look(SearchFixture.after(done)).player(actor).advisers
     assert(advisers.exists {
       case card: DenizenState => card.id == top(4) &&

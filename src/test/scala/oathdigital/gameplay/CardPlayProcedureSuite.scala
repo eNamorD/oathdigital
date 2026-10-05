@@ -2,6 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{CardPlay, VisionRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerPowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -263,3 +264,16 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     assertEquals(dottedId, s"cardplay.place.vision.${dotted.value}")
     assertEquals(CardPlayProcedure.placedCard(pendingFor(dottedId)),
       Some(dotted))
+
+  test("playedAs names how each placement button plays the card, and the " +
+      "replacement decision's answers play nothing"):
+    val keys = Vector("discard", "site", "adviser-faceup", "adviser-facedown")
+    assertEquals(keys.map(key =>
+      CardPlayProcedure.playedAs(DecisionOptionRef.Button(key))),
+      Vector(Some(PlayedAs.Discarded), Some(PlayedAs.AtSite),
+        Some(PlayedAs.Faceup), Some(PlayedAs.Facedown)))
+    // The replacement decision answers with the card to discard, or declines.
+    assertEquals(CardPlayProcedure.playedAs(DecisionOptionRef.Denizen(card)),
+      None)
+    assertEquals(CardPlayProcedure.playedAs(
+      CardPlayProcedure.noReplacement.ref), None)

@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import oathdigital.serialization.GameEventWire
@@ -7,7 +8,8 @@ import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.testkit.Table.p2
 import oathdigital.testkit.Unwrap.{accepted, as, rejected}
 import ParkedServiceFixture.{firstPlayer, loaded, playFacedownAdviser,
@@ -66,7 +68,8 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         position = accepted(service.handle("powered-playability",
           position.nextSequence, GameCommand.ResolveWalker(actor, TreeDecision(
             s"cardplay.place.${adviser.kind}.${adviser.value}",
-            ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup"))))))
+            PlacementPicks.parkedAnswer(position.state, PlayedAs.Faceup,
+              WalkerPowerCatalog.default(catalog))))))
         played += actor
       position = accepted(service.handle("powered-playability",
         position.nextSequence, GameCommand.BeginRest(actor)))

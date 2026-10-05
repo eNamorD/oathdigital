@@ -3,18 +3,19 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
   PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, ParkedNode, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness,
+  PlacementPicks, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
 class OracleSuite extends munit.FunSuite:
   import PowerFixture._
-  import PhasePowerHarness.{after, awaits, parked, pick, usableNow}
+  import PhasePowerHarness.{after, awaits, parked, usableNow}
 
   private val oracle = CatalogNames.denizen("Oracle")
   private val source = DecisionOptionRef.Denizen(oracle)
@@ -46,24 +47,20 @@ class OracleSuite extends munit.FunSuite:
   private def start(ready: ReadyGame): Either[OathViolation, OathTransition] =
     rules.startWalker(OathState.Ready(ready), ActionRef.UsePower(Oracle.id),
       actor, Vector.empty, Vector(source))
-  private def place(from: OathTransition, button: String) =
+  private def place(from: OathTransition, way: PlayedAs) =
     rules.resolveWalker(from.state, actor, placement,
-      pick(DecisionOptionRef.Button(button)))
+      PlacementPicks.parkedAnswer(from.state, way,
+        WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog)))
   private def replayed(from: ReadyGame, events: Vector[OathEvent]) =
     events.foldLeft[Either[OathViolation, OathState]](
       Right(OathState.Ready(from)))((state, event) =>
       state.flatMap(rules.evolve(_, event)))
 
-  /** The buttons of the placement the walk is parked on, after the
-    * restriction look-ahead. */
-  private def buttons(from: OathTransition): Vector[String] =
-    ParkedNode.of(from.state, catalog, WalkerPowerCatalog.default(catalog),
-      PhasePowerCatalog.default(catalog)) match
-      case Right(Some(ParkedNode.Decision(_, decide, _))) => decide.query match
-        case DecisionQuery.ChooseOne(options, _) => options.filter(_.available).map(_.ref).collect {
-          case DecisionOptionRef.Button(key) => key }
-        case other => fail(s"not a choose-one: $other")
-      case other => fail(s"not parked on a decision: $other")
+  /** How the options of the placement the walk is parked on play the card,
+    * after the restriction look-ahead. */
+  private def buttons(from: OathTransition): Vector[PlayedAs] =
+    PlacementPicks.offered(PlacementPicks.parkedOptions(from.state,
+      WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog)))
 
   test("it places two secrets and draws the first Vision, the cards above " +
       "it staying in place"):
@@ -79,13 +76,13 @@ class OracleSuite extends munit.FunSuite:
     assert(!drew.knowledge.advisers.getOrElse(actor, Vector.empty)
       .exists(deckOf(ready).take(2).contains))
     assertEquals(buttons(t).toSet,
-      Set("discard", "adviser-faceup", "adviser-facedown"))
+      Set(PlayedAs.Discarded, PlayedAs.Faceup, PlayedAs.Facedown))
 
   test("played facedown, the Vision becomes an adviser; replay and the wire " +
       "agree"):
     val ready = staged()
     val t = accepted(start(ready))
-    val done = accepted(place(t, "adviser-facedown"))
+    val done = accepted(place(t, PlayedAs.Facedown))
     parked.assertResumed(done.state, Phase.Act, actor)
     val held = after(done)
     assert(Look(held).player(actor).advisers.contains(
@@ -99,7 +96,7 @@ class OracleSuite extends munit.FunSuite:
 
   test("discarded, the Vision goes to a discard pile"):
     val t = accepted(start(staged()))
-    val done = accepted(place(t, "discard"))
+    val done = accepted(place(t, PlayedAs.Discarded))
     parked.assertResumed(done.state, Phase.Act, actor)
     val located = CardIndex.from(after(done).game).toOption
       .flatMap(_.get(faith)).map(_.location.container)
@@ -111,10 +108,10 @@ class OracleSuite extends munit.FunSuite:
   test("a faceup Vow of Obedience holder may not play it faceup"):
     val holding = Table.from(staged()).adviser(actor, vow).unchecked
     val t = accepted(start(holding))
-    assert(!buttons(t).contains("adviser-faceup"), buttons(t).toString)
-    assert(buttons(t).contains("adviser-facedown"))
-    assert(buttons(t).contains("discard"))
-    assert(place(t, "adviser-faceup").isLeft)
+    assert(!buttons(t).contains(PlayedAs.Faceup), buttons(t).toString)
+    assert(buttons(t).contains(PlayedAs.Facedown))
+    assert(buttons(t).contains(PlayedAs.Discarded))
+    assert(place(t, PlayedAs.Faceup).isLeft)
 
   test("its line names the Vision it drew"):
     val t = accepted(start(staged()))

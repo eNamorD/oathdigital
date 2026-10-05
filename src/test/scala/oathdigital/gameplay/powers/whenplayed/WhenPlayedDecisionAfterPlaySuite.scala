@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
 import oathdigital.gameplay.powers.SearchFixture._
 import oathdigital.model._
@@ -36,7 +37,7 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
     val done = accepted(for
       started <- start(ready)
       chosen <- keep(started, heirloom)
-      placed <- place(chosen, heirloom, "adviser-faceup")
+      placed <- place(chosen, heirloom, PlayedAs.Faceup)
       answered <- answer(placed, take)
     yield answered)
     assert(relics(after(done)).exists(_.id == top))
@@ -47,7 +48,7 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
     val done = accepted(for
       started <- start(ready)
       chosen <- keep(started, heirloom)
-      placed <- place(chosen, heirloom, "adviser-faceup")
+      placed <- place(chosen, heirloom, PlayedAs.Faceup)
       answered <- answer(placed, bottom)
     yield answered)
     assert(!relics(after(done)).exists(_.id == top))
@@ -63,7 +64,7 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
       started <- rules.startWalker(OathState.Ready(ready),
         ActionRef.PlayFacedownAdviser, p1, Vector.empty,
         Vector(DecisionOptionRef.Denizen(heirloom)))
-      placed <- place(started, heirloom, "adviser-faceup")
+      placed <- place(started, heirloom, PlayedAs.Faceup)
       answered <- answer(placed, take)
     yield answered)
     assert(relics(after(done)).exists(_.id == top))
@@ -77,7 +78,7 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
     val placed = accepted(for
       started <- start(full)
       chosen <- keep(started, heirloom)
-      placed <- place(chosen, heirloom, "adviser-faceup")
+      placed <- place(chosen, heirloom, PlayedAs.Faceup)
     yield placed)
     // With every adviser slot taken the play first asks what to replace.
     val replacing = SearchFixture.replace(placed, heirloom, wardOfSilence)

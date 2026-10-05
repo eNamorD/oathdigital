@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
@@ -43,7 +44,7 @@ class BookBindersSuite extends munit.FunSuite:
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(suit))))
 
   private def faceup(ready: ReadyGame): OathTransition =
-    SearchFixture.play(ready, Vector.empty, VisionRules.Faith, "adviser-faceup")
+    SearchFixture.play(ready, Vector.empty, VisionRules.Faith, PlayedAs.Faceup)
 
   private def favor(ready: ReadyGame, id: PlayerId): Int =
     Look(ready).player(id).board.favor
@@ -90,7 +91,7 @@ class BookBindersSuite extends munit.FunSuite:
   test("a facedown play gives nothing"):
     val ready = arranged(Map(Suit.Hearth -> 5))
     val after = SearchFixture.after(SearchFixture.play(ready, Vector.empty,
-      VisionRules.Faith, "adviser-facedown"))
+      VisionRules.Faith, PlayedAs.Facedown))
     assertEquals(after.banks.favor(Suit.Hearth), 5)
 
   /** `holder` also holds a relic, and stands at the actor's own site, so
@@ -115,7 +116,7 @@ class BookBindersSuite extends munit.FunSuite:
     val started = accepted(SearchFixture.start(ready))
     val kept = accepted(SearchFixture.keep(started, VisionRules.Conspiracy))
     val placed = accepted(SearchFixture.place(kept, VisionRules.Conspiracy,
-      "adviser-faceup"))
+      PlayedAs.Faceup))
     // Book Binders sorts before Conspiracy at this window (source keys
     // "game:denizen.book-binders" < "game:vision.conspiracy"), so its own
     // take parks first.
@@ -151,7 +152,7 @@ class BookBindersSuite extends munit.FunSuite:
     val started = accepted(SearchFixture.start(ready))
     val kept = accepted(SearchFixture.keep(started, VisionRules.Conspiracy))
     val placed = accepted(SearchFixture.place(kept, VisionRules.Conspiracy,
-      "adviser-faceup"))
+      PlayedAs.Faceup))
     parked.assertParked(placed.state, ActionRef.Search,
       ConspiracyWhenPlayed.decisionId, actor)
     val done = SearchFixture.rules.resolveWalker(placed.state, actor,
@@ -171,7 +172,7 @@ class BookBindersSuite extends munit.FunSuite:
       Map(Suit.Arcane -> 3, Suit.Order -> 3)).ready
     val atPlacement = fromAdvisers(ready, VisionRules.Faith)
     val placed = accepted(SearchFixture.place(atPlacement, VisionRules.Faith,
-      "adviser-faceup"))
+      PlayedAs.Faceup))
     val choice = BookBinders.decisionId(ready, holder, VisionRules.Faith)
     parked.assertParked(placed.state, ActionRef.PlayFacedownAdviser, choice,
       holder)
