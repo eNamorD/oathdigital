@@ -318,4 +318,5 @@ acceptable and the original link is still available.
 - Confirm `GET /health/live` and `GET /health/ready` both return success.
 - Confirm every player can reach the exact public base URL from their machine.
 - Keep the database directory or named volume on persistent storage.
-- Record the build and run the [alpha acceptance record](alpha-acceptance.md).
+- Optionally record the build in the
+  [alpha acceptance record](alpha-acceptance.md).

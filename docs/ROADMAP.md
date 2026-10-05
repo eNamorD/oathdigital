@@ -4,7 +4,8 @@ This is the forward-looking project-level source of truth for planned work.
 When a task is done, it should be deleted from this file.
 
 Refrain from labeling phases with numbers, as the roadmap items may shift
-in priority. (Some items may still be labeled as such, for consistency with specs)
+in priority. The Later items keep their X and L labels for consistency with
+specs.
 
 ## Now
 
@@ -36,12 +37,12 @@ From the playtest of 2026-10-01:
 Left behind by earlier phases:
 
 - [ ] **Shrink cached catalog fields.** Card classes made powers read
-  their cards from card objects, so 26 classes still hold a
-  `catalog: ExecutableCatalog` field (mostly in `application/`, the Game Log
-  and the Campaign plan files), and 88 `forCatalog(catalog)` constructors
-  thread it, many only to pass it on. Remove each field and constructor as
-  its power is touched.
-- [ ] **Migrate `CatalogNames` to card objects.** About 261 test files look
+  their cards from card objects, yet 99 classes still take a
+  `catalog: ExecutableCatalog` constructor parameter (power classes, the
+  projectors, the Game Log and the Campaign plan files), and 88
+  `forCatalog(catalog)` constructors thread it, many only to pass it on.
+  Remove each parameter and constructor as its power is touched.
+- [ ] **Migrate `CatalogNames` to card objects.** 264 test files look
   cards up by name through `CatalogNames` (the test readability sweep of
   2026-10-02 moved numeric ids onto it). Move them to direct object
   references such as `AlchemistCard`.
@@ -180,189 +181,35 @@ permissions that approve it automatically. It interacts with certain
 Restrictions, probably through their "ignore" features. Narrow Pass and later
 cards need it, and it is a system of its own, separate from Negotiation.
 
-### Phase 5 - All-Exile alpha readiness
+### Phase - All-Exile alpha readiness
 
-What remains is release operations. The last acceptance run is
-[recorded](testing/alpha-acceptance-0.1.0-alpha.1.md). Deferred findings and
-requested UI changes are in the
+`0.1.0-alpha.2` and `0.1.0-alpha.3` shipped as GitHub prereleases through the
+[alpha release workflow](operations/releases.md), each with bundled archives
+for macOS arm64, Windows x64 and Linux x64. The last manual acceptance run is
+[recorded](testing/alpha-acceptance-0.1.0-alpha.2.md); `0.1.0-alpha.3` shipped
+without one. Deferred findings and requested UI changes are in the
 [Phase 5 follow-ups](operations/phase-5-follow-ups.md).
 
-1. [ ] Complete release operations: publish multi-architecture Linux OCI images
-   for `linux/amd64` and `linux/arm64`, automate a GitHub prerelease, document
-   browser support and firewall/reverse-proxy/TLS requirements, and publish a
-   short host/player quick-start. Bundled-runtime archives for macOS arm64,
-   Windows x64, and Linux x64 with a double-click Start are implemented; their
-   workflow run and acceptance rows 17-22 remain unexecuted. Guidance and a
-   gated workflow are committed,
-   but the `linux/amd64` and `linux/arm64` Buildx smokes, GitHub Actions run,
-   GHCR manifest publication, and GitHub prerelease remain unexecuted, as does
-   the container smoke of the trusted-seat flow (no Docker daemon on
-   2026-09-09). Rebuild before release, because the tested archive predates the
-   documentation fixes made afterwards. Rerun the complete verification and
-   packaged smoke gates, and a new acceptance record if the release commit
-   differs from the tested one, before each alpha build.
-2. [ ] **Unanswered off-turn decisions.** A parked decision blocks every
-   command until its owner answers. There are no timeouts, forfeits or host
-   resolution. Recorded in the walker ownership and phases design.
-3. [ ] **Reconnection UX.** After a client loses its connection it should
-   retry with exponential backoff and show a **Try Again** button. Recorded
-   in the Phase 5 follow-ups.
-4. [ ] **Investigate UI work missing from the packaged build.** The operator
-   did not see earlier UI changes in the `0.1.0-alpha.1` build. Recorded in
-   the Phase 5 follow-ups.
-5. [ ] **Phase 5 deferred defects.** Items 7, 12, 13, 16 and 18 of the
-   [follow-ups](operations/phase-5-follow-ups.md#deferred-defects): bracketed
-   `[::1]` rejected as loopback, the frontend linker on the test classpath,
-   the test `index.html` fixture shadowing the generated one, the hardcoded
-   `oathdigital:root` assertion, and no Docker `HEALTHCHECK`. Also document
-   host bind mounts at `/var/lib/oathdigital` in the configuration guide.
-6. [ ] **A lighter way to test separate-machine play.** The manual
-   [acceptance record](operations/alpha-acceptance.md) takes two physical
-   machines and a lot of hand-recorded evidence, so `0.1.0-alpha.3` shipped
-   without one. Find a cheaper check for what it covers (LAN reachability,
-   seat links opening on another machine, reconnect and restart, HTTPS proxy
-   and origin behavior, and the bundled archives' first launch on each OS),
-   ideally something a release run can execute or that takes minutes by hand.
-   Then decide what happens to the record.
-
-### Setup deferred items
-
-- [ ] **Simultaneous setup effects.** Simultaneous setup effects are resolved by
-  the Chancellor or first player (site order is used until then). Player choices
-  earlier in setup once foundations and legacies exist, such as the Chancellor
-  choosing Recent or Forgotten sites. Later-game
-  setup (Empire `world` sites, stored denizens and relics). WHEN EXPLORED
-  triggers once an explore procedure exists. The Chronicle string codec is
-  under **Phase - Chronicle steps**.
-- [ ] **Desecrated Ground.** E08's ruined face lets an Exile at its
-  site keep any number of revealed Visions, which turns
-  `PlayerState.revealedVision` into a collection across card play, projection,
-  Vision victory, the frontend and the save format. E08 never appears in
-  generated games, since the Nomad homeland becomes E06. Do it when E08 can
-  appear. Recorded in the rule gaps design of 2026-09-26.
-
-### Game Log deferred items
-
-- [ ] **show a parked action's progress in the waiting message.**
-  The Game Log posts a line only once its facts are complete, so an action
-  that is still parked says nothing about its choices so far. The table's
-  "Waiting on player" message is the place to show that progress. Recorded in
-  the Game Log design of 2026-09-26.
-- [ ] **Game Log features the design left out.** Click-to-highlight,
-  filters and search, timestamps, a server-side read marker, failed victory
-  checks and negotiation proposals. Replay navigation is **L4**. Recorded in
-  the Game Log design of 2026-09-26.
-
-- [ ] **Explain restricted options where they are offered.** A
-  restricted option, or a missing action control, carries a hover note (or
-  similar) saying which power restricts it and why. Most Restrictions would
-  then need no Game Log line. The hide hook's note from the Power log lines
-  phase is the natural source. Recorded in the
-  [Power log lines design](superpowers/specs/2026-09-26-power-log-lines-design.md).
-- [ ] **Warn before a choice that has no effect.** The rules let a
-  player pay for a power or pick an option that then does nothing: a
-  modifier selected for an action it will not change (Cup of Plenty,
-  Animal Playmates or Birdsong with a card of the wrong suit), a power whose
-  target is empty, or a bank with no stock. The game should warn the player
-  before they commit, without refusing the choice. Recorded while designing
-  Catalog batch 2.
-
-### Powers-related deferred items
-
-- [ ] **Town Meeting's ruling.** Town Meeting splits its favor across the
-  banks, as Alchemist does, but its text may mean one bank for all, as
-  Fabled Feast's does. The
-  [catalog batch 3 rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md)
-  leave it unresolved. A product-owner answer settles it; one bank would
-  reuse Fabled Feast's question.
-- [ ] **Limit cards that count or ignore advisers.** `CardPlayRules` holds
-  one adviser limit that only lowers, plus the played card's own limit, which
-  fits Silver Tongue, Insomnia and Assassin. Family Wagon (removes the limit
-  for Nomad advisers), Pied Piper (ignores the limit), Marriage (counts as
-  one adviser) and Lost Tapestry (facedown Visions do not count) change what
-  counts toward the limit, so they need a counting rule that
-  `CardSlots.adviserSlots` and `AdviserLimit` share.
-- [ ] **plan-restricting powers, Bag of Siegeworks and Empire defenders.**
-  Peace Envoy and other powers that restrict which plans a side may choose have
-  no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
-  in `CampaignPowers` and no plan. Empire defenders are not modelled. The reviewed
-  catalog's entries for Outriders, Brass Army and Watchdog are inert since slice
-  3b and go with the reviewed catalog.
-- [ ] **walker follow-ups.** Make the Recover roll automatic like the
-  others. Audit the first-game rules the walker actions
-  dropped as gates (exile-only roles, unaltered Foundations, inactive legacies).
-  Add the remaining attacker, defender and bandit battle plan families,
-  non-deterministic loss choices, and the additional Raid, victory, defeat and
-  At End handlers that the Campaign timing windows already expose.
-  At an action's start command, window folds and the restriction look-ahead
-  see no walker procedure (`PowerCtx.procedure` is `None`), while every later
-  command sees it. Make them agree before a Restriction reads the procedure.
-  `WalkerDecisionProjector.waiting` reads only a parked decision's heading and
-  Negotiation query, which the look-ahead never narrows, so its second
-  `parkedDecide` could skip the look-ahead like the other identity-only callers.
-- [ ] **the Grand Council and Festival banner faces.** They are listed
-  as synthetic ids in the reviewed catalog and have no behaviour.
-- [ ] **Mercenaries' player-chosen sign.** Mercenaries adds attack dice
-  when its user attacks and removes defense dice from the attacker when it
-  defends. The card lets the player choose the sign, and the plan fixes it by side.
-  Choosing it needs a decision inside the plan and a preview that shows both.
-- [ ] **record a bandit's applied battle plan as an event.** A player's
-  plan is a recorded answer that later windows read. A bandit defender applies its
-  cost-free plans without asking, so `CampaignPlanApplication` records the use as
-  a `ModifyDicePool` marker under `campaign.plan-applied.<kind>.<id>`. The marker
-  shows in the journal as a dice-pool change and suites that count a Campaign's
-  `ModifyDicePool` operations see it. A dedicated recorded operation would say
-  what happened.
-- [ ] **a public view of a revealed temporary hand.** The Truthful Harp
-  reveals the cards it draws by recording a `Peek` for every other player. No
-  operation reveals a card in a temporary hand and the hand is projected to its
-  owner only, so no view shows the reveal to the other players yet.
-- [ ] **a board slot for distributions and Sticky Fire without a choice.**
-  Warning Signals names the defender's board by a player option in its distribution, which
-  the panel shows as a player name, and Sticky Fire asks its question even when a yes
-  changes nothing (against bandits it only costs the favor). A board option, and skipping a
-  question whose answers are the same, need a small change to the option vocabulary.
-
-### Engine deferred items
-
-- [ ] **one seam for "who may veto an operation".** `OperationPolicy`
-  (an exact-shape allowlist, used by `StateBasedOperationPolicy` and
-  `MinorActionOperationPolicy` on the legacy-event paths) and
-  `OperationRestriction` (contextual reasons from powers) answer the same
-  question through two interfaces. Migrating the two policies onto
-  `OperationRestriction` would leave one seam, but it reorders precedence on
-  the legacy-event path (allowlist reasons come before shape reasons today)
-  and needs its own preservation argument. Recorded during the operation
-  family consolidation of 2026-09-24.
-- [ ] **key `CardKnowledge` by card id.** Knowledge is stored per
-  place: `siteRelics` by viewer and site, `heldRelics` and `advisers` by
-  viewer, and an owner's knowledge is implicit in `identifiesCard`. The Game
-  Log phase patches the gaps this leaves (an ex-owner and a site peeker both
-  lose a card's name when it moves) by copying knowledge as cards move. A
-  single map from card id to the players who know it would make "knowledge
-  follows the card" structural instead of maintained per move. Recorded in
-  the Game Log design of 2026-09-26.
-- [ ] **retire the reviewed-catalog machinery.**
-  `ReviewedPowerInspector` and `PowerRuntime` are still used by 8 main files,
-  the six stub objects (`ActionPowers`, `MusterPowers`, `RestPowers`,
-  `NegotiationPowers`, `CampaignPowers`, `RecoverPowers`) remain,
-  and `IndexedRuleSource.handlerIds`, a temporary compatibility projection, is
-  used only by tests. Move the remaining users onto the executable catalog and
-  delete the reviewed catalog.
-- [ ] **decide whether to keep `DeltaMeaning`.** Nothing reads it.
-  The retention decision of 2026-09-24 said to revisit it once the action
-  history was designed, and the Game Log does not use it.
-- [ ] **frontend and protocol clean-up.** Decision option kinds are
-  bare string literals in the frontend, and the id grammars (`stableKey`,
-  decision-id prefixes) have no shared home. The projection has no protocol
-  version field. `WalkerDecisionProjectorSuite` fabricates parks instead of
-  reaching them through a Situation. `OathViolation.InvalidSearchPlacement`
-  also reports card-play refusals outside Search (a facedown adviser play, a
-  forbidden faceup Vision), and renaming it changes the wire format.
-  Table-session clean-up is parked: no
-  `SeatMode` enum, the `HttpGameClient` downcast for the raw event history in
-  `TableSession`, and duplicate jsdom tests. Recorded in the typed decision
-  form and table session designs.
+- [ ] **Unanswered off-turn decisions.** A parked decision blocks every
+  command until its owner answers. There are no timeouts, forfeits or host
+  resolution. Recorded in the walker ownership and phases design.
+- [ ] **Reconnection UX.** After a client loses its connection it should
+  retry with exponential backoff and show a **Try Again** button. Recorded
+  in the Phase 5 follow-ups.
+- [ ] **Alpha deferred defects.** Items 7, 12, 13, 16 and 18 of the
+  [follow-ups](operations/phase-5-follow-ups.md#deferred-defects): bracketed
+  `[::1]` rejected as loopback, the frontend linker on the test classpath,
+  the test `index.html` fixture shadowing the generated one, the hardcoded
+  `oathdigital:root` assertion, and no Docker `HEALTHCHECK`. Also document
+  host bind mounts at `/var/lib/oathdigital` in the configuration guide.
+- [ ] **A lighter way to test separate-machine play.** The manual
+  [acceptance record](operations/alpha-acceptance.md) takes two physical
+  machines and a lot of hand-recorded evidence, so `0.1.0-alpha.3` shipped
+  without one. Find a cheaper check for what it covers (LAN reachability,
+  seat links opening on another machine, reconnect and restart, HTTPS proxy
+  and origin behavior, and the bundled archives' first launch on each OS),
+  ideally something a release run can execute or that takes minutes by hand.
+  Then decide what happens to the record.
 
 ### Phase - Negotiation terms and promises
 
@@ -402,6 +249,149 @@ Audit every rulebook procedure and every runtime component handler against the
 traceability matrix; close remaining hidden-information, simultaneous-ordering,
 randomness, consent, and nested-action gaps; then run complete replay,
 persistence, server, Scala.js, packaged-network, and browser acceptance gates.
+
+## Deferred items
+
+Unscheduled work, grouped by area. Pull an item into a phase when it blocks
+one.
+
+### Setup deferred items
+
+- [ ] **Simultaneous setup effects.** The Chancellor or first player should
+  resolve simultaneous setup effects; site order is used until then. Still to
+  add: player choices earlier in setup once foundations and legacies exist,
+  such as the Chancellor choosing Recent or Forgotten sites; later-game setup
+  (Empire `world` sites, stored denizens and relics); and WHEN EXPLORED
+  triggers once an explore procedure exists. The Chronicle string codec is
+  under **Phase - Chronicle steps**.
+- [ ] **Desecrated Ground.** E08's ruined face lets an Exile at its
+  site keep any number of revealed Visions, which turns
+  `PlayerState.revealedVision` into a collection across card play, projection,
+  Vision victory, the frontend and the save format. E08 never appears in
+  generated games, since the Nomad homeland becomes E06. Do it when E08 can
+  appear. Recorded in the rule gaps design of 2026-09-26.
+
+### Game Log deferred items
+
+- [ ] **Show a parked action's progress in the waiting message.**
+  The Game Log posts a line only once its facts are complete, so an action
+  that is still parked says nothing about its choices so far. The table's
+  "Waiting on player" message is the place to show that progress. Recorded in
+  the Game Log design of 2026-09-26.
+- [ ] **Game Log features the design left out.** Click-to-highlight,
+  filters and search, timestamps, a server-side read marker, failed victory
+  checks and negotiation proposals. Replay navigation is **L4**. Recorded in
+  the Game Log design of 2026-09-26.
+- [ ] **Explain restricted options where they are offered.** A
+  restricted option, or a missing action control, carries a hover note (or
+  similar) saying which power restricts it and why. Most Restrictions would
+  then need no Game Log line. The hide hook's note from the Power log lines
+  phase is the natural source. Recorded in the
+  [Power log lines design](superpowers/specs/2026-09-26-power-log-lines-design.md).
+- [ ] **Warn before a choice that has no effect.** The rules let a
+  player pay for a power or pick an option that then does nothing: a
+  modifier selected for an action it will not change (Cup of Plenty,
+  Animal Playmates or Birdsong with a card of the wrong suit), a power whose
+  target is empty, or a bank with no stock. The game should warn the player
+  before they commit, without refusing the choice. Recorded while designing
+  Catalog batch 2.
+
+### Powers-related deferred items
+
+- [ ] **Town Meeting's ruling.** Town Meeting splits its favor across the
+  banks, as Alchemist does, but its text may mean one bank for all, as
+  Fabled Feast's does. The
+  [catalog batch 3 rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md)
+  leave it unresolved. A product-owner answer settles it; one bank would
+  reuse Fabled Feast's question.
+- [ ] **Limit cards that count or ignore advisers.** `CardPlayRules` holds
+  one adviser limit that only lowers, plus the played card's own limit, which
+  fits Silver Tongue, Insomnia and Assassin. Family Wagon (removes the limit
+  for Nomad advisers), Pied Piper (ignores the limit), Marriage (counts as
+  one adviser) and Lost Tapestry (facedown Visions do not count) change what
+  counts toward the limit, so they need a counting rule that
+  `CardSlots.adviserSlots` and `AdviserLimit` share.
+- [ ] **Plan-restricting powers, Bag of Siegeworks and Empire defenders.**
+  Peace Envoy and other powers that restrict which plans a side may choose have
+  no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
+  in `CampaignPowers` and no plan. Empire defenders are not modelled. The reviewed
+  catalog's entries for Outriders, Brass Army and Watchdog are inert since slice
+  3b and go with the reviewed catalog.
+- [ ] **Walker follow-ups.** Make the Recover roll automatic like the
+  others. Audit the first-game rules the walker actions
+  dropped as gates (exile-only roles, unaltered Foundations, inactive legacies).
+  Add the remaining attacker, defender and bandit battle plan families,
+  non-deterministic loss choices, and the additional Raid, victory, defeat and
+  At End handlers that the Campaign timing windows already expose.
+  At an action's start command, window folds and the restriction look-ahead
+  see no walker procedure (`PowerCtx.procedure` is `None`), while every later
+  command sees it. Make them agree before a Restriction reads the procedure.
+  `WalkerDecisionProjector.waiting` reads only a parked decision's heading and
+  Negotiation query, which the look-ahead never narrows, so its second
+  `parkedDecide` could skip the look-ahead like the other identity-only callers.
+- [ ] **The Grand Council and Festival banner faces.** They are listed
+  as synthetic ids in the reviewed catalog and have no behaviour.
+- [ ] **Mercenaries' player-chosen sign.** Mercenaries adds attack dice
+  when its user attacks and removes defense dice from the attacker when it
+  defends. The card lets the player choose the sign, and the plan fixes it by side.
+  Choosing it needs a decision inside the plan and a preview that shows both.
+- [ ] **Record a bandit's applied battle plan as an event.** A player's
+  plan is a recorded answer that later windows read. A bandit defender applies its
+  cost-free plans without asking, so `CampaignPlanApplication` records the use as
+  a `ModifyDicePool` marker under `campaign.plan-applied.<kind>.<id>`. The marker
+  shows in the journal as a dice-pool change and suites that count a Campaign's
+  `ModifyDicePool` operations see it. A dedicated recorded operation would say
+  what happened.
+- [ ] **A public view of a revealed temporary hand.** The Truthful Harp
+  reveals the cards it draws by recording a `Peek` for every other player. No
+  operation reveals a card in a temporary hand and the hand is projected to its
+  owner only, so no view shows the reveal to the other players yet.
+- [ ] **A board slot for distributions and Sticky Fire without a choice.**
+  Warning Signals names the defender's board by a player option in its distribution, which
+  the panel shows as a player name, and Sticky Fire asks its question even when a yes
+  changes nothing (against bandits it only costs the favor). A board option, and skipping a
+  question whose answers are the same, need a small change to the option vocabulary.
+
+### Engine deferred items
+
+- [ ] **One seam for "who may veto an operation".** `OperationPolicy`
+  (an exact-shape allowlist, used by `StateBasedOperationPolicy` and
+  `MinorActionOperationPolicy` on the legacy-event paths) and
+  `OperationRestriction` (contextual reasons from powers) answer the same
+  question through two interfaces. Migrating the two policies onto
+  `OperationRestriction` would leave one seam, but it reorders precedence on
+  the legacy-event path (allowlist reasons come before shape reasons today)
+  and needs its own preservation argument. Recorded during the operation
+  family consolidation of 2026-09-24.
+- [ ] **Key `CardKnowledge` by card id.** Knowledge is stored per
+  place: `siteRelics` by viewer and site, `heldRelics` and `advisers` by
+  viewer, and an owner's knowledge is implicit in `identifiesCard`. The Game
+  Log phase patches the gaps this leaves (an ex-owner and a site peeker both
+  lose a card's name when it moves) by copying knowledge as cards move. A
+  single map from card id to the players who know it would make "knowledge
+  follows the card" structural instead of maintained per move. Recorded in
+  the Game Log design of 2026-09-26.
+- [ ] **Retire the reviewed-catalog machinery.**
+  `ReviewedPowerInspector` and `PowerRuntime` are still used by 8 main files,
+  the six stub objects (`ActionPowers`, `MusterPowers`, `RestPowers`,
+  `NegotiationPowers`, `CampaignPowers`, `RecoverPowers`) remain,
+  and `IndexedRuleSource.handlerIds`, a temporary compatibility projection, is
+  used only by tests. Move the remaining users onto the executable catalog and
+  delete the reviewed catalog.
+- [ ] **Decide whether to keep `DeltaMeaning`.** Nothing reads it.
+  The retention decision of 2026-09-24 said to revisit it once the action
+  history was designed, and the Game Log does not use it.
+- [ ] **Frontend and protocol clean-up.** Decision option kinds are
+  bare string literals in the frontend, and the id grammars (`stableKey`,
+  decision-id prefixes) have no shared home. The projection has no protocol
+  version field. `WalkerDecisionProjectorSuite` fabricates parks instead of
+  reaching them through a Situation. `OathViolation.InvalidSearchPlacement`
+  also reports card-play refusals outside Search (a facedown adviser play, a
+  forbidden faceup Vision), and renaming it changes the wire format.
+  Table-session clean-up is parked: no
+  `SeatMode` enum, the `HttpGameClient` downcast for the raw event history in
+  `TableSession`, and duplicate jsdom tests. Recorded in the typed decision
+  form and table session designs.
 
 ## Later
 
