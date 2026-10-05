@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
-import ServerUiSupport.{button, element}
+import ServerUiSupport.{button, element, text}
 
 /** The parked board decision drawn onto the table (board decisions design,
   * "BoardOptions"). A renderer hands each element it draws the option keys
@@ -24,34 +24,49 @@ private[frontend] final class BoardOptions(views: Map[String, OptionView],
   def decorate(target: dom.Element, keys: Vector[String]): Unit =
     view(keys).foreach(mark(target, _))
 
-  /** A card face, marked when it is an option. An option card's body
-    * selects it, so reading it moves to an inspect button beside it; the
-    * two share one box, since a button may not hold a button. A card the
-    * viewer may not identify has nothing to read and gets no button.
-    * Returns what to append.
+  /** A control that does something of its own when clicked (a card face
+    * opens the inspector, a pile lists its cards), marked when it is an
+    * option. An option's body picks it, so the control's own action moves
+    * to an inspect button beside it, named "Inspect {name}"; the two share
+    * one box, since a button may not hold a button. `inspect` is `None`
+    * when there is nothing to read. A marked control is enabled, since an
+    * empty pile is still a place to play to. Returns what to append.
+    */
+  def control(face: dom.html.Button, keys: Vector[String],
+      inspect: Option[(String, dom.html.Element => Unit)]): dom.Element =
+    view(keys) match
+      case None => face
+      case Some(found) =>
+        face.onclick = null
+        face.disabled = false
+        mark(face, found)
+        inspect.fold[dom.Element](face) { (name, open) =>
+          val box = element("span", "board-option-card")
+          box.appendChild(face)
+          val reader = button("i", "board-option-inspect")
+          reader.setAttribute("aria-label", s"Inspect $name")
+          reader.addEventListener("click", (event: dom.Event) => {
+            event.stopPropagation()
+            open(reader)
+          })
+          box.appendChild(reader)
+          box
+        }
+
+  /** A card face, marked when it is an option. A card the viewer may not
+    * identify has nothing to read and gets no inspect button.
     */
   def card(face: dom.html.Button, details: CardDetails,
-      keys: Vector[String]): dom.Element = view(keys) match
-    case None => face
-    case Some(found) =>
-      face.onclick = null
-      mark(face, found)
-      if details.hidden then face
-      else
-        val box = element("span", "board-option-card")
-        box.appendChild(face)
-        val inspect = button("i", "board-option-inspect")
-        inspect.setAttribute("aria-label", s"Inspect ${details.name}")
-        inspect.addEventListener("click", (event: dom.Event) => {
-          event.stopPropagation()
-          CardInspection.open(details, inspect)
-        })
-        box.appendChild(inspect)
-        box
+      keys: Vector[String]): dom.Element =
+    control(face, keys, Option.unless(details.hidden)(
+      details.name -> (CardInspection.open(details, _))))
 
   private def mark(target: dom.Element, found: OptionView): Unit =
-    val key = BoardOptionViews.key(found.option)
+    val key = BoardOptionViews.home(found.option)
     found.state.classes.foreach(target.classList.add)
+    if found.option.replaces.nonEmpty then
+      target.classList.add("board-option-replace")
+      target.appendChild(text("span", "board-option-badge", "Replace"))
     target.setAttribute("data-option-ref", key)
     found.reason.orElse(Option.when(found.option.details.nonEmpty)(
       found.option.details.mkString(" · ")))
@@ -114,13 +129,14 @@ private[frontend] object BoardOptions:
     new BoardOptions(BoardOptionViews.of(surface.decision, surface.query,
       drafts.board), stager(surface, drafts, canControl, controls))
 
+  /** A card's kind as an option names it. */
+  def cardKind(card: CardDetails): String = card.cardKind match
+    case "relic" | "vision" | "edifice" => card.cardKind
+    case _ => "denizen"
+
   /** A card's own option key: its kind as an option names it, and its id. */
   def cardKey(card: CardDetails): String =
-    BoardOptionViews.key(card.cardKind match
-      case "relic" => "relic"
-      case "vision" => "vision"
-      case "edifice" => "edifice"
-      case _ => "denizen", card.cardId)
+    BoardOptionViews.key(cardKind(card), card.cardId)
 
   /** Hovering `target` highlights every element of the same option, on the
     * table and in the panel, and leaving it clears them.

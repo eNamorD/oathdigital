@@ -295,6 +295,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   line-height: 1; cursor: pointer; }
 .board-option-inspect:hover, .board-option-inspect:focus-visible {
   outline: 2px solid #fff2d6; outline-offset: 1px; }
+/* A Replace option: the play discards this card. Bottom-left, the one
+   corner free: the pick mark holds the top-left, the pip and dice the
+   top-right, the inspect button the bottom-right. */
+.board-option-badge { position: absolute; left: 3px; bottom: 3px; z-index: 1;
+  padding: 1px 5px; border-radius: 3px; background: #d2a85e;
+  color: #17140f; font-size: 10px; font-weight: 800; line-height: 1.3; }
 /* Three cells so the name is centred on the box, not on what is left over
    after the tokens: equal side columns put it in the middle whether a site
    holds six favor or nothing at all. */
@@ -819,6 +825,10 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   background: none;
   color: inherit;
   cursor: pointer; }
+/* The pill is too short for a corner badge, so the word follows the name. */
+.player-slot-vision > .board-option-badge { position: static;
+  margin-left: 0.4em; }
+.player-slot-vision-empty { border-style: dashed; color: #b7a98f; }
 .resources { display: flex; align-items: baseline; flex-wrap: wrap;
   gap: 0 0.45em; color: #d9cdb5; font-weight: 400; }
 .resources > * + *::before { content: "·"; margin-right: 0.45em;

@@ -45,6 +45,29 @@ class BoardHomesSuite extends munit.FunSuite:
     assert(!has("button", "finish"))
     assert(!has("deck", "world"))
     assert(!has("site", "nowhere"))
-    assert(!has("adviser-slot", "red:2"))
+    assert(!has("adviser-slot", "red:3"))
     assert(!has("denizen", "hidden"))
     assert(!has("player", "blue"))
+
+  test("card slots have homes: site slots below capacity, adviser plays " +
+      "up to the limit, the Vision spot and the discard piles"):
+    assert(has("site-slot", "woods:0"))
+    assert(has("site-slot", "woods:2"))
+    assert(!has("site-slot", "woods:3"))
+    assert(!has("site-slot", "nowhere:0"))
+    assert(has("adviser-play", "red:2:faceup"))
+    assert(has("adviser-play", "red:0:facedown"))
+    assert(!has("adviser-play", "red:3:faceup"))
+    assert(!has("adviser-play", "blue:0:faceup"))
+    assert(has("revealed-vision", "red"))
+    assert(!has("revealed-vision", "blue"))
+    assert(has("discard-pile", "cradle"))
+    assert(!has("discard-pile", "hinterland"))
+
+  test("a lowered adviser limit draws one slot fewer"):
+    val lowered = table.copy(playerBoards = Vector(board.copy(
+      advisers = Vector.empty, adviserLimit = 2)))
+    assert(BoardHomes.has(lowered, DecisionOptionState("adviser-play",
+      "red:1:faceup", "")))
+    assert(!BoardHomes.has(lowered, DecisionOptionState("adviser-play",
+      "red:2:faceup", "")))

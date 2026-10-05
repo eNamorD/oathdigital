@@ -121,10 +121,11 @@ private[frontend] object BoardDecisionPanel:
   private def row(query: DecisionQueryState, option: DecisionOptionState,
       name: String, locked: Boolean): dom.Element =
     val key = BoardOptionViews.key(option)
+    val home = BoardOptionViews.home(option)
     val item = element("li", if locked then
       "board-decision-row board-decision-row-locked"
       else "board-decision-row")
-    item.setAttribute("data-option-ref", key)
+    item.setAttribute("data-option-ref", home)
     item.appendChild(text("span", "",
       if locked then s"Locked: $name" else name))
     val values = (query match
@@ -134,5 +135,5 @@ private[frontend] object BoardDecisionPanel:
       case _ => Vector.empty) ++ option.details
     if values.nonEmpty then item.appendChild(text("span",
       "board-decision-row-values", values.mkString(" · ")))
-    BoardOptions.hoverSync(item, key)
+    BoardOptions.hoverSync(item, home)
     item

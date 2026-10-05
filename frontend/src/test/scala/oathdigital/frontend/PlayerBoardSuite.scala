@@ -75,7 +75,10 @@ class PlayerBoardSuite extends munit.FunSuite:
       "red")
     assertEquals(all(node, ".board-cards").size, 1)
     assertEquals(all(node, ".board-cards .card-face").map(_.getAttribute("class")),
-      Vector("card-face card-face-denizen", "card-face card-face-relic"))
+      Vector("card-face card-face-denizen",
+        "card-face card-face-denizen card-slot-empty",
+        "card-face card-face-denizen card-slot-empty",
+        "card-face card-face-relic"))
     assertEquals(all(node, ".board-cards strong"), Vector.empty)
     assertEquals(firstMatch(node, ".board-cards")
       .map(_.getAttribute("aria-label")), Some("Cards in play"))
@@ -235,3 +238,10 @@ class PlayerBoardSuite extends munit.FunSuite:
     val lines = all(rendered, ".player-banner").map(_.textContent)
     assertEquals(lines.map(_.split(" · ").last), Vector("3 favor", "1 secret"))
     assert(lines.forall(!_.contains("resources")), lines)
+
+  test("empty adviser slots are drawn up to the player's limit"):
+    def placeholders(limit: Int) = all(render(board.copy(adviserLimit = limit),
+      supplyMaximum = 7), ".board-cards .card-slot-empty")
+      .map(_.getAttribute("data-slot-index"))
+    assertEquals(placeholders(3), Vector("1", "2"))
+    assertEquals(placeholders(2), Vector("1"))

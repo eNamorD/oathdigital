@@ -51,20 +51,21 @@ private[frontend] object ServerUiSupport:
     // Denizens and relics share one row: capacity and relic slots always sum
     // to three, so one row holds every card a site can ever have.
     val cards = element("div", "site-cards")
-    site.denizens.foreach { denizen =>
+    site.denizens.zipWithIndex.foreach { (denizen, at) =>
       denizen.details match
         case Some(details) =>
           val face = CardFace.render(details)
           face.setAttribute("data-denizen-id", denizen.denizenId)
           cards.appendChild(options.card(face, details,
-            Vector(BoardOptions.cardKey(details))))
+            Vector(BoardOptions.cardKey(details), siteSlot(site, at))))
         case None =>
           val back = facedownCard("denizen")
           back.setAttribute("data-denizen-id", denizen.denizenId)
           cards.appendChild(back)
     }
-    (site.denizens.size until site.denizenCapacity)
-      .foreach(_ => cards.appendChild(emptySlot("denizen")))
+    (site.denizens.size until site.denizenCapacity).foreach(at =>
+      cards.appendChild(openSlot(options, "denizen", "Empty denizen slot", at,
+        siteSlot(site, at))))
     // A peeked relic is a real card sitting face-down: CardFace gives it the
     // knowable pip and the hover reveal, in the same box as an unknown one.
     presentation.peekedRelics.foreach(value => cards.appendChild(options.card(
@@ -142,11 +143,27 @@ private[frontend] object ServerUiSupport:
     node.appendChild(text("span", "card-back-letter", CardFace.backLetter(cardKind)))
     node
 
-  private[frontend] def emptySlot(cardKind: String): dom.Element =
+  private[frontend] def emptySlot(cardKind: String, label: String = "")
+      : dom.Element =
     val node = element("span",
       s"card-face ${CardFace.boxClass(cardKind)} card-slot-empty")
     node.setAttribute("role", "img")
-    node.setAttribute("aria-label", s"Empty $cardKind slot")
+    node.setAttribute("aria-label",
+      if label.isEmpty then s"Empty $cardKind slot" else label)
+    node
+
+  /** The key of slot `at` in `site`'s card row. The row's order is the
+    * slot order, so a card's index is its slot. */
+  private def siteSlot(site: GameSite, at: Int): String =
+    BoardOptionViews.key("site-slot", s"${site.siteId}:$at")
+
+  /** Empty slot `at`, which a card play may fill: it carries its index and
+    * is marked when an option names `key`. */
+  private[frontend] def openSlot(options: BoardOptions, cardKind: String,
+      label: String, at: Int, key: String): dom.Element =
+    val node = emptySlot(cardKind, label)
+    node.setAttribute("data-slot-index", at.toString)
+    options.decorate(node, Vector(key))
     node
 
   /** A deck or a pile: its label, one back for the top card, and the count.
@@ -160,15 +177,30 @@ private[frontend] object ServerUiSupport:
       count: Int,
       topCardKind: Option[String],
       opens: Option[(String, Vector[CardDetails])] = None
-  ): dom.Element =
-    val pile = opens.fold(element("div", "pile-display")) { case (title, cards) =>
-      val node = button("", "pile-display pile-open")
-      node.setAttribute("aria-label",
-        s"$title, $count ${if count == 1 then "card" else "cards"}")
-      node.disabled = count == 0
-      node.onclick = _ => CardInspection.openCards(s"$title ($count)", cards, node)
-      node
-    }
+  ): dom.Element = opens match
+    case Some((title, cards)) =>
+      openablePile(label, count, topCardKind, title, cards)
+    case None =>
+      val pile = element("div", "pile-display")
+      fillPile(pile, label, count, topCardKind)
+      pile
+
+  /** A pile whose cards a player may list: a button that opens them top
+    * first in the card overlay, disabled while the pile is empty. */
+  private[frontend] def openablePile(label: String, count: Int,
+      topCardKind: Option[String], title: String,
+      cards: Vector[CardDetails]): dom.html.Button =
+    val node = button("", "pile-display pile-open")
+    node.setAttribute("aria-label",
+      s"$title, $count ${if count == 1 then "card" else "cards"}")
+    node.disabled = count == 0
+    node.onclick = _ => CardInspection.openCards(s"$title ($count)", cards, node)
+    fillPile(node, label, count, topCardKind)
+    node
+
+  /** The pile's label, one back for the top card, and the count. */
+  private def fillPile(pile: dom.Element, label: String, count: Int,
+      topCardKind: Option[String]): Unit =
     pile.appendChild(text("span", "pile-label", s"$label:"))
     val css = pileCardClasses(count)
     val symbol = pileSymbol(count, topCardKind)
@@ -182,7 +214,6 @@ private[frontend] object ServerUiSupport:
       })
     pile.appendChild(back)
     pile.appendChild(text("span", "pile-count", s"x$count"))
-    pile
 
   /** The pile shows the same back letter a facedown card of that kind would,
     * so `CardFace` owns the mapping. An empty pile, or one whose top the

@@ -88,11 +88,20 @@ private[frontend] object WorldBoardRenderer:
            presented.fold(Vector.empty[String])(_.lines), pill)
          slots.appendChild(pill)
        }
-     board.revealedVision.foreach { card =>
+     // The spot is drawn empty only while the decision lights it: the strip
+     // never scrolls, so an empty spot may not spend a row on every board.
+     val visionKey = Vector(BoardOptionViews.key("revealed-vision",
+       player.playerId))
+     board.revealedVision.map { card =>
        val pill = button(card.name, "player-slot-vision")
        pill.onclick = _ => CardInspection.open(card, pill)
-       slots.appendChild(pill)
-     }
+       options.control(pill, visionKey,
+         Some(card.name -> (CardInspection.open(card, _))))
+     }.orElse(options.view(visionKey).map { _ =>
+       val spot = button("Vision", "player-slot-vision player-slot-vision-empty")
+       spot.setAttribute("aria-label", "Empty revealed Vision spot")
+       options.control(spot, visionKey, None)
+     }).foreach(slots.appendChild)
      if slots.childNodes.length > 0 then section.appendChild(slots)
 
      // One row, no headings: two labelled rows cost more height than the pane
@@ -102,6 +111,9 @@ private[frontend] object WorldBoardRenderer:
      board.advisers.zipWithIndex.foreach((card, at) => cards.appendChild(
        options.card(CardFace.render(card), card,
          boardCardKeys("adviser-slot", player.playerId, at, card))))
+     (board.advisers.size until board.adviserLimit).foreach(at =>
+       cards.appendChild(openSlot(options, "denizen", "Empty adviser slot",
+         at, BoardOptionViews.key("adviser-slot", s"${player.playerId}:$at"))))
      board.relics.zipWithIndex.foreach((card, at) => cards.appendChild(
        options.card(CardFace.render(card), card,
          boardCardKeys("relic-slot", player.playerId, at, card))))
@@ -177,9 +189,14 @@ private[frontend] object WorldBoardRenderer:
        case other => other
      section.setAttribute("aria-label", name)
      section.appendChild(text("h3", "region-label", name))
-     section.appendChild(pileDisplay("Discard", region.discardCount,
-       region.discardTopCardKind,
-       Some(s"$name discard pile" -> region.discardCards)))
+     val discardTitle = s"$name discard pile"
+     section.appendChild(options.control(openablePile("Discard",
+       region.discardCount, region.discardTopCardKind, discardTitle,
+       region.discardCards),
+       Vector(BoardOptionViews.key("discard-pile", region.regionId)),
+       Option.when(region.discardCount > 0)(discardTitle -> (anchor =>
+         CardInspection.openCards(s"$discardTitle (${region.discardCount})",
+           region.discardCards, anchor)))))
      val sites = element("div", "sites")
      region.sites.foreach { site =>
        val siteTarget = BoardTargetRef.Site(site.siteId)

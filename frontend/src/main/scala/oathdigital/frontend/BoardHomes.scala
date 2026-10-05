@@ -1,8 +1,9 @@
 package oathdigital.frontend
 
 /** Whether an option has a place on the table (board decisions design,
-  * "Board home"): a site's box, a card in a site's row or on a player
-  * board, a banner, a favor bank, or a player's name and pawns. An option
+  * "Board home"): a site's box, a card or an empty slot in a site's row or
+  * on a player board, a revealed Vision spot, a discard pile, a banner, a
+  * favor bank, or a player's name and pawns. An option
   * with none is drawn in the Action panel. The rule mirrors the keys the
   * table's renderers hand `BoardOptions`, so a home here is an element there.
   */
@@ -16,10 +17,18 @@ private[frontend] object BoardHomes:
       case "relic" =>
         siteRelics(value).contains(option.id) ||
           shown(value.playerBoards.flatMap(_.relics)).contains(option.id)
-      case "adviser-slot" =>
-        slot(option.id).exists((player, at) => value.playerBoards
+      case "adviser-slot" | "adviser-play" =>
+        val id = if option.kind == "adviser-play" then adviserSlot(option.id)
+          else option.id
+        slot(id).exists((player, at) => value.playerBoards
           .exists(board => board.playerId == player &&
-            board.advisers.isDefinedAt(at)))
+            at < math.max(board.advisers.size, board.adviserLimit)))
+      case "site-slot" =>
+        slot(option.id).exists((site, at) => sites(value)
+          .exists(found => found.siteId == site && at < found.denizenCapacity))
+      case "revealed-vision" =>
+        value.playerBoards.exists(_.playerId == option.id)
+      case "discard-pile" => value.world.exists(_.regionId == option.id)
       case "relic-slot" =>
         slot(option.id).exists((player, at) => value.playerBoards
           .exists(board => board.playerId == player &&
@@ -40,6 +49,11 @@ private[frontend] object BoardHomes:
 
   private def shown(cards: Vector[CardDetails]): Vector[String] =
     cards.filterNot(_.hidden).map(_.cardId)
+
+  /** An adviser play's slot: its id without the facing after the last
+    * colon. */
+  def adviserSlot(id: String): String =
+    id.take(math.max(0, id.lastIndexOf(':')))
 
   /** A slot reference's owner and index: the owner may hold a colon, so the
     * index is what follows the last one.

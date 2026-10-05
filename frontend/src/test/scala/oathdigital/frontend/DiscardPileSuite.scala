@@ -51,3 +51,26 @@ class DiscardPileSuite extends munit.FunSuite:
     assertEquals(all(pile, ".pile-empty").size, 1)
     // The pile shows its count as x<n>.
     assertEquals(all(pile, ".pile-count").map(_.textContent), Vector("x0"))
+
+  test("a pile that is an option opens its cards from the inspect button " +
+      "only"):
+    var opened = Vector.empty[String]
+    CardInspection.onOpen:
+      case CardInspection.Request.Cards(title, _, _) => opened :+= title
+      case _ => ()
+    val pile = DecisionOptionState("discard-pile", "cradle",
+      "Discard to the Cradle discard")
+    var picked = Vector.empty[DecisionOptionState]
+    val options = new BoardOptions(Map(BoardOptionViews.home(pile) ->
+      OptionView(pile, OptionState.Available, None)),
+      chosen => { picked :+= chosen; () })
+    val root = WorldBoardRenderer.world(projection(Vector(top, known)),
+      options, SessionDrafts.empty, new RecordingControls())
+    discard(root).click()
+    assertEquals((picked, opened), (Vector(pile), Vector.empty))
+    val inspect = all(root, ".region .board-option-inspect").headOption
+      .getOrElse(fail("no inspect button"))
+    assertEquals(inspect.getAttribute("aria-label"),
+      "Inspect Cradle discard pile")
+    inspect.asInstanceOf[dom.html.Button].click()
+    assertEquals(opened, Vector("Cradle discard pile (2)"))

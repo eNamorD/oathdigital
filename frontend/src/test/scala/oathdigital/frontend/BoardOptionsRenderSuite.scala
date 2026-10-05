@@ -43,7 +43,7 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
       : (BoardOptions, ArrayBuffer[DecisionOptionState]) =
     val picks = ArrayBuffer.empty[DecisionOptionState]
     (new BoardOptions(views.map(view =>
-      BoardOptionViews.key(view.option) -> view).toMap,
+      BoardOptionViews.home(view.option) -> view).toMap,
       chosen => { picks += chosen; () }), picks)
 
   private def available(option: DecisionOptionState) =
@@ -158,3 +158,68 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     finally
       dom.document.body.removeChild(root)
       dom.document.body.removeChild(boards)
+
+  test("an empty site slot is marked by its index, and a site card " +
+      "answers to its slot"):
+    val empty = option("site-slot", "woods:1")
+    val (options, picks) = optionsFor(available(empty))
+    val root = world(options)
+    val slot = one(root, """[data-option-ref="site-slot:woods:1"]""")
+    assertEquals(slot.getAttribute("data-slot-index"), "1")
+    assertEquals(all(root, ".site-cards .card-slot-empty")
+      .map(_.getAttribute("data-slot-index")), Vector("1", "2"))
+    click(slot)
+    assertEquals(picks.toVector, Vector(empty))
+    val replace = option("site-slot", "woods:0").copy(replaces = Some(fox))
+    val (byCard, _) = optionsFor(available(replace))
+    assertEquals(one(world(byCard), """[data-option-ref="site-slot:woods:0"]""")
+      .getAttribute("data-card-id"), "fox")
+
+  test("a Replace option carries the badge, and an empty slot does not"):
+    val replace = option("site-slot", "woods:0").copy(replaces = Some(fox))
+    val (options, _) = optionsFor(available(replace),
+      available(option("site-slot", "woods:1")))
+    val root = world(options)
+    assertEquals(all(root, ".board-option-badge").map(badge =>
+      (badge.textContent, badge.parentNode.asInstanceOf[dom.Element].getAttribute("data-option-ref"))),
+      Vector(("Replace", "site-slot:woods:0")))
+    assert(one(root, """[data-option-ref="site-slot:woods:0"]""")
+      .classList.contains("board-option-replace"))
+
+  test("an adviser play is drawn on its slot: a placeholder or the card " +
+      "there"):
+    val placeholder = option("adviser-play", "red:2:facedown")
+    val (options, picks) = optionsFor(available(placeholder))
+    val boards = WorldBoardRenderer.playerBoards(table, "red", options)
+    val slot = one(boards, """[data-option-ref="adviser-slot:red:2"]""")
+    assert(slot.classList.contains("card-slot-empty"))
+    assertEquals(slot.getAttribute("aria-label"), "Empty adviser slot")
+    click(slot)
+    assertEquals(picks.toVector, Vector(placeholder))
+    val (onCard, _) = optionsFor(available(option("adviser-play",
+      "red:0:faceup").copy(replaces = Some(oak))))
+    assertEquals(one(WorldBoardRenderer.playerBoards(table, "red", onCard),
+      """[data-option-ref="adviser-slot:red:0"]""").textContent
+      .contains("Replace"), true)
+
+  test("the revealed Vision spot is drawn empty only while it is an option"):
+    assertEquals(all(WorldBoardRenderer.playerBoards(table, "red",
+      BoardOptions.none), ".player-slot-vision"), Vector.empty)
+    val spot = option("revealed-vision", "red")
+    val (options, picks) = optionsFor(available(spot))
+    val boards = WorldBoardRenderer.playerBoards(table, "red", options)
+    val empty = one(boards, ".player-slot-vision-empty")
+    assertEquals(empty.getAttribute("data-option-ref"), "revealed-vision:red")
+    click(empty)
+    assertEquals(picks.toVector, Vector(spot))
+
+  test("a discard pile option picks on a click, and its cards open from " +
+      "the inspect button"):
+    val pile = option("discard-pile", "cradle")
+    val (options, picks) = optionsFor(available(pile))
+    val root = world(options)
+    val face = one(root, """[data-option-ref="discard-pile:cradle"]""")
+    assert(!face.asInstanceOf[dom.html.Button].disabled)
+    click(face)
+    assertEquals(picks.toVector, Vector(pile))
+    assertEquals(all(root, ".region .board-option-inspect"), Vector.empty)

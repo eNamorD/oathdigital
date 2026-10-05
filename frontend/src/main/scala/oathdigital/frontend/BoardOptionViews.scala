@@ -25,6 +25,15 @@ private[frontend] object BoardOptionViews:
   def key(kind: String, id: String): String = s"$kind:$id"
   def key(option: DecisionOptionState): String = key(option.kind, option.id)
 
+  /** Where the table draws `option`, as the key the renderers hand
+    * `BoardOptions`: an adviser play is drawn on its adviser slot, whichever
+    * facing it names, and every other option on its own key.
+    */
+  def home(option: DecisionOptionState): String = option.kind match
+    case "adviser-play" =>
+      key("adviser-slot", BoardHomes.adviserSlot(option.id))
+    case _ => key(option)
+
   /** Every option the query shows, locked and unavailable ones included. */
   def options(query: DecisionQueryState): Vector[DecisionOptionState] =
     query match
@@ -32,7 +41,7 @@ private[frontend] object BoardOptionViews:
       case many: DecisionQueryState.ChooseMany => many.options
       case _ => Vector.empty
 
-  /** Each option by key: locked and unavailable as projected, then the
+  /** Each option by home: locked and unavailable as projected, then the
     * draft's picks, then what the draft's limits block. A choose-one's
     * answers so far (a battle-plan window's played plans) show locked.
     */
@@ -45,7 +54,7 @@ private[frontend] object BoardOptionViews:
         .map(option => OptionView(option, OptionState.Locked, None))
       case _ => Vector.empty
     (played ++ options(query).map(view(query, picks, _)))
-      .map(found => key(found.option) -> found).toMap
+      .map(found => home(found.option) -> found).toMap
 
   private def view(query: DecisionQueryState, picks: Vector[String],
       option: DecisionOptionState): OptionView = option.state match
