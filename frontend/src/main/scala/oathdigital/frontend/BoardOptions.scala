@@ -129,6 +129,23 @@ private[frontend] object BoardOptions:
     new BoardOptions(BoardOptionViews.of(surface.decision, surface.query,
       drafts.board), stager(surface, drafts, canControl, controls))
 
+  /** The facedown advisers "Play facedown adviser" may play, lit on the
+    * player's board before the walker starts. Each answers to its own card
+    * key, the picked one shows selected, and a click picks it. The pick is
+    * a local board choice, not a parked decision, so nothing is submitted
+    * until the panel's "Play {card}".
+    */
+  def facedown(draft: FacedownAdviserDraft, canControl: Boolean,
+      controls: ActionControls): BoardOptions =
+    new BoardOptions(draft.advisers.map { adviser =>
+      val card = adviser.card
+      val state = if draft.selectedCardId.contains(card.cardId) then
+        OptionState.Selected else OptionState.Available
+      cardKey(card) -> OptionView(DecisionOptionState(cardKind(card),
+        card.cardId, card.name, card = Some(card)), state, None)
+    }.toMap, option => if canControl then
+      controls.chooseFacedownAdviser(option.id))
+
   /** A card's kind as an option names it. */
   def cardKind(card: CardDetails): String = card.cardKind match
     case "relic" | "vision" | "edifice" => card.cardKind

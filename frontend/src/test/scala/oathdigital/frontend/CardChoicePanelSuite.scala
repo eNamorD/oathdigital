@@ -3,7 +3,7 @@ package oathdigital.frontend
 import ParkedDecision.{RecoverStep, Surface}
 import org.scalajs.dom
 
-/** Panels that ask a player to pick one card out of several. A card the
+/** Recover's relic panel asks a player to pick one card out of several. A card the
   * player is allowed to read is drawn face-up whichever way it physically
   * lies, and the picking is a button of its own, so clicking the card still
   * means "show me this" everywhere in the game.
@@ -11,45 +11,6 @@ import org.scalajs.dom
 class CardChoicePanelSuite extends munit.FunSuite:
   private def faces(node: dom.Element): Vector[String] =
     Dom.all(node, ".card-face .card-name").map(_.textContent)
-
-  private def adviser(id: String, name: String): MinorAdviser =
-    MinorAdviser(CardDetails(id, "denizen", name, suit = Some("order"),
-      orientation = Some("face-down")))
-
-  private val draft = FacedownAdviserDraft(
-    BoardSelectionContext("game", "red", 1L),
-    Vector(adviser("a1", "Old Oak"), adviser("a2", "Bandits")), None)
-
-  private def advisers(value: FacedownAdviserDraft): dom.Element =
-    FacedownAdviserRenderer.render(value, canControl = true,
-      new RecordingControls())
-
-  test("every facedown adviser on offer is drawn face-up"):
-    val panel = advisers(draft)
-    assertEquals(faces(panel), Vector("Old Oak", "Bandits"))
-    assertEquals(Dom.all(panel, ".card-face-down"), Vector.empty)
-    assertEquals(Dom.all(panel, ".card-back-letter"), Vector.empty)
-
-  test("choosing is a button of its own, and says which card it picks"):
-    val panel = advisers(draft)
-    val choices = Dom.all(panel, ".facedown-adviser-choice")
-    assertEquals(choices.map(_.getAttribute("aria-label")),
-      Vector("Choose Old Oak", "Choose Bandits"))
-    assertEquals(choices.map(_.getAttribute("aria-pressed")),
-      Vector("false", "false"))
-    assertEquals(
-      Dom.all(advisers(draft.choose("a2")), ".facedown-adviser-choice")
-        .map(_.getAttribute("aria-pressed")),
-      Vector("false", "true"))
-
-  /** One adviser is not a choice, so it gets no picker -- but it is still
-    * the card the player is about to play, so it is still shown.
-    */
-  test("a lone adviser is shown without a picker"):
-    val panel = advisers(draft.copy(advisers = draft.advisers.take(1),
-      selectedCardId = Some("a1")))
-    assertEquals(faces(panel), Vector("Old Oak"))
-    assertEquals(Dom.all(panel, ".facedown-adviser-choice"), Vector.empty)
 
   private val relicQuery = DecisionQueryState.ChooseOne(
     Vector(DecisionOptionState("relic", "relic:crown", "Ancient Crown",
