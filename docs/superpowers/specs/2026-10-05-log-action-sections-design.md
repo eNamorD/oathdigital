@@ -39,7 +39,7 @@ swords hard to tell apart at log size.
 
 | Action | Band color | Family |
 |---|---|---|
-| Campaign | `#c9706a` | warm (aggressive) |
+| Campaign | `#d47c74` | warm (aggressive) |
 | Muster | `#c2b25c` | warm (aggressive) |
 | Challenge | `#c99a62` | warm (aggressive) |
 | Travel | `#7fb0a8` | cool |
@@ -52,9 +52,12 @@ swords hard to tell apart at log size.
 A band's fill is its color mixed 9% into the Pane fill (`#211f1b`), and its
 border is the color mixed 28% into it. The neutral band uses 6% and 20%. The
 tag's name is the color itself. These values come from the brainstorm
-mockups. The browser check may tune them, under two constraints: every tag
-color clears 4.5:1 on its band, and no two colors that commonly sit next to
-each other in a turn read as the same color family.
+mockups, except Campaign: the mockups' `#c9706a` gave its tag 4.21:1 on its
+band, so it was lightened to `#d47c74` (4.80:1). The browser check may tune
+them, under two constraints: every tag color clears 4.5:1 on its band, and
+no two colors that commonly sit next to each other in a turn read as the
+same color family. Ink Spent falls under 4.5:1 on every band fill, so a
+spent cost inside a band is Ink Dim.
 
 ## Server: sections and the tag entry
 
@@ -119,7 +122,7 @@ posted right after the tag:
 - the chosen modifiers: "With Cup of Plenty, Fox", using the words
   `StartLines.modifiers` builds today;
 - Campaign's kind and defender: "Raid against Blue", "Conquest against the
-  bandits".
+  bandits", with its modifiers after them: "Raid against Blue with Fox".
 
 When neither applies, nothing follows the tag. Recover's continuation line
 becomes "Continued" followed by its `Cost` span.
@@ -147,8 +150,9 @@ first public release, so nothing is migrated.
 stay as they are.
 
 `GameLogPane.item` gives an entry with a section the classes `log-band` and
-`log-band-<action>`, where `<action>` is the section's action with any
-`use-power:` suffix dropped to `use-power`. Band edges:
+`log-band-<action>`, where `<action>` is the section's action, except
+that `play-facedown-adviser` becomes `search` and any `use-power:<id>`
+becomes `use-power`. Band edges:
 
 - `log-band-start` goes on an entry whose section id differs from the
   previous entry's, or that follows the divider.
@@ -162,8 +166,6 @@ own edges.
 
 CSS maps actions to colors:
 
-- `log-band-search` and `log-band-play-facedown-adviser` share Search's
-  color.
 - The eight action colors go to their actions.
 - Every other band (`minor`, `use-power`, `negotiation`,
   `place-banner-resource`) is neutral.
@@ -174,7 +176,7 @@ border and tag color derive from one value.
 A `section` entry draws as the tag row:
 
 - the name in 11px uppercase, weight 700, 0.12em tracking, in `--band`;
-- the cost in 12px Ink Spent, set apart by a 0.6em margin.
+- the cost in 12px Ink Dim, set apart by a 0.6em margin.
 
 The band's fill and its left and right borders run on every banded entry.
 The top border and top radius go on `log-band-start`, and the bottom border
