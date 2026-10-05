@@ -51,7 +51,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     banners = Vector(BannerProjection("peoples-favor", "mob", Some("red"), 2),
       BannerProjection("darkest-secret", "wandering-flame", None, 0)),
     minorActions = Some(MinorActionsProjection(
-      Vector(MinorAdviserProjection(known, Vector(CardResolutionProjection("discard")))),
+      Vector(MinorAdviserProjection(known)),
       true, Vector(hidden), Some("site:a"), 1, 1)),
     favorBanks = Vector(FavorBankProjection("beast", 4)),
     phasePowers = Vector(PhasePowerProjection("denizen.silver-tongue",
@@ -385,3 +385,9 @@ class ProjectionProtocolSuite extends munit.FunSuite:
   test("a board's adviser limit round-trips"):
     assertRoundTrips(projection.copy(playerBoards =
       projection.playerBoards.map(_.copy(adviserLimit = 2))))
+
+  test("a minor adviser written with its old placements still decodes"):
+    val json = ujson.read(GameProjectionCodec.encode(projection))
+    json("minorActions")("advisers")(0)("placements") = ujson.Arr()
+    assertEquals(GameProjectionCodec.decode(ujson.write(json)),
+      Right(projection))

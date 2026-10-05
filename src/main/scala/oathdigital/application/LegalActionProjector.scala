@@ -2,7 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.actions.{CardPlay, ForgeRules}
+import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
@@ -189,27 +189,6 @@ private[application] final class LegalActionProjector(
       case (SearchSource.RegionalDiscard(region), cost) =>
         LegalSearchSourceProjection("regional-discard", Some(region.key), cost)
 
-  /** The legal ways to resolve one facedown adviser right now -- reuses the
-    * same planner Search itself resolves placements with, so a facedown
-    * adviser is never offered as playable when no placement is actually
-    * legal (discard restrictions, no site, etc).
-    */
-  private def adviserPlacements(context: ScopedProjectionContext,
-      id: WorldCardId): Vector[CardResolutionProjection] =
-    CardPlay.legalChoices(catalog, context.ready, context.active.player, id,
-      CardPlay.Origin.FacedownAdviser).map { choice =>
-      val (kind, orientation) = choice.placement match
-        case SearchPlacement.Discard => ("discard", None)
-        case _: SearchPlacement.Site => ("play-site", None)
-        case SearchPlacement.Adviser(value, _) =>
-          ("play-adviser", Some(presentation.orientationName(value)))
-      CardResolutionProjection(kind, orientation,
-        replacementRequired = choice.replacements.nonEmpty &&
-          !choice.replacementOptional,
-        replacementTargets = choice.replacements.map(
-          presentation.cardDetails(_, None, hidden = false)))
-    }
-
   private def minorActionsProjection(context: ScopedProjectionContext) =
     val active = context.active
     val facedown = active.advisers.collect:
@@ -223,8 +202,7 @@ private[application] final class LegalActionProjector(
       case _ => None
     }).getOrElse(0)
     MinorActionsProjection(facedown.map { id => MinorAdviserProjection(
-      presentation.cardDetails(id, Some(Orientation.FaceDown), hidden = false),
-      adviserPlacements(context, id))
+      presentation.cardDetails(id, Some(Orientation.FaceDown), hidden = false))
     }, context.activeSite.exists(_.relics.nonEmpty), active.relics.filter(
       _.orientation == Orientation.FaceDown).map(r => presentation.cardDetails(r.id,
       Some(r.orientation), hidden = false)), active.pawnSite.map(_.value),

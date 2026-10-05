@@ -19,8 +19,7 @@ class ModifierFlowSuite extends munit.FunSuite:
   // A Site ref's stable key is site:<id>, and this site's id is site:woods.
   private val woodsKey = BoardTargetRef.Site("site:woods").stableKey
   private val advisers = Vector("a1", "a2").map(id => MinorAdviser(
-    CardDetails(id, "denizen", s"Old Oak $id", orientation = Some("face-down")),
-    Vector.empty))
+    CardDetails(id, "denizen", s"Old Oak $id", orientation = Some("face-down"))))
   private val minor = MinorActionsState(advisers, canPeekSiteRelics = false,
     Vector.empty, None, 0, 0)
   private val projection = actingProjection(nextSequence = 9L,

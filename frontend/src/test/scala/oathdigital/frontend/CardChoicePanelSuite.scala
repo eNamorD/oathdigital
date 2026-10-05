@@ -14,7 +14,7 @@ class CardChoicePanelSuite extends munit.FunSuite:
 
   private def adviser(id: String, name: String): MinorAdviser =
     MinorAdviser(CardDetails(id, "denizen", name, suit = Some("order"),
-      orientation = Some("face-down")), Vector.empty)
+      orientation = Some("face-down")))
 
   private val draft = FacedownAdviserDraft(
     BoardSelectionContext("game", "red", 1L),

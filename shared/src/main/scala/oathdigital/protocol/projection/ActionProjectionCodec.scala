@@ -40,23 +40,9 @@ private[projection] object ActionProjectionCodec:
   yield BoardTargetActionProjection(kind, prompt, minimum, maximum, auto, candidates,
     decision, explicit)
 
-  def encodeResolution(value: CardResolutionProjection): ujson.Value = ujson.Obj(
-    "kind" -> value.kind, "orientation" -> stringOption(value.orientation),
-    "replacementRequired" -> value.replacementRequired,
-    "replacementTargets" -> encoded(value.replacementTargets)(encodeCard))
-  def decodeResolution(raw: ujson.Value, path: String): Result[CardResolutionProjection] = for
-    value <- obj(raw, path)
-    _ <- exact(value, Set("kind", "orientation", "replacementRequired", "replacementTargets"), path)
-    kind <- string(value, "kind", path); orientation <- optionalString(value, "orientation", path)
-    required <- bool(value, "replacementRequired", path)
-    raws <- array(value, "replacementTargets", path)
-    targets <- traverse(raws, s"$path.replacementTargets")(decodeCard)
-  yield CardResolutionProjection(kind, orientation, required, targets)
-
   def encodeMinor(value: MinorActionsProjection): ujson.Value = ujson.Obj(
     "advisers" -> encoded(value.advisers)(entry => ujson.Obj(
-      "card" -> encodeCard(entry.card),
-      "placements" -> encoded(entry.placements)(encodeResolution))),
+      "card" -> encodeCard(entry.card))),
     "canPeekSiteRelics" -> value.canPeekSiteRelics,
     "facedownRelics" -> encoded(value.facedownRelics)(encodeCard),
     "siteId" -> stringOption(value.siteId), "maxBoardToSite" -> value.maxBoardToSite,
@@ -67,11 +53,11 @@ private[projection] object ActionProjectionCodec:
       "siteId", "maxBoardToSite", "maxSiteToBoard"), path)
     adviserRaws <- array(value, "advisers", path)
     advisers <- traverse(adviserRaws, s"$path.advisers") { (raw, child) => for
+      // A projection from before card slots also wrote each adviser's
+      // placements; they are read past, so its payload still decodes.
       row <- obj(raw, child); _ <- exact(row, Set("card", "placements"), child)
       cardRaw <- field(row, "card", child); card <- decodeCard(cardRaw, s"$child.card")
-      placementRaws <- array(row, "placements", child)
-      placements <- traverse(placementRaws, s"$child.placements")(decodeResolution)
-    yield MinorAdviserProjection(card, placements) }
+    yield MinorAdviserProjection(card) }
     peek <- bool(value, "canPeekSiteRelics", path)
     relicRaws <- array(value, "facedownRelics", path)
     relics <- traverse(relicRaws, s"$path.facedownRelics")(decodeCard)

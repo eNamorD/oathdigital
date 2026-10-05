@@ -13,8 +13,7 @@ class SessionDraftsSuite extends munit.FunSuite:
     autoActivate = true, Vector(BoardTargetCandidate(
       BoardTargetRef.Site("site:woods"), "Deep Woods", Vector.empty)))
   private val advisers = Vector("a1", "a2").map(id => MinorAdviser(
-    CardDetails(id, "denizen", s"Old Oak $id", orientation = Some("face-down")),
-    Vector.empty))
+    CardDetails(id, "denizen", s"Old Oak $id", orientation = Some("face-down"))))
   private val minor = MinorActionsState(advisers, canPeekSiteRelics = false,
     Vector.empty, None, 0, 0)
   private def projection(

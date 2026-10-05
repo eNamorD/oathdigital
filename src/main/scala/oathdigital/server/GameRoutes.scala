@@ -106,8 +106,8 @@ private[server] object MajorActionPreviewTargets:
       : Either[GameApplicationError, Unit] =
     request.baseParameters.get("procedure") match
       case Some("facedown-adviser") if request.action == "search" =>
-        Either.cond(projection.minorActions.exists(_.advisers.exists(
-          _.placements.nonEmpty)), (), GameApplicationError.CommandRejected(
+        Either.cond(projection.minorActions.exists(_.advisers.nonEmpty), (),
+          GameApplicationError.CommandRejected(
           oathdigital.model.OathViolation.InvalidModifierInvocation(
             "no facedown adviser can legally be resolved")))
       case Some(_) => Left(GameApplicationError.CommandRejected(

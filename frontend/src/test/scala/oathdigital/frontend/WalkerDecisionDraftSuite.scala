@@ -67,25 +67,17 @@ class WalkerDecisionDraftSuite extends FunSuite:
   private val facedownContext = BoardSelectionContext("game", "red", 7)
   private val adviser = CardDetails("D1", "denizen", "The Adviser")
   private val otherAdviser = CardDetails("D2", "denizen", "The Other Adviser")
-  private val placements = Vector(MinorAdviserPlacement("discard"),
-    MinorAdviserPlacement("play-adviser"),
-    MinorAdviserPlacement("play-site",
-      Some(CardDetails("D3", "denizen", "Old Denizen"))))
 
   private def minor(advisers: Vector[MinorAdviser]) = MinorActionsState(
     advisers, canPeekSiteRelics = false, Vector.empty, Some("site:a"), 0, 0)
 
-  /** The minor actions of a player holding both advisers facedown, each
-    * with every placement on offer.
-    */
+  /** The minor actions of a player holding both advisers facedown. */
   private def twoAdvisersFacedown = minor(Vector(
-    MinorAdviser(adviser, placements), MinorAdviser(otherAdviser, placements)))
+    MinorAdviser(adviser), MinorAdviser(otherAdviser)))
 
   test("the facedown adviser draft opens from zero, one or many advisers"):
     val noAdvisers = minor(Vector.empty)
-    val oneAdviser = minor(Vector(MinorAdviser(adviser, placements)))
-    val oneAdviserWithNoPlacement =
-      minor(Vector(MinorAdviser(adviser, Vector.empty)))
+    val oneAdviser = minor(Vector(MinorAdviser(adviser)))
     assertEquals(FacedownAdviserDraft.initial(facedownContext, noAdvisers),
       None)
     assertEquals(ServerUiSupport.facedownAdviserLaunchCount(noAdvisers), 0)
@@ -93,10 +85,6 @@ class WalkerDecisionDraftSuite extends FunSuite:
       oneAdviser), "a facedown draft")
     assertEquals(one.selectedCardId, Some("D1"))
     assertEquals(ServerUiSupport.facedownAdviserLaunchCount(oneAdviser), 1)
-    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
-      oneAdviserWithNoPlacement), 1)
-    assert(FacedownAdviserDraft.initial(facedownContext,
-      oneAdviserWithNoPlacement).nonEmpty)
     assertEquals(one.command, Some(oathdigital.protocol.GameIntent.StartWalker(
       "play-facedown-adviser", Vector.empty,
       Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "D1")))))

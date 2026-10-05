@@ -28,12 +28,6 @@ final case class BoardTargetActionProjection(
   require(maximum <= 1, "a board-target action selects at most one target")
   require(maximum <= candidates.size,
     "selection maximum cannot exceed authorized candidates")
-final case class CardResolutionProjection(
-    kind: String,
-    orientation: Option[String] = None,
-    replacementRequired: Boolean = false,
-    replacementTargets: Vector[CardDetailsProjection] = Vector.empty):
-  def replacement: Option[CardDetailsProjection] = replacementTargets.headOption
 /** A phase power the viewer can use now: its id, the card it is used from,
   * and the card's printed power name and rules text.
   */
@@ -332,8 +326,9 @@ final case class PlayerBoardProjection(
       * or Insomnia. The board draws that many adviser slots. */
     adviserLimit: Int = 3
 )
-final case class MinorAdviserProjection(card: CardDetailsProjection,
-    placements: Vector[CardResolutionProjection])
+/** A facedown adviser the player may play. Where it can go is the placement
+  * decision's to say once the play starts; discarding it is always legal. */
+final case class MinorAdviserProjection(card: CardDetailsProjection)
 final case class MinorActionsProjection(advisers: Vector[MinorAdviserProjection],
     canPeekSiteRelics: Boolean, facedownRelics: Vector[CardDetailsProjection],
     siteId: Option[String], maxBoardToSite: Int, maxSiteToBoard: Int)
