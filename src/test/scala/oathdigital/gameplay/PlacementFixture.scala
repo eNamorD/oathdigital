@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.PlacementRules
+import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -10,14 +10,14 @@ import oathdigital.testkit.Outcomes
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** Driving the card-play walk, shared by the placement suites. The powers
-  * built here are stubs of ContributingPower: they change `PlacementRules`
+  * built here are stubs of ContributingPower: they change `CardPlayRules`
   * and nothing else.
   */
 object PlacementFixture:
   /** Stub of ContributingPower: changes the rules every play is planned
-    * under (`PlacementRules`), nothing else. */
+    * under (`CardPlayRules`), nothing else. */
   def rulePower(name: String)(
-      change: PlacementRules => PlacementRules): ContributingPower =
+      change: CardPlayRules => CardPlayRules): ContributingPower =
     new ContributingPower:
       def id: PowerId = PowerId(name)
       def source: RuleSourceRef = RuleSourceRef.GameRule(name)
@@ -29,10 +29,15 @@ object PlacementFixture:
             case _ => ops
           })))
 
-  /** Stub of ContributingPower: changes PlacementRules to discard first. */
+  /** A plain site discard permission, of any card, whose line says nothing. */
+  val testPermission: DiscardPermission = DiscardPermission(
+    PowerId("test.discard-first"),
+    Note(PowerId("test.discard-first"), _ => None))
+
+  /** Stub of ContributingPower: adds `testPermission`. */
   val discardFirst: ContributingPower =
-    rulePower("test.discard-first")(_.withSiteDiscardFirst)
-  /** Stub of ContributingPower: changes PlacementRules to two advisers. */
+    rulePower("test.discard-first")(_.permitSiteDiscard(testPermission))
+  /** Stub of ContributingPower: lowers the adviser limit to two. */
   val limitTwo: ContributingPower =
     rulePower("test.limit-two")(_.limitAdvisers(2))
 

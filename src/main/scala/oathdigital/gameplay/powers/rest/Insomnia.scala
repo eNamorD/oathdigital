@@ -31,8 +31,7 @@ case object Insomnia extends PhasePower with ContributingPower:
   val Secrets: Int = 1
   val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
 
-  private val limit = HolderAdviserLimit(cardId, Insomnia.HolderLimit,
-    "Insomnia")
+  private val limit = HolderAdviserLimit(cardId, Insomnia.HolderLimit)
 
   def timing: PowerTiming = PowerTiming.Rest
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)

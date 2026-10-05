@@ -62,7 +62,7 @@ class CropRotationSuite extends munit.FunSuite:
 
   private def cropSaid(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(CropRotation.id, Vector(
-      oathdigital.gameplay.actions.PlacementRules.discardFirst), events)
+      oathdigital.gameplay.actions.CardPlayRules.discardFirst), events)
 
   test("selected, a play to a site with room asks first, and may decline"):
     val ready = staged(Vector(fillers(0)))

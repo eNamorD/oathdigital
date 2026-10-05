@@ -25,7 +25,7 @@ final case class SilverTongue private (catalog: ExecutableCatalog)
   val cardId: DenizenId = SilverTongueCard.id
   import SilverTongue._
 
-  private val limit = HolderAdviserLimit(cardId, HolderLimit, "Silver Tongue")
+  private val limit = HolderAdviserLimit(cardId, HolderLimit)
 
   def id: PowerId = SilverTongue.id
   def timing: PowerTiming = PowerTiming.Rest

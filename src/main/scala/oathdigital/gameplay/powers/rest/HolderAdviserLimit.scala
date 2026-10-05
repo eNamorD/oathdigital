@@ -8,14 +8,15 @@ import oathdigital.model._
   * catalog batch 3, shared by Silver Tongue and Insomnia.
   *
   * It is a transform at `SearchPlayAdviser`. While `cardId` is faceup in the
-  * acting player's advisers, it lowers that player's limit to `limit` in both
-  * adviser orientations. While `cardId` is the card being played, it lowers
-  * the faceup limit, so playing it faceup needs room under the limit. Either
-  * way it checks the resulting area after the play. A limit only lowers, so
-  * two such cards compose and the lowest holds.
+  * acting player's advisers, it lowers that player's limit to `limit`. While
+  * `cardId` is the card being played, it sets the played card's own limit
+  * (the rulebook checks such a play against the new limit), so playing
+  * it faceup needs room under the limit. Card play offers no adviser slot
+  * past a limit, so nothing is checked after the play, and the limit writes
+  * no line. A limit only lowers, so two such cards compose and the lowest
+  * holds.
   */
-final case class HolderAdviserLimit(cardId: DenizenId, limit: Int,
-    name: String):
+final case class HolderAdviserLimit(cardId: DenizenId, limit: Int):
   /** `limit`, when `player` holds `cardId` as a faceup adviser. */
   def limitFor(ready: ReadyGame, player: PlayerId): Option[Int] =
     ready.game.current.players.find(_.player == player)
@@ -28,17 +29,8 @@ final case class HolderAdviserLimit(cardId: DenizenId, limit: Int,
     ctx.operation match {
       case tree: CardPlayProcedure.PlacementTree
           if limitFor(ctx.state, ctx.activePlayer).nonEmpty =>
-        tree.adjust(children)(_.limitAdvisers(limit)) :+ guard(ctx.activePlayer)
+        tree.adjust(children)(_.limitAdvisers(limit))
       case tree: CardPlayProcedure.PlacementTree if tree.card == cardId =>
-        tree.adjust(children)(_.limitFaceupAdvisers(limit)) :+
-          guard(ctx.activePlayer)
+        tree.adjust(children)(_.limitPlayedCard(limit))
       case _ => children
     })
-
-  private def guard(actor: PlayerId): Operation = BuildOps((state, _) => {
-    val count = state.game.current.players.find(
-      _.player == actor).fold(0)(_.advisers.size)
-    if limitFor(state, actor).forall(count <= _) then Right(Vector.empty)
-    else Left(OathViolation.InvalidEventOrder(
-      s"${actor.value} holds $name and can have only $limit advisers"))
-  })

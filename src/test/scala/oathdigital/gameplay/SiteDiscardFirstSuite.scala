@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{CardPlay, PlacementRules}
+import oathdigital.gameplay.actions.{CardPlay, CardPlayRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerOutcome, WalkerPowers}
@@ -9,14 +9,14 @@ import oathdigital.testkit.{CatalogNames, Look, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{as, present}
 
-/** `PlacementRules.siteDiscardFirst`: a play to a site may first discard one
+/** A site discard permission (`CardPlayRules.siteDiscards`): a play to a site may first discard one
   * card of the site's card list, at any capacity. `discardFirst` is
   * PlacementFixture's stub of ContributingPower that sets it, and `limitTwo`
   * its stub that lowers both adviser limits to two.
   */
 class SiteDiscardFirstSuite extends munit.FunSuite:
   import PlacementFixture.{answer, build, cardPlayDecisionId, discardFirst,
-    limitTwo, options, park}
+    limitTwo, options, park, testPermission}
 
   private val powers = WalkerPowers(Vector(discardFirst))
   private val noReplacement = CardPlayProcedure.noReplacement.ref
@@ -33,13 +33,13 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     cards.foldLeft(Table.start.hand(p1, card))((table, held) =>
       table.denizen(held, at = home))
 
-  private def choices(ready: ReadyGame, rules: PlacementRules)
+  private def choices(ready: ReadyGame, rules: CardPlayRules)
       : Option[CardPlay.Choice] =
     CardPlay.legalChoices(catalog, ready, p1, card,
       CardPlay.Origin.TemporaryHand, rules)
       .find(_.placement.isInstanceOf[SearchPlacement.Site])
 
-  private def siteChoice(ready: ReadyGame, rules: PlacementRules)
+  private def siteChoice(ready: ReadyGame, rules: CardPlayRules)
       : CardPlay.Choice =
     present(choices(ready, rules), "the site placement")
 
@@ -62,10 +62,10 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
 
   test("a site with room offers a discard only under the permission"):
     val ready = playing(kept, other).ready
-    val plainChoice = siteChoice(ready, PlacementRules.default)
+    val plainChoice = siteChoice(ready, CardPlayRules.default)
     assertEquals(plainChoice.replacements, Vector.empty)
     assert(!plainChoice.replacementOptional)
-    val allowed = siteChoice(ready, PlacementRules.default.withSiteDiscardFirst)
+    val allowed = siteChoice(ready, CardPlayRules.default.permitSiteDiscard(testPermission))
     assertEquals(allowed.replacements.toSet, Set[CardId](kept, other))
     assert(allowed.replacementOptional)
 
@@ -97,8 +97,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
       "discard, and only under the permission"):
     val fillers = Vector(kept, other, CatalogNames.denizen("Wrestlers"))
     val ready = playing(fillers*).ready                // Ancient City is full
-    assertEquals(choices(ready, PlacementRules.default), None)
-    val site = siteChoice(ready, PlacementRules.default.withSiteDiscardFirst)
+    assertEquals(choices(ready, CardPlayRules.default), None)
+    val site = siteChoice(ready, CardPlayRules.default.permitSiteDiscard(testPermission))
     assertEquals(site.replacements.toSet, fillers.toSet[CardId])
     assert(!site.replacementOptional)
     val asked = toDiscardDecision(ready)
@@ -112,7 +112,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
   test("an intact edifice is never offered for the discard: it is locked"):
     val ready = playing(kept).edifice(hall, EdificeSide.Intact, at = home)
       .warbandsAt(home, p1, 1).ready
-    val site = siteChoice(ready, PlacementRules.default.withSiteDiscardFirst)
+    val site = siteChoice(ready, CardPlayRules.default.permitSiteDiscard(testPermission))
     assertEquals(site.replacements, Vector[CardId](kept))
 
   test("a ruined edifice may be discarded, and it goes back to the edifice deck"):

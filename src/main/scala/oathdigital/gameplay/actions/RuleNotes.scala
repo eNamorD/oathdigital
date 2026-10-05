@@ -12,4 +12,4 @@ object RuleNotes:
   val homelandDiscard: PowerId = PowerId("rule.homeland-discard")
 
   val all: Vector[(PowerId, Vector[NoteKey])] =
-    Vector(homelandDiscard -> Vector(PlacementRules.discardFirst))
+    Vector(homelandDiscard -> Vector(CardPlayRules.discardFirst))

@@ -381,3 +381,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       WalkerDecisionProjection("search", "cardplay.place.denizen.known",
         "decide", query = Some(DecisionQueryProjection.ChooseOne(
           Vector(replacing, pile)))))))
+
+  test("a board's adviser limit round-trips"):
+    assertRoundTrips(projection.copy(playerBoards =
+      projection.playerBoards.map(_.copy(adviserLimit = 2))))

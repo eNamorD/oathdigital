@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.actions.PlacementRules
+import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
 import oathdigital.model._
@@ -16,7 +16,7 @@ import oathdigital.model._
   * A full site that would refuse the play accepts it with a discard.
   *
   * Its line, "{Red} may discard a card at their site first.", travels in the
-  * rules, and card play writes it after the discard answer.
+  * permission, and card play writes it for the discard it allowed.
   */
 object PeoplesFavorMob extends ContributingPower:
   val id: PowerId = PowerId("banner.peoples-favor.mob")
@@ -27,16 +27,18 @@ object PeoplesFavorMob extends ContributingPower:
     val favor = ctx.state.game.current.banners.peoplesFavor
     favor.active == PeoplesFavorFace.Mob && favor.holder.contains(ctx.activePlayer)
 
-  override def noteKeys: Vector[NoteKey] = Vector(PlacementRules.discardFirst)
+  override def noteKeys: Vector[NoteKey] = Vector(CardPlayRules.discardFirst)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
       ctx.operation match {
         case tree: CardPlayProcedure.PlacementTree =>
-          tree.adjust(children)(_.withSiteDiscardFirstBy(note(ctx.activePlayer)))
+          tree.adjust(children)(_.permitSiteDiscard(permission(ctx.activePlayer)))
         case _ => children
       })))
 
-  private def note(actor: PlayerId): Note = Note(id, _ => Some(
-    PlacementRules.discardFirst(PowerSourceRef.Banner(Banner.PeoplesFavor),
-      NoteArg.Player(actor))))
+  /** One discard of any site card, credited with the Mob's line. */
+  private def permission(actor: PlayerId): DiscardPermission =
+    DiscardPermission(id, Note(id, _ => Some(
+      CardPlayRules.discardFirst(PowerSourceRef.Banner(Banner.PeoplesFavor),
+        NoteArg.Player(actor)))))

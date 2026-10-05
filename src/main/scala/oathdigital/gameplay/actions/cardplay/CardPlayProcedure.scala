@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
-import oathdigital.gameplay.actions.{CardPlay, PlacementRules, RuleNotes}
+import oathdigital.gameplay.actions.{CardPlay, CardPlayRules}
 import oathdigital.model._
 
 /** Embeddable card-placement tree using CardPlay's pure operation planner. */
@@ -15,8 +15,8 @@ object CardPlayProcedure:
   private val adviserFaceDown = DecisionOptionRef.Button("adviser-facedown")
 
   /** The option that plays to a site without discarding a site card first,
-    * offered only when `PlacementRules.siteDiscardFirst` makes the discard
-    * optional.
+    * offered only when a site discard permission (`CardPlayRules.siteDiscards`)
+    * or the Homeland of the card's suit makes the discard optional.
     */
   val noReplacement: DecisionOption = DecisionOption.Button(
     DecisionOptionRef.Button("replace:none"), "Discard nothing")
@@ -49,11 +49,11 @@ object CardPlayProcedure:
     case _ => Left(OathViolation.InvalidEventOrder(
       "facedown-adviser play requires exactly one held card"))
 
-  /** The placement subtree planned under one set of [[PlacementRules]]. */
-  final class PlacementBody private[cardplay](val rules: PlacementRules,
-      childrenAt: PlacementRules => Vector[Operation]) extends Operation:
+  /** The placement subtree planned under one set of [[CardPlayRules]]. */
+  final class PlacementBody private[cardplay](val rules: CardPlayRules,
+      childrenAt: CardPlayRules => Vector[Operation]) extends Operation:
     override val children: Vector[Operation] = childrenAt(rules)
-    private[cardplay] def adjust(change: PlacementRules => PlacementRules)
+    private[cardplay] def adjust(change: CardPlayRules => CardPlayRules)
         : PlacementBody = new PlacementBody(change(rules), childrenAt)
 
   /** Generic rules-aware placement seam. A power changes the rules its play is
@@ -67,22 +67,22 @@ object CardPlayProcedure:
     * is kept by the later ones.
     */
   final class PlacementTree private[cardplay](val card: WorldCardId,
-      childrenAt: PlacementRules => Vector[Operation])
+      childrenAt: CardPlayRules => Vector[Operation])
       extends Operation:
     override val window: Option[PowerWindow] =
       Some(PowerWindow.SearchPlayAdviser)
     override val children: Vector[Operation] =
-      childrenAt(PlacementRules.default)
+      childrenAt(CardPlayRules.default)
 
     def adjust(current: Vector[Operation])(
-        change: PlacementRules => PlacementRules): Vector[Operation] =
+        change: CardPlayRules => CardPlayRules): Vector[Operation] =
       // An earlier contributor may have appended nodes after the body (an
       // adviser limit's check): change the body in place and keep them.
       if current.exists(_.isInstanceOf[PlacementBody]) then current.map {
         case body: PlacementBody => body.adjust(change)
         case other => other
       }
-      else Vector(new PlacementBody(change(PlacementRules.default), childrenAt))
+      else Vector(new PlacementBody(change(CardPlayRules.default), childrenAt))
 
   /** Whether `card` is still at the origin the play started from. Once it is
     * not, the play has been made and the tree is settled from the answers.
@@ -147,7 +147,7 @@ object CardPlayProcedure:
 
   private def childrenFor(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: Origin,
-      rules: PlacementRules)
+      rules: CardPlayRules)
       : Vector[Operation] =
       val legacyOrigin = origin match
         case Origin.TemporaryHand => CardPlay.Origin.TemporaryHand
@@ -229,7 +229,8 @@ object CardPlayProcedure:
             // was; it joins the play's own node, keeping the hook's place.
             val notice: Vector[Operation] = placement match
               case _: SearchPlacement.Site if replacements.nonEmpty =>
-                if rules.siteDiscardFirst then rules.siteDiscardNote.toVector
+                if rules.siteDiscards.nonEmpty then
+                  rules.siteDiscards.headOption.map(_.note).toVector
                 else homelandNote(ready, actor).toVector
               case _ => Vector.empty
             val played = if notice.isEmpty then apply
@@ -244,9 +245,7 @@ object CardPlayProcedure:
     * card's suit asks for a discard at a site. */
   private def homelandNote(ready: ReadyGame, actor: PlayerId): Option[Note] =
     ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
-      .map(site => Note(RuleNotes.homelandDiscard, _ => Some(
-        PlacementRules.discardFirst(PowerSourceRef.Site(site),
-          NoteArg.Player(actor)))))
+      .map(site => CardPlayRules.homeland(site, actor).note)
 
   /** The replacement's options are not read once the play is made, only that
     * the decision held its place in the tree. */

@@ -16,7 +16,7 @@ object CardPlay:
   /** One legal placement. `replacements` are the cards the play may discard
     * first. They are required when the placement is otherwise impossible, and
     * `replacementOptional` says the play is also legal with no discard (a
-    * site with room, under `PlacementRules.siteDiscardFirst` or at the
+    * site with room, under `CardPlayRules.siteDiscards` or at the
     * Homeland of the card's suit).
     */
   final case class Choice(placement: SearchPlacement,
@@ -24,7 +24,7 @@ object CardPlay:
 
   def legalChoices(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: Origin,
-      rules: PlacementRules = PlacementRules.default): Vector[Choice] =
+      rules: CardPlayRules = CardPlayRules.default): Vector[Choice] =
     val player = ready.game.current.players.find(_.player == actor)
     // A placement whose plan discards a card the global restrictions refuse
     // (a faceup locked adviser, an intact edifice, an active modifier, a site
@@ -80,8 +80,8 @@ object CardPlay:
   /** A play of a `suit` card to `site` may discard a card there first: under
     * a power's permission, or at the Homeland of `suit`. */
   private def siteDiscardAllowed(catalog: ExecutableCatalog, site: SiteId,
-      suit: Suit, rules: PlacementRules): Boolean =
-    rules.siteDiscardFirst || homelandSuit(catalog, site).contains(suit)
+      suit: Suit, rules: CardPlayRules): Boolean =
+    rules.siteDiscards.nonEmpty || homelandSuit(catalog, site).contains(suit)
 
   /** Physical intent of one placement. Replacement cards join the ordered
     * next-region discards or the edifice deck bottom after the kept card moves.
@@ -99,7 +99,7 @@ object CardPlay:
   /** Pure semantic operation plan shared with the walker card-play subtree. */
   def plannedOperations(catalog: ExecutableCatalog, ready: ReadyGame,
       playerId: PlayerId, card: WorldCardId, placement: SearchPlacement,
-      origin: Origin, rules: PlacementRules = PlacementRules.default)
+      origin: Origin, rules: CardPlayRules = CardPlayRules.default)
       : Either[OathViolation, Vector[CoreOperation]] = for
     player <- ready.game.current.players.find(_.player == playerId)
       .toRight(InvalidSearchPlacement("player is not in the game"))
@@ -137,7 +137,7 @@ object CardPlay:
 
   private def plan(catalog: ExecutableCatalog, ready: ReadyGame,
       player: PlayerState, card: WorldCardId, placement: SearchPlacement,
-      origin: Origin, rules: PlacementRules)
+      origin: Origin, rules: CardPlayRules)
       : Either[OathViolation, PlacementPlan] = placement match
     case SearchPlacement.Discard => Right(PlacementPlan(
       None, Vector.empty, Vector.empty, Vector.empty))
@@ -176,12 +176,12 @@ object CardPlay:
           remaining = if origin == Origin.FacedownAdviser then
             player.advisers.filter(_.id != card) else player.advisers
           removed <- validateAdviserReplacement(remaining, replace,
-            rules.adviserLimit(orientation))
+            rules.limitAfter(orientation == Orientation.FaceUp))
         yield adviserPlan(origin, player, card, id, orientation, removed)
       case id: VisionId =>
         if !FirstGameRulesData.visions.contains(id) then Left(UnknownWorldCard(id))
         else planVision(catalog, player, origin, id, orientation, replace,
-          rules.adviserLimit(orientation))
+          rules.limitAfter(orientation == Orientation.FaceUp))
 
   private def sitePlan(catalog: ExecutableCatalog, ready: ReadyGame,
       origin: Origin, player: PlayerState, id: DenizenId, siteId: SiteId,
@@ -360,7 +360,7 @@ object CardPlay:
 
   private def validateSiteReplacement(catalog: ExecutableCatalog, siteId: SiteId,
       site: SiteState, suit: Suit, replace: Option[CardId],
-      rules: PlacementRules)
+      rules: CardPlayRules)
       : Either[OathViolation, Option[SiteDenizenState]] =
     val capacity = catalog.site(siteId).map(_.capacity).getOrElse(0)
     val full = site.denizens.size >= capacity

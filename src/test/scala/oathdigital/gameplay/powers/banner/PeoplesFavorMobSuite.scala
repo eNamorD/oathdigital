@@ -169,7 +169,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       .warbandsAt(ancientCity, p1, 1).peoplesFavor(Some(p1), 1).ready
     val choice = CardPlay.legalChoices(catalog, ready, p1, played,
       CardPlay.Origin.TemporaryHand,
-      oathdigital.gameplay.actions.PlacementRules.default.withSiteDiscardFirst)
+      oathdigital.gameplay.actions.CardPlayRules.default.permitSiteDiscard(oathdigital.gameplay.PlacementFixture.testPermission))
       .find(_.placement.isInstanceOf[SearchPlacement.Site])
       .getOrElse(fail("no site placement offered"))
     assertEquals(choice.replacements, Vector[CardId](kept))
@@ -185,7 +185,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       .warbandsAt(ancientCity, p1, 1).peoplesFavor(Some(p1), 1).ready
     val choice = CardPlay.legalChoices(catalog, ready, p1, played,
       CardPlay.Origin.TemporaryHand,
-      oathdigital.gameplay.actions.PlacementRules.default.withSiteDiscardFirst)
+      oathdigital.gameplay.actions.CardPlayRules.default.permitSiteDiscard(oathdigital.gameplay.PlacementFixture.testPermission))
       .find(_.placement.isInstanceOf[SearchPlacement.Site])
       .getOrElse(fail("no site placement offered"))
     assertEquals(choice.replacements, Vector[CardId](kept, hall))

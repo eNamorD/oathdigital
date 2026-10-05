@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.PlacementRules
+import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.AdviserLimit
 import oathdigital.gameplay.powers.rest.SilverTongue
@@ -11,28 +11,40 @@ import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.as
 
-/** `PlacementRules`: the adviser limits a card play is planned under, and how
-  * two contributors to them compose. `limitTwo` is PlacementFixture's stub
-  * power that lowers both adviser limits to two.
+/** `CardPlayRules`: the adviser limits and site discard permissions a card
+  * play is planned under, and how two contributors to them compose.
+  * `limitTwo` is PlacementFixture's stub power that lowers the adviser
+  * limit to two, and `testPermission` its plain site discard permission.
   */
-class PlacementRulesSuite extends munit.FunSuite:
+class CardPlayRulesSuite extends munit.FunSuite:
   import PlacementFixture.{answer, build, cardPlayDecisionId, limitTwo,
-    options, park}
+    options, park, testPermission}
 
   /** A plain Beast card p1 plays from hand. */
   private val card = CatalogNames.denizen("Errand Boy")
 
-  test("a limit only lowers, and a faceup limit leaves the facedown one"):
-    assertEquals(PlacementRules.default.limitAdvisers(5), PlacementRules.default)
-    assertEquals(PlacementRules.default.limitAdvisers(2),
-      PlacementRules(faceupAdviserLimit = 2, facedownAdviserLimit = 2,
-        siteDiscardFirst = false))
-    assertEquals(PlacementRules.default.limitFaceupAdvisers(2),
-      PlacementRules(faceupAdviserLimit = 2, facedownAdviserLimit = 3,
-        siteDiscardFirst = false))
-    assertEquals(PlacementRules.default.adviserLimit(Orientation.FaceUp), 3)
-    assertEquals(PlacementRules.default.limitFaceupAdvisers(2)
-      .adviserLimit(Orientation.FaceDown), 3)
+  test("one limit counts every adviser, faceup or facedown, and only lowers"):
+    val rules = CardPlayRules.default.limitAdvisers(2)
+    assertEquals(rules.limitAfter(faceup = true), 2)
+    assertEquals(rules.limitAfter(faceup = false), 2)
+    assertEquals(CardPlayRules.default.limitAdvisers(5), CardPlayRules.default)
+
+  test("the played card's own limit counts only when it is played faceup"):
+    // The rulebook checks a play that changes the adviser limit against the
+    // new limit. Silver Tongue played facedown has no power, so the old limit
+    // holds for that play.
+    val rules = CardPlayRules.default.limitPlayedCard(2)
+    assertEquals(rules.limitAfter(faceup = true), 2)
+    assertEquals(rules.limitAfter(faceup = false),
+      CardPlayRules.DefaultAdviserLimit)
+
+  test("site discard permissions stack in the order they are given"):
+    val second = DiscardPermission(PowerId("test.second-discard"),
+      Note(PowerId("test.second-discard"), _ => None))
+    val stacked = CardPlayRules.default.permitSiteDiscard(testPermission)
+      .permitSiteDiscard(second)
+    assertEquals(stacked.siteDiscards.map(_.source),
+      Vector(testPermission.source, second.source))
 
   test("without a contributor the tree is the play under the default rules"):
     val tree = build(Table.start.hand(p1, card).ready, p1, card)
@@ -43,18 +55,19 @@ class PlacementRulesSuite extends munit.FunSuite:
   test("two contributors compose in either order"):
     val tree = as[CardPlayProcedure.PlacementTree](
       build(Table.start.hand(p1, card).ready, p1, card))
-    def rulesOf(ops: Vector[Operation]): PlacementRules =
+    def rulesOf(ops: Vector[Operation]): CardPlayRules =
       as[CardPlayProcedure.PlacementBody](ops.head).rules
-    val limitFirst = tree.adjust(tree.adjust(tree.children)(_.limitAdvisers(2)))(
-      _.withSiteDiscardFirst)
-    val discardFirstThenLimit = tree.adjust(tree.adjust(tree.children)(
-      _.withSiteDiscardFirst))(_.limitAdvisers(2))
-    val composed = PlacementRules(faceupAdviserLimit = 2,
-      facedownAdviserLimit = 2, siteDiscardFirst = true)
-    assertEquals(rulesOf(limitFirst), composed)
-    assertEquals(rulesOf(discardFirstThenLimit), composed)
-    // Both contributors fold into the one placement body.
-    assertEquals(limitFirst.size, 1)
+    val limitFirst = tree.adjust(tree.adjust(tree.children)(
+      _.limitAdvisers(2)))(_.permitSiteDiscard(testPermission))
+    val permitFirst = tree.adjust(tree.adjust(tree.children)(
+      _.permitSiteDiscard(testPermission)))(_.limitAdvisers(2))
+    Vector(limitFirst, permitFirst).foreach { ops =>
+      assertEquals(rulesOf(ops).adviserLimit, 2)
+      assertEquals(rulesOf(ops).siteDiscards.map(_.source),
+        Vector(testPermission.source))
+      // Both contributors fold into the one placement body.
+      assertEquals(ops.size, 1)
+    }
 
   test("a contributed limit reaches the placement: two advisers fill an area " +
       "limited to two"):

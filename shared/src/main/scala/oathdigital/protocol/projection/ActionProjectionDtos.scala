@@ -327,7 +327,10 @@ final case class PlayerBoardProjection(
     siteWarbands: Int = 0,
     /** The Supply the band for `bankedWarbands` returns at Rest, before
       * unspent Supply is added and the track's ceiling applied. */
-    restSupplyBase: Int = 0
+    restSupplyBase: Int = 0,
+    /** How many advisers this player may hold: 3, or 2 under Silver Tongue
+      * or Insomnia. The board draws that many adviser slots. */
+    adviserLimit: Int = 3
 )
 final case class MinorAdviserProjection(card: CardDetailsProjection,
     placements: Vector[CardResolutionProjection])

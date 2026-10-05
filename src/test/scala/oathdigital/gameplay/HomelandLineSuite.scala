@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{PlacementRules, RuleNotes}
+import oathdigital.gameplay.actions.{CardPlayRules, RuleNotes}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
@@ -52,7 +52,7 @@ class HomelandLineSuite extends munit.FunSuite:
     s"${actor.value} may discard a card at their site first.", covers = false))
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(RuleNotes.homelandDiscard, Vector(PlacementRules.discardFirst),
+    NoteText.said(RuleNotes.homelandDiscard, Vector(CardPlayRules.discardFirst),
       events)
 
   test("a play to a full matching Homeland writes the Homeland's line after " +

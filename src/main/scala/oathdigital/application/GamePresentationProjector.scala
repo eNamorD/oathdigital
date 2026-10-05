@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.catalog.{AdviserOnly, ExecutableCatalog, Locked, PrintsPowers, SiteOnly}
 import oathdigital.gameplay.PlayerSecretSummary
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
-import oathdigital.gameplay.powers.{PlayerFacts, PowerImplementationStatus}
+import oathdigital.gameplay.powers.{AdviserLimit, PlayerFacts, PowerImplementationStatus}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -202,7 +202,8 @@ private[application] final class GamePresentationProjector(
         player.revealedVision.map(card => cardDetails(card.id,
           Some(card.orientation), hidden = false)),
         banners(ready).filter(_.holderPlayerId.contains(player.player.value)),
-        banked, printed, atSites, restBase)
+        banked, printed, atSites, restBase,
+        AdviserLimit.of(catalog, ready, player.player))
     }
 
   private def withTokens(details: CardDetailsProjection,

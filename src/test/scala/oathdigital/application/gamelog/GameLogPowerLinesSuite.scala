@@ -1,7 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.engine.ReplayStep
-import oathdigital.gameplay.actions.{PlacementRules, RuleNotes, VisionRules}
+import oathdigital.gameplay.actions.{CardPlayRules, RuleNotes, VisionRules}
 import oathdigital.gameplay.powers.action.{DreamThief, GamblingHall, MagicCarpet,
   QuickExit, Wolves}
 import oathdigital.gameplay.powers.rest.SilverTongue
@@ -361,7 +361,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a game rule's line is worded from RuleNotes"):
     assertEquals(NoteWordings.default(catalog).template(RuleNotes.homelandDiscard,
-      PlacementRules.discardFirst.name), Some(PlacementRules.discardFirst.template))
+      CardPlayRules.discardFirst.name), Some(CardPlayRules.discardFirst.template))
 
   test("a setup note posts under the Setup headline, among the setup lines"):
     val script = woken
