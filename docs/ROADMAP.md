@@ -71,9 +71,6 @@ Plan 1 of the [card play slots spec](superpowers/specs/2026-10-04-card-play-slot
 landed the engine: card play offers card slots, shown as Action panel rows
 until plan 2 puts them on the board.
 
-- [ ] **A replacing play takes the replaced card's slot.** `Play` has no
-  slot position, so a card played over another joins the end of the site's
-  card row or the adviser row instead of taking the replaced card's index.
 - [ ] **Limit cards that count or ignore advisers.** `CardPlayRules` holds
   one adviser limit that only lowers, plus the played card's own limit, which
   fits Silver Tongue, Insomnia and Assassin. Family Wagon (removes the limit
