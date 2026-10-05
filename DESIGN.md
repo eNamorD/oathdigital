@@ -273,7 +273,8 @@ reused for UI meaning.
   left-to-right gradient of the two.
 - **Dice**: Attack (`die-attack`) red, Defense (`die-defense`) blue, Round
   (`die-round`) purple. Die-face symbols (skull, shield, sword, hollow sword)
-  are drawn in **Token Symbol** (`token-symbol`).
+  are drawn in **Token Symbol** (`token-symbol`) on a neutral chip, and in
+  Bright Cream on a face rolled on a known die.
 - **Players**: purple, blue, red, yellow, white, black, pink, brown
   (`player-*`), plus bandit forces (`force-bandit`). White is pure white and
   underlined so it stays distinct from cream text. Black is ink on a
