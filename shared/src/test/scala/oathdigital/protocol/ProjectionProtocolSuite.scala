@@ -417,3 +417,24 @@ class ProjectionProtocolSuite extends munit.FunSuite:
           "cardplay.place.denizen.known", "decide", query = Some(
             DecisionQueryProjection.ChooseOne(Vector(
               replacing.copy(replaces = None)))))))))
+
+  test("an option's variant round-trips, and a payload without it decodes " +
+      "to none"):
+    val faceup = DecisionOptionProjection("adviser-play", "red:2:faceup",
+      "Adviser slot 3, faceup", variant = Some("Faceup"))
+    def parked(option: DecisionOptionProjection) = projection.copy(
+      walkerDecision = Some(WalkerDecisionProjection("search",
+        "cardplay.place.denizen.known", "decide", query = Some(
+          DecisionQueryProjection.ChooseOne(Vector(option))))))
+    val written = parked(faceup)
+    assertRoundTrips(written)
+    def strip(value: ujson.Value): Unit = value match
+      case obj: ujson.Obj =>
+        obj.value.remove("variant")
+        obj.value.values.foreach(strip)
+      case arr: ujson.Arr => arr.value.foreach(strip)
+      case _ => ()
+    val json = ujson.read(GameProjectionCodec.encode(written))
+    strip(json)
+    assertEquals(GameProjectionCodec.decode(ujson.write(json)),
+      Right(parked(faceup.copy(variant = None))))

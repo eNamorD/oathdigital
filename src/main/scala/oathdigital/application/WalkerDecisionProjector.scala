@@ -390,6 +390,7 @@ private[application] final class WalkerDecisionProjector(
       case DecisionOption.AdviserPlay(play) =>
         if ready.game.current.players.exists(_.player == play.owner) then
           row(s"Adviser slot ${play.index + 1}, ${facing(play.faceup)}")
+            .map(_.copy(variant = Some(facing(play.faceup).capitalize)))
         else None
       case DecisionOption.RevealedVision(spot) =>
         if ready.game.current.players.exists(_.player == spot.owner) then
@@ -480,17 +481,22 @@ private[application] final class WalkerDecisionProjector(
         case _ => Vector.empty[CardId]
     }.map(shown(ready, viewer, index, _))
 
-  /** A card play's heading names its card or its site, which the engine's
-    * may not (a game object's name is resolved here): "Play {card}" and
-    * "Discard more cards from {site}". Every other decision keeps its own.
+  /** A card play's heading names its card or its site, and its Replace
+    * options name the card they discard and the card played
+    * ([[replacing]]); a game object's name is resolved here, not by the
+    * engine. Every other decision keeps its own.
     */
   private def headed(ready: ReadyGame, viewer: Option[PlayerId],
-      decisionId: String, query: DecisionQueryProjection)
+      decisionId: String, projected: DecisionQueryProjection)
       : DecisionQueryProjection =
+    val played =
+      if decisionId.startsWith("cardplay.place.") then
+        subjectCards(ready, viewer, decisionId).headOption.filterNot(_.hidden)
+      else None
+    val query = played.fold(projected)(replacing(projected, _))
     val heading =
       if decisionId.startsWith("cardplay.place.") then
-        subjectCards(ready, viewer, decisionId).headOption
-          .filterNot(_.hidden).map(card => s"Play ${card.name}")
+        played.map(card => s"Play ${card.name}")
       else if decisionId.startsWith("cardplay.discard.") then
         viewer.flatMap(player => ready.game.current.players
           .find(_.player == player)).flatMap(_.pawnSite).map(site =>
@@ -502,6 +508,22 @@ private[application] final class WalkerDecisionProjector(
       case many: DecisionQueryProjection.ChooseMany =>
         many.copy(heading = Some(text))
       case other => other)
+
+  /** A card play's Replace options as the board's summary reads them:
+    * "Discard {replaced}; play {played} here", with the facing after an
+    * adviser play. A replaced card this viewer may not identify keeps the
+    * option's own label, as does every option that replaces nothing.
+    */
+  private[application] def replacing(query: DecisionQueryProjection,
+      played: CardDetailsProjection): DecisionQueryProjection =
+    def worded(option: DecisionOptionProjection) = option.replaces
+      .filterNot(_.hidden).fold(option)(replaced => option.copy(label =
+        s"Discard ${replaced.name}; play ${played.name} here" +
+          option.variant.fold("")(word => s", ${word.toLowerCase}")))
+    query match
+      case one: DecisionQueryProjection.ChooseOne =>
+        one.copy(options = one.options.map(worded))
+      case other => other
 
   /** An unavailable option's reason as player text: a builder's own words,
     * or the note of the power that hid it, worded as the Game Log words it.

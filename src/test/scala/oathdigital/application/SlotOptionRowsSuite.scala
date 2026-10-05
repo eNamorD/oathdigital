@@ -4,7 +4,7 @@ import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
-import oathdigital.protocol.projection.DecisionOptionProjection
+import oathdigital.protocol.projection.{CardDetailsProjection, DecisionOptionProjection, DecisionQueryProjection}
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.present
@@ -77,3 +77,38 @@ class SlotOptionRowsSuite extends munit.FunSuite:
     assertEquals(rowOf(DecisionOption.DiscardPile(
       DecisionOptionRef.DiscardPile(Region.Provinces))).label,
       "Discard to the Provinces discard")
+
+  test("an adviser play carries its facing as the word its toggle shows"):
+    assertEquals(Vector(true, false).map(faceup => rowOf(
+      DecisionOption.AdviserPlay(DecisionOptionRef.AdviserPlay(p1, 1,
+        faceup))).variant), Vector(Some("Faceup"), Some("Facedown")))
+    assertEquals(rowOf(DecisionOption.SiteSlot(
+      DecisionOptionRef.SiteSlot(home, 1))).variant, None)
+
+  test("a card play's Replace options read as the board's summary, and " +
+      "every other option keeps its label"):
+    val played = CardDetailsProjection("denizen:spirit", "denizen",
+      "Wayward Spirit")
+    val site = rowOf(DecisionOption.Replacing(DecisionOption.SiteSlot(
+      DecisionOptionRef.SiteSlot(home, 0)), wrestlers))
+    val adviser = rowOf(DecisionOption.Replacing(DecisionOption.AdviserPlay(
+      DecisionOptionRef.AdviserPlay(p1, 0, faceup = false)), roar))
+    val empty = rowOf(DecisionOption.SiteSlot(
+      DecisionOptionRef.SiteSlot(home, 1)))
+    assertEquals(projector.replacing(DecisionQueryProjection.ChooseOne(
+      Vector(site, adviser, empty)), played),
+      DecisionQueryProjection.ChooseOne(Vector(
+        site.copy(label = "Discard Wrestlers; play Wayward Spirit here"),
+        adviser.copy(label =
+          "Discard Threatening Roar; play Wayward Spirit here, facedown"),
+        empty)))
+
+  test("a Replace option whose card the viewer may not identify keeps " +
+      "its label"):
+    val played = CardDetailsProjection("denizen:spirit", "denizen",
+      "Wayward Spirit")
+    val unseen = rowOf(DecisionOption.Replacing(DecisionOption.AdviserPlay(
+      DecisionOptionRef.AdviserPlay(p1, 0, faceup = false)), roar),
+      viewer = p2)
+    val query = DecisionQueryProjection.ChooseOne(Vector(unseen))
+    assertEquals(projector.replacing(query, played), query)

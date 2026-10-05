@@ -166,6 +166,10 @@ object DecisionQueryProjection:
   *
   * `replaces` is the card choosing the option discards to make room (a
   * Replace slot), as the viewer may see it.
+  *
+  * `variant` is the word that tells this option from the others drawn on the
+  * same board home, such as an adviser play's facing; the client's toggle
+  * shows it.
   */
 final case class DecisionOptionProjection(kind: String, id: String,
     label: String, card: Option[CardDetailsProjection] = None,
@@ -173,7 +177,8 @@ final case class DecisionOptionProjection(kind: String, id: String,
     badge: Option[String] = None,
     state: String = "available",
     reason: Option[String] = None,
-    replaces: Option[CardDetailsProjection] = None)
+    replaces: Option[CardDetailsProjection] = None,
+    variant: Option[String] = None)
 
 /** One named bucket a partition spreads its options across: the stable
   * `key` a placement names, the section's prompt copy, and the fewest
