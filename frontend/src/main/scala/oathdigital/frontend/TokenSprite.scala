@@ -63,10 +63,12 @@ private[frontend] object TokenSprite:
       "M12 2 3 5v7c0 5.2 3.8 9.4 9 11 5.2-1.6 9-5.8 9-11V5z" +
         "m0 2.3 7 2.3V12c0 4-2.8 7.4-7 8.9-4.2-1.5-7-4.9-7-8.9V6.6z"),
     ("sword", "sword",
-      "M12 1 14.5 5v9h-5V5zM6 14h12v2.5H6zm4.75 2.5h2.5V23h-2.5z"),
+      "M12 1 16 6v8H8V6zM5 14h14v3H5zm5.5 3h3v6h-3z"),
+    // The same sword in outline: blade, guard and grip are each a ring, so
+    // the hollow reads at log size where a sliver of a hollow did not.
     ("hollow-sword", "hollow sword",
-      "M12 1 14.5 5v9h-5V5zm0 3.4L11.5 6v6.5h1V6zM6 14h12v2.5H6z" +
-        "m1.2 1.1v.3h9.6v-.3zm3.55 1.4h2.5V23h-2.5zm1 1v5h.5v-5z")
+      "M12 1 16 6v8H8V6zm0 3.4L10 7v5h4V7zM4.5 14h15v4h-15z" +
+        "m1.8 1.4v1.2h11.4v-1.2zM10 18h4v5h-4zm1.4 1.2v2.6h1.2v-2.6z")
   )
 
   val ids: Vector[String] = glyphs.map(_._1)

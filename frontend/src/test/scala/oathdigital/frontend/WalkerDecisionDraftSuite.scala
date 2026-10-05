@@ -132,3 +132,10 @@ class WalkerDecisionDraftSuite extends FunSuite:
     // control and asks its questions as walker decisions.
     assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
       Vector(BoardTargetRef.Site("site:b")), "red"), None)
+
+  test("a pool rolls the die its action rolls"):
+    assertEquals(WalkerPanelSupport.poolDie("campaign.attack"), Some("attack"))
+    assertEquals(WalkerPanelSupport.poolDie("campaign.defense"),
+      Some("defense"))
+    assertEquals(WalkerPanelSupport.poolDie("recover"), Some("defense"))
+    assertEquals(WalkerPanelSupport.poolDie("gambling-hall"), None)

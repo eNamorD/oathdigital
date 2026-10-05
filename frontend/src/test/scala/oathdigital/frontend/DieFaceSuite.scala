@@ -19,6 +19,21 @@ class DieFaceSuite extends munit.FunSuite:
     assertEquals(glyphs(DieFace.face("one-shield")), Vector("shield"))
     assertEquals(glyphs(DieFace.face("two-shields")), Vector("shield", "shield"))
 
+  test("a face rolled on a known die carries that die; any other stays neutral"):
+    assertEquals(DieFace.face("one-sword", Some("attack")).getAttribute("class"),
+      "die-face die-face-one-sword die-face-attack")
+    assertEquals(DieFace.face("blank", Some("defense")).getAttribute("class"),
+      "die-face die-face-blank die-face-defense")
+    assertEquals(DieFace.face("one-shield").getAttribute("class"),
+      "die-face die-face-one-shield")
+    // A die this client does not know is drawn neutral, not guessed at.
+    assertEquals(DieFace.face("one-shield", Some("round")).getAttribute("class"),
+      "die-face die-face-one-shield")
+
+  test("a roll gives every face its die"):
+    val row = DieFace.roll(Vector("one-sword", "blank"), Some("attack"))
+    assertEquals(all(row, ".die-face-attack").size, 2)
+
   /** Neither has a symbol in the sprite: a blank face is blank, and the
     * doubler multiplies rather than adding, so it says so.
     */

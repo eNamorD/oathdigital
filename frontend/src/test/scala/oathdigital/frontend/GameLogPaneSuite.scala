@@ -96,6 +96,7 @@ class GameLogPaneSuite extends munit.FunSuite:
     assertEquals(faces(0).getAttribute("aria-label"), "one sword")
     assertEquals(content.querySelector(".die-faces").getAttribute("class"),
       "die-faces log-dice log-dice-attack")
+    assertEquals(content.querySelectorAll(".die-face-attack").length, 2)
 
   /** A line of the section `id` for `action`, reading `text`. */
   private def sectioned(sequence: Long, kind: String, action: String, id: Long,

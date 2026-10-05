@@ -157,6 +157,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       Vector("img"))
     assertEquals(panel.firstElementChild.getAttribute("class"),
       "walker-roll-faces")
+    // A Campaign's defense rolls the defense die.
+    assertEquals(all(panel, ".die-face-defense").size, 2)
 
   test("an unavailable option is a disabled control that says why"):
     val ui = new RecordingControls()

@@ -59,6 +59,14 @@ private[frontend] object WalkerPanelSupport:
     case "campaign.defense" => "Defense"
     case other => other
 
+  /** The die a pool rolls: a Campaign's attack rolls the attack die, its
+    * defense and Recover the defense die. An unknown pool keeps the neutral
+    * chip rather than a guessed color. */
+  private[frontend] def poolDie(pool: String): Option[String] = pool match
+    case "campaign.attack" => Some("attack")
+    case "campaign.defense" | "recover" => Some("defense")
+    case _ => None
+
   /** Renders the Recover panel for whichever of the parks
     * (`ParkedDecision.route`) the walker is at. Shows the roll so far
     * (`rollFeedback`: the dice, then the totals line) above each park's
@@ -225,7 +233,7 @@ private[frontend] object WalkerPanelSupport:
         // is read as the one sentence the glyphs add up to.
         row.setAttribute("role", "img")
         row.setAttribute("aria-label", rollOutcomeSummary(outcome))
-        row.appendChild(DieFace.roll(outcome.faces))
+        row.appendChild(DieFace.roll(outcome.faces, poolDie(outcome.pool)))
         panel.appendChild(row)
       val parts = Vector(s"${poolLabel(outcome.pool)} ${outcome.score}") ++
         outcome.target.map(target => s"need $target") ++ outcome.detail

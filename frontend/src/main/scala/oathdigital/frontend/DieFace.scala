@@ -26,10 +26,18 @@ private[frontend] object DieFace:
     "blank" -> Vector.empty[String],
     "doubler" -> Vector.empty[String])
 
+  /** The dice a roll can name. A roll on any other die keeps the neutral
+    * chip. */
+  private val dice = Set("attack", "defense")
+
   def name(face: String): String = words.getOrElse(face, face)
 
-  def face(value: String): dom.Element =
-    val node = ServerUiSupport.element("span", s"die-face die-face-$value")
+  /** `die` is the die the face was rolled on; a face on a known die is
+    * drawn in that die's color. */
+  def face(value: String, die: Option[String] = None): dom.Element =
+    val classes = Vector("die-face", s"die-face-$value") ++
+      die.filter(dice).map(kind => s"die-face-$kind")
+    val node = ServerUiSupport.element("span", classes.mkString(" "))
     node.setAttribute("role", "img")
     node.setAttribute("aria-label", name(value))
     symbols.get(value) match
@@ -42,8 +50,8 @@ private[frontend] object DieFace:
       case None => node.appendChild(dom.document.createTextNode(value))
     node
 
-  def roll(faces: Vector[String]): dom.Element =
+  def roll(faces: Vector[String], die: Option[String] = None): dom.Element =
     val node = ServerUiSupport.element("span", "die-faces")
     node.setAttribute("aria-label", faces.map(name).mkString(", "))
-    faces.foreach(value => node.appendChild(face(value)))
+    faces.foreach(value => node.appendChild(face(value, die)))
     node

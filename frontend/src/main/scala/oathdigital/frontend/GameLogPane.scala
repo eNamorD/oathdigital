@@ -189,7 +189,8 @@ private[frontend] object GameLogPane:
     // The same die chips the table draws; the faces ride in `id`.
     case "dice" => span.id.fold[dom.Node](dom.document.createTextNode(span.text)) {
       faces =>
-        val dice = DieFace.roll(faces.split(" ").toVector.filter(_.nonEmpty))
+        val dice = DieFace.roll(faces.split(" ").toVector.filter(_.nonEmpty),
+          span.unit)
         dice.setAttribute("class",
           s"die-faces log-dice log-dice-${span.unit.getOrElse("unknown")}")
         dice

@@ -70,6 +70,18 @@
 .walker-roll-faces { margin: 0; }
 .walker-roll-totals { margin: 0 0 0.3em; font-size: 0.9em; }
 .die-face-blank { border-style: dashed; border-color: #5d5144; }
+/* A face rolled on a known die is that die: filled in its color, symbols in
+   Bright Cream, so attack and defense rolls part at a glance. A blank face
+   on a known die stays an empty dashed chip, tinted toward its die. */
+.die-face-attack { --die: var(--die-attack); }
+.die-face-defense { --die: var(--die-defense); }
+.die-face-attack, .die-face-defense { color: #fff2d6; background: var(--die);
+  border-color: color-mix(in srgb, var(--die) 70%, #fff2d6); }
+.die-face-attack .token-glyph, .die-face-defense .token-glyph {
+  color: #fff2d6; }
+.die-face-blank.die-face-attack, .die-face-blank.die-face-defense {
+  background: color-mix(in srgb, var(--die) 25%, #17140f);
+  border-color: var(--die); }
 .rules-power { margin: 0 0 0.7em; line-height: 1.5; }
 .rules-power:last-child { margin-bottom: 0; }
 
