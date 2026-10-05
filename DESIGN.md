@@ -68,6 +68,15 @@ colors:
   player-pink: "#ffa6d8"
   player-brown: "#d0a075"
   force-bandit: "#d7ed72"
+  band-campaign: "#d47c74"
+  band-muster: "#c2b25c"
+  band-challenge: "#c99a62"
+  band-travel: "#7fb0a8"
+  band-search: "#b88aae"
+  band-trade: "#94b58a"
+  band-recover: "#9f8fc0"
+  band-forge: "#8fa3bd"
+  band-neutral: "#b8ab92"
 typography:
   display:
     fontFamily: "Georgia, serif"
@@ -304,11 +313,28 @@ reused for UI meaning.
   and `dev-line` for the developer aside, deliberately off-palette purple so
   it never reads as game.
 
+### Log action bands
+UI colors, used only in the Game Log (The Action Band Rule). The aggressive
+actions are warm: **Campaign** (`band-campaign`) rose, **Muster**
+(`band-muster`) ochre, **Challenge** (`band-challenge`) amber. The others are
+cool: **Travel** (`band-travel`) sea green, **Search** (`band-search`) mauve,
+also for playing a facedown adviser, **Trade** (`band-trade`) sage,
+**Recover** (`band-recover`) lavender, **Forge** (`band-forge`) steel. Every
+other action sits on the **Neutral band** (`band-neutral`).
+
 ### Named Rules
 **The Pieces Carry the Color Rule.** Saturated color belongs to suits,
 tokens, dice and players. UI surfaces stay in the warm neutral ramp; the only
-UI accents are brass and selection blue. The three map regions are the one
-exception, and they carry the board's colors, not new ones.
+UI accents are brass and selection blue. Two exceptions: the three map
+regions carry the board's colors, not new ones, and the Game Log's action
+bands follow The Action Band Rule.
+
+**The Action Band Rule.** In the Game Log the lines of one action share a
+band: its color mixed 9% into the Pane fill, edged with the color mixed 28%
+(the neutral band 6% and 20%), opened by a tag naming the action in its
+color. The eight action colors are warm for aggressive actions, live only in
+the log, and never stand for a suit, a player or a die. Every tag clears
+4.5:1 on its band.
 
 **The Shape First Rule.** Every suit, token and die has its own glyph. Color
 only keeps them from blurring; it never carries meaning alone. A token glyph
@@ -612,8 +638,13 @@ ratio, sized in `ex` from `--card-w: 13ex`.
 ### Dice
 A rolled die is a face-shaped chip: 1.9em minimum width, 1.5em tall, 1px
 Brass Line border, 0.25em radius, Base fill, symbols in Token Symbol at 0.9em
-700 with the glyph at 1.1em. A blank face is a dashed `#5d5144` chip with
-nothing on it. Faces sit in an inline wrap with 0.25em gaps; a walk's roll
+700 with the glyph at 1.1em. A face rolled on a known die is that die: filled
+with Attack red or Defense blue, with a border of the die color mixed 30%
+toward Bright Cream and its symbols in Bright Cream. A blank face is a dashed
+chip with nothing on it: `#5d5144` on Base when its die is unknown, and on a
+known die a border in the die color on the die color mixed 25% into Base. The
+sword is solid; the hollow sword is the same sword with blade, guard and grip
+each drawn as a ring, so the two part by shape at log size. Faces sit in an inline wrap with 0.25em gaps; a walk's roll
 shows the faces, then one line
 of totals. A roll in the game log draws the same chips inline in its line,
 hung from the line's top so the 13px line never grows; the totals follow as
@@ -643,7 +674,16 @@ floored at the Eleven-Pixel Floor, and
 every other line one gutter in, in Ink Dim, with card and site names in
 Cream and a spent cost set apart in Ink Spent rather than by a separator. A
 line that wraps hangs its continuation 10px past its first word, so the
-start of every entry sits on one edge. Three reading aids sit on that list.
+start of every entry sits on one edge. The lines of one action sit on its
+band (The Action Band Rule): 1px edges, 4px radius and 4px of space at the
+band's two ends, 6px of right padding, the hanging indent kept inside. A band
+opens with its tag: the action's name in 11px uppercase, 700, 0.12em
+tracking, in the band's color, then the Supply it spent in 12px, 0.6em after
+it. Inside a band a spent cost is Ink Dim, because Ink Spent falls under
+4.5:1 on a band's fill. A Wake's Take Wealth, phase changes, triggered
+procedures, state-based changes and headlines stand outside any band, and the
+"Since you last looked" rule splits a band in two. Three reading aids sit on
+that list.
 The current turn's headline sticks to the pane's top edge on the Pane fill,
 so the lines under it scroll beneath their turn. Where the reader left off,
 "Since you last looked" is a Brass Label rule across the list, its lines in

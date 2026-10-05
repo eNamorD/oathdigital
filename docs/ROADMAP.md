@@ -53,14 +53,18 @@ Left behind by earlier phases:
 - Add reasons to the remaining option builders as playtests find options
   that people wonder about.
 
-### Phase - Campaign UI
+### Phase - Campaign battle summary
 
-Found in the playtest of 2026-10-01:
+Left out of the Game Log action sections
+([spec](superpowers/specs/2026-10-05-log-action-sections-design.md)), which
+answered the 2026-10-01 playtest's "make it clear what a Campaign's battle
+did":
 
-- [x] Target selection: answered on the table, with the mandatory target
-  locked, defense and defending force tallied, a primary Confirm, and a
-  reason for every target not on offer (board decisions, 2026-10-04).
-- [ ] Results: make it clear what a Campaign's battle did.
+- [ ] A summary of a Campaign's battle, opened by clicking one of its log
+  lines: attack and defense dice, battle plans, sacrificed warbands, the
+  totals and the winner. It is not always visible.
+- [ ] The same summary filling in while a Campaign runs: the dice on each
+  side as battle plans are chosen, and the sacrificed warbands.
 
 ### Catalog - to verify
 
