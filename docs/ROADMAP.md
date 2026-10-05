@@ -67,6 +67,21 @@ already:
 - Card-play reasons for options not on offer belong to spec 2.
 - Partition decisions keep their drag and drop.
 
+Plan 1 of the [card play slots spec](superpowers/specs/2026-10-04-card-play-slots-design.md)
+landed the engine: card play offers card slots, shown as Action panel rows
+until plan 2 puts them on the board.
+
+- [ ] **A replacing play takes the replaced card's slot.** `Play` has no
+  slot position, so a card played over another joins the end of the site's
+  card row or the adviser row instead of taking the replaced card's index.
+- [ ] **Limit cards that count or ignore advisers.** `CardPlayRules` holds
+  one adviser limit that only lowers, plus the played card's own limit, which
+  fits Silver Tongue, Insomnia and Assassin. Family Wagon (removes the limit
+  for Nomad advisers), Pied Piper (ignores the limit), Marriage (counts as
+  one adviser) and Lost Tapestry (facedown Visions do not count) change what
+  counts toward the limit, so they need a counting rule that
+  `CardSlots.adviserSlots` and `AdviserLimit` share.
+
 ### Phase - Board decision follow-ups
 
 - Move Travel onto board decisions; it still picks its destination through
@@ -292,22 +307,18 @@ requested UI changes are in the
   [catalog batch 3 rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md)
   leave it unresolved. A product-owner answer settles it; one bank would
   reuse Fabled Feast's question.
-- [ ] **walker-native card play through card slots.** Card play still
-  runs through the legacy `CardPlay.legalChoices` and `plannedOperations` helpers
-  rather than through Operations, so a power cannot change the placement
-  procedure. Powers that need to (People's Favor: Mob may discard a site
-  denizen first, even at a full site) can today reach only the adviser limits
-  exposed by `CardPlayProcedure.PlacementTree`. The redesign plays a card to a
-  card slot instead of to a site. By default the options are the empty slots
+- [ ] **walker-native card play through card slots.** Card play used to run
+  through legacy `CardPlay.legalChoices` and `plannedOperations` helpers, so a
+  power could not change the placement procedure. The redesign plays a card to
+  a card slot instead of to a site. By default the options are the empty slots
   at the actor's site and the actor's empty adviser slots. When no adviser slot
   is empty, slots holding discardable advisers also become options. Site-card
   discards, Homeland replacement, the revealed-Vision replacement and the
   Silver Tongue limit all become contributions to the slot options. It touches
   Search, facedown-adviser play, Conspiracy, the projections and the frontend,
   so it needs its own spec: spec 2 of board decisions, under **Phase - Card
-  play UI**. Until then Mob uses a single `PlacementRules` value
-  on `PlacementTree` that carries the adviser limits and a
-  "may discard a site card first" permission.
+  play UI**. Plan 1 of that spec built the engine; plan 2 puts the slots on
+  the board and marks this done.
 - [ ] **plan-restricting powers, Bag of Siegeworks and Empire defenders.**
   Peace Envoy and other powers that restrict which plans a side may choose have
   no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
