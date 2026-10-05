@@ -1,17 +1,18 @@
 package oathdigital.gameplay.powers.rest
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.{OathRules, PlacementFixture}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{AdviserLimit, NoteText, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.{accepted, as}
+import oathdigital.testkit.Unwrap.accepted
 
 class InsomniaSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
@@ -37,18 +38,18 @@ class InsomniaSuite extends munit.FunSuite:
   private def secrets(ready: ReadyGame): Int =
     Look(ready).faceUpSecrets(p1) + Look(ready).faceDownSecrets(p1)
 
-  /** The card-play tree, and its walk parked after the placement answer. */
-  private case class Placement(tree: Operation, parked: WalkerOutcome.Parked)
-
-  /** Plays `card` from p1's hand and answers its placement with `button`. */
-  private def placed(ready: ReadyGame, card: DenizenId, button: String)
-      : Placement =
+  /** The placement options of `card` from p1's hand, under the production
+    * powers. */
+  private def placementOptions(ready: ReadyGame, card: DenizenId)
+      : Vector[DecisionOption] =
     val tree = PlacementFixture.build(ready, p1, card)
-    val parked = PlacementFixture.park(ready, tree, powers)
-    Placement(tree, as[WalkerOutcome.Parked](
-      PlacementFixture.answer(ready, tree, parked, powers,
-      PlacementFixture.cardPlayDecisionId(card, "place"),
-      DecisionOptionRef.Button(button), p1)))
+    PlacementFixture.placementOptions(ready, tree,
+      PlacementFixture.park(ready, tree, powers), powers)
+
+  private def playing(options: Vector[DecisionOption], way: PlayedAs)
+      : Vector[DecisionOption] =
+    options.filter(option => CardPlayProcedure.playedAs(option.ref)
+      .contains(way))
 
   test("REST: its holder gains 1 secret, once per turn"):
     val ready = resting()
@@ -75,13 +76,15 @@ class InsomniaSuite extends munit.FunSuite:
       .exists(_.power.id == Insomnia.id))
     assertEquals(AdviserLimit.of(catalog, ready, p1), AdviserLimit.Default)
 
-  test("its holder may have only two advisers: a third faceup adviser needs " +
-      "a discard, and the locked Insomnia cannot go"):
+  test("its holder may have only two advisers: a third faceup adviser " +
+      "replaces one, and the locked Insomnia cannot go"):
     val ready = Table.start.hand(p1, homesteaders).adviser(p1, insomnia)
       .adviser(p1, landWarden, facedown = true).ready
-    val Placement(tree, faceup) = placed(ready, homesteaders, "adviser-faceup")
-    assertEquals(PlacementFixture.options(ready, tree, faceup.tree, powers).toSet,
-      Set[DecisionOptionRef](DecisionOptionRef.Denizen(landWarden)))
+    val faceup = playing(placementOptions(ready, homesteaders), PlayedAs.Faceup)
+    assertEquals(faceup.filter(_.available).map(PlacementPicks.replaces),
+      Vector(Some(landWarden)))
+    assertEquals(faceup.filterNot(_.available).map(PlacementPicks.replaces),
+      Vector(Some(insomnia)))
     assertEquals(AdviserLimit.of(catalog, ready, p1), Insomnia.HolderLimit)
 
   test("playing Insomnia faceup needs room under its own limit"):
@@ -89,17 +92,18 @@ class InsomniaSuite extends munit.FunSuite:
     val ready = Table.start.hand(p1, insomnia)
       .adviser(p1, homesteaders, facedown = true)
         .adviser(p1, landWarden, facedown = true).ready
-    val Placement(tree, faceup) = placed(ready, insomnia, "adviser-faceup")
-    assertEquals(PlacementFixture.options(ready, tree, faceup.tree, powers).toSet,
-      Set[DecisionOptionRef](DecisionOptionRef.Denizen(homesteaders),
-        DecisionOptionRef.Denizen(landWarden)))
+    val options = placementOptions(ready, insomnia)
+    assertEquals(playing(options, PlayedAs.Faceup).map(PlacementPicks.replaces)
+      .toSet, Set[Option[CardId]](Some(homesteaders), Some(landWarden)))
+    assertEquals(playing(options, PlayedAs.Facedown).map(_.ref),
+      Vector[DecisionOptionRef](
+        DecisionOptionRef.AdviserPlay(p1, 2, faceup = false)))
 
-  test("with Silver Tongue as well the limit stays 2, and both limits keep " +
-      "the Mob's discard"):
+  test("with Silver Tongue as well the limit stays 2, and the Mob's discard " +
+      "stays"):
     val ready = Table.start.hand(p1, homesteaders).pawn(p1, "Ancient City")
       .denizen(newsFromAfar, at = "Ancient City").adviser(p1, tongue)
       .adviser(p1, insomnia).peoplesFavor(Some(p1), 1).ready
     assertEquals(AdviserLimit.of(catalog, ready, p1), 2)
-    val Placement(tree, site) = placed(ready, homesteaders, "site")
-    assertEquals(PlacementFixture.options(ready, tree, site.tree, powers).head,
-      CardPlayProcedure.noReplacement.ref)
+    assert(placementOptions(ready, homesteaders).exists(option =>
+      PlacementPicks.replaces(option).contains(newsFromAfar)))

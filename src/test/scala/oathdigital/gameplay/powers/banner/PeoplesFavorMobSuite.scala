@@ -1,30 +1,23 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.PlacementFixture
-import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerOutcome}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
-import oathdigital.testkit.Table.{p1, p3}
-import oathdigital.testkit.Unwrap.{accepted, as}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
+  PlacementPicks, Table}
+import oathdigital.testkit.Table.p3
+import oathdigital.testkit.Unwrap.accepted
 
 class PeoplesFavorMobSuite extends munit.FunSuite:
   import PowerFixture._
-  import SearchFixture.{keep, place, rules, start}
+  import SearchFixture.{keep, place, placeReplacing, rules, start}
 
-  /** The parked decision, as this suite rebuilds it: the same catalog and
-    * walker power catalog `SearchFixture.rules` was built with.
-    */
-  private val parked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog))
-
-  private val noDiscard = CardPlayProcedure.noReplacement.ref
+  private val walkerPowers = WalkerPowerCatalog.default(catalog)
   private val ancientCity = CatalogNames.site("Ancient City")
   /** The Beast card each Search keeps and plays, above two Arcane cards. */
   private val played = CatalogNames.denizen("Errand Boy")
@@ -48,24 +41,20 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     favor(
       siteCards.foldLeft(SearchFixture.staged(drawn, supply = 5))(atActorsSite))
 
-  private def decisionId(kind: String) =
-    PlacementFixture.cardPlayDecisionId(played, kind)
-
-  /** Searches, keeps the played card and chooses to play it to the site. */
-  private def toSite(ready: ReadyGame): OathTransition = (for
-    started <- start(ready)
+  /** Searches with `selected` and keeps the played card, parked on its
+    * placement. The events are the whole Search's so far. */
+  private def toPlacement(ready: ReadyGame,
+      selected: Vector[PowerId] = Vector.empty): OathTransition = (for
+    started <- start(ready, selected)
     kept <- keep(started, played)
-    placed <- place(kept, played, PlayedAs.AtSite)
-  yield placed.copy(events = started.events ++ kept.events ++ placed.events))
+  yield kept.copy(events = started.events ++ kept.events))
     .fold(error => throw new AssertionError(error.toString), identity)
 
-  private def asksToDiscard(transition: OathTransition): Boolean =
-    parked.parkedDecision(transition.state).exists(facts =>
-      facts.decision == decisionId("replace") && facts.awaiting == actor)
-
-  private def discardAnswer(from: OathTransition, chosen: DecisionOptionRef)
-      : Either[OathViolation, OathTransition] = rules.resolveWalker(from.state,
-    actor, decisionId("replace"), DecisionAnswer.ChooseOneAnswer(chosen))
+  /** The parked placement's site slots, each as the card it replaces. */
+  private def siteSlots(at: OathTransition): Vector[Option[CardId]] =
+    PlacementPicks.parkedOptions(at.state, walkerPowers)
+      .filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])
+      .map(PlacementPicks.replaces)
 
   private def siteCards(ready: ReadyGame): Vector[CardId] =
     Look(ready).cardsAt(ancientCity)
@@ -81,32 +70,32 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       PeoplesFavorFace.GrandCouncil).unchecked)
       .handlerIds, Vector("banner.peoples-favor.grand-council"))
 
-  test("its holder is asked whether to discard a site card before a play " +
-      "to a site with room, and may decline"):
+  test("its holder is offered each site card as Replace beside the empty " +
+      "slot, and the empty slot discards nothing"):
     val (kept, other) = (homesteaders, landWarden)
     val ready = searchAtAncientCityHolding(Vector(kept, other))
     assert(capacity > 2, s"the pawn site must have room, capacity $capacity")
-    val asked = toSite(ready)
-    assert(asksToDiscard(asked))
-    val done = accepted(discardAnswer(asked, noDiscard))
+    val asked = toPlacement(ready)
+    assertEquals(siteSlots(asked), Vector(None, Some(kept), Some(other)))
+    val done = accepted(place(asked, played, PlayedAs.AtSite))
     val end = SearchFixture.after(done)
     assertEquals(siteCards(end), Vector[CardId](kept, other, played))
     assertEquals(ActPowerHarness.replayed(rules, ready,
       asked.events ++ done.events), end)
 
-  test("an empty site has nothing to discard, so the holder is asked nothing"):
-    val done = toSite(searchAtAncientCityHolding(Vector.empty))
-    assert(!asksToDiscard(done))
-    assertEquals(siteCards(SearchFixture.after(done)),
-      Vector[CardId](played))
+  test("an empty site has nothing to replace"):
+    val asked = toPlacement(searchAtAncientCityHolding(Vector.empty))
+    assertEquals(siteSlots(asked), Vector(None))
+    assertEquals(siteCards(SearchFixture.after(
+      accepted(place(asked, played, PlayedAs.AtSite)))), Vector[CardId](played))
 
-  test("choosing a card discards it by the standard discard: facedown to the " +
+  test("a Replace slot discards by the standard discard: facedown to the " +
       "next region's pile, its favor to the bank, its secret to the holder"):
     val kept = homesteaders
     val ready = Table.from(searchAtAncientCityHolding(Vector(kept)))
       .tokens(kept, favor = 1, secrets = 1).unchecked
-    val asked = toSite(ready)
-    val done = accepted(discardAnswer(asked, DecisionOptionRef.Denizen(kept)))
+    val asked = toPlacement(ready)
+    val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite, kept))
     val end = SearchFixture.after(done)
     assertEquals(siteCards(end), Vector[CardId](played))
     assertEquals(Look(end).discardAfter(ancientCity).last, kept)
@@ -117,32 +106,24 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     assertEquals(ActPowerHarness.replayed(rules, ready,
       asked.events ++ done.events), end)
 
-  test("a full site with no matching homeland takes the play only with a " +
-      "discard, and only for the holder"):
+  test("a full site with no matching homeland takes the play only through a " +
+      "Replace slot, and only for the holder"):
     // Ancient City is no suit's homeland, so the Beast card matches none.
     assertEquals(catalog.site(ancientCity).flatMap(_.homeland), None)
     val fillers = Vector(homesteaders, landWarden, newsFromAfar)
     assertEquals(fillers.size, capacity)
-    val full = searchAtAncientCityHolding(fillers)
-    assert(place(accepted(keep(accepted(start(full)), played)), played, PlayedAs.AtSite)
-      .isRight)
-    val asked = toSite(full)
-    assert(asksToDiscard(asked))
-    assert(discardAnswer(asked, noDiscard).isLeft, "a discard is required")
-    val done = accepted(
-      discardAnswer(asked, DecisionOptionRef.Denizen(fillers.head)))
+    val asked = toPlacement(searchAtAncientCityHolding(fillers))
+    assertEquals(siteSlots(asked), fillers.map(Some(_)))
+    val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite,
+      fillers.head))
     assertEquals(siteCards(SearchFixture.after(done)).size, capacity)
     assert(siteCards(SearchFixture.after(done)).contains(played))
-    val without = searchAtAncientCityHolding(fillers, identity)
-    val attempt = for
-      started <- start(without)
-      kept <- keep(started, played)
-      placed <- place(kept, played, PlayedAs.AtSite)
-    yield placed
-    assert(attempt.isLeft, "a full site accepts no play without Mob")
+    val without = toPlacement(searchAtAncientCityHolding(fillers, identity))
+    assert(place(without, played, PlayedAs.AtSite).isLeft,
+      "a full site accepts no play without Mob")
 
-  test("nobody else is asked: not another holder, not the Grand Council face, " +
-      "not the other banner, not an unheld banner"):
+  test("nobody else may replace: not another holder, not the Grand Council " +
+      "face, not the other banner, not an unheld banner"):
     val kept = homesteaders
     val unheld: Vector[(String, ReadyGame => ReadyGame)] = Vector(
       "held by p3" -> (r => Table.from(r).peoplesFavor(Some(p3), 1).unchecked),
@@ -152,44 +133,12 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       "Wandering Flame" -> (r => Table.from(r).darkestSecret(Some(actor), 1)
       .unchecked))
     unheld.foreach { case (label, favor) =>
-      val ready = searchAtAncientCityHolding(Vector(kept), favor)
-      val done = toSite(ready)
-      assert(!asksToDiscard(done), label)
-      assertEquals(siteCards(SearchFixture.after(done)),
+      val asked = toPlacement(searchAtAncientCityHolding(Vector(kept), favor))
+      assertEquals(siteSlots(asked), Vector(None), label)
+      assertEquals(siteCards(SearchFixture.after(
+        accepted(place(asked, played, PlayedAs.AtSite)))),
         Vector[CardId](kept, played), label)
     }
-
-  test("an intact edifice is never offered for the discard: it is locked"):
-    val kept = homesteaders
-    val hall = CatalogNames.edifice("Hall of Ministers")
-    // p1 holds the played card, at Ancient City, which p1 rules and which
-    // holds the kept card and Hall of Ministers.
-    val ready = Table.start.hand(p1, played).pawn(p1, ancientCity)
-      .denizen(kept, at = ancientCity)
-      .edifice(hall, EdificeSide.Intact, at = ancientCity)
-      .warbandsAt(ancientCity, p1, 1).peoplesFavor(Some(p1), 1).ready
-    val choice = CardPlay.legalChoices(catalog, ready, p1, played,
-      CardPlay.Origin.TemporaryHand,
-      oathdigital.gameplay.actions.CardPlayRules.default.permitSiteDiscard(oathdigital.gameplay.PlacementFixture.testPermission))
-      .find(_.placement.isInstanceOf[SearchPlacement.Site])
-      .getOrElse(fail("no site placement offered"))
-    assertEquals(choice.replacements, Vector[CardId](kept))
-
-  test("a ruined edifice is offered: only an intact one is locked"):
-    val kept = homesteaders
-    val hall = CatalogNames.edifice("Hall of Ministers")
-    // p1 holds the played card, at Ancient City, which p1 rules and which
-    // holds the kept card and Hall of Ministers.
-    val ready = Table.start.hand(p1, played).pawn(p1, ancientCity)
-      .denizen(kept, at = ancientCity)
-      .edifice(hall, EdificeSide.Ruined, at = ancientCity)
-      .warbandsAt(ancientCity, p1, 1).peoplesFavor(Some(p1), 1).ready
-    val choice = CardPlay.legalChoices(catalog, ready, p1, played,
-      CardPlay.Origin.TemporaryHand,
-      oathdigital.gameplay.actions.CardPlayRules.default.permitSiteDiscard(oathdigital.gameplay.PlacementFixture.testPermission))
-      .find(_.placement.isInstanceOf[SearchPlacement.Site])
-      .getOrElse(fail("no site placement offered"))
-    assertEquals(choice.replacements, Vector[CardId](kept, hall))
 
   test("it applies to a facedown adviser played to a site as well"):
     val kept = homesteaders
@@ -198,8 +147,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val started = accepted(
       rules.startWalker(OathState.Ready(ready), ActionRef.PlayFacedownAdviser,
         actor, Vector.empty, Vector(DecisionOptionRef.Denizen(played))))
-    val placed = accepted(place(started, played, PlayedAs.AtSite))
-    assert(asksToDiscard(placed))
+    assert(siteSlots(started).contains(Some(kept)))
 
   test("it composes with Silver Tongue's limit of two advisers, both from " +
       "the production walker powers"):
@@ -212,38 +160,29 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val ready = Table.start.hand(who, played).pawn(who, ancientCity)
       .denizen(kept, at = ancientCity).adviser(who, tongue)
       .adviser(who, adviser, facedown = true).peoplesFavor(Some(who), 1).ready
-    val powers = WalkerPowerCatalog.default(catalog)
     val tree = PlacementFixture.build(ready, who, played)
-    val parkedTree = PlacementFixture.park(ready, tree, powers)
-    // Two advisers held under Silver Tongue: a faceup adviser needs a discard,
-    // and the faceup Silver Tongue is a locked card, so only the other goes.
-    val place = PlacementFixture.cardPlayDecisionId(played, "place")
-    val faceup = as[WalkerOutcome.Parked](
-      PlacementFixture.answer(ready, tree, parkedTree, powers, place,
-        DecisionOptionRef.Button("adviser-faceup"), who))
-    assertEquals(PlacementFixture.options(ready, tree, faceup.tree, powers).toSet,
-      Set[DecisionOptionRef](DecisionOptionRef.Denizen(adviser)))
-    // The site still offers the optional discard, under the same walk.
-    val site = as[WalkerOutcome.Parked](
-      PlacementFixture.answer(ready, tree, parkedTree, powers, place,
-        DecisionOptionRef.Button("site"), who))
-    assertEquals(PlacementFixture.options(ready, tree, site.tree, powers).head,
-      noDiscard)
-    assert(powers.powers.exists(_.id == SilverTongue.id))
+    val shown = PlacementFixture.placementOptions(ready, tree,
+      PlacementFixture.park(ready, tree, walkerPowers), walkerPowers)
+    // Two advisers held under Silver Tongue: a faceup play replaces one, and
+    // the faceup Silver Tongue is a locked card, so only the other may go.
+    assertEquals(shown.filter(option => option.available &&
+      CardPlayProcedure.playedAs(option.ref).contains(PlayedAs.Faceup))
+      .map(PlacementPicks.replaces), Vector(Some(adviser)))
+    // The site still offers the Mob's Replace slot beside the empty one.
+    assertEquals(shown.filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])
+      .map(PlacementPicks.replaces), Vector(None, Some(kept)))
+    assert(walkerPowers.powers.exists(_.id == SilverTongue.id))
 
   test("it leaves a selected card's power alone: Welcoming Party still pays " +
-      "once, and the selected card itself cannot be the discard"):
+      "once, and the selected card itself cannot be replaced"):
     val party = CatalogNames.denizen("Welcoming Party")
     val kept = homesteaders
     val ready = atActorsSite(searchAtAncientCityHolding(Vector(kept)), party)
     val selected = Vector(oathdigital.gameplay.powers.cardplay.WelcomingParty.id)
-    val started = accepted(start(ready, selected))
-    val chosen = accepted(keep(started, played))
-    val asked = accepted(place(chosen, played, PlayedAs.AtSite))
-    assert(asksToDiscard(asked))
-    assert(discardAnswer(asked, DecisionOptionRef.Denizen(party)).isLeft,
+    val asked = toPlacement(ready, selected)
+    assert(placeReplacing(asked, played, PlayedAs.AtSite, party).isLeft,
       "a card that prints a selected power cannot be discarded")
-    val done = accepted(discardAnswer(asked, DecisionOptionRef.Denizen(kept)))
+    val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite, kept))
     val end = SearchFixture.after(done)
     val hearth = (s: ReadyGame) => s.banks.favor.getOrElse(Suit.Hearth, 0)
     // The play gains 1 favor from the played card's own bank, Welcoming Party
@@ -258,15 +197,16 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
   private def mobSaid(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(PeoplesFavorMob.id, PeoplesFavorMob.noteKeys, events)
 
-  test("the discard the Mob permits writes its line once it is answered"):
-    val asked = toSite(
+  test("the discard the Mob permits writes its line when it is made"):
+    val asked = toPlacement(
       searchAtAncientCityHolding(Vector(homesteaders, landWarden)))
     assertEquals(mobSaid(asked.events), Vector.empty)
-    val done = accepted(discardAnswer(asked, noDiscard))
+    val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite,
+      homesteaders))
     assertEquals(mobSaid(done.events), Vector(NoteText.Said("discard-first",
       s"${actor.value} may discard a card at their site first.", covers = false)))
 
-  test("a play asked no discard writes no Mob line"):
-    assertEquals(
-      mobSaid(toSite(searchAtAncientCityHolding(Vector.empty)).events),
-      Vector.empty)
+  test("a play to the empty slot writes no Mob line"):
+    val asked = toPlacement(searchAtAncientCityHolding(Vector(homesteaders)))
+    assertEquals(mobSaid(accepted(place(asked, played, PlayedAs.AtSite))
+      .events), Vector.empty)

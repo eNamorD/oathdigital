@@ -9,7 +9,7 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{Look, Outcomes, PlacementPicks, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -151,26 +151,27 @@ class VisionPlaySuite extends munit.FunSuite:
     assertEquals(after.game.current.walkerPending, None)
     assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
 
-  test("a Vision's placement offers Discard and both adviser plays, " +
-      "never a site"):
+  test("a Vision's placement offers the discard pile, the revealed Vision " +
+      "spot and a facedown adviser slot, never a site"):
     val decision = parkedPlacement(visionInTemporaryHand())
     val offered = decision.query match
-      case DecisionQuery.ChooseOne(options, _) => options.map(_.ref).toSet
+      case DecisionQuery.ChooseOne(options, _) => options.map(_.ref)
       case other => fail(s"expected a choose-one, got $other")
-    assertEquals(offered, Set[DecisionOptionRef](
-      DecisionOptionRef.Button("discard"),
-      DecisionOptionRef.Button("adviser-faceup"),
-      DecisionOptionRef.Button("adviser-facedown")))
+    assertEquals(offered, Vector[DecisionOptionRef](
+      DecisionOptionRef.DiscardPile(Region.Provinces),
+      DecisionOptionRef.RevealedVision(actor),
+      DecisionOptionRef.AdviserPlay(actor, 0, faceup = false)))
 
-  test("playing a Vision over a revealed one asks no discard question"):
+  test("playing a Vision over a revealed one asks nothing more"):
     val state = visionInTemporaryHand(revealed = Some(existingVision))
-    val after = answerPlacement(state, DecisionOptionRef.Button("adviser-faceup"))
+    val after = answerPlacement(state, DecisionOptionRef.RevealedVision(actor))
     assertEquals(walkerIsFinished(after), true)
     assertEquals(revealedVisionOf(after).map(_.id), Some(newVision))
     assert(provincesDiscard(after).contains(existingVision))
 
-  test("a Vision answer naming a site is rejected -- it is not declared"):
+  test("a Vision answer naming a site slot is rejected -- it is not offered"):
     val state = visionInTemporaryHand()
-    assertEquals(answerPlacementResult(state, DecisionOptionRef.Button("site"))
-      .left.toOption, Some(OathViolation.InvalidEventOrder(
+    assertEquals(answerPlacementResult(state, DecisionOptionRef.SiteSlot(
+      CatalogNames.site("Ancient City"), 0)).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
         s"decision ${placeId(newVision)} does not offer the selected option")))

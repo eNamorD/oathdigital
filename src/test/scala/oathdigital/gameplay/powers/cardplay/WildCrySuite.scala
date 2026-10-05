@@ -119,8 +119,7 @@ class WildCrySuite extends munit.FunSuite:
     assertEquals(warbands(after), warbands(ready) + 1)
     assertEquals(Look(after).supply(actor), supplyAfterCost + 1)
 
-  test("Wild Cry cannot be discarded while it is selected: it is not offered " +
-      "as the replacement of a faceup adviser"):
+  test("Wild Cry cannot be replaced while it is selected"):
     val extra = CatalogNames.denizen("Ward of Silence")
     val kept = beastCard
     // The actor holds a facedown Wrestlers, a facedown Ward of Silence and a
@@ -133,9 +132,9 @@ class WildCrySuite extends munit.FunSuite:
     assertEquals(before.size, 3)
     val started = accepted(start(holding, modifiers))
     val chosen = accepted(keep(started, kept))
-    val asked = accepted(place(chosen, kept, PlayedAs.Faceup))
-    assert(replace(asked, kept, wildCry).isLeft, "Wild Cry was discardable")
-    val done = accepted(replace(asked, kept, extra))
+    assert(placeReplacing(chosen, kept, PlayedAs.Faceup, wildCry).isLeft,
+      "Wild Cry was discardable")
+    val done = accepted(placeReplacing(chosen, kept, PlayedAs.Faceup, extra))
     val after = Look(SearchFixture.after(done)).player(actor).advisers.map(_.id)
       .toSet
     assert(after.contains(wildCry) && after.contains(kept))

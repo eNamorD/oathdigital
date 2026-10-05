@@ -69,20 +69,18 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
     yield answered)
     assert(relics(after(done)).exists(_.id == top))
 
-  test("a replacement is answered before the card is played, and the " +
+  test("a Replace slot plays the card in the place of an adviser, and the " +
       "question after the play still resolves"):
     // The adviser area holds 3, so these fill it.
     val wardOfSilence = CatalogNames.denizen("Ward of Silence")
     val full = searching(Vector(heirloom)).adviser(p1, wardOfSilence)
       .adviser(p1, "Arcane Brokers").adviser(p1, "Arcane Armor").ready
-    val placed = accepted(for
+    val replaced = accepted(for
       started <- start(full)
       chosen <- keep(started, heirloom)
-      placed <- place(chosen, heirloom, PlayedAs.Faceup)
+      placed <- SearchFixture.placeReplacing(chosen, heirloom, PlayedAs.Faceup,
+        wardOfSilence)
     yield placed)
-    // With every adviser slot taken the play first asks what to replace.
-    val replacing = SearchFixture.replace(placed, heirloom, wardOfSilence)
-    val replaced = accepted(replacing)
     val done = accepted(answer(replaced, take))
     assert(relics(after(done)).nonEmpty)
     assert(!Look(after(done)).player(p1).advisers.exists(

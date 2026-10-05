@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.rest
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay._
 import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
@@ -11,7 +12,7 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Outcomes, PlacementPicks, Table}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 class SilverTongueSuite extends munit.FunSuite:
@@ -70,34 +71,24 @@ class SilverTongueSuite extends munit.FunSuite:
     assertNotEquals(next, actor)
     walkerParked.assertResumed(rested.state, Phase.Wake, next)
 
-  /** A card play's first decision, where to put the card, and the decision
-    * the walk parks on once that is answered with "adviser-faceup". */
-  private final case class FaceupPlacement(placement: Decide, next: Decide)
-
-  /** Plays `played` from hand with Silver Tongue's power in force, and
-    * places it as a faceup adviser. */
-  private def playAsFaceupAdviser(ready: ReadyGame, played: DenizenId)
-      : FaceupPlacement =
+  /** The placement options of `played` from hand, with Silver Tongue's power
+    * in force. */
+  private def placementOptions(ready: ReadyGame, played: DenizenId)
+      : Vector[DecisionOption] =
     val tree = accepted(CardPlayProcedure.build(catalog, ready, actor, played,
       CardPlayProcedure.Origin.TemporaryHand))
     val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog)))
     val parked = as[WalkerOutcome.Parked](accepted(
       ProcedureWalker.advance(ready, tree, None, powers))).tree
-    val placement = present(
+    as[DecisionQuery.ChooseOne](present(
       ProcedureWalker.parkedDecide(ready, tree, parked, powers),
-      "the placement decision")
-    val faceupButton = DecisionOptionRef.Button("adviser-faceup")
-    val faceup = Answered(placement.decisionId,
-      DecisionAnswer.ChooseOneAnswer(faceupButton), actor)
-    val replacing = as[WalkerOutcome.Parked](accepted(
-      ProcedureWalker.resolve(ready, tree, parked, faceup, powers))).tree
-    val next = present(
-      ProcedureWalker.parkedDecide(ready, tree, replacing, powers),
-      "the replacement decision")
-    FaceupPlacement(placement, next)
+      "the placement decision").query).options
 
-  private def optionRefs(decide: Decide): Vector[DecisionOptionRef] =
-    as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref)
+  /** The faceup plays among `options`, each as the card it replaces. */
+  private def faceupReplacing(options: Vector[DecisionOption])
+      : Vector[Option[CardId]] =
+    options.filter(option => CardPlayProcedure.playedAs(option.ref)
+      .contains(PlayedAs.Faceup)).map(PlacementPicks.replaces)
 
   test("Silver Tongue requires replacement when a third adviser is played"):
     // Two unrestricted denizens: the facedown second adviser and the card
@@ -107,10 +98,9 @@ class SilverTongueSuite extends munit.FunSuite:
     val ready = Table.from(silverTongueRest(Vector.empty, Set.empty))
       .turn(actor, Phase.Act).adviser(actor, second, facedown = true)
       .hand(actor, played).unchecked
-    val placed = playAsFaceupAdviser(ready, played)
-    assert(optionRefs(placed.placement)
-      .contains(DecisionOptionRef.Button("adviser-faceup")))
-    assert(optionRefs(placed.next).contains(DecisionOptionRef.Denizen(second)))
+    val faceup = faceupReplacing(placementOptions(ready, played))
+    assert(faceup.nonEmpty && faceup.forall(_.nonEmpty), faceup.toString)
+    assert(faceup.contains(Some(second)))
 
   test("playing Silver Tongue itself as a third adviser requires replacement"):
     // Two facedown advisers, and Silver Tongue in hand.
@@ -120,11 +110,12 @@ class SilverTongueSuite extends munit.FunSuite:
       .turn(actor, Phase.Act).hand(actor, tongue)
     val ready = others.foldLeft(resting)(_.adviser(actor, _, facedown = true))
       .unchecked
-    val placed = playAsFaceupAdviser(ready, tongue)
-    assert(optionRefs(placed.placement)
-      .contains(DecisionOptionRef.Button("adviser-facedown")))
-    assert(optionRefs(placed.next)
-      .contains(DecisionOptionRef.Denizen(others.head)))
+    val options = placementOptions(ready, tongue)
+    assert(faceupReplacing(options).forall(_.nonEmpty))
+    assert(faceupReplacing(options).contains(Some(others.head)))
+    // Facedown it needs no room under its own limit.
+    assert(options.exists(_.ref ==
+      DecisionOptionRef.AdviserPlay(actor, 2, faceup = false)))
 
   test("its take is written as its own line, covering the generic one"):
     val ready = silverTongueRest(Vector("Golem Legions", "Rain Boots"),

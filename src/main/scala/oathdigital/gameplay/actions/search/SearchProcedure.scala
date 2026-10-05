@@ -118,7 +118,7 @@ object SearchProcedure:
                 Vector[CoreOperation]]](Right(Vector.empty)) {
               case (acc, card) => for
                 previous <- acc
-                operations <- CardPlay.plannedOperations(catalog, state,
+                operations <- CardPlay.operations(catalog, state,
                   actor, card, SearchPlacement.Discard,
                   CardPlay.Origin.TemporaryHand)
               yield previous ++ operations

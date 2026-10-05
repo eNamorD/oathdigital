@@ -1,17 +1,16 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{CardPlayRules, RuleNotes}
-import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.{as, present}
+import oathdigital.testkit.Unwrap.as
 
 /** The Homeland rule's line (power log lines design, "Game rules"): a play to
-  * the Homeland of the card's suit asks for a discard, and the Homeland says
-  * why once the discard is answered.
+  * the Homeland of the card's suit may replace a card there, and the Homeland
+  * says why when it does. A play that replaces nothing writes nothing.
   */
 class HomelandLineSuite extends munit.FunSuite:
   import PlacementFixture.{answer, build, cardPlayDecisionId, options, park}
@@ -34,18 +33,13 @@ class HomelandLineSuite extends munit.FunSuite:
       .hand(actor, card))((table, held) => table.denizen(held, at = homeSite))
       .ready
 
-  /** Answers the placement with "site", returning the replacement park. */
-  private def playToSite(ready: ReadyGame, tree: Operation, card: DenizenId)
-      : WalkerOutcome.Parked =
-    as[WalkerOutcome.Parked](answer(ready, tree, park(ready, tree, noPowers),
-      noPowers, cardPlayDecisionId(card, "place"),
-      DecisionOptionRef.Button("site"), actor))
-
-  private def replaceWith(ready: ReadyGame, tree: Operation,
-      pending: PendingTree, card: DenizenId, ref: DecisionOptionRef)
+  /** Plays `card` to Deep Woods' slot `index`. */
+  private def playedTo(ready: ReadyGame, card: DenizenId, index: Int)
       : WalkerOutcome.Finished =
-    as[WalkerOutcome.Finished](answer(ready, tree, pending, noPowers,
-      cardPlayDecisionId(card, "replace"), ref, actor))
+    val tree = build(ready, actor, card)
+    as[WalkerOutcome.Finished](answer(ready, tree, park(ready, tree, noPowers),
+      noPowers, cardPlayDecisionId(card, "place"),
+      DecisionOptionRef.SiteSlot(homeSite, index), actor))
 
   /** The Homeland's line: the actor may discard a site card first. */
   private val discardFirstLine = Vector(NoteText.Said("discard-first",
@@ -55,43 +49,28 @@ class HomelandLineSuite extends munit.FunSuite:
     NoteText.said(RuleNotes.homelandDiscard, Vector(CardPlayRules.discardFirst),
       events)
 
-  test("a play to a full matching Homeland writes the Homeland's line after " +
-      "the discard"):
-    val ready = atHomeland(matching)
-    val tree = build(ready, actor, matching)
-    val asked = playToSite(ready, tree, matching)
-    assertEquals(said(asked.events), Vector.empty)
-    val discarded = present(
-      options(ready, tree, asked.tree, noPowers).headOption, "a discard option")
-    val done = replaceWith(ready, tree, asked.tree, matching, discarded)
-    assertEquals(said(done.events), discardFirstLine)
+  test("a play replacing a card at a full matching Homeland writes the " +
+      "Homeland's line"):
+    assertEquals(said(playedTo(atHomeland(matching), matching, 0).events),
+      discardFirstLine)
 
-  test("a full Homeland of another suit offers no site, and writes nothing"):
+  test("a full Homeland of another suit offers no site slot, and writes " +
+      "nothing"):
     val ready = atHomeland(otherSuit)
     val tree = build(ready, actor, otherSuit)
     val parked = Outcomes.parked(
       ProcedureWalker.advance(ready, tree, None, noPowers))
     assert(!options(ready, tree, parked.tree, noPowers)
-      .contains(DecisionOptionRef.Button("site")))
+      .exists(_.isInstanceOf[DecisionOptionRef.SiteSlot]))
     assertEquals(said(parked.events), Vector.empty)
 
-  test("a play with room at a matching Homeland writes the line after the " +
-      "discard it chose"):
-    val ready = atHomeland(matching, full = false)
-    val tree = build(ready, actor, matching)
-    val asked = playToSite(ready, tree, matching)
-    val discarded = present(options(ready, tree, asked.tree, noPowers)
-      .collectFirst { case ref: DecisionOptionRef.Denizen => ref },
-      "a denizen to discard")
-    val done = replaceWith(ready, tree, asked.tree, matching, discarded)
-    assertEquals(said(done.events), discardFirstLine)
+  test("a play replacing a card at a matching Homeland with room writes " +
+      "the line"):
+    assertEquals(said(playedTo(atHomeland(matching, full = false), matching, 0)
+      .events), discardFirstLine)
 
-  test("a play with room at a matching Homeland writes the line when it " +
-      "declines the discard"):
-    val ready = atHomeland(matching, full = false)
-    val tree = build(ready, actor, matching)
-    val asked = playToSite(ready, tree, matching)
-    val done = replaceWith(ready, tree, asked.tree, matching,
-      CardPlayProcedure.noReplacement.ref)
+  test("a play to the empty slot of a matching Homeland discards nothing and " +
+      "writes nothing"):
+    val done = playedTo(atHomeland(matching, full = false), matching, 1)
     assert(Look(done.treeless).cardsAt(homeSite).contains(matching))
-    assertEquals(said(done.events), discardFirstLine)
+    assertEquals(said(done.events), Vector.empty)

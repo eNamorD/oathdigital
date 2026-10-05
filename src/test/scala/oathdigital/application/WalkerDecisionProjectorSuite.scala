@@ -2,6 +2,7 @@ package oathdigital.application
 
 import oathdigital.gameplay.CampaignFixture
 import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.testkit.{CatalogNames, Table}
@@ -525,6 +526,18 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       placementId(facedownAdviserCard))
     assertEquals(subjects.map(s => (s.cardId, s.hidden)),
       Vector((facedownAdviserCard.value, false)))
+
+  test("a placement decision's heading names the card being placed"):
+    // The parked table records no start arguments, so the card play's own
+    // tree is handed to the projector, as the roll test hands it one.
+    val context = facedownAdviserPlacement
+    val tree = accepted(CardPlayProcedure.build(catalog, context.ready, p1,
+      facedownAdviserCard, CardPlayProcedure.Origin.FacedownAdviser))
+    val projected = present(projectorFor(tree).project(context),
+      "the projected placement")
+    assertEquals(projected.query.collect {
+      case one: DecisionQueryProjection.ChooseOne => one.heading
+    }.flatten, Some("Play Vow of Peace"))
 
   /** `PlayFacedownAdviser` parks with the actor as its only owner, so there
     * is no co-owner fixture that reaches the projector as a non-owning

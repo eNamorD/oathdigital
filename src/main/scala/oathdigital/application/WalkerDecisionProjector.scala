@@ -166,7 +166,7 @@ private[application] final class WalkerDecisionProjector(
             else (decide.query, Map.empty[DecisionOptionRef, Vector[String]])
           queryProjection(ready, viewer, query, details).map(projected =>
             WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
-              query = Some(projected),
+              query = Some(headed(ready, viewer, decide.decisionId, projected)),
               rollOutcome = rollOutcome(procedure, ready, awaited,
                 decide.decisionId),
               answeredOptions = answeredOptions(ready, viewer, pending,
@@ -447,8 +447,9 @@ private[application] final class WalkerDecisionProjector(
   /** The cards a decision is about, read from its own id.
     *
     * A card-play decision is the one question in the walker whose subject is
-    * not among its options: `cardplay.place.*` offers placement buttons and names
-    * the card only in the id it was built with. The id is the tree's own
+    * not among its options: `cardplay.place.*` offers card slots and
+    * `cardplay.discard.*` site cards, and both name the card played only in
+    * the id they were built with. The id is the tree's own
     * spelling of `WorldCardId` (`kind` then `value`), so this parses what the
     * procedure wrote rather than reaching into the tree for it.
     *
@@ -471,13 +472,36 @@ private[application] final class WalkerDecisionProjector(
       viewer: Option[PlayerId], decisionId: String)
       : Vector[CardDetailsProjection] =
     val index = CardIndex.from(ready.game).toOption
-    val prefixes = Vector("cardplay.place.", "cardplay.replace.")
+    val prefixes = Vector("cardplay.place.", "cardplay.discard.")
     prefixes.find(decisionId.startsWith).toVector.flatMap { prefix =>
       decisionId.stripPrefix(prefix).split("\\.", 2).toVector match
         case Vector("denizen", value) => Vector(DenizenId(value): CardId)
         case Vector("vision", value) => Vector(VisionId(value): CardId)
         case _ => Vector.empty[CardId]
     }.map(shown(ready, viewer, index, _))
+
+  /** A card play's heading names its card or its site, which the engine's
+    * may not (a game object's name is resolved here): "Play {card}" and
+    * "Discard more cards from {site}". Every other decision keeps its own.
+    */
+  private def headed(ready: ReadyGame, viewer: Option[PlayerId],
+      decisionId: String, query: DecisionQueryProjection)
+      : DecisionQueryProjection =
+    val heading =
+      if decisionId.startsWith("cardplay.place.") then
+        subjectCards(ready, viewer, decisionId).headOption
+          .filterNot(_.hidden).map(card => s"Play ${card.name}")
+      else if decisionId.startsWith("cardplay.discard.") then
+        viewer.flatMap(player => ready.game.current.players
+          .find(_.player == player)).flatMap(_.pawnSite).map(site =>
+            s"Discard more cards from ${presentation.siteLabel(site)}")
+      else None
+    heading.fold(query)(text => query match
+      case one: DecisionQueryProjection.ChooseOne =>
+        one.copy(heading = Some(text))
+      case many: DecisionQueryProjection.ChooseMany =>
+        many.copy(heading = Some(text))
+      case other => other)
 
   /** An unavailable option's reason as player text: a builder's own words,
     * or the note of the power that hid it, worded as the Game Log words it.

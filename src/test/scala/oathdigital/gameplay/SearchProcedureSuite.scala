@@ -78,7 +78,8 @@ class SearchProcedureSuite extends munit.FunSuite:
     parked.assertParked(afterSelection.state, ActionRef.Search, placeId, actor)
     val completed = accepted(
       rules.resolveWalker(afterSelection.state, actor, placeId,
-        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard"))))
+        PlacementPicks.parkedAnswer(afterSelection.state, PlayedAs.Discarded,
+          WalkerPowers.empty)))
     val finalReady = Outcomes.ready(completed.state)
     assertEquals(finalReady.game.current.temporaryHands(actor), Vector.empty)
     assertEquals(finalReady.game.current.walkerPending, None)

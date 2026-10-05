@@ -2,10 +2,11 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.AdviserLimit
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
@@ -17,7 +18,7 @@ import oathdigital.testkit.Unwrap.as
   * limit to two, and `testPermission` its plain site discard permission.
   */
 class CardPlayRulesSuite extends munit.FunSuite:
-  import PlacementFixture.{answer, build, cardPlayDecisionId, limitTwo,
+  import PlacementFixture.{build, limitTwo,
     options, park, testPermission}
 
   /** A plain Beast card p1 plays from hand. */
@@ -69,29 +70,25 @@ class CardPlayRulesSuite extends munit.FunSuite:
       assertEquals(ops.size, 1)
     }
 
-  test("a contributed limit reaches the placement: two advisers fill an area " +
-      "limited to two"):
+  test("a contributed limit reaches the placement: two advisers fill an " +
+      "area limited to two"):
     val first = CatalogNames.denizen("Wrestlers")
     val second = CatalogNames.denizen("Battle Honors")
     val ready = Table.start.hand(p1, card)
       .adviser(p1, first, facedown = true).adviser(p1, second, facedown = true)
       .ready
-    val actor = p1
-    val tree = build(ready, actor, card)
-    // Under the default limit of three there is room, so no discard is asked.
-    val open = WalkerPowers.empty
-    val opened = answer(ready, tree, park(ready, tree, open), open,
-      cardPlayDecisionId(card, "place"),
-      DecisionOptionRef.Button("adviser-faceup"), actor)
-    assert(opened.isInstanceOf[WalkerOutcome.Finished])
-    // Under a limit of two the area is full and a discard is asked first.
-    val limited = WalkerPowers(Vector(limitTwo))
-    val asked = as[WalkerOutcome.Parked](answer(ready, tree,
-      park(ready, tree, limited), limited, cardPlayDecisionId(card, "place"),
-      DecisionOptionRef.Button("adviser-faceup"), actor))
-    assertEquals(options(ready, tree, asked.tree, limited).toSet,
-      Set[DecisionOptionRef](DecisionOptionRef.Denizen(first),
-        DecisionOptionRef.Denizen(second)))
+    val tree = build(ready, p1, card)
+    def faceup(powers: WalkerPowers): Vector[DecisionOptionRef] =
+      options(ready, tree, park(ready, tree, powers), powers).filter(ref =>
+        CardPlayProcedure.playedAs(ref).contains(PlayedAs.Faceup))
+    // Under the default limit of three there is room.
+    assertEquals(faceup(WalkerPowers.empty), Vector[DecisionOptionRef](
+      DecisionOptionRef.AdviserPlay(p1, 2, faceup = true)))
+    // Under a limit of two the area is full: each adviser is a Replace slot.
+    assertEquals(faceup(WalkerPowers(Vector(limitTwo))),
+      Vector[DecisionOptionRef](
+        DecisionOptionRef.AdviserPlay(p1, 0, faceup = true),
+        DecisionOptionRef.AdviserPlay(p1, 1, faceup = true)))
 
   test("Silver Tongue and the adviser-limit read agree on the limit"):
     val tongue = SilverTongue.forCatalog(catalog)

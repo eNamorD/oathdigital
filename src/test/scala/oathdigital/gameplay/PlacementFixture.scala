@@ -41,7 +41,7 @@ object PlacementFixture:
   val limitTwo: ContributingPower =
     rulePower("test.limit-two")(_.limitAdvisers(2))
 
-  /** The id of a card play's `kind` decision ("place" or "replace") for
+  /** The id of a card play's `kind` decision ("place" or "discard") for
     * `card`. */
   def cardPlayDecisionId(card: WorldCardId, kind: String): String =
     s"cardplay.$kind.${card.kind}.${card.value}"
@@ -62,9 +62,14 @@ object PlacementFixture:
       Answered(id, DecisionAnswer.ChooseOneAnswer(ref), actor), powers))
 
   /** The options of the decision the walk is parked on. */
-  def options(ready: ReadyGame, tree: Operation, pending: PendingTree,
-      powers: WalkerPowers)(using munit.Location): Vector[DecisionOptionRef] =
+  def placementOptions(ready: ReadyGame, tree: Operation, pending: PendingTree,
+      powers: WalkerPowers)(using munit.Location): Vector[DecisionOption] =
     val decide = present(
       ProcedureWalker.parkedDecide(ready, tree, pending, powers),
       "the decision the walk is parked on")
-    as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref)
+    as[DecisionQuery.ChooseOne](decide.query).options
+
+  /** The references of the options of the decision the walk is parked on. */
+  def options(ready: ReadyGame, tree: Operation, pending: PendingTree,
+      powers: WalkerPowers)(using munit.Location): Vector[DecisionOptionRef] =
+    placementOptions(ready, tree, pending, powers).map(_.ref)

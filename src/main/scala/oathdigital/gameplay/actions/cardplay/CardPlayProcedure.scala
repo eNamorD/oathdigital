@@ -5,28 +5,21 @@ import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, CardPlayRules}
 import oathdigital.model._
 
-/** Embeddable card-placement tree using CardPlay's pure operation planner. */
+/** The embeddable card play (card play slots design, "Placement procedure"):
+  *
+  *  1. `cardplay.place.{kind}.{value}`, a choose-one of the card's slots
+  *     (`CardSlots`).
+  *  2. When the answer was a Replace site slot and site discard permissions
+  *     remain, `cardplay.discard.{kind}.{value}`: a choose-many of the other
+  *     site cards, from none up to the permissions left, the replaced card
+  *     locked.
+  *  3. The line of each permission a site discard spent, the play's
+  *     operations, then the `CardPlayedFacedown` or `CardPlayedFaceup` hook.
+  *
+  * The headings name neither the card nor the site; the projector does.
+  */
 object CardPlayProcedure:
   enum Origin { case TemporaryHand, FacedownAdviser }
-
-  private val discard = DecisionOptionRef.Button("discard")
-  private val site = DecisionOptionRef.Button("site")
-  private val adviserFaceUp = DecisionOptionRef.Button("adviser-faceup")
-  private val adviserFaceDown = DecisionOptionRef.Button("adviser-facedown")
-
-  /** The option that plays to a site without discarding a site card first,
-    * offered only when a site discard permission (`CardPlayRules.siteDiscards`)
-    * or the Homeland of the card's suit makes the discard optional.
-    */
-  val noReplacement: DecisionOption = DecisionOption.Button(
-    DecisionOptionRef.Button("replace:none"), "Discard nothing")
-
-  private def label(ref: DecisionOptionRef.Button): String = ref match
-    case `discard` => "Discard"
-    case `site` => "Play at site"
-    case `adviserFaceUp` => "Play faceup"
-    case `adviserFaceDown` => "Play facedown"
-    case other => other.key
 
   /** How a placement answer plays the card, for the readers that name a play
     * by what it does rather than by its option: the Game Log, and tests. A
@@ -38,10 +31,12 @@ object CardPlayProcedure:
   /** How the placement option `ref` plays the card; `None` for a ref no
     * placement decision offers. */
   def playedAs(ref: DecisionOptionRef): Option[PlayedAs] = ref match
-    case `discard` => Some(PlayedAs.Discarded)
-    case `site` => Some(PlayedAs.AtSite)
-    case `adviserFaceUp` => Some(PlayedAs.Faceup)
-    case `adviserFaceDown` => Some(PlayedAs.Facedown)
+    case _: DecisionOptionRef.DiscardPile => Some(PlayedAs.Discarded)
+    case _: DecisionOptionRef.SiteSlot => Some(PlayedAs.AtSite)
+    case DecisionOptionRef.AdviserPlay(_, _, faceup) =>
+      Some(if faceup then PlayedAs.Faceup else PlayedAs.Facedown)
+    case _: DecisionOptionRef.RevealedVision | CardSlots.play =>
+      Some(PlayedAs.Faceup)
     case _ => None
 
   def buildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
@@ -92,8 +87,8 @@ object CardPlayProcedure:
 
     def adjust(current: Vector[Operation])(
         change: CardPlayRules => CardPlayRules): Vector[Operation] =
-      // An earlier contributor may have appended nodes after the body (an
-      // adviser limit's check): change the body in place and keep them.
+      // An earlier contributor may have appended nodes after the body:
+      // change the body in place and keep them.
       if current.exists(_.isInstanceOf[PlacementBody]) then current.map {
         case body: PlacementBody => body.adjust(change)
         case other => other
@@ -131,12 +126,18 @@ object CardPlayProcedure:
       childrenFor(catalog, ready, actor, card, origin, rules))
 
   private val placementPrefix = "cardplay.place."
+  private val discardPrefix = "cardplay.discard."
 
   /** `card`'s placement decision id, `cardplay.place.{kind}.{value}` -- the
     * one place that spells it, so every reader agrees with `childrenFor`.
     */
   def placementDecisionId(card: WorldCardId): String =
     s"$placementPrefix${card.kind}.${card.value}"
+
+  /** `card`'s follow-up discard decision id,
+    * `cardplay.discard.{kind}.{value}`. */
+  def discardDecisionId(card: WorldCardId): String =
+    s"$discardPrefix${card.kind}.${card.value}"
 
   /** The card whose placement was answered in `pending`, inverting
     * [[placementDecisionId]]. The parse splits the remainder at the first
@@ -161,134 +162,97 @@ object CardPlayProcedure:
       case _ => None
     }
 
+  private def cardPlayOrigin(origin: Origin): CardPlay.Origin = origin match
+    case Origin.TemporaryHand => CardPlay.Origin.TemporaryHand
+    case Origin.FacedownAdviser => CardPlay.Origin.FacedownAdviser
+
   private def childrenFor(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: Origin,
-      rules: CardPlayRules)
-      : Vector[Operation] =
-      val legacyOrigin = origin match
-        case Origin.TemporaryHand => CardPlay.Origin.TemporaryHand
-        case Origin.FacedownAdviser => CardPlay.Origin.FacedownAdviser
-      val held = heldAtOrigin(ready, actor, card, origin)
-      val candidates = if !held then Vector.empty else CardPlay.legalChoices(
-        catalog, ready, actor, card, legacyOrigin, rules).map { choice =>
-        val ref = choice.placement match
-          case SearchPlacement.Discard => discard
-          case _: SearchPlacement.Site => site
-          case SearchPlacement.Adviser(Orientation.FaceUp, _) => adviserFaceUp
-          case SearchPlacement.Adviser(Orientation.FaceDown, _) => adviserFaceDown
-        (ref, choice.placement,
-          choice.replacements.map(id => replacementOption(id) -> id),
-          choice.replacementOptional)
+      rules: CardPlayRules): Vector[Operation] =
+    val from = cardPlayOrigin(origin)
+    val held = heldAtOrigin(ready, actor, card, origin)
+    val slots = if held then CardSlots.slots(catalog, ready, actor, card, from,
+      rules) else Vector.empty
+    val placeId = placementDecisionId(card)
+    val discardId = discardDecisionId(card)
+    val choose = Decide(placeId, actor, DecisionQuery.ChooseOne(
+      slots.map(_.option), heading = Some("Play the card")))
+    val selected = Branch((_, pending) => {
+      val answer = pending.answered.collectFirst {
+        case Answered(`placeId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
       }
-      // A Vision is never played to a site, so that button is not offered:
-      // rejecting it after the click told the player only that a button they
-      // were given does not work. It may still be held as a facedown adviser
-      // -- that is how an Exile keeps a Vision to reveal later, and how
-      // Conspiracy is later played faceup from the Advisers area.
-      val offered = if !card.isInstanceOf[VisionId] then candidates
-        else candidates.filter(pair => pair._1 != site)
-      val options = offered.map { case (ref, _, _, _) =>
-        DecisionOption.Button(ref, label(ref))
+      val more = pending.answered.collectFirst {
+        case Answered(`discardId`, DecisionAnswer.ChooseManyAnswer(refs), _) =>
+          refs
       }
-      val decisionId = placementDecisionId(card)
-      val choose = Decide(decisionId, actor, DecisionQuery.ChooseOne(options,
-        heading = Some("Play or discard card")))
-      val selected = Branch((_, pending) => {
-        val ref = pending.answered.collectFirst {
-          case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(value), _) =>
-            value
-        }
-        val replacementId = s"cardplay.replace.${card.kind}.${card.value}"
-        val replaced = pending.answered.exists(_.decisionId == replacementId)
-        // Once the card has left its origin the choices can no longer be
-        // planned: the tree is settled from the answers instead, keeping the
-        // shape it had when the decisions were asked.
-        val chosen = if held then offered.find(pair => ref.contains(pair._1))
-        else ref.flatMap(settled(_, card, replaced))
-        chosen.toVector.flatMap {
-          case (_, placement, replacements, optional) =>
-            val choice = if replacements.isEmpty then Vector.empty else Vector(
-              Decide(replacementId, actor, DecisionQuery.ChooseOne(
-                (if optional then Vector(noReplacement) else Vector.empty) ++
-                  replacements.map(_._1),
-                heading = Some("Choose a card to discard"))))
-            val apply = BuildOps((state, pending) => {
-              val chosen = if replacements.isEmpty then Right(placement)
-              else pending.answered.collectFirst {
-                case Answered(`replacementId`,
-                    DecisionAnswer.ChooseOneAnswer(value), _) => value
-              }.toRight(OathViolation.InvalidSearchPlacement(
-                "replacement was not selected")).flatMap { value =>
-                if optional && value == noReplacement.ref then Right(placement)
-                else replacements.find(_._1.ref == value).map(_._2)
-                  .toRight(OathViolation.InvalidSearchPlacement(
-                    "replacement was not selected")).map { id => placement match {
-                      case _: SearchPlacement.Site =>
-                        SearchPlacement.Site(Some(id))
-                      case value: SearchPlacement.Adviser =>
-                        value.copy(replace = Some(id))
-                      case SearchPlacement.Discard => SearchPlacement.Discard
-                    }}
-              }
-              chosen.flatMap(CardPlay.plannedOperations(catalog, state, actor,
-                card, _, legacyOrigin, rules))
-            })
-            val hook: Vector[Operation] = placement match {
-              case SearchPlacement.Adviser(Orientation.FaceDown, _) =>
-                Vector(CardPlayedFacedown(card, actor))
-              case _ => CardPlay.playedSource(ready, actor, card, placement)
-                .map(CardPlayedFaceup(card, _)).toVector
-            }
-            // The line of whatever asked for the discard, after its answer
-            // and before the play. A note never comes before a decision
-            // already in the tree, so a game parked on one resumes where it
-            // was; it joins the play's own node, keeping the hook's place.
-            val notice: Vector[Operation] = placement match
-              case _: SearchPlacement.Site if replacements.nonEmpty =>
-                if rules.siteDiscards.nonEmpty then
-                  rules.siteDiscards.headOption.map(_.note).toVector
-                else homelandNote(ready, actor).toVector
-              case _ => Vector.empty
-            val played = if notice.isEmpty then apply
-              else Sequence(notice :+ apply)
-            choice ++ Vector(played) ++ hook
-        }
-      })
-      Vector(choose, selected)
+      // Once the card has left its origin its slots can no longer be built:
+      // the tree is settled from the answers instead, keeping the shape it
+      // had when the decisions were asked.
+      if !held then answer.toVector.flatMap(ref =>
+        settled(ready, actor, card, ref, askedMore = more.nonEmpty))
+      else answer.flatMap(ref => slots.find(_.ref == ref)).toVector.flatMap(
+        slot => played(catalog, ready, actor, card, from, rules, slot))
+    })
+    Vector(choose, selected)
 
-  /** The Homeland rule's line, "{site}: {Red} may discard a card at their
-    * site first.": without a power's permission, only the Homeland of the
-    * card's suit asks for a discard at a site. */
-  private def homelandNote(ready: ReadyGame, actor: PlayerId): Option[Note] =
-    ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
-      .map(site => CardPlayRules.homeland(site, actor).note)
+  /** The play of `slot`: the follow-up when it is a Replace site slot that
+    * leaves permissions, the line of each permission its site discards
+    * spent, the operations, and the hook. */
+  private def played(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, card: WorldCardId, from: CardPlay.Origin,
+      rules: CardPlayRules, slot: CardSlot): Vector[Operation] =
+    val followUp = CardSlots.moreDiscards(catalog, ready, actor, card, from,
+      rules, slot).map(offer => Decide(discardDecisionId(card), actor,
+        DecisionQuery.ChooseMany(0, offer.most, offer.options,
+          heading = Some("Discard more cards from the site"),
+          locked = Vector(offer.locked))))
+    // A Branch is selected when the walk reaches it, which for this one is
+    // after the follow-up's answer, so the play sees the cards chosen there.
+    // The lines come after the last answer and before the play, joining the
+    // play's own node so the hook keeps its place.
+    val play = Branch((_, pending) => {
+      val extra = pending.answered.collectFirst {
+        case Answered(id, DecisionAnswer.ChooseManyAnswer(refs), _)
+            if id == discardDecisionId(card) => refs.flatMap(siteCard)
+      }.getOrElse(Vector.empty)
+      val apply = BuildOps((state, _) => CardPlay.operations(catalog, state,
+        actor, card, slot.placement, from, extra))
+      Vector(CardSlots.credits(catalog, ready, actor, card, rules,
+          slot.replacedAtSite.toVector ++ extra) match
+        case Left(error) => BuildOps((_, _) => Left(error))
+        case Right(notes) if notes.isEmpty => apply
+        case Right(notes) => Sequence(notes :+ apply))
+    })
+    followUp.toVector ++ Vector(play) ++ hook(ready, actor, card,
+      slot.placement)
 
-  /** The replacement's options are not read once the play is made, only that
-    * the decision held its place in the tree. */
-  private def settled(ref: DecisionOptionRef, card: WorldCardId,
-      replaced: Boolean)
-      : Option[(DecisionOptionRef, SearchPlacement,
-          Vector[(DecisionOption, CardId)], Boolean)] =
-    val placement: Option[SearchPlacement] = ref match
-      case `discard` => Some(SearchPlacement.Discard)
-      case `site` => Some(SearchPlacement.Site(None))
-      case `adviserFaceUp` =>
-        Some(SearchPlacement.Adviser(Orientation.FaceUp, None))
-      case `adviserFaceDown` =>
-        Some(SearchPlacement.Adviser(Orientation.FaceDown, None))
-      case _ => None
-    placement.map(value => (ref, value,
-      if replaced then Vector((noReplacement: DecisionOption) -> card)
-      else Vector.empty,
-      false))
+  /** The shape of a play once the card has left its origin: the follow-up if
+    * it was asked, the play, and the hook. A resumed walk starts past the
+    * decisions and the play, so neither runs again. */
+  private def settled(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
+      ref: DecisionOptionRef, askedMore: Boolean): Vector[Operation] =
+    playedAs(ref).map(placementOf).toVector.flatMap { placement =>
+      val followUp = Option.when(askedMore)(Decide(discardDecisionId(card),
+        actor, DecisionQuery.ChooseMany(0, 0, Vector.empty)))
+      val play = BuildOps((_, _) => Left(OathViolation.InvalidSearchPlacement(
+        "the card has already been played")))
+      followUp.toVector ++ Vector(play) ++ hook(ready, actor, card, placement)
+    }
 
-  private def replacementOption(id: CardId): DecisionOption = id match
-    case value: DenizenId =>
-      DecisionOption.Denizen(DecisionOptionRef.Denizen(value))
-    case value: VisionId =>
-      DecisionOption.Vision(DecisionOptionRef.Vision(value))
-    case value: EdificeId =>
-      DecisionOption.Edifice(DecisionOptionRef.Edifice(value))
-    case value => DecisionOption.Button(
-      DecisionOptionRef.Button(s"replace:${value.kind}:${value.value}"),
-      value.value)
+  private def placementOf(way: PlayedAs): SearchPlacement = way match
+    case PlayedAs.Discarded => SearchPlacement.Discard
+    case PlayedAs.AtSite => SearchPlacement.Site(None)
+    case PlayedAs.Faceup => SearchPlacement.Adviser(Orientation.FaceUp, None)
+    case PlayedAs.Facedown => SearchPlacement.Adviser(Orientation.FaceDown, None)
+
+  private def hook(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
+      placement: SearchPlacement): Vector[Operation] = placement match
+    case SearchPlacement.Adviser(Orientation.FaceDown, _) =>
+      Vector(CardPlayedFacedown(card, actor))
+    case _ => CardPlay.playedSource(ready, actor, card, placement)
+      .map(CardPlayedFaceup(card, _)).toVector
+
+  private def siteCard(ref: DecisionOptionRef): Option[CardId] = ref match
+    case DecisionOptionRef.Denizen(id) => Some(id)
+    case DecisionOptionRef.Edifice(id) => Some(id)
+    case _ => None

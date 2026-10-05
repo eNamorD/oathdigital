@@ -1,25 +1,22 @@
 package oathdigital.gameplay.powers.search
 
+import oathdigital.gameplay.actions.CardPlayRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay.PlacementFixture
-import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.{NoteText, SearchFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.banner.PeoplesFavorMob
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
+  PlacementPicks, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class CropRotationSuite extends munit.FunSuite:
-  import SearchFixture.{keep, place, rules, start}
+  import SearchFixture.{discardMore, keep, place, placeReplacing, rules, start}
 
-  private val parked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog))
-
+  private val walkerPowers = WalkerPowerCatalog.default(catalog)
   private val crop = CatalogNames.denizen("Crop Rotation")
   private val modifiers = Vector(CropRotation.id)
   /** The Beast card each Search keeps and plays. */
@@ -29,8 +26,6 @@ class CropRotationSuite extends munit.FunSuite:
     .map(CatalogNames.denizen(_))
   private val home = CatalogNames.site("Ancient City")
   private val capacity = 3 // Ancient City's printed capacity
-  private val noDiscard = CardPlayProcedure.noReplacement.ref
-  private val replaceId = PlacementFixture.cardPlayDecisionId(played, "replace")
 
   /** p1 in Act at Ancient City with 5 Supply, the world deck topped by
     * `played`, and Ancient City holding `site`. p1 holds Crop Rotation as a
@@ -42,67 +37,73 @@ class CropRotationSuite extends munit.FunSuite:
       else table.adviser(p1, crop)
     site.foldLeft(held)((t, card) => t.denizen(card, at = home)).ready
 
-  /** Searches with `selected`, keeps `played` and plays it to the site. */
-  private def toSite(ready: ReadyGame, selected: Vector[PowerId] = modifiers)
-      : Either[OathViolation, OathTransition] = for
+  /** Searches with `selected` and keeps `played`, parked on its placement. */
+  private def toPlacement(ready: ReadyGame,
+      selected: Vector[PowerId] = modifiers): OathTransition = accepted(for
     started <- start(ready, selected)
     kept <- keep(started, played)
-    placed <- place(kept, played, PlayedAs.AtSite)
-  yield placed.copy(events = started.events ++ kept.events ++ placed.events)
+  yield kept.copy(events = started.events ++ kept.events))
 
-  private def asksToDiscard(transition: OathTransition): Boolean =
-    parked.parkedDecision(transition.state).exists(facts =>
-      facts.decision == replaceId && facts.awaiting == p1)
-
-  private def discard(from: OathTransition, chosen: DecisionOptionRef)
-      : Either[OathViolation, OathTransition] = rules.resolveWalker(from.state,
-    p1, replaceId, DecisionAnswer.ChooseOneAnswer(chosen))
+  /** The parked placement's site slots, each as the card it replaces. */
+  private def siteSlots(at: OathTransition): Vector[Option[CardId]] =
+    PlacementPicks.parkedOptions(at.state, walkerPowers)
+      .filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])
+      .map(PlacementPicks.replaces)
 
   private def siteCards(ready: ReadyGame): Vector[CardId] =
     Look(ready).cardsAt(home)
 
   private def cropSaid(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(CropRotation.id, Vector(
-      oathdigital.gameplay.actions.CardPlayRules.discardFirst), events)
+    NoteText.said(CropRotation.id, Vector(CardPlayRules.discardFirst), events)
 
-  test("selected, a play to a site with room asks first, and may decline"):
+  test("selected, it offers each site denizen as Replace beside the empty " +
+      "slot, and the empty slot discards nothing"):
     val ready = staged(Vector(fillers(0)))
-    val asked = accepted(toSite(ready))
-    assert(asksToDiscard(asked))
-    val done = accepted(discard(asked, noDiscard))
+    val asked = toPlacement(ready)
+    assertEquals(siteSlots(asked), Vector(None, Some(fillers(0))))
+    val done = accepted(place(asked, played, PlayedAs.AtSite))
     val end = SearchFixture.after(done)
     assertEquals(siteCards(end), Vector[CardId](fillers(0), played))
     assertEquals(ActPowerHarness.replayed(rules, ready,
       asked.events ++ done.events), end)
     assertWireRoundTrips(asked.events ++ done.events)
 
-  test("choosing a card discards it before the play"):
-    val asked = accepted(toSite(staged(Vector(fillers(0)))))
-    val done = accepted(discard(asked, DecisionOptionRef.Denizen(fillers(0))))
+  test("a Replace slot discards the card before the play"):
+    val done = accepted(placeReplacing(toPlacement(staged(Vector(fillers(0)))),
+      played, PlayedAs.AtSite, fillers(0)))
     assertEquals(siteCards(SearchFixture.after(done)), Vector[CardId](played))
 
-  test("without the selection nothing is asked"):
-    val done = accepted(toSite(staged(Vector(fillers(0))), Vector.empty))
-    assert(!asksToDiscard(done))
-    assertEquals(siteCards(SearchFixture.after(done)),
-      Vector[CardId](fillers(0), played))
+  test("without the selection nothing may be replaced"):
+    assertEquals(siteSlots(toPlacement(staged(Vector(fillers(0))),
+      Vector.empty)), Vector(None))
 
-  test("a full site takes the play only with a discard"):
+  test("a full site takes the play only through a Replace slot"):
     val full = staged(fillers.take(capacity))
-    assert(toSite(full, Vector.empty).isLeft,
-      "a full site accepts no play without a permission")
-    val asked = accepted(toSite(full))
-    assert(asksToDiscard(asked))
-    assert(discard(asked, noDiscard).isLeft, "a discard is required")
-    val done = accepted(discard(asked, DecisionOptionRef.Denizen(fillers(0))))
+    assert(place(toPlacement(full, Vector.empty), played, PlayedAs.AtSite)
+      .isLeft, "a full site accepts no play without a permission")
+    val asked = toPlacement(full)
+    assertEquals(siteSlots(asked), fillers.take(capacity).map(Some(_)))
+    val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite,
+      fillers(0)))
     assert(siteCards(SearchFixture.after(done)).contains(played))
 
-  test("Crop Rotation itself, selected at the site, cannot be the discard"):
-    val asked = accepted(toSite(staged(Vector(fillers(0)), atSite = true)))
-    assert(asksToDiscard(asked))
-    assert(discard(asked, DecisionOptionRef.Denizen(crop)).isLeft,
+  test("Crop Rotation itself, selected at the site, is shown in use and " +
+      "cannot be replaced"):
+    val asked = toPlacement(staged(Vector(fillers(0)), atSite = true))
+    val cropSlot = present(PlacementPicks.parkedOptions(asked.state,
+      walkerPowers).find(option =>
+        PlacementPicks.replaces(option).contains(crop)), "Crop Rotation's slot")
+    assert(!cropSlot.available)
+    assert(placeReplacing(asked, played, PlayedAs.AtSite, crop).isLeft,
       "a card that prints a selected power cannot be discarded")
-    assert(discard(asked, DecisionOptionRef.Denizen(fillers(0))).isRight)
+    assert(placeReplacing(asked, played, PlayedAs.AtSite, fillers(0)).isRight)
+
+  test("it covers a ruined edifice too: an edifice is a denizen for placement"):
+    val hall = CatalogNames.edifice("Hall of Ministers")
+    val ready = Table.from(staged(Vector(fillers(0))))
+      .edifice(hall, EdificeSide.Ruined, at = home).unchecked
+    assertEquals(siteSlots(toPlacement(ready)),
+      Vector(None, Some(fillers(0)), Some(hall)))
 
   test("it applies to a facedown adviser played to a site"):
     val ready = Table.start.adviser(p1, crop)
@@ -111,20 +112,26 @@ class CropRotationSuite extends munit.FunSuite:
     val started = accepted(rules.startWalker(Ready(ready),
       ActionRef.PlayFacedownAdviser, p1, modifiers,
       Vector(DecisionOptionRef.Denizen(played))))
-    assert(asksToDiscard(accepted(place(started, played, PlayedAs.AtSite))))
+    assert(siteSlots(started).contains(Some(fillers(0))))
 
-  test("its line is written once the discard is answered"):
-    val asked = accepted(toSite(staged(Vector(fillers(0)))))
+  test("its line is written for the discard it allowed"):
+    val asked = toPlacement(staged(Vector(fillers(0))))
     assertEquals(cropSaid(asked.events), Vector.empty)
-    val done = accepted(discard(asked, noDiscard))
+    val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite,
+      fillers(0)))
     assertEquals(cropSaid(done.events), Vector(NoteText.Said("discard-first",
       s"${p1.value} may discard a card at their site first.", covers = false)))
 
-  test("with the Mob as well, only one line is written"):
-    val ready = Table.from(staged(Vector(fillers(0)))).peoplesFavor(Some(p1), 1)
-      .unchecked
-    val asked = accepted(toSite(ready))
-    val done = accepted(discard(asked, noDiscard))
-    val mobSaid = NoteText.said(PeoplesFavorMob.id, PeoplesFavorMob.noteKeys,
-      done.events)
-    assertEquals(cropSaid(done.events).size + mobSaid.size, 1)
+  test("with the Mob as well, two cards may go, each credited to the " +
+      "permission it spent"):
+    val ready = Table.from(staged(Vector(fillers(0), fillers(1))))
+      .peoplesFavor(Some(p1), 1).unchecked
+    val replaced = accepted(placeReplacing(toPlacement(ready), played,
+      PlayedAs.AtSite, fillers(0)))
+    // The slot spent one permission; the other is offered as a follow-up.
+    val done = accepted(discardMore(replaced, played, Vector(fillers(1))))
+    assertEquals(siteCards(SearchFixture.after(done)), Vector[CardId](played))
+    val events = replaced.events ++ done.events
+    assertEquals(cropSaid(events).size, 1)
+    assertEquals(NoteText.said(PeoplesFavorMob.id, PeoplesFavorMob.noteKeys,
+      events).size, 1)

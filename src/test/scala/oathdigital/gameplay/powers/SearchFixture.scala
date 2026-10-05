@@ -115,15 +115,26 @@ object SearchFixture:
   yield placed.copy(events = started.events ++ placed.events)).fold(
     error => throw new AssertionError(error.toString), identity)
 
-  /** Answers the replacement decision of a play with `chosen`. */
-  def replace(from: OathTransition, card: WorldCardId, chosen: CardId)
+  /** Places the card `way` in the place of `replaced`: the Replace option
+    * that discards it, whether or not it may be chosen. */
+  def placeReplacing(from: OathTransition, card: WorldCardId, way: PlayedAs,
+      replaced: CardId)(using munit.Location)
       : Either[OathViolation, OathTransition] =
+    PlacementPicks.findReplacing(PlacementPicks.parkedOptions(from.state,
+        walkerPowers), way, replaced).toRight(
+        OathViolation.InvalidSearchPlacement(
+          s"no option plays the card $way in the place of $replaced"))
+      .flatMap(ref => rules.resolveWalker(from.state, actor,
+        PlacementFixture.cardPlayDecisionId(card, "place"),
+        DecisionAnswer.ChooseOneAnswer(ref)))
+
+  /** Answers the follow-up of a Replace site slot: discard `more` as well. */
+  def discardMore(from: OathTransition, card: WorldCardId,
+      more: Vector[CardId]): Either[OathViolation, OathTransition] =
     rules.resolveWalker(from.state, actor,
-      PlacementFixture.cardPlayDecisionId(card, "replace"),
-      DecisionAnswer.ChooseOneAnswer(chosen match {
-        case id: DenizenId => DecisionOptionRef.Denizen(id)
-        case id: VisionId => DecisionOptionRef.Vision(id)
+      PlacementFixture.cardPlayDecisionId(card, "discard"),
+      DecisionAnswer.ChooseManyAnswer(more.map {
         case id: EdificeId => DecisionOptionRef.Edifice(id)
-        case other => DecisionOptionRef.Button(
-          s"replace:${other.kind}:${other.value}")
+        case id: DenizenId => DecisionOptionRef.Denizen(id)
+        case other => DecisionOptionRef.Button(other.value)
       }))

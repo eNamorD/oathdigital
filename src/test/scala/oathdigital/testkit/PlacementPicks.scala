@@ -61,6 +61,22 @@ object PlacementPicks:
     DecisionAnswer.ChooseOneAnswer(
       pick(parkedOptions(state, powers, phasePowers), way))
 
+  /** The card `option` discards to make room, read through any
+    * availability, price or badge mark. */
+  def replaces(option: DecisionOption): Option[CardId] = option match
+    case DecisionOption.Replacing(_, card) => Some(card)
+    case DecisionOption.Unavailable(inner, _) => replaces(inner)
+    case DecisionOption.Priced(inner, _) => replaces(inner)
+    case DecisionOption.Badged(inner, _) => replaces(inner)
+    case _ => None
+
+  /** The option of `options` that plays the card `way` in the place of
+    * `card`, whether or not it may be chosen. */
+  def findReplacing(options: Vector[DecisionOption], way: PlayedAs,
+      card: CardId): Option[DecisionOptionRef] =
+    options.find(option => CardPlayProcedure.playedAs(option.ref)
+      .contains(way) && replaces(option).contains(card)).map(_.ref)
+
   private def chooseOne(decide: Decide)(using munit.Location)
       : Vector[DecisionOption] = decide.query match
     case DecisionQuery.ChooseOne(options, _) => options
