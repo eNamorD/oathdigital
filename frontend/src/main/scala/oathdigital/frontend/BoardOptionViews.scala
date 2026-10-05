@@ -34,6 +34,21 @@ private[frontend] object BoardOptionViews:
       key("adviser-slot", BoardHomes.adviserSlot(option.id))
     case _ => key(option)
 
+  /** The options of `query` drawn on `option`'s home, `option` included, in
+    * the query's order. */
+  def atHome(query: DecisionQueryState,
+      option: DecisionOptionState): Vector[DecisionOptionState] =
+    options(query).filter(home(_) == home(option))
+
+  /** An option's word among the options on its home: its variant, or its
+    * label when it has none. */
+  def variant(option: DecisionOptionState): String =
+    option.variant.getOrElse(option.label)
+
+  /** What an open home asks before Confirm, from its options' words. */
+  def variantPrompt(options: Vector[DecisionOptionState]): String =
+    s"Choose one: ${options.map(variant).mkString(" or ")}."
+
   /** Every option the query shows, locked and unavailable ones included. */
   def options(query: DecisionQueryState): Vector[DecisionOptionState] =
     query match
@@ -41,20 +56,39 @@ private[frontend] object BoardOptionViews:
       case many: DecisionQueryState.ChooseMany => many.options
       case _ => Vector.empty
 
-  /** Each option by home: locked and unavailable as projected, then the
-    * draft's picks, then what the draft's limits block. A choose-one's
-    * answers so far (a battle-plan window's played plans) show locked.
+  /** Each home's view: locked and unavailable as projected, then the draft's
+    * picks, then what the draft's limits block. A choose-one's answers so
+    * far (a battle-plan window's played plans) show locked. A home that
+    * several options share is one view ([[shared]]).
     */
   def of(decision: WalkerDecisionState, query: DecisionQueryState,
       draft: Option[BoardSelectionDraft]): Map[String, OptionView] =
-    val picks = draft.filter(_.decisionId == decision.decisionId)
-      .fold(Vector.empty[String])(_.keys)
+    val current = draft.filter(_.decisionId == decision.decisionId)
+    val picks = current.fold(Vector.empty[String])(_.keys)
     val played = query match
       case _: DecisionQueryState.ChooseOne => decision.answeredOptions
         .map(option => OptionView(option, OptionState.Locked, None))
       case _ => Vector.empty
-    (played ++ options(query).map(view(query, picks, _)))
-      .map(found => home(found.option) -> found).toMap
+    val offered = options(query).map(view(query, picks, _))
+      .groupBy(found => home(found.option)).map((at, views) =>
+        at -> (if views.size == 1 then views.head
+          else shared(views, current.flatMap(_.home).contains(at))))
+    played.map(found => home(found.option) -> found).toMap ++ offered
+
+  /** The one view of a home that several options share. It carries the
+    * first available option, so a click opens the home
+    * ([[BoardSelectionDraft.click]]). Selected while the draft has the home
+    * open or holds one of its options; available while any option is;
+    * otherwise unavailable with the first reason.
+    */
+  private def shared(views: Vector[OptionView], open: Boolean): OptionView =
+    val lead = views.find(_.state == OptionState.Available)
+      .getOrElse(views.head)
+    if open || views.exists(_.state == OptionState.Selected) then
+      lead.copy(state = OptionState.Selected, reason = None)
+    else if lead.state == OptionState.Available then lead
+    else views.head.copy(state = OptionState.Unavailable,
+      reason = views.flatMap(_.reason).headOption)
 
   private def view(query: DecisionQueryState, picks: Vector[String],
       option: DecisionOptionState): OptionView = option.state match

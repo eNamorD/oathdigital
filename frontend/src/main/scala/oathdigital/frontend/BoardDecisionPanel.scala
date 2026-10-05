@@ -5,7 +5,7 @@ import org.scalajs.dom
 /** The Action panel of a board decision (board decisions design, "Action
   * panel"). Top to bottom: the prompt, the summary line, a row per locked
   * and picked option with its tally values, the tally totals, the options
-  * with no place on the table, the Decide buttons under an unlabelled rule,
+  * with no place on the table, the open home's toggle, the Decide buttons under an unlabelled rule,
   * then a rule labelled "Decision" over Clear and Confirm. The table draws
   * the options themselves, through `BoardOptions`.
   */
@@ -22,6 +22,12 @@ private[frontend] object BoardDecisionPanel:
     val views = BoardOptionViews.of(decision, query, draft)
     val shown = BoardOptionViews.options(query)
     val stage = BoardOptions.stager(surface, drafts, canControl, controls)
+    // An optional choose-many confirms the empty selection, so Confirm needs
+    // a draft even before the first pick.
+    val current = draft.orElse(drafts.context.map(context =>
+      BoardSelectionDraft(context, decision.decisionId, query, Vector.empty)))
+    val blocked = current.fold(BoardOptionViews.blocker(query, picks))(
+      _.blocker)
     def label(option: DecisionOptionState): String =
       if option.kind == "player" then value.players
         .find(_.playerId == option.id).map(_.displayName).getOrElse(option.label)
@@ -33,8 +39,10 @@ private[frontend] object BoardDecisionPanel:
       case many: DecisionQueryState.ChooseMany =>
         val count = picks.size + many.options.count(_.state == "locked")
         many.summary.fold(s"$count chosen")(_.of(count))
-      case _ => draft.flatMap(_.picked.headOption).fold(
-        "Choose on the board.")(label)))
+      case _ => draft.flatMap(open => open.picked.headOption.map(label)
+        .orElse(Option.when(open.home.nonEmpty)(
+          BoardOptionViews.variantPrompt(open.homeOptions))))
+        .getOrElse("Choose on the board.")))
 
     // Decided already: a choose-many's locked options, a choose-one's answers
     // so far. Then what this draft holds.
@@ -49,6 +57,27 @@ private[frontend] object BoardDecisionPanel:
       chosen.foreach(option => rows.appendChild(row(query, option,
         label(option), locked = false)))
       panel.appendChild(rows)
+
+    // A home several options share asks which one in the panel: the
+    // table draws the home once, and its options differ by one word.
+    draft.filter(_.home.nonEmpty).foreach { open =>
+      val toggle = element("div", "board-decision-variants")
+      toggle.setAttribute("role", "group")
+      open.homeOptions.foreach { option =>
+        val choice = button(BoardOptionViews.variant(option),
+          "board-decision-variant")
+        choice.setAttribute("aria-pressed",
+          open.keys.contains(BoardOptionViews.key(option)).toString)
+        choice.disabled = !canControl || option.state != "available"
+        option.reason.foreach(choice.setAttribute("title", _))
+        choice.onclick = _ => controls.stage(Draft.Board(Some(
+          open.choose(option))))
+        toggle.appendChild(choice)
+        option.reason.foreach(reason => toggle.appendChild(
+          text("span", "board-decision-variant-reason", reason)))
+      }
+      panel.appendChild(toggle)
+    }
 
     query match
       case many: DecisionQueryState.ChooseMany => many.tallies.foreach { tally =>
@@ -102,11 +131,6 @@ private[frontend] object BoardDecisionPanel:
       clear.disabled = !canControl
       clear.onclick = _ => controls.stage(Draft.Board(draft.map(_.cleared)))
       panel.appendChild(clear)
-    // An optional choose-many confirms the empty selection, so Confirm needs
-    // a draft even before the first pick.
-    val current = draft.orElse(drafts.context.map(context =>
-      BoardSelectionDraft(context, decision.decisionId, query, Vector.empty)))
-    val blocked = BoardOptionViews.blocker(query, picks)
     val confirm = button("Confirm", "board-decision-confirm")
     confirm.disabled = !canControl || blocked.nonEmpty || current.isEmpty
     confirm.onclick = _ =>

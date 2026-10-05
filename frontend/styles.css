@@ -606,6 +606,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   justify-content: space-between; gap: 8px; margin: 0; padding: 3px 0;
   border-bottom: 1px dotted #40382c; font-size: 13px; }
 .board-decision-row.board-option-hover { background: #243442; }
+/* An open home's options: one word each, pressed when picked. */
+.board-decision-variants { display: flex; flex-wrap: wrap;
+  align-items: baseline; gap: 6px; margin: 6px 0; }
+.board-decision-variant[aria-pressed="true"] { border-color: #8ecbff;
+  background: #243442; }
+.board-decision-variant-reason { font-size: 0.85em; color: #b7a98f; }
 .board-decision-row-values { color: #c4b89f; text-align: right; }
 .board-decision-total b { color: #fff2d6; }
 .board-decision-total-over b { color: #e27f79; }

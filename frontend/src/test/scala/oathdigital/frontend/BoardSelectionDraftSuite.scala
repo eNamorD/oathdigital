@@ -115,3 +115,65 @@ class BoardSelectionDraftSuite extends munit.FunSuite:
       "campaign.targets", many, site("c")).keys, Vector("site:c"))
     assertEquals(BoardSelectionDraft.click(None, context,
       "campaign.targets", many, site("c")).keys, Vector("site:c"))
+
+  private def play(facing: String) = DecisionOptionState("adviser-play",
+    s"red:2:$facing", s"Adviser slot 3, $facing",
+    variant = Some(facing.capitalize))
+  private val faceup = play("faceup")
+  private val facedown = play("facedown")
+  private val placement = DecisionQueryState.ChooseOne(
+    Vector(site("a"), faceup, facedown), Some("Play Wayward Spirit"))
+
+  test("a click on a home two options share opens it with no pick, and " +
+      "Confirm waits for one"):
+    val opened = draft(placement).click(faceup)
+    assertEquals((opened.home, opened.keys),
+      (Some("adviser-slot:red:2"), Vector.empty))
+    assertEquals(opened.homeOptions, Vector(faceup, facedown))
+    assertEquals(opened.blocker, Some("Choose one: Faceup or Facedown."))
+    assertEquals(opened.command, None)
+    val chosen = opened.choose(facedown)
+    assertEquals(chosen.keys, Vector("adviser-play:red:2:facedown"))
+    assertEquals(chosen.command, Some(Intent.ResolveWalker("campaign.targets",
+      DecisionAnswerWire.ChooseOneWire("adviser-play", "red:2:facedown"))))
+
+  test("a home with one available option picks it at once, and a second " +
+      "click closes the home"):
+    val refused = faceup.copy(state = "unavailable",
+      reason = Some("Refused by a test power"))
+    val query = placement.copy(options = Vector(site("a"), refused, facedown))
+    val opened = draft(query).click(facedown)
+    assertEquals((opened.home, opened.keys),
+      (Some("adviser-slot:red:2"), Vector("adviser-play:red:2:facedown")))
+    assertEquals(opened.choose(refused).keys, opened.keys)
+    val closed = opened.click(facedown)
+    assertEquals((closed.home, closed.keys), (None, Vector.empty))
+
+  test("a click on another home closes the open one"):
+    val moved = draft(placement).click(faceup).choose(faceup).click(site("a"))
+    assertEquals((moved.home, moved.keys), (None, Vector("site:a")))
+
+  test("Clear closes the open home"):
+    val cleared = draft(placement).click(faceup).choose(faceup).cleared
+    assertEquals((cleared.home, cleared.keys), (None, Vector.empty))
+
+  test("the table draws a shared home once: available, then selected " +
+      "while open"):
+    val closed = BoardOptionViews.of(decision(placement), placement,
+      Some(draft(placement)))
+    assertEquals(closed.get("adviser-slot:red:2").map(_.state),
+      Some(OptionState.Available))
+    assertEquals(closed.contains("adviser-play:red:2:faceup"), false)
+    val open = BoardOptionViews.of(decision(placement), placement,
+      Some(draft(placement).click(faceup)))
+    assertEquals(open.get("adviser-slot:red:2").map(_.state),
+      Some(OptionState.Selected))
+
+  test("a shared home with no available option is unavailable with the " +
+      "first reason"):
+    val query = placement.copy(options = Vector(
+      faceup.copy(state = "unavailable", reason = Some("First reason")),
+      facedown.copy(state = "unavailable", reason = Some("Second reason"))))
+    assertEquals(BoardOptionViews.of(decision(query), query, None)
+      .get("adviser-slot:red:2").map(view => (view.state, view.reason)),
+      Some((OptionState.Unavailable, Some("First reason"))))

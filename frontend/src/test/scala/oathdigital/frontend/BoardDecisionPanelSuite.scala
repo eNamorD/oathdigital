@@ -20,6 +20,10 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
   private val table = TestProjections.actingProjection(players = Vector(red),
     world = Vector(GameRegion("cradle", Vector(site("plains"),
       site("hills"), site("marsh")))))
+    .copy(playerBoards = Vector(PlayerBoard("red", warbands = 0, favor = 0,
+      faceUpSecrets = 0, faceDownSecrets = 0, committedSecrets = 0,
+      totalSecrets = 0, supply = 0, pawnSiteId = None,
+      advisers = Vector.empty, relics = Vector.empty, revealedVision = None)))
   private def option(id: String) = DecisionOptionState("site", id, s"Site $id")
   private val origin = option("plains").copy(state = "locked")
   private val force = DecisionTallyState("Defending force", "warbands",
@@ -115,3 +119,69 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     assertEquals(toggle.textContent, "Cup")
     toggle.click()
     assertEquals(ui.drafts.board.map(_.keys), Some(Vector("relic:cup")))
+
+  private def play(facing: String) = DecisionOptionState("adviser-play",
+    s"red:2:$facing", s"Adviser slot 3, $facing",
+    variant = Some(facing.capitalize))
+  private val placement = DecisionQueryState.ChooseOne(
+    Vector(play("faceup"), play("facedown")), Some("Play Wayward Spirit"))
+  private val placing = WalkerDecisionState("search",
+    "cardplay.place.denizen.spirit", "decide", query = Some(placement),
+    presentation = "board")
+  private def open(query: DecisionQueryState.ChooseOne, keys: String*) =
+    Some(BoardSelectionDraft(context, "cardplay.place.denizen.spirit", query,
+      keys.toVector, Some("adviser-slot:red:2")))
+  private def variants(panel: dom.Element): Vector[dom.html.Button] =
+    all(panel, ".board-decision-variant").map(as[dom.html.Button](_))
+
+  test("an open home shows its options as a toggle with no default, and " +
+      "Confirm waits for one"):
+    val ui = new RecordingControls()
+    val panel = pane(ui, placement, placing, open(placement))
+    assertEquals(variants(panel).map(_.textContent), Vector("Faceup", "Facedown"))
+    assertEquals(variants(panel).map(_.getAttribute("aria-pressed")),
+      Vector("false", "false"))
+    assertEquals(one(panel, ".board-decision-summary").textContent,
+      "Choose one: Faceup or Facedown.")
+    assert(as[dom.html.Button](one(panel, ".board-decision-confirm")).disabled)
+    variants(panel)(1).click()
+    assertEquals(ui.drafts.board.map(_.keys),
+      Some(Vector("adviser-play:red:2:facedown")))
+
+  test("a picked facing is pressed, the summary is its label, and Confirm " +
+      "submits it"):
+    val ui = new RecordingControls()
+    val panel = pane(ui, placement, placing,
+      open(placement, "adviser-play:red:2:faceup"))
+    assertEquals(variants(panel).map(_.getAttribute("aria-pressed")),
+      Vector("true", "false"))
+    assertEquals(one(panel, ".board-decision-summary").textContent,
+      "Adviser slot 3, faceup")
+    as[dom.html.Button](one(panel, ".board-decision-confirm")).click()
+    assertEquals(ui.submitted, Vector(Intent.ResolveWalker(
+      "cardplay.place.denizen.spirit",
+      DecisionAnswerWire.ChooseOneWire("adviser-play", "red:2:faceup"))))
+
+  test("an unavailable facing is disabled and says why"):
+    val refused = DecisionQueryState.ChooseOne(Vector(
+      play("faceup").copy(state = "unavailable",
+        reason = Some("Refused by a test power")), play("facedown")),
+      Some("Play Wayward Spirit"))
+    val panel = pane(new RecordingControls(), refused,
+      placing.copy(query = Some(refused)),
+      open(refused, "adviser-play:red:2:facedown"))
+    assertEquals(variants(panel).map(_.disabled), Vector(true, false))
+    assertEquals(all(panel, ".board-decision-variant-reason")
+      .map(_.textContent), Vector("Refused by a test power"))
+
+  test("a Replace pick's summary is the sentence the projector wrote"):
+    val replace = DecisionOptionState("site-slot", "plains:0",
+      "Discard Tavern Songs; play Wayward Spirit here",
+      replaces = Some(CardDetails("songs", "denizen", "Tavern Songs")))
+    val query = DecisionQueryState.ChooseOne(Vector(replace),
+      Some("Play Wayward Spirit"))
+    val panel = pane(new RecordingControls(), query,
+      placing.copy(query = Some(query)), Some(BoardSelectionDraft(context,
+        "cardplay.place.denizen.spirit", query, Vector("site-slot:plains:0"))))
+    assertEquals(one(panel, ".board-decision-summary").textContent,
+      "Discard Tavern Songs; play Wayward Spirit here")
