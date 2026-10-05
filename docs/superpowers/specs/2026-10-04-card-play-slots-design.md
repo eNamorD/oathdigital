@@ -13,7 +13,7 @@ table; a card the play would discard is marked "Replace". One decision
 answers where the card goes and what it displaces. Powers that change card
 play (Homeland, People's Favor, Crop Rotation, Silver Tongue, Insomnia, Vow
 of Obedience, Sacred Ground) shape that one decision, and a power that
-refuses an option says why.
+refuses an option on the table says why.
 
 ## Rulings
 
@@ -30,9 +30,11 @@ refuses an option says why.
   stays disabled until a facing is set. When only one facing is legal it is
   preselected, and an unavailable facing shows disabled with its reason.
 - A faceup Vision goes to the revealed Vision spot, not an adviser slot. The
-  spot is marked "Replace" when a revealed Vision is there. A faceup
-  Conspiracy is offered there too, takes no slot and is never marked
-  "Replace".
+  spot is marked "Replace" when a revealed Vision is there.
+- A faceup Conspiracy takes no slot, so it is not a slot option: it is a
+  "Play" button in the Action panel, beside the discard pile on the board.
+  A Conspiracy from the hand may still be played facedown to an adviser
+  slot.
 - Discarding the played card instead is the discard pile of the next region
   (the region after the pawn's), lit as a board option.
 - Site discard permissions stack: Homeland, People's Favor and Crop Rotation
@@ -42,6 +44,8 @@ refuses an option says why.
 - Reasons: an option refused by a power or a printed protection shows its
   reason. An option excluded by a core game rule is not lit and has no
   reason (a Vision at a site slot, a full site with no discard permission).
+- An adviser limit lowered by Silver Tongue or Insomnia draws fewer adviser
+  slots; the missing slot is explanation enough and carries no reason.
 - Partition decisions (Search's keep and discard) keep their drag and drop.
 - Old in-progress journals are not migrated. Decision ids and button keys
   change freely.
@@ -59,7 +63,7 @@ refuses an option says why.
 | `SiteSlot(site, index)` | Slot `index` of `site`'s card row, `index` below the site's capacity. Occupied means Replace. | `site-slot` |
 | `AdviserSlot(owner, index)` | Widened: `index` below the printed adviser capacity (3), empty or occupied. Existing users (Hunger, Dream Thief, Ivory Eye, setup) keep naming occupied slots. | `adviser-slot` |
 | `AdviserPlay(owner, index, faceup)` | Play the card to adviser slot `index` with that facing. Occupied means Replace. | `adviser-play` |
-| `RevealedVision(owner)` | Play the Vision faceup as `owner`'s revealed Vision. Occupied means Replace. | `revealed-vision` |
+| `RevealedVision(owner)` | Play the Vision faceup as `owner`'s revealed Vision. Occupied means Replace. Not used for a Conspiracy. | `revealed-vision` |
 | `DiscardPile(region)` | Discard the played card to `region`'s discard. | `discard-pile` |
 
 `AdviserPlay` exists so that a choose-one answer, one ref, carries the facing.
@@ -88,16 +92,15 @@ the summary.
 `PlacementRules` becomes `CardPlayRules`, still contributed at window
 `SearchPlayAdviser` through `PlacementTree.adjust`:
 
-- `adviserLimit: Option[Limit]` and `faceupAdviserLimit: Option[Limit]`,
-  where `Limit(value, power, note)` records which power lowered it. Limits
-  only lower, so contributions compose in any order.
+- `adviserLimit: Int` and `faceupAdviserLimit: Int`, as today. Limits only
+  lower, so contributions compose in any order.
 - `siteDiscards: Vector[DiscardPermission]`, with
   `DiscardPermission(scope: AnySiteCard | Denizen, source, note)`. Homeland
   (a rule, keyed off the site's homeland suit) adds one; People's Favor (Mob)
   adds one; Crop Rotation adds one with scope `Denizen`.
 
 Silver Tongue and Insomnia stop appending a guard and lower the limit
-instead, with a note that becomes their reason.
+instead. They write no reason and no line, as today.
 
 ### Slot builder
 
@@ -109,11 +112,11 @@ From the card, its origin, the actor's state and `CardPlayRules` it builds:
      go to a site; each occupied slot whose card some permission covers,
      marked Replace (required when the site is full).
    - Adviser slots, for each legal facing: the first empty one below the
-     limit; when none is empty, each occupied slot, marked Replace. Slots
-     from the limit up to the printed capacity are `Unavailable` with the
-     limiting power's note. A play from a facedown adviser offers that
+     limit; when none is empty, each occupied slot, marked Replace. No slot
+     at or past the limit is offered. A play from a facedown adviser offers that
      card's own slot, faceup, and no other adviser slot.
-   - The revealed Vision spot, for a faceup Vision.
+   - The revealed Vision spot, for a faceup Vision other than Conspiracy.
+   - `Button("play")`, labelled "Play", for a faceup Conspiracy.
    - The discard pile.
 2. The facing rules from today's `legalChoices` and `planVision`: a Vision
    never goes to a site and goes faceup only to the revealed Vision spot; a
@@ -161,8 +164,8 @@ note. Gossip, Welcoming Party and the other hooks are unchanged.
   then the placement procedure.
 - **Play facedown adviser**: starts with the chosen card as today.
 - **Oracle**: unchanged, through the placement procedure.
-- **Conspiracy**: a faceup Conspiracy is the `RevealedVision` option and
-  takes no slot; its target decision is unchanged.
+- **Conspiracy**: a faceup Conspiracy is the "Play" button and takes no
+  slot; its target decision is unchanged.
 
 `LegalActionProjector.adviserPlacements` and the old `cardplay.replace.*`
 decision go away. `ActionLines` and `DetailLines` narrate the new decision
@@ -180,10 +183,9 @@ ids.
 | `discard-pile` | that region's "Discard" pile |
 
 Empty site slots gain their index. Player boards draw empty adviser
-placeholders up to the printed capacity of 3; a placeholder at or past the
-player's `adviserLimit` is drawn in the same way and, during a slot decision,
-shows as unavailable with the limiting power's reason. The revealed Vision
-spot is drawn empty when there is none.
+placeholders up to the player's `adviserLimit`, so a player under Silver
+Tongue or Insomnia has two adviser slots. The revealed Vision spot is drawn
+empty when there is none.
 
 ### Several options on one home
 
@@ -203,7 +205,8 @@ its corner. The inspect "i" stays on the card. The summary line reads
 
 The panel shows the card being played (`temporaryHandPreview`, with its
 inspect button), the summary line, the facing toggle when an adviser slot is
-selected, Clear and Confirm.
+selected, any Decide buttons (the faceup Conspiracy's "Play"), Clear and
+Confirm.
 
 ### Playing a facedown adviser
 
@@ -234,15 +237,17 @@ Two plans, each landing green.
 
 - Engine suites: `CardSlots` per case (empty and full site, Homeland,
   People's Favor, Crop Rotation's denizen scope, stacked permissions and
-  their matching, full advisers, Silver Tongue and Insomnia reasons, Vision
+  their matching, full advisers, Silver Tongue and Insomnia limits, Vision
   and revealed Vision, site-only denizens, facedown-adviser origin,
-  Conspiracy, Locked and active-modifier reasons); the follow-up discard; Vow
+  Conspiracy's "Play", Locked and active-modifier reasons); the follow-up
+  discard; Vow
   and Sacred Ground reasons on `AdviserPlay` and `RevealedVision`; the codecs
   round-trip every new ref; the log narrates plays and credited discards.
   Existing card play, Search, Oracle and power suites move to the new refs.
 - Frontend suites: the board-home rule for each new ref; several options on
   one home and the facing toggle; Confirm disabled until a facing is set;
-  the Replace badge and summary; empty adviser placeholders; the facedown
+  the Replace badge and summary; empty adviser placeholders up to the
+  limit; the facedown
   adviser board pick and Cancel.
 - Browser check on a scratch database server on port 8081, never the live
   database: a Search played to a site with Homeland, to advisers faceup and
