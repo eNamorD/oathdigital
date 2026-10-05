@@ -23,11 +23,11 @@ class GameLogDetailSuite extends munit.FunSuite:
         .mkString(", "))
     }
 
-  test("a Recover roll posts after its start line"):
+  test("a Recover roll posts after its tag"):
     // The roll sits between the spend it bought and the next choice.
     val all = lines(recoverFailed)
     assert(all.indexWhere(_.startsWith("Rolled ")) >
-      all.indexWhere(_.startsWith("Started Recover")), all)
+      all.indexWhere(_.startsWith("Recover −")), all)
 
   // Trade's favor is arranged in the first player's turn, before their
   // Rest, so its gain names the second player, whose turn it is not yet.

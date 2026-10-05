@@ -1,6 +1,6 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-0.3 action 1 challenge@0 | Started Challenge[cost:1 Supply]
+0.3 section 1 challenge@0 | Challenge[cost:1 Supply]
 7.0 action 1 challenge@0 | Took People's Favor from the bank with 2 favor
 13.0 action 1 place-banner-resource@9 | Placed 1 favor on People's Favor

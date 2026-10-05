@@ -1,6 +1,6 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-0.3 action 1 play-facedown-adviser@0 | Playing Facedown Adviser
+0.3 section 1 play-facedown-adviser@0 | Play facedown adviser
 2.0 action 1 play-facedown-adviser@0 | Played [card:133|Family Heirloom] as an adviser
 6.0 trigger 1 play-facedown-adviser@0 | [card:133|Family Heirloom]: [player:p1|p1] drew a Relic and kept it.

@@ -14,7 +14,7 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val script = search
     val mine = lines(script, Some(script.actor))
     val theirs = lines(script, Some(script.otherSeat))
-    assert(mine.exists(_.startsWith("Started Search")), mine)
+    assert(mine.exists(_.startsWith("Search −")), mine)
     val drew = lineStarting(mine, "Drew ")
     assert(drew.contains(" from the World Deck and kept "), drew)
     val seen = lineStarting(theirs, "Drew ")
@@ -23,48 +23,45 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val drawn = entryStarting(entries, "Drew ")
     assert(!drawn.spans.exists(_.isInstanceOf[LogSpan.Card]), drawn.spans)
 
-  test("Muster: the start line waits for the cost, then names the card"):
+  test("Muster: the tag waits for the cost, then names the card"):
     val script = muster
     val mine = lines(script, None)
-    val start = mine.indexWhere(_.startsWith("Started Muster"))
+    // Muster's printed cost: 1 Supply.
+    val start = mine.indexOf("Muster −1 Supply")
     val mustered = mine.indexWhere(_.startsWith("Mustered "))
     assert(start >= 0 && mustered > start, mine)
-    // Muster's printed cost: 1 Supply.
-    assert(mine(start).endsWith("−1 Supply"), mine(start))
     assert("^Mustered \\d+ warbands? with .+$".r.matches(mine(mustered)),
       mine(mustered))
 
-  test("Muster under Initiation Rite: the start line still waits for the " +
+  test("Muster under Initiation Rite: the tag still waits for the " +
       "cost, which places a secret, and shows only the Supply"):
     val script = initiatedMuster
     val mine = lines(script, None)
-    val start = mine.indexWhere(_.startsWith("Started Muster"))
+    // Muster's printed cost: 1 Supply.
+    val start = mine.indexOf("Muster −1 Supply")
     val mustered = mine.indexWhere(_.startsWith("Mustered "))
     assert(start >= 0 && mustered > start, mine)
-    // Muster's printed cost: 1 Supply.
-    assert(mine(start).endsWith("−1 Supply"), mine(start))
 
-  test("Trade: the start line waits for the cost, then says what it bought"):
+  test("Trade: the tag waits for the cost, then says what it bought"):
     val script = trade
     val mine = lines(script, None)
-    assert(mine.exists(_.startsWith("Started Trade")), mine)
+    assert(mine.exists(_.startsWith("Trade −")), mine)
     assert(mine.exists(line => "^Traded with .+ for (no|\\d+) secrets?$".r
       .matches(line)), mine)
 
-  test("Take Wealth: one line naming the site, and no start line"):
+  test("Take Wealth: one line naming the site, and no tag"):
     val script = takeWealth
     val mine = lines(script, None)
     // The take-wealth script lays one favor at p2's site.
     assert(mine.exists(line => line.startsWith("Took 1 favor from ")), mine)
-    assert(!mine.exists(_.startsWith("Started")), mine)
+    assert(!format(script, None).exists(_.kind == LogKind.Section))
 
-  test("a failed Recover: start line, one continued spend, then the failure"):
+  test("a failed Recover: tag, one continued spend, then the failure"):
     val script = recoverFailed
     val mine = lines(script, None)
     // Recover's printed cost, paid again for the one continue: 1 Supply.
-    assert(mine.exists(line => line.startsWith("Started Recover") &&
-      line.endsWith("−1 Supply")), mine)
-    assertEquals(mine.count(_ == "Continued Recover −1 Supply"), 1, mine)
+    assert(mine.contains("Recover −1 Supply"), mine)
+    assertEquals(mine.count(_ == "Continued −1 Supply"), 1, mine)
     assert(mine.last.startsWith("Failed to recover at "), mine)
 
   test("a successful Recover names the relic to the recoverer only"):
@@ -80,7 +77,7 @@ class GameLogActionLineSuite extends munit.FunSuite:
   test("Forge: the payment, then the relic, named to the forger"):
     val script = forge
     val mine = lines(script, Some(script.actor))
-    val start = mine.lastIndexWhere(_.startsWith("Started Forge"))
+    val start = mine.lastIndexWhere(_.startsWith("Forge −"))
     assert(start >= 0, mine)
     assert(mine.drop(start).exists(_.startsWith("Placed ")), mine)
     val forged = format(script, Some(script.actor))
@@ -88,18 +85,18 @@ class GameLogActionLineSuite extends munit.FunSuite:
     assert(forged.spans.exists(_.isInstanceOf[LogSpan.Card]), forged.spans)
     assert(lines(script, Some(script.otherSeat)).contains("Forged a Relic"))
 
-  test("Campaign: a start line naming kind and defender, and the winner"):
+  test("Campaign: a tag, a line naming kind and defender, and the winner"):
     val all = lines(raid, None)
-    val start = all.indexWhere(_.startsWith("Started Campaign: "))
+    val start = all.indexWhere(_.startsWith("Campaign −"))
     val wins = all.indexWhere(line => line.endsWith(" wins!") ||
       line == "The bandits win!")
     assert(start >= 0 && wins > start, all)
-    assert("^Started Campaign: (Raid|Conquest) against .+$".r
-      .findPrefixOf(all(start)).nonEmpty, all(start))
+    assert("^(Raid|Conquest) against .+$".r.matches(all(start + 1)),
+      all(start + 1))
 
   test("Challenge takes the banner from the bank; Place Banner Resource names the amount"):
     val all = lines(banners, None)
-    assert(all.exists(_.startsWith("Started Challenge")), all)
+    assert(all.exists(_.startsWith("Challenge")), all)
     assert(all.exists(line => "^Took .+ from the bank with \\d+ (favor|secrets?)$"
       .r.matches(line)), all)
     assert(all.exists(line => "^Placed \\d+ (favor|secrets?) on .+$".r

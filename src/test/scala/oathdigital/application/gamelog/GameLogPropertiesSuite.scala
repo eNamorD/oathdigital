@@ -46,6 +46,33 @@ class GameLogPropertiesSuite extends munit.FunSuite:
       assert(headlines.forall(_.section.isEmpty), script.name)
     }
 
+  private val tagged = Set("search", "play-facedown-adviser", "recover",
+    "forge", "travel", "muster", "trade", "challenge", "campaign")
+
+  test("an action with a tag opens with it, once; no other action has one"):
+    scripts.foreach { script =>
+      val entries = formatter.format(script.history.steps, None)
+      entries.flatMap(_.section).distinct.foreach { section =>
+        val own = entries.filter(_.section.contains(section))
+        val tags = own.filter(_.kind == LogKind.Section)
+        if tagged(section.action) then
+          // A run that opens with no tag yet (a Muster still choosing its
+          // source) has none; a run that has one shows it first.
+          assert(tags.size <= 1, s"${script.name}: $tags")
+          tags.headOption.foreach(tag => assertEquals(own.head, tag,
+            s"${script.name}: a line came before the ${section.action} tag"))
+        else assertEquals(tags, Vector.empty, script.name)
+      }
+    }
+
+  test("no line still reads as a start line"):
+    scripts.foreach { script =>
+      val all = texts(formatter.format(script.history.steps, None))
+      assert(!all.exists(line => line.startsWith("Started ") ||
+        line.startsWith("Playing Facedown") ||
+        line.startsWith("Continued Recover")), s"${script.name}: $all")
+    }
+
   /** A line judges a card at the operation that moved it, which may lie
     * earlier in the same walker run than the event posting the line (a
     * Campaign's losses post at completion). The states a card may be

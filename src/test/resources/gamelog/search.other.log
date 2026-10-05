@@ -1,7 +1,7 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-0.3 action 1 search@0 | Started Search[cost:2 Supply]
+0.3 section 1 search@0 | Search[cost:2 Supply]
 3.0 action 1 search@0 | Drew 3 Denizens from the World Deck and kept a Denizen
 4.0 delta 1 search@0 | Discarded 2 Denizens to the Provinces discard
 7.0 action 1 search@0 | Discarded a Denizen to the Provinces discard

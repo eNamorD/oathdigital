@@ -20,7 +20,7 @@ class GameLogExchangeSuite extends munit.FunSuite:
     val all = lines(script)
     assertEquals(all.count(_.startsWith("Negotiation ended by ")), 1, all)
     assert(!all.exists(_.startsWith("Negotiated with ")), all)
-    assert(!all.exists(_.startsWith("Started")), all)
+    assert(!format(script, None).exists(_.kind == LogKind.Section))
 
   test("an agreed negotiation names the other negotiators once"):
     val script = negotiationAgreed

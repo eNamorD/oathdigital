@@ -6,9 +6,11 @@ import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
 import oathdigital.model._
 import LogSpan.Text
 
-/** The line that opens every action that can take modifiers (spec, "Start
-  * lines"): its opening words, the modifiers the player chose, and the Supply
-  * the action has spent by the end of the start line's segment.
+/** The tag that opens every action that can take modifiers (log action
+  * sections design, "The tag entry"): the action's name and the Supply it
+  * has spent by the end of the tag's segment, then, when there is more to
+  * say, one line with a Campaign's kind and defender and the modifiers the
+  * player chose.
   *
   * `resolutions` is each walker power's resolution: a power that resolves
   * automatically is not a choice, so it is not named.
@@ -17,10 +19,17 @@ private[gamelog] final class StartLines(words: LogWords,
     resolutions: Map[PowerId, PowerResolution]):
 
   def start(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Option[Posted] =
-    if run.started.nonEmpty then None
-    else opening(journal, run, at).map(spans => Posted.line(LogKind.Action,
-      spans ++ modifiers(journal, run, at, viewer) ++ cost(journal, run, at)))
+      viewer: Option[PlayerId]): Vector[Posted] =
+    if run.started.nonEmpty then Vector.empty
+    else opening(journal, run, at).toVector.flatMap { (named, said) =>
+      val chosen = modifiers(journal, run, at, viewer)
+      val line =
+        if said.isEmpty then Option.when(chosen.nonEmpty)(Text("With ") +: chosen)
+        else Some(said ++ (if chosen.isEmpty then Vector.empty
+          else Text(" with ") +: chosen))
+      Posted.line(LogKind.Section, Text(named) +: cost(journal, run, at)) +:
+        line.toVector.map(Posted.line(LogKind.Action, _))
+    }
 
   /** Recover spends Supply again each time the player continues rolling. */
   def continued(journal: LogJournal, run: Run, at: Int): Option[Posted] =
@@ -29,42 +38,42 @@ private[gamelog] final class StartLines(words: LogWords,
           if run.started.exists(_ != journal.segmentEnd(at)) =>
         val spent = journal.supplySpent(at, run.actor)
         Option.when(spent > 0)(Posted.line(LogKind.Action,
-          Vector(Text("Continued Recover"), LogSpan.Cost(spent, "Supply"))))
+          Vector(Text("Continued"), LogSpan.Cost(spent, "Supply"))))
       case _ => None
 
-  /** The opening words, but only at the start line's anchor: the run's
-    * first event, except Muster and Trade (their cost step, after the source
-    * decision) and Campaign (the first event by which kind and defender are
-    * both settled). */
+  /** The tag's name and what its line says beyond the modifiers, but only at
+    * the tag's anchor: the run's first event, except Muster and Trade (their
+    * cost step, after the source decision) and Campaign (the first event by
+    * which kind and defender are both settled). */
   private def opening(journal: LogJournal, run: Run, at: Int)
-      : Option[Vector[LogSpan]] =
+      : Option[(String, Vector[LogSpan])] =
     val completing = journal.event(at).isInstanceOf[WalkerCompleted]
     run.procedure match
-      case ActionRef.Campaign => campaign(journal, run, at)
+      case ActionRef.Campaign =>
+        campaign(journal, run, at).map(said => ("Campaign", said))
       case ActionRef.Muster | ActionRef.Trade =>
-        title(run.procedure).filter(_ =>
-          paysCost(journal, run, at) || completing).map(t => Vector(Text(t)))
+        name(run.procedure).filter(_ =>
+          paysCost(journal, run, at) || completing)
+          .map(named => (named, Vector.empty))
       case other =>
-        title(other).filter(_ => at == run.first).map(t => Vector(Text(t)))
+        name(other).filter(_ => at == run.first)
+          .map(named => (named, Vector.empty))
 
-  /** Whether `procedure` opens with a start line, so its power lines wait
-    * for it. */
-  def opens(procedure: ProcedureRef): Boolean =
-    procedure == ActionRef.Campaign || title(procedure).nonEmpty
+  /** Whether `procedure` opens with a tag, so its power lines wait for it. */
+  def opens(procedure: ProcedureRef): Boolean = name(procedure).nonEmpty
 
-  private def title(procedure: ProcedureRef): Option[String] =
+  private def name(procedure: ProcedureRef): Option[String] =
     procedure match
-      case ActionRef.Search => Some("Started Search")
-      case ActionRef.PlayFacedownAdviser => Some("Playing Facedown Adviser")
-      case ActionRef.Recover => Some("Started Recover")
-      case ActionRef.Forge => Some("Started Forge")
-      case ActionRef.Travel => Some("Started Travel")
-      case ActionRef.Muster => Some("Started Muster")
-      case ActionRef.Trade => Some("Started Trade")
-      case ActionRef.Challenge => Some("Started Challenge")
-      // Built from its kind and defender by `campaign`.
-      case ActionRef.Campaign => None
-      // No modifier window, so no start line.
+      case ActionRef.Search => Some("Search")
+      case ActionRef.PlayFacedownAdviser => Some("Play facedown adviser")
+      case ActionRef.Recover => Some("Recover")
+      case ActionRef.Forge => Some("Forge")
+      case ActionRef.Travel => Some("Travel")
+      case ActionRef.Muster => Some("Muster")
+      case ActionRef.Trade => Some("Trade")
+      case ActionRef.Challenge => Some("Challenge")
+      case ActionRef.Campaign => Some("Campaign")
+      // No modifier window, so no tag.
       case ActionRef.TakeWealth | ActionRef.PlaceBannerResource |
           ActionRef.Negotiation | _: ActionRef.UsePower => None
       case _: PhaseTransitionRef | _: TriggeredProcedureRef => None
@@ -100,9 +109,9 @@ private[gamelog] final class StartLines(words: LogWords,
       case CampaignKind.Conquest => "Conquest"
     defender match
       case CampaignDefender.Bandits =>
-        Vector(Text(s"Started Campaign: $named against the bandits"))
+        Vector(Text(s"$named against the bandits"))
       case CampaignDefender.Player(player) =>
-        Vector(Text(s"Started Campaign: $named against "), words.player(player))
+        Vector(Text(s"$named against "), words.player(player))
 
   /** The player's selection as a parked run records it, or, for a run that
     * never parked, the powers its steps record as contributing; automatic
@@ -119,7 +128,7 @@ private[gamelog] final class StartLines(words: LogWords,
     val shown = chosen.filterNot(id =>
       resolutions.get(id).contains(PowerResolution.Automatic))
     journal.readyBefore(run.first).filter(_ => shown.nonEmpty)
-      .fold(Vector.empty[LogSpan])(ready => Text(" with ") +: LogWords.join(
+      .fold(Vector.empty[LogSpan])(ready => LogWords.join(
         shown.map(id => words.power(ready, run.actor, id, viewer))))
 
   private def cost(journal: LogJournal, run: Run, at: Int): Vector[LogSpan] =

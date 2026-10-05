@@ -22,6 +22,9 @@ enum LogKind(val key: String):
   case Turn extends LogKind("turn")
   /** Wake, Act or Rest, under its turn's headline. */
   case Phase extends LogKind("phase")
+  /** The tag that opens an action's band: its name and the Supply it spent
+    * (log action sections design, "The tag entry"). */
+  case Section extends LogKind("section")
   case Action extends LogKind("action")
   case Decision extends LogKind("decision")
   case Roll extends LogKind("roll")

@@ -290,7 +290,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val noted = inserted(steps, opened,
       saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor)))
     val all = lines(noted)
-    val start = all.indexWhere(_.startsWith("Started Campaign"))
+    val start = all.indexWhere(_.startsWith("Raid against "))
     assert(start >= 0, all)
     // Silver Tongue is not at hand in this game, so the log shows its back.
     assertEquals(all.indexWhere(_.endsWith(" said 2 favor.")), start + 1, all)

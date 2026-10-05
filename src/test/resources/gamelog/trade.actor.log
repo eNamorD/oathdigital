@@ -7,5 +7,5 @@
 3.1 phase 0 | Wake
 5.0 action 1 | Nothing happened in Wake
 5.1 phase 0 | Act
-9.0 action 1 trade@7 | Started Trade[cost:1 Supply]
+9.0 section 1 trade@7 | Trade[cost:1 Supply]
 12.0 action 1 trade@7 | Traded with [card:E26|Hiding Place] for no secrets

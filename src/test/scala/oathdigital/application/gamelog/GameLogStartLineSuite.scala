@@ -9,15 +9,20 @@ class GameLogStartLineSuite extends munit.FunSuite:
   private def lines(entries: Vector[LogEntry]): Vector[String] =
     texts(entries.filter(_.depth == 1))
 
-  test("Travel opens with its start line and cost, then says where it went"):
+  test("Travel opens with its tag and cost, then says where it went"):
     val script = round
     val entries = format(script, Some(script.actor))
-    val start = entryStarting(entries, "Started Travel")
-    val travelled = entryStarting(entries, "Travelled to ")
-    assert(start.sequence < travelled.sequence)
-    val cost = start.spans.collect { case cost: LogSpan.Cost => cost }
+    val tag = entries.find(_.kind == LogKind.Section).getOrElse(
+      fail(s"no tag in ${texts(entries)}"))
+    assertEquals(tag.spans.head, LogSpan.Text("Travel"))
+    // A tag with no modifiers has no line of its own: the action's line
+    // follows it.
+    val travelled = entries(entries.indexOf(tag) + 1)
+    assert(text(travelled).startsWith("Travelled to "), text(travelled))
+    assertEquals(travelled.section, tag.section)
+    val cost = tag.spans.collect { case cost: LogSpan.Cost => cost }
     assertEquals(cost.size, 1)
-    val spentAt = start.sequence.toInt
+    val spentAt = tag.sequence.toInt
     def supplyAfter(index: Int) =
       Look(script.history.steps(index).after).supply(script.actor)
     assertEquals(cost.head.value,
@@ -25,7 +30,6 @@ class GameLogStartLineSuite extends munit.FunSuite:
     assertEquals(cost.head.unit, "Supply")
     val destination = travelled.spans.collect { case site: LogSpan.Site => site }
     assertEquals(destination.size, 1)
-    assertEquals(start.kind, LogKind.Action)
 
   test("the first player's Finish Rest reports the supply it restored"):
     val script = round
@@ -58,13 +62,27 @@ class GameLogStartLineSuite extends munit.FunSuite:
     assertEquals(named.size, 1, passed.head.spans)
     assert(Set(p1.value, p2.value)(named.head), passed.head.spans)
 
-  test("a start line without modifiers has no 'with' clause"):
-    val start = lineStarting(texts(format(round, None)), "Started Travel")
-    assert(!start.contains(" with "), start)
-
-  test("a chosen modifier is named on the start line by its card"):
-    val script = augury
-    val start = lineStarting(texts(format(script, None)), "Started Search")
-    assert(start.startsWith("Started Search with Augury"), start)
+  test("a chosen modifier follows the tag as a line of its own"):
+    val entries = format(augury, None)
+    val tag = entryStarting(entries, "Search")
+    assertEquals(tag.kind, LogKind.Section)
     // Search's printed cost; Augury, a free modifier, adds nothing.
-    assert(start.endsWith("−2 Supply"), start)
+    assertEquals(text(tag), "Search −2 Supply")
+    val chosen = entries(entries.indexOf(tag) + 1)
+    assertEquals(text(chosen), "With Augury")
+    assertEquals(chosen.kind, LogKind.Action)
+    assertEquals(chosen.section, tag.section)
+
+  test("a Campaign's kind and defender follow its tag"):
+    val entries = format(raid, None)
+    val tag = entryStarting(entries, "Campaign")
+    assertEquals(tag.kind, LogKind.Section)
+    assertEquals(text(tag), "Campaign −2 Supply")
+    // The raid script's p1 raids p2.
+    assertEquals(text(entries(entries.indexOf(tag) + 1)),
+      s"Raid against ${playerLabel(p2)}")
+
+  test("playing a facedown adviser costs nothing, so its tag is its name"):
+    val tag = entryStarting(format(facedownAdviser, None), "Play facedown")
+    assertEquals(tag.kind, LogKind.Section)
+    assertEquals(tag.spans, Vector[LogSpan](LogSpan.Text("Play facedown adviser")))

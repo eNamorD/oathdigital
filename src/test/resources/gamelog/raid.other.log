@@ -1,7 +1,8 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-2.0 action 1 campaign@0 | Started Campaign: Raid against [player:p2|p2][cost:2 Supply]
+2.0 section 1 campaign@0 | Campaign[cost:2 Supply]
+2.1 action 1 campaign@0 | Raid against [player:p2|p2]
 4.0 decision 1 campaign@0 | Targets: [player:p2|p2]'s pawn
 4.1 delta 1 campaign@0 | Attack Pool: 3, Defense Pool: 2
 6.0 roll 1 campaign@0 | Rolled [dice:attack one-sword one-sword one-sword|sword, sword, sword] for the attack

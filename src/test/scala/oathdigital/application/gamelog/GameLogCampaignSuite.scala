@@ -19,7 +19,8 @@ class GameLogCampaignSuite extends munit.FunSuite:
     // The raid script's p1 raids p2, who shares its site.
     val defender = p2
     val expected = Vector(
-      s"Started Campaign: Raid against ${playerLabel(defender)}",
+      "Campaign −",
+      s"Raid against ${playerLabel(defender)}",
       s"Targets: ${playerLabel(defender)}'s pawn",
       "Attack Pool: ",
       "Rolled ",

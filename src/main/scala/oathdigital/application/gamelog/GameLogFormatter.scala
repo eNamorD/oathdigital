@@ -123,7 +123,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         val begun = if start.isEmpty then run
           else run.copy(started = Some(journal.segmentEnd(at)))
         val section = LogSections.forRun(journal, begun)
-        val lines = start.toVector ++
+        val lines = start ++
           (if start.isEmpty then Vector.empty
             else notes.held(journal, begun, at, viewer)) ++
           starts.continued(journal, begun, at).toVector ++
