@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-02T09:05:21Z",
+  "generatedAt": "2026-10-05T21:33:55Z",
   "title": "Design System: Oath Digital",
   "extensions": {
     "colorMeta": {
@@ -383,6 +383,51 @@
         "role": "tertiary",
         "displayName": "Bandit Forces",
         "canonical": "#d7ed72"
+      },
+      "band-campaign": {
+        "role": "secondary",
+        "displayName": "Campaign Rose",
+        "canonical": "#d47c74"
+      },
+      "band-muster": {
+        "role": "secondary",
+        "displayName": "Muster Ochre",
+        "canonical": "#c2b25c"
+      },
+      "band-challenge": {
+        "role": "secondary",
+        "displayName": "Challenge Amber",
+        "canonical": "#c99a62"
+      },
+      "band-travel": {
+        "role": "secondary",
+        "displayName": "Travel Sea Green",
+        "canonical": "#7fb0a8"
+      },
+      "band-search": {
+        "role": "secondary",
+        "displayName": "Search Mauve",
+        "canonical": "#b88aae"
+      },
+      "band-trade": {
+        "role": "secondary",
+        "displayName": "Trade Sage",
+        "canonical": "#94b58a"
+      },
+      "band-recover": {
+        "role": "secondary",
+        "displayName": "Recover Lavender",
+        "canonical": "#9f8fc0"
+      },
+      "band-forge": {
+        "role": "secondary",
+        "displayName": "Forge Steel",
+        "canonical": "#8fa3bd"
+      },
+      "band-neutral": {
+        "role": "secondary",
+        "displayName": "Neutral Band",
+        "canonical": "#b8ab92"
       }
     },
     "typographyMeta": {
@@ -465,9 +510,9 @@
       "name": "Game Log",
       "kind": "custom",
       "refersTo": "pane-heading",
-      "description": "The Log pane's list: headlines for rounds, turns and phases, every other line one gutter in, with the reader's divider and a spent cost in Ink Spent.",
-      "html": "<ol class=\"ds-log\" role=\"log\"><li class=\"ds-log-headline ds-log-round\">Round 3</li><li class=\"ds-log-headline ds-log-turn\"><span class=\"ds-log-player\">White</span>'s turn</li><li class=\"ds-log-headline ds-log-phase\">Act</li><li class=\"ds-log-line\">Started Campaign: Conquest against the bandits<span class=\"ds-log-cost\">−2 Supply</span></li><li class=\"ds-log-divider\">Since you last looked</li><li class=\"ds-log-line\">Placed 1 warband on <span class=\"ds-log-site\">Ancient City</span></li><li class=\"ds-log-line\">Drew <span class=\"ds-log-card\">Town Meeting</span> and <span class=\"ds-log-card\">Old Songs</span> from the World Deck and kept <span class=\"ds-log-card\">Town Meeting</span></li></ol>",
-      "css": ".ds-log { list-style: none; margin: 0; padding: 12px; width: 26rem; background: #211f1b; font-family: Atkinson Hyperlegible Next, ui-sans-serif, system-ui, sans-serif; font-size: 13px; line-height: 1.45; color: #f5ecd7; } .ds-log-headline { font-weight: 700; margin-top: 6px; } .ds-log-headline:first-child { margin-top: 0; } .ds-log-round { color: #9ed59e; } .ds-log-player { color: #ffffff; text-decoration: underline; } .ds-log-phase { margin-top: 3px; padding-left: 6px; font-weight: 700; font-size: max(0.92em, 11px); color: #d5bd8f; } .ds-log-line { padding-left: 22px; text-indent: -10px; color: #a99f8c; } .ds-log-card, .ds-log-site { color: #f5ecd7; } .ds-log-cost { margin-left: 0.5em; color: #928876; } .ds-log-divider { display: flex; align-items: center; gap: 8px; margin: 6px 0; color: #d5bd8f; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; } .ds-log-divider::before, .ds-log-divider::after { content: \"\"; flex: 1 1 0; border-top: 1px solid #7c694b; }"
+      "description": "The Log pane's list: headlines for rounds, turns and phases, every other line one gutter in; the lines of one action sit on a band in its color, opened by a tag with the action's name and cost, and the reader's divider splits a band in two.",
+      "html": "<ol class=\"ds-log\" role=\"log\"><li class=\"ds-log-headline ds-log-round\">Round 3</li><li class=\"ds-log-headline ds-log-turn\"><span class=\"ds-log-player\">White</span>'s turn</li><li class=\"ds-log-headline ds-log-phase\">Act</li><li class=\"ds-log-line ds-log-tag ds-band ds-band-campaign ds-band-start\">Campaign<span class=\"ds-log-cost\">−2 Supply</span></li><li class=\"ds-log-line ds-band ds-band-campaign\">Raid against the bandits at <span class=\"ds-log-site\">Deep Woods</span> with <span class=\"ds-log-card\">Conquest</span></li><li class=\"ds-log-line ds-band ds-band-campaign ds-band-end\">Rolled attack <span class=\"ds-dice\"><span class=\"ds-die ds-die-attack\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12 1 16 6v8H8V6zM5 14h14v3H5zm5.5 3h3v6h-3z\"/></svg></span><span class=\"ds-die ds-die-attack ds-die-blank\"></span></span></li><li class=\"ds-log-divider\">Since you last looked</li><li class=\"ds-log-line ds-log-tag ds-band ds-band-search ds-band-start\">Search<span class=\"ds-log-cost\">−1 Supply</span></li><li class=\"ds-log-line ds-band ds-band-search ds-band-end\">Drew <span class=\"ds-log-card\">Town Meeting</span> and <span class=\"ds-log-card\">Old Songs</span> and kept <span class=\"ds-log-card\">Town Meeting</span></li><li class=\"ds-log-line\">Took 2 Favor</li></ol>",
+      "css": ".ds-log { list-style: none; margin: 0; padding: 12px; width: 26rem; background: #211f1b; font-family: Atkinson Hyperlegible Next, ui-sans-serif, system-ui, sans-serif; font-size: 13px; line-height: 1.45; color: #f5ecd7; } .ds-log-headline { font-weight: 700; margin-top: 6px; } .ds-log-headline:first-child { margin-top: 0; } .ds-log-round { color: #9ed59e; } .ds-log-player { color: #ffffff; text-decoration: underline; } .ds-log-phase { margin-top: 3px; padding-left: 6px; font-weight: 700; font-size: max(0.92em, 11px); color: #d5bd8f; } .ds-log-line { padding-left: 22px; text-indent: -10px; color: #a99f8c; } .ds-log-card, .ds-log-site { color: #f5ecd7; } .ds-log-cost { margin-left: 0.5em; color: #928876; } .ds-band { --band: #b8ab92; --band-fill: 6%; --band-edge: 20%; padding-right: 6px; background: color-mix(in srgb, var(--band) var(--band-fill), #211f1b); border: 0 solid color-mix(in srgb, var(--band) var(--band-edge), #211f1b); border-width: 0 1px; } .ds-band-campaign, .ds-band-search { --band-fill: 9%; --band-edge: 28%; } .ds-band-campaign { --band: #d47c74; } .ds-band-search { --band: #b88aae; } .ds-band-start { margin-top: 4px; padding-top: 2px; border-top-width: 1px; border-top-left-radius: 4px; border-top-right-radius: 4px; } .ds-band-end { margin-bottom: 4px; padding-bottom: 2px; border-bottom-width: 1px; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; } .ds-band .ds-log-cost { color: #a99f8c; } .ds-log-tag { color: var(--band); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; } .ds-log-tag .ds-log-cost { margin-left: .6em; font-size: 12px; font-weight: 400; letter-spacing: normal; text-transform: none; } .ds-log-divider { display: flex; align-items: center; gap: 8px; margin: 6px 0; color: #d5bd8f; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; } .ds-log-divider::before, .ds-log-divider::after { content: \"\"; flex: 1 1 0; border-top: 1px solid #7c694b; } .ds-dice { display: inline-flex; gap: 0.25em; vertical-align: top; text-indent: 0; } .ds-die { display: inline-flex; align-items: center; justify-content: center; min-width: 1.9em; height: 1.5em; border: 1px solid #7c694b; border-radius: 0.25em; background: #17140f; color: #d8cdb4; font-size: 0.9em; } .ds-die .ds-glyph { width: 1.1em; height: 1.1em; } .ds-die-attack { --die: #c0392b; color: #fff2d6; background: var(--die); border-color: color-mix(in srgb, var(--die) 70%, #fff2d6); } .ds-die-blank.ds-die-attack { border-style: dashed; background: color-mix(in srgb, var(--die) 25%, #17140f); border-color: var(--die); }"
     },
     {
       "name": "Action Button",
@@ -513,9 +558,9 @@
       "name": "Die Faces",
       "kind": "custom",
       "refersTo": "die-face",
-      "description": "Rolled dice as face-shaped chips; a blank face is an empty dashed chip.",
-      "html": "<span class=\"ds-dice\"><span class=\"ds-die\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12 1 14.5 5v9h-5V5zM6 14h12v2.5H6zm4.75 2.5h2.5V23h-2.5z\"/></svg></span><span class=\"ds-die\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12 2a8 8 0 0 0-8 8v4l2 2v4h3v-3h6v3h3v-4l2-2v-4a8 8 0 0 0-8-8zM8.5 9.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4z\"/></svg></span><span class=\"ds-die\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12 2 3 5v7c0 5.2 3.8 9.4 9 11 5.2-1.6 9-5.8 9-11V5zm0 2.3 7 2.3V12c0 4-2.8 7.4-7 8.9-4.2-1.5-7-4.9-7-8.9V6.6z\"/></svg></span><span class=\"ds-die ds-die-blank\"></span></span>",
-      "css": ".ds-dice { display: inline-flex; flex-wrap: wrap; gap: 0.25em; font-family: Atkinson Hyperlegible Next, ui-sans-serif, system-ui, sans-serif; } .ds-die { display: inline-flex; align-items: center; justify-content: center; gap: 0.05em; min-width: 1.9em; height: 1.5em; padding: 0 0.25em; border: 1px solid #7c694b; border-radius: 0.25em; background: #17140f; color: #d8cdb4; font-size: 0.9em; font-weight: 700; line-height: 1; } .ds-die .ds-glyph { display: inline-block; width: 1.1em; height: 1.1em; } .ds-die-blank { border-style: dashed; border-color: #5d5144; }"
+      "description": "Rolled dice as face-shaped chips: neutral when the die is unknown, filled in Attack red or Defense blue when it is known, with Bright Cream symbols; a blank face is an empty dashed chip.",
+      "html": "<span class=\"ds-dice-rows\"><span class=\"ds-dice\"><span class=\"ds-die\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M12 1 16 6v8H8V6zM5 14h14v3H5zm5.5 3h3v6h-3z\"/></svg></span><span class=\"ds-die\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M12 1 16 6v8H8V6zm0 3.4L10 7v5h4V7zM4.5 14h15v4h-15zm1.8 1.4v1.2h11.4v-1.2zM10 18h4v5h-4zm1.4 1.2v2.6h1.2v-2.6z\"/></svg></span><span class=\"ds-die\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M12 2a8 8 0 0 0-8 8v4l2 2v4h3v-3h6v3h3v-4l2-2v-4a8 8 0 0 0-8-8zM8.5 9.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4z\"/></svg></span><span class=\"ds-die ds-die-blank\"></span></span><span class=\"ds-dice\"><span class=\"ds-die ds-die-attack\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M12 1 16 6v8H8V6zM5 14h14v3H5zm5.5 3h3v6h-3z\"/></svg></span><span class=\"ds-die ds-die-attack\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M12 1 16 6v8H8V6zm0 3.4L10 7v5h4V7zM4.5 14h15v4h-15zm1.8 1.4v1.2h11.4v-1.2zM10 18h4v5h-4zm1.4 1.2v2.6h1.2v-2.6z\"/></svg></span><span class=\"ds-die ds-die-attack\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M12 2a8 8 0 0 0-8 8v4l2 2v4h3v-3h6v3h3v-4l2-2v-4a8 8 0 0 0-8-8zM8.5 9.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4z\"/></svg></span><span class=\"ds-die ds-die-attack ds-die-blank\"></span></span><span class=\"ds-dice\"><span class=\"ds-die ds-die-defense\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M12 2 3 5v7c0 5.2 3.8 9.4 9 11 5.2-1.6 9-5.8 9-11V5zm0 2.3 7 2.3V12c0 4-2.8 7.4-7 8.9-4.2-1.5-7-4.9-7-8.9V6.6z\"/></svg></span><span class=\"ds-die ds-die-defense\"><svg class=\"ds-glyph\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M12 2 3 5v7c0 5.2 3.8 9.4 9 11 5.2-1.6 9-5.8 9-11V5zm0 2.3 7 2.3V12c0 4-2.8 7.4-7 8.9-4.2-1.5-7-4.9-7-8.9V6.6z\"/></svg></span><span class=\"ds-die ds-die-defense ds-die-blank\"></span></span></span>",
+      "css": ".ds-dice-rows { display: flex; flex-direction: column; gap: 8px; } .ds-dice { display: inline-flex; flex-wrap: wrap; gap: 0.25em; font-family: Atkinson Hyperlegible Next, ui-sans-serif, system-ui, sans-serif; } .ds-die { display: inline-flex; align-items: center; justify-content: center; gap: 0.05em; min-width: 1.9em; height: 1.5em; padding: 0 0.25em; border: 1px solid #7c694b; border-radius: 0.25em; background: #17140f; color: #d8cdb4; font-size: 0.9em; font-weight: 700; line-height: 1; } .ds-die .ds-glyph { display: inline-block; width: 1.1em; height: 1.1em; } .ds-die-blank { border-style: dashed; border-color: #5d5144; } .ds-die-attack { --die: #c0392b; } .ds-die-defense { --die: #3d6fb4; } .ds-die-attack, .ds-die-defense { color: #fff2d6; background: var(--die); border-color: color-mix(in srgb, var(--die) 70%, #fff2d6); } .ds-die-blank.ds-die-attack, .ds-die-blank.ds-die-defense { background: color-mix(in srgb, var(--die) 25%, #17140f); border-color: var(--die); }"
     },
     {
       "name": "Site",
@@ -549,19 +594,24 @@
       "The board's pieces are the color; the table is warm dark.",
       "Suits are told apart by glyph shape first, color second.",
       "Four fixed panes, no page chrome, brand in the details.",
-      "Flat, layered by tone; rings for target and focus, shadows only on true",
+      "Flat, layered by tone; rings for target and focus, shadows only on true overlays.",
       "No animation. Nothing moves on hover, focus or selection.",
       "Cards keep the physical 1:1.4 ratio; relics are square."
     ],
     "rules": [
       {
         "name": "The Pieces Carry the Color Rule",
-        "body": "Saturated color belongs to suits, tokens, dice and players. UI surfaces stay in the warm neutral ramp; the only UI accents are brass and selection blue. The three map regions are the one exception, and they carry the board's colors, not new ones.",
+        "body": "Saturated color belongs to suits, tokens, dice and players. UI surfaces stay in the warm neutral ramp; the only UI accents are brass and selection blue. Two exceptions: the three map regions carry the board's colors, not new ones, and the Game Log's action bands follow The Action Band Rule.",
+        "section": "colors"
+      },
+      {
+        "name": "The Action Band Rule",
+        "body": "In the Game Log the lines of one action share a band: its color mixed 9% into the Pane fill, edged with the color mixed 28% (the neutral band 6% and 20%), opened by a tag naming the action in its color. The eight action colors are warm for aggressive actions, live only in the log, and never stand for a suit, a player or a die. Every tag clears 4.5:1 on its band.",
         "section": "colors"
       },
       {
         "name": "The Shape First Rule",
-        "body": "Every suit, token and die has its own glyph. Color only keeps them from blurring; it never carries meaning alone. A token glyph is 1.25em of its line; the strip's resource figures carry it at 1.3em and a card header at 1.5em. The secret is a solid book with a spine notch, the defense die a shield with two pips.",
+        "body": "Every suit, token and die has its own glyph. Color only keeps them from blurring; it never carries meaning alone. A token glyph is 1.25em of its line (`.token-glyph`); the strip's resource figures carry it at 1.3em and a card header at 1.5em.",
         "section": "colors"
       },
       {
@@ -586,7 +636,7 @@
       },
       {
         "name": "The Glance Layer Rule",
-        "body": "The map is a fixed 1500px surface scaled by the viewport, so its text shrinks with it. Below a scale of 0.72, where the map card name (0.95em of 16px) falls under the floor, `.map-content` carries `map-compact` and `--map-scale`, and the glance layer is set against the scale instead: `font-size: clamp(rest, calc(<screen px> / var(--map-scale)), cap)` holds region and site names, pawns, tokens, defense, forces and card names near one screen size while the board keeps shrinking under them, the way a map's place names hold still while the map zooms. The study layer (site powers and requirement, a card's defense, restriction and badge) is hidden; a zoom or the overlay carries it. Nothing in the compact mode may change the map's height, because the Fit scale is computed from it: the site box is fixed and clips, and the region title has a fixed 2.4rem line. The two glance sizes are named once on `.map-compact` (`--glance-name`, `--glance-text`), and the compact site's card row is sized from what they leave: `--card-w` is the least of the row's own ceiling, a third of the width, and the box's height less the name line, the pawn row and, on a site holding forces, the forces line, divided by the card ratio. Above a scale of about 0.35 the ceiling wins and nothing changes; below it the cards, which show initials there anyway, give up height so the forces line is never the thing the box clips.",
+        "body": "The map is a fixed 1500px surface scaled by the viewport, so its text shrinks with it. Below a scale of 0.72, where the map card name (0.95em of 16px) falls under the floor, `.map-content` carries `map-compact` and `--map-scale`, and the glance layer is set against the scale instead: `font-size: clamp(rest, calc(<screen px> / var(--map-scale)), cap)` holds region and site names, pawns, tokens, defense, forces and card names near one screen size while the board keeps shrinking under them, the way a map's place names hold still while the map zooms. The site footer (powers and requirement) sits inside the details and so holds the glance size too, clamped to one line on the compact map; a card's own study layer (defense, restriction and badge) is hidden there and read on a zoom or in the overlay. Text on the map may fall under 11px; the Eleven-Pixel Floor is a pane rule. Nothing in the compact mode may change the map's height, because the Fit scale is computed from it: the site box is fixed at 21.5rem and clips, and the region title has a fixed 2.4rem line. The two glance sizes are named once on `.map-compact` (`--glance-name`, `--glance-text`), and the compact site's card row is sized from what they leave: `--card-w` is the least of the row's own ceiling, a third of the width, and the box's height less the name line, the pawn row, the footer's one line of powers and, on a site holding forces, the forces line, divided by the card ratio. Above a scale of about 0.35 the ceiling wins and nothing changes; below it the cards, which show initials there anyway, give up height so the forces line is never the thing the box clips.",
         "section": "typography"
       },
       {
