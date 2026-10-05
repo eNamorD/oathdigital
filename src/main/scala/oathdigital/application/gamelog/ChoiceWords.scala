@@ -34,6 +34,15 @@ private[gamelog] final class ChoiceWords(words: LogWords,
     case DecisionOptionRef.Banner(banner) => Vector(words.banner(banner))
     case DecisionOptionRef.Deck(deck) => Vector(Text(words.label(deck.key)))
     case DecisionOptionRef.FavorBank(suit) => Vector(Text(s"the $suit bank"))
+    case DecisionOptionRef.SiteSlot(site, slot) =>
+      Vector(Text(s"slot ${slot + 1} at "), words.site(site))
+    case DecisionOptionRef.AdviserPlay(owner, slot, faceup) =>
+      Vector(words.player(owner), Text(s"'s adviser slot ${slot + 1}, " +
+        (if faceup then "faceup" else "facedown")))
+    case DecisionOptionRef.RevealedVision(owner) =>
+      Vector(words.player(owner), Text("'s revealed Vision"))
+    case DecisionOptionRef.DiscardPile(region) =>
+      Vector(Text(s"the ${region.key.capitalize} discard"))
 
   private def card(id: CardId, before: ReadyGame, after: ReadyGame,
       viewer: Option[PlayerId]): Vector[LogSpan] =
@@ -53,4 +62,5 @@ private[gamelog] final class ChoiceWords(words: LogWords,
     case DecisionOption.Priced(inner, _) => labelled(ref)(inner)
     case DecisionOption.Badged(inner, _) => labelled(ref)(inner)
     case DecisionOption.Unavailable(inner, _) => labelled(ref)(inner)
+    case DecisionOption.Replacing(inner, _) => labelled(ref)(inner)
     case _ => None

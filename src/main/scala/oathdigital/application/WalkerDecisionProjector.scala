@@ -325,6 +325,13 @@ private[application] final class WalkerDecisionProjector(
       case DecisionOption.Unavailable(inner, reason) => optionProjection(ready,
         viewer, index, inner, details).map(_.copy(state = "unavailable",
           reason = Some(reasonText(ready, viewer, reason))))
+      // Named after the wrapped option is described, so the label says what
+      // the play discards and where the card goes.
+      case DecisionOption.Replacing(inner, card) =>
+        val replaced = shown(ready, viewer, index, card)
+        optionProjection(ready, viewer, index, inner, details).map(row =>
+          row.copy(label = replacingLabel(inner.ref, replaced.name),
+            replaces = Some(replaced)))
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
         if ready.game.current.players.exists(_.player == player.id) then
@@ -375,6 +382,36 @@ private[application] final class WalkerDecisionProjector(
         row(presentation.safeLabel(deck.id.key))
       case DecisionOption.FavorBank(bank) =>
         row(presentation.safeLabel(bank.suit.key))
+      case DecisionOption.SiteSlot(slot) =>
+        val fits = catalog.site(slot.site).exists(slot.index < _.capacity)
+        if fits && ready.game.current.map.sites.contains(slot.site) then
+          row(s"Empty slot at ${presentation.siteLabel(slot.site)}")
+        else None
+      case DecisionOption.AdviserPlay(play) =>
+        if ready.game.current.players.exists(_.player == play.owner) then
+          row(s"Adviser slot ${play.index + 1}, ${facing(play.faceup)}")
+        else None
+      case DecisionOption.RevealedVision(spot) =>
+        if ready.game.current.players.exists(_.player == spot.owner) then
+          row("Revealed Vision")
+        else None
+      case DecisionOption.DiscardPile(pile) =>
+        row(s"Discard to the ${pile.region.key.capitalize} discard")
+
+  /** A Replace option's label: the card it discards, and where the played
+    * card goes. */
+  private def replacingLabel(ref: DecisionOptionRef, name: String): String =
+    ref match
+      case DecisionOptionRef.SiteSlot(site, _) =>
+        s"Replace $name at ${presentation.siteLabel(site)}"
+      case DecisionOptionRef.AdviserPlay(_, _, faceup) =>
+        s"Replace $name, ${facing(faceup)}"
+      case _: DecisionOptionRef.RevealedVision =>
+        s"Replace $name as revealed Vision"
+      case _ => s"Replace $name"
+
+  private def facing(faceup: Boolean): String =
+    if faceup then "faceup" else "facedown"
 
   /** A card option's presentation, or `None` when the card is nowhere in
     * authoritative state OR is there but this viewer may not be told which

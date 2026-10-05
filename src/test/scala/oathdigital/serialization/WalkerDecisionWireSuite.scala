@@ -131,6 +131,11 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       DecisionOptionRef.FavorBank(Suit.Hearth),
       DecisionOptionRef.RelicSlot(PlayerId("blue"), 0),
       DecisionOptionRef.AdviserSlot(PlayerId("blue"), 1),
+      DecisionOptionRef.SiteSlot(SiteId("site:s1"), 2),
+      DecisionOptionRef.AdviserPlay(PlayerId("blue"), 0, faceup = true),
+      DecisionOptionRef.AdviserPlay(PlayerId("blue"), 2, faceup = false),
+      DecisionOptionRef.RevealedVision(PlayerId("blue")),
+      DecisionOptionRef.DiscardPile(Region.Hinterland),
       DecisionOptionRef.Banner(Banner.PeoplesFavor))
     val events = refs.zipWithIndex.map { case (ref, index) =>
       WalkerStepRecorded(index.toString,

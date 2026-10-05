@@ -34,7 +34,7 @@ package oathdigital.model
   * part of a card's identity.
   */
 sealed trait DecisionOptionRef extends Product with Serializable:
-  /** Which of the twelve variants this is, as a stable wire string. */
+  /** Which of the sixteen variants this is, as a stable wire string. */
   def kind: String
 
   /** The variant's identity as a stable wire string, paired with [[kind]].
@@ -82,10 +82,12 @@ object DecisionOptionRef:
     require(slot >= 0, "a relic slot must be non-negative")
     val kind: String = "relic-slot"
     def wireId: String = s"${owner.value}:$slot"
-  /** One adviser of a player, named by its position in their advisers
+  /** One adviser slot of a player, named by its position in their advisers
     * rather than by the card, so a facedown adviser's identity is never
-    * disclosed by an option. The owner may contain a colon; the slot is
-    * always the text after the last one.
+    * disclosed by an option. A slot below the printed capacity of three may
+    * be empty; the powers that name a held adviser name an occupied one. The
+    * owner may contain a colon; the slot is always the text after the last
+    * one.
     */
   final case class AdviserSlot(owner: PlayerId, slot: Int)
       extends DecisionOptionRef:
@@ -109,11 +111,40 @@ object DecisionOptionRef:
     val kind: String = "favor-bank"
     def wireId: String = suit.key
 
+  /** Slot `index` of `site`'s card row, below the site's capacity: the empty
+    * slot a card is played to, or the card a play there replaces. The site
+    * may contain a colon; the index is always the text after the last one.
+    */
+  final case class SiteSlot(site: SiteId, index: Int) extends DecisionOptionRef:
+    require(index >= 0, "a site slot must be non-negative")
+    val kind: String = "site-slot"
+    def wireId: String = s"${site.value}:$index"
+  /** Playing the card to `owner`'s adviser slot `index`, faceup or facedown.
+    * A choose-one answer is one ref, so the ref carries the facing, and an
+    * adviser slot is offered as two options. The owner may contain a colon;
+    * the facing follows the last one and the index the one before it.
+    */
+  final case class AdviserPlay(owner: PlayerId, index: Int, faceup: Boolean)
+      extends DecisionOptionRef:
+    require(index >= 0, "an adviser slot must be non-negative")
+    val kind: String = "adviser-play"
+    def wireId: String =
+      s"${owner.value}:$index:${if faceup then "faceup" else "facedown"}"
+  /** Playing a Vision faceup as `owner`'s revealed Vision. A faceup
+    * Conspiracy takes no slot, so it never names this. */
+  final case class RevealedVision(owner: PlayerId) extends DecisionOptionRef:
+    val kind: String = "revealed-vision"
+    def wireId: String = owner.value
+  /** Discarding the played card to `region`'s discard pile. */
+  final case class DiscardPile(region: Region) extends DecisionOptionRef:
+    val kind: String = "discard-pile"
+    def wireId: String = region.key
+
   /** Safe parse of the [[DecisionOptionRef.kind]]/[[DecisionOptionRef.wireId]]
     * pair from untrusted input: `None` for an unknown kind or an id that
     * variant cannot carry, never a thrown `require`.
     *
-    * Total over the twelve variants, and the exact inverse of the two
+    * Total over the sixteen variants, and the exact inverse of the two
     * accessors above — a new variant that forgets this method fails to
     * compile, because the match below is exhaustive over nothing and the
     * accessors are abstract.
@@ -135,14 +166,35 @@ object DecisionOptionRef:
       case "banner" => oathdigital.model.Banner.fromKey(wireId).map(Banner(_))
       case "deck" => CardDeck.fromKey(wireId).map(Deck(_))
       case "favor-bank" => Suit.fromKey(wireId).map(FavorBank(_))
+      case "site-slot" => indexOf(wireId).map((site, index) =>
+        SiteSlot(SiteId(site), index))
+      case "adviser-play" => facingOf(wireId).flatMap((slot, faceup) =>
+        slotOf(slot).map((owner, index) => AdviserPlay(owner, index, faceup)))
+      case "revealed-vision" => Some(RevealedVision(PlayerId(wireId)))
+      case "discard-pile" => Region.all.find(_.key == wireId).map(DiscardPile(_))
       case _ => None
 
   /** The owner and non-negative slot of a slot reference's wire id. */
   private def slotOf(wireId: String): Option[(PlayerId, Int)] =
+    indexOf(wireId).map((owner, slot) => PlayerId(owner) -> slot)
+
+  /** The text before the last colon, which may hold colons itself, and the
+    * non-negative index after it. */
+  private def indexOf(wireId: String): Option[(String, Int)] =
     val at = wireId.lastIndexOf(':')
     Option.when(at > 0)(wireId.take(at)).filter(_.trim.nonEmpty)
       .flatMap(owner => wireId.drop(at + 1).toIntOption
-        .filter(_ >= 0).map(PlayerId(owner) -> _))
+        .filter(_ >= 0).map(owner -> _))
+
+  /** An adviser play's slot part and facing: the facing follows the last
+    * colon. */
+  private def facingOf(wireId: String): Option[(String, Boolean)] =
+    val at = wireId.lastIndexOf(':')
+    Option.when(at > 0)(wireId.take(at)).flatMap(slot =>
+      wireId.drop(at + 1) match
+        case "faceup" => Some(slot -> true)
+        case "facedown" => Some(slot -> false)
+        case _ => None)
 
 /** One selectable option on a decision: its stable reference, plus whatever
   * display detail the action itself authors.
@@ -179,6 +231,14 @@ object DecisionOption:
   final case class Deck(ref: DecisionOptionRef.Deck) extends DecisionOption
   final case class FavorBank(ref: DecisionOptionRef.FavorBank)
       extends DecisionOption
+  final case class SiteSlot(ref: DecisionOptionRef.SiteSlot)
+      extends DecisionOption
+  final case class AdviserPlay(ref: DecisionOptionRef.AdviserPlay)
+      extends DecisionOption
+  final case class RevealedVision(ref: DecisionOptionRef.RevealedVision)
+      extends DecisionOption
+  final case class DiscardPile(ref: DecisionOptionRef.DiscardPile)
+      extends DecisionOption
 
   /** An option that states what choosing it costs, which the projector words.
     * The choice is the wrapped option's: `ref` is its reference, so an answer
@@ -210,6 +270,16 @@ object DecisionOption:
     def ref: DecisionOptionRef = option.ref
     override def available: Boolean = false
 
+  /** An option whose play discards `card` to make room: the card in that
+    * site slot or adviser slot, or the revealed Vision a new one displaces.
+    * Wrapping for the reason `Priced` wraps: `ref` is the wrapped option's,
+    * so the mark never affects legality. The projector names the card.
+    */
+  final case class Replacing(option: DecisionOption, card: CardId)
+      extends DecisionOption:
+    def ref: DecisionOptionRef = option.ref
+    override def available: Boolean = option.available
+
   /** The option presenting `ref`, for every kind whose name the projector
     * resolves itself. A button has no such name: its label is authored, so
     * a reference alone cannot present one.
@@ -227,6 +297,10 @@ object DecisionOption:
     case value: DecisionOptionRef.Banner => Some(Banner(value))
     case value: DecisionOptionRef.Deck => Some(Deck(value))
     case value: DecisionOptionRef.FavorBank => Some(FavorBank(value))
+    case value: DecisionOptionRef.SiteSlot => Some(SiteSlot(value))
+    case value: DecisionOptionRef.AdviserPlay => Some(AdviserPlay(value))
+    case value: DecisionOptionRef.RevealedVision => Some(RevealedVision(value))
+    case value: DecisionOptionRef.DiscardPile => Some(DiscardPile(value))
 
 /** What choosing an option costs the chooser, as a dry run of the choice found
   * it: favor and secrets paid (placed, or burnt to the shared bank) and

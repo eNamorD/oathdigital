@@ -65,3 +65,56 @@ class DecisionOptionRefSuite extends munit.FunSuite:
       Some(DecisionOption.RelicSlot(slot)))
     assertEquals(DecisionOption.forRef(banner),
       Some(DecisionOption.Banner(banner)))
+
+  private val siteSlot = DecisionOptionRef.SiteSlot(
+    CatalogNames.site("Ancient City"), 2)
+  private val adviserPlay =
+    DecisionOptionRef.AdviserPlay(PlayerId("blue"), 1, faceup = false)
+  private val revealed = DecisionOptionRef.RevealedVision(PlayerId("blue"))
+  private val pile = DecisionOptionRef.DiscardPile(Region.Provinces)
+
+  test("the card slot refs spell themselves as kind and id pairs and parse back"):
+    assertEquals((siteSlot.kind, siteSlot.wireId),
+      ("site-slot", s"${siteSlot.site.value}:2"))
+    assertEquals((adviserPlay.kind, adviserPlay.wireId),
+      ("adviser-play", "blue:1:facedown"))
+    assertEquals((revealed.kind, revealed.wireId), ("revealed-vision", "blue"))
+    assertEquals((pile.kind, pile.wireId), ("discard-pile", "provinces"))
+    Vector[DecisionOptionRef](siteSlot, adviserPlay,
+      adviserPlay.copy(faceup = true), revealed, pile).foreach(ref =>
+      assertEquals(DecisionOptionRef.fromWire(ref.kind, ref.wireId), Some(ref),
+        ref.toString))
+
+  test("a card slot's site or owner may contain a colon and still round trips"):
+    Vector[DecisionOptionRef](DecisionOptionRef.SiteSlot(SiteId("a:b"), 0),
+      DecisionOptionRef.AdviserPlay(PlayerId("a:b"), 2, faceup = true),
+      DecisionOptionRef.RevealedVision(PlayerId("a:b"))).foreach(ref =>
+      assertEquals(DecisionOptionRef.fromWire(ref.kind, ref.wireId), Some(ref),
+        ref.toString))
+
+  test("a malformed card slot ref is not a reference"):
+    Vector("x", "x:", ":2", "x:-1", "x:y").foreach(id =>
+      assertEquals(DecisionOptionRef.fromWire("site-slot", id), None, id))
+    Vector("blue:1", "blue:1:up", "blue:-1:faceup", ":1:faceup",
+      "blue::faceup").foreach(id =>
+      assertEquals(DecisionOptionRef.fromWire("adviser-play", id), None, id))
+    assertEquals(DecisionOptionRef.fromWire("discard-pile", "elsewhere"), None)
+    assertEquals(DecisionOptionRef.fromWire("revealed-vision", " "), None)
+
+  test("the card slot refs are presentable from the reference alone"):
+    assertEquals(DecisionOption.forRef(siteSlot),
+      Some(DecisionOption.SiteSlot(siteSlot)))
+    assertEquals(DecisionOption.forRef(adviserPlay),
+      Some(DecisionOption.AdviserPlay(adviserPlay)))
+    assertEquals(DecisionOption.forRef(revealed),
+      Some(DecisionOption.RevealedVision(revealed)))
+    assertEquals(DecisionOption.forRef(pile),
+      Some(DecisionOption.DiscardPile(pile)))
+
+  test("a Replace mark keeps the wrapped option's reference and availability"):
+    val marked = DecisionOption.Replacing(DecisionOption.SiteSlot(siteSlot),
+      CatalogNames.denizen("Wrestlers"))
+    assertEquals(marked.ref, siteSlot)
+    assert(marked.available)
+    assert(!DecisionOption.Unavailable(marked, OptionReason.Written("No"))
+      .available)

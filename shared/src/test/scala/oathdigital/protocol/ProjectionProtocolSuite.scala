@@ -371,3 +371,13 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     assertEquals(Unwrap.rejected(
       FirstGameBootstrapCodec.decode(ujson.write(lineage))).path,
       "$.participants[0].lineageId")
+
+  test("an option's replaced card round-trips beside an option with none"):
+    val replacing = DecisionOptionProjection("site-slot", "site:a:0",
+      "Replace Known at A", replaces = Some(known))
+    val pile = DecisionOptionProjection("discard-pile", "cradle",
+      "Discard to the Cradle discard")
+    assertRoundTrips(projection.copy(walkerDecision = Some(
+      WalkerDecisionProjection("search", "cardplay.place.denizen.known",
+        "decide", query = Some(DecisionQueryProjection.ChooseOne(
+          Vector(replacing, pile)))))))

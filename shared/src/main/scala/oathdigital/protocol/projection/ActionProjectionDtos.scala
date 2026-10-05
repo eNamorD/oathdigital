@@ -169,13 +169,17 @@ object DecisionQueryProjection:
   *
   * `state` is `available`, `locked` (decided already, shown chosen) or
   * `unavailable` (shown, with `reason` saying why it may not be chosen now).
+  *
+  * `replaces` is the card choosing the option discards to make room (a
+  * Replace slot), as the viewer may see it.
   */
 final case class DecisionOptionProjection(kind: String, id: String,
     label: String, card: Option[CardDetailsProjection] = None,
     details: Vector[String] = Vector.empty,
     badge: Option[String] = None,
     state: String = "available",
-    reason: Option[String] = None)
+    reason: Option[String] = None,
+    replaces: Option[CardDetailsProjection] = None)
 
 /** One named bucket a partition spreads its options across: the stable
   * `key` a placement names, the section's prompt copy, and the fewest
