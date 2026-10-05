@@ -92,12 +92,20 @@ the summary.
 `PlacementRules` becomes `CardPlayRules`, still contributed at window
 `SearchPlayAdviser` through `PlacementTree.adjust`:
 
-- `adviserLimit: Int` and `faceupAdviserLimit: Int`, as today. Limits only
-  lower, so contributions compose in any order.
+- `adviserLimit: Int`, the one limit on all of the player's advisers,
+  whatever their facing, set by the advisers they hold; and
+  `playedCardLimit: Int`, the limit the played card sets once it is faceup.
+  The rulebook checks a play against the new limit ("When you want to play a
+  card that changes your adviser limit, check whether to discard advisers
+  based on your new adviser limit"), so a faceup play counts against the
+  lower of the two and a facedown play against `adviserLimit` alone. The
+  implemented limit cards only lower, so contributions compose in any order.
 - `siteDiscards: Vector[DiscardPermission]`, with
-  `DiscardPermission(scope: AnySiteCard | Denizen, source, note)`. Homeland
-  (a rule, keyed off the site's homeland suit) adds one; People's Favor (Mob)
-  adds one; Crop Rotation adds one with scope `Denizen`.
+  `DiscardPermission(source, note)`, each allowing one discard of any site
+  card. An edifice is a denizen for placement, so Crop Rotation's "a denizen"
+  covers one; an intact edifice is still Locked. Homeland (a rule, keyed off
+  the played card's suit matching the site's Homeland suit) adds one;
+  People's Favor (Mob) adds one; Crop Rotation adds one.
 
 Silver Tongue and Insomnia stop appending a guard and lower the limit
 instead. They write no reason and no line, as today.
@@ -148,10 +156,10 @@ plan.
 3. `BuildOps` from the chosen plan, then the `CardPlayedFacedown` or
    `CardPlayedFaceup` hook node.
 
-Discards are matched to permissions automatically: a card is offered only if
-some assignment covers the selected set, and an edifice never spends Crop
-Rotation. The log credits each discard to the power or rule that allowed it,
-with the existing notes.
+Discards are matched to permissions automatically, in order: every
+permission covers any site card, so the follow-up allows as many more cards
+as permissions remain. The log credits each discard to the power or rule
+that allowed it, with the existing notes.
 
 Vow of Obedience and Sacred Ground are unchanged: they forbid the
 `CardPlayedFaceup` operation, so the look-ahead marks every option leading
@@ -236,8 +244,7 @@ Two plans, each landing green.
 ## Testing
 
 - Engine suites: `CardSlots` per case (empty and full site, Homeland,
-  People's Favor, Crop Rotation's denizen scope, stacked permissions and
-  their matching, full advisers, Silver Tongue and Insomnia limits, Vision
+  People's Favor, Crop Rotation (an edifice included), stacked permissions, full advisers, Silver Tongue and Insomnia limits, Vision
   and revealed Vision, site-only denizens, facedown-adviser origin,
   Conspiracy's "Play", Locked and active-modifier reasons); the follow-up
   discard; Vow

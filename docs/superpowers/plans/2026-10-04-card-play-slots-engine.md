@@ -32,11 +32,11 @@
 2. **`replaces` carries card details, not a new ref type.** `DecisionOptionProjection.replaces: Option[CardDetailsProjection]` is the replaced card as the viewer may see it, redacted through the visibility rule like any other card.
 3. **The played card joins the end of the row.** `Play` has no slot position, so a replaced card is discarded and the new card is appended to the site's card row or the adviser row. "Takes that card's place" holds for what is discarded, not for the index. A positioned play is a follow-up, not part of this plan.
 4. **The discard pile comes first.** Option order is discard pile, site slots (the empty one, then Replace slots in row order), faceup plays, facedown plays: today's Discard, Site, Faceup, Facedown order, so `Situation.defaultAnswer` (first available option) still discards and the golden logs do not move.
-5. **A line credits a discard made, never one declined.** Each site card discarded writes the line of the permission it was matched to. Choosing the empty slot where a Replace slot was offered writes nothing; today a declined Homeland discard still wrote the Homeland line.
+5. **A line credits a discard made, never one declined.** Each site card discarded writes the line of the permission it spent. Choosing the empty slot where a Replace slot was offered writes nothing; today a declined Homeland discard still wrote the Homeland line.
 6. **The Hall of Ministers gives a reason.** It is a power, so an option it refuses is shown with "Protected by the Hall of Ministers". Grand Scepter and any other restriction code leave the option out with no reason.
 7. **A Vision from a facedown adviser goes to the revealed Vision spot.** The spec's "that card's own slot, faceup" is the rule for a denizen; a Vision played faceup always becomes the revealed Vision, and a Conspiracy is "Play".
-8. **A facedown adviser turned faceup must fit the faceup limit.** Its own slot is offered only while the actor's adviser count is at most the faceup limit, which is what Silver Tongue's and Insomnia's guard enforced before it was removed.
-9. **The follow-up's maximum is the smaller of the permissions left and the cards offered.** A card is offered when some permission matching covers it together with the replaced card; the full selection is checked again when the play runs, and a selection no matching covers is refused.
+8. **A facedown adviser turned faceup must fit the limit after the play.** Its own slot is offered only while the actor's adviser count is at most that limit (its own, if it is Silver Tongue or Insomnia), which is what Silver Tongue's and Insomnia's guard enforced before it was removed.
+9. **The follow-up's maximum is the smaller of the permissions left and the cards offered.** Every permission covers any site card (an edifice is a denizen for placement), so every other site card is offered; the count is checked again when the play runs.
 10. **`MinorAdviserProjection.placements` and `CardResolutionProjection` go outright.** The projection is computed live and the client ships with the server; the server's facedown-adviser preview check reads only whether the player has facedown advisers. Discarding is always legal, so a facedown adviser is always playable.
 11. **The planner keeps the refusals no rule changes.** `CardPlay.operations` refuses a Vision or an adviser-only card at a site, a site-only card faceup, a facedown adviser played facedown or replacing an adviser, a full site with nothing discarded, and a discard of a card that is not there. Permissions and limits are `CardSlots`'s alone.
 
@@ -45,7 +45,7 @@
 Engine and protocol:
 
 - `src/main/scala/oathdigital/model/Decisions.scala`: `SiteSlot`, `AdviserPlay`, `RevealedVision`, `DiscardPile` refs and options, `Replacing`.
-- `src/main/scala/oathdigital/gameplay/actions/CardPlayRules.scala` (renamed from `PlacementRules.scala`): `CardPlayRules`, `DiscardScope`, `DiscardPermission`, the Homeland permission and the `discard-first` note key.
+- `src/main/scala/oathdigital/gameplay/actions/CardPlayRules.scala` (renamed from `PlacementRules.scala`): `CardPlayRules`, `DiscardPermission`, the Homeland permission and the `discard-first` note key.
 - `src/main/scala/oathdigital/gameplay/actions/CardPlay.scala`: the rule-free planner `operations`, `discardRegion`, `homelandSuit`, `playedSource`, `nextRegion`.
 - `src/main/scala/oathdigital/gameplay/actions/cardplay/CardSlots.scala` (new): `CardSlot`, `MoreDiscards`, the slot builder, permission matching, the follow-up and the credits.
 - `src/main/scala/oathdigital/gameplay/actions/cardplay/CardPlayProcedure.scala`: `PlayedAs`, `playedAs`, `placementOptions`, the placement and follow-up decisions, the settled shape.
@@ -513,13 +513,12 @@ Spec, Engine, "Card play rules". `PlacementRules` becomes `CardPlayRules`; the M
 **Interfaces:**
 - Consumes: nothing from Task 1.
 - Produces:
-  - `enum DiscardScope { case AnySiteCard, Denizen }` with `covers(card: SiteDenizenState): Boolean`.
-  - `final case class DiscardPermission(scope: DiscardScope, source: PowerId, note: Note)` with `covers`.
-  - `final case class CardPlayRules(adviserLimit: Int = 3, faceupAdviserLimit: Int = 3, siteDiscards: Vector[DiscardPermission] = Vector.empty)` with `limitFor(orientation: Orientation): Int`, `limitAdvisers(limit: Int)`, `limitFaceupAdvisers(limit: Int)`, `permitSiteDiscard(permission: DiscardPermission)`.
+  - `final case class DiscardPermission(source: PowerId, note: Note)`: one discard of any site card.
+  - `final case class CardPlayRules(adviserLimit: Int = 3, playedCardLimit: Int = 3, siteDiscards: Vector[DiscardPermission] = Vector.empty)` with `limitAfter(faceup: Boolean): Int`, `limitAdvisers(limit: Int)`, `limitPlayedCard(limit: Int)`, `permitSiteDiscard(permission: DiscardPermission)`.
   - `CardPlayRules.DefaultAdviserLimit: Int`, `CardPlayRules.default`, `CardPlayRules.discardFirst: NoteKey`, `CardPlayRules.homeland(site: SiteId, actor: PlayerId): DiscardPermission`.
   - `HolderAdviserLimit(cardId: DenizenId, limit: Int)`, no `name`.
   - `PlayerBoardProjection.adviserLimit: Int = 3`.
-  - Test fixture `PlacementFixture.testPermission: DiscardPermission` (scope `AnySiteCard`, source `test.discard-first`).
+  - Test fixture `PlacementFixture.testPermission: DiscardPermission` (source `test.discard-first`).
 
 - [ ] **Step 1: Rename the rules suite and write the failing tests**
 
@@ -528,8 +527,7 @@ Run `git mv src/test/scala/oathdigital/gameplay/PlacementRulesSuite.scala src/te
 In `CardPlayRulesSuite.scala`, rename the class to `CardPlayRulesSuite`, replace the imports with:
 
 ```scala
-import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission,
-  DiscardScope}
+import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.AdviserLimit
 import oathdigital.gameplay.powers.rest.SilverTongue
@@ -546,38 +544,36 @@ replace the class doc with:
 ```scala
 /** `CardPlayRules`: the adviser limits and site discard permissions a card
   * play is planned under, and how two contributors to them compose.
-  * `limitTwo` is PlacementFixture's stub power that lowers both adviser
-  * limits to two, and `testPermission` its plain site discard permission.
+  * `limitTwo` is PlacementFixture's stub power that lowers the adviser
+  * limit to two, and `testPermission` its plain site discard permission.
   */
 ```
 
 change the `import PlacementFixture.{...}` line to also import `testPermission`, and replace the tests "a limit only lowers, and a faceup limit leaves the facedown one" and "two contributors compose in either order" with:
 
 ```scala
-  test("a limit only lowers, and a faceup limit leaves the facedown one"):
-    val rules = CardPlayRules.default
-    assertEquals(rules.limitAdvisers(5), rules)
-    assertEquals(rules.limitAdvisers(2).limitFor(Orientation.FaceUp), 2)
-    assertEquals(rules.limitAdvisers(2).limitFor(Orientation.FaceDown), 2)
-    assertEquals(rules.limitFaceupAdvisers(2).limitFor(Orientation.FaceUp), 2)
-    assertEquals(rules.limitFaceupAdvisers(2).limitFor(Orientation.FaceDown),
+  test("one limit counts every adviser, faceup or facedown, and only lowers"):
+    val rules = CardPlayRules.default.limitAdvisers(2)
+    assertEquals(rules.limitAfter(faceup = true), 2)
+    assertEquals(rules.limitAfter(faceup = false), 2)
+    assertEquals(CardPlayRules.default.limitAdvisers(5), CardPlayRules.default)
+
+  test("the played card's own limit counts only when it is played faceup"):
+    // The rulebook checks a play that changes the adviser limit against the
+    // new limit. Silver Tongue played facedown has no power, so the old limit
+    // holds for that play.
+    val rules = CardPlayRules.default.limitPlayedCard(2)
+    assertEquals(rules.limitAfter(faceup = true), 2)
+    assertEquals(rules.limitAfter(faceup = false),
       CardPlayRules.DefaultAdviserLimit)
 
   test("site discard permissions stack in the order they are given"):
-    val crop = DiscardPermission(DiscardScope.Denizen, PowerId("test.crop"),
-      Note(PowerId("test.crop"), _ => None))
+    val second = DiscardPermission(PowerId("test.second-discard"),
+      Note(PowerId("test.second-discard"), _ => None))
     val stacked = CardPlayRules.default.permitSiteDiscard(testPermission)
-      .permitSiteDiscard(crop)
+      .permitSiteDiscard(second)
     assertEquals(stacked.siteDiscards.map(_.source),
-      Vector(testPermission.source, crop.source))
-
-  test("a denizen-only permission covers a denizen and no edifice"):
-    val denizen = DenizenState(card, Orientation.FaceUp, Tokens.empty)
-    val edifice = EdificeState(CatalogNames.edifice("Hall of Ministers"),
-      EdificeSide.Ruined, Tokens.empty)
-    assert(DiscardScope.Denizen.covers(denizen))
-    assert(!DiscardScope.Denizen.covers(edifice))
-    assert(DiscardScope.AnySiteCard.covers(edifice))
+      Vector(testPermission.source, second.source))
 
   test("two contributors compose in either order"):
     val tree = as[CardPlayProcedure.PlacementTree](
@@ -636,7 +632,7 @@ Append to `ProjectionProtocolSuite`:
 - [ ] **Step 3: Run the tests to verify they fail**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.CardPlayRulesSuite oathdigital.application.AdviserLimitProjectionSuite oathdigital.protocol.ProjectionProtocolSuite"`
-Expected: compilation fails: `CardPlayRules`, `DiscardPermission`, `DiscardScope`, `testPermission` and `adviserLimit` are not found.
+Expected: compilation fails: `CardPlayRules`, `DiscardPermission`, `testPermission` and `adviserLimit` are not found.
 
 - [ ] **Step 4: Write `CardPlayRules.scala`**
 
@@ -647,58 +643,49 @@ package oathdigital.gameplay.actions
 
 import oathdigital.model._
 
-/** Which site cards one discard permission may discard. */
-enum DiscardScope:
-  /** Any card of the site's card list, an edifice included. */
-  case AnySiteCard
-  /** A denizen only, never an edifice (Crop Rotation). */
-  case Denizen
-
-  def covers(card: SiteDenizenState): Boolean = this match
-    case AnySiteCard => true
-    case Denizen => card.isInstanceOf[DenizenState]
-
-/** Leave to discard one card from the actor's site before a play there.
-  * `source` is the power or rule that gives it, and `note` the line card play
-  * writes when a discard it allowed is made.
+/** Leave to discard one card from the actor's site before a play there. Any
+  * card of the site's card list may go: an edifice is a denizen for
+  * placement, and an intact edifice is refused only as a locked card.
+  * `source` is the power or rule that gives the leave, and `note` the line
+  * card play writes when a discard it allowed is made.
   */
-final case class DiscardPermission(scope: DiscardScope, source: PowerId,
-    note: Note):
-  def covers(card: SiteDenizenState): Boolean = scope.covers(card)
+final case class DiscardPermission(source: PowerId, note: Note)
 
 /** The rules a card play is planned under. A power changes them through the
   * `SearchPlayAdviser` window, and card play reads nothing else, so the play
   * never names a power.
   *
-  *  - `adviserLimit` is how many advisers the player may hold, and
-  *    `faceupAdviserLimit` how many a faceup play may leave: a card that
-  *    limits advisers while faceup needs room under its own limit to be
-  *    played faceup.
+  *  - `adviserLimit` is the one limit on all of the player's advisers,
+  *    whatever their facing, set by the advisers they hold.
+  *    `playedCardLimit` is the limit the played card sets once faceup. The
+  *    rulebook checks a play that changes the limit against the new limit,
+  *    so a faceup play counts against the lower of the two and a facedown
+  *    play, whose card has no power, against `adviserLimit` alone.
   *  - `siteDiscards` are the permissions to discard a card from the site a
   *    card is played to, one card each. They stack. The Homeland rule's is
-  *    not among them: card play adds it at the Homeland of the card's suit
-  *    (`homeland`).
+  *    not among them: card play adds it at the Homeland of the played card's
+  *    suit (`homeland`).
   *
   * Every change lowers a limit or adds a permission, so contributions
-  * compose in any order.
+  * compose in any order. (The limit cards implemented so far only lower.)
   */
 final case class CardPlayRules(
     adviserLimit: Int = CardPlayRules.DefaultAdviserLimit,
-    faceupAdviserLimit: Int = CardPlayRules.DefaultAdviserLimit,
+    playedCardLimit: Int = CardPlayRules.DefaultAdviserLimit,
     siteDiscards: Vector[DiscardPermission] = Vector.empty):
 
-  /** How many advisers a play with that facing may leave. */
-  def limitFor(orientation: Orientation): Int = orientation match
-    case Orientation.FaceUp => math.min(adviserLimit, faceupAdviserLimit)
-    case Orientation.FaceDown => adviserLimit
+  /** The limit a play counts against: the new one when the played card goes
+    * faceup. */
+  def limitAfter(faceup: Boolean): Int =
+    if faceup then math.min(adviserLimit, playedCardLimit) else adviserLimit
 
-  /** Lowers the limit to at most `limit`. */
+  /** Lowers the player's limit to at most `limit`. */
   def limitAdvisers(limit: Int): CardPlayRules =
     copy(adviserLimit = math.min(adviserLimit, limit))
 
-  /** Lowers the faceup limit to at most `limit`. */
-  def limitFaceupAdvisers(limit: Int): CardPlayRules =
-    copy(faceupAdviserLimit = math.min(faceupAdviserLimit, limit))
+  /** The played card sets a limit of `limit` once faceup. */
+  def limitPlayedCard(limit: Int): CardPlayRules =
+    copy(playedCardLimit = math.min(playedCardLimit, limit))
 
   /** Adds one site discard. */
   def permitSiteDiscard(permission: DiscardPermission): CardPlayRules =
@@ -714,9 +701,10 @@ object CardPlayRules:
     NotePart.Text(" may discard a card at their site first.")))
 
   /** The Homeland rule's permission (CR p. 31) for `actor`'s play to `site`,
-    * the Homeland of the card's suit: one discard of any card there. */
+    * the Homeland of the played card's suit: one discard of any card there,
+    * whatever that card's suit. */
   def homeland(site: SiteId, actor: PlayerId): DiscardPermission =
-    DiscardPermission(DiscardScope.AnySiteCard, RuleNotes.homelandDiscard,
+    DiscardPermission(RuleNotes.homelandDiscard,
       Note(RuleNotes.homelandDiscard, _ => Some(discardFirst(
         PowerSourceRef.Site(site), NoteArg.Player(actor)))))
 ```
@@ -728,7 +716,7 @@ In `RuleNotes.scala`, replace `PlacementRules.discardFirst` with `CardPlayRules.
 In `CardPlay.scala`, run:
 
 ```bash
-sed -i '' -e 's/PlacementRules\.siteDiscardFirst/CardPlayRules.siteDiscards/g' -e 's/PlacementRules/CardPlayRules/g' -e 's/rules\.siteDiscardFirst/rules.siteDiscards.nonEmpty/g' -e 's/rules\.adviserLimit(/rules.limitFor(/g' src/main/scala/oathdigital/gameplay/actions/CardPlay.scala
+sed -i '' -e 's/PlacementRules\.siteDiscardFirst/CardPlayRules.siteDiscards/g' -e 's/PlacementRules/CardPlayRules/g' -e 's/rules\.siteDiscardFirst/rules.siteDiscards.nonEmpty/g' -e 's/rules\.adviserLimit(orientation)/rules.limitAfter(orientation == Orientation.FaceUp)/g' src/main/scala/oathdigital/gameplay/actions/CardPlay.scala
 ```
 
 In `CardPlayProcedure.scala`:
@@ -751,25 +739,25 @@ Until Task 6 the play still discards at most one site card, and with several per
 
 - [ ] **Step 6: Give the Mob and Crop Rotation a permission each**
 
-In `PeoplesFavorMob.scala`, the import of `PlacementRules` becomes `import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission, DiscardScope}`, `noteKeys` reads `Vector(CardPlayRules.discardFirst)`, the transform's body reads `tree.adjust(children)(_.permitSiteDiscard(permission(ctx.activePlayer)))`, and `note` is replaced with:
+In `PeoplesFavorMob.scala`, the import of `PlacementRules` becomes `import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission}`, `noteKeys` reads `Vector(CardPlayRules.discardFirst)`, the transform's body reads `tree.adjust(children)(_.permitSiteDiscard(permission(ctx.activePlayer)))`, and `note` is replaced with:
 
 ```scala
   /** One discard of any site card, credited with the Mob's line. */
   private def permission(actor: PlayerId): DiscardPermission =
-    DiscardPermission(DiscardScope.AnySiteCard, id, Note(id, _ => Some(
+    DiscardPermission(id, Note(id, _ => Some(
       CardPlayRules.discardFirst(PowerSourceRef.Banner(Banner.PeoplesFavor),
         NoteArg.Player(actor)))))
 ```
 
 Replace the last paragraph of its doc ("Its line ... travels in the rules, and card play writes it after the discard answer.") with "Its line, "{Red} may discard a card at their site first.", travels in the permission, and card play writes it for the discard it allowed."
 
-In `CropRotation.scala` make the same changes with `DiscardScope.Denizen` and `PowerSourceRef.Card(cardId)`:
+In `CropRotation.scala` make the same changes with `PowerSourceRef.Card(cardId)`:
 
 ```scala
-  /** One discard of a denizen, never an edifice, credited with Crop
-    * Rotation's line. */
+  /** One discard of a site card, credited with Crop Rotation's line. An
+    * edifice is a denizen for placement, so a ruined one may go. */
   private def permission(actor: PlayerId): DiscardPermission =
-    DiscardPermission(DiscardScope.Denizen, id, Note(id, _ => Some(
+    DiscardPermission(id, Note(id, _ => Some(
       CardPlayRules.discardFirst(PowerSourceRef.Card(cardId),
         NoteArg.Player(actor)))))
 ```
@@ -777,19 +765,19 @@ In `CropRotation.scala` make the same changes with `DiscardScope.Denizen` and `P
 Replace its doc's last two paragraphs with:
 
 ```scala
-  * It adds one site discard permission, of a denizen only, through the same
+  * It adds one site discard permission through the same
   * `SearchPlayAdviser` window as the Mob's, so the two stack with each other
   * and with the Homeland rule, each allowing one discard. The
   * Play-Facedown-Adviser action selects its modifiers at the Search's window,
-  * so it applies there too. The generic discard rules decide which cards may
-  * go: Crop Rotation itself, being selected, is refused by the
-  * active-modifier restriction.
+  * so it applies there too. An edifice is a denizen for placement, so a
+  * ruined one may go. The generic discard rules decide which cards may go:
+  * an intact edifice is locked, and Crop Rotation itself, being selected, is
+  * refused by the active-modifier restriction.
   *
   * Its line, "{Red} may discard a card at their site first.", travels in the
   * permission, and card play writes it for the discard it allowed.
 ```
 
-Card play enforces the denizen-only scope from Task 6.
 
 - [ ] **Step 7: Lower the limit with no check after the play**
 
@@ -801,7 +789,8 @@ Replace `HolderAdviserLimit.scala`'s class doc and body with:
   *
   * It is a transform at `SearchPlayAdviser`. While `cardId` is faceup in the
   * acting player's advisers, it lowers that player's limit to `limit`. While
-  * `cardId` is the card being played, it lowers the faceup limit, so playing
+  * `cardId` is the card being played, it sets the played card's own limit
+  * (the rulebook checks such a play against the new limit), so playing
   * it faceup needs room under the limit. Card play offers no adviser slot
   * past a limit, so nothing is checked after the play, and the limit writes
   * no line. A limit only lowers, so two such cards compose and the lowest
@@ -822,7 +811,7 @@ final case class HolderAdviserLimit(cardId: DenizenId, limit: Int):
           if limitFor(ctx.state, ctx.activePlayer).nonEmpty =>
         tree.adjust(children)(_.limitAdvisers(limit))
       case tree: CardPlayProcedure.PlacementTree if tree.card == cardId =>
-        tree.adjust(children)(_.limitFaceupAdvisers(limit))
+        tree.adjust(children)(_.limitPlayedCard(limit))
       case _ => children
     })
 ```
@@ -848,7 +837,7 @@ In `GamePresentationProjector.playerBoards`, add `import oathdigital.gameplay.po
 
 - [ ] **Step 9: Move the test fixtures and suites to the new rules**
 
-Replace `PlacementFixture.scala`'s `PlacementRules` import with `import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission, DiscardScope}`, its two doc mentions of `PlacementRules` with `CardPlayRules`, and `rulePower`, `discardFirst` and `limitTwo` with:
+Replace `PlacementFixture.scala`'s `PlacementRules` import with `import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission}`, its two doc mentions of `PlacementRules` with `CardPlayRules`, and `rulePower`, `discardFirst` and `limitTwo` with:
 
 ```scala
   /** Stub of ContributingPower: changes the rules every play is planned
@@ -868,7 +857,7 @@ Replace `PlacementFixture.scala`'s `PlacementRules` import with `import oathdigi
 
   /** A plain site discard permission, of any card, whose line says nothing. */
   val testPermission: DiscardPermission = DiscardPermission(
-    DiscardScope.AnySiteCard, PowerId("test.discard-first"),
+    PowerId("test.discard-first"),
     Note(PowerId("test.discard-first"), _ => None))
 
   /** Stub of ContributingPower: adds `testPermission`. */
@@ -926,13 +915,18 @@ Preparation for Task 6, with no change in behaviour. The Game Log and the tests 
 Add to `CardPlayProcedureSuite` (import `oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs`):
 
 ```scala
-  test("playedAs names how each placement option plays the card"):
-    val keys = Vector("discard", "site", "adviser-faceup", "adviser-facedown",
-      "other")
+  test("playedAs names how each placement button plays the card, and the " +
+      "replacement decision's answers play nothing"):
+    val keys = Vector("discard", "site", "adviser-faceup", "adviser-facedown")
     assertEquals(keys.map(key =>
       CardPlayProcedure.playedAs(DecisionOptionRef.Button(key))),
       Vector(Some(PlayedAs.Discarded), Some(PlayedAs.AtSite),
-        Some(PlayedAs.Faceup), Some(PlayedAs.Facedown), None))
+        Some(PlayedAs.Faceup), Some(PlayedAs.Facedown)))
+    // The replacement decision answers with the card to discard, or declines.
+    assertEquals(CardPlayProcedure.playedAs(DecisionOptionRef.Denizen(card)),
+      None)
+    assertEquals(CardPlayProcedure.playedAs(
+      CardPlayProcedure.noReplacement.ref), None)
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -1185,7 +1179,7 @@ Spec, Engine, "Slot builder". `CardSlots` builds the placement options over a ru
 - Test: `src/test/scala/oathdigital/gameplay/CardSlotsSuite.scala` (new)
 
 **Interfaces:**
-- Consumes: Task 1's refs and `Replacing`; Task 2's `CardPlayRules`, `DiscardPermission`, `DiscardScope`, `CardPlayRules.homeland`; `PlacementFixture.testPermission`.
+- Consumes: Task 1's refs and `Replacing`; Task 2's `CardPlayRules`, `DiscardPermission`, `CardPlayRules.homeland`; `PlacementFixture.testPermission`.
 - Produces:
   - `CardPlay.operations(catalog, ready, playerId: PlayerId, card: WorldCardId, placement: SearchPlacement, origin: CardPlay.Origin, more: Vector[CardId] = Vector.empty): Either[OathViolation, Vector[CoreOperation]]`.
   - `CardPlay.discardRegion(ready: ReadyGame, player: PlayerId): Option[Region]`.
@@ -1194,7 +1188,6 @@ Spec, Engine, "Slot builder". `CardSlots` builds the placement options over a ru
   - `CardSlots.play: DecisionOptionRef.Button` (`"play"`).
   - `CardSlots.slots(catalog, ready, actor, card, origin: CardPlay.Origin, rules: CardPlayRules): Vector[CardSlot]`.
   - `CardSlots.permissions(catalog, ready, actor, card, rules): Vector[DiscardPermission]`.
-  - `CardSlots.matched(permissions: Vector[DiscardPermission], cards: Vector[SiteDenizenState]): Option[Vector[(SiteDenizenState, DiscardPermission)]]`.
   - `CardSlots.moreDiscards(catalog, ready, actor, card, origin, rules, slot: CardSlot): Option[MoreDiscards]`.
   - `CardSlots.credits(catalog, ready, actor, card, rules, discarded: Vector[CardId]): Either[OathViolation, Vector[Note]]`.
 
@@ -1206,7 +1199,7 @@ Create `src/test/scala/oathdigital/gameplay/CardSlotsSuite.scala`:
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{CardPlay, CardPlayRules,
-  DiscardPermission, DiscardScope, RuleNotes, VisionRules}
+  DiscardPermission, RuleNotes, VisionRules}
 import oathdigital.gameplay.actions.cardplay.{CardSlot, CardSlots,
   MoreDiscards}
 import oathdigital.gameplay.powers.search.CropRotation
@@ -1244,9 +1237,9 @@ class CardSlotsSuite extends munit.FunSuite:
   private val play = DecisionOption.Button(CardSlots.play, "Play")
   private val spot = DecisionOption.RevealedVision(
     DecisionOptionRef.RevealedVision(p1))
-  private val denizensOnly = DiscardPermission(DiscardScope.Denizen,
-    PowerId("test.denizens-only"),
-    Note(PowerId("test.denizens-only"), _ => None))
+  /** A second plain site discard permission, besides `testPermission`. */
+  private val second = DiscardPermission(PowerId("test.second-discard"),
+    Note(PowerId("test.second-discard"), _ => None))
   private val permitted = CardPlayRules.default.permitSiteDiscard(testPermission)
 
   private def slotsOf(ready: ReadyGame, played: WorldCardId = card,
@@ -1334,22 +1327,23 @@ class CardSlotsSuite extends munit.FunSuite:
       else site))
     assertEquals(CardPlay.homelandSuit(variant, city.id), Some(Suit.Order))
 
-  test("the Homeland of the card's suit permits one discard of its own"):
-    val beast = atWoods(card, rainBoots)
-    assertEquals(atSite(slotsOf(beast)).map(_.ref), Vector[DecisionOptionRef](
-      DecisionOptionRef.SiteSlot(woods, 1), DecisionOptionRef.SiteSlot(woods, 0)))
+  test("playing a card of the Homeland's suit there may replace any card at " +
+      "that site, whatever its suit"):
+    // Errand Boy is Beast and Deep Woods the Beast Homeland. Rain Boots is
+    // Nomad and Wolves Beast: the replaced card's suit plays no part.
+    val wolves = CatalogNames.denizen("Wolves")
+    val beast = atWoods(card, rainBoots, wolves)
+    assertEquals(atSite(slotsOf(beast)), Vector(siteSlot(2, woods),
+      replacing(siteSlot(0, woods), rainBoots),
+      replacing(siteSlot(1, woods), wolves)))
     assertEquals(CardSlots.permissions(catalog, beast, p1, card,
       CardPlayRules.default).map(_.source), Vector(RuleNotes.homelandDiscard))
-    // A card of another suit has no such permission.
-    assertEquals(atSite(slotsOf(atWoods(rainBoots, binding), rainBoots)),
-      Vector(siteSlot(1, woods)))
 
-  test("a denizen-only permission covers no edifice"):
-    val ready = atHome(rainBoots).edifice(hall, EdificeSide.Ruined, at = home)
-      .ready
-    assertEquals(atSite(slotsOf(ready,
-      rules = CardPlayRules.default.permitSiteDiscard(denizensOnly))),
-      Vector(siteSlot(2), replacing(siteSlot(0), rainBoots)))
+  test("playing a card of another suit at a Homeland may replace nothing"):
+    // Rain Boots is Nomad. The Beast Wolves at the site lends it no suit.
+    val wolves = CatalogNames.denizen("Wolves")
+    assertEquals(atSite(slotsOf(atWoods(rainBoots, wolves), rainBoots)),
+      Vector(siteSlot(1, woods)))
 
   test("an intact edifice and a faceup locked adviser are shown Locked; a " +
       "facedown locked adviser is not"):
@@ -1413,8 +1407,8 @@ class CardSlotsSuite extends munit.FunSuite:
       assertEquals(advisers(slotsOf(three, rules = limited), faceup),
         Vector.empty, s"faceup = $faceup"))
 
-  test("a faceup limit lowers only the faceup plays"):
-    val rules = CardPlayRules.default.limitFaceupAdvisers(2)
+  test("the played card's own limit lowers only its faceup plays"):
+    val rules = CardPlayRules.default.limitPlayedCard(2)
     val two = holding(rainBoots, binding).ready
     assertEquals(advisers(slotsOf(two, rules = rules), faceup = true),
       Vector(replacing(adviserPlay(0, faceup = true), rainBoots),
@@ -1470,8 +1464,8 @@ class CardSlotsSuite extends munit.FunSuite:
     assertEquals(options(slotsOf(ready, VisionRules.Conspiracy,
       CardPlay.Origin.FacedownAdviser)), Vector(pile, play))
 
-  test("a facedown adviser turned faceup must fit the faceup limit"):
-    val rules = CardPlayRules.default.limitFaceupAdvisers(2)
+  test("a facedown adviser turned faceup must fit its own limit"):
+    val rules = CardPlayRules.default.limitPlayedCard(2)
     val three = Vector(rainBoots, binding, wrestlers)
       .foldLeft(Table.start)(_.adviser(p1, _, facedown = true)).ready
     assertEquals(advisers(slotsOf(three, wrestlers,
@@ -1482,28 +1476,17 @@ class CardSlotsSuite extends munit.FunSuite:
       CardPlay.Origin.FacedownAdviser, rules), faceup = true),
       Vector(adviserPlay(1, faceup = true)))
 
-  test("matching gives each discard a permission of its own, and a " +
-      "denizen-only one never takes an edifice"):
-    val boots = DenizenState(rainBoots, Orientation.FaceUp, Tokens.empty)
-    val ruined = EdificeState(hall, EdificeSide.Ruined, Tokens.empty)
-    assertEquals(CardSlots.matched(Vector(denizensOnly, testPermission),
-      Vector(ruined, boots)), Some(Vector(ruined -> testPermission,
-        boots -> denizensOnly)))
-    assertEquals(CardSlots.matched(Vector(denizensOnly), Vector(ruined)), None)
-    assertEquals(CardSlots.matched(Vector(testPermission),
-      Vector(ruined, boots)), None)
-
   /** Ancient City full: Rain Boots, Ancient Binding and the ruined Hall. */
   private def fullWithHall: ReadyGame = atHome(rainBoots, binding)
     .edifice(hall, EdificeSide.Ruined, at = home).ready
-  private val two = permitted.permitSiteDiscard(denizensOnly)
+  private val two = permitted.permitSiteDiscard(second)
 
   private def replacingBoots(ready: ReadyGame, rules: CardPlayRules)
       : CardSlot = present(slotsOf(ready, rules = rules)
     .find(_.option == replacing(siteSlot(0), rainBoots)), "the Replace slot")
 
-  test("after a Replace site slot, the other site cards the permissions " +
-      "left cover are offered, up to their count"):
+  test("after a Replace site slot, the other site cards are offered, an " +
+      "edifice included, up to the permissions left"):
     val ready = fullWithHall
     assertEquals(CardSlots.moreDiscards(catalog, ready, p1, card,
       CardPlay.Origin.TemporaryHand, two, replacingBoots(ready, two)),
@@ -1517,11 +1500,11 @@ class CardSlotsSuite extends munit.FunSuite:
       replacingBoots(ready, permitted)), None)
 
   test("the credits name the permission each discard spent, in discard " +
-      "order, and refuse what the permissions cannot cover"):
+      "order, and refuse more discards than permissions"):
     val ready = fullWithHall
     assertEquals(CardSlots.credits(catalog, ready, p1, card, two,
       Vector(hall, rainBoots)), Right(Vector(testPermission.note,
-        denizensOnly.note)))
+        second.note)))
     assert(CardSlots.credits(catalog, ready, p1, card, permitted,
       Vector(rainBoots, binding)).isLeft)
 
@@ -1920,7 +1903,8 @@ object CardPlay:
             orientation == Orientation.FaceDown
         val remaining = if origin == Origin.FacedownAdviser then
           player.advisers.filter(_.id != card) else player.advisers
-        val mustReplace = remaining.size >= rules.limitFor(orientation)
+        val mustReplace = remaining.size >=
+          rules.limitAfter(orientation == Orientation.FaceUp)
         if !limited || mustReplace == replace.nonEmpty then Right(())
         else Left(InvalidSearchPlacement(
           if mustReplace then "a full adviser area requires a discard"
@@ -1939,7 +1923,7 @@ package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.{CardPlay, CardPlayRules,
-  DiscardPermission, DiscardScope, VisionRules}
+  DiscardPermission, VisionRules}
 import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.model._
 
@@ -1966,7 +1950,8 @@ final case class MoreDiscards(locked: DecisionOption,
   * builder").
   *
   * The options, in order: the discard pile; the site's first empty slot,
-  * then each site card a permission covers, marked Replace; the faceup plays;
+  * then, when a permission allows a site discard, each site card marked
+  * Replace; the faceup plays;
   * the facedown plays. An adviser play offers the first empty slot below the
   * limit or, with none, every held adviser marked Replace, and nothing at or
   * past the limit. A facedown adviser offers only its own slot, faceup. A
@@ -2018,25 +2003,9 @@ object CardSlots:
     yield CardPlayRules.homeland(site, actor)
     homeland.toVector ++ rules.siteDiscards
 
-  /** Each of `cards` with a permission of its own, in `cards`' order, or
-    * `None` when `permissions` cannot cover them all. A denizen-only
-    * permission takes no edifice, so the edifices take the permissions that
-    * cover any card, and the denizens take the rest, denizen-only first.
-    */
-  def matched(permissions: Vector[DiscardPermission],
-      cards: Vector[SiteDenizenState])
-      : Option[Vector[(SiteDenizenState, DiscardPermission)]] =
-    val (denizens, others) = cards.partition(_.isInstanceOf[DenizenState])
-    val (narrow, wide) = permissions.partition(_.scope == DiscardScope.Denizen)
-    Option.when(others.size <= wide.size && cards.size <= permissions.size) {
-      val assigned = (others.zip(wide) ++
-        denizens.zip(narrow ++ wide.drop(others.size))).toMap
-      cards.map(card => card -> assigned(card))
-    }
-
-  /** The follow-up of `slot`, a Replace site slot: the other site cards
-    * some matching of the permissions covers together with the replaced
-    * card, and how many may go; `None` when nothing more may be discarded. */
+  /** The follow-up of `slot`, a Replace site slot: the other site cards,
+    * an edifice included, and how many more the permissions left allow;
+    * `None` when nothing more may be discarded. */
   def moreDiscards(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: CardPlay.Origin,
       rules: CardPlayRules, slot: CardSlot): Option[MoreDiscards] =
@@ -2046,26 +2015,25 @@ object CardSlots:
       replacedId <- slot.replacedAtSite
       replaced <- held.find(_.id == replacedId)
       if permitted.size > 1
-      options = held.filter(other => other.id != replacedId &&
-          matched(permitted, Vector(replaced, other)).nonEmpty)
-        .flatMap(other => judged(catalog, ready, optionOf(other),
-          CardPlay.operations(catalog, ready, actor, card, slot.placement,
-            origin, Vector(other.id))))
+      options = held.filter(_.id != replacedId).flatMap(other =>
+        judged(catalog, ready, optionOf(other), CardPlay.operations(catalog,
+          ready, actor, card, slot.placement, origin, Vector(other.id))))
       most = math.min(permitted.size - 1, options.count(_.available))
       if most >= 1
     yield MoreDiscards(optionOf(replaced), options, most)
 
-  /** The line of the permission each discarded site card was matched to, in
-    * discard order; refused when the permissions cannot cover them all. */
+  /** The line of the permission each discarded site card spent, in discard
+    * order: permissions are spent in the order `permissions` gives them, and
+    * every one covers any site card. Refused when more cards are discarded
+    * than there are permissions. */
   def credits(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       card: WorldCardId, rules: CardPlayRules, discarded: Vector[CardId])
       : Either[OathViolation, Vector[Note]] =
-    val held = siteCards(ready, actor)
-    matched(permissions(catalog, ready, actor, card, rules),
-      discarded.flatMap(id => held.find(_.id == id)))
-      .map(_.map((_, permission) => permission.note))
-      .toRight(OathViolation.InvalidSearchPlacement(
-        "these site cards cannot all be discarded under the permissions in play"))
+    val permitted = permissions(catalog, ready, actor, card, rules)
+    Either.cond(discarded.size <= permitted.size,
+      permitted.take(discarded.size).map(_.note),
+      OathViolation.InvalidSearchPlacement(
+        "more site cards are discarded than the permissions in play allow"))
 
   /** `option` as the restrictions in force leave its plan: as it is, shown
     * unavailable with a protection's reason, or left out. */
@@ -2102,11 +2070,10 @@ object CardSlots:
       val permitted = permissions(catalog, ready, player.player, card, rules)
       val empty = Option.when(site.denizens.size < capacity)(
         slot(site.denizens.size) -> SearchPlacement.Site(None))
-      val replacing = site.denizens.zipWithIndex.collect {
-        case (held, index) if permitted.exists(_.covers(held)) =>
+      val replacing = if permitted.isEmpty then Vector.empty
+        else site.denizens.zipWithIndex.map((held, index) =>
           DecisionOption.Replacing(slot(index), held.id) ->
-            SearchPlacement.Site(Some(held.id))
-      }
+            SearchPlacement.Site(Some(held.id)))
       empty.toVector ++ replacing).getOrElse(Vector.empty)
 
   private def faceup(player: PlayerState, card: WorldCardId,
@@ -2133,7 +2100,7 @@ object CardSlots:
   private def adviserSlots(player: PlayerState, card: WorldCardId,
       origin: CardPlay.Origin, orientation: Orientation, rules: CardPlayRules)
       : Vector[(DecisionOption, SearchPlacement)] =
-    val limit = rules.limitFor(orientation)
+    val limit = rules.limitAfter(orientation == Orientation.FaceUp)
     val held = player.advisers
     def slot(index: Int): DecisionOption = DecisionOption.AdviserPlay(
       DecisionOptionRef.AdviserPlay(player.player, index,
@@ -2523,12 +2490,13 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       DecisionOptionRef.SiteSlot(home, 0),
       DecisionOptionRef.AdviserPlay(actor, 0, faceup = true),
       DecisionOptionRef.RevealedVision(actor), CardSlots.play,
-      DecisionOptionRef.AdviserPlay(actor, 0, faceup = false),
-      DecisionOptionRef.Button("other"))
+      DecisionOptionRef.AdviserPlay(actor, 0, faceup = false))
     assertEquals(refs.map(CardPlayProcedure.playedAs), Vector(
       Some(PlayedAs.Discarded), Some(PlayedAs.AtSite), Some(PlayedAs.Faceup),
-      Some(PlayedAs.Faceup), Some(PlayedAs.Faceup), Some(PlayedAs.Facedown),
-      None))
+      Some(PlayedAs.Faceup), Some(PlayedAs.Faceup), Some(PlayedAs.Facedown)))
+    // The follow-up answers with site cards, which play nothing.
+    assertEquals(CardPlayProcedure.playedAs(
+      DecisionOptionRef.Denizen(others.head)), None)
 
   /** A pending walk that answered decision `id` with the discard pile. */
   private def pendingFor(id: String): PendingTree =
@@ -3104,10 +3072,12 @@ class CropRotationSuite extends munit.FunSuite:
       "a card that prints a selected power cannot be discarded")
     assert(placeReplacing(asked, played, PlayedAs.AtSite, fillers(0)).isRight)
 
-  test("it covers no edifice"):
+  test("it covers a ruined edifice too: an edifice is a denizen for placement"):
+    val hall = CatalogNames.edifice("Hall of Ministers")
     val ready = Table.from(staged(Vector(fillers(0))))
-      .edifice("Hall of Ministers", EdificeSide.Ruined, at = home).unchecked
-    assertEquals(siteSlots(toPlacement(ready)), Vector(None, Some(fillers(0))))
+      .edifice(hall, EdificeSide.Ruined, at = home).unchecked
+    assertEquals(siteSlots(toPlacement(ready)),
+      Vector(None, Some(fillers(0)), Some(hall)))
 
   test("it applies to a facedown adviser played to a site"):
     val ready = Table.start.adviser(p1, crop)
