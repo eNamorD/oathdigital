@@ -33,9 +33,17 @@ class GameLogPropertiesSuite extends munit.FunSuite:
     scripts.foreach { script =>
       val shapes = viewers(script).map(viewer => formatter
         .format(script.history.steps, viewer)
-        .map(entry => (entry.sequence, entry.ordinal, entry.kind, entry.depth)))
+        .map(entry => (entry.sequence, entry.ordinal, entry.kind, entry.depth,
+          entry.section)))
       shapes.tail.foreach(shape => assertEquals(shape, shapes.head,
         script.name))
+    }
+
+  test("no headline carries a section"):
+    scripts.foreach { script =>
+      val headlines = formatter.format(script.history.steps, None)
+        .filter(_.depth == 0)
+      assert(headlines.forall(_.section.isEmpty), script.name)
     }
 
   /** A line judges a card at the operation that moved it, which may lie

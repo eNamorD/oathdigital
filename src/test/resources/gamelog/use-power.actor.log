@@ -2,5 +2,5 @@
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
 0.3 phase 0 | Rest
-3.0 decision 1 | Chose the Discord bank
-5.0 action 1 | [card:92|Silver Tongue]: [player:p1|p1] took [amount:1 favor] from the Discord bank.
+3.0 decision 1 use-power:denizen.silver-tongue@2 | Chose the Discord bank
+5.0 action 1 use-power:denizen.silver-tongue@2 | [card:92|Silver Tongue]: [player:p1|p1] took [amount:1 favor] from the Discord bank.

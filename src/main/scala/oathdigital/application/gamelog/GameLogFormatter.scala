@@ -43,7 +43,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         val posted = quietWake(entries.lastOption, opened)
         (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
           LogEntry(journal.sequence(at), ordinal, entry.kind, entry.depth,
-            entry.spans) })
+            entry.spans, entry.section) })
     }._2
 
   /** A journal that does not begin with `GameStarted` began at a position
@@ -94,10 +94,14 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         (Vector(victory(winner, exhaustion(kind, vision))), run)
       // A diagnostic, not play.
       case _: OathEvent.IgnoredRulesRecorded => (Vector.empty, run)
-      // Minor actions and state-based changes, outside any walker run.
+      // A minor action, outside any walker run, is a section of its own.
       case _: OathEvent.SiteRelicsPeeked | _: OathEvent.OwnedRelicRevealed |
-          _: OathEvent.WarbandsMoved | _: OathEvent.BanditsRefilled |
-          _: OathEvent.UsurperFlipped =>
+          _: OathEvent.WarbandsMoved =>
+        val section = LogSection(journal.sequence(at), LogSections.Minor)
+        (events.lines(journal, at, viewer).map(_.copy(section = Some(section))),
+          run)
+      // State-based changes, outside any section.
+      case _: OathEvent.BanditsRefilled | _: OathEvent.UsurperFlipped =>
         (events.lines(journal, at, viewer), run)
       case _: WalkerStepRecorded | _: WalkerParked | _: WalkerCompleted |
           _: PowerNoted =>
@@ -118,13 +122,16 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         val start = starts.start(journal, run, at, viewer)
         val begun = if start.isEmpty then run
           else run.copy(started = Some(journal.segmentEnd(at)))
-        val posted = start.toVector ++
+        val section = LogSections.forRun(journal, begun)
+        val lines = start.toVector ++
           (if start.isEmpty then Vector.empty
             else notes.held(journal, begun, at, viewer)) ++
           starts.continued(journal, begun, at).toVector ++
           actions.lines(journal, begun, at, viewer) ++
           details.lines(journal, begun, at, viewer) ++
-          notes.own(journal, begun, at, starts.opens(begun.procedure), viewer) ++
+          notes.own(journal, begun, at, starts.opens(begun.procedure), viewer)
+        // A headline the run posts (a turn or phase change) is in no section.
+        val posted = lines.map(_.copy(section = section)) ++
           headlines(journal, at)
         val next = journal.event(at) match
           case _: WalkerCompleted => None

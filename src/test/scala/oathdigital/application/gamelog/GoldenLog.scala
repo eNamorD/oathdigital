@@ -2,11 +2,14 @@ package oathdigital.application.gamelog
 
 /** An exact, readable rendering of log entries for golden files: one line
   * per entry, `sequence.ordinal kind depth` then every span, a typed span in
-  * brackets with its identity. Nothing a `LogEntry` holds is lost. */
+  * brackets with its identity. Nothing a `LogEntry` holds is lost. An entry in
+  * a section shows it as `action@id` after its depth. */
 object GoldenLog:
   def render(entries: Vector[LogEntry]): String =
     entries.map(entry => s"${entry.sequence}.${entry.ordinal} " +
-      s"${entry.kind.key} ${entry.depth} | " + entry.spans.map(span).mkString)
+      s"${entry.kind.key} ${entry.depth}" +
+      entry.section.fold("")(section => s" ${section.action}@${section.id}") +
+      " | " + entry.spans.map(span).mkString)
       .mkString("", "\n", "\n")
 
   private def span(value: LogSpan): String = value match

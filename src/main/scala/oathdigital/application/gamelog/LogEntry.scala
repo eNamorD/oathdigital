@@ -5,10 +5,16 @@ import oathdigital.protocol.projection.CardDetailsProjection
 /** One line of the game log (spec, "Output"). `(sequence, ordinal)` is its
   * stable identity: `sequence` is the journal index of the event that posted
   * it, `ordinal` its position among the entries that event posted. Depth 0
-  * is a headline, depth 1 a line.
+  * is a headline, depth 1 a line; only a line can carry a section.
   */
 final case class LogEntry(sequence: Long, ordinal: Int, kind: LogKind,
-    depth: Int, spans: Vector[LogSpan])
+    depth: Int, spans: Vector[LogSpan], section: Option[LogSection] = None)
+
+/** The action an entry belongs to (log action sections design, "Server"):
+  * `id` is the journal index of the action's first event, the same for
+  * every entry of one action, and `action` its procedure key, or `minor`
+  * for a minor action. A client draws one band per section. */
+final case class LogSection(id: Long, action: String)
 
 /** `key` is the kind's wire spelling. */
 enum LogKind(val key: String):
@@ -56,7 +62,7 @@ object LogSpan:
 
 /** An entry before it has a key: what one event posts, in order. */
 private[gamelog] final case class Posted(kind: LogKind, depth: Int,
-    spans: Vector[LogSpan])
+    spans: Vector[LogSpan], section: Option[LogSection] = None)
 private[gamelog] object Posted:
   def headline(kind: LogKind, spans: Vector[LogSpan]): Posted =
     Posted(kind, 0, spans)
