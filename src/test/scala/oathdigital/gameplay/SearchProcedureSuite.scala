@@ -8,7 +8,7 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Outcomes, PlacementPicks, PowerStubs, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, PowerStubs, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 
@@ -139,6 +139,58 @@ class SearchProcedureSuite extends munit.FunSuite:
         DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("ok"))))
     val finalReady = Outcomes.ready(completed.state)
     assertEquals(finalReady.game.current.walkerPending, None)
+
+  test("a follow-up discard answered before a power's Decide after the play " +
+      "resolves on resume, which settles from the answers"):
+    // Three denizens top the deck; the kept one replaces a card of a full
+    // Ancient City, and two permissions let a second card go too.
+    val fillers = Vector("Rain Boots", "Ancient Binding", "Wrestlers")
+      .map(CatalogNames.denizen(_))
+    val home = CatalogNames.site("Ancient City")
+    val initial = fillers.foldLeft(atAncientCity.worldDeckTop(topCards*))(
+      _.denizen(_, at = home)).ready
+    val twoPermissions = PlacementFixture.rulePower("test.two-discards")(
+      _.permitSiteDiscard(PlacementFixture.testPermission)
+        .permitSiteDiscard(PlacementFixture.testPermission))
+    val afterDecision = "test.after-follow-up"
+    val afterPlay = PowerStubs.ContributingStub(PowerId("test.after-follow-up"),
+      Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform(
+        (ctx, children) => children :+ Decide(afterDecision, ctx.activePlayer,
+          DecisionQuery.ChooseOne(Vector(DecisionOption.Button(
+            DecisionOptionRef.Button("ok"), "OK"))))))))
+    val powers = WalkerPowers(Vector(twoPermissions, afterPlay))
+    val withPowers = new OathRules(catalog, walkerPowerCatalog = powers)
+    val withPowersParked = new ParkedDecisionAssertions(catalog, powers)
+    val kept = topCards.head
+    val started = accepted(withPowers.startWalker(OathState.Ready(initial),
+      ActionRef.Search, actor,
+      startArgs = Vector(DecisionOptionRef.Button("search:world"))))
+    val selected = accepted(withPowers.resolveWalker(started.state, actor,
+      SearchProcedure.cardDecisionId, DecisionAnswer.PartitionAnswer(
+        DecisionPlacement(DecisionOptionRef.Denizen(kept),
+          SearchProcedure.keepKey) +: topCards.tail.map(card =>
+          DecisionPlacement(DecisionOptionRef.Denizen(card),
+            SearchProcedure.discardKey)))))
+    val replaced = accepted(withPowers.resolveWalker(selected.state, actor,
+      PlacementFixture.cardPlayDecisionId(kept, "place"),
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.SiteSlot(home, 0))))
+    withPowersParked.assertParked(replaced.state, ActionRef.Search,
+      PlacementFixture.cardPlayDecisionId(kept, "discard"), actor)
+    val more = accepted(withPowers.resolveWalker(replaced.state, actor,
+      PlacementFixture.cardPlayDecisionId(kept, "discard"),
+      DecisionAnswer.ChooseManyAnswer(Vector(
+        DecisionOptionRef.Denizen(fillers(1))))))
+    // The card is played and both site cards are gone; the walk waits on the
+    // power's Decide, which a resume must reach at the same child index.
+    withPowersParked.assertParked(more.state, ActionRef.Search, afterDecision,
+      actor)
+    val played = Outcomes.ready(more.state)
+    assertEquals(Look(played).cardsAt(home), Vector[CardId](fillers(2), kept))
+    val completed = accepted(withPowers.resolveWalker(more.state, actor,
+      afterDecision, DecisionAnswer.ChooseOneAnswer(
+        DecisionOptionRef.Button("ok"))))
+    assertEquals(Outcomes.ready(completed.state).game.current.walkerPending,
+      None)
 
   test("Search uses its registered modifier-selection window"):
     val initial = atAncientCity.ready

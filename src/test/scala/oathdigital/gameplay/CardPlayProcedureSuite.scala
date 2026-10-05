@@ -104,8 +104,17 @@ class CardPlayProcedureSuite extends munit.FunSuite:
   test("an unavailable Replace slot is refused"):
     val full = locked.foldLeft(Table.start.hand(actor, card))(
       _.adviser(actor, _)).ready
-    assert(parkOnPlacement(full)
-      .place(DecisionOptionRef.AdviserPlay(actor, 0, faceup = true)).isLeft)
+    // The slot is offered, shown unavailable, and an answer naming it is
+    // refused as one the decision does not offer.
+    val offered = placementDecision(build(full, actor, card)).query match
+      case DecisionQuery.ChooseOne(options, _) => options
+      case other => fail(s"expected a choose-one, got $other")
+    assert(offered.exists(option => !option.available &&
+      option.ref == DecisionOptionRef.AdviserPlay(actor, 0, faceup = true)))
+    assertEquals(parkOnPlacement(full)
+      .place(DecisionOptionRef.AdviserPlay(actor, 0, faceup = true))
+      .left.toOption, Some(OathViolation.InvalidEventOrder(
+        s"decision $placeId does not offer the selected option")))
 
   test("a Replace site slot with a permission left asks for more discards, " +
       "the replaced card locked"):

@@ -391,3 +391,29 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     json("minorActions")("advisers")(0)("placements") = ujson.Arr()
     assertEquals(GameProjectionCodec.decode(ujson.write(json)),
       Right(projection))
+
+  test("a payload without an adviser limit or a replaced card decodes to the " +
+      "defaults"):
+    val replacing = DecisionOptionProjection("site-slot", "site:a:0",
+      "Replace Known at A", replaces = Some(known))
+    val written = projection.copy(
+      playerBoards = projection.playerBoards.map(_.copy(adviserLimit = 2)),
+      walkerDecision = Some(WalkerDecisionProjection("search",
+        "cardplay.place.denizen.known", "decide", query = Some(
+          DecisionQueryProjection.ChooseOne(Vector(replacing))))))
+    def strip(value: ujson.Value, key: String): Unit = value match
+      case obj: ujson.Obj =>
+        obj.value.remove(key)
+        obj.value.values.foreach(strip(_, key))
+      case arr: ujson.Arr => arr.value.foreach(strip(_, key))
+      case _ => ()
+    val json = ujson.read(GameProjectionCodec.encode(written))
+    strip(json, "adviserLimit")
+    strip(json, "replaces")
+    assertEquals(GameProjectionCodec.decode(ujson.write(json)), Right(
+      written.copy(
+        playerBoards = projection.playerBoards.map(_.copy(adviserLimit = 3)),
+        walkerDecision = Some(WalkerDecisionProjection("search",
+          "cardplay.place.denizen.known", "decide", query = Some(
+            DecisionQueryProjection.ChooseOne(Vector(
+              replacing.copy(replaces = None)))))))))

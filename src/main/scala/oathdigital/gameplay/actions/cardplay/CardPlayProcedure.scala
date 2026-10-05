@@ -174,35 +174,34 @@ object CardPlayProcedure:
     val slots = if held then CardSlots.slots(catalog, ready, actor, card, from,
       rules) else Vector.empty
     val placeId = placementDecisionId(card)
-    val discardId = discardDecisionId(card)
     val choose = Decide(placeId, actor, DecisionQuery.ChooseOne(
       slots.map(_.option), heading = Some("Play the card")))
     val selected = Branch((_, pending) => {
       val answer = pending.answered.collectFirst {
         case Answered(`placeId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
       }
-      val more = pending.answered.collectFirst {
-        case Answered(`discardId`, DecisionAnswer.ChooseManyAnswer(refs), _) =>
-          refs
-      }
       // Once the card has left its origin its slots can no longer be built:
       // the tree is settled from the answers instead, keeping the shape it
       // had when the decisions were asked.
       if !held then answer.toVector.flatMap(ref =>
-        settled(ready, actor, card, ref, askedMore = more.nonEmpty))
+        settled(ready, actor, card, ref))
       else answer.flatMap(ref => slots.find(_.ref == ref)).toVector.flatMap(
         slot => played(catalog, ready, actor, card, from, rules, slot))
     })
     Vector(choose, selected)
 
-  /** The play of `slot`: the follow-up when it is a Replace site slot that
-    * leaves permissions, the line of each permission its site discards
-    * spent, the operations, and the hook. */
+  /** The play of `slot`: the follow-up, the line of each permission its site
+    * discards spent and the operations, and the hook. The follow-up's place is
+    * always filled, by its Decide when `slot` is a Replace site slot that
+    * leaves permissions and by nothing otherwise, so the shape never depends
+    * on whether the walker asked it (it skips a choose-many with no option
+    * left, recording no answer). */
   private def played(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, from: CardPlay.Origin,
       rules: CardPlayRules, slot: CardSlot): Vector[Operation] =
-    val followUp = CardSlots.moreDiscards(catalog, ready, actor, card, from,
-      rules, slot).map(offer => Decide(discardDecisionId(card), actor,
+    val followUp: Operation = CardSlots.moreDiscards(catalog, ready, actor,
+      card, from, rules, slot).fold[Operation](noFollowUp)(offer =>
+      Decide(discardDecisionId(card), actor,
         DecisionQuery.ChooseMany(0, offer.most, offer.options,
           heading = Some("Discard more cards from the site"),
           locked = Vector(offer.locked))))
@@ -223,20 +222,20 @@ object CardPlayProcedure:
         case Right(notes) if notes.isEmpty => apply
         case Right(notes) => Sequence(notes :+ apply))
     })
-    followUp.toVector ++ Vector(play) ++ hook(ready, actor, card,
-      slot.placement)
+    Vector(followUp, play) ++ hook(ready, actor, card, slot.placement)
 
-  /** The shape of a play once the card has left its origin: the follow-up if
-    * it was asked, the play, and the hook. A resumed walk starts past the
-    * decisions and the play, so neither runs again. */
+  /** The follow-up's place when nothing is to be asked. */
+  private def noFollowUp: Operation = Sequence(Vector.empty)
+
+  /** The shape of a play once the card has left its origin: the follow-up's
+    * place, the play, and the hook, as in the live shape. A resumed walk
+    * starts past the decisions and the play, so neither runs again. */
   private def settled(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
-      ref: DecisionOptionRef, askedMore: Boolean): Vector[Operation] =
+      ref: DecisionOptionRef): Vector[Operation] =
     playedAs(ref).map(placementOf).toVector.flatMap { placement =>
-      val followUp = Option.when(askedMore)(Decide(discardDecisionId(card),
-        actor, DecisionQuery.ChooseMany(0, 0, Vector.empty)))
       val play = BuildOps((_, _) => Left(OathViolation.InvalidSearchPlacement(
         "the card has already been played")))
-      followUp.toVector ++ Vector(play) ++ hook(ready, actor, card, placement)
+      Vector(noFollowUp, play) ++ hook(ready, actor, card, placement)
     }
 
   private def placementOf(way: PlayedAs): SearchPlacement = way match

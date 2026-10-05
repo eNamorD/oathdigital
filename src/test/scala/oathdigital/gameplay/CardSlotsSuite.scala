@@ -301,8 +301,8 @@ class CardSlotsSuite extends munit.FunSuite:
       CardPlay.Origin.TemporaryHand, permitted,
       replacingBoots(ready, permitted)), None)
 
-  test("the credits name the permission each discard spent, in discard " +
-      "order, and refuse more discards than permissions"):
+  test("the credits name one permission per discard, in the order the " +
+      "permissions are given, and refuse more discards than permissions"):
     val ready = fullWithHall
     assertEquals(CardSlots.credits(catalog, ready, p1, card, two,
       Vector(hall, rainBoots)), Right(Vector(testPermission.note,
