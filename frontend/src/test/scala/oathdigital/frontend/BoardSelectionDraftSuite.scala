@@ -177,3 +177,12 @@ class BoardSelectionDraftSuite extends munit.FunSuite:
     assertEquals(BoardOptionViews.of(decision(query), query, None)
       .get("adviser-slot:red:2").map(view => (view.state, view.reason)),
       Some((OptionState.Unavailable, Some("First reason"))))
+
+  test("an open home is kept while the same question stands, and dropped " +
+      "with the draft when the options change"):
+    val opened = draft(placement).click(faceup)
+    assertEquals(BoardSelectionDraft.reconcile(Some(opened), context,
+      Some(decision(placement))).map(_.home), Some(Some("adviser-slot:red:2")))
+    val changed = placement.copy(options = Vector(site("a"), faceup))
+    assertEquals(BoardSelectionDraft.reconcile(Some(opened), context,
+      Some(decision(changed))), None)

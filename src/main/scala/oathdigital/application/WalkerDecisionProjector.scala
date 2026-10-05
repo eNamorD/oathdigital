@@ -544,7 +544,10 @@ private[application] final class WalkerDecisionProjector(
         val orientation = orientationOf(located.state)
         if presentation.identifiesCard(ready, viewer, id, orientation,
             located.location.container) then
-          presentation.cardDetails(id, orientation, hidden = false)
+          located.state match
+            case Some(edifice: EdificeState) =>
+              presentation.edificeCardDetails(edifice)
+            case _ => presentation.cardDetails(id, orientation, hidden = false)
         else presentation.hiddenCard(presentation.cardKind(id))
       case None => presentation.hiddenCard(presentation.cardKind(id))
 

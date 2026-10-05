@@ -185,3 +185,10 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
         "cardplay.place.denizen.spirit", query, Vector("site-slot:plains:0"))))
     assertEquals(one(panel, ".board-decision-summary").textContent,
       "Discard Tavern Songs; play Wayward Spirit here")
+
+  test("Clear closes an open home that has no pick yet"):
+    val ui = new RecordingControls()
+    val panel = pane(ui, placement, placing, open(placement))
+    as[dom.html.Button](one(panel, ".board-decision-clear")).click()
+    assertEquals(ui.drafts.board.map(draft => (draft.home, draft.keys)),
+      Some((None, Vector.empty)))

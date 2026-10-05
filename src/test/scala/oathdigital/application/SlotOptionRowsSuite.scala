@@ -112,3 +112,16 @@ class SlotOptionRowsSuite extends munit.FunSuite:
       viewer = p2)
     val query = DecisionQueryProjection.ChooseOne(Vector(unseen))
     assertEquals(projector.replacing(query, played), query)
+
+  test("a Replace option naming an edifice reads the face's name, not the " +
+      "card's id"):
+    val forge = CatalogNames.edifice("Broken Forge")
+    val withEdifice = Table.start.edifice(forge, EdificeSide.Ruined, at = home)
+      .ready
+    val row = present(projector.optionProjection(withEdifice, Some(p1),
+      CardIndex.from(withEdifice.game).toOption, DecisionOption.Replacing(
+        DecisionOption.SiteSlot(DecisionOptionRef.SiteSlot(home, 0)), forge)),
+      "a projected row")
+    assertEquals(row.label, s"Replace Broken Forge at $site")
+    assertEquals(row.replaces.map(card => (card.name, card.cardKind)),
+      Some(("Broken Forge", "edifice")))

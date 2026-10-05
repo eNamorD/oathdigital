@@ -183,8 +183,9 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     assertEquals(all(root, ".board-option-badge").map(badge =>
       (badge.textContent, badge.parentNode.asInstanceOf[dom.Element].getAttribute("data-option-ref"))),
       Vector(("Replace", "site-slot:woods:0")))
-    assert(one(root, """[data-option-ref="site-slot:woods:0"]""")
-      .classList.contains("board-option-replace"))
+    val marked = one(root, """[data-option-ref="site-slot:woods:0"]""")
+    assert(marked.classList.contains("board-option-replace"))
+    assertEquals(marked.getAttribute("aria-label"), "Fox, Replace")
 
   test("an adviser play is drawn on its slot: a placeholder or the card " +
       "there"):

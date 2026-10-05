@@ -126,7 +126,7 @@ private[frontend] object BoardDecisionPanel:
       }
 
     panel.appendChild(text("p", "board-decision-rule-labelled", "Decision"))
-    if picks.nonEmpty then
+    if picks.nonEmpty || draft.exists(_.home.nonEmpty) then
       val clear = button("Clear", "board-decision-clear")
       clear.disabled = !canControl
       clear.onclick = _ => controls.stage(Draft.Board(draft.map(_.cleared)))
