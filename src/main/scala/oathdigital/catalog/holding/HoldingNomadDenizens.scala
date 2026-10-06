@@ -104,14 +104,6 @@ object AFastSteedCard extends Denizen(DenizenId("172"), "A Fast Steed", Suit.Nom
       "board.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object AncientBindingCard extends Denizen(DenizenId("23"), "Ancient Binding", Suit.Nomad):
-  val power = PrintedPower(PowerId("denizen.ancient-binding"),
-    persistent = false, cost = Cost(secret = 1, secretBurnt = 1),
-    text = "**ACTION:** Each player burns all [secret] from their board " +
-      "and cards except their last [secret]. _(Keep only your " +
-      "[secret] here.)_")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SearchPartyCard extends Denizen(DenizenId("240"), "Search Party", Suit.Nomad):
   val power = PrintedPower(PowerId("denizen.search-party"),
     persistent = false, cost = Cost.free,
