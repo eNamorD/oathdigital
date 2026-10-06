@@ -47,6 +47,12 @@ Left behind by earlier phases:
   cards up by name through `CatalogNames` (the test readability sweep of
   2026-10-02 moved numeric ids onto it). Move them to direct object
   references such as `AlchemistCard`.
+- [ ] **Keep known cards known when a pile moves.** Convoys moves a discard
+  pile card by card, and `CardKnowledgeMoves.after` forgets every card
+  whose destination is a regional discard, even one already in a pile. So
+  Convoys wipes what players learned from Brass Horse or Inquisitor's right
+  guess. Skip the forget when source and destination are both regional
+  discards.
 
 ### Phase - Board decision follow-ups
 
