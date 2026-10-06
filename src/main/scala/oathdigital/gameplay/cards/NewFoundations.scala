@@ -28,10 +28,10 @@ import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,
   InsectSwarmCard, KindredWarriorsCard, LancersCard, LongbowsCard,
   MercenariesCard, MilitaryParadeCard, MountedPatrolCard, NatureWorshipCard,
   OutridersCard, PledgeOfDefenseCard, RainBootsCard, RangersCard, RivalKhanCard,
-  RustingRayCard, ScoutsCard, ShieldWallCard, StickyFireCard, StormCallerCard,
-  TheGreatLevyCard, ToweringRampartCard, TravelingDoctorCard, TributeSpoilsCard,
-  VillageConstableCard, VowOfPeaceCard, WalledGardenCard, WarTortoiseCard,
-  WarningSignalsCard, WatchdogCard, WrestlersCard}
+  RustingRayCard, SaltTheEarthCard, ScoutsCard, ShieldWallCard, StickyFireCard,
+  StormCallerCard, TheGreatLevyCard, ToweringRampartCard, TravelingDoctorCard,
+  TributeSpoilsCard, VillageConstableCard, VowOfPeaceCard, WalledGardenCard,
+  WarTortoiseCard, WarningSignalsCard, WatchdogCard, WrestlersCard}
 import oathdigital.gameplay.powers.cardplay.{BookBindersCard, GossipCard,
   SacredGroundCard, SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard,
   WelcomingPartyCard, WildCryCard}

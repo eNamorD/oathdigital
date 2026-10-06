@@ -18,8 +18,9 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * Kindred Warriors and Rangers (the attack scored again), Mounted Patrol
   * (the attack pool halved before the roll and a discard at the end), Shield
   * Wall (the defender's whole force killed), and Billowing Fog and Traveling
-  * Doctor (the defeat's losses cancelled), and Cursed Cauldron (warbands for
-  * the enemy's dead). Each names its card, so all are always present.
+  * Doctor (the defeat's losses cancelled), Cursed Cauldron (warbands for the
+  * enemy's dead) and Salt the Earth (a targeted site's cards buried). Each
+  * names its card, so all are always present.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -49,4 +50,5 @@ object PlanRules:
       Vector(ShieldWall) ++
       Vector(BillowingFog) ++
       Vector(TravelingDoctor.forCatalog(catalog)) ++
-      Vector(CursedCauldron)
+      Vector(CursedCauldron) ++
+      Vector(SaltTheEarth.forCatalog(catalog))
