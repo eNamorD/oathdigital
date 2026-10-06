@@ -180,11 +180,17 @@ restriction-icon rule.
 ## Log lines
 
 Every power follows the
-[Power log lines design](2026-09-26-power-log-lines-design.md). `{Red}` is
-the acting player's chip and `{Blue}` and `{Green}` other players'. Amounts
-are what happened, never the printed number. Only existing `NoteArg` kinds
-are used. "Covers" names the generic lines a note replaces; "verify" means the
-plan confirms the generic line exists.
+[Power log lines design](2026-09-26-power-log-lines-design.md). `{Blue}` and
+`{Green}` are other players' chips. Amounts are what happened, never the
+printed number. Only existing `NoteArg` kinds are used. "Covers" names the
+generic lines a note replaces; "verify" means the plan confirms the generic
+line exists.
+
+**The acting player is not named** when the power runs on their own turn and
+affects only them: the line follows the action's own line, so "Gained {n}
+more secrets." reads better than naming them again. A line names a player
+when that player is not the actor (`{Blue}`), or when the power runs off
+turn, such as Herald or a Revelation choice.
 
 ### Slice 1: battle plans
 
@@ -192,37 +198,42 @@ plan confirms the generic line exists.
 |---|---|---|
 | Rusting Ray | Rusting Ray: Hollow swords ignored. | |
 | Fae Battalion | Fae Battalion: Hollow swords counted as swords. | |
-| War Tortoise, defender, a skull face was rolled | War Tortoise: Skulls added no attack. | |
-| War Tortoise, attacker, a double shield was rolled | War Tortoise: Double shields added no defense. | |
+| War Tortoise, used by the defender, a skull face was rolled | War Tortoise: Double swords added no attack. | |
+| War Tortoise, used by the attacker, a double shield was rolled | War Tortoise: Double shields added no defense. | |
 | Lancers | Lancers: The attack roll was doubled. | |
 | Fearsome General, a skull face was rolled | Fearsome General: Skulls added {n} more swords. | |
 | Kindred Warriors, attacker, a skull was rolled | Kindred Warriors: Skulls ignored. | |
 | Rangers, a skull was rolled | Rangers: Skulls ignored. | |
 | Mounted Patrol | Mounted Patrol: The attack pool was halved to {n} dice. | |
-| Scouts | Scouts: {Red} gained {n} Supply. | |
+| Scouts | Scouts: Gained {n} Supply. | |
 | Lancers, Mounted Patrol, Traveling Doctor, key `discarded` | {Card}: Discarded after the Campaign. | |
 | Billowing Fog, Traveling Doctor, key `spared` | {Card}: {Blue}'s force was spared. | |
 | Shield Wall, key `killed` | Shield Wall: {Blue}'s whole force was killed. | |
-| Cursed Cauldron, at least one warband gained | Cursed Cauldron: {Red} gained {n warbands}. | |
-| Salt the Earth, key `buried` | Salt the Earth: Buried {cards} at {site}. | the Buried lines (verify) |
-| Sealing Ward, at least one relic targeted | Sealing Ward: {Blue}'s relics added {n} more defense dice. | |
+| Cursed Cauldron, at least one warband gained | Cursed Cauldron: {Blue} gained {n warbands}. | |
+| Salt the Earth, key `buried` | Salt the Earth: Buried {cards} from {site}. | the Buried lines (verify) |
+| Sealing Ward, at least one relic targeted | Sealing Ward: Added {n} more defense dice. | |
 | Herald | Herald: {Blue} gained {1 favor} from {the Order bank}. | the Gain line |
 
+A battle plan's line names its user as `{Blue}` where either side may use it,
+since the defender acts off turn: Billowing Fog, Traveling Doctor, Shield
+Wall and Cursed Cauldron. Herald's holder is never the attacker.
+
 **No line:** Kindred Warriors' and Rangers' dice, whose effect is only a dice
-change, as in batch 3. Shield Wall's dice. Diplomat, whose hidden options write nothing (the
-roadmap's **Explain restricted options where they are offered**).
+change, as in batch 3. Shield Wall's dice. Diplomat, whose hidden options
+write nothing (the roadmap's **Explain restricted options where they are
+offered**).
 
 ### Slice 2: card moves
 
 | Card | Line | Covers |
 |---|---|---|
-| Roving Terror | Roving Terror: {Red} discarded {card} and moved it to {site}. | the Discard line (verify) |
-| Roving Terror, key `used.none` | Roving Terror: No card could be discarded. | |
-| Homesteaders | Homesteaders: {Red} moved {card} to {site}. | the Moved line (verify) |
+| Roving Terror | Roving Terror: Replaced {card} at {site}. | the Discard line (verify) |
+| Roving Terror, key `used.none` | Roving Terror: No card could be replaced. | |
+| Homesteaders | Homesteaders: Moved {card} to {site}. | the Moved line (verify) |
 | Homesteaders, key `used.none` | Homesteaders: No adviser could be moved. | |
-| Resettle | Resettle: {Red} moved {Blue}'s {card} to {site}. | the Moved line (verify) |
+| Resettle | Resettle: Moved {Blue}'s {card} to {site}. | the Moved line (verify) |
 | Resettle, key `used.none` | Resettle: No Nomad adviser could be moved. | |
-| Moving Market, key `moved` | Moving Market: {Red} moved it to {site} and gained {n favor} from {the Nomad bank}. | the Moved and Gain lines (verify) |
+| Moving Market, key `moved` | Moving Market: Moved it to {site} and gained {n favor} from {the Nomad bank}. | the Moved and Gain lines (verify) |
 
 **No line:** Moving Market skipped.
 
@@ -231,29 +242,31 @@ roadmap's **Explain restricted options where they are offered**).
 | Card | Line | Covers |
 |---|---|---|
 | Terror Spells | Terror Spells: Killed {n} warbands. | the Kill lines (verify) |
-| Terror Spells, key `used.none` | Terror Spells: {Red} did not hold the {Darkest Secret}. | |
+| Terror Spells, key `used.none` | Terror Spells: The {Darkest Secret} was not held. | |
 | Terror Spells, key `used.empty` | Terror Spells: No warband was in the region. | |
-| Witch's Bargain, key `secret`, one line per exchange | Witch's Bargain: {Red} gave {1 secret} to {Blue} and took {n favor}. | |
-| Witch's Bargain, key `favor`, one line per exchange | Witch's Bargain: {Red} gave {2 favor} to {Blue} and took {n secrets}. | |
-| Witch's Bargain, key `used.none` | Witch's Bargain: {Red} made no exchange. | |
-| Inquisitor, key `used.<vision>.right` | Inquisitor: {Red} guessed {name} and discarded {card} from {Blue}. | the Discard line |
-| Inquisitor, key `used.<vision>.wrong` | Inquisitor: {Red} guessed {name} for {Blue}'s Vision and was wrong. | |
+| Witch's Bargain, key `secret`, one line per exchange | Witch's Bargain: Gave {1 secret} to {Blue} and took {n favor}. | |
+| Witch's Bargain, key `favor`, one line per exchange | Witch's Bargain: Gave {2 favor} to {Blue} and took {n secrets}. | |
+| Witch's Bargain, key `used.none` | Witch's Bargain: No exchange was made. | |
+| Inquisitor, key `used.<vision>.right` | Inquisitor: Guessed {name} and discarded {card} from {Blue}. | the Discard line |
+| Inquisitor, key `used.<vision>.wrong` | Inquisitor: Guessed {name} for {Blue}'s Vision, wrongly. | |
 | Inquisitor, key `used.none` | Inquisitor: No player at the site held a facedown Vision. | |
-| Relic Thief, key `used.took` | Relic Thief: {Red} rolled no shield and took {relic} from {Blue}. | the Take line (verify) |
-| Relic Thief, key `used.kept` | Relic Thief: {Red} rolled a shield; {Blue} kept {relic}. | |
+| Relic Thief, key `used.took` | Relic Thief: Rolled no shield and took {relic} from {Blue}. | the Take line (verify) |
+| Relic Thief, key `used.kept` | Relic Thief: Rolled a shield; {Blue} kept {relic}. | |
 | Relic Thief, key `used.none` | Relic Thief: No faceup relic could be taken. | |
 | Ancient Binding | Ancient Binding: Burned {n secrets}. | the Burn lines (verify) |
 | Ancient Binding, key `used.none` | Ancient Binding: No secret was burned. | |
 | Convoys | Convoys: Moved the {pile} onto the {pile}. | |
 | Singing Mask | Singing Mask: Moved {n favor} from {the Beast bank} to the {People's Favor}. / Singing Mask: Moved {n favor} from the {People's Favor} to {the Beast bank}. | |
 | Singing Mask, key `used.none` | Singing Mask: No favor moved. | |
-| Assassin | Assassin: {Red} discarded {card} from {Blue}'s advisers. | the Discarded line |
+| Assassin | Assassin: Discarded {card} from {Blue}'s advisers. | the Discarded line |
 | Assassin, key `used.none` | Assassin: No faceup adviser could be discarded. | |
 
 Inquisitor's guessed name is literal text, one note key per Vision, because a
 `NoteArg.Card` is redacted per viewer. Its `{card}` on a right guess is the
-discarded Vision, which every viewer then identifies. Every decision whose
-choice a note names is declared narrated, as Fae Merchant's is.
+discarded Vision, which every viewer then identifies. Where the actor targets
+their own cards (Inquisitor, Resettle, Assassin), `{Blue}` is the actor's
+chip. Every decision whose choice a note names is declared narrated, as Fae
+Merchant's is.
 
 **No line:** Assassin's adviser limit, as for Silver Tongue.
 
@@ -262,9 +275,10 @@ choice a note names is declared narrated, as Fae Merchant's is.
 | Card | Line | Covers |
 |---|---|---|
 | Revelation, key `burned`, one line per player who burned | Revelation: {Blue} burned {n favor} and gained {n secrets}. | the Burn and Gain lines (verify) |
-| Revelation, key `none` | Revelation: Nobody burned favor. | |
-| Blackmail, key `paid` | Blackmail: {Blue} gave {Red} {3 favor} to keep {relic}. | the Give line (verify) |
-| Blackmail, key `took` | Blackmail: {Red} took {relic} from {Blue}. | the Take line (verify) |
+| Revelation, key `declined`, one line per player who was asked and burned none | Revelation: {Blue} did not burn any favor. | |
+| Revelation, key `none` | Revelation: Nobody had favor to burn. | |
+| Blackmail, key `paid` | Blackmail: {Blue} gave {3 favor} to keep {relic}. | the Give line (verify) |
+| Blackmail, key `took` | Blackmail: Took {relic} from {Blue}. | the Take line (verify) |
 | Blackmail, key `none` | Blackmail: No relic could be taken. | |
 | Dissent, key `placed`, one line per player who placed | Dissent: {Blue} placed {n favor} on it. | |
 | Dissent, key `none` | Dissent: Nobody placed favor. | |
@@ -273,9 +287,13 @@ choice a note names is declared narrated, as Fae Merchant's is.
 | Wizard's Conclave, key `none` | Wizard's Conclave: The {Darkest Secret} did not move. | |
 | Bandit Chief, key `killed`, one line per site | Bandit Chief: Killed {n} {Blue} warband at {site}. | that site's Kill line (verify) |
 | Bandit Chief, key `none` | Bandit Chief: No warband was killed. | |
-| A Round of Ale, key `returned` | A Round of Ale: Returned {n favor} and {m secrets}, and {Red} flipped their secrets. | the Rest cleanup's lines (verify) |
-| Call for Help, key `revealed` | Call for Help: Revealed and discarded {cards}, and {Red} gained {n warbands}. | the Peek and Discard lines |
+| A Round of Ale, key `cleanup` | A Round of Ale: Triggering resource cleanup. | |
+| Call for Help, key `revealed` | Call for Help: Revealed and discarded {cards}, and gained {n warbands}. | the Peek and Discard lines |
 | Call for Help, key `none` | Call for Help: Nothing was revealed. | |
+
+Revelation, Dissent and Wizard's Conclave name every player, the actor
+included, because the line is about several players. A Round of Ale's line
+comes before the cleanup, whose own lines follow unchanged.
 
 **No line:** Wizard's Conclave's tie choice, which the `took` line names.
 
@@ -283,20 +301,20 @@ choice a note names is declared narrated, as Fae Merchant's is.
 
 | Card | Line | Covers |
 |---|---|---|
-| Vow of Poverty (REST) | Vow of Poverty: {Red} took {n favor} from {the Order bank}. | the Gain line |
-| Vow of Beastkin, after the gain | Vow of Beastkin: {Red} gained {1} more warband. | |
+| Vow of Poverty (REST) | Vow of Poverty: Took {n favor} from {the Order bank}. | the Gain line |
+| Vow of Beastkin, after the gain | Vow of Beastkin: Gained {1} more warband. | |
 | Defame | Defame: Burned {1 favor} from {Blue}'s board. | the Burn line (verify) |
-| Mounted Library, key `doubled` | Mounted Library: {Red} gained {n} more secrets. | |
+| Mounted Library, key `doubled` | Mounted Library: Gained {n} more secrets. | |
 | Mounted Library, key `discarded` | Mounted Library: Discarded after the Trade. | the Discard line (verify) |
-| Curfew, Forced Labor | {Card}: {Red} gave {1 favor} to {Blue}. / {Card}: {Red} burned {1 favor}. | as for Toll Roads |
-| Awaited Return | Awaited Return: {Red} sacrificed {1} warband. | the Kill line (verify) |
-| Special Envoy | Special Envoy: {Red}'s Act Phase ended. | |
+| Curfew, Forced Labor | {Card}: Gave {1 favor} to {Blue}. / {Card}: Burned {1 favor}. | as for Toll Roads |
+| Awaited Return | Awaited Return: Spent no Supply after sacrificing {1} warband. | the Kill line (verify) |
+| Special Envoy | Special Envoy: The Act Phase ended. | |
 | Tyrant, key `killed` | Tyrant: Killed {1} {Blue} warband at {site}. | the Kill line (verify) |
 
-**No line:** News from Afar, A Fast Steed, Awaited Return's and Special
-Envoy's Supply waiver, which the start line's cost span shows. Vow of
-Poverty's and Vow of Beastkin's hidden options, Curfew's and Forced Labor's
-hidden sources, as restrictions never offered.
+**No line:** News from Afar, A Fast Steed and Special Envoy's Supply waiver,
+which the start line's cost span shows. Vow of Poverty's and Vow of
+Beastkin's hidden options, Curfew's and Forced Labor's hidden sources, as
+restrictions never offered.
 
 ## Testing
 
