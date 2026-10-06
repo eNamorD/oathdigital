@@ -153,9 +153,3 @@ object PressgangsCard extends Denizen(DenizenId("6"), "Pressgangs", Suit.Order):
     text = "You can muster on cards that already have [favor] or " +
       "[secret] on them.")
   val powers: Vector[PrintedPower] = Vector(power)
-
-object ScoutsCard extends Denizen(DenizenId("8"), "Scouts", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.scouts"),
-    persistent = false, cost = Cost.free,
-    text = "Gain 1 Supply.")
-  val powers: Vector[PrintedPower] = Vector(power)

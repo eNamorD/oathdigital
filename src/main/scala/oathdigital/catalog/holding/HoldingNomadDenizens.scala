@@ -66,13 +66,6 @@ object SpellBreakerCard extends Denizen(DenizenId("162"), "Spell Breaker", Suit.
       "cost any [secret] or [secret-burnt].")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object MountedPatrolCard extends Denizen(DenizenId("163"), "Mounted Patrol", Suit.Nomad):
-  val power = PrintedPower(PowerId("denizen.mounted-patrol"),
-    persistent = false, cost = Cost.free,
-    text = "The attacker rolls only half the [attack-die] in their " +
-      "attack pool, rounded down. At end, discard Mounted Patrol.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object AncientBloodlineCard extends Denizen(DenizenId("165"), "Ancient Bloodline", Suit.Nomad) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.ancient-bloodline"),
     persistent = true, cost = Cost.free,
