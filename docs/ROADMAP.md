@@ -67,52 +67,47 @@ did":
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
 
-### Catalog - to verify
+### Phase - Catalog batch 4
 
-Cards that probably need no engine change, each with one point to check
-first. A check that passes moves the card into a later no-engine batch, and
-one that fails moves it to the engine-blocked phase. From the survey of
-2026-09-29:
+Implement the 47 cards that the verification of 2026-10-05 found buildable
+with no engine change. The
+[design](superpowers/specs/2026-10-05-catalog-batch-4-design.md) and the
+[per-card rulings](superpowers/specs/2026-10-05-catalog-batch-4-rulings.md)
+hold the slices, the shared scorers and the restriction-icon rule.
 
-- **Challenge modifier:** Magician's Code (the first Challenge modifier; the
-  `ChallengePlacement` window exists).
-- **Battle plan rescoring:** Rusting Ray, Fae Battalion (hollow swords, as
-  Outriders rescores), War Tortoise (both sides), Lancers (doubling the
-  score), Mounted Patrol (half the pool, computed at application),
-  Fearsome General (a passive attack-score change).
-- **Battle plan loss interception:** Billowing Fog, Traveling Doctor, Shield
-  Wall (Hospital and Sticky Fire's `CampaignLosses` wrapping; "ignore powers
-  that kill all").
-- **Other battle plans:** Kindred Warriors ("up to X" needs a ruling),
-  Rangers (the defense pool changing after the attacker's plan), Salt the
-  Earth (a `later` hook with a decision), Cursed Cauldron (a count of enemy
-  kills), Sealing Ward (a persistent `CampaignGatherPools` dice add).
-- **ACTION powers:** Terror Spells (two kills across sites and boards),
-  Witch's Bargain (an exchange loop with no consent system), Inquisitor
-  (guessing among Vision ids), Roving Terror, Homesteaders and Resettle
-  (moving a card between sites or play areas, with capacity), Relic Thief (an
-  automatic roll with a dynamic pool), Ancient Binding (which secret is kept),
-  Convoys (moving a whole pile), Singing Mask (moving favor between a bank and
-  a banner).
-- **When played:** Revelation, Blackmail and Dissent (other players' decisions
-  inside a when-played power), Wizard's Conclave (taking a banner, with a tie
-  choice), Bandit Chief (which color to kill), A Round of Ale (reusing the Rest
-  return steps), Search Party (one of 3 peeked cards, then Oracle-style
-  placement), Call for Help (reveal, then discard from a regional pile).
-- **Modifiers, restrictions and triggers:** Vow of Poverty (restricting Trade
-  for favor, plus Vow of Obedience's Rest), Vow of Beastkin (a Muster source
-  restriction), Assassin (Silver Tongue's limit plus Hunger), Defame (a
-  decision and a burn after a Trade), Herald (an after-Campaign hook at the
-  Campaign root), Diplomat (a `CampaignBeforeTargets` restriction with
-  answers), Special Envoy (`EnterPhase(Rest)` inside a Travel tree), Way
-  Station (an optional payment to the ruler, the inverse of Toll Roads),
-  Moving Market and Mounted Library (a site move after a Trade; doubling the
-  gain plus a discard), Forced Labor and Curfew (a Search or Trade restriction
-  with a payment, the Toll Roads shape), Hunting Party (a nested Campaign after
-  Search, the Knights Errant shape), Tyrant (a Travel transform with a choice
-  of warband to kill).
-- **Text that does not name its action** (needs a ruling first): News from
-  Afar, Awaited Return, A Fast Steed, Scouts.
+- [ ] 1a. Battle scoring: Rusting Ray, Fae Battalion, War Tortoise, Lancers,
+  Fearsome General, Kindred Warriors, Rangers, Mounted Patrol, Scouts.
+- [ ] 1b. Losses and after the Campaign: Billowing Fog, Traveling Doctor,
+  Shield Wall, Cursed Cauldron, Salt the Earth, Sealing Ward, Herald,
+  Diplomat.
+- [ ] 2. Restriction icons and card moves: the restriction-icon rule, Roving
+  Terror, Homesteaders, Resettle, Moving Market.
+- [ ] 3. ACTION powers: Terror Spells, Witch's Bargain, Inquisitor, Relic
+  Thief, Ancient Binding, Convoys, Singing Mask, Assassin.
+- [ ] 4. When played: Revelation, Blackmail, Dissent, Wizard's Conclave,
+  Bandit Chief, A Round of Ale, Call for Help.
+- [ ] 5. Modifiers and restrictions: Vow of Poverty, Vow of Beastkin, Defame,
+  Mounted Library, Curfew, Awaited Return, Special Envoy, Tyrant, A Fast
+  Steed, Forced Labor, News from Afar.
+
+### Phase - Follow-up actions
+
+An action queued to run after the current one, as its own walker, with its
+costs waived. A queued action is a full action: the player selects modifiers
+for it, and it gets its own Game Log lines and roll feedback. Today Knights
+Errant nests a Campaign inside Muster instead, and that Campaign posts no
+Game Log lines.
+
+- Hunting Party: a Campaign after a Search of the world deck, spending no
+  Supply.
+- Search Party: a card played after its WHEN PLAYED, as if searched. Nested
+  inside the WHEN PLAYED, the played card fires neither its own WHEN PLAYED
+  nor the card-play triggers (`WalkerHooks.gathered` is keyed by window), and
+  Search re-reads its live hand on a single-card draw.
+- Migrate Knights Errant onto it, and unblock Second Wind (a Travel, then a
+  Campaign).
+- Recorded in the
+  [catalog batch 4 rulings](superpowers/specs/2026-10-05-catalog-batch-4-rulings.md#moved-out-of-the-batch).
 
 ### Phase - Catalog batch - engine-blocked
 
@@ -165,9 +160,13 @@ Found by the survey of 2026-09-29:
 - **New triggers** (a burn, a banner taken, a pawn move): Vow of Silence, Vow
   of Division, Secret Testament, Brass Army.
 - **Challenge** (`legalBanners` is hard-coded, no ribbon adjustment): Sigil of
-  the Eye, Sigil of the Heart, Favored Son.
+  the Eye, Sigil of the Heart, Favored Son, Magician's Code (its 2 secrets
+  count toward placing more than the banner holds, but the start gate runs
+  before any modifier).
 - **Lowering the attacker's force after it is answered:** Bear Traps.
-- **A Travel that can pause on a decision:** Hospitality.
+- **A Travel that can pause on a decision:** Hospitality, Way Station (the
+  non-ruler's choice to pay should appear only when Way Station is
+  selected).
 - **Other:** Pilgrimage (shuffling the Dispossessed), Autumn Wind (a combined
   shuffle and deal), Signal Trees (a plan effect that depends on state it
   changes), Tracker (memory across turns), Keep (replacing a Raid's defeat),
@@ -417,7 +416,7 @@ one.
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
 - [ ] **L6 — Incremental implementation of remaining phases and rules** (tracked
   in the phased sequence above; the next denizens and relics come
-  from **Catalog - to verify** and **Phase - Catalog batch - engine-blocked**)
+  from **Phase - Catalog batch 4** and **Phase - Catalog batch - engine-blocked**)
 - [ ] **L7 — Incremental synchronization transport**
   - Replace complete-snapshot polling with conditional responses, projection
     deltas, long polling, SSE, or another push transport when scale or latency
