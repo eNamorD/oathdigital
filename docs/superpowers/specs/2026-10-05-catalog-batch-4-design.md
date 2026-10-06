@@ -77,7 +77,9 @@ the card facedown in one `Move`, and its behavior is unchanged. Every other
 implemented card move passes unchanged:
 
 - Dream Thief, Enchantress and Twin Brother swap advisers between play areas.
-- Great Herd swaps cards between sites.
+- Great Herd swaps cards between sites. The rule also judges a move between
+  two sites, so Great Herd's question no longer offers an adviser-only card
+  that lies at a site: such a card has no legal landing at any site.
 - The rest move relics or Visions, which print no restriction icons, or move
   cards to and from piles and hands.
 
