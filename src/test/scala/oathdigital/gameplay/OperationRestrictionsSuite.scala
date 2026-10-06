@@ -1,7 +1,8 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations.{GrandScepter, HallOfMinisters,
-  LockedCards, OperationPipeline, OperationPolicy, OperationRestrictions}
+  LockedCards, OperationPipeline, OperationPolicy, OperationRestrictions,
+  RestrictionIcons}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
@@ -154,7 +155,9 @@ class OperationRestrictionsSuite extends munit.FunSuite:
       "catalog lists"):
     val bare = OperationRestrictions.forCatalog(
       catalog.copy(relics = Vector.empty, edifices = Vector.empty))
-    assertEquals(bare.printed.filterNot(_.isInstanceOf[LockedCards]),
+    assertEquals(bare.printed.filterNot(restriction =>
+      restriction.isInstanceOf[LockedCards] ||
+        restriction.isInstanceOf[RestrictionIcons]),
       Vector[OperationRestriction](HallOfMinisters, GrandScepter))
     assertEquals(GrandScepter.relic, scepter)
 
