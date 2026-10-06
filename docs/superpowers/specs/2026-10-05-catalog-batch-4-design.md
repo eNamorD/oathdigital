@@ -168,6 +168,18 @@ with the reason.
   burns their board down to one. The Darkest Secret's secrets stay.
 - **Inquisitor's right guess** reveals the discarded Vision in its pile. It
   stays facedown there, and every player knows it and can later browse it.
+- **Questions another player owns.** Revelation's burns and Blackmail's
+  holder answer belong to that player, and the walker refuses an answer
+  from anyone else. The walker resumes at the parked node, expanding each
+  `Branch` on the way with the live state, so Revelation gives every
+  player the same place in its tree whether or not they are asked.
+- **Blackmail's relics.** A faceup relic is offered as itself and a
+  facedown one by its slot. A `RelicSlot` option always reads "{owner}
+  facedown relic", so a faceup relic offered by slot would read wrongly.
+- **Wizard's Conclave's take** is not required, so Lost Tongue's refusal
+  skips it, and the line says the Darkest Secret did not move.
+- **Call for Help's draws** are passes of a `Repeat`, each read with
+  `PowerAnswers.amounts`. An amount of 0 ends the drawing.
 - **Mounted Patrol halves at run time**, from the live pool, not at offer
   time: an offer's effects must not depend on what the plan changes.
 - **Sealing Ward's dice** do not show in the Game Log's "Defense Pool" line,
@@ -177,7 +189,8 @@ with the reason.
 - **A Round of Ale** runs the extracted cleanup in one `BuildOps` with the
   actor as the resting player. It does not declare `RestReturnFavor`.
 - **Test filler.** Tests that use Revelation as an unimplemented WHEN PLAYED
-  card move to a Citizen-related one, since those are implemented last.
+  card move to a Citizen-related one, Bewitch, since those are implemented
+  last.
   `RestSuite` drops Vow of Poverty as its unimplemented Rest example.
   `CampaignFixture.raidBoard` replaces Cursed Cauldron, which becomes a plan.
   News from Afar is filler in seven suites and stays harmless while
@@ -309,26 +322,35 @@ between boards, banks, banners and piles, so those rows cover nothing.
 
 | Card | Line | Covers |
 |---|---|---|
-| Revelation, key `burned`, one line per player who burned | Revelation: {Blue} burned {n favor} and gained {n secrets}. | the Burn and Gain lines (verify) |
+| Revelation, key `burned`, one line per player who burned | Revelation: {Blue} burned {n favor} and gained {n secrets}. | the Gain line |
 | Revelation, key `declined`, one line per player who was asked and burned none | Revelation: {Blue} did not burn any favor. | |
 | Revelation, key `none` | Revelation: Nobody had favor to burn. | |
-| Blackmail, key `paid` | Blackmail: {Blue} gave {3 favor} to keep {relic}. | the Give line (verify) |
-| Blackmail, key `took` | Blackmail: Took {relic} from {Blue}. | the Take line (verify) |
+| Blackmail, key `paid` | Blackmail: {Blue} gave {3 favor} to keep {relic}. | |
+| Blackmail, key `took` | Blackmail: Took {relic} from {Blue}. | |
 | Blackmail, key `none` | Blackmail: No relic could be taken. | |
 | Dissent, key `placed`, one line per player who placed | Dissent: {Blue} placed {n favor} on it. | |
 | Dissent, key `none` | Dissent: Nobody placed favor. | |
-| Wizard's Conclave, key `took` | Wizard's Conclave: {Blue} took the {Darkest Secret}. | the Take line (verify) |
+| Wizard's Conclave, key `took` | Wizard's Conclave: {Blue} took the {Darkest Secret}. | |
 | Wizard's Conclave, key `kept` | Wizard's Conclave: {Blue} kept the {Darkest Secret}. | |
 | Wizard's Conclave, key `none` | Wizard's Conclave: The {Darkest Secret} did not move. | |
-| Bandit Chief, key `killed`, one line per site | Bandit Chief: Killed {n} {Blue} warband at {site}. | that site's Kill line (verify) |
+| Bandit Chief, key `killed`, one line per site | Bandit Chief: Killed {n} {Blue} warband at {site}. | |
 | Bandit Chief, key `none` | Bandit Chief: No warband was killed. | |
 | A Round of Ale, key `cleanup` | A Round of Ale: Triggering resource cleanup. | |
-| Call for Help, key `revealed` | Call for Help: Revealed and discarded {cards}, and gained {n warbands}. | the Peek and Discard lines |
+| Call for Help, key `revealed`, one line per draw that gained warbands | Call for Help: Revealed and discarded {cards}, and gained {n warbands}. | that draw's Revealed lines |
+| Call for Help, key `discarded`, one line per draw that gained none | Call for Help: Revealed and discarded {cards}. | that draw's Revealed lines |
 | Call for Help, key `none` | Call for Help: Nothing was revealed. | |
 
 Revelation, Dissent and Wizard's Conclave name every player, the actor
 included, because the line is about several players. A Round of Ale's line
-comes before the cleanup, whose own lines follow unchanged.
+comes before the cleanup, which writes no generic line. Bandit Chief names
+whose warband died, the actor's included.
+
+No generic line exists for a favor burn, favor moving between boards or
+onto a card, a relic's or a banner's take, a kill, or a card moving between
+discard piles, so those rows cover nothing. Call for Help reveals each card
+in its new pile, which writes one Revealed line per card; a draw's line
+covers them. A draw that gains no warband uses its own key rather than
+saying it gained none.
 
 **No line:** Wizard's Conclave's tie choice, which the `took` line names.
 

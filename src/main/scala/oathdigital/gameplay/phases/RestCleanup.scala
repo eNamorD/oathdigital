@@ -52,3 +52,30 @@ object RestCleanupPlan:
           cards.iterator.map(_.secrets).sum)
       }
     }
+
+/** The Rest cleanup's operations: favor on every card in play to its
+  * printed suit bank, secrets on cards to the resting player, and the
+  * resting player's facedown secrets flipped faceup -- the operations legacy
+  * `Rest.applyCompletion` ran. Finish Rest runs them at the Rest favor
+  * window; A Round of Ale runs them in an action, outside that window.
+  */
+object RestCleanup:
+  def operations(catalog: ExecutableCatalog, ready: ReadyGame,
+      resting: PlayerId): Either[OathViolation, Vector[CoreOperation]] = for
+    plan <- RestCleanupPlan.derive(catalog, ready, resting)
+      .left.map(OathViolation.UnsupportedRestState.apply)
+    player <- ready.game.current.players.find(_.player == resting)
+      .toRight(OathViolation.UnsupportedRestState(
+        s"unknown resting player $resting"))
+  yield
+    val from = (id: CardId) => PositionedLocation(Location.OnCard(id))
+    val favor = plan.cards.collect:
+      case card if card.suit.nonEmpty && card.favor > 0 =>
+        Move(Piece.Favor(card.favor), from(card.id),
+          PositionedLocation(Location.FavorBank(card.suit.get)))
+    val secrets = plan.cards.collect:
+      case card if card.secrets > 0 => Move(Piece.Secrets(card.secrets),
+        from(card.id), PositionedLocation(Location.PlayArea(resting)))
+    val reveal = Vector(player.board.faceDownSecrets).filter(_ > 0).map(count =>
+      FlipSecrets(resting, count, SecretSide.FaceDown, SecretSide.FaceUp))
+    favor ++ secrets ++ reveal

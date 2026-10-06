@@ -2,7 +2,7 @@ package oathdigital.gameplay.phases.rest
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.phases.RestCleanupPlan
+import oathdigital.gameplay.phases.RestCleanup
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 
@@ -43,33 +43,10 @@ object FinishRestProcedure:
       "Finish Rest selects nothing"))
     _ <- gate(catalog, ready, player)
   yield Sequence(Vector(
-    BuildOps((state, _) => cleanup(catalog, state, player),
+    BuildOps((state, _) => RestCleanup.operations(catalog, state, player),
       window = Some(PowerWindow.RestReturnFavor)),
     BuildOps((state, _) => supplyRefresh(state, player)),
     BuildOps((state, _) => beginNextTurn(state, player))))
-
-  /** Card favor to its printed suit bank, card secrets to the resting
-    * player, and the resting player's facedown stash flipped faceup: the
-    * operations legacy `Rest.applyCompletion` ran.
-    */
-  private def cleanup(catalog: ExecutableCatalog, ready: ReadyGame,
-      resting: PlayerId): Either[OathViolation, Vector[CoreOperation]] = for
-    plan <- RestCleanupPlan.derive(catalog, ready, resting)
-      .left.map(UnsupportedRestState.apply)
-    player <- ready.game.current.players.find(_.player == resting)
-      .toRight(UnsupportedRestState(s"unknown resting player $resting"))
-  yield
-    val from = (id: CardId) => PositionedLocation(Location.OnCard(id))
-    val favor = plan.cards.collect:
-      case card if card.suit.nonEmpty && card.favor > 0 =>
-        Move(Piece.Favor(card.favor), from(card.id),
-          PositionedLocation(Location.FavorBank(card.suit.get)))
-    val secrets = plan.cards.collect:
-      case card if card.secrets > 0 => Move(Piece.Secrets(card.secrets),
-        from(card.id), PositionedLocation(Location.PlayArea(resting)))
-    val reveal = Vector(player.board.faceDownSecrets).filter(_ > 0).map(count =>
-      FlipSecrets(resting, count, SecretSide.FaceDown, SecretSide.FaceUp))
-    favor ++ secrets ++ reveal
 
   /** The warbands the resting player's own bank holds right now -- the one
     * count both the Supply band and its preview are read from, so neither

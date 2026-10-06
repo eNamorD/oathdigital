@@ -1,18 +1,10 @@
 package oathdigital.catalog.holding
 
-import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower,
-  SiteOnly}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.model.{Cost, DenizenId, PowerId, Suit}
 
 // Generated from the retired runtime JSON (card classes slice 1).
 // Hand-edited from here on; a card moves out when it is implemented.
-
-object BanditChiefCard extends Denizen(DenizenId("100"), "Bandit Chief", Suit.Discord) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.bandit-chief"),
-    persistent = false, cost = Cost.free,
-    text = "**WHEN PLAYED,** kill one warband at each site not ruled by " +
-      "the bandits.")
-  val powers: Vector[PrintedPower] = Vector(power)
 
 object DefameCard extends Denizen(DenizenId("102"), "Defame", Suit.Discord):
   val power = PrintedPower(PowerId("denizen.defame"),
@@ -68,22 +60,6 @@ object UnstableSummonCard extends Denizen(DenizenId("225"), "Unstable Summon", S
     persistent = false, cost = Cost.free,
     text = "If you hold the Darkest Secret, burn X [secret] from it to " +
       "collect X [attack-die].")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object BlackmailCard extends Denizen(DenizenId("82"), "Blackmail", Suit.Discord):
-  val power = PrintedPower(PowerId("denizen.blackmail"),
-    persistent = false, cost = Cost.free,
-    text = "**WHEN PLAYED:** choose a relic held by a player whose pawn " +
-      "is at your site. You take the relic unless they give you " +
-      "[favor] [favor] [favor].")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object DissentCard extends Denizen(DenizenId("84"), "Dissent", Suit.Discord):
-  val power = PrintedPower(PowerId("denizen.dissent"),
-    persistent = false, cost = Cost.free,
-    text = "**WHEN PLAYED:** each player, except the holder of the " +
-      "People's Favor, places one [favor] on this card for each " +
-      "suit of card they rule.")
   val powers: Vector[PrintedPower] = Vector(power)
 
 object FalseProphetCard extends Denizen(DenizenId("85"), "False Prophet", Suit.Discord) with Locked with AdviserOnly:
