@@ -28,6 +28,15 @@ object PowerAnswers:
       case Answered(`decision`, DecisionAnswer.ChooseAmountAnswer(count), _) =>
         count
 
+  /** Every amount `decision` was answered with, in answer order. A `Repeat`
+    * asks its decision once per pass and `amount` reads only the first, so
+    * a loop reads its passes with this: the latest is the last, and the sum
+    * is what every pass chose in all. */
+  def amounts(answered: Vector[Answered], decision: String): Vector[Int] =
+    answered.collect {
+      case Answered(`decision`, DecisionAnswer.ChooseAmountAnswer(count), _) =>
+        count }
+
   /** The options a power's `ChooseMany` was answered with. */
   def many(pending: PendingTree, decision: String)
       : Option[Vector[DecisionOptionRef]] = pending.answered.collectFirst:

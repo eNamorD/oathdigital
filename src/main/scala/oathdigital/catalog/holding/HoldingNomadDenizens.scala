@@ -117,14 +117,6 @@ object TheRedSeerCard extends Denizen(DenizenId("244"), "The Red Seer", Suit.Nom
       "Oathkeeper goal to anything but Devotion.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object CallForHelpCard extends Denizen(DenizenId("246"), "Call for Help", Suit.Nomad) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.call-for-help"),
-    persistent = false, cost = Cost.free,
-    text = "**WHEN PLAYED,** reveal and discard up to 6 cards from your " +
-      "region's discard pile. Gain 2 warbands for each revealed " +
-      "[suit-nomad] card.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object VowOfWanderingCard extends Denizen(DenizenId("247"), "Vow of Wandering", Suit.Nomad) with Locked with AdviserOnly:
   val muster = PrintedPower(PowerId("denizen.vow-of-wandering.muster"),
     persistent = false, cost = Cost.free,

@@ -179,13 +179,13 @@ class MinorActionsSuite extends munit.FunSuite:
       Vector(refuseAllStub)).isLeft)
 
   test("source-scoped fallback and replay use the recorded off-turn actor"):
-    // p2, not the active player, holds Revelation faceup.
-    val revelation = CatalogNames.denizen("Revelation")
-    val changed = minorBoard.adviser(p2, revelation).ready
-    val source = RuleSourceRef.Adviser(p2, revelation)
+    // p2, not the active player, holds Bewitch faceup.
+    val bewitch = CatalogNames.denizen("Bewitch")
+    val changed = minorBoard.adviser(p2, bewitch).ready
+    val source = RuleSourceRef.Adviser(p2, bewitch)
     val expected = accepted(PowerRuntime.ignoredAtSource(catalog, changed, p2,
       ActionKind.WhenPlayed, source))
-    assertEquals(expected.map(_.handlerId), Vector("denizen.revelation"))
+    assertEquals(expected.map(_.handlerId), Vector("denizen.bewitch"))
     assertEquals(accepted(PowerRuntime.ignoredAtSource(catalog, changed, p1,
       ActionKind.WhenPlayed, source)), Vector.empty)
     // Replay accepts the off-turn player's diagnostics and changes no state.
