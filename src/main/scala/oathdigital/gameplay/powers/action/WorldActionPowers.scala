@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.PhasePower
 
 /** The phase powers of catalog batch 3's slice 3c and catalog batch 4's
-  * Roving Terror, actions on sites, banks and banners, registered by
+  * slices 2 and 3, actions on sites, banks and banners, registered by
   * [[oathdigital.gameplay.powers.PhasePowerCatalog]] through this one object,
   * like [[OtherActionPowers]]. Each names its denizen card, so all are
   * always present.
@@ -12,7 +12,7 @@ import oathdigital.gameplay.powerresolver.PhasePower
 object WorldActionPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](Storyteller, Firebrand, Levelers, MemoryOfHome,
-      PlagueEngines, BanditPaymaster) ++
+      PlagueEngines, BanditPaymaster, TerrorSpells) ++
       Vector(MemoryOfNature.forCatalog(catalog)) ++
       Vector(BallotBox.forCatalog(catalog)) ++
       Vector(DarkEnforcer.forCatalog(catalog)) ++

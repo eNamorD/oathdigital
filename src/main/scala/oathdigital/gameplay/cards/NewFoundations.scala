@@ -17,6 +17,7 @@ import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,
   SecondChanceCard, ShiftingMapCard,
   SiegeEnginesCard, SkeletonKeyCard, SleightOfHandCard, SpiritSnareCard,
   SpoiledSuppliesCard, StorytellerCard, TamingCharmCard, TavernSongsCard,
+  TerrorSpellsCard,
   TinkersFairCard, TutorCard, WaysideInnCard, WhisperingLeavesCard, WhistleCard,
   WizardSchoolCard, WolvesCard}
 import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,

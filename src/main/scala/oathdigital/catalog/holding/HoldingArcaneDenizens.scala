@@ -88,13 +88,6 @@ object SecretSignalCard extends Denizen(DenizenId("55"), "Secret Signal", Suit.A
     text = "If you gain only one [favor], gain one more [favor].")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object TerrorSpellsCard extends Denizen(DenizenId("61"), "Terror Spells", Suit.Arcane):
-  val power = PrintedPower(PowerId("denizen.terror-spells"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "**ACTION:** Kill any two warbands in your region _(at sites " +
-      "or on boards, even yours)_ if you hold the Darkest Secret.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object RevelationCard extends Denizen(DenizenId("63"), "Revelation", Suit.Arcane):
   val power = PrintedPower(PowerId("denizen.revelation"),
     persistent = false, cost = Cost.free,
