@@ -127,12 +127,6 @@ object JinxCard extends Denizen(DenizenId("68"), "Jinx", Suit.Arcane):
       "reroll all those dice once. _(This is not a battle plan!)_")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object SealingWardCard extends Denizen(DenizenId("72"), "Sealing Ward", Suit.Arcane) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.sealing-ward"),
-    persistent = true, cost = Cost.free,
-    text = "Your relics add one more [defense-die] when targeted.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object VowOfSilenceCard extends Denizen(DenizenId("74"), "Vow of Silence", Suit.Arcane) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.vow-of-silence"),
     persistent = true, cost = Cost.free,
