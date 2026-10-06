@@ -11,8 +11,8 @@ specs.
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest. **Phase - Catalog batch 4** is in progress: slice
-1a is done.
+2026-10-01 playtest. **Phase - Catalog batch 4** is in progress: slices
+1a and 1b are done.
 
 ## Next
 
@@ -76,9 +76,6 @@ with no engine change. The
 [per-card rulings](superpowers/specs/2026-10-05-catalog-batch-4-rulings.md)
 hold the slices, the shared scorers and the restriction-icon rule.
 
-- [ ] 1b. Losses and after the Campaign: Billowing Fog, Traveling Doctor,
-  Shield Wall, Cursed Cauldron, Salt the Earth, Sealing Ward, Herald,
-  Diplomat.
 - [ ] 2. Restriction icons and card moves: the restriction-icon rule, Roving
   Terror, Homesteaders, Resettle, Moving Market.
 - [ ] 3. ACTION powers: Terror Spells, Witch's Bargain, Inquisitor, Relic
