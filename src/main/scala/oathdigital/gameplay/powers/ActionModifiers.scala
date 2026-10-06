@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.gameplay.powers.economy.{AnimalPlaymates, Birdsong, CupOfPlenty,
-  Downtrodden, InitiationRite, RowdyPub, TheOldOak, VillageIdiot}
+  Downtrodden, InitiationRite, MovingMarket, RowdyPub, TheOldOak, VillageIdiot}
 import oathdigital.gameplay.powers.recover.RelicWorship
 import oathdigital.gameplay.powers.search.{Augury, CropRotation, Disciples,
   TruthfulHarp}
@@ -25,5 +25,6 @@ object ActionModifiers:
       Vector(RowdyPub.forCatalog(catalog)) ++
       Vector(VillageIdiot.forCatalog(catalog)) ++
       Vector(Downtrodden.forCatalog(catalog)) ++
+      Vector(MovingMarket.forCatalog(catalog)) ++
       Vector(InitiationRite) ++
       Vector(RelicWorship.forCatalog(catalog))

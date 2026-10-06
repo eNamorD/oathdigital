@@ -109,6 +109,24 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     assertEquals(one(panel, ".board-decision-rule-labelled").textContent,
       "Decision")
 
+  test("slots at several sites stay on the table, and a Skip button " +
+      "submits at once"):
+    val ui = new RecordingControls()
+    def slot(site: String, at: Int) = DecisionOptionState("site-slot",
+      s"$site:$at", s"Empty slot at Site $site")
+    val move = DecisionQueryState.ChooseOne(Vector(slot("hills", 0),
+      slot("marsh", 1), DecisionOptionState("button", "skip", "Skip")),
+      Some("Moving Market: move it to another site?"))
+    val panel = pane(ui, move, decision.copy(
+      decisionId = "trade.moving-market.move", query = Some(move)))
+    assertEquals(all(panel, ".board-decision-loose-option"), Vector.empty)
+    val skip = as[dom.html.Button](one(panel, ".board-decision-decide"))
+    assertEquals(skip.textContent, "Skip")
+    skip.click()
+    assertEquals(ui.submitted, Vector(Intent.ResolveWalker(
+      "trade.moving-market.move",
+      DecisionAnswerWire.ChooseOneWire("button", "skip"))))
+
   test("an option with no place on the table is a toggle in the panel"):
     val ui = new RecordingControls()
     val elsewhere = DecisionOptionState("relic", "cup", "Cup")

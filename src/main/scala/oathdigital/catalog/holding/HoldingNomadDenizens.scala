@@ -119,14 +119,6 @@ object SearchPartyCard extends Denizen(DenizenId("240"), "Search Party", Suit.No
       "pile and play one as if you searched. _Return the rest._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object MovingMarketCard extends Denizen(DenizenId("241"), "Moving Market", Suit.Nomad) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.moving-market"),
-    persistent = false, cost = Cost.free,
-    text = "After trading with Moving Market, you may move this card to " +
-      "any site with capacity. If you do, gain [favor] from the " +
-      "[suit-nomad] bank.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object TravelingNegotiatorCard extends Denizen(DenizenId("242"), "Traveling Negotiator", Suit.Nomad) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.traveling-negotiator"),
     persistent = false, cost = Cost.free,

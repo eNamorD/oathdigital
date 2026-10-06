@@ -39,7 +39,7 @@ import oathdigital.gameplay.powers.cardplay.{BookBindersCard, GossipCard,
   WelcomingPartyCard, WildCryCard}
 import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard, BirdsongCard,
   CupOfPlentyCard, DowntroddenCard, InitiationRiteCard, KnightsErrantCard,
-  RowdyPubCard, TheOldOakCard, VillageIdiotCard}
+  MovingMarketCard, RowdyPubCard, TheOldOakCard, VillageIdiotCard}
 import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}
