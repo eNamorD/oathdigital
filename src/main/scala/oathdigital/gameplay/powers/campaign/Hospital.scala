@@ -97,15 +97,23 @@ case object Hospital extends BattlePlan:
   yield LossRewrite.counted(Hospital.Saved, kind, Some(user), returns)(
     children)).getOrElse(children)
 
+  /** How many saved warbands the placement moves to Hospital's site: none
+    * unless `user` rules it now, and no more than their supply holds. Cursed
+    * Cauldron reads it to leave out the warbands that did not stay dead. */
+  def placeable(ready: ReadyGame, user: PlayerId): Int = (for
+    site <- SiteRulers.siteOf(ready, cardId)
+    if SiteRulers.rulerOf(ready, site).contains(SiteRuler.Player(user))
+    kind <- PlayerFacts.forceKind(ready, user).toOption
+  yield Hospital.saved(ready)
+    .min(ready.banks.warbandSupply.getOrElse(kind, 0))).getOrElse(0)
+
   /** The saved warbands, from the user's supply to Hospital's site, when the
     * user rules it now. */
   private def placement(ready: ReadyGame, user: PlayerId)
       : Option[CoreOperation] = for
     site <- SiteRulers.siteOf(ready, cardId)
-    if SiteRulers.rulerOf(ready, site).contains(SiteRuler.Player(user))
     kind <- PlayerFacts.forceKind(ready, user).toOption
-    count = Hospital.saved(ready)
-      .min(ready.banks.warbandSupply.getOrElse(kind, 0))
+    count = placeable(ready, user)
     if count > 0
   yield Move(Piece.Warbands(kind, count),
     PositionedLocation(Location.WarbandBank(kind)),

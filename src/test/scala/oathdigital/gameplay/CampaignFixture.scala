@@ -112,16 +112,17 @@ object CampaignFixture:
   /** A Raid board and the faceup relic the defender holds. */
   final case class RaidBoard(board: Board, relic: RelicId)
 
-  /** A Raid board: the rival stands at the origin holding Cursed Cauldron
+  /** A Raid board: the rival stands at the origin holding Oracular Pig
     * faceup, a facedown relic, three facedown advisers (one a Conspiracy),
     * both banners and 5 favor; the actor has 4 warbands and 7 Supply.
     */
   def raidBoard(defenderWarbands: Int = 3)(using munit.Location): RaidBoard =
     val b = withEnemyAtOrigin(board(warbands = 4, supply = 7))
-    // Cursed Cauldron prints no battle plan, so the defender is offered none.
-    val relic = CatalogNames.relic("Cursed Cauldron")
+    // Oracular Pig prints no battle plan, so the defender is offered none.
+    val relic = CatalogNames.relic("Oracular Pig")
     val plans = Set("relic.sticky-fire", "relic.fearsome-shield",
-      "relic.brass-army.campaign", "relic.bag-of-siegeworks")
+      "relic.brass-army.campaign", "relic.bag-of-siegeworks",
+      "relic.cursed-cauldron")
     assert(catalog.relics.find(_.id.value == relic.value).get.powers
       .forall(power => !plans(power.id.value)), s"$relic prints a battle plan")
     // Ids no card carries stand for cards whose identity the Raid never
