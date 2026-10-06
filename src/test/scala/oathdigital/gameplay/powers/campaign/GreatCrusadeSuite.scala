@@ -14,7 +14,7 @@ import oathdigital.testkit.CatalogNames
 class GreatCrusadeSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Great Crusade")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val nomads = planless("Convoys", "Vow of Kinship", "Wild Mounts")
+  private val nomads = planless("Hospitality", "Vow of Kinship", "Wild Mounts")
   private val order = planlessCard("Martial Culture")
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)

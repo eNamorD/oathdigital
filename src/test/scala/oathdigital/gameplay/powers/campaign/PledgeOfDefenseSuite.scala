@@ -13,7 +13,7 @@ import oathdigital.testkit.{CatalogNames, Look}
 class PledgeOfDefenseSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Pledge of Defense")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val nomads = planless("Convoys", "Vow of Kinship")
+  private val nomads = planless("Hospitality", "Vow of Kinship")
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
 
