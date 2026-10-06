@@ -23,4 +23,5 @@ object WhenPlayedPowers:
       Vector(Revelation) ++
       Vector(Blackmail.forCatalog(catalog)) ++
       Vector(Dissent.forCatalog(catalog)) ++
-      Vector(WizardsConclave.forCatalog(catalog))
+      Vector(WizardsConclave.forCatalog(catalog)) ++
+      Vector(BanditChief)

@@ -63,11 +63,11 @@ import oathdigital.gameplay.powers.wake.{AncientCitySite, HeadwatersSite,
   HornedMaskCard, HungerCard, MarbleFountainsCard, QuartermasterCard,
   RiverbankSite, TidalMarshesSite}
 import oathdigital.gameplay.powers.whenplayed.{ASmallFavorCard, AnimalHostCard,
-  BanditPrinceCard, BlackmailCard, CharlatanCard, DazzleCard, DissentCard,
-  FabledFeastCard, FaithfulFriendCard, FamilyHeirloomCard, GarrisonCard,
-  GreatHerdCard, KeyToTheCityCard, RevelationCard, RiotsCard, RoyalTaxCard,
-  SaladDaysCard, ShiftingFogCard, ThreateningRoarCard, TownMeetingCard,
-  TwinBrotherCard, WizardsConclaveCard}
+  BanditChiefCard, BanditPrinceCard, BlackmailCard, CharlatanCard,
+  DazzleCard, DissentCard, FabledFeastCard, FaithfulFriendCard,
+  FamilyHeirloomCard, GarrisonCard, GreatHerdCard, KeyToTheCityCard,
+  RevelationCard, RiotsCard, RoyalTaxCard, SaladDaysCard, ShiftingFogCard,
+  ThreateningRoarCard, TownMeetingCard, TwinBrotherCard, WizardsConclaveCard}
 
 /** Every printed New Foundations component, listed by kind in printed-id
   * order. A new card is added here and in its own file; `CardCatalogSuite`

@@ -1,18 +1,10 @@
 package oathdigital.catalog.holding
 
-import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower,
-  SiteOnly}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.model.{Cost, DenizenId, PowerId, Suit}
 
 // Generated from the retired runtime JSON (card classes slice 1).
 // Hand-edited from here on; a card moves out when it is implemented.
-
-object BanditChiefCard extends Denizen(DenizenId("100"), "Bandit Chief", Suit.Discord) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.bandit-chief"),
-    persistent = false, cost = Cost.free,
-    text = "**WHEN PLAYED,** kill one warband at each site not ruled by " +
-      "the bandits.")
-  val powers: Vector[PrintedPower] = Vector(power)
 
 object DefameCard extends Denizen(DenizenId("102"), "Defame", Suit.Discord):
   val power = PrintedPower(PowerId("denizen.defame"),

@@ -37,7 +37,7 @@ object ActionPowers:
   object ShiftingFog extends ReviewedPower("denizen.shifting-fog", None, played)
   object RoyalAmbitions extends ReviewedPower("denizen.royal-ambitions", None, played)
   object Riots extends ReviewedPower("denizen.riots", None, playedDone)
-  object BanditChief extends ReviewedPower("denizen.bandit-chief", None, played)
+  object BanditChief extends ReviewedPower("denizen.bandit-chief", None, playedDone)
   object ReliquaryRaid extends ReviewedPower("denizen.reliquary-raid", None, played)
   object BanditPrince extends ReviewedPower("denizen.bandit-prince", None, playedDone)
   object ARoundOfAle extends ReviewedPower("denizen.a-round-of-ale", None, played)
