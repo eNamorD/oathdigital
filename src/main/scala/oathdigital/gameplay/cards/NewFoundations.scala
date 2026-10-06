@@ -19,6 +19,7 @@ import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,
   SpoiledSuppliesCard, StorytellerCard, TamingCharmCard, TavernSongsCard,
   TerrorSpellsCard,
   TinkersFairCard, TutorCard, WaysideInnCard, WhisperingLeavesCard, WhistleCard,
+  WitchsBargainCard,
   WizardSchoolCard, WolvesCard}
 import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,
   BanditStandardCard, BannerBreakersCard, BattleAxesCard, BattleHonorsCard,

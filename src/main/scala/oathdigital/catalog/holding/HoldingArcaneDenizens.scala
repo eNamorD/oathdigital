@@ -134,14 +134,6 @@ object MapLibraryCard extends Denizen(DenizenId("76"), "Map Library", Suit.Arcan
       "at any site in your region.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object WitchsBargainCard extends Denizen(DenizenId("77"), "Witch's Bargain", Suit.Arcane):
-  val power = PrintedPower(PowerId("denizen.witchs-bargain"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "**ACTION:** Give [secret] to a player whose pawn is at your " +
-      "site to take [favor] [favor] from them, or give [favor] " +
-      "[favor] for [secret], any number of times.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object MasterOfDisguiseCard extends Denizen(DenizenId("78"), "Master of Disguise", Suit.Arcane) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.master-of-disguise"),
     persistent = false, cost = Cost(secret = 1),
