@@ -140,7 +140,7 @@ These settle what the spec and rulings leave open. Each one says what it costs i
     - Assassin's limit is pinned through `AdviserLimit.of` and a card play.
 12. **Filler cards.**
     - Ancient Binding is filler in `HomelandLineSuite`, `CardSlotsSuite`, `SiteDiscardFirstSuite`, `SearchProcedureSuite` and `CardPlayReasonsSuite`.
-    - Convoys is filler in `RuledCardsSuite`, `LeagueTreatySuite`, `GreatCrusadeSuite`, `PledgeOfDefenseSuite` and `RivalKhanSuite`.
+    - Convoys is filler in `RuledCardsSuite` and `LeagueTreatySuite`, which use it as a card. `GreatCrusadeSuite`, `PledgeOfDefenseSuite` and `RivalKhanSuite` take it through `PlanDriver.planless`, which refuses a card with an implemented power, so Task 6 swaps it there for Hospitality, which is not implemented.
     - Each of these uses the card as a card, not its power, and Tasks 5 and 6 run them.
 
 ## File Structure
@@ -661,27 +661,27 @@ class WitchsBargainSuite extends munit.FunSuite:
     assertEquals(Look(after(t)).tokensOn(bargain), Tokens(0, 1))
 
   test("giving a secret takes up to 2 favor, and it asks again"):
-    val given = walksAnswering(staged.favor(p2, 1).ready, chooseP2,
+    val traded = walksAnswering(staged.favor(p2, 1).ready, chooseP2,
       exchangeDecisionId -> giveSecret).last
-    assert(awaits(given, exchangeDecisionId),
-      parked.parkedDecision(given.state).toString)
-    val end = Look(after(given))
-    // 3 secrets less 1 placed and 1 given; 4 favor and the 1 p2 held.
+    assert(awaits(traded, exchangeDecisionId),
+      parked.parkedDecision(traded.state).toString)
+    val end = Look(after(traded))
+    // 3 secrets less 1 placed and 1 traded; 4 favor and the 1 p2 held.
     assertEquals((end.faceUpSecrets(p1), end.favor(p1)), (1, 5))
     assertEquals((end.faceUpSecrets(p2), end.faceDownSecrets(p2),
       end.favor(p2)), (2, 1, 0))
-    assertEquals(NoteText.said(WitchsBargain, given.events), Vector(
+    assertEquals(NoteText.said(WitchsBargain, traded.events), Vector(
       NoteText.Said("secret",
         s"Gave 1 secret to ${p2.value} and took 1 favor.", covers = false)))
 
   test("giving 2 favor takes a secret, faceup first"):
-    val given = walksAnswering(staged.ready, chooseP2,
+    val traded = walksAnswering(staged.ready, chooseP2,
       exchangeDecisionId -> giveFavor).last
-    val end = Look(after(given))
+    val end = Look(after(traded))
     assertEquals((end.favor(p1), end.faceUpSecrets(p1)), (2, 3))
     assertEquals((end.favor(p2), end.faceUpSecrets(p2),
       end.faceDownSecrets(p2)), (5, 0, 1))
-    assertEquals(NoteText.said(WitchsBargain, given.events), Vector(
+    assertEquals(NoteText.said(WitchsBargain, traded.events), Vector(
       NoteText.Said("favor",
         s"Gave 2 favor to ${p2.value} and took 1 secret.", covers = false)))
 
