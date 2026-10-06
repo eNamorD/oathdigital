@@ -6,7 +6,7 @@ import oathdigital.gameplay.operations.{HallOfMinistersCard,
   TheGrandScepterCard}
 import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,
   AncientBindingCard,
-  ArcaneBrokersCard, ArmedMobCard, BallotBoxCard, BanditPaymasterCard,
+  ArcaneBrokersCard, ArmedMobCard, AssassinCard, BallotBoxCard, BanditPaymasterCard,
   BarbedNetCard, BedOfRootsCard, BloodPactCard, BogCard, BoneDiceCard,
   BookOfRecordsCard, BrassHorseCard, CharmingFriendCard, ClayRattleCard,
   ConvoysCard,

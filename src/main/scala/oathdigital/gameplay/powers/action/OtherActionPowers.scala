@@ -18,4 +18,5 @@ object OtherActionPowers:
       Vector(ArmedMob.forCatalog(catalog)) ++
       Vector(HonorGuard.forCatalog(catalog)) ++
       Vector(Resettle.forCatalog(catalog)) ++
-      Vector(RelicThief.forCatalog(catalog))
+      Vector(RelicThief.forCatalog(catalog)) ++
+      Vector(Assassin.forCatalog(catalog))

@@ -70,13 +70,6 @@ object UnstableSummonCard extends Denizen(DenizenId("225"), "Unstable Summon", S
       "collect X [attack-die].")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object AssassinCard extends Denizen(DenizenId("80"), "Assassin", Suit.Discord) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.assassin"),
-    persistent = false, cost = Cost(favor = 1),
-    text = "You can only have two advisers. **ACTION:** Discard a " +
-      "faceup adviser of a player whose pawn is at your site.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object BlackmailCard extends Denizen(DenizenId("82"), "Blackmail", Suit.Discord):
   val power = PrintedPower(PowerId("denizen.blackmail"),
     persistent = false, cost = Cost.free,
