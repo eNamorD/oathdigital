@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.gameplay.actions.campaign.CampaignProcedure
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
+import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
 object StickyFireCard extends Relic(RelicId("R01"), "Sticky Fire", value = 3, defense = 3):
@@ -26,6 +26,8 @@ object StickyFireCard extends Relic(RelicId("R01"), "Sticky Fire", value = 3, de
   *    board dies, not half;
   *  - after a defense won by the defender, every warband on the attacker's board
   *    dies, committed to the Campaign or not.
+  *
+  * The kills are `KillWholeForce`'s, which Shield Wall shares.
   *
   * Then the winner gives the loser a favor if they can. A `Give` takes only what
   * its giver holds, and against bandits the favor is given to the shared bank,
@@ -108,54 +110,20 @@ case object StickyFire extends BattlePlan:
       DecisionOption.Button(StickyFire.no, "Do not")),
       heading = Some("Sticky Fire: kill all the warbands in your enemy's force?")))
 
-  /** The killing and the favor, when the user said yes. */
+  /** The killing and the favor, when the user said yes. The returns are read
+    * now, when the losses window is folded, before the losses run. */
   private def burn(use: PlanUse, user: PlayerId, result: CampaignResult)
       : Operation =
-    val returned = returnedToDefender(use.ready, use.side, result)
+    val returns = KillWholeForce.returns(use.ready, result)
     BuildOps((ready, pending) =>
       if !PowerAnswers.one(pending, StickyFire.decisionId).contains(StickyFire.yes) then
         Right(Vector.empty)
-      else for
-        kills <- kills(ready, use.side, result, returned)
-        gift = gives(use.side, user, result)
-      yield kills ++ gift)
-
-  /** The warbands a victorious attacker's Conquest would give back to a player
-    * defender: what stands at the targets now, before the losses kill it, less
-    * half. Read when the losses window is folded, which is before they run.
-    */
-  private def returnedToDefender(ready: ReadyGame, side: CampaignPlanSide,
-      result: CampaignResult): Int =
-    if side != CampaignPlanSide.Attacker || result.kind != CampaignKind.Conquest then
-      0
-    else result.defender match
-      case CampaignDefender.Player(_) =>
-        val total = result.targetSites.flatMap(ready.game.current.map.sites.get)
-          .map(_.forces).collect {
-            case SiteForces.Occupied(_, count) => count }.sum
-        total - total / 2
-      case CampaignDefender.Bandits => 0
-
-  private def kills(ready: ReadyGame, side: CampaignPlanSide,
-      result: CampaignResult, returned: Int)
-      : Either[OathViolation, Vector[CoreOperation]] =
-    def killed(player: PlayerId, amount: Int)
-        : Either[OathViolation, Vector[CoreOperation]] =
-      if amount <= 0 then Right(Vector.empty)
-      else PlayerFacts.forceKind(ready, player).map(kind => Vector(Kill(
-        Piece.Warbands(kind, amount),
-        PositionedLocation(Location.PlayArea(player)))))
-    def board(player: PlayerId): Int = ready.game.current.players
-      .find(_.player == player).fold(0)(_.board.warbands)
-    (side, result.defender) match
-      case (CampaignPlanSide.Defender, _) =>
-        killed(result.attacker, board(result.attacker))
-      case (CampaignPlanSide.Attacker, CampaignDefender.Player(defender)) =>
-        result.kind match
-          case CampaignKind.Conquest => killed(defender, returned)
-          case CampaignKind.Raid => killed(defender, board(defender))
-      case (CampaignPlanSide.Attacker, CampaignDefender.Bandits) =>
-        Right(Vector.empty)
+      else
+        val kills = use.side match
+          case CampaignPlanSide.Defender => KillWholeForce.ofAttacker(ready, result)
+          case CampaignPlanSide.Attacker =>
+            KillWholeForce.ofDefender(ready, result, returns)
+        kills.map(_ ++ gives(use.side, user, result)))
 
   private def gives(side: CampaignPlanSide, user: PlayerId,
       result: CampaignResult): Vector[CoreOperation] =
