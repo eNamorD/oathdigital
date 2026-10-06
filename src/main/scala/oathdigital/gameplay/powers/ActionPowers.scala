@@ -10,7 +10,7 @@ object ActionPowers:
   object Dazzle extends ReviewedPower("denizen.dazzle", None,
     Vector(ReviewedHandler.automatic(PowerWindow.ActionCardPlayedFaceup,
       implemented = true)))
-  object Revelation extends ReviewedPower("denizen.revelation", None, played)
+  object Revelation extends ReviewedPower("denizen.revelation", None, playedDone)
   object ThreateningRoar extends ReviewedPower("denizen.threatening-roar", None, playedDone)
   object AnimalHost extends ReviewedPower("denizen.animal-host", None, playedDone)
   object ASmallFavor extends ReviewedPower("denizen.a-small-favor", None, playedDone)

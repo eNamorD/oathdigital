@@ -49,8 +49,53 @@ object WhenPlayedHarness:
   def resume(ready: ReadyGame, power: ContributingPower,
       hook: CardPlayedFaceup, tree: PendingTree, decisionId: String,
       answer: DecisionAnswer): Either[OathViolation, WalkerOutcome] =
+    resumeBy(ready, power, hook, tree, decisionId, answer, actor)
+
+  /** Resumes `tree` with `by`'s `answer` to `decisionId`: a question another
+    * player owns, such as each player's burn in Revelation. */
+  def resumeBy(ready: ReadyGame, power: ContributingPower,
+      hook: CardPlayedFaceup, tree: PendingTree, decisionId: String,
+      answer: DecisionAnswer, by: PlayerId)
+      : Either[OathViolation, WalkerOutcome] =
     ProcedureWalker.resolve(ready, hook, tree,
-      Answered(decisionId, answer, actor), powers(power))
+      Answered(decisionId, answer, by), powers(power))
+
+  /** A walk answered to its end: each question in the order it was asked,
+    * the events of every command, and the state the walk finished in. */
+  final case class Walked(asked: Vector[Decide], events: Vector[OathEvent],
+      end: ReadyGame)
+
+  /** Fires `hook` from `ready`, then answers each question the walk parks at
+    * with the next of `answers`, as the question's owner, from the state the
+    * walk has reached. Fails when a question finds no answer left, or when
+    * answers are left over. */
+  def walkAnswering(ready: ReadyGame, power: ContributingPower,
+      hook: CardPlayedFaceup, answers: DecisionAnswer*)(
+      using munit.Location): Walked =
+    def go(outcome: WalkerOutcome, events: Vector[OathEvent],
+        asked: Vector[Decide], left: List[DecisionAnswer]): Walked =
+      outcome match
+        case WalkerOutcome.Finished(end, more) =>
+          if left.nonEmpty then munit.Assertions.fail(
+            s"${left.size} answers were left over")
+          Walked(asked, events ++ more, end)
+        case WalkerOutcome.Parked(tree, more) =>
+          val reached = events ++ more
+          val at = reachedFrom(ready, reached)
+          val parked = question(at, power, hook, tree)
+          val next = left.headOption.getOrElse(munit.Assertions.fail(
+            s"no answer is left for ${parked.decisionId}"))
+          go(accepted(resumeBy(at, power, hook, tree, parked.decisionId,
+            next, parked.owner)), reached, asked :+ parked, left.drop(1))
+    go(accepted(fire(ready, power, hook)), Vector.empty, Vector.empty,
+      answers.toList)
+
+  /** The state `events` reach from `ready`: `ready` itself while no step
+    * has run, since `replayed` refuses an empty batch. */
+  private def reachedFrom(ready: ReadyGame, events: Vector[OathEvent])
+      : ReadyGame =
+    if PhasePowerHarness.ops(events).isEmpty then ready
+    else replayed(ready, events)
 
   /** The state `events`' recorded operations reach from `from`. The hook is
     * walked bare, outside any action, so its steps replay as operations

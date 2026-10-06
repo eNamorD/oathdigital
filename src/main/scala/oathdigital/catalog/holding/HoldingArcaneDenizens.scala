@@ -80,14 +80,6 @@ object SecretSignalCard extends Denizen(DenizenId("55"), "Secret Signal", Suit.A
     text = "If you gain only one [favor], gain one more [favor].")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object RevelationCard extends Denizen(DenizenId("63"), "Revelation", Suit.Arcane):
-  val power = PrintedPower(PowerId("denizen.revelation"),
-    persistent = false, cost = Cost.free,
-    text = "**WHEN PLAYED:** each player, following turn order, may " +
-      "burn any number of [favor] to gain an equal number of " +
-      "[secret].")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object ObservatoryCard extends Denizen(DenizenId("64"), "Observatory", Suit.Arcane) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.observatory"),
     persistent = false, cost = Cost.free,

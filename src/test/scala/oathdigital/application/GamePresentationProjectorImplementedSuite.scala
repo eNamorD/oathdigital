@@ -9,7 +9,7 @@ import oathdigital.testkit.TestCards
   * `ReviewedPowerCatalog` handler carries the flag explicitly, while a
   * `WalkerPowerCatalog`/`PhasePowerCatalog` power carries no flag at all --
   * for those, being wired in for this catalog at all is what implemented
-  * means. Dazzle, Revelation, and Catacombs are real denizens covering one
+  * means. Dazzle, Bewitch, and Catacombs are real denizens covering one
   * case each; picking them by their declared power id keeps this suite
   * honest to the production catalog instead of a synthetic stand-in.
   */
@@ -25,8 +25,8 @@ class GamePresentationProjectorImplementedSuite extends munit.FunSuite:
     assert(projector.cardDetails(dazzle, None, hidden = false).implemented)
 
   test("a denizen whose power is reviewed but not yet built reads as not implemented"):
-    val revelation = denizenWith("denizen.revelation")
-    assert(!projector.cardDetails(revelation, None, hidden = false).implemented)
+    val bewitch = denizenWith("denizen.bewitch")
+    assert(!projector.cardDetails(bewitch, None, hidden = false).implemented)
 
   test("a denizen whose power runs only through the walker catalog reads as implemented"):
     val catacombs = denizenWith("denizen.catacombs")
