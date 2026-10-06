@@ -6,7 +6,7 @@
 
 **Architecture:**
 
-- **R4, `WholeForce`.** Sticky Fire's kill of a defeated side's whole force moves into a shared helper, and Shield Wall uses it too.
+- **R4, `KillWholeForce`.** Sticky Fire's kill of a defeated side's whole force moves into a shared helper, and Shield Wall uses it too.
   - The Conquest kill reads the defender's board when it runs.
   - So when both Shield Wall and Sticky Fire kill the same force, the second finds nothing left.
 - **R3, `LossRewrite`.** Hospital's private `Tally` becomes a shared rewriter of a window's core operations, plus the loss counter built on it.
@@ -102,7 +102,7 @@ These settle what the spec and rulings leave open. Each one names what it costs 
 
    This is computed when the losses window is folded.
 5. **Shield Wall and Sticky Fire together.**
-   - Both kill a defeated Conquest defender's returned warbands. `WholeForce.ofDefender` kills the smaller of what was returned and how much the board has grown since the losses window was folded, so the second kill finds nothing.
+   - Both kill a defeated Conquest defender's returned warbands. `KillWholeForce.ofDefender` kills the smaller of what was returned and how much the board has grown since the losses window was folded, so the second kill finds nothing.
    - With either power alone, the board has grown by exactly the returned amount, so Sticky Fire's behavior and suite are unchanged.
    - A Raid kill already reads the live board.
 6. **Cursed Cauldron's count and gain.**
@@ -138,8 +138,8 @@ Production, under `src/main/scala/oathdigital/gameplay/powers/` unless stated:
 
 | File | Change | Responsibility | Task |
 |---|---|---|---|
-| `campaign/WholeForce.scala` | Create | R4: the kill of a defeated side's whole force | 1 |
-| `campaign/StickyFire.scala` | Modify | Kills through `WholeForce` | 1 |
+| `campaign/KillWholeForce.scala` | Create | R4: the kill of a defeated side's whole force | 1 |
+| `campaign/StickyFire.scala` | Modify | Kills through `KillWholeForce` | 1 |
 | `campaign/ShieldWall.scala` | Create | +2 defense dice; a defeated defender's whole force dies | 1 |
 | `campaign/LossRewrite.scala` | Create | R3: the window rewriter and the shared loss counter | 2 |
 | `campaign/Hospital.scala` | Modify | Counts through `LossRewrite`; priority 2; `placeable` | 2, 3 |
@@ -238,7 +238,7 @@ Replace `FILE` and `OBJECT` with the values the task gives. The new power file d
 ### Task 1: Shield Wall on a shared whole-force kill (R4)
 
 **Files:**
-- Create: `src/main/scala/oathdigital/gameplay/powers/campaign/WholeForce.scala`
+- Create: `src/main/scala/oathdigital/gameplay/powers/campaign/KillWholeForce.scala`
 - Create: `src/main/scala/oathdigital/gameplay/powers/campaign/ShieldWall.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/StickyFire.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/PlanRules.scala`
@@ -253,10 +253,10 @@ Replace `FILE` and `OBJECT` with the values the task gives. The new power file d
   - `NoteSupport.warbands(step, player): Int`
   - `PlayerFacts.forceKind(ready, player): Either[OathViolation, ForceKind]`
 - Produces, used by Tasks 2 and 3:
-  - `WholeForce.Returns(board: Int, returned: Int)`
-  - `WholeForce.returns(ready: ReadyGame, result: CampaignResult): WholeForce.Returns`
-  - `WholeForce.ofDefender(ready, result, returns): Either[OathViolation, Vector[CoreOperation]]`
-  - `WholeForce.ofAttacker(ready, result): Either[OathViolation, Vector[CoreOperation]]`
+  - `KillWholeForce.Returns(board: Int, returned: Int)`
+  - `KillWholeForce.returns(ready: ReadyGame, result: CampaignResult): KillWholeForce.Returns`
+  - `KillWholeForce.ofDefender(ready, result, returns): Either[OathViolation, Vector[CoreOperation]]`
+  - `KillWholeForce.ofAttacker(ready, result): Either[OathViolation, Vector[CoreOperation]]`
   - `ShieldWallCard`, `ShieldWall` (`ShieldWall.id`, `ShieldWall.Favor = 1`, `ShieldWall.Dice = 2`, `ShieldWall.killed`)
 
 - [ ] **Step 1: Write the failing suite**
@@ -380,7 +380,7 @@ class ShieldWallSuite extends munit.FunSuite:
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.campaign.ShieldWallSuite"`
 Expected: compilation FAIL, `ShieldWall` not found.
 
-- [ ] **Step 3: Create `WholeForce.scala`**
+- [ ] **Step 3: Create `KillWholeForce.scala`**
 
 ```scala
 package oathdigital.gameplay.powers.campaign
@@ -402,7 +402,7 @@ import oathdigital.model._
   * reads the board when it runs, so when Sticky Fire and Shield Wall both
   * kill the same force, the second finds nothing left to kill.
   */
-private[campaign] object WholeForce:
+private[campaign] object KillWholeForce:
   /** A player defender's board before the losses run, and what a Conquest
     * the attacker won will return to it. */
   final case class Returns(board: Int, returned: Int)
@@ -445,7 +445,7 @@ private[campaign] object WholeForce:
       PositionedLocation(Location.PlayArea(player)))))
 ```
 
-- [ ] **Step 4: Rewrite Sticky Fire's kills through `WholeForce`**
+- [ ] **Step 4: Rewrite Sticky Fire's kills through `KillWholeForce`**
 
 In `StickyFire.scala`:
 
@@ -457,19 +457,19 @@ In `StickyFire.scala`:
     * now, when the losses window is folded, before the losses run. */
   private def burn(use: PlanUse, user: PlayerId, result: CampaignResult)
       : Operation =
-    val returns = WholeForce.returns(use.ready, result)
+    val returns = KillWholeForce.returns(use.ready, result)
     BuildOps((ready, pending) =>
       if !PowerAnswers.one(pending, StickyFire.decisionId).contains(StickyFire.yes) then
         Right(Vector.empty)
       else
         val kills = use.side match
-          case CampaignPlanSide.Defender => WholeForce.ofAttacker(ready, result)
+          case CampaignPlanSide.Defender => KillWholeForce.ofAttacker(ready, result)
           case CampaignPlanSide.Attacker =>
-            WholeForce.ofDefender(ready, result, returns)
+            KillWholeForce.ofDefender(ready, result, returns)
         kills.map(_ ++ gives(use.side, user, result)))
 ```
 
-3. In the class doc comment, after the three bullets, add one sentence: "The kills are `WholeForce`'s, which Shield Wall shares."
+3. In the class doc comment, after the three bullets, add one sentence: "The kills are `KillWholeForce`'s, which Shield Wall shares."
 
 - [ ] **Step 5: Create `ShieldWall.scala` and move the card object**
 
@@ -493,7 +493,7 @@ object ShieldWallCard extends Denizen(DenizenId("108"), "Shield Wall", Suit.Orde
   *
   * A favor is placed onto the card, so a bandit defender never uses it. When
   * its user is defeated, their whole force dies after the losses
-  * (`WholeForce`): a Conquest defender keeps none of the warbands the victory
+  * (`KillWholeForce`): a Conquest defender keeps none of the warbands the victory
   * returned, and a Raid defender loses its whole board. It folds at the
   * default priority, before Billowing Fog and Traveling Doctor, which ignore
   * it, and before Hospital, which still saves what it kills.
@@ -530,9 +530,9 @@ case object ShieldWall extends BattlePlan:
       result <- use.result
       if use.won.contains(false)
     yield
-      val returns = WholeForce.returns(use.ready, result)
+      val returns = KillWholeForce.returns(use.ready, result)
       losses :+ BuildOps((ready, _) =>
-        WholeForce.ofDefender(ready, result, returns)) :+
+        KillWholeForce.ofDefender(ready, result, returns)) :+
         Note(id, killedNote(user))).getOrElse(losses)))
 
   /** What the kill took from the user's board, read from its step. */
@@ -555,7 +555,7 @@ Expected: PASS. `StickyFireSuite` and `HospitalSuite` pass unchanged.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/main/scala/oathdigital/gameplay/powers/campaign/WholeForce.scala \
+git add src/main/scala/oathdigital/gameplay/powers/campaign/KillWholeForce.scala \
   src/main/scala/oathdigital/gameplay/powers/campaign/ShieldWall.scala \
   src/main/scala/oathdigital/gameplay/powers/campaign/StickyFire.scala \
   src/main/scala/oathdigital/gameplay/powers/campaign/PlanRules.scala \
