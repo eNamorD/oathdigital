@@ -40,13 +40,6 @@ object HeartsAndMindsCard extends Denizen(DenizenId("138"), "Hearts and Minds", 
       "and Minds unless you hold the People's Favor.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object HeraldCard extends Denizen(DenizenId("143"), "Herald", Suit.Hearth) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.herald"),
-    persistent = true, cost = Cost.free,
-    text = "After another player campaigns against a player _(not " +
-      "bandits)_, you gain [favor] from any favor bank.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object DeedWriterCard extends Denizen(DenizenId("146"), "Deed Writer", Suit.Hearth):
   val power = PrintedPower(PowerId("denizen.deed-writer"),
     persistent = false, cost = Cost.free,
@@ -76,13 +69,6 @@ object OldSongsCard extends Denizen(DenizenId("229"), "Old Songs", Suit.Hearth):
       "them.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object DiplomatCard extends Denizen(DenizenId("230"), "Diplomat", Suit.Hearth) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.diplomat"),
-    persistent = true, cost = Cost.free,
-    text = "Players **cannot** campaign against you unless they rule a " +
-      "[suit-hearth] card.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SpinningBeeCard extends Denizen(DenizenId("232"), "Spinning Bee", Suit.Hearth):
   val power = PrintedPower(PowerId("denizen.spinning-bee"),
     persistent = false, cost = Cost.free,
@@ -102,12 +88,4 @@ object SkilledMerchantsCard extends Denizen(DenizenId("238"), "Skilled Merchants
   val power = PrintedPower(PowerId("denizen.skilled-merchants"),
     persistent = false, cost = Cost.free,
     text = "You may trade with any denizens in your region.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object TravelingDoctorCard extends Denizen(DenizenId("51"), "Traveling Doctor", Suit.Hearth):
-  val power = PrintedPower(PowerId("denizen.traveling-doctor"),
-    persistent = false, cost = Cost.free,
-    text = "If you're defeated, kill no warbands in your force and " +
-      "discard Traveling Doctor. **Ignore** powers that kill all " +
-      "of your force.")
   val powers: Vector[PrintedPower] = Vector(power)

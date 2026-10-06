@@ -96,11 +96,12 @@ no longer matters.
 
 ### Fold order for losses
 
-At `CampaignLosses`, Shield Wall stays at priority 0, Billowing Fog and
-Traveling Doctor take priority 1, and Hospital moves to 2. Fog and Doctor then
-see Shield Wall's and Sticky Fire's kills to drop them, and Hospital saves
-from whatever kill is left. Cursed Cauldron counts at priority 1 or above, so
-it sees Sticky Fire's kills.
+At `CampaignLosses`, Shield Wall and Sticky Fire stay at priority 0, Billowing
+Fog and Traveling Doctor take priority 1, Hospital moves to 2 and Cursed
+Cauldron takes 3. A defeated user of Fog or Doctor ignores Shield Wall and
+Sticky Fire there, through the collector's named ignore, so neither asks nor
+kills. Hospital saves from whatever kill is left, and Cursed Cauldron counts
+after both, less what Hospital will place.
 
 ## Seams used for the first time
 

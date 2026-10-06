@@ -138,15 +138,10 @@ sealed abstract class FortressRule extends ContributingPower:
     case _ => None
 
   private def startGuard(ctx: PowerCtx): Option[OathViolation] =
-    Option.when(!underway(ctx.state) &&
+    Option.when(!FortressRule.underway(ctx.state) &&
       CampaignSetup.legalKinds(ctx.state, ctx.activePlayer) ==
         Vector(CampaignKind.Raid) && raidBlocked(ctx.state, ctx.activePlayer))(
       blocked("a Fortress protects every player a Raid could target"))
-
-  /** The Campaign has answered one of its own decisions. */
-  private def underway(ready: ReadyGame): Boolean =
-    ready.game.current.walkerPending.exists(_.answered.exists(answered =>
-      CampaignIds.all.contains(answered.decisionId)))
 
   private def bannerGuard(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = ref match
@@ -166,6 +161,13 @@ object FortressRule:
   val allShielded: NoteKey = NoteKey("all-shielded", Vector(
     NotePart.Text("No player at "), NotePart.Arg(0),
     NotePart.Text(" can be targeted.")))
+
+  /** The Campaign has answered one of its own decisions. Once under way it
+    * must be able to finish, so a start rule no longer refuses it. Diplomat
+    * reads it too. */
+  private[targeting] def underway(ready: ReadyGame): Boolean =
+    ready.game.current.walkerPending.exists(_.answered.exists(answered =>
+      CampaignIds.all.contains(answered.decisionId)))
 
 /** The Oaken Fortress (E28, intact): while its ruler is at this site, they
   * cannot be targeted by a Challenge or a Raid. Empire rulers are not

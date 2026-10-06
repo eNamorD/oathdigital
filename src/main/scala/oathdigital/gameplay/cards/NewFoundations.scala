@@ -20,16 +20,17 @@ import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,
   WizardSchoolCard, WolvesCard}
 import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,
   BanditStandardCard, BannerBreakersCard, BattleAxesCard, BattleHonorsCard,
-  BlackSwordCard, BookBurningCard, BrassArmyCard, CrackedSageCard,
-  CrackingGroundCard, DisgracedCaptainCard, EncirclementCard,
-  ExtraProvisionsCard, FaeBattalionCard, FearsomeGeneralCard,
+  BillowingFogCard, BlackSwordCard, BookBurningCard, BrassArmyCard,
+  CrackedSageCard, CrackingGroundCard, CursedCauldronCard, DisgracedCaptainCard,
+  EncirclementCard, ExtraProvisionsCard, FaeBattalionCard, FearsomeGeneralCard,
   FearsomeShieldCard, FieldPromotionCard, FireTalkersCard, GarrisonArmoryCard,
-  GleamingArmorCard, GreatCrusadeCard, HorseArchersCard, HospitalCard,
-  InsectSwarmCard, KindredWarriorsCard, LancersCard, LongbowsCard,
+  GleamingArmorCard, GreatCrusadeCard, HeraldCard, HorseArchersCard,
+  HospitalCard, InsectSwarmCard, KindredWarriorsCard, LancersCard, LongbowsCard,
   MercenariesCard, MilitaryParadeCard, MountedPatrolCard, NatureWorshipCard,
   OutridersCard, PledgeOfDefenseCard, RainBootsCard, RangersCard, RivalKhanCard,
-  RustingRayCard, ScoutsCard, StickyFireCard, StormCallerCard, TheGreatLevyCard,
-  ToweringRampartCard, TributeSpoilsCard, VillageConstableCard, VowOfPeaceCard,
+  RustingRayCard, SaltTheEarthCard, ScoutsCard, SealingWardCard, ShieldWallCard,
+  StickyFireCard, StormCallerCard, TheGreatLevyCard, ToweringRampartCard,
+  TravelingDoctorCard, TributeSpoilsCard, VillageConstableCard, VowOfPeaceCard,
   WalledGardenCard, WarTortoiseCard, WarningSignalsCard, WatchdogCard,
   WrestlersCard}
 import oathdigital.gameplay.powers.cardplay.{BookBindersCard, GossipCard,
@@ -46,7 +47,7 @@ import oathdigital.gameplay.powers.search.{AuguryCard, CropRotationCard,
 import oathdigital.gameplay.powers.setup.{GreatForgeCard, GreatMarketCard,
   ProvingGroundsCard}
 import oathdigital.gameplay.powers.targeting.{CircletOfCommandCard,
-  ForgottenVaultCard, LostTongueCard, OakenFortressCard}
+  DiplomatCard, ForgottenVaultCard, LostTongueCard, OakenFortressCard}
 import oathdigital.gameplay.powers.title.ChaosCultCard
 import oathdigital.gameplay.powers.travel.{BrokenPeaksSite, DesolateShoreSite,
   DragonskinDrumCard, FairIsleSite, ForestPathsCard, GraspingVinesCard,

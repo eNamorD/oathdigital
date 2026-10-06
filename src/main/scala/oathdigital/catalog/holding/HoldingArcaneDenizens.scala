@@ -88,13 +88,6 @@ object SecretSignalCard extends Denizen(DenizenId("55"), "Secret Signal", Suit.A
     text = "If you gain only one [favor], gain one more [favor].")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object BillowingFogCard extends Denizen(DenizenId("59"), "Billowing Fog", Suit.Arcane):
-  val power = PrintedPower(PowerId("denizen.billowing-fog"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "If you're defeated, kill no warbands in your force. " +
-      "**Ignore** powers that kill all of your force.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object TerrorSpellsCard extends Denizen(DenizenId("61"), "Terror Spells", Suit.Arcane):
   val power = PrintedPower(PowerId("denizen.terror-spells"),
     persistent = false, cost = Cost(secret = 1),
@@ -132,12 +125,6 @@ object JinxCard extends Denizen(DenizenId("68"), "Jinx", Suit.Arcane):
     text = "If you rule Jinx, after you roll [attack-die] or " +
       "[defense-die] for any reason, you may use this power to " +
       "reroll all those dice once. _(This is not a battle plan!)_")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object SealingWardCard extends Denizen(DenizenId("72"), "Sealing Ward", Suit.Arcane) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.sealing-ward"),
-    persistent = true, cost = Cost.free,
-    text = "Your relics add one more [defense-die] when targeted.")
   val powers: Vector[PrintedPower] = Vector(power)
 
 object VowOfSilenceCard extends Denizen(DenizenId("74"), "Vow of Silence", Suit.Arcane) with Locked with AdviserOnly:

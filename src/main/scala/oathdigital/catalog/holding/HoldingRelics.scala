@@ -6,13 +6,6 @@ import oathdigital.model.{Cost, PowerId, RelicId}
 // Generated from the retired runtime JSON (card classes slice 1).
 // Hand-edited from here on; a card moves out when it is implemented.
 
-object CursedCauldronCard extends Relic(RelicId("R02"), "Cursed Cauldron", value = 84, defense = 2):
-  val power = PrintedPower(PowerId("relic.cursed-cauldron"),
-    persistent = false, cost = Cost.free,
-    text = "If you're victorious, gain 1 warband per enemy warband " +
-      "killed in this campaign.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object GrandMaskCard extends Relic(RelicId("R05"), "Grand Mask", value = 36, defense = 1):
   val power = PrintedPower(PowerId("relic.grand-mask"),
     persistent = true, cost = Cost.free,
