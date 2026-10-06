@@ -155,10 +155,3 @@ object LongLostHeirCard extends Denizen(DenizenId("44"), "Long-Lost Heir", Suit.
       "Citizen. _Follow the steps in the rules and end your Act " +
       "Phase._")
   val powers: Vector[PrintedPower] = Vector(power)
-
-object RovingTerrorCard extends Denizen(DenizenId("46"), "Roving Terror", Suit.Beast) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.roving-terror"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "**ACTION:** Discard a denizen card at any other site and " +
-      "move this card there.")
-  val powers: Vector[PrintedPower] = Vector(power)
