@@ -43,13 +43,6 @@ object SpecialEnvoyCard extends Denizen(DenizenId("158"), "Special Envoy", Suit.
     text = "Spend no Supply. After traveling, end your Act Phase.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object ResettleCard extends Denizen(DenizenId("159"), "Resettle", Suit.Nomad) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.resettle"),
-    persistent = false, cost = Cost.free,
-    text = "**ACTION:** Move a faceup [suit-nomad] card from any " +
-      "player's advisers to any site.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object PilgrimageCard extends Denizen(DenizenId("161"), "Pilgrimage", Suit.Nomad) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.pilgrimage"),
     persistent = false, cost = Cost.free,
