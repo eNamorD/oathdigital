@@ -23,3 +23,11 @@ class PowerAnswersSuite extends munit.FunSuite:
     assertEquals(PowerAnswers.last(looped.init, "a", "b"),
       Some(DecisionOptionRef.Button("between")))
     assertEquals(PowerAnswers.last(looped, "c"), None)
+
+  test("amounts reads every answer to an amount a loop asks again, in " +
+      "order"):
+    def amount(decision: String, count: Int): Answered =
+      Answered(decision, DecisionAnswer.ChooseAmountAnswer(count), p1)
+    val answered = Vector(amount("a", 3), chose("b", "keep"), amount("a", 1))
+    assertEquals(PowerAnswers.amounts(answered, "a"), Vector(3, 1))
+    assertEquals(PowerAnswers.amounts(answered, "c"), Vector.empty)

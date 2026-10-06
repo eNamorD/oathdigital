@@ -45,7 +45,7 @@ object ActionPowers:
   object TownMeeting extends ReviewedPower("denizen.town-meeting", None, playedDone)
   object AncientPact extends ReviewedPower("denizen.ancient-pact", None, played)
   object SearchParty extends ReviewedPower("denizen.search-party", None, played)
-  object CallForHelp extends ReviewedPower("denizen.call-for-help", None, played)
+  object CallForHelp extends ReviewedPower("denizen.call-for-help", None, playedDone)
 
   private def boundary = Vector(
     ReviewedHandler.automatic(PowerWindow.ActionAfterMajorAction),

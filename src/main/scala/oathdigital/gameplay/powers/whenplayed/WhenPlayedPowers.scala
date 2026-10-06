@@ -25,4 +25,5 @@ object WhenPlayedPowers:
       Vector(Dissent.forCatalog(catalog)) ++
       Vector(WizardsConclave.forCatalog(catalog)) ++
       Vector(BanditChief) ++
-      Vector(ARoundOfAle.forCatalog(catalog))
+      Vector(ARoundOfAle.forCatalog(catalog)) ++
+      Vector(CallForHelp.forCatalog(catalog))
