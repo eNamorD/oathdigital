@@ -1,6 +1,6 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.catalog.{ExecutableCatalog, Locked}
+import oathdigital.catalog.{AdviserOnly, ExecutableCatalog, Locked, SiteOnly}
 import oathdigital.model._
 
 /** The operation restrictions that hold for a command, wherever its
@@ -8,8 +8,10 @@ import oathdigital.model._
   * set").
   *
   * `printed` are the restrictions a catalog's cards print: [[LockedCards]],
-  * holding every card whose `Locked` trait shows the lock icon, and the
-  * [[HallOfMinisters]] and the [[GrandScepter]], which their cards declare.
+  * holding every card whose `Locked` trait shows the lock icon,
+  * [[RestrictionIcons]], holding every adviser-only and site-only denizen,
+  * and the [[HallOfMinisters]] and the [[GrandScepter]], which their cards
+  * declare.
   * `active` adds the [[ActiveModifier]] rule for the modifiers selected for
   * the running action, and the restrictions the offered powers register.
   * Every one refuses as `Impossible`: an optional operation is skipped, a
@@ -43,7 +45,12 @@ object OperationRestrictions:
       (catalog.denizens.collect { case d: Locked => d.id: CardId } ++
         catalog.edifices.collect {
           case e if e.intact.isInstanceOf[Locked] => e.id: CardId }).toSet
-    Vector(LockedCards(locked), HallOfMinisters, GrandScepter)
+    val adviserOnly: Set[CardId] =
+      catalog.denizens.collect { case d: AdviserOnly => d.id: CardId }.toSet
+    val siteOnly: Set[CardId] =
+      catalog.denizens.collect { case d: SiteOnly => d.id: CardId }.toSet
+    Vector(LockedCards(locked), RestrictionIcons(adviserOnly, siteOnly),
+      HallOfMinisters, GrandScepter)
 
 /** A card that prints a power selected for the running action cannot be
   * discarded while the action runs: a modifier a player selected at the start

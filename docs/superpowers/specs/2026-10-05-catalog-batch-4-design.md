@@ -65,9 +65,23 @@ site-only card into a player's advisers. Like `LockedCards`, it reads every
 operation flattened once, and the search hides an option it refuses. A
 facedown adviser has no restrictions, and edifices are never advisers.
 
-Slice 2 audits every implemented power that moves or swaps a card between
-advisers and sites, and records each behavior change in the slice's plan and
-in this section before the slice merges.
+The rule judges where and how a card lands: a move's `resultingOrientation`,
+or else the orientation the card shows where it lies. It does not judge a
+card leaving a hand, since `CardPlay` checks the icons for a play, nor a move
+inside one play area, which only turns the card over.
+
+Slice 2's audit found one implemented power the rule would have refused:
+Horned Mask took a site card into the play area faceup and then flipped it
+facedown, so a site-only denizen was refused between the two. It now lands
+the card facedown in one `Move`, and its behavior is unchanged. Every other
+implemented card move passes unchanged:
+
+- Dream Thief, Enchantress and Twin Brother swap advisers between play areas.
+- Great Herd swaps cards between sites. The rule also judges a move between
+  two sites, so Great Herd's question no longer offers an adviser-only card
+  that lies at a site: such a card has no legal landing at any site.
+- The rest move relics or Visions, which print no restriction icons, or move
+  cards to and from piles and hands.
 
 ## Powers-side refactors
 
@@ -228,13 +242,14 @@ offered**).
 
 | Card | Line | Covers |
 |---|---|---|
-| Roving Terror | Roving Terror: Replaced {card} at {site}. | the Discard line (verify) |
+| Roving Terror | Roving Terror: Replaced {card} at {site}. | the Discarded line |
 | Roving Terror, key `used.none` | Roving Terror: No card could be replaced. | |
-| Homesteaders | Homesteaders: Moved {card} to {site}. | the Moved line (verify) |
+| Homesteaders | Homesteaders: Moved {card} to {site}. | |
 | Homesteaders, key `used.none` | Homesteaders: No adviser could be moved. | |
-| Resettle | Resettle: Moved {Blue}'s {card} to {site}. | the Moved line (verify) |
+| Resettle | Resettle: Moved {Blue}'s {card} to {site}. | |
 | Resettle, key `used.none` | Resettle: No Nomad adviser could be moved. | |
-| Moving Market, key `moved` | Moving Market: Moved it to {site} and gained {n favor} from {the Nomad bank}. | the Moved and Gain lines (verify) |
+| Moving Market, key `moved` | Moving Market: Moved it to {site} and gained {n favor} from {the Nomad bank}. | |
+| Moving Market, key `moved.only`, the Nomad bank was empty | Moving Market: Moved it to {site}. | |
 
 **No line:** Moving Market skipped.
 

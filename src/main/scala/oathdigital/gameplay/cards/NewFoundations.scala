@@ -10,10 +10,11 @@ import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,
   BookOfRecordsCard, BrassHorseCard, CharmingFriendCard, ClayRattleCard,
   CrystalVialCard, DarkEnforcerCard, DemonTailCard, DowsingSticksCard,
   DreamThiefCard, EldersCard, EnchantressCard, FaeMerchantCard, FirebrandCard,
-  GamblingHallCard, GreatFeastCard, HonorGuardCard, IvoryEyeCard, LevelersCard,
-  MagicCarpetCard, MagicWaterskinCard, MemoryOfHomeCard, MemoryOfNatureCard,
+  GamblingHallCard, GreatFeastCard, HomesteadersCard, HonorGuardCard,
+  IvoryEyeCard, LevelersCard, MagicCarpetCard, MagicWaterskinCard, MemoryOfHomeCard, MemoryOfNatureCard,
   MessengerCard, OracleCard, OracularPigCard, PlagueEnginesCard, QuickExitCard,
-  RelicBreakerCard, ScryerCard, SecondChanceCard, ShiftingMapCard,
+  RelicBreakerCard, ResettleCard, RovingTerrorCard, ScryerCard,
+  SecondChanceCard, ShiftingMapCard,
   SiegeEnginesCard, SkeletonKeyCard, SleightOfHandCard, SpiritSnareCard,
   SpoiledSuppliesCard, StorytellerCard, TamingCharmCard, TavernSongsCard,
   TinkersFairCard, TutorCard, WaysideInnCard, WhisperingLeavesCard, WhistleCard,
@@ -38,7 +39,7 @@ import oathdigital.gameplay.powers.cardplay.{BookBindersCard, GossipCard,
   WelcomingPartyCard, WildCryCard}
 import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard, BirdsongCard,
   CupOfPlentyCard, DowntroddenCard, InitiationRiteCard, KnightsErrantCard,
-  RowdyPubCard, TheOldOakCard, VillageIdiotCard}
+  MovingMarketCard, RowdyPubCard, TheOldOakCard, VillageIdiotCard}
 import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}

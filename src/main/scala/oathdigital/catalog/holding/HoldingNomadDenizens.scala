@@ -43,13 +43,6 @@ object SpecialEnvoyCard extends Denizen(DenizenId("158"), "Special Envoy", Suit.
     text = "Spend no Supply. After traveling, end your Act Phase.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object ResettleCard extends Denizen(DenizenId("159"), "Resettle", Suit.Nomad) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.resettle"),
-    persistent = false, cost = Cost.free,
-    text = "**ACTION:** Move a faceup [suit-nomad] card from any " +
-      "player's advisers to any site.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object PilgrimageCard extends Denizen(DenizenId("161"), "Pilgrimage", Suit.Nomad) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.pilgrimage"),
     persistent = false, cost = Cost.free,
@@ -124,14 +117,6 @@ object SearchPartyCard extends Denizen(DenizenId("240"), "Search Party", Suit.No
     persistent = false, cost = Cost.free,
     text = "**WHEN PLAYED,** peek at the bottom 3 cards of a discard " +
       "pile and play one as if you searched. _Return the rest._")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object MovingMarketCard extends Denizen(DenizenId("241"), "Moving Market", Suit.Nomad) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.moving-market"),
-    persistent = false, cost = Cost.free,
-    text = "After trading with Moving Market, you may move this card to " +
-      "any site with capacity. If you do, gain [favor] from the " +
-      "[suit-nomad] bank.")
   val powers: Vector[PrintedPower] = Vector(power)
 
 object TravelingNegotiatorCard extends Denizen(DenizenId("242"), "Traveling Negotiator", Suit.Nomad) with AdviserOnly:

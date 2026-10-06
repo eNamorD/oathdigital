@@ -23,8 +23,10 @@ object HornedMaskCard extends Relic(RelicId("R06"), "Horned Mask", value = 48, d
   * discard when the area is full) and one `BuildOps`. Each reads live state,
   * so the tree is the same whether it is derived at the start or on a resume.
   * The effect is: discard the chosen adviser when the area is full, return the
-  * taken card's favor and secrets, `Take` the card into the play area and
-  * `Flip` it facedown.
+  * taken card's favor and secrets, and move the card into the play area
+  * facedown in one `Move`. The restriction-icon rule then sees it land
+  * facedown, so a site-only denizen can be taken: a facedown adviser has no
+  * restrictions.
   *
   * The discard follows card play: a denizen or Vision goes to the next
   * region's discard pile, and a faceup locked card cannot be discarded (a
@@ -115,10 +117,10 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
         if full(ready, actor) then discard(ready, actor, pending)
         else Right(Vector.empty[CoreOperation])
       returns <- returnsOf(card, siteId, actor)
-    yield discards ++ returns ++ Vector[CoreOperation](
-      Take(Piece.Card(card.id), actor, Location.Site(siteId),
-        Location.PlayArea(actor)),
-      Flip(card.id, Location.PlayArea(actor), Orientation.FaceDown))
+    yield discards ++ returns :+ Move(Piece.Card(card.id),
+      PositionedLocation(Location.Site(siteId)),
+      PositionedLocation(Location.PlayArea(actor)),
+      resultingOrientation = Some(Orientation.FaceDown))
 
   /** The favor and secrets of the taken card, returned as a discard returns
     * them: favor to the card's suit bank, secrets to the actor facedown. It is
