@@ -11,8 +11,8 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * Siegeworks (the defense scored again), Rain Boots (the defense scored again
   * and a discard at the end), The Great Levy (the attack scored again),
   * Garrison Armory (the targets' warbands added again), Hospital (killed
-  * warbands saved until the end) and Book Burning (secrets burnt at the
-  * end). Each names its card, so all are always present.
+  * warbands saved until the end), Book Burning (secrets burnt at the
+  * end), Rusting Ray and Fae Battalion (the attack scored again). Each names its card, so all are always present.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -30,4 +30,6 @@ object PlanRules:
       Vector(GreatLevy) ++
       Vector(GarrisonArmory) ++
       Vector(Hospital) ++
-      Vector(BookBurning)
+      Vector(BookBurning) ++
+      Vector(RustingRay) ++
+      Vector(FaeBattalion)

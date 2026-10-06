@@ -104,6 +104,10 @@ final case class PlanContext(ready: ReadyGame, setup: CampaignSetup,
   def enemyHolds(banner: Banner): Boolean = enemyPlayer.exists(held =>
     BannerRules.holder(ready.game.current, banner).contains(held.player))
 
+  /** Whether the plan's user holds `banner`. A bandit defender holds none. */
+  def holds(banner: Banner): Boolean = user.exists(player =>
+    BannerRules.holder(ready.game.current, banner).contains(player))
+
   /** The cards of `suit` that `who` rules (`RuledCards`): the plan's user
     * (`ruler`), the enemy or the Campaign's defender. */
   def cardsRuled(catalog: ExecutableCatalog, who: CampaignDefender,

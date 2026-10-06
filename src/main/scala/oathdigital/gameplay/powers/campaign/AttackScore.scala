@@ -65,7 +65,11 @@ object AttackScore:
     AttackChange(DecisionOptionRef.Denizen(OutridersCard.id),
       CampaignPlanSide.Attacker, ignored),
     AttackChange(DecisionOptionRef.Denizen(TheGreatLevyCard.id),
-      CampaignPlanSide.Attacker, ignored))
+      CampaignPlanSide.Attacker, ignored),
+    AttackChange(DecisionOptionRef.Denizen(FaeBattalionCard.id),
+      CampaignPlanSide.Attacker, _.copy(hollow = HollowWorth.Whole)),
+    AttackChange(DecisionOptionRef.Denizen(RustingRayCard.id),
+      CampaignPlanSide.Defender, _.copy(hollow = HollowWorth.Zero)))
 
   /** The rules of the plans chosen in `actor`'s Campaign. */
   def rules(ready: ReadyGame, pending: PendingTree, actor: PlayerId)
