@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
 2026-10-01 playtest. **Phase - Catalog batch 4** is in progress: slices
-1a, 1b, 2 and 3 are done.
+1a, 1b, 2 and 3 are done. **Phase - Undo** is designed.
 
 ## Next
 
@@ -53,6 +53,21 @@ Left behind by earlier phases:
   Convoys wipes what players learned from Brass Horse or Inquisitor's right
   guess. Skip the forget when source and destination are both regional
   discards.
+
+### Phase - Undo
+
+A player takes back their latest step, inside a running walker and across an
+action's end, back to the latest barrier (a roll, draw, shuffle, peek or
+reveal, another player's answer, Finish Rest). Redo restores it while nothing
+else has happened. The [design](superpowers/specs/2026-10-06-undo-design.md)
+holds the rulings.
+
+- [ ] 1. Engine, storage and server log: void markers, voided replay,
+  barrier detection, the Undo intent and the projection's offer.
+- [ ] 2. Frontend: the Undo control and the taken-back log groups.
+- [ ] 3. Redo.
+- [ ] 4. The facedown-adviser pick moves into the walker; its pre-walker
+  Cancel retires.
 
 ### Phase - Board decision follow-ups
 
@@ -431,15 +446,6 @@ one.
   People's Favor are clickable like other cards, opening their details.
 - [ ] **Match the map's aspect ratio to the physical board.** The rendered
   map's proportions differ from the actual game map's.
-- [ ] **Undo system.** A player can take back a step before it commits
-  anything others have seen. No intent exists today to leave a walker once it
-  has started.
-  - [ ] Cancel a started action before any state change: a misclicked Minor
-    Actions button should not commit the player to playing a facedown
-    adviser. Card play spec 2 (board decisions) keeps the facedown-adviser
-    pick before the walker starts, outside the board decision machinery, so
-    that it keeps its Cancel; with undo, that pick can move into the walker
-    as an ordinary board decision.
 - [ ] **In-game chat.**
 - [ ] **Public Chronicle pages.** The winner of a game may write their summary
   of it, and players can browse all the summaries.
