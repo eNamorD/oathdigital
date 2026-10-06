@@ -74,14 +74,6 @@ object ActingTroupeCard extends Denizen(DenizenId("36"), "Acting Troupe", Suit.A
       "card instead.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object InquisitorCard extends Denizen(DenizenId("38"), "Inquisitor", Suit.Arcane):
-  val power = PrintedPower(PowerId("denizen.inquisitor"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "**ACTION:** Guess the name of a facedown Vision _(even the " +
-      "Conspiracy)_ held by a player whose pawn is at your site. " +
-      "If you are correct, discard it.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SecretSignalCard extends Denizen(DenizenId("55"), "Secret Signal", Suit.Arcane) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.secret-signal"),
     persistent = false, cost = Cost.free,
