@@ -126,13 +126,6 @@ object CityWallCard extends Denizen(DenizenId("252"), "City Wall", Suit.Order) w
       "powers.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object FearsomeGeneralCard extends Denizen(DenizenId("253"), "Fearsome General", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.fearsome-general"),
-    persistent = false, cost = Cost.free,
-    text = "Each [skull] you roll adds two more [sword] _(4 total)_, " +
-      "even if the [skull] is ignored _(Outriders, etc.)_.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object CarefulPlansCard extends Denizen(DenizenId("254"), "Careful Plans", Suit.Order):
   val power = PrintedPower(PowerId("denizen.careful-plans"),
     persistent = false, cost = Cost(favor = 1),

@@ -31,12 +31,6 @@ object WildMountsCard extends Denizen(DenizenId("153"), "Wild Mounts", Suit.Noma
       "you rule.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object LancersCard extends Denizen(DenizenId("154"), "Lancers", Suit.Nomad):
-  val power = PrintedPower(PowerId("denizen.lancers"),
-    persistent = false, cost = Cost.free,
-    text = "Double your total attack roll. At end, discard Lancers.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object MountainGiantCard extends Denizen(DenizenId("155"), "Mountain Giant", Suit.Nomad):
   val power = PrintedPower(PowerId("denizen.mountain-giant"),
     persistent = false, cost = Cost(secret = 1),

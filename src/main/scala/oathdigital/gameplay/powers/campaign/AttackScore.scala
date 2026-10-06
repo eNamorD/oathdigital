@@ -69,7 +69,13 @@ object AttackScore:
     AttackChange(DecisionOptionRef.Denizen(FaeBattalionCard.id),
       CampaignPlanSide.Attacker, _.copy(hollow = HollowWorth.Whole)),
     AttackChange(DecisionOptionRef.Denizen(RustingRayCard.id),
-      CampaignPlanSide.Defender, _.copy(hollow = HollowWorth.Zero)))
+      CampaignPlanSide.Defender, _.copy(hollow = HollowWorth.Zero)),
+    AttackChange(DecisionOptionRef.Denizen(LancersCard.id),
+      CampaignPlanSide.Attacker, _.copy(doubled = true)),
+    AttackChange(DecisionOptionRef.Denizen(FearsomeGeneralCard.id),
+      CampaignPlanSide.Attacker, _.copy(skullSwords = 4)),
+    AttackChange(DecisionOptionRef.Denizen(WarTortoiseCard.id),
+      CampaignPlanSide.Defender, _.copy(skullFacesScoreNothing = true)))
 
   /** The rules of the plans chosen in `actor`'s Campaign. */
   def rules(ready: ReadyGame, pending: PendingTree, actor: PlayerId)

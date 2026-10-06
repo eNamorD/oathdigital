@@ -51,7 +51,9 @@ object DefenseScore:
     DefenseChange(DecisionOptionRef.Relic(BagOfSiegeworksCard.id),
       CampaignPlanSide.Attacker, singleShields),
     DefenseChange(DecisionOptionRef.Denizen(GarrisonArmoryCard.id),
-      CampaignPlanSide.Defender, _.copy(forceTwice = true)))
+      CampaignPlanSide.Defender, _.copy(forceTwice = true)),
+    DefenseChange(DecisionOptionRef.Denizen(WarTortoiseCard.id),
+      CampaignPlanSide.Attacker, _.copy(doubleShieldsIgnored = true)))
 
   /** The rules of the plans chosen in `actor`'s Campaign. */
   def rules(ready: ReadyGame, pending: PendingTree, actor: PlayerId)

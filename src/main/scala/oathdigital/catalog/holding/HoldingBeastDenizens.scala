@@ -60,14 +60,6 @@ object GiantPythonCard extends Denizen(DenizenId("186"), "Giant Python", Suit.Be
       "non-persistent powers or placing [favor] / [secret].")
   val powers: Vector[PrintedPower] = Vector(action, restriction)
 
-object WarTortoiseCard extends Denizen(DenizenId("187"), "War Tortoise", Suit.Beast):
-  val power = PrintedPower(PowerId("denizen.war-tortoise"),
-    persistent = false, cost = Cost(favor = 1),
-    text = "**Ignore** all attack or defense added by your enemy's " +
-      "rolls of [sword] [sword] [skull] or [shield] [shield]. " +
-      "_(Any [skull] they roll still kill their warbands.)_")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object NewGrowthCard extends Denizen(DenizenId("188"), "New Growth", Suit.Beast):
   val power = PrintedPower(PowerId("denizen.new-growth"),
     persistent = false, cost = Cost.free,
