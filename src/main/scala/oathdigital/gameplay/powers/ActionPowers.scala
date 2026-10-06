@@ -16,7 +16,7 @@ object ActionPowers:
   object ASmallFavor extends ReviewedPower("denizen.a-small-favor", None, playedDone)
   object KeyToTheCity extends ReviewedPower("denizen.key-to-the-city", None, playedDone)
   object Charlatan extends ReviewedPower("denizen.charlatan", None, playedDone)
-  object Blackmail extends ReviewedPower("denizen.blackmail", None, played)
+  object Blackmail extends ReviewedPower("denizen.blackmail", None, playedDone)
   object Dissent extends ReviewedPower("denizen.dissent", None, played)
   object FalseProphet extends ReviewedPower("denizen.false-prophet", None, played)
   object FamilyHeirloom extends ReviewedPower("denizen.family-heirloom", None, playedDone)

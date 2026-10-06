@@ -63,7 +63,7 @@ import oathdigital.gameplay.powers.wake.{AncientCitySite, HeadwatersSite,
   HornedMaskCard, HungerCard, MarbleFountainsCard, QuartermasterCard,
   RiverbankSite, TidalMarshesSite}
 import oathdigital.gameplay.powers.whenplayed.{ASmallFavorCard, AnimalHostCard,
-  BanditPrinceCard, CharlatanCard, DazzleCard, FabledFeastCard,
+  BanditPrinceCard, BlackmailCard, CharlatanCard, DazzleCard, FabledFeastCard,
   FaithfulFriendCard, FamilyHeirloomCard, GarrisonCard, GreatHerdCard,
   KeyToTheCityCard, RevelationCard, RiotsCard, RoyalTaxCard, SaladDaysCard,
   ShiftingFogCard, ThreateningRoarCard, TownMeetingCard, TwinBrotherCard}

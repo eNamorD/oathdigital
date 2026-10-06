@@ -70,14 +70,6 @@ object UnstableSummonCard extends Denizen(DenizenId("225"), "Unstable Summon", S
       "collect X [attack-die].")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object BlackmailCard extends Denizen(DenizenId("82"), "Blackmail", Suit.Discord):
-  val power = PrintedPower(PowerId("denizen.blackmail"),
-    persistent = false, cost = Cost.free,
-    text = "**WHEN PLAYED:** choose a relic held by a player whose pawn " +
-      "is at your site. You take the relic unless they give you " +
-      "[favor] [favor] [favor].")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object DissentCard extends Denizen(DenizenId("84"), "Dissent", Suit.Discord):
   val power = PrintedPower(PowerId("denizen.dissent"),
     persistent = false, cost = Cost.free,

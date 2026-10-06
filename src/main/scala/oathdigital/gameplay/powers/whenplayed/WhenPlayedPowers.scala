@@ -20,4 +20,5 @@ object WhenPlayedPowers:
       Vector(TownMeeting.forCatalog(catalog)) ++
       Vector(GreatHerd.forCatalog(catalog)) ++
       Vector(RoyalTax) ++
-      Vector(Revelation)
+      Vector(Revelation) ++
+      Vector(Blackmail.forCatalog(catalog))
