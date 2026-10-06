@@ -11,6 +11,17 @@ object PowerAnswers:
       : Option[DecisionOptionRef] = pending.answered.collectFirst:
     case Answered(`decision`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
 
+  /** The option the latest answer to any of `decisions` chose. A `Repeat`
+    * asks its decisions once per pass and `one` reads only the first
+    * answer, so a loop reads its latest pass with this, and a loop over
+    * several decisions reads whichever was answered last. A note reads
+    * `NoteStates.answered`, and a tree reads `PendingTree.answered`. */
+  def last(answered: Vector[Answered], decisions: String*)
+      : Option[DecisionOptionRef] = answered.reverseIterator.collectFirst {
+    case Answered(id, DecisionAnswer.ChooseOneAnswer(ref), _)
+        if decisions.contains(id) => ref
+  }
+
   /** The amount a power's `ChooseAmount` was answered with. */
   def amount(pending: PendingTree, decision: String): Option[Int] =
     pending.answered.collectFirst:

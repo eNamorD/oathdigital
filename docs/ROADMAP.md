@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
 2026-10-01 playtest. **Phase - Catalog batch 4** is in progress: slices
-1a, 1b and 2 are done.
+1a, 1b, 2 and 3 are done.
 
 ## Next
 
@@ -47,6 +47,12 @@ Left behind by earlier phases:
   cards up by name through `CatalogNames` (the test readability sweep of
   2026-10-02 moved numeric ids onto it). Move them to direct object
   references such as `AlchemistCard`.
+- [ ] **Keep known cards known when a pile moves.** Convoys moves a discard
+  pile card by card, and `CardKnowledgeMoves.after` forgets every card
+  whose destination is a regional discard, even one already in a pile. So
+  Convoys wipes what players learned from Brass Horse or Inquisitor's right
+  guess. Skip the forget when source and destination are both regional
+  discards.
 
 ### Phase - Board decision follow-ups
 
@@ -76,8 +82,6 @@ with no engine change. The
 [per-card rulings](superpowers/specs/2026-10-05-catalog-batch-4-rulings.md)
 hold the slices, the shared scorers and the restriction-icon rule.
 
-- [ ] 3. ACTION powers: Terror Spells, Witch's Bargain, Inquisitor, Relic
-  Thief, Ancient Binding, Convoys, Singing Mask, Assassin.
 - [ ] 4. When played: Revelation, Blackmail, Dissent, Wizard's Conclave,
   Bandit Chief, A Round of Ale, Call for Help.
 - [ ] 5. Modifiers and restrictions: Vow of Poverty, Vow of Beastkin, Defame,

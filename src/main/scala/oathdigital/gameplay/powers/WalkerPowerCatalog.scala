@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.operations.OperationRestrictions
+import oathdigital.gameplay.powers.action.Assassin
 import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRules, SimplePlans, VowOfPeaceContribution}
 import oathdigital.gameplay.powers.economy.KnightsErrant
@@ -30,8 +31,8 @@ import oathdigital.gameplay.walker.WalkerPowers
   * until an action declares `PowerWindow.WakeTakeWealth` (batch-1 Task 7),
   * since discovery keeps only powers that hook the window being gathered.
   * League Treaty is inert until Finish Rest walks its `RestReturnFavor` window.
-  * Silver Tongue's and Insomnia's adviser limits are inert until Search walks
-  * `SearchPlayAdviser`.
+  * Silver Tongue's, Insomnia's and Assassin's adviser limits are inert until
+  * Search walks `SearchPlayAdviser`.
   * Conspiracy's power carries no catalog id (a Vision has no catalog powers),
   * so like Take Wealth's limit it is always present and inert until a card
   * play runs `ActionCardPlayedFaceup` for Conspiracy.
@@ -52,6 +53,7 @@ object WalkerPowerCatalog:
       Vector(LeagueTreatyContribution.forCatalog(catalog)) ++
       Vector(SilverTongue.forCatalog(catalog)) ++
       Vector(Insomnia) ++
+      Vector(Assassin.forCatalog(catalog)) ++
       Vector(ASmallFavor) ++
       Vector(FaithfulFriend) ++
       Vector(Garrison) ++

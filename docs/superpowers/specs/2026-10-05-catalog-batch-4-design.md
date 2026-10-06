@@ -158,6 +158,16 @@ with the reason.
   guess must be a legal empty result.
 - **Convoys' piles** are buttons with their own labels. The existing
   `DiscardPile` option reads "Discard to the X discard".
+- **Relic Thief checks Lost Tongue itself.** The search stops at a roll, so
+  Lost Tongue's refusal of the `Take` would come after the dice and fail the
+  command. `LostTongue.protects` leaves such a relic out of the question.
+- **Ancient Binding leaves each player at most one secret** on their player
+  UI (`PlayerSecretSummary`), which for the acting player also counts every
+  secret on a card in play. So the actor burns their board and every secret
+  on a card in play, except the one on Ancient Binding; every other player
+  burns their board down to one. The Darkest Secret's secrets stay.
+- **Inquisitor's right guess** reveals the discarded Vision in its pile. It
+  stays facedown there, and every player knows it and can later browse it.
 - **Mounted Patrol halves at run time**, from the live pool, not at offer
   time: an offer's effects must not depend on what the plan changes.
 - **Sealing Ward's dice** do not show in the Game Log's "Defense Pool" line,
@@ -257,32 +267,41 @@ offered**).
 
 | Card | Line | Covers |
 |---|---|---|
-| Terror Spells | Terror Spells: Killed {n} warbands. | the Kill lines (verify) |
+| Terror Spells | Terror Spells: Killed {n} warbands. | |
 | Terror Spells, key `used.none` | Terror Spells: The {Darkest Secret} was not held. | |
 | Terror Spells, key `used.empty` | Terror Spells: No warband was in the region. | |
 | Witch's Bargain, key `secret`, one line per exchange | Witch's Bargain: Gave {1 secret} to {Blue} and took {n favor}. | |
 | Witch's Bargain, key `favor`, one line per exchange | Witch's Bargain: Gave {2 favor} to {Blue} and took {n secrets}. | |
-| Witch's Bargain, key `used.none` | Witch's Bargain: No exchange was made. | |
-| Inquisitor, key `used.<vision>.right` | Inquisitor: Guessed {name} and discarded {card} from {Blue}. | the Discard line |
+| Witch's Bargain, no exchange made | Witch's Bargain: No exchange was made. | |
+| Inquisitor, key `used.<vision>.right` | Inquisitor: Guessed {name} and discarded {card} from {Blue}. | the Discarded and Revealed lines |
 | Inquisitor, key `used.<vision>.wrong` | Inquisitor: Guessed {name} for {Blue}'s Vision, wrongly. | |
-| Inquisitor, key `used.none` | Inquisitor: No player at the site held a facedown Vision. | |
-| Relic Thief, key `used.took` | Relic Thief: Rolled no shield and took {relic} from {Blue}. | the Take line (verify) |
+| Inquisitor, nothing to guess | Inquisitor: No player at the site held a facedown Vision. | |
+| Relic Thief | Relic Thief: Rolled no shield and took {relic} from {Blue}. | |
 | Relic Thief, key `used.kept` | Relic Thief: Rolled a shield; {Blue} kept {relic}. | |
 | Relic Thief, key `used.none` | Relic Thief: No faceup relic could be taken. | |
-| Ancient Binding | Ancient Binding: Burned {n secrets}. | the Burn lines (verify) |
+| Ancient Binding | Ancient Binding: Burned {n secrets}. | |
 | Ancient Binding, key `used.none` | Ancient Binding: No secret was burned. | |
 | Convoys | Convoys: Moved the {pile} onto the {pile}. | |
-| Singing Mask | Singing Mask: Moved {n favor} from {the Beast bank} to the {People's Favor}. / Singing Mask: Moved {n favor} from the {People's Favor} to {the Beast bank}. | |
+| Singing Mask | Singing Mask: Moved {n favor} from {the Beast bank} to the {People's Favor}. | |
+| Singing Mask, key `used.returned` | Singing Mask: Moved {n favor} from the {People's Favor} to {the Beast bank}. | |
 | Singing Mask, key `used.none` | Singing Mask: No favor moved. | |
 | Assassin | Assassin: Discarded {card} from {Blue}'s advisers. | the Discarded line |
 | Assassin, key `used.none` | Assassin: No faceup adviser could be discarded. | |
 
 Inquisitor's guessed name is literal text, one note key per Vision, because a
 `NoteArg.Card` is redacted per viewer. Its `{card}` on a right guess is the
-discarded Vision, which every viewer then identifies. Where the actor targets
+discarded Vision, which every viewer then identifies: a `Reveal` in the pile
+records it as known to every player, and it stays facedown there. Where the
+actor targets
 their own cards (Inquisitor, Resettle, Assassin), `{Blue}` is the actor's
 chip. Every decision whose choice a note names is declared narrated, as Fae
 Merchant's is.
+
+A phase power declares a key named `used` (`PowerNoteCatalogSuite`), so a
+row with no key above is key `used`: Witch's Bargain's and Inquisitor's
+lines for nothing done, and Relic Thief's take. No generic line exists for a
+kill, a relic's take, a secret's burn, or favor, secrets and cards moving
+between boards, banks, banners and piles, so those rows cover nothing.
 
 **No line:** Assassin's adviser limit, as for Silver Tongue.
 

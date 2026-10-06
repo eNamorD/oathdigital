@@ -13,7 +13,7 @@ import oathdigital.testkit.{CatalogNames, Look}
 class RivalKhanSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Rival Khan")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val nomad = planlessCard("Convoys")
+  private val nomad = planlessCard("Hospitality")
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
 

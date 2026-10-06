@@ -7,13 +7,6 @@ import oathdigital.model.{Cost, DenizenId, PowerId, Suit}
 // Generated from the retired runtime JSON (card classes slice 1).
 // Hand-edited from here on; a card moves out when it is implemented.
 
-object ConvoysCard extends Denizen(DenizenId("151"), "Convoys", Suit.Nomad) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.convoys"),
-    persistent = false, cost = Cost(favor = 1),
-    text = "**ACTION:** Take another region's discard pile and put it " +
-      "on top of your region's discard pile _(even if empty)_.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object VowOfKinshipCard extends Denizen(DenizenId("152"), "Vow of Kinship", Suit.Nomad) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.vow-of-kinship"),
     persistent = false, cost = Cost.free,
@@ -102,14 +95,6 @@ object AFastSteedCard extends Denizen(DenizenId("172"), "A Fast Steed", Suit.Nom
     persistent = false, cost = Cost(favor = 1),
     text = "Spend no Supply if you have three or fewer warbands on your " +
       "board.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object AncientBindingCard extends Denizen(DenizenId("23"), "Ancient Binding", Suit.Nomad):
-  val power = PrintedPower(PowerId("denizen.ancient-binding"),
-    persistent = false, cost = Cost(secret = 1, secretBurnt = 1),
-    text = "**ACTION:** Each player burns all [secret] from their board " +
-      "and cards except their last [secret]. _(Keep only your " +
-      "[secret] here.)_")
   val powers: Vector[PrintedPower] = Vector(power)
 
 object SearchPartyCard extends Denizen(DenizenId("240"), "Search Party", Suit.Nomad):

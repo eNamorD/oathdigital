@@ -20,10 +20,7 @@ object SleightOfHandCard extends Denizen(DenizenId("17"), "Sleight of Hand", Sui
   * The targets are read live, after the cost is paid. With none, the cost
   * stays paid and nothing else happens.
   *
-  * The take is one `Take`. A target holding both orientations makes a bare
-  * one-secret `Take` ambiguous (`AmbiguousSecretOrientation`), so the batch
-  * flips the target's facedown secrets up first, takes, and flips the same
-  * number back down. The net effect is exactly "one faceup secret moves".
+  * The take is one `Take`, faceup first ([[SecretMoves]]).
   */
 case object SleightOfHand extends PaidAction(SleightOfHandCard.power):
   val decisionId: String = "power.sleight-of-hand.target"
@@ -85,13 +82,5 @@ case object SleightOfHand extends PaidAction(SleightOfHandCard.power):
 
   private def take(actor: PlayerId, target: PlayerState)
       : Vector[CoreOperation] =
-    val one = Take(Piece.Secrets(1), actor, Location.PlayArea(target.player),
-      Location.PlayArea(actor))
-    val faceDown = target.board.faceDownSecrets
-    if target.board.faceUpSecrets > 0 && faceDown > 0 then Vector(
-      FlipSecrets(target.player, faceDown, SecretSide.FaceDown,
-        SecretSide.FaceUp),
-      one,
-      FlipSecrets(target.player, faceDown, SecretSide.FaceUp,
-        SecretSide.FaceDown))
-    else Vector(one)
+    SecretMoves.faceupFirst(target, Take(Piece.Secrets(1), actor,
+      Location.PlayArea(target.player), Location.PlayArea(actor)))
