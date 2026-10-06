@@ -33,6 +33,14 @@ object WhenPlayedHarness:
       : Either[OathViolation, WalkerOutcome] =
     ProcedureWalker.advance(ready, hook(card), None, powers(power))
 
+  /** `play`, with `others` registered beside `power`: a test that needs
+    * another power's rule, such as Lost Tongue's, names it here. */
+  def playBeside(ready: ReadyGame, power: ContributingPower, card: DenizenId,
+      others: ContributingPower*): Either[OathViolation, WalkerOutcome] =
+    ProcedureWalker.advance(ready, hook(card), None,
+      WalkerPowers(power +: others.toVector,
+        restrictionSet = OperationRestrictions.forCatalog(catalog)))
+
   /** Walks `hook`, for a card played to a site or as an adviser. */
   def fire(ready: ReadyGame, power: ContributingPower, hook: CardPlayedFaceup)
       : Either[OathViolation, WalkerOutcome] =

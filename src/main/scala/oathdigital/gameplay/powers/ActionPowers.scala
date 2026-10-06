@@ -30,7 +30,7 @@ object ActionPowers:
   object Garrison extends ReviewedPower("denizen.garrison", None, playedDone)
   object RoyalTax extends ReviewedPower("denizen.royal-tax", None, playedDone)
   object Bewitch extends ReviewedPower("denizen.bewitch", None, played)
-  object WizardsConclave extends ReviewedPower("denizen.wizard-s-conclave", None, played)
+  object WizardsConclave extends ReviewedPower("denizen.wizard-s-conclave", None, playedDone)
   object LongLostHeir extends ReviewedPower("denizen.long-lost-heir", None, played)
   object TrueOath extends ReviewedPower("denizen.true-oath", None, played)
   object AutumnWind extends ReviewedPower("denizen.autumn-wind", None, played)

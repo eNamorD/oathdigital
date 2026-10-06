@@ -51,14 +51,6 @@ object GlamorCard extends Denizen(DenizenId("207"), "Glamor", Suit.Arcane):
       "victorious, take them.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object WizardsConclaveCard extends Denizen(DenizenId("208"), "Wizard's Conclave", Suit.Arcane):
-  val power = PrintedPower(PowerId("denizen.wizard-s-conclave"),
-    persistent = false, cost = Cost.free,
-    text = "**WHEN PLAYED,** the player who rules the most " +
-      "[suit-arcane] cards takes the Darkest Secret. You decide " +
-      "ties. _Don't remove secrets from it._")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object MagiciansCodeCard extends Denizen(DenizenId("32"), "Magician's Code", Suit.Arcane):
   val power = PrintedPower(PowerId("denizen.magicians-code"),
     persistent = false, cost = Cost(favor = 2),
