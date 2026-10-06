@@ -34,12 +34,9 @@ final case class RainBoots private (catalog: ExecutableCatalog)
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Rain Boots: ignore single shields", Vector.empty, Vector.empty))
 
-  override def wrapping
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignDefenseResult -> ((_, children) =>
-      SingleShields.ignore(id, PowerSourceRef.Card(cardId)) ++ children))
-
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
+    PowerWindow.CampaignDefenseResult -> (use =>
+      SingleShields.ignore(use, id, PowerSourceRef.Card(cardId))),
     PowerWindow.CampaignActionEligibility -> (use =>
       PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 

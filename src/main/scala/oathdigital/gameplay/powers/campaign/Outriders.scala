@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds}
 import oathdigital.model._
 
 object OutridersCard extends Denizen(DenizenId("104"), "Outriders", Suit.Order):
@@ -16,7 +15,8 @@ object OutridersCard extends Denizen(DenizenId("104"), "Outriders", Suit.Order):
   * plan writes the roll outcome again without the skull cap, so no skull removes
   * a warband and every skull face keeps its two swords. A facedown Outriders is
   * revealed when it is chosen, as any plan's source is. The rewrite is
-  * `Outriders.ignoreSkulls`, which The Great Levy shares.
+  * `Outriders.ignoreSkulls`, through the attack scorer (`AttackScore`),
+  * which The Great Levy, Kindred Warriors and Rangers share.
   *
   * When the attack rolled a skull it writes "Skulls ignored."
   */
@@ -27,19 +27,14 @@ case object Outriders extends BattlePlan:
   val ignored: NoteKey = NoteKey("ignored",
     Vector(NotePart.Text("Skulls ignored.")))
 
-  /** The attack written again without the skull cap, then `power`'s "Skulls
-    * ignored." line from `source`, only when the attack rolled a skull to
-    * ignore. The rewrite keeps the faces, so they still show the skulls. It
-    * is computed from the faces, so two plans that both ignore the skulls
-    * write the same score (Outriders, The Great Levy). */
-  private[campaign] def ignoreSkulls(power: PowerId, source: PowerSourceRef)
-      : Vector[Operation] = Vector(
-    BuildOps((ready, _) =>
-      Right(ready.game.current.rollOutcomes.get(CampaignIds.attackPool).toVector
-        .map(_ => ModifyRollOutcome(CampaignIds.attackPool, Some(0),
-          Some(AttackDieFace.score(CampaignBattle.attackFacesOf(ready))))))),
-    Note(power, states => Option.when(
-      AttackDieFace.skulls(CampaignBattle.attackFacesOf(states.now)) > 0)(
+  /** The attack scored again by every chosen plan (`AttackScore`), then
+    * `power`'s "Skulls ignored." line from `source`, only when the attack
+    * rolled a skull to ignore. The faces are kept, so they still show the
+    * skulls. */
+  private[campaign] def ignoreSkulls(use: PlanUse, power: PowerId,
+      source: PowerSourceRef): Vector[Operation] = Vector(
+    AttackScore.rescore(use.actor),
+    Note(power, states => Option.when(AttackScore.skullRolled(states.now))(
       ignored(source))))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
@@ -52,5 +47,5 @@ case object Outriders extends BattlePlan:
   override def noteKeys: Vector[NoteKey] = Vector(Outriders.ignored)
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignAttackResult -> (_ =>
-      Outriders.ignoreSkulls(id, PowerSourceRef.Card(cardId))))
+    PowerWindow.CampaignAttackResult -> (use =>
+      Outriders.ignoreSkulls(use, id, PowerSourceRef.Card(cardId))))

@@ -18,8 +18,8 @@ object BagOfSiegeworksCard extends Relic(RelicId("R37"), "Bag of Siegeworks", va
   * placed onto it. It is offered only in a Conquest, because a Raid targets
   * no site. Once the defense is rolled, each single-shield die scores 0; two
   * shields and doublers score as usual. The rescoring is `SingleShields`,
-  * which Rain Boots shares; it is written before the defender's force is
-  * added, so the recorded defense carries the change.
+  * which Rain Boots shares; it writes the whole defense through
+  * `DefenseScore` after the window's own step.
   */
 case object BagOfSiegeworks extends BattlePlan:
   val relicId: RelicId = BagOfSiegeworksCard.id
@@ -41,7 +41,6 @@ case object BagOfSiegeworks extends BattlePlan:
         "Bag of Siegeworks: ignore single shields",
         Vector(CampaignPlanCost.Secret(1)), Vector.empty))
 
-  override def wrapping
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignDefenseResult -> ((_, children) =>
-      SingleShields.ignore(id, PowerSourceRef.Card(relicId)) ++ children))
+  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
+    PowerWindow.CampaignDefenseResult -> (use =>
+      SingleShields.ignore(use, id, PowerSourceRef.Card(relicId))))

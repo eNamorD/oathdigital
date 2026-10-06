@@ -50,5 +50,5 @@ case object GreatLevy extends BattlePlan:
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignAttackResult -> (use =>
       if use.side == CampaignPlanSide.Attacker then
-        Outriders.ignoreSkulls(id, PowerSourceRef.Card(cardId))
+        Outriders.ignoreSkulls(use, id, PowerSourceRef.Card(cardId))
       else Vector.empty))
