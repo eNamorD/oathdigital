@@ -19,12 +19,13 @@ Other players see what was taken back.
 ## Terms
 
 - **Command batch.** The events one accepted command appends, in one atomic
-  `repository.append`. Every parked-decision answer is its own batch. A batch
-  can span procedures and a turn handover (`FinishRest` runs the round end
-  and the next Wake in its own batch).
-- **Issuer.** The player whose command produced a batch: the answering
-  player (`ChoicePayload.by`) for `ResolveWalker`, the active player for
-  every other command.
+  `repository.append`, opened by a `CommandAccepted` event. Every
+  parked-decision answer is its own batch. A batch can span procedures and a
+  turn handover (`FinishRest` runs the round end and the next Wake in its own
+  batch).
+- **Issuer.** The player whose command produced a batch, recorded as
+  `CommandAccepted.by`: the command's actor. For `ResolveWalker` that is the
+  answering player, who may be off turn.
 - **Live batch.** A batch that no void marker currently voids.
 - **Barrier.** A batch that undo never takes back. Because undo only ever
   takes back the latest live batch, a barrier also shields every batch before
@@ -67,12 +68,11 @@ A batch is a barrier when any of these holds:
   that one predicate with the legality search, so the two cannot drift.
 - It holds a legacy minor-action reveal: `SiteRelicsPeeked` or
   `OwnedRelicRevealed`.
-- It is a `FinishRest` batch. The turn passes there, along with the round
-  end, War Exhaustion's random fallback and the Wake victory checks. A
-  `BeginRest` batch that finishes Rest on its own, because no REST power is
-  usable, is a `FinishRest` batch too.
-- It is part of game setup (everything up to the first player's first
-  command).
+- It hands the turn over. That is every `FinishRest` batch, along with its
+  round end, War Exhaustion's random fallback and the Wake victory checks,
+  and a `BeginRest` batch that finishes Rest on its own because no REST power
+  is usable.
+- It is the Begin batch, which starts the game and runs Setup.
 - It sets the game result.
 
 Consequences the playtest should expect:
@@ -123,63 +123,115 @@ Consequences the playtest should expect:
 
 ## Architecture
 
-### Storage: void markers on an append-only journal
+### Storage: batch boundaries and void markers
 
 The journal stays the single append-only history. Undo and redo append
 events. They never delete or rewrite one.
 
+The journal does not record today where one command's batch ends and the
+next begins. One batch can hold several walker closers (an action's end plus
+the triggered Oathkeeper procedure, or Finish Rest plus the round end plus
+the next Wake), and a legacy minor action appends events with no closer at
+all, so boundaries cannot be inferred. Three new top-level `OathEvent` cases
+make them explicit:
+
+- `CommandAccepted(by)` opens every command batch. The application layer
+  prepends it to the events a command produced, before encoding them. The
+  rules engine never builds it, its evolve is the identity, and the Game Log
+  posts nothing for it.
 - `StepTakenBack(from, until, by)` voids the events with sequences in
   `[from, until)`: the latest live batch.
 - `StepRestored(from, until, by)` un-voids that range again.
 
-Both carry their range explicitly so replay does not recompute it. Replay
-still checks it: a marker whose range is not the latest live batch
-(`StepTakenBack`) or the top of the redo stack (`StepRestored`), or whose
-`by` is not the batch's issuer, fails replay like any other rejected event
-fact.
+The markers carry their range explicitly, and replay checks it: a marker
+whose range is not the latest live batch (`StepTakenBack`) or the top of the
+redo stack (`StepRestored`), or whose `by` is not that batch's issuer, fails
+replay like any other rejected event fact.
+
+A journal written before this design has no `CommandAccepted`. Everything
+before its first `CommandAccepted` counts as one barrier region, so such a
+game loads unchanged and undo begins with its next command.
 
 The `EventStreamRepository` contract, the HSQLDB schema, `expectedNextSequence`
 and `StaleClientPosition` are unchanged. Sequence numbers are never reused.
 
-### Replay
+### Replay: one forward fold
 
-`GameApplicationService.reconstruct` gains a pre-scan before it replays:
+A new application-layer `JournalFold` replaces the service's use of
+`EventReplayEngine` for loading and for `history`. `EventReplayEngine` stays
+generic and unchanged; a plain `evolve(state, event)` cannot rewind, so the
+fold lives beside it rather than inside it.
 
-1. Decode the whole stream, as today.
-2. Walk the markers in order and compute the set of voided ranges.
-3. Replay every event that is neither a marker nor voided, in order, through
-   the existing replay path.
+The fold replays every event in journal order, voided or not, and keeps:
 
-Replaying live events from the start reproduces the state at the void point
-exactly, because each batch was produced from the state its predecessors
-left. No snapshot is stored. `WalkerReplay` needs no change: it never sees a
-voided event.
+- the current state;
+- a **live stack**: the batches since the latest barrier, each with its
+  range, issuer, the state before it and the state after it;
+- a **redo stack**: the batches voided since the last command batch.
 
-The pre-scan also yields what undo and redo need: the batch boundaries, each
-batch's issuer, the latest live batch, and the redo stack. `history` (which
-feeds the Game Log) carries the voided ranges beside the replayed steps.
+Per event:
+
+- `CommandAccepted` closes the batch in progress, if any, and opens a new
+  one. It clears the redo stack.
+- `StepTakenBack` closes the batch in progress, checks the marker against
+  the live stack's top, sets the state back to that batch's state before,
+  and moves the batch onto the redo stack.
+- `StepRestored` checks the marker against the redo stack's top, sets the
+  state to that batch's state after, and moves the batch back onto the live
+  stack.
+- Any other event evolves the state through `OathRules.evolve`, as today.
+
+When a batch closes, the fold decides whether it is a barrier (below). A
+barrier empties the live stack and is not pushed.
+
+Voided events are replayed once, when the fold first reaches them, from the
+state they were made from. A marker then rewinds to a state the fold already
+holds, so no snapshot is stored and no event is evolved twice. `WalkerReplay`
+needs no change.
+
+The fold yields three things, so loading, the log and the offers cannot
+drift:
+
+- the current state, which `load` returns;
+- one `ReplayStep` per event, markers included, which `history` returns. A
+  marker's step has the rewound state as its state after;
+- the live stack's top and the redo stack's top, from which the projection
+  builds the undo and redo offers.
 
 ### Commands and authorization
 
 - `GameIntent.Undo` and `GameIntent.Redo`, with no arguments, sent with the
   client's `expectedNextSequence` like every intent. `GameCommand` gains
-  matching cases.
-- Both are accepted while a walker is pending. Today only `ResolveWalker` and
-  `RollWalker` are, so that gate widens to admit them.
+  matching cases, each carrying its actor.
+- Both are accepted while a walker is pending. The service handles them
+  before the walker-pending gate, which admits only `ResolveWalker` and
+  `RollWalker`.
 - `Authorization` admits any seated player. The service rejects a press from
   anyone but the issuer of the affected batch, and a press with nothing to
   affect, with new `OathViolation` cases.
-- Handling an undo appends only the marker. Nothing in the rules engine runs:
-  the next load replays without the voided batch.
+- Handling an undo runs nothing in the rules engine. The service folds the
+  journal, appends the marker for the live stack's top, and returns that
+  batch's state before as the new state. A redo returns the state after.
+- Every other accepted command appends `CommandAccepted(actor)` followed by
+  the events it produced, in one batch.
 
 ### Barrier detection
 
-One function decides whether a batch is a barrier, from its decoded events
-alone. It applies `WalkerSearch.hides` to the operations of every
-`WalkerStepRecorded` step and to `RollPayload` steps, and it matches the
-legacy reveal events, the `FinishRest` batch, the setup batches and the
-result-setting events. The function lives beside the pre-scan in the
-application layer, so the rules engine stays unaware of undo.
+One function decides whether a closed batch is a barrier, from the batch's
+events and the states before and after it. A batch is a barrier when any of
+these holds:
+
+- it is the Begin batch: its state before is `NoGame`;
+- an operation of one of its `WalkerStepRecorded` steps satisfies
+  `WalkerSearch.hides`, or one of its steps carries a `RollPayload`;
+- it holds `SiteRelicsPeeked` or `OwnedRelicRevealed`;
+- the active player differs between its states before and after. This
+  catches `FinishRest`, a `BeginRest` that finishes Rest on its own, and any
+  other batch that hands the turn over, without naming commands;
+- its state after has a game result.
+
+The function lives beside `JournalFold` in the application layer, so the
+rules engine stays unaware of undo.
 
 ### Projection
 
@@ -190,10 +242,14 @@ the sequence of the latest void marker (or none).
 
 ### Game Log
 
-- `GameLogFormatter` formats live and voided segments alike. It marks each
-  entry of a voided segment with its taken-back group. A voided range always
-  covers whole segments, because a segment is one command's append, so voiding
-  never changes the lines around it.
+- `GameLogFormatter` formats live and voided events alike, from the fold's
+  steps. Each voided event's step holds the states it was made from, so its
+  lines read as they did before the undo. A marker posts no line of its own.
+- A marker closes a segment, so a line before it never reads ahead past it.
+- The formatter's in-progress `Run` rewinds on a marker to the run it had
+  before the voided range, as the state does.
+- After formatting, the formatter marks each entry posted by a voided event
+  with its taken-back group.
 - `LogEntry` gains the group it belongs to, if any. The group's issuers come
   from the markers that voided its batches.
 - The client log grows by appending entries newer than the last
@@ -222,10 +278,11 @@ board draft. The pre-walker local choice, `FacedownAdviserDraft` and its
 
 Each slice lands green and ships on its own.
 
-1. **Engine, storage and server log.** The two markers and their codec, the
-   pre-scan and voided replay, barrier detection, the Undo intent, command
-   and authorization, the projection's `undo` and `logRevision`, and the
-   formatter's taken-back groups.
+1. **Engine, storage and server log.** `CommandAccepted` and
+   `StepTakenBack` with their codec, `JournalFold` with its live stack,
+   barrier detection, the Undo intent, command and authorization, the
+   projection's `undo` and `logRevision`, and the formatter's taken-back
+   groups.
 2. **Frontend.** The Undo control and its hover note, the collapsible
    taken-back groups, and the client log reset on a changed `logRevision`.
 3. **Redo.** `StepRestored`, the redo stack, the Redo intent and the
@@ -247,6 +304,8 @@ Each slice lands green and ships on its own.
   on a barrier.
 - Replay of journals with voided and restored ranges, including tampered
   markers, which must fail replay.
+- A journal with no `CommandAccepted`, as written before this design, loads
+  unchanged and offers no undo until its next command.
 - Redo: restoring in order, the stack clearing on any command batch, and a
   press by a non-issuer.
 - `WalkerReplayDriftSuite` stays green.
