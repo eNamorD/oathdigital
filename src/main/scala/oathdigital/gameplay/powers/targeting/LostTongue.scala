@@ -98,6 +98,14 @@ final case class LostTongue private (catalog: ExecutableCatalog)
       case _: DecisionOptionRef.Banner => shields(ctx, ref)
       case _ => false
 
+  /** Whether this card keeps `taker` from taking `owner`'s relics and
+    * banners: `owner` holds it faceup, and `taker` is another player who
+    * rules no nomad card. A power that must leave such a take out of its
+    * question reads this, as Relic Thief does before its roll, past which
+    * the search does not look. */
+  def protects(ready: ReadyGame, taker: PlayerId, owner: PlayerId): Boolean =
+    protectedHolder(ready, taker).contains(owner)
+
   /** The holder of this card faceup, when `actor` is another player who rules
     * no nomad card. */
   private def protectedHolder(ready: ReadyGame, actor: PlayerId)

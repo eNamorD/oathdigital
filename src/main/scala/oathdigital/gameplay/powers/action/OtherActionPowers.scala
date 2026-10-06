@@ -17,4 +17,5 @@ object OtherActionPowers:
       Vector(SecondChance.forCatalog(catalog)) ++
       Vector(ArmedMob.forCatalog(catalog)) ++
       Vector(HonorGuard.forCatalog(catalog)) ++
-      Vector(Resettle.forCatalog(catalog))
+      Vector(Resettle.forCatalog(catalog)) ++
+      Vector(RelicThief.forCatalog(catalog))

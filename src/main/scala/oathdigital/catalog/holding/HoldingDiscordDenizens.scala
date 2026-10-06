@@ -134,14 +134,6 @@ object BeastTamerCard extends Denizen(DenizenId("90"), "Beast Tamer", Suit.Disco
       "plans against you.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object RelicThiefCard extends Denizen(DenizenId("95"), "Relic Thief", Suit.Discord) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.relic-thief"),
-    persistent = false, cost = Cost(favor = 1, secret = 1),
-    text = "**ACTION:** Choose a faceup relic held by a player whose " +
-      "pawn is at your site. Roll [defense-die] equal to its " +
-      "defense. If you roll no [shield], take it.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SneakAttackCard extends Denizen(DenizenId("98"), "Sneak Attack", Suit.Discord) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.sneak-attack"),
     persistent = true, cost = Cost.free,
