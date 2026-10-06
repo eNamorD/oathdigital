@@ -80,7 +80,7 @@ The log line rules are in `docs/superpowers/specs/2026-09-26-power-log-lines-des
   - **Card backs are public.** Offering a facedown Vision's slot discloses nothing.
   - **"Your site" and "your region"** mean the pawn's site and region.
   - **Restriction icons govern play, moves and swaps** (slice 2's `RestrictionIcons`). No card in this slice moves between advisers and sites.
-- **Baseline.** Record the server and frontend test counts from your first full `./sbtw "test" "frontend/test"` run in the worktree, and compare against them at the end. This plan adds 43 server tests and no frontend test.
+- **Baseline.** Record the server and frontend test counts from your first full `./sbtw "test" "frontend/test"` run in the worktree, and compare against them at the end. This plan adds 44 server tests and no frontend test.
 - **Gates**, in order, before the final commit:
   1. `./sbtw "test" "frontend/test"`
   2. `python3 scripts/check-architecture.py && python3 scripts/check-markdown-links.py`
@@ -100,7 +100,10 @@ These settle what the spec and rulings leave open. Each one says what it costs i
    - A secret `Burn` writes no line, so Ancient Binding covers nothing.
    - Favor and secrets moving between boards, between a bank and a banner, and cards moving between discard piles write no line: Witch's Bargain, Singing Mask and Convoys cover nothing.
    - `Discard.Vision` and `Discard.Denizen` write "Discarded {card} to the X discard", which Inquisitor's right guess and Assassin cover.
-3. **Inquisitor's `{card}` is not public.** The spec says every viewer identifies the discarded Vision. They do not: a card in a discard pile is identified only by a viewer whose knowledge records it (`GamePresentationProjector.identifiesCard`), so other viewers read a Vision's back. The literal `{name}` already says which Vision it was. Task 9 corrects the spec's sentence.
+3. **A right guess makes the Vision known to every player** (product owner, 2026-10-06), so players can later browse the cards they know in the discard piles.
+   - A card entering a discard pile is forgotten (`CardKnowledgeMoves`). A card in a pile is identified only by a viewer whose knowledge records it (`GamePresentationProjector.identifiesCard`).
+   - So the batch discards the Vision, then flips it faceup in the pile: `Flip(vision, Location.RegionalDiscard(region), Orientation.FaceUp)`. The engine reads a faceup flip of a discarded card as showing it to the table: every player's knowledge records it (`CardFaceOperations.seenByAll`). This is that seam's first use. A batch validates its operations in turn, so the flip sees the card already in the pile.
+   - The flip writes no generic line, and the line's `{card}` then reads as the Vision to every viewer, as the spec says.
    - The guess's batch is **not** required. A refused discard is skipped rather than failing the path, so the search never hides one guess, which would disclose the Vision.
    - Verified: an `AdviserSlot` option on a facedown card projects as "{owner}'s facedown adviser N" with a card back (`WalkerDecisionProjector`), so the question is not suppressed. Task 3's first test shows it offered.
 4. **Relic Thief checks Lost Tongue itself.**
@@ -108,12 +111,13 @@ These settle what the spec and rulings leave open. Each one says what it costs i
    - Task 4 makes Lost Tongue's existing check public as `LostTongue.protects(ready, taker, owner)`, and Relic Thief leaves such relics out of its question.
    - Cost if wrong: none for play. A second protection rule added later would need the same treatment.
 5. **Relic Thief's roll.** It uses its own pool, `relic-thief`, with an automatic roll, as Gambling Hall does. "No shield" is a shield total (`RollResults.score`) of 0, so a Doubler alone is no shield. A relic of defense 0 rolls nothing and is taken.
-6. **Ancient Binding's "cards".**
-   - The actor burns the secrets on their board and on the cards in their play area: advisers and relics, except Ancient Binding.
-   - Cards at sites the actor rules are not "their cards". Neither are the Darkest Secret's secrets.
-   - Every other player burns from their board only, as the ruling says.
+6. **Ancient Binding leaves each player at most 1 secret on their player UI** (product owner, 2026-10-06).
+   - The player UI's total (`PlayerSecretSummary.totalSecrets`) is a player's board secrets plus, for the acting player only, every secret on a card in play (`InPlayCardResources`): advisers, relics, and the denizens, edifices and relics at sites. Only the acting player places secrets on cards during a turn.
+   - So the actor burns every secret on their board and every secret on a card in play, except the one on Ancient Binding. Secrets on cards at sites they rule are burnt with the rest. The actor's UI then lists only Ancient Binding's secret.
+   - Every other player burns their board down to one secret, keeping a faceup one if they have one, as Book Burning does.
+   - The Darkest Secret's secrets stay.
    - The burn and its line sit in one `Branch`. An empty batch records no step, so a line after it would read the cost's step and count the burnt cost secret.
-   - Cost if wrong: secrets on cards at the actor's ruled sites survive.
+   - Cost if wrong: a secret on another player's adviser burns too. During the actor's turn the engine counts it as the actor's, so leaving it would list it on the actor's UI.
 7. **Witch's Bargain's loops.**
    - The outer `Repeat` runs until the latest answer is Stop. The inner one runs while the latest answer is a player or an exchange. Both read `PowerAnswers.last` over the two decisions, since `PowerAnswers.one` reads only a decision's first answer.
    - The player question is asked even with one candidate, as Sleight of Hand's is.
@@ -176,7 +180,7 @@ Tests, under `src/test/scala/oathdigital/`:
 | `gameplay/powers/action/WitchsBargainSuite.scala` | create | 6 | 2 |
 | `gameplay/powers/action/InquisitorSuite.scala` | create | 5 | 3 |
 | `gameplay/powers/action/RelicThiefSuite.scala` | create | 6 | 4 |
-| `gameplay/powers/action/AncientBindingSuite.scala` | create | 4 | 5 |
+| `gameplay/powers/action/AncientBindingSuite.scala` | create | 5 | 5 |
 | `gameplay/powers/action/ConvoysSuite.scala` | create | 4 | 6 |
 | `gameplay/powers/action/SingingMaskSuite.scala` | create | 5 | 7 |
 | `gameplay/powers/action/AssassinSuite.scala` | create | 6 | 8 |
@@ -969,7 +973,7 @@ git commit -m "feat(action): Witch's Bargain trades secrets and favor with playe
 - Create: `src/test/scala/oathdigital/gameplay/powers/action/InquisitorSuite.scala`
 
 **Interfaces:**
-- Consumes: `PaidAction`, `VisionRules`' five ids, `CardPlay.nextRegion`, `NoteSupport.answer`.
+- Consumes: `PaidAction`, `VisionRules`' five ids, `CardPlay.nextRegion`, `NoteSupport.answer`, and the engine's faceup `Flip` of a discarded card (`CardFaceOperations.seenByAll`), first used here.
 - Produces: `case object Inquisitor` with `visionDecisionId = "power.inquisitor.vision"`, `guessDecisionId = "power.inquisitor.guess"`, `visions: Vector[(VisionId, String)]`, `guess(vision: VisionId): DecisionOptionRef.Button`, `right` and `wrong` (maps from a Vision to its key), and `nothing`.
 
 - [ ] **Step 1: Write the failing suite**
@@ -1011,6 +1015,12 @@ class InquisitorSuite extends munit.FunSuite:
     def events: Vector[OathEvent] =
       started.events ++ chosen.events ++ guessed.events
 
+  /** Whether `viewer`'s knowledge records `vision`, as a peek or a card
+    * shown to the table records a card in a pile. */
+  private def knowsVision(ready: ReadyGame, viewer: PlayerId,
+      vision: VisionId): Boolean =
+    ready.knowledge.advisers.getOrElse(viewer, Vector.empty).contains(vision)
+
   private def guessP2sVision(ready: ReadyGame, vision: VisionId): Guessed =
     val started = accepted(use(ready, Inquisitor, source))
     val chosen = accepted(answer(started, p1, Inquisitor.visionDecisionId,
@@ -1043,14 +1053,16 @@ class InquisitorSuite extends munit.FunSuite:
       Some(Vector("Vision of Conquest", "Vision of Sanctuary",
         "Vision of Rebellion", "Vision of Faith", "Conspiracy")))
 
-  test("a right guess discards the Vision to the next region's pile, and " +
-      "the line names it"):
+  test("a right guess discards the Vision to the next region's pile, every " +
+      "player knows it there, and the line names it"):
     val ready = staged.ready
     val walked = guessP2sVision(ready, VisionRules.Faith)
     assert(backToActing(walked.guessed))
     val end = Look(after(walked.guessed))
     assertEquals(end.advisers(p2), Vector.empty[CardId])
     assertEquals(end.discardAfter(home).lastOption, Some(VisionRules.Faith))
+    assertEquals(Vector(p1, p2, p3).map(knowsVision(after(walked.guessed), _,
+      VisionRules.Faith)), Vector(true, true, true))
     assertEquals(NoteText.said(Inquisitor, walked.guessed.events), Vector(
       NoteText.Said("used.vision-of-faith.right",
         s"Guessed Vision of Faith and discarded ${VisionRules.Faith.value} " +
@@ -1063,6 +1075,7 @@ class InquisitorSuite extends munit.FunSuite:
     assert(backToActing(walked.guessed))
     assertEquals(Look(after(walked.guessed)).advisers(p2),
       Vector[CardId](VisionRules.Faith))
+    assert(!knowsVision(after(walked.guessed), p1, VisionRules.Faith))
     assertEquals(NoteText.said(Inquisitor, walked.guessed.events), Vector(
       NoteText.Said("used.vision-of-conquest.wrong",
         s"Guessed Vision of Conquest for ${p2.value}'s Vision, wrongly.",
@@ -1117,13 +1130,15 @@ object InquisitorCard extends Denizen(DenizenId("38"), "Inquisitor", Suit.Arcane
   * nothing, while a card option the viewer cannot identify would suppress
   * the question. The second offers the five Vision names as buttons, the
   * Conspiracy included. A right guess discards the Vision to the discard
-  * pile of the region after the player's. The batch is not required, so
-  * the search never hides a guess, which would disclose the Vision; a wrong
-  * guess runs nothing.
+  * pile of the region after the player's, then turns it faceup there, which
+  * shows it to the table: every player then knows it in the pile. The batch
+  * is not required, so the search never hides a guess, which would disclose
+  * the Vision; a wrong guess runs nothing.
   *
   * The line names the guess in its own words, one note key per Vision,
-  * since a card argument reads as a card back to a viewer who cannot
-  * identify it. Its line covers the right guess's generic Discarded line.
+  * since on a wrong guess a card argument would read as a card back to a
+  * viewer who cannot identify it. Its line covers the right guess's generic
+  * Discarded line.
   */
 case object Inquisitor extends PaidAction(InquisitorCard.power):
   val visionDecisionId: String = "power.inquisitor.vision"
@@ -1222,7 +1237,9 @@ case object Inquisitor extends PaidAction(InquisitorCard.power):
       yield
         if guessed != target.vision then Vector.empty
         else Vector(Discard.Vision(target.vision,
-          PositionedLocation(Location.PlayArea(target.owner)), region))
+            PositionedLocation(Location.PlayArea(target.owner)), region),
+          Flip(target.vision, Location.RegionalDiscard(region),
+            Orientation.FaceUp))
 
   /** The guess and whose Vision it was about. It was right when that player
     * held the guessed Vision before the step and not after it. */
@@ -1600,7 +1617,7 @@ git commit -m "feat(action): Relic Thief rolls for a faceup relic and takes it o
 - Create: `src/test/scala/oathdigital/gameplay/powers/action/AncientBindingSuite.scala`
 
 **Interfaces:**
-- Consumes: `PaidAction`.
+- Consumes: `PaidAction`, `InPlayCardResources.discover` (`gameplay`), `PlayerSecretSummary.derive` (in the suite).
 - Produces: `object SecretBurns` with `keeping(held: PlayerState, kept: Int): Vector[CoreOperation]`; `case object AncientBinding` with `burned` and `nothing`.
 
 - [ ] **Step 1: Share Book Burning's burn**
@@ -1652,6 +1669,7 @@ Create `src/test/scala/oathdigital/gameplay/powers/action/AncientBindingSuite.sc
 ```scala
 package oathdigital.gameplay.powers.action
 
+import oathdigital.gameplay.PlayerSecretSummary
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
@@ -1664,29 +1682,41 @@ class AncientBindingSuite extends munit.FunSuite:
 
   private val binding = CatalogNames.denizen("Ancient Binding")
   private val source = DecisionOptionRef.Denizen(binding)
-  /** An adviser and a relic that each carry a secret on the staged table. */
+  private val home = CatalogNames.site("Ancient City")
+  /** Cards that each carry a secret on the staged table: p1's adviser and
+    * relic, a denizen at p1's site, and p2's adviser. */
   private val elders = CatalogNames.denizen("Elders")
   private val whistle = CatalogNames.relic("Whistle")
+  private val errandBoy = CatalogNames.denizen("Errand Boy")
+  private val landWarden = CatalogNames.denizen("Land Warden")
 
-  /** p1's Act holding Ancient Binding, with 2 faceup and 2 facedown
-    * secrets, and Elders and Whistle carrying 1 each. p2 holds 1 faceup and
-    * 2 facedown secrets, and the Darkest Secret with 2 on it. p3 holds 2
-    * facedown. */
+  /** p1's Act at Ancient City holding Ancient Binding, with 2 faceup and 2
+    * facedown secrets. Elders, Whistle, Errand Boy at Ancient City and p2's
+    * Land Warden carry 1 secret each. p2 holds 1 faceup and 2 facedown
+    * secrets, and the Darkest Secret with 2 on it. p3 holds 2 facedown. */
   private def staged: ReadyGame = Table.start.turn(p1, Phase.Act)
-    .adviser(p1, binding).secrets(p1, faceUp = 2, faceDown = 2)
+    .pawn(p1, at = home).adviser(p1, binding)
+    .secrets(p1, faceUp = 2, faceDown = 2)
     .adviser(p1, elders).tokens(elders, secrets = 1)
     .relic(p1, whistle).tokens(whistle, secrets = 1)
+    .denizen(errandBoy, at = home).tokens(errandBoy, secrets = 1)
+    .adviser(p2, landWarden).tokens(landWarden, secrets = 1)
     .secrets(p2, faceUp = 1, faceDown = 2).darkestSecret(Some(p2), 2)
     .secrets(p3, faceUp = 0, faceDown = 2).ready
 
-  test("the actor burns every secret on their board and cards but the one " +
-      "on Ancient Binding"):
+  /** The secrets `player`'s board lists on the player UI. */
+  private def listed(ready: ReadyGame, player: PlayerId): Int =
+    PlayerSecretSummary.derive(ready, player).fold(fail(_), _.totalSecrets)
+
+  test("the actor burns their board and every secret on a card in play but " +
+      "the one on Ancient Binding"):
     val done = accepted(use(staged, AncientBinding, source))
     assert(backToActing(done))
     val end = Look(after(done))
     assertEquals((end.faceUpSecrets(p1), end.faceDownSecrets(p1)), (0, 0))
-    assertEquals(Vector[CardId](binding, elders, whistle).map(card =>
-      end.tokensOn(card)), Vector(Tokens(0, 1), Tokens(0, 0), Tokens(0, 0)))
+    assertEquals(Vector[CardId](binding, elders, whistle, errandBoy,
+      landWarden).map(card => end.tokensOn(card).secrets),
+      Vector(1, 0, 0, 0, 0))
 
   test("every other player keeps one secret, faceup if they have one, and " +
       "the Darkest Secret keeps its own"):
@@ -1696,12 +1726,19 @@ class AncientBindingSuite extends munit.FunSuite:
     assertEquals((look.faceUpSecrets(p3), look.faceDownSecrets(p3)), (0, 1))
     assertEquals(end.game.current.banners.darkestSecret.secrets, 2)
 
+  test("afterwards each player's board lists one secret, the actor's being " +
+      "the one on Ancient Binding"):
+    val before = staged
+    assertEquals(Vector(p1, p2, p3).map(listed(before, _)), Vector(8, 3, 2))
+    val end = after(accepted(use(before, AncientBinding, source)))
+    assertEquals(Vector(p1, p2, p3).map(listed(end, _)), Vector(1, 1, 1))
+
   test("its line counts every secret burnt"):
     val ready = staged
     val done = accepted(use(ready, AncientBinding, source))
-    // p1's 2 left after the cost, Elders' and Whistle's, p2's 2 and p3's 1.
+    // p1's 2 left after the cost, the 4 on cards, p2's 2 and p3's 1.
     assertEquals(NoteText.said(AncientBinding, done.events), Vector(
-      NoteText.Said(NoteKey.Used, "Burned 7 secrets.", covers = false)))
+      NoteText.Said(NoteKey.Used, "Burned 9 secrets.", covers = false)))
     assertEquals(replayed(ready, done.events), Right(done.state))
     assertWireRoundTrips(done.events)
 
@@ -1730,6 +1767,7 @@ Create `src/main/scala/oathdigital/gameplay/powers/action/AncientBinding.scala`:
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower}
+import oathdigital.gameplay.InPlayCardResources
 import oathdigital.gameplay.powers.SecretBurns
 import oathdigital.model._
 
@@ -1745,13 +1783,15 @@ object AncientBindingCard extends Denizen(DenizenId("23"), "Ancient Binding", Su
   * 1, then each player burns all secrets from their board and cards except
   * their last; the player keeps only the one on this card.
   *
-  * The player burns every secret on their board and on the cards in their
-  * play area, advisers and relics, except Ancient Binding's. Every other
-  * player burns all but one secret from their board, keeping a faceup one if
-  * they have one, as Book Burning does ([[SecretBurns]]). The Darkest
-  * Secret's secrets, and those on cards at sites, are on nobody's board or
-  * cards, so they stay. Everything burns in one batch, read live after the
-  * cost.
+  * Afterwards each player's board lists at most one secret
+  * (`PlayerSecretSummary`). That count is a player's board, plus, for the
+  * acting player, every secret on a card in play: during a turn only the
+  * acting player places secrets on cards. So the player burns every secret
+  * on their board and every secret on a card in play, at sites or in play
+  * areas, except Ancient Binding's. Every other player burns all but one
+  * secret from their board, keeping a faceup one if they have one, as Book
+  * Burning does ([[SecretBurns]]). The Darkest Secret's secrets stay.
+  * Everything burns in one batch, read live after the cost.
   *
   * One line counts every secret burnt, or says none was. The batch and its
   * line are chosen together in one `Branch`: an empty batch records no step,
@@ -1780,24 +1820,23 @@ case object AncientBinding extends PaidAction(AncientBindingCard.power):
     case other => Left(OathViolation.InvalidEventOrder(
       s"${other.kind} is not a denizen source"))
 
-  /** The player's board and cards, then every other board down to one
-    * secret, in seat order. */
+  /** The player's board and every card in play, then every other board
+    * down to one secret, in seat order. */
   private def burns(ready: ReadyGame, actor: PlayerId, binding: DenizenId)
-      : Vector[CoreOperation] = ready.game.current.players.flatMap(held =>
-    if held.player == actor then
-      SecretBurns.keeping(held, 0) ++ onCards(held, binding)
-    else SecretBurns.keeping(held, 1))
-
-  /** Every secret on the cards in the player's play area but Ancient
-    * Binding. */
-  private def onCards(held: PlayerState, binding: DenizenId)
       : Vector[CoreOperation] =
+    ready.game.current.players.flatMap(held =>
+      SecretBurns.keeping(held, if held.player == actor then 0 else 1)) ++
+      onCards(ready, binding)
+
+  /** Every secret on a card in play but Ancient Binding: advisers and
+    * relics in play areas, denizens, edifices and relics at sites. */
+  private def onCards(ready: ReadyGame, binding: DenizenId)
+      : Vector[CoreOperation] =
+    val found = InPlayCardResources.discover(ready)
     val cards: Vector[(CardId, Int)] =
-      held.advisers.collect {
-        case DenizenState(card, _, tokens) if card != binding =>
-          (card: CardId) -> tokens.secrets } ++
-      held.relics.map(relic => (relic.id: CardId) -> relic.tokens.secrets)
-    cards.collect { case (card, secrets) if secrets > 0 =>
+      found.denizens.map(card => (card.id: CardId) -> card.tokens.secrets) ++
+        found.relics.map(relic => (relic.id: CardId) -> relic.tokens.secrets)
+    cards.collect { case (card, secrets) if secrets > 0 && card != binding =>
       Burn.secrets(secrets, PositionedLocation(Location.OnCard(card))) }
 
   /** The secrets that left boards and cards in the step before the note. */
@@ -1809,13 +1848,11 @@ case object AncientBinding extends PaidAction(AncientBindingCard.power):
     if count > 0
   yield burned(card, NoteArg.Amount(count, NoteUnit.Secret))
 
-  /** Secrets on every board and on the cards in every play area. */
+  /** Secrets on every board and on every card in play. */
   private def held(ready: ReadyGame): Int =
     ready.game.current.players.map(player =>
-      player.board.faceUpSecrets + player.board.faceDownSecrets +
-        player.advisers.collect { case card: DenizenState =>
-          card.tokens.secrets }.sum +
-        player.relics.map(_.tokens.secrets).sum).sum
+      player.board.faceUpSecrets + player.board.faceDownSecrets).sum +
+      InPlayCardResources.discover(ready).secrets
 ```
 
 - [ ] **Step 5: Register it**
@@ -1827,7 +1864,7 @@ In `src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala`, add `Ancien
 - [ ] **Step 6: Run the suites, and the suites that hold Ancient Binding as filler**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.action.AncientBindingSuite oathdigital.gameplay.powers.campaign.BookBurningSuite oathdigital.gameplay.powers.PowerNoteCatalogSuite *HomelandLineSuite *CardSlotsSuite *SiteDiscardFirstSuite *SearchProcedureSuite *CardPlayReasonsSuite"`
-Expected: PASS, 4 tests in `AncientBindingSuite`; the rest unchanged.
+Expected: PASS, 5 tests in `AncientBindingSuite`; the rest unchanged.
 
 - [ ] **Step 7: Commit**
 
@@ -2739,7 +2776,7 @@ git commit -m "feat(action): Assassin discards a faceup adviser at the site and 
 - [ ] **Step 1: Run the gates**
 
 Run: `./sbtw "test" "frontend/test"`
-Expected: PASS. The server count is the baseline plus 43; the frontend count is unchanged.
+Expected: PASS. The server count is the baseline plus 44; the frontend count is unchanged.
 
 Run: `python3 scripts/check-architecture.py && python3 scripts/check-markdown-links.py`
 Expected: both pass.
@@ -2782,7 +2819,7 @@ In `docs/superpowers/specs/2026-10-05-catalog-batch-4-design.md`, under "### Sli
 | Assassin, key `used.none` | Assassin: No faceup adviser could be discarded. | |
 ```
 
-Then, in the paragraph below the table, replace "Its `{card}` on a right guess is the discarded Vision, which every viewer then identifies." with "Its `{card}` on a right guess is the discarded Vision; a viewer who cannot identify it reads a Vision's back, and the guessed name already says which it was." Then add this paragraph after that one:
+Then, in the paragraph below the table, replace "Its `{card}` on a right guess is the discarded Vision, which every viewer then identifies." with "Its `{card}` on a right guess is the discarded Vision, which every viewer then identifies: the Vision is turned faceup in the pile, and every player knows it there." Then add this paragraph after that one:
 
 ```markdown
 A phase power declares a key named `used` (`PowerNoteCatalogSuite`), so a
@@ -2800,8 +2837,13 @@ In the same file's "Implementation notes from the verification" list, add after 
 - **Relic Thief checks Lost Tongue itself.** The search stops at a roll, so
   Lost Tongue's refusal of the `Take` would come after the dice and fail the
   command. `LostTongue.protects` leaves such a relic out of the question.
-- **Ancient Binding's cards** are the actor's advisers and relics. Secrets on
-  cards at sites the actor rules, and on the Darkest Secret, stay.
+- **Ancient Binding leaves each player at most one secret** on their player
+  UI (`PlayerSecretSummary`), which for the acting player also counts every
+  secret on a card in play. So the actor burns their board and every secret
+  on a card in play, except the one on Ancient Binding; every other player
+  burns their board down to one. The Darkest Secret's secrets stay.
+- **Inquisitor's right guess** turns the discarded Vision faceup in its pile,
+  so every player knows it there and can later browse it.
 ```
 
 - [ ] **Step 5: Commit**
