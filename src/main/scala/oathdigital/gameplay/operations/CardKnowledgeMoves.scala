@@ -3,10 +3,11 @@ package oathdigital.gameplay.operations
 import oathdigital.model._
 
 /** Knowledge follows the card (Game Log design, "Knowledge follows the
-  * card"). A player who knew a card keeps knowing it when it moves; a card
-  * that goes into any card pile (a deck, a regional discard, the reliquary,
-  * the set-aside relics, the dispossessed or the atlas) is known by nobody,
-  * since no one at the table tracks a card inside a pile.
+  * card"). A player who knew a card keeps knowing it when it moves, into a
+  * regional discard pile too: the table saw it go in. A card that goes into
+  * any other card pile (a deck, the reliquary, the set-aside relics, the
+  * dispossessed or the atlas) is known by nobody, since no one at the table
+  * tracks a card inside one.
   *
   * `CardKnowledge` is derived during replay and never journaled, so a game
   * loaded after this change re-derives the fuller knowledge.
@@ -24,11 +25,9 @@ private[operations] object CardKnowledgeMoves:
     if hidden(to) then forget(knowledge, located.id)
     else located.location.container match
       // An owner knows its own cards without a record; a move between its
-      // own hand and play area is not leaving them. A temporary hand is not
-      // a row other players could learn a card in, so leaving it records
-      // nothing.
-      case CardContainer.Player(owner, area)
-          if area != PlayerCardArea.Hand && !ownedBy(to, owner) =>
+      // own hand and play area is not leaving them. A card leaving a
+      // temporary hand, such as a Search discard, stays known to its owner.
+      case CardContainer.Player(owner, _) if !ownedBy(to, owner) =>
         remember(knowledge, owner, located.id)
       case CardContainer.Site(site, SiteCardArea.Relics) => located.id match
         case relic: RelicId => carry(knowledge, site, relic)
@@ -41,8 +40,8 @@ private[operations] object CardKnowledgeMoves:
     case _ => false
 
   private def hidden(to: Location): Boolean = to match
-    case Location.Deck(_) | Location.RegionalDiscard(_) | Location.Reliquary |
-        Location.SetAsideRelics | Location.Dispossessed | Location.Atlas => true
+    case Location.Deck(_) | Location.Reliquary | Location.SetAsideRelics |
+        Location.Dispossessed | Location.Atlas => true
     case _ => false
 
   private def remember(knowledge: CardKnowledge, player: PlayerId,
@@ -68,8 +67,8 @@ private[operations] object CardKnowledgeMoves:
         sites.updated(site, sites(site).filterNot(_ == relic)))), player, relic)
     }
 
-  /** Nobody knows `id` any more: it went into a pile, or its pile was
-    * shuffled. */
+  /** Nobody knows `id` any more: it went into a pile other than a regional
+    * discard, or its pile was shuffled. */
   def forget(knowledge: CardKnowledge, id: CardId): CardKnowledge =
     CardKnowledge(
       siteRelics = knowledge.siteRelics.view.mapValues(_.view

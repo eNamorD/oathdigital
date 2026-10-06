@@ -439,18 +439,23 @@ someone takes it. Both are board bugs today, not only log concerns.
 The first task of the second slice fixes this in the operation application
 (`CardFaceOperations` and the move path), before any detail line exists:
 
-- A card that leaves a player's adviser or relic row adds that player to its
-  `heldRelics` or `advisers` knowledge. A move between the owner's own hand
-  and play area, or out of a temporary hand, records nothing: an owner knows
-  their own cards without a record.
+- A card that leaves a player's adviser or relic row, or their temporary
+  hand, adds that player to its `heldRelics` or `advisers` knowledge. A move
+  between the owner's own hand and play area records nothing: an owner knows
+  their own cards without a record. (Out of a temporary hand added on
+  2026-10-06, so a Searcher knows the cards they discard.)
 - A relic that leaves a site moves every `siteRelics` peeker of it into
   `heldRelics`.
-- A card that enters any card pile clears every player's knowledge of it: a
-  deck, a regional discard, the reliquary, the set-aside relics, the
-  dispossessed, or the atlas. No one at the table tracks a card inside a
-  pile, so a card discarded and later drawn by another player is not named
-  to the player who discarded it. (Widened from decks and the reliquary on
+- A card that enters a card pile other than a regional discard clears every
+  player's knowledge of it: a deck, the reliquary, the set-aside relics, the
+  dispossessed, or the atlas. No one at the table tracks a card inside such
+  a pile, so a card buried and later drawn by another player is not named to
+  the player who buried it. (Widened from decks and the reliquary on
   2026-09-26, at the product owner's request.)
+- A card that enters a regional discard pile keeps what players knew of it,
+  and the pile shows it faceup to them. A shuffle of a discard pile still
+  clears its cards. (Discard piles exempted on 2026-10-06, at the product
+  owner's request.)
 
 `knowledge` is derived during replay and never journaled, so no migration is
 needed: existing games re-derive the fuller knowledge on load. A follow-up on

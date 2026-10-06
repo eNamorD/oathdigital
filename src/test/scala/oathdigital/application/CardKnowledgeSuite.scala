@@ -72,24 +72,67 @@ class CardKnowledgeSuite extends munit.FunSuite:
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Bottom)))
     assert(!gone.knowledge.advisers.values.exists(_.contains(adviser)))
 
-  /** Every card pile is face down at the table: no one tracks a card once it
-    * enters one, so its knowledge is cleared as for a deck. */
-  test("a face-down adviser discarded or dispossessed is forgotten by everyone"):
-    val adviser = CatalogNames.denizen("Wrestlers")
-    val peeked = run(Peek(other, adviser, Location.PlayArea(owner)))
-    Vector(
-      PositionedLocation(Location.RegionalDiscard(Region.Cradle),
-        StackPosition.Top),
-      PositionedLocation(Location.Dispossessed)).foreach { pile =>
-      val gone = executor.execute(peeked, Move(Piece.Card(adviser),
-        PositionedLocation(Location.PlayArea(owner)), pile))
-        .fold(error => fail(s"$pile: $error"), identity)
-      assert(!gone.knowledge.advisers.values.exists(_.contains(adviser)),
-        s"$pile: ${gone.knowledge.advisers}")
-    }
+  private val wrestlers = CatalogNames.denizen("Wrestlers")
+  private val cradleDiscard = PositionedLocation(
+    Location.RegionalDiscard(Region.Cradle), StackPosition.Top)
 
-  /** Scryer and Oracular Pig peek into a pile. A card entering a pile is
-    * forgotten, so a record of a card still in one comes from such a peek. */
+  /** Wrestlers, peeked by `other`, moved from `owner`'s play area to the
+    * Cradle discard pile. */
+  private lazy val discardedAdviser = run(
+    Peek(other, wrestlers, Location.PlayArea(owner)),
+    Move(Piece.Card(wrestlers), PositionedLocation(Location.PlayArea(owner)),
+      cradleDiscard))
+
+  /** The Cradle discard pile's card names, top first, as `viewer` sees
+    * them. */
+  private def cradleNames(ready: ReadyGame, viewer: PlayerId) =
+    presentation.readyWorld(ready, Some(viewer)).find(_.regionId == "cradle")
+      .getOrElse(fail("no cradle")).discardCards.map(_.name)
+
+  /** A discard pile keeps what players knew: they saw the card go in. */
+  test("a face-down adviser discarded stays known to its holder and its peeker"):
+    Vector(owner, other).foreach { player =>
+      assert(knows(discardedAdviser, player, wrestlers), player)
+      assertEquals(cradleNames(discardedAdviser, player).headOption,
+        Some("Wrestlers"), player)
+    }
+    assert(!knows(discardedAdviser, third, wrestlers))
+    assertEquals(cradleNames(discardedAdviser, third).headOption,
+      Some("Facedown denizen"))
+
+  test("a discarded card moved to another discard pile stays known"):
+    val moved = executed(discardedAdviser, Move(Piece.Card(wrestlers),
+      cradleDiscard, PositionedLocation(
+        Location.RegionalDiscard(Region.Provinces), StackPosition.Top)))
+    assert(knows(moved, owner, wrestlers))
+    assert(knows(moved, other, wrestlers))
+    assert(!knows(moved, third, wrestlers))
+
+  test("a discarded card put into the world deck is forgotten by everyone"):
+    val gone = executed(discardedAdviser, Move(Piece.Card(wrestlers),
+      cradleDiscard,
+      PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Bottom)))
+    assert(!gone.knowledge.advisers.values.exists(_.contains(wrestlers)),
+      gone.knowledge.advisers)
+
+  test("a card discarded from a Search hand is known to the searcher alone"):
+    val drawn = CatalogNames.denizen("Fae Merchant")
+    val discarded = executed(Table.from(board).hand(owner, drawn).ready,
+      Move(Piece.Card(drawn), PositionedLocation(Location.Hand(owner)),
+        cradleDiscard))
+    assert(knows(discarded, owner, drawn))
+    assert(!knows(discarded, other, drawn))
+
+  /** The dispossessed pile still forgets, as a deck does. */
+  test("a face-down adviser dispossessed is forgotten by everyone"):
+    val gone = run(Peek(other, wrestlers, Location.PlayArea(owner)),
+      Move(Piece.Card(wrestlers), PositionedLocation(Location.PlayArea(owner)),
+        PositionedLocation(Location.Dispossessed)))
+    assert(!gone.knowledge.advisers.values.exists(_.contains(wrestlers)),
+      gone.knowledge.advisers)
+
+  /** Scryer and Oracular Pig peek into a pile, so a player can come to
+    * know a card that was already in one. */
   test("a card peeked in the world deck or a discard pile is named to its peeker alone"):
     // Threatening Roar tops the world deck; Fae Merchant lies in the Cradle
     // discard pile.

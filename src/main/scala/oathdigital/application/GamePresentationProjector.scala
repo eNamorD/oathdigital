@@ -92,8 +92,8 @@ private[application] final class GamePresentationProjector(
       ready: Option[ReadyGame] = None,
       viewer: Option[PlayerId] = None): SetupRegionProjection =
     // The pile is stored top last; the client reads it top first. A card is
-    // a face only where the viewer identifies it in THIS pile (a peek), so
-    // nothing a player once saw elsewhere leaks through a discard.
+    // a face only to a viewer whose knowledge records it: one who knew it
+    // before it was discarded, or peeked it in the pile.
     val cards = discard.reverse.map { card =>
       if ready.exists(game => identifiesCard(game, viewer, card, None,
           CardContainer.RegionalDiscard(where)))
@@ -275,7 +275,9 @@ private[application] final class GamePresentationProjector(
     *    else. It is drawn-but-unresolved cards, not a board slot, and it is
     *    the one player area with no orientation to reason about.
     *  - A world card in the world deck or a discard pile is named only to a
-    *    viewer who peeked at it there (Scryer, Oracular Pig).
+    *    viewer whose knowledge records it: one who peeked at it there
+    *    (Scryer, Oracular Pig), or, in a discard pile, one who knew it
+    *    before it was discarded.
     *  - Everything else -- other decks, the reliquary, set-aside relics, the
     *    dispossessed pile, suited reserves, atlas sites -- is never
     *    identified. A card in a deck has no orientation at all, so it must be
@@ -305,10 +307,11 @@ private[application] final class GamePresentationProjector(
       case CardContainer.Player(owner, area) =>
         faceup || viewer.exists(player => player == owner ||
           knownToViewer(ready, player, id, area))
-      // A world card peeked in the world deck or a discard pile (Scryer,
-      // Oracular Pig). A card entering a pile is forgotten, and so is a
-      // shuffled pile's (`CardKnowledgeMoves`, `PileOperations`), so only
-      // such a peek leaves a record here.
+      // A world card known in the world deck or a discard pile. A card
+      // entering the world deck is forgotten, and so is a shuffled pile's
+      // (`CardKnowledgeMoves`, `PileOperations`), so a record here comes
+      // from a peek (Scryer, Oracular Pig) or from knowing a card before it
+      // was discarded.
       case CardContainer.Deck(CardDeck.World) | CardContainer.RegionalDiscard(_) =>
         viewer.exists(player => ready.knowledge.advisers
           .getOrElse(player, Vector.empty).exists(_ == id))
