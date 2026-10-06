@@ -24,4 +24,5 @@ object WhenPlayedPowers:
       Vector(Blackmail.forCatalog(catalog)) ++
       Vector(Dissent.forCatalog(catalog)) ++
       Vector(WizardsConclave.forCatalog(catalog)) ++
-      Vector(BanditChief)
+      Vector(BanditChief) ++
+      Vector(ARoundOfAle.forCatalog(catalog))

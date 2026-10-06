@@ -40,7 +40,7 @@ object ActionPowers:
   object BanditChief extends ReviewedPower("denizen.bandit-chief", None, playedDone)
   object ReliquaryRaid extends ReviewedPower("denizen.reliquary-raid", None, played)
   object BanditPrince extends ReviewedPower("denizen.bandit-prince", None, playedDone)
-  object ARoundOfAle extends ReviewedPower("denizen.a-round-of-ale", None, played)
+  object ARoundOfAle extends ReviewedPower("denizen.a-round-of-ale", None, playedDone)
   object FavoredSon extends ReviewedPower("denizen.favored-son", None, played)
   object TownMeeting extends ReviewedPower("denizen.town-meeting", None, playedDone)
   object AncientPact extends ReviewedPower("denizen.ancient-pact", None, played)

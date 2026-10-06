@@ -46,6 +46,13 @@ object WhenPlayedHarness:
       : Either[OathViolation, WalkerOutcome] =
     ProcedureWalker.advance(ready, hook, None, powers(power))
 
+  /** Walks `hook` with every production walker power registered, as a real
+    * card play would: for a test that pins what another power does not do. */
+  def fireWithEveryPower(ready: ReadyGame, hook: CardPlayedFaceup)
+      : Either[OathViolation, WalkerOutcome] =
+    ProcedureWalker.advance(ready, hook, None,
+      WalkerPowerCatalog.default(catalog))
+
   /** The question parked at `tree`, as the walker offers it. */
   def question(ready: ReadyGame, power: ContributingPower,
       hook: CardPlayedFaceup, tree: PendingTree)(using munit.Location)
