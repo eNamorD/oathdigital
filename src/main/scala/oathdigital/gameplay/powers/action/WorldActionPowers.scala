@@ -18,4 +18,5 @@ object WorldActionPowers:
       Vector(DarkEnforcer.forCatalog(catalog)) ++
       Vector(TamingCharm.forCatalog(catalog)) ++
       Vector(GreatFeast.forCatalog(catalog)) ++
-      Vector(RovingTerror.forCatalog(catalog))
+      Vector(RovingTerror.forCatalog(catalog)) ++
+      Vector(SingingMask.forCatalog(catalog))

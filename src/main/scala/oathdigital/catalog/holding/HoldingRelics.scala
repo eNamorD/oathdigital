@@ -68,14 +68,6 @@ object ImperialSealCard extends Relic(RelicId("R26"), "Imperial Seal", value = 3
       "site or Imperial player board.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object SingingMaskCard extends Relic(RelicId("R28"), "Singing Mask", value = 54, defense = 1):
-  val power = PrintedPower(PowerId("relic.singing-mask"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "**ACTION:** Choose a denizen at your site. Move up to " +
-      "[favor] [favor] between the matching favor bank and the " +
-      "People's Favor.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object LostTapestryCard extends Relic(RelicId("R29"), "Lost Tapestry", value = 85, defense = 1):
   val power = PrintedPower(PowerId("relic.lost-tapestry"),
     persistent = true, cost = Cost.free,
