@@ -75,7 +75,11 @@ object AttackScore:
     AttackChange(DecisionOptionRef.Denizen(FearsomeGeneralCard.id),
       CampaignPlanSide.Attacker, _.copy(skullSwords = 4)),
     AttackChange(DecisionOptionRef.Denizen(WarTortoiseCard.id),
-      CampaignPlanSide.Defender, _.copy(skullFacesScoreNothing = true)))
+      CampaignPlanSide.Defender, _.copy(skullFacesScoreNothing = true)),
+    AttackChange(DecisionOptionRef.Denizen(KindredWarriorsCard.id),
+      CampaignPlanSide.Attacker, ignored),
+    AttackChange(DecisionOptionRef.Denizen(RangersCard.id),
+      CampaignPlanSide.Attacker, ignored))
 
   /** The rules of the plans chosen in `actor`'s Campaign. */
   def rules(ready: ReadyGame, pending: PendingTree, actor: PlayerId)

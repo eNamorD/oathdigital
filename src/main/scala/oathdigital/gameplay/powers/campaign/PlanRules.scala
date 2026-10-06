@@ -14,8 +14,9 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * (killed warbands saved until the end), Book Burning (secrets burnt at the
   * end), Rusting Ray and Fae Battalion (the attack scored again), War Tortoise
   * (the attack or the defense scored again), Lancers (the attack scored again
-  * and a discard at the end) and Fearsome General (the attack scored again).
-  * Each names its card, so all are always present.
+  * and a discard at the end), Fearsome General (the attack scored again) and
+  * Kindred Warriors and Rangers (the attack scored again). Each names its
+  * card, so all are always present.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -38,4 +39,6 @@ object PlanRules:
       Vector(FaeBattalion) ++
       Vector(WarTortoise) ++
       Vector(Lancers.forCatalog(catalog)) ++
-      Vector(FearsomeGeneral)
+      Vector(FearsomeGeneral) ++
+      Vector(KindredWarriors.forCatalog(catalog)) ++
+      Vector(Rangers)

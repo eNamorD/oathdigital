@@ -156,13 +156,6 @@ object LongLostHeirCard extends Denizen(DenizenId("44"), "Long-Lost Heir", Suit.
       "Phase._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object RangersCard extends Denizen(DenizenId("45"), "Rangers", Suit.Beast):
-  val power = PrintedPower(PowerId("denizen.rangers"),
-    persistent = false, cost = Cost(favor = 1),
-    text = "Ignore all skulls [skull] you roll. +2 [attack-die] if the " +
-      "defense pool has 4+ [defense-die].")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object RovingTerrorCard extends Denizen(DenizenId("46"), "Roving Terror", Suit.Beast) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.roving-terror"),
     persistent = false, cost = Cost(secret = 1),

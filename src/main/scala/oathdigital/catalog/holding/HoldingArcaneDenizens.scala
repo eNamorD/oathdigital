@@ -95,13 +95,6 @@ object BillowingFogCard extends Denizen(DenizenId("59"), "Billowing Fog", Suit.A
       "**Ignore** powers that kill all of your force.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object KindredWarriorsCard extends Denizen(DenizenId("60"), "Kindred Warriors", Suit.Arcane):
-  val power = PrintedPower(PowerId("denizen.kindred-warriors"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "Ignore all skulls [skull] you roll. ±X [attack-die] up to " +
-      "the number of other suits you rule.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object TerrorSpellsCard extends Denizen(DenizenId("61"), "Terror Spells", Suit.Arcane):
   val power = PrintedPower(PowerId("denizen.terror-spells"),
     persistent = false, cost = Cost(secret = 1),
