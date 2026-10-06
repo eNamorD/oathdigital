@@ -69,13 +69,6 @@ object OldSongsCard extends Denizen(DenizenId("229"), "Old Songs", Suit.Hearth):
       "them.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object DiplomatCard extends Denizen(DenizenId("230"), "Diplomat", Suit.Hearth) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.diplomat"),
-    persistent = true, cost = Cost.free,
-    text = "Players **cannot** campaign against you unless they rule a " +
-      "[suit-hearth] card.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SpinningBeeCard extends Denizen(DenizenId("232"), "Spinning Bee", Suit.Hearth):
   val power = PrintedPower(PowerId("denizen.spinning-bee"),
     persistent = false, cost = Cost.free,

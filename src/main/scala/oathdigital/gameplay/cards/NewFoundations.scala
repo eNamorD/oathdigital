@@ -47,7 +47,7 @@ import oathdigital.gameplay.powers.search.{AuguryCard, CropRotationCard,
 import oathdigital.gameplay.powers.setup.{GreatForgeCard, GreatMarketCard,
   ProvingGroundsCard}
 import oathdigital.gameplay.powers.targeting.{CircletOfCommandCard,
-  ForgottenVaultCard, LostTongueCard, OakenFortressCard}
+  DiplomatCard, ForgottenVaultCard, LostTongueCard, OakenFortressCard}
 import oathdigital.gameplay.powers.title.ChaosCultCard
 import oathdigital.gameplay.powers.travel.{BrokenPeaksSite, DesolateShoreSite,
   DragonskinDrumCard, FairIsleSite, ForestPathsCard, GraspingVinesCard,
