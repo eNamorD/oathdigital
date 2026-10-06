@@ -60,7 +60,7 @@ The log line rules are in `docs/superpowers/specs/2026-09-26-power-log-lines-des
   | Witch's Bargain | `secret` | Witch's Bargain: Gave {1 secret} to {Blue} and took {n favor}. | each such exchange |
   | Witch's Bargain | `favor` | Witch's Bargain: Gave {2 favor} to {Blue} and took {n secrets}. | each such exchange |
   | Witch's Bargain | `used` | Witch's Bargain: No exchange was made. | no exchange, or nobody at the site |
-  | Inquisitor | `used.<vision>.right` | Inquisitor: Guessed {name} and discarded {card} from {Blue}. | a right guess; covers the Discarded line |
+  | Inquisitor | `used.<vision>.right` | Inquisitor: Guessed {name} and discarded {card} from {Blue}. | a right guess; covers the Discarded and Revealed lines |
   | Inquisitor | `used.<vision>.wrong` | Inquisitor: Guessed {name} for {Blue}'s Vision, wrongly. | a wrong guess |
   | Inquisitor | `used` | Inquisitor: No player at the site held a facedown Vision. | nothing to guess |
   | Relic Thief | `used` | Relic Thief: Rolled no shield and took {relic} from {Blue}. | taken |
@@ -102,8 +102,10 @@ These settle what the spec and rulings leave open. Each one says what it costs i
    - `Discard.Vision` and `Discard.Denizen` write "Discarded {card} to the X discard", which Inquisitor's right guess and Assassin cover.
 3. **A right guess makes the Vision known to every player** (product owner, 2026-10-06), so players can later browse the cards they know in the discard piles.
    - A card entering a discard pile is forgotten (`CardKnowledgeMoves`). A card in a pile is identified only by a viewer whose knowledge records it (`GamePresentationProjector.identifiesCard`).
-   - So the batch discards the Vision, then flips it faceup in the pile: `Flip(vision, Location.RegionalDiscard(region), Orientation.FaceUp)`. The engine reads a faceup flip of a discarded card as showing it to the table: every player's knowledge records it (`CardFaceOperations.seenByAll`). This is that seam's first use. A batch validates its operations in turn, so the flip sees the card already in the pile.
-   - The flip writes no generic line, and the line's `{card}` then reads as the Vision to every viewer, as the spec says.
+   - So the batch discards the Vision, then reveals it in the pile: `Reveal(vision, Location.RegionalDiscard(region))`, as Brass Horse reveals a pile's top card.
+     - A discarded card has no orientation state, since a pile is always facedown, so the reveal does not turn it over. The card stays facedown in the pile, and every player's knowledge records it (`OperationStateAdapter.isDiscardLook`, `CardFaceOperations.seenByAll`).
+     - A batch validates its operations in turn, so the reveal sees the card already in the pile.
+   - The reveal writes a generic "Revealed {card}" line. Inquisitor's line covers it with the Discarded line, since both come from the step before the line. The line's `{card}` then reads as the Vision to every viewer, as the spec says.
    - The guess's batch is **not** required. A refused discard is skipped rather than failing the path, so the search never hides one guess, which would disclose the Vision.
    - Verified: an `AdviserSlot` option on a facedown card projects as "{owner}'s facedown adviser N" with a card back (`WalkerDecisionProjector`), so the question is not suppressed. Task 3's first test shows it offered.
 4. **Relic Thief checks Lost Tongue itself.**
@@ -973,7 +975,7 @@ git commit -m "feat(action): Witch's Bargain trades secrets and favor with playe
 - Create: `src/test/scala/oathdigital/gameplay/powers/action/InquisitorSuite.scala`
 
 **Interfaces:**
-- Consumes: `PaidAction`, `VisionRules`' five ids, `CardPlay.nextRegion`, `NoteSupport.answer`, and the engine's faceup `Flip` of a discarded card (`CardFaceOperations.seenByAll`), first used here.
+- Consumes: `PaidAction`, `VisionRules`' five ids, `CardPlay.nextRegion`, `NoteSupport.answer`, and `Reveal` of a card in a discard pile, which records it as known to every player (Brass Horse uses it too).
 - Produces: `case object Inquisitor` with `visionDecisionId = "power.inquisitor.vision"`, `guessDecisionId = "power.inquisitor.guess"`, `visions: Vector[(VisionId, String)]`, `guess(vision: VisionId): DecisionOptionRef.Button`, `right` and `wrong` (maps from a Vision to its key), and `nothing`.
 
 - [ ] **Step 1: Write the failing suite**
@@ -1130,15 +1132,15 @@ object InquisitorCard extends Denizen(DenizenId("38"), "Inquisitor", Suit.Arcane
   * nothing, while a card option the viewer cannot identify would suppress
   * the question. The second offers the five Vision names as buttons, the
   * Conspiracy included. A right guess discards the Vision to the discard
-  * pile of the region after the player's, then turns it faceup there, which
-  * shows it to the table: every player then knows it in the pile. The batch
+  * pile of the region after the player's, then reveals it there: it stays
+  * facedown in the pile, and every player then knows it. The batch
   * is not required, so the search never hides a guess, which would disclose
   * the Vision; a wrong guess runs nothing.
   *
   * The line names the guess in its own words, one note key per Vision,
   * since on a wrong guess a card argument would read as a card back to a
   * viewer who cannot identify it. Its line covers the right guess's generic
-  * Discarded line.
+  * Discarded and Revealed lines.
   */
 case object Inquisitor extends PaidAction(InquisitorCard.power):
   val visionDecisionId: String = "power.inquisitor.vision"
@@ -1238,8 +1240,7 @@ case object Inquisitor extends PaidAction(InquisitorCard.power):
         if guessed != target.vision then Vector.empty
         else Vector(Discard.Vision(target.vision,
             PositionedLocation(Location.PlayArea(target.owner)), region),
-          Flip(target.vision, Location.RegionalDiscard(region),
-            Orientation.FaceUp))
+          Reveal(target.vision, Location.RegionalDiscard(region)))
 
   /** The guess and whose Vision it was about. It was right when that player
     * held the guessed Vision before the step and not after it. */
@@ -2803,7 +2804,7 @@ In `docs/superpowers/specs/2026-10-05-catalog-batch-4-design.md`, under "### Sli
 | Witch's Bargain, key `secret`, one line per exchange | Witch's Bargain: Gave {1 secret} to {Blue} and took {n favor}. | |
 | Witch's Bargain, key `favor`, one line per exchange | Witch's Bargain: Gave {2 favor} to {Blue} and took {n secrets}. | |
 | Witch's Bargain, no exchange made | Witch's Bargain: No exchange was made. | |
-| Inquisitor, key `used.<vision>.right` | Inquisitor: Guessed {name} and discarded {card} from {Blue}. | the Discarded line |
+| Inquisitor, key `used.<vision>.right` | Inquisitor: Guessed {name} and discarded {card} from {Blue}. | the Discarded and Revealed lines |
 | Inquisitor, key `used.<vision>.wrong` | Inquisitor: Guessed {name} for {Blue}'s Vision, wrongly. | |
 | Inquisitor, nothing to guess | Inquisitor: No player at the site held a facedown Vision. | |
 | Relic Thief | Relic Thief: Rolled no shield and took {relic} from {Blue}. | |
@@ -2819,7 +2820,7 @@ In `docs/superpowers/specs/2026-10-05-catalog-batch-4-design.md`, under "### Sli
 | Assassin, key `used.none` | Assassin: No faceup adviser could be discarded. | |
 ```
 
-Then, in the paragraph below the table, replace "Its `{card}` on a right guess is the discarded Vision, which every viewer then identifies." with "Its `{card}` on a right guess is the discarded Vision, which every viewer then identifies: the Vision is turned faceup in the pile, and every player knows it there." Then add this paragraph after that one:
+Then, in the paragraph below the table, replace "Its `{card}` on a right guess is the discarded Vision, which every viewer then identifies." with "Its `{card}` on a right guess is the discarded Vision, which every viewer then identifies: a `Reveal` in the pile records it as known to every player, and it stays facedown there." Then add this paragraph after that one:
 
 ```markdown
 A phase power declares a key named `used` (`PowerNoteCatalogSuite`), so a
@@ -2842,8 +2843,8 @@ In the same file's "Implementation notes from the verification" list, add after 
   secret on a card in play. So the actor burns their board and every secret
   on a card in play, except the one on Ancient Binding; every other player
   burns their board down to one. The Darkest Secret's secrets stay.
-- **Inquisitor's right guess** turns the discarded Vision faceup in its pile,
-  so every player knows it there and can later browse it.
+- **Inquisitor's right guess** reveals the discarded Vision in its pile. It
+  stays facedown there, and every player knows it and can later browse it.
 ```
 
 - [ ] **Step 5: Commit**
