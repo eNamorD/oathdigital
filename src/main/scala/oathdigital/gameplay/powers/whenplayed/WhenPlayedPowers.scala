@@ -21,4 +21,5 @@ object WhenPlayedPowers:
       Vector(GreatHerd.forCatalog(catalog)) ++
       Vector(RoyalTax) ++
       Vector(Revelation) ++
-      Vector(Blackmail.forCatalog(catalog))
+      Vector(Blackmail.forCatalog(catalog)) ++
+      Vector(Dissent.forCatalog(catalog))

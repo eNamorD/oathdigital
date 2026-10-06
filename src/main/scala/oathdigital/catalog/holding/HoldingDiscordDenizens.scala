@@ -70,14 +70,6 @@ object UnstableSummonCard extends Denizen(DenizenId("225"), "Unstable Summon", S
       "collect X [attack-die].")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object DissentCard extends Denizen(DenizenId("84"), "Dissent", Suit.Discord):
-  val power = PrintedPower(PowerId("denizen.dissent"),
-    persistent = false, cost = Cost.free,
-    text = "**WHEN PLAYED:** each player, except the holder of the " +
-      "People's Favor, places one [favor] on this card for each " +
-      "suit of card they rule.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object FalseProphetCard extends Denizen(DenizenId("85"), "False Prophet", Suit.Discord) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.false-prophet"),
     persistent = false, cost = Cost.free,
