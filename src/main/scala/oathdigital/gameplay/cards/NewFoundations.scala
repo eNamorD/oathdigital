@@ -20,8 +20,8 @@ import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,
   WizardSchoolCard, WolvesCard}
 import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,
   BanditStandardCard, BannerBreakersCard, BattleAxesCard, BattleHonorsCard,
-  BlackSwordCard, BookBurningCard, BrassArmyCard, CrackedSageCard,
-  CrackingGroundCard, DisgracedCaptainCard, EncirclementCard,
+  BillowingFogCard, BlackSwordCard, BookBurningCard, BrassArmyCard,
+  CrackedSageCard, CrackingGroundCard, DisgracedCaptainCard, EncirclementCard,
   ExtraProvisionsCard, FaeBattalionCard, FearsomeGeneralCard,
   FearsomeShieldCard, FieldPromotionCard, FireTalkersCard, GarrisonArmoryCard,
   GleamingArmorCard, GreatCrusadeCard, HorseArchersCard, HospitalCard,
@@ -29,9 +29,9 @@ import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,
   MercenariesCard, MilitaryParadeCard, MountedPatrolCard, NatureWorshipCard,
   OutridersCard, PledgeOfDefenseCard, RainBootsCard, RangersCard, RivalKhanCard,
   RustingRayCard, ScoutsCard, ShieldWallCard, StickyFireCard, StormCallerCard,
-  TheGreatLevyCard, ToweringRampartCard, TributeSpoilsCard,
-  VillageConstableCard, VowOfPeaceCard, WalledGardenCard, WarTortoiseCard,
-  WarningSignalsCard, WatchdogCard, WrestlersCard}
+  TheGreatLevyCard, ToweringRampartCard, TravelingDoctorCard,
+  TributeSpoilsCard, VillageConstableCard, VowOfPeaceCard, WalledGardenCard,
+  WarTortoiseCard, WarningSignalsCard, WatchdogCard, WrestlersCard}
 import oathdigital.gameplay.powers.cardplay.{BookBindersCard, GossipCard,
   SacredGroundCard, SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard,
   WelcomingPartyCard, WildCryCard}

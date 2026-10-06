@@ -25,9 +25,10 @@ object HospitalCard extends Denizen(DenizenId("149"), "Hospital", Suit.Hearth) w
   *    (`CampaignPlanApplication`); a plan applied before Hospital was chosen
   *    has already killed its warband;
   *  - every kill in the losses (`CampaignLosses`), including the kills
-  *    Sticky Fire adds there, so Hospital folds after every plan at the
-  *    default priority. A Conquest defender's returned half comes back out of
-  *    the count, because those warbands did not stay dead.
+  *    Sticky Fire and Shield Wall add there, so Hospital folds at priority 2,
+  *    after them and after Billowing Fog's and Traveling Doctor's changes.
+  *    A Conquest defender's returned half comes back out of the count,
+  *    because those warbands did not stay dead.
   *
   * When the Campaign ends, that many warbands move from the user's supply to
   * Hospital's site, if the user rules it then, and Hospital says so. When
@@ -38,9 +39,11 @@ case object Hospital extends BattlePlan:
   val cardId: DenizenId = HospitalCard.id
   val id: PowerId = HospitalCard.power.id
 
-  /** Folds after every plan at the default priority 0, so its count sees the
-    * kills Sticky Fire adds to the losses. */
-  val Priority: Int = 1
+  /** Folds after Billowing Fog and Traveling Doctor (priority 1), which
+    * change the losses, and after every plan at the default priority 0, so
+    * its count sees what still dies: the kills Sticky Fire and Shield Wall
+    * add there included. */
+  val Priority: Int = 2
 
   /** The count of saved warbands. It is never rolled or shown, and the
     * walker clears it with every pool when the Campaign ends. */
@@ -91,7 +94,8 @@ case object Hospital extends BattlePlan:
       children: Vector[Operation]): Vector[Operation] = (for
     user <- use.user
     kind <- PlayerFacts.forceKind(use.ready, user).toOption
-  yield children.map(Tally(user, kind, returns).rewrite)).getOrElse(children)
+  yield LossRewrite.counted(Hospital.Saved, kind, Some(user), returns)(
+    children)).getOrElse(children)
 
   /** The saved warbands, from the user's supply to Hospital's site, when the
     * user rules it now. */
@@ -117,37 +121,3 @@ case object Hospital extends BattlePlan:
     if count > 0
   yield Hospital.placed(PowerSourceRef.Card(cardId), NoteArg.Number(count),
     NoteArg.Player(user), NoteArg.Site(site))
-
-  /** Counts the kills of `user`'s warbands, of force `kind`, in
-    * `Hospital.Saved`. When `returns` is set, a warband returned from the
-    * supply to the user's board did not stay dead, so it comes back out of
-    * the count.
-    *
-    * It counts the amount each operation asks for, which the Campaign's kills
-    * always execute in full because they read the board they kill from. It
-    * reaches through `BuildOps`, `Sequence` and `Branch`, the only nodes these
-    * windows hold. */
-  private final class Tally(user: PlayerId, kind: ForceKind, returns: Boolean):
-    def rewrite(operation: Operation): Operation = operation match
-      case ops: BuildOps => ops.copy(build = (ready, pending) =>
-        ops.build(ready, pending).map(_.flatMap(counted)))
-      case sequence: Sequence =>
-        sequence.copy(children = sequence.children.map(rewrite))
-      case branch: Branch => Branch((ready, pending) =>
-        branch.select(ready, pending).map(rewrite))
-      case core: CoreOperation => counted(core) match
-        case Vector(same) => same
-        case several => Sequence(several)
-      case other => other
-
-    private def counted(operation: CoreOperation): Vector[CoreOperation] =
-      operation match
-        case Kill(Piece.Warbands(`kind`, count), _) =>
-          Vector(operation, ModifyDicePool(Hospital.Saved, count))
-        case Sacrifice(`user`, Piece.Warbands(`kind`, count), _) =>
-          Vector(operation, ModifyDicePool(Hospital.Saved, count))
-        case Move(Piece.Warbands(`kind`, count),
-            PositionedLocation(Location.WarbandBank(_), _),
-            PositionedLocation(Location.PlayArea(`user`), _), None) if returns =>
-          Vector(operation, ModifyDicePool(Hospital.Saved, -count))
-        case other => Vector(other)

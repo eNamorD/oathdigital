@@ -16,9 +16,10 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * (the attack or the defense scored again), Lancers (the attack scored again
   * and a discard at the end), Fearsome General (the attack scored again),
   * Kindred Warriors and Rangers (the attack scored again), Mounted Patrol
-  * (the attack pool halved before the roll and a discard at the end) and
-  * Shield Wall (the defender's whole force killed). Each names its card, so
-  * all are always present.
+  * (the attack pool halved before the roll and a discard at the end), Shield
+  * Wall (the defender's whole force killed), and Billowing Fog and Traveling
+  * Doctor (the defeat's losses cancelled). Each names its card, so all are
+  * always present.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -45,4 +46,6 @@ object PlanRules:
       Vector(KindredWarriors.forCatalog(catalog)) ++
       Vector(Rangers) ++
       Vector(MountedPatrol.forCatalog(catalog)) ++
-      Vector(ShieldWall)
+      Vector(ShieldWall) ++
+      Vector(BillowingFog) ++
+      Vector(TravelingDoctor.forCatalog(catalog))

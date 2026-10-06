@@ -103,11 +103,3 @@ object SkilledMerchantsCard extends Denizen(DenizenId("238"), "Skilled Merchants
     persistent = false, cost = Cost.free,
     text = "You may trade with any denizens in your region.")
   val powers: Vector[PrintedPower] = Vector(power)
-
-object TravelingDoctorCard extends Denizen(DenizenId("51"), "Traveling Doctor", Suit.Hearth):
-  val power = PrintedPower(PowerId("denizen.traveling-doctor"),
-    persistent = false, cost = Cost.free,
-    text = "If you're defeated, kill no warbands in your force and " +
-      "discard Traveling Doctor. **Ignore** powers that kill all " +
-      "of your force.")
-  val powers: Vector[PrintedPower] = Vector(power)
