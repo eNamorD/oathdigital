@@ -217,8 +217,9 @@ Slice 4 of the undo design is the template.
 - **Hospitality** (171). Start facts remove what its ruling named as the
   blocker: a resume after the `Move` no longer reads the pawn's site, and the
   options definition already previews a run that parks. Its after-move bank
-  pick is its own slice. When this design lands, the roadmap moves Hospitality
-  out of the engine-blocked group.
+  pick is its own slice. When this design lands, Hospitality stays in the
+  roadmap's engine-blocked group, marked as unblocked, since no other group
+  fits it yet.
 - **Campaign's pinned facts.** Moving `CampaignSetup.pinned` onto start facts
   goes on the roadmap as a follow-up when this design lands.
 - Kills and gains in the destination badge.
