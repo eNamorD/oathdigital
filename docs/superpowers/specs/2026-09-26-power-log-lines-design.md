@@ -20,6 +20,12 @@ records what it decided.
 **Slice 5 (2026-09-26):** setup. "Settled in slice 5" records what it
 decided.
 
+**Superseded in part (2026-10-07):** hidden options no longer write lines.
+Each hide hook's note is the hidden option's hover reason only, and the two
+notes that named the acting player dropped the name
+([travel destination design](2026-10-07-travel-destination-walker-design.md),
+ruling 10).
+
 **Builds on** the [Game Log design](2026-09-25-game-log-design.md). That
 design left "powers declaring their own log lines" out of scope, kept the
 generic "Used {card}" as a stand-in, and reserved the detail row

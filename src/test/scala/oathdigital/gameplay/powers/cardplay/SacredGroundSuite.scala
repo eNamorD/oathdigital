@@ -64,10 +64,8 @@ class SacredGroundSuite extends munit.FunSuite:
     val power = SacredGround
     NoteText.said(power.id, power.noteKeys, from.events)
 
-  test("the hidden faceup placement is written as Sacred Ground's line"):
-    assertEquals(hidden(search(elsewhere)).distinct, Vector(NoteText.Said(
-      "no-faceup", s"${actor.value} cannot play a Vision faceup.",
-      covers = false)))
+  test("the hidden faceup placement writes no line: its reason is on hover"):
+    assertEquals(hidden(search(elsewhere)), Vector.empty)
 
   test("the Conspiracy, which Sacred Ground excepts, reads no line"):
     assertEquals(hidden(search(elsewhere, VisionRules.Conspiracy)),

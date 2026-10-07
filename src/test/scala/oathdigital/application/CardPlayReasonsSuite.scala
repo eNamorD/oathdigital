@@ -47,7 +47,7 @@ class CardPlayReasonsSuite extends munit.FunSuite:
     val shown = present(rows(state).find(_.kind == spot.kind),
       "the revealed Vision row")
     assertEquals(shown.state, "unavailable")
-    assert(shown.reason.exists(_.contains("cannot play a Vision faceup")),
+    assert(shown.reason.exists(_.endsWith("Cannot play a Vision faceup.")),
       shown.reason.toString)
 
   test("a Vow of Obedience holder sees the revealed Vision spot refused, " +

@@ -42,23 +42,8 @@ private[walker] object WalkerPowerGather:
       ops: Vector[Operation], procedure: Option[oathdigital.model.ProcedureRef],
       answered: Vector[Answered] = Vector.empty, resuming: Boolean = false)
       : (Vector[Operation], Vector[PowerId]) =
-    val (folded, order, _) = applyWindowNoted(window, operation, state,
-      activePlayer, powers, path, ops, procedure, answered, resuming,
-      noting = false)
-    (folded, order)
-
-  /** As [[applyWindow]], and, when `noting`, the notes of the options each
-    * `OptionRestriction` hid from a `Decide`. The walker notes only a window
-    * it enters fresh, so a resume never says it twice.
-    */
-  def applyWindowNoted(window: Option[PowerWindow], operation: Operation,
-      state: ReadyGame,
-      activePlayer: PlayerId, powers: WalkerPowers, path: Vector[String],
-      ops: Vector[Operation], procedure: Option[oathdigital.model.ProcedureRef],
-      answered: Vector[Answered], resuming: Boolean, noting: Boolean)
-      : (Vector[Operation], Vector[PowerId], Vector[PowerNoted]) =
     window match
-      case None => (ops, Vector.empty, Vector.empty)
+      case None => (ops, Vector.empty)
       case Some(w) =>
         val byId: Map[PowerId, ContributingPower] =
           powers.powers.map(power => power.id -> power).toMap
@@ -72,17 +57,15 @@ private[walker] object WalkerPowerGather:
         operation match
           case _: Decide =>
             (restrictOptions(folded, gathered.optionRestrictions, ctxFor, byId),
-              gathered.order,
-              if noting then hiddenNotes(folded, gathered.optionRestrictions,
-                ctxFor, byId) else Vector.empty)
+              gathered.order)
           case host: OfferHost =>
             val offered = gathered.offers.flatMap { case (powerId, offer) =>
               offer.plan(ctxFor(byId(powerId))).map(OfferedPlan(powerId, _))
             }
             (folded ++ host.expand(offered, OfferHost.Pass(state, answered,
               resuming, WalkerSimulation.applies(_, state, powers))),
-              gathered.order, Vector.empty)
-          case _ => (folded, gathered.order, Vector.empty)
+              gathered.order)
+          case _ => (folded, gathered.order)
 
   /** The options of a choose-one or choose-many decision that a player may
     * choose, in order. */
@@ -102,16 +85,6 @@ private[walker] object WalkerPowerGather:
       restriction.note(ctxFor(byId(id)), ref)
         .map(PowerNoted(id, _, covers = false))
     }
-
-  /** For each option a restriction forbids, the note of the first power
-    * that forbids it. */
-  private def hiddenNotes(ops: Vector[Operation],
-      restrictions: Vector[(PowerId, OptionRestriction)],
-      ctxFor: ContributingPower => PowerCtx,
-      byId: Map[PowerId, ContributingPower]): Vector[PowerNoted] =
-    if restrictions.isEmpty then Vector.empty
-    else ops.collect { case decide: Decide => decide }.flatMap(decide =>
-      optionRefs(decide).flatMap(firstNote(restrictions, ctxFor, byId)))
 
   private def permits(restrictions: Vector[(PowerId, OptionRestriction)],
       ctxFor: ContributingPower => PowerCtx,
@@ -244,8 +217,7 @@ private[walker] object WalkerPowerGather:
       _.copy(walkerPending = None, walkerProcedure = procedure)),
       activePlayer, answered)
 
-  /** The notes the look-ahead writes for the options `narrowed` no longer
-    * offers, each with its option: the note of the restriction whose
+  /** The notes that explain the options `narrowed` no longer offers, each with its option: the note of the restriction whose
     * violation answering it would add. Empty without a power that restricts,
     * since only a restriction can explain a hidden option.
     */

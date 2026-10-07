@@ -28,8 +28,6 @@ class LostTongueSuite extends munit.FunSuite:
 
   private def notes(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
-  private def shielded(holder: PlayerId) = NoteText.Said("shielded",
-    s"${holder.value}'s banners and relics cannot be targeted.", covers = false)
 
   // ---- Raid ----
 
@@ -60,10 +58,9 @@ class LostTongueSuite extends munit.FunSuite:
     // Every optional target is hidden, so the targets are not asked.
     assertEquals(parked.parkedDecision(raided.kind.state).map(_.decision),
       Some(CampaignIds.force))
-    val said = notes(raided.kind.events)
-    // The relic, the People's Favor and the Darkest Secret.
-    assertEquals(said.size, 3)
-    assertEquals(said.distinct, Vector(shielded(raided.defender)))
+    // The relic, the People's Favor and the Darkest Secret are hidden, each
+    // with its reason on hover, and no line is written.
+    assertEquals(notes(raided.kind.events), Vector.empty)
 
   test("an attacker who rules a nomad card may target them all"):
     val raided = raidKind(Orientation.FaceUp, nomad = true)

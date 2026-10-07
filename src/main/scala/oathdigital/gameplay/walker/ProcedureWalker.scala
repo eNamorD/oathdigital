@@ -306,12 +306,11 @@ object ProcedureWalker:
       children: Vector[Operation], ctx: WalkCtx, path: Vector[String],
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] =
-    val (folded, order, hidden) = WalkerPowerGather.applyWindowNoted(window,
-      operation, ctx.state, ctx.activePlayer,
+    val (folded, order) = WalkerPowerGather.applyWindow(window, operation,
+      ctx.state, ctx.activePlayer,
       if ctx.searching then ctx.powers.quiet else ctx.powers, path, children,
-      ctx.procedure, ctx.answered, cursor.isDefined, noting = cursor.isEmpty)
-    walkChildren(folded, ctx.copy(events = ctx.events ++ hidden), path, cursor,
-      resume, hooks.withOrder(order))
+      ctx.procedure, ctx.answered, cursor.isDefined)
+    walkChildren(folded, ctx, path, cursor, resume, hooks.withOrder(order))
 
   private def walkComposite(composite: Operation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
@@ -428,37 +427,29 @@ object ProcedureWalker:
         reach(decide, ctx, path)
       case decide: Decide if !ctx.searching && asked(cursor, resume) =>
         narrowAt(decide, ctx, path).flatMap:
-          case Some(narrowed) =>
-            // Reached fresh, so this is the only time it is asked this pass.
-            val hidden = if cursor.nonEmpty then Vector.empty else narrowed.notes
-            runNarrowed(narrowed.decide, ctx.copy(events = ctx.events ++ hidden),
-              path, cursor, resume, contributions, strict)
+          case Some(narrowed) => runNarrowed(narrowed, ctx, path, cursor,
+            resume, contributions, strict)
           case None if cursor.isEmpty => Right(Done(ctx))
           case None => Left(OathViolation.InvalidEventOrder(
             s"decision ${decide.decisionId} has nothing left to offer"))
       case _ => runNarrowed(leaf, ctx, path, cursor, resume, contributions,
         strict)
 
-  /** A decision as the look-ahead leaves it: narrowed, with each option it
-    * hid that a restriction's note explains kept as unavailable, and those
-    * notes, which the walk journals when it reaches the decision fresh.
-    */
-  private final case class Narrowed(decide: Decide, notes: Vector[PowerNoted])
-
   /** `decide` narrowed to the options from which some path reaches a legal
     * end (global operation restrictions design, "Lazy pruning"), each hidden
-    * option a restriction's note explains kept as unavailable, or as
-    * declared when the powers do not search. */
+    * option a restriction's note explains kept as unavailable (the note is
+    * its hover reason and nothing is journaled), or as declared when the
+    * powers do not search. */
   private def narrowAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
-      : Either[OathViolation, Option[Narrowed]] =
-    if !ctx.powers.probing then Right(Some(Narrowed(decide, Vector.empty)))
+      : Either[OathViolation, Option[Decide]] =
+    if !ctx.powers.probing then Right(Some(decide))
     else WalkerSearch.narrow(decide, verdict(decide, ctx, path)).map(_.map {
       cut =>
         val noted = WalkerPowerGather.lookAheadNoted(ctx.root, decide, cut,
           ctx.state, ctx.activePlayer, ctx.powers, ctx.answered, ctx.procedure)
         val reasons: Map[DecisionOptionRef, OptionReason] = noted.map(
           (ref, note) => ref -> OptionReason.Noted(note.power, note.note)).toMap
-        Narrowed(WalkerSearch.explained(decide, cut, reasons), noted.map(_._2))
+        WalkerSearch.explained(decide, cut, reasons)
     })
 
   /** A search at a decision it reaches. Back at a decision it already stands
@@ -515,8 +506,7 @@ object ProcedureWalker:
     val ctx = WalkCtx(strip(state), Vector.empty,
       state.game.current.turn.activePlayer, pending.answered, powers,
       WalkerDice.placeholder, state.game.current.walkerProcedure, action)
-    narrowAt(decide, ctx, pending.at).toOption.flatten.map(_.decide)
-      .getOrElse(decide)
+    narrowAt(decide, ctx, pending.at).toOption.flatten.getOrElse(decide)
 
   /** Whether the leaf is where a decision is asked: reached fresh, or at the
     * cursor's end while an answer resumes. A plain resume only re-parks it.

@@ -53,14 +53,27 @@ class PowerNoteHideSuite extends munit.FunSuite:
   private val actor = ready.game.current.turn.activePlayer
   private val hider = PowerId("test.hider")
 
-  test("each option a power hides is noted before the decision parks"):
+  private def offered(tree: Operation, pending: PendingTree,
+      powers: WalkerPowers): Vector[DecisionOption] =
+    ProcedureWalker.parkedDecide(ready, tree, pending, powers)
+      .map(_.query).collect {
+        case DecisionQuery.ChooseOne(options, _) => options
+      }.getOrElse(Vector.empty)
+
+  test("each option a power hides keeps its note as its reason, journaled " +
+      "nowhere"):
     val powers = WalkerPowers(Vector(HidingPower(hider, window,
       Set(site("b"), site("c")))))
-    val events =
-      parked(ProcedureWalker.advance(ready, pick(ready), None, powers)).events
-    assertEquals(notes(events), Vector[OathEvent](
-      PowerNoted(hider, hid(site("b")), covers = false),
-      PowerNoted(hider, hid(site("c")), covers = false)))
+    val tree = pick(ready)
+    val WalkerOutcome.Parked(pending, events) =
+      parked(ProcedureWalker.advance(ready, tree, None, powers))
+    assertEquals(notes(events), Vector.empty)
+    assertEquals(offered(tree, pending, powers), Vector[DecisionOption](
+      DecisionOption.Site(site("a")),
+      DecisionOption.Unavailable(DecisionOption.Site(site("b")),
+        OptionReason.Noted(hider, hid(site("b")))),
+      DecisionOption.Unavailable(DecisionOption.Site(site("c")),
+        OptionReason.Noted(hider, hid(site("c"))))))
 
   test("answering the decision does not note the hidden options again"):
     val powers = WalkerPowers(
@@ -80,7 +93,8 @@ class PowerNoteHideSuite extends munit.FunSuite:
       parked(ProcedureWalker.advance(ready, pick(ready), None, powers)).events
     assertEquals(notes(events), Vector.empty)
 
-  test("an option the look-ahead hides is noted by the restriction it would break"):
+  test("an option the look-ahead hides keeps the note of the restriction it " +
+      "would break as its reason"):
     val nested = PowerWindow.CampaignActionEligibility
     val forbidder = PowerId("test.forbidder")
     val powers = WalkerPowers(Vector(ForbiddingPower(forbidder, nested)))
@@ -95,8 +109,11 @@ class PowerNoteHideSuite extends munit.FunSuite:
       } then Vector(Sequence(Vector.empty, Some(nested))) else Vector.empty)))
     val WalkerOutcome.Parked(pending, events) =
       parked(ProcedureWalker.advance(ready, tree, None, powers))
-    assertEquals(notes(events), Vector[OathEvent](PowerNoted(forbidder,
-      PowerNote(hideSource, "forbade", Vector.empty), covers = false)))
+    assertEquals(notes(events), Vector.empty)
+    assertEquals(offered(tree, pending, powers), Vector[DecisionOption](
+      DecisionOption.Unavailable(button("yes"), OptionReason.Noted(forbidder,
+        PowerNote(hideSource, "forbade", Vector.empty))),
+      button("no")))
     val WalkerOutcome.Finished(_, answered) = finished(ProcedureWalker.resolve(
       ready, tree, pending, Answered("ask", DecisionAnswer.ChooseOneAnswer(
         DecisionOptionRef.Button("no")), actor), powers))

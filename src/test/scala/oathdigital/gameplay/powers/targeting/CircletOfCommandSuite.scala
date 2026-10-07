@@ -139,15 +139,12 @@ class CircletOfCommandSuite extends munit.FunSuite:
   private val power = CircletOfCommand.forCatalog(catalog)
   private def hidden(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
-  private def shielded(holder: PlayerId) = NoteText.Said("shielded",
-    s"${holder.value}'s banners and relics cannot be targeted.", covers = false)
 
-  test("the Raid targets the Circlet hides name their holder, once each"):
-    val b = raidBoard().board
-    val said = hidden(raidKind(Some(Orientation.FaceUp)).events)
-    // The relic, the People's Favor and the Darkest Secret.
-    assertEquals(said.size, 3)
-    assertEquals(said.distinct, Vector(shielded(b.rival)))
+  test("the Raid targets the Circlet hides write no line"):
+    // The relic, the People's Favor and the Darkest Secret are hidden, each
+    // with its reason on hover.
+    assertEquals(hidden(raidKind(Some(Orientation.FaceUp)).events),
+      Vector.empty)
     assertEquals(hidden(raidKind(Some(Orientation.FaceDown)).events),
       Vector.empty)
 

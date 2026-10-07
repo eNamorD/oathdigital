@@ -54,14 +54,10 @@ class VowOfObedienceSuite extends munit.FunSuite:
     val power = VowOfObedience
     NoteText.said(power.id, power.noteKeys, from.events)
 
-  private val noFaceup = NoteText.Said("no-faceup",
-    s"${actor.value} cannot play a Vision faceup.", covers = false)
-
-  test("the hidden faceup placement is written as the Vow's line"):
-    assertEquals(hidden(search(VisionRules.Faith, holding(_))).distinct,
-      Vector(noFaceup))
+  test("the hidden faceup placement writes no line: its reason is on hover"):
+    assertEquals(hidden(search(VisionRules.Faith, holding(_))), Vector.empty)
     assertEquals(hidden(fromAdvisers(holding(inPhase(quietTable, Phase.Act)),
-      VisionRules.Faith)).distinct, Vector(noFaceup))
+      VisionRules.Faith)), Vector.empty)
 
   test("a Vow that forbids nothing writes nothing"):
     assertEquals(hidden(search(VisionRules.Faith, holding(_,

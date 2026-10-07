@@ -132,12 +132,26 @@ class CampaignPowersSuite extends munit.FunSuite:
       targets(options), None, WalkerPowers(Vector(passPower))))
     NoteText.said(passPower.id, passPower.noteKeys, parked.events)
 
-  test("each site the Pass hides writes the same line"):
+  /** The sites the parked decision shows unavailable with the Pass's note. */
+  private def passReasons(ready: ReadyGame): Vector[(DecisionOptionRef, String)] =
+    val tree = targets(candidates.map(siteOption))
+    val pending = Outcomes.parked(ProcedureWalker.advance(ready, tree, None,
+      WalkerPowers(Vector(passPower)))).tree
+    ProcedureWalker.parkedDecide(ready, tree, pending,
+      WalkerPowers(Vector(passPower))).map(_.query).toVector.flatMap:
+      case many: DecisionQuery.ChooseMany => many.options.collect {
+        case DecisionOption.Unavailable(option,
+            OptionReason.Noted(power, note)) if power == passPower.id =>
+          option.ref -> note.key
+      }
+      case _ => Vector.empty
+
+  test("each site the Pass hides keeps its reason and writes no line"):
     // Two sites share the Pass's region: Buried Giant and Deep Woods.
-    assertEquals(passNotes(withPawnAt(ancientCity)), Vector.fill(2)(
-      NoteText.Said("no-target",
-        s"${actor.value} cannot target other sites in the region.",
-        covers = false)))
+    assertEquals(passNotes(withPawnAt(ancientCity)), Vector.empty)
+    assertEquals(passReasons(withPawnAt(ancientCity)), Vector(
+      siteOption(buriedGiant).ref -> "no-target",
+      siteOption(deepWoods).ref -> "no-target"))
 
   test("a Pass that hides nothing writes nothing"):
     assertEquals(passNotes(withPawnAt(buriedGiant)), Vector.empty)

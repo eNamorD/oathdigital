@@ -25,9 +25,6 @@ class ForgottenVaultSuite extends munit.FunSuite:
   private def notes(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 
-  private def line(ruler: PlayerId): NoteText.Said = NoteText.Said("shielded",
-    s"${ruler.value}'s relics cannot be targeted.", covers = false)
-
   /** `table` with the Vault at Broken Peaks, which `ruler` rules with 2
     * warbands (`None` leaves the site to nobody). */
   private def vaultAt(table: Table, ruler: Option[PlayerId]): Table =
@@ -66,7 +63,7 @@ class ForgottenVaultSuite extends munit.FunSuite:
     assertEquals(targets.options.toSet, Set[DecisionOptionRef](
       DecisionOptionRef.Banner(Banner.PeoplesFavor),
       DecisionOptionRef.Banner(Banner.DarkestSecret)))
-    assertEquals(notes(targets.events), Vector(line(targets.defender)))
+    assertEquals(notes(targets.events), Vector.empty)
 
   test("the Vault's ruler may target an enemy's relics"):
     val targets = raidTargets(Ruler.Attacker)

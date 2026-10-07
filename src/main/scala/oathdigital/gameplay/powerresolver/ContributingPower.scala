@@ -59,9 +59,9 @@ final case class Transform(
 ) extends Contribution
 
 /** Validates the whole action tree root, returning a violation to reject the
-  * action wholesale. Covers cannot-effects. `note` is what the Game Log says
-  * when the restriction look-ahead hides an option because of it (power log
-  * lines design, section 1).
+  * action wholesale. Covers cannot-effects. `note` is the hover reason of an
+  * option the restriction look-ahead hides because of it; it writes no Game
+  * Log line (travel destination design, ruling 10).
   */
 final case class Restriction(
     fn: (PowerCtx, Operation) => Option[OathViolation],
@@ -72,8 +72,9 @@ final case class Restriction(
   * option in the window fold, before the query is parked, so a forbidden
   * option is absent from what the projector offers, from what `accepts`
   * validates and from what a simulation answers. Covers cannot-effects that
-  * name a choice rather than the whole action. `note` is what the Game Log
-  * says for each option it hides (power log lines design, section 1).
+  * name a choice rather than the whole action. `note` is the hover reason of
+  * each option it hides; it writes no Game Log line (travel destination
+  * design, ruling 10).
   */
 final case class OptionRestriction(
     fn: (PowerCtx, DecisionOptionRef) => Option[OathViolation],

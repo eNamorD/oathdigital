@@ -26,16 +26,15 @@ private[cardplay] object VisionPlay:
   def forbidden(card: String): OathViolation =
     OathViolation.InvalidSearchPlacement(s"$card forbids playing a Vision faceup")
 
-  /** Where a faceup placement was hidden (power log lines design, "Removed
-    * and hidden options"): "{Red} cannot play a Vision faceup." */
-  val noFaceup: NoteKey = NoteKey("no-faceup", Vector(NotePart.Arg(0),
-    NotePart.Text(" cannot play a Vision faceup.")))
+  /** Where a faceup placement was hidden, as its hover reason: "Cannot play
+    * a Vision faceup." */
+  val noFaceup: NoteKey = NoteKey("no-faceup", Vector(
+    NotePart.Text("Cannot play a Vision faceup.")))
 
   /** The hide hook of a rule printed on `card`: the acting player cannot
     * play a Vision faceup. */
   def note(card: CardId): (PowerCtx, DecisionOptionRef) => Option[PowerNote] =
-    (ctx, _) => Some(noFaceup(PowerSourceRef.Card(card),
-      NoteArg.Player(ctx.activePlayer)))
+    (_, _) => Some(noFaceup(PowerSourceRef.Card(card)))
 
   private def held(ready: ReadyGame, player: PlayerId, card: VisionId): Boolean =
     val current = ready.game.current

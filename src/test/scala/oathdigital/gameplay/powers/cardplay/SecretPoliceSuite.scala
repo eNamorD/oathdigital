@@ -68,11 +68,9 @@ class SecretPoliceSuite extends munit.FunSuite:
     val power = SecretPolice
     NoteText.said(power.id, power.noteKeys, from.events)
 
-  test("the hidden faceup placement is written as the Police's line"):
+  test("the hidden faceup placement writes no line: its reason is on hover"):
     assertEquals(hidden(search()(policeAt(_, home)
-      .warbandsAt(home, other, 2))).distinct,
-      Vector(NoteText.Said("no-faceup",
-        s"${actor.value} cannot play a Vision faceup.", covers = false)))
+      .warbandsAt(home, other, 2))), Vector.empty)
 
   test("a player the Police do not bind reads no line"):
     assertEquals(hidden(search()(policeAt(_, home)

@@ -78,3 +78,19 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
     assertEquals(row(ready, coast).badge, Some("1 Supply or 1 favor"))
     val broke = Table.from(ready).supply(actor, 0).unchecked
     assertEquals(row(broke, coast).badge, Some("1 favor"))
+
+  test("a destination Narrow Pass blocks says so on hover and logs nothing"):
+    val ready = board(supply = 7)
+    val shown = row(ready, provincePlains)
+    assertEquals(shown.state, "unavailable")
+    assertEquals(shown.reason, Some(
+      "Narrow Pass: Cannot travel to other sites in the region."))
+    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Travel,
+      actor, Vector.empty))
+    assert(!started.events.exists(_.isInstanceOf[
+      oathdigital.gameplay.walker.PowerNoted]))
+
+  test("a destination both blocked and unaffordable gives the block"):
+    // Dunes costs 2 from the Cradle, and Narrow Pass blocks it.
+    assertEquals(row(board(supply = 1), provincePlains).reason, Some(
+      "Narrow Pass: Cannot travel to other sites in the region."))

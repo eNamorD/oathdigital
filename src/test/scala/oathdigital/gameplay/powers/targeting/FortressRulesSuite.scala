@@ -160,38 +160,33 @@ class FortressRulesSuite extends munit.FunSuite:
     NoteText.said(power.id, power.noteKeys, from.events)
   private val oaken = OakenFortress.forCatalog(catalog)
   private val rotting = RottingFortress.forCatalog(catalog)
-  private def shielded(player: PlayerId) = NoteText.Said("shielded",
-    s"${player.value} cannot be targeted.", covers = false)
 
-  test("a Raid the Oaken Fortress hides names the protected ruler"):
+  test("a Raid the Oaken Fortress hides writes no line"):
     val b = fortified(EdificeSide.Intact, ruled = true)
-    assertEquals(hidden(oaken, accepted(startOf(b))),
-      Vector(shielded(b.rival)))
+    assertEquals(hidden(oaken, accepted(startOf(b))), Vector.empty)
 
-  test("a defender the Oaken Fortress hides is named when the Raid stays"):
+  test("a defender the Oaken Fortress hides writes no line when the Raid stays"):
     val b = fortified(EdificeSide.Intact, ruled = true)
     val crowded = on(b)(_.pawn(b.bystander, at = b.origin))
     val started = accepted(startOf(crowded))
     assertEquals(hidden(oaken, started), Vector.empty)
     val kind = accepted(TargetingFixture.rules.resolveWalker(started.state,
       b.actor, CampaignIds.kind, ChooseOneAnswer(raid)))
-    assertEquals(hidden(oaken, kind), Vector(shielded(b.rival)))
+    assertEquals(hidden(oaken, kind), Vector.empty)
 
-  test("a Raid the Rotting Fortress hides from several players names the site"):
+  test("a Raid the Rotting Fortress hides from several players writes no line"):
     val b = fortified(EdificeSide.Ruined, ruled = true)
     val crowded = on(b)(_.pawn(b.bystander, at = b.origin))
-    assertEquals(hidden(rotting, accepted(startOf(crowded))),
-      Vector(NoteText.Said("all-shielded",
-        s"No player at ${b.origin.value} can be targeted.", covers = false)))
+    assertEquals(hidden(rotting, accepted(startOf(crowded))), Vector.empty)
 
-  test("a banner a protected player holds is named by its holder"):
+  test("a banner a protected player holds writes no line"):
     // p1 challenges at Ancient City, where p2 stands holding People's Favor.
     val held = challengeTable.ready
     val staged = Table.from(held).edifice(fortress, EdificeSide.Ruined,
       at = Table.quietPawnSite(p1)).unchecked
     assertEquals(
       hidden(rotting, accepted(start(staged, ActionRef.Challenge, p1))),
-      Vector(shielded(p2)))
+      Vector.empty)
 
   test("a Fortress that protects nobody writes nothing"):
     val b = withEnemyAtOrigin(board(extras = 1, warbands = 4, supply = 7))
