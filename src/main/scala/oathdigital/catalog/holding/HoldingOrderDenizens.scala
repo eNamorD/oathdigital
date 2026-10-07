@@ -29,13 +29,6 @@ object PalanquinCard extends Denizen(DenizenId("107"), "Palanquin", Suit.Order) 
       "travel to that site, spending no Supply.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object TyrantCard extends Denizen(DenizenId("111"), "Tyrant", Suit.Order) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.tyrant"),
-    persistent = false, cost = Cost.free,
-    text = "You **must** kill a warband _(even your own)_ at the site " +
-      "you travel to, if able.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SpecialistCard extends Denizen(DenizenId("114"), "Specialist", Suit.Order):
   val power = PrintedPower(PowerId("denizen.specialist"),
     persistent = false, cost = Cost(favor = 2),

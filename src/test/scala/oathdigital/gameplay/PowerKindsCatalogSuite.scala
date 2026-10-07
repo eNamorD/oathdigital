@@ -17,7 +17,8 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
     "denizen.welcoming-party", "denizen.animal-playmates", "denizen.birdsong",
     "denizen.royal-stables", "denizen.moving-market",
     "denizen.news-from-alfar", "denizen.old-fast-steed",
-    "denizen.awaited-return", "denizen.mounted-library", "denizen.defame")
+    "denizen.awaited-return", "denizen.mounted-library", "denizen.defame",
+    "denizen.special-envoy")
   private val persistentRules = Vector("denizen.toll-roads",
     "denizen.grasping-vines", "relic.circlet-of-command", "denizen.gossip",
     "denizen.league-treaty", "denizen.gleaming-armor", "edifice.e28.intact",
@@ -54,3 +55,9 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
     assertEquals(flag("denizen.chaos-cult"), Some(true))
     assertEquals(oathdigital.gameplay.powers.title.ChaosCult
       .resolution, PowerResolution.Automatic)
+
+  test("Tyrant's rule is automatic whatever its flag: it is a must, not a " +
+      "modifier"):
+    assertEquals(flag("denizen.tyrant"), Some(false))
+    assertEquals(oathdigital.gameplay.powers.travel.Tyrant.resolution,
+      PowerResolution.Automatic)

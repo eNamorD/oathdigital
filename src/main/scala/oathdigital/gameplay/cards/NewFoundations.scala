@@ -60,7 +60,8 @@ import oathdigital.gameplay.powers.title.ChaosCultCard
 import oathdigital.gameplay.powers.travel.{AFastSteedCard, BrokenPeaksSite,
   DesolateShoreSite, DragonskinDrumCard, FairIsleSite, ForestPathsCard,
   GraspingVinesCard, GreenShoreSite, HiddenPlaceSite, MinesSite, NarrowPassSite,
-  RockyCoastSite, RoyalStablesCard, SunkenIslesSite, TentsCard, TollRoadsCard}
+  RockyCoastSite, RoyalStablesCard, SpecialEnvoyCard, SunkenIslesSite, TentsCard,
+  TollRoadsCard, TyrantCard}
 import oathdigital.gameplay.powers.wake.{AncientCitySite, HeadwatersSite,
   HornedMaskCard, HungerCard, MarbleFountainsCard, QuartermasterCard,
   RiverbankSite, TidalMarshesSite}
