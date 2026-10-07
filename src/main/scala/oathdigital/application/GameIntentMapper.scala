@@ -16,6 +16,7 @@ object GameIntentMapper:
       case Intent.EndWake => Right(actor.endWake)
       case Intent.BeginRest => Right(actor.beginRest)
       case Intent.FinishRest => Right(actor.finishRest)
+      case Intent.Undo => Right(actor.undo)
       case Intent.UsePower(value, source) =>
         for
           power <- PowerId.fromValue(value).toRight(GameIntentMappingFailure(
