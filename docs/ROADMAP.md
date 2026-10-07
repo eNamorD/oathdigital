@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
 2026-10-01 playtest. **Phase - Catalog batch 4** is in progress: slices
-1a, 1b, 2, 3 and 4 are done. **Phase - Undo** is in progress: slice 1 is done.
+1a, 1b, 2, 3 and 4 are done. **Phase - Undo** is in progress: slices 1 and 2 are done.
 
 ## Next
 
@@ -58,7 +58,7 @@ holds the rulings.
 
 - [x] 1. Engine, storage and server log: void markers, voided replay,
   barrier detection, the Undo intent and the projection's offer.
-- [ ] 2. Frontend: the Undo control and the taken-back log groups.
+- [x] 2. Frontend: the Undo control and the taken-back log groups.
 - [ ] 3. Redo.
 - [ ] 4. The facedown-adviser pick moves into the walker; its pre-walker
   Cancel retires.
