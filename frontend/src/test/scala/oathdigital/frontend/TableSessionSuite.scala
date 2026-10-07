@@ -4,7 +4,8 @@ import oathdigital.model.PlayerColor
 import oathdigital.protocol.{GameIntent => GameCommand, MajorActionPreviewRequest,
   MajorActionPreviewResponse, ModifierInvocation}
 
-import oathdigital.protocol.projection.{LogEntryWire, LogPageWire, LogSpanWire}
+import oathdigital.protocol.projection.{LogEntryWire, LogPageWire, LogSpanWire,
+  LogTakenBackWire}
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js.timers.setTimeout
@@ -471,4 +472,63 @@ class TableSessionSuite extends munit.FunSuite:
       settle().map { _ =>
         assertEquals(fixture.session.viewedLog, Vector.empty)
       }
+    }
+
+  /** The whole log up to `next`, with every entry from `from` on taken back
+    * by red. */
+  private def pageTakenBackFrom(from: Long, next: Long): LogPageWire =
+    val whole = page(0, next)
+    whole.copy(entries = whole.entries.map(entry =>
+      if entry.sequence < from then entry
+      else entry.copy(takenBack = Some(LogTakenBackWire(from,
+        Vector(LogSpanWire("text", "Red took back the following moves:")))))))
+
+  /** A poll answered with `snapshot(sequence)` carrying `revision`. */
+  private def pollAnswered(fixture: Fixture, sequence: Long,
+      revision: Option[Long]): Future[Unit] =
+    fixture.clock.fireNext()
+    fixture.client.answerLoad(Right(snapshot(sequence)
+      .copy(logRevision = revision)))
+    settle()
+
+  test("a new log revision refetches the whole log, keeping the old one on show until it lands"):
+    displayed(3).flatMap { fixture =>
+      fixture.client.answerLog(Right(page(0, 3)))
+      settle().flatMap(_ => pollAnswered(fixture, 4, Some(3L))).flatMap { _ =>
+        assertEquals(fixture.client.logs.last, LogLoad("g", "red", 0L))
+        assertEquals(fixture.session.viewedLog.map(_.sequence),
+          Vector(0L, 1L, 2L))
+        fixture.client.answerLog(Right(pageTakenBackFrom(2, 4)))
+        settle()
+      }.map { _ =>
+        assertEquals(fixture.session.viewedLog, pageTakenBackFrom(2, 4).entries)
+      }
+    }
+
+  test("an unchanged log revision only appends"):
+    displayed(3).flatMap { fixture =>
+      fixture.client.answerLog(Right(page(0, 3)))
+      settle().flatMap(_ => pollAnswered(fixture, 5, None)).map { _ =>
+        assertEquals(fixture.client.logs.last, LogLoad("g", "red", 3L))
+      }
+    }
+
+  test("a log answer asked for before the revision changed lands on nothing"):
+    displayed(3).flatMap { fixture =>
+      fixture.client.answerLog(Right(page(0, 3)))
+      settle()
+        .flatMap(_ => pollAnswered(fixture, 5, None))
+        .flatMap(_ => pollAnswered(fixture, 6, Some(5L)))
+        .flatMap { _ =>
+          assertEquals(fixture.client.logs.map(_.after), Vector(0L, 3L, 0L))
+          fixture.client.answerLog(Right(page(3, 5)))
+          settle()
+        }.flatMap { _ =>
+          assertEquals(fixture.session.viewedLog.map(_.sequence),
+            Vector(0L, 1L, 2L))
+          fixture.client.answerLog(Right(pageTakenBackFrom(3, 6)))
+          settle()
+        }.map { _ =>
+          assertEquals(fixture.session.viewedLog, pageTakenBackFrom(3, 6).entries)
+        }
     }
