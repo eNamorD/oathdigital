@@ -11,8 +11,7 @@ specs.
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest. **Phase - Catalog batch 4** is complete. **Phase -
-Undo** is complete.
+2026-10-01 playtest.
 
 ## Next
 
@@ -48,21 +47,6 @@ Left behind by earlier phases:
   2026-10-02 moved numeric ids onto it). Move them to direct object
   references such as `AlchemistCard`.
 
-### Phase - Undo
-
-A player takes back their latest step, inside a running walker and across an
-action's end, back to the latest barrier (a roll, draw, shuffle, peek or
-reveal, another player's answer, Finish Rest). Redo restores it while nothing
-else has happened. The [design](superpowers/specs/2026-10-06-undo-design.md)
-holds the rulings.
-
-- [x] 1. Engine, storage and server log: void markers, voided replay,
-  barrier detection, the Undo intent and the projection's offer.
-- [x] 2. Frontend: the Undo control and the taken-back log groups.
-- [x] 3. Redo.
-- [x] 4. The facedown-adviser pick moves into the walker; its pre-walker
-  Cancel retires.
-
 ### Phase - Board decision follow-ups
 
 - Move Travel onto board decisions; it still picks its destination through
@@ -85,16 +69,6 @@ did":
   totals and the winner. It is not always visible.
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
-
-### Phase - Catalog batch 4
-
-Implement the 47 cards that the verification of 2026-10-05 found buildable
-with no engine change. The
-[design](superpowers/specs/2026-10-05-catalog-batch-4-design.md) and the
-[per-card rulings](superpowers/specs/2026-10-05-catalog-batch-4-rulings.md)
-hold the slices, the shared scorers and the restriction-icon rule.
-
-Every slice is done.
 
 ### Phase - Follow-up actions
 
@@ -422,7 +396,7 @@ one.
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
 - [ ] **L6 — Incremental implementation of remaining phases and rules** (tracked
   in the phased sequence above; the next denizens and relics come
-  from **Phase - Catalog batch 4** and **Phase - Catalog batch - engine-blocked**)
+  from **Phase - Catalog batch - engine-blocked**)
 - [ ] **L7 — Incremental synchronization transport**
   - Replace complete-snapshot polling with conditional responses, projection
     deltas, long polling, SSE, or another push transport when scale or latency
