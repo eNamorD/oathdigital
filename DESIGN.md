@@ -706,8 +706,8 @@ contiguous run: a full-width toggle line in italic Ink Dim, "▸" closed and
 "▾" open, naming who took the moves back with each player in their seat
 color. Opened, the lines keep their bands and colors and are struck through
 with an Ink Spent line. A group is closed until the reader opens it, and it
-stays open through the redraw an undo causes; that redraw keeps the reader's
-place. The "Since you last looked" rule never splits a group and stands
+stays open through the redraw an undo or a redo causes, even when a redo
+changes the group's first line; that redraw keeps the reader's place. The "Since you last looked" rule never splits a group and stands
 before it instead.
 
 The **log overlay** is the whole log over the table. It takes the card

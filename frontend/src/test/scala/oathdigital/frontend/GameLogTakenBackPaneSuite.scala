@@ -227,11 +227,31 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     toggle(content).click()
     assertEquals(toggle(content).getAttribute("aria-expanded"), "true")
 
-  test("a group that merges with an opened one opens too"):
+  test("a group formed by taking back again opens when a line of it was open"):
     val content = sizedLogContent(0, 0, 0)
     val pane = new GameLogPane(content)
-    pane.show("g|red", Vector(setup, takenBack(started), moved), Map.empty)
+    pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
+      Map.empty)
     toggle(content).click()
     pane.show("g|red",
-      Vector(setup, takenBack(started), takenBack(moved)), Map.empty)
+      Vector(setup, started, takenBackFrom(6L)(moved)), Map.empty)
+    // An undo again: the group's first line is `started`'s once more, so
+    // the group's id differs from the one the reader last saw.
+    pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
+      Map.empty)
     assertEquals(toggle(content).getAttribute("aria-expanded"), "true")
+
+  test("only the group the reader opened stays open through a redraw"):
+    val content = sizedLogContent(0, 0, 0)
+    val pane = new GameLogPane(content)
+    val later = takenBackFrom(8L)(_)
+    pane.show("g|red", Vector(setup, takenBack(started), moved, later(movedAgain)),
+      Map.empty)
+    content.querySelectorAll(".log-taken-back-toggle").toVector
+      .head.asInstanceOf[dom.html.Button].click()
+    pane.show("g|red",
+      Vector(setup, takenBack(started), moved, later(movedAgain),
+        later(travelLine(9, "Travelled to Moonstone"))), Map.empty)
+    val states = content.querySelectorAll(".log-taken-back-toggle").toVector
+      .map(_.getAttribute("aria-expanded"))
+    assertEquals(states, Vector("true", "false"))
