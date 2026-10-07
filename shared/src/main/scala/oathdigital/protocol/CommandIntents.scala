@@ -11,6 +11,8 @@ object GameIntent:
   case object FinishRest extends GameIntent
   /** Takes back the sender's latest step (undo design). */
   case object Undo extends GameIntent
+  /** Restores the sender's latest taken-back step (undo design, "Redo"). */
+  case object Redo extends GameIntent
   final case class UsePower(powerId: String, source: WalkerStartArgWire)
       extends GameIntent
   case object PeekSiteRelics extends GameIntent

@@ -48,11 +48,18 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
     case Ready(ready) =>
       val context = ScopedProjectionContext(ready, requestingPlayer)
       readyProjection(gameId, loaded.nextSequence, context).copy(
-        // Only the issuer may take the step back (undo design, "Rulings").
-        undo = loaded.undo.filter(step => requestingPlayer.contains(step.issuer))
-          .map(step => StepOfferProjection(
-            step.note.fold("Undo your last step")(line => s"Undo: $line"))),
+        undo = offer(loaded.undo, requestingPlayer, "Undo"),
+        redo = offer(loaded.redo, requestingPlayer, "Redo"),
         logRevision = loaded.logRevision)
+
+  /** `step` offered to its issuer alone (undo design, "Rulings" and
+    * "Controls"): "Undo: {line}", or "Undo your last step" when the batch
+    * posts no line of its own, with `verb` in place of "Undo". */
+  private def offer(step: Option[UndoStep], viewer: Option[PlayerId],
+      verb: String): Option[StepOfferProjection] =
+    step.filter(step => viewer.contains(step.issuer)).map(step =>
+      StepOfferProjection(
+        step.note.fold(s"$verb your last step")(line => s"$verb: $line")))
 
   private def readyProjection(gameId: String, sequence: Long,
       context: ScopedProjectionContext): GameProjection =

@@ -11,6 +11,7 @@ private[protocol] object CommandIntentDecoders:
     case "beginRest" => empty(value, path, BeginRest)
     case "finishRest" => empty(value, path, FinishRest)
     case "undo" => empty(value, path, Undo)
+    case "redo" => empty(value, path, Redo)
     case "usePower" =>
       for
         _ <- exact(value, Set("type", "powerId", "source"), path)
