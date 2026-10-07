@@ -176,9 +176,9 @@ class RestSuite extends munit.FunSuite:
 
   test("each relevant Rest handler records fallback diagnostics without " +
       "blocking, and replay accepts the record but not a tampered one"):
-    // Insomnia's REST runs as a phase power, so it records no diagnostic.
-    val relevant = Map("denizen.vow-of-poverty" -> "Vow of Poverty",
-      "denizen.naysayers" -> "Naysayers")
+    // Insomnia's and Vow of Poverty's RESTs run as phase powers, so they
+    // record no diagnostic.
+    val relevant = Map("denizen.naysayers" -> "Naysayers")
     relevant.foreach { (handler, card) =>
       val state = restBoard.adviser(p1, card).ready
       val restedEvents = accepted(rest(Ready(state), p1)).events

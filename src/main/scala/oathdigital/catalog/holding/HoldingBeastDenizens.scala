@@ -73,14 +73,6 @@ object MarshSpiritCard extends Denizen(DenizenId("192"), "Marsh Spirit", Suit.Be
     text = "Players who target this site **cannot** use battle plans.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object VowOfPovertyCard extends Denizen(DenizenId("193"), "Vow of Poverty", Suit.Beast) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.vow-of-poverty"),
-    persistent = false, cost = Cost.free,
-    text = "You **cannot** gain [favor] from Trade. **REST:** If you " +
-      "have no [favor], take [favor] [favor] from any one favor " +
-      "bank.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object ForestCouncilCard extends Denizen(DenizenId("194"), "Forest Council", Suit.Beast) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.forest-council"),
     persistent = true, cost = Cost.free,

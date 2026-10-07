@@ -5,7 +5,7 @@ import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.gameplay.powers.economy.{AnimalPlaymates, AwaitedReturn,
   Birdsong, CupOfPlenty, Curfew, Defame, Downtrodden, InitiationRite,
   MountedLibrary, MovingMarket, RowdyPub, TheOldOak, VillageIdiot,
-  VowOfBeastkin}
+  VowOfBeastkin, VowOfPoverty}
 import oathdigital.gameplay.powers.recover.RelicWorship
 import oathdigital.gameplay.powers.search.{Augury, CropRotation, Disciples,
   ForcedLabor, NewsFromAfar, TruthfulHarp}
@@ -37,4 +37,5 @@ object ActionModifiers:
       Vector(ForcedLabor.forCatalog(catalog)) ++
       Vector(InitiationRite) ++
       Vector(VowOfBeastkin.forCatalog(catalog)) ++
+      Vector(VowOfPoverty) ++
       Vector(RelicWorship.forCatalog(catalog))
