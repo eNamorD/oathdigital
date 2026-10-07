@@ -69,14 +69,6 @@ object FamilyWagonCard extends Denizen(DenizenId("168"), "Family Wagon", Suit.No
       "advisers-—bury other advisers you have or would gain.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object WayStationCard extends Denizen(DenizenId("169"), "Way Station", Suit.Nomad) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.way-station"),
-    persistent = true, cost = Cost.free,
-    text = "Spend no Supply if you're traveling to this site and either " +
-      "rule Way Station or choose to give [favor] to its ruler. " +
-      "_(Give it to Chancellor if Empire, burn it if bandits.)_")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object HospitalityCard extends Denizen(DenizenId("171"), "Hospitality", Suit.Nomad) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.hospitality"),
     persistent = false, cost = Cost.free,

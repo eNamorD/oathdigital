@@ -61,7 +61,7 @@ import oathdigital.gameplay.powers.travel.{AFastSteedCard, BrokenPeaksSite,
   DesolateShoreSite, DragonskinDrumCard, FairIsleSite, ForestPathsCard,
   GraspingVinesCard, GreenShoreSite, HiddenPlaceSite, MinesSite, NarrowPassSite,
   RockyCoastSite, RoyalStablesCard, SpecialEnvoyCard, SunkenIslesSite, TentsCard,
-  TollRoadsCard, TyrantCard}
+  TollRoadsCard, TyrantCard, WayStationCard}
 import oathdigital.gameplay.powers.wake.{AncientCitySite, HeadwatersSite,
   HornedMaskCard, HungerCard, MarbleFountainsCard, QuartermasterCard,
   RiverbankSite, TidalMarshesSite}
