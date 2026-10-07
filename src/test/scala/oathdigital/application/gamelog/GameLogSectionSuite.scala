@@ -18,8 +18,9 @@ class GameLogSectionSuite extends munit.FunSuite:
     // The tag (or start line) and "Travelled to".
     assertEquals(travel.size, 2, travel)
     assertEquals(travel.map(_.section).distinct.size, 1, travel)
-    // Travel's opening line posts at its run's first event.
-    assertEquals(travel.head.section.map(_.id), Some(travel.head.sequence))
+    // Travel's opening line posts at its cost step, after the destination
+    // pick; its section stays keyed by the run's first event, the start.
+    assert(travel.head.section.exists(_.id < travel.head.sequence), travel)
 
   test("headlines, a quiet Wake and Rest's supply carry no section"):
     val entries = format(round, None)

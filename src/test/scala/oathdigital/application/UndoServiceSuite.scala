@@ -12,9 +12,6 @@ import oathdigital.testkit.Table.{p1, p2, p3}
   * "Rulings"). */
 class UndoServiceSuite extends munit.FunSuite:
   private val table = Table.start.banditsRefilled
-  private def travel(actor: PlayerId, to: PlayerId) = GameCommand.StartWalker(
-    ActionRef.Travel, StartPayload(actor, Vector.empty,
-      Vector(DecisionOptionRef.Site(Table.quietPawnSite(to)))))
   private def accept(result: Either[GameApplicationError, GameAccepted])
       : GameAccepted = result.fold(error => fail(s"rejected: $error"), identity)
   private def rejected(violation: OathViolation) =
@@ -26,32 +23,38 @@ class UndoServiceSuite extends munit.FunSuite:
 
   test("an undo restores the state before the batch, and a reload agrees"):
     val (service, repository) = table.service()
-    val moved = accept(service.handle("g", 0L, travel(p1, p3)))
+    val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+    val moved = travel.picked
     val undone = accept(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
-    assertEquals(undone.state, table.state)
-    assertEquals(undone.events, Vector(StepTakenBack(0L, moved.nextSequence, p1)))
+    assertEquals(undone.state, travel.started.state)
+    assertEquals(undone.events, Vector(StepTakenBack(
+      travel.started.nextSequence, moved.nextSequence, p1)))
     assertEquals(undone.nextSequence, moved.nextSequence + 1L)
-    assertEquals(undone.undo, None)
+    assertEquals(undone.undo.map(step => (step.from, step.until)),
+      Some((0L, travel.started.nextSequence)))
     assertEquals(undone.logRevision, Some(moved.nextSequence))
     val reloaded = new GameApplicationService(catalog, repository,
       genesis = table.state)
-    assertEquals(reloaded.load("g").map(_.map(_.state)), Right(Some(table.state)))
+    assertEquals(reloaded.load("g").map(_.map(_.state)),
+      Right(Some(travel.started.state)))
 
   test("undo chains back across an action's end into the action before"):
     val (service, _) = table.service()
-    val first = accept(service.handle("g", 0L, travel(p1, p3)))
-    val second = accept(service.handle("g", first.nextSequence, travel(p1, p2)))
-    val once = accept(service.handle("g", second.nextSequence,
+    val first = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+    val second = ParkedServiceFixture.travelToPawnOf(service, "g",
+      first.picked.nextSequence, p1, p2)
+    val once = accept(service.handle("g", second.picked.nextSequence,
       GameCommand.Undo(p1)))
-    assertEquals(once.state, first.state)
+    assertEquals(once.state, second.started.state)
     val twice = accept(service.handle("g", once.nextSequence,
       GameCommand.Undo(p1)))
-    assertEquals(twice.state, table.state)
+    assertEquals(twice.state, first.picked.state)
 
   test("only the batch's issuer may take it back"):
     val (service, repository) = table.service()
-    val moved = accept(service.handle("g", 0L, travel(p1, p3)))
+    val moved = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+      .picked
     assertEquals(service.handle("g", moved.nextSequence, GameCommand.Undo(p2)),
       rejected(OathViolation.UndoNotIssuer(p2, p1)))
     assertEquals(repository.load("g").map(_.map(_.nextSequence)),
@@ -70,7 +73,11 @@ class UndoServiceSuite extends munit.FunSuite:
       GameCommand.Undo(park.mover)))
     undone.state match
       case OathState.Ready(ready) =>
-        assertEquals(ready.game.current.walkerPending, None)
+        // Back at the destination decision the mover's pick answered.
+        assertEquals(ready.game.current.walkerProcedure,
+          Some(ActionRef.Travel))
+        assertEquals(ready.game.current.walkerPending,
+          Some(PendingTree(Vector("0"), Vector.empty)))
       case other => fail(s"expected a ready game, got $other")
 
   test("an off-turn issuer takes back their answer, then the actor theirs"):
@@ -89,7 +96,8 @@ class UndoServiceSuite extends munit.FunSuite:
 
   test("a marker that does not name the latest live batch fails replay"):
     val (service, repository) = table.service()
-    val moved = accept(service.handle("g", 0L, travel(p1, p3)))
+    val moved = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+      .picked
     val forged = UndoJournals.rewritten(
       UndoJournals.events(repository, "g") :+
         StepTakenBack(1L, moved.nextSequence, p1), "g")

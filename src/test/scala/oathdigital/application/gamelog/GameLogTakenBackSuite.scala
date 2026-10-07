@@ -15,9 +15,6 @@ import LogScripts.formatter
 /** What a reader sees of taken-back moves (undo design, "Game Log"). */
 class GameLogTakenBackSuite extends munit.FunSuite:
   private val table = Table.start.banditsRefilled
-  private def travel(to: PlayerId) = GameCommand.StartWalker(ActionRef.Travel,
-    StartPayload(p1, Vector.empty,
-      Vector(DecisionOptionRef.Site(Table.quietPawnSite(to)))))
   private def accept(result: Either[GameApplicationError, GameAccepted])
       : GameAccepted = result.fold(error => fail(s"rejected: $error"), identity)
   private def log(service: GameApplicationService, gameId: String,
@@ -35,7 +32,8 @@ class GameLogTakenBackSuite extends munit.FunSuite:
 
   test("taken-back lines read as before, grouped under who took them back"):
     val (service, _) = table.service()
-    val moved = accept(service.handle("g", 0L, travel(p3)))
+    val moved = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+      .picked
     val before = log(service, "g", p2)
     accept(service.handle("g", moved.nextSequence, GameCommand.Undo(p1)))
     val after = log(service, "g", p2)
@@ -50,11 +48,14 @@ class GameLogTakenBackSuite extends munit.FunSuite:
 
   test("consecutive undos make one group"):
     val (service, _) = table.service()
-    val first = accept(service.handle("g", 0L, travel(p3)))
-    val second = accept(service.handle("g", first.nextSequence, travel(p2)))
-    val once = accept(service.handle("g", second.nextSequence,
+    val first = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+    val second = ParkedServiceFixture.travelToPawnOf(service, "g",
+      first.picked.nextSequence, p1, p2)
+    val once = accept(service.handle("g", second.picked.nextSequence,
       GameCommand.Undo(p1)))
-    accept(service.handle("g", once.nextSequence, GameCommand.Undo(p1)))
+    val twice = accept(service.handle("g", once.nextSequence,
+      GameCommand.Undo(p1)))
+    accept(service.handle("g", twice.nextSequence, GameCommand.Undo(p1)))
     val groups = log(service, "g", p1).flatMap(_.takenBack).map(_.group).distinct
     assertEquals(groups.size, 1)
 

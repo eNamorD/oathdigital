@@ -135,7 +135,7 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
       .flatMap(_.banners).map(banner => banner.key -> banner.resources),
       Vector("peoples-favor" -> 2))
 
-  test("Travel is one atomic walker command and reloads pawn Supply and Act"):
+  test("Travel parks on its destination, completes on the pick and reloads pawn Supply and Act"):
     // Bandits at every empty site, so the Travel's own events are the only
     // ones journaled: no refill follows it.
     val table = Table.start.banditsRefilled
@@ -145,9 +145,10 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     val before = Look(inAct).player(active)
     // p1 stands at Ancient City and travels to the other Cradle site.
     val destination = CatalogNames.site("Broken Peaks")
-    val traveled = accepted(service.handle("game-travel", 0L,
-      GameCommand.StartWalker(ActionRef.Travel, StartPayload(active,
-        Vector.empty, Vector(DecisionOptionRef.Site(destination))))))
+    val parked = accepted(service.handle("game-travel", 0L,
+      ParkedServiceFixture.startTravel(active)))
+    val traveled = accepted(service.handle("game-travel", parked.nextSequence,
+      ParkedServiceFixture.pickTravelDestination(active, destination)))
     val stored = loaded(replayingSecond(service, repository)
       .load("game-travel"))
     val after = Outcomes.ready(stored.state)
@@ -157,21 +158,22 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     assertEquals(moved.pawnSite, Some(destination))
     assert(moved.board.supply.supply < before.board.supply.supply)
     assertEquals(after.game.current.turn.phase, Phase.Act)
-    // The single legacy travel event became the walker's own three: the pay
-    // node, the pawn move, and the completion boundary. That is the whole
-    // observable shape change of the port -- the state each side reaches is
-    // identical, which is what the assertions above pin. The batch's opening
-    // `CommandAccepted` makes the stream four long.
-    assertEquals(stored.nextSequence, 4L)
-    assertEquals(traveled.events.map(_.productPrefix),
-      Vector("WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted"))
-    // Nothing parked: a flat tree finishes inside the command that started it.
+    // The start parks on the destination: its batch holds `CommandAccepted`
+    // and the park. The pick's batch holds the recorded answer, the pay node,
+    // the pawn move and the completion boundary, behind its own
+    // `CommandAccepted`.
+    assertEquals(parked.events.map(_.productPrefix), Vector("WalkerParked"))
+    assertEquals(stored.nextSequence, 7L)
+    assertEquals(traveled.events.map(_.productPrefix), Vector(
+      "WalkerStepRecorded", "WalkerStepRecorded", "WalkerStepRecorded",
+      "WalkerCompleted"))
+    // Nothing is left parked once the destination is picked.
     assertEquals(after.game.current.walkerPending, None)
     assertEquals(after.game.current.walkerProcedure, None)
     val types = loaded(repository.load("game-travel")).records
-      .takeRight(3).map(ujson.read(_)("eventType").str)
+      .takeRight(4).map(ujson.read(_)("eventType").str)
     assertEquals(types, Vector("walker.step-recorded", "walker.step-recorded",
-      "walker.completed"))
+      "walker.step-recorded", "walker.completed"))
 
   /** An off-turn Oathkeeper tie, reached and resolved entirely through
     * `GameApplicationService`, survives reload on both sides of the park.

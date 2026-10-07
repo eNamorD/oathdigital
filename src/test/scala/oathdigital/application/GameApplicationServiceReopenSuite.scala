@@ -97,10 +97,11 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
     * p2, the only player there: no negotiators decision is asked. */
   private def negotiationOpened(service: GameApplicationService,
       gameId: String)(using munit.Location): GameAccepted =
-    val traveled = accepted(service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.Travel, StartPayload(p1,
-        Vector.empty, Vector(DecisionOptionRef.Site(
-          CatalogNames.site("Broken Peaks")))))))
+    val parked = accepted(service.handle(gameId, 0L,
+      ParkedServiceFixture.startTravel(p1)))
+    val traveled = accepted(service.handle(gameId, parked.nextSequence,
+      ParkedServiceFixture.pickTravelDestination(p1,
+        CatalogNames.site("Broken Peaks"))))
     assertEquals(NegotiationDeal.eligible(Outcomes.ready(traveled.state), p1),
       Vector(p2))
     service.handle(gameId, traveled.nextSequence,

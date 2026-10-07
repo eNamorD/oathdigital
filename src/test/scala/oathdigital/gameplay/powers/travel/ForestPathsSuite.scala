@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.model.OathViolation.TravelPassBlocked
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
   Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
@@ -41,7 +40,7 @@ class ForestPathsSuite extends munit.FunSuite:
   test("it ignores Narrow Pass too: a pass the actor does not rule blocks nothing"):
     val ready = Table.from(held).denizen(beast, at = provincePlains).unchecked
     val blocked = travel(ready, provincePlains)
-    assertEquals(rejected(blocked), TravelPassBlocked(pass, provincePlains))
+    assertEquals(rejected(blocked), destinationNotOffered)
     assertEquals(candidates(ready).get(provincePlains), None)
     // A beast card costs no Supply.
     assertEquals(candidates(ready, modifiers).get(provincePlains), Some(0))
@@ -70,7 +69,7 @@ class ForestPathsSuite extends munit.FunSuite:
   test("Narrow Pass still blocks a route with no beast card at the destination"):
     val ready = held
     assertEquals(rejected(travel(ready, provincePlains, modifiers)),
-      TravelPassBlocked(pass, provincePlains))
+      destinationNotOffered)
 
   test("it cannot be selected without a favor to place"):
     val broke = Table.from(held).warbandsAt(pass, actor, 1)

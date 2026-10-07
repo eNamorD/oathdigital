@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.{OathRules, TravelPlay}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -74,8 +74,14 @@ object TravelFixture:
       : Map[SiteId, Int] = TravelProcedure.candidates(catalog, ready, actor,
     powers(modifiers)).toMap
 
+  /** What picking a destination the decision left out is refused with: the
+    * look-ahead hides a destination no path completes, so the answer names an
+    * option the decision does not offer. */
+  val destinationNotOffered: OathViolation = OathViolation.InvalidEventOrder(
+    "decision travel.destination does not offer the selected option")
+
+  /** `actor` starts a Travel with `modifiers` and picks `destination`. */
   def travel(ready: ReadyGame, destination: SiteId,
       modifiers: Vector[PowerId] = Vector.empty)
       : Either[OathViolation, OathTransition] =
-    rules.startWalker(Ready(ready), ActionRef.Travel, actor, modifiers,
-      Vector(DecisionOptionRef.Site(destination)))
+    TravelPlay.travelled(rules, Ready(ready), actor, destination, modifiers)

@@ -120,8 +120,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     endWake(holder)
     // p1 travels from Ancient City to Broken Peaks.
     val destination = CatalogNames.site("Broken Peaks")
-    accept(rules.startWalker(state, ActionRef.Travel, holder, Vector.empty,
-      Vector(DecisionOptionRef.Site(destination))))
+    accept(TravelPlay.travelled(rules, state, holder, destination))
     assertEquals(Outcomes.ready(state).game.current.title,
       OathkeeperState(Some(holder), TitleSide.Usurper))
     accept(rules.startWalker(state, PhaseTransitionRef.BeginRest, holder))
@@ -264,10 +263,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
       .ready.updateCurrent(_.copy(
         result = Some(GameResult(p1, VictoryKind.Usurper))))
     val act = endedGame(Phase.Act)
-    // p1 stands at Ancient City and would travel to Broken Peaks.
-    val destination = CatalogNames.site("Broken Peaks")
-    assertEquals(rules.startWalker(Ready(act), ActionRef.Travel, p1,
-      Vector.empty, Vector(DecisionOptionRef.Site(destination))),
+    assertEquals(rules.startWalker(Ready(act), ActionRef.Travel, p1),
       Left(OathViolation.GameEnded))
     assertEquals(rules.startWalker(Ready(act), ActionRef.Forge, p1),
       Left(OathViolation.GameEnded))

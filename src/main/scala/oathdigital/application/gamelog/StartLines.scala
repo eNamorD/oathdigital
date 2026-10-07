@@ -42,8 +42,8 @@ private[gamelog] final class StartLines(words: LogWords,
       case _ => None
 
   /** The tag's name and what its line says beyond the modifiers, but only at
-    * the tag's anchor: the run's first event, except Muster and Trade (their
-    * cost step, after the source decision) and Campaign (the first event by
+    * the tag's anchor: the run's first event, except Muster, Trade and Travel
+    * (their cost step, after the source or destination decision) and Campaign (the first event by
     * which kind and defender are both settled). */
   private def opening(journal: LogJournal, run: Run, at: Int)
       : Option[(String, Vector[LogSpan])] =
@@ -51,7 +51,7 @@ private[gamelog] final class StartLines(words: LogWords,
     run.procedure match
       case ActionRef.Campaign =>
         campaign(journal, run, at).map(said => ("Campaign", said))
-      case ActionRef.Muster | ActionRef.Trade =>
+      case ActionRef.Muster | ActionRef.Trade | ActionRef.Travel =>
         name(run.procedure).filter(_ =>
           paysCost(journal, run, at) || completing)
           .map(named => (named, Vector.empty))

@@ -12,9 +12,6 @@ import oathdigital.testkit.Table.{p1, p2, p3}
   * "Redo"). */
 class RedoServiceSuite extends munit.FunSuite:
   private val table = Table.start.banditsRefilled
-  private def travel(actor: PlayerId, to: PlayerId) = GameCommand.StartWalker(
-    ActionRef.Travel, StartPayload(actor, Vector.empty,
-      Vector(DecisionOptionRef.Site(Table.quietPawnSite(to)))))
   private def accept(result: Either[GameApplicationError, GameAccepted])
       : GameAccepted = result.fold(error => fail(s"rejected: $error"), identity)
   private def rejected(violation: OathViolation) =
@@ -26,17 +23,18 @@ class RedoServiceSuite extends munit.FunSuite:
 
   test("a redo restores the state after the batch, and a reload agrees"):
     val (service, repository) = table.service()
-    val moved = accept(service.handle("g", 0L, travel(p1, p3)))
+    val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+    val moved = travel.picked
     val undone = accept(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
     val redone = accept(service.handle("g", undone.nextSequence,
       GameCommand.Redo(p1)))
     assertEquals(redone.state, moved.state)
-    assertEquals(redone.events,
-      Vector(StepRestored(0L, moved.nextSequence, p1)))
+    assertEquals(redone.events, Vector(StepRestored(
+      travel.started.nextSequence, moved.nextSequence, p1)))
     assertEquals(redone.nextSequence, undone.nextSequence + 1L)
     assertEquals(redone.undo.map(step => (step.from, step.until)),
-      Some((0L, moved.nextSequence)))
+      Some((travel.started.nextSequence, moved.nextSequence)))
     assertEquals(redone.redo, None)
     assertEquals(redone.logRevision, Some(undone.nextSequence))
     val reloaded = new GameApplicationService(catalog, repository,
@@ -46,38 +44,41 @@ class RedoServiceSuite extends munit.FunSuite:
 
   test("redos restore in the reverse order of the undos"):
     val (service, _) = table.service()
-    val first = accept(service.handle("g", 0L, travel(p1, p3)))
-    val second = accept(service.handle("g", first.nextSequence, travel(p1, p2)))
-    val once = accept(service.handle("g", second.nextSequence,
+    val first = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+    val second = ParkedServiceFixture.travelToPawnOf(service, "g",
+      first.picked.nextSequence, p1, p2)
+    val once = accept(service.handle("g", second.picked.nextSequence,
       GameCommand.Undo(p1)))
     val twice = accept(service.handle("g", once.nextSequence,
       GameCommand.Undo(p1)))
     val firstBack = accept(service.handle("g", twice.nextSequence,
       GameCommand.Redo(p1)))
-    assertEquals(firstBack.state, first.state)
+    assertEquals(firstBack.state, second.started.state)
     val secondBack = accept(service.handle("g", firstBack.nextSequence,
       GameCommand.Redo(p1)))
-    assertEquals(secondBack.state, second.state)
+    assertEquals(secondBack.state, second.picked.state)
 
   test("a restored batch can be taken back again"):
     val (service, _) = table.service()
-    val moved = accept(service.handle("g", 0L, travel(p1, p3)))
+    val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+    val moved = travel.picked
     val undone = accept(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
     val redone = accept(service.handle("g", undone.nextSequence,
       GameCommand.Redo(p1)))
     val again = accept(service.handle("g", redone.nextSequence,
       GameCommand.Undo(p1)))
-    assertEquals(again.state, table.state)
+    assertEquals(again.state, travel.started.state)
     assertEquals(again.redo.map(step => (step.from, step.until)),
-      Some((0L, moved.nextSequence)))
+      Some((travel.started.nextSequence, moved.nextSequence)))
 
   test("with nothing taken back, there is nothing to redo"):
     val (service, repository) = table.service()
     assertEquals(service.handle("g", 0L, GameCommand.Redo(p1)),
       rejected(OathViolation.NothingToRedo))
     assertEquals(repository.load("g"), Right(None))
-    val moved = accept(service.handle("g", 0L, travel(p1, p3)))
+    val moved = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+      .picked
     assertEquals(service.handle("g", moved.nextSequence, GameCommand.Redo(p1)),
       rejected(OathViolation.NothingToRedo))
     assertEquals(repository.load("g").map(_.map(_.nextSequence)),
@@ -85,10 +86,12 @@ class RedoServiceSuite extends munit.FunSuite:
 
   test("a new command leaves nothing to redo"):
     val (service, _) = table.service()
-    val moved = accept(service.handle("g", 0L, travel(p1, p3)))
+    val moved = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+      .picked
     val undone = accept(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
-    val again = accept(service.handle("g", undone.nextSequence, travel(p1, p2)))
+    val again = accept(service.handle("g", undone.nextSequence,
+      ParkedServiceFixture.pickTravelDestination(p1, Table.quietPawnSite(p2))))
     assertEquals(service.handle("g", again.nextSequence, GameCommand.Redo(p1)),
       rejected(OathViolation.NothingToRedo))
 

@@ -167,10 +167,10 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
       }
     }
 
-  test("only Muster and Trade require a playable option"):
+  test("only Muster, Trade and Travel require a playable option"):
     assertEquals(ProcedureRef.all.filter(
       WalkerProcedureRegistry.requiresPlayableOption).toSet,
-      Set[ProcedureRef](ActionRef.Muster, ActionRef.Trade))
+      Set[ProcedureRef](ActionRef.Muster, ActionRef.Trade, ActionRef.Travel))
 
   /** Knights Errant runs a Campaign inside a Muster, so a Campaign question
     * parked under Muster must show the roll it would under Campaign. Neither

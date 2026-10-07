@@ -1,7 +1,9 @@
 package oathdigital.application
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.TravelPlay
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
@@ -43,6 +45,31 @@ object ParkedServiceFixture:
     GameCommand.ResolveWalker(actor, TreeDecision(
       CardPlayProcedure.facedownAdviserDecisionId,
       DecisionAnswer.ChooseOneAnswer(optionRef(card))))
+
+  /** `actor` starts a Travel; the walk parks on the destination. */
+  def startTravel(actor: PlayerId): GameCommand =
+    GameCommand.StartWalker(ActionRef.Travel,
+      StartPayload(actor, Vector.empty, Vector.empty))
+
+  /** `actor` answers the destination decision with `site`. */
+  def pickTravelDestination(actor: PlayerId, site: SiteId): GameCommand =
+    GameCommand.ResolveWalker(actor, TreeDecision(
+      TravelProcedure.destinationDecisionId, TravelPlay.destination(site)))
+
+  /** A Travel played through the service: its start and its pick, the two
+    * command batches it is. */
+  final case class TravelBatches(started: GameAccepted, picked: GameAccepted)
+
+  /** `actor` Travels through `service` to where `to` stands on the quiet
+    * table, at journal position `sequence` of game `gameId`. */
+  def travelToPawnOf(service: GameApplicationService, gameId: String,
+      sequence: Long, actor: PlayerId, to: PlayerId)(using munit.Location)
+      : TravelBatches =
+    val started = Unwrap.accepted(service.handle(gameId, sequence,
+      startTravel(actor)))
+    TravelBatches(started, Unwrap.accepted(service.handle(gameId,
+      started.nextSequence, pickTravelDestination(actor,
+        Table.quietPawnSite(to)))))
 
   /** The first player of the fixture's first game: Setup seats p2 first. */
   val firstPlayer: PlayerId = p2
@@ -213,7 +240,7 @@ object ParkedServiceFixture:
   /** The off-turn Oathkeeper tie: p3 holds the title, and p1 and p2 each
     * rule a site with one warband (the other 2 stay on their boards). The
     * holder must pick between the two tied leaders after p1's Travel to
-    * Buried Giant. Bandits fill the empty sites first, so the refill that
+    * p3's pawn site. Bandits fill the empty sites first, so the refill that
     * follows a first command does not journal an event of its own. */
   def oathkeeperTiePark(gameId: String)(using munit.Location)
       : OathkeeperTiePark =
@@ -225,9 +252,8 @@ object ParkedServiceFixture:
       .boardWarbands(p2, 2)
       .banditsRefilled
     val (service, repository, act) = journaled(table, gameId)
-    val parked = act.parkedAfter(
-      GameCommand.StartWalker(ActionRef.Travel, StartPayload(p1,
-        Vector.empty, Vector(DecisionOptionRef.Site(Table.quietPawnSite(p3))))))
+    val parked = act.parkedAfter(startTravel(p1))
+      .parkedAfter(pickTravelDestination(p1, Table.quietPawnSite(p3)))
     assert(parked.events.last match {
       case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _, _) => true
       case _ => false

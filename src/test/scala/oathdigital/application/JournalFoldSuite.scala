@@ -1,7 +1,6 @@
 package oathdigital.application
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.model._
 import oathdigital.model.OathEvent.CommandAccepted
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2, p3}
@@ -10,15 +9,13 @@ import oathdigital.testkit.Table.{p1, p2, p3}
   * (undo design, "Replay: one forward fold"). */
 class JournalFoldSuite extends munit.FunSuite:
   private val table = Table.start.banditsRefilled
-  private def travel(actor: PlayerId, to: PlayerId) = GameCommand.StartWalker(
-    ActionRef.Travel, StartPayload(actor, Vector.empty,
-      Vector(DecisionOptionRef.Site(Table.quietPawnSite(to)))))
   private def accept(result: Either[GameApplicationError, GameAccepted])
       : GameAccepted = result.fold(error => fail(s"rejected: $error"), identity)
 
   test("each command's batch opens with its issuer, outside the events it reports"):
     val (service, _) = table.service()
-    val accepted = accept(service.handle("g", 0L, travel(p1, p3)))
+    val accepted = accept(service.handle("g", 0L,
+      ParkedServiceFixture.startTravel(p1)))
     assertEquals(accepted.nextSequence, accepted.events.size.toLong + 1L)
     val history = service.history("g").toOption.flatten
       .getOrElse(fail("no history"))
@@ -27,10 +24,11 @@ class JournalFoldSuite extends munit.FunSuite:
 
   test("an ordinary batch is offered back to its issuer, on accept and on load"):
     val (service, repository) = table.service()
-    val accepted = accept(service.handle("g", 0L, travel(p1, p3)))
+    val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+    val accepted = travel.picked
     val step = accepted.undo.getOrElse(fail("no undo offered"))
     assertEquals((step.issuer, step.from, step.until),
-      (p1, 0L, accepted.nextSequence))
+      (p1, travel.started.nextSequence, accepted.nextSequence))
     assert(step.note.nonEmpty, "a Travel posts a line its issuer sees")
     val reloaded = new GameApplicationService(catalog, repository,
       genesis = table.state)
@@ -39,14 +37,16 @@ class JournalFoldSuite extends munit.FunSuite:
 
   test("the latest batch is the one offered"):
     val (service, _) = table.service()
-    val first = accept(service.handle("g", 0L, travel(p1, p3)))
-    val second = accept(service.handle("g", first.nextSequence, travel(p1, p2)))
-    assertEquals(second.undo.map(step => (step.from, step.until)),
-      Some((first.nextSequence, second.nextSequence)))
+    val first = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+    val second = ParkedServiceFixture.travelToPawnOf(service, "g",
+      first.picked.nextSequence, p1, p2)
+    assertEquals(second.picked.undo.map(step => (step.from, step.until)),
+      Some((second.started.nextSequence, second.picked.nextSequence)))
 
   test("a journal written without batch openings loads and offers nothing"):
     val (service, repository) = table.service()
-    val accepted = accept(service.handle("g", 0L, travel(p1, p3)))
+    val accepted = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+      .picked
     val stripped = UndoJournals.withoutBatchOpenings(repository, "g")
     val reloaded = new GameApplicationService(catalog, stripped,
       genesis = table.state)

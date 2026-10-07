@@ -1,6 +1,6 @@
 package oathdigital.gameplay.oathkeeper
 
-import oathdigital.gameplay.{OathRules, StateBasedEvaluation}
+import oathdigital.gameplay.{OathRules, StateBasedEvaluation, TravelPlay}
 import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -21,8 +21,8 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     * completion runs the action boundary and moves no forces.
     */
   private def travel(ready: ReadyGame) =
-    rules.startWalker(Ready(ready), ActionRef.Travel, p1, Vector.empty,
-      Vector(DecisionOptionRef.Site(CatalogNames.site("Broken Peaks"))))
+    TravelPlay.travelled(rules, Ready(ready), p1,
+      CatalogNames.site("Broken Peaks"))
 
   private def replays(start: ReadyGame, events: Vector[OathEvent],
       expected: OathState): Unit =

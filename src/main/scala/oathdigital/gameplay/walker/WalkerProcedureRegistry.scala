@@ -81,7 +81,7 @@ object WalkerProcedureRegistry:
     * 5): what they chose before the walk began, for a procedure whose tree
     * cannot be built without it. Recover and Forge derive their whole tree
     * from the actor's pawn site and select nothing, so they take an empty
-    * vector and reject anything else; Travel cannot name a route without one.
+    * vector and reject anything else; Search cannot name its source without one.
     *
     * They are `DecisionOptionRef`s -- the same game-object vocabulary a
     * decision option names, already spelled for the wire once in
@@ -182,19 +182,19 @@ object WalkerProcedureRegistry:
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
         args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, activePlayer))),
 
-    /** Batch-1 Task 5. Travel has no `Roll` and no `Decide`: its tree is a
-      * pay node and a pawn move, so it runs to the end inside the command
-      * that starts it and never parks. It is the first action to declare a
-      * start argument, and `build` and `rebuild` are the same function
-      * because every gate Travel has is a fact about the route rather than a
-      * start-only cost.
+    /** Travel parks on its destination first (travel destination design).
+      * Nothing runs before that decision, so the start is previewed through
+      * the playable-option gate. Its source is a start fact: a resume after
+      * the pawn moved reads it back rather than from the pawn.
       */
     ActionRef.Travel -> Entry(
       fallbackKind = Some(ActionKind.Travel),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.TravelModifierSelection),
       build = TravelProcedure.build,
-      rebuild = TravelProcedure.build),
+      rebuild = TravelProcedure.rebuild,
+      requiresPlayableOption = true,
+      startFacts = TravelProcedure.startFacts),
 
     /** Economy. The first walker actions whose first node is a `Decide`
       * and that opt in to the playable-option gate: nothing runs before the

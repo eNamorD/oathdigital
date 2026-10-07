@@ -209,8 +209,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val act = accepted(
       rules.startWalker(setupState, PhaseTransitionRef.EndWake, actor))
     val traveled = accepted(
-      rules.startWalker(act.state, ActionRef.Travel, actor, Vector.empty,
-        Vector(DecisionOptionRef.Site(destination))))
+      TravelPlay.travelled(rules, act.state, actor, destination))
     val adviser = present(Look(traveled.state).player(actor).advisers
       .headOption.map(_.id).collect { case id: WorldCardId => id },
       "a kept adviser")

@@ -9,7 +9,7 @@ import oathdigital.catalog.SiteOnly
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.{ActionRef, DecisionOptionRef, DenizenId}
+import oathdigital.model.DenizenId
 import oathdigital.testkit.{CatalogNames, HttpTestServer,
   TestUserHeaderAuthenticator}
 import oathdigital.testkit.Table.{p1, p2}
@@ -41,10 +41,10 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
     val gameId = "auth-negotiation-game"
     // initialSituation's pawns: p2, the first player, at Ancient City and
     // p1 alone at Buried Giant. p2 travels to p1.
-    val traveled = initialSituation().endingWake(p2).parkedAfter(
-      GameCommand.StartWalker(ActionRef.Travel,
-        StartPayload(p2, Vector.empty,
-          Vector(DecisionOptionRef.Site(CatalogNames.site("Buried Giant"))))))
+    val traveled = initialSituation().endingWake(p2)
+      .parkedAfter(ParkedServiceFixture.startTravel(p2))
+      .parkedAfter(ParkedServiceFixture.pickTravelDestination(p2,
+        CatalogNames.site("Buried Giant")))
     traveled.seedInto(repository, gameId)
     val ownerUser = UserId("negotiation-owner")
     val actorUser = UserId("negotiation-actor")

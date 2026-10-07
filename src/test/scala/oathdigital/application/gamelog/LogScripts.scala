@@ -98,9 +98,9 @@ object LogScripts:
     val acting = woken.endingWake(first)
     val destination = acting.ready.game.current.map.inPlay
       .find(_ != Look(acting.ready).pawn(first)).get
-    val travelled = acting.after(GameCommand.StartWalker(ActionRef.Travel,
-      StartPayload(first, Vector.empty,
-        Vector(DecisionOptionRef.Site(destination)))))
+    val travelled = acting
+      .parkedAfter(ParkedServiceFixture.startTravel(first))
+      .after(ParkedServiceFixture.pickTravelDestination(first, destination))
     val seats = woken.ready.game.current.players.size
     (1 to seats).foldLeft(travelled) { (situation, turn) =>
       val player = Look(situation.ready).active

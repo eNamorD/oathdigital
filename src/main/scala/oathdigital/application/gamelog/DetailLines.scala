@@ -186,7 +186,7 @@ private[gamelog] object DetailLines:
     * Campaign and Negotiation line, and each action line that names its
     * choice. */
   private val NarratedPrefixes = Vector("setup.", ActionLines.PlacePrefix,
-    "cardplay.discard.", "campaign.", "negotiation.")
+    "cardplay.discard.", "campaign.", "negotiation.", "travel.")
   private val NarratedIds = Set(SearchProcedure.cardDecisionId,
     CardPlayProcedure.facedownAdviserDecisionId,
     RecoverProcedure.choiceDecisionId, RecoverProcedure.relicDecisionId,

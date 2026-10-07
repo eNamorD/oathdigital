@@ -1,7 +1,6 @@
 package oathdigital.application
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.model._
 import oathdigital.protocol.projection.StepOfferProjection
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2, p3}
@@ -11,15 +10,15 @@ import oathdigital.testkit.Table.{p1, p2, p3}
 class UndoProjectionSuite extends munit.FunSuite:
   private val table = Table.start.banditsRefilled
   private val projector = new GameProjector(catalog)
-  private val travel = GameCommand.StartWalker(ActionRef.Travel,
-    StartPayload(p1, Vector.empty,
-      Vector(DecisionOptionRef.Site(Table.quietPawnSite(p3)))))
+  /** p1 Travels to where p3 stands; the pick is the batch to offer. */
+  private def moved(service: GameApplicationService): GameAccepted =
+    ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3).picked
   private def accept(result: Either[GameApplicationError, GameAccepted])
       : GameAccepted = result.fold(error => fail(s"rejected: $error"), identity)
 
   test("only the issuer is offered the Undo, named by the batch's first line"):
     val (service, _) = table.service()
-    val moved = accept(service.handle("g", 0L, travel))
+    val moved = this.moved(service)
     val note = moved.undo.flatMap(_.note).getOrElse(fail("no note"))
     assertEquals(projector.project("g", moved.loaded, p1).undo,
       Some(StepOfferProjection(s"Undo: $note")))
@@ -34,7 +33,7 @@ class UndoProjectionSuite extends munit.FunSuite:
 
   test("every viewer sees the latest taken-back marker as the log revision"):
     val (service, _) = table.service()
-    val moved = accept(service.handle("g", 0L, travel))
+    val moved = this.moved(service)
     val undone = accept(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
     assertEquals(projector.project("g", undone.loaded, p2).logRevision,
@@ -44,7 +43,7 @@ class UndoProjectionSuite extends munit.FunSuite:
 
   test("only the issuer is offered the Redo, named by the batch's first line"):
     val (service, _) = table.service()
-    val moved = accept(service.handle("g", 0L, travel))
+    val moved = this.moved(service)
     val undone = accept(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
     val note = undone.redo.flatMap(_.note).getOrElse(fail("no note"))
@@ -61,7 +60,7 @@ class UndoProjectionSuite extends munit.FunSuite:
 
   test("a redo moves every viewer's log revision to its marker"):
     val (service, _) = table.service()
-    val moved = accept(service.handle("g", 0L, travel))
+    val moved = this.moved(service)
     val undone = accept(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
     val redone = accept(service.handle("g", undone.nextSequence,

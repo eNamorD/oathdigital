@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.title
 
-import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.{OathRules, TravelPlay}
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerStepRecorded}
@@ -30,8 +30,8 @@ class ChaosCultSuite extends munit.FunSuite:
 
   /** p1 travels to Broken Peaks; its action boundary settles the title. */
   private def travel(ready: ReadyGame) =
-    rules.startWalker(Ready(ready), ActionRef.Travel, active, Vector.empty,
-      Vector(DecisionOptionRef.Site(CatalogNames.site("Broken Peaks"))))
+    TravelPlay.travelled(rules, Ready(ready), active,
+      CatalogNames.site("Broken Peaks"))
 
   test("Chaos Cult is in the default walker catalog and automatic"):
     assert(WalkerPowerCatalog.default(catalog).powers.contains(power))

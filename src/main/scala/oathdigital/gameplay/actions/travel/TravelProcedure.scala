@@ -3,80 +3,100 @@ package oathdigital.gameplay.actions.travel
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.TravelRules
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.gameplay.OathLifecycle
-import oathdigital.model.{CoreOperation, DecisionOptionRef, Location, Move, OathState, OathViolation, Operation, Piece, PlayerId, PositionedLocation, PowerWindow, ReadyGame, Sequence, SiteId, SpendSupply}
+import oathdigital.model._
 
-/** Declared Travel procedure tree for the walker (batch 1, Task 5).
+/** Travel on the walker (travel destination design).
   *
   * {{{
-  * Sequence(                                  // window = TravelActionEligibility
-  *   Sequence(                                // window = TravelCost
-  *     SpendSupply(actor, printedBase),
-  *     Move(Pawn, source -> destination)))
+  * Sequence(
+  *   Decide(travel.destination),              // a board choose-one over sites
+  *   Branch { after the answer:
+  *     Sequence(                              // window = TravelActionEligibility
+  *       Sequence(                            // window = TravelCost
+  *         SpendSupply(actor, printedBase),
+  *         Move(Pawn, source -> destination))) })
   * }}}
   *
-  * **Why the cost node is a composite and not a windowed leaf.** A transform
-  * hooked on a windowed leaf is handed `Vector(leaf)` and can only wrap or
-  * replace that one operation; it cannot see the route. Travel's terrain
-  * transforms need both children -- they rewrite the `SpendSupply` amount but
-  * read the destination off the sibling `Move` -- so the window sits on a
-  * `Sequence` that hands over both. The outer eligibility `Sequence` wraps the
-  * complete cost node for the same reason: Narrow Pass's `Restriction` has to
-  * see the same route.
+  * **The destination is a decision.** A power that cares which site was
+  * picked acts inside the walk and may ask its own question (Way Station).
+  * The start carries no selection.
   *
-  * **Destination selection is not a decision.** Travel declares no `Decide`.
-  * Choosing a destination is the parameter that selects a complete, atomic
-  * Travel tree, not a persisted interruption inside one -- which is what keeps
-  * Travel free of pending state, cancel semantics, and a route-less
-  * eligibility window. The destination rides the `StartWalker` command as the
-  * action's start selection, and [[destinationOf]] below is the only code
-  * anywhere that knows a Travel start selection is one site.
+  * **The windows sit inside the `Branch`.** Every Travel power finds the
+  * route by flattening its windowed node to the `Move`, and a `Branch`
+  * flattens to nothing, so a window above it would see no route. A selected
+  * modifier's payment, prepended at the eligibility window, is therefore paid
+  * after the pick, and nothing runs before the first decision.
   *
-  * **What does not gate a start.** Supply is not a build gate: it is owned by
-  * the transformed `SpendSupply` and the operation guard, and because the
-  * tree is flat a rejection there leaves neither a moved pawn nor pending
-  * state. Player role and Foundation faces are not gates either -- neither is
-  * a fact about the printed Travel action. Terrain is not a gate: it is the
-  * transforms folding over this tree's own cost node.
+  * **The source is a start fact.** A resume after the pawn moved could not
+  * read it from the pawn, so a fresh build reads the pawn and the start
+  * stores it; a resume reads it back from `walkerStartFacts`.
+  *
+  * **What does not gate a start.** Supply, terrain, role and Foundation faces
+  * are not build gates: the registry's playable-option gate previews every
+  * destination and refuses a start none of them can complete.
   */
 object TravelProcedure:
+  val destinationDecisionId: String = "travel.destination"
+  private val heading = "Choose a Travel destination"
 
-  /** Fresh start and resume build the same tree: Travel's gates are all facts
-    * about the route, which a resume must re-check exactly as a start does.
-    * (Recover and Forge differ because both spend Supply before they park.)
-    */
-  def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
-      args: Vector[DecisionOptionRef])
+  def build(catalog: ExecutableCatalog, state: ReadyGame,
+      activePlayer: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(state), activePlayer)
-    destination <- destinationOf(args)
+    _ <- noSelection(args)
     source <- actorSite(state, activePlayer).toRight(
       OathViolation.PawnSiteMissing(activePlayer))
-    base <- TravelRules.cost(catalog, state, source, destination)
-  yield tree(activePlayer, source, destination, base)
+  yield tree(catalog, state, activePlayer, source)
 
-  /** The destination Travel's start selection names, or a typed rejection.
-    *
-    * The walker hands over an uninterpreted vector of references and knows
-    * nothing about what Travel wants from it, so this is where the shape is
-    * checked: exactly one reference, and a site. No selection, two, or a
-    * relic are all the same failure from here -- a command that did not name
-    * one destination is not a Travel, whatever else it named.
-    */
-  private def destinationOf(args: Vector[DecisionOptionRef])
-      : Either[OathViolation, SiteId] = args match
-    case Vector(DecisionOptionRef.Site(destination)) => Right(destination)
-    case Vector() => Left(OathViolation.InvalidEventOrder(
-      "travel requires a destination site as its start selection"))
-    case other => Left(OathViolation.InvalidEventOrder(
-      "travel takes exactly one destination site as its start selection, " +
-        s"got ${other.map(_.kind).mkString(", ")}"))
+  /** Resume rebuilds what the start built, from the source the start
+    * stored. Once the pawn has moved the destination decision lists other
+    * sites, but the walk is past it by then. */
+  def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
+      activePlayer: PlayerId, args: Vector[DecisionOptionRef])
+      : Either[OathViolation, Operation] = for
+    _ <- noSelection(args)
+    source <- sourceOf(state.game.current.walkerStartFacts)
+  yield tree(catalog, state, activePlayer, source)
+
+  /** The source site, the one fact a resumed Travel cannot read back. */
+  def startFacts(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId): Vector[DecisionOptionRef] =
+    actorSite(state, actor).map(DecisionOptionRef.Site(_)).toVector
 
   def actorSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
     state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
 
-  /** Tree closes only over command-stable actor, route, and printed base. */
-  private def tree(actor: PlayerId, source: SiteId, destination: SiteId,
+  private def noSelection(args: Vector[DecisionOptionRef])
+      : Either[OathViolation, Unit] = Either.cond(args.isEmpty, (),
+    OathViolation.InvalidEventOrder("travel takes no start selection"))
+
+  private def sourceOf(facts: Vector[DecisionOptionRef])
+      : Either[OathViolation, SiteId] = facts match
+    case Vector(DecisionOptionRef.Site(source)) => Right(source)
+    case _ => Left(OathViolation.InvalidEventOrder(
+      "a resumed Travel needs its source site as its one start fact"))
+
+  private def tree(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId, source: SiteId): Operation =
+    val pick = Decide(destinationDecisionId, actor, DecisionQuery.ChooseOne(
+      state.game.current.map.inPlay.filter(_ != source).map(site =>
+        DecisionOption.Site(DecisionOptionRef.Site(site))),
+      heading = Some(heading)))
+    val route = Branch((current, pending) =>
+      pending.answered.collectFirst {
+        case Answered(`destinationDecisionId`,
+            DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site)), _) =>
+          site
+      }.toVector.map(destination =>
+        TravelRules.cost(catalog, current, source, destination).fold(
+          error => BuildOps((_, _) => Left(error)),
+          base => routeTree(actor, source, destination, base))))
+    Sequence(Vector(pick, route))
+
+  /** Closes only over command-stable actor, route, and printed base. */
+  private def routeTree(actor: PlayerId, source: SiteId, destination: SiteId,
       base: Int): Operation =
     Sequence(Vector(
       Sequence(Vector(
@@ -87,43 +107,15 @@ object TravelProcedure:
         Some(PowerWindow.TravelCost))),
       Some(PowerWindow.TravelActionEligibility))
 
-  /** Every destination the actor may travel to right now, with the Supply it
-    * would actually cost -- the single definition both the legal-action
-    * projection and the major-action preview read.
-    *
-    * Each candidate is the SAME declared tree `StartWalker` walks, dry-run
-    * through [[oathdigital.gameplay.walker.WalkerSimulation]] against immutable state: its restrictions
-    * run, its transforms fold, its operations validate, and nothing is
-    * persisted. A destination whose route is restricted, whose tree does not
-    * build, or whose transformed cost the actor cannot afford is simply
-    * absent, because the simulation of it failed for the same reason the
-    * command would have. So an offered destination and its number are not a
-    * second calculation that happens to agree with the command -- they are
-    * the command, run without a journal.
-    *
-    * `powers` is the vector the caller's own command would use: the initial
-    * projection passes the automatic catalog, the preview passes the exact
-    * selected vector, and a player-selected power therefore changes a
-    * projected cost only once it is actually selected.
-    */
-  def candidates(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
-      powers: WalkerPowers): Vector[(SiteId, Int)] =
-    actorSite(state, activePlayer).toVector.flatMap { source =>
-      state.game.current.map.inPlay.filter(_ != source).flatMap { destination =>
-        build(catalog, state, activePlayer,
-          Vector(DecisionOptionRef.Site(destination)))
-          .flatMap(WalkerSimulation.run(_, state, powers))
-          .toOption.map(operations =>
-            destination -> supplySpent(operations, activePlayer))
+  /** Every destination the preview accepts, with the Supply it spends.
+    * Retires with the board targets (Task 3). */
+  def candidates(catalog: ExecutableCatalog, state: ReadyGame,
+      activePlayer: PlayerId, powers: WalkerPowers): Vector[(SiteId, Int)] =
+    build(catalog, state, activePlayer, Vector.empty)
+      .flatMap(WalkerSimulation.preview(_, state, powers))
+      .getOrElse(Vector.empty).collect {
+        case PreviewedOption(DecisionOption.Site(DecisionOptionRef.Site(site)),
+            Right(outcome)) => site -> outcome.operations.collect {
+          case SpendSupply(player, amount, _) if player == activePlayer =>
+            amount }.sum
       }
-    }
-
-  /** The Supply a completed Travel actually spent, read off the operations the
-    * walk recorded rather than recomputed: after the fold, the pay node is
-    * whatever the surviving transforms left it as. A Travel a power made free
-    * has no payment left, and spent none.
-    */
-  private def supplySpent(operations: Vector[CoreOperation], actor: PlayerId)
-      : Int = operations.collect {
-    case SpendSupply(player, amount, _) if player == actor => amount
-  }.lastOption.getOrElse(0)

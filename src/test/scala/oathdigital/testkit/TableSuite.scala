@@ -1,7 +1,7 @@
 package oathdigital.testkit
 
 import oathdigital.application.{GameApplicationService, GameCommand,
-  InMemoryEventStreamRepository, StartPayload}
+  InMemoryEventStreamRepository, ParkedServiceFixture, StartPayload}
 import oathdigital.gameplay.StateBasedEvaluation
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
@@ -252,8 +252,9 @@ class TableSuite extends munit.FunSuite:
 
   test("real commands run from a table: Travel moves the pawn"):
     val travelled = Table.start.situation(Situation.rules(catalog))
-      .after(GameCommand.StartWalker(ActionRef.Travel, StartPayload(p1,
-        startArgs = Vector(DecisionOptionRef.Site(CatalogNames.site("Dunes"))))))
+      .parkedAfter(ParkedServiceFixture.startTravel(p1))
+      .after(ParkedServiceFixture.pickTravelDestination(p1,
+        CatalogNames.site("Dunes")))
     assertEquals(Look(travelled.state).pawn(p1), CatalogNames.site("Dunes"))
 
   test("a journaled situation cannot start at a table, since a stream begins with GameStarted"):

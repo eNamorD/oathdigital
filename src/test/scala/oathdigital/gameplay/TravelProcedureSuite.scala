@@ -1,12 +1,13 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.powers.travel.TravelFixture.destinationNotOffered
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
@@ -77,10 +78,17 @@ class TravelProcedureSuite extends munit.FunSuite:
   private def passRuled(ready: ReadyGame): ReadyGame =
     Table.from(ready).warbandsAt(pass, actor, 1).unchecked
 
+  /** What a Travel to `destination` would spend, from the same preview the
+    * parked decision reads; `None` when the preview refuses it. */
   private def simulate(ready: ReadyGame, destination: SiteId,
       using: WalkerPowers = powers): Option[Int] =
     TravelProcedure.candidates(catalog, ready, actor, using)
       .collectFirst { case (site, cost) if site == destination => cost }
+
+  private def travelled(ready: ReadyGame, destination: SiteId)
+      : Either[OathViolation, OathTransition] =
+    TravelPlay.travelled(new OathRules(catalog, walkerPowerCatalog = powers),
+      Ready(ready), actor, destination)
 
   // (a) candidate simulation matches StartWalker for every terrain case.
 
@@ -127,13 +135,10 @@ class TravelProcedureSuite extends munit.FunSuite:
 
   test("StartWalker spends exactly the cost the candidate simulation showed"):
     val ready = passRuled(travelBoard(supply = 7))
-    val rules = new OathRules(catalog, walkerPowerCatalog = powers)
     Vector(coast, mountain, island).foreach:
       destination =>
         val expected = present(simulate(ready, destination), "a cost")
-        val traveled = accepted(rules.startWalker(Ready(ready),
-          ActionRef.Travel, actor, Vector.empty,
-          Vector(DecisionOptionRef.Site(destination))))
+        val traveled = accepted(travelled(ready, destination))
         val after = Outcomes.ready(traveled.state)
         assertEquals(Look(after).pawn(actor), destination)
         assertEquals(Look(after).supply(actor), 7 - expected,
@@ -144,12 +149,9 @@ class TravelProcedureSuite extends munit.FunSuite:
   test("Narrow Pass removes the candidate and rejects a forged command"):
     val ready = travelBoard(supply = 7)
     val destination = provincePlains
-    val rules = new OathRules(catalog, walkerPowerCatalog = powers)
     assertEquals(simulate(ready, destination), None)
-    assertEquals(rejected(rules.startWalker(Ready(ready), ActionRef.Travel,
-      actor, Vector.empty,
-      Vector(DecisionOptionRef.Site(destination)))),
-      TravelPassBlocked(pass, destination))
+    assertEquals(rejected(travelled(ready, destination)),
+      destinationNotOffered)
 
   test("a pass ruled by the actor blocks nothing, and a coast route passes it"):
     val ruled = passRuled(travelBoard(supply = 7))
@@ -163,16 +165,12 @@ class TravelProcedureSuite extends munit.FunSuite:
   test("zero Supply passes the semantic build and fails at the pay node"):
     val ready = passRuled(travelBoard(supply = 0))
     val destination = coast
-    assert(TravelProcedure.build(catalog, ready, actor,
-      Vector(DecisionOptionRef.Site(destination))).isRight,
+    assert(TravelProcedure.build(catalog, ready, actor, Vector.empty).isRight,
       "supply is owned by the transformed SpendSupply, not a build gate")
     assertEquals(simulate(ready, destination), None)
-
-    val rules = new OathRules(catalog, walkerPowerCatalog = powers)
-    val result = rules.startWalker(Ready(ready), ActionRef.Travel, actor,
-      Vector.empty, Vector(DecisionOptionRef.Site(destination)))
-    assertEquals(result.map(_ => ()), Left(OathViolation.CoreOperationRejected(
-      "insufficient-supply", "a supply spend of 1 exceeds the 0 available")))
+    assertEquals(rejected(travelled(ready, destination)),
+      CoreOperationRejected("insufficient-supply",
+        "a supply spend of 1 exceeds the 0 available"))
 
   test("simulation omits every destination the actor cannot afford"):
     val ready = passRuled(travelBoard(supply = 2))
@@ -186,15 +184,13 @@ class TravelProcedureSuite extends munit.FunSuite:
 
   test("role and Foundation changes do not gate Travel"):
     val ready = passRuled(travelBoard(supply = 7))
-    val destination = coast
     // No Table step reaches lineage roles or foundations.
     val citizen = ready.updateCampaign(_.copy(lineages = ready.game.campaign.lineages.map {
         case (id, lineage) => id -> lineage.copy(role = Role.Citizen)
       }))
     val altered = citizen.updateCampaign(campaign => campaign.copy(foundations =
       campaign.foundations.map { case (k, f) => k -> f.copy(face = FoundationFace.Altered) }))
-    assert(TravelProcedure.build(catalog, altered, actor,
-      Vector(DecisionOptionRef.Site(destination))).isRight)
+    assert(TravelProcedure.build(catalog, altered, actor, Vector.empty).isRight)
 
   // (e) projection uses automatic powers; preview uses the selected vector.
 
@@ -210,42 +206,72 @@ class TravelProcedureSuite extends munit.FunSuite:
     assertEquals(simulate(ready, destination, using =
       WalkerPowers.selected(catalogued, Vector(surcharge.id))), Some(3))
 
-  // (f) Travel is one atomic StartWalker: no park, and replay reproduces it.
+  // (f) Travel parks on its destination, and replay reproduces the walk.
 
-  test("Travel never parks and leaves no walker state behind"):
+  test("a Travel parks on its destination and completes on the answer"):
     val ready = passRuled(travelBoard(supply = 7))
     val rules = new OathRules(catalog, walkerPowerCatalog = powers)
-    val parked = new ParkedDecisionAssertions(catalog, powers)
-    val destination = coast
-    val traveled = accepted(rules.startWalker(Ready(ready), ActionRef.Travel,
-      actor, Vector.empty, Vector(DecisionOptionRef.Site(destination))))
-    val after = Outcomes.ready(traveled.state)
-    assertEquals(after.game.current.walkerPending, None)
+    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Travel,
+      actor, Vector.empty))
+    val parked = Outcomes.ready(started.state)
+    assertEquals(parked.game.current.walkerProcedure, Some(ActionRef.Travel))
+    assertEquals(parked.game.current.walkerStartFacts,
+      Vector(DecisionOptionRef.Site(cradlePlains)))
+    assertEquals(Look(parked).supply(actor), 7)
+    val done = accepted(rules.resolveWalker(started.state, actor,
+      TravelProcedure.destinationDecisionId, TravelPlay.destination(coast)))
+    val after = Outcomes.ready(done.state)
+    assertEquals(Look(after).pawn(actor), coast)
     assertEquals(after.game.current.walkerProcedure, None)
-    parked.assertResumed(traveled.state, Phase.Act, actor)
+    assertEquals(after.game.current.walkerStartFacts, Vector.empty)
 
-  test("the declared tree is a windowed cost sequence inside an eligibility root"):
-    val ready = passRuled(travelBoard(supply = 7))
-    val destination = coast
-    val tree = accepted(TravelProcedure.build(catalog, ready, actor,
-      Vector(DecisionOptionRef.Site(destination))))
-    assertEquals(tree.window, Some(PowerWindow.TravelActionEligibility))
-    val cost = tree.children.head
-    assertEquals(cost.window, Some(PowerWindow.TravelCost))
-    assertEquals(Operation.flatten(tree).size, 2)
-    assert(Operation.flatten(tree).head.isInstanceOf[SpendSupply])
-    assert(Operation.flatten(tree).last.isInstanceOf[Move])
-
-  test("build rejects a missing, foreign or degenerate start argument"):
+  test("the destination offers every in-play site but the pawn's"):
     val ready = travelBoard(supply = 7)
-    val source = cradlePlains
-    assert(TravelProcedure.build(catalog, ready, actor, Vector.empty).isLeft)
+    val tree = accepted(TravelProcedure.build(catalog, ready, actor,
+      Vector.empty))
+    val offered = tree.children.head match
+      case Decide(TravelProcedure.destinationDecisionId, `actor`,
+          DecisionQuery.ChooseOne(options, Some("Choose a Travel destination")),
+          _, _, _, _) => options.map(_.ref)
+      case other => fail(s"not the destination decision: $other")
+    assertEquals(offered, ready.game.current.map.inPlay
+      .filter(_ != cradlePlains).map(DecisionOptionRef.Site(_)))
+
+  test("a resume reads the source from the start fact, not the pawn"):
+    val ready = travelBoard(supply = 7)
+    val moved = ready.updateCurrent(current => current.copy(
+      walkerStartFacts = Vector(DecisionOptionRef.Site(cradlePlains)),
+      players = current.players.map(player =>
+        if player.player == actor then player.copy(pawnSite = Some(coast))
+        else player)))
+    val rebuilt = accepted(TravelProcedure.rebuild(catalog, moved, actor,
+      Vector.empty))
+    val pending = PendingTree(Vector("1"), Vector(Answered(
+      TravelProcedure.destinationDecisionId, TravelPlay.destination(coast),
+      actor)))
+    val selected = rebuilt.children(1) match
+      case branch: Branch => branch.select(moved, pending)
+      case other => fail(s"not the route branch: $other")
+    assertEquals(selected.flatMap(Operation.flatten).collect {
+      case Move(Piece.Pawn(_), PositionedLocation(Location.Site(from), _),
+          _, _) => from }, Vector(cradlePlains))
+
+  test("a start that names a selection is refused, and so is a resume " +
+      "without its start fact"):
+    val ready = travelBoard(supply = 7)
     assertEquals(rejected(TravelProcedure.build(catalog, ready, actor,
-      Vector(DecisionOptionRef.Site(source)))),
-      SameTravelSite(source))
-    assert(rejected(TravelProcedure.build(catalog, ready, actor,
-      Vector(DecisionOptionRef.Site(SiteId("missing")))))
-      .isInstanceOf[SiteNotInPlay])
+      Vector(DecisionOptionRef.Site(coast)))),
+      InvalidEventOrder("travel takes no start selection"))
+    assertEquals(rejected(TravelProcedure.rebuild(catalog, ready, actor,
+      Vector.empty)), InvalidEventOrder(
+      "a resumed Travel needs its source site as its one start fact"))
+
+  test("a start with no destination the actor can afford is refused"):
+    val broke = passRuled(travelBoard(supply = 0))
+    val rules = new OathRules(catalog, walkerPowerCatalog = powers)
+    assertEquals(rejected(rules.startWalker(Ready(broke), ActionRef.Travel,
+      actor, Vector.empty)), CoreOperationRejected("insufficient-supply",
+      "a supply spend of 1 exceeds the 0 available"))
 
   /** Stub of ContributingPower: raises any Travel pay node by two,
     * player-selected. It exists so the suite can tell "offered" from

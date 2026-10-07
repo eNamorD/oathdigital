@@ -24,8 +24,7 @@ import oathdigital.model.{Answered, CoreOperation, Decide, DecisionAnswer,
   *
   * A tree that parks is rejected rather than reported: a park means the
   * action asks the player something, and an unanswered question has no
-  * outcome to simulate. Every registered action whose tree can park
-  * (Recover, Forge) therefore has nothing to ask this.
+  * outcome to simulate. An action whose tree parks asks `preview` instead.
   *
   * `preview` and `previewParked` extend the same idea to a tree that parks
   * on a `ChooseOne`: they answer each option against the tree and report
