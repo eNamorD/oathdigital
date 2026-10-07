@@ -124,8 +124,9 @@ the player who issued it. Begin's batch has no opening.
 _Avoid_: transaction, append, step (a step is one walker event)
 
 **Void marker**:
-The `StepTakenBack` event an undo appends. It names the range of the command
-batch it voids; nothing is deleted from the journal.
+The `StepTakenBack` event an undo appends, or the `StepRestored` event a redo
+appends. It names the range of the command batch it voids or restores; nothing
+is deleted from the journal.
 _Avoid_: delete, rollback, revert event
 
 **Barrier**:
