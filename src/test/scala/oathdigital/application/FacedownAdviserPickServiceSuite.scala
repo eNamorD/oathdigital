@@ -2,7 +2,8 @@ package oathdigital.application
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.protocol.projection.DecisionQueryProjection
+import oathdigital.protocol.projection.{DecisionQueryProjection,
+  WalkerWaitingProjection}
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
@@ -54,7 +55,7 @@ class FacedownAdviserPickServiceSuite extends munit.FunSuite:
       ("denizen", conclave.value, true), ("denizen", wrestlers.value, true)))
     val other = projector.project("g", started.loaded, p2)
     assertEquals(other.walkerDecision, None)
-    // p2 cannot identify the facedown advisers, and the projector omits a
-    // decision whose available option it cannot present, the waiting notice
-    // included.
-    assertEquals(other.walkerWaiting, None)
+    // p2 cannot identify the facedown advisers, yet still learns whom the
+    // table waits on and what p1 is asked.
+    assertEquals(other.walkerWaiting, Some(WalkerWaitingProjection(p1.value,
+      Some("Choose a facedown adviser to play"))))

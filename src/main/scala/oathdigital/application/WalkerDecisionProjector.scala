@@ -103,13 +103,18 @@ private[application] final class WalkerDecisionProjector(
     * off the same [[WalkerDecisionProjector.Parked]] position, so a viewer
     * who is not the awaited player always sees a projection naming exactly
     * who is.
+    *
+    * Gated on the awaited player's prompt, not this viewer's: a decision
+    * whose options this viewer may not identify (a pick among the actor's
+    * facedown advisers) still tells the table whom it waits on, while a
+    * decision suppressed even for its owner tells no one.
     */
   def waiting(context: ScopedProjectionContext)
       : Option[WalkerWaitingProjection] = for
     parked <- parkedPosition(context)
     if !context.viewer.exists(parked.owners.contains)
     _ <- this.parked(parked.procedure, parked.tree, context.ready,
-      parked.pending, parked.powers, parked.awaited, context.viewer,
+      parked.pending, parked.powers, parked.awaited, Some(parked.awaited),
       previewed = false)
   yield
     val decide = ProcedureWalker.parkedDecide(context.ready, parked.tree,
