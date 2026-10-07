@@ -66,7 +66,10 @@ holds the rulings.
 ### Phase - Board decision follow-ups
 
 - Move Travel onto board decisions; it still picks its destination through
-  the older board targets.
+  the older board targets. The
+  [design](superpowers/specs/2026-10-07-travel-destination-walker-design.md)
+  makes the destination the walk's first decision, adds start facts, and
+  implements Way Station as its proof card.
 - Add reasons to the remaining option builders as playtests find options
   that people wonder about.
 
