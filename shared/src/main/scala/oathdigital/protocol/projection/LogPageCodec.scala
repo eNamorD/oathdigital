@@ -12,8 +12,9 @@ import ProjectionCodecSupport._
 object LogPageCodec:
   private val PageFields = Set("gameId", "after", "nextSequence", "entries")
   private val EntryFields = Set("sequence", "ordinal", "kind", "depth", "spans",
-    "section")
+    "section", "takenBack")
   private val SectionFields = Set("id", "action")
+  private val TakenBackFields = Set("group", "header")
   private val SpanFields = Set("kind", "text", "id", "value", "unit", "cards")
 
   def encode(value: LogPageWire): String = ujson.write(ujson.Obj(
@@ -32,7 +33,10 @@ object LogPageCodec:
     "ordinal" -> entry.ordinal, "kind" -> entry.kind, "depth" -> entry.depth,
     "spans" -> encoded(entry.spans)(encodeSpan),
     "section" -> option(entry.section)(section => ujson.Obj(
-      "id" -> ujson.Num(section.id.toDouble), "action" -> section.action)))
+      "id" -> ujson.Num(section.id.toDouble), "action" -> section.action)),
+    "takenBack" -> option(entry.takenBack)(group => ujson.Obj(
+      "group" -> ujson.Num(group.group.toDouble),
+      "header" -> encoded(group.header)(encodeSpan))))
 
   private def encodeSpan(span: LogSpanWire): ujson.Value = ujson.Obj.from(
     Vector[(String, ujson.Value)]("kind" -> ujson.Str(span.kind),
@@ -65,7 +69,19 @@ object LogPageCodec:
       rawSpans <- array(value, "spans", path)
       spans <- traverse(rawSpans, s"$path.spans")(decodeSpan)
       section <- optionalAbsent(value, "section", path)(decodeSection)
-    yield LogEntryWire(sequence, ordinal, kind, depth, spans, section)
+      takenBack <- optionalAbsent(value, "takenBack", path)(decodeTakenBack)
+    yield LogEntryWire(sequence, ordinal, kind, depth, spans, section,
+      takenBack)
+
+  private def decodeTakenBack(raw: ujson.Value, path: String)
+      : Result[LogTakenBackWire] =
+    for
+      value <- obj(raw, path)
+      _ <- exact(value, TakenBackFields, path)
+      group <- long(value, "group", path)
+      rawHeader <- array(value, "header", path)
+      header <- traverse(rawHeader, s"$path.header")(decodeSpan)
+    yield LogTakenBackWire(group, header)
 
   private def decodeSection(raw: ujson.Value, path: String)
       : Result[LogSectionWire] =

@@ -54,6 +54,20 @@ class LogPageCodecSuite extends munit.FunSuite:
     assertEquals(LogPageCodec.decode(json).map(_.entries.map(_.section)),
       Right(Vector(None)))
 
+  test("an entry's taken-back group round-trips with its header"):
+    val voided = LogPageWire("g", 0, 9, Vector(LogEntryWire(6, 0, "action", 1,
+      Vector(LogSpanWire("text", "Travelled")),
+      takenBack = Some(LogTakenBackWire(4L, Vector(
+        LogSpanWire("player", "p1", id = Some("p1")),
+        LogSpanWire("text", " took back the following moves:")))))))
+    assertEquals(LogPageCodec.decode(LogPageCodec.encode(voided)), Right(voided))
+
+  test("an entry written before taken-back groups decodes with none"):
+    val json = """{"gameId":"g","after":0,"nextSequence":9,"entries":""" +
+      """[{"sequence":7,"ordinal":0,"kind":"turn","depth":0,"spans":[]}]}"""
+    assertEquals(LogPageCodec.decode(json).map(_.entries.map(_.takenBack)),
+      Right(Vector(None)))
+
   test("a section with an unexpected field is rejected at its path"):
     val banded = page.copy(entries = Vector(page.entries.head.copy(
       section = Some(LogSectionWire(4, "travel")))))

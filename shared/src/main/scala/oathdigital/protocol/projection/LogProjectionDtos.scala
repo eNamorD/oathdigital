@@ -22,7 +22,13 @@ final case class LogSectionWire(id: Long, action: String)
   * entry is the tag that opens its section's band. */
 final case class LogEntryWire(sequence: Long, ordinal: Int, kind: String,
     depth: Int, spans: Vector[LogSpanWire],
-    section: Option[LogSectionWire] = None)
+    section: Option[LogSectionWire] = None,
+    takenBack: Option[LogTakenBackWire] = None)
+
+/** The taken-back group an entry belongs to: every entry of one group
+  * shares `group`, and `header` is the line a client shows above the
+  * collapsed group. */
+final case class LogTakenBackWire(group: Long, header: Vector[LogSpanWire])
 
 /** Every entry with `sequence >= after`, formatted for one seat, and the
   * cursor to ask with next time. */

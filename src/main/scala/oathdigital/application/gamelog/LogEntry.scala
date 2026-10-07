@@ -8,7 +8,14 @@ import oathdigital.protocol.projection.CardDetailsProjection
   * is a headline, depth 1 a line; only a line can carry a section.
   */
 final case class LogEntry(sequence: Long, ordinal: Int, kind: LogKind,
-    depth: Int, spans: Vector[LogSpan], section: Option[LogSection] = None)
+    depth: Int, spans: Vector[LogSpan], section: Option[LogSection] = None,
+    takenBack: Option[LogTakenBack] = None)
+
+/** The taken-back group an entry belongs to (undo design, "Game Log"):
+  * `group` is the sequence of the group's first entry, the same for every
+  * entry of one contiguous run of voided entries, and `header` the line
+  * that opens it, "p1 took back the following moves:". */
+final case class LogTakenBack(group: Long, header: Vector[LogSpan])
 
 /** The action an entry belongs to (log action sections design, "Server"):
   * `id` is the journal index of the action's first event, the same for

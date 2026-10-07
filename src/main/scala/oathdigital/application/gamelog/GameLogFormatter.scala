@@ -31,20 +31,32 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val details = new DetailLines(words, choices, wordings.narrated)
   private val events = new EventLines(words)
   private val notes = new PowerLines(words, wordings)
+  private val takenBack = new TakenBackGroups(words)
 
+  /** `seen` holds the run as it stood before each event, so a taken-back
+    * marker can rewind to the run before its voided range. */
   def format(steps: Vector[ReplayStep[OathState, OathEvent]],
       viewer: Option[PlayerId]): Vector[LogEntry] =
     val journal = new LogJournal(steps)
-    (0 until journal.size).foldLeft(
-        (Option.empty[Run], Vector.empty[LogEntry])) {
-      case ((run, entries), at) =>
-        val (lines, next) = eventLines(journal, run, at, viewer)
-        val opened = if at == 0 then opening(journal) ++ lines else lines
-        val posted = quietWake(entries.lastOption, opened)
-        (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
-          LogEntry(journal.sequence(at), ordinal, entry.kind, entry.depth,
-            entry.spans, entry.section) })
-    }._2
+    val (_, entries, _) = (0 until journal.size).foldLeft(
+        (Option.empty[Run], Vector.empty[LogEntry],
+          Vector.empty[Option[Run]])) {
+      case ((run, entries, runs), at) =>
+        val seen = runs :+ run
+        journal.event(at) match
+          // A taken-back batch's run is gone with it: the walk resumes from
+          // the run before the voided range, as the state does.
+          case OathEvent.StepTakenBack(from, _, _) =>
+            (seen(from.toInt), entries, seen)
+          case _ =>
+            val (lines, next) = eventLines(journal, run, at, viewer)
+            val opened = if at == 0 then opening(journal) ++ lines else lines
+            val posted = quietWake(entries.lastOption, opened)
+            (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
+              LogEntry(journal.sequence(at), ordinal, entry.kind, entry.depth,
+                entry.spans, entry.section) }, seen)
+    }
+    takenBack.mark(journal, entries)
 
   /** A journal that does not begin with `GameStarted` began at a position
     * already in play (a test's Table): it opens with that position's round,
