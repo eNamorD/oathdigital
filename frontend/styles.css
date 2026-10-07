@@ -1099,6 +1099,23 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .game-log .log-section .log-cost { margin-left: .6em; font-size: 12px;
   font-weight: 400; letter-spacing: normal; text-transform: none; }
+/* A taken-back group (undo design, "Game Log"): one toggle line naming who
+   took the moves back, collapsed by default. Inside it every line keeps its
+   band and colors and is struck through; the strike is Ink Spent, a drawn
+   mark, so the words keep their own contrast on a band's fill. */
+.game-log .log-taken-back { margin: 4px 0; }
+.game-log .log-taken-back-toggle { display: block; width: 100%; margin: 0;
+  padding: 2px 6px; border: 0; border-radius: 4px; background: none;
+  color: #a99f8c; font: inherit; font-style: italic; text-align: left;
+  cursor: pointer; }
+.game-log .log-taken-back-toggle::before { content: "▸ "; font-style: normal; }
+.game-log .log-taken-back-toggle[aria-expanded="true"]::before { content: "▾ "; }
+.game-log .log-taken-back-toggle:hover { color: #fff2d6; }
+.game-log .log-taken-back-toggle:focus-visible { outline: 2px solid #fff0c9;
+  outline-offset: -3px; }
+.game-log .log-taken-back-lines { list-style: none; margin: 0; padding: 0; }
+.game-log .log-taken-back-lines .log-entry { text-decoration: line-through;
+  text-decoration-color: #928876; }
 /* Reading aids. In the pane the current turn's headline stays at the top
    while its lines scroll under it; in the overlay the round's does. The
    list is flat, so the latest headline past the top covers the earlier

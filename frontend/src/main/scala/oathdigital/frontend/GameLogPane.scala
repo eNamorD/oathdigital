@@ -1,7 +1,8 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
-import oathdigital.protocol.projection.{LogEntryWire, LogSpanWire}
+import oathdigital.protocol.projection.{LogEntryWire, LogSpanWire,
+  LogTakenBackWire}
 import ServerUiSupport._
 
 /** One reading of the game log (spec, "Pane" and "Overlay"). The pane and the
@@ -31,6 +32,8 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
   private val sticky = if headings then "log-round" else "log-turn"
   private var key = Option.empty[String]
   private var shown = Vector.empty[LogEntryWire]
+  // The taken-back groups the reader opened, kept across redraws.
+  private var expanded = Set.empty[Long]
   list.appendChild(headline(GameLogPane.placeholder, "round"))
 
   private val onScroll: dom.Event => Unit = _ =>
@@ -39,46 +42,97 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
   content.addEventListener("scroll", onScroll)
 
   /** `since` is the stored marker. It places the divider only when the list
-    * is drawn in full, so appends never move it. */
+    * is drawn in full, so appends never move it. An undo changes lines
+    * already shown, and a taken-back line is drawn inside its group, so
+    * only new live lines at the end append; anything else redraws. */
   def show(sessionKey: String, entries: Vector[LogEntryWire],
       colors: Map[String, String], since: Option[Long] = None): Unit =
-    val appending = key.contains(sessionKey) && shown.nonEmpty &&
-      entries.size >= shown.size && entries(shown.size - 1) == shown.last
+    val sameSession = key.contains(sessionKey)
+    if !sameSession then expanded = Set.empty
+    val appending = sameSession && shown.nonEmpty &&
+      entries.startsWith(shown) &&
+      entries.drop(shown.size).forall(_.takenBack.isEmpty)
     if appending then
       if entries.size > shown.size then
         val following = atEnd
-        // A line that continues the last entry's section moves the band's
-        // end down to itself; anything else starts a band of its own.
+        // A line that continues the last entry's band moves the band's end
+        // down to itself; anything else starts a band of its own.
         entries.drop(shown.size).foldLeft(shown.last) { (previous, entry) =>
-          val continues = GameLogPane.sameSection(previous, entry)
+          val continues = GameLogPane.joined(previous, entry)
           if continues then Option(list.lastElementChild)
             .foreach(_.classList.remove("log-band-end"))
           list.appendChild(item(entry, colors, start = !continues, end = true))
           entry
         }
         if following then toEnd() else chip.removeAttribute("hidden")
-    else redraw(entries, colors, since)
+    else redraw(entries, colors, since,
+      keepPlace = sameSession && shown.nonEmpty)
     key = Some(sessionKey)
     shown = entries
 
+  /** `keepPlace` is a redraw of a list already on show, after an undo: a
+    * reader at the end stays there and anyone else keeps their scroll.
+    * Only a session's first draw goes to the divider. */
   private def redraw(entries: Vector[LogEntryWire], colors: Map[String, String],
-      since: Option[Long]): Unit =
+      since: Option[Long], keepPlace: Boolean): Unit =
+    val following = atEnd
+    val top = content.scrollTop
     while list.firstChild != null do list.removeChild(list.firstChild)
     chip.setAttribute("hidden", "")
     if entries.isEmpty then list.appendChild(headline(GameLogPane.placeholder, "round"))
+    // A divider never splits a group: it stands before the group's first
+    // line instead.
     val divideAt = since.map(marker => entries.indexWhere(_.sequence > marker))
-      .filter(_ >= 0)
+      .filter(_ >= 0).map(at => entries(at).takenBack.fold(at)(taken =>
+        entries.indexWhere(_.takenBack.exists(_.group == taken.group))))
     // The divider ends the band above it and starts the band below it.
-    entries.zipWithIndex.foreach { (entry, index) =>
-      val divided = divideAt.contains(index)
-      if divided then list.appendChild(GameLogPane.divider)
-      val start = divided ||
-        !entries.lift(index - 1).exists(GameLogPane.sameSection(_, entry))
-      val end = divideAt.contains(index + 1) ||
-        !entries.lift(index + 1).exists(GameLogPane.sameSection(entry, _))
-      list.appendChild(item(entry, colors, start, end))
+    entries.zipWithIndex.foldLeft(Option.empty[(Long, dom.Element)]) {
+      case (open, (entry, index)) =>
+        val divided = divideAt.contains(index)
+        if divided then list.appendChild(GameLogPane.divider)
+        val start = divided ||
+          !entries.lift(index - 1).exists(GameLogPane.joined(_, entry))
+        val end = divideAt.contains(index + 1) ||
+          !entries.lift(index + 1).exists(GameLogPane.joined(entry, _))
+        val node = item(entry, colors, start, end)
+        entry.takenBack match
+          case None =>
+            list.appendChild(node)
+            None
+          case Some(taken) =>
+            val lines = open.filter(_._1 == taken.group).map(_._2)
+              .getOrElse(group(taken, colors))
+            lines.appendChild(node)
+            Some(taken.group -> lines)
     }
-    divideAt.fold(toEnd())(_ => reveal(list.querySelector(".log-divider")))
+    if keepPlace then
+      if following then toEnd() else content.scrollTop = top
+    else divideAt.fold(toEnd())(_ => reveal(list.querySelector(".log-divider")))
+
+  /** A taken-back group (undo design, "Game Log"): a toggle naming who took
+    * the moves back, over the lines, collapsed unless the reader opened it.
+    * Appends the group to the list and returns the list its lines go in. */
+  private def group(taken: LogTakenBackWire, colors: Map[String, String])
+      : dom.Element =
+    val node = element("li", "log-taken-back")
+    val toggle = button("", "log-taken-back-toggle")
+    taken.header.foreach(span =>
+      toggle.appendChild(GameLogPane.spanNode(span, colors)))
+    val lines = element("ol", "log-taken-back-lines")
+    def open(value: Boolean): Unit =
+      toggle.setAttribute("aria-expanded", value.toString)
+      if value then lines.removeAttribute("hidden")
+      else lines.setAttribute("hidden", "")
+    open(expanded.contains(taken.group))
+    toggle.onclick = _ =>
+      val opening = lines.hasAttribute("hidden")
+      expanded = if opening then expanded + taken.group
+        else expanded - taken.group
+      open(opening)
+    node.appendChild(toggle)
+    node.appendChild(lines)
+    list.appendChild(node)
+    lines
 
   def atEnd: Boolean = GameLogPane.atEnd(content)
 
@@ -179,6 +233,12 @@ private[frontend] object GameLogPane:
   def sameSection(earlier: LogEntryWire, later: LogEntryWire): Boolean =
     earlier.section.nonEmpty &&
       earlier.section.map(_.id) == later.section.map(_.id)
+
+  /** Two entries share a band only inside the same section and on the same
+    * side of a taken-back group's edge. */
+  def joined(earlier: LogEntryWire, later: LogEntryWire): Boolean =
+    sameSection(earlier, later) &&
+      earlier.takenBack.map(_.group) == later.takenBack.map(_.group)
 
   private def spanNode(span: LogSpanWire, colors: Map[String, String])
       : dom.Node = span.kind match
