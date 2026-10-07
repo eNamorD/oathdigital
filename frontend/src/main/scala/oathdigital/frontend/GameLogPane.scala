@@ -7,8 +7,9 @@ import ServerUiSupport._
 
 /** One reading of the game log (spec, "Pane" and "Overlay"). The pane and the
   * overlay each hold one, fed the same entries, so both hold the same
-  * children. Entries only ever arrive at the end, so a render appends what is
-  * new rather than replacing the list. A reader at the end stays there; a
+  * children. Live entries only ever arrive at the end, so a render appends
+  * what is new rather than replacing the list; an undo changes lines already
+  * shown, and then the list is redrawn in place. A reader at the end stays there; a
   * reader who has scrolled up stays put and is offered the "New" chip.
   *
   * `headings` makes headlines into headings, for the overlay: a screen reader
@@ -106,7 +107,11 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
             Some(taken.group -> lines)
     }
     if keepPlace then
-      if following then toEnd() else content.scrollTop = top
+      if following then toEnd()
+      else
+        content.scrollTop = top
+        // Live lines that arrived with the undo are still unread.
+        if entries.size > shown.size then chip.removeAttribute("hidden")
     else divideAt.fold(toEnd())(_ => reveal(list.querySelector(".log-divider")))
 
   /** A taken-back group (undo design, "Game Log"): a toggle naming who took

@@ -417,7 +417,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .wake-action { min-height: 44px; }
 /* Undo (undo design, "Controls"): the Action face like every Actions-pane
    button, under the status line, set apart from the controls below it. */
-.undo-action { min-height: 44px; margin: 0 0 12px; }
+.undo-action { display: block; min-height: 44px; margin: 0 0 12px; }
 .adviser-panel { margin-top: 18px; }
 .error { border-color: #e27f79; color: #ffd0cd; }
 
@@ -1108,8 +1108,12 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   padding: 2px 6px; border: 0; border-radius: 4px; background: none;
   color: #a99f8c; font: inherit; font-style: italic; text-align: left;
   cursor: pointer; }
-.game-log .log-taken-back-toggle::before { content: "▸ "; font-style: normal; }
-.game-log .log-taken-back-toggle[aria-expanded="true"]::before { content: "▾ "; }
+/* The marker is generated; its empty alt text keeps it out of speech, since
+   aria-expanded already says the state. */
+.game-log .log-taken-back-toggle::before { content: "▸ "; content: "▸ " / "";
+  font-style: normal; }
+.game-log .log-taken-back-toggle[aria-expanded="true"]::before {
+  content: "▾ "; content: "▾ " / ""; }
 .game-log .log-taken-back-toggle:hover { color: #fff2d6; }
 .game-log .log-taken-back-toggle:focus-visible { outline: 2px solid #fff0c9;
   outline-offset: -3px; }

@@ -126,7 +126,9 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(content.scrollTop, 200.0)
 
   test("a reader at the end stays at the end through a redraw"):
-    val content = sizedLogContent(total = 1000, height = 100, scrolled = 1000)
+    // 2px short of the end is inside the slack, so the reader counts as at
+    // the end, and the redraw must carry them to the new end.
+    val content = sizedLogContent(total = 1000, height = 100, scrolled = 898)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, started, moved), Map.empty)
     pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
@@ -141,3 +143,38 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(topLevel(content).map(_.getAttribute("class")),
       Vector("log-entry log-headline log-round", "log-divider",
         "log-taken-back"))
+
+  test("a group the reader opened closes again in another session"):
+    val content = sizedLogContent(0, 0, 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, takenBack(started)), Map.empty)
+    toggle(content).click()
+    pane.show("h|red", Vector(setup, takenBack(started)), Map.empty)
+    assertEquals(toggle(content).getAttribute("aria-expanded"), "false")
+
+  test("a new line that arrives already taken back redraws into a group"):
+    val content = sizedLogContent(0, 0, 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, started), Map.empty)
+    pane.show("g|red", Vector(setup, started, takenBack(moved)), Map.empty)
+    assertEquals(topLevel(content).map(_.getAttribute("class")).last,
+      "log-taken-back")
+
+  test("two groups side by side stay two groups"):
+    val content = sizedLogContent(0, 0, 0)
+    val later = LogTakenBackWire(8L, takenBackByRed.header)
+    new GameLogPane(content).show("g|red",
+      Vector(setup, takenBack(started),
+        movedAgain.copy(takenBack = Some(later))), Map.empty)
+    assertEquals(content.querySelectorAll(".log-taken-back").length, 2)
+    assertEquals(groupLines(content).children.length, 1)
+
+  test("live lines that arrive with an undo offer the New chip to a reader scrolled up"):
+    val content = sizedLogContent(total = 1000, height = 100, scrolled = 200)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, started, moved), Map.empty)
+    content.scrollTop = 200
+    pane.show("g|red",
+      Vector(setup, takenBack(started), takenBack(moved), movedAgain),
+      Map.empty)
+    assert(!content.querySelector(".log-new").hasAttribute("hidden"))
