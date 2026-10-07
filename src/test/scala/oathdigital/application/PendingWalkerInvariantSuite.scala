@@ -43,7 +43,8 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     GameCommand.BeginRest(actor),
     GameCommand.FinishRest(actor),
     GameCommand.UsePower(actor, SilverTongue.id,
-      DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))))
+      DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))),
+    GameCommand.Undo(actor))
 
   test("the sample holds every GameCommand constructor"):
     val source = Files.readString(Paths.get(
@@ -56,7 +57,8 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
       .map(_.group(1)).toSet
     assertEquals(everyCommand(PlayerId("p1")).map(_.productPrefix).toSet, declared)
 
-  /** Every constructor, for every player, is refused and appends nothing.
+  /** Every constructor but Undo, for every player, is refused and appends
+    * nothing.
     * The sample's `ResolveWalker` and `RollWalker` name no parked position,
     * so they are refused too. Then `resume`, the parked walker's own answer,
     * is accepted and appends: only a matching resume runs.
@@ -68,7 +70,9 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     val before = records
     for
       player <- players
-      command <- everyCommand(player)
+      // Undo over a park is legal by design (undo design, "Rulings" 4);
+      // UndoServiceSuite covers it.
+      command <- everyCommand(player) if !command.isInstanceOf[GameCommand.Undo]
     do assert(service.handle(gameId, parked.nextSequence, command).isLeft,
       s"$command by $player must be refused over a parked walker")
     assertEquals(records, before, "a refused command must append nothing")

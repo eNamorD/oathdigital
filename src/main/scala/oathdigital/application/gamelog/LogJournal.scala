@@ -16,8 +16,10 @@ private[gamelog] final case class OpStep(operation: CoreOperation,
 private[gamelog] final case class Run(procedure: ProcedureRef, actor: PlayerId,
     first: Int, started: Option[Int])
 
-/** The scanned journal a formatting reads. Indices are positions in `steps`,
-  * which equal journal sequences because the journal starts at 0.
+/** The scanned journal a formatting reads. Indices are positions in `steps`;
+  * `sequence` reads an event's journal sequence. They differ once an undo
+  * has voided events, which the formatter leaves out of the steps it reads
+  * (undo design, "Game Log").
   *
   * A segment is what one command appends, ending at a `walker.parked` or
   * `walker.completed`; a line may read ahead to the end of its own segment

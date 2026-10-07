@@ -31,8 +31,34 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val details = new DetailLines(words, choices, wordings.narrated)
   private val events = new EventLines(words)
   private val notes = new PowerLines(words, wordings)
+  private val takenBack = new TakenBackGroups(words)
 
+  /** Taken-back moves (undo design, "Game Log"). The live entries are the
+    * live journal formatted alone, so no line reads a voided event or a
+    * marker. Each voided batch reads as it did before its undo: its entries
+    * come from the live journal as it stood at its marker. That costs one
+    * more formatting per marker. */
   def format(steps: Vector[ReplayStep[OathState, OathEvent]],
+      viewer: Option[PlayerId]): Vector[LogEntry] =
+    val markers = steps.indices.toVector.flatMap(at =>
+      steps(at).event.event match
+        case marker: OathEvent.StepTakenBack => Some(at -> marker)
+        case _ => None)
+    // The journal before `end`: no marker, and nothing a marker before `end`
+    // voided. Its positions then differ from its sequences.
+    def live(end: Int) = steps.take(end).filter { step =>
+      val sequence = step.event.index
+      !step.event.event.isInstanceOf[OathEvent.StepTakenBack] &&
+        !markers.exists((at, marker) => at < end &&
+          sequence >= marker.from && sequence < marker.until)
+    }
+    val voided = markers.flatMap((at, marker) =>
+      formatLive(live(at), viewer).filter(entry =>
+        entry.sequence >= marker.from && entry.sequence < marker.until))
+    takenBack.mark(markers.map(_._2), (formatLive(live(steps.size), viewer) ++
+      voided).sortBy(entry => (entry.sequence, entry.ordinal)))
+
+  private def formatLive(steps: Vector[ReplayStep[OathState, OathEvent]],
       viewer: Option[PlayerId]): Vector[LogEntry] =
     val journal = new LogJournal(steps)
     (0 until journal.size).foldLeft(
@@ -48,7 +74,10 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
 
   /** A journal that does not begin with `GameStarted` began at a position
     * already in play (a test's Table): it opens with that position's round,
-    * turn and phase, the headlines a `RoundEnded` would have posted. */
+    * turn and phase, the headlines a `RoundEnded` would have posted. When
+    * its first batch was taken back, the headlines open the live journal
+    * again; a played journal begins with `GameStarted`, which no undo
+    * reaches. */
   private def opening(journal: LogJournal): Vector[Posted] =
     journal.event(0) match
       case OathEvent.GameStarted(_, _) => Vector.empty
@@ -94,6 +123,10 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         (Vector(victory(winner, exhaustion(kind, vision))), run)
       // A diagnostic, not play.
       case _: OathEvent.IgnoredRulesRecorded => (Vector.empty, run)
+      // Undo's facts post no line of their own; `format` keeps markers out
+      // of every journal it formats.
+      case _: OathEvent.CommandAccepted | _: OathEvent.StepTakenBack =>
+        (Vector.empty, run)
       // A minor action, outside any walker run, is a section of its own.
       case _: OathEvent.SiteRelicsPeeked | _: OathEvent.OwnedRelicRevealed |
           _: OathEvent.WarbandsMoved =>

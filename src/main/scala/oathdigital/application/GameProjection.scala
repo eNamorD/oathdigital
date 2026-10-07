@@ -47,7 +47,12 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
       ready = false, completed = false)
     case Ready(ready) =>
       val context = ScopedProjectionContext(ready, requestingPlayer)
-      readyProjection(gameId, loaded.nextSequence, context)
+      readyProjection(gameId, loaded.nextSequence, context).copy(
+        // Only the issuer may take the step back (undo design, "Rulings").
+        undo = loaded.undo.filter(step => requestingPlayer.contains(step.issuer))
+          .map(step => StepOfferProjection(
+            step.note.fold("Undo your last step")(line => s"Undo: $line"))),
+        logRevision = loaded.logRevision)
 
   private def readyProjection(gameId: String, sequence: Long,
       context: ScopedProjectionContext): GameProjection =

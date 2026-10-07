@@ -95,6 +95,18 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     val without = projection.copy(restSupplyGain = None)
     assertRoundTrips(without)
 
+  test("the undo offer and the log revision round-trip"):
+    assertRoundTrips(projection.copy(
+      undo = Some(StepOfferProjection("Undo: p1 travelled to Buried Giant")),
+      logRevision = Some(42L)))
+
+  test("a payload without an undo offer or a log revision decodes to none"):
+    val raw = ujson.read(GameProjectionCodec.encode(projection))
+    raw.obj.remove("undo")
+    raw.obj.remove("logRevision")
+    assertEquals(GameProjectionCodec.decode(ujson.write(raw))
+      .map(decoded => (decoded.undo, decoded.logRevision)), Right((None, None)))
+
   test("a region's discard cards round-trip, hidden and known alike"):
     val withPile = projection.copy(world = projection.world.map(region =>
       region.copy(discardCards = Vector(known, hidden), discardCount = 2,

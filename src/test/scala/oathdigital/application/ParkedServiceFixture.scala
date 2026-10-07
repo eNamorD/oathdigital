@@ -70,7 +70,8 @@ object ParkedServiceFixture:
       from: GameAccepted, player: PlayerId)(using munit.Location)
       : GameAccepted =
     accepted(Situation(from.state, Vector.empty, from.nextSequence,
-      Situation.journaled(service, catalog, gameId)).endingWake(player))
+      Situation.journaled(service, catalog, gameId), Vector.empty)
+      .endingWake(player))
 
   private def woken(driver: SituationDriver, placementSites: Vector[SiteId],
       setupChronicle: Chronicle, setupOrders: SetupOrders): Situation =

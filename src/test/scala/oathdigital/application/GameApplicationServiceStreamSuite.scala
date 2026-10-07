@@ -115,15 +115,17 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // delta, not one event per legacy setup command. The first Wake has
     // nothing to decide, so its End Wake step and completion follow: 1
     // GameStarted, 9 parks (3 decisions per seat), 17 steps and 2
-    // completions (Setup's and the first Wake's) make 29.
-    assertEquals(reloaded.nextSequence, 29L)
+    // completions (Setup's and the first Wake's) make 29. Each of the 9
+    // answers opens its command batch with a `CommandAccepted`, so 38.
+    assertEquals(reloaded.nextSequence, 38L)
     assert(reloaded.state.isInstanceOf[Ready])
     val records = loaded(repository.load("game-v2")).records
-    assertEquals(records.size, 29)
+    assertEquals(records.size, 38)
     val eventType = (record: String) => ujson.read(record)("eventType").str
     assertEquals(records.groupMapReduce(eventType)(_ => 1)(_ + _),
       Map("setup.game-started" -> 1, "walker.parked" -> 9,
-        "walker.step-recorded" -> 17, "walker.completed" -> 2))
+        "walker.step-recorded" -> 17, "walker.completed" -> 2,
+        "undo.command-accepted" -> 9))
     assert(records.forall(record =>
       ujson.read(record)("formatVersion").num.toInt ==
         GameEventWire.FormatVersion))
@@ -132,7 +134,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // p2 wakes at Broken Peaks, whose 2 secrets are its only Wake option.
     val (service, repository) = Table.start.turn(p2, Phase.Wake)
       .siteTokens("Broken Peaks", secrets = 2)
-      // Bandits at every empty site keep the refill out of the five events.
+      // Bandits at every empty site keep the refill out of the command's events.
       .banditsRefilled.service()
     val active = p2
     val siteId = CatalogNames.site("Broken Peaks")
@@ -143,11 +145,12 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // Take Wealth is one atomic walker command (batch-1 Task 7): the resource
     // move, the use record and the completion. It was Wake's only option, so
     // Wake ends in the same command: its phase-change step and completion
-    // follow, and the stream holds five events.
-    assertEquals(wealth.nextSequence, 5L)
+    // follow. With the batch's opening `CommandAccepted`, the stream holds
+    // six events.
+    assertEquals(wealth.nextSequence, 6L)
     assertEquals(
       service.handle("game-wake", 0L, GameCommand.EndWake(active)),
-      Left(GameApplicationError.StaleClientPosition(0L, 5L)))
+      Left(GameApplicationError.StaleClientPosition(0L, 6L)))
     val reloaded = loaded(replayingSecond(service, repository)
       .load("game-wake"))
     val after = Outcomes.ready(reloaded.state)
@@ -159,13 +162,14 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       "the replayed journal must restore the use limit it recorded")
     val records = loaded(repository.load("game-wake")).records
     assertEquals(records.map(record =>
-      ujson.read(record)("formatVersion").num.toInt), Vector(1, 1, 1, 1, 1))
+      ujson.read(record)("formatVersion").num.toInt), Vector.fill(6)(1))
     // Ending Wake is a walker procedure too (batch-1 Task 7), so the Wake
     // phase journals nothing of its own: the last two records are its
     // phase-change step and its completion, not a `gameplay.wake-ended`.
     assertEquals(records.map(record =>
       ujson.read(record)("eventType").str),
-      Vector("walker.step-recorded", "walker.step-recorded",
+      Vector("undo.command-accepted", "walker.step-recorded",
+        "walker.step-recorded",
         "walker.completed", "walker.step-recorded", "walker.completed"))
 
   test("stale expected position rejects a command legal on current state"):

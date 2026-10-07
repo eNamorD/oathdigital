@@ -115,3 +115,26 @@ first-game start made quiet (p1's Act, pawns at their own sites, nothing at the
 sites), plus one stated fact per step. A rule test states every fact it relies
 on and inherits nothing incidental from Setup.
 _Avoid_: board fixture, base state, initial ready
+
+### Undo
+
+**Command batch**:
+The events one accepted command appends, opened by `CommandAccepted` with
+the player who issued it. Begin's batch has no opening.
+_Avoid_: transaction, append, step (a step is one walker event)
+
+**Void marker**:
+The `StepTakenBack` event an undo appends. It names the range of the command
+batch it voids; nothing is deleted from the journal.
+_Avoid_: delete, rollback, revert event
+
+**Barrier**:
+A command batch that undo never takes back: it showed someone something
+new, handed the turn over or ended the game. It shields every batch before
+it.
+_Avoid_: commit point, checkpoint
+
+**Taken-back group**:
+A contiguous run of Game Log entries whose events an undo voided, shown
+struck through under one header.
+_Avoid_: undone section, deleted lines

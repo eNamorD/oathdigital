@@ -74,7 +74,7 @@ final class AuthenticatedGameGateway(
             request.expectedNextSequence, command).left.map(Application.apply))
           .map(accepted => projector.project(
             gameId,
-            LoadedGame(accepted.state, accepted.nextSequence),
+            accepted.loaded,
             actor.access.playerId
           ))
       }
@@ -123,7 +123,7 @@ final class AuthenticatedGameGateway(
                 ).left.map(Application.apply))
                 .map(accepted => projector.projectPublic(
                   gameId,
-                  LoadedGame(accepted.state, accepted.nextSequence)
+                  accepted.loaded
                 ))
             }
       }

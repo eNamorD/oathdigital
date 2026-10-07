@@ -1,8 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.model.{Decide, DecisionAnswer, DecisionOption,
-  DecisionOptionRef, DecisionQuery, Draw, Flip, OathViolation, Operation,
-  OptionReason, Orientation, Peek, Reveal, Roll, Shuffle}
+  DecisionOptionRef, DecisionQuery, OathViolation, Operation, OptionReason}
 
 /** The lazy pruning's answers and narrowing (global operation restrictions
   * design, "Lazy pruning"), apart from the walk. A verdict says whether one
@@ -24,10 +23,7 @@ private[walker] object WalkerSearch:
     * stops there and counts the path as legal, since pruning past it would
     * leak the outcome.
     */
-  def hides(operation: Operation): Boolean = operation match
-    case _: Roll | _: Shuffle | _: Draw | _: Peek | _: Reveal => true
-    case flip: Flip => flip.orientation == Orientation.FaceUp
-    case _ => false
+  def hides(operation: Operation): Boolean = HiddenOutcomes.hides(operation)
 
   /** `decide` offering only the options that some answer through them
     * survives. A choose-one is tried option by option. A choose-many keeps an

@@ -42,7 +42,7 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
     command <- GameIntentMapper.bind(player, request.intent, request.orderedModifiers)
       .left.map(_ => InvalidIntent)
     accepted <- service.handle(gameId, request.expectedNextSequence, command).left.map(Application.apply)
-  yield projector.project(gameId, LoadedGame(accepted.state, accepted.nextSequence), player)
+  yield projector.project(gameId, accepted.loaded, player)
     .copy(viewerPlayerId = Some(player.value))
 
   def preview(gameId: String, seat: TrustedSeat, request: MajorActionPreviewRequest)

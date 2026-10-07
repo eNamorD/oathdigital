@@ -12,6 +12,11 @@ object OathViolation:
   case object GameAlreadyExists extends OathViolation
   case object GameNotStarted extends OathViolation
   case object GameEnded extends OathViolation
+  /** No live command batch is left since the latest barrier. */
+  case object NothingToUndo extends OathViolation
+  /** `player` asked to take back a batch that `issuer` issued. */
+  final case class UndoNotIssuer(player: PlayerId, issuer: PlayerId)
+      extends OathViolation
   final case class WrongPhase(expected: Phase, actual: Phase)
       extends OathViolation
   final case class UnsupportedWakeVictoryState(reason: String)

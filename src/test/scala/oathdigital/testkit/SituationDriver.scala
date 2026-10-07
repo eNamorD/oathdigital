@@ -104,6 +104,11 @@ object SituationDriver:
     * many answers is looping on a default that never finishes it. */
   private val parkLimit = 500
 
+  /** The `CommandAccepted` the service opens `command`'s batch with: none
+    * for Begin. */
+  private def opening(command: GameCommand): Vector[OathEvent] =
+    GameCommand.issuer(command).map(OathEvent.CommandAccepted(_)).toVector
+
   private def arranging(ops: Vector[CoreOperation], label: String)
       : WalkerStepRecorded =
     WalkerStepRecorded("0", DeltaRecorded(OperationApplied(label)), ops,
@@ -141,16 +146,19 @@ object SituationDriver:
           "WithModifiers through the journaled adapter")
       case Step.Command(command) => transition(from.state, command)
         .left.map(_.toString).map(result => advanced(from, result.state,
-          result.events))
+          result.events, opening(command)))
       case Step.Arrange(ops, label) =>
         val event = arranging(ops, label)
         rules.evolve(from.state, event).left.map(_.toString)
-          .map(advanced(from, _, Vector(event)))
+          .map(advanced(from, _, Vector(event), Vector.empty))
 
+    /** `events` journaled after `opened`, the command batch's opening, which
+      * `events` leaves out and `nextSequence` counts, as the service does. */
     private def advanced(from: Situation, state: OathState,
-        events: Vector[OathEvent]): Situation =
+        events: Vector[OathEvent], opened: Vector[OathEvent]): Situation =
+      val journal = opened ++ events
       Situation(state, from.events ++ events,
-        from.nextSequence + events.size, this)
+        from.nextSequence + journal.size, this, from.journal ++ journal)
 
     private def transition(state: OathState, command: GameCommand)
         : Either[OathViolation, OathTransition] = command match
@@ -187,6 +195,8 @@ object SituationDriver:
       case GameCommand.MoveWarbands(player, toSite, amount) =>
         rules.handle(state, MinorActionCommand.MoveWarbands(player, toSite,
           amount))
+      case GameCommand.Undo(_) => Left(OathViolation.InvalidEventOrder(
+        "undo needs a journal; use a journaled situation"))
 
   /** Drives `service` as `gameId`. An `Arrange` appends the arranging record
     * to `repository`, which must be the service's own, at the stream's next
@@ -212,7 +222,8 @@ object SituationDriver:
       case Step.Command(command) =>
         service.handle(gameId, from.nextSequence, command).left.map(_.toString)
           .map(accepted => Situation(accepted.state,
-            from.events ++ accepted.events, accepted.nextSequence, this))
+            from.events ++ accepted.events, accepted.nextSequence, this,
+            from.journal ++ opening(command) ++ accepted.events))
       case Step.Arrange(ops, label) =>
         val event = arranging(ops, label)
         // A situation begun at a Table has no stream until its first record.
@@ -231,4 +242,4 @@ object SituationDriver:
             s"arranging at ${from.nextSequence} left the stream at " +
               s"${loaded.nextSequence}")
         yield Situation(loaded.state, from.events :+ event,
-          loaded.nextSequence, this)
+          loaded.nextSequence, this, from.journal :+ event)

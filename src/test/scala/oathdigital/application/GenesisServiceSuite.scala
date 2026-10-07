@@ -21,7 +21,8 @@ class GenesisServiceSuite extends munit.FunSuite:
     val accepted = service.handle("g", 0L, GameCommand.BeginRest(p1))
       .fold(error => fail(s"rejected: $error"), identity)
     assert(accepted.events.nonEmpty)
-    assertEquals(accepted.nextSequence, accepted.events.size.toLong)
+    // the batch opens with CommandAccepted, which events omits
+    assertEquals(accepted.nextSequence, accepted.events.size.toLong + 1L)
     // A second service over the same journal replays from the same genesis.
     val reloaded = new GameApplicationService(catalog, repository,
       genesis = table.state)
