@@ -35,10 +35,13 @@ object GameCommand:
   /** Takes back the latest live command batch, which `actor` must have
     * issued (undo design, "Rulings"). */
   final case class Undo(actor: PlayerId) extends GameCommand
+  /** Restores the batch most recently taken back since the last command
+    * batch, which `actor` must have issued (undo design, "Redo"). */
+  final case class Redo(actor: PlayerId) extends GameCommand
 
   /** The player a command's batch is recorded for, in the `CommandAccepted`
     * that opens it (undo design, "Terms"): its actor. Begin has none, so a
-    * journal still begins with `GameStarted`, and an Undo appends its
+    * journal still begins with `GameStarted`; an Undo or a Redo appends its
     * marker alone. */
   def issuer(command: GameCommand): Option[PlayerId] = command match
     case WithModifiers(inner, _) => issuer(inner)
@@ -54,6 +57,7 @@ object GameCommand:
     case FinishRest(player) => Some(player)
     case UsePower(player, _, _) => Some(player)
     case Undo(_) => None
+    case Redo(_) => None
 
 /** Generic action-start data. Action-specific starts may widen this family
   * when another walker procedure needs more than its actor.

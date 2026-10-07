@@ -17,6 +17,11 @@ object OathViolation:
   /** `player` asked to take back a batch that `issuer` issued. */
   final case class UndoNotIssuer(player: PlayerId, issuer: PlayerId)
       extends OathViolation
+  /** Nothing was taken back since the last command batch. */
+  case object NothingToRedo extends OathViolation
+  /** `player` asked to restore a batch that `issuer` issued. */
+  final case class RedoNotIssuer(player: PlayerId, issuer: PlayerId)
+      extends OathViolation
   final case class WrongPhase(expected: Phase, actual: Phase)
       extends OathViolation
   final case class UnsupportedWakeVictoryState(reason: String)

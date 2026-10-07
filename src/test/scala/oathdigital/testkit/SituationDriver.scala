@@ -195,8 +195,9 @@ object SituationDriver:
       case GameCommand.MoveWarbands(player, toSite, amount) =>
         rules.handle(state, MinorActionCommand.MoveWarbands(player, toSite,
           amount))
-      case GameCommand.Undo(_) => Left(OathViolation.InvalidEventOrder(
-        "undo needs a journal; use a journaled situation"))
+      case GameCommand.Undo(_) | GameCommand.Redo(_) =>
+        Left(OathViolation.InvalidEventOrder(
+          "undo and redo need a journal; use a journaled situation"))
 
   /** Drives `service` as `gameId`. An `Arrange` appends the arranging record
     * to `repository`, which must be the service's own, at the stream's next
