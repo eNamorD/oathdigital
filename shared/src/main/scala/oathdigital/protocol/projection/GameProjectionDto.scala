@@ -33,4 +33,10 @@ final case class GameProjection(
     ,supplyMaximum: Int = 0
     ,restSupplyGain: Option[Int] = None
     ,supplyBands: Vector[SupplyBandProjection] = Vector.empty
+    ,undo: Option[StepOfferProjection] = None
+    ,logRevision: Option[Long] = None
 )
+
+/** The step the viewer may take back, with the hover note that says what
+  * it is (undo design, "Controls"). Present only for the step's issuer. */
+final case class StepOfferProjection(note: String)
