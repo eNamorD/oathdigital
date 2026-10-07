@@ -102,6 +102,12 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: RoundEnded => StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
       case event: WarExhaustionResolved =>
         StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
+      // Undo's facts (undo design, "Storage"). A batch's opening fact
+      // changes nothing; a marker rewinds, which only the application's
+      // journal fold can do.
+      case _: CommandAccepted => Right(state)
+      case _: StepTakenBack => Left(InvalidEventOrder(
+        "a taken-back marker replays only through the journal fold"))
       case GameStarted(chronicle, orders) =>
         state match
           case NoGame =>

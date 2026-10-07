@@ -50,6 +50,15 @@ object OathEvent:
   final case class UsurperVictory(playerId: PlayerId) extends OathEvent
   final case class VisionVictory(playerId: PlayerId, visionId: VisionId)
       extends OathEvent
+  /** Opens every command batch but Begin's (undo design, "Storage"): `by` is
+    * the command's actor. The application layer prepends it; the rules
+    * engine never builds it, and evolving it changes nothing. */
+  final case class CommandAccepted(by: PlayerId) extends OathEvent
+  /** Voids the events in `[from, until)`, the latest live command batch,
+    * which `by` issued (undo design, "Storage"). Only the application's
+    * journal fold replays it. */
+  final case class StepTakenBack(from: Long, until: Long, by: PlayerId)
+      extends OathEvent
 
 enum TradeResource { case Favor, Secret }
 
