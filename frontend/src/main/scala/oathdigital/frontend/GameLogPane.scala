@@ -33,7 +33,7 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
   private val sticky = if headings then "log-round" else "log-turn"
   private var key = Option.empty[String]
   private var shown = Vector.empty[LogEntryWire]
-  // The taken-back groups the reader opened, kept across redraws.
+  // The taken-back groups on show that the reader opened, kept across redraws.
   private var expanded = Set.empty[Long]
   list.appendChild(headline(GameLogPane.placeholder, "round"))
 
@@ -78,6 +78,15 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
       since: Option[Long], keepPlace: Boolean): Unit =
     val following = atEnd
     val top = content.scrollTop
+    // A group is named by its first line, and a Redo restores the first
+    // batch first, so a group's id can change while its lines stay. A group
+    // is therefore open when any of its lines sat in an open group.
+    val openLines = shown.filter(_.takenBack.exists(taken =>
+      expanded.contains(taken.group))).map(line => line.sequence -> line.ordinal)
+      .toSet
+    expanded = entries.filter(line => line.takenBack.nonEmpty &&
+      openLines.contains(line.sequence -> line.ordinal))
+      .flatMap(_.takenBack.map(_.group)).toSet
     while list.firstChild != null do list.removeChild(list.firstChild)
     chip.setAttribute("hidden", "")
     if entries.isEmpty then list.appendChild(headline(GameLogPane.placeholder, "round"))

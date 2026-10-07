@@ -62,8 +62,10 @@ Events record accepted facts needed for deterministic replay:
   selected winner when deterministic title/Vision rules do not decide it.
 - Every command batch but Begin's opens with `CommandAccepted`, naming the
   player who issued it. Undo appends `StepTakenBack`, which voids the
-  latest live batch's range; nothing is deleted. The application's
-  `JournalFold` replays every event and rewinds on a marker (undo design,
+  latest live batch's range, and Redo appends `StepRestored`, which restores
+  the batch most recently voided while no command batch has followed; nothing
+  is deleted. The application's `JournalFold` replays every event and rewinds
+  or restores on a marker (undo design,
   `docs/superpowers/specs/2026-10-06-undo-design.md`).
 
 Replay never rerolls or redraws. It derives deterministic facts again and

@@ -20,22 +20,27 @@ final case class GameAccepted(
     events: Vector[OathEvent],
     nextSequence: Long,
     undo: Option[UndoStep] = None,
+    redo: Option[UndoStep] = None,
     logRevision: Option[Long] = None
 ):
   /** The position this acceptance left, as a load would read it. */
-  def loaded: LoadedGame = LoadedGame(state, nextSequence, undo, logRevision)
+  def loaded: LoadedGame =
+    LoadedGame(state, nextSequence, undo, redo, logRevision)
 
-/** `undo` is the batch the next Undo would take back, and `logRevision` the
-  * latest taken-back marker (undo design, "Projection"). */
+/** `undo` is the batch the next Undo would take back, `redo` the batch the
+  * next Redo would restore, and `logRevision` the latest void marker (undo
+  * design, "Projection"). */
 final case class LoadedGame(
     state: OathState,
     nextSequence: Long,
     undo: Option[UndoStep] = None,
+    redo: Option[UndoStep] = None,
     logRevision: Option[Long] = None
 )
 
-/** The command batch an Undo would take back: its issuer and range, and the
-  * first log line its issuer sees for it (undo design, "Controls"). */
+/** The command batch an Undo would take back or a Redo restore: its issuer
+  * and range, and the first log line its issuer sees for it (undo design,
+  * "Controls"). */
 final case class UndoStep(issuer: PlayerId, from: Long, until: Long,
     note: Option[String])
 /** The whole journal as the log reads it: every event with the state
@@ -172,7 +177,7 @@ final class GameApplicationService(
       case None => Left(GameApplicationError.StreamNotFound(gameId))
       case Some(loaded) if loaded.nextSequence != expectedNextSequence =>
         Left(StaleClientPosition(expectedNextSequence, loaded.nextSequence))
-      case Some(loaded @ LoadedGame(OathState.Ready(ready), _, _, _)) =>
+      case Some(loaded @ LoadedGame(OathState.Ready(ready), _, _, _, _)) =>
         walkerAction(action) match
           // The `ActionRef` this match already resolved is bound rather than
           // discarded (batch-1 Task 1): `offerableWalkerPowers` reads the
@@ -286,11 +291,14 @@ final class GameApplicationService(
         else
           command match
             case GameCommand.Begin(_, _) => Left(DuplicateGame(gameId))
-            // Undo goes through the fold, not the rules: it is legal over a
-            // pending walker (undo design, "Rulings").
+            // Undo and Redo go through the fold, not the rules: both are
+            // legal over a pending walker (undo design, "Rulings").
             case GameCommand.Undo(actor) =>
               reconstruct(gameId, stream).flatMap(journal =>
                 takeBack(gameId, journal, actor, stream.nextSequence))
+            case GameCommand.Redo(actor) =>
+              reconstruct(gameId, stream).flatMap(journal =>
+                restore(gameId, journal, actor, stream.nextSequence))
             case _ =>
               reconstruct(gameId, stream).flatMap { journal =>
                 handleAgainst(
@@ -310,21 +318,22 @@ final class GameApplicationService(
       journalFold.fold(genesis, records).left
         .map(failure => ReplayFailure(failure.index, failure.violation)))
 
-  /** What the next Undo would take back, worded for its issuer. The note is
-    * the batch's first log line; formatting stops at the batch's end. */
-  private def undoStep(journal: FoldedJournal): Option[UndoStep] =
-    journal.undoable.map { batch =>
-      val note = log.format(journal.steps.take(batch.until.toInt),
-          Some(batch.issuer))
-        .find(entry => entry.sequence >= batch.from)
-        .map(_.spans.map(_.text).mkString)
-      UndoStep(batch.issuer, batch.from, batch.until, note)
-    }
+  /** `batch` as an Undo or Redo would name it to its issuer. The note is the
+    * batch's first log line; formatting stops at the batch's end, so a
+    * taken-back batch reads as it did before its undo. */
+  private def offered(journal: FoldedJournal, batch: CommandBatch): UndoStep =
+    val note = log.format(journal.steps.take(batch.until.toInt),
+        Some(batch.issuer))
+      .find(entry => entry.sequence >= batch.from)
+      .map(_.spans.map(_.text).mkString)
+    UndoStep(batch.issuer, batch.from, batch.until, note)
 
   private def loadedFrom(journal: FoldedJournal, nextSequence: Long)
       : LoadedGame =
-    LoadedGame(journal.state, nextSequence, undoStep(journal),
-      journal.logRevision)
+    LoadedGame(journal.state, nextSequence,
+      undo = journal.undoable.map(offered(journal, _)),
+      redo = journal.redoable.map(offered(journal, _)),
+      logRevision = journal.logRevision)
 
   private def decodeRecords(
       gameId: String,
@@ -383,6 +392,23 @@ final class GameApplicationService(
         nextSequence)
     yield accepted
 
+  /** Appends the marker that restores the batch most recently taken back,
+    * and returns the state after it (undo design, "Redo"). Nothing runs in
+    * the rules engine. */
+  private def restore(gameId: String, journal: FoldedJournal,
+      actor: PlayerId, nextSequence: Long)
+      : Either[GameApplicationError, GameAccepted] =
+    for
+      batch <- journal.redoable.toRight(
+        CommandRejected(OathViolation.NothingToRedo))
+      _ <- Either.cond(batch.issuer == actor, (),
+        CommandRejected(OathViolation.RedoNotIssuer(actor, batch.issuer)))
+      marker = OathEvent.StepRestored(batch.from, batch.until, actor)
+      accepted <- appendBatch(gameId, journal, Vector(marker), Vector(marker),
+        batch.after, ExpectedStream.AtNextSequence(nextSequence),
+        nextSequence)
+    yield accepted
+
   /** Appends `appended` as one batch and reports `reported` as the events
     * the command produced. `state` is what the command left, which the fold
     * reproduces from the batch. The fold runs before the append, so a batch
@@ -407,7 +433,9 @@ final class GameApplicationService(
         case Appended(first, count)
             if first == nextSequence && count == records.size =>
           Right(GameAccepted(state, reported, nextSequence + count,
-            undoStep(extended), extended.logRevision))
+            undo = extended.undoable.map(offered(extended, _)),
+            redo = extended.redoable.map(offered(extended, _)),
+            logRevision = extended.logRevision))
         case StreamAlreadyExists => Left(DuplicateGame(gameId))
         case RepositoryAppendResult.StreamNotFound =>
           Left(GameApplicationError.StreamNotFound(gameId))
@@ -518,9 +546,10 @@ final class GameApplicationService(
         rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
       case GameCommand.FinishRest(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
-      // An Undo on a stream with history never gets here (`handle` folds
-      // it first); on a missing stream nothing has been taken.
+      // An Undo or Redo on a stream with history never gets here (`handle`
+      // folds it first); on a missing stream nothing has been taken.
       case GameCommand.Undo(_) => Left(OathViolation.NothingToUndo)
+      case GameCommand.Redo(_) => Left(OathViolation.NothingToRedo)
 
   private def isWalkerResume(command: GameCommand): Boolean = command match
     case _: GameCommand.ResolveWalker | _: GameCommand.RollWalker => true

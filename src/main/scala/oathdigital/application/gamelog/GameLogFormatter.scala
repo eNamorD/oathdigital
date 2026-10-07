@@ -37,26 +37,44 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     * live journal formatted alone, so no line reads a voided event or a
     * marker. Each voided batch reads as it did before its undo: its entries
     * come from the live journal as it stood at its marker. That costs one
-    * more formatting per marker. */
+    * more formatting per standing marker. A restored batch is live again,
+    * so its lines read as if it had never been taken back (undo design,
+    * "Redo"). */
   def format(steps: Vector[ReplayStep[OathState, OathEvent]],
       viewer: Option[PlayerId]): Vector[LogEntry] =
-    val markers = steps.indices.toVector.flatMap(at =>
-      steps(at).event.event match
-        case marker: OathEvent.StepTakenBack => Some(at -> marker)
-        case _ => None)
-    // The journal before `end`: no marker, and nothing a marker before `end`
-    // voided. Its positions then differ from its sequences.
-    def live(end: Int) = steps.take(end).filter { step =>
-      val sequence = step.event.index
-      !step.event.event.isInstanceOf[OathEvent.StepTakenBack] &&
-        !markers.exists((at, marker) => at < end &&
+    val markers = steps.indices.toVector
+      .filter(at => isVoidMarker(steps(at).event.event))
+    // The taken-back markers still standing before `end`, with their
+    // positions. A restore lifts the latest one: the fold accepts a restore
+    // only of the batch most recently taken back.
+    def standing(end: Int): Vector[(Int, OathEvent.StepTakenBack)] =
+      markers.takeWhile(_ < end).foldLeft(
+          Vector.empty[(Int, OathEvent.StepTakenBack)]) { (stood, at) =>
+        steps(at).event.event match
+          case marker: OathEvent.StepTakenBack => stood :+ (at -> marker)
+          case _ => stood.dropRight(1)
+      }
+    // The journal before `end`: no marker, and nothing a marker standing
+    // there voids. Its positions then differ from its sequences.
+    def live(end: Int) =
+      val voids = standing(end).map(_._2)
+      steps.take(end).filter { step =>
+        val sequence = step.event.index
+        !isVoidMarker(step.event.event) && !voids.exists(marker =>
           sequence >= marker.from && sequence < marker.until)
-    }
-    val voided = markers.flatMap((at, marker) =>
+      }
+    val stood = standing(steps.size)
+    val voided = stood.flatMap((at, marker) =>
       formatLive(live(at), viewer).filter(entry =>
         entry.sequence >= marker.from && entry.sequence < marker.until))
-    takenBack.mark(markers.map(_._2), (formatLive(live(steps.size), viewer) ++
+    takenBack.mark(stood.map(_._2), (formatLive(live(steps.size), viewer) ++
       voided).sortBy(entry => (entry.sequence, entry.ordinal)))
+
+  /** Whether `event` voids or restores a batch: it posts no line and is no
+    * part of any journal a formatting reads. */
+  private def isVoidMarker(event: OathEvent): Boolean = event match
+    case _: OathEvent.StepTakenBack | _: OathEvent.StepRestored => true
+    case _ => false
 
   private def formatLive(steps: Vector[ReplayStep[OathState, OathEvent]],
       viewer: Option[PlayerId]): Vector[LogEntry] =
@@ -125,7 +143,8 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
       case _: OathEvent.IgnoredRulesRecorded => (Vector.empty, run)
       // Undo's facts post no line of their own; `format` keeps markers out
       // of every journal it formats.
-      case _: OathEvent.CommandAccepted | _: OathEvent.StepTakenBack =>
+      case _: OathEvent.CommandAccepted | _: OathEvent.StepTakenBack |
+          _: OathEvent.StepRestored =>
         (Vector.empty, run)
       // A minor action, outside any walker run, is a section of its own.
       case _: OathEvent.SiteRelicsPeeked | _: OathEvent.OwnedRelicRevealed |

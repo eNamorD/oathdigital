@@ -557,9 +557,11 @@ controls are 30px.
   sits in a footer strip pinned to the pane's bottom edge (Pane fill,
   Line-pane top border, 12px padding), full width, so the answer stays in
   view while the zones scroll.
-- **Undo**: the Action face, directly under the Actions pane's status line
-  and 12px above what follows, shown only to the player the server offers a
-  step to. Its label is always "Undo"; its hover note names the step.
+- **Undo and Redo**: the Action face, side by side in one row, 8px apart
+  with Undo first, directly under the Actions pane's status line and 12px
+  above what follows. Each shows only to the player the server offers that
+  step to. The labels are always "Undo" and "Redo"; each hover note names
+  the step.
 - **Board target control**: full width of the site, Panel fill, Bright Cream
   700 text, brass border. Hover and focus: Pressed fill and a 3px Bright
   Cream outline offset 2px. Pressed state prefixes "✓ ".
@@ -704,8 +706,8 @@ contiguous run: a full-width toggle line in italic Ink Dim, "▸" closed and
 "▾" open, naming who took the moves back with each player in their seat
 color. Opened, the lines keep their bands and colors and are struck through
 with an Ink Spent line. A group is closed until the reader opens it, and it
-stays open through the redraw an undo causes; that redraw keeps the reader's
-place. The "Since you last looked" rule never splits a group and stands
+stays open through the redraw an undo or a redo causes, even when a redo
+changes the group's first line; that redraw keeps the reader's place. The "Since you last looked" rule never splits a group and stands
 before it instead.
 
 The **log overlay** is the whole log over the table. It takes the card
