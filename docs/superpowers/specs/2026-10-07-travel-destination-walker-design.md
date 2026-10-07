@@ -1,6 +1,6 @@
 # Travel Destination in the Walker
 
-**Status:** designed 2026-10-07. It takes the **Phase - Board decision
+**Status:** designed and implemented 2026-10-07. It takes the **Phase - Board decision
 follow-ups** item "Move Travel onto board decisions" and unblocks Way Station
 (169), which the
 [catalog batch 4 rulings](2026-10-05-catalog-batch-4-rulings.md) parked on it.

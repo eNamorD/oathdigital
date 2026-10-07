@@ -9,6 +9,13 @@ of the rulebook.
 
 ### Walker
 
+**Start fact**:
+Something the engine works out when a procedure starts and keeps until it
+ends, because the walk itself changes it: Travel's starting site, once the
+pawn has moved. The player never chooses it; a start selection is what the
+player chose.
+_Avoid_: start argument (that is the player's selection), pinned value
+
 **Parked decision**:
 A question the procedure walker has stopped on and is waiting for one player
 to answer. At most one is parked per game at a time.
@@ -69,15 +76,14 @@ _Avoid_: button, action button, command
 
 **Draft set**:
 Everything a viewer has staged at the table and not yet sent: the board
-draft, the partition, distribute and selection drafts, the picked board
-targets, and the modifier order. A viewer has exactly one, bound to one
+draft, the partition, distribute and selection drafts, and the modifier
+order. A viewer has exactly one, bound to one
 game, seat and position; it empties when any of those change.
 _Avoid_: session state, UI state, pending selections, the drafts
 
 **Modifier flow**:
 The steps a viewer walks between choosing a major action and sending it:
-previewing the action, ordering the modifiers it offers, and picking its
-targets. A viewer is in at most one at a time, and leaves it by sending,
+previewing the action and ordering the modifiers it offers. A viewer is in at most one at a time, and leaves it by sending,
 cancelling, backing out, or a failed preview. A flow step keeps the viewer
 in the flow; a flow exit takes them out of it.
 _Avoid_: preview flow, targeting flow, modifier stage (a stage is one step of

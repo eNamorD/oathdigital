@@ -49,11 +49,6 @@ Left behind by earlier phases:
 
 ### Phase - Board decision follow-ups
 
-- Move Travel onto board decisions; it still picks its destination through
-  the older board targets. The
-  [design](superpowers/specs/2026-10-07-travel-destination-walker-design.md)
-  makes the destination the walk's first decision, adds start facts, and
-  implements Way Station as its proof card.
 - Add reasons to the remaining option builders as playtests find options
   that people wonder about.
 
@@ -144,9 +139,10 @@ Found by the survey of 2026-09-29:
   count toward placing more than the banner holds, but the start gate runs
   before any modifier).
 - **Lowering the attacker's force after it is answered:** Bear Traps.
-- **A Travel that can pause on a decision:** Hospitality, Way Station (the
-  non-ruler's choice to pay should appear only when Way Station is
-  selected).
+- **A Travel that can pause on a decision:** **Hospitality** is unblocked:
+  start facts keep Travel's source across a resume
+  ([travel destination design](superpowers/specs/2026-10-07-travel-destination-walker-design.md)).
+  Way Station is implemented.
 - **Other:** Pilgrimage (shuffling the Dispossessed), Autumn Wind (a combined
   shuffle and deal), Signal Trees (a plan effect that depends on state it
   changes), Tracker (memory across turns), Keep (replacing a Raid's defeat),
@@ -333,6 +329,10 @@ one.
 
 ### Engine deferred items
 
+- [ ] **Move Campaign's pinned facts onto start facts.**
+  `CampaignSetup.pinned` stores the Campaign's kind and defender as sentinel
+  `ModifyDicePool` operations; start facts (travel destination design,
+  ruling 6) are the durable place for them.
 - [ ] **One seam for "who may veto an operation".** `OperationPolicy`
   (an exact-shape allowlist, used by `StateBasedOperationPolicy` and
   `MinorActionOperationPolicy` on the legacy-event paths) and
