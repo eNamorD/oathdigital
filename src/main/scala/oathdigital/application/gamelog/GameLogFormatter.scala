@@ -33,34 +33,51 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val notes = new PowerLines(words, wordings)
   private val takenBack = new TakenBackGroups(words)
 
-  /** `seen` holds the run as it stood before each event, so a taken-back
-    * marker can rewind to the run before its voided range. */
+  /** Taken-back moves (undo design, "Game Log"). The live entries are the
+    * live journal formatted alone, so no line reads a voided event or a
+    * marker. Each voided batch reads as it did before its undo: its entries
+    * come from the live journal as it stood at its marker. That costs one
+    * more formatting per marker. */
   def format(steps: Vector[ReplayStep[OathState, OathEvent]],
       viewer: Option[PlayerId]): Vector[LogEntry] =
-    val journal = new LogJournal(steps)
-    val (_, entries, _) = (0 until journal.size).foldLeft(
-        (Option.empty[Run], Vector.empty[LogEntry],
-          Vector.empty[Option[Run]])) {
-      case ((run, entries, runs), at) =>
-        val seen = runs :+ run
-        journal.event(at) match
-          // A taken-back batch's run is gone with it: the walk resumes from
-          // the run before the voided range, as the state does.
-          case OathEvent.StepTakenBack(from, _, _) =>
-            (seen(from.toInt), entries, seen)
-          case _ =>
-            val (lines, next) = eventLines(journal, run, at, viewer)
-            val opened = if at == 0 then opening(journal) ++ lines else lines
-            val posted = quietWake(entries.lastOption, opened)
-            (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
-              LogEntry(journal.sequence(at), ordinal, entry.kind, entry.depth,
-                entry.spans, entry.section) }, seen)
+    val markers = steps.indices.toVector.flatMap(at =>
+      steps(at).event.event match
+        case marker: OathEvent.StepTakenBack => Some(at -> marker)
+        case _ => None)
+    // The journal before `end`: no marker, and nothing a marker before `end`
+    // voided. Its positions then differ from its sequences.
+    def live(end: Int) = steps.take(end).filter { step =>
+      val sequence = step.event.index
+      !step.event.event.isInstanceOf[OathEvent.StepTakenBack] &&
+        !markers.exists((at, marker) => at < end &&
+          sequence >= marker.from && sequence < marker.until)
     }
-    takenBack.mark(journal, entries)
+    val voided = markers.flatMap((at, marker) =>
+      formatLive(live(at), viewer).filter(entry =>
+        entry.sequence >= marker.from && entry.sequence < marker.until))
+    takenBack.mark(markers.map(_._2), (formatLive(live(steps.size), viewer) ++
+      voided).sortBy(entry => (entry.sequence, entry.ordinal)))
+
+  private def formatLive(steps: Vector[ReplayStep[OathState, OathEvent]],
+      viewer: Option[PlayerId]): Vector[LogEntry] =
+    val journal = new LogJournal(steps)
+    (0 until journal.size).foldLeft(
+        (Option.empty[Run], Vector.empty[LogEntry])) {
+      case ((run, entries), at) =>
+        val (lines, next) = eventLines(journal, run, at, viewer)
+        val opened = if at == 0 then opening(journal) ++ lines else lines
+        val posted = quietWake(entries.lastOption, opened)
+        (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
+          LogEntry(journal.sequence(at), ordinal, entry.kind, entry.depth,
+            entry.spans, entry.section) })
+    }._2
 
   /** A journal that does not begin with `GameStarted` began at a position
     * already in play (a test's Table): it opens with that position's round,
-    * turn and phase, the headlines a `RoundEnded` would have posted. */
+    * turn and phase, the headlines a `RoundEnded` would have posted. When
+    * its first batch was taken back, the headlines open the live journal
+    * again; a played journal begins with `GameStarted`, which no undo
+    * reaches. */
   private def opening(journal: LogJournal): Vector[Posted] =
     journal.event(0) match
       case OathEvent.GameStarted(_, _) => Vector.empty
@@ -106,7 +123,8 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         (Vector(victory(winner, exhaustion(kind, vision))), run)
       // A diagnostic, not play.
       case _: OathEvent.IgnoredRulesRecorded => (Vector.empty, run)
-      // Undo's facts post no line of their own.
+      // Undo's facts post no line of their own; `format` keeps markers out
+      // of every journal it formats.
       case _: OathEvent.CommandAccepted | _: OathEvent.StepTakenBack =>
         (Vector.empty, run)
       // A minor action, outside any walker run, is a section of its own.

@@ -7,12 +7,10 @@ import LogSpan.Text
   * (undo design, "Game Log"): one group per contiguous run of voided
   * entries, headed by the players whose undos made it. */
 private[gamelog] final class TakenBackGroups(words: LogWords):
-  def mark(journal: LogJournal, entries: Vector[LogEntry]): Vector[LogEntry] =
-    val voided = (0 until journal.size).flatMap(at => journal.event(at) match
-      case OathEvent.StepTakenBack(from, until, by) => Some((from, until, by))
-      case _ => None).toVector
-    def issuer(entry: LogEntry): Option[PlayerId] = voided.collectFirst {
-      case (from, until, by) if entry.sequence >= from &&
+  def mark(markers: Vector[OathEvent.StepTakenBack],
+      entries: Vector[LogEntry]): Vector[LogEntry] =
+    def issuer(entry: LogEntry): Option[PlayerId] = markers.collectFirst {
+      case OathEvent.StepTakenBack(from, until, by) if entry.sequence >= from &&
           entry.sequence < until => by }
     val runs = entries.foldLeft(
         Vector.empty[Vector[(LogEntry, Option[PlayerId])]]) { (done, entry) =>
