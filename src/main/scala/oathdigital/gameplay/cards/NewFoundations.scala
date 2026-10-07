@@ -43,13 +43,14 @@ import oathdigital.gameplay.powers.cardplay.{BookBindersCard, GossipCard,
   SacredGroundCard, SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard,
   WelcomingPartyCard, WildCryCard}
 import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard, BirdsongCard,
-  CupOfPlentyCard, DowntroddenCard, InitiationRiteCard, KnightsErrantCard,
-  MovingMarketCard, RowdyPubCard, TheOldOakCard, VillageIdiotCard}
+  CupOfPlentyCard, CurfewCard, DowntroddenCard, InitiationRiteCard,
+  KnightsErrantCard, MovingMarketCard, RowdyPubCard, TheOldOakCard,
+  VillageIdiotCard}
 import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}
 import oathdigital.gameplay.powers.search.{AuguryCard, CropRotationCard,
-  DisciplesCard, TruthfulHarpCard}
+  DisciplesCard, ForcedLaborCard, TruthfulHarpCard}
 import oathdigital.gameplay.powers.setup.{GreatForgeCard, GreatMarketCard,
   ProvingGroundsCard}
 import oathdigital.gameplay.powers.targeting.{CircletOfCommandCard,

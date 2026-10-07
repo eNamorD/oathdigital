@@ -17,7 +17,6 @@ object MusterPowers:
   object Downtrodden extends ReviewedPower("denizen.downtrodden", None, economy)
   object RowdyPub extends ReviewedPower("denizen.rowdy-pub", None, economy)
   object Pressgangs extends ReviewedPower("denizen.pressgangs", None, economy)
-  object Curfew extends ReviewedPower("denizen.curfew", None, economy)
   object KnightsErrant extends ReviewedPower("denizen.knights-errant", None, economy)
   object GolemLegions extends ReviewedPower("denizen.golem-legions", None, economy)
   object Defame extends ReviewedPower("denizen.defame", None, economy)
@@ -32,6 +31,6 @@ object MusterPowers:
   object Beloved extends ReviewedPower("legacy.beloved", None, economy)
   val powers: Vector[Power] = Vector(InitiationRite, MapLibrary, AnimalPlaymates,
     TheOldOak, Birdsong, SmallFriends, VowOfBeastkin, Downtrodden, RowdyPub,
-    Pressgangs, Curfew, KnightsErrant, GolemLegions, Defame, FriendlyFamiliar,
+    Pressgangs, KnightsErrant, GolemLegions, Defame, FriendlyFamiliar,
     OldSongs, VillageIdiot, SkilledMerchants, MountedLibrary,
     CupOfPlenty, SpitefulMirror, E26Intact, Beloved)

@@ -36,15 +36,6 @@ object TyrantCard extends Denizen(DenizenId("111"), "Tyrant", Suit.Order) with L
       "you travel to, if able.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object ForcedLaborCard extends Denizen(DenizenId("112"), "Forced Labor", Suit.Order) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.forced-labor"),
-    persistent = true, cost = Cost.free,
-    text = "Enemies **cannot** search if their pawn is at any site " +
-      "ruled by Forced Labor's ruler unless they give [favor] to " +
-      "its ruler. _(Give it to Chancellor if Empire, burn it if " +
-      "bandits.)_")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SpecialistCard extends Denizen(DenizenId("114"), "Specialist", Suit.Order):
   val power = PrintedPower(PowerId("denizen.specialist"),
     persistent = false, cost = Cost(favor = 2),
@@ -57,14 +48,6 @@ object CaptainsCard extends Denizen(DenizenId("115"), "Captains", Suit.Order) wi
     text = "**ACTION:** Campaign at any site you rule. Act as if your " +
       "pawn is there. Spend no Supply and add your warbands there " +
       "to your force.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object CurfewCard extends Denizen(DenizenId("119"), "Curfew", Suit.Order) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.curfew"),
-    persistent = true, cost = Cost.free,
-    text = "Enemies **cannot** trade with cards ruled by Curfew's ruler " +
-      "unless they give [favor] to its ruler. _(Give it to " +
-      "Chancellor if Empire, burn it if bandits.)_")
   val powers: Vector[PrintedPower] = Vector(power)
 
 object HuntingPartyCard extends Denizen(DenizenId("122"), "Hunting Party", Suit.Order):

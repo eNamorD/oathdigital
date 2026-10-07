@@ -3,13 +3,15 @@ package oathdigital.gameplay.powers
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.gameplay.powers.economy.{AnimalPlaymates, Birdsong, CupOfPlenty,
-  Downtrodden, InitiationRite, MovingMarket, RowdyPub, TheOldOak, VillageIdiot}
+  Curfew, Downtrodden, InitiationRite, MovingMarket, RowdyPub, TheOldOak,
+  VillageIdiot}
 import oathdigital.gameplay.powers.recover.RelicWorship
 import oathdigital.gameplay.powers.search.{Augury, CropRotation, Disciples,
-  TruthfulHarp}
+  ForcedLabor, TruthfulHarp}
 
 /** The Search, Trade, Muster and Recover modifiers, registered together with
-  * Initiation Rite, the rule that changes a Muster's cost. Each names its
+  * the rules that change those actions: Initiation Rite's Muster cost, the
+  * tolls of Curfew and Forced Labor, and the Vows' limits. Each names its
   * card, so all are always present.
   */
 object ActionModifiers:
@@ -26,5 +28,7 @@ object ActionModifiers:
       Vector(VillageIdiot.forCatalog(catalog)) ++
       Vector(Downtrodden.forCatalog(catalog)) ++
       Vector(MovingMarket.forCatalog(catalog)) ++
+      Vector(Curfew.forCatalog(catalog)) ++
+      Vector(ForcedLabor.forCatalog(catalog)) ++
       Vector(InitiationRite) ++
       Vector(RelicWorship.forCatalog(catalog))
