@@ -159,8 +159,8 @@ final case class CurrentGameState(
     // `WalkerCompleted` clears it alongside `walkerPending`/`walkerProcedure`.
     walkerModifiers: Vector[PowerId] = Vector.empty,
     // What the player selected when the walker procedure started, for an action
-    // whose tree cannot be built without it (batch-1 Task 5) -- Travel's
-    // destination is the only one today. They are `DecisionOptionRef`s, the
+    // whose tree cannot be built without it (batch-1 Task 5) -- Search's
+    // source is one. They are `DecisionOptionRef`s, the
     // same game-object vocabulary a decision option names, so nothing outside
     // the action that declared them learns what they mean: empty is "this
     // action declares none", and the action itself rejects a shape it did not
@@ -172,6 +172,12 @@ final case class CurrentGameState(
     // `WalkerParked` fact and cleared by `WalkerCompleted` alongside the other
     // walker-owned scratch fields.
     walkerStartArgs: Vector[DecisionOptionRef] = Vector.empty,
+    // What the engine derived when the walker procedure started and cannot
+    // read back once the walk changes it (travel destination design, ruling
+    // 6): Travel's source site, after the pawn has moved. Engine-owned, where
+    // `walkerStartArgs` is what the player selected. Restored by replay from
+    // the `WalkerParked` fact and cleared by `WalkerCompleted`.
+    walkerStartFacts: Vector[DecisionOptionRef] = Vector.empty,
     // The public result of the last Campaign fought. Not walker scratch:
     // `WalkerCompleted` leaves it, and the next Campaign replaces it.
     lastCampaignResult: Option[CampaignResult] = None

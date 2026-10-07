@@ -8,6 +8,7 @@ import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
 import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
   encodedStream, encodedStreamThatRoundTrips}
 import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Unwrap.accepted
 
 /** Walker decision answers on the wire: every answer and option reference kind
   * round trips on a recorded step and on a park, and deleted legacy tags are
@@ -86,6 +87,24 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       WalkerParked(ActionRef.Travel, Vector("0"), Vector.empty,
         Vector.empty, Vector(DecisionOptionRef.Site(SiteId("site:dest")))))
     assertStreamRoundTrips("forge", events)
+
+  test("a park round trips its start facts, and a park without them reads " +
+      "as having none"):
+    val park = WalkerParked(ActionRef.Travel, Vector("0"), Vector.empty,
+      Vector.empty, Vector.empty)
+    assert(encodedStreamThatRoundTrips("facts", Vector[OathEvent](
+      park.copy(startFacts = Vector(DecisionOptionRef.Site(
+        SiteId("site:source")))))).contains("\"startFacts\""))
+    def dropFacts(value: ujson.Value): ujson.Value = value match
+      case ujson.Obj(fields) => ujson.Obj.from(fields.toSeq.collect:
+        case (key, inner) if key != "startFacts" => key -> dropFacts(inner))
+      case ujson.Arr(items) => ujson.Arr.from(items.map(dropFacts))
+      case other => other
+    val withoutFacts = ujson.write(dropFacts(ujson.read(
+      encodedStream("no-facts", Vector[OathEvent](park)))))
+    assert(!withoutFacts.contains("startFacts"), withoutFacts)
+    assertEquals(accepted(GameEventWire.decodeStream(withoutFacts))
+      .map(_.event), Vector[OathEvent](park))
 
   test("a procedure reference round-trips with its family, and a reference " +
       "under the wrong family or an unknown family is rejected"):

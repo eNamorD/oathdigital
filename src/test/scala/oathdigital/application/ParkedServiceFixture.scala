@@ -229,7 +229,7 @@ object ParkedServiceFixture:
       GameCommand.StartWalker(ActionRef.Travel, StartPayload(p1,
         Vector.empty, Vector(DecisionOptionRef.Site(Table.quietPawnSite(p3))))))
     assert(parked.events.last match {
-      case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _) => true
+      case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _, _) => true
       case _ => false
     }, s"expected a triggered Oathkeeper park, got ${parked.events.last}")
     parkedAssertions.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,

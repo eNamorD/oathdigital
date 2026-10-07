@@ -96,7 +96,8 @@ private[walker] object WalkerReplay:
           updated <- executeRecorded(ready, ops)
         yield updated
 
-      case WalkerParked(procedure, at, answered, modifiers, startArgs) =>
+      case WalkerParked(procedure, at, answered, modifiers, startArgs,
+          startFacts) =>
         for
           _ <- Either.cond(at.nonEmpty && at.forall(segment =>
             segment.nonEmpty && segment.forall(_.isDigit)), (),
@@ -117,6 +118,11 @@ private[walker] object WalkerReplay:
                   OathViolation.InvalidEventOrder(
                     "durable walker park start selections do not match the " +
                       "recorded start"))
+                _ <- Either.cond(
+                  ready.game.current.walkerStartFacts == startFacts, (),
+                  OathViolation.InvalidEventOrder(
+                    "durable walker park start facts do not match the " +
+                      "recorded start"))
               yield ()
             case None => Right(())
           _ <- ready.game.current.walkerPending match
@@ -131,7 +137,8 @@ private[walker] object WalkerReplay:
             walkerPending = Some(PendingTree(at, answered)),
             walkerProcedure = Some(procedure),
             walkerModifiers = modifiers,
-            walkerStartArgs = startArgs)))
+            walkerStartArgs = startArgs,
+            walkerStartFacts = startFacts)))
 
       case WalkerCompleted(procedure) =>
         for
@@ -152,6 +159,7 @@ private[walker] object WalkerReplay:
             walkerProcedure = None,
             walkerModifiers = Vector.empty,
             walkerStartArgs = Vector.empty,
+            walkerStartFacts = Vector.empty,
             rollPools = Map.empty,
             rollOutcomes = Map.empty)))
 

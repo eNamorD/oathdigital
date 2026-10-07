@@ -27,7 +27,8 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
         "step" -> encodeStepPayload(payload),
         "ops" -> ujson.Arr.from(ops.map(encodeOperation)),
         "contributions" -> stringArray(contributions.map(_.value)))
-    case WalkerParked(procedure, at, answered, modifiers, startArgs) =>
+    case WalkerParked(procedure, at, answered, modifiers, startArgs,
+        startFacts) =>
       ujson.Obj(
         "procedure" -> encodeProcedure(procedure),
         "at" -> stringArray(at),
@@ -37,6 +38,9 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
         // as `modifiers` is. A park written before batch-1 Task 5 has no such
         // key at all, and `decodeParked` reads a missing key as empty.
         "startArgs" -> ujson.Arr.from(startArgs.map(
+          DecisionAnswerCodec.encodeRef)),
+        // Read the same way: a park written before start facts has none.
+        "startFacts" -> ujson.Arr.from(startFacts.map(
           DecisionAnswerCodec.encodeRef)))
     case WalkerCompleted(procedure) => ujson.Obj(
       "procedure" -> encodeProcedure(procedure))
@@ -265,19 +269,22 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       case (answer, index) => decodeAnswered(answer,
         s"$path.answered[$index]")
     modifiers = value("modifiers").arr.toVector.map(id => PowerId(id.str))
-    startArgs <- decodeStartArgs(value, s"$path.startArgs")
+    startArgs <- decodeRefs(value, "startArgs", s"$path.startArgs")
+    startFacts <- decodeRefs(value, "startFacts", s"$path.startFacts")
   yield WalkerParked(procedure,
-    value("at").arr.toVector.map(_.str), answered, modifiers, startArgs)
+    value("at").arr.toVector.map(_.str), answered, modifiers, startArgs,
+    startFacts)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker park"))) }
 
-  /** Start selections are `DecisionOptionRef`s and nothing else, so this
-    * names no action and needs no arm per action -- a future action that
-    * selects a site, a card or a player already round-trips here unchanged.
+  /** Start selections and start facts are `DecisionOptionRef`s and nothing
+    * else, so this names no action and needs no arm per action -- a future
+    * action that selects a site, a card or a player already round-trips here
+    * unchanged.
     */
-  private def decodeStartArgs(value: ujson.Value, path: String)
+  private def decodeRefs(value: ujson.Value, key: String, path: String)
       : Either[WireError, Vector[DecisionOptionRef]] =
-    value.obj.get("startArgs") match
+    value.obj.get(key) match
       case None => Right(Vector.empty)
       case Some(args) => traverse(args.arr.zipWithIndex.toVector):
         case (ref, index) =>

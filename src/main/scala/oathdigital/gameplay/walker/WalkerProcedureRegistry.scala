@@ -120,6 +120,12 @@ object WalkerProcedureRegistry:
       rebuild: (ExecutableCatalog, ReadyGame, PlayerId,
         Vector[DecisionOptionRef]) => Either[OathViolation, Operation],
       requiresPlayableOption: Boolean = false,
+      /** What the engine derives at a fresh start and stores as
+        * `walkerStartFacts` (travel destination design, ruling 6). A
+        * procedure's `rebuild` reads them from the state it is handed. None
+        * by default. */
+      startFacts: (ExecutableCatalog, ReadyGame, PlayerId) => Vector[DecisionOptionRef] =
+        (_, _, _) => Vector.empty,
       /** The roll to show beside a parked decision of this procedure, by that
         * decision's id. `None` for a decision no roll belongs beside, which is
         * the default and every procedure that rolls nothing.
@@ -483,3 +489,10 @@ object WalkerProcedureRegistry:
   /** Whether `procedure` opts in to the playable-option gate (see `Entry`). */
   def requiresPlayableOption(procedure: ProcedureRef): Boolean =
     lookup(procedure, entries).exists(_.requiresPlayableOption)
+
+  /** The start facts `procedure` derives at a fresh start, empty for one that
+    * declares none. */
+  def startFacts(procedure: ProcedureRef, catalog: ExecutableCatalog,
+      state: ReadyGame, actor: PlayerId): Vector[DecisionOptionRef] =
+    lookup(procedure, entries).toOption.fold(Vector.empty)(
+      _.startFacts(catalog, state, actor))

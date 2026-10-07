@@ -81,7 +81,9 @@ private[gameplay] trait OathRulesWalker:
               powers, walkerDice))
             _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
             transition <- walkerTransition(state, procedure, tree,
-              outcome, powers, modifiers, startArgs)
+              outcome, powers, modifiers, startArgs,
+              WalkerProcedureRegistry.startFacts(procedure, catalog, ready,
+                activePlayer))
           yield transition
         WalkerProcedureRegistry.fallbackKind(procedure).flatMap:
           case Some(kind) => withFallback(state, activePlayer, kind)(run)
@@ -113,7 +115,7 @@ private[gameplay] trait OathRulesWalker:
           outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None, powers,
             walkerDice))
           started <- walkerTransition(transition.state, procedure, tree,
-            outcome, powers, Vector.empty, Vector.empty)
+            outcome, powers, Vector.empty, Vector.empty, Vector.empty)
         yield started.copy(events = transition.events ++ started.events)
       case _ => Right(transition)
 
@@ -258,7 +260,7 @@ private[gameplay] trait OathRulesWalker:
           powers, ready, ready.game.current.turn.activePlayer,
           pending.answered :+ recorded).map(_ => outcome))
           .flatMap(walkerTransition(state, procedure, tree, _, powers,
-            modifiers, startArgs))
+            modifiers, startArgs, ready.game.current.walkerStartFacts))
 
   /** Validates and derives the action tree once, then asks the application for
     * exactly the parked pool's authoritative number of faces.
@@ -285,7 +287,7 @@ private[gameplay] trait OathRulesWalker:
         outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces,
           powers, walkerDice))
         transition <- walkerTransition(state, procedure, tree, outcome,
-          powers, modifiers, startArgs)
+          powers, modifiers, startArgs, ready.game.current.walkerStartFacts)
       yield transition
     })
 
@@ -384,11 +386,12 @@ private[gameplay] trait OathRulesWalker:
   private def walkerTransition(state: OathState,
       procedure: ProcedureRef, tree: Operation, outcome: WalkerOutcome,
       powers: WalkerPowers, modifiers: Vector[PowerId],
-      startArgs: Vector[DecisionOptionRef])
+      startArgs: Vector[DecisionOptionRef],
+      startFacts: Vector[DecisionOptionRef])
       : Either[OathViolation, OathTransition] = outcome match
     case WalkerOutcome.Parked(pending, steps) =>
       val fact = WalkerParked(procedure, pending.at,
-        pending.answered, modifiers, startArgs)
+        pending.answered, modifiers, startArgs, startFacts)
       // Which node the walker is parked on can depend on a Branch selecting
       // its children by *live* state (Recover's success-only relic decision
       // checks the just-written roll outcome), so the answerability check

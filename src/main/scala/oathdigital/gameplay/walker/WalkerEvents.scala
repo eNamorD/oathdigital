@@ -101,13 +101,17 @@ final case class WalkerStepRecorded(
   * start cannot rebuild that tree without it, and a selection -- unlike the
   * actor's pawn site -- is a choice, not a state read. Empty for the
   * procedures that select nothing, which is every one that parks today.
+  * `startFacts` is what the engine derived at the start, carried for the same
+  * reason: a fact the walk itself changes (Travel's source site) cannot be
+  * read back from state on a resume.
   */
 final case class WalkerParked(
     procedure: ProcedureRef,
     at: Vector[String],
     answered: Vector[Answered],
     modifiers: Vector[PowerId],
-    startArgs: Vector[DecisionOptionRef]
+    startArgs: Vector[DecisionOptionRef],
+    startFacts: Vector[DecisionOptionRef] = Vector.empty
 ) extends WalkerEvent
 
 /** Durable action-boundary fact. Replay clears every walker-owned scratch
