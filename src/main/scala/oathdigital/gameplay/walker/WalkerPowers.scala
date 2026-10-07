@@ -29,9 +29,13 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
   lazy val hasRestrictions: Boolean = powers.exists(_.contributions.values
     .exists(_.exists(_.isInstanceOf[Restriction])))
 
-  /** The operation restrictions every step of this command runs with. */
+  /** The operation restrictions every step of this command runs with. A
+    * selected power that discards its own card is not held in play by the
+    * active-modifier rule. */
   lazy val operationRestrictions: Vector[OperationRestriction] =
-    restrictionSet.active(powers.flatMap(_.operationRestrictions), modifiers)
+    restrictionSet.active(powers.flatMap(_.operationRestrictions),
+      modifiers.filterNot(id => powers.exists(power =>
+        power.id == id && power.discardsItself)))
 
   /** The verdicts this instance's searches have found (see [[SearchMemo]]). */
   private[walker] lazy val searchMemo: SearchMemo = new SearchMemo

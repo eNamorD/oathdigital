@@ -36,13 +36,6 @@ object MarriageCard extends Denizen(DenizenId("148"), "Marriage", Suit.Hearth) w
       "counts as one toward your adviser limit.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object AwaitedReturnCard extends Denizen(DenizenId("150"), "Awaited Return", Suit.Hearth):
-  val power = PrintedPower(PowerId("denizen.awaited-return"),
-    persistent = false, cost = Cost.free,
-    text = "Spend no Supply if you sacrifice one warband from your " +
-      "board.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object OldSongsCard extends Denizen(DenizenId("229"), "Old Songs", Suit.Hearth):
   val power = PrintedPower(PowerId("denizen.old-songs"),
     persistent = false, cost = Cost.free,

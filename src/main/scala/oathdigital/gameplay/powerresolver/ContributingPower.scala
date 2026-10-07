@@ -136,6 +136,10 @@ trait ContributingPower extends NotingPower:
     * split (global operation restrictions design). Unlike a `Restriction`, it
     * hooks no window. None by default. */
   def operationRestrictions: Vector[OperationRestriction] = Vector.empty
+  /** Whether this selected power discards its own card before its action
+    * ends, so the active-modifier rule must not hold that card in play. No by
+    * default. */
+  def discardsItself: Boolean = false
   /** What selecting this power pays, as the operations its action runs first.
     * A command that selects several powers dry-runs all of their payments
     * together (`OathRules.validateModifiers`), so a combination the player

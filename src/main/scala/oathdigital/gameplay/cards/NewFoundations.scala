@@ -42,10 +42,10 @@ import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,
 import oathdigital.gameplay.powers.cardplay.{BookBindersCard, GossipCard,
   SacredGroundCard, SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard,
   WelcomingPartyCard, WildCryCard}
-import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard, BirdsongCard,
-  CupOfPlentyCard, CurfewCard, DowntroddenCard, InitiationRiteCard,
-  KnightsErrantCard, MovingMarketCard, RowdyPubCard, TheOldOakCard,
-  VillageIdiotCard}
+import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard,
+  AwaitedReturnCard, BirdsongCard, CupOfPlentyCard, CurfewCard,
+  DowntroddenCard, InitiationRiteCard, KnightsErrantCard, MountedLibraryCard,
+  MovingMarketCard, RowdyPubCard, TheOldOakCard, VillageIdiotCard}
 import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}

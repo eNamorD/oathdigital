@@ -9,14 +9,15 @@ import oathdigital.model._
 /** The cards of `suits` at a site that a power may discard, for Dark
   * Enforcer, Taming Charm and Great Feast: faceup denizens and ruined
   * edifices, in site order, each with its suit. An intact edifice is locked
-  * and stays, and a facedown card has no suit.
+  * and stays, and a facedown card has no suit. Mounted Library discards
+  * itself through `discard`.
   *
   * The standard discard sends a denizen to the discard pile of the region
   * after the site's, and a ruined edifice to the bottom of the edifice deck.
   * Either returns its favor to its suit's bank and its secrets to the
   * acting player facedown.
   */
-private[action] final class SiteCards(catalog: ExecutableCatalog,
+private[powers] final class SiteCards(catalog: ExecutableCatalog,
     suits: Set[Suit]):
 
   def at(ready: ReadyGame, site: SiteId): Vector[(SiteDenizenState, Suit)] =

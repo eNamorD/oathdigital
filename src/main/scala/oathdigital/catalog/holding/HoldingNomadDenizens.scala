@@ -119,13 +119,6 @@ object VowOfWanderingCard extends Denizen(DenizenId("247"), "Vow of Wandering", 
     text = "You **cannot** place warbands on sites.")
   val powers: Vector[PrintedPower] = Vector(muster, power)
 
-object MountedLibraryCard extends Denizen(DenizenId("248"), "Mounted Library", Suit.Nomad) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.mounted-library"),
-    persistent = false, cost = Cost.free,
-    text = "If trading on Mounted Library for [secret], gain double the " +
-      "[secret], then discard Mounted Library.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object TheGatheringCard extends Denizen(DenizenId("27"), "The Gathering", Suit.Nomad) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.the-gathering"),
     persistent = false, cost = Cost.free,
