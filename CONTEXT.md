@@ -70,9 +70,8 @@ _Avoid_: button, action button, command
 **Draft set**:
 Everything a viewer has staged at the table and not yet sent: the board
 draft, the partition, distribute and selection drafts, the picked board
-targets, the modifier order, and the facedown adviser pick. A viewer has
-exactly one, bound to one game, seat and position; it empties when any of
-those change.
+targets, and the modifier order. A viewer has exactly one, bound to one
+game, seat and position; it empties when any of those change.
 _Avoid_: session state, UI state, pending selections, the drafts
 
 **Modifier flow**:

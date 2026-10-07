@@ -4,7 +4,7 @@
 item under Later. The roadmap item allowed undo only before an action
 started; this design allows it inside a running walker and across an
 action's end. Slice 1 implemented 2026-10-06. Slice 2 implemented 2026-10-07.
-Slice 3 implemented 2026-10-07.
+Slice 3 implemented 2026-10-07. Slice 4 implemented 2026-10-07.
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **parked decision**,
 **draft set** and **situation**. This design adds **command batch**,
@@ -271,8 +271,8 @@ takes its drafts with it, as it does today when the position moves.
 The "Play facedown adviser" pick moves into the `play-facedown-adviser`
 walker as its first parked decision: an ordinary board decision over the
 player's facedown advisers. `StartWalker` then carries no pick. Today's
-preselection carries over: with exactly one facedown adviser, its site is the
-board draft. The pre-walker local choice, `FacedownAdviserDraft` and its
+preselection carries over: with exactly one facedown adviser, that adviser is
+the board draft. The pre-walker local choice, `FacedownAdviserDraft` and its
 "Cancel action" button retire. Undo takes back the start instead.
 
 ## Slices
