@@ -201,3 +201,19 @@ class OperationRestrictionsSuite extends munit.FunSuite:
     assertEquals(taken.state.game.current.banners.peoplesFavor.holder, Some(p1))
     assertEquals(taken.state.game.current.banners.peoplesFavor.favor, 0)
     assertEquals(order(taken.state), order(ready) + 2)
+
+  test("a selected power that discards its own card is left out of the " +
+      "active-modifier rule, and the others stay protected"):
+    val mountedLibrary = CatalogNames.denizen("Mounted Library")
+    val cropRotation = CatalogNames.denizen("Crop Rotation")
+    val ready = Table.start.adviser(p1, cropRotation)
+      .adviser(p1, mountedLibrary).ready
+    val selected = oathdigital.gameplay.walker.WalkerPowers.selected(
+      oathdigital.gameplay.powers.WalkerPowerCatalog.default(catalog),
+      Vector(oathdigital.gameplay.powers.economy.MountedLibrary.id,
+        oathdigital.gameplay.powers.search.CropRotation.id))
+    def refused(card: DenizenId): Option[String] = selected
+      .operationRestrictions.flatMap(_.reason(ready,
+        discard(card, Location.PlayArea(p1)))).headOption.map(_.code)
+    assertEquals(refused(cropRotation), Some("active-modifier"))
+    assertEquals(refused(mountedLibrary), None)

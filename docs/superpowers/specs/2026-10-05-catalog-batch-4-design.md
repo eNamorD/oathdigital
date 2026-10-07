@@ -186,6 +186,24 @@ with the reason.
   which reads the printed defense, so it writes its own line.
 - **Special Envoy's `EnterPhase`** folds after every other Travel effect,
   above Royal Stables' priority, so Dragonskin Drum's gain comes first.
+- **Vow of Poverty's rule** is a `Restriction` on the Trade's gain node,
+  which refuses its holder's favor gain. The restriction look-ahead then
+  hides every source of a Trade for favor, so that Trade is not offered.
+  Moving Market's favor is gained at the Trade's root, outside the node.
+- **Curfew and Forced Labor** charge through one helper, `RulerToll`, as Toll
+  Roads charges for Travel: a required payment before the action's cost, so
+  a source or a Search the enemy cannot pay for is hidden. Curfew reads the
+  Trade's source when the payment runs, so the cost node's shape never
+  depends on the answer.
+- **Vow of Beastkin's extra warband** joins the Muster's own gain, and its
+  line reads what the gain added beyond the base.
+- **Mounted Library** folds at priority 1, so its discard ends the Trade
+  after every other modifier's question. A Trade for favor with it leaves the
+  paid secret on it, and the discard returns that secret to the trader
+  facedown. The active-modifier rule refuses to discard a selected modifier,
+  so a power that discards its own card declares `discardsItself`, and
+  `WalkerPowers` leaves it out of that rule. This is the one engine-side
+  change of the slice.
 - **A Round of Ale** runs the extracted cleanup in one `BuildOps` with the
   actor as the resting player. It does not declare `RestReturnFavor`.
 - **Test filler.** Tests that use Revelation as an unimplemented WHEN PLAYED
@@ -358,15 +376,26 @@ saying it gained none.
 
 | Card | Line | Covers |
 |---|---|---|
-| Vow of Poverty (REST) | Vow of Poverty: Took {n favor} from {the Order bank}. | the Gain line |
-| Vow of Beastkin, after the gain | Vow of Beastkin: Gained {1} more warband. | |
-| Defame | Defame: Burned {1 favor} from {Blue}'s board. | the Burn line (verify) |
-| Mounted Library, key `doubled` | Mounted Library: Gained {n} more secrets. | |
-| Mounted Library, key `discarded` | Mounted Library: Discarded after the Trade. | the Discard line (verify) |
-| Curfew, Forced Labor | {Card}: Gave {1 favor} to {Blue}. / {Card}: Burned {1 favor}. | as for Toll Roads |
-| Awaited Return | Awaited Return: Spent no Supply after sacrificing {1} warband. | the Kill line (verify) |
-| Special Envoy | Special Envoy: The Act Phase ended. | |
-| Tyrant, key `killed` | Tyrant: Killed {1} {Blue} warband at {site}. | the Kill line (verify) |
+| Vow of Poverty (REST), key `used` | Vow of Poverty: Took {n favor} from {the Order bank}. | the Gain line |
+| Vow of Beastkin, key `gained`, after the gain | Vow of Beastkin: Gained {1} more warband. | |
+| Defame, key `burned` | Defame: Burned {1 favor} from {Blue}'s board. | |
+| Mounted Library, key `doubled` | Mounted Library: Gained {n} more secrets. | the second gain's Gain line; the Trade's own stays |
+| Mounted Library, key `discarded` | Mounted Library: Discarded after the Trade. | the Discarded line |
+| Curfew, Forced Labor, key `gave` | {Card}: Gave {1 favor} to {Blue}. | |
+| Curfew, Forced Labor, key `burned`, bandits rule | {Card}: Burned {1 favor}. | |
+| Awaited Return, key `sacrificed` | Awaited Return: Spent no Supply after sacrificing {1} warband. | |
+| Special Envoy, key `ended` | Special Envoy: The Act Phase ended. | |
+| Tyrant, key `killed` | Tyrant: Killed {1} {Blue} warband at {site}. | |
+| Tyrant, key `killed.bandits` | Tyrant: Killed {1} bandit warband at {site}. | |
+
+Defame names the chosen player even when the actor chose themself, and
+Tyrant names whose warband died, the holder's own included, as Bandit Chief
+does. No generic line exists for a favor burn, favor given between boards, a
+kill, a warband gain or a phase change, so those rows cover nothing. Mounted
+Library doubles through a second secret gain. Its line covers only that
+gain's generic line, so the Trade's own "Gained {n} secrets" line stays and
+"Mounted Library: Gained {n} more secrets." follows it. Tyrant's bandit kill
+has its own key, since no note argument names the bandits.
 
 **No line:** News from Afar, A Fast Steed and Special Envoy's Supply waiver,
 which the start line's cost span shows. Vow of Poverty's and Vow of

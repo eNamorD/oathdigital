@@ -21,7 +21,7 @@
 - **Powers-side additions:**
   - `RulerToll` holds the toll Curfew and Forced Labor share.
   - `SiteCards` widens from `private[action]` to `private[powers]` (refactor R6), so Mounted Library can discard itself the standard way.
-- **No engine change.** No new operation, window, query, option kind, `NoteArg` kind, protocol change or frontend change.
+- **No engine change** beyond one hook. No new operation, window, query, option kind, `NoteArg` kind, protocol change or frontend change. Execution found that the active-modifier rule refused Mounted Library's own discard, so `ContributingPower` gained `discardsItself` and `WalkerPowers` leaves such a power out of that rule (commit d3594fd3).
 
 **Tech Stack:** Scala 3 on the JVM, munit, built through `./sbtw`. No frontend change.
 

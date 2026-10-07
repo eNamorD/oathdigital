@@ -11,8 +11,8 @@ specs.
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest. **Phase - Catalog batch 4** is in progress: slices
-1a, 1b, 2, 3 and 4 are done. **Phase - Undo** is in progress: slice 1 is done.
+2026-10-01 playtest. **Phase - Catalog batch 4** is complete. **Phase -
+Undo** is in progress: slice 1 is done.
 
 ## Next
 
@@ -91,9 +91,7 @@ with no engine change. The
 [per-card rulings](superpowers/specs/2026-10-05-catalog-batch-4-rulings.md)
 hold the slices, the shared scorers and the restriction-icon rule.
 
-- [ ] 5. Modifiers and restrictions: Vow of Poverty, Vow of Beastkin, Defame,
-  Mounted Library, Curfew, Awaited Return, Special Envoy, Tyrant, A Fast
-  Steed, Forced Labor, News from Afar.
+Every slice is done.
 
 ### Phase - Follow-up actions
 
