@@ -47,12 +47,30 @@ private[frontend] final class TableSession(
   // on nothing.
   private var logEpoch = 0
   private var logLoading = false
+  // The `logRevision` the log was fetched under. A different one means an
+  // undo changed lines already shown (undo design, "Game Log").
+  private var logRevision = Option.empty[Long]
+  // Set by a revision change: the next page replaces the log instead of
+  // growing it, so the old lines stay on show until the new ones land.
+  private var logReplacing = false
 
   private def resetLog(): Unit =
     log = Vector.empty
     logSequence = 0L
     logEpoch += 1
     logLoading = false
+    logRevision = None
+    logReplacing = false
+
+  /** An undo changed lines already shown: ask for the whole log again and
+    * drop any answer still on its way. The log on show stays until the
+    * new page replaces it. */
+  private def refetchLog(revision: Option[Long]): Unit =
+    logRevision = revision
+    logSequence = 0L
+    logEpoch += 1
+    logLoading = false
+    logReplacing = true
 
   /** Asks for the entries after the log's cursor when `target`, a displayed
     * position, is past it. One request at a time; a failure changes nothing
@@ -66,9 +84,14 @@ private[frontend] final class TableSession(
           logLoading = false
           result.foreach { page =>
             val advanced = page.nextSequence > logSequence
-            val last = log.lastOption.map(entry => entry.sequence -> entry.ordinal)
-            log ++= page.entries.filter(entry => last.forall(key =>
-              Ordering[(Long, Int)].gt(entry.sequence -> entry.ordinal, key)))
+            if logReplacing then
+              log = page.entries
+              logReplacing = false
+            else
+              val last = log.lastOption.map(entry =>
+                entry.sequence -> entry.ordinal)
+              log ++= page.entries.filter(entry => last.forall(key =>
+                Ordering[(Long, Int)].gt(entry.sequence -> entry.ordinal, key)))
             logSequence = math.max(logSequence, page.nextSequence)
             redraw()
             if advanced then projection.foreach(current =>
@@ -120,6 +143,8 @@ private[frontend] final class TableSession(
         failure = retainedNotice
         redraw()
         polling.resume(coordinator.capture)
+        if displayed.logRevision != logRevision then
+          refetchLog(displayed.logRevision)
         fetchLog(displayed.nextSequence)
         if !trusted && !rawHistorySequence.contains(displayed.nextSequence) then
           rawHistorySequence = Some(displayed.nextSequence)

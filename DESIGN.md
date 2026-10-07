@@ -557,6 +557,9 @@ controls are 30px.
   sits in a footer strip pinned to the pane's bottom edge (Pane fill,
   Line-pane top border, 12px padding), full width, so the answer stays in
   view while the zones scroll.
+- **Undo**: the Action face, directly under the Actions pane's status line
+  and 12px above what follows, shown only to the player the server offers a
+  step to. Its label is always "Undo"; its hover note names the step.
 - **Board target control**: full width of the site, Panel fill, Bright Cream
   700 text, brass border. Hover and focus: Pressed fill and a 3px Bright
   Cream outline offset 2px. Pressed state prefixes "✓ ".
@@ -695,6 +698,15 @@ it. The pane heading itself opens the log overlay; it answers hover in
 Bright Cream, and because it is a control it wears 6px of padding given
 back as margin, so its hit area is a Control's height and its focus ring
 sits clear of the letters while the header strip stays 39px.
+
+Taken-back moves (undo) stay where they were, folded into one group per
+contiguous run: a full-width toggle line in italic Ink Dim, "▸" closed and
+"▾" open, naming who took the moves back with each player in their seat
+color. Opened, the lines keep their bands and colors and are struck through
+with an Ink Spent line. A group is closed until the reader opens it, and it
+stays open through the redraw an undo causes; that redraw keeps the reader's
+place. The "Since you last looked" rule never splits a group and stands
+before it instead.
 
 The **log overlay** is the whole log over the table. It takes the card
 overlay's scrim and holds a Pane-fill panel with a Line-pane border, full
