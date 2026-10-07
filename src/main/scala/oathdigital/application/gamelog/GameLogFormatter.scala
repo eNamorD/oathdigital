@@ -125,7 +125,8 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
       case _: OathEvent.IgnoredRulesRecorded => (Vector.empty, run)
       // Undo's facts post no line of their own; `format` keeps markers out
       // of every journal it formats.
-      case _: OathEvent.CommandAccepted | _: OathEvent.StepTakenBack =>
+      case _: OathEvent.CommandAccepted | _: OathEvent.StepTakenBack |
+          _: OathEvent.StepRestored =>
         (Vector.empty, run)
       // A minor action, outside any walker run, is a section of its own.
       case _: OathEvent.SiteRelicsPeeked | _: OathEvent.OwnedRelicRevealed |

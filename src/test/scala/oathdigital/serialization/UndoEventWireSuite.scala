@@ -1,7 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.model._
-import oathdigital.model.OathEvent.{CommandAccepted, StepTakenBack}
+import oathdigital.model.OathEvent.{CommandAccepted, StepRestored, StepTakenBack}
 
 /** Undo's journal facts round-trip through the envelope (undo design,
   * "Storage"). */
@@ -27,3 +27,13 @@ class UndoEventWireSuite extends munit.FunSuite:
       GameEventWire.encodeEvent("g", 0L, StepTakenBack(0L, 1L, PlayerId("p1")))
         .map(_("eventType").str),
       Right("undo.step-taken-back"))
+
+  test("a restore marker round-trips with its range and issuer"):
+    assertEquals(roundTrip(StepRestored(12L, 19L, PlayerId("p1"))),
+      Right(StepRestored(12L, 19L, PlayerId("p1"))))
+
+  test("a restore marker has its own event type"):
+    assertEquals(
+      GameEventWire.encodeEvent("g", 0L, StepRestored(0L, 1L, PlayerId("p1")))
+        .map(_("eventType").str),
+      Right("undo.step-restored"))

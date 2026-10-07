@@ -59,6 +59,11 @@ object OathEvent:
     * journal fold replays it. */
   final case class StepTakenBack(from: Long, until: Long, by: PlayerId)
       extends OathEvent
+  /** Un-voids the events in `[from, until)`, the batch most recently taken
+    * back since the last command batch, which `by` issued (undo design,
+    * "Redo"). Only the application's journal fold replays it. */
+  final case class StepRestored(from: Long, until: Long, by: PlayerId)
+      extends OathEvent
 
 enum TradeResource { case Favor, Secret }
 

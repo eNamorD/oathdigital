@@ -41,6 +41,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val PowerNotedType = "walker.power-noted"
   val CommandAcceptedType = "undo.command-accepted"
   val StepTakenBackType = "undo.step-taken-back"
+  val StepRestoredType = "undo.step-restored"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
