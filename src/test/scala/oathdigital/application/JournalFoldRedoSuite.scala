@@ -92,3 +92,33 @@ class JournalFoldRedoSuite extends munit.FunSuite:
         UndoJournals.events(repository, "g") :+
           StepRestored(0L, moved.nextSequence, p1), "g")),
       Some(again.nextSequence))
+
+  test("a restore marker that names a deeper batch fails replay"):
+    val (service, repository) = table.service()
+    val first = accept(service.handle("g", 0L, travel(p1, p3)))
+    val second = accept(service.handle("g", first.nextSequence, travel(p1, p2)))
+    val once = accept(service.handle("g", second.nextSequence,
+      GameCommand.Undo(p1)))
+    val twice = accept(service.handle("g", once.nextSequence,
+      GameCommand.Undo(p1)))
+    // The first batch is on top of the redo stack; the second lies under it.
+    assertEquals(replayFailureIndex(UndoJournals.rewritten(
+        UndoJournals.events(repository, "g") :+
+          StepRestored(first.nextSequence, second.nextSequence, p1), "g")),
+      Some(twice.nextSequence))
+
+  test("a new command after a redo empties what was left to redo"):
+    val (service, _) = table.service()
+    val first = accept(service.handle("g", 0L, travel(p1, p3)))
+    val second = accept(service.handle("g", first.nextSequence, travel(p1, p2)))
+    val once = accept(service.handle("g", second.nextSequence,
+      GameCommand.Undo(p1)))
+    val twice = accept(service.handle("g", once.nextSequence,
+      GameCommand.Undo(p1)))
+    val redone = accept(service.handle("g", twice.nextSequence,
+      GameCommand.Redo(p1)))
+    assertEquals(redone.redo.map(range),
+      Some((p1, first.nextSequence, second.nextSequence)))
+    val again = accept(service.handle("g", redone.nextSequence, travel(p1, p2)))
+    assertEquals(again.redo, None)
+    assertEquals(again.undo.map(_.from), Some(redone.nextSequence))

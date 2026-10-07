@@ -65,3 +65,22 @@ class GameLogRestoredSuite extends munit.FunSuite:
     assert(after.forall(_.takenBack.nonEmpty), s"all taken back: $after")
     assertEquals(withoutMarks(after), before)
     assertEquals(after.flatMap(_.takenBack).map(_.group).distinct.size, 1)
+
+  test("an older taken-back move stays in its group across a later undo and redo"):
+    val (service, _) = table.service()
+    val first = accept(service.handle("g", 0L, travel(p3)))
+    val undoneFirst = accept(service.handle("g", first.nextSequence,
+      GameCommand.Undo(p1)))
+    val second = accept(service.handle("g", undoneFirst.nextSequence,
+      travel(p2)))
+    val undoneSecond = accept(service.handle("g", second.nextSequence,
+      GameCommand.Undo(p1)))
+    accept(service.handle("g", undoneSecond.nextSequence, GameCommand.Redo(p1)))
+    val entries = log(service, p1)
+    val older = entries.filter(_.sequence < first.nextSequence)
+    val restored = entries.filter(entry =>
+      entry.sequence >= undoneFirst.nextSequence &&
+        entry.sequence < second.nextSequence)
+    assert(older.nonEmpty && restored.nonEmpty, "both Travels post lines")
+    assert(older.forall(_.takenBack.nonEmpty), s"the first stays back: $older")
+    assertEquals(restored.flatMap(_.takenBack), Vector.empty)
