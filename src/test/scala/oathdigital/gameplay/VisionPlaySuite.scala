@@ -121,9 +121,8 @@ class VisionPlaySuite extends munit.FunSuite:
     val staged = Table.start.adviser(actor, revealed, facedown = true)
       .revealedVision(actor, old).ready
     val before = Look(staged).player(actor)
-    val started = accepted(rules.startWalker(OathState.Ready(staged),
-      ActionRef.PlayFacedownAdviser, actor,
-      startArgs = Vector(DecisionOptionRef.Vision(revealed))))
+    val started = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,
+      OathState.Ready(staged), actor, revealed))
     val done = accepted(
       rules.resolveWalker(started.state, actor, placeId(revealed),
         faceup(started.state)))
@@ -140,9 +139,8 @@ class VisionPlaySuite extends munit.FunSuite:
     // p1 holds Conspiracy facedown; on the quiet table no one shares p1's
     // site, so it has nothing to take.
     val staged = Table.start.adviser(actor, conspiracy, facedown = true).ready
-    val started = accepted(rules.startWalker(OathState.Ready(staged),
-      ActionRef.PlayFacedownAdviser, actor,
-      startArgs = Vector(DecisionOptionRef.Vision(conspiracy))))
+    val started = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,
+      OathState.Ready(staged), actor, conspiracy))
     val done = accepted(
       rules.resolveWalker(started.state, actor, placeId(conspiracy),
         faceup(started.state)))

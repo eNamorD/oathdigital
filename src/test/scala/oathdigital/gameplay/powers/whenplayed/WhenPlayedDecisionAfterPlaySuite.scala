@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
+import oathdigital.gameplay.FacedownAdviserPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
 import oathdigital.gameplay.powers.SearchFixture._
@@ -61,9 +62,8 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
       Orientation.FaceDown)
     val ready = PowerFixture.inPhase(asAdviser, Phase.Act)
     val done = accepted(for
-      started <- rules.startWalker(OathState.Ready(ready),
-        ActionRef.PlayFacedownAdviser, p1, Vector.empty,
-        Vector(DecisionOptionRef.Denizen(heirloom)))
+      started <- FacedownAdviserPlay.parkedOnPlacement(rules,
+        OathState.Ready(ready), p1, heirloom)
       placed <- place(started, heirloom, PlayedAs.Faceup)
       answered <- answer(placed, take)
     yield answered)

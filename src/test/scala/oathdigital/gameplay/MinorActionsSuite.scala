@@ -36,9 +36,8 @@ class MinorActionsSuite extends munit.FunSuite:
   private def base: ReadyGame = minorBoard.ready
 
   test("facedown adviser discard uses the next region and costs no Supply"):
-    val started = accepted(rules.startWalker(Ready(base),
-      ActionRef.PlayFacedownAdviser, p1,
-      startArgs = Vector(DecisionOptionRef.Denizen(magiciansCode))))
+    val started = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,
+      Ready(base), p1, magiciansCode))
     val discarded = accepted(rules.resolveWalker(started.state, p1,
       PlacementFixture.cardPlayDecisionId(magiciansCode, "place"),
       PlacementPicks.parkedAnswer(started.state, PlayedAs.Discarded,
@@ -199,9 +198,8 @@ class MinorActionsSuite extends munit.FunSuite:
     val locked = CatalogNames.denizen("Sealing Ward")
     val modified = Table.start.pawn(p1, at = brokenPeaks)
       .adviser(p1, locked, facedown = true).ready
-    val started = accepted(rules.startWalker(Ready(modified),
-      ActionRef.PlayFacedownAdviser, p1,
-      startArgs = Vector(DecisionOptionRef.Denizen(locked))))
+    val started = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,
+      Ready(modified), p1, locked))
     val discarded = accepted(rules.resolveWalker(started.state, p1,
       PlacementFixture.cardPlayDecisionId(locked, "place"),
       PlacementPicks.parkedAnswer(started.state, PlayedAs.Discarded,
@@ -217,11 +215,8 @@ class MinorActionsSuite extends munit.FunSuite:
       .map(_.id).collect { case id: WorldCardId => id }, "a kept adviser")
     val act = accepted(rules.startWalker(setupState, PhaseTransitionRef.EndWake,
       active))
-    val started = accepted(rules.startWalker(act.state,
-      ActionRef.PlayFacedownAdviser, active, startArgs = Vector(adviser match {
-        case id: DenizenId => DecisionOptionRef.Denizen(id)
-        case id: VisionId => DecisionOptionRef.Vision(id)
-      })))
+    val started = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,
+      act.state, active, adviser))
     val discarded = accepted(rules.resolveWalker(started.state, active,
       PlacementFixture.cardPlayDecisionId(adviser, "place"),
       PlacementPicks.parkedAnswer(started.state, PlayedAs.Discarded,

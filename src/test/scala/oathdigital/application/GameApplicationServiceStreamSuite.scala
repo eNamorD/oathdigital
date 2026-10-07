@@ -12,8 +12,8 @@ import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.testkit.Table.p2
 import oathdigital.testkit.Unwrap.{accepted, as, rejected}
-import ParkedServiceFixture.{firstPlayer, loaded, playFacedownAdviser,
-  replayingSecond, setupViaService}
+import ParkedServiceFixture.{firstPlayer, loaded, pickFacedownAdviser,
+  playFacedownAdviser, replayingSecond, setupViaService}
 
 /** The application service's stream: what it appends, at which position,
   * and what it refuses to append or replay.
@@ -64,7 +64,9 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         val adviser =
           as[WorldCardId](Look(act).player(actor).advisers.head.id)
         position = accepted(service.handle("powered-playability",
-          position.nextSequence, playFacedownAdviser(actor, adviser)))
+          position.nextSequence, playFacedownAdviser(actor)))
+        position = accepted(service.handle("powered-playability",
+          position.nextSequence, pickFacedownAdviser(actor, adviser)))
         position = accepted(service.handle("powered-playability",
           position.nextSequence, GameCommand.ResolveWalker(actor, TreeDecision(
             s"cardplay.place.${adviser.kind}.${adviser.value}",

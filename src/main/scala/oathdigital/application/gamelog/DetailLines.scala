@@ -181,11 +181,14 @@ private[gamelog] object DetailLines:
       case child: CoreOperation => child }.flatMap(parts)
 
   /** Decisions other lines tell: Setup's own lines, Card Play's placement
-    * line and the follow-up discard of a Replace site slot, every Campaign and
-    * Negotiation line, and each action line that names its choice. */
+    * line and the follow-up discard of a Replace site slot, the
+    * facedown-adviser pick, which the played adviser's line names, every
+    * Campaign and Negotiation line, and each action line that names its
+    * choice. */
   private val NarratedPrefixes = Vector("setup.", ActionLines.PlacePrefix,
     "cardplay.discard.", "campaign.", "negotiation.")
   private val NarratedIds = Set(SearchProcedure.cardDecisionId,
+    CardPlayProcedure.facedownAdviserDecisionId,
     RecoverProcedure.choiceDecisionId, RecoverProcedure.relicDecisionId,
     MusterProcedure.decisionId, TradeProcedure.decisionId,
     ForgeProcedure.assignmentDecisionId, ChallengeProcedure.bannerDecisionId,

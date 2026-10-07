@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
@@ -32,10 +33,16 @@ object ParkedServiceFixture:
     case id: DenizenId => DecisionOptionRef.Denizen(id)
     case id: VisionId => DecisionOptionRef.Vision(id)
 
-  /** `actor` starts playing their facedown adviser `card`. */
-  def playFacedownAdviser(actor: PlayerId, card: WorldCardId): GameCommand =
+  /** `actor` starts playing a facedown adviser; the walk parks on the pick. */
+  def playFacedownAdviser(actor: PlayerId): GameCommand =
     GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-      StartPayload(actor, Vector.empty, Vector(optionRef(card))))
+      StartPayload(actor, Vector.empty, Vector.empty))
+
+  /** `actor` answers the facedown-adviser pick with their adviser `card`. */
+  def pickFacedownAdviser(actor: PlayerId, card: WorldCardId): GameCommand =
+    GameCommand.ResolveWalker(actor, TreeDecision(
+      CardPlayProcedure.facedownAdviserDecisionId,
+      DecisionAnswer.ChooseOneAnswer(optionRef(card))))
 
   /** The first player of the fixture's first game: Setup seats p2 first. */
   val firstPlayer: PlayerId = p2

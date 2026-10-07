@@ -16,6 +16,11 @@ import oathdigital.model._
   *  3. The line of each permission a site discard spent, the play's
   *     operations, then the `CardPlayedFacedown` or `CardPlayedFaceup` hook.
   *
+  * The facedown-adviser play asks one decision before these:
+  * [[facedownAdviserDecisionId]], a board choose-one over the actor's
+  * facedown advisers. Its start names no card, so Undo can take the start
+  * back.
+  *
   * The headings name neither the card nor the site; the projector does.
   */
 object CardPlayProcedure:
@@ -39,19 +44,66 @@ object CardPlayProcedure:
       Some(PlayedAs.Faceup)
     case _ => None
 
+  /** The facedown-adviser play's first decision: which facedown adviser to
+    * play, answered on the actor's board. */
+  val facedownAdviserDecisionId: String = "cardplay.facedown-adviser"
+
   def buildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(ready), actor)
-    card <- facedownCard(args)
-    tree <- build(catalog, ready, actor, card, Origin.FacedownAdviser)
-  yield tree
+    _ <- Either.cond(args.isEmpty, (), OathViolation.InvalidEventOrder(
+      "facedown-adviser play takes no start selection"))
+    _ <- Either.cond(facedownAdvisers(ready, actor).nonEmpty, (),
+      OathViolation.InvalidSearchPlacement("no facedown adviser to play"))
+  yield facedownTree(catalog, ready, actor)
 
+  /** Resume rebuilds what the start built. A start journaled before the pick
+    * moved into the walk names its card as the one start selection, and its
+    * tree is that card's placement alone. */
   def rebuildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] =
-    facedownCard(args).map(unchecked(catalog, ready, actor, _,
+    if args.isEmpty then Right(facedownTree(catalog, ready, actor))
+    else facedownCard(args).map(unchecked(catalog, ready, actor, _,
       Origin.FacedownAdviser))
+
+  /** The pick, then the picked card's placement. Once the card has been
+    * played, a resumed walk rebuilds the pick without it; the walk is past
+    * the pick by then, and the placement settles from its answers. */
+  private def facedownTree(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId): Operation =
+    val pick = Decide(facedownAdviserDecisionId, actor, DecisionQuery.ChooseOne(
+      facedownAdvisers(ready, actor).map(adviserOption),
+      heading = Some("Choose a facedown adviser to play")))
+    // The walk reaches the Branch after the pick's answer, so the placement
+    // is planned from the state the card is played in.
+    val placement = Branch((current, pending) =>
+      pending.answered.collectFirst {
+        case Answered(`facedownAdviserDecisionId`,
+            DecisionAnswer.ChooseOneAnswer(ref), _) => ref
+      }.flatMap(worldCard).toVector.map(card =>
+        unchecked(catalog, current, actor, card, Origin.FacedownAdviser)))
+    Sequence(Vector(pick, placement))
+
+  /** The cards `actor` holds as facedown advisers, in board order. */
+  private def facedownAdvisers(ready: ReadyGame, actor: PlayerId)
+      : Vector[WorldCardId] =
+    ready.game.current.players.find(_.player == actor).toVector
+      .flatMap(_.advisers.collect[WorldCardId] {
+        case DenizenState(id, Orientation.FaceDown, _) => id
+        case VisionState(id, Orientation.FaceDown) => id
+      })
+
+  private def adviserOption(card: WorldCardId): DecisionOption = card match
+    case id: DenizenId => DecisionOption.Denizen(DecisionOptionRef.Denizen(id))
+    case id: VisionId => DecisionOption.Vision(DecisionOptionRef.Vision(id))
+
+  private def worldCard(ref: DecisionOptionRef): Option[WorldCardId] =
+    ref match
+      case DecisionOptionRef.Denizen(id) => Some(id)
+      case DecisionOptionRef.Vision(id) => Some(id)
+      case _ => None
 
   private def facedownCard(args: Vector[DecisionOptionRef])
       : Either[OathViolation, WorldCardId] = args match
@@ -99,16 +151,10 @@ object CardPlayProcedure:
     * not, the play has been made and the tree is settled from the answers.
     */
   private def heldAtOrigin(ready: ReadyGame, actor: PlayerId,
-      card: WorldCardId, origin: Origin): Boolean =
-    val player = ready.game.current.players.find(_.player == actor)
-    origin match
-      case Origin.TemporaryHand =>
-        ready.game.current.temporaryHands.getOrElse(actor, Vector.empty).contains(card)
-      case Origin.FacedownAdviser => player.exists(_.advisers.exists {
-        case DenizenState(id, Orientation.FaceDown, _) => id == card
-        case VisionState(id, Orientation.FaceDown) => id == card
-        case _ => false
-      })
+      card: WorldCardId, origin: Origin): Boolean = origin match
+    case Origin.TemporaryHand =>
+      ready.game.current.temporaryHands.getOrElse(actor, Vector.empty).contains(card)
+    case Origin.FacedownAdviser => facedownAdvisers(ready, actor).contains(card)
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       card: WorldCardId, origin: Origin): Either[OathViolation, Operation] =

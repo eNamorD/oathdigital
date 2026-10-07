@@ -13,7 +13,7 @@ import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 import ParkedServiceFixture.{loaded, optionRef, parkedAssertions,
-  playFacedownAdviser, replayingSecond}
+  pickFacedownAdviser, playFacedownAdviser, replayingSecond}
 
 /** The application service persists and reloads the walker actions and
   * parks besides Recover and Forge: League Treaty, previews, minor actions,
@@ -65,9 +65,8 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
       oathdigital.model.RuleSourceRef.GameRule("forged"), "unknown")
     assert(service.preview("game-preview", act.nextSequence, actor,
       oathdigital.model.ActionKind.Travel, Vector(forged)).isLeft)
-    val adviser = CatalogNames.denizen("Wizard's Conclave")
     assert(service.handle("game-preview", act.nextSequence,
-      GameCommand.WithModifiers(playFacedownAdviser(actor, adviser),
+      GameCommand.WithModifiers(playFacedownAdviser(actor),
         Vector(forged))).isLeft)
     val challenge = accepted(service.preview("game-preview", act.nextSequence,
       actor, oathdigital.model.ActionKind.Challenge, Vector.empty))
@@ -80,18 +79,20 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     val actor = p1
     val adviser = CatalogNames.denizen("Wizard's Conclave")
     val started = accepted(service.handle("game-minor-replay", 0L,
-      playFacedownAdviser(actor, adviser)))
+      playFacedownAdviser(actor)))
     // The parked walk reloads to the same state before it is answered.
     assertEquals(loaded(replayingSecond(service, repository)
       .load("game-minor-replay")).state, started.state)
+    val picked = accepted(service.handle("game-minor-replay",
+      started.nextSequence, pickFacedownAdviser(actor, adviser)))
     val discarded = accepted(service.handle("game-minor-replay",
-      started.nextSequence, GameCommand.ResolveWalker(actor, TreeDecision(
+      picked.nextSequence, GameCommand.ResolveWalker(actor, TreeDecision(
         s"cardplay.place.${adviser.kind}.${adviser.value}",
-        PlacementPicks.parkedAnswer(started.state, PlayedAs.Discarded,
+        PlacementPicks.parkedAnswer(picked.state, PlayedAs.Discarded,
           WalkerPowerCatalog.default(catalog))))))
     val beforeRetry = loaded(repository.load("game-minor-replay")).records
     assert(service.handle("game-minor-replay", discarded.nextSequence,
-      playFacedownAdviser(actor, adviser)).isLeft)
+      playFacedownAdviser(actor)).isLeft)
     assertEquals(loaded(repository.load("game-minor-replay")).records,
       beforeRetry)
     val reloaded = loaded(replayingSecond(service, repository)

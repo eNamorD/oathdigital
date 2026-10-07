@@ -150,15 +150,14 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     assertEquals(Look(done.treeless).cardsAt(home),
       Vector[CardId](others(0), others(2), card))
 
-  test("facedown adviser starts the shared walker placement tree"):
+  test("a picked facedown adviser parks on the shared walker placement tree"):
     // p1 holds a facedown Wrestlers to play.
     val adviser = CatalogNames.denizen("Wrestlers")
     val ready = Table.start.adviser(actor, adviser, facedown = true).ready
     val rules = new OathRules(catalog)
     val walkerParked = new ParkedDecisionAssertions(catalog)
-    val started = rules.startWalker(OathState.Ready(ready),
-      ActionRef.PlayFacedownAdviser, actor,
-      startArgs = Vector(DecisionOptionRef.Denizen(adviser)))
+    val started = FacedownAdviserPlay.parkedOnPlacement(rules,
+      OathState.Ready(ready), actor, adviser)
     walkerParked.assertParked(accepted(started).state,
       ActionRef.PlayFacedownAdviser,
       PlacementFixture.cardPlayDecisionId(adviser, "place"), actor)

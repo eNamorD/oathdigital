@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers
 
-import oathdigital.gameplay.{OathRules, PlacementFixture}
+import oathdigital.gameplay.{FacedownAdviserPlay, OathRules, PlacementFixture}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -109,8 +109,8 @@ object SearchFixture:
   def playFacedown(ready: ReadyGame, modifiers: Vector[PowerId],
       card: DenizenId, way: PlayedAs)(using munit.Location)
       : OathTransition = (for
-    started <- rules.startWalker(Ready(ready), ActionRef.PlayFacedownAdviser,
-      actor, modifiers, Vector(DecisionOptionRef.Denizen(card)))
+    started <- FacedownAdviserPlay.parkedOnPlacement(rules, Ready(ready),
+      actor, card, modifiers)
     placed <- place(started, card, way)
   yield placed.copy(events = started.events ++ placed.events)).fold(
     error => throw new AssertionError(error.toString), identity)

@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.PlacementFixture
+import oathdigital.gameplay.{FacedownAdviserPlay, PlacementFixture}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
@@ -144,9 +144,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val kept = homesteaders
     val ready = asAdviser(searchAtAncientCityHolding(Vector(kept)), played,
       Orientation.FaceDown)
-    val started = accepted(
-      rules.startWalker(OathState.Ready(ready), ActionRef.PlayFacedownAdviser,
-        actor, Vector.empty, Vector(DecisionOptionRef.Denizen(played))))
+    val started = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,
+      OathState.Ready(ready), actor, played))
     assert(siteSlots(started).contains(Some(kept)))
 
   test("it composes with Silver Tongue's limit of two advisers, both from " +

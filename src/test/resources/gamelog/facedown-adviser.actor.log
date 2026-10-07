@@ -2,4 +2,4 @@
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
 1.0 section 1 play-facedown-adviser@1 | Play facedown adviser
-4.0 action 1 play-facedown-adviser@1 | Discarded [card:208|Wizard's Conclave] to the Provinces discard
+7.0 action 1 play-facedown-adviser@1 | Discarded [card:208|Wizard's Conclave] to the Provinces discard

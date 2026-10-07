@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.FacedownAdviserPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture,
   WalkerPowerCatalog}
@@ -35,9 +36,8 @@ object VisionPlayFixture:
   def fromAdvisers(ready: ReadyGame, vision: VisionId): OathTransition =
     val holding = Table.from(ready).adviser(actor, vision, facedown = true)
       .unchecked
-    orFail(SearchFixture.rules.startWalker(Ready(holding),
-      ActionRef.PlayFacedownAdviser, actor, Vector.empty,
-      Vector(DecisionOptionRef.Vision(vision))))
+    orFail(FacedownAdviserPlay.parkedOnPlacement(SearchFixture.rules,
+      Ready(holding), actor, vision))
 
   /** How the options of the placement the walk is parked on play the card,
     * after the restriction look-ahead. */

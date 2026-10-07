@@ -289,14 +289,14 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
         case DenizenState(id, Orientation.FaceDown, _) => id
       }.get
     val started = accepted(service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-        StartPayload(actor, Vector.empty,
-          Vector(DecisionOptionRef.Denizen(adviser))))))
-    val parked = Outcomes.ready(started.state)
+      ParkedServiceFixture.playFacedownAdviser(actor)))
+    val picked = accepted(service.handle(gameId, started.nextSequence,
+      ParkedServiceFixture.pickFacedownAdviser(actor, adviser)))
+    val parked = Outcomes.ready(picked.state)
     assertEquals(parked.game.current.temporaryHands.getOrElse(actor,
       Vector.empty), Vector.empty)
-    val placing = new GameProjector(catalog).project(gameId,
-      LoadedGame(started.state, started.nextSequence), actor)
+    val placing = new GameProjector(catalog).project(gameId, picked.loaded,
+      actor)
 
     assertEquals(placing.walkerDecision.map(_.decisionId),
       Some(s"cardplay.place.${adviser.kind}.${adviser.value}"))

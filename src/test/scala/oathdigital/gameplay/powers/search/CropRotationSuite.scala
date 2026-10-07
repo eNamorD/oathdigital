@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.search
 
+import oathdigital.gameplay.FacedownAdviserPlay
 import oathdigital.gameplay.actions.CardPlayRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, SearchFixture, WalkerPowerCatalog}
@@ -109,9 +110,8 @@ class CropRotationSuite extends munit.FunSuite:
     val ready = Table.start.adviser(p1, crop)
       .adviser(p1, played, facedown = true)
       .denizen(fillers(0), at = home).ready
-    val started = accepted(rules.startWalker(Ready(ready),
-      ActionRef.PlayFacedownAdviser, p1, modifiers,
-      Vector(DecisionOptionRef.Denizen(played))))
+    val started = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,
+      Ready(ready), p1, played, modifiers))
     assert(siteSlots(started).contains(Some(fillers(0))))
 
   test("its line is written for the discard it allowed"):

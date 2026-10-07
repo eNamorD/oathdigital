@@ -254,8 +254,7 @@ object LogScripts:
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
         ChooseOneAnswer(PlacementPicks.pick(park.decide, way))
     })
-    start(act, ActionRef.PlayFacedownAdviser,
-      DecisionOptionRef.Denizen(conclave))
+    start(act, ActionRef.PlayFacedownAdviser)
     Script(name, service, p1)
 
   /** Deep Woods with a card to Muster or Trade from: a first game deals no
@@ -536,7 +535,6 @@ object LogScripts:
     * `choice`. Dowsing Sticks tops the relic deck. */
   def familyHeirloom(name: String, choice: DecisionOptionRef.Button)
       (using munit.Location): Script =
-    val card = FamilyHeirloom.cardId
     val (service, act) = atTable(name, Table.start
       .adviser(p1, "Family Heirloom", facedown = true)
       .relicDeckTop("Dowsing Sticks").banditsRefilled)
@@ -546,7 +544,7 @@ object LogScripts:
       case park if park.decisionId == FamilyHeirloom.decisionId =>
         ChooseOneAnswer(choice)
     }.after(GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-      StartPayload(p1, Vector.empty, Vector(DecisionOptionRef.Denizen(card)))))
+      StartPayload(p1, Vector.empty, Vector.empty)))
     Script(name, service, p1)
 
   def heirloomKept(using munit.Location): Script =
