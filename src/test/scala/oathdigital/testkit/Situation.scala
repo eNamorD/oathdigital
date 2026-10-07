@@ -48,9 +48,14 @@ type Answers = PartialFunction[Park, DecisionAnswer]
   * where the situation left off. `nextSequence` is the journal sequence the
   * next event takes: the number of events for the rules adapter, the
   * stream's next sequence for the journaled one.
+  *
+  * `events` are the events the commands produced. `journal` is the stream
+  * as the service writes it: `events` with each command batch's opening
+  * `CommandAccepted`, so its size is `nextSequence`'s advance.
   */
 final case class Situation(state: OathState, events: Vector[OathEvent],
-    nextSequence: Long, driver: SituationDriver):
+    nextSequence: Long, driver: SituationDriver,
+    journal: Vector[OathEvent]):
 
   def ready(using munit.Location): ReadyGame = state match
     case Ready(ready) => ready
@@ -81,11 +86,11 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
   def withAnswers(overrides: Answers): Situation =
     copy(driver = driver.withAnswers(overrides))
 
-  /** Writes this situation's events into `repository` as `gameId`'s whole
-    * stream, the way a journal written by real play would hold them. */
+  /** Writes this situation's journal into `repository` as `gameId`'s whole
+    * stream, the way a journal written by real play would hold it. */
   def seedInto(repository: InMemoryEventStreamRepository, gameId: String)(
       using munit.Location): Unit =
-    repository.seed(gameId, events.zipWithIndex.map { case (event, index) =>
+    repository.seed(gameId, journal.zipWithIndex.map { case (event, index) =>
       ujson.write(GameEventWire.encodeEvent(gameId, index.toLong, event).fold(error => munit.Assertions.fail(
           s"event $index ($event) does not encode: $error"), identity))
     })
@@ -167,7 +172,7 @@ object Situation:
 
   /** No game yet: where every situation starts. */
   def start(driver: SituationDriver): Situation =
-    Situation(OathState.NoGame, Vector.empty, 0L, driver)
+    Situation(OathState.NoGame, Vector.empty, 0L, driver, Vector.empty)
 
   /** Setup complete: the first player's turn. It is in Wake when Wake has
     * an option; a Wake with nothing to decide has already ended, in Act. */

@@ -1,8 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.engine.{EventEvolution, EventReplayEngine, RecordedEvent,
-  ReplayStep}
+import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.{PowerRuntime, OathRules}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -14,16 +13,31 @@ import oathdigital.model._
 import oathdigital.protocol.{PreviewModifier, PreviewTarget}
 
 
+/** `events` are the events the command produced: the batch's opening
+  * `CommandAccepted` is left out, though `nextSequence` counts it. */
 final case class GameAccepted(
     state: OathState,
     events: Vector[OathEvent],
-    nextSequence: Long
-)
+    nextSequence: Long,
+    undo: Option[UndoStep] = None,
+    logRevision: Option[Long] = None
+):
+  /** The position this acceptance left, as a load would read it. */
+  def loaded: LoadedGame = LoadedGame(state, nextSequence, undo, logRevision)
 
+/** `undo` is the batch the next Undo would take back, and `logRevision` the
+  * latest taken-back marker (undo design, "Projection"). */
 final case class LoadedGame(
     state: OathState,
-    nextSequence: Long
+    nextSequence: Long,
+    undo: Option[UndoStep] = None,
+    logRevision: Option[Long] = None
 )
+
+/** The command batch an Undo would take back: its issuer and range, and the
+  * first log line its issuer sees for it (undo design, "Controls"). */
+final case class UndoStep(issuer: PlayerId, from: Long, until: Long,
+    note: Option[String])
 /** The whole journal as the log reads it: every event with the state
   * before and after it, and the sequence the next event takes.
   */
@@ -102,11 +116,8 @@ final class GameApplicationService(
     walkerDice = CampaignDicePort.walkerDice(campaignDicePort))
   private val presentation = new GamePresentationProjector(catalog)
   private val descriptions = new PreviewModifierDescriptions(catalog, presentation)
-  private val replay = new EventReplayEngine(
-    new EventEvolution[OathState, OathEvent, OathViolation]:
-      def initialState: OathState = genesis
-      def evolve(state: OathState, event: OathEvent)
-          : Either[OathViolation, OathState] = rules.evolve(state, event))
+  private val journalFold = new JournalFold(rules.evolve)
+  private val log = new gamelog.GameLogFormatter(catalog, presentation)
 
   /** Derives a validated initial journal and state without accessing storage. */
   def prepareBootstrap(
@@ -139,8 +150,8 @@ final class GameApplicationService(
         case OathState.NoGame => None
         case started => Some(LoadedGame(started, 0L)))
       case Some(stream) =>
-        reconstruct(gameId, stream).map(state =>
-          Some(LoadedGame(state, stream.nextSequence)))
+        reconstruct(gameId, stream).map(journal =>
+          Some(loadedFrom(journal, stream.nextSequence)))
 
   /** The scanned journal: the same decode and fold `load` runs, keeping
     * every step. The game log formats from this; nothing else needs it.
@@ -151,11 +162,8 @@ final class GameApplicationService(
     repository.load(gameId).left.map(storageError).flatMap:
       case None => Right(None)
       case Some(stream) =>
-        for
-          records <- decodeRecords(gameId, stream)
-          steps <- replay.scan(records).left
-            .map(failure => ReplayFailure(failure.index, failure.violation))
-        yield Some(GameHistory(steps, stream.nextSequence))
+        reconstruct(gameId, stream).map(journal =>
+          Some(GameHistory(journal.steps, stream.nextSequence)))
 
   def preview(gameId: String, expectedNextSequence: Long, actor: PlayerId,
       action: ActionKind, selected: Vector[OrderedRuleInvocation])
@@ -164,7 +172,7 @@ final class GameApplicationService(
       case None => Left(GameApplicationError.StreamNotFound(gameId))
       case Some(loaded) if loaded.nextSequence != expectedNextSequence =>
         Left(StaleClientPosition(expectedNextSequence, loaded.nextSequence))
-      case Some(loaded @ LoadedGame(OathState.Ready(ready), _)) =>
+      case Some(loaded @ LoadedGame(OathState.Ready(ready), _, _, _)) =>
         walkerAction(action) match
           // The `ActionRef` this match already resolved is bound rather than
           // discarded (batch-1 Task 1): `offerableWalkerPowers` reads the
@@ -264,7 +272,7 @@ final class GameApplicationService(
         else
           handleAgainst(
             gameId,
-            genesis,
+            FoldedJournal(genesis, Vector.empty, Nil),
             command,
             ExpectedStream.MustNotExist,
             0L
@@ -279,10 +287,10 @@ final class GameApplicationService(
           command match
             case GameCommand.Begin(_, _) => Left(DuplicateGame(gameId))
             case _ =>
-              reconstruct(gameId, stream).flatMap { state =>
+              reconstruct(gameId, stream).flatMap { journal =>
                 handleAgainst(
                   gameId,
-                  state,
+                  journal,
                   command,
                   ExpectedStream.AtNextSequence(stream.nextSequence),
                   stream.nextSequence
@@ -292,10 +300,26 @@ final class GameApplicationService(
   private def reconstruct(
       gameId: String,
       stream: StoredEventStream
-  ): Either[GameApplicationError, OathState] =
+  ): Either[GameApplicationError, FoldedJournal] =
     decodeRecords(gameId, stream).flatMap(records =>
-      replay.replay(records).left
+      journalFold.fold(genesis, records).left
         .map(failure => ReplayFailure(failure.index, failure.violation)))
+
+  /** What the next Undo would take back, worded for its issuer. The note is
+    * the batch's first log line; formatting stops at the batch's end. */
+  private def undoStep(journal: FoldedJournal): Option[UndoStep] =
+    journal.undoable.map { batch =>
+      val note = log.format(journal.steps.take(batch.until.toInt),
+          Some(batch.issuer))
+        .find(entry => entry.sequence >= batch.from)
+        .map(_.spans.map(_.text).mkString)
+      UndoStep(batch.issuer, batch.from, batch.until, note)
+    }
+
+  private def loadedFrom(journal: FoldedJournal, nextSequence: Long)
+      : LoadedGame =
+    LoadedGame(journal.state, nextSequence, undoStep(journal),
+      journal.logRevision)
 
   private def decodeRecords(
       gameId: String,
@@ -322,24 +346,46 @@ final class GameApplicationService(
 
   private def handleAgainst(
       gameId: String,
-      state: OathState,
+      journal: FoldedJournal,
       command: GameCommand,
       expected: ExpectedStream,
       nextSequence: Long
   ): Either[GameApplicationError, GameAccepted] =
     for
-      prepared <- prepareTransition(gameId, state, command, nextSequence)
-      (transition, records) = prepared
+      transition <- applyCommand(journal.state, command, nextSequence)
+        .left.map(CommandRejected.apply)
+      appended = GameCommand.issuer(command)
+        .map(OathEvent.CommandAccepted(_)).toVector ++
+        transition.events
+      accepted <- appendBatch(gameId, journal, appended, transition.events,
+        transition.state, expected, nextSequence)
+    yield accepted
+
+  /** Appends `appended` as one batch and reports `reported` as the events
+    * the command produced. `state` is what the command left, which the fold
+    * reproduces from the batch. The fold runs before the append, so a batch
+    * it would reject is never written. */
+  private def appendBatch(
+      gameId: String,
+      journal: FoldedJournal,
+      appended: Vector[OathEvent],
+      reported: Vector[OathEvent],
+      state: OathState,
+      expected: ExpectedStream,
+      nextSequence: Long
+  ): Either[GameApplicationError, GameAccepted] =
+    for
+      records <- encode(gameId, nextSequence, appended)
+      extended <- journalFold.extend(journal, appended.zipWithIndex.map {
+          case (event, offset) => RecordedEvent(nextSequence + offset, event) })
+        .left.map(failure => ReplayFailure(failure.index, failure.violation))
       result <- repository.append(gameId, expected, records)
         .left.map(storageError)
       accepted <- result match
         case Appended(first, count)
             if first == nextSequence && count == records.size =>
-          Right(GameAccepted(
-            transition.state,
-            transition.events,
-            nextSequence + count
-          ))
+          Right(GameAccepted(state, reported, nextSequence + count,
+            undoStep(extended), extended.logRevision))
         case StreamAlreadyExists => Left(DuplicateGame(gameId))
         case RepositoryAppendResult.StreamNotFound =>
           Left(GameApplicationError.StreamNotFound(gameId))
@@ -352,6 +398,8 @@ final class GameApplicationService(
           ))
     yield accepted
 
+  /** Begin's journal, built against the rules' initial state: it has no
+    * `CommandAccepted`. */
   private def prepareTransition(
       gameId: String,
       state: OathState,

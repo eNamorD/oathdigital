@@ -2,10 +2,10 @@
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
 0.3 delta 1 | [player:p2|p2] gained 1 favor from the Discord bank
-1.0 phase 0 | Rest
-3.0 turn 0 | [player:p2|p2]'s turn
-3.1 phase 0 | Wake
-5.0 action 1 | Nothing happened in Wake
-5.1 phase 0 | Act
-9.0 section 1 trade@7 | Trade[cost:1 Supply]
-12.0 action 1 trade@7 | Traded with [card:E26|Hiding Place] for no secrets
+2.0 phase 0 | Rest
+4.0 turn 0 | [player:p2|p2]'s turn
+4.1 phase 0 | Wake
+6.0 action 1 | Nothing happened in Wake
+6.1 phase 0 | Act
+12.0 section 1 trade@9 | Trade[cost:1 Supply]
+15.0 action 1 trade@9 | Traded with [card:E26|Hiding Place] for no secrets

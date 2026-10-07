@@ -405,7 +405,7 @@ final case class Table private (private val game: ReadyGame,
           if journaled.service.genesis != state => munit.Assertions.fail(
         "a journaled situation at a Table drives a service begun at that " +
           "table; build it with table.service")
-      case driver => Situation(state, Vector.empty, 0L, driver)
+      case driver => Situation(state, Vector.empty, 0L, driver, Vector.empty)
 
   private def moving(card: CardId): Table =
     Table(without(game, card), if inventory(card) then joined else joined + card)

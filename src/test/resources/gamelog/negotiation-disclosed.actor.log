@@ -1,5 +1,5 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-6.0 action 1 negotiation@0 | Negotiated with [player:p2|p2]
-6.1 delta 1 negotiation@0 | [player:p2|p2] showed [player:p1|p1] [card:176|Birdsong]
+10.0 action 1 negotiation@1 | Negotiated with [player:p2|p2]
+10.1 delta 1 negotiation@1 | [player:p2|p2] showed [player:p1|p1] [card:176|Birdsong]

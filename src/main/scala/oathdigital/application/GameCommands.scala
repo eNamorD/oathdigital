@@ -33,6 +33,23 @@ object GameCommand:
   final case class UsePower(playerId: PlayerId, power: PowerId,
       source: DecisionOptionRef) extends GameCommand
 
+  /** The player a command's batch is recorded for, in the `CommandAccepted`
+    * that opens it (undo design, "Terms"): its actor. Begin has none, so a
+    * journal still begins with `GameStarted`. */
+  def issuer(command: GameCommand): Option[PlayerId] = command match
+    case WithModifiers(inner, _) => issuer(inner)
+    case Begin(_, _) => None
+    case StartWalker(_, start) => Some(start.actor)
+    case ResolveWalker(actor, _) => Some(actor)
+    case RollWalker(actor, _) => Some(actor)
+    case EndWake(player) => Some(player)
+    case PeekSiteRelics(player) => Some(player)
+    case RevealOwnedRelic(player, _) => Some(player)
+    case MoveWarbands(player, _, _) => Some(player)
+    case BeginRest(player) => Some(player)
+    case FinishRest(player) => Some(player)
+    case UsePower(player, _, _) => Some(player)
+
 /** Generic action-start data. Action-specific starts may widen this family
   * when another walker procedure needs more than its actor.
   *

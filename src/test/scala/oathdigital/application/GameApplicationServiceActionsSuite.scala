@@ -159,8 +159,9 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     // The single legacy travel event became the walker's own three: the pay
     // node, the pawn move, and the completion boundary. That is the whole
     // observable shape change of the port -- the state each side reaches is
-    // identical, which is what the assertions above pin.
-    assertEquals(stored.nextSequence, 3L)
+    // identical, which is what the assertions above pin. The batch's opening
+    // `CommandAccepted` makes the stream four long.
+    assertEquals(stored.nextSequence, 4L)
     assertEquals(traveled.events.map(_.productPrefix),
       Vector("WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted"))
     // Nothing parked: a flat tree finishes inside the command that started it.

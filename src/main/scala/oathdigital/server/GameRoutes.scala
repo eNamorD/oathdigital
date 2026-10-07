@@ -73,14 +73,7 @@ final class GameServerGateway(
       command: GameCommand
   ): Either[GameApplicationError, GameProjection] =
     service.handle(gameId, expectedNextSequence, command).map { accepted =>
-      projector.project(
-        gameId,
-        oathdigital.application.LoadedGame(
-          accepted.state,
-          accepted.nextSequence
-        ),
-        requestingPlayer
-      )
+      projector.project(gameId, accepted.loaded, requestingPlayer)
     }
 
   def load(
