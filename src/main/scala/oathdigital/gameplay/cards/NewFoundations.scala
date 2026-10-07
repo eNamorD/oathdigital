@@ -46,7 +46,7 @@ import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard,
   AwaitedReturnCard, BirdsongCard, CupOfPlentyCard, CurfewCard,
   DefameCard, DowntroddenCard, InitiationRiteCard, KnightsErrantCard,
   MountedLibraryCard, MovingMarketCard, RowdyPubCard, TheOldOakCard,
-  VillageIdiotCard}
+  VillageIdiotCard, VowOfBeastkinCard}
 import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}

@@ -89,13 +89,6 @@ object ForestCouncilCard extends Denizen(DenizenId("194"), "Forest Council", Sui
       "non-persistent powers.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object VowOfBeastkinCard extends Denizen(DenizenId("196"), "Vow of Beastkin", Suit.Beast) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.vow-of-beastkin"),
-    persistent = false, cost = Cost.free,
-    text = "You **must** muster on a card matching any of your " +
-      "advisers, but you gain one more warband.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object BrackenCard extends Denizen(DenizenId("197"), "Bracken", Suit.Beast):
   val power = PrintedPower(PowerId("denizen.bracken"),
     persistent = false, cost = Cost(secret = 1),

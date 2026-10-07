@@ -13,7 +13,6 @@ object MusterPowers:
   object TheOldOak extends ReviewedPower("denizen.the-old-oak", None, economy)
   object Birdsong extends ReviewedPower("denizen.birdsong", None, economy)
   object SmallFriends extends ReviewedPower("denizen.small-friends", None, economy)
-  object VowOfBeastkin extends ReviewedPower("denizen.vow-of-beastkin", None, economy)
   object Downtrodden extends ReviewedPower("denizen.downtrodden", None, economy)
   object RowdyPub extends ReviewedPower("denizen.rowdy-pub", None, economy)
   object Pressgangs extends ReviewedPower("denizen.pressgangs", None, economy)
@@ -28,7 +27,7 @@ object MusterPowers:
   object E26Intact extends ReviewedPower("edifice.e26.intact", None, economy)
   object Beloved extends ReviewedPower("legacy.beloved", None, economy)
   val powers: Vector[Power] = Vector(InitiationRite, MapLibrary, AnimalPlaymates,
-    TheOldOak, Birdsong, SmallFriends, VowOfBeastkin, Downtrodden, RowdyPub,
+    TheOldOak, Birdsong, SmallFriends, Downtrodden, RowdyPub,
     Pressgangs, KnightsErrant, GolemLegions, FriendlyFamiliar,
     OldSongs, VillageIdiot, SkilledMerchants,
     CupOfPlenty, SpitefulMirror, E26Intact, Beloved)

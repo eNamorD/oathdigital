@@ -61,3 +61,8 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
     assertEquals(flag("denizen.tyrant"), Some(false))
     assertEquals(oathdigital.gameplay.powers.travel.Tyrant.resolution,
       PowerResolution.Automatic)
+
+  test("Vow of Beastkin's rule is automatic whatever its flag"):
+    assertEquals(flag("denizen.vow-of-beastkin"), Some(false))
+    assertEquals(oathdigital.gameplay.powers.economy.VowOfBeastkin
+      .forCatalog(catalog).resolution, PowerResolution.Automatic)
