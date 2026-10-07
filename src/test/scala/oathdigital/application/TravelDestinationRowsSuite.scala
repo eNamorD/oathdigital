@@ -94,3 +94,28 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
     // Dunes costs 2 from the Cradle, and Narrow Pass blocks it.
     assertEquals(row(board(supply = 1), provincePlains).reason, Some(
       "Narrow Pass: Cannot travel to other sites in the region."))
+
+  test("Way Station's ruler travels there for 0 Supply"):
+    val ready = Table.from(open(supply = 7))
+      .denizen(CatalogNames.denizen("Way Station"), at = coast)
+      .warbandsAt(coast, actor, 1).unchecked
+    assertEquals(row(ready, coast).badge, Some("0 Supply"))
+
+  /** Way Station and Toll Roads both rule by p2: the coast costs 1 Supply and
+    * a 1 favor toll, and Way Station's favor answer would owe a second. */
+  private def tolledWayStation(favor: Int, supply: Int): ReadyGame =
+    Table.from(open(supply = supply))
+      .denizen(CatalogNames.denizen("Way Station"), at = coast)
+      .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
+      .warbandsAt(coast, Table.p2, 1).warbandsAt(provincePlains, Table.p2, 1)
+      .favor(actor, favor).unchecked
+
+  test("a toll leaves Way Station's favor answer unaffordable on one favor"):
+    assertEquals(row(tolledWayStation(favor = 1, supply = 7), coast).badge,
+      Some("1 Supply · 1 favor"))
+    assertEquals(row(tolledWayStation(favor = 2, supply = 7), coast).badge,
+      Some("1 Supply · 1 favor or 2 favor"))
+
+  test("a toll and no Supply leave a player with one favor no way there"):
+    assert(rules.startWalker(Ready(tolledWayStation(favor = 1, supply = 0)),
+      ActionRef.Travel, actor, Vector.empty).isLeft)

@@ -100,3 +100,24 @@ class WayStationSuite extends munit.FunSuite:
     val result = Outcomes.ready(answer(asked.state,
       WayStation.favorOption).state)
     assertEquals(Look(result).pawn(actor), coast)
+
+  /** The coast also carries Toll Roads' toll of 1 favor on top of the Travel. */
+  private def tolled(favor: Int): ReadyGame =
+    Table.from(rivalRules(favor = favor))
+      .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
+      .warbandsAt(provincePlains, rival, 1).unchecked
+
+  test("a favor the toll takes first is not offered twice"):
+    val done = accepted(travel(tolled(favor = 1), coast))
+    val result = Outcomes.ready(done.state)
+    // Not asked: the toll takes the only favor, and the Supply is paid.
+    assertEquals(Look(result).pawn(actor), coast)
+    assertEquals(Look(result).supply(actor), 6)
+    assertEquals(Look(result).favor(actor), 0)
+
+  test("with favor for both, the answer pays the toll and the Way Station"):
+    val asked = accepted(travel(tolled(favor = 2), coast))
+    assertAsked(asked.state)
+    val result = Outcomes.ready(answer(asked.state, WayStation.favorOption).state)
+    assertEquals(Look(result).supply(actor), 7)
+    assertEquals(Look(result).favor(actor), 0)

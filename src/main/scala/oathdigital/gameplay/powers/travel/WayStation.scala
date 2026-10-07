@@ -66,7 +66,8 @@ final case class WayStation private (catalog: ExecutableCatalog)
     if supply == 0 then operations
     else if ruler == SiteRuler.Player(traveller) then
       TravelPayments.withoutSupply(operations, traveller)
-    else if !board.exists(_.favor >= WayStation.Favor) then operations
+    else if !board.exists(_.favor >= WayStation.favorOwed(operations, traveller) +
+        WayStation.Favor) then operations
     else
       val options = Vector(
         Option.when(board.exists(_.supply.supply >= supply))(
@@ -89,6 +90,16 @@ final case class WayStation private (catalog: ExecutableCatalog)
         TravelPayments.withoutSupply(operations, traveller)
 
 object WayStation:
+  /** The favor `operations` already take from `traveller` (a toll, a
+    * selected modifier's payment), which the favor answer must leave. */
+  private[travel] def favorOwed(operations: Vector[Operation],
+      traveller: PlayerId): Int = operations.collect {
+    case Give(Piece.Favor(amount), giver, _, _, _) if giver == traveller =>
+      amount
+    case PayCost(player, _, cost, _, _, _) if player == traveller =>
+      cost.favor + cost.favorBurnt
+  }.sum
+
   val id: PowerId = WayStationCard.power.id
   val Favor: Int = 1
   /** Under the `travel.` prefix, so the Game Log narrates it. */

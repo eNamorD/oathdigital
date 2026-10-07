@@ -24,21 +24,35 @@ object TravelOptions:
 
   def priced(state: ReadyGame, tree: Operation, pending: PendingTree,
       powers: WalkerPowers, decide: Decide): Vector[DecisionOption] =
+    if decide.decisionId != TravelProcedure.destinationDecisionId then
+      options(decide)
+    else destinations(state, tree, pending, powers, decide)
+
+  private def destinations(state: ReadyGame, tree: Operation,
+      pending: PendingTree, powers: WalkerPowers, decide: Decide)
+      : Vector[DecisionOption] =
     val actor = decide.owner
     val walked = options(decide)
     val declared = ProcedureWalker.parkedDecide(state, tree, pending, powers,
       probing = false).map(options).getOrElse(walked)
     val previewed = previews(state, tree, pending, powers, followUp = true)
+    def refused(option: DecisionOption) = DecisionOption.Unavailable(option,
+      OptionReason.Written(
+        shortfall(state, tree, pending, powers, actor, option.ref)))
     declared.map(option =>
       walked.find(_.ref == option.ref) match
         case Some(kept) if !kept.available => kept
         case Some(kept) => previewed.get(kept.ref) match
-          case Some(Right(outcome)) =>
+          case Some(Right(outcome)) if answerable(outcome) =>
             DecisionOption.Badged(kept, badge(outcome, actor))
-          case _ => DecisionOption.Unavailable(kept, OptionReason.Written(
-            shortfall(state, tree, pending, powers, actor, kept.ref)))
-        case None => DecisionOption.Unavailable(option, OptionReason.Written(
-          shortfall(state, tree, pending, powers, actor, option.ref))))
+          case _ => refused(kept)
+        case None => refused(option))
+
+  /** Whether the walk can go on from `outcome`: it finished, its further
+    * question could not be previewed, or some answer to it is accepted. */
+  private def answerable(outcome: PreviewOutcome): Boolean =
+    outcome.complete || outcome.next.isEmpty ||
+      outcome.next.exists(_.outcome.isRight)
 
   private def options(decide: Decide): Vector[DecisionOption] =
     decide.query match
