@@ -266,26 +266,31 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(host.previews, Vector.empty)
     assertEquals(host.redraws, 0)
 
-  test("a target command in Targets leaves Completed and sends the folded submission"):
+  test("a board submit in Targets leaves Completed and sends the folded submission"):
     val targets = draftWithModifierSelected("travel", None, Some("travel"),
       ModifierFlowStage.Targets)
     val FlowUnderTest(host, ui) = flow(
       draftsForProjection.copy(modifiers = Some(targets)))
-    val command = GameCommand.StartWalker("travel", Vector.empty)
-    ui.submitTargetCommand(command)
-    assertEquals(host.sent, Vector(
-      GameCommand.StartWalker("travel", Vector("h.a")) -> Vector.empty))
+    ui.handleSelection(BoardSelectionResult.Submit(travel,
+      Vector(BoardTargetRef.Site("site:woods"))))
+    assertEquals(host.sent, Vector(GameCommand.StartWalker("travel", Vector("h.a"),
+      Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:woods"))) -> Vector.empty))
     assertEquals(host.currentDrafts.modifiers, None)
     assertEquals(host.currentDrafts.boardTargets, None)
     assertEquals(host.previews, Vector.empty)
 
-  test("a target command outside Targets behaves as a plain submit"):
+  test("a board submit outside Targets behaves as a plain submit"):
     val FlowUnderTest(host, ui) = flow()
-    // Take Wealth offers no modifiers, so the command goes out unchanged.
-    val takeWealth = GameCommand.StartWalker("take-wealth", Vector.empty)
-    ui.submitTargetCommand(takeWealth)
-    assertEquals(host.sent, Vector(takeWealth -> Vector.empty))
-    assertEquals(host.previews, Vector.empty)
+    // No flow is in flight, so the command is previewed like any other major
+    // action; the preview offers no modifiers, so it goes out unchanged.
+    ui.handleSelection(BoardSelectionResult.Submit(travel,
+      Vector(BoardTargetRef.Site("site:woods"))))
+    assertEquals(host.previews.map(_.action), Vector("travel"))
+    host.answer(Right(response("travel", Vector.empty))).map { _ =>
+      assertEquals(host.sent, Vector(GameCommand.StartWalker("travel", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:woods"))) -> Vector.empty))
+      assertEquals(host.currentDrafts.modifiers, None)
+    }
 
   test("both cancel entries restore the board targets from Targets"):
     val restored = BoardTargetSelectionState.restore(context, Vector(travel))

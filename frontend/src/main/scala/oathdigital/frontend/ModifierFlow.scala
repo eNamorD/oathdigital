@@ -141,5 +141,3 @@ private[frontend] final class ModifierFlow(host: FlowHost) extends ActionControl
   // Guarded as before: nothing happens when no flow is in flight.
   def backFromTargets(): Unit = drafts.modifiers.foreach(_ => exit(FlowExit.TargetsLeft))
   def cancelTargetAction(): Unit = exit(FlowExit.Cancelled(restoredTargets))
-  def submitTargetCommand(command: GameCommand.StartWalker): Unit =
-    completeTargetCommand(command)
