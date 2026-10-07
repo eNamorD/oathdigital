@@ -9,14 +9,14 @@ import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.actions.travel.{TravelOptions, TravelProcedure}
 import oathdigital.gameplay.phases.wake.{EndWakeProcedure, ForcedWakeProcedure,
   TakeWealthProcedure}
 import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
-import oathdigital.model.{ActionRef, DecisionOptionRef, ActionKind, OathViolation, Operation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
+import oathdigital.model.{ActionRef, Decide, DecisionOption, DecisionOptionRef, ActionKind, OathViolation, Operation, PendingTree, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions
   * (Task 8; re-keyed by [[oathdigital.model.ProcedureRef]] family at Task 4). Before this,
@@ -33,6 +33,12 @@ import oathdigital.model.{ActionRef, DecisionOptionRef, ActionKind, OathViolatio
   * tree without them.
   */
 object WalkerProcedureRegistry:
+
+  /** The options a parked decision shows, from its position: see
+    * `Entry.optionPricing`. The `Decide` is the walk's own, with the options
+    * its look-ahead hid already left out. */
+  type OptionPricing = (ReadyGame, Operation, PendingTree, WalkerPowers,
+    Decide) => Vector[DecisionOption]
 
   /** `fallbackKind` (I4) is the [[oathdigital.model.ActionKind]] `OathRules.startWalker`
     * runs `PowerRuntime.ignored` fallback-diagnostics against for this
@@ -131,7 +137,11 @@ object WalkerProcedureRegistry:
         * the default and every procedure that rolls nothing.
         */
       rollFeedback: (ExecutableCatalog, ReadyGame, PlayerId, String) => Option[WalkerRollFeedback] =
-        (_, _, _, _) => None)
+        (_, _, _, _) => None,
+      /** Replaces the playable-option filter in the projector: an entry that
+        * prices its options shows every option, each priced or explained.
+        * Travel's destinations. */
+      optionPricing: Option[OptionPricing] = None)
 
   /** `private[gameplay]`, not `private`: `WalkerProcedureRegistrySuite`
     * asserts this map's keys cover `ProcedureRef.all` (catching a registered
@@ -194,7 +204,8 @@ object WalkerProcedureRegistry:
       build = TravelProcedure.build,
       rebuild = TravelProcedure.rebuild,
       requiresPlayableOption = true,
-      startFacts = TravelProcedure.startFacts),
+      startFacts = TravelProcedure.startFacts,
+      optionPricing = Some(TravelOptions.priced)),
 
     /** Economy. The first walker actions whose first node is a `Decide`
       * and that opt in to the playable-option gate: nothing runs before the
@@ -489,6 +500,10 @@ object WalkerProcedureRegistry:
   /** Whether `procedure` opts in to the playable-option gate (see `Entry`). */
   def requiresPlayableOption(procedure: ProcedureRef): Boolean =
     lookup(procedure, entries).exists(_.requiresPlayableOption)
+
+  /** How `procedure` prices the options of a parked decision, if it does. */
+  def optionPricing(procedure: ProcedureRef): Option[OptionPricing] =
+    lookup(procedure, entries).toOption.flatMap(_.optionPricing)
 
   /** The start facts `procedure` derives at a fresh start, empty for one that
     * declares none. */

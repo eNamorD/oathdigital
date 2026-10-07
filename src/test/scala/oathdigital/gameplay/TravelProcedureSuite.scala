@@ -7,7 +7,8 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
@@ -82,8 +83,18 @@ class TravelProcedureSuite extends munit.FunSuite:
     * parked decision reads; `None` when the preview refuses it. */
   private def simulate(ready: ReadyGame, destination: SiteId,
       using: WalkerPowers = powers): Option[Int] =
-    TravelProcedure.candidates(catalog, ready, actor, using)
-      .collectFirst { case (site, cost) if site == destination => cost }
+    previewedCosts(ready, using).get(destination)
+
+  /** Every destination the preview accepts, with the Supply it spends. */
+  private def previewedCosts(ready: ReadyGame, using: WalkerPowers = powers)
+      : Map[SiteId, Int] =
+    TravelProcedure.build(catalog, ready, actor, Vector.empty)
+      .flatMap(WalkerSimulation.preview(_, ready, using))
+      .getOrElse(Vector.empty).collect {
+        case PreviewedOption(DecisionOption.Site(DecisionOptionRef.Site(site)),
+            Right(outcome)) => site -> outcome.operations.collect {
+          case SpendSupply(player, amount, _) if player == actor => amount }.sum
+      }.toMap
 
   private def travelled(ready: ReadyGame, destination: SiteId)
       : Either[OathViolation, OathTransition] =
@@ -174,11 +185,10 @@ class TravelProcedureSuite extends munit.FunSuite:
 
   test("simulation omits every destination the actor cannot afford"):
     val ready = passRuled(travelBoard(supply = 2))
-    val offered = TravelProcedure.candidates(catalog, ready,
-      actor, powers)
+    val offered = previewedCosts(ready)
     assert(offered.nonEmpty)
-    assert(offered.forall(_._2 <= 2))
-    assert(!offered.exists(_._1 == cradlePlains))
+    assert(offered.values.forall(_ <= 2))
+    assert(!offered.contains(cradlePlains))
 
   // (d) role and Foundation state do not gate Travel.
 

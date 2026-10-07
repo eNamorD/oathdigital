@@ -1,11 +1,7 @@
 package oathdigital.application
 
-import oathdigital.protocol.projection.{BoardTargetRefProjection,
-  SiteForcesProjection}
+import oathdigital.protocol.projection.SiteForcesProjection
 import oathdigital.model._
-import oathdigital.gameplay.actions.travel.TravelProcedure
-import oathdigital.gameplay.walker.WalkerPowers
-import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer,
   PartitionAnswer}
 import oathdigital.server.GameHttpWire
@@ -56,24 +52,10 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     assert(act.actionSelectionOpen)
     // Broken Peaks also holds a relic: Recover and a peek are offered.
     assertEquals(act.legalControls, Vector("beginRest", "beginRecover",
-      "beginCampaign", "facedownAdviserMinorAction", "peekSiteRelics"))
-    assert(act.boardTargetActions.exists(_.actionKind == "travel"))
-    val travel = act.boardTargetActions.find(_.actionKind == "travel").get
-    assertEquals(travel.minimum -> travel.maximum, 1 -> 1)
-    assert(!travel.autoActivate)
-    assert(travel.candidates.forall(_.target.isInstanceOf[
-      BoardTargetRefProjection.Site]))
-    assert(travel.candidates.forall(_.details.exists(_.endsWith("Supply"))))
-    // Each destination is priced by dry-running the Travel tree.
-    val atAct = Outcomes.ready(ended.state)
-    assertEquals(
-      travel.candidates.map(candidate => candidate.target -> candidate.details),
-      TravelProcedure.candidates(catalog, atAct, active,
-        WalkerPowers.selected(WalkerPowerCatalog.default(catalog), Vector.empty))
-        .map((site, cost) =>
-          BoardTargetRefProjection.Site(site.value) -> Vector(s"$cost Supply")))
+      "beginTravel", "beginCampaign", "facedownAdviserMinorAction",
+      "peekSiteRelics"))
     assertEquals(projector.projectPublic("game-projection-wake",
-      LoadedGame(ended.state, ended.nextSequence)).boardTargetActions,
+      LoadedGame(ended.state, ended.nextSequence)).legalControls,
       Vector.empty)
 
   private val ancientCity = CatalogNames.site("Ancient City")

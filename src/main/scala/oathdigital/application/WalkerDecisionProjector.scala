@@ -184,11 +184,23 @@ private[application] final class WalkerDecisionProjector(
     * preview accepts, each with the consequences that answering it records;
     * for every other procedure the declared query, untouched. A preview that
     * cannot run leaves the declared query, so a projection is never lost to
-    * it.
+    * it. A procedure that prices its options shows them all, as its pricing
+    * words them.
     */
   private def playable(procedure: ProcedureRef, ready: ReadyGame,
       tree: Operation, pending: PendingTree, powers: WalkerPowers,
       decide: Decide): (DecisionQuery, Map[DecisionOptionRef, Vector[String]]) =
+    WalkerProcedureRegistry.optionPricing(procedure) match
+      case Some(price) => (decide.query match
+        case one: DecisionQuery.ChooseOne =>
+          one.copy(options = price(ready, tree, pending, powers, decide))
+        case other => other, Map.empty)
+      case None => accepting(procedure, ready, tree, pending, powers, decide)
+
+  private def accepting(procedure: ProcedureRef, ready: ReadyGame,
+      tree: Operation, pending: PendingTree, powers: WalkerPowers,
+      decide: Decide)
+      : (DecisionQuery, Map[DecisionOptionRef, Vector[String]]) =
     if !WalkerProcedureRegistry.requiresPlayableOption(procedure) then
       (decide.query, Map.empty)
     else WalkerSimulation.previewParked(ready, tree, pending, powers) match

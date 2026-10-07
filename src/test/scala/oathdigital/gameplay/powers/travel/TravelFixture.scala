@@ -4,7 +4,8 @@ import oathdigital.gameplay.{OathRules, TravelPlay}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.CatalogNames
@@ -71,8 +72,14 @@ object TravelFixture:
 
   /** The destinations Travel offers with `modifiers` selected, and their Supply. */
   def candidates(ready: ReadyGame, modifiers: Vector[PowerId] = Vector.empty)
-      : Map[SiteId, Int] = TravelProcedure.candidates(catalog, ready, actor,
-    powers(modifiers)).toMap
+      : Map[SiteId, Int] =
+    TravelProcedure.build(catalog, ready, actor, Vector.empty)
+      .flatMap(WalkerSimulation.preview(_, ready, powers(modifiers)))
+      .getOrElse(Vector.empty).collect {
+        case PreviewedOption(DecisionOption.Site(DecisionOptionRef.Site(site)),
+            Right(outcome)) => site -> outcome.operations.collect {
+          case SpendSupply(player, amount, _) if player == actor => amount }.sum
+      }.toMap
 
   /** What picking a destination the decision left out is refused with: the
     * look-ahead hides a destination no path completes, so the answer names an

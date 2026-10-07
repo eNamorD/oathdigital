@@ -3,7 +3,6 @@ package oathdigital.gameplay.actions.travel
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.TravelRules
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
-import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 
@@ -107,15 +106,10 @@ object TravelProcedure:
         Some(PowerWindow.TravelCost))),
       Some(PowerWindow.TravelActionEligibility))
 
-  /** Every destination the preview accepts, with the Supply it spends.
-    * Retires with the board targets (Task 3). */
-  def candidates(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId, powers: WalkerPowers): Vector[(SiteId, Int)] =
-    build(catalog, state, activePlayer, Vector.empty)
+  /** Whether a Travel could start now: some destination survives the same
+    * preview a start runs. */
+  def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
+      powers: WalkerPowers): Boolean =
+    build(catalog, state, actor, Vector.empty)
       .flatMap(WalkerSimulation.preview(_, state, powers))
-      .getOrElse(Vector.empty).collect {
-        case PreviewedOption(DecisionOption.Site(DecisionOptionRef.Site(site)),
-            Right(outcome)) => site -> outcome.operations.collect {
-          case SpendSupply(player, amount, _) if player == activePlayer =>
-            amount }.sum
-      }
+      .exists(_.exists(_.outcome.isRight))

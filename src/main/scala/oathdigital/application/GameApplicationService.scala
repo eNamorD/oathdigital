@@ -3,7 +3,6 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.{PowerRuntime, OathRules}
-import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.WalkerProcedureRegistry
@@ -190,8 +189,7 @@ final class GameApplicationService(
                 .left.map(CommandRejected.apply)
               options = offerable.map(power =>
                 OrderedRuleInvocation(power.source, power.id.value))
-              accepted <- acceptPreview(loaded, options, selected, Vector.empty,
-                walkerTargets(actionRef, ready, actor, selected))
+              accepted <- acceptPreview(loaded, options, selected, Vector.empty)
             yield accepted.copy(modifiers = descriptions.describe(ready,
               actor, action, offerable, accepted.options))
           case None =>
@@ -238,29 +236,6 @@ final class GameApplicationService(
       MajorActionPreviewAccepted(loaded, options, ignored, targets),
       CommandRejected(OathViolation.InvalidModifierInvocation(
         "preview contains a duplicate or unavailable modifier")))
-
-  /** A walker action's targets, costed with the powers this preview actually
-    * selected (batch-1 Task 5).
-    *
-    * The projection a route builds beside this is costed with automatic
-    * powers alone, because it is built before the player has chosen anything.
-    * Once they have, the number shown beside a destination has to reflect
-    * that choice, so the preview asks the same evaluator again with the
-    * selected vector. The match is one line per action that has targets at
-    * all, in the application layer beside the command dispatch that already
-    * names each action -- it is not a rule, and no engine code learns it.
-    */
-  private def walkerTargets(action: ActionRef,
-      ready: oathdigital.model.ReadyGame,
-      actor: PlayerId, selected: Vector[OrderedRuleInvocation])
-      : Vector[PreviewTarget] = action match
-    case ActionRef.Travel =>
-      val powers = rules.walkerPowers(ready, actor,
-        selected.map(invocation => PowerId(invocation.handlerId)))
-      TravelProcedure.candidates(catalog, ready, actor, powers).map:
-        case (site, cost) =>
-          PreviewTarget(s"site:${site.value}", cost, "Travel destination")
-    case _ => Vector.empty
 
   def handle(
       gameId: String,

@@ -1,8 +1,8 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.model.{Answered, CoreOperation, Decide, DecisionAnswer,
-  DecisionOption, DecisionQuery, OathEvent, OathViolation, Operation,
-  PendingTree, ReadyGame}
+  DecisionOption, DecisionQuery, OathEvent, OathState, OathViolation,
+  Operation, PendingTree, ReadyGame}
 
 /** Runs a declared action tree to completion against immutable state and
   * throws the result away, reporting only the operations it would have
@@ -33,10 +33,12 @@ import oathdigital.model.{Answered, CoreOperation, Decide, DecisionAnswer,
 object WalkerSimulation:
 
   /** What answering one option would record. `complete` is true when the tree
-    * then finished and false when it parked at a further decision.
+    * then finished and false when it parked at a further decision. `next`
+    * previews that further decision's options, when it was asked for and the
+    * decision is a choose-one.
     */
   final case class PreviewOutcome(operations: Vector[CoreOperation],
-      complete: Boolean)
+      complete: Boolean, next: Vector[PreviewedOption] = Vector.empty)
 
   /** One option of a previewed decision and what answering it does, or the
     * violation that makes it unanswerable.
@@ -114,10 +116,13 @@ object WalkerSimulation:
   /** Previews the decision `pending` is parked on: each available `ChooseOne`
     * option is answered as the decision's owner, against a copy of the parked position,
     * and the walk continues until it finishes or parks again. Nothing is
-    * persisted. Any other query shape is rejected.
+    * persisted. Any other query shape is rejected. With `followUp`, an answer
+    * that parks at a further choose-one also previews that decision's options
+    * (one level deep).
     */
   def previewParked(state: ReadyGame, tree: Operation, pending: PendingTree,
-      powers: WalkerPowers): Either[OathViolation, Vector[PreviewedOption]] =
+      powers: WalkerPowers, followUp: Boolean = false)
+      : Either[OathViolation, Vector[PreviewedOption]] =
     guarded:
       ProcedureWalker.parkedDecide(state, tree, pending, powers)
         .toRight(OathViolation.InvalidEventOrder(
@@ -127,22 +132,42 @@ object WalkerSimulation:
             case DecisionQuery.ChooseOne(options, _) =>
               Right(options.filter(_.available).map(option =>
                 PreviewedOption(option,
-                  answer(state, tree, pending, powers, decide, option))))
+                  answer(state, tree, pending, powers, decide, option,
+                    followUp))))
             case _ => Left(OathViolation.InvalidEventOrder(
               s"decision ${decide.decisionId} is not a choose-one, so it " +
                 "cannot be previewed"))
         }
 
   private def answer(state: ReadyGame, tree: Operation, pending: PendingTree,
-      powers: WalkerPowers, decide: Decide, option: DecisionOption)
-      : Either[OathViolation, PreviewOutcome] = guarded:
+      powers: WalkerPowers, decide: Decide, option: DecisionOption,
+      followUp: Boolean): Either[OathViolation, PreviewOutcome] = guarded:
     ProcedureWalker.resolve(state, tree, pending,
       Answered(decide.decisionId, DecisionAnswer.ChooseOneAnswer(option.ref),
         decide.owner), powers, WalkerDice.placeholder).map:
       case WalkerOutcome.Finished(_, events) =>
         PreviewOutcome(recordedOperations(events), complete = true)
-      case WalkerOutcome.Parked(_, events) =>
-        PreviewOutcome(recordedOperations(events), complete = false)
+      case WalkerOutcome.Parked(next, events) =>
+        PreviewOutcome(recordedOperations(events), complete = false,
+          next = if !followUp then Vector.empty
+            else after(state, pending, next, events)
+              .flatMap(previewParked(_, tree, next, powers))
+              .getOrElse(Vector.empty))
+
+  /** The parked position an answer leads to: its recorded steps applied to
+    * `state` as replay applies them, parked at `next`. The steps start from
+    * the position the answer was given at, which a start's preview has not
+    * recorded yet. */
+  private def after(state: ReadyGame, pending: PendingTree, next: PendingTree,
+      events: Vector[OathEvent]): Either[OathViolation, ReadyGame] =
+    events.collect { case step: WalkerStepRecorded => step }
+      .foldLeft[Either[OathViolation, OathState]](Right(OathState.Ready(
+        state.updateCurrent(_.copy(walkerPending = Some(pending)))))) {
+        (folded, step) => folded.flatMap(ProcedureWalker.applyRecorded(_, step))
+      }.flatMap:
+        case OathState.Ready(ready) =>
+          Right(ready.updateCurrent(_.copy(walkerPending = Some(next))))
+        case _ => Left(OathViolation.GameNotStarted)
 
   private def recordedOperations(events: Vector[OathEvent])
       : Vector[CoreOperation] = events.collect {

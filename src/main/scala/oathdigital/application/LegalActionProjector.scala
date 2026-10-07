@@ -30,20 +30,16 @@ private[application] final class LegalActionProjector(
     this(catalog, presentation, walkerDecisions,
       new PhasePowerProjector(catalog, walkerDecisions))
 
-  /** The automatic walker powers a Travel candidate is costed against
-    * (batch-1 Task 5) -- the same full catalog `OathRules` is constructed
-    * with, selected down to the automatic set because a projection is built
-    * before the viewer has chosen any modifier. The major-action preview
-    * re-costs the same candidates with what they then selected.
+  /** The automatic walker powers a start control is costed against -- the
+    * same full catalog `OathRules` is constructed with, selected down to the
+    * automatic set because a projection is built before the viewer has
+    * chosen any modifier.
     */
   private val walkerPowerCatalog = WalkerPowerCatalog.default(catalog)
 
-  /** Travel destinations and what each would actually cost, obtained by
-    * dry-running the declared Travel tree per destination rather than by a
-    * second cost calculation beside it -- see `TravelProcedure.candidates`.
-    */
-  private def travelCandidates(context: ScopedProjectionContext) =
-    TravelProcedure.candidates(catalog, context.ready, context.active.player,
+  /** Whether a Travel could start now, asked of the procedure that owns it. */
+  private def travelStartable(context: ScopedProjectionContext): Boolean =
+    TravelProcedure.startable(catalog, context.ready, context.active.player,
       WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
 
   /** The resources the viewer could take right now -- asked of the procedure
@@ -112,13 +108,10 @@ private[application] final class LegalActionProjector(
     val ordinaryAct = context.viewerIsActive &&
       context.current.turn.phase == Phase.Act &&
       context.current.walkerPending.isEmpty
-    val travelFacts = if ordinaryAct then travelCandidates(context)
-      else Vector.empty[(SiteId, Int)]
     LegalProjection(
       controls(context, minor, projectedPhasePowers),
       if ordinaryAct then legalSearch(context) else Vector.empty,
-      if ordinaryAct then boardTargetActions(context, travelFacts)
-      else Vector.empty,
+      Vector.empty,
       minor)
 
   private def controls(context: ScopedProjectionContext,
@@ -137,6 +130,7 @@ private[application] final class LegalActionProjector(
             recoverEligible(context, active)))("beginRecover"),
           Option.when(active.pawnSite.exists(site => ForgeRules.validate(
             catalog, context.ready, active, site).isRight))("beginForge"),
+          Option.when(travelStartable(context))("beginTravel"),
           Option.when(musterStartable(context))("beginMuster"),
           Option.when(tradeStartable(context, TradeResource.Favor))(
             "beginTradeFavor"),
@@ -208,15 +202,4 @@ private[application] final class LegalActionProjector(
       Some(r.orientation), hidden = false)), active.pawnSite.map(_.value),
       if ruled then active.board.warbands else 0, math.max(0, siteWarbands - 1))
 
-  private def boardTargetActions(context: ScopedProjectionContext,
-      travelFacts: Vector[(SiteId, Int)]) =
-    val travel = travelFacts.map:
-      case (site, cost) => BoardTargetCandidateProjection(
-        BoardTargetRefProjection.Site(site.value), presentation.siteLabel(site),
-        Vector(s"$cost Supply"))
-    Vector(selection("travel", "Choose a Travel destination", travel)).flatten
 
-  private def selection(kind: String, prompt: String,
-      candidates: Vector[BoardTargetCandidateProjection]) =
-    Option.when(candidates.nonEmpty)(BoardTargetActionProjection(kind, prompt,
-      1, 1, autoActivate = false, candidates))
