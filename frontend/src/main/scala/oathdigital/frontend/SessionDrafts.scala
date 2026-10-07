@@ -14,7 +14,6 @@ import oathdigital.protocol.PreviewModifier
   */
 private[frontend] final case class SessionDrafts(
     context: Option[BoardSelectionContext],
-    boardTargets: Option[BoardTargetSelectionState],
     partition: Option[WalkerPartitionDraft],
     distribute: Option[WalkerDistributeDraft],
     selection: Option[WalkerSelectionDraft],
@@ -28,8 +27,6 @@ private[frontend] final case class SessionDrafts(
       projection: GameProjection): SessionDrafts =
     SessionDrafts(
       context = Some(context),
-      boardTargets = Some(BoardTargetSelectionState.reconcile(boardTargets,
-        context, projection.boardTargetActions)),
       partition = WalkerPartitionDraft.reconcile(partition, context,
         projection.walkerDecision),
       distribute = WalkerDistributeDraft.reconcile(distribute, context,
@@ -50,37 +47,17 @@ private[frontend] final case class SessionDrafts(
     case Draft.Distribute(value) => copy(distribute = Some(value))
     case Draft.Selection(value) => copy(selection = Some(value))
     case Draft.Board(value) => copy(board = value)
-    case Draft.BoardTargets(value) => copy(boardTargets = Some(value))
 
-  /** The set after leaving the modifier flow one of six ways. The table
-    * is the spec's; `Failed` and `Completed` differ only on the board
-    * targets, and that is observable on a submit error.
+  /** The set after leaving the modifier flow. Every exit drops the flow
+    * draft and nothing else; the three are named for why the viewer left.
     */
   def leave(exit: FlowExit): SessionDrafts = exit match
-    case FlowExit.Restarted =>
-      copy(modifiers = None, boardTargets = boardTargets.map(_.cancel))
-    case FlowExit.Failed =>
-      copy(modifiers = None)
-    case FlowExit.Completed =>
-      copy(modifiers = None, boardTargets = None)
-    case FlowExit.Cancelled(restored) =>
-      copy(modifiers = None, boardTargets = restored)
-    case FlowExit.TargetsLeft =>
-      copy(modifiers = modifiers.flatMap(_.backFromTargets),
-        boardTargets = None)
-    case FlowExit.OrderingLeft =>
+    case FlowExit.Failed | FlowExit.Cancelled | FlowExit.OrderingLeft =>
       copy(modifiers = None)
 
-  /** The set after one step inside the modifier flow. The table is the
-    * spec's; the module computes a `Targets` entry from the projection and
-    * the context, and this only applies it.
-    */
+  /** The set after one step inside the modifier flow. */
   def step(value: FlowStep): SessionDrafts = value match
     case FlowStep.Ordering(draft) => copy(modifiers = Some(draft))
-    case FlowStep.Targets(draft, TargetsEntry.Board(targets)) =>
-      copy(modifiers = Some(draft), boardTargets = Some(targets))
-    case FlowStep.Targets(draft, TargetsEntry.NoTargets) =>
-      copy(modifiers = Some(draft))
     case FlowStep.Toggle(modifier) =>
       copy(modifiers = modifiers.map(draft =>
         draft.copy(selection = draft.selection.toggle(modifier))))
@@ -91,7 +68,7 @@ private[frontend] final case class SessionDrafts(
 
 private[frontend] object SessionDrafts:
   val empty: SessionDrafts =
-    SessionDrafts(None, None, None, None, None, None, None)
+    SessionDrafts(None, None, None, None, None, None)
 
 /** A draft a panel or the board can stage. There is no case for the
   * modifier flow draft: no panel writes it; the modifier flow does, through
@@ -104,39 +81,21 @@ private[frontend] enum Draft:
   case Distribute(value: WalkerDistributeDraft)
   case Selection(value: WalkerSelectionDraft)
   case Board(value: Option[BoardSelectionDraft])
-  case BoardTargets(value: BoardTargetSelectionState)
 
-/** The six ways a viewer leaves the modifier flow. `Cancelled` carries the
-  * restored board targets because computing them needs the projection's
-  * `boardTargetActions`; the caller (`restoredTargets` in `ModifierFlow`)
-  * builds the restore from the set's own context.
+/** The ways a viewer leaves the modifier flow. `Failed` is a preview or
+  * submit error, `Cancelled` the Cancel button, and `OrderingLeft` Confirm
+  * (which submits the command) or Back out of the ordering panel.
   */
 private[frontend] enum FlowExit:
-  case Restarted
   case Failed
-  case Completed
-  case Cancelled(restored: Option[BoardTargetSelectionState])
-  case TargetsLeft
-  /** Leaving the ordering stage with no targets stage after it: Confirm
-    * submitted the command directly, or Back left the ordering panel. Only
-    * the flow draft goes; the board targets stay.
-    */
+  case Cancelled
   case OrderingLeft
 
-/** The four ways a viewer moves inside the modifier flow without leaving
-  * it. `Ordering` and `Targets` are the two entries; the other two are the
-  * steps a panel's controls take. Only `ModifierFlow` applies these.
+/** The three ways a viewer moves inside the modifier flow without leaving
+  * it. `Ordering` is the entry; the other two are the steps a panel's
+  * controls take. Only `ModifierFlow` applies these.
   */
 private[frontend] enum FlowStep:
   case Ordering(draft: ModifierFlowDraft)
-  case Targets(draft: ModifierFlowDraft, entry: TargetsEntry)
   case Toggle(value: PreviewModifier)
   case Move(value: PreviewModifier, delta: Int)
-
-/** What entering the Targets stage opens beside the flow draft: one
-  * activated board action, or nothing when the preview names no target
-  * action the board knows.
-  */
-private[frontend] enum TargetsEntry:
-  case Board(targets: BoardTargetSelectionState)
-  case NoTargets

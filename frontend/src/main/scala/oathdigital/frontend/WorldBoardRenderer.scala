@@ -139,40 +139,12 @@ private[frontend] object WorldBoardRenderer:
    BoardOptionViews.key(slot, s"$playerId:$at") +:
      Option.unless(card.hidden)(BoardOptions.cardKey(card)).toVector
 
- /** True for a click or key press that landed on a card inside a site. A
-   * card face is a button of its own that opens the inspector, and its
-   * events bubble up to the site box; reading a card must not also pick the
-   * site. Only real cards count: a facedown or empty slot is part of the
-   * box.
-   */
- private def onCard(event: dom.Event): Boolean =
-   event.target.isInstanceOf[dom.Element] &&
-     event.target.asInstanceOf[dom.Element].closest("button.card-face") != null
-
- /** Makes `control` answer a click, Enter or Space with `choose`, except
-   * when the event came from a card inside it.
-   */
- private def pickable(control: dom.Element, choose: () => Unit): Unit =
-   control.setAttribute("role", "button")
-   control.setAttribute("tabindex", "0")
-   control.addEventListener("click", (event: dom.Event) =>
-     if !onCard(event) then choose())
-   control.addEventListener("keydown", (event: dom.Event) => {
-     val key = event.asInstanceOf[dom.KeyboardEvent].key
-     if (key == "Enter" || key == " ") && !onCard(event) then
-       event.preventDefault()
-       choose()
-   })
-
  /** The World pane. `options` draws the parked board decision onto its
-   * sites, cards, pawns, banks and banners; the board targets of an
-   * activated Travel still pick sites through `pickable`.
+   * sites, cards, pawns, banks and banners.
    */
  def world(
      value: GameProjection,
-     options: BoardOptions,
-     drafts: SessionDrafts,
-     controls: TableControls
+     options: BoardOptions
  ): dom.Element =
    val panel = element("section", "panel world")
    panel.setAttribute("aria-label", "The World")
@@ -199,24 +171,15 @@ private[frontend] object WorldBoardRenderer:
            region.discardCards, anchor)))))
      val sites = element("div", "sites")
      region.sites.foreach { site =>
-       val siteTarget = BoardTargetRef.Site(site.siteId)
-       val candidate = drafts.boardTargets.flatMap(
-         _.activeAction.flatMap(_.candidates.find(_.target == siteTarget)))
-       val selected = drafts.boardTargets.exists(_.selected(siteTarget))
-       val control = element("article", siteTargetClasses(candidate.nonEmpty,
-         selected))
+       val control = element("article", "site site-readonly")
        control.setAttribute("aria-label", site.label)
-       control.setAttribute("data-target-ref", siteTarget.stableKey)
-       if candidate.nonEmpty then
-         control.setAttribute("aria-pressed", selected.toString)
-       candidate.foreach { _ =>
-         pickable(control, () => drafts.boardTargets.foreach(state =>
-           controls.handleSelection(state.choose(siteTarget))))
-       }
-       options.decorate(control,
-         Vector(BoardOptionViews.key("site", site.siteId)))
+       val siteKeys = Vector(BoardOptionViews.key("site", site.siteId))
+       options.decorate(control, siteKeys)
        control.appendChild(siteHeading(site))
-       candidate.flatMap(candidateDetailBadge).foreach(control.appendChild)
+       // What reaching this site costs, or why it cannot be reached, comes
+       // from the decision that offers it.
+       options.view(siteKeys).flatMap(_.option.badge).foreach(badge =>
+         control.appendChild(text("span", "target-detail-badge", badge)))
        val pawns = element("div", "site-pawns")
        value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>
          val marker = element("span", "pawn")

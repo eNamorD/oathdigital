@@ -9,7 +9,7 @@ import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
-import oathdigital.protocol.{PreviewModifier, PreviewTarget}
+import oathdigital.protocol.PreviewModifier
 
 
 /** `events` are the events the command produced: the batch's opening
@@ -54,15 +54,9 @@ final case class PreparedGameBootstrap(
     state: OathState,
     events: Vector[OathEvent]
 )
-/** `targets` (batch-1 Task 5) is the walker-action targets costed against the
-  * modifiers THIS preview selected, rather than against the automatic set the
-  * projection is built from. Empty for an action whose targets the projection
-  * already carries, and for a walker action that has none.
-  */
 final case class MajorActionPreviewAccepted(loaded: LoadedGame,
     options: Vector[OrderedRuleInvocation],
     ignored: Vector[IgnoredRuleDiagnostic],
-    targets: Vector[PreviewTarget] = Vector.empty,
     modifiers: Vector[PreviewModifier] = Vector.empty)
 
 sealed trait GameApplicationError extends Product with Serializable
@@ -223,17 +217,11 @@ final class GameApplicationService(
   private def acceptPreview(loaded: LoadedGame,
       options: Vector[OrderedRuleInvocation],
       selected: Vector[OrderedRuleInvocation],
-      ignored: Vector[IgnoredRuleDiagnostic],
-      // By name: `targets` costs the action against `selected`, which is only
-      // known to name real powers once this gate has accepted it. A rejected
-      // preview must not evaluate it at all -- `PowerId` refuses to be built
-      // from an unknown id, so costing an unvalidated selection throws rather
-      // than rejecting.
-      targets: => Vector[PreviewTarget] = Vector.empty)
+      ignored: Vector[IgnoredRuleDiagnostic])
       : Either[GameApplicationError, MajorActionPreviewAccepted] =
     Either.cond(selected.distinct.size == selected.size &&
       selected.forall(options.contains),
-      MajorActionPreviewAccepted(loaded, options, ignored, targets),
+      MajorActionPreviewAccepted(loaded, options, ignored),
       CommandRejected(OathViolation.InvalidModifierInvocation(
         "preview contains a duplicate or unavailable modifier")))
 

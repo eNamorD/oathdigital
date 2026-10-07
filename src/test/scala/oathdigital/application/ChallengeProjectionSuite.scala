@@ -16,10 +16,9 @@ class ChallengeProjectionSuite extends munit.FunSuite:
   private def challenger: Table = Table.start
     .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
 
-  test("a legal Challenge is offered as a start control, not a board-target selection"):
+  test("a legal Challenge is offered as a start control"):
     val shown = projection(challenger.peoplesFavor(None, favor = 2).ready, p1)
     assert(shown.legalControls.contains("beginChallenge"))
-    assert(!shown.boardTargetActions.exists(_.actionKind == "challenge"))
 
   test("no Supply, or no strictly greater resources, withdraws the Challenge control"):
     val broke = challenger.supply(p1, 0).peoplesFavor(None, favor = 2).ready

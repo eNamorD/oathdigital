@@ -93,16 +93,8 @@ private[frontend] object ActionDecisionRenderer:
        !value.legalControls.contains("endWake")
      end.onclick = _ => submitCommand(GameCommand.EndWake)
      panel.appendChild(end)
-   if !value.actionSelectionOpen && presentation.showGameplayControls then
-     drafts.boardTargets.flatMap(_.activeAction).foreach { action =>
-       promptOnce(action.prompt)
-       panel.appendChild(text("p", "selection-instruction", action.prompt))
-       panel.appendChild(text("p", "selection-cardinality",
-         cardinalityInstruction(action)))
-     }
    if showActActionControls(value, presentation) then
-     val selection = drafts.boardTargets.flatMap(_.activeAction)
-     if drafts.modifiers.exists(_.ordering) then
+     if drafts.modifiers.nonEmpty then
        val draft = drafts.modifiers.get
        panel.appendChild(text("h2", "", s"Order ${actionLabel(draft.preview.action)} modifiers"))
        panel.appendChild(text("p", "modifier-instruction", "Choose optional modifiers in " +
@@ -163,29 +155,6 @@ private[frontend] object ActionDecisionRenderer:
        panel.appendChild(back)
        val cancel = button("Cancel action", "modifier-cancel"); cancel.onclick = _ =>
          cancelModifiers(); panel.appendChild(cancel)
-     else if selection.nonEmpty then
-       val action = selection.get
-       promptOnce(action.prompt)
-       panel.appendChild(text("p", "selection-instruction", action.prompt))
-       panel.appendChild(text("p", "selection-cardinality",
-         cardinalityInstruction(action)))
-       if !action.autoActivate then
-         val cancel = button("Cancel", "cancel-board-selection")
-         cancel.onclick = _ => cancelTargetAction()
-         panel.appendChild(cancel)
-         // Without a modifier stage, going back lands on the action list,
-         // which is where Cancel goes too, so only Cancel is offered.
-         drafts.modifiers.filter(_.hadModifierStage).foreach { _ =>
-           val back = button("Back to modifiers", "back-board-selection")
-           back.onclick = _ => backFromTargets(); panel.appendChild(back)
-         }
-       if action.explicitConfirm then
-         val confirm = button("Confirm selection", "confirm-board-selection")
-         confirm.disabled = !canControl ||
-           !drafts.boardTargets.exists(_.canConfirm)
-         confirm.onclick = _ => drafts.boardTargets.flatMap(_.confirm)
-           .foreach(handleSelection)
-         panel.appendChild(confirm)
      else
        val groups = new ActionSections; value.legalSearchSources.foreach { source =>
          val label = source.kind match
@@ -212,6 +181,12 @@ private[frontend] object ActionDecisionRenderer:
          forge.onclick = _ => submitCommand(
            GameCommand.StartWalker("forge", Vector.empty))
          groups.appendKind("forge", forge)
+       if value.legalControls.contains("beginTravel") then
+         val travel = button("Travel", "act-action travel-action")
+         travel.disabled = !canControl
+         travel.onclick = _ => submitCommand(
+           GameCommand.StartWalker("travel", Vector.empty))
+         groups.appendKind("travel", travel)
        EconomyControls.render(value, canControl, groups, submitCommand)
        BannerControls.render(value, canControl, groups, submitCommand)
        NegotiationControls.render(value, canControl, groups, submitCommand)
@@ -252,25 +227,6 @@ private[frontend] object ActionDecisionRenderer:
              option.appendChild(label); option.appendChild(move)
              groups.appendKind("move-warbands", option)
            }
-       }
-       value.boardTargetActions.filterNot(_.autoActivate).foreach { action =>
-         val control = button(actionLabel(action.actionKind),
-           s"act-action target-action action-${action.actionKind}")
-         control.disabled = !canControl ||
-           !presentation.showGameplayControls ||
-           (action.candidates.isEmpty && action.minimum > 0)
-         control.onclick = _ => {
-           if action.minimum == 0 && action.maximum == 0 then
-             commandForSelection(action, Vector.empty, presentation.playerId)
-               .foreach(submitCommand)
-           else
-             if ModifierFlowDraft.targeted(action.actionKind).nonEmpty then
-               beginTargetedMajorAction(action.actionKind)
-             else
-               drafts.boardTargets.foreach(state =>
-                 stage(Draft.BoardTargets(state.activate(action.actionKind))))
-         }
-         groups.appendKind(action.actionKind, control)
        }
        PhasePowerButtons.appendTo(value, canControl, groups, submitCommand)
        groups.appendTo(panel)

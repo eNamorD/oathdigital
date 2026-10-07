@@ -2,8 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{GameIntent, MajorActionPreviewResponse,
-  PreviewModifier, PreviewTarget, ModifierInvocation}
-import oathdigital.testkit.Unwrap.present
+  PreviewModifier, ModifierInvocation}
 import TestProjections.actingProjection
 
 class ModifierSelectionStateSuite extends munit.FunSuite:
@@ -11,18 +10,18 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
   private val first = PreviewModifier("adviser:p:denizen:a", "h.a", "A")
   private val second = PreviewModifier("site-card:s:denizen:b", "h.b", "B")
 
-  /** Reaches the `drafts.modifiers.exists(_.ordering)` branch of
+  /** Reaches the modifier-ordering branch of
     * `ActionDecisionRenderer.actionsPanel`.
     */
   private def renderOrderingPanel(modifiers: Vector[PreviewModifier])
       : org.scalajs.dom.Element =
     val response = MajorActionPreviewResponse(4L, "travel", modifiers,
-      Vector.empty, Vector.empty)
+      Vector.empty)
     val selection = ModifierSelectionState.reconcile(None,
       context.copy(action = "travel"), modifiers, "ordering-preview")
-    val draft = ModifierFlowDraft(command = None, actionKind = Some("travel"),
-      baseParameters = Map.empty, preview = response, selection = selection,
-      stage = ModifierFlowStage.Ordering)
+    val draft = ModifierFlowDraft(
+      command = GameIntent.StartWalker("travel", Vector.empty),
+      baseParameters = Map.empty, preview = response, selection = selection)
     ActionDecisionRenderer.actionsPanel(
       actingProjection(gameId = "g", nextSequence = 4L,
         activePlayer = Some("p"),
@@ -56,11 +55,6 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     assert(ModifierSelectionState.reconcile(Some(selected), context,
       Vector(first), "preview-2").selected.isEmpty)
 
-  test("targeted actions open their own preview"):
-    assertEquals(Vector("travel", "campaign-conquest", "campaign-raid",
-      "play-facedown-adviser").flatMap(ModifierFlowDraft.targeted).map(_._1),
-      Vector("travel"))
-
   test("a walker start names a preview action only when the engine " +
       "registers it"):
     val commands = Vector[GameIntent](
@@ -69,14 +63,13 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       GameIntent.StartWalker("muster", Vector.empty),
       GameIntent.StartWalker("trade", Vector.empty,
         Vector(oathdigital.protocol.WalkerStartArgWire("button", "favor"))),
-      GameIntent.StartWalker("travel", Vector.empty,
-        Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:a"))),
+      GameIntent.StartWalker("travel", Vector.empty),
       GameIntent.StartWalker("search", Vector.empty,
         Vector(oathdigital.protocol.WalkerStartArgWire("button", "search:world"))),
       GameIntent.StartWalker("play-facedown-adviser", Vector.empty),
       GameIntent.StartWalker("place-banner-resource", Vector.empty))
     // A registered key names its action whatever start arguments it carries
-    // (Travel carries its destination); play-facedown-adviser previews as
+    // (Trade and Search carry theirs); play-facedown-adviser previews as
     // Search; place-banner-resource is not registered, so it names none.
     assertEquals(commands.flatMap(ModifierFlowDraft.action).map(_._1),
       Vector("recover", "forge", "muster", "trade", "travel", "search", "search"))
@@ -86,48 +79,20 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     assertEquals(ModifierFlowDraft.action(GameIntent.StartWalker("teleport", Vector.empty)),
       None)
 
-  test("after the preview, only the authorized targets are offered and a " +
-      "pick needs confirmation"):
-    val action = BoardTargetAction("travel", "Travel", minimum = 1,
-      maximum = 1, autoActivate = false,
-      Vector(BoardTargetCandidate(BoardTargetRef.Site("a"), "A", Vector.empty),
-        BoardTargetCandidate(BoardTargetRef.Site("b"), "B", Vector.empty)))
-    // A Site ref's key is site:<id>, so this authorizes Site("b") only.
+  test("a stale context clears the flow draft"):
     val response = MajorActionPreviewResponse(4, "travel", Vector(first),
-      Vector.empty, Vector(PreviewTarget(key = "site:b", supplyCost = 2,
-        description = "B")))
-    val selection = ModifierSelectionState.reconcile(None,
-      context.copy(action = "travel"), response.modifiers, "preview")
-    val ordering = ModifierFlowDraft(command = None,
-      actionKind = Some("travel"), baseParameters = Map.empty,
-      preview = response, selection = selection,
-      stage = ModifierFlowStage.Ordering)
-    assert(ordering.ordering)
-    val targets = ordering.showTargets(response)
-    assert(!targets.ordering)
-    val authorized = present(ModifierFlowDraft.targetAction("travel", response,
-      Vector(action)), "an authorized Travel action")
-    assertEquals(authorized.candidates.map(_.target), Vector(BoardTargetRef.Site("b")))
-    assert(authorized.explicitConfirm)
-
-  test("target Back restores ordering only when present and stale context clears flow"):
-    val response = MajorActionPreviewResponse(4, "travel", Vector(first),
-      Vector.empty, Vector.empty)
+      Vector.empty)
     val selected = ModifierSelectionState.reconcile(None, context,
       Vector(first), "preview").toggle(first)
-    val targets = ModifierFlowDraft(command = None,
-      actionKind = Some("travel"), baseParameters = Map.empty[String, String],
-      preview = response, selection = selected,
-      stage = ModifierFlowStage.Targets)
-    assert(targets.backFromTargets.exists(_.ordering))
-    assertEquals(targets.cancel, None)
-    assertEquals(targets.copy(preview = response.copy(modifiers = Vector.empty))
-      .backFromTargets, None)
-    assertEquals(ModifierFlowDraft.reconcile(Some(targets),
-      BoardSelectionContext("g", "p", 4)), Some(targets))
-    assertEquals(ModifierFlowDraft.reconcile(Some(targets),
+    val draft = ModifierFlowDraft(
+      command = GameIntent.StartWalker("travel", Vector.empty),
+      baseParameters = Map.empty[String, String], preview = response,
+      selection = selected)
+    assertEquals(ModifierFlowDraft.reconcile(Some(draft),
+      BoardSelectionContext("g", "p", 4)), Some(draft))
+    assertEquals(ModifierFlowDraft.reconcile(Some(draft),
       BoardSelectionContext("g", "p", 5)), None)
-    assertEquals(ModifierFlowDraft.reconcile(Some(targets),
+    assertEquals(ModifierFlowDraft.reconcile(Some(draft),
       BoardSelectionContext("g", "other", 4)), None)
 
   private val startRecover = GameIntent.StartWalker("recover", Vector.empty)
@@ -140,7 +105,7 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     "site-card:site:a:denizen:catacombs", "denizen.catacombs", "Catacombs")
 
   private val recoverPreview = MajorActionPreviewResponse(4, "recover",
-    Vector(catacombs), Vector.empty, Vector.empty)
+    Vector(catacombs), Vector.empty)
 
   private def catacombsSelected: ModifierSelectionState =
     ModifierSelectionState.reconcile(None, context.copy(action = "recover"),
@@ -151,11 +116,6 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     assertEquals(ModifierFlowDraft.action(startRecover),
       Some("recover" -> Map.empty[String, String]))
     val selection = catacombsSelected
-    val draft = ModifierFlowDraft(command = Some(startRecover),
-      actionKind = Some("recover"), baseParameters = Map.empty,
-      preview = recoverPreview, selection = selection,
-      stage = ModifierFlowStage.Ordering)
-    assert(draft.ordering)
     val invocation = ModifierInvocation("site-card", "catacombs",
       Some("site:a"), catacombs.handlerId)
     assertEquals(selection.invocations, Vector(invocation))
@@ -165,17 +125,6 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     val submitted = ModifierFlowDraft.submission(startRecover,
       selection.invocations)
     assertEquals(submitted, GameIntent.StartWalker("recover", Vector("denizen.catacombs")))
-
-  test("Recover's Targets stage backs out to Ordering, and a stale context " +
-      "clears the flow"):
-    val draft = ModifierFlowDraft(command = Some(startRecover),
-      actionKind = Some("recover"), baseParameters = Map.empty,
-      preview = recoverPreview, selection = catacombsSelected,
-      stage = ModifierFlowStage.Ordering)
-    val targets = draft.showTargets(recoverPreview)
-    assert(targets.backFromTargets.exists(_.ordering))
-    assertEquals(ModifierFlowDraft.reconcile(Some(targets),
-      BoardSelectionContext("g", "p", 5)), None)
 
   test("a selected game-rule modifier such as Rowdy Pub invokes without throwing"):
     val rowdyPub = PreviewModifier("game:denizen.rowdy-pub", "denizen.rowdy-pub",

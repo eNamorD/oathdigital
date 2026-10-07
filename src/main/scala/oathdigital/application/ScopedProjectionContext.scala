@@ -16,7 +16,6 @@ private[application] final case class ScopedProjectionContext(
 private[application] final case class LegalProjection(
     controls: Vector[String],
     search: Vector[LegalSearchSourceProjection],
-    boardTargets: Vector[BoardTargetActionProjection],
     minorActions: Option[MinorActionsProjection]
 )
 

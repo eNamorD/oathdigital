@@ -50,8 +50,7 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     OptionView(option, OptionState.Available, None)
 
   private def world(options: BoardOptions): dom.Element =
-    WorldBoardRenderer.world(table, options, SessionDrafts.empty,
-      new RecordingControls())
+    WorldBoardRenderer.world(table, options)
 
   private def site(root: dom.Element): dom.Element =
     one(root, """article[aria-label="Deep Woods"]""")

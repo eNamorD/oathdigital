@@ -94,22 +94,6 @@ class WalkerDecisionDraftSuite extends FunSuite:
       oathdigital.protocol.GameIntent.ResolveWalker("oathkeeper.recipient",
         DecisionAnswerWire.ChooseOneWire("player", "yellow")))
 
-  test("selection actions map only authorized single target shapes to commands"):
-    val placeholderCandidates = Vector("a", "b", "c", "d").map(id =>
-      BoardTargetCandidate(BoardTargetRef.Site(id), id, Vector.empty))
-    def action(kind: String) = BoardTargetAction(kind, "Choose", 1, 1,
-      false, placeholderCandidates)
-    assertEquals(ServerUiSupport.commandForSelection(action("travel"),
-      Vector(BoardTargetRef.Site("site:b")), "red"),
-      Some(oathdigital.protocol.GameIntent.StartWalker("travel", Vector.empty,
-        Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:b")))))
-    assertEquals(ServerUiSupport.commandForSelection(action("travel"), Vector(
-      BoardTargetRef.Site("site:b"), BoardTargetRef.Site("site:c")), "red"), None)
-    // Campaign is no longer a board-target selection: it starts from its own
-    // control and asks its questions as walker decisions.
-    assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
-      Vector(BoardTargetRef.Site("site:b")), "red"), None)
-
   test("a pool rolls the die its action rolls"):
     assertEquals(WalkerPanelSupport.poolDie("campaign.attack"), Some("attack"))
     assertEquals(WalkerPanelSupport.poolDie("campaign.defense"),

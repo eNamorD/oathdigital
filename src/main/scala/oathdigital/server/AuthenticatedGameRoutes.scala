@@ -95,11 +95,9 @@ final class AuthenticatedGameGateway(
           GameApplicationError.CommandRejected(
             oathdigital.model.OathViolation.InvalidModifierInvocation(
               "major-action preview is unavailable in this phase"))))
-        _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application.apply)
+        _ <- MajorActionPreviewGuard.validate(projection, request).left.map(Application.apply)
       yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
-        request.action, accepted.modifiers,
-        Vector.empty, MajorActionPreviewTargets.from(projection, request,
-          accepted.targets)) }
+        request.action, accepted.modifiers, Vector.empty) }
 
   def bootstrap(
       gameId: String,

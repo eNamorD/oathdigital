@@ -21,10 +21,8 @@ final case class PreviewModifier(sourceKey: String, handlerId: String,
     modifies: Option[String] = None, cost: Option[String] = None)
 final case class PreviewIgnoredRule(sourceKey: String, handlerId: String,
     timing: String, reason: String)
-final case class PreviewTarget(key: String, supplyCost: Int, description: String)
 final case class MajorActionPreviewResponse(nextSequence: Long, action: String,
-    modifiers: Vector[PreviewModifier], ignoredRules: Vector[PreviewIgnoredRule],
-    targets: Vector[PreviewTarget])
+    modifiers: Vector[PreviewModifier], ignoredRules: Vector[PreviewIgnoredRule])
 
 object MajorActionPreviewCodec:
   import ProtocolDecodeFailure._
@@ -91,10 +89,7 @@ object MajorActionPreviewCodec:
       "cost" -> v.cost.fold[ujson.Value](ujson.Null)(ujson.Str(_))))),
     "ignoredRules" -> ujson.Arr.from(value.ignoredRules.map(v => ujson.Obj(
       "sourceKey" -> v.sourceKey, "handlerId" -> v.handlerId,
-      "timing" -> v.timing, "reason" -> v.reason))),
-    "targets" -> ujson.Arr.from(value.targets.map(v => ujson.Obj(
-      "key" -> v.key, "supplyCost" -> v.supplyCost,
-      "description" -> v.description)))))
+      "timing" -> v.timing, "reason" -> v.reason)))))
 
   def decodeResponse(json: String)
       : Either[ProtocolDecodeFailure, MajorActionPreviewResponse] = try
@@ -128,14 +123,7 @@ object MajorActionPreviewCodec:
             timing <- nonEmpty(value, "timing", s"$path.timing")
             reason <- nonEmpty(value, "reason", s"$path.reason")
           yield PreviewIgnoredRule(source, handler, timing, reason) }
-          targets <- array(root, "targets", "$.targets") { (value, path) => for
-            key <- nonEmpty(value, "key", s"$path.key")
-            cost <- value.value.get("supplyCost") match
-              case Some(ujson.Num(v)) if v.isWhole && v >= 0 => Right(v.toInt)
-              case _ => Left(InvalidValue(s"$path.supplyCost", "expected non-negative integer"))
-            description <- nonEmpty(value, "description", s"$path.description")
-          yield PreviewTarget(key, cost, description) }
-        yield MajorActionPreviewResponse(sequence, action, modifiers, ignored, targets)
+        yield MajorActionPreviewResponse(sequence, action, modifiers, ignored)
       case _ => Left(ExpectedObject("$"))
   catch { case NonFatal(error) => Left(MalformedJson("$",
     Option(error.getMessage).getOrElse("malformed JSON"))) }

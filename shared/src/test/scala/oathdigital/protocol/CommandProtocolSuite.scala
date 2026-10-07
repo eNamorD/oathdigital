@@ -170,14 +170,14 @@ class CommandProtocolSuite extends munit.FunSuite:
     val response = MajorActionPreviewResponse(7, "trade",
       Vector(PreviewModifier("adviser:p1:d2", "denizen.second", "Second")),
       Vector(PreviewIgnoredRule("site-card:s1:d1", "denizen.first", "start",
-        "not implemented")), Vector(PreviewTarget("denizen:d1", 1, "D1")))
+        "not implemented")))
     assertEquals(MajorActionPreviewCodec.decodeResponse(
       MajorActionPreviewCodec.encode(response)), Right(response))
 
   test("a preview modifier round-trips its printed cost"):
     val response = MajorActionPreviewResponse(4L, "recover",
       Vector(PreviewModifier("site-card:s1:d201", "denizen.catacombs",
-        "Catacombs", cost = Some("1 secret"))), Vector.empty, Vector.empty)
+        "Catacombs", cost = Some("1 secret"))), Vector.empty)
     assertEquals(MajorActionPreviewCodec.decodeResponse(
       MajorActionPreviewCodec.encode(response)), Right(response))
 
@@ -188,6 +188,6 @@ class CommandProtocolSuite extends munit.FunSuite:
     val response = MajorActionPreviewResponse(4L, "travel",
       Vector(PreviewModifier("adviser:p1:denizen:vow-of-peace",
         "denizen.vow-of-peace", "Vow of Peace", Some(card), Some("travel"))),
-      Vector.empty, Vector.empty)
+      Vector.empty)
     val json = MajorActionPreviewCodec.encode(response)
     assertEquals(MajorActionPreviewCodec.decodeResponse(json), Right(response))

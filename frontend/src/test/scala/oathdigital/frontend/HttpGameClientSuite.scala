@@ -13,7 +13,7 @@ class HttpGameClientSuite extends FunSuite:
   test("trusted client uses canonical cookie APIs and actorless bodies"):
     val transport = transportAnsweringInOrder(Vector(
       Right(TransportResponse(200, projectionJson(7))),
-      Right(TransportResponse(200, """{"nextSequence":7,"action":"trade","modifiers":[],"ignoredRules":[],"targets":[]}""")),
+      Right(TransportResponse(200, """{"nextSequence":7,"action":"trade","modifiers":[],"ignoredRules":[]}""")),
       Right(TransportResponse(200, projectionJson(8)))))
     val client = new TrustedHttpGameClient(transport)
     client.load("game /?", "seat-must-not-travel").flatMap { loaded =>
@@ -101,23 +101,6 @@ class HttpGameClientSuite extends FunSuite:
           _.contains("\"expectedNextSequence\":2")
         ))
       }
-
-  test("board-target actions decode sites and reject an unknown kind, a " +
-      "maximum over one and an extra field"):
-    val actions = """[{"actionKind":"travel","prompt":"Choose a destination","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site","siteId":"site:c"},"label":"Site C","details":[]}]}]"""
-    val json = projectionJson(sequence = 10)
-      .replace("\"boardTargetActions\":[]",
-        s"\"boardTargetActions\":$actions")
-    val decoded = accepted(GameJson.decodeProjection(json))
-      .boardTargetActions.head
-    assertEquals(decoded.minimum -> decoded.maximum, 1 -> 1)
-    assertEquals(decoded.candidates.map(_.target), Vector(
-      BoardTargetRef.Site("site:b"), BoardTargetRef.Site("site:c")))
-    assert(GameJson.decodeProjection(json.replace("\"kind\":\"site\"",
-      "\"kind\":\"site-card\"")).isLeft)
-    assert(GameJson.decodeProjection(json.replace("\"maximum\":1", "\"maximum\":2")).isLeft)
-    assert(GameJson.decodeProjection(json.replace("\"autoActivate\":false,",
-      "\"autoActivate\":false,\"requiredTargets\":[],")).isLeft)
 
   test("reconnect generation rejects late load and command callbacks"):
     val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
@@ -253,8 +236,7 @@ class HttpGameClientSuite extends FunSuite:
        |"pawnLocations":[],
        |"legalControls":[],
        |"ready":$ready,
-       |"completed":$completed,
-       |"boardTargetActions":[]
+       |"completed":$completed
        |}""".stripMargin
 
   private def siteJson(

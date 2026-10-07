@@ -111,7 +111,6 @@ private[application] final class LegalActionProjector(
     LegalProjection(
       controls(context, minor, projectedPhasePowers),
       if ordinaryAct then legalSearch(context) else Vector.empty,
-      Vector.empty,
       minor)
 
   private def controls(context: ScopedProjectionContext,
@@ -201,5 +200,3 @@ private[application] final class LegalActionProjector(
       _.orientation == Orientation.FaceDown).map(r => presentation.cardDetails(r.id,
       Some(r.orientation), hidden = false)), active.pawnSite.map(_.value),
       if ruled then active.board.warbands else 0, math.max(0, siteWarbands - 1))
-
-

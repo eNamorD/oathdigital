@@ -335,19 +335,6 @@ private[frontend] object ServerUiSupport:
       }
     }
 
-  private[frontend] def cardinalityInstruction(action: BoardTargetAction): String =
-    if action.maximum == 0 then "No target is available; confirm to play this action."
-    else if action.explicitConfirm then "Choose one target, then confirm."
-    else "Choose one target. Selection submits immediately."
-
-  private[frontend] def candidateDetailText(
-      candidate: BoardTargetCandidate): Option[String] =
-    Option.when(candidate.details.nonEmpty)(candidate.details.mkString(" · "))
-
-  private[frontend] def candidateDetailBadge(
-      candidate: BoardTargetCandidate): Option[dom.Element] =
-    candidateDetailText(candidate).map(value => text("span", "target-detail-badge", value))
-
   private[frontend] def winnerColorClass(value: GameProjection,
       playerId: String): String =
     PlayerColorCss.of(value.players.find(_.playerId == playerId).map(_.color))
@@ -359,26 +346,6 @@ private[frontend] object ServerUiSupport:
     banner.appendChild(playerReference(value, winner))
     banner.appendChild(dom.document.createTextNode(s" wins — $victory victory"))
     banner
-
-  private[frontend] def siteTargetClasses(candidate: Boolean,
-      selected: Boolean): String =
-    Vector("site", if candidate then "board-target" else "site-readonly",
-      if selected then "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
-
-  private[frontend] def commandForSelection(action: BoardTargetAction,
-      targets: Vector[BoardTargetRef], playerId: String)
-      : Option[GameCommand.StartWalker] =
-    (action.actionKind, targets) match
-      // Travel moved onto the generic walker (batch-1 Task 5), so the
-      // destination the player just picked rides `StartWalker`'s start
-      // selection instead of a `Travel` intent of its own -- as a plain site
-      // reference, which is all the wire says about it. Modifiers are folded
-      // into this same intent by `ModifierFlowDraft.submission`, which is why
-      // they are empty here.
-      case ("travel", Vector(BoardTargetRef.Site(site))) =>
-        Some(GameCommand.StartWalker("travel", Vector.empty,
-          Vector(oathdigital.protocol.WalkerStartArgWire("site", site))))
-      case _ => None
 
   private def takeWealth(resource: String): GameCommand =
     GameCommand.StartWalker("take-wealth", Vector.empty,

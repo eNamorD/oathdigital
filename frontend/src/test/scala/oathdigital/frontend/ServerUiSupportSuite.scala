@@ -2,7 +2,6 @@ package oathdigital.frontend
 
 import oathdigital.frontend.ServerModeFixtures.twoSeatProjection
 import oathdigital.model.PlayerColor
-import oathdigital.testkit.Unwrap.present
 
 import munit.FunSuite
 
@@ -32,18 +31,6 @@ class ServerUiSupportSuite extends FunSuite:
     assertEquals(ServerUiSupport.actionLabel("challenge"), "Challenge")
     assertEquals(ServerUiSupport.actionLabel("peoples-favor"), "People's Favor")
 
-  test("the cardinality instruction says how many targets and whether to " +
-      "confirm"):
-    val single = BoardTargetAction("travel", "Travel", 1, 1, false,
-      Vector(BoardTargetCandidate(BoardTargetRef.Site("a"), "A", Vector.empty)))
-    val confirmed = single.copy(explicitConfirm = true)
-    assert(ServerUiSupport.cardinalityInstruction(single).contains("immediately"))
-    assertEquals(ServerUiSupport.cardinalityInstruction(confirmed),
-      "Choose one target, then confirm.")
-    assertEquals(ServerUiSupport.cardinalityInstruction(single.copy(
-      actionKind = "travel", minimum = 0, maximum = 0)),
-      "No target is available; confirm to play this action.")
-
   test("site forces retain accessible labels counts and stable color classes"):
     val cases = Vector(
       SiteForces.Exile(2, "red-exile", PlayerColor.Red,
@@ -57,14 +44,6 @@ class ServerUiSupportSuite extends FunSuite:
       assertEquals(ServerUiSupport.forceText(forces), label)
       assertEquals(ServerUiSupport.forceCssClass(forces), cssClass)
     }
-
-  test("board target classes distinguish candidate selected and read-only state"):
-    assertEquals(ServerUiSupport.siteTargetClasses(false, false),
-      "site site-readonly")
-    assertEquals(ServerUiSupport.siteTargetClasses(true, false),
-      "site board-target")
-    assertEquals(ServerUiSupport.siteTargetClasses(true, true),
-      "site board-target board-target-selected")
 
   test("round tracker geometry is eight circular ring wedges"):
     // The tracker is drawn on a 200 by 200 viewBox, so its center is
@@ -93,14 +72,6 @@ class ServerUiSupportSuite extends FunSuite:
       twoSeatProjection(Set.empty), "red-exile"), "player-red")
     assertEquals(ServerUiSupport.winnerColorClass(
       twoSeatProjection(Set.empty), "missing"), "player-neutral")
-
-  test("visible target detail badges contain details without duplicating names"):
-    val candidate = BoardTargetCandidate(BoardTargetRef.Site("site:a"),
-      "Ancient City", Vector("2 Supply", "+1 warband"))
-    val badge = ServerUiSupport.candidateDetailText(candidate)
-    assertEquals(badge, Some("2 Supply · +1 warband"))
-    assert(!present(badge, "a detail badge").contains(candidate.label))
-    assertEquals(ServerUiSupport.candidateDetailText(candidate.copy(details = Vector.empty)), None)
 
   test("peeked site relics replace opaque slots only for the scoped viewer"):
     val known = CardDetails("R1", "relic", "Ancient Crown", rulesText = Some("Rule"))

@@ -20,7 +20,7 @@ import oathdigital.application.{
   GameIntentMapper
 }
 import oathdigital.protocol.{MajorActionPreviewRequest, MajorActionPreviewResponse,
-  PreviewIgnoredRule, PreviewTarget}
+  PreviewIgnoredRule}
 import oathdigital.protocol.projection.{GameProjection, LogPageCodec,
   LogPageWire}
 import oathdigital.model.PlayerId
@@ -57,11 +57,10 @@ final class GameServerGateway(
       projection.actionSelectionOpen, (), GameApplicationError.CommandRejected(
       oathdigital.model.OathViolation.InvalidModifierInvocation(
         "major-action preview is unavailable for this actor or phase")))
-    _ <- MajorActionPreviewTargets.validate(projection, request)
+    _ <- MajorActionPreviewGuard.validate(projection, request)
   yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
     accepted.modifiers, accepted.ignored.map(v => PreviewIgnoredRule(
-      v.source.stableKey, v.handlerId, v.timing.key, v.reason)),
-    MajorActionPreviewTargets.from(projection, request, accepted.targets))
+      v.source.stableKey, v.handlerId, v.timing.key, v.reason)))
   def rawEventHistory(gameId: String, limit: Int)
       : Either[GameApplicationError, Vector[String]] =
     service.rawEventHistory(gameId, limit)
@@ -94,7 +93,7 @@ final class GameServerGateway(
         Right(projector.logPage(gameId, history, after, requestingPlayer))
       case None => Left(GameApplicationError.StreamNotFound(gameId))
 
-private[server] object MajorActionPreviewTargets:
+private[server] object MajorActionPreviewGuard:
   def validate(projection: GameProjection, request: MajorActionPreviewRequest)
       : Either[GameApplicationError, Unit] =
     request.baseParameters.get("procedure") match
@@ -107,22 +106,6 @@ private[server] object MajorActionPreviewTargets:
         oathdigital.model.OathViolation.InvalidModifierInvocation(
           "unknown major-action procedure")))
       case None => Right(())
-
-  /** `walker` is the targets the application already costed against the
-    * modifiers THIS request selected (batch-1 Task 5). Every other branch
-    * reads the projection, which is costed before the player has chosen
-    * anything -- correct for opening a preview, wrong once a modifier is in
-    * hand, which is why a walker action supplies its own.
-    */
-  def from(projection: GameProjection, request: MajorActionPreviewRequest,
-      walker: Vector[PreviewTarget] = Vector.empty)
-      : Vector[PreviewTarget] = request.action match
-    case "travel" => walker
-    case "search" if request.baseParameters.get("procedure")
-        .contains("facedown-adviser") => Vector.empty
-    case "search" => projection.legalSearchSources.map(v => PreviewTarget(
-      s"${v.kind}:${v.region.getOrElse("")}", v.supplyCost, "Search source"))
-    case _ => Vector.empty
 
 final class GameRoutes(
     gateway: GameServerGateway,

@@ -23,8 +23,7 @@ class DiscardPileSuite extends munit.FunSuite:
         pile.headOption.map(_.cardKind), pile)))
 
   private def world(pile: Vector[CardDetails]): dom.Element =
-    WorldBoardRenderer.world(projection(pile), BoardOptions.none,
-      SessionDrafts.empty, new RecordingControls())
+    WorldBoardRenderer.world(projection(pile), BoardOptions.none)
 
   private def discard(root: dom.Element): dom.html.Button =
     all(root, ".region .pile-display").headOption
@@ -65,7 +64,7 @@ class DiscardPileSuite extends munit.FunSuite:
       OptionView(pile, OptionState.Available, None)),
       chosen => { picked :+= chosen; () })
     val root = WorldBoardRenderer.world(projection(Vector(top, known)),
-      options, SessionDrafts.empty, new RecordingControls())
+      options)
     discard(root).click()
     assertEquals((picked, opened), (Vector(pile), Vector.empty))
     val inspect = all(root, ".region .board-option-inspect").headOption

@@ -18,7 +18,6 @@ class ProjectionProtocolSuite extends munit.FunSuite:
   private val known = CardDetailsProjection("known", "denizen", "Known",
     Some("beast"), Some("none"), Some("public rule"), Some("faceup"),
     None, favor = 1, secrets = 2, defense = Some(1))
-  private val target = BoardTargetRefProjection.Site("site:a")
   private val projection = GameProjection(
     gameId = "game-1", nextSequence = 7, phase = "act",
     activeParticipantId = Some("red"),
@@ -37,9 +36,6 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     currentSiteResources = Some(CurrentSiteResourcesProjection("site:a", 1, 2)),
     actionSelectionOpen = true,
     legalSearchSources = Vector(LegalSearchSourceProjection("region", Some("cradle"), 1)),
-    boardTargetActions = Vector(BoardTargetActionProjection("campaign", "Choose", 1, 1,
-      false, Vector(BoardTargetCandidateProjection(target, "Known", Vector("detail"))),
-      Some("decision"))),
     worldDeckCount = 5,
     worldDeckTopCardKind = Some("denizen"),
     playerBoards = Vector(PlayerBoardProjection("red", 3, 2, 1, 1, 2, 4, 4,

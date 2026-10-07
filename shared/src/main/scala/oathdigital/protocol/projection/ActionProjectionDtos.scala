@@ -1,33 +1,5 @@
 package oathdigital.protocol.projection
 
-/** What a board-target action can select. Only sites remain: Travel and
-  * the setup pawn placement are the whole of it.
-  */
-sealed trait BoardTargetRefProjection extends Product with Serializable:
-  def stableKey: String = this match
-    case BoardTargetRefProjection.Site(id) => s"site:$id"
-object BoardTargetRefProjection:
-  final case class Site(siteId: String) extends BoardTargetRefProjection
-final case class BoardTargetCandidateProjection(
-    target: BoardTargetRefProjection,
-    label: String,
-    details: Vector[String] = Vector.empty
-)
-final case class BoardTargetActionProjection(
-    actionKind: String,
-    prompt: String,
-    minimum: Int,
-    maximum: Int,
-    autoActivate: Boolean,
-    candidates: Vector[BoardTargetCandidateProjection],
-    decisionId: Option[String] = None,
-    explicitConfirm: Boolean = false
-):
-  require(minimum >= 0, "selection minimum must be non-negative")
-  require(maximum >= minimum, "selection maximum must include minimum")
-  require(maximum <= 1, "a board-target action selects at most one target")
-  require(maximum <= candidates.size,
-    "selection maximum cannot exceed authorized candidates")
 /** A phase power the viewer can use now: its id, the card it is used from,
   * and the card's printed power name and rules text.
   */

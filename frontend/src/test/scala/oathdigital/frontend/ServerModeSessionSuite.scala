@@ -191,7 +191,7 @@ class ServerModeSessionSuite extends FunSuite:
           .copy(actionSelectionOpen = true))
       val preview = """{"nextSequence":1,"action":"recover","modifiers":""" +
         """[{"sourceKey":"adviser:p:denizen:a","handlerId":"h.a",""" +
-        """"description":"Old Oak"}],"ignoredRules":[],"targets":[]}"""
+        """"description":"Old Oak"}],"ignoredRules":[]}"""
       val transport = ScriptedTransport((_, url, _) =>
         val json = if url.contains("/events") then """{"events":[]}"""
           else if url.contains("/preview") then preview

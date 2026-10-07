@@ -16,8 +16,7 @@ class SuitGlyphSuite extends munit.FunSuite:
       GamePlayer("red", "Red", "Exile", PlayerColor.Red)))
       .copy(favorBanks = Vector(FavorBankState("arcane", 3),
         FavorBankState("nomad", 0)))
-    val panel = WorldBoardRenderer.world(value, BoardOptions.none,
-      SessionDrafts.empty, new RecordingControls())
+    val panel = WorldBoardRenderer.world(value, BoardOptions.none)
     val banks = Dom.all(panel, ".favor-bank")
     assertEquals(banks.map(_.textContent), Vector("Arcane: 3", "Nomad: 0"))
     assertEquals(banks.flatMap(glyphs),

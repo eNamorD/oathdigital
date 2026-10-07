@@ -4,42 +4,6 @@ import ProjectionCodecSupport._
 import WorldProjectionCodec.{decodeCard, encodeCard}
 
 private[projection] object ActionProjectionCodec:
-  def encodeTarget(value: BoardTargetRefProjection): ujson.Value = value match
-    case BoardTargetRefProjection.Site(id) => ujson.Obj("kind" -> "site", "siteId" -> id)
-  def decodeTarget(raw: ujson.Value, path: String): Result[BoardTargetRefProjection] = for
-    value <- obj(raw, path); kind <- string(value, "kind", path)
-    target <- kind match
-      case "site" => exact(value, Set("kind", "siteId"), path).flatMap(_ =>
-        string(value, "siteId", path).map(BoardTargetRefProjection.Site.apply))
-      case other => Left(oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(
-        s"$path.kind", s"unsupported board target '$other'"))
-  yield target
-
-  def encodeAction(value: BoardTargetActionProjection): ujson.Value = ujson.Obj(
-    "actionKind" -> value.actionKind, "decisionId" -> stringOption(value.decisionId),
-    "prompt" -> value.prompt, "minimum" -> value.minimum, "maximum" -> value.maximum,
-    "autoActivate" -> value.autoActivate, "explicitConfirm" -> value.explicitConfirm,
-    "candidates" -> encoded(value.candidates)(candidate => ujson.Obj(
-      "target" -> encodeTarget(candidate.target), "label" -> candidate.label,
-      "details" -> encoded(candidate.details)(ujson.Str(_)))))
-  def decodeAction(raw: ujson.Value, path: String): Result[BoardTargetActionProjection] = for
-    value <- obj(raw, path)
-    _ <- exact(value, Set("actionKind", "decisionId", "prompt", "minimum", "maximum",
-      "autoActivate", "explicitConfirm", "candidates"), path)
-    kind <- string(value, "actionKind", path)
-    decision <- optionalAbsent(value, "decisionId", path)(string)
-    prompt <- string(value, "prompt", path); minimum <- int(value, "minimum", path)
-    maximum <- int(value, "maximum", path); auto <- bool(value, "autoActivate", path)
-    explicit <- bool(value, "explicitConfirm", path)
-    candidateRaws <- array(value, "candidates", path)
-    candidates <- traverse(candidateRaws, s"$path.candidates") { (raw, child) => for
-      row <- obj(raw, child); _ <- exact(row, Set("target", "label", "details"), child)
-      targetRaw <- field(row, "target", child); target <- decodeTarget(targetRaw, s"$child.target")
-      label <- string(row, "label", child); details <- strings(row, "details", child)
-    yield BoardTargetCandidateProjection(target, label, details) }
-  yield BoardTargetActionProjection(kind, prompt, minimum, maximum, auto, candidates,
-    decision, explicit)
-
   def encodeMinor(value: MinorActionsProjection): ujson.Value = ujson.Obj(
     "advisers" -> encoded(value.advisers)(entry => ujson.Obj(
       "card" -> encodeCard(entry.card))),

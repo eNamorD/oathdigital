@@ -96,15 +96,14 @@ private[frontend] final class TableScreen(
         val decisionKey = Vector(selectedPlayer, value.phase,
           value.activeParticipantId.getOrElse(""),
           value.walkerDecision.map(_.decisionId).getOrElse(""),
-          drafts.boardTargets.flatMap(_.activeActionKind).getOrElse(""),
-          drafts.modifiers.map(_.stage.toString).getOrElse(""),
+          drafts.modifiers.map(_ => "ordering").getOrElse(""),
           pane.prompt).mkString("|")
         val options = routed.surface.collect {
           case board: ParkedDecision.Surface.BoardDecision => BoardOptions.of(
             board, drafts, view.controlsAvailable, controls)
         }.getOrElse(BoardOptions.none)
         (WorldBoardRenderer.players(value, selectedPlayer, options),
-          WorldBoardRenderer.world(value, options, drafts, controls),
+          WorldBoardRenderer.world(value, options),
           decisionKey)
     val development = element("div", "development-content")
     if !view.trusted then

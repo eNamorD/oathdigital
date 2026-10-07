@@ -384,7 +384,7 @@ class TableSessionSuite extends munit.FunSuite:
       val answer = fixture.session.preview(MajorActionPreviewRequest(2L, "recover", Map.empty))
       fixture.session.reconnectSession()
       fixture.client.answerPreview(Right(MajorActionPreviewResponse(2L, "recover",
-        Vector.empty, Vector.empty, Vector.empty)))
+        Vector.empty, Vector.empty)))
       settle().map(_ => assert(!answer.isCompleted))
     }
 
@@ -392,7 +392,7 @@ class TableSessionSuite extends munit.FunSuite:
     displayed(2).flatMap { fixture =>
       val answer = fixture.session.preview(MajorActionPreviewRequest(2L, "recover", Map.empty))
       val response = MajorActionPreviewResponse(2L, "recover", Vector.empty,
-        Vector.empty, Vector.empty)
+        Vector.empty)
       fixture.client.answerPreview(Right(response))
       answer.map(result => assertEquals(result, Right(response)))
     }

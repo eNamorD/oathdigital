@@ -15,7 +15,6 @@ final case class GameProjection(
     currentSiteResources: Option[CurrentSiteResourcesProjection] = None,
     actionSelectionOpen: Boolean = false,
     legalSearchSources: Vector[LegalSearchSourceProjection] = Vector.empty,
-    boardTargetActions: Vector[BoardTargetActionProjection] = Vector.empty,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty,

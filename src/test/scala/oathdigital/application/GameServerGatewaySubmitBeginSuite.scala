@@ -104,9 +104,8 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite:
   test("the first Setup decision offers p2 every in-play site"):
     val projection = begun.projection
     // The generic walker decision panel renders Setup's first pawn placement
-    // with no bespoke code (2026-09-21 Chronicle design, slice 2): no
-    // separate `boardTargetActions` entry, just the parked `Decide`.
-    assert(projection.boardTargetActions.isEmpty)
+    // with no bespoke code (2026-09-21 Chronicle design, slice 2): just the
+    // parked `Decide`.
     val decision = present(projection.walkerDecision, "p2's Setup decision")
     assertEquals(decision.action, "setup")
     assertEquals(decision.decisionId, SetupProcedure.pawnDecisionId(p2))

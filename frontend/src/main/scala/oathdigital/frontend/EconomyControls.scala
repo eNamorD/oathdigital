@@ -12,8 +12,8 @@ private[frontend] object EconomyControls:
   private final case class Control(control: String, kind: String,
       label: String, command: GameCommand)
 
-  // `kind` reuses the board-target action kinds so the action panel groups
-  // and orders these under the same Muster and Trade families as before.
+  // `kind` is the action family the action panel groups and orders these
+  // under.
   private val controls = Vector(
     Control("beginMuster", "muster", "Muster (1 Supply)",
       GameCommand.StartWalker("muster", Vector.empty)),

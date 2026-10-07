@@ -93,7 +93,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
       actionSelectionOpen = current.result.isEmpty &&
         current.turn.phase == Phase.Act && current.walkerPending.isEmpty,
       legalSearchSources = legal.search,
-      boardTargetActions = legal.boardTargets,
       worldDeckCount = current.commonCards.worldDeck.size,
       worldDeckTopCardKind = current.commonCards.worldDeck.headOption
         .map(presentation.cardKind),

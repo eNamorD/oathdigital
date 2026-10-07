@@ -45,14 +45,11 @@ class BoardSurfaceSuite extends munit.FunSuite:
       .copy(walkerDecision = parked)
 
   private def world(ui: RecordingControls,
-      draft: Option[BoardSelectionDraft] = None,
-      targets: Option[BoardTargetSelectionState] = None,
-      board: Boolean = true): dom.Element =
+      draft: Option[BoardSelectionDraft] = None): dom.Element =
     val drafts = SessionDrafts.empty.copy(context = Some(context),
-      board = draft, boardTargets = targets)
-    WorldBoardRenderer.world(projection(), if board then
-      BoardOptions.of(surface, drafts, canControl = true, ui)
-    else BoardOptions.none, drafts, ui)
+      board = draft)
+    WorldBoardRenderer.world(projection(),
+      BoardOptions.of(surface, drafts, canControl = true, ui))
 
   private def pane(ui: RecordingControls,
       draft: Option[BoardSelectionDraft] = None): dom.Element =
@@ -65,15 +62,6 @@ class BoardSurfaceSuite extends munit.FunSuite:
 
   private def site(root: dom.Element, label: String): dom.Element =
     one(root, s"""article[aria-label="$label"]""")
-
-  /** Spy of `ActionControls`, through `RecordingControls`: also records what
-    * the board-selection path chooses (`handleSelection`), which
-    * `RecordingControls` drops.
-    */
-  private final class SelectingView extends RecordingControls:
-    var chosen: Vector[BoardSelectionResult] = Vector.empty
-    override def handleSelection(result: BoardSelectionResult): Unit =
-      chosen :+= result
 
   test("a click on a card inside a site reads the card, not the site"):
     val ui = new RecordingControls()
@@ -127,16 +115,3 @@ class BoardSurfaceSuite extends munit.FunSuite:
     confirm.click()
     assertEquals(ui.submitted, Vector(placeAtWoods))
 
-  test("a card click inside a board-selection target does not choose it"):
-    val ui = new SelectingView
-    val targets = BoardTargetSelectionState(context,
-      Vector(BoardTargetAction("travel", "Choose a destination",
-        minimum = 1, maximum = 1, autoActivate = true,
-        Vector(BoardTargetCandidate(
-          BoardTargetRef.Site("site:woods"), "Deep Woods", Vector.empty)))),
-      Some("travel"), Set.empty)
-    val root = world(ui, targets = Some(targets), board = false)
-    click(one(root, "button.card-face"))
-    assertEquals(ui.chosen, Vector.empty)
-    click(site(root, "Deep Woods"))
-    assertEquals(ui.chosen.size, 1)

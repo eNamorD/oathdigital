@@ -13,7 +13,6 @@ object GameProjectionCodec:
     "gameId", "nextSequence", "phase", "activeParticipantId", "players", "world",
     "pawnLocations", "legalControls", "ready", "completed", "activePlayerResources",
     "currentSiteResources", "actionSelectionOpen", "legalSearchSources",
-    "boardTargetActions",
     "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "banners", "minorActions",
     "favorBanks", "tracks",
@@ -47,7 +46,6 @@ object GameProjectionCodec:
     "actionSelectionOpen" -> value.actionSelectionOpen,
     "legalSearchSources" -> encoded(value.legalSearchSources)(s => ujson.Obj(
       "kind" -> s.kind, "region" -> stringOption(s.region), "supplyCost" -> s.supplyCost)),
-    "boardTargetActions" -> encoded(value.boardTargetActions)(encodeAction),
     "worldDeckCount" -> value.worldDeckCount,
     "worldDeckTopCardKind" -> stringOption(value.worldDeckTopCardKind),
     "playerBoards" -> encoded(value.playerBoards)(encodeBoard),
@@ -100,8 +98,6 @@ object GameProjectionCodec:
     actionOpen <- boolOr(value, "actionSelectionOpen", path, false)
     sourceRaws <- default(value, "legalSearchSources", path, Vector.empty[ujson.Value])(array)
     sources <- traverse(sourceRaws, s"$path.legalSearchSources")(decodeSearchSource)
-    actionRaws <- default(value, "boardTargetActions", path, Vector.empty[ujson.Value])(array)
-    actions <- traverse(actionRaws, s"$path.boardTargetActions")(decodeAction)
     deckCount <- intOr(value, "worldDeckCount", path, 0)
     deckTop <- optionalAbsent(value, "worldDeckTopCardKind", path)(string)
     boardRaws <- default(value, "playerBoards", path, Vector.empty[ujson.Value])(array)
@@ -147,7 +143,7 @@ object GameProjectionCodec:
       case Some(_) => long(value, "logRevision", path).map(Some(_))
   yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen,
-    sources, actions,
+    sources,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
     banks, tracks, relicDeck, preview,
     walkerDecision, walkerWaiting, phasePowers, viewer,
