@@ -60,7 +60,7 @@ The log line rules are in `docs/superpowers/specs/2026-09-26-power-log-lines-des
   | Vow of Poverty | `used` | Vow of Poverty: Took {n favor} from {the Order bank}. | its REST took favor; covers the Gain line |
   | Vow of Beastkin | `gained` | Vow of Beastkin: Gained {n} more warband. | a Muster's gain added more than its base |
   | Defame | `burned` | Defame: Burned {1 favor} from {Blue}'s board. | a player was chosen, the actor included |
-  | Mounted Library | `doubled` | Mounted Library: Gained {n} more secrets. | covers the extra gain's Gain line |
+  | Mounted Library | `doubled` | Mounted Library: Gained {n} more secrets. | covers the second gain's Gain line only; the Trade's own Gained line stays |
   | Mounted Library | `discarded` | Mounted Library: Discarded after the Trade. | covers the Discarded line |
   | Curfew, Forced Labor | `gave` | {Card}: Gave {1 favor} to {Blue}. | a player rules |
   | Curfew, Forced Labor | `burned` | {Card}: Burned {1 favor}. | bandits rule |
@@ -82,7 +82,7 @@ These settle what the spec and rulings leave open. Each one says what it costs i
 
 1. **Generic lines** (the spec's "verify" items, checked in `DetailLines.delta`).
    - A favor `Move` from a bank to a board writes "Gained {n} favor", so Vow of Poverty's REST line covers it, as Vow of Obedience's does.
-   - A `Gain.Secrets` writes "Gained {n} secrets". Mounted Library doubles through a second gain, so its `doubled` line covers that gain's line. The spec's table listed no cover; Task 8 corrects it.
+   - A `Gain.Secrets` writes "Gained {n} secrets". Mounted Library doubles through a second gain, which would write a second "Gained {n} secrets" line. Its `doubled` line covers only that second step, so the log reads "Gained 1 secret." from the Trade, then "Mounted Library: Gained 1 more secret.". The spec's table listed no cover; Task 8 corrects it.
    - A `Discard.Denizen` writes a Discarded line, so Mounted Library's `discarded` covers it.
    - A favor `Burn`, a `Give` between boards, a burn paid as `PayCost`, a `Kill`, a `Gain.Warbands` and `EnterPhase` write no line. So Defame, Curfew, Forced Labor, Awaited Return, Tyrant, Vow of Beastkin and Special Envoy cover nothing. Task 8 corrects the spec's "verify" rows.
    - Cost if wrong: a generic line shows twice.
@@ -1290,7 +1290,8 @@ object MountedLibraryCard extends Denizen(DenizenId("248"), "Mounted Library", S
   *
   * The doubling is a second secret gain after the Trade's own, added for
   * every Trade and run only when Mounted Library was the source, as The Old
-  * Oak's is. Its line covers that gain's generic line.
+  * Oak's is. Its line covers that second gain's generic line only, so the
+  * Trade's own "Gained" line stays and this one follows it.
   *
   * The discard is appended to the Trade's root and folds at priority 1, so
   * it comes after every other modifier's root question. It is the standard
@@ -2695,7 +2696,7 @@ In `docs/superpowers/specs/2026-10-05-catalog-batch-4-design.md`, under "### Sli
 | Vow of Poverty (REST), key `used` | Vow of Poverty: Took {n favor} from {the Order bank}. | the Gain line |
 | Vow of Beastkin, key `gained`, after the gain | Vow of Beastkin: Gained {1} more warband. | |
 | Defame, key `burned` | Defame: Burned {1 favor} from {Blue}'s board. | |
-| Mounted Library, key `doubled` | Mounted Library: Gained {n} more secrets. | the extra gain's Gain line |
+| Mounted Library, key `doubled` | Mounted Library: Gained {n} more secrets. | the second gain's Gain line; the Trade's own stays |
 | Mounted Library, key `discarded` | Mounted Library: Discarded after the Trade. | the Discarded line |
 | Curfew, Forced Labor, key `gave` | {Card}: Gave {1 favor} to {Blue}. | |
 | Curfew, Forced Labor, key `burned`, bandits rule | {Card}: Burned {1 favor}. | |
@@ -2712,9 +2713,10 @@ Defame names the chosen player even when the actor chose themself, and
 Tyrant names whose warband died, the holder's own included, as Bandit Chief
 does. No generic line exists for a favor burn, favor given between boards, a
 kill, a warband gain or a phase change, so those rows cover nothing. Mounted
-Library doubles through a second secret gain, whose generic line its own
-covers. Tyrant's bandit kill has its own key, since no note argument names
-the bandits.
+Library doubles through a second secret gain. Its line covers only that
+gain's generic line, so the Trade's own "Gained {n} secrets" line stays and
+"Mounted Library: Gained {n} more secrets." follows it. Tyrant's bandit kill
+has its own key, since no note argument names the bandits.
 ```
 
 - [ ] **Step 4: Record the slice's implementation notes in the spec**
