@@ -56,9 +56,9 @@ private[frontend] object ActionDecisionRenderer:
    val panel = element("section", "panel wake-actions")
    panel.appendChild(text("h2", "", "Available actions"))
    panel.appendChild(status(value, presentation))
-   // Before the winner banner and every phase's controls: the step to take
-   // back belongs to whatever the pane shows below it.
-   UndoControl.render(value, canControl, submitCommand).foreach(panel.appendChild)
+   // Before the winner banner and every phase's controls: the steps to take
+   // back or restore belong to whatever the pane shows below them.
+   StepControls.render(value, canControl, submitCommand).foreach(panel.appendChild)
    value.oathkeeper.flatMap(_.winnerPlayerId).foreach { winner =>
      val victory = value.oathkeeper.flatMap(_.winnerVictoryKind)
        .getOrElse("winner").replace('-', ' ')

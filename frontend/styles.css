@@ -417,7 +417,8 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .wake-action { min-height: 44px; }
 /* Undo (undo design, "Controls"): the Action face like every Actions-pane
    button, under the status line, set apart from the controls below it. */
-.undo-action { display: block; min-height: 44px; margin: 0 0 12px; }
+.step-controls { display: flex; gap: 8px; margin: 0 0 12px; }
+.undo-action, .redo-action { min-height: 44px; }
 .adviser-panel { margin-top: 18px; }
 .error { border-color: #e27f79; color: #ffd0cd; }
 

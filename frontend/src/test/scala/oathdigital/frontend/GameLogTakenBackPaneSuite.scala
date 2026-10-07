@@ -178,3 +178,60 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
       Vector(setup, takenBack(started), takenBack(moved), movedAgain),
       Map.empty)
     assert(!content.querySelector(".log-new").hasAttribute("hidden"))
+
+  test("restored lines leave their group and read as ordinary lines"):
+    val content = sizedLogContent(0, 0, 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
+      Map.empty)
+    pane.show("g|red", Vector(setup, started, moved), Map.empty)
+    assert(content.querySelector(".log-taken-back") == null, "no group expected")
+    assertEquals(topLevel(content).size, 3)
+
+  /** `moved` as it reads in the group that remains after a Redo restored
+    * `started`: the group is named by its new first line. */
+  private def takenBackFrom(first: Long)(entry: LogEntryWire): LogEntryWire =
+    entry.copy(takenBack = Some(LogTakenBackWire(first,
+      takenBackByRed.header)))
+
+  test("a group the reader opened stays open when a Redo restores its first line"):
+    val content = sizedLogContent(0, 0, 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
+      Map.empty)
+    toggle(content).click()
+    pane.show("g|red",
+      Vector(setup, started, takenBackFrom(6L)(moved)), Map.empty)
+    assertEquals(toggle(content).getAttribute("aria-expanded"), "true")
+    assertEquals(groupLines(content).children.length, 1)
+
+  test("a group the reader left closed stays closed when a Redo restores its first line"):
+    val content = sizedLogContent(0, 0, 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
+      Map.empty)
+    pane.show("g|red",
+      Vector(setup, started, takenBackFrom(6L)(moved)), Map.empty)
+    assertEquals(toggle(content).getAttribute("aria-expanded"), "false")
+
+  test("a toggle still works after a Redo changed the group's id"):
+    val content = sizedLogContent(0, 0, 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
+      Map.empty)
+    toggle(content).click()
+    pane.show("g|red",
+      Vector(setup, started, takenBackFrom(6L)(moved)), Map.empty)
+    toggle(content).click()
+    assertEquals(toggle(content).getAttribute("aria-expanded"), "false")
+    toggle(content).click()
+    assertEquals(toggle(content).getAttribute("aria-expanded"), "true")
+
+  test("a group that merges with an opened one opens too"):
+    val content = sizedLogContent(0, 0, 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, takenBack(started), moved), Map.empty)
+    toggle(content).click()
+    pane.show("g|red",
+      Vector(setup, takenBack(started), takenBack(moved)), Map.empty)
+    assertEquals(toggle(content).getAttribute("aria-expanded"), "true")
