@@ -90,13 +90,6 @@ object HospitalityCard extends Denizen(DenizenId("171"), "Hospitality", Suit.Nom
       "matches both a card at your site and one of your advisers.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object AFastSteedCard extends Denizen(DenizenId("172"), "A Fast Steed", Suit.Nomad):
-  val power = PrintedPower(PowerId("denizen.old-fast-steed"),
-    persistent = false, cost = Cost(favor = 1),
-    text = "Spend no Supply if you have three or fewer warbands on your " +
-      "board.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SearchPartyCard extends Denizen(DenizenId("240"), "Search Party", Suit.Nomad):
   val power = PrintedPower(PowerId("denizen.search-party"),
     persistent = false, cost = Cost.free,

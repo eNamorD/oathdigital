@@ -14,12 +14,6 @@ object LandWardenCard extends Denizen(DenizenId("130"), "Land Warden", Suit.Hear
       "play at least one card to a site.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object NewsFromAfarCard extends Denizen(DenizenId("134"), "News from Afar", Suit.Hearth):
-  val power = PrintedPower(PowerId("denizen.news-from-alfar"),
-    persistent = false, cost = Cost(favor = 2),
-    text = "Spend no Supply.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object HeartsAndMindsCard extends Denizen(DenizenId("138"), "Hearts and Minds", Suit.Hearth) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.hearts-and-minds"),
     persistent = false, cost = Cost(favor = 3),

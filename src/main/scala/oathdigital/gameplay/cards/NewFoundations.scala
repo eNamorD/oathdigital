@@ -50,16 +50,16 @@ import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}
 import oathdigital.gameplay.powers.search.{AuguryCard, CropRotationCard,
-  DisciplesCard, ForcedLaborCard, TruthfulHarpCard}
+  DisciplesCard, ForcedLaborCard, NewsFromAfarCard, TruthfulHarpCard}
 import oathdigital.gameplay.powers.setup.{GreatForgeCard, GreatMarketCard,
   ProvingGroundsCard}
 import oathdigital.gameplay.powers.targeting.{CircletOfCommandCard,
   DiplomatCard, ForgottenVaultCard, LostTongueCard, OakenFortressCard}
 import oathdigital.gameplay.powers.title.ChaosCultCard
-import oathdigital.gameplay.powers.travel.{BrokenPeaksSite, DesolateShoreSite,
-  DragonskinDrumCard, FairIsleSite, ForestPathsCard, GraspingVinesCard,
-  GreenShoreSite, HiddenPlaceSite, MinesSite, NarrowPassSite, RockyCoastSite,
-  RoyalStablesCard, SunkenIslesSite, TentsCard, TollRoadsCard}
+import oathdigital.gameplay.powers.travel.{AFastSteedCard, BrokenPeaksSite,
+  DesolateShoreSite, DragonskinDrumCard, FairIsleSite, ForestPathsCard,
+  GraspingVinesCard, GreenShoreSite, HiddenPlaceSite, MinesSite, NarrowPassSite,
+  RockyCoastSite, RoyalStablesCard, SunkenIslesSite, TentsCard, TollRoadsCard}
 import oathdigital.gameplay.powers.wake.{AncientCitySite, HeadwatersSite,
   HornedMaskCard, HungerCard, MarbleFountainsCard, QuartermasterCard,
   RiverbankSite, TidalMarshesSite}

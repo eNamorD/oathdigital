@@ -14,4 +14,5 @@ object TravelModifiers:
       Vector(ForestPaths.forCatalog(catalog)) ++
       Vector(DragonskinDrum.forCatalog(catalog)) ++
       Vector(TollRoads.forCatalog(catalog)) ++
-      Vector(GraspingVines.forCatalog(catalog))
+      Vector(GraspingVines.forCatalog(catalog)) ++
+      Vector(AFastSteed.forCatalog(catalog))
