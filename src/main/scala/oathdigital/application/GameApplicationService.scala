@@ -286,6 +286,11 @@ final class GameApplicationService(
         else
           command match
             case GameCommand.Begin(_, _) => Left(DuplicateGame(gameId))
+            // Undo goes through the fold, not the rules: it is legal over a
+            // pending walker (undo design, "Rulings").
+            case GameCommand.Undo(actor) =>
+              reconstruct(gameId, stream).flatMap(journal =>
+                takeBack(gameId, journal, actor, stream.nextSequence))
             case _ =>
               reconstruct(gameId, stream).flatMap { journal =>
                 handleAgainst(
@@ -359,6 +364,23 @@ final class GameApplicationService(
         transition.events
       accepted <- appendBatch(gameId, journal, appended, transition.events,
         transition.state, expected, nextSequence)
+    yield accepted
+
+  /** Appends the marker that takes back the latest live batch, and returns
+    * the state before it (undo design, "Commands and authorization").
+    * Nothing runs in the rules engine. */
+  private def takeBack(gameId: String, journal: FoldedJournal,
+      actor: PlayerId, nextSequence: Long)
+      : Either[GameApplicationError, GameAccepted] =
+    for
+      batch <- journal.undoable.toRight(
+        CommandRejected(OathViolation.NothingToUndo))
+      _ <- Either.cond(batch.issuer == actor, (),
+        CommandRejected(OathViolation.UndoNotIssuer(actor, batch.issuer)))
+      marker = OathEvent.StepTakenBack(batch.from, batch.until, actor)
+      accepted <- appendBatch(gameId, journal, Vector(marker), Vector(marker),
+        batch.before, ExpectedStream.AtNextSequence(nextSequence),
+        nextSequence)
     yield accepted
 
   /** Appends `appended` as one batch and reports `reported` as the events
@@ -496,6 +518,9 @@ final class GameApplicationService(
         rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
       case GameCommand.FinishRest(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
+      // An Undo on a stream with history never gets here (`handle` folds
+      // it first); on a missing stream nothing has been taken.
+      case GameCommand.Undo(_) => Left(OathViolation.NothingToUndo)
 
   private def isWalkerResume(command: GameCommand): Boolean = command match
     case _: GameCommand.ResolveWalker | _: GameCommand.RollWalker => true
