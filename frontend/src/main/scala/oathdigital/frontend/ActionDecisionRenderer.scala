@@ -163,9 +163,6 @@ private[frontend] object ActionDecisionRenderer:
        panel.appendChild(back)
        val cancel = button("Cancel action", "modifier-cancel"); cancel.onclick = _ =>
          cancelModifiers(); panel.appendChild(cancel)
-     else if drafts.facedownAdviser.nonEmpty then
-       panel.appendChild(FacedownAdviserRenderer.render(
-         drafts.facedownAdviser.get, canControl, controls))
      else if selection.nonEmpty then
        val action = selection.get
        promptOnce(action.prompt)
@@ -223,7 +220,8 @@ private[frontend] object ActionDecisionRenderer:
          if facedownAdviserLaunchCount(minor) == 1 then
            val play = button("Play facedown adviser", "minor-adviser-launch")
            play.disabled = !canControl
-           play.onclick = _ => beginTargetedMajorAction("play-facedown-adviser")
+           play.onclick = _ => submitCommand(
+             GameCommand.StartWalker("play-facedown-adviser", Vector.empty))
            groups.appendKind("facedown-adviser", play)
          if minor.canPeekSiteRelics then
            val peek = button("Peek at relics at your site", "minor-peek-relics")

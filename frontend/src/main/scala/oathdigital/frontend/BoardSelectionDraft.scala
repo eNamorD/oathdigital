@@ -98,6 +98,25 @@ private[frontend] object BoardSelectionDraft:
       decision.exists(parked => parked.decisionId == draft.decisionId &&
         parked.query.contains(draft.query)))
 
+  /** The facedown-adviser pick's decision id, spelled as the engine's
+    * `CardPlayProcedure.facedownAdviserDecisionId`. */
+  val facedownAdviserDecisionId = "cardplay.facedown-adviser"
+
+  /** The draft a fresh position opens `decision` with: the facedown-adviser
+    * pick with one adviser to play has it picked, as the pick before the
+    * walker did. Every other decision opens with nothing picked.
+    */
+  def preselected(context: BoardSelectionContext,
+      decision: Option[WalkerDecisionState]): Option[BoardSelectionDraft] =
+    for
+      parked <- decision.filter(_.decisionId == facedownAdviserDecisionId)
+      query <- parked.query.collect { case one: DecisionQueryState.ChooseOne =>
+        one }
+      available = query.options.filter(_.state == "available")
+      only <- Option.when(available.size == 1)(available.head)
+    yield BoardSelectionDraft(context, parked.decisionId, query,
+      Vector(BoardOptionViews.key(only)))
+
   /** The draft after a click on `option`, starting a fresh one when
     * `previous` is empty or answers another question.
     */

@@ -19,8 +19,7 @@ private[frontend] final case class SessionDrafts(
     distribute: Option[WalkerDistributeDraft],
     selection: Option[WalkerSelectionDraft],
     board: Option[BoardSelectionDraft],
-    modifiers: Option[ModifierFlowDraft],
-    facedownAdviser: Option[FacedownAdviserDraft]):
+    modifiers: Option[ModifierFlowDraft]):
 
   /** The set after a snapshot: each slot asked to carry over what still
     * answers the same question in the same context, and to drop the rest.
@@ -37,11 +36,13 @@ private[frontend] final case class SessionDrafts(
         projection.walkerDecision),
       selection = WalkerSelectionDraft.reconcile(selection, context,
         projection.walkerDecision),
+      // A fresh position may open with a pick; at the same position, a pick
+      // the viewer cleared stays cleared.
       board = BoardSelectionDraft.reconcile(board, context,
-        projection.walkerDecision),
-      modifiers = ModifierFlowDraft.reconcile(modifiers, context),
-      facedownAdviser = FacedownAdviserDraft.reconcile(facedownAdviser,
-        context, projection.minorActions))
+        projection.walkerDecision).orElse(BoardSelectionDraft.preselected(
+          context, projection.walkerDecision)
+          .filterNot(_ => this.context.contains(context))),
+      modifiers = ModifierFlowDraft.reconcile(modifiers, context))
 
   /** One slot replaced; the panel that holds a draft can replace only it. */
   def staged(draft: Draft): SessionDrafts = draft match
@@ -57,17 +58,16 @@ private[frontend] final case class SessionDrafts(
     */
   def leave(exit: FlowExit): SessionDrafts = exit match
     case FlowExit.Restarted =>
-      copy(modifiers = None, facedownAdviser = None,
-        boardTargets = boardTargets.map(_.cancel))
+      copy(modifiers = None, boardTargets = boardTargets.map(_.cancel))
     case FlowExit.Failed =>
-      copy(modifiers = None, facedownAdviser = None)
+      copy(modifiers = None)
     case FlowExit.Completed =>
-      copy(modifiers = None, facedownAdviser = None, boardTargets = None)
+      copy(modifiers = None, boardTargets = None)
     case FlowExit.Cancelled(restored) =>
-      copy(modifiers = None, facedownAdviser = None, boardTargets = restored)
+      copy(modifiers = None, boardTargets = restored)
     case FlowExit.TargetsLeft =>
       copy(modifiers = modifiers.flatMap(_.backFromTargets),
-        facedownAdviser = None, boardTargets = None)
+        boardTargets = None)
     case FlowExit.OrderingLeft =>
       copy(modifiers = None)
 
@@ -77,8 +77,6 @@ private[frontend] final case class SessionDrafts(
     */
   def step(value: FlowStep): SessionDrafts = value match
     case FlowStep.Ordering(draft) => copy(modifiers = Some(draft))
-    case FlowStep.Targets(draft, TargetsEntry.Facedown(pick)) =>
-      copy(modifiers = Some(draft), facedownAdviser = pick, boardTargets = None)
     case FlowStep.Targets(draft, TargetsEntry.Board(targets)) =>
       copy(modifiers = Some(draft), boardTargets = Some(targets))
     case FlowStep.Targets(draft, TargetsEntry.NoTargets) =>
@@ -90,16 +88,14 @@ private[frontend] final case class SessionDrafts(
       copy(modifiers = modifiers.map(draft => draft.copy(selection =
         if delta < 0 then draft.selection.moveEarlier(modifier)
         else draft.selection.moveLater(modifier))))
-    case FlowStep.ChooseFacedown(cardId) =>
-      copy(facedownAdviser = facedownAdviser.map(_.choose(cardId)))
 
 private[frontend] object SessionDrafts:
   val empty: SessionDrafts =
-    SessionDrafts(None, None, None, None, None, None, None, None)
+    SessionDrafts(None, None, None, None, None, None, None)
 
 /** A draft a panel or the board can stage. There is no case for the
-  * modifier flow draft or the facedown pick: no panel writes them; the modifier
-  * flow does, through its commands. `Board` carries an `Option` because a
+  * modifier flow draft: no panel writes it; the modifier flow does, through
+  * its commands. `Board` carries an `Option` because a
   * second click on the picked site clears the pick, and that clear is a
   * stage like any other.
   */
@@ -123,12 +119,12 @@ private[frontend] enum FlowExit:
   case TargetsLeft
   /** Leaving the ordering stage with no targets stage after it: Confirm
     * submitted the command directly, or Back left the ordering panel. Only
-    * the flow draft goes; the facedown pick and the board targets stay.
+    * the flow draft goes; the board targets stay.
     */
   case OrderingLeft
 
-/** The five ways a viewer moves inside the modifier flow without leaving
-  * it. `Ordering` and `Targets` are the two entries; the other three are the
+/** The four ways a viewer moves inside the modifier flow without leaving
+  * it. `Ordering` and `Targets` are the two entries; the other two are the
   * steps a panel's controls take. Only `ModifierFlow` applies these.
   */
 private[frontend] enum FlowStep:
@@ -136,13 +132,11 @@ private[frontend] enum FlowStep:
   case Targets(draft: ModifierFlowDraft, entry: TargetsEntry)
   case Toggle(value: PreviewModifier)
   case Move(value: PreviewModifier, delta: Int)
-  case ChooseFacedown(cardId: String)
 
-/** What entering the Targets stage opens beside the flow draft: the facedown
-  * pick (and no board targets), one activated board action, or nothing when
-  * the preview names no target action the board knows.
+/** What entering the Targets stage opens beside the flow draft: one
+  * activated board action, or nothing when the preview names no target
+  * action the board knows.
   */
 private[frontend] enum TargetsEntry:
-  case Facedown(pick: Option[FacedownAdviserDraft])
   case Board(targets: BoardTargetSelectionState)
   case NoTargets

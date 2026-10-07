@@ -2,13 +2,13 @@ package oathdigital.frontend
 
 import oathdigital.frontend.Dom.{all, click, one}
 import oathdigital.model.PlayerColor
-import oathdigital.protocol.{GameIntent => Intent, WalkerStartArgWire}
+import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent}
 import oathdigital.testkit.Unwrap.as
 import org.scalajs.dom
 
-/** "Play facedown adviser" lights the player's facedown advisers on their
-  * board before the walker starts; a click picks one, and the panel plays
-  * it by name or cancels.
+/** "Play facedown adviser" starts the walker with no card. The walk's first
+  * decision is the pick, answered on the player's board like any board
+  * decision (undo design, "The facedown-adviser pick").
   */
 class FacedownAdviserPickSuite extends munit.FunSuite:
   private val context = BoardSelectionContext("game", "red", 1L)
@@ -17,61 +17,71 @@ class FacedownAdviserPickSuite extends munit.FunSuite:
   private val oak = facedown("a1", "Old Oak")
   private val bandits = facedown("a2", "Bandits")
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
-  private val table = TestProjections.actingProjection(players = Vector(red))
-    .copy(playerBoards = Vector(PlayerBoard("red", warbands = 3, favor = 0,
-      faceUpSecrets = 1, faceDownSecrets = 0, committedSecrets = 0,
-      totalSecrets = 1, supply = 7, pawnSiteId = None,
-      advisers = Vector(oak, bandits), relics = Vector.empty,
-      revealedVision = None)))
-  private val draft = FacedownAdviserDraft(context,
-    Vector(MinorAdviser(oak), MinorAdviser(bandits)), None)
+  private def option(card: CardDetails) =
+    DecisionOptionState("denizen", card.cardId, card.name, card = Some(card))
 
-  private def boards(value: FacedownAdviserDraft,
-      ui: RecordingControls): dom.Element =
-    WorldBoardRenderer.playerBoards(table, "red",
-      BoardOptions.facedown(value, canControl = true, ui))
+  /** The pick as the server parks it, over `cards`. */
+  private def pick(cards: CardDetails*) = WalkerDecisionState(
+    "play-facedown-adviser", BoardSelectionDraft.facedownAdviserDecisionId,
+    "decide", query = Some(DecisionQueryState.ChooseOne(
+      cards.toVector.map(option), Some("Choose a facedown adviser to play"))),
+    presentation = "board")
 
-  private def panel(value: FacedownAdviserDraft,
-      ui: RecordingControls): dom.Element =
-    FacedownAdviserRenderer.render(value, canControl = true, ui)
+  /** Red's Act table with `cards` facedown on her board and `parked`
+    * waiting on her. */
+  private def table(parked: Option[WalkerDecisionState],
+      cards: CardDetails*): GameProjection =
+    TestProjections.actingProjection(players = Vector(red)).copy(
+      actionSelectionOpen = parked.isEmpty,
+      playerBoards = Vector(PlayerBoard("red", warbands = 3, favor = 0,
+        faceUpSecrets = 1, faceDownSecrets = 0, committedSecrets = 0,
+        totalSecrets = 1, supply = 7, pawnSiteId = None,
+        advisers = cards.toVector, relics = Vector.empty,
+        revealedVision = None)),
+      minorActions = Some(MinorActionsState(cards.toVector.map(MinorAdviser(_)),
+        canPeekSiteRelics = false, facedownRelics = Vector.empty,
+        siteId = None, maxBoardToSite = 0, maxSiteToBoard = 0)),
+      walkerDecision = parked)
 
-  test("the player's facedown advisers are lit on their board, and a " +
-      "click picks one"):
+  test("Play facedown adviser starts the walker and names no card"):
     val ui = new RecordingControls()
-    val root = boards(draft, ui)
-    assertEquals(all(root, ".board-cards .board-option")
+    val pane = ActionDecisionRenderer.actionsPanel(table(None, oak, bandits),
+      ActionPanels.actingViewer("red"), ParkedDecision.Routed(None, None),
+      canControl = true, SessionDrafts.empty, ui).element
+    as[dom.html.Button](one(pane, ".minor-adviser-launch")).click()
+    assertEquals(ui.submitted, Vector(Intent.StartWalker(
+      "play-facedown-adviser", Vector.empty)))
+
+  test("the parked pick lights the facedown advisers, and a click stages one"):
+    val ui = new RecordingControls()
+    val parked = table(Some(pick(oak, bandits)), oak, bandits)
+    val surface = ParkedDecision.route(parked,
+        ServerUiSupport.viewerPresentation(parked, "red")).surface match
+      case Some(board: ParkedDecision.Surface.BoardDecision) => board
+      case other => fail(s"expected a board decision, got $other")
+    val drafts = SessionDrafts.empty.reconcile(context, parked)
+    val boards = WorldBoardRenderer.playerBoards(parked, "red",
+      BoardOptions.of(surface, drafts, canControl = true, ui))
+    assertEquals(all(boards, ".board-cards .board-option")
       .map(_.getAttribute("data-option-ref")),
       Vector("denizen:a1", "denizen:a2"))
-    click(one(root, """[data-option-ref="denizen:a2"]"""))
-    assertEquals(ui.chosenFacedown, Vector("a2"))
+    click(one(boards, """[data-option-ref="denizen:a2"]"""))
+    assertEquals(ui.staged.collect { case Draft.Board(Some(draft)) =>
+      draft.keys }, Vector(Vector("denizen:a2")))
 
-  test("the picked adviser is selected, and the panel plays it by name"):
-    val ui = new RecordingControls()
-    val picked = draft.choose("a2")
-    assert(one(boards(picked, ui), """[data-option-ref="denizen:a2"]""")
-      .classList.contains("board-option-selected"))
-    val start = as[dom.html.Button](one(panel(picked, ui),
-      ".facedown-adviser-start"))
-    assertEquals(start.textContent, "Play Bandits")
-    start.click()
-    assertEquals(ui.targetCommands, Vector(Intent.StartWalker(
-      "play-facedown-adviser", Vector.empty,
-      Vector(WalkerStartArgWire("denizen", "a2")))))
+  test("with one facedown adviser, a fresh position opens with it picked"):
+    val draft = SessionDrafts.empty.reconcile(context,
+      table(Some(pick(oak)), oak)).board
+    assertEquals(draft.map(_.keys), Some(Vector("denizen:a1")))
+    assertEquals(draft.flatMap(_.command), Some(Intent.ResolveWalker(
+      BoardSelectionDraft.facedownAdviserDecisionId,
+      DecisionAnswerWire.ChooseOneWire("denizen", "a1"))))
 
-  test("with no pick the panel asks for one on the board, and Cancel " +
-      "leaves"):
-    val ui = new RecordingControls()
-    val shown = panel(draft, ui)
-    assertEquals(all(shown, ".facedown-adviser-start"), Vector.empty)
-    assertEquals(one(shown, ".decision-instruction").textContent,
-      "Choose a facedown adviser on your board.")
-    assertEquals(all(shown, ".card-face"), Vector.empty)
-    as[dom.html.Button](one(shown, ".modifier-cancel")).click()
-    assertEquals(ui.cancelledTargets, 1)
-
-  test("a lone facedown adviser is picked already"):
-    val minor = MinorActionsState(Vector(MinorAdviser(oak)),
-      canPeekSiteRelics = false, facedownRelics = Vector.empty, siteId = None,
-      maxBoardToSite = 0, maxSiteToBoard = 0)
-    assertEquals(FacedownAdviserDraft.initial(context, minor)
-      .flatMap(_.selectedCardId), Some("a1"))
+  test("a cleared pick stays cleared at its position, and two advisers " +
+      "open with none picked"):
+    val lone = table(Some(pick(oak)), oak)
+    val cleared = SessionDrafts.empty.reconcile(context, lone)
+      .staged(Draft.Board(None))
+    assertEquals(cleared.reconcile(context, lone).board, None)
+    assertEquals(SessionDrafts.empty.reconcile(context,
+      table(Some(pick(oak, bandits)), oak, bandits)).board, None)

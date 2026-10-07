@@ -59,7 +59,7 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
   test("targeted actions open their own preview"):
     assertEquals(Vector("travel", "campaign-conquest", "campaign-raid",
       "play-facedown-adviser").flatMap(ModifierFlowDraft.targeted).map(_._1),
-      Vector("travel", "search"))
+      Vector("travel"))
 
   test("a walker start names a preview action only when the engine " +
       "registers it"):
@@ -73,8 +73,7 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
         Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:a"))),
       GameIntent.StartWalker("search", Vector.empty,
         Vector(oathdigital.protocol.WalkerStartArgWire("button", "search:world"))),
-      GameIntent.StartWalker("play-facedown-adviser", Vector.empty,
-        Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "d1"))),
+      GameIntent.StartWalker("play-facedown-adviser", Vector.empty),
       GameIntent.StartWalker("place-banner-resource", Vector.empty))
     // A registered key names its action whatever start arguments it carries
     // (Travel carries its destination); play-facedown-adviser previews as
@@ -110,26 +109,6 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       Vector(action)), "an authorized Travel action")
     assertEquals(authorized.candidates.map(_.target), Vector(BoardTargetRef.Site("b")))
     assert(authorized.explicitConfirm)
-
-  test("facedown adviser keeps ordered Search modifiers before owned target draft"):
-    val response = MajorActionPreviewResponse(4, "search", Vector(first),
-      Vector.empty, Vector.empty)
-    val selection = ModifierSelectionState.reconcile(None,
-      context.copy(action = "search"), response.modifiers, "facedown-preview")
-      .toggle(first)
-    val ordering = ModifierFlowDraft(command = None,
-      actionKind = Some("play-facedown-adviser"),
-      baseParameters = Map("procedure" -> "facedown-adviser"),
-      preview = response, selection = selection,
-      stage = ModifierFlowStage.Ordering)
-    assertEquals(ordering.selection.selected, Vector(first))
-    val targets = ordering.showTargets(response)
-    assertEquals(targets.actionKind, Some("play-facedown-adviser"))
-    assertEquals(targets.baseParameters,
-      Map("procedure" -> "facedown-adviser"))
-    assertEquals(targets.backFromTargets.map(_.selection.selected),
-      Some(Vector(first)))
-    assertEquals(targets.cancel, None)
 
   test("target Back restores ordering only when present and stale context clears flow"):
     val response = MajorActionPreviewResponse(4, "travel", Vector(first),
@@ -210,14 +189,12 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       GameIntent.StartWalker("muster", Vector.empty), selection.invocations),
       GameIntent.StartWalker("muster", Vector("denizen.rowdy-pub")))
 
-  test("Search and facedown-adviser walker starts retain their card arguments"):
+  test("a Search walker start retains its source argument"):
     val invocation = ModifierInvocation("site-card", "catacombs",
       Some("site:a"), "denizen.some-power")
     Vector(
       GameIntent.StartWalker("search", Vector.empty,
-        Vector(oathdigital.protocol.WalkerStartArgWire("button", "search:world"))),
-      GameIntent.StartWalker("play-facedown-adviser", Vector.empty,
-        Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "D1"))))
+        Vector(oathdigital.protocol.WalkerStartArgWire("button", "search:world"))))
       .foreach { intent =>
         val submitted = ModifierFlowDraft.submission(intent, Vector(invocation))
         assertEquals(submitted.startArgs, intent.startArgs)

@@ -146,10 +146,11 @@ class ModifierFlowSuite extends munit.FunSuite:
   test("the drafts are read when the preview lands, not when it is sent"):
     val FlowUnderTest(host, ui) = flow()
     ui.submitCommand(recover)
-    val pick = FacedownAdviserDraft.initial(context, minor).map(_.choose("a2"))
-    host.currentDrafts = draftsForProjection.copy(facedownAdviser = pick)
+    val moved = draftsForProjection.copy(boardTargets =
+      draftsForProjection.boardTargets.map(_.copy(selectedKeys = Set(woodsKey))))
+    host.currentDrafts = moved
     host.answer(Right(response("recover", Vector(modifier)))).map { _ =>
-      assertEquals(host.currentDrafts.facedownAdviser, pick)
+      assertEquals(host.currentDrafts.boardTargets, moved.boardTargets)
       assertEquals(host.currentDrafts.modifiers.map(_.stage),
         Some(ModifierFlowStage.Ordering))
     }
@@ -167,12 +168,10 @@ class ModifierFlowSuite extends munit.FunSuite:
     val stale = draftWithModifierSelected("recover", Some(recover), None,
       ModifierFlowStage.Ordering)
     val FlowUnderTest(host, ui) = flow(draftsForProjection.copy(
-      modifiers = Some(stale),
-      facedownAdviser = FacedownAdviserDraft.initial(context, minor)))
+      modifiers = Some(stale)))
     ui.beginTargetedMajorAction("travel")
     // Restarted, before the preview lands.
     assertEquals(host.currentDrafts.modifiers, None)
-    assertEquals(host.currentDrafts.facedownAdviser, None)
     assertEquals(host.previews, Vector(MajorActionPreviewRequest(9L, "travel", Map.empty)))
     host.answer(Right(response("travel", Vector(modifier)))).map { _ =>
       val opened = modifiersOf(host)
@@ -183,14 +182,12 @@ class ModifierFlowSuite extends munit.FunSuite:
     }
 
   test("a failed targeted preview fails and leaves the restarted drafts"):
-    val FlowUnderTest(host, ui) = flow(draftsForProjection.copy(
-      facedownAdviser = FacedownAdviserDraft.initial(context, minor)))
+    val FlowUnderTest(host, ui) = flow()
     ui.beginTargetedMajorAction("travel")
     val restarted = host.currentDrafts
     val error = GameClientFailure.NetworkFailure("down")
     host.answer(Left(error)).map { _ =>
       assertEquals(host.currentDrafts, restarted)
-      assertEquals(host.currentDrafts.facedownAdviser, None)
       assertEquals(host.currentDrafts.boardTargets,
         draftsForProjection.boardTargets.map(_.cancel))
       assertEquals(host.failures, Vector(error))
@@ -208,17 +205,15 @@ class ModifierFlowSuite extends munit.FunSuite:
       assertEquals(host.redraws, 1)
     }
 
-  test("a targeted facedown adviser enters Targets with the pick and no board targets"):
+  test("a facedown-adviser start previews as Search and goes out with no card"):
     val FlowUnderTest(host, ui) = flow()
-    ui.beginTargetedMajorAction("play-facedown-adviser")
+    val start = GameCommand.StartWalker("play-facedown-adviser", Vector.empty)
+    ui.submitCommand(start)
     assertEquals(host.previews, Vector(MajorActionPreviewRequest(9L, "search",
       Map("procedure" -> "facedown-adviser"))))
     host.answer(Right(response("search", Vector.empty))).map { _ =>
-      assertEquals(host.currentDrafts.modifiers.map(_.stage), Some(ModifierFlowStage.Targets))
-      assertEquals(host.currentDrafts.facedownAdviser.map(_.advisers.map(_.card.cardId)),
-        Some(Vector("a1", "a2")))
-      assertEquals(host.currentDrafts.boardTargets, None)
-      assertEquals(host.redraws, 1)
+      assertEquals(host.sent, Vector(start -> Vector.empty))
+      assertEquals(host.currentDrafts.modifiers, None)
     }
 
   test("confirming with a command leaves Ordering and sends the folded submission without a redraw"):
@@ -254,13 +249,11 @@ class ModifierFlowSuite extends munit.FunSuite:
     val ordering = draftWithModifierSelected("recover", Some(recover), None,
       ModifierFlowStage.Ordering)
     val FlowUnderTest(host, ui) = flow(draftsForProjection.copy(
-      modifiers = Some(ordering),
-      facedownAdviser = FacedownAdviserDraft.initial(context, minor)))
+      modifiers = Some(ordering)))
     ui.confirmModifiers()
     val error = GameClientFailure.NetworkFailure("down")
     host.answer(Left(error)).map { _ =>
       assertEquals(host.currentDrafts.modifiers, None)
-      assertEquals(host.currentDrafts.facedownAdviser, None)
       assertEquals(host.currentDrafts.boardTargets,
         draftsForProjection.boardTargets)
       assertEquals(host.failures, Vector(error))
@@ -299,13 +292,11 @@ class ModifierFlowSuite extends munit.FunSuite:
     val targets = draftWithModifierSelected("travel", None, Some("travel"),
       ModifierFlowStage.Targets)
     val start = draftsForProjection.copy(modifiers = Some(targets),
-      facedownAdviser = FacedownAdviserDraft.initial(context, minor),
       boardTargets = draftsForProjection.boardTargets
         .map(_.copy(selectedKeys = Set(woodsKey))))
     val FlowUnderTest(first, ui) = flow(start)
     ui.cancelModifiers()
     assertEquals(first.currentDrafts.modifiers, None)
-    assertEquals(first.currentDrafts.facedownAdviser, None)
     assertEquals(first.currentDrafts.boardTargets, Some(restored))
     assertEquals(first.redraws, 1)
     val FlowUnderTest(second, again) = flow(start)
@@ -316,24 +307,19 @@ class ModifierFlowSuite extends munit.FunSuite:
   test("backing out of Ordering leaves only the flow draft"):
     val ordering = draftWithModifierSelected("recover", Some(recover), None,
       ModifierFlowStage.Ordering)
-    val pick = FacedownAdviserDraft.initial(context, minor)
     val FlowUnderTest(host, ui) = flow(draftsForProjection.copy(
-      modifiers = Some(ordering),
-      facedownAdviser = pick))
+      modifiers = Some(ordering)))
     ui.backFromModifiers()
-    assertEquals(host.currentDrafts.modifiers, None)
-    assertEquals(host.currentDrafts.facedownAdviser, pick)
+    assertEquals(host.currentDrafts, draftsForProjection)
     assertEquals(host.redraws, 1)
 
   test("backing out of Targets returns to Ordering, and is a no-op with no flow"):
     val targets = draftWithModifierSelected("travel", None, Some("travel"),
       ModifierFlowStage.Targets)
     val FlowUnderTest(host, ui) = flow(draftsForProjection.copy(
-      modifiers = Some(targets),
-      facedownAdviser = FacedownAdviserDraft.initial(context, minor)))
+      modifiers = Some(targets)))
     ui.backFromTargets()
     assertEquals(host.currentDrafts.modifiers.map(_.stage), Some(ModifierFlowStage.Ordering))
-    assertEquals(host.currentDrafts.facedownAdviser, None)
     assertEquals(host.currentDrafts.boardTargets, None)
     assertEquals(host.redraws, 1)
     val FlowUnderTest(idle, none) = flow()
@@ -341,7 +327,7 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(idle.currentDrafts, draftsForProjection)
     assertEquals(idle.redraws, 0)
 
-  test("toggle, move and choose apply their step and redraw"):
+  test("toggle and move apply their step and redraw"):
     val second = PreviewModifier("adviser:p:denizen:b", "h.b", "B")
     val ordering = ModifierFlowDraft.fromPreview(command = Some(recover),
       actionKind = None, parameters = Map.empty,
@@ -349,8 +335,7 @@ class ModifierFlowSuite extends munit.FunSuite:
       previous = None,
       context = ModifierSelectionContext("game", "red", 9, "recover"))
     val FlowUnderTest(host, ui) = flow(draftsForProjection.copy(
-      modifiers = Some(ordering),
-      facedownAdviser = FacedownAdviserDraft.initial(context, minor)))
+      modifiers = Some(ordering)))
     def selected = host.currentDrafts.modifiers.map(_.selection.selected)
     ui.toggleModifier(modifier)
     ui.toggleModifier(second)
@@ -359,10 +344,8 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(selected, Some(Vector(second, modifier)))
     ui.moveModifier(second, 1)
     assertEquals(selected, Some(Vector(modifier, second)))
-    ui.chooseFacedownAdviser("a2")
-    assertEquals(host.currentDrafts.facedownAdviser.flatMap(_.selectedCardId), Some("a2"))
-    // Two toggles, two moves and one choose.
-    assertEquals(host.redraws, 2 + 2 + 1)
+    // Two toggles and two moves.
+    assertEquals(host.redraws, 2 + 2)
 
   test("stage replaces one slot and redraws"):
     val FlowUnderTest(host, ui) = flow()

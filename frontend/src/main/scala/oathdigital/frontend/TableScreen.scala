@@ -102,9 +102,7 @@ private[frontend] final class TableScreen(
         val options = routed.surface.collect {
           case board: ParkedDecision.Surface.BoardDecision => BoardOptions.of(
             board, drafts, view.controlsAvailable, controls)
-        }.orElse(drafts.facedownAdviser.map(BoardOptions.facedown(_,
-          view.controlsAvailable, controls)))
-          .getOrElse(BoardOptions.none)
+        }.getOrElse(BoardOptions.none)
         (WorldBoardRenderer.players(value, selectedPlayer, options),
           WorldBoardRenderer.world(value, options, drafts, controls),
           decisionKey)

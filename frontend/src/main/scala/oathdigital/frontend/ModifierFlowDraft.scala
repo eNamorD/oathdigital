@@ -36,8 +36,7 @@ private[frontend] object ModifierFlowDraft:
     "travel", "muster", "trade", "challenge")
 
   private val targetedActions = Map(
-    "travel" -> ("travel" -> Map.empty[String, String]),
-    "play-facedown-adviser" -> ("search" -> Map("procedure" -> "facedown-adviser")))
+    "travel" -> ("travel" -> Map.empty[String, String]))
 
   def targeted(actionKind: String): Option[(String, Map[String, String])] =
     targetedActions.get(actionKind)

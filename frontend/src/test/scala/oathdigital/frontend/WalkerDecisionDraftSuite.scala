@@ -6,7 +6,7 @@ import oathdigital.testkit.Unwrap.present
 import munit.FunSuite
 
 /** The walker decision drafts and answers: roll summaries, the Forge
-  * partition draft, the facedown adviser draft and the commands they send.
+  * partition draft and the commands they send.
   */
 class WalkerDecisionDraftSuite extends FunSuite:
 
@@ -64,7 +64,6 @@ class WalkerDecisionDraftSuite extends FunSuite:
     assertEquals(WalkerPartitionDraft.reconcile(None, context,
       Some(ForgeFixture.parked.copy(query = None))), None)
 
-  private val facedownContext = BoardSelectionContext("game", "red", 7)
   private val adviser = CardDetails("D1", "denizen", "The Adviser")
   private val otherAdviser = CardDetails("D2", "denizen", "The Other Adviser")
 
@@ -75,35 +74,13 @@ class WalkerDecisionDraftSuite extends FunSuite:
   private def twoAdvisersFacedown = minor(Vector(
     MinorAdviser(adviser), MinorAdviser(otherAdviser)))
 
-  test("the facedown adviser draft opens from zero, one or many advisers"):
-    val noAdvisers = minor(Vector.empty)
-    val oneAdviser = minor(Vector(MinorAdviser(adviser)))
-    assertEquals(FacedownAdviserDraft.initial(facedownContext, noAdvisers),
-      None)
-    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(noAdvisers), 0)
-    val one = present(FacedownAdviserDraft.initial(facedownContext,
-      oneAdviser), "a facedown draft")
-    assertEquals(one.selectedCardId, Some("D1"))
-    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(oneAdviser), 1)
-    assertEquals(one.command, Some(oathdigital.protocol.GameIntent.StartWalker(
-      "play-facedown-adviser", Vector.empty,
-      Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "D1")))))
-    val many = present(FacedownAdviserDraft.initial(facedownContext,
-      twoAdvisersFacedown), "a facedown draft")
+  test("Play facedown adviser is offered while any adviser lies facedown"):
+    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
+      minor(Vector.empty)), 0)
+    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
+      minor(Vector(MinorAdviser(adviser)))), 1)
     assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
       twoAdvisersFacedown), 1)
-    assertEquals(many.selected, None)
-    assertEquals(many.choose("D2").selected.map(_.card.cardId), Some("D2"))
-
-  test("the facedown pick survives a reload at the same position and drops " +
-      "at a new one"):
-    val many = present(FacedownAdviserDraft.initial(facedownContext,
-      twoAdvisersFacedown), "a facedown draft")
-    assertEquals(FacedownAdviserDraft.reconcile(Some(many.choose("D2")),
-      facedownContext, Some(twoAdvisersFacedown)).flatMap(_.selected)
-      .map(_.card.cardId), Some("D2"))
-    assertEquals(FacedownAdviserDraft.reconcile(Some(many.choose("D2")),
-      facedownContext.copy(sequence = 8), Some(twoAdvisersFacedown)), None)
 
   test("a choose-one decision outside Recover is answered from its projected options"):
     val query = DecisionQueryState.ChooseOne(Vector(

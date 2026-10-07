@@ -70,12 +70,10 @@ private[frontend] final class ModifierFlow(host: FlowHost) extends ActionControl
     context <- drafts.context
     actionKind <- draft.actionKind
   do
-    val entry: TargetsEntry = if actionKind == "play-facedown-adviser" then
-      TargetsEntry.Facedown(current.minorActions.flatMap(
-        FacedownAdviserDraft.initial(context, _)))
-    else ModifierFlowDraft.targetAction(actionKind, response,
-      current.boardTargetActions).fold[TargetsEntry](TargetsEntry.NoTargets)(action =>
-      TargetsEntry.Board(BoardTargetSelectionState.reconcile(None, context,
+    val entry: TargetsEntry = ModifierFlowDraft.targetAction(actionKind,
+      response, current.boardTargetActions).fold[TargetsEntry](
+      TargetsEntry.NoTargets)(action => TargetsEntry.Board(
+      BoardTargetSelectionState.reconcile(None, context,
         Vector(action)).activate(actionKind)))
     step(FlowStep.Targets(draft.showTargets(response), entry))
 
@@ -133,7 +131,6 @@ private[frontend] final class ModifierFlow(host: FlowHost) extends ActionControl
       commandForSelection(action, targets, host.currentPlayerId)
         .foreach(completeTargetCommand)
 
-  def chooseFacedownAdviser(cardId: String): Unit = step(FlowStep.ChooseFacedown(cardId))
   def toggleModifier(value: PreviewModifier): Unit = step(FlowStep.Toggle(value))
   def moveModifier(value: PreviewModifier, delta: Int): Unit =
     step(FlowStep.Move(value, delta))

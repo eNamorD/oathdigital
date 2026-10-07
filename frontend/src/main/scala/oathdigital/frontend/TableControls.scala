@@ -13,11 +13,10 @@ private[frontend] trait TableControls:
   def handleSelection(result: BoardSelectionResult): Unit
 
 /** The modifier flow's commands, on top of the table's. Only the action
-  * pane and the facedown-adviser panel see these. Wide on purpose: the flow
-  * behind them is the follow-up's module, and it moves as one piece.
+  * pane sees these. Wide on purpose: the flow behind them is the follow-up's
+  * module, and it moves as one piece.
   */
 private[frontend] trait ActionControls extends TableControls:
-  def chooseFacedownAdviser(cardId: String): Unit
   def toggleModifier(value: PreviewModifier): Unit
   def moveModifier(value: PreviewModifier, delta: Int): Unit
   def confirmModifiers(): Unit
