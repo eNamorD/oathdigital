@@ -60,6 +60,11 @@ Events record accepted facts needed for deterministic replay:
   settlement as the step's core operations; it has no events of its own.
 - War Exhaustion records the canonical random-fallback candidate order and
   selected winner when deterministic title/Vision rules do not decide it.
+- Every command batch but Begin's opens with `CommandAccepted`, naming the
+  player who issued it. Undo appends `StepTakenBack`, which voids the
+  latest live batch's range; nothing is deleted. The application's
+  `JournalFold` replays every event and rewinds on a marker (undo design,
+  `docs/superpowers/specs/2026-10-06-undo-design.md`).
 
 Replay never rerolls or redraws. It derives deterministic facts again and
 rejects tampering. Privileged events may contain hidden information and are not

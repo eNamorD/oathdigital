@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
 2026-10-01 playtest. **Phase - Catalog batch 4** is in progress: slices
-1a, 1b, 2, 3 and 4 are done. **Phase - Undo** is designed.
+1a, 1b, 2, 3 and 4 are done. **Phase - Undo** is in progress: slice 1 is done.
 
 ## Next
 
@@ -56,7 +56,7 @@ reveal, another player's answer, Finish Rest). Redo restores it while nothing
 else has happened. The [design](superpowers/specs/2026-10-06-undo-design.md)
 holds the rulings.
 
-- [ ] 1. Engine, storage and server log: void markers, voided replay,
+- [x] 1. Engine, storage and server log: void markers, voided replay,
   barrier detection, the Undo intent and the projection's offer.
 - [ ] 2. Frontend: the Undo control and the taken-back log groups.
 - [ ] 3. Redo.
