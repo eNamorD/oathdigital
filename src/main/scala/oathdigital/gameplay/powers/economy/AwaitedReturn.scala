@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.operations.SupplyStrip
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts,
   SelectedModifier}
@@ -34,10 +35,8 @@ final case class AwaitedReturn private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeCost -> Vector(Transform((ctx, operations) =>
-      operations.filterNot {
-        case SpendSupply(player, _, _) => player == ctx.activePlayer
-        case _ => false
-      } ++ Vector(sacrifice(ctx.activePlayer),
+      SupplyStrip(ctx.activePlayer, operations) ++ Vector(
+        sacrifice(ctx.activePlayer),
         Note(id, sacrificedNote(_, ctx.activePlayer))))))
 
   /** Selectable only with a warband on the board to sacrifice. */

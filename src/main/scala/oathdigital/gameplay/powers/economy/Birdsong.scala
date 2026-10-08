@@ -17,7 +17,7 @@ object BirdsongCard extends Denizen(DenizenId("176"), "Birdsong", Suit.Beast) wi
 /** Birdsong (card 176, adviser-only), a selected Trade modifier with no cost:
   * trading with a beast or nomad card spends no Supply. It may be selected
   * whatever the card, as the Cup of Plenty may. The waiver is
-  * [[SupplyWaiver]].
+  * [[SuitSupplyWaiver]].
   */
 final case class Birdsong private (catalog: ExecutableCatalog)
     extends SelectedModifier:
@@ -25,7 +25,7 @@ final case class Birdsong private (catalog: ExecutableCatalog)
   def id: PowerId = Birdsong.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
 
-  def effects: Map[PowerWindow, Vector[Contribution]] = SupplyWaiver.effects(
+  def effects: Map[PowerWindow, Vector[Contribution]] = SuitSupplyWaiver.effects(
     PowerWindow.TradeCost, TradeProcedure.decisionId, catalog)(
     (_, _, suit) => Birdsong.Suits(suit))
 

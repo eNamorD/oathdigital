@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.operations.SupplyStrip
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
@@ -43,7 +44,7 @@ final case class ForestPaths private (catalog: ExecutableCatalog)
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
       if beastAtDestination(ctx) then
         Note(id, _ => Some(ForestPaths.ignoring(PowerSourceRef.Card(cardId)))) +:
-          TravelPayments.withoutSupply(operations, ctx.activePlayer)
+          SupplyStrip(ctx.activePlayer, operations)
       else operations)),
     PowerWindow.TravelActionEligibility ->
       Vector(Transform((_, operations) => operations)))

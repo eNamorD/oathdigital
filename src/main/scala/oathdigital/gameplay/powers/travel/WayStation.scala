@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.operations.SupplyStrip
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogResolution, PowerAnswers, RulerToll}
@@ -65,7 +66,7 @@ final case class WayStation private (catalog: ExecutableCatalog)
       .map(_.board)
     if supply == 0 then operations
     else if ruler == SiteRuler.Player(traveller) then
-      TravelPayments.withoutSupply(operations, traveller)
+      SupplyStrip(traveller, operations)
     else if !board.exists(_.favor >= WayStation.favorOwed(operations, traveller) +
         WayStation.Favor) then operations
     else
@@ -87,7 +88,7 @@ final case class WayStation private (catalog: ExecutableCatalog)
               Note(id, RulerToll.note(cardId, traveller, ruler)))
             case Some(_) => payment
             case None => Vector.empty)) ++
-        TravelPayments.withoutSupply(operations, traveller)
+        SupplyStrip(traveller, operations)
 
 object WayStation:
   /** The favor `operations` already take from `traveller` (a toll, a
