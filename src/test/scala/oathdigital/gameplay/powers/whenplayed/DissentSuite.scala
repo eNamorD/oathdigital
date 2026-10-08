@@ -13,9 +13,6 @@ class DissentSuite extends munit.FunSuite:
   private val power = registered[Dissent]
   private val dissent = power.cardId
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def placed(player: PlayerId, n: Int): NoteText.Said =
     NoteText.Said("placed", s"${player.value} placed $n favor on it.",
       covers = false)
@@ -38,7 +35,7 @@ class DissentSuite extends munit.FunSuite:
     // The Rest cleanup returns it all to the Discord bank.
     assertEquals(RestCleanupPlan.derive(catalog, done.treeless, p1)
       .map(_.returnedFavor), Right(Map(Suit.Discord -> 3)))
-    assertEquals(said(done.events), Vector(placed(p1, 2), placed(p2, 1)))
+    assertEquals(said(power, done.events), Vector(placed(p1, 2), placed(p2, 1)))
     assertEquals(replayed(ready, done.events), done.treeless)
 
   test("with nobody able to place, the line says so"):
@@ -46,5 +43,5 @@ class DissentSuite extends munit.FunSuite:
     val ready = Table.start.adviser(p1, dissent).favor(p1, 0).ready
     val done = Outcomes.finished(play(ready, power, dissent))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector(NoteText.Said("none",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "Nobody placed favor.", covers = false)))

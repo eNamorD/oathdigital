@@ -71,10 +71,10 @@ class FamilyHeirloomSuite extends munit.FunSuite
         FamilyHeirloom.bottom -> "put it on the bottom of the relic deck.")
       .foreach { case (choice, end) =>
         val at = atChoice
-        assertEquals(NoteText.said(power.id, power.noteKeys, at.first.events),
+        assertEquals(said(power, at.first.events),
           Vector.empty)
         val done = Outcomes.finished(answer(at.state, at.first.tree, choice))
-        assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+        assertEquals(said(power, done.events),
           Vector(NoteText.Said(choice.key,
             s"p1 drew ${top.value} and $end", covers = true)))
       }

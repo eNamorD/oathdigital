@@ -5,7 +5,8 @@ import scala.reflect.ClassTag
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy,
   OperationRestrictions}
 import oathdigital.gameplay.powerresolver.ContributingPower
-import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.powers.PowerFixture.{actor, quietTable}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
@@ -142,3 +143,8 @@ object WhenPlayedHarness:
     val bySite = cards.toMap
     quietTable.game.current.map.inPlay.flatMap(bySite.getOrElse(_,
       Vector.empty))
+
+  /** The notes `power` journaled in `events`, in order, as plain sentences. */
+  def said(power: ContributingPower, events: Vector[OathEvent])
+      : Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)

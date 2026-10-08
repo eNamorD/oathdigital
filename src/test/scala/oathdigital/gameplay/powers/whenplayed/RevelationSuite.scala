@@ -24,9 +24,6 @@ class RevelationSuite extends munit.FunSuite:
   private def burn(amount: Int): DecisionAnswer =
     DecisionAnswer.ChooseAmountAnswer(amount)
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def burned(player: PlayerId, n: Int): NoteText.Said =
     NoteText.Said("burned", s"${player.value} burned $n favor and gained " +
       s"$n ${if n == 1 then "secret" else "secrets"}.", covers = true)
@@ -47,9 +44,9 @@ class RevelationSuite extends munit.FunSuite:
     val end = Look(walked.end)
     assertEquals(Vector(p1, p2, p3).map(end.favor), Vector(2, 0, 1))
     assertEquals(Vector(p1, p2, p3).map(end.faceUpSecrets), Vector(1, 2, 3))
-    assertEquals(said(walked.events), Vector(burned(p2, 1), burned(p3, 2),
-      NoteText.Said("declined", s"${p1.value} did not burn any favor.",
-        covers = false)))
+    assertEquals(said(power, walked.events), Vector(burned(p2, 1),
+      burned(p3, 2), NoteText.Said("declined",
+        s"${p1.value} did not burn any favor.", covers = false)))
     assertEquals(replayed(ready, walked.events), walked.end)
     assertWireRoundTrips(walked.events)
 
@@ -57,13 +54,14 @@ class RevelationSuite extends munit.FunSuite:
     val walked = walkAnswering(holdingFavor(1, 0, 1).ready, power, played,
       burn(1), burn(1))
     assertEquals(walked.asked.map(_.owner), Vector(p1, p3))
-    assertEquals(said(walked.events), Vector(burned(p1, 1), burned(p3, 1)))
+    assertEquals(said(power, walked.events),
+      Vector(burned(p1, 1), burned(p3, 1)))
 
   test("with nobody holding favor nothing is asked, and the line says so"):
     val done = Outcomes.finished(play(holdingFavor(0, 0, 0).ready, power,
       revelation))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector(NoteText.Said("none",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "Nobody had favor to burn.", covers = false)))
 
   test("played from a Search, each question waits for its own player, and " +

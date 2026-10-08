@@ -43,9 +43,6 @@ class CallForHelpSuite extends munit.FunSuite:
     walked.asked.map(_.query).collect {
       case query: DecisionQuery.ChooseAmount => query.max }
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private val nothingLine = NoteText.Said("none", "Nothing was revealed.",
     covers = false)
 
@@ -66,7 +63,7 @@ class CallForHelpSuite extends munit.FunSuite:
     assertEquals(Look(walked.end).boardWarbands(p1), 3 + 4)
     for card <- drawn; viewer <- Vector(p1, p2, p3) do
       assert(knows(walked.end, viewer, card), s"$viewer does not know $card")
-    assertEquals(said(walked.events), Vector(NoteText.Said("revealed",
+    assertEquals(said(power, walked.events), Vector(NoteText.Said("revealed",
       s"Revealed and discarded ${drawn.map(_.value).mkString(", ")}, and " +
         "gained 4 warbands.", covers = true)))
     assertEquals(replayed(ready, walked.events), walked.end)
@@ -82,7 +79,7 @@ class CallForHelpSuite extends munit.FunSuite:
     assertEquals(mostAsked(walked), Vector(6, 1))
     assertEquals(pileOf(walked.end, cradle), named("Old Songs",
       "Spinning Bee"))
-    assertEquals(said(walked.events).map(_.key),
+    assertEquals(said(power, walked.events).map(_.key),
       Vector("discarded", "discarded"))
     assertEquals(Look(walked.end).boardWarbands(p1), 3)
 
@@ -91,7 +88,7 @@ class CallForHelpSuite extends munit.FunSuite:
     val walked = walkAnswering(ready, power, played, amount(1))
     assertEquals(Look(walked.end).boardWarbands(p1),
       Look(ready).boardWarbands(p1) + 1)
-    assertEquals(said(walked.events), Vector(NoteText.Said("revealed",
+    assertEquals(said(power, walked.events), Vector(NoteText.Said("revealed",
       s"Revealed and discarded ${named("Wild Mounts").head.value}, and " +
         "gained 1 warband.", covers = true)))
 
@@ -101,9 +98,9 @@ class CallForHelpSuite extends munit.FunSuite:
     assertEquals(PhasePowerHarness.ops(walked.events), Vector.empty)
     assertEquals(pileOf(walked.end, cradle), named("Old Songs",
       "Spinning Bee"))
-    assertEquals(said(walked.events), Vector(nothingLine))
+    assertEquals(said(power, walked.events), Vector(nothingLine))
 
   test("with the region's pile empty nothing is asked, and the line says so"):
     val done = Outcomes.finished(play(Table.start.adviser(p1, help).ready,
       power, help))
-    assertEquals(said(done.events), Vector(nothingLine))
+    assertEquals(said(power, done.events), Vector(nothingLine))

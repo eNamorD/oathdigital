@@ -11,9 +11,6 @@ class CharlatanSuite extends munit.FunSuite:
   private val power = registered[Charlatan.type]
   private val charlatan = power.cardId
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def onBanner(ready: ReadyGame): Int =
     ready.game.current.banners.darkestSecret.secrets
 
@@ -30,15 +27,15 @@ class CharlatanSuite extends munit.FunSuite:
     assertEquals(done.treeless.game.current.banners.darkestSecret.holder,
       Some(p2))
     assertEquals(replayed(ready, done.events), done.treeless)
-    assertEquals(said(done.events), Vector(NoteText.Said("burned",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("burned",
       "Burned 3 secrets from the Darkest Secret.", covers = false)))
 
   test("a single secret stays, and the line says none was burned"):
     val done = Outcomes.finished(play(withBanner(None, 1), power, charlatan))
     assertEquals(onBanner(done.treeless), 1)
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector(none))
+    assertEquals(said(power, done.events), Vector(none))
 
   test("an empty Darkest Secret burns nothing"):
     val done = Outcomes.finished(play(withBanner(None, 0), power, charlatan))
-    assertEquals(said(done.events), Vector(none))
+    assertEquals(said(power, done.events), Vector(none))

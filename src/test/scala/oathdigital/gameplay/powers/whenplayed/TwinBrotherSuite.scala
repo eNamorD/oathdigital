@@ -72,14 +72,14 @@ class TwinBrotherSuite extends munit.FunSuite:
     assert(!mine.exists(_.id == card))
     assertEquals(replayed(ready, swap.first.events ++ done.events),
       done.treeless)
-    assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+    assertEquals(said(power, done.events),
       Vector(NoteText.Said("swapped",
         s"p1 swapped it for p2's ${archers.value}.", covers = false)))
 
   test("keeping Twin Brother changes nothing and writes nothing"):
     val done = answer(staged.ready, TwinBrother.keep).done
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+    assertEquals(said(power, done.events),
       Vector.empty)
 
   test("an option that is not offered is rejected"):

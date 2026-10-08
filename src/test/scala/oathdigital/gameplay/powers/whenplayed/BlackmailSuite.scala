@@ -28,9 +28,6 @@ class BlackmailSuite extends munit.FunSuite:
   private def chose(ref: DecisionOptionRef): DecisionAnswer =
     DecisionAnswer.ChooseOneAnswer(ref)
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def tookTheHorn: NoteText.Said = NoteText.Said("took",
     s"Took ${horn.value} from ${p2.value}.", covers = false)
 
@@ -52,7 +49,7 @@ class BlackmailSuite extends munit.FunSuite:
     assertEquals(end.favor(p1), 1 + 3)
     assertEquals(end.favor(p2), 4 - 3)
     assertEquals(end.relics(p2), Vector(horn))
-    assertEquals(said(walked.events), Vector(NoteText.Said("paid",
+    assertEquals(said(power, walked.events), Vector(NoteText.Said("paid",
       s"${p2.value} gave 3 favor to keep ${horn.value}.", covers = false)))
     assertEquals(replayed(ready, walked.events), walked.end)
     assertWireRoundTrips(walked.events)
@@ -64,7 +61,7 @@ class BlackmailSuite extends munit.FunSuite:
     assertEquals(end.relics(p1), Vector(ring, horn))
     assertEquals(end.relics(p2), Vector.empty)
     assertEquals(end.favor(p2), 4)
-    assertEquals(said(walked.events), Vector(tookTheHorn))
+    assertEquals(said(power, walked.events), Vector(tookTheHorn))
 
   test("a facedown relic is offered by its slot, and a holder with fewer " +
       "than 3 favor is not asked"):
@@ -78,7 +75,7 @@ class BlackmailSuite extends munit.FunSuite:
     val end = Look(walked.end)
     assertEquals(end.relics(p1), Vector(ring, horn))
     assertEquals(end.favor(p2), 2)
-    assertEquals(said(walked.events), Vector(tookTheHorn))
+    assertEquals(said(power, walked.events), Vector(tookTheHorn))
 
   test("a relic Lost Tongue protects is not offered, and with none left the " +
       "line says so"):
@@ -86,5 +83,5 @@ class BlackmailSuite extends munit.FunSuite:
     val ready = p2HoldingTheHorn(favor = 4).adviser(p2, "Lost Tongue").ready
     val done = Outcomes.finished(play(ready, power, blackmail))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector(NoteText.Said("none",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "No relic could be taken.", covers = false)))

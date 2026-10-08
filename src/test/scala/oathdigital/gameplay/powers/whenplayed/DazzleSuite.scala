@@ -27,9 +27,6 @@ class DazzleSuite extends munit.FunSuite:
     .denizen(wrestlers, at = homeSite)
     .bankFavor(Suit.Hearth, 3).ready
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def discarded(events: Vector[OathEvent]): Vector[DenizenId] =
     PhasePowerHarness.ops(events).collect { case d: Discard.Denizen => d.card }
 
@@ -51,13 +48,13 @@ class DazzleSuite extends munit.FunSuite:
 
   test("Dazzle writes the cards it discarded"):
     val done = Outcomes.finished(play(twoTargets, power, dazzle))
-    assertEquals(said(done.events), Vector(NoteText.Said("discarded",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("discarded",
       s"Discarded ${homesteaders.value}, ${wrestlers.value}.", covers = true)))
 
   test("a second Dazzle finds nothing left to discard, and says so"):
     val once = Outcomes.finished(play(twoTargets, power, dazzle)).treeless
     val again = Outcomes.finished(play(once, power, dazzle))
-    assertEquals(said(again.events),
+    assertEquals(said(power, again.events),
       Vector(NoteText.Said("none", "Nothing was discarded.", covers = true)))
 
   test("Dazzle skips a rule-immune target and still discards another"):

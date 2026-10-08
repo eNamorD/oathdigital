@@ -17,9 +17,6 @@ class BanditChiefSuite extends munit.FunSuite:
   private val peaks = CatalogNames.site("Broken Peaks")
   private val giant = CatalogNames.site("Buried Giant")
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("one warband dies at every site not ruled by bandits, p1's own " +
       "included, with one line per site in map order"):
     // Bandit Chief stands at p1's site, where p1 has 2 warbands. p2 has 1
@@ -34,7 +31,7 @@ class BanditChiefSuite extends munit.FunSuite:
     assertEquals(end.forces(peaks), SiteForces.Empty)
     assertEquals(end.forces(giant), SiteForces.Occupied(ForceKind.Bandit, 2))
     val mapOrder = ready.game.current.map.inPlay
-    assertEquals(said(done.events), Vector(homeSite -> p1, peaks -> p2)
+    assertEquals(said(power, done.events), Vector(homeSite -> p1, peaks -> p2)
       .sortBy(entry => mapOrder.indexOf(entry._1))
       .map((site, owner) => NoteText.Said("killed",
         s"Killed 1 ${owner.value} warband at ${site.value}.",
@@ -47,7 +44,7 @@ class BanditChiefSuite extends munit.FunSuite:
       .ready
     val done = Outcomes.finished(fire(ready, power, atHome))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector(NoteText.Said("none",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "No warband was killed.", covers = false)))
 
   test("played from a Search, a site the kill empties is refilled with " +

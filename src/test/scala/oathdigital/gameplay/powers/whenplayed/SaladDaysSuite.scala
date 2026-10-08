@@ -43,7 +43,7 @@ class SaladDaysSuite extends munit.FunSuite:
     assertEquals(banks(done.treeless, Suit.Discord, Suit.Order, Suit.Hearth,
       Suit.Beast), Vector(1, 1, 2, 0))
     assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
-    assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+    assertEquals(said(power, done.events),
       Vector.empty)
 
   test("with three stocked banks it takes 1 from each without asking"):
@@ -63,7 +63,7 @@ class SaladDaysSuite extends munit.FunSuite:
   test("with every bank empty it gains nothing, and the line says so"):
     val done = Outcomes.finished(play(staged(), power, salad))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+    assertEquals(said(power, done.events),
       Vector(NoteText.Said("none", "Every favor bank was empty.",
         covers = false)))
 

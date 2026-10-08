@@ -19,9 +19,6 @@ class GreatHerdSuite extends munit.FunSuite:
   /** Great Herd is site-only: it stands at p1's site. */
   private val start = Table.start.denizen(herd, at = homeSite)
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def offered(ready: ReadyGame, tree: PendingTree)
       : Vector[DecisionOptionRef] =
     val query = question(ready, power, played, tree).query
@@ -53,7 +50,7 @@ class GreatHerdSuite extends munit.FunSuite:
     assertEquals(after.cardsAt(nearSite), Vector[CardId](herd))
     assertEquals(after.tokensOn(wildMounts), Tokens(1, 2))
     assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
-    assertEquals(said(done.events), Vector(NoteText.Said("swapped",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("swapped",
       s"p1 swapped it with ${wildMounts.value} at ${nearSite.value}.",
       covers = false)))
 
@@ -75,11 +72,11 @@ class GreatHerdSuite extends munit.FunSuite:
     val done = Outcomes.finished(resume(ready, power, played, first.tree,
       GreatHerd.decisionId, pick(GreatHerd.keep)))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector.empty)
+    assertEquals(said(power, done.events), Vector.empty)
 
   test("with no Nomad card at another site nothing is asked, and the line " +
       "says so"):
     val done = Outcomes.finished(
       fire(start.denizen(lancers, at = homeSite).ready, power, played))
-    assertEquals(said(done.events), Vector(NoteText.Said("none",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "No Nomad card could be swapped.", covers = false)))

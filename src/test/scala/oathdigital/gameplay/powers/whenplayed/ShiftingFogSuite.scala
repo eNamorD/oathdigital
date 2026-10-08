@@ -24,7 +24,7 @@ class ShiftingFogSuite extends munit.FunSuite:
     assertEquals(Suit.all.map(done.treeless.banks.favor(_)),
       Vector(6, 1, 2, 3, 4, 5))
     assertEquals(replayed(ready, done.events), done.treeless)
-    assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+    assertEquals(said(power, done.events),
       Vector(NoteText.Said("moved",
         "Every bank's favor moved to the next bank.", covers = false)))
 
@@ -33,11 +33,11 @@ class ShiftingFogSuite extends munit.FunSuite:
     val done = Outcomes.finished(play(ready, power, card))
     // One move per bank, and there are 6 banks.
     assertEquals(PhasePowerHarness.ops(done.events).size, 6)
-    assertEquals(NoteText.said(power.id, power.noteKeys, done.events).size, 1)
+    assertEquals(said(power, done.events).size, 1)
 
   test("with every bank empty nothing moves and nothing is written"):
     val ready = holding.banksHoldingOnly().ready
     val done = Outcomes.finished(play(ready, power, card))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+    assertEquals(said(power, done.events),
       Vector.empty)

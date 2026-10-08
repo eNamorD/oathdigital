@@ -17,9 +17,6 @@ class WizardsConclaveSuite extends munit.FunSuite:
   private def heldBy(ready: ReadyGame): Option[PlayerId] =
     ready.game.current.banners.darkestSecret.holder
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def took(player: PlayerId): NoteText.Said = NoteText.Said("took",
     s"${player.value} took the Darkest Secret.", covers = false)
 
@@ -43,7 +40,7 @@ class WizardsConclaveSuite extends munit.FunSuite:
     val done = Outcomes.finished(play(ready, power, conclave))
     assertEquals(heldBy(done.treeless), Some(p2))
     assertEquals(done.treeless.game.current.banners.darkestSecret.secrets, 2)
-    assertEquals(said(done.events), Vector(took(p2)))
+    assertEquals(said(power, done.events), Vector(took(p2)))
     assertEquals(replayed(ready, done.events), done.treeless)
 
   test("p1 decides a tie among the tied players, themselves included"):
@@ -56,7 +53,7 @@ class WizardsConclaveSuite extends munit.FunSuite:
     val done = Outcomes.finished(resume(ready, power, played, first.tree,
       WizardsConclave.decisionId, chose(p1)))
     assertEquals(heldBy(done.treeless), Some(p1))
-    assertEquals(said(done.events), Vector(took(p1)))
+    assertEquals(said(power, done.events), Vector(took(p1)))
 
   test("when nobody rules an Arcane card, every player ties"):
     // Wizard's Conclave stands at Buried Giant, which nobody rules.
@@ -75,7 +72,7 @@ class WizardsConclaveSuite extends munit.FunSuite:
       .adviser(p2, "Glamor").darkestSecret(Some(p2), 1).ready
     val done = Outcomes.finished(play(ready, power, conclave))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector(NoteText.Said("kept",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("kept",
       s"${p2.value} kept the Darkest Secret.", covers = false)))
 
   test("when Lost Tongue refuses the take, the Darkest Secret does not move"):
@@ -86,5 +83,5 @@ class WizardsConclaveSuite extends munit.FunSuite:
     val done = Outcomes.finished(playBeside(ready, power, conclave,
       LostTongue.forCatalog(catalog)))
     assertEquals(heldBy(done.treeless), Some(p2))
-    assertEquals(said(done.events), Vector(NoteText.Said("none",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "The Darkest Secret did not move.", covers = false)))

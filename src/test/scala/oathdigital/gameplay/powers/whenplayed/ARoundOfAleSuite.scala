@@ -18,9 +18,6 @@ class ARoundOfAleSuite extends munit.FunSuite:
   private val cleanupLine = NoteText.Said("cleanup",
     "Triggering resource cleanup.", covers = false)
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("favor on every card returns to its bank, card secrets go to p1, and " +
       "p1's facedown secrets turn faceup, after its line"):
     // Homesteaders (Hearth), p2's adviser, holds 2 favor. Defame (Discord)
@@ -43,7 +40,7 @@ class ARoundOfAleSuite extends munit.FunSuite:
     // 1 faceup, 2 turned faceup, and 1 each from Defame and the Trumpet.
     assertEquals((end.faceUpSecrets(p1), end.faceDownSecrets(p1)), (5, 0))
     assertEquals((end.faceUpSecrets(p2), end.faceDownSecrets(p2)), (0, 1))
-    assertEquals(said(done.events), Vector(cleanupLine))
+    assertEquals(said(power, done.events), Vector(cleanupLine))
     // The cleanup is the walk's last step, and the line comes before it.
     val notedAt = done.events.indexWhere(_.isInstanceOf[PowerNoted])
     val cleanedAt =
@@ -67,4 +64,4 @@ class ARoundOfAleSuite extends munit.FunSuite:
     val ready = Table.start.denizen(ale, at = homeSite).ready
     val done = Outcomes.finished(fire(ready, power, atHome))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector(cleanupLine))
+    assertEquals(said(power, done.events), Vector(cleanupLine))

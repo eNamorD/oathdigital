@@ -21,9 +21,6 @@ class BanditPrinceSuite extends munit.FunSuite:
   private val sites: Vector[SiteId] =
     start.ready.game.current.map.inPlay.filter(Set(homeSite, awaySite))
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def choose(chosen: Vector[SiteId]): DecisionAnswer =
     DecisionAnswer.ChooseManyAnswer(chosen.map(DecisionOptionRef.Site(_)))
 
@@ -58,7 +55,7 @@ class BanditPrinceSuite extends munit.FunSuite:
     // The replacing warbands come from the bank, so p1's board keeps its 3.
     assertEquals(after.boardWarbands(p1), 3)
     assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
-    assertEquals(said(done.events), sites.map(replacedAt))
+    assertEquals(said(power, done.events), sites.map(replacedAt))
 
   test("declining replaces nothing and writes nothing"):
     val ready = bandited.ready
@@ -66,11 +63,11 @@ class BanditPrinceSuite extends munit.FunSuite:
     val done = Outcomes.finished(resume(ready, power, played, first.tree,
       BanditPrince.decisionId, choose(Vector.empty)))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector.empty)
+    assertEquals(said(power, done.events), Vector.empty)
 
   test("with no bandit site nothing is asked, and the line says so"):
     val done = Outcomes.finished(play(start.ready, power, prince))
-    assertEquals(said(done.events), Vector(NoteText.Said("none",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "No site was ruled by bandits.", covers = false)))
 
   test("sites holding more bandits than the bank holds warbands are refused"):
@@ -110,4 +107,4 @@ class BanditPrinceSuite extends munit.FunSuite:
     val ready = bandited.warbandsInBank(p1, 0).ready
     val done = Outcomes.finished(play(ready, power, prince))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector.empty)
+    assertEquals(said(power, done.events), Vector.empty)

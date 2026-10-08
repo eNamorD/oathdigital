@@ -16,9 +16,6 @@ class ThreateningRoarSuite extends munit.FunSuite:
   private val wildMounts = CatalogNames.denizen("Wild Mounts")
   private val homesteaders = CatalogNames.denizen("Homesteaders")
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def discarded(cards: Vector[CardId]): NoteText.Said =
     NoteText.Said("discarded",
       s"Discarded ${cards.map(_.value).mkString(", ")}.", covers = true)
@@ -42,7 +39,7 @@ class ThreateningRoarSuite extends munit.FunSuite:
     assertEquals(after.cardsAt(nearSite), Vector[CardId](intact))
     assertEquals(after.cardsAt(awaySite), Vector[CardId](faeMerchant))
     assertEquals(replayed(ready, done.events), done.treeless)
-    assertEquals(said(done.events), Vector(discarded(inMapOrder(
+    assertEquals(said(power, done.events), Vector(discarded(inMapOrder(
       homeSite -> Vector(errandBoy), nearSite -> Vector(wildMounts, ruined)))))
 
   test("played to a site it discards itself with the rest"):
@@ -50,7 +47,7 @@ class ThreateningRoarSuite extends munit.FunSuite:
       .denizen(wildMounts, at = homeSite).ready
     val done = Outcomes.finished(fire(ready, power, hookAt(roar, homeSite)))
     assertEquals(Look(done.treeless).cardsAt(homeSite), Vector.empty)
-    assertEquals(said(done.events),
+    assertEquals(said(power, done.events),
       Vector(discarded(Vector(roar, wildMounts))))
 
   test("with nothing to discard it says so"):
@@ -58,5 +55,5 @@ class ThreateningRoarSuite extends munit.FunSuite:
       .denizen(homesteaders, at = homeSite).ready
     val done = Outcomes.finished(play(ready, power, roar))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector(NoteText.Said("none",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "Nothing was discarded.", covers = true)))
