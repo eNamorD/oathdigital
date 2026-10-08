@@ -139,6 +139,14 @@ private[frontend] object WorldBoardRenderer:
    BoardOptionViews.key(slot, s"$playerId:$at") +:
      Option.unless(card.hidden)(BoardOptions.cardKey(card)).toVector
 
+ /** The parked decision's badge for the option on `keys`, drawn inside
+   * `target`: what choosing it costs (travel destination and search source
+   * designs, ruling 3). */
+ private def badged(target: dom.Element, keys: Vector[String],
+     options: BoardOptions): Unit =
+   options.view(keys).flatMap(_.option.badge).foreach(badge =>
+     target.appendChild(text("span", "target-detail-badge", badge)))
+
  /** The World pane. `options` draws the parked board decision onto its
    * sites, cards, pawns, banks and banners.
    */
@@ -149,8 +157,13 @@ private[frontend] object WorldBoardRenderer:
    val panel = element("section", "panel world")
    panel.setAttribute("aria-label", "The World")
    panel.appendChild(text("h2", "", "The World"))
-   panel.appendChild(pileDisplay("World deck", value.worldDeckCount,
-     value.worldDeckTopCardKind))
+   // The world deck is a Search's source and Clay Rattle's pile.
+   val deckKeys = Vector(BoardOptionViews.key("deck", "world"))
+   val deck = pileDisplay("World deck", value.worldDeckCount,
+     value.worldDeckTopCardKind)
+   options.decorate(deck, deckKeys)
+   badged(deck, deckKeys, options)
+   panel.appendChild(deck)
    val regions = element("div", "regions")
    value.world.foreach { region =>
      val section = element("section", "region")
@@ -162,10 +175,12 @@ private[frontend] object WorldBoardRenderer:
      section.setAttribute("aria-label", name)
      section.appendChild(text("h3", "region-label", name))
      val discardTitle = s"$name discard pile"
-     section.appendChild(options.control(openablePile("Discard",
-       region.discardCount, region.discardTopCardKind, discardTitle,
-       region.discardCards),
-       Vector(BoardOptionViews.key("discard-pile", region.regionId)),
+     val discardKeys = Vector(BoardOptionViews.key("discard-pile",
+       region.regionId))
+     val discard = openablePile("Discard", region.discardCount,
+       region.discardTopCardKind, discardTitle, region.discardCards)
+     badged(discard, discardKeys, options)
+     section.appendChild(options.control(discard, discardKeys,
        Option.when(region.discardCount > 0)(discardTitle -> (anchor =>
          CardInspection.openCards(s"$discardTitle (${region.discardCount})",
            region.discardCards, anchor)))))
@@ -178,8 +193,7 @@ private[frontend] object WorldBoardRenderer:
        control.appendChild(siteHeading(site))
        // What reaching this site costs, or why it cannot be reached, comes
        // from the decision that offers it.
-       options.view(siteKeys).flatMap(_.option.badge).foreach(badge =>
-         control.appendChild(text("span", "target-detail-badge", badge)))
+       badged(control, siteKeys, options)
        val pawns = element("div", "site-pawns")
        value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>
          val marker = element("span", "pawn")

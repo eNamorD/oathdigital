@@ -35,7 +35,6 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     activePlayerResources = Some(ActivePlayerResourcesProjection(2, 1, 1, 2, 4, 4)),
     currentSiteResources = Some(CurrentSiteResourcesProjection("site:a", 1, 2)),
     actionSelectionOpen = true,
-    legalSearchSources = Vector(LegalSearchSourceProjection("region", Some("cradle"), 1)),
     worldDeckCount = 5,
     worldDeckTopCardKind = Some("denizen"),
     playerBoards = Vector(PlayerBoardProjection("red", 3, 2, 1, 1, 2, 4, 4,

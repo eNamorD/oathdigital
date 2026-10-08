@@ -40,10 +40,11 @@ class BoardHomesSuite extends munit.FunSuite:
     assert(has("banner", "peoples-favor"))
     assert(has("favor-bank", "beast"))
     assert(has("player", "red"))
+    assert(has("deck", "world"))
 
-  test("buttons, decks, absent things and hidden cards have none"):
+  test("buttons, other decks, absent things and hidden cards have none"):
     assert(!has("button", "finish"))
-    assert(!has("deck", "world"))
+    assert(!has("deck", "relic"))
     assert(!has("site", "nowhere"))
     assert(!has("adviser-slot", "red:3"))
     assert(!has("denizen", "hidden"))

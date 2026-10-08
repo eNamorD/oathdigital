@@ -1,5 +1,5 @@
 package oathdigital.frontend
-import oathdigital.protocol.{GameIntent => GameCommand, _}; import org.scalajs.dom
+import oathdigital.protocol.GameIntent => GameCommand; import org.scalajs.dom
 import ServerUiSupport._
 private[frontend] object ActionDecisionRenderer:
  /** The pane and the one line `ServerModeUi` keys the panel's focus reset
@@ -156,20 +156,13 @@ private[frontend] object ActionDecisionRenderer:
        val cancel = button("Cancel action", "modifier-cancel"); cancel.onclick = _ =>
          cancelModifiers(); panel.appendChild(cancel)
      else
-       val groups = new ActionSections; value.legalSearchSources.foreach { source =>
-         val label = source.kind match
-           case "world" => s"Search world deck (${source.supplyCost} Supply)"
-           case _ => s"Search ${source.region.getOrElse("regional")} discard " +
-             s"(${source.supplyCost} Supply)"
-         val search = button(label, "act-action search-action")
+       val groups = new ActionSections
+       if value.legalControls.contains("beginSearch") then
+         val search = button("Search", "act-action search-action")
          search.disabled = !canControl || !presentation.showGameplayControls
-         val key = source.kind match
-           case "world" => "search:world"
-           case _ => s"search:regional-discard:${source.region.getOrElse("")}"
-         search.onclick = _ => submitCommand(GameCommand.StartWalker(
-           "search", Vector.empty, Vector(WalkerStartArgWire("button", key))))
+         search.onclick = _ => submitCommand(
+           GameCommand.StartWalker("search", Vector.empty))
          groups.appendKind("search", search)
-       }
        if value.legalControls.contains("beginRecover") then
          val recover = button("Recover (1 Supply)", "act-action recover-action")
          recover.disabled = !canControl

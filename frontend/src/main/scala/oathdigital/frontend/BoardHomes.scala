@@ -2,7 +2,8 @@ package oathdigital.frontend
 
 /** Whether an option has a place on the table (board decisions design,
   * "Board home"): a site's box, a card or an empty slot in a site's row or
-  * on a player board, a revealed Vision spot, a discard pile, a banner, a
+  * on a player board, a revealed Vision spot, the world deck or a discard
+  * pile, a banner, a
   * favor bank, or a player's name and pawns. An option
   * with none is drawn in the Action panel. The rule mirrors the keys the
   * table's renderers hand `BoardOptions`, so a home here is an element there.
@@ -29,6 +30,9 @@ private[frontend] object BoardHomes:
       case "revealed-vision" =>
         value.playerBoards.exists(_.playerId == option.id)
       case "discard-pile" => value.world.exists(_.regionId == option.id)
+      // The world deck is drawn at the top of the World pane; no other deck
+      // is drawn.
+      case "deck" => option.id == "world"
       case "relic-slot" =>
         slot(option.id).exists((player, at) => value.playerBoards
           .exists(board => board.playerId == player &&

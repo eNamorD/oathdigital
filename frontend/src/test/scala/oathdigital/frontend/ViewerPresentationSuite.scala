@@ -100,8 +100,7 @@ class ViewerPresentationSuite extends FunSuite:
   test("inactive Act viewer sees no action-selection controls"):
     val value = twoSeatProjection(Set("beginRest"),
       phase = "act-action-selection")
-      .copy(actionSelectionOpen = true,
-        legalSearchSources = Vector(LegalSearchSource("world", None, 2)))
+      .copy(actionSelectionOpen = true)
     val inactive = ServerUiSupport.viewerPresentation(value, "blue-exile")
     val active = ServerUiSupport.viewerPresentation(value, "red-exile")
 

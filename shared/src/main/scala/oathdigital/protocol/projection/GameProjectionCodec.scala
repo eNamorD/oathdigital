@@ -12,7 +12,7 @@ object GameProjectionCodec:
   private val Fields = Set(
     "gameId", "nextSequence", "phase", "activeParticipantId", "players", "world",
     "pawnLocations", "legalControls", "ready", "completed", "activePlayerResources",
-    "currentSiteResources", "actionSelectionOpen", "legalSearchSources",
+    "currentSiteResources", "actionSelectionOpen",
     "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "banners", "minorActions",
     "favorBanks", "tracks",
@@ -44,8 +44,6 @@ object GameProjectionCodec:
     "currentSiteResources" -> option(value.currentSiteResources)(r => ujson.Obj(
       "siteId" -> r.siteId, "favor" -> r.favor, "secrets" -> r.secrets)),
     "actionSelectionOpen" -> value.actionSelectionOpen,
-    "legalSearchSources" -> encoded(value.legalSearchSources)(s => ujson.Obj(
-      "kind" -> s.kind, "region" -> stringOption(s.region), "supplyCost" -> s.supplyCost)),
     "worldDeckCount" -> value.worldDeckCount,
     "worldDeckTopCardKind" -> stringOption(value.worldDeckTopCardKind),
     "playerBoards" -> encoded(value.playerBoards)(encodeBoard),
@@ -96,8 +94,6 @@ object GameProjectionCodec:
     resources <- optionalAbsent(value, "activePlayerResources", path)(decodeResources)
     siteResources <- optionalAbsent(value, "currentSiteResources", path)(decodeSiteResources)
     actionOpen <- boolOr(value, "actionSelectionOpen", path, false)
-    sourceRaws <- default(value, "legalSearchSources", path, Vector.empty[ujson.Value])(array)
-    sources <- traverse(sourceRaws, s"$path.legalSearchSources")(decodeSearchSource)
     deckCount <- intOr(value, "worldDeckCount", path, 0)
     deckTop <- optionalAbsent(value, "worldDeckTopCardKind", path)(string)
     boardRaws <- default(value, "playerBoards", path, Vector.empty[ujson.Value])(array)
@@ -143,7 +139,6 @@ object GameProjectionCodec:
       case Some(_) => long(value, "logRevision", path).map(Some(_))
   yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen,
-    sources,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
     banks, tracks, relicDeck, preview,
     walkerDecision, walkerWaiting, phasePowers, viewer,
@@ -167,11 +162,6 @@ object GameProjectionCodec:
     v <- obj(raw, path); _ <- exact(v, Set("siteId", "favor", "secrets"), path)
     site <- string(v, "siteId", path); favor <- int(v, "favor", path); secrets <- int(v, "secrets", path)
   yield CurrentSiteResourcesProjection(site, favor, secrets)
-  private def decodeSearchSource(raw: ujson.Value, path: String): Result[LegalSearchSourceProjection] = for
-    v <- obj(raw, path); _ <- exact(v, Set("kind", "region", "supplyCost"), path)
-    kind <- string(v, "kind", path); region <- optionalString(v, "region", path)
-    cost <- int(v, "supplyCost", path)
-  yield LegalSearchSourceProjection(kind, region, cost)
   private def decodeOathkeeper(raw: ujson.Value, path: String): Result[OathkeeperProjection] = for
     v <- obj(raw, path); _ <- exact(v, Set("goal", "holderPlayerId", "side", "usurperLimited", "winnerPlayerId", "winnerVictoryKind"), path)
     goal <- string(v, "goal", path); holder <- optionalString(v, "holderPlayerId", path)
