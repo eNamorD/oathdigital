@@ -4,7 +4,8 @@ import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Refusals,
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p2, p3}
 import oathdigital.testkit.Unwrap.accepted
@@ -30,6 +31,11 @@ class TruthfulHarpSuite extends munit.FunSuite:
   private def known(transition: OathTransition, viewer: PlayerId)
       : Vector[WorldCardId] = SearchFixture.after(transition).knowledge
     .advisers.getOrElse(viewer, Vector.empty)
+
+  private val power = TruthfulHarp.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
 
   test("a Search draws two more cards, and every card drawn is revealed"):
     val top = discordCards.take(7)
@@ -79,14 +85,9 @@ class TruthfulHarpSuite extends munit.FunSuite:
       SearchFixture.staged(discordCards.take(7), supply = 5), harp,
       Orientation.FaceDown)
     assertEquals(start(facedown, onlyHarp).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power relic.truthful-harp is not applicable to this search")))
+      Some(Refusals.notApplicable(TruthfulHarp.id, "search")))
 
   // ---- Lines ----
-
-  private val power = TruthfulHarp.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the revealed hand is the Harp's line, in place of the peeks"):
     val top = discordCards.take(7)

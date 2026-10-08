@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
@@ -78,7 +79,9 @@ class ArcaneBrokersSuite extends munit.FunSuite:
   test("the Grand Scepter cannot be chosen"):
     val t = accepted(use(staged(Vector(scepter, whistle)).ready, ArcaneBrokers,
       source))
-    assert(answer(t, p1, ArcaneBrokers.decisionId, relicRef(scepter)).isLeft)
+    assertEquals(
+      answer(t, p1, ArcaneBrokers.decisionId, relicRef(scepter)).left.toOption,
+      Some(Refusals.notOffered(ArcaneBrokers.decisionId)))
 
   test("holding only the Grand Scepter, it asks nothing, discards nothing " +
       "and writes nothing"):
@@ -100,4 +103,5 @@ class ArcaneBrokersSuite extends munit.FunSuite:
   test("it is unusable without a favor"):
     val broke = staged(favor = 0).ready
     assert(!usableNow(broke).exists(_.power.id == ArcaneBrokers.id))
-    assert(use(broke, ArcaneBrokers, source).isLeft)
+    assertEquals(use(broke, ArcaneBrokers, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))

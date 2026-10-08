@@ -19,10 +19,13 @@ class TerrorSpellsSuite extends munit.FunSuite:
   private val giant = CatalogNames.site("Buried Giant")
 
   /** p1's Act at Ancient City beside Terror Spells, holding the Darkest
-    * Secret. Every board keeps the quiet table's 3 warbands. */
+    * Secret and the faceup secret that pays for it. p2 stands at Broken
+    * Peaks and p3 at Buried Giant. Every board holds 3 warbands. */
   private def staged: Table = Table.start.turn(p1, Phase.Act)
-    .pawn(p1, at = home).denizen(spells, at = home)
+    .pawn(p1, at = home).pawn(p2, at = peaks).pawn(p3, at = giant)
+    .denizen(spells, at = home).secrets(p1, faceUp = 1)
     .darkestSecret(Some(p1), 1)
+    .boardWarbands(p1, 3).boardWarbands(p2, 3).boardWarbands(p3, 3)
 
   private def killing(amounts: (DecisionOptionRef, Int)*): DecisionAnswer =
     DecisionAnswer.DistributeAnswer(amounts.toVector.map((ref, amount) =>

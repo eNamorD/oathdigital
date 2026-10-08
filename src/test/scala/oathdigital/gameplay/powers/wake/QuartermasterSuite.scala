@@ -1,32 +1,32 @@
 package oathdigital.gameplay.powers.wake
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
+  Refusals, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 
 class QuartermasterSuite extends munit.FunSuite:
   private val quartermaster = CatalogNames.denizen("Quartermaster")
   private val source = DecisionOptionRef.Denizen(quartermaster)
+  private val home = CatalogNames.site("Ancient City")
   private val far = CatalogNames.site("Deep Woods")
-  private val rules = new OathRules(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val rules = ActPowerHarness.rules()
 
   /** p1's Wake with `supply` Supply and Quartermaster at Deep Woods. p1 rules
-    * Deep Woods with one warband unless `ruled` is false. p1's pawn stays at
+    * Deep Woods with one warband unless `ruled` is false. p1's pawn stands at
     * Ancient City unless `pawnThere`. */
   private def staged(supply: Int, ruled: Boolean = true,
       pawnThere: Boolean = false): ReadyGame =
     val table = Table.start.turn(p1, Phase.Wake).supply(p1, supply)
+      .pawn(p1, if pawnThere then far else home)
       .denizen(quartermaster, at = far)
-    val held = if ruled then table.warbandsAt(far, p1, 1) else table
-    (if pawnThere then held.pawn(p1, far) else held).ready
+    (if ruled then table.warbandsAt(far, p1, 1) else table).ready
 
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
     ActionRef.UsePower(Quartermaster.id), p1, Vector.empty, Vector(source))
@@ -56,7 +56,8 @@ class QuartermasterSuite extends munit.FunSuite:
       "pawn there"):
     val ready = staged(supply = 3, ruled = false, pawnThere = true)
     assert(!offered(ready))
-    assert(use(ready).isLeft)
+    assertEquals(use(ready).left.toOption,
+      Some(Refusals.nothingToDo(Quartermaster.id, source)))
 
   test("its line names the Supply gained"):
     assertEquals(NoteText.said(Quartermaster,

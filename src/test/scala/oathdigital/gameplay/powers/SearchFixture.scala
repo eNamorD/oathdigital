@@ -8,8 +8,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Outcomes, PlacementPicks, Table,
-  TestCards}
+import oathdigital.testkit.{CatalogNames, Outcomes, PlacementPicks, PowerRules,
+  Table, TestCards}
 import oathdigital.testkit.Unwrap.accepted
 
 /** Drives a real Search through the rules, with the production walker powers,
@@ -22,8 +22,7 @@ object SearchFixture:
 
   private val walkerPowers: WalkerPowers = WalkerPowerCatalog.default(catalog)
 
-  val rules: OathRules = new OathRules(catalog,
-    walkerPowerCatalog = walkerPowers)
+  val rules: OathRules = PowerRules.withWalkerPowers
 
   def after(transition: OathTransition)(using munit.Location): ReadyGame =
     Outcomes.ready(transition.state)
@@ -32,7 +31,8 @@ object SearchFixture:
     * topped by `top`, with `supply` Supply.
     */
   def staged(top: Vector[WorldCardId], supply: Int): ReadyGame =
-    Table.start.worldDeckTop(top*).supply(actor, supply).ready
+    Table.start.pawn(actor, "Ancient City").worldDeckTop(top*)
+      .supply(actor, supply).ready
 
   /** Eight Discord denizens for the world deck. None is played faceup, so
     * no power of theirs applies.

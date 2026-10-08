@@ -39,6 +39,51 @@ class CircletOfCommandSuite extends munit.FunSuite:
       attacker: Boolean = false): Vector[DecisionOptionRef] =
     optionsAt(raidKind(circletSide, attacker), ActionRef.Campaign)
 
+  /** p1 challenges at Ancient City, where p2 stands holding People's Favor
+    * and, on `circletSide`, the Circlet. */
+  private def challenge(circletSide: Option[Orientation]): OathTransition =
+    val held = circletSide.fold(challengeTable)(side => challengeTable
+      .relic(p2, circlet, facedown = side == Orientation.FaceDown))
+    accepted(start(held.ready, ActionRef.Challenge, p1))
+
+  private def challengeBanners(circletSide: Option[Orientation])
+      : Vector[DecisionOptionRef] =
+    optionsAt(challenge(circletSide), ActionRef.Challenge)
+
+  private val conspiracy = VisionRules.Conspiracy
+
+  private val crackedHorn = CatalogNames.relic("Cracked Horn")
+
+  /** The game a Conspiracy walk ran on, the target options it parked on, and
+    * its events. */
+  private final case class ConspiracyWalk(ready: ReadyGame,
+      options: Vector[DecisionOptionRef], events: Vector[OathEvent])
+
+  /** p1 plays Conspiracy at Ancient City, where p2 stands holding Cracked
+    * Horn, the Circlet on `circletSide` and the People's Favor. */
+  private def conspiracyTargets(circletSide: Orientation): ConspiracyWalk =
+    val ready = Table.start.pawn(p1, at = "Ancient City")
+      .pawn(p2, at = "Ancient City").peoplesFavor(Some(p2), favor = 1).hand(p1, conspiracy)
+      .relic(p2, crackedHorn)
+      .relic(p2, circlet, facedown = circletSide == Orientation.FaceDown)
+      .ready
+    val hook = CardPlayedFaceup(conspiracy,
+      RuleSourceRef.Adviser(p1, conspiracy))
+    val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
+      Vector.empty)
+    val advanced = ProcedureWalker.advance(ready, hook, None, powers)
+    val parked = Outcomes.parked(advanced)
+    val decide = present(ProcedureWalker.parkedDecide(ready, hook, parked.tree,
+      powers), "the target decision")
+    ConspiracyWalk(ready,
+      as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref),
+      parked.events)
+
+  private val power = CircletOfCommand.forCatalog(catalog)
+
+  private def hidden(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
   test("a Raid may not target the holder's other relics or banners, but may " +
       "target the Circlet"):
     val RaidBoard(b, relic) = raidBoard()
@@ -63,17 +108,6 @@ class CircletOfCommandSuite extends munit.FunSuite:
 
   // ---- Challenge ----
 
-  /** p1 challenges at Ancient City, where p2 stands holding People's Favor
-    * and, on `circletSide`, the Circlet. */
-  private def challenge(circletSide: Option[Orientation]): OathTransition =
-    val held = circletSide.fold(challengeTable)(side => challengeTable
-      .relic(p2, circlet, facedown = side == Orientation.FaceDown))
-    accepted(start(held.ready, ActionRef.Challenge, p1))
-
-  private def challengeBanners(circletSide: Option[Orientation])
-      : Vector[DecisionOptionRef] =
-    optionsAt(challenge(circletSide), ActionRef.Challenge)
-
   test("a Challenge may name any banner: the Circlet protects only a " +
       "Campaign's targets"):
     val banner = (b: Banner) => DecisionOptionRef.Banner(b): DecisionOptionRef
@@ -81,34 +115,6 @@ class CircletOfCommandSuite extends munit.FunSuite:
       Set(banner(Banner.PeoplesFavor), banner(Banner.DarkestSecret)))
 
   // ---- Conspiracy ----
-
-  private val conspiracy = VisionRules.Conspiracy
-  private val crackedHorn = CatalogNames.relic("Cracked Horn")
-
-  /** The game a Conspiracy walk ran on, the target options it parked on, and
-    * its events. */
-  private final case class ConspiracyWalk(ready: ReadyGame,
-      options: Vector[DecisionOptionRef], events: Vector[OathEvent])
-
-  /** p1 plays Conspiracy at Ancient City, where p2 stands holding Cracked
-    * Horn, the Circlet on `circletSide` and the People's Favor. */
-  private def conspiracyTargets(circletSide: Orientation): ConspiracyWalk =
-    val ready = Table.start.pawn(p2, at = "Ancient City")
-      .peoplesFavor(Some(p2), favor = 1).hand(p1, conspiracy)
-      .relic(p2, crackedHorn)
-      .relic(p2, circlet, facedown = circletSide == Orientation.FaceDown)
-      .ready
-    val hook = CardPlayedFaceup(conspiracy,
-      RuleSourceRef.Adviser(p1, conspiracy))
-    val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
-      Vector.empty)
-    val advanced = ProcedureWalker.advance(ready, hook, None, powers)
-    val parked = Outcomes.parked(advanced)
-    val decide = present(ProcedureWalker.parkedDecide(ready, hook, parked.tree,
-      powers), "the target decision")
-    ConspiracyWalk(ready,
-      as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref),
-      parked.events)
 
   test("Conspiracy may take any of the holder's relics and banners"):
     val walk = conspiracyTargets(Orientation.FaceUp)
@@ -135,10 +141,6 @@ class CircletOfCommandSuite extends munit.FunSuite:
     assertEquals(restriction.fn(ctx, DecisionOptionRef.Site(SiteId("s"))), None)
 
   // ---- Lines ----
-
-  private val power = CircletOfCommand.forCatalog(catalog)
-  private def hidden(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the Raid targets the Circlet hides write no line"):
     // The relic, the People's Favor and the Darkest Secret are hidden, each

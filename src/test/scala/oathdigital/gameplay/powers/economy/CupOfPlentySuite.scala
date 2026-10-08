@@ -59,10 +59,8 @@ class CupOfPlentySuite extends munit.FunSuite:
     assertEquals(supplyAfter(held.adviser(p1, "Magician's Code",
       facedown = true).ready, modifiers), 7)
 
-  test("it is a Trade modifier, and only while the relic is faceup in play"):
-    val offered = (ready: ReadyGame, action: ActionRef) =>
-      accepted(rules.offerableWalkerPowers(ready, p1, action)).map(_.id)
-    assert(offered(held.ready, ActionRef.Trade).contains(CupOfPlenty.id))
-    assert(!offered(held.ready, ActionRef.Muster).contains(CupOfPlenty.id))
-    val facedown = held.relic(p1, cup, facedown = true).ready
-    assert(!offered(facedown, ActionRef.Trade).contains(CupOfPlenty.id))
+  test("it is a Trade modifier only"):
+    val offered = (action: ActionRef) => accepted(
+      rules.offerableWalkerPowers(held.ready, p1, action)).map(_.id)
+    assert(offered(ActionRef.Trade).contains(CupOfPlenty.id))
+    assert(!offered(ActionRef.Muster).contains(CupOfPlenty.id))

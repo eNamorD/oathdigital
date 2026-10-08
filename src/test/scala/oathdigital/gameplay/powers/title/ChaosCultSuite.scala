@@ -19,11 +19,12 @@ class ChaosCultSuite extends munit.FunSuite:
 
   /** p2 (the cultist) holds Chaos Cult, faceup unless told otherwise, and
     * `holder` holds the title. Each of `rulers` rules one site: the first
-    * Dunes, the second Fair Isle. Every player has 2 favor; it is p1's Act. */
+    * Dunes, the second Fair Isle. Every player has 2 favor; it is p1's Act,
+    * with p1's pawn at Ancient City. */
   private def staged(rulers: Vector[PlayerId], facedown: Boolean = false,
       holder: Option[PlayerId] = None): Table =
     rulers.zip(Vector("Dunes", "Fair Isle")).foldLeft(Table.start
-      .adviser(cultist, power.cardId, facedown = facedown)
+      .pawn(active, "Ancient City").adviser(cultist, power.cardId, facedown = facedown)
       .oathkeeper(holder)
       .favor(p1, 2).favor(p2, 2).favor(p3, 2)) { case (t, (ruler, site)) =>
         t.warbandsAt(site, ruler, 1) }

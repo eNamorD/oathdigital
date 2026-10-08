@@ -6,11 +6,11 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
-  WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
+  WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PowerRules, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
@@ -23,8 +23,7 @@ class LostTongueSuite extends munit.FunSuite:
   private val crackedHorn = CatalogNames.relic("Cracked Horn")
   private val power = LostTongue.forCatalog(catalog)
   private val raid = ChooseOneAnswer(DecisionOptionRef.Button("raid"))
-  private val parked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog))
+  private val parked = PowerRules.parkedUnderWalkerPowers
 
   private def notes(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
@@ -51,6 +50,57 @@ class LostTongueSuite extends munit.FunSuite:
     DecisionOptionRef.Relic(relic),
     DecisionOptionRef.Banner(Banner.PeoplesFavor),
     DecisionOptionRef.Banner(Banner.DarkestSecret))
+
+  private val conspiracy = VisionRules.Conspiracy
+
+  private val hook = CardPlayedFaceup(conspiracy,
+    RuleSourceRef.Adviser(p1, conspiracy))
+
+  private val powers = WalkerPowers.selected(
+    WalkerPowerCatalog.default(catalog), Vector.empty)
+
+  /** p1 plays Conspiracy at Ancient City, where p2 stands holding Lost Tongue
+    * faceup, the People's Favor with 2 favor, and Cracked Horn when
+    * `withRelic`. p1 holds a faceup nomad adviser when `nomad`. */
+  private def conspiracyAt(withRelic: Boolean = true, nomad: Boolean = false)
+      : ReadyGame =
+    val staged = Table.start.pawn(p1, at = "Ancient City")
+      .pawn(p2, at = "Ancient City").hand(p1, conspiracy)
+      .peoplesFavor(Some(p2), favor = 2).adviser(p2, tongue)
+    val holding = if withRelic then staged.relic(p2, crackedHorn) else staged
+    (if nomad then holding.adviser(p1, nomadCard) else holding).ready
+
+  /** The target options and the pending tree, both empty when nothing was
+    * asked, and the walk's events. */
+  private final case class ConspiracyTargets(
+      options: Vector[DecisionOptionRef], pending: Option[PendingTree],
+      events: Vector[OathEvent])
+
+  private def targets(ready: ReadyGame): ConspiracyTargets =
+    accepted(ProcedureWalker.advance(ready, hook, None, powers)) match
+      case WalkerOutcome.Parked(pending, events) =>
+        val decide = present(ProcedureWalker.parkedDecide(ready, hook, pending,
+          powers), "the target decision")
+        ConspiracyTargets(
+          as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref),
+          Some(pending), events)
+      case WalkerOutcome.Finished(_, events) =>
+        ConspiracyTargets(Vector.empty, None, events)
+
+  /** Answers p1's target decision with `ref` and returns the state after. */
+  private def take(ready: ReadyGame, ref: DecisionOptionRef): ReadyGame =
+    val pending = present(targets(ready).pending, "a target decision")
+    Outcomes.finished(ProcedureWalker.resolve(ready, hook, pending,
+      Answered(ConspiracyWhenPlayed.decisionId, ChooseOneAnswer(ref), p1),
+      powers)).treeless
+
+  /** p1 challenges at Ancient City, where p2 stands holding Lost Tongue and
+    * People's Favor; p1 holds a faceup nomad adviser when `nomad`. */
+  private def challengeBanners(nomad: Boolean): Vector[DecisionOptionRef] =
+    val table = challengeTable.adviser(p2, tongue)
+    val ready = (if nomad then table.adviser(p1, nomadCard) else table).ready
+    optionsAt(accepted(start(ready, ActionRef.Challenge, p1)),
+      ActionRef.Challenge)
 
   test("a Raid may not target the holder's relics or banners when the " +
       "attacker rules no nomad card"):
@@ -83,64 +133,28 @@ class LostTongueSuite extends munit.FunSuite:
     val withNomad = board.adviser(p1, nomadCard).ready
     val facedown = Table.start.adviser(p2, tongue, facedown = true)
       .relic(p2, crackedHorn).peoplesFavor(Some(p2), favor = 2).ready
-    def refused(state: ReadyGame, operation: CoreOperation): Boolean =
-      power.operationRestrictions.exists(_.reason(state, operation).nonEmpty)
+    def reasonFor(state: ReadyGame, operation: CoreOperation)
+        : Vector[OperationReason] =
+      power.operationRestrictions.flatMap(_.reason(state, operation))
     val mine = Location.PlayArea(p1)
     val theirs = Location.PlayArea(p2)
     val takeRelic = Take(Piece.Card(crackedHorn), p1, theirs, mine)
     val takeBanner = Take(Piece.Banner(Banner.PeoplesFavor), p1, theirs, mine)
-    assert(refused(ready, takeRelic))
-    assert(refused(ready, takeBanner))
-    assert(!refused(withNomad, takeRelic))
-    assert(!refused(withNomad, takeBanner))
-    assert(!refused(facedown, takeRelic))
-    assert(!refused(ready, Give(Piece.Card(crackedHorn), p2, theirs, mine)),
-      "a Give is not a Take")
-    assert(!refused(ready, Take(Piece.Favor(1), p1,
-      Location.OnBanner(Banner.PeoplesFavor), mine)),
+    val lostTongue = Vector(OperationReason("lost-tongue",
+      s"${p2.value}'s Lost Tongue keeps ${p1.value} from taking their " +
+        "relics and banners", OperationReasonKind.Impossible))
+    assertEquals(reasonFor(ready, takeRelic), lostTongue)
+    assertEquals(reasonFor(ready, takeBanner), lostTongue)
+    assertEquals(reasonFor(withNomad, takeRelic), Vector.empty)
+    assertEquals(reasonFor(withNomad, takeBanner), Vector.empty)
+    assertEquals(reasonFor(facedown, takeRelic), Vector.empty)
+    assertEquals(reasonFor(ready, Give(Piece.Card(crackedHorn), p2, theirs,
+      mine)), Vector.empty, "a Give is not a Take")
+    assertEquals(reasonFor(ready, Take(Piece.Favor(1), p1,
+      Location.OnBanner(Banner.PeoplesFavor), mine)), Vector.empty,
       "a banner's contents are not the banner")
 
   // ---- Conspiracy ----
-
-  private val conspiracy = VisionRules.Conspiracy
-  private val hook = CardPlayedFaceup(conspiracy,
-    RuleSourceRef.Adviser(p1, conspiracy))
-  private val powers = WalkerPowers.selected(
-    WalkerPowerCatalog.default(catalog), Vector.empty)
-
-  /** p1 plays Conspiracy at Ancient City, where p2 stands holding Lost Tongue
-    * faceup, the People's Favor with 2 favor, and Cracked Horn when
-    * `withRelic`. p1 holds a faceup nomad adviser when `nomad`. */
-  private def conspiracyAt(withRelic: Boolean = true, nomad: Boolean = false)
-      : ReadyGame =
-    val staged = Table.start.pawn(p2, at = "Ancient City").hand(p1, conspiracy)
-      .peoplesFavor(Some(p2), favor = 2).adviser(p2, tongue)
-    val holding = if withRelic then staged.relic(p2, crackedHorn) else staged
-    (if nomad then holding.adviser(p1, nomadCard) else holding).ready
-
-  /** The target options and the pending tree, both empty when nothing was
-    * asked, and the walk's events. */
-  private final case class ConspiracyTargets(
-      options: Vector[DecisionOptionRef], pending: Option[PendingTree],
-      events: Vector[OathEvent])
-
-  private def targets(ready: ReadyGame): ConspiracyTargets =
-    accepted(ProcedureWalker.advance(ready, hook, None, powers)) match
-      case WalkerOutcome.Parked(pending, events) =>
-        val decide = present(ProcedureWalker.parkedDecide(ready, hook, pending,
-          powers), "the target decision")
-        ConspiracyTargets(
-          as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref),
-          Some(pending), events)
-      case WalkerOutcome.Finished(_, events) =>
-        ConspiracyTargets(Vector.empty, None, events)
-
-  /** Answers p1's target decision with `ref` and returns the state after. */
-  private def take(ready: ReadyGame, ref: DecisionOptionRef): ReadyGame =
-    val pending = present(targets(ready).pending, "a target decision")
-    Outcomes.finished(ProcedureWalker.resolve(ready, hook, pending,
-      Answered(ConspiracyWhenPlayed.decisionId, ChooseOneAnswer(ref), p1),
-      powers)).treeless
 
   test("a Conspiracy is not offered the holder's banner, and writes no line"):
     val asked = targets(conspiracyAt())
@@ -169,14 +183,6 @@ class LostTongueSuite extends munit.FunSuite:
     assertEquals(asked.pending, None)
 
   // ---- Challenge ----
-
-  /** p1 challenges at Ancient City, where p2 stands holding Lost Tongue and
-    * People's Favor; p1 holds a faceup nomad adviser when `nomad`. */
-  private def challengeBanners(nomad: Boolean): Vector[DecisionOptionRef] =
-    val table = challengeTable.adviser(p2, tongue)
-    val ready = (if nomad then table.adviser(p1, nomadCard) else table).ready
-    optionsAt(accepted(start(ready, ActionRef.Challenge, p1)),
-      ActionRef.Challenge)
 
   test("a Challenge is not offered the holder's banner: its custody Take " +
       "would be refused"):

@@ -1,13 +1,12 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
 import oathdigital.testkit.Outcomes.ready
 import oathdigital.testkit.Unwrap.accepted
 
@@ -16,8 +15,7 @@ class WaysideInnSuite extends munit.FunSuite:
 
   private val inn = CatalogNames.denizen("Wayside Inn")
   private val source = DecisionOptionRef.Denizen(inn)
-  private val rules = new OathRules(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val rules = ActPowerHarness.rules()
   /** p1's Act at Ancient City with Wayside Inn at the site, `favor` favor
     * and `supply` Supply. */
   private def staged(favor: Int, supply: Int) =
@@ -42,7 +40,8 @@ class WaysideInnSuite extends munit.FunSuite:
     val broke = staged(favor = 0, supply = 2)
     assertEquals(PhasePowerProcedure.usable(catalog, broke, actor,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
-    assert(use(broke).isLeft)
+    assertEquals(use(broke).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))
 
   test("it is usable in the Act phase only"):
     val wake = inPhase(staged(favor = 3, supply = 2), Phase.Wake)

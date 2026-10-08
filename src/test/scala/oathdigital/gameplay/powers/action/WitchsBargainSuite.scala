@@ -24,6 +24,7 @@ class WitchsBargainSuite extends munit.FunSuite:
     .pawn(p1, at = home).denizen(bargain, at = home)
     .secrets(p1, faceUp = 3).favor(p1, 4)
     .pawn(p2, at = home).favor(p2, 3).secrets(p2, faceUp = 1, faceDown = 1)
+    .pawn(p3, at = "Buried Giant")
 
   /** Each walk in turn: Witch's Bargain used, then each answer p1 gave. */
   private def walksAnswering(ready: ReadyGame,
@@ -74,11 +75,14 @@ class WitchsBargainSuite extends munit.FunSuite:
       playerDecisionId -> DecisionOptionRef.Player(p3),
       exchangeDecisionId -> giveFavor,
       exchangeDecisionId -> stop)
-    assertEquals(offered(walks(1), p1), Some(Vector(
+    // walks(n) is the walk after n answers.
+    val afterChoosingP2 = walks(1)
+    val afterSwitching = walks(3)
+    assertEquals(offered(afterChoosingP2, p1), Some(Vector(
       "button" -> giveSecret.key, "button" -> giveFavor.key,
       "button" -> switch.key, "button" -> stop.key)))
-    assert(awaits(walks(3), playerDecisionId),
-      parked.parkedDecision(walks(3).state).toString)
+    assert(awaits(afterSwitching, playerDecisionId),
+      parked.parkedDecision(afterSwitching.state).toString)
     assert(backToActing(walks.last))
     val events = walks.flatMap(_.events)
     assertEquals(NoteText.said(WitchsBargain, events), Vector(
@@ -100,8 +104,9 @@ class WitchsBargainSuite extends munit.FunSuite:
     val stopped = walksAnswering(staged.ready, chooseP2,
       exchangeDecisionId -> stop)
     val alone = accepted(use(Table.start.turn(p1, Phase.Act)
-      .pawn(p1, at = home).denizen(bargain, at = home).ready, WitchsBargain,
-      source))
+      .pawn(p1, at = home).pawn(p2, at = "Broken Peaks")
+      .pawn(p3, at = "Buried Giant").denizen(bargain, at = home).ready,
+      WitchsBargain, source))
     assert(backToActing(stopped.last))
     assert(backToActing(alone))
     Vector(stopped.flatMap(_.events), alone.events).foreach(events =>

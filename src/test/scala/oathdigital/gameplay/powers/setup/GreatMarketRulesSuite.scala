@@ -16,6 +16,8 @@ class GreatMarketRulesSuite extends munit.FunSuite:
   private val banditSite = CatalogNames.site("Broken Peaks")
   private val marketSuit = catalog.suitOf(edifice).get
 
+  // The Setup walk is the subject (the edifice's effect runs when the walk
+  // reaches it), so these tests start from the fresh Setup, not a Table.
   private def stagedAt(side: EdificeSide): ReadyGame =
     Table.from(FirstGameSetupFixture.freshReady)
       .edifice(edifice, side, at = site).unchecked
@@ -31,6 +33,16 @@ class GreatMarketRulesSuite extends munit.FunSuite:
       ready.game.current.turn.activePlayer, Vector.empty))
     SetupWalkDriver.driveToCompletion(ready, tree, TriggeredProcedureRef.Setup,
       powers)
+
+  private def events(ready: ReadyGame): Vector[OathEvent] =
+    val tree = accepted(SetupProcedure.build(catalog, ready,
+      ready.game.current.turn.activePlayer, Vector.empty))
+    SetupWalkDriver.driveWithEvents(ready, tree, TriggeredProcedureRef.Setup,
+      powers).events
+
+  private val great = GreatMarket.forCatalog(catalog)
+
+  private val bandit = BanditMarket.forCatalog(catalog)
 
   test("Great Market places one favor per denizen in its region, itself included"):
     val staged = stagedAt(EdificeSide.Intact)
@@ -53,15 +65,6 @@ class GreatMarketRulesSuite extends munit.FunSuite:
       startingBank(suit) - (if suit == marketSuit then 2 else 1)))
 
   // ---- Lines ----
-
-  private def events(ready: ReadyGame): Vector[OathEvent] =
-    val tree = accepted(SetupProcedure.build(catalog, ready,
-      ready.game.current.turn.activePlayer, Vector.empty))
-    SetupWalkDriver.driveWithEvents(ready, tree, TriggeredProcedureRef.Setup,
-      powers).events
-
-  private val great = GreatMarket.forCatalog(catalog)
-  private val bandit = BanditMarket.forCatalog(catalog)
 
   test("Great Market writes the favor it placed, and where"):
     val staged = stagedAt(EdificeSide.Intact)

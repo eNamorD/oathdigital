@@ -12,16 +12,19 @@ object LeagueTreatyFixture:
     * Broken Peaks. */
   val treatySite: SiteId = CatalogNames.site("Ancient City")
 
-  /** p1's Act with League Treaty at Ancient City, ruled by one of `ruler`'s
-    * warbands, or by one bandit when `ruler` is unset. Each `(card, site,
-    * favor)` of `favored` stands faceup at that Cradle site with that much
-    * favor on it. Broken Peaks holds two secrets, so p2, waking after p1's
-    * Rest, has wealth to take and the Wake waits.
+  /** p1's Act with p1's pawn at Ancient City and League Treaty there, ruled
+    * by one of `ruler`'s warbands, or by one bandit when `ruler` is unset.
+    * Each `(card, site, favor)` of `favored` stands faceup at that Cradle site
+    * with that much favor on it. p2's pawn stands at Broken Peaks, which
+    * holds two secrets, so p2, waking after p1's Rest, has wealth to take and
+    * the Wake waits.
     */
   def leagueTreatyAct(ruler: Option[PlayerId],
     favored: (String, String, Int)*): Table =
-    val ruled = ruler.fold(Table.start.bandits(treatySite, 1))(
-      Table.start.warbandsAt(treatySite, _, 1))
+    val quiet = Table.start.pawn(Table.p1, treatySite)
+      .pawn(Table.p2, "Broken Peaks")
+    val ruled = ruler.fold(quiet.bandits(treatySite, 1))(
+      quiet.warbandsAt(treatySite, _, 1))
     favored.foldLeft(ruled.denizen(treatyCard, at = treatySite)
       .siteTokens("Broken Peaks", secrets = 2)) {
       case (table, (card, site, favor)) =>

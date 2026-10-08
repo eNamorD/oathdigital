@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.banner
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
-  PhasePowerHarness, Table}
+  PhasePowerHarness, Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p3}
 import oathdigital.testkit.Unwrap.accepted
@@ -50,10 +50,12 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
       "Ancient City")
     val parked = accepted(use(start, power, darkestSecretOption))
     assert(awaits(parked, power.decisionId))
-    assert(answer(parked, actor, power.decisionId,
-      pick(DecisionOptionRef.Site(ancientCity))).isLeft, "the pawn's own site")
-    assert(answer(parked, actor, power.decisionId,
-      pick(DecisionOptionRef.Site(deepWoods))).isLeft, "a site with no secret")
+    assertEquals(answer(parked, actor, power.decisionId,
+      pick(DecisionOptionRef.Site(ancientCity))).left.toOption,
+      Some(Refusals.notOffered(WanderingFlameMove.decisionId)))
+    assertEquals(answer(parked, actor, power.decisionId,
+      pick(DecisionOptionRef.Site(deepWoods))).left.toOption,
+      Some(Refusals.notOffered(WanderingFlameMove.decisionId)))
     val done = accepted(answer(parked, actor, power.decisionId,
       pick(DecisionOptionRef.Site(buriedGiant))))
     assert(backToActing(done))
@@ -74,16 +76,19 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
     val first = accepted(use(start, power, darkestSecretOption))
     val parked = accepted(answer(first, actor, power.decisionId,
       pick(DecisionOptionRef.Site(brokenPeaks))))
-    val second = use(after(parked), power, darkestSecretOption)
-    assert(second.isRight, second.toString)
+    val second = accepted(use(after(parked), power, darkestSecretOption))
+    // Only Buried Giant still holds a secret, so the pawn goes without a
+    // question.
+    assertEquals(Look(after(second)).pawn(actor), buriedGiant)
     assertEquals(after(parked).game.current.turn.usedPowers, Set.empty[PowerUseRef])
 
   test("it is unusable with no other site holding a secret, without the " +
       "banner, with the banner held by another player, or on the Festival " +
       "face, and usable with one other secret-bearing site"):
     assert(!usableIds(holdingFlameWithSiteSecrets()).contains(power.id))
-    assert(use(holdingFlameWithSiteSecrets(), power, darkestSecretOption)
-      .isLeft)
+    assertEquals(use(holdingFlameWithSiteSecrets(), power, darkestSecretOption)
+      .left.toOption,
+      Some(Refusals.nothingToDo(power.id, darkestSecretOption)))
     assert(!usableIds(holdingFlameWithSiteSecrets("Ancient City"))
       .contains(power.id), "only the pawn's own site")
     assert(usableIds(holdingFlameWithSiteSecrets("Broken Peaks"))
@@ -91,7 +96,8 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
     val notHeld = Table.start.turn(p1, Phase.Act).darkestSecret(None, 1)
       .siteTokens("Broken Peaks", secrets = 1).ready
     assert(!usableIds(notHeld).contains(power.id))
-    assert(use(notHeld, power, darkestSecretOption).isLeft)
+    assertEquals(use(notHeld, power, darkestSecretOption).left.toOption,
+      Some(Refusals.inaccessibleSource(power.id, darkestSecretOption)))
     val theirs = Table.start.turn(p1, Phase.Act).darkestSecret(Some(p3), 1)
       .siteTokens("Broken Peaks", secrets = 1).ready
     assert(!usableIds(theirs).contains(power.id))
@@ -99,7 +105,8 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
       .darkestSecret(Some(p1), 1, DarkestSecretFace.Festival)
       .siteTokens("Broken Peaks", secrets = 1).ready
     assert(!usableIds(festival).contains(power.id))
-    assert(use(festival, power, darkestSecretOption).isLeft)
+    assertEquals(use(festival, power, darkestSecretOption).left.toOption,
+      Some(Refusals.inaccessibleSource(power.id, darkestSecretOption)))
 
   test("it is usable in the Act phase only"):
     val wake = Table.start.turn(p1, Phase.Wake).darkestSecret(Some(p1), 1)

@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.ActPowerHarness.usableIds
 import oathdigital.testkit.Outcomes.ready
 import oathdigital.testkit.Table.{p2, p3}
@@ -46,9 +47,11 @@ class WhistleSuite extends munit.FunSuite:
     val start = Table.from(staged()).pawn(p3, "Ancient City").unchecked
     val parked = accepted(use(start, Whistle.id, whistle))
     assert(awaits(parked, Whistle.decisionId))
-    assert(choose(parked.state, Whistle.decisionId,
-      DecisionOptionRef.Player(p3)).isLeft)
-    assert(choose(parked.state, Whistle.decisionId, target).isRight)
+    assertEquals(choose(parked.state, Whistle.decisionId,
+      DecisionOptionRef.Player(p3)).left.toOption,
+      Some(Refusals.notOffered(Whistle.decisionId)))
+    val done = accepted(choose(parked.state, Whistle.decisionId, target))
+    assert(backToActing(done))
 
   test("with nobody to pull, the cost is paid and the secret stays"):
     val start = Table.from(staged()).pawn(p3, "Ancient City").pawn(p2,
@@ -69,7 +72,8 @@ class WhistleSuite extends munit.FunSuite:
   test("it is unusable without a secret"):
     assert(usableIds(staged()).contains(Whistle.id))
     assert(!usableIds(staged(secrets = 0)).contains(Whistle.id))
-    assert(use(staged(secrets = 0), Whistle.id, whistle).isLeft)
+    assertEquals(use(staged(secrets = 0), Whistle.id, whistle).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))
 
   test("it writes the pawn it pulled and the secret it gave"):
     val parked = accepted(use(staged(), Whistle.id, whistle))

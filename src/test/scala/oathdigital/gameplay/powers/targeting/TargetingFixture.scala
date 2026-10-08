@@ -7,7 +7,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
   WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Outcomes, PowerRules, Table}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Shared reading for the suites of the rules that keep a player from being
@@ -15,8 +15,7 @@ import oathdigital.testkit.Unwrap.{accepted, present}
   */
 object TargetingFixture:
   /** Rules with the walker power catalog, so the printed protections apply. */
-  val rules: OathRules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  val rules: OathRules = PowerRules.withWalkerPowers
   /** The Fortress edifice: Oaken Fortress intact, Rotting Fortress ruined. */
   val fortress: EdificeId = CatalogNames.edifice("Oaken Fortress")
   /** The relic whose holder's banners and relics cannot be targeted. */
@@ -26,7 +25,8 @@ object TargetingFixture:
     * and 4 facedown secrets) against p2, who stands there holding the
     * People's Favor with 2 favor. */
   val challengeTable: Table = Table.start
-    .favor(Table.p1, 6).secrets(Table.p1, faceUp = 6, faceDown = 4)
+    .pawn(Table.p1, at = "Ancient City").favor(Table.p1, 6)
+    .secrets(Table.p1, faceUp = 6, faceDown = 4)
     .peoplesFavor(Some(Table.p2), favor = 2)
     .pawn(Table.p2, at = "Ancient City")
 
@@ -52,3 +52,9 @@ object TargetingFixture:
   def start(state: ReadyGame, procedure: ActionRef, actor: PlayerId)
       : Either[OathViolation, OathTransition] =
     rules.startWalker(Ready(state), procedure, actor)
+
+  /** The decision a started walk is parked on, if any. */
+  def parkedOn(transition: OathTransition)(using munit.Location)
+      : Option[String] =
+    PowerRules.parkedUnderWalkerPowers.parkedDecision(transition.state)
+      .map(_.decision)

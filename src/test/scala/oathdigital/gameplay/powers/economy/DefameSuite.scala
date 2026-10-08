@@ -1,15 +1,13 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.economy.TradeProcedure
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
-  Look, Outcomes, PhasePowerHarness, Table}
+  Look, Outcomes, PhasePowerHarness, PowerRules, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
@@ -23,17 +21,18 @@ class DefameSuite extends munit.FunSuite:
   private val mercenaries = CatalogNames.denizen("Mercenaries")
   /** A plain Order denizen to Trade with instead. */
   private val wrestlers = CatalogNames.denizen("Wrestlers")
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
-  private val parked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerPowers
+  private val parked = PowerRules.parkedUnderWalkerPowers
 
   /** p1 at Ancient City beside Mercenaries and Wrestlers, holding Defame as
-    * a faceup adviser. Every board holds the start's 1 favor, and the
-    * Discord and Order banks hold 3 favor each. */
-  private def defameTable: Table = Table.start
+    * a faceup adviser, with 7 Supply and 1 faceup secret to pay a Trade for
+    * favor. Every board holds 1 favor, and the Discord and Order banks hold
+    * 3 favor each. */
+  private def defameTable: Table = Table.start.pawn(p1, at = home)
     .denizen(mercenaries, at = home).denizen(wrestlers, at = home)
-    .adviser(p1, defame).bankFavor(Suit.Discord, 3).bankFavor(Suit.Order, 3)
+    .adviser(p1, defame).supply(p1, 7).secrets(p1, faceUp = 1)
+    .favor(p1, 1).favor(p2, 1).favor(p3, 1)
+    .bankFavor(Suit.Discord, 3).bankFavor(Suit.Order, 3)
 
   /** p1 Trades for favor with Mercenaries, having selected Defame, and is
     * asked whose favor to burn. */

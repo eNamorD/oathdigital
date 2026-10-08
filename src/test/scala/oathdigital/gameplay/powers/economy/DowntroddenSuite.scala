@@ -19,17 +19,21 @@ class DowntroddenSuite extends munit.FunSuite:
   /** `table` with every favor bank holding `each`, except as `banks` sets. */
   private def banksHolding(table: Table, each: Int, banks: (Suit, Int)*)
       : Table =
-    val even = Suit.all.foldLeft(table)((t, suit) => t.bankFavor(suit, each))
-    banks.foldLeft(even) { case (t, (suit, n)) => t.bankFavor(suit, n) }
+    val except = banks.toMap
+    table.banksHoldingOnly(Suit.all.map(suit =>
+      suit -> except.getOrElse(suit, each))*)
 
   /** p1 holds Downtrodden (Discord) as a faceup adviser and stands at
-    * Ancient City with Errand Boy. Every favor bank holds 3, except as
-    * `banks` sets. p1 has the start's 1 favor, 3 warbands and 7 Supply. */
+    * Ancient City, with 1 favor, 3 warbands and 7 Supply to pay a Muster. */
+  private def seatedAtHome: Table = Table.start.adviser(p1, downtrodden)
+    .pawn(p1, at = "Ancient City").favor(p1, 1).boardWarbands(p1, 3)
+    .supply(p1, 7)
+
+  /** `seatedAtHome` beside Errand Boy. Every favor bank holds 3, except as
+    * `banks` sets. */
   private def board(banks: (Suit, Int)*): ReadyGame =
-    val seated = Table.start.adviser(p1, downtrodden)
-      .pawn(p1, at = "Ancient City").denizen(beast, at = "Ancient City")
-      .boardWarbands(p1, 3).supply(p1, 7)
-    banksHolding(seated, 3, banks*).ready
+    banksHolding(seatedAtHome.denizen(beast, at = "Ancient City"), 3,
+      banks*).ready
 
   /** Musters from Errand Boy. */
   private def muster(ready: ReadyGame, selected: Vector[PowerId])
@@ -42,13 +46,13 @@ class DowntroddenSuite extends munit.FunSuite:
     val ready = board(Suit.Beast -> 1)
     val done = muster(ready, modifiers)
     val result = done.result
-    // 3 at the start, 1 the Muster gains, 2 Downtrodden adds.
+    // 3 on the board, 1 the Muster gains, 2 Downtrodden adds.
     assertEquals(Look(result).boardWarbands(p1), 3 + 1 + 2)
     assertEquals(ActPowerHarness.replayed(rules, ready, done.journal.events),
       result)
     assertWireRoundTrips(done.journal.events)
 
-  // Every `3 + 1` below is the start's 3 warbands and the 1 the Muster gains,
+  // Every `3 + 1` below is the board's 3 warbands and the 1 the Muster gains,
   // without Downtrodden's 2.
 
   test("a tie for least gives nothing, empty banks included"):
@@ -77,8 +81,7 @@ class DowntroddenSuite extends munit.FunSuite:
     // Every bank holds 2, so Hearth, Village Idiot's suit, ties for least.
     // Village Idiot then takes 1 from the Hearth bank, which must not make
     // the bank the strict least before Downtrodden reads it.
-    val seated = Table.start.adviser(p1, downtrodden)
-      .pawn(p1, at = "Ancient City").denizen(idiot, at = "Ancient City")
+    val seated = seatedAtHome.denizen(idiot, at = "Ancient City")
     val ready = banksHolding(seated, 2).ready
     // The order the player selects them in must not matter.
     Vector(Downtrodden.id, VillageIdiot.id).permutations.foreach: selected =>

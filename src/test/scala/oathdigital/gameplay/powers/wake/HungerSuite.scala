@@ -11,7 +11,7 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted,
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, Answers, Look, Outcomes,
-  PhasePowerHarness, Situation, Table}
+  PhasePowerHarness, Refusals, Situation, Table}
 import oathdigital.testkit.Table.{p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -34,7 +34,7 @@ class HungerSuite extends munit.FunSuite:
       .adviser(p2, card, facedown = orientation == Orientation.FaceDown)
       .adviser(p2, "Wrestlers")
       .adviser(p3, "Rain Boots")
-      .pawn(p3, at = "Broken Peaks")
+      .pawn(p2, at = "Broken Peaks").pawn(p3, at = "Broken Peaks")
       .ready
 
   /** p3's Rain Boots with 1 favor and 2 secrets on it. Set on the
@@ -70,11 +70,13 @@ class HungerSuite extends munit.FunSuite:
       })
     assertEquals(parked.parkedDecision(t.state).map(_.decision),
       Some(Hunger.decisionId))
-    assertEquals(PhasePowerHarness.offered(t, next).map(_.map(_._1).distinct),
-      Some(Vector("adviser-slot")))
-    assertEquals(PhasePowerHarness.offered(t, next).map(_.size),
-      Some(expected.size))
-    assert(rules.startWalker(t.state, PhaseTransitionRef.EndWake, next).isLeft)
+    assertEquals(PhasePowerHarness.offered(t, next),
+      Some(expected.map(slot => slot.kind -> slot.wireId)))
+    assertEquals(
+      rules.startWalker(t.state, PhaseTransitionRef.EndWake,
+        next).left.toOption,
+      Some(OathViolation.InvalidEventOrder("a walker procedure is already " +
+        "pending")))
     assert(PhasePowerProcedure.usable(catalog, now, next, phasePowers, WalkerPowers.empty)
       .forall(_.power.id != Hunger.id))
 
@@ -104,13 +106,15 @@ class HungerSuite extends munit.FunSuite:
 
   test("a slot that is not offered is rejected"):
     val t = rested(staged())
-    assert(bury(t, DecisionOptionRef.AdviserSlot(actor, 0)).isLeft)
+    assertEquals(bury(t, DecisionOptionRef.AdviserSlot(actor, 0)).left.toOption,
+      Some(Refusals.notOffered(Hunger.decisionId)))
 
   test("with nothing to bury, Hunger says so and Wake goes on"):
     // p2 wakes alone at Broken Peaks, holding only Hunger. The site's two
     // secrets give p2 a Wake option, so the Wake goes on once Hunger is done.
     val alone = Table.start
-      .adviser(p2, card)
+      .pawn(Table.p1, at = "Ancient City").pawn(p2, at = "Broken Peaks")
+      .pawn(p3, at = "Buried Giant").adviser(p2, card)
       .siteTokens("Broken Peaks", secrets = 2)
       .ready
     val t = rested(alone)
@@ -127,6 +131,8 @@ class HungerSuite extends munit.FunSuite:
     assert(t.events.contains(WalkerCompleted(PhaseTransitionRef.EndWake)))
 
   test("a Hunger revealed in Setup's Reveal Cards runs at the first Wake"):
+    // Replays Setup from its first command on purpose: Setup's Reveal Cards
+    // is the subject.
     val ParkedServiceFixture.ChronicleWithDeckTop(chronicle, orders) =
       ParkedServiceFixture.withWorldDeckTop(FirstGameSetupFixture.chronicle,
         FirstGameSetupFixture.orders, Vector(card))

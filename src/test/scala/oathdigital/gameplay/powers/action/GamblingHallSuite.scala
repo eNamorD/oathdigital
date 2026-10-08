@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, PowerNoted}
+import oathdigital.gameplay.powers.PowerFixture
+import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
+  PhasePowerHarness, Refusals, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -12,8 +12,7 @@ class GamblingHallSuite extends munit.FunSuite:
   import ActPowerHarness._
   import PowerFixture._
 
-  private val walkerParked = new ParkedDecisionAssertions(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val walkerParked = PhasePowerHarness.parked
 
   private val hall = CatalogNames.denizen("Gambling Hall")
   private val source = DecisionOptionRef.Denizen(hall)
@@ -28,6 +27,11 @@ class GamblingHallSuite extends munit.FunSuite:
 
   private val total4 = defenseDice(DefenseDieFace.OneShield,
     DefenseDieFace.OneShield, DefenseDieFace.TwoShields, DefenseDieFace.Blank)
+
+  private val card = PowerSourceRef.Card(hall)
+
+  private def notes(events: Vector[OathEvent]): Vector[PowerNoted] =
+    events.collect { case noted: PowerNoted => noted }
 
   test("the bank question says how much the roll won"):
     // The take is not a choice of amount: the power gains the whole total
@@ -94,16 +98,16 @@ class GamblingHallSuite extends munit.FunSuite:
   test("a bank the decision does not offer is rejected"):
     val rules0 = rules(total4)
     val parked = accepted(use(rules0, staged(), GamblingHall.id, source))
-    assert(answer(rules0, parked.state, GamblingHall.decisionId,
-      DecisionOptionRef.Button("elsewhere")).isLeft)
+    assertEquals(answer(rules0, parked.state, GamblingHall.decisionId,
+      DecisionOptionRef.Button("elsewhere")).left.toOption,
+      Some(Refusals.notOffered(GamblingHall.decisionId)))
 
   test("it is unusable without 2 favor"):
     assert(!usableIds(staged(favor = 1)).contains(GamblingHall.id))
-    assert(use(rules(total4), staged(favor = 1), GamblingHall.id, source).isLeft)
-
-  private val card = PowerSourceRef.Card(hall)
-  private def notes(events: Vector[OathEvent]): Vector[PowerNoted] =
-    events.collect { case noted: PowerNoted => noted }
+    assertEquals(
+      use(rules(total4), staged(favor = 1), GamblingHall.id,
+        source).left.toOption,
+      Some(OathViolation.InsufficientFavor(2, 1)))
 
   test("it notes its roll, then what it gained, each covering the generic line"):
     val rules0 = rules(total4)

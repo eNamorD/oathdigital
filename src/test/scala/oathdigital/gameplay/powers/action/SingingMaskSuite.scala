@@ -55,10 +55,13 @@ class SingingMaskSuite extends munit.FunSuite:
     val walks = walksAnswering(ready, chooseErrandBoy,
       directionDecisionId -> pick(toBanner),
       amountDecisionId -> DecisionAnswer.ChooseAmountAnswer(2))
-    assert(awaits(walks(1), directionDecisionId),
-      parked.parkedDecision(walks(1).state).toString)
-    assert(awaits(walks(2), amountDecisionId),
-      parked.parkedDecision(walks(2).state).toString)
+    // walks(n) is the walk after n answers.
+    val afterChoosingCard = walks(1)
+    val afterDirection = walks(2)
+    assert(awaits(afterChoosingCard, directionDecisionId),
+      parked.parkedDecision(afterChoosingCard.state).toString)
+    assert(awaits(afterDirection, amountDecisionId),
+      parked.parkedDecision(afterDirection.state).toString)
     assert(backToActing(walks.last))
     val end = after(walks.last)
     assertEquals((Look(end).bankFavor(Suit.Beast), favorOnBanner(end)), (1, 3))
@@ -75,8 +78,10 @@ class SingingMaskSuite extends munit.FunSuite:
       chooseErrandBoy).last
     assert(awaits(chosen, amountDecisionId),
       parked.parkedDecision(chosen.state).toString)
-    assert(answer(chosen, p1, amountDecisionId,
-      DecisionAnswer.ChooseAmountAnswer(2)).isLeft)
+    assertEquals(answer(chosen, p1, amountDecisionId,
+      DecisionAnswer.ChooseAmountAnswer(2)).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        s"decision $amountDecisionId amount 2 is outside 0..1")))
     val done = accepted(answer(chosen, p1, amountDecisionId,
       DecisionAnswer.ChooseAmountAnswer(1)))
     val end = after(done)

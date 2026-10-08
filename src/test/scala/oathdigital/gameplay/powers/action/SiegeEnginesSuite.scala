@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -100,9 +101,12 @@ class SiegeEnginesSuite extends munit.FunSuite:
 
   test("a site outside the actor's region is refused"):
     val t = accepted(use(staged(), SiegeEngines, source))
-    assert(answer(t, actor, SiegeEngines.decisionId, choose(faraway)).isLeft)
+    assertEquals(
+      answer(t, actor, SiegeEngines.decisionId, choose(faraway)).left.toOption,
+      Some(Refusals.notOffered(SiegeEngines.decisionId)))
 
   test("it is unusable without a favor to place"):
     val ready = staged(favor = 0)
     assert(!usableNow(ready).exists(_.power.id == SiegeEngines.id))
-    assert(use(ready, SiegeEngines, source).isLeft)
+    assertEquals(use(ready, SiegeEngines, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))

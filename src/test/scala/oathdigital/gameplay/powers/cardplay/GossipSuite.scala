@@ -34,6 +34,11 @@ class GossipSuite extends munit.FunSuite:
   private def discordBank(ready: ReadyGame): Int =
     ready.banks.favor.getOrElse(Suit.Discord, 0)
 
+  private val power = Gossip.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
   test("another player's facedown play gains the holder 1 favor from the " +
       "Discord bank"):
     val ready = held(plain)
@@ -77,10 +82,6 @@ class GossipSuite extends munit.FunSuite:
     assertEquals(favor(after, holder), favor(ready, holder))
 
   // ---- Lines ----
-
-  private val power = Gossip.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the favor another player's facedown play gains is Gossip's line"):
     val done = play(held(plain), Vector.empty, plain.head, PlayedAs.Facedown)

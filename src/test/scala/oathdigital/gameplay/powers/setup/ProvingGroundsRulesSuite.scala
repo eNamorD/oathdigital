@@ -19,6 +19,8 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
   private val otherDenizens = Vector("Threatening Roar", "Fae Merchant")
     .map(CatalogNames.denizen(_))
 
+  // The Setup walk is the subject (the edifice's effect runs when the walk
+  // reaches it), so these tests start from the fresh Setup, not a Table.
   private def stagedAt(side: EdificeSide, at: SiteId = site): ReadyGame =
     Table.from(FirstGameSetupFixture.freshReady).edifice(edifice, side, at = at)
       .unchecked
@@ -29,6 +31,22 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
     SetupWalkDriver.driveToCompletion(ready, tree, TriggeredProcedureRef.Setup,
       powers)
 
+  /** Empty Grounds' site with two denizens beside it. The fixture's region
+    * holds no other card, so without them there is nothing to discard. */
+  private def withOtherDenizens: ReadyGame =
+    otherDenizens.foldLeft(Table.from(stagedAt(EdificeSide.Ruined)))(
+      _.denizen(_, at = site)).unchecked
+
+  private def events(ready: ReadyGame): Vector[OathEvent] =
+    val tree = accepted(SetupProcedure.build(catalog, ready,
+      ready.game.current.turn.activePlayer, Vector.empty))
+    SetupWalkDriver.driveWithEvents(ready, tree, TriggeredProcedureRef.Setup,
+      powers).events
+
+  private val proving = ProvingGrounds.forCatalog(catalog)
+
+  private val empty = EmptyGrounds.forCatalog(catalog)
+
   test("Proving Grounds gives the placing player three warbands"):
     val staged = stagedAt(EdificeSide.Intact)
     assert(PlayerFacts.forceKind(staged, firstPlayer).isRight,
@@ -36,12 +54,6 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
     val before = Look(staged).boardWarbands(firstPlayer)
     val finished = finish(staged)
     assertEquals(Look(finished).boardWarbands(firstPlayer), before + 3)
-
-  /** Empty Grounds' site with two denizens beside it. The fixture's region
-    * holds no other card, so without them there is nothing to discard. */
-  private def withOtherDenizens: ReadyGame =
-    otherDenizens.foldLeft(Table.from(stagedAt(EdificeSide.Ruined)))(
-      _.denizen(_, at = site)).unchecked
 
   test("Empty Grounds discards every other denizen in its region"):
     val staged = withOtherDenizens
@@ -56,15 +68,6 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
       EdificeSide.Ruined, Tokens.empty)))
 
   // ---- Lines ----
-
-  private def events(ready: ReadyGame): Vector[OathEvent] =
-    val tree = accepted(SetupProcedure.build(catalog, ready,
-      ready.game.current.turn.activePlayer, Vector.empty))
-    SetupWalkDriver.driveWithEvents(ready, tree, TriggeredProcedureRef.Setup,
-      powers).events
-
-  private val proving = ProvingGrounds.forCatalog(catalog)
-  private val empty = EmptyGrounds.forCatalog(catalog)
 
   test("Proving Grounds writes the warbands its player gained"):
     val staged = stagedAt(EdificeSide.Intact)

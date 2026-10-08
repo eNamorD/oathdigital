@@ -17,7 +17,7 @@ class TyrantSuite extends munit.FunSuite:
   /** The actor holds Tyrant faceup, at Buried Giant, the Cradle's plains,
     * and the coast is set by `atCoast`. */
   private def holdingTyrant(atCoast: Table => Table): ReadyGame =
-    atCoast(Table.from(board(supply = 7)).adviser(actor, tyrant)).unchecked
+    on(board(supply = 7))(table => atCoast(table.adviser(actor, tyrant)))
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(Tyrant.id, Tyrant.noteKeys, events)
@@ -52,8 +52,8 @@ class TyrantSuite extends munit.FunSuite:
 
   test("an empty destination, or another player's Tyrant, kills nothing"):
     val emptyCoast = holdingTyrant(_.bandits(coast, 0))
-    val rivalHolds = Table.from(board(supply = 7)).adviser(rival, tyrant)
-      .warbandsAt(coast, rival, 2).unchecked
+    val rivalHolds = on(board(supply = 7))(_.adviser(rival, tyrant)
+      .warbandsAt(coast, rival, 2))
     Vector(emptyCoast, rivalHolds).foreach { ready =>
       val done = accepted(travel(ready, coast))
       assert(!PhasePowerHarness.ops(done.events).exists(_.isInstanceOf[Kill]))

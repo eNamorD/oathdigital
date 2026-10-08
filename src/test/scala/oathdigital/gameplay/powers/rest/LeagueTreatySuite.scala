@@ -1,22 +1,19 @@
 package oathdigital.gameplay.powers.rest
 
-import oathdigital.gameplay._
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Outcomes}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Outcomes,
+  PowerRules}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
 class LeagueTreatySuite extends munit.FunSuite:
   import LeagueTreatyFixture._
 
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
-  private val walkerParked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerPowers
+  private val walkerParked = PowerRules.parkedUnderWalkerPowers
 
   private def bank(suit: Suit) = DecisionOptionRef.FavorBank(suit)
   private def banks(state: OathState) = Outcomes.ready(state).banks.favor
@@ -41,6 +38,11 @@ class LeagueTreatySuite extends munit.FunSuite:
     assertNotEquals(next, resting)
     walkerParked.assertResumed(state, Phase.Wake, next)
 
+  private val power = LeagueTreatyContribution.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
   test("a bandit-ruled treaty site, or a region without card favor, asks " +
       "nothing"):
     Vector(leagueTreatyAct(None, example*).ready,
@@ -62,7 +64,9 @@ class LeagueTreatySuite extends munit.FunSuite:
     walkerParked.assertParked(parked.state, PhaseTransitionRef.FinishRest,
       destination, owner)
     val decline = DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("decline"))
-    assert(rules.resolveWalker(parked.state, p1, destination, decline).isLeft)
+    assertEquals(
+      rules.resolveWalker(parked.state, p1, destination, decline).left.toOption,
+      Some(OathViolation.WrongPlayer(owner, p1)))
     val declined = accepted(
       rules.resolveWalker(parked.state, owner, destination, decline))
     assertWake(declined.state, p1)
@@ -147,10 +151,6 @@ class LeagueTreatySuite extends munit.FunSuite:
     }
 
   // ---- Lines ----
-
-  private val power = LeagueTreatyContribution.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the treaty's line says how much favor the ruler sent to one bank"):
     val owner = p2 // off p1's turn

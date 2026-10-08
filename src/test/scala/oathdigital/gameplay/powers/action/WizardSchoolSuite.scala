@@ -1,10 +1,9 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
+  PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -12,8 +11,7 @@ class WizardSchoolSuite extends munit.FunSuite:
   import ActPowerHarness._
   import PowerFixture._
 
-  private val walkerParked = new ParkedDecisionAssertions(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val walkerParked = PhasePowerHarness.parked
 
   private val school = CatalogNames.denizen("Wizard School")
   private val source = DecisionOptionRef.Denizen(school)
@@ -39,7 +37,8 @@ class WizardSchoolSuite extends munit.FunSuite:
   test("it is unusable without a favor"):
     val broke = staged(favor = 0)
     assert(!usableIds(broke).contains(WizardSchool.id))
-    assert(use(rules(), broke, WizardSchool.id, source).isLeft)
+    assertEquals(use(rules(), broke, WizardSchool.id, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))
 
   test("it writes the gain, covering the generic line, then the phase's end"):
     val done = accepted(use(rules(), staged(), WizardSchool.id, source))

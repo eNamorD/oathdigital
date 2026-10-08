@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
@@ -64,7 +65,9 @@ class RelicBreakerSuite extends munit.FunSuite:
   test("the Grand Scepter cannot be chosen"):
     val t = accepted(use(staged(Vector(scepter, whistle)).ready, RelicBreaker,
       source))
-    assert(answer(t, p1, RelicBreaker.decisionId, relicRef(scepter)).isLeft)
+    assertEquals(
+      answer(t, p1, RelicBreaker.decisionId, relicRef(scepter)).left.toOption,
+      Some(Refusals.notOffered(RelicBreaker.decisionId)))
 
   test("holding only the Grand Scepter, it asks nothing and writes nothing"):
     val ready = staged(Vector(scepter)).ready

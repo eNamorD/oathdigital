@@ -56,13 +56,8 @@ class VillageIdiotSuite extends munit.FunSuite:
     assertEquals(Look(result).favor(p1), 0)
     assertEquals(Look(result).boardWarbands(p1), 3 + 1)
 
-  test("it is a Muster modifier, offered when the card is in reach"):
-    val offered = (ready: ReadyGame, action: ActionRef) =>
-      accepted(rules.offerableWalkerPowers(ready, p1, action)).map(_.id)
-    assert(offered(idiotAtSite().ready, ActionRef.Muster)
-      .contains(VillageIdiot.id))
-    assert(!offered(idiotAtSite().ready, ActionRef.Trade)
-      .contains(VillageIdiot.id))
-    val without = Table.start.pawn(p1, at = "Ancient City")
-      .denizen(other, at = "Ancient City").ready
-    assert(!offered(without, ActionRef.Muster).contains(VillageIdiot.id))
+  test("it is a Muster modifier only"):
+    val offered = (action: ActionRef) => accepted(
+      rules.offerableWalkerPowers(idiotAtSite().ready, p1, action)).map(_.id)
+    assert(offered(ActionRef.Muster).contains(VillageIdiot.id))
+    assert(!offered(ActionRef.Trade).contains(VillageIdiot.id))

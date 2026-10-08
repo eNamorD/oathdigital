@@ -32,12 +32,9 @@ class RovingTerrorSuite extends munit.FunSuite:
     .denizen(errandBoy, at = peaks)
 
   /** The walk Roving Terror started and the walk after `ref` was chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition)
-
-  private def choose(ready: ReadyGame, ref: DecisionOptionRef): Chosen =
-    val started = accepted(use(ready, power, source))
-    Chosen(started, accepted(answer(started, p1, RovingTerror.decisionId,
-      pick(ref))))
+  private def choose(ready: ReadyGame, ref: DecisionOptionRef): UsedAndAnswered =
+    useAndAnswer(ready, power, source,
+      RovingTerror.decisionId, ref)
 
   test("it places a secret and offers the faceup denizens and ruined " +
       "edifices at the other sites, not its own site's or an intact edifice"):
@@ -53,7 +50,7 @@ class RovingTerrorSuite extends munit.FunSuite:
       "moves there with its secret"):
     val ready = staged.tokens(errandBoy, favor = 1, secrets = 1)
       .bankFavor(Suit.Beast, 2).ready
-    val Chosen(t, done) = choose(ready, DecisionOptionRef.Denizen(errandBoy))
+    val UsedAndAnswered(t, done) = choose(ready, DecisionOptionRef.Denizen(errandBoy))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = Look(after(done))
     assertEquals(end.cardsAt(peaks), Vector[CardId](terror))
@@ -72,7 +69,7 @@ class RovingTerrorSuite extends munit.FunSuite:
 
   test("a ruined edifice goes to the bottom of the edifice deck"):
     val ready = staged.edifice(debate, EdificeSide.Ruined, at = giant).ready
-    val Chosen(_, done) = choose(ready, DecisionOptionRef.Edifice(debate))
+    val UsedAndAnswered(_, done) = choose(ready, DecisionOptionRef.Edifice(debate))
     val end = after(done)
     assertEquals(Look(end).cardsAt(giant), Vector[CardId](terror))
     assertEquals(end.game.current.commonCards.edificeDeck.lastOption,
@@ -93,4 +90,5 @@ class RovingTerrorSuite extends munit.FunSuite:
   test("it is unusable without a secret"):
     val broke = staged.secrets(p1, 0).ready
     assert(!usableNow(broke).exists(_.power.id == RovingTerror.id))
-    assert(use(broke, power, source).isLeft)
+    assertEquals(use(broke, power, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))

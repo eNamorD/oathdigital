@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerDice}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
+import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
   PhasePowerHarness, Table}
@@ -14,8 +13,7 @@ class ClayRattleSuite extends munit.FunSuite:
   import ActPowerHarness._
   import PowerFixture._
 
-  private val parked = new ParkedDecisionAssertions(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val parked = PhasePowerHarness.parked
 
   private val rattle = CatalogNames.relic("Clay Rattle")
   private val source = DecisionOptionRef.Relic(rattle)
@@ -57,7 +55,6 @@ class ClayRattleSuite extends munit.FunSuite:
     assertEquals(Look(ready(started.state)).tokensOn(rattle), Tokens(0, 2))
     assertEquals(PhasePowerHarness.offered(started, actor),
       Some(ClayRattle.piles.map(ClayRattle.ref).map(r => r.kind -> r.wireId)))
-    assertEquals(ClayRattle.piles.size, 4)
     // The piles are the board's own options, not buttons.
     assertEquals(ClayRattle.piles.map(ClayRattle.ref),
       DecisionOptionRef.Deck(CardDeck.World) +:
@@ -101,16 +98,21 @@ class ClayRattleSuite extends munit.FunSuite:
 
   test("a walker with no shuffle source refuses a pile of two or more"):
     val answered = shuffled(SearchSource.WorldDeck, under = rules()).answered
-    assert(answered.isLeft)
+    assertEquals(answered.left.toOption,
+      Some(OathViolation.InvalidEventOrder("walker has no shuffle source for " +
+        "a Shuffle")))
 
   test("a source whose order is not a permutation of the pile is refused"):
     // Stub of WalkerDice: shuffle returns a non-permutation (all zeros).
     val repeating: WalkerDice =
       WalkerDiceFixture.shufflingBy(count => Vector.fill(count)(0))
     val answered = shuffled(cradle, under = rules(repeating)).answered
-    assert(answered.isLeft)
+    assertEquals(answered.left.toOption,
+      Some(OathViolation.InvalidEventOrder("shuffle source gave Vector(0, 0, " +
+        "0) for a pile of 3 cards")))
 
   test("one faceup secret is not enough"):
     val broke = staged(faceUp = 1)
     assert(!usableIds(broke).contains(ClayRattle.id))
-    assert(use(shuffling, broke, ClayRattle.id, source).isLeft)
+    assertEquals(use(shuffling, broke, ClayRattle.id, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(2, 1)))

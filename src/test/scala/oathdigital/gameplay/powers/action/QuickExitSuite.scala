@@ -57,7 +57,8 @@ class QuickExitSuite extends munit.FunSuite:
 
   test("with no other pawn at the site, the cost stays paid and the line " +
       "says so"):
-    val ready = Table.start.turn(p1, Phase.Act).adviser(p1, exit)
+    val ready = Table.start.turn(p1, Phase.Act).pawn(p1, home)
+      .pawn(p2, at = away).pawn(p3, at = away).adviser(p1, exit)
       .secrets(p1, 1).ready
     val done = accepted(use(ready, QuickExit, source))
     parked.assertResumed(done.state, Phase.Act, p1)
@@ -68,4 +69,5 @@ class QuickExitSuite extends munit.FunSuite:
   test("it is unusable without a secret"):
     val broke = staged(secrets = 0)
     assert(!usableNow(broke).exists(_.power.id == QuickExit.id))
-    assert(use(broke, QuickExit, source).isLeft)
+    assertEquals(use(broke, QuickExit, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))

@@ -3,12 +3,10 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
-  WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PowerRules, Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class BookBindersSuite extends munit.FunSuite:
@@ -19,13 +17,7 @@ class BookBindersSuite extends munit.FunSuite:
   private val holder = Table.p2
   // A relic for the Conspiracy to take from Book Binders' holder.
   private val targetRelic = CatalogNames.relic("Circlet of Command")
-  private val parked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog))
-
-  /** `table` with exactly these banks holding favor, every other bank none. */
-  private def banksHolding(table: Table, banks: Map[Suit, Int]): Table =
-    Suit.all.foldLeft(table)((t, suit) =>
-      t.bankFavor(suit, banks.getOrElse(suit, 0)))
+  private val parked = PowerRules.parkedUnderWalkerPowers
 
   /** A Search drawing Faith, `owner` holding Book Binders, and exactly these
     * banks holding favor.
@@ -33,9 +25,9 @@ class BookBindersSuite extends munit.FunSuite:
   private def arranged(banks: Map[Suit, Int], owner: PlayerId = holder,
       orientation: Orientation = Orientation.FaceUp,
       vision: VisionId = VisionRules.Faith): ReadyGame =
-    banksHolding(Table.from(SearchFixture.staged(Vector(vision), supply = 5))
-      .adviser(owner, binders, facedown = orientation == Orientation.FaceDown),
-      banks).unchecked
+    Table.from(SearchFixture.staged(Vector(vision), supply = 5))
+      .adviser(owner, binders, facedown = orientation == Orientation.FaceDown)
+      .banksHoldingOnly(banks.toSeq*).unchecked
 
   /** Book Binders' holder answers its bank question with `suit`. */
   private def holderChooses(placed: OathTransition, decisionId: String,
@@ -48,6 +40,26 @@ class BookBindersSuite extends munit.FunSuite:
 
   private def favor(ready: ReadyGame, id: PlayerId): Int =
     Look(ready).player(id).board.favor
+
+  /** `holder` also holds a relic, and stands at the actor's own site, so
+    * the actor's faceup Conspiracy has a legal target: another player's pawn
+    * holding a relic at the actor's site, the way `ConspiracyWhenPlayedSuite`
+    * arranges one.
+    */
+  private def withConspiracyTarget(banks: Map[Suit, Int]): ReadyGame =
+    Table.from(
+      SearchFixture.staged(Vector(VisionRules.Conspiracy), supply = 5))
+      .adviser(holder, binders).pawn(holder, "Ancient City")
+      .relic(holder, targetRelic, facedown = true)
+      .banksHoldingOnly(banks.toSeq*).unchecked
+
+  private val power = BookBinders.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  private def gained(amount: Int, suit: Suit) = NoteText.Said("gained",
+    s"${holder.value} gained $amount favor from the $suit bank.", covers = true)
 
   test("another player's faceup Vision gives the holder a choice of bank, " +
       "then two favor"):
@@ -93,17 +105,6 @@ class BookBindersSuite extends munit.FunSuite:
     val after = SearchFixture.after(SearchFixture.play(ready, Vector.empty,
       VisionRules.Faith, PlayedAs.Facedown))
     assertEquals(after.banks.favor(Suit.Hearth), 5)
-
-  /** `holder` also holds a relic, and stands at the actor's own site, so
-    * the actor's faceup Conspiracy has a legal target: another player's pawn
-    * holding a relic at the actor's site, the way `ConspiracyWhenPlayedSuite`
-    * arranges one.
-    */
-  private def withConspiracyTarget(banks: Map[Suit, Int]): ReadyGame =
-    banksHolding(Table.from(
-      SearchFixture.staged(Vector(VisionRules.Conspiracy), supply = 5))
-      .adviser(holder, binders).pawn(holder, "Ancient City")
-      .relic(holder, targetRelic, facedown = true), banks).unchecked
 
   test("the Conspiracy still resolves when Book Binders' own take drains " +
       "the bank it emptied, which used to shift the target decision's index"):
@@ -168,8 +169,8 @@ class BookBindersSuite extends munit.FunSuite:
 
   test("a facedown Vision played from the advisers gives the holder favor " +
       "too, off turn, pinning the rebuildFacedown settle path"):
-    val ready = banksHolding(Table.start.adviser(holder, binders),
-      Map(Suit.Arcane -> 3, Suit.Order -> 3)).ready
+    val ready = Table.start.adviser(holder, binders)
+      .banksHoldingOnly(Suit.Arcane -> 3, Suit.Order -> 3).ready
     val atPlacement = fromAdvisers(ready, VisionRules.Faith)
     val placed = accepted(SearchFixture.place(atPlacement, VisionRules.Faith,
       PlayedAs.Faceup))
@@ -183,12 +184,6 @@ class BookBindersSuite extends munit.FunSuite:
     assertEquals(after.banks.favor(Suit.Arcane), 3)
 
   // ---- Lines ----
-
-  private val power = BookBinders.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-  private def gained(amount: Int, suit: Suit) = NoteText.Said("gained",
-    s"${holder.value} gained $amount favor from the $suit bank.", covers = true)
 
   test("the favor taken from the one stocked bank is the Binders' line"):
     assertEquals(said(faceup(arranged(Map(Suit.Order -> 3))).events),

@@ -1,11 +1,9 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.model._
-import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
-  Look, Table}
+  Look, Outcomes, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
@@ -30,13 +28,12 @@ class InitiationRiteSuite extends munit.FunSuite:
     EconomyActions.muster(rules, ready, p1, Vector.empty,
       DecisionOptionRef.Denizen(beast))
 
-  /** Whether a Muster from Errand Boy can start, for the refused case. */
-  private def musterStarts(ready: ReadyGame): Boolean =
-    rules.startWalker(Ready(ready), ActionRef.Muster, p1, Vector.empty)
-      .flatMap(started => rules.resolveWalker(started.state, p1,
-        MusterProcedure.decisionId,
-        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(beast))))
-      .isRight
+  /** Musters from Errand Boy, selecting nothing; a refusal comes back as the
+    * violation. */
+  private def musterFromBeast(ready: ReadyGame)
+      : Either[OathViolation, OathTransition] =
+    EconomyActions.attemptMuster(rules, ready, p1, Vector.empty,
+      DecisionOptionRef.Denizen(beast))
 
   test("its holder's Muster places a faceup secret on the card instead of " +
       "a favor, without being selected"):
@@ -60,12 +57,15 @@ class InitiationRiteSuite extends munit.FunSuite:
 
   test("with no faceup secret its holder cannot Muster"):
     val hidden = initiated().secrets(p1, faceUp = 0, faceDown = 1)
-    assert(!musterStarts(hidden.ready))
+    assertEquals(musterFromBeast(hidden.ready).left.toOption,
+      Some(OathViolation.CoreOperationRejected("insufficient-pieces",
+        "player play area contains 0 of requested secrets")))
     // The same board without the rule musters with its favor.
     val plain = Table.start.pawn(p1, at = "Ancient City")
       .denizen(beast, at = "Ancient City")
       .secrets(p1, faceUp = 0, faceDown = 1).ready
-    assert(musterStarts(plain))
+    assertEquals(Look(Outcomes.ready(accepted(musterFromBeast(plain)).state))
+      .tokensOn(beast), Tokens(1, 0))
 
   test("a facedown Initiation Rite does nothing"):
     val result = muster(initiated(facedown = true).ready).result

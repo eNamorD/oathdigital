@@ -17,7 +17,7 @@ class ForgottenVaultSuite extends munit.FunSuite:
   import TargetingFixture._
 
   private val vault = CatalogNames.denizen("Forgotten Vault")
-  /** The Vault's site: Broken Peaks, the first site after the origin. */
+  /** The Conspiracy tests' Vault site. */
   private val vaultSite = CatalogNames.site("Broken Peaks")
   private val raid = ChooseOneAnswer(DecisionOptionRef.Button("raid"))
   private val power = ForgottenVault.forCatalog(catalog)
@@ -25,11 +25,12 @@ class ForgottenVaultSuite extends munit.FunSuite:
   private def notes(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 
-  /** `table` with the Vault at Broken Peaks, which `ruler` rules with 2
-    * warbands (`None` leaves the site to nobody). */
-  private def vaultAt(table: Table, ruler: Option[PlayerId]): Table =
-    val placed = table.denizen(vault, at = vaultSite)
-    ruler.fold(placed)(placed.warbandsAt(vaultSite, _, 2))
+  /** `table` with the Vault at `site`, which `ruler` rules with 2 warbands
+    * (`None` leaves the site to nobody). */
+  private def vaultAt(table: Table, ruler: Option[PlayerId],
+      site: SiteId = vaultSite): Table =
+    val placed = table.denizen(vault, at = site)
+    ruler.fold(placed)(placed.warbandsAt(site, _, 2))
 
   // ---- Raid ----
 
@@ -41,19 +42,53 @@ class ForgottenVaultSuite extends munit.FunSuite:
   private final case class RaidTargets(defender: PlayerId, relic: RelicId,
       options: Vector[DecisionOptionRef], events: Vector[OathEvent])
 
-  /** Starts a Raid on the defender with the Vault's site ruled by `ruler`,
-    * and answers the kind. */
+  /** Starts a Raid on the defender with the Vault's site, the first site
+    * after the origin, ruled by `ruler`, and answers the kind. */
   private def raidTargets(ruler: Ruler): RaidTargets =
     val RaidBoard(b, relic) = raidBoard()
+    val afterOrigin = b.ready.game.current.map.inPlay.find(_ != b.origin).get
     val held = on(b)(vaultAt(_, ruler match
       case Ruler.Defender => Some(b.rival)
       case Ruler.Attacker => Some(b.actor)
-      case Ruler.Bandits => None))
+      case Ruler.Bandits => None, afterOrigin))
     val started = accepted(start(held.ready, ActionRef.Campaign, b.actor))
     val kind = accepted(rules.resolveWalker(started.state, b.actor,
       CampaignIds.kind, raid))
     RaidTargets(b.rival, relic, optionsAt(kind, ActionRef.Campaign),
       kind.events)
+
+  private val conspiracy = VisionRules.Conspiracy
+
+  private val crackedHorn = CatalogNames.relic("Cracked Horn")
+
+  /** The target options a Conspiracy walk parked on (empty when nothing was
+    * asked), and its journal. */
+  private final case class ConspiracyWalk(options: Vector[DecisionOptionRef],
+      events: Vector[OathEvent])
+
+  /** p1 plays Conspiracy at Ancient City, where p2 stands holding Cracked
+    * Horn on `side`, and the People's Favor when `banner`. The Vault stands at
+    * Broken Peaks, which p2 rules. */
+  private def conspiracyTargets(banner: Boolean,
+      side: Orientation = Orientation.FaceUp): ConspiracyWalk =
+    val staged = Table.start.pawn(p1, at = "Ancient City")
+      .pawn(p2, at = "Ancient City").hand(p1, conspiracy)
+      .relic(p2, crackedHorn, facedown = side == Orientation.FaceDown)
+    val bannered =
+      if banner then staged.peoplesFavor(Some(p2), favor = 1) else staged
+    val ready = vaultAt(bannered, Some(p2)).ready
+    val hook = CardPlayedFaceup(conspiracy,
+      RuleSourceRef.Adviser(p1, conspiracy))
+    val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
+      Vector.empty)
+    accepted(ProcedureWalker.advance(ready, hook, None, powers)) match
+      case WalkerOutcome.Parked(pending, events) =>
+        val decide = present(ProcedureWalker.parkedDecide(ready, hook, pending,
+          powers), "the target decision")
+        ConspiracyWalk(
+          as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref), events)
+      case WalkerOutcome.Finished(_, events) =>
+        ConspiracyWalk(Vector.empty, events)
 
   test("a Raid may not target the ruler's relics, but may target their " +
       "banners"):
@@ -75,37 +110,6 @@ class ForgottenVaultSuite extends munit.FunSuite:
     assert(targets.options.contains(DecisionOptionRef.Relic(targets.relic)))
 
   // ---- Conspiracy ----
-
-  private val conspiracy = VisionRules.Conspiracy
-  private val crackedHorn = CatalogNames.relic("Cracked Horn")
-
-  /** The target options a Conspiracy walk parked on (empty when nothing was
-    * asked), and its journal. */
-  private final case class ConspiracyWalk(options: Vector[DecisionOptionRef],
-      events: Vector[OathEvent])
-
-  /** p1 plays Conspiracy at Ancient City, where p2 stands holding Cracked
-    * Horn on `side`, and the People's Favor when `banner`. The Vault stands at
-    * Broken Peaks, which p2 rules. */
-  private def conspiracyTargets(banner: Boolean,
-      side: Orientation = Orientation.FaceUp): ConspiracyWalk =
-    val staged = Table.start.pawn(p2, at = "Ancient City").hand(p1, conspiracy)
-      .relic(p2, crackedHorn, facedown = side == Orientation.FaceDown)
-    val bannered =
-      if banner then staged.peoplesFavor(Some(p2), favor = 1) else staged
-    val ready = vaultAt(bannered, Some(p2)).ready
-    val hook = CardPlayedFaceup(conspiracy,
-      RuleSourceRef.Adviser(p1, conspiracy))
-    val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
-      Vector.empty)
-    accepted(ProcedureWalker.advance(ready, hook, None, powers)) match
-      case WalkerOutcome.Parked(pending, events) =>
-        val decide = present(ProcedureWalker.parkedDecide(ready, hook, pending,
-          powers), "the target decision")
-        ConspiracyWalk(
-          as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref), events)
-      case WalkerOutcome.Finished(_, events) =>
-        ConspiracyWalk(Vector.empty, events)
 
   test("Conspiracy may take the ruler's relic as well as their banner"):
     val walk = conspiracyTargets(banner = true)

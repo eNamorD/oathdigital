@@ -8,7 +8,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  Refusals, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
@@ -110,21 +110,22 @@ class RelicWorshipSuite extends munit.FunSuite:
     val refused = attempt(1)
     assert(refused.left.toOption.exists(_.toString.contains(
       "cannot all be paid together")), refused.toString)
-    assert(attempt(2).isRight)
+    val started = accepted(attempt(2))
+    // Catacombs and Relic Worship each pay one of the two secrets.
+    assertEquals(me(Outcomes.ready(started.state)).board.faceUpSecrets, 0)
 
   test("it cannot be selected without a faceup secret, or onto an occupied card"):
     val broke = relicWorshipAtFairIsle(secrets = 0)
     assertEquals(rules.startWalker(Ready(broke), ActionRef.Recover,
       p1, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.relic-worship is not applicable to this recover")))
+      Some(Refusals.notApplicable(RelicWorship.id, "recover")))
     val occupied = relicWorshipAtFairIsleTable().tokens(worship, secrets = 1)
       .ready
     assertEquals(rules.startWalker(Ready(occupied), ActionRef.Recover,
       p1, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.relic-worship is not applicable to this recover")))
+      Some(Refusals.notApplicable(RelicWorship.id, "recover")))
 
   test("a Recover that selects no power records no ignored-rule diagnostic"):
     val events = recover(relicWorshipAtFairIsle(), Vector.empty).events
-    assert(!events.exists(_.isInstanceOf[OathEvent.IgnoredRulesRecorded]))
+    assertEquals(events.collect {
+      case ignored: OathEvent.IgnoredRulesRecorded => ignored }, Vector.empty)

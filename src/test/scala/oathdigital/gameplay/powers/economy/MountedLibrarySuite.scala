@@ -1,11 +1,10 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
-  Look, Table}
+  Look, PowerRules, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
@@ -19,15 +18,14 @@ class MountedLibrarySuite extends munit.FunSuite:
   private val horseArchers = CatalogNames.denizen("Horse Archers")
   /** A plain Order denizen to Trade with instead. */
   private val wrestlers = CatalogNames.denizen("Wrestlers")
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerPowers
 
   /** p1 at Ancient City beside Mounted Library and Wrestlers, holding Horse
-    * Archers faceup, 2 favor and the start's 1 faceup secret. The Nomad and
-    * Order banks hold 3 favor each. */
-  private def besideTheLibrary: Table = Table.start
+    * Archers faceup, 2 favor and 1 faceup secret. The Nomad and Order banks
+    * hold 3 favor each. */
+  private def besideTheLibrary: Table = Table.start.pawn(p1, at = home)
     .denizen(library, at = home).denizen(wrestlers, at = home)
-    .adviser(p1, horseArchers).favor(p1, 2)
+    .adviser(p1, horseArchers).favor(p1, 2).secrets(p1, faceUp = 1)
     .bankFavor(Suit.Nomad, 3).bankFavor(Suit.Order, 3)
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
@@ -42,7 +40,7 @@ class MountedLibrarySuite extends munit.FunSuite:
     val done = EconomyActions.trade(rules, ready, p1, modifiers, "secret",
       DecisionOptionRef.Denizen(library))
     val end = Look(done.result)
-    // The start's secret, 1 for Horse Archers, and 1 more.
+    // The 1 secret p1 holds, 1 for Horse Archers, and 1 more.
     assertEquals(secrets(end), 3)
     assertEquals(end.cardsAt(home), Vector[CardId](wrestlers))
     assert(end.discardAfter(home).contains(library))

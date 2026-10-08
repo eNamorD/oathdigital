@@ -92,4 +92,5 @@ class BedOfRootsSuite extends munit.FunSuite:
   test("it is unusable with less than 3 favor"):
     val broke = staged(favor = 2).adviser(p1, homesteaders).ready
     assert(!usableNow(broke).exists(_.power.id == BedOfRoots.id))
-    assert(use(broke, power, source).isLeft)
+    assertEquals(use(broke, power, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(3, 2)))

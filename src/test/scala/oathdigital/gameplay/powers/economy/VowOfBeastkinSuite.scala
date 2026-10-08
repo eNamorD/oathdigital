@@ -1,13 +1,12 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.economy.MusterProcedure
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
-  Look, PhasePowerHarness, Table}
+  Look, PhasePowerHarness, PowerRules, Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
@@ -22,13 +21,13 @@ class VowOfBeastkinSuite extends munit.FunSuite:
   private val wrestlers = CatalogNames.denizen("Wrestlers")
   /** An Order adviser, so that Wrestlers matches one. */
   private val messenger = CatalogNames.denizen("Messenger")
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerPowers
 
-  /** p1 at Ancient City beside Errand Boy and Wrestlers, with the start's 1
-    * favor, 7 Supply and 3 warbands, and no adviser yet. */
-  private def musterSite: Table = Table.start
+  /** p1 at Ancient City beside Errand Boy and Wrestlers, with 1 favor and 7
+    * Supply to pay a Muster, and no adviser yet. */
+  private def musterSite: Table = Table.start.pawn(p1, at = home)
     .denizen(errandBoy, at = home).denizen(wrestlers, at = home)
+    .favor(p1, 1).supply(p1, 7)
 
   private def mustered(ready: ReadyGame, card: DenizenId)
       : EconomyActions.Completed = EconomyActions.muster(rules, ready, p1,
@@ -43,8 +42,10 @@ class VowOfBeastkinSuite extends munit.FunSuite:
       ActionRef.Muster, p1, Vector.empty))
     assertEquals(PhasePowerHarness.offered(started, p1),
       Some(Vector("denizen" -> errandBoy.value)))
-    assert(rules.resolveWalker(started.state, p1, MusterProcedure.decisionId,
-      ChooseOneAnswer(DecisionOptionRef.Denizen(wrestlers))).isLeft)
+    assertEquals(rules.resolveWalker(started.state, p1,
+      MusterProcedure.decisionId,
+      ChooseOneAnswer(DecisionOptionRef.Denizen(wrestlers))).left.toOption,
+      Some(Refusals.notOffered(MusterProcedure.decisionId)))
 
   test("every Muster gains one more warband, and the line says so"):
     val ready = musterSite.adviser(p1, vow).ready

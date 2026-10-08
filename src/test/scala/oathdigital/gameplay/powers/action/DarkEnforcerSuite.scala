@@ -71,4 +71,5 @@ class DarkEnforcerSuite extends munit.FunSuite:
   test("it is unusable without a favor to burn"):
     val broke = staged(favor = 0).ready
     assert(!usableNow(broke).exists(_.power.id == DarkEnforcer.id))
-    assert(use(broke, power, source).isLeft)
+    assertEquals(use(broke, power, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))

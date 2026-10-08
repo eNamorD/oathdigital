@@ -68,4 +68,5 @@ class SpoiledSuppliesSuite extends munit.FunSuite:
   test("it is unusable without a favor to place"):
     val ready = staged(favor = 0)
     assert(!usableNow(ready).exists(_.power.id == SpoiledSupplies.id))
-    assert(use(ready, SpoiledSupplies, source).isLeft)
+    assertEquals(use(ready, SpoiledSupplies, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))

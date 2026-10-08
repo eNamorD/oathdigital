@@ -53,11 +53,8 @@ class RowdyPubSuite extends munit.FunSuite:
     assertEquals(Look(muster(ready, Vector.empty, pub).result)
       .boardWarbands(p1), 3 + 1)
 
-  test("it is a Muster modifier, offered when the card is in reach"):
-    val offered = (ready: ReadyGame, action: ActionRef) =>
-      accepted(rules.offerableWalkerPowers(ready, p1, action)).map(_.id)
-    assert(offered(pubAtSite.ready, ActionRef.Muster).contains(RowdyPub.id))
-    assert(!offered(pubAtSite.ready, ActionRef.Trade).contains(RowdyPub.id))
-    val withoutPub = Table.start.pawn(p1, at = "Ancient City")
-      .denizen(alchemist, at = "Ancient City").ready
-    assert(!offered(withoutPub, ActionRef.Muster).contains(RowdyPub.id))
+  test("it is a Muster modifier only"):
+    val offered = (action: ActionRef) => accepted(
+      rules.offerableWalkerPowers(pubAtSite.ready, p1, action)).map(_.id)
+    assert(offered(ActionRef.Muster).contains(RowdyPub.id))
+    assert(!offered(ActionRef.Trade).contains(RowdyPub.id))

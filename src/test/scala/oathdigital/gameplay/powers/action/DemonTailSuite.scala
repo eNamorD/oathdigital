@@ -42,7 +42,8 @@ class DemonTailSuite extends munit.FunSuite:
   test("two secrets are not enough"):
     val broke = staged(faceUp = 2)
     assert(!usableIds(broke).contains(DemonTail.id))
-    assert(use(rules(), broke, DemonTail.id, source).isLeft)
+    assertEquals(use(rules(), broke, DemonTail.id, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(3, 2)))
 
   test("its line reads the Supply gained"):
     val done = accepted(use(rules(), staged(), DemonTail.id, source))

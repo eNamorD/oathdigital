@@ -19,12 +19,15 @@ class InquisitorSuite extends munit.FunSuite:
   /** p2's Vision of Faith, its only adviser on the staged table. */
   private val faithSlot = DecisionOptionRef.AdviserSlot(p2, 0)
 
-  /** p1's Act at Ancient City beside Inquisitor, with the quiet table's
-    * secret to pay it. p2 stands there too, holding the Vision of Faith
-    * facedown. */
-  private def staged: Table = Table.start.turn(p1, Phase.Act)
-    .pawn(p1, at = home).denizen(inquisitor, at = home)
-    .pawn(p2, at = home).adviser(p2, VisionRules.Faith, facedown = true)
+  /** p1's Act at Ancient City beside Inquisitor, with the faceup secret that
+    * pays it. p3 stands at Buried Giant. */
+  private def atHome: Table = Table.start.turn(p1, Phase.Act)
+    .pawn(p1, at = home).pawn(p3, at = "Buried Giant")
+    .denizen(inquisitor, at = home).secrets(p1, faceUp = 1)
+
+  /** `atHome`, with p2 there too, holding the Vision of Faith facedown. */
+  private def staged: Table = atHome.pawn(p2, at = home)
+    .adviser(p2, VisionRules.Faith, facedown = true)
 
   /** The walks Inquisitor started, chose p2's Vision in, and guessed in. */
   private case class Guessed(started: OathTransition, chosen: OathTransition,
@@ -47,8 +50,7 @@ class InquisitorSuite extends munit.FunSuite:
 
   test("it places a secret and offers the facedown Visions of players at " +
       "the site by adviser slot, the actor's own included"):
-    val ready = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
-      .denizen(inquisitor, at = home)
+    val ready = atHome
       .adviser(p1, VisionRules.Conspiracy, facedown = true)
       .pawn(p2, at = home).adviser(p2, landWarden)
       .adviser(p2, VisionRules.Faith, facedown = true)
@@ -60,15 +62,14 @@ class InquisitorSuite extends munit.FunSuite:
       "adviser-slot" -> s"${p1.value}:0", "adviser-slot" -> s"${p2.value}:1")))
     assertEquals(Look(after(t)).tokensOn(inquisitor), Tokens(0, 1))
 
-  test("then it offers the five Vision names, the Conspiracy included"):
+  test("then it offers every Vision name, the Conspiracy included"):
     val started = accepted(use(staged.ready, Inquisitor, source))
     val chosen = accepted(answer(started, p1, Inquisitor.visionDecisionId,
       pick(faithSlot)))
     assert(awaits(chosen, Inquisitor.guessDecisionId),
       parked.parkedDecision(chosen.state).toString)
     assertEquals(queryOf(chosen, p1).map(_.offeredOptions.map(_.label)),
-      Some(Vector("Vision of Conquest", "Vision of Sanctuary",
-        "Vision of Rebellion", "Vision of Faith", "Conspiracy")))
+      Some(Inquisitor.visions.map((_, name) => name)))
 
   test("a right guess discards the Vision to the next region's pile, every " +
       "player knows it there, and the line names it"):
@@ -100,8 +101,7 @@ class InquisitorSuite extends munit.FunSuite:
 
   test("with no facedown Vision at the site it asks nothing, and the line " +
       "says so"):
-    val ready = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
-      .denizen(inquisitor, at = home)
+    val ready = atHome.pawn(p2, at = "Broken Peaks")
       .adviser(p3, VisionRules.Faith, facedown = true).ready
     val done = accepted(use(ready, Inquisitor, source))
     assert(backToActing(done))

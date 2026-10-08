@@ -4,7 +4,8 @@ import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.ActPowerHarness.usableIds
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 import oathdigital.testkit.Unwrap.accepted
@@ -57,8 +58,10 @@ class BrassHorseSuite extends munit.FunSuite:
       CatalogNames.site("Dunes"))
     val parked = accepted(use(start, BrassHorse.id, horse))
     assert(awaits(parked, BrassHorse.decisionId))
-    assert(choose(parked.state, BrassHorse.decisionId, site("Buried Giant"))
-      .isLeft)
+    assertEquals(
+      choose(parked.state, BrassHorse.decisionId, site("Buried Giant"))
+        .left.toOption,
+      Some(Refusals.notOffered(BrassHorse.decisionId)))
     val done = accepted(choose(parked.state, BrassHorse.decisionId,
       site("Dunes")))
     assert(backToActing(done))
@@ -78,8 +81,10 @@ class BrassHorseSuite extends munit.FunSuite:
     val start = cradleTopped(nomadTop)
     val parked = accepted(use(start, BrassHorse.id, horse))
     assert(awaits(parked, BrassHorse.decisionId))
-    assert(choose(parked.state, BrassHorse.decisionId, site("Ancient City"))
-      .isLeft)
+    assertEquals(
+      choose(parked.state, BrassHorse.decisionId, site("Ancient City"))
+        .left.toOption,
+      Some(Refusals.notOffered(BrassHorse.decisionId)))
     val done = accepted(choose(parked.state, BrassHorse.decisionId,
       site("Desolate Shore")))
     assertEquals(Look(ready(done.state)).pawn(actor),
@@ -89,7 +94,9 @@ class BrassHorseSuite extends munit.FunSuite:
     // The quiet table's Cradle discard is empty.
     val start = staged
     assert(!usableIds(start).contains(BrassHorse.id))
-    assert(use(start, BrassHorse.id, horse).isLeft)
+    assertEquals(use(start, BrassHorse.id, horse).left.toOption,
+      Some(Refusals.nothingToDo(BrassHorse.id,
+        DecisionOptionRef.Relic(horse))))
 
   test("a Vision on top has no suit, so any other site may be chosen"):
     val vision = VisionRules.Sanctuary
@@ -119,7 +126,8 @@ class BrassHorseSuite extends munit.FunSuite:
     val broke = Table.from(start).secrets(actor, 0).unchecked
     assert(usableIds(start).contains(id))
     assert(!usableIds(broke).contains(id))
-    assert(use(broke, id, horse).isLeft)
+    assertEquals(use(broke, id, horse).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))
 
   test("it writes the card it revealed in place of the generic line, then where the pawn went"):
     val done = accepted(use(cradleTopped(beastTop), BrassHorse.id, horse))

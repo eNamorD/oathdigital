@@ -1,11 +1,9 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  WalkerPowerCatalog}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, PowerRules,
+  Refusals, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -13,9 +11,7 @@ class FaeMerchantSuite extends munit.FunSuite:
   import ActPowerHarness._
   import PowerFixture._
 
-  private val walkerParked = new ParkedDecisionAssertions(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val walkerParked = PowerRules.parkedUnderWalkerAndPhasePowers
 
   private val fae = CatalogNames.denizen("Fae Merchant")
   private val source = DecisionOptionRef.Denizen(fae)
@@ -72,8 +68,9 @@ class FaeMerchantSuite extends munit.FunSuite:
     val ready0 = staged(Vector(scepter, whistle))
     val rules0 = rulesWithPrintedRestrictions()
     val parked = accepted(use(rules0, ready0, FaeMerchant.id, source))
-    assert(answer(rules0, parked.state, FaeMerchant.decisionId,
-      relicRef(scepter)).isLeft)
+    assertEquals(answer(rules0, parked.state, FaeMerchant.decisionId,
+      relicRef(scepter)).left.toOption,
+      Some(Refusals.notOffered(FaeMerchant.decisionId)))
     val end = ready(accepted(answer(rules0, parked.state,
       FaeMerchant.decisionId, relicRef(whistle))).state)
     assert(relicIds(end).contains(scepter))
@@ -85,8 +82,9 @@ class FaeMerchantSuite extends munit.FunSuite:
     val parked = accepted(use(rules0, ready0, FaeMerchant.id, source))
     walkerParked.assertParked(parked.state, ActionRef.UsePower(FaeMerchant.id),
       FaeMerchant.decisionId, actor)
-    assert(answer(rules0, parked.state, FaeMerchant.decisionId,
-      relicRef(scepter)).isLeft)
+    assertEquals(answer(rules0, parked.state, FaeMerchant.decisionId,
+      relicRef(scepter)).left.toOption,
+      Some(Refusals.notOffered(FaeMerchant.decisionId)))
     val done = accepted(answer(rules0, parked.state, FaeMerchant.decisionId,
       relicRef(top)))
     walkerParked.assertResumed(done.state, Phase.Act, actor)

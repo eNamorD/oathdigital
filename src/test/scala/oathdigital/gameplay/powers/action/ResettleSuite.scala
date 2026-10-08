@@ -42,15 +42,11 @@ class ResettleSuite extends munit.FunSuite:
 
   /** The walk Resettle started and the walk after `card` was chosen, parked
     * on the site question. */
-  private case class Chosen(started: OathTransition, answered: OathTransition):
-    def events: Vector[OathEvent] = started.events ++ answered.events
+  private def chooseAdviser(ready: ReadyGame, card: DenizenId): UsedAndAnswered =
+    useAndAnswer(ready, power, source,
+      Resettle.adviserDecisionId, DecisionOptionRef.Denizen(card))
 
-  private def chooseAdviser(ready: ReadyGame, card: DenizenId): Chosen =
-    val started = accepted(use(ready, power, source))
-    Chosen(started, accepted(answer(started, p1, Resettle.adviserDecisionId,
-      pick(DecisionOptionRef.Denizen(card)))))
-
-  private def chooseSite(chosen: Chosen, site: SiteId): OathTransition =
+  private def chooseSite(chosen: UsedAndAnswered, site: SiteId): OathTransition =
     accepted(answer(chosen.answered, p1, Resettle.siteDecisionId,
       pick(DecisionOptionRef.Site(site))))
 

@@ -21,6 +21,7 @@ class ArmedMobSuite extends munit.FunSuite:
 
   /** p1's Act at Ancient City beside a site Armed Mob, with `favor` favor.
     * Armed Mob is site-only. p2 holds the Darkest Secret. */
+  /** The walk Armed Mob started and the walk after `card` was chosen. */
   private def staged(favor: Int = 1): Table =
     Table.start.turn(p1, Phase.Act).pawn(p1, "Ancient City")
       .denizen(mob, at = "Ancient City").favor(p1, favor)
@@ -31,13 +32,9 @@ class ArmedMobSuite extends munit.FunSuite:
   private def discarded(ready: ReadyGame): Vector[WorldCardId] =
     Look(ready).discardAfter("Ancient City")
 
-  /** The walk Armed Mob started and the walk after `card` was chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition)
-
-  private def choose(ready: ReadyGame, card: DenizenId): Chosen =
-    val started = accepted(use(ready, power, source))
-    Chosen(started, accepted(answer(started, p1, ArmedMob.decisionId,
-      pick(DecisionOptionRef.Denizen(card)))))
+  private def choose(ready: ReadyGame, card: DenizenId): UsedAndAnswered =
+    useAndAnswer(ready, power, source,
+      ArmedMob.decisionId, DecisionOptionRef.Denizen(card))
 
   test("it places a favor and offers the Darkest Secret holder's faceup " +
       "advisers, not facedown or locked ones"):
@@ -53,7 +50,7 @@ class ArmedMobSuite extends munit.FunSuite:
     val ready = staged().adviser(p2, homesteaders)
       .tokens(homesteaders, favor = 1, secrets = 1).ready
     val hearth = ready.banks.favor.getOrElse(Suit.Hearth, 0)
-    val Chosen(t, done) = choose(ready, homesteaders)
+    val UsedAndAnswered(t, done) = choose(ready, homesteaders)
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals(Look(end).advisers(p2), Vector.empty[CardId])
@@ -102,4 +99,5 @@ class ArmedMobSuite extends munit.FunSuite:
   test("it is unusable without a favor"):
     val broke = staged(favor = 0).adviser(p2, homesteaders).ready
     assert(!usableNow(broke).exists(_.power.id == ArmedMob.id))
-    assert(use(broke, power, source).isLeft)
+    assertEquals(use(broke, power, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))

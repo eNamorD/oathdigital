@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
-  PhasePowerHarness, Table}
+  PhasePowerHarness, Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -85,10 +85,12 @@ class BarbedNetSuite extends munit.FunSuite:
   test("a relic not at the site is refused"):
     val ready = staged()
     val t = accepted(use(ready, BarbedNet, source))
-    assert(answer(t, actor, BarbedNet.decisionId,
-      choose(inRelicDeck)).isLeft)
+    assertEquals(answer(t, actor, BarbedNet.decisionId,
+      choose(inRelicDeck)).left.toOption,
+      Some(Refusals.notOffered(BarbedNet.decisionId)))
 
   test("two secrets are not enough"):
     val ready = staged(faceUp = 2)
     assert(!usableNow(ready).exists(_.power.id == BarbedNet.id))
-    assert(use(ready, BarbedNet, source).isLeft)
+    assertEquals(use(ready, BarbedNet, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(3, 2)))

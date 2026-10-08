@@ -8,7 +8,8 @@ import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Refusals, Table}
+import oathdigital.testkit.PowerRules
 
 /** A Travel board for the modifiers and rules of Travel: the map of
   * `TravelProcedureSuite`, with named sites and the active player at the
@@ -28,8 +29,7 @@ import oathdigital.testkit.CatalogNames
 object TravelFixture:
   import PowerFixture._
 
-  val rules: OathRules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  val rules: OathRules = PowerRules.withWalkerPowers
 
   private def site(power: String): SiteId = catalog.sites.find(
     _.handlers.exists(_.value.endsWith(s".$power"))).get.id
@@ -67,6 +67,12 @@ object TravelFixture:
       map = MapState(ids.take(2), ids.slice(2, 5), ids.slice(5, 8), states))),
       Phase.Act)
 
+  /** `ready` continued by Table steps, read without the card check: the board
+    * replaces the whole map, so the cards it lays out are not the ones the
+    * check expects the first game to have dealt. */
+  def on(ready: ReadyGame)(steps: Table => Table): ReadyGame =
+    steps(Table.from(ready)).unchecked
+
   def powers(modifiers: Vector[PowerId]): WalkerPowers =
     WalkerPowers.selected(WalkerPowerCatalog.default(catalog), modifiers)
 
@@ -84,8 +90,8 @@ object TravelFixture:
   /** What picking a destination the decision left out is refused with: the
     * look-ahead hides a destination no path completes, so the answer names an
     * option the decision does not offer. */
-  val destinationNotOffered: OathViolation = OathViolation.InvalidEventOrder(
-    "decision travel.destination does not offer the selected option")
+  val destinationNotOffered: OathViolation =
+    Refusals.notOffered(TravelProcedure.destinationDecisionId)
 
   /** `actor` starts a Travel with `modifiers` and picks `destination`. */
   def travel(ready: ReadyGame, destination: SiteId,

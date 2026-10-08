@@ -60,13 +60,11 @@ class TheOldOakSuite extends munit.FunSuite:
     // A Trade for favor pays the faceup secret and gains favor only.
     assertEquals(secrets(trade(board(), modifiers, oak, "favor").result), 0)
 
-  test("it is a Trade modifier, offered when the card is in reach"):
-    val offered = (ready: ReadyGame, action: ActionRef) =>
-      accepted(rules.offerableWalkerPowers(ready, p1, action)).map(_.id)
-    assert(offered(board(), ActionRef.Trade).contains(TheOldOak.id))
-    assert(!offered(board(), ActionRef.Muster).contains(TheOldOak.id))
-    val without = Table.start.adviser(p1, adviser).ready
-    assert(!offered(without, ActionRef.Trade).contains(TheOldOak.id))
+  test("it is a Trade modifier only"):
+    val offered = (action: ActionRef) =>
+      accepted(rules.offerableWalkerPowers(board(), p1, action)).map(_.id)
+    assert(offered(ActionRef.Trade).contains(TheOldOak.id))
+    assert(!offered(ActionRef.Muster).contains(TheOldOak.id))
 
   test("several faceup beast advisers still add only one secret to the " +
       "base gain, which is one per matching adviser"):

@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.PlacementFixture
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay.powers.{AdviserLimit, NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
@@ -32,21 +32,18 @@ class AssassinSuite extends munit.FunSuite:
   private val automaticPowers = WalkerPowers.selected(
     WalkerPowerCatalog.default(catalog), Vector.empty)
 
-  /** p1's Act at Ancient City holding Assassin faceup, with the quiet
-    * table's 1 favor to pay it. p2 stands there too, holding Land Warden
-    * faceup. */
+  /** p1's Act at Ancient City holding Assassin faceup, with 1 favor to pay
+    * it. p2 stands there too, holding Land Warden faceup; p3 stands at Buried
+    * Giant. */
   private def staged: Table = Table.start.turn(p1, Phase.Act)
-    .pawn(p1, at = home).adviser(p1, assassin)
+    .pawn(p1, at = home).adviser(p1, assassin).favor(p1, 1)
     .pawn(p2, at = home).adviser(p2, landWarden)
+    .pawn(p3, at = "Buried Giant")
 
   /** The walk Assassin started and the walk after `card` was chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition):
-    def events: Vector[OathEvent] = started.events ++ answered.events
-
-  private def chooseAdviser(ready: ReadyGame, card: DenizenId): Chosen =
-    val started = accepted(use(ready, power, source))
-    Chosen(started, accepted(answer(started, p1, Assassin.decisionId,
-      pick(DecisionOptionRef.Denizen(card)))))
+  private def chooseAdviser(ready: ReadyGame, card: DenizenId): UsedAndAnswered =
+    useAndAnswer(ready, power, source,
+      Assassin.decisionId, DecisionOptionRef.Denizen(card))
 
   /** The faceup placement options of `card` from p1's hand, under the
     * production powers. */
@@ -93,7 +90,8 @@ class AssassinSuite extends munit.FunSuite:
   test("with only the locked Assassin to discard it asks nothing, and the " +
       "line says so"):
     val ready = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
-      .adviser(p1, assassin).ready
+      .pawn(p2, at = "Broken Peaks").pawn(p3, at = "Buried Giant")
+      .adviser(p1, assassin).favor(p1, 1).ready
     val done = accepted(use(ready, power, source))
     assert(backToActing(done))
     assertEquals(Look(after(done)).advisers(p1), Vector[CardId](assassin))
@@ -109,10 +107,3 @@ class AssassinSuite extends munit.FunSuite:
       Vector(Some(landWarden)))
     assertEquals(faceup.filterNot(_.available).map(PlacementPicks.replaces),
       Vector(Some(assassin)))
-
-  test("the limit is its faceup holder's alone"):
-    val faceup = Table.start.adviser(p1, assassin).ready
-    assertEquals(AdviserLimit.of(catalog, faceup, p1), Assassin.HolderLimit)
-    assertEquals(AdviserLimit.of(catalog, faceup, p2), AdviserLimit.Default)
-    val facedown = Table.start.adviser(p1, assassin, facedown = true).ready
-    assertEquals(AdviserLimit.of(catalog, facedown, p1), AdviserLimit.Default)

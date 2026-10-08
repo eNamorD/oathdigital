@@ -81,4 +81,5 @@ class SpiritSnareSuite extends munit.FunSuite:
     val broke = Table.from(staged(Suit.Order -> 3)).secrets(actor, 0, 1)
       .unchecked
     assert(!usableNow(broke).exists(_.power.id == SpiritSnare.id))
-    assert(use(broke, SpiritSnare, source).isLeft)
+    assertEquals(use(broke, SpiritSnare, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))

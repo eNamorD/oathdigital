@@ -86,4 +86,5 @@ class SkeletonKeySuite extends munit.FunSuite:
   test("one secret is not enough"):
     val broke = staged(secrets = 1)
     assert(!usableNow(broke).exists(_.power.id == SkeletonKey.id))
-    assert(use(broke, SkeletonKey, source).isLeft)
+    assertEquals(use(broke, SkeletonKey, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(2, 1)))

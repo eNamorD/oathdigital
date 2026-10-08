@@ -1,11 +1,10 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
+  Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class MagicWaterskinSuite extends munit.FunSuite:
@@ -13,8 +12,7 @@ class MagicWaterskinSuite extends munit.FunSuite:
 
   private val skin = CatalogNames.relic("Magic Waterskin")
   private val source = DecisionOptionRef.Relic(skin)
-  private val rules = new OathRules(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val rules = ActPowerHarness.rules()
   /** p1's Act holding Magic Waterskin, with `supply` Supply. */
   private def stagedTable(supply: Int = 1): Table =
     Table.start.turn(actor, Phase.Act).relic(actor, skin)

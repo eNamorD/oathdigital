@@ -2,8 +2,7 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -17,8 +16,8 @@ class AFastSteedSuite extends munit.FunSuite:
   /** The actor holds A Fast Steed faceup, 1 favor, 7 Supply and `warbands`
     * warbands on the board, at Buried Giant, the Cradle's plains. */
   private def ridingWith(warbands: Int): ReadyGame =
-    Table.from(board(supply = 7)).adviser(actor, steed).favor(actor, 1)
-      .boardWarbands(actor, warbands).unchecked
+    on(board(supply = 7))(_.adviser(actor, steed).favor(actor, 1)
+      .boardWarbands(actor, warbands))
 
   test("with three warbands on the board, Travel spends no Supply and the " +
       "favor is placed on it"):
@@ -48,5 +47,5 @@ class AFastSteedSuite extends munit.FunSuite:
     val ready = ridingWith(warbands = 3)
     assert(offered(ready, ActionRef.Travel).contains(AFastSteed.id))
     assert(!offered(ready, ActionRef.Search).contains(AFastSteed.id))
-    val broke = Table.from(ready).favor(actor, 0).unchecked
+    val broke = on(ready)(_.favor(actor, 0))
     assert(!offered(broke, ActionRef.Travel).contains(AFastSteed.id))

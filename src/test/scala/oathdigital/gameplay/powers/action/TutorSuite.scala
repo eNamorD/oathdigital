@@ -32,9 +32,12 @@ class TutorSuite extends munit.FunSuite:
     assertWireRoundTrips(done.events)
 
   test("it is unusable without a favor or without a faceup secret"):
-    Vector(staged(favor = 0), staged(faceUp = 0)).foreach { broke =>
-      assert(!usableIds(broke).contains(Tutor.id))
-      assert(use(rules(), broke, Tutor.id, source).isLeft)
+    Vector(staged(favor = 0) -> OathViolation.InsufficientFavor(1, 0),
+      staged(faceUp = 0) -> OathViolation.InsufficientSecrets(1, 0)).foreach {
+      case (broke, refusal) =>
+        assert(!usableIds(broke).contains(Tutor.id))
+        assertEquals(use(rules(), broke, Tutor.id, source).left.toOption,
+          Some(refusal))
     }
 
   test("it writes its gain as its own line, covering the generic one"):

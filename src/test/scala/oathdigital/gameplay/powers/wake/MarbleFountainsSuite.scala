@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.wake
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
@@ -8,7 +7,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
+  Refusals, Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class MarbleFountainsSuite extends munit.FunSuite:
@@ -16,9 +16,8 @@ class MarbleFountainsSuite extends munit.FunSuite:
 
   private val fountains = CatalogNames.edifice("Marble Fountains")
   private val source = DecisionOptionRef.Edifice(fountains)
-  private val rules = new OathRules(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
-  // The actor's site on the quiet table, and another site.
+  private val rules = ActPowerHarness.rules()
+  // The actor's site, and another site.
   private val home = CatalogNames.site("Ancient City")
   private val far = CatalogNames.site("Broken Peaks")
 
@@ -28,7 +27,8 @@ class MarbleFountainsSuite extends munit.FunSuite:
     */
   private def staged(side: EdificeSide = EdificeSide.Intact,
       pawnAtEdifice: Boolean = true): ReadyGame =
-    val waking = Table.start.turn(actor, Phase.Wake).supply(actor, 1)
+    val waking = Table.start.turn(actor, Phase.Wake).pawn(actor, home)
+      .supply(actor, 1)
     if pawnAtEdifice then waking.edifice(fountains, side, at = home).ready
     else waking.edifice(fountains, side, at = far).warbandsAt(far, actor, 1)
       .ready
@@ -57,7 +57,8 @@ class MarbleFountainsSuite extends munit.FunSuite:
       "the edifice must be reachable, or this test proves nothing")
     assertEquals(PhasePowerProcedure.usable(catalog, away, actor,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
-    assert(use(away).isLeft)
+    assertEquals(use(away).left.toOption,
+      Some(Refusals.nothingToDo(MarbleFountains.id, source)))
 
   test("a ruined Marble Fountains offers nothing"):
     val ruined = staged(EdificeSide.Ruined)

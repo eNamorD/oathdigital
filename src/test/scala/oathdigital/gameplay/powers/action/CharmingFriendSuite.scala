@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -87,12 +88,18 @@ class CharmingFriendSuite extends munit.FunSuite:
 
   test("only the acting player answers, with an offered player"):
     val t = accepted(use(staged(), CharmingFriend, source))
-    assert(answer(t, victim, CharmingFriend.decisionId, choose(victim)).isLeft)
-    assert(answer(t, actor, CharmingFriend.decisionId, choose(bystander))
-      .isLeft)
-    assert(answer(t, actor, CharmingFriend.decisionId, choose(actor)).isLeft)
+    assertEquals(
+      answer(t, victim, CharmingFriend.decisionId,
+        choose(victim)).left.toOption,
+      Some(OathViolation.WrongPlayer(actor, victim)))
+    assertEquals(answer(t, actor, CharmingFriend.decisionId, choose(bystander))
+      .left.toOption, Some(Refusals.notOffered(CharmingFriend.decisionId)))
+    assertEquals(
+      answer(t, actor, CharmingFriend.decisionId, choose(actor)).left.toOption,
+      Some(Refusals.notOffered(CharmingFriend.decisionId)))
 
   test("it is unusable without a secret to place"):
     val ready = staged(secrets = 0)
     assert(!usableNow(ready).exists(_.power.id == CharmingFriend.id))
-    assert(use(ready, CharmingFriend, source).isLeft)
+    assertEquals(use(ready, CharmingFriend, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))

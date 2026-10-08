@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
+  Refusals}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -14,6 +15,11 @@ class DragonskinDrumSuite extends munit.FunSuite:
   private val drum = CatalogNames.relic("Dragonskin Drum")
   private val modifiers = Vector(DragonskinDrum.id)
   private def held = withRelic(board(supply = 7), drum)
+
+  private val power = DragonskinDrum.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
 
   test("after Travel the player gains one warband, and pays the printed Supply"):
     val ready = held
@@ -44,14 +50,9 @@ class DragonskinDrumSuite extends munit.FunSuite:
   test("a facedown Drum is not usable"):
     assertEquals(travel(withRelic(board(), drum, Orientation.FaceDown), coast,
       modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power relic.dragonskin-drum is not applicable to this travel")))
+      Some(Refusals.notApplicable(DragonskinDrum.id, "travel")))
 
   // ---- Lines ----
-
-  private val power = DragonskinDrum.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the warband gained is written as the Drum's line"):
     assertEquals(said(accepted(travel(held, coast, modifiers)).events),

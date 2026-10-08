@@ -3,14 +3,15 @@ package oathdigital.gameplay.powers.wake
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class RiverSitePowerSuite extends munit.FunSuite:
   import PowerFixture._
   import RiverFixture._
   import PhasePowerHarness.{after, answer, awaits, offered, ops, pick,
-    replayed, usableNow}
+    replayed, usableNow, UsedAndAnswered}
 
   private val source = DecisionOptionRef.Site(ancientCity)
   private def use(ready: ReadyGame) = PhasePowerHarness.use(ready, river,
@@ -19,24 +20,20 @@ class RiverSitePowerSuite extends munit.FunSuite:
     case usable if usable.power.isInstanceOf[RiverSitePower] =>
       usable.power.id -> usable.ref }
 
-  /** The use that asked for a site, and the answer that placed the pawn. */
-  private final case class RiverPlacement(asked: OathTransition,
-      answered: OathTransition):
-    def events: Vector[OathEvent] = asked.events ++ answered.events
-
-  /** Starts Ancient City's River and answers the site question. */
-  private def placedAt(ready: ReadyGame, at: SiteId): RiverPlacement =
+  /** Starts Ancient City's River and answers the site question: the use
+    * that asked for a site, and the answer that placed the pawn. */
+  private def placedAt(ready: ReadyGame, at: SiteId): UsedAndAnswered =
     val asked = accepted(use(ready))
     assert(awaits(asked, RiverSitePower.siteDecisionId))
     val siteChoice = pick(DecisionOptionRef.Site(at))
-    RiverPlacement(asked, accepted(
+    UsedAndAnswered(asked, accepted(
       answer(asked, actor, RiverSitePower.siteDecisionId, siteChoice)))
 
-  test("every River is a registered phase power"):
+  test("every River the catalog prints is a registered phase power"):
+    val printed = catalog.sites.flatMap(_.handlers).filter(
+      _.value.endsWith(".river")).map(_.value).toSet
     assertEquals(PhasePowerCatalog.default(catalog).powers.collect {
-      case power: RiverSitePower => power.id.value }.toSet,
-      Set("site.ancient-city.river", "site.headwaters.river",
-        "site.riverbank.river", "site.tidal-marshes.river"))
+      case power: RiverSitePower => power.id.value }.toSet, printed)
 
   test("it is usable in the Wake at a River while another River is in play"):
     assertEquals(rivers(staged(Vector(riverbank, tidalMarshes), Phase.Wake)),
@@ -45,7 +42,8 @@ class RiverSitePowerSuite extends munit.FunSuite:
   test("it is not usable when no other River is in play"):
     val alone = staged(Vector.empty, Phase.Wake)
     assertEquals(rivers(alone), Vector.empty)
-    assert(use(alone).isLeft)
+    assertEquals(use(alone).left.toOption,
+      Some(Refusals.nothingToDo(river.id, source)))
 
   test("it is not usable from a site that is not a River"):
     val ready = staged(Vector(riverbank, tidalMarshes), Phase.Wake)
@@ -55,7 +53,8 @@ class RiverSitePowerSuite extends munit.FunSuite:
     assert(!RiverSitePower.isRiver(dry))
     val away = Table.from(ready).pawn(actor, dry).unchecked
     assertEquals(rivers(away), Vector.empty)
-    assert(use(away).isLeft)
+    assertEquals(use(away).left.toOption,
+      Some(Refusals.inaccessibleSource(river.id, source)))
 
   test("it offers every other River in play, in map order"):
     val ready = staged(Vector(riverbank, tidalMarshes), Phase.Wake)

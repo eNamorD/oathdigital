@@ -1,13 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
+  Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class ElderSuite extends munit.FunSuite:
@@ -15,8 +15,7 @@ class ElderSuite extends munit.FunSuite:
 
   private val elders = CatalogNames.denizen("Elders")
   private val source = DecisionOptionRef.Denizen(elders)
-  private val rules = new OathRules(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val rules = ActPowerHarness.rules()
   /** p1's Act at Ancient City with Elders at the site and `favor` favor. */
   private def staged(favor: Int) = Table.start.turn(actor, Phase.Act)
     .pawn(actor, "Ancient City").denizen(elders, at = "Ancient City")
@@ -38,7 +37,8 @@ class ElderSuite extends munit.FunSuite:
     val broke = staged(favor = 1)
     assertEquals(PhasePowerProcedure.usable(catalog, broke, actor,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
-    assert(use(broke).isLeft)
+    assertEquals(use(broke).left.toOption,
+      Some(OathViolation.InsufficientFavor(2, 1)))
 
   test("it writes its gain as its own line, covering the generic one"):
     val done = accepted(use(staged(favor = 3)))

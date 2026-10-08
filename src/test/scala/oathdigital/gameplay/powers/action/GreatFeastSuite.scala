@@ -82,7 +82,8 @@ class GreatFeastSuite extends munit.FunSuite:
   test("it is unusable without a favor"):
     val broke = staged(favor = 0).denizen(errandBoy, at = home).ready
     assert(!usableNow(broke).exists(_.power.id == GreatFeast.id))
-    assert(use(broke, power, source).isLeft)
+    assertEquals(use(broke, power, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))
 
   test("a full track gains nothing, and the line says 0 Supply"):
     val ready = staged(supply = 7).denizen(errandBoy, at = home).ready

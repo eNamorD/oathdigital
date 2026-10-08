@@ -106,4 +106,5 @@ class DreamThiefSuite extends munit.FunSuite:
   test("it is unusable with 1 favor"):
     val broke = staged(favor = 1).ready
     assert(!usableNow(broke).exists(_.power.id == DreamThief.id))
-    assert(use(broke, DreamThief, source).isLeft)
+    assertEquals(use(broke, DreamThief, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(2, 1)))

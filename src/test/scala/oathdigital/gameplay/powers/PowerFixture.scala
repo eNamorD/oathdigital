@@ -9,7 +9,7 @@ import oathdigital.testkit.{Look, Table}
   * inventory whole: a card leaves the place it came from when it is placed.
   */
 object PowerFixture:
-  val quietTable: ReadyGame = Table.start.ready
+  val quietTable: ReadyGame = Table.start.pawn(Table.p1, "Ancient City").ready
   val actor: PlayerId = Table.p1
 
   /** The site the actor's pawn stands on. */

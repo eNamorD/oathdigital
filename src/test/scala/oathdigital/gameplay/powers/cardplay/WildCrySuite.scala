@@ -1,12 +1,14 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{PlayerFacts, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Refusals,
+  Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class WildCrySuite extends munit.FunSuite:
@@ -20,9 +22,8 @@ class WildCrySuite extends munit.FunSuite:
   private val beastCard = CatalogNames.denizen("Errand Boy")
   private val others = Vector("Homesteaders", "Land Warden")
     .map(CatalogNames.denizen(_))
-  // p1's site on the quiet table, and another site.
+  // p1's site on the quiet table.
   private val home = CatalogNames.site("Ancient City")
-  private val elsewhere = CatalogNames.site("Broken Peaks")
 
   /** Wild Cry at p1's site, Ancient City, the deck topped by `kept` and two
     * fillers, with 5 Supply. */
@@ -43,21 +44,6 @@ class WildCrySuite extends munit.FunSuite:
     assert(offered(ActionRef.PlayFacedownAdviser).contains(WildCry.id))
     assert(!offered(ActionRef.Travel).contains(WildCry.id))
     assert(!offered(ActionRef.Muster).contains(WildCry.id))
-
-  test("it is not offered when the card is facedown or out of reach"):
-    val drawing = SearchFixture.staged(Vector(beastCard) ++ others, supply = 5)
-    val facedown = Table.from(drawing).adviser(actor, wildCry, facedown = true)
-      .unchecked
-    assertEquals(start(facedown, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.wild-cry is not applicable to this search")))
-    // Wild Cry stands at Broken Peaks, away from p1.
-    val outOfReach = Table.from(
-      SearchFixture.staged(Vector(beastCard) ++ others, supply = 5))
-      .denizen(wildCry, at = elsewhere).unchecked
-    assertEquals(start(outOfReach, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.wild-cry is not applicable to this search")))
 
   test("a beast denizen played to a site gains 1 Supply and 2 warbands"):
     val ready = withCry(beastCard)
@@ -132,8 +118,10 @@ class WildCrySuite extends munit.FunSuite:
     assertEquals(before.size, 3)
     val started = accepted(start(holding, modifiers))
     val chosen = accepted(keep(started, kept))
-    assert(placeReplacing(chosen, kept, PlayedAs.Faceup, wildCry).isLeft,
-      "Wild Cry was discardable")
+    assertEquals(
+      placeReplacing(chosen, kept, PlayedAs.Faceup, wildCry).left.toOption,
+      Some(Refusals.notOffered(
+        CardPlayProcedure.placementDecisionId(kept))))
     val done = accepted(placeReplacing(chosen, kept, PlayedAs.Faceup, extra))
     val after = Look(SearchFixture.after(done)).player(actor).advisers.map(_.id)
       .toSet

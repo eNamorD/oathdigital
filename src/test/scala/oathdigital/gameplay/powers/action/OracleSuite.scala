@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
@@ -9,7 +8,7 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness,
-  PlacementPicks, Table}
+  PlacementPicks, PowerRules, Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -25,9 +24,7 @@ class OracleSuite extends munit.FunSuite:
   private val placement = CardPlayProcedure.placementDecisionId(faith)
   /** The production walker rules and phase powers, so a Restriction such as
     * Vow of Obedience's hides what it forbids. */
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerAndPhasePowers
 
   /** p1's Act at Ancient City beside a site Oracle, with two faceup
     * secrets. Every other Vision lies in the Provinces discard pile. Faith is
@@ -111,7 +108,9 @@ class OracleSuite extends munit.FunSuite:
     assert(!buttons(t).contains(PlayedAs.Faceup), buttons(t).toString)
     assert(buttons(t).contains(PlayedAs.Facedown))
     assert(buttons(t).contains(PlayedAs.Discarded))
-    assert(place(t, PlayedAs.Faceup).isLeft)
+    assertEquals(place(t, PlayedAs.Faceup).left.toOption,
+      Some(Refusals.notOffered(
+        CardPlayProcedure.placementDecisionId(VisionRules.Faith))))
 
   test("its line names the Vision it drew"):
     val t = accepted(start(staged()))
@@ -134,4 +133,5 @@ class OracleSuite extends munit.FunSuite:
   test("it is unusable without two faceup secrets"):
     val broke = Table.from(staged()).secrets(actor, 1, 1).unchecked
     assert(!usableNow(broke).exists(_.power.id == Oracle.id))
-    assert(start(broke).isLeft)
+    assertEquals(start(broke).left.toOption,
+      Some(OathViolation.InsufficientSecrets(2, 1)))

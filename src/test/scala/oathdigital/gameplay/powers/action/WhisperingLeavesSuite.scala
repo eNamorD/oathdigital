@@ -14,20 +14,19 @@ class WhisperingLeavesSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(leaves)
 
   /** p1's Act at Ancient City holding Whispering Leaves with `secrets`
-    * faceup secrets. p2 stands at Ancient City too, with `favor` favor. */
+    * faceup secrets. p2 stands at Ancient City too, with `favor` favor, and
+    * p3 at Buried Giant. */
   private def staged(favor: Int = 3, secrets: Int = 1): Table =
     Table.start.turn(p1, Phase.Act).pawn(p1, "Ancient City")
       .adviser(p1, leaves).secrets(p1, secrets)
       .pawn(p2, at = "Ancient City").favor(p2, favor)
+      .pawn(Table.p3, at = "Buried Giant")
 
   /** The walk Whispering Leaves started and the walk after `target` was
     * chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition)
-
-  private def choose(ready: ReadyGame, target: PlayerId): Chosen =
-    val started = accepted(use(ready, WhisperingLeaves, source))
-    Chosen(started, accepted(answer(started, p1, WhisperingLeaves.decisionId,
-      pick(DecisionOptionRef.Player(target)))))
+  private def choose(ready: ReadyGame, target: PlayerId): UsedAndAnswered =
+    useAndAnswer(ready, WhisperingLeaves, source,
+      WhisperingLeaves.decisionId, DecisionOptionRef.Player(target))
 
   test("it places a secret and offers every player at the site, the player " +
       "included"):
@@ -40,7 +39,7 @@ class WhisperingLeavesSuite extends munit.FunSuite:
 
   test("the chosen player gives 2 favor onto Whispering Leaves"):
     val ready = staged().ready
-    val Chosen(t, done) = choose(ready, p2)
+    val UsedAndAnswered(t, done) = choose(ready, p2)
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).favor(p2), 1)
     assertEquals(Look(after(done)).tokensOn(leaves), Tokens(2, 1))
@@ -77,4 +76,5 @@ class WhisperingLeavesSuite extends munit.FunSuite:
   test("it is unusable without a secret"):
     val broke = staged(secrets = 0).ready
     assert(!usableNow(broke).exists(_.power.id == WhisperingLeaves.id))
-    assert(use(broke, WhisperingLeaves, source).isLeft)
+    assertEquals(use(broke, WhisperingLeaves, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))
