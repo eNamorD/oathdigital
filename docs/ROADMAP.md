@@ -54,6 +54,19 @@ Left behind by the
   destination decision with each site's badge or hover reason, and Way
   Station's question are covered by tests only.
 
+Left behind by the
+[Search source work](superpowers/specs/2026-10-07-search-source-walker-design.md):
+
+- [ ] **Play-test Search in a browser.** The Search button, the parked source
+  decision with a badge or hover reason on the world deck and the region's
+  discard pile, and Clay Rattle's piles on the board are covered by tests
+  only.
+- [ ] **Search source test gaps.** No test covers an empty world deck ("The
+  world deck is empty"), the fallback reason "Cannot search there now", a
+  single-card draw whose badge joins follow-up answers, the start line when
+  Forced Labor's toll is the first recorded step, or Undo of a start that
+  selected a modifier.
+
 ### Phase - Board decision follow-ups
 
 - Add reasons to the remaining option builders as playtests find options
