@@ -47,6 +47,16 @@ Left behind by earlier phases:
   2026-10-02 moved numeric ids onto it). Move them to direct object
   references such as `AlchemistCard`.
 
+Left behind by the
+[Travel destination work](superpowers/specs/2026-10-07-travel-destination-walker-design.md):
+
+- [ ] **Play-test Travel in a browser.** The Travel button, the parked
+  destination decision with each site's badge or hover reason, and Way
+  Station's question are covered by tests only.
+- [ ] **Delete the board-target styles.** The board targets are gone, but
+  `.board-target`, `.board-target-selected` and `.board-target-control` are
+  still in `frontend/styles.css`.
+
 ### Phase - Board decision follow-ups
 
 - Add reasons to the remaining option builders as playtests find options
@@ -142,7 +152,6 @@ Found by the survey of 2026-09-29:
 - **A Travel that can pause on a decision:** **Hospitality** is unblocked:
   start facts keep Travel's source across a resume
   ([travel destination design](superpowers/specs/2026-10-07-travel-destination-walker-design.md)).
-  Way Station is implemented.
 - **Other:** Pilgrimage (shuffling the Dispossessed), Autumn Wind (a combined
   shuffle and deal), Signal Trees (a plan effect that depends on state it
   changes), Tracker (memory across turns), Keep (replacing a Raid's defeat),
@@ -257,11 +266,13 @@ one.
   filters and search, timestamps, a server-side read marker, failed victory
   checks and negotiation proposals. Replay navigation is **L4**. Recorded in
   the Game Log design of 2026-09-26.
-- [ ] **Explain restricted options where they are offered.** A
-  restricted option, or a missing action control, carries a hover note (or
-  similar) saying which power restricts it and why. Most Restrictions would
-  then need no Game Log line. The hide hook's note from the Power log lines
-  phase is the natural source. Recorded in the
+- [ ] **Explain a missing action control.** A start control the projection
+  withholds carries a hover note (or similar) saying which power or cost
+  stops it. Hidden options already explain themselves on hover and write no
+  Game Log line
+  ([travel destination design](superpowers/specs/2026-10-07-travel-destination-walker-design.md),
+  ruling 10); a Restriction's note is the natural source here too. Recorded
+  in the
   [Power log lines design](superpowers/specs/2026-09-26-power-log-lines-design.md).
 - [ ] **Warn before a choice that has no effect.** The rules let a
   player pay for a power or pick an option that then does nothing: a
@@ -304,6 +315,13 @@ one.
   `WalkerDecisionProjector.waiting` reads only a parked decision's heading and
   Negotiation query, which the look-ahead never narrows, so its second
   `parkedDecide` could skip the look-ahead like the other identity-only callers.
+- [ ] **Start controls and modifier combinations.** A start control is
+  offered when the action could start with no modifier, with any one
+  selectable modifier, or with all of them together
+  (`ModifierOffers.selections`). A start that needs two modifiers but not a
+  third is not found. A Search source that only a modifier makes affordable
+  shows the cost with that modifier ("0 Supply" for News from Afar) before
+  the player selects it.
 - [ ] **The Grand Council and Festival banner faces.** They are listed
   as synthetic ids in the reviewed catalog and have no behaviour.
 - [ ] **Mercenaries' player-chosen sign.** Mercenaries adds attack dice
