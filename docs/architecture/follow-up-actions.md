@@ -145,13 +145,29 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
   - Its cost puts a secret on the card. While the secret is there, the
     queued Campaign cannot select it again, and the chain ends.
 
+## Queueing another action
+
+Only Campaign and Travel are queued today. A power that first queues
+another action must also:
+
+- add the action to `LegalActionProjector.followUpStartable`. A Trade or
+  Forge falls to "cannot start", and Recover skips the pawn-site check its
+  normal control makes;
+- give the start its arguments (a Trade's resource) in `FollowUpControls`;
+- give Recover a cost window, or the queued Recover pays Supply under a "for
+  no Supply" button;
+- anchor the Muster and Trade log tag on their first step with ops. Under
+  the waiver they pay nothing, so `StartLines.opening` would post the tag at
+  completion.
+
 ## Sneak Attack hook
 
 Sneak Attack will queue a Campaign for a player who is not the active
 player. `FollowUp.player` and the requester comparison in `startFollowUp` are
 the hooks. Campaign powers still read `ctx.activePlayer` as the attacker, and
 modifiers are selected only on turn, so the off-turn actor is still to be
-built.
+built. The projection's `startable` reads the active player, and the panel
+follows `activeParticipantId`; both change with the requester check.
 
 ## Decisions beyond the design
 

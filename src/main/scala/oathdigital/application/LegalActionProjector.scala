@@ -139,9 +139,12 @@ private[application] final class LegalActionProjector(
     val active = context.active
     if current.result.nonEmpty then Vector.empty
     else if current.walkerPending.nonEmpty then walkerControls(context)
-    else if followUp.nonEmpty then
-      if followUp.exists(entry => context.viewer.exists(_.value ==
-          entry.playerId)) then Vector("beginFollowUp", "skipFollowUp")
+    // Branches on the queue itself: should the head's projection fail, its
+    // player can still skip it, and no control the service refuses is shown.
+    else if current.followUps.nonEmpty then
+      if context.viewer.contains(current.followUps.head.player) then
+        followUp.fold(Vector("skipFollowUp"))(_ =>
+          Vector("beginFollowUp", "skipFollowUp"))
       else Vector.empty
     else if !context.viewerIsActive then Vector.empty
     else current.turn.phase match
