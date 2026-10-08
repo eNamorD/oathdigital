@@ -14,8 +14,7 @@ object FirstGameBootstrapCodec:
 
   def decode(json: String): Either[ProtocolDecodeFailure, FirstGameBootstrapRequest] =
     try decodeValue(ujson.read(json))
-    catch { case NonFatal(error) => Left(MalformedJson("$",
-      Option(error.getMessage).getOrElse("malformed JSON"))) }
+    catch { case NonFatal(error) => Left(MalformedJson.of(error)) }
 
   private def decodeValue(raw: ujson.Value)
       : Either[ProtocolDecodeFailure, FirstGameBootstrapRequest] = raw match

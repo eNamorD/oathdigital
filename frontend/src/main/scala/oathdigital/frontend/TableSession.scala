@@ -279,7 +279,6 @@ private[frontend] final class TableSession(
   def currentGameId: String = gameId
   def currentPlayerId: String = selectedPlayer
   def displayedProjection: Option[GameProjection] = projection
-  def connectionState: ServerConnectionState = coordinator.connectionState
   def loadSession(id: String, playerId: String): Unit = loadExisting(id, playerId)
   def reconnectSession(): Unit = reconnect()
   def createGame(): Unit = newGame()

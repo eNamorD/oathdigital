@@ -265,4 +265,4 @@ object GameJson:
         case _ => Left(GameClientFailure.DecodeFailure("$", "expected object"))
     catch
       case NonFatal(error) => Left(GameClientFailure.DecodeFailure("$",
-        Option(error.getMessage).getOrElse("malformed JSON")))
+        ProtocolDecodeFailure.MalformedJson.of(error).message))

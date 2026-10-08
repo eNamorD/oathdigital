@@ -10,7 +10,6 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
-import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
@@ -207,26 +206,15 @@ object LogScripts:
     (service, table.situation(Situation.journaled(service, catalog, repository,
       name)))
 
-  /** The Oathkeeper tie, off turn: p3 holds the title, and p1 (at Ancient
-    * City) and p2 (at Broken Peaks) each rule their site with one warband,
-    * the other 2 staying on their boards. p1 Travels to p3's site, Buried
-    * Giant, and the holder's choice of the next Oathkeeper parks; the
-    * script ends with that choice answered by default. Bandits fill the empty
-    * sites first, so the refill that follows a first command journals no
-    * event of its own. */
+  /** The service suite's Oathkeeper tie: a table with two tied leaders, the
+    * active player's Travel, and the holder's choice of the next
+    * Oathkeeper, answered by default. ParkedServiceFixture.oathkeeperTiePark
+    * states where each pawn stands. */
   def oathkeeperTie(using munit.Location): Script =
-    val (service, act) = atTable("oathkeeper", tableWithOnePawnPerSite
-      .oathkeeper(Some(p3))
-      .warbandsAt("Ancient City", p1, 1)
-      .warbandsAt("Broken Peaks", p2, 1)
-      .boardWarbands(p1, 2)
-      .boardWarbands(p2, 2)
-      .banditsRefilled)
-    act.parkedAfter(ParkedServiceFixture.startTravel(p1))
-      .parkedAfter(ParkedServiceFixture.pickTravelDestination(p1,
-        CatalogNames.site("Buried Giant")))
-      .after()
-    Script("oathkeeper", service, p1)
+    val ParkedServiceFixture.OathkeeperTiePark(game, mover, _, _) =
+      ParkedServiceFixture.oathkeeperTiePark("oathkeeper")
+    game.situation.after()
+    Script("oathkeeper", game.service, mover)
 
   private def start(situation: Situation, action: StartableRef,
       args: DecisionOptionRef*)(using munit.Location): Situation =
@@ -464,24 +452,13 @@ object LogScripts:
       .after(deal(partner, AcceptDeal))
     Script("negotiation-disclosed", service, actor)
 
-  /** Silver Tongue as p1's faceup adviser, with Wrestlers and Bandit Chief
-    * faceup at p1's site, Ancient City. p2 holds a facedown adviser, so the
-    * log has another player's hidden card to show (or hide) from each
-    * viewer. p1 begins Rest, uses Silver Tongue, and its bank choice is
-    * answered by default. Bandits fill the empty sites first, so no refill
-    * is journaled after the first command. */
+  /** Silver Tongue used in Rest, its bank choice answered by default.
+    * ParkedServiceFixture.silverTonguePark states where each pawn stands. */
   def silverTongue(using munit.Location): Script =
-    val (service, act) = atTable("use-power", tableWithOnePawnPerSite
-      .adviser(p1, "Silver Tongue")
-      .denizen("Wrestlers", "Ancient City")
-      .denizen("Bandit Chief", "Ancient City")
-      .adviser(p2, "Birdsong", facedown = true)
-      .banditsRefilled)
-    act.after(GameCommand.BeginRest(p1))
-      .parkedAfter(GameCommand.UsePower(p1, SilverTongue.id,
-        DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))))
-      .after()
-    Script("use-power", service, p1)
+    val ParkedServiceFixture.SilverTonguePark(game, actor, _) =
+      ParkedServiceFixture.silverTonguePark("use-power", Dice.steady)
+    game.situation.after()
+    Script("use-power", game.service, actor)
 
   /** Augury, a free Search modifier, stands at p1's site; the Search selects
     * it. */

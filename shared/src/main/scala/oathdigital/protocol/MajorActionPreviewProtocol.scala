@@ -74,8 +74,7 @@ object MajorActionPreviewCodec:
               "orderedModifiers" -> value)).map(_.orderedModifiers)
         yield MajorActionPreviewRequest(sequence, action, parameters, modifiers)
       case _ => Left(ExpectedObject("$"))
-    catch { case NonFatal(error) => Left(MalformedJson("$",
-      Option(error.getMessage).getOrElse("malformed JSON"))) }
+    catch { case NonFatal(error) => Left(MalformedJson.of(error)) }
 
   def encode(value: MajorActionPreviewResponse): String = ujson.write(ujson.Obj(
     "nextSequence" -> ujson.Num(value.nextSequence.toDouble),
@@ -125,8 +124,7 @@ object MajorActionPreviewCodec:
           yield PreviewIgnoredRule(source, handler, timing, reason) }
         yield MajorActionPreviewResponse(sequence, action, modifiers, ignored)
       case _ => Left(ExpectedObject("$"))
-  catch { case NonFatal(error) => Left(MalformedJson("$",
-    Option(error.getMessage).getOrElse("malformed JSON"))) }
+  catch { case NonFatal(error) => Left(MalformedJson.of(error)) }
 
   private def array[A](root: ujson.Obj, key: String, path: String)(
       decode: (ujson.Obj, String) => Either[ProtocolDecodeFailure, A]) =

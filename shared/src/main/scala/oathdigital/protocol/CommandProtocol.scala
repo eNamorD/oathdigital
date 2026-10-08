@@ -8,6 +8,17 @@ sealed trait ProtocolDecodeFailure extends Product with Serializable:
 object ProtocolDecodeFailure:
   final case class MalformedJson(path: String, message: String)
       extends ProtocolDecodeFailure
+  object MalformedJson:
+    /** The refusal for JSON that `error` says does not parse. ujson wraps its
+      * parse error in a trace whose own message is only the JSON path, so
+      * the parser's clue (such as "exhausted input") is read from the
+      * wrapped error. */
+    def of(error: Throwable): MalformedJson =
+      val clue = error match
+        case traced: upickle.core.TraceVisitor.TraceException =>
+          Option(traced.getCause).getOrElse(traced)
+        case other => other
+      MalformedJson("$", Option(clue.getMessage).getOrElse("malformed JSON"))
   final case class ExpectedObject(path: String, message: String = "expected object")
       extends ProtocolDecodeFailure
   final case class MissingField(path: String, message: String = "missing required field")
@@ -72,8 +83,7 @@ object ActorlessCommandCodec:
 
   def decode(json: String): Either[ProtocolDecodeFailure, ActorlessCommandRequest] =
     try decodeValue(ujson.read(json))
-    catch { case NonFatal(error) => Left(MalformedJson("$",
-      Option(error.getMessage).getOrElse("malformed JSON"))) }
+    catch { case NonFatal(error) => Left(MalformedJson.of(error)) }
 
   def decodeValue(value: ujson.Value)
       : Either[ProtocolDecodeFailure, ActorlessCommandRequest] = value match

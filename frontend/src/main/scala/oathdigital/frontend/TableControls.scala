@@ -29,7 +29,6 @@ private[frontend] trait SessionControls:
   def currentGameId: String
   def currentPlayerId: String
   def displayedProjection: Option[GameProjection]
-  def connectionState: ServerConnectionState
   def loadSession(gameId: String, playerId: String): Unit
   def reconnectSession(): Unit
   def createGame(): Unit

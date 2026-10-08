@@ -29,16 +29,6 @@ private[frontend] object DevelopmentRenderer:
    val load = button("Load existing game", "load-game")
    load.onclick = _ => loadSession(input.value, currentPlayerId)
    bar.appendChild(load)
-   connectionState match
-     case ServerConnectionState.Disconnected(_) =>
-       val retry = button("Reconnect", "reconnectSession")
-       retry.setAttribute(
-         "aria-label",
-         "Reconnect and fetch authoritative current state"
-       )
-       retry.onclick = _ => reconnectSession()
-       bar.appendChild(retry)
-     case _ => ()
    val fresh = button("New game", "restart")
    fresh.setAttribute(
      "aria-label",

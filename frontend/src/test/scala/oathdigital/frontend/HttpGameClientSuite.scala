@@ -291,10 +291,8 @@ class HttpGameClientSuite extends FunSuite:
       assertEquals(refused, Left(GameClientFailure.HttpFailure(400,
         "malformed-request", "bad")))
       client.loadLog("g", "", 0L)
-    }.map:
-      case Left(GameClientFailure.DecodeFailure(path, _)) =>
-        assertEquals(path, "$")
-      case other => fail(s"expected a decode failure, got $other")
+    }.map(garbled => assertEquals(garbled,
+      Left(GameClientFailure.DecodeFailure("$", "exhausted input"))))
 
   /** A `ScriptedTransport` (a spy and stub of `JsonTransport`) whose script
     * answers `responses` in order, one per request; it records each request
