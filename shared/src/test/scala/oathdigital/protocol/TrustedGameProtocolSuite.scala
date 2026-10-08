@@ -1,6 +1,7 @@
 package oathdigital.protocol
 
 import oathdigital.model.PlayerColor
+import oathdigital.protocol.ProtocolDecodeFailure.*
 
 class TrustedGameProtocolSuite extends munit.FunSuite:
   private val json = """{"participants":[{"playerId":"p1","color":"red"},{"playerId":"p2","color":"blue"}]}"""
@@ -16,15 +17,18 @@ class TrustedGameProtocolSuite extends munit.FunSuite:
     val base = ujson.read(json)
     val missing = ujson.read(json).obj
     missing.remove("participants")
-    assert(TrustedGameCreateRequestCodec.decode(ujson.write(missing)).isLeft)
+    assertEquals(TrustedGameCreateRequestCodec.decode(ujson.write(missing)),
+      Left(MissingField("$.participants")))
     // The server generates the game ID, so a request naming one is refused.
     Vector("gameId", "actor", "expectedNextSequence", "firstPlayerId", "extra").foreach { key =>
       val value = ujson.read(json)
       value(key) = "p1"
-      assert(TrustedGameCreateRequestCodec.decode(ujson.write(value)).isLeft)
+      assertEquals(TrustedGameCreateRequestCodec.decode(ujson.write(value)),
+        Left(UnexpectedField(s"$$.$key")), key)
     }
     base("participants")(0)("actor") = "p1"
-    assert(TrustedGameCreateRequestCodec.decode(ujson.write(base)).isLeft)
+    assertEquals(TrustedGameCreateRequestCodec.decode(ujson.write(base)),
+      Left(UnexpectedField("$.participants[0].actor")))
     // The server derives the lineage from the color, so a request naming one is refused.
     val lineage = ujson.read(json)
     lineage("participants")(0)("lineageId") = "l1"
@@ -34,9 +38,13 @@ class TrustedGameProtocolSuite extends munit.FunSuite:
   test("invalid player ids are refused"):
     // An id holds at most 128 characters, starts with a letter or a digit
     // and has no path or query characters such as "/" or "?".
-    Vector("", " ", "a/b", "a?b", "a" * 129).foreach { invalid =>
-      assert(TrustedGameCreateRequestCodec.decode(
-        json.replace("p1", invalid)).isLeft)
+    Vector("" -> "expected a non-blank string",
+      " " -> "expected a non-blank string", "a/b" -> "invalid identifier",
+      "a?b" -> "invalid identifier", ("a" * 129) -> "invalid identifier"
+    ).foreach { (invalid, message) =>
+      assertEquals(TrustedGameCreateRequestCodec.decode(
+        json.replace("p1", invalid)),
+        Left(InvalidValue("$.participants[0].playerId", message)), invalid)
     }
 
   test("duplicate and empty participants are refused"):
@@ -44,8 +52,10 @@ class TrustedGameProtocolSuite extends munit.FunSuite:
       Vector(request.participants.head, request.participants.head)
     Vector(request.copy(participants = Vector.empty),
       request.copy(participants = duplicatedParticipants)).foreach { invalid =>
-      assert(TrustedGameCreateRequestCodec.decode(
-        TrustedGameCreateRequestCodec.encode(invalid)).isLeft)
+      assertEquals(TrustedGameCreateRequestCodec.decode(
+        TrustedGameCreateRequestCodec.encode(invalid)),
+        Left(InvalidValue("$.participants",
+          "requires unique player IDs and at least one participant")))
     }
 
   test("an unknown colour is refused at its path"):
@@ -57,9 +67,15 @@ class TrustedGameProtocolSuite extends munit.FunSuite:
     }
 
   test("malformed JSON, a non-object root and a numeric id are refused"):
-    Vector("[]", "null", "{", json.replace("\"p1\"", "12")).foreach {
-      invalid =>
-      assert(TrustedGameCreateRequestCodec.decode(invalid).isLeft)
+    Vector(
+      "[]" -> ExpectedObject("$"),
+      "null" -> ExpectedObject("$"),
+      "{" -> MalformedJson("$", "malformed JSON"),
+      json.replace("\"p1\"", "12") ->
+        InvalidValue("$.participants[0].playerId", "expected a non-blank string")
+    ).foreach { (invalid, refusal) =>
+      assertEquals(TrustedGameCreateRequestCodec.decode(invalid),
+        Left(refusal), invalid)
     }
 
   private val seatResponse = TrustedGameCreateResponse("game-1", Vector(
@@ -79,14 +95,17 @@ class TrustedGameProtocolSuite extends munit.FunSuite:
   test("an extra seat field is refused"):
     val extra = ujson.read(seatResponseJson)
     extra("seats")(0)("code") = "secret"
-    assert(TrustedGameCreateResponseCodec.decode(ujson.write(extra)).isLeft)
+    assertEquals(TrustedGameCreateResponseCodec.decode(ujson.write(extra)),
+      Left(UnexpectedField("$.seats[0].code")))
 
   test("a missing url is refused"):
     val missing = ujson.read(seatResponseJson)
     missing("seats")(0).obj.remove("url")
-    assert(TrustedGameCreateResponseCodec.decode(ujson.write(missing)).isLeft)
+    assertEquals(TrustedGameCreateResponseCodec.decode(ujson.write(missing)),
+      Left(MissingField("$.seats[0].url")))
 
   test("an extra root field is refused"):
     val extra = ujson.read(seatResponseJson)
     extra.obj("unexpected") = ujson.Bool(true)
-    assert(TrustedGameCreateResponseCodec.decode(ujson.write(extra)).isLeft)
+    assertEquals(TrustedGameCreateResponseCodec.decode(ujson.write(extra)),
+      Left(UnexpectedField("$.unexpected")))

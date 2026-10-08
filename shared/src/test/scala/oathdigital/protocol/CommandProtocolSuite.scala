@@ -46,14 +46,17 @@ class CommandProtocolSuite extends munit.FunSuite:
   test("a usePower intent with an unknown field is rejected"):
     val json = """{"type":"usePower","powerId":"denizen.silver-tongue",""" +
       """"source":{"optionKind":"denizen","optionId":"92"},"extra":1}"""
-    assert(CommandIntentCodec.decode(ujson.read(json), "$").isLeft)
+    assertEquals(CommandIntentCodec.decode(ujson.read(json), "$"),
+      Left(ProtocolDecodeFailure.UnexpectedField("$.extra")))
 
   test("a walker answer carrying a deleted legacy tag is rejected"):
     val legacy = ujson.Obj("kind" -> "recover-choice", "choice" -> "continue")
     Vector("recover-choice", "recover-relic", "forge-assignment").foreach { tag =>
       val payload = legacy.value.toMap.updated("kind", ujson.Str(tag))
-      assert(CommandNestedCodecs.decodeDecisionAnswerWire(
-        ujson.Obj.from(payload), "$.payload").isLeft, tag)
+      assertEquals(CommandNestedCodecs.decodeDecisionAnswerWire(
+        ujson.Obj.from(payload), "$.payload"),
+        Left(ProtocolDecodeFailure.InvalidValue("$.payload.kind",
+          s"unknown decision answer '$tag'")), tag)
     }
 
   test("every actorless command intent round trips through the shared codec"):
@@ -66,9 +69,8 @@ class CommandProtocolSuite extends munit.FunSuite:
   test("actor injection is rejected at command identity fields"):
     Vector("playerId", "actor", "actorId", "actorPlayerId").foreach { field =>
       val json = s"""{"expectedNextSequence":0,"intent":{"type":"endWake","$field":"spoof"}}"""
-      val failure = rejected(ActorlessCommandCodec.decode(json))
-      assertEquals(failure.path, s"$$.intent.$field")
-      assert(failure.isInstanceOf[ProtocolDecodeFailure.ActorInjection])
+      assertEquals(rejected(ActorlessCommandCodec.decode(json)),
+        ProtocolDecodeFailure.ActorInjection(s"$$.intent.$field"), field)
     }
 
   test("the retired Campaign intents are rejected as unknown types"):
@@ -122,10 +124,9 @@ class CommandProtocolSuite extends munit.FunSuite:
   test("an unknown decision-payload kind decodes to a typed error, not an exception"):
     val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
       """"decisionId":"recover.choice","payload":{"kind":"recover-teleport"}}}"""
-    val failure = rejected(ActorlessCommandCodec.decode(json))
-    assertEquals(failure.path, "$.intent.payload.kind")
-    assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
-    assert(failure.message.contains("unknown decision answer"))
+    assertEquals(rejected(ActorlessCommandCodec.decode(json)),
+      ProtocolDecodeFailure.InvalidValue("$.intent.payload.kind",
+        "unknown decision answer 'recover-teleport'"))
 
   test("a partition payload placing one option twice is rejected at its " +
       "exact path"):
@@ -133,19 +134,22 @@ class CommandProtocolSuite extends munit.FunSuite:
     val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
       s""""decisionId":"forge.assignment","payload":{"kind":"partition",""" +
       s""""placements":[$row,$row]}}}"""
-    val failure = rejected(ActorlessCommandCodec.decode(json))
-    assertEquals(failure.path, "$.intent.payload.placements")
     // The engine rejects a duplicated placement too (`DecisionQueries`);
     // catching it at the transport keeps the two rules the same shape.
-    assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
+    assertEquals(rejected(ActorlessCommandCodec.decode(json)),
+      ProtocolDecodeFailure.InvalidValue("$.intent.payload.placements",
+        "duplicate value 'denizen/d1'"))
 
   test("a choose-many wire answer rejects duplicate options and unknown keys"):
     val duplicate = ujson.Obj("kind" -> "choose-many", "options" -> ujson.Arr(
       ujson.Obj("optionKind" -> "site", "optionId" -> "a"),
       ujson.Obj("optionKind" -> "site", "optionId" -> "a")))
-    assert(CommandNestedCodecs.decodeDecisionAnswerWire(duplicate, "$").isLeft)
+    assertEquals(CommandNestedCodecs.decodeDecisionAnswerWire(duplicate, "$"),
+      Left(ProtocolDecodeFailure.InvalidValue("$.options",
+        "duplicate value 'site/a'")))
     val extra = ujson.Obj("kind" -> "choose-amount", "amount" -> 2, "x" -> 1)
-    assert(CommandNestedCodecs.decodeDecisionAnswerWire(extra, "$").isLeft)
+    assertEquals(CommandNestedCodecs.decodeDecisionAnswerWire(extra, "$"),
+      Left(ProtocolDecodeFailure.UnexpectedField("$.x")))
 
   test("a distribute payload naming one option twice is rejected at its path"):
     val row = """{"optionKind":"favor-bank","optionId":"nomad","amount":1}"""
