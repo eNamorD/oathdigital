@@ -282,12 +282,15 @@ final class GameApplicationService(
         .map(failure => ReplayFailure(failure.index, failure.violation)))
 
   /** `batch` as an Undo or Redo would name it to its issuer. The note is the
-    * batch's first log line; formatting stops at the batch's end, so a
-    * taken-back batch reads as it did before its undo. */
+    * batch's first log line, skipping an action's tag, which names the
+    * action and its cost rather than what changed (undo design, "Controls").
+    * Formatting stops at the batch's end, so a taken-back batch reads as it
+    * did before its undo. */
   private def offered(journal: FoldedJournal, batch: CommandBatch): UndoStep =
     val note = log.format(journal.steps.take(batch.until.toInt),
         Some(batch.issuer))
-      .find(entry => entry.sequence >= batch.from)
+      .find(entry => entry.sequence >= batch.from &&
+        entry.kind != gamelog.LogKind.Section)
       .map(_.spans.map(_.text).mkString)
     UndoStep(batch.issuer, batch.from, batch.until, note)
 

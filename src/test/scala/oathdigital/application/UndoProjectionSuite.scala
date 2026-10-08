@@ -8,7 +8,7 @@ import oathdigital.testkit.Table.{p1, p2, p3}
 /** Who is offered the Undo and the Redo, and what they say (undo design,
   * "Controls" and "Projection"). */
 class UndoProjectionSuite extends munit.FunSuite:
-  private val table = Table.start.banditsRefilled
+  private val table = Table.start.pawn(p3, "Buried Giant").banditsRefilled
   private val projector = new GameProjector(catalog)
   /** p1 Travels to where p3 stands; the pick is the batch to offer. */
   private def moved(service: GameApplicationService): GameAccepted =
@@ -19,9 +19,10 @@ class UndoProjectionSuite extends munit.FunSuite:
   test("only the issuer is offered the Undo, named by the batch's first line"):
     val (service, _) = table.service()
     val moved = this.moved(service)
-    val note = moved.undo.flatMap(_.note).getOrElse(fail("no note"))
+    // The batch opens with the Travel tag ("Travel", 2 Supply); the note
+    // skips it for the line that says what changed.
     assertEquals(projector.project("g", moved.loaded, p1).undo,
-      Some(StepOfferProjection(s"Undo: $note")))
+      Some(StepOfferProjection("Undo: Travelled to Buried Giant")))
     assertEquals(projector.project("g", moved.loaded, p2).undo, None)
     assertEquals(projector.projectPublic("g", moved.loaded).undo, None)
 
@@ -41,14 +42,13 @@ class UndoProjectionSuite extends munit.FunSuite:
     assertEquals(projector.projectPublic("g", undone.loaded).logRevision,
       Some(moved.nextSequence))
 
-  test("only the issuer is offered the Redo, named by the batch's first line"):
+  test("only the issuer is offered the Redo, named as its Undo was"):
     val (service, _) = table.service()
     val moved = this.moved(service)
     val undone = accept(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
-    val note = undone.redo.flatMap(_.note).getOrElse(fail("no note"))
     assertEquals(projector.project("g", undone.loaded, p1).redo,
-      Some(StepOfferProjection(s"Redo: $note")))
+      Some(StepOfferProjection("Redo: Travelled to Buried Giant")))
     assertEquals(projector.project("g", undone.loaded, p2).redo, None)
     assertEquals(projector.projectPublic("g", undone.loaded).redo, None)
 
