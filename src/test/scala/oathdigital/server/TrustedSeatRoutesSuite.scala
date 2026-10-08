@@ -81,11 +81,13 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
         .nextSequence,
       placed.nextSequence)
     // A fresh load after the answer shows p2's next decision to p2 only.
-    assert(accepted(gateway.load("trusted", trustedP2Seat)).walkerDecision
-      .nonEmpty)
-    assert(accepted(gateway.load("trusted", trustedP3Seat)).walkerDecision
-      .isEmpty)
-    assert(GameHttpWire.decodeCommand("""{"expectedNextSequence":2,"intent":{"type":"resolveWalker","playerId":"p3","decisionId":"setup.pawn-placement.p3","payload":{"kind":"choose-one","optionKind":"site","optionId":"S1"}}}""").isLeft)
+    assertEquals(accepted(gateway.load("trusted", trustedP2Seat))
+      .walkerDecision.map(_.decisionId), Some("setup.adviser-choice.p2"))
+    assertEquals(accepted(gateway.load("trusted", trustedP3Seat)).walkerDecision,
+      None)
+    assertEquals(GameHttpWire.decodeCommand("""{"expectedNextSequence":2,"intent":{"type":"resolveWalker","playerId":"p3","decisionId":"setup.pawn-placement.p3","payload":{"kind":"choose-one","optionKind":"site","optionId":"S1"}}}"""),
+      Left(HttpInputError("$.intent.playerId",
+        "actor identity is bound by the server")))
 
   test("the trusted gateway refuses another game and a stale position"):
     val TrustedGatewayGame(_, gateway, afterBegin) = begunTrustedGame()
@@ -111,7 +113,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val sequence = act.nextSequence
     val request = MajorActionPreviewRequest(sequence, "travel")
     val previewP2Seat = TrustedSeat("preview", p2.value)
-    assert(gateway.preview("preview", previewP2Seat, request).isRight)
+    accepted(gateway.preview("preview", previewP2Seat, request))
     assertEquals(
       gateway.preview("preview", TrustedSeat("preview", p1.value), request)
         .left.toOption,

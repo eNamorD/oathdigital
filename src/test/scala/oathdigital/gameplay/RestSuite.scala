@@ -189,7 +189,9 @@ class RestSuite extends munit.FunSuite:
       assertEquals(rules.evolve(Ready(state), recorded), Right(Ready(state)))
       val tampered = recorded.copy(diagnostics = recorded.diagnostics.map(
         _.copy(handlerId = "denizen.tampered")))
-      assert(rules.evolve(Ready(state), tampered).isLeft)
+      assertEquals(rules.evolve(Ready(state), tampered), Left(
+        OathViolation.InvalidEventOrder(
+          "ignored-rule diagnostics do not match authoritative discovery")))
     }
     val siteState = Table.from(act).denizen("Naysayers", at = ancientCity)
       .unchecked
