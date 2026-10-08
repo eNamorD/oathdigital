@@ -2,14 +2,15 @@ package oathdigital.application
 
 import oathdigital.model._
 import oathdigital.serialization.GameEventWire
+import oathdigital.testkit.Unwrap
 
 /** Journal surgery for undo tests: reading a stream's events, and writing
   * streams the service itself would never write. */
 object UndoJournals:
   def events(repository: EventStreamRepository, gameId: String)
       (using munit.Location): Vector[OathEvent] =
-    repository.load(gameId).toOption.flatten.toVector
-      .flatMap(_.records).map(record =>
+    Unwrap.present(Unwrap.accepted(repository.load(gameId)),
+      s"a stored stream for $gameId").records.map(record =>
         GameEventWire.decode(ujson.read(record)).fold(
           error => munit.Assertions.fail(s"undecodable: $error"), _.event))
 
@@ -31,3 +32,15 @@ object UndoJournals:
     munit.Assertions.assert(
       copy.append(gameId, ExpectedStream.MustNotExist, records).isRight)
     copy
+
+  /** The journal index at which a second service over `repository`, started
+    * where `service` started, fails replaying `gameId`; fails the test if
+    * the load does anything else. */
+  def replayFailureIndex(service: GameApplicationService,
+      repository: EventStreamRepository, gameId: String)(using munit.Location)
+      : Long =
+    ParkedServiceFixture.replayingSecond(service, repository).load(gameId)
+      match
+      case Left(GameApplicationError.ReplayFailure(index, _)) => index
+      case other => munit.Assertions.fail(
+        s"expected a replay failure, got $other")

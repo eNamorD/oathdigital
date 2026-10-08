@@ -5,6 +5,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model.OathViolation
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 /** A service seeded with a start state: its streams begin there instead of
   * at `GameStarted`. Tests only; see the service and log start-states
@@ -18,16 +19,14 @@ class GenesisServiceSuite extends munit.FunSuite:
   test("the first command runs against the genesis, and replay starts there"):
     val table = Table.start
     val (service, repository) = table.service()
-    val accepted = service.handle("g", 0L, GameCommand.BeginRest(p1))
-      .fold(error => fail(s"rejected: $error"), identity)
-    assert(accepted.events.nonEmpty)
+    val rested = accepted(service.handle("g", 0L, GameCommand.BeginRest(p1)))
+    assert(rested.events.nonEmpty)
     // the batch opens with CommandAccepted, which events omits
-    assertEquals(accepted.nextSequence, accepted.events.size.toLong + 1L)
+    assertEquals(rested.nextSequence, rested.events.size.toLong + 1L)
     // A second service over the same journal replays from the same genesis.
-    val reloaded = new GameApplicationService(catalog, repository,
-      genesis = table.state)
+    val reloaded = ParkedServiceFixture.replayingSecond(service, repository)
     assertEquals(reloaded.load("g").map(_.map(_.state)),
-      Right(Some(accepted.state)))
+      Right(Some(rested.state)))
 
   test("a started genesis refuses Begin, and appends nothing"):
     val (service, repository) = Table.start.service()

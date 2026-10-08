@@ -18,7 +18,10 @@ class UndoBarrierPlaySuite extends munit.FunSuite:
       park.game.accepted.nextSequence, park.actor)
 
   test("peeking at a site's relics cannot be taken back"):
-    val table = ParkedServiceFixture.recoverTable.banditsRefilled
+    val table = Table.start
+      .pawn(p1, "Broken Peaks")
+      .relicAt("Sticky Fire", "Broken Peaks")
+      .banditsRefilled
     val (service, repository) = table.service()
     val act = table.situation(Situation.journaled(service, catalog,
       repository, "peek"))
@@ -26,15 +29,12 @@ class UndoBarrierPlaySuite extends munit.FunSuite:
     nothingToUndo(service, "peek", peeked.nextSequence, p1)
 
   test("finishing Rest hands the turn over, so neither player can undo"):
-    val table = Table.start.banditsRefilled
+    val table = Table.start.turn(p1, Phase.Act).banditsRefilled
     val (service, repository) = table.service()
     val act = table.situation(Situation.journaled(service, catalog,
       repository, "rest"))
-    val rested = act.after(GameCommand.BeginRest(p1))
-    val passed =
-      if rested.ready.game.current.turn.activePlayer == p1 then
-        rested.after(GameCommand.FinishRest(p1))
-      else rested
-    assertNotEquals(passed.ready.game.current.turn.activePlayer, p1)
+    val passed = act.after(GameCommand.BeginRest(p1))
+    // Rest asks p1 nothing here, so Begin Rest runs on into Finish Rest.
+    assertEquals(passed.ready.game.current.turn.activePlayer, p2)
     nothingToUndo(service, "rest", passed.nextSequence, p1)
     nothingToUndo(service, "rest", passed.nextSequence, p2)

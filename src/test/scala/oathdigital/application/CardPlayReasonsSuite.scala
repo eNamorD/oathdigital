@@ -76,6 +76,5 @@ class CardPlayReasonsSuite extends munit.FunSuite:
     val replacing = rows(parked.state).filter(row =>
       row.kind == "adviser-play" &&
         row.replaces.exists(_.cardId == sealingWard.value))
-    assert(replacing.nonEmpty)
-    assert(replacing.forall(row => row.state == "unavailable" &&
-      row.reason.contains("Locked: cannot be discarded")), replacing.toString)
+    assertEquals(replacing.map(row => (row.state, row.reason)).distinct,
+      Vector(("unavailable", Some("Locked: cannot be discarded"))))

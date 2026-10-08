@@ -19,6 +19,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     present(accepted(service.history(id)), s"history of $id").steps
 
   test("setup opens the log and hands the first turn to Round 1"):
+    // `woken` replays Setup: the headlines Setup opens with are the subject.
     val script = woken
     val entries = format(script, Some(script.actor))
     assertEquals(headlines(entries).take(4),

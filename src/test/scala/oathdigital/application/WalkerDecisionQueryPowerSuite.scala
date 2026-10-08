@@ -10,6 +10,7 @@ import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.{PowerStubs, WalkerStubs}
 import oathdigital.testkit.Outcomes
+import oathdigital.testkit.Unwrap.{accepted, rejected}
 
 /** The point of Task 4, in one suite: a power that transforms a parked
   * decision moves what the projector OFFERS and what the walker ACCEPTS in
@@ -128,6 +129,10 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
       RecoverProcedure.choiceDecisionId,
       DecisionAnswer.ChooseOneAnswer(selected))
 
+  /** The refusal of an answer the parked decision does not offer. */
+  private val notOffered = OathViolation.InvalidEventOrder(
+    "decision recover.choice does not offer the selected option")
+
   // Each test starts from p1's Act on the quiet table: the injected tree
   // replaces Recover's own eligibility gates, so the command never consults
   // them.
@@ -138,8 +143,9 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
     val state = parked(ready, p1, WalkerPowers.empty)
     assertEquals(offered(state, p1, WalkerPowers.empty),
       Vector("continue", "stop"))
-    assert(answering(state, p1, WalkerPowers.empty, continueOption).isRight)
-    assert(answering(state, p1, WalkerPowers.empty, extraOption).isLeft)
+    accepted(answering(state, p1, WalkerPowers.empty, continueOption))
+    assertEquals(rejected(answering(state, p1, WalkerPowers.empty,
+      extraOption)), notOffered)
 
   test("a power that adds an option adds it to the projection and to what " +
       "the walker accepts"):
@@ -147,18 +153,18 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
     val state = parked(ready, p1, adding)
     assertEquals(offered(state, p1, adding),
       Vector("continue", "stop", "extra"))
-    assert(answering(state, p1, adding, extraOption).isRight,
-      "the walker must accept the option the power added")
+    // The walker accepts the option the power added.
+    accepted(answering(state, p1, adding, extraOption))
 
   test("a power that removes an option removes it from the projection and " +
       "from what the walker accepts"):
     val ready = Table.start.ready
     val state = parked(ready, p1, removing)
     assertEquals(offered(state, p1, removing), Vector("stop"))
-    assert(answering(state, p1, removing, continueOption).isLeft,
-      "the walker must reject the option the power removed")
-    assert(answering(state, p1, removing, stopOption).isRight,
-      "the surviving option must still be answerable")
+    assertEquals(rejected(answering(state, p1, removing, continueOption)),
+      notOffered)
+    // The surviving option is still answerable.
+    accepted(answering(state, p1, removing, stopOption))
 
   test("a power that rewrites a decision's heading changes what is " +
       "projected, in the same edit that moves its options"):
@@ -175,8 +181,9 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
     // them is the power's. Copy still decides nothing -- the surviving
     // option is answerable under either title.
     assertEquals(offered(state, p1, retitling), Vector("stop"))
-    assert(answering(state, p1, retitling, continueOption).isLeft)
-    assert(answering(state, p1, retitling, stopOption).isRight)
+    assertEquals(rejected(answering(state, p1, retitling, continueOption)),
+      notOffered)
+    accepted(answering(state, p1, retitling, stopOption))
 
   /** Task 5: a power that reowns the parked `Decide` moves who may answer it
     * (the walker), who is projected it (`project`) and who the public

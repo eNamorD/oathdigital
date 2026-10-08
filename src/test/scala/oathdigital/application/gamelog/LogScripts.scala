@@ -310,7 +310,8 @@ object LogScripts:
     * Wake's only option, so Wake ends with the take. */
   def takeWealth(using munit.Location): Script =
     val (service, waking) = atTable("take-wealth", Table.start
-      .turn(p2, Phase.Wake).siteTokens("Broken Peaks", favor = 1)
+      .turn(p2, Phase.Wake).pawn(p2, "Broken Peaks")
+      .siteTokens("Broken Peaks", favor = 1)
       .banditsRefilled)
     start(waking, ActionRef.TakeWealth, DecisionOptionRef.Button("favor"))
     Script("take-wealth", service, p2)

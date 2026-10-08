@@ -1,6 +1,7 @@
 package oathdigital.application
 
-import oathdigital.protocol.projection.SiteForcesProjection
+import oathdigital.protocol.projection.{ActivePlayerResourcesProjection,
+  CurrentSiteResourcesProjection, SiteForcesProjection}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer,
   PartitionAnswer}
@@ -24,7 +25,9 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     // p2's facedown adviser (any facedown adviser will do) are what Act then
     // offers: Recover, a Campaign, a peek and the minor action.
     val table = Table.start.turn(p2, Phase.Wake)
-      .siteTokens("Broken Peaks", secrets = 2)
+      .pawn(p2, "Broken Peaks").favor(p2, 1).secrets(p2, faceUp = 1)
+      .supply(p2, 7)
+      .siteTokens("Broken Peaks", favor = 0, secrets = 2)
       .relicAt("Sticky Fire", "Broken Peaks")
       .bandits("Broken Peaks", 1)
       .adviser(p2, "Birdsong", facedown = true)
@@ -37,8 +40,12 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     assertEquals(own.phase, "wake")
     assert(own.legalControls.contains("endWake"))
     assertEquals(public.legalControls, Vector.empty)
-    assert(own.activePlayerResources.nonEmpty)
-    assert(own.currentSiteResources.nonEmpty)
+    assertEquals(own.activePlayerResources,
+      Some(ActivePlayerResourcesProjection(favor = 1, faceUpSecrets = 1,
+        faceDownSecrets = 0, committedSecrets = 0, totalSecrets = 1,
+        supply = 7)))
+    assertEquals(own.currentSiteResources, Some(CurrentSiteResourcesProjection(
+      CatalogNames.site("Broken Peaks").value, favor = 0, secrets = 2)))
 
     val ended = accepted(service.handle(
       "game-projection-wake",
@@ -193,6 +200,7 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     * never draws one card twice.
     */
   test("a temporary hand previews to its holder until it is asked about"):
+    // Replays Begin: the hands Setup deals are the subject.
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val begun = accepted(service.handle("game-hand", 0L,
@@ -294,7 +302,9 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
   private val natureWorship = CatalogNames.denizen("Nature Worship")
 
   /** The fixture's first game begun, and the first player, p2, placed at
-    * Ancient City: p2 is now asked which adviser to keep. */
+    * Ancient City: p2 is now asked which adviser to keep. Replays Begin and
+    * the first placement, since the adviser choice and the hands it offers
+    * come from Setup's deal. */
   private def askedForAdvisers(service: GameApplicationService,
       gameId: String)(using munit.Location): GameAccepted =
     val begun = accepted(service.handle(gameId, 0L,
@@ -305,6 +315,7 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
         ChooseOneAnswer(DecisionOptionRef.Site(ancientCity))))))
 
   test("player projection redacts other adviser hands and hidden orders"):
+    // Replays Setup's deal: the hands and deck orders it deals are the subject.
     val service = new GameApplicationService(catalog,
       new InMemoryEventStreamRepository)
     val placed = askedForAdvisers(service, "game-private")
@@ -337,6 +348,7 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       Set.empty[String])
 
   test("after the adviser choice the next seat is asked for its pawn"):
+    // Replays Setup's deal: the adviser choice it offers is the subject.
     val service = new GameApplicationService(catalog,
       new InMemoryEventStreamRepository)
     val placed = askedForAdvisers(service, "game-next-seat")

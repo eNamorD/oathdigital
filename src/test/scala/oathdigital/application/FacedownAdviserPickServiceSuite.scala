@@ -6,41 +6,20 @@ import oathdigital.protocol.projection.{DecisionQueryProjection,
   WalkerWaitingProjection}
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 /** The facedown-adviser pick through the service: a board decision only its
-  * player sees, and Undo in place of the old Cancel (undo design, "The
-  * facedown-adviser pick"). */
+  * player sees (undo design, "The facedown-adviser pick"). Undo of the pick
+  * is covered by `UndoServiceSuite`. */
 class FacedownAdviserPickServiceSuite extends munit.FunSuite:
   private val conclave = CatalogNames.denizen("Wizard's Conclave")
   private val wrestlers = CatalogNames.denizen("Wrestlers")
   private val table = Table.start.adviser(p1, conclave, facedown = true)
     .adviser(p1, wrestlers, facedown = true).banditsRefilled
-  private def accept(result: Either[GameApplicationError, GameAccepted])
-      : GameAccepted = result.fold(error => fail(s"rejected: $error"), identity)
-
-  test("Undo takes back the start, leaving the table as it was"):
-    val (service, _) = table.service()
-    val started = accept(service.handle("g", 0L,
-      ParkedServiceFixture.playFacedownAdviser(p1)))
-    val undone = accept(service.handle("g", started.nextSequence,
-      GameCommand.Undo(p1)))
-    assertEquals(undone.state, table.state)
-
-  test("Undo after the pick returns to the pick, and the start stays undoable"):
-    val (service, _) = table.service()
-    val started = accept(service.handle("g", 0L,
-      ParkedServiceFixture.playFacedownAdviser(p1)))
-    val picked = accept(service.handle("g", started.nextSequence,
-      ParkedServiceFixture.pickFacedownAdviser(p1, wrestlers)))
-    val undone = accept(service.handle("g", picked.nextSequence,
-      GameCommand.Undo(p1)))
-    assertEquals(undone.state, started.state)
-    assert(undone.undo.nonEmpty, "the start can still be taken back")
-
   test("the parked pick is a board decision naming each adviser to its " +
       "player only"):
     val (service, _) = table.service()
-    val started = accept(service.handle("g", 0L,
+    val started = accepted(service.handle("g", 0L,
       ParkedServiceFixture.playFacedownAdviser(p1)))
     val projector = new GameProjector(catalog)
     val own = projector.project("g", started.loaded, p1).walkerDecision

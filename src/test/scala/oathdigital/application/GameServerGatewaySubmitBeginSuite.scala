@@ -12,7 +12,7 @@ import oathdigital.protocol.projection.{DecisionQueryProjection, GameProjection,
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.testkit.ChronicleShuffles.unshuffled
 import oathdigital.testkit.Table.p2
-import oathdigital.testkit.Unwrap.{accepted, present}
+import oathdigital.testkit.Unwrap.{accepted, as, present}
 import ParkedServiceFixture.loaded
 
 /** `GameServerGateway.submit` with `GameCommand.Begin` is what the
@@ -59,13 +59,13 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite:
       val stored = loaded(new GameApplicationService(catalog, reopened)
         .load("bootstrap-game"))
       assertEquals(stored.nextSequence, 2L)
-      assert(stored.state.isInstanceOf[OathState.Ready])
+      as[OathState.Ready](stored.state)
       val publicProjection = new GameProjector(catalog).projectPublic(
         "bootstrap-game", stored)
       // Nobody but the awaited player sees the parked decision's owner-private
       // projection (WalkerDecisionProjector.project); the public view instead
       // sees who it is waiting on.
-      assert(publicProjection.walkerDecision.isEmpty)
+      assertEquals(publicProjection.walkerDecision, None)
       assertEquals(publicProjection.walkerWaiting.map(_.playerId), Some("p2"))
     finally reopened.close()
 

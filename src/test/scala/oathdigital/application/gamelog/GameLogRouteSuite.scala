@@ -39,6 +39,7 @@ class GameLogRouteSuite extends munit.FunSuite:
       page.entries)
 
   test("the development route binds playerId, checks the cursor, and leaves raw events alone"):
+    // `woken` replays Setup: the route serves a game begun from the start.
     val script = LogScripts.woken
     val gateway = new GameServerGateway(script.service,
       new GameProjector(catalog))

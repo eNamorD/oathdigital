@@ -22,7 +22,9 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
       projector.project("phase-powers", LoadedGame(Ready(ready), 30L), p1)
     assertEquals(own.phasePowers.map(p => p.powerId -> p.source.id),
       Vector(SilverTongue.id.value -> silverTongueId))
-    assert(own.phasePowers.head.rulesText.nonEmpty)
+    assertEquals(own.phasePowers.map(_.rulesText), Vector("You can only " +
+      "have two advisers. **REST:** Take [favor] from a favor bank " +
+      "matching a card at your site."))
     assert(own.legalControls.contains(
       s"usePower:denizen.silver-tongue:$silverTongueId"))
     assert(own.legalControls.contains("finishRest"))

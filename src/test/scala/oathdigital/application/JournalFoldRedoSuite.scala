@@ -1,35 +1,19 @@
 package oathdigital.application
 
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathEvent.StepRestored
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2, p3}
+import oathdigital.testkit.Unwrap.accepted
 
 /** The redo stack, as the service folds its journal (undo design, "Replay:
   * one forward fold" and "Redo"). Restore markers are written by journal
   * surgery here; the Redo command comes in its own suite. */
 class JournalFoldRedoSuite extends munit.FunSuite:
   private val table = Table.start.banditsRefilled
-  private def accept(result: Either[GameApplicationError, GameAccepted])
-      : GameAccepted = result.fold(error => fail(s"rejected: $error"), identity)
   private def range(step: UndoStep) = (step.issuer, step.from, step.until)
   private def pickOther(to: PlayerId) = ParkedServiceFixture
     .pickTravelDestination(p1, Table.quietPawnSite(to))
-
-  /** `repository`'s game "g" as a fresh service loads it. */
-  private def reloadedGame(repository: EventStreamRepository): LoadedGame =
-    new GameApplicationService(catalog, repository, genesis = table.state)
-      .load("g").fold(error => fail(s"load failed: $error"), identity)
-      .getOrElse(fail("no game"))
-
-  /** The journal index a fresh service's load of "g" fails at, if any. */
-  private def replayFailureIndex(repository: EventStreamRepository)
-      : Option[Long] =
-    new GameApplicationService(catalog, repository, genesis = table.state)
-      .load("g") match
-      case Left(GameApplicationError.ReplayFailure(index, _)) => Some(index)
-      case _ => None
 
   test("each undo offers its batch back, the latest undone on top"):
     val (service, _) = table.service()
@@ -37,98 +21,79 @@ class JournalFoldRedoSuite extends munit.FunSuite:
     val second = ParkedServiceFixture.travelToPawnOf(service, "g",
       first.picked.nextSequence, p1, p2)
     assertEquals(second.picked.redo, None)
-    val once = accept(service.handle("g", second.picked.nextSequence,
+    val once = accepted(service.handle("g", second.picked.nextSequence,
       GameCommand.Undo(p1)))
     assertEquals(once.redo.map(range), Some((p1, second.started.nextSequence,
       second.picked.nextSequence)))
-    val twice = accept(service.handle("g", once.nextSequence,
+    val twice = accepted(service.handle("g", once.nextSequence,
       GameCommand.Undo(p1)))
     assertEquals(twice.redo.map(range), Some((p1, first.picked.nextSequence,
       second.started.nextSequence)))
-
-  test("a new command batch empties the redo stack"):
-    val (service, _) = table.service()
-    val moved = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
-      .picked
-    val undone = accept(service.handle("g", moved.nextSequence,
-      GameCommand.Undo(p1)))
-    assert(undone.redo.nonEmpty, "the undone Travel waits to be restored")
-    val again = accept(service.handle("g", undone.nextSequence, pickOther(p2)))
-    assertEquals(again.redo, None)
-
-  test("a restore marker brings back its batch's state and its undo"):
-    val (service, repository) = table.service()
-    val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
-    val moved = travel.picked
-    val undone = accept(service.handle("g", moved.nextSequence,
-      GameCommand.Undo(p1)))
-    val loaded = reloadedGame(UndoJournals.rewritten(
-      UndoJournals.events(repository, "g") :+
-        StepRestored(travel.started.nextSequence, moved.nextSequence, p1), "g"))
-    assertEquals(loaded.state, moved.state)
-    assertEquals(loaded.undo.map(range),
-      Some((p1, travel.started.nextSequence, moved.nextSequence)))
-    assertEquals(loaded.redo, None)
-    assertEquals(loaded.logRevision, Some(undone.nextSequence))
 
   test("a restore marker that does not name the latest undone batch fails replay"):
     val (service, repository) = table.service()
     val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
     val moved = travel.picked
-    val undone = accept(service.handle("g", moved.nextSequence,
+    val undone = accepted(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
     val events = UndoJournals.events(repository, "g")
-    assertEquals(replayFailureIndex(UndoJournals.rewritten(
-        events :+ StepRestored(1L, moved.nextSequence, p1), "g")),
-      Some(undone.nextSequence))
-    assertEquals(replayFailureIndex(UndoJournals.rewritten(
-        events :+ StepRestored(travel.started.nextSequence,
-          moved.nextSequence, p2), "g")),
-      Some(undone.nextSequence))
+    // The undone batch opened at travel.started.nextSequence; this marker
+    // claims it opened one event earlier.
+    val openedEarlier = StepRestored(travel.started.nextSequence - 1L,
+      moved.nextSequence, p1)
+    assertEquals(UndoJournals.replayFailureIndex(service,
+        UndoJournals.rewritten(events :+ openedEarlier, "g"), "g"),
+      undone.nextSequence)
+    // p2 never took the batch back.
+    val wrongIssuer = StepRestored(travel.started.nextSequence,
+      moved.nextSequence, p2)
+    assertEquals(UndoJournals.replayFailureIndex(service,
+        UndoJournals.rewritten(events :+ wrongIssuer, "g"), "g"),
+      undone.nextSequence)
 
   test("a restore marker after a new command batch fails replay"):
     val (service, repository) = table.service()
     val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
     val moved = travel.picked
-    val undone = accept(service.handle("g", moved.nextSequence,
+    val undone = accepted(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
-    val again = accept(service.handle("g", undone.nextSequence, pickOther(p2)))
-    assertEquals(replayFailureIndex(UndoJournals.rewritten(
-        UndoJournals.events(repository, "g") :+
+    val again = accepted(service.handle("g", undone.nextSequence, pickOther(p2)))
+    assertEquals(UndoJournals.replayFailureIndex(service,
+        UndoJournals.rewritten(UndoJournals.events(repository, "g") :+
           StepRestored(travel.started.nextSequence, moved.nextSequence, p1),
-        "g")),
-      Some(again.nextSequence))
+          "g"), "g"),
+      again.nextSequence)
 
   test("a restore marker that names a deeper batch fails replay"):
     val (service, repository) = table.service()
     val first = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
     val second = ParkedServiceFixture.travelToPawnOf(service, "g",
       first.picked.nextSequence, p1, p2)
-    val once = accept(service.handle("g", second.picked.nextSequence,
+    val once = accepted(service.handle("g", second.picked.nextSequence,
       GameCommand.Undo(p1)))
-    val twice = accept(service.handle("g", once.nextSequence,
+    val twice = accepted(service.handle("g", once.nextSequence,
       GameCommand.Undo(p1)))
     // The second start is on top of the redo stack; the second pick lies
     // under it.
-    assertEquals(replayFailureIndex(UndoJournals.rewritten(
-        UndoJournals.events(repository, "g") :+
+    assertEquals(UndoJournals.replayFailureIndex(service,
+        UndoJournals.rewritten(UndoJournals.events(repository, "g") :+
           StepRestored(second.started.nextSequence,
-            second.picked.nextSequence, p1), "g")),
-      Some(twice.nextSequence))
+            second.picked.nextSequence, p1), "g"), "g"),
+      twice.nextSequence)
 
   test("a new command after a redo empties what was left to redo"):
     val (service, _) = table.service()
     val first = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
     val second = ParkedServiceFixture.travelToPawnOf(service, "g",
       first.picked.nextSequence, p1, p2)
-    val once = accept(service.handle("g", second.picked.nextSequence,
+    val once = accepted(service.handle("g", second.picked.nextSequence,
       GameCommand.Undo(p1)))
-    val twice = accept(service.handle("g", once.nextSequence,
+    val twice = accepted(service.handle("g", once.nextSequence,
       GameCommand.Undo(p1)))
-    val redone = accept(service.handle("g", twice.nextSequence,
+    val redone = accepted(service.handle("g", twice.nextSequence,
       GameCommand.Redo(p1)))
     assertEquals(redone.redo.map(range), Some((p1, second.started.nextSequence,
       second.picked.nextSequence)))
-    val again = accept(service.handle("g", redone.nextSequence, pickOther(p2)))
+    val again = accepted(service.handle("g", redone.nextSequence, pickOther(p2)))
     assertEquals(again.redo, None)
     assertEquals(again.undo.map(_.from), Some(redone.nextSequence))

@@ -16,7 +16,7 @@ import oathdigital.protocol.projection.{DecisionQueryProjection,
   DecisionSummaryProjection, DecisionTallyProjection,
   DecisionTallyValueProjection, WalkerDecisionProjection,
   WalkerWaitingProjection}
-import oathdigital.testkit.Unwrap.{accepted, present}
+import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** Batch-1 Task 3, ruling R18 (P4), second consulting call site.
   *
@@ -231,7 +231,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       .optionProjection(context.ready, Some(p1),
         CardIndex.from(context.ready.game).toOption, option)
     assertEquals(projected.flatMap(_.badge), Some("Battle Plan"))
-    assert(projected.exists(_.details.nonEmpty))
+    assertEquals(projected.map(_.details), Some(Vector("Cost: 1 favor")))
 
   test("an edifice option projects its label and details from the card's side, " +
       "and one that is not at a site suppresses the decision"):
@@ -248,8 +248,9 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       .getOrElse(fail("an edifice at a site must project"))
     assertEquals(query.offeredOptions.map(row => (row.kind, row.id)),
       Vector(("edifice", hall.value)))
-    assert(query.offeredOptions.head.label.nonEmpty)
-    assert(query.offeredOptions.head.card.nonEmpty)
+    assertEquals(query.offeredOptions.map(row => (row.label,
+      row.card.map(_.name))), Vector(("Hall of Ministers",
+      Some("Hall of Ministers"))))
 
     // Control: the same option while the hall still sits in the deck has no
     // located state to describe, so the whole decision is suppressed.
@@ -394,7 +395,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       .getOrElse(fail("the actor's own adviser must project"))
     assertEquals(projected.offeredOptions.map(_.id), Vector(ownAdviser.value))
     assert(projected.offeredOptions.forall(_.card.exists(!_.hidden)))
-    assert(projected.offeredOptions.forall(_.label.nonEmpty))
+    assertEquals(projected.offeredOptions.map(_.label), Vector("Wrestlers"))
 
   /** Task 5b: panel copy is OPTIONAL, and the absent case has to project as
     * absent rather than as an invented default.
@@ -415,7 +416,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(query.heading, None)
     // The other half of the old assertion is now the type's: a choose-one
     // declares no confirm label, so there is no field left to find absent.
-    assert(query.isInstanceOf[DecisionQueryProjection.ChooseOne])
+    as[DecisionQueryProjection.ChooseOne](query)
 
   /** In p1's Act, a parked `Decide` p2 owns, and the projector that walks
     * it. p2 is who [[WalkerDecisionProjector.project]] must show the
@@ -439,7 +440,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     val OffTurnPark(ready, projector) = parkedOffTurn
     val (active, owner) = (p1, p2)
     def ctx(viewer: Option[PlayerId]) = ScopedProjectionContext(ready, viewer)
-    assert(projector.project(ctx(Some(owner))).nonEmpty)
+    assertEquals(projector.project(ctx(Some(owner))).map(_.decisionId),
+      Some("test.off-turn"))
     assertEquals(projector.project(ctx(Some(active))), None)
     assertEquals(projector.waiting(ctx(Some(owner))), None)
     val waiting = Some(WalkerWaitingProjection(owner.value, Some("Answer")))

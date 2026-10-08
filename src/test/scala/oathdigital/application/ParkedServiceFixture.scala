@@ -93,7 +93,7 @@ object ParkedServiceFixture:
   /** A second service over the same journal, replaying it from the same
     * start as `service`. */
   def replayingSecond(service: GameApplicationService,
-      repository: InMemoryEventStreamRepository): GameApplicationService =
+      repository: EventStreamRepository): GameApplicationService =
     new GameApplicationService(catalog, repository, genesis = service.genesis)
 
   /** Setup driven through `service` as `gameId`, the n-th pawn placed at
@@ -213,6 +213,7 @@ object ParkedServiceFixture:
       .bankFavor(suit, base.ready.banks.favor(suit) - 2)
       .warbandsAt("Ancient City", p2, 1)
       .boardWarbands(p2, 2)
+      .pawn(p2, "Broken Peaks")
       .siteTokens("Broken Peaks", secrets = 2)
     val (service, repository, act) = journaled(table, gameId)
     val parked = act.parkedAfter(GameCommand.BeginRest(p1))
@@ -304,3 +305,11 @@ object ParkedServiceFixture:
     SilverTonguePark(
       ParkedGame(service, repository, accepted(parked, resting), parked),
       p1, Suit.Order)
+
+  /** The Oathkeeper tie holder answers by choosing `leader`, one of the two
+    * tied leaders, as the recipient. */
+  def holderPicksLeader(park: OathkeeperTiePark, leader: PlayerId)
+      : GameCommand =
+    GameCommand.ResolveWalker(park.holder, TreeDecision(
+      OathkeeperProcedure.recipientDecisionId,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Player(leader))))

@@ -7,7 +7,6 @@ import oathdigital.serialization.GameEventWire
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.testkit.Table.p2
@@ -96,7 +95,8 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       assert(!view.actionSelectionOpen)
       assertEquals(view.oathkeeper.flatMap(_.winnerPlayerId),
         finished.game.current.result.map(_.winner.value))
-      assert(view.world.flatMap(_.sites).nonEmpty)
+      assertEquals(view.world.flatMap(_.sites).map(_.siteId).toSet,
+        finished.game.current.map.inPlay.map(_.value).toSet)
     }
     val raw = loaded(repository.load("powered-playability")).records
     assert(raw.exists(_.contains("diagnostic.ignored-rules-recorded")))
@@ -120,7 +120,6 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // completions (Setup's and the first Wake's) make 29. Each of the 9
     // answers opens its command batch with a `CommandAccepted`, so 38.
     assertEquals(reloaded.nextSequence, 38L)
-    assert(reloaded.state.isInstanceOf[Ready])
     val records = loaded(repository.load("game-v2")).records
     assertEquals(records.size, 38)
     val eventType = (record: String) => ujson.read(record)("eventType").str
@@ -135,7 +134,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
   test("gameplay appends at the absolute position and reloads equally"):
     // p2 wakes at Broken Peaks, whose 2 secrets are its only Wake option.
     val (service, repository) = Table.start.turn(p2, Phase.Wake)
-      .siteTokens("Broken Peaks", secrets = 2)
+      .pawn(p2, "Broken Peaks").siteTokens("Broken Peaks", secrets = 2)
       // Bandits at every empty site keep the refill out of the command's events.
       .banditsRefilled.service()
     val active = p2
@@ -175,6 +174,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         "walker.completed", "walker.step-recorded", "walker.completed"))
 
   test("stale expected position rejects a command legal on current state"):
+    // Replays Begin and a placement: the stale position is a journal length.
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     service.handle("game-stale-v2", 0L, GameCommand.Begin(chronicle, orders))

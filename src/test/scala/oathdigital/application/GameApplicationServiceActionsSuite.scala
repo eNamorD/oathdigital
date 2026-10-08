@@ -24,8 +24,8 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
       "and survives reload"):
     val ParkedServiceFixture.LeagueTreatyPark(game, _, _) =
       ParkedServiceFixture.leagueTreatyPark("game-league-treaty")
-    val reloaded = loaded(new GameApplicationService(catalog, game.repository,
-      genesis = game.service.genesis).load("game-league-treaty"))
+    val reloaded = loaded(replayingSecond(game.service, game.repository)
+      .load("game-league-treaty"))
     assertEquals(reloaded.state, game.accepted.state)
 
   test("only the League Treaty ruler's answer resumes the Rest: Wake, next " +

@@ -9,6 +9,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.{accepted, rejected}
 
 /** A start control counts the modifiers its player
   * could select: an action that only a modifier makes affordable is still
@@ -24,10 +25,26 @@ class ModifierStartControlsSuite extends munit.FunSuite:
   private def controls(ready: ReadyGame, viewer: PlayerId): Vector[String] =
     legal.project(ScopedProjectionContext(ready, Some(viewer))).controls
 
-  /** Whether `viewer` may start `action` at `ready` with `modifiers`. */
-  private def starts(ready: ReadyGame, viewer: PlayerId, action: ActionRef,
-      modifiers: Vector[PowerId]): Boolean =
-    rules.startWalker(OathState.Ready(ready), action, viewer, modifiers).isRight
+  /** `viewer` starts `action` at `ready` with `modifiers`; fails the test
+    * if the start is refused. */
+  private def assertStarts(ready: ReadyGame, viewer: PlayerId,
+      action: ActionRef, modifiers: Vector[PowerId])(using munit.Location)
+      : Unit =
+    accepted(rules.startWalker(OathState.Ready(ready), action, viewer,
+      modifiers))
+    ()
+
+  /** Why `viewer` may not start `action` at `ready` with `modifiers`; fails
+    * the test if the start is accepted. */
+  private def refusal(ready: ReadyGame, viewer: PlayerId, action: ActionRef,
+      modifiers: Vector[PowerId])(using munit.Location): OathViolation =
+    rejected(rules.startWalker(OathState.Ready(ready), action, viewer,
+      modifiers))
+
+  /** The refusal of a start that spends `cost` Supply from an empty track. */
+  private def noSupplyFor(cost: Int): OathViolation =
+    OathViolation.CoreOperationRejected("insufficient-supply",
+      s"a supply spend of $cost exceeds the 0 available")
 
   // ---- Travel ----
 
@@ -44,8 +61,9 @@ class ModifierStartControlsSuite extends munit.FunSuite:
       "the start with Tents is accepted"):
     val ready = broke(favor = 1, tents = true)
     assert(controls(ready, actor).contains("beginTravel"))
-    assert(starts(ready, actor, ActionRef.Travel, Vector(Tents.id)))
-    assert(!starts(ready, actor, ActionRef.Travel, Vector.empty))
+    assertStarts(ready, actor, ActionRef.Travel, Vector(Tents.id))
+    assertEquals(refusal(ready, actor, ActionRef.Travel, Vector.empty),
+      noSupplyFor(1))
 
   test("without a modifier that waives it, Travel at 0 Supply is not offered"):
     assert(!controls(broke(favor = 1, tents = false), actor)
@@ -70,7 +88,7 @@ class ModifierStartControlsSuite extends munit.FunSuite:
       "the start with it is accepted"):
     val ready = beastMuster(playmates = true)
     assert(controls(ready, p1).contains("beginMuster"))
-    assert(starts(ready, p1, ActionRef.Muster, Vector(AnimalPlaymates.id)))
+    assertStarts(ready, p1, ActionRef.Muster, Vector(AnimalPlaymates.id))
 
   test("without the waiver, Muster at 0 Supply is not offered"):
     assert(!controls(beastMuster(playmates = false), p1)
@@ -91,8 +109,9 @@ class ModifierStartControlsSuite extends munit.FunSuite:
       "with it is accepted"):
     val ready = beastTrade(birdsong = true)
     assert(controls(ready, p1).contains("beginTradeFavor"))
-    assert(rules.startWalker(OathState.Ready(ready), ActionRef.Trade, p1,
-      Vector(Birdsong.id), Vector(DecisionOptionRef.Button("favor"))).isRight)
+    accepted(rules.startWalker(OathState.Ready(ready), ActionRef.Trade, p1,
+      Vector(Birdsong.id), Vector(DecisionOptionRef.Button("favor"))))
+    ()
 
   test("without the waiver, Trade at 0 Supply is not offered"):
     assert(!controls(beastTrade(birdsong = false), p1)
@@ -111,8 +130,9 @@ class ModifierStartControlsSuite extends munit.FunSuite:
       "start with it is accepted"):
     val ready = brokeSearcher(news = true, favor = 2)
     assert(controls(ready, p1).contains("beginSearch"))
-    assert(starts(ready, p1, ActionRef.Search, Vector(NewsFromAfar.id)))
-    assert(!starts(ready, p1, ActionRef.Search, Vector.empty))
+    assertStarts(ready, p1, ActionRef.Search, Vector(NewsFromAfar.id))
+    assertEquals(refusal(ready, p1, ActionRef.Search, Vector.empty),
+      noSupplyFor(2))
 
   test("News from Afar with too little favor to pay offers no Search"):
     assert(!controls(brokeSearcher(news = true, favor = 1), p1)
