@@ -394,6 +394,27 @@ object LogScripts:
     val (service, act) = atTable("raid", tableWithOnePawnPerSite
       .pawn(p2, "Ancient City")
       .adviser(p2, "Birdsong", facedown = true).banditsRefilled, Dice.raid)
+    raidAnswers(act).after(GameCommand.StartWalker(ActionRef.Campaign,
+      StartPayload(p1)))
+    Script("raid", service, p1)
+
+  /** The `raid` table with a Campaign owed to p1 by Knights Errant, which p1
+    * holds faceup, and the Raid run as that queued Campaign. */
+  def queuedRaid(using munit.Location): Script =
+    val knights = CatalogNames.denizen("Knights Errant")
+    val (service, act) = atTable("queued-raid", tableWithOnePawnPerSite
+      .pawn(p2, "Ancient City")
+      .adviser(p2, "Birdsong", facedown = true)
+      .adviser(p1, knights)
+      .update(_.updateCurrent(_.copy(followUps = Vector(FollowUp(p1,
+        ActionRef.Campaign, PowerSourceRef.Card(knights))))))
+      .banditsRefilled, Dice.raid)
+    raidAnswers(act).after(GameCommand.StartWalker(ActionRef.Campaign,
+      StartPayload(p1)))
+    Script("queued-raid", service, p1)
+
+  /** A Raid's answers: all force committed and sacrificed, no battle plans. */
+  private def raidAnswers(act: Situation): Situation =
     act.withAnswers {
       case park if park.decisionId == CampaignIds.kind =>
         ChooseOneAnswer(DecisionOptionRef.Button("raid"))
@@ -406,8 +427,7 @@ object LogScripts:
       case park if park.decisionId == CampaignIds.attackerPlan ||
           park.decisionId == CampaignIds.defenderPlan =>
         ChooseOneAnswer(CampaignIds.finish)
-    }.after(GameCommand.StartWalker(ActionRef.Campaign, StartPayload(p1)))
-    Script("raid", service, p1)
+    }
 
   /** p1 and p2 share Ancient City, so p1 can negotiate with exactly one
     * other: the negotiators decision is not asked. `extra` adds to the

@@ -5,8 +5,8 @@ import oathdigital.application.{GamePresentationProjector,
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.ReplayStep
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.walker.{PowerNoted, WalkerCompleted, WalkerParked,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
+  PowerNoted, WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
 
@@ -84,7 +84,13 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
       case ((run, entries), at) =>
         val (lines, next) = eventLines(journal, run, at, viewer)
         val opened = if at == 0 then opening(journal) ++ lines else lines
-        val posted = quietWake(entries.lastOption, opened)
+        val filed = journal.event(at) match
+          // A Skip follows the previous run's completion, so it belongs to
+          // the latest section in time order (follow-up actions design).
+          case _: FollowUpSkipped => opened.map(_.copy(section =
+            entries.reverseIterator.flatMap(_.section).nextOption()))
+          case _ => opened
+        val posted = quietWake(entries.lastOption, filed)
         (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
           LogEntry(journal.sequence(at), ordinal, entry.kind, entry.depth,
             entry.spans, entry.section) })
@@ -156,8 +162,14 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
       case _: OathEvent.BanditsRefilled | _: OathEvent.UsurperFlipped =>
         (events.lines(journal, at, viewer), run)
       case _: WalkerStepRecorded | _: WalkerParked | _: WalkerCompleted |
-          _: PowerNoted =>
+          _: PowerNoted | _: FollowUpStarted =>
         walker(journal, run, at, viewer)
+      // Outside any run; `formatLive` files it in the latest section.
+      case FollowUpSkipped(followUp) =>
+        (Vector(Posted.line(LogKind.Action,
+          words.source(followUp.source, journal.readyBefore(at).toVector,
+            viewer) ++ Vector(Text(s": ${starts.name(followUp.action)
+              .getOrElse(followUp.action.key)} skipped.")))), run)
       case _: WalkerEvent => (Vector.empty, run)
 
   /** Lines for one event of a walker run. A run begins at the first walker

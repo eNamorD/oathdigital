@@ -1,8 +1,8 @@
 package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.campaign.CampaignSetup
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{FollowUpStarted, WalkerCompleted,
+  WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
 
@@ -27,9 +27,19 @@ private[gamelog] final class StartLines(words: LogWords,
         if said.isEmpty then Option.when(chosen.nonEmpty)(Text("With ") +: chosen)
         else Some(said ++ (if chosen.isEmpty then Vector.empty
           else Text(" with ") +: chosen))
-      Posted.line(LogKind.Section, Text(named) +: cost(journal, run, at)) +:
+      Posted.line(LogKind.Section, Text(named) +:
+        (queuedBy(journal, run, at, viewer) ++ cost(journal, run, at))) +:
         line.toVector.map(Posted.line(LogKind.Action, _))
     }
+
+  /** " · Knights Errant" when the run was started from the queue: its
+    * `FollowUpStarted` is in the run's first segment. */
+  private def queuedBy(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[LogSpan] =
+    (run.first to journal.segmentEnd(at)).iterator.map(journal.event)
+      .collectFirst { case FollowUpStarted(followUp) => followUp }
+      .toVector.flatMap(followUp => Text(" · ") +: words.source(
+        followUp.source, journal.readyBefore(run.first).toVector, viewer))
 
   /** Recover spends Supply again each time the player continues rolling. */
   def continued(journal: LogJournal, run: Run, at: Int): Option[Posted] =
@@ -70,7 +80,7 @@ private[gamelog] final class StartLines(words: LogWords,
   /** Whether `procedure` opens with a tag, so its power lines wait for it. */
   def opens(procedure: ProcedureRef): Boolean = name(procedure).nonEmpty
 
-  private def name(procedure: ProcedureRef): Option[String] =
+  private[gamelog] def name(procedure: ProcedureRef): Option[String] =
     procedure match
       case ActionRef.Search => Some("Search")
       case ActionRef.PlayFacedownAdviser => Some("Play facedown adviser")
