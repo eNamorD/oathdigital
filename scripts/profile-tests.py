@@ -15,7 +15,6 @@ Everything is written under target/profile/. See docs/testing/profiling.md.
 import argparse
 import collections
 import os
-import re
 import subprocess
 import sys
 import time
@@ -49,7 +48,8 @@ def run_sbt(args, log_path):
     with open(log_path, "w", encoding="utf-8") as log:
         process = subprocess.Popen(
             [str(ROOT / "sbtw"), *args], cwd=ROOT,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+            encoding="utf-8", errors="replace")
         for line in process.stdout:
             sys.stdout.write(line)
             log.write(line)
@@ -88,9 +88,6 @@ def rank(since, top):
     return lines
 
 
-LAMBDA = re.compile(r"\$Lambda\$\d+\+0x[0-9a-f]+\.\d+")
-
-
 def stacks(recording):
     """Yields each execution sample's frames, top of the stack first.
 
@@ -99,7 +96,7 @@ def stacks(recording):
     process = subprocess.Popen(
         [str(java_home() / "bin/jfr"), "print", "--events", "jdk.ExecutionSample",
          "--stack-depth", str(STACK_DEPTH), str(recording)],
-        stdout=subprocess.PIPE, text=True)
+        stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="replace")
     current = None
     for line in process.stdout:
         text = line.strip()
@@ -109,8 +106,9 @@ def stacks(recording):
             yield current
             current = None
         elif current is not None and text != "...":
-            current.append(LAMBDA.sub("$Lambda", text.split("(", 1)[0]))
-    process.wait()
+            current.append(text.split("(", 1)[0])
+    if process.wait() != 0:
+        raise SystemExit(f"jfr print failed on {recording}")
 
 
 def frames(recording, top):

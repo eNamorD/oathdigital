@@ -811,7 +811,7 @@ shares from `scripts/profile-tests.py 'oathdigital.gameplay.powers.campaign.*'`
 (inclusive, except `ClassValue`, which is self). SearchBudget is Campaign
 start / reading its park.
 
-| Stage | Gate wall | Gate CPU | Summed root suites | Campaign profile wall | `CardIndex` | `gather` | `ClassValue` self | SearchBudget |
+| Stage | Gate wall | Gate CPU | Summed root suites | Campaign profile wall | `CardIndex` | `gather` | `ClassValue` on stack | SearchBudget |
 |---|---|---|---|---|---|---|---|---|
 | Spec baseline (37c8563d, by hand) | 46 s | 280 s | 216 s | – | 26% | 33% | 4% | 26 ms / 0 ms |
 | Baseline (load 11.8, busy machine) | 58 s | 340 s | 308 s | 61 s | 30% | 34% | 2% | 33 ms / 0 ms |
