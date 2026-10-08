@@ -167,7 +167,12 @@ class OperationApplicationSuite extends munit.FunSuite:
         case (Some(reason), Right(after))
             if reason.kind == OperationReasonKind.Impossible &&
               !operation.required =>
-          assert(after.executed.nonEmpty || after.skipped.nonEmpty)
+          // The pipeline reduces the 7 asked for to the 5 the Order bank
+          // holds, and skips nothing.
+          assertEquals((operation, after.executed, after.skipped),
+            (Gain.Favor(playerId, Suit.Order, 7),
+              Vector(Gain.Favor(playerId, Suit.Order, 5)),
+              Vector.empty[SkippedOperation]))
         case (Some(reason), Left(violation)) =>
           val code = violation match
             case OathViolation.CoreOperationRejected(code, _) => code

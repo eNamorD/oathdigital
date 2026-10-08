@@ -7,6 +7,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture
   * first event that does not replay. */
 class JournalSuite extends munit.FunSuite:
   private val rules = new OathRules(FirstGameSetupFixture.catalog)
+  // The real setup on purpose: Journal.replayed is tested on a real journal.
   private val setup = FirstGameSetupFixture.setupThroughWake()
 
   test("replayed returns the state a real setup's events reach"):

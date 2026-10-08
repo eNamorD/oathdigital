@@ -44,5 +44,6 @@ class DecisionQueriesSuite extends FunSuite:
     val answer = DecisionAnswer.PartitionAnswer(Vector(
       DecisionPlacement(first.ref, "favor"),
       DecisionPlacement(second.ref, "secret")))
-    assert(DecisionQueries.wellFormed("forge", query).isRight)
-    assert(DecisionQueries.accepts("forge", query, answer, PlayerId("player-red")).isRight)
+    assertEquals(DecisionQueries.wellFormed("forge", query), Right(()))
+    assertEquals(DecisionQueries.accepts("forge", query, answer,
+      PlayerId("player-red")), Right(()))

@@ -23,7 +23,9 @@ class OperationVocabularySuite extends munit.FunSuite:
     val shrunk = accepted(run(funded, give(required = false)))
     assertEquals(shrunk.executed, Vector[CoreOperation](Give(Piece.Favor(1),
       actor, Location.PlayArea(actor), Location.PlayArea(other))))
-    assert(run(funded, give(required = true)).isLeft)
+    assertEquals(run(funded, give(required = true)).left.toOption,
+      Some(OathViolation.CoreOperationRejected("insufficient-pieces",
+        "player play area contains 1 of requested favor")))
 
   test("a Vision adviser can be buried"):
     val vision = VisionRules.Conspiracy
@@ -32,7 +34,7 @@ class OperationVocabularySuite extends munit.FunSuite:
       PositionedLocation(Location.PlayArea(actor))))).state
     assertEquals(buried.game.current.commonCards.worldDeck.lastOption,
       Some(vision))
-    assert(Look(buried).player(actor).advisers.isEmpty)
+    assertEquals(Look(buried).player(actor).advisers, Vector.empty)
 
   test("Bury.standard is the discard's returns followed by the bury"):
     val card = DenizenId("denizen:one")

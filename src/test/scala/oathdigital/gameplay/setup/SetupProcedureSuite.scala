@@ -25,6 +25,7 @@ class SetupProcedureSuite extends munit.FunSuite:
 
   test("the whole procedure finishes in Wake with the first player active, " +
       "three pawns, three advisers and no temporary hands"):
+    // Walks the real setup: the setup procedure is the subject.
     val tree = accepted(SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty))
     val finished = SetupWalkDriver.driveToCompletion(ready, tree,
@@ -34,7 +35,8 @@ class SetupProcedureSuite extends munit.FunSuite:
       ready.game.current.turn.activePlayer)
     assertEquals(finished.game.current.players.count(_.pawnSite.nonEmpty), 3)
     assertEquals(finished.game.current.players.count(_.advisers.size == 1), 3)
-    assert(finished.game.current.temporaryHands.values.forall(_.isEmpty))
+    assertEquals(finished.game.current.temporaryHands.values.flatten.toVector,
+      Vector.empty)
 
   private val revealAll: Answers =
     case park if park.decisionId ==
@@ -51,6 +53,7 @@ class SetupProcedureSuite extends munit.FunSuite:
     woken.ready.game.current.players.flatMap(_.advisers)
 
   test("Reveal Cards turns a chosen adviser faceup"):
+    // Walks the real setup to its Reveal Cards step: that step is the subject.
     val woken = Situation.wake(Situation.rules(catalog).withAnswers(revealAll))
     val revealable = advisers(woken).collect { case d: DenizenState => d }
       .filterNot(d => catalog.denizen(d.id).exists(_.isInstanceOf[SiteOnly]))
@@ -60,6 +63,7 @@ class SetupProcedureSuite extends munit.FunSuite:
     assertNotEquals(woken.ready.game.current.turn.phase, Phase.Setup)
 
   test("Reveal Cards chosen empty keeps every adviser facedown"):
+    // Walks the real setup to its Reveal Cards step: that step is the subject.
     val woken = Situation.wake(Situation.rules(catalog).withAnswers(revealNone))
     assert(advisers(woken).forall {
       case d: DenizenState => d.orientation == Orientation.FaceDown
@@ -68,6 +72,8 @@ class SetupProcedureSuite extends munit.FunSuite:
 
   test("Reveal Cards offers facedown advisers except site-only ones, then " +
       "facedown relics"):
+    // Walks the real setup to p1's dealt hand, then replaces it below; the
+    // reveal options of a setup in progress are the subject.
     val woken = Situation.wake(Situation.rules(catalog))
     val siteOnly = CatalogNames.denizen("Martial Culture")
     assert(catalog.denizen(siteOnly).exists(_.isInstanceOf[SiteOnly]))

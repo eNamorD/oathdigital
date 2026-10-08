@@ -81,3 +81,16 @@ object PlacementPicks:
       : Vector[DecisionOption] = decide.query match
     case DecisionQuery.ChooseOne(options, _) => options
     case other => munit.Assertions.fail(s"not a choose-one: $other")
+
+  /** The site slot references among `refs`, in order. */
+  def siteSlotRefs(refs: Vector[DecisionOptionRef]): Vector[DecisionOptionRef] =
+    refs.filter(_.isInstanceOf[DecisionOptionRef.SiteSlot])
+
+  /** The site slot options among `options`, in order. */
+  def siteSlotOptions(options: Vector[DecisionOption]): Vector[DecisionOption] =
+    options.filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])
+
+  /** The option that names `card`, a denizen or a Vision. */
+  def optionNaming(card: WorldCardId): DecisionOptionRef = card match
+    case id: DenizenId => DecisionOptionRef.Denizen(id)
+    case id: VisionId => DecisionOptionRef.Vision(id)

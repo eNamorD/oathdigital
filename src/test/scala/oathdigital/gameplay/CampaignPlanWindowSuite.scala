@@ -285,7 +285,10 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     val picked = pick(g, forced, b.rival, CampaignIds.defenderPlan,
       denizen(outriders))
     assertEquals(Look(picked.state).player(b.rival).board.warbands, 2)
-    assert(ops(picked.events).exists(_.isInstanceOf[Sacrifice]))
+    assertEquals(ops(picked.events).collect { case sacrifice: Sacrifice =>
+      sacrifice }, Vector(Sacrifice(b.rival,
+        Piece.Warbands(ForceKind.Exile(b.player(b.rival).lineage), 1),
+        PositionedLocation(Location.PlayArea(b.rival)))))
 
   test("a Raid defender with no warband on the board cannot pay the " +
       "sacrifice, so the plan is not offered"):
@@ -365,7 +368,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     val none = startedAndCommitted(g, b, force = 0).forced
     val nothing = pick(g, none, b.rival, CampaignIds.defenderPlan,
       denizen(outriders))
-    assert(!ops(nothing.events).exists(_.isInstanceOf[ModifyDicePool]))
+    assertEquals(ops(nothing.events).collect { case pool: ModifyDicePool => pool },
+      Vector.empty)
 
   test("a plan's own operations run after its payment"):
     val base = board(warbands = 5, supply = 4)
@@ -485,8 +489,9 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     val pools = ops(forced.events).collect {
       case pool @ ModifyDicePool(CampaignIds.defensePool, _, _) => pool }
     assertEquals(pools.filter(_.delta == 1).size, 1)
-    assert(!pools.exists(_.delta == 5))
-    assert(!ops(forced.events).exists(_.isInstanceOf[PayCost]))
+    assertEquals(pools.filter(_.delta == 5), Vector.empty)
+    assertEquals(ops(forced.events).collect { case pay: PayCost => pay },
+      Vector.empty)
     assert(awaits(forced.state, Vector(free, costly), staged.actor,
       CampaignIds.sacrifice))
 
@@ -500,7 +505,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     val finished = pick(g, forced, b.actor, CampaignIds.attackerPlan,
       CampaignIds.finish)
     assert(awaits(finished.state, Vector(plan), b.actor, CampaignIds.sacrifice))
-    assert(!ops(finished.events).exists(_.isInstanceOf[ModifyDicePool]))
+    assertEquals(ops(finished.events).collect { case pool: ModifyDicePool => pool },
+      Vector.empty)
     // With a second plan left the window stays open, and the source already
     // chosen is no longer offered.
     val second = Plan("second", watchdog, attacker, effects =

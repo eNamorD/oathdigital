@@ -1,10 +1,10 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.PowerNoteHideSuite.{ForbiddingPower, HidingPower,
-  hid, hideSource}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.Table
+import oathdigital.testkit.Table.p1
+import oathdigital.testkit.PowerStubs.{ActionForbiddingStub, OptionHidingStub, hideSource, hidNote}
 import oathdigital.testkit.Outcomes.parked
 
 /** An option a power hides is still shown, as unavailable, when the power
@@ -13,8 +13,9 @@ import oathdigital.testkit.Outcomes.parked
   * and an unavailable option is never an answer.
   */
 class UnavailableReasonsSuite extends munit.FunSuite:
-  private val ready = Table.start.ready
-  private val actor = ready.game.current.turn.activePlayer
+  /** p1's Act on the quiet table: the walks below ask p1 to decide. */
+  private val actor = p1
+  private val ready = Table.start.turn(p1, Phase.Act).ready
   private val window = PowerWindow.ChallengeAmountSelection
   private val hider = PowerId("test.hider")
   private def site(id: String) = DecisionOptionRef.Site(SiteId(id))
@@ -28,13 +29,13 @@ class UnavailableReasonsSuite extends munit.FunSuite:
     ProcedureWalker.openDecisions(ready, tree, pending, powers).head.query
 
   test("an option a power forbids and explains is shown unavailable"):
-    val powers = WalkerPowers(Vector(HidingPower(hider, window, Set(site("b")))))
+    val powers = WalkerPowers(Vector(OptionHidingStub(hider, window, Set(site("b")))))
     assertEquals(asked(pick, powers), DecisionQuery.ChooseOne(Vector(
       option("a"), DecisionOption.Unavailable(option("b"),
-        OptionReason.Noted(hider, hid(site("b")))))))
+        OptionReason.Noted(hider, hidNote(site("b")))))))
 
   test("an option a power forbids silently is removed"):
-    val powers = WalkerPowers(Vector(HidingPower(hider, window, Set(site("b")),
+    val powers = WalkerPowers(Vector(OptionHidingStub(hider, window, Set(site("b")),
       says = false)))
     assertEquals(asked(pick, powers),
       DecisionQuery.ChooseOne(Vector(option("a"))))
@@ -43,7 +44,7 @@ class UnavailableReasonsSuite extends munit.FunSuite:
       "restriction it would break, and is still refused"):
     val nested = PowerWindow.CampaignActionEligibility
     val forbidder = PowerId("test.forbidder")
-    val powers = WalkerPowers(Vector(ForbiddingPower(forbidder, nested)))
+    val powers = WalkerPowers(Vector(ActionForbiddingStub(forbidder, nested)))
     def button(key: String) =
       DecisionOption.Button(DecisionOptionRef.Button(key), key)
     val tree = Sequence(Vector[Operation](Decide("ask", actor,

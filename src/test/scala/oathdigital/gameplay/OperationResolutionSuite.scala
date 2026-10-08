@@ -26,18 +26,25 @@ class OperationResolutionSuite extends munit.FunSuite:
       SpendSupply(playerId, 3, required = false), OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(
         SpendSupply(playerId, 1, required = false))))
-    assert(OperationResolution.resolve(oneSupply,
-      SpendSupply(playerId, 3), OperationPolicy.Permissive, Vector.empty).isLeft)
+    assertEquals(OperationResolution.resolve(oneSupply,
+      SpendSupply(playerId, 3), OperationPolicy.Permissive, Vector.empty),
+      Left(OathViolation.CoreOperationRejected("insufficient-supply",
+        "a supply spend of 3 exceeds the 1 available")))
 
   test("zero available optional gain skips while wrong card source rejects"):
     val empty = Table.from(ready).bankFavor(Suit.Order, 0).unchecked
-    assert(accepted(OperationResolution.resolve(empty,
+    assertEquals(accepted(OperationResolution.resolve(empty,
       Gain.Favor(playerId, Suit.Order, 2), OperationPolicy.Permissive,
-      Vector.empty)).isInstanceOf[OperationResolution.Skip])
+      Vector.empty)), OperationResolution.Skip(Vector(OperationReason(
+        "insufficient-pieces", "favor bank contains 0 of requested favor",
+        OperationReasonKind.Impossible))))
     val wrongCard = Move(Piece.Card(worldDenizen),
       PositionedLocation(Location.Site(sites.head)),
       PositionedLocation(Location.Hand(playerId)))
-    assert(OperationResolution.resolve(ready, wrongCard, OperationPolicy.Permissive, Vector.empty).isLeft)
+    assertEquals(OperationResolution.resolve(ready, wrongCard,
+      OperationPolicy.Permissive, Vector.empty),
+      Left(OathViolation.CoreOperationRejected("missing-piece",
+        "denizen card is not present at site")))
 
   test("an operation with an impossible and an invalid reason is rejected"):
     // The Order bank's 5 cannot pay 7, and the restriction finds it invalid.
@@ -52,8 +59,10 @@ class OperationResolutionSuite extends munit.FunSuite:
       OperationPolicy.Permissive, mixed)
     assert(mixedReasons.exists(_.kind == OperationReasonKind.Impossible))
     assert(mixedReasons.exists(_.kind == OperationReasonKind.Invalid))
-    assert(OperationResolution.resolve(ready, impossibleAndInvalid,
-      OperationPolicy.Permissive, mixed).isLeft)
+    assertEquals(OperationResolution.resolve(ready, impossibleAndInvalid,
+      OperationPolicy.Permissive, mixed),
+      Left(OathViolation.CoreOperationRejected("invalid-test",
+        "invalid alongside shortage")))
 
   test("replacement shrinks both colors together"):
     // S1 holds 1 Bandit.
@@ -163,9 +172,15 @@ class OperationResolutionSuite extends munit.FunSuite:
     val reasons = OperationResolution.reasons(ready, stale,
       OperationPolicy.Permissive, Vector.empty)
     assert(reasons.exists(_.kind == OperationReasonKind.Invalid))
-    assert(OperationResolution.resolve(ready, stale, OperationPolicy.Permissive, Vector.empty).isLeft)
+    assertEquals(OperationResolution.resolve(ready, stale,
+      OperationPolicy.Permissive, Vector.empty),
+      Left(OathViolation.CoreOperationRejected("invalid-description",
+        "discard resources on D2 do not match the card")))
     val understated = stale.copy(favor = 0)
     assert(OperationResolution.reasons(ready, understated,
       OperationPolicy.Permissive, Vector.empty)
       .exists(_.kind == OperationReasonKind.Invalid))
-    assert(OperationResolution.resolve(ready, understated, OperationPolicy.Permissive, Vector.empty).isLeft)
+    assertEquals(OperationResolution.resolve(ready, understated,
+      OperationPolicy.Permissive, Vector.empty),
+      Left(OathViolation.CoreOperationRejected("invalid-description",
+        "discard resources on D2 do not match the card")))

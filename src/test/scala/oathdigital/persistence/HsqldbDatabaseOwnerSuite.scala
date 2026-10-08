@@ -82,15 +82,17 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite:
               3L
             ))
       start.countDown()
-      assert(Await.result(journalOperation, 20.seconds).isRight)
-      assert(Await.result(identityOperation, 20.seconds).isRight)
+      assertEquals(Await.result(journalOperation, 20.seconds),
+        Right(RepositoryAppendResult.Appended(0L, 2)))
+      assertEquals(Await.result(identityOperation, 20.seconds), Right(()))
       assertEquals(
         present(accepted(journal.load("game-shared")), "stream game-shared")
           .records,
         Vector("zero", "one")
       )
-      assert(identity.findMembership("game-shared", UserId("player"))
-        .toOption.flatten.nonEmpty)
+      assertEquals(identity.findMembership("game-shared", UserId("player")),
+        Right(Some(GameMembership("game-shared", UserId("player"), Player,
+          Some("p1")))))
     finally owner.close()
 
   test("coordinated close is idempotent and one reopen reconstructs both stores"):

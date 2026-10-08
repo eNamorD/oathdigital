@@ -12,6 +12,7 @@ import akka.http.scaladsl.model.headers.{Cookie, HttpCookiePair, RawHeader}
 import oathdigital.application._
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.testkit.HttpTestServer.{csrfDigest, csrfToken}
+import oathdigital.testkit.IdentityRepositoryStub
 import oathdigital.testkit.Unwrap.accepted
 
 class SessionSecuritySuite extends munit.FunSuite:
@@ -80,7 +81,8 @@ class SessionSecuritySuite extends munit.FunSuite:
           repository, cookieName, () => 0L, blocking),
         requestWithCookie("x" * 43)
       )
-      assert(result.isLeft)
+      assertEquals(result,
+        Left(AuthenticationFailure.InvalidCredential("invalid session")))
       assertEquals(resolutionThread, "session-auth-blocking-test")
     finally
       executor.shutdown()
@@ -128,8 +130,9 @@ class SessionSecuritySuite extends munit.FunSuite:
       "https://oath.example?query=yes",
       "https://oath.example#fragment"
     ).foreach { origin =>
-      assert(
-        SameOriginCsrfProtection.validateOrigin(origin).isLeft,
+      assertEquals(
+        SameOriginCsrfProtection.validateOrigin(origin),
+        Left(SameOriginCsrfProtection.InvalidOriginMessage),
         origin
       )
     }
@@ -165,22 +168,3 @@ class SessionSecuritySuite extends munit.FunSuite:
       authenticator: HttpSessionAuthenticator,
       request: HttpRequest
   ) = Await.result(authenticator.authenticate(request), 5.seconds)
-
-  /** Stub of IdentityRepository: every call fails the test, so a subclass
-    * overrides the one operation it expects. */
-  private abstract class IdentityRepositoryStub extends IdentityRepository:
-    private def unused[A]: Either[IdentityFailure, A] =
-      fail("unexpected identity repository operation")
-    override def createUser(id: UserId, name: String, now: Long): Either[IdentityFailure, Unit] = unused
-    override def linkExternalIdentity(identity: ExternalIdentity, id: UserId): Either[IdentityFailure, Unit] =
-      unused
-    override def findUser(identity: ExternalIdentity): Either[IdentityFailure, Option[UserId]] = unused
-    override def createGame(gameId: String, owner: UserId, now: Long): Either[IdentityFailure, Unit] = unused
-    override def addMembership(membership: GameMembership, now: Long): Either[IdentityFailure, Unit] = unused
-    override def findMembership(gameId: String, userId: UserId): Either[IdentityFailure, Option[GameMembership]] = unused
-    override def listMemberships(gameId: String): Either[IdentityFailure, Vector[GameMembership]] = unused
-    override def createSession(session: StoredSession): Either[IdentityFailure, Unit] = unused
-    override def revokeSession(digest: SessionTokenDigest, now: Long): Either[IdentityFailure, Unit] = unused
-    override def touchSession(digest: SessionTokenDigest, seen: Long, idle: Long): Either[IdentityFailure, Unit] =
-      unused
-    override def resolveTrustedSeat(digest: SeatCodeDigest): Either[IdentityFailure, TrustedSeat] = unused

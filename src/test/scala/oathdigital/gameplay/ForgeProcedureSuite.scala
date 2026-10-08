@@ -203,8 +203,8 @@ class ForgeProcedureSuite extends munit.FunSuite
         .secrets(actor, faceUp = faceUp, faceDown = faceDown).unchecked
     def build(state: ReadyGame) =
       ForgeProcedure.build(catalog, state, actor)
-    assert(build(withFunds(f.cost.favor, f.cost.secrets)).isRight,
-      "exactly enough of each resource is affordable")
+    // Exactly enough of each resource is affordable.
+    accepted(build(withFunds(f.cost.favor, f.cost.secrets)))
     assertEquals(rejects(build(withFunds(f.cost.favor - 1, f.cost.secrets))),
       OathViolation.InsufficientFavor(f.cost.favor, f.cost.favor - 1): OathViolation)
     assertEquals(rejects(build(withFunds(f.cost.favor, f.cost.secrets - 1))),
@@ -292,8 +292,8 @@ class ForgeProcedureSuite extends munit.FunSuite
         ForgeProcedure.build(altered, f.ready, actor))
       // The decision lives inside a `Branch`, so its absence shows as the
       // branch's absence from the root's children.
-      assert(tree.children.forall(!_.isInstanceOf[Branch]),
-        s"a ${f.cost} Forge must declare no decision branch: $tree")
+      assertEquals(tree.children.collect { case branch: Branch => branch },
+        Vector.empty, s"a ${f.cost} Forge must declare no decision branch")
       assertEquals(tree.children.size, 2)
 
       // One command: no park, no answer, and the determined split applied.
@@ -315,7 +315,7 @@ class ForgeProcedureSuite extends munit.FunSuite
           case d: DenizenState => d.tokens },
         Vector.fill(3)(
           if f.cost.favor > 0 then Tokens(1, 0) else Tokens(0, 1)))
-      assert(finalState.game.current.walkerPending.isEmpty)
+      assertEquals(finalState.game.current.walkerPending, None)
     }
 
   // ---------------------------------------------------------------------
@@ -453,7 +453,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       f.ready.game.current.commonCards.relicDeck.drop(1).headOption)
     assertEquals(after.relics.last,
       RelicState(f.relic, Orientation.FaceDown, Tokens.empty))
-    assert(finalState.game.current.walkerPending.isEmpty)
+    assertEquals(finalState.game.current.walkerPending, None)
 
   test("the section a target is placed in decides which resource it " +
       "receives, whatever the site's own printed split"):
@@ -501,12 +501,11 @@ class ForgeProcedureSuite extends munit.FunSuite
     // Re-running the start gate here would strand a legally started Forge.
     assertEquals(rejects(ForgeProcedure.build(catalog, atPark, actor)),
       OathViolation.InsufficientSupply(1, 0): OathViolation)
-    val resumed = ForgeProcedure.rebuild(catalog, atPark, actor)
-    assert(resumed.isRight,
-      s"resume derivation must not re-run the start-only supply gate: $resumed")
+    // Resume derivation must not re-run the start-only supply gate.
+    val resumed = accepted(ForgeProcedure.rebuild(catalog, atPark, actor))
 
     val finished = expectFinished(resolveWith(f, atPark,
-      accepted(resumed), pending, legalPlacements(f)))
+      resumed, pending, legalPlacements(f)))
     val finalState = finished.state
     val steps = finished.steps
     assertEquals(steps.map(_.nodeId), Vector("1.0", "2"))
@@ -579,7 +578,8 @@ class ForgeProcedureSuite extends munit.FunSuite
       Some(PowerWindow.ForgeActionEligibility), Some(PowerWindow.ForgeCost)))
     assert(windowed.contains(tree),
       "the tree root must carry ForgeActionEligibility")
-    assert(windowed.count(_.isInstanceOf[BuildOps]) == 1,
+    assertEquals(windowed.collect { case node: BuildOps => node.window },
+      Vector(Some(PowerWindow.ForgeCost)),
       "exactly the supply-paying BuildOps carries ForgeCost -- the " +
         "completion BuildOps stays unwindowed")
 

@@ -4,20 +4,21 @@ import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.actions.challenge.ChallengeProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerParked,
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation.NoPlayableOption
 import oathdigital.testkit.{CatalogNames, Journal, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.Unwrap.{accepted, rejected}
 
 /** Challenge through the rules, as a client drives it: start, answer the
   * banner, answer the amount, and (Wandering Flame) the tied sites.
   */
 class ChallengeProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
+  private val parkedOn = new ParkedDecisionAssertions(catalog)
   private val peoplesFavorOption = DecisionOptionRef.Banner(Banner.PeoplesFavor)
   private val darkestSecretOption = DecisionOptionRef.Banner(
     Banner.DarkestSecret)
@@ -62,7 +63,8 @@ class ChallengeProcedureSuite extends munit.FunSuite:
   test("starting spends the Supply and parks on the banner decision"):
     val board = challenger.peoplesFavor(None, favor = 2).ready
     val started = start(board).getOrElse(fail("a legal Challenge must start"))
-    assert(started.events.last.isInstanceOf[WalkerParked])
+    parkedOn.assertParked(started.state, ActionRef.Challenge,
+      "challenge.banner", p1)
     assertEquals(Look(started.state).supply(p1), 7 - 1)
     assertEquals(banners(started.state), board.game.current.banners)
 
@@ -71,8 +73,12 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     val board = challenger.secrets(p1, faceUp = 0, faceDown = 4)
       .peoplesFavor(None, favor = 2).ready
     val started = start(board).getOrElse(fail("People's Favor is legal"))
-    assert(chooseBanner(started.state, darkestSecretOption).isLeft)
-    assert(chooseBanner(started.state, peoplesFavorOption).isRight)
+    assertEquals(rejected(chooseBanner(started.state, darkestSecretOption)),
+      OathViolation.InvalidEventOrder(
+        "decision challenge.banner does not offer the selected option"))
+    parkedOn.assertParked(
+      accepted(chooseBanner(started.state, peoplesFavorOption)).state,
+      ActionRef.Challenge, "challenge.amount", p1)
 
   test("a start with no legal banner is rejected and changes nothing"):
     // 6 favor cannot exceed People's Favor's 6, and there are no faceup secrets.
@@ -91,15 +97,21 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       .peoplesFavor(Some(p2), favor = 2)
     // p2 stands at Broken Peaks, away from p1.
     assertEquals(start(base.ready), Left(NoPlayableOption("challenge")))
-    assert(start(base.pawn(p2, at = Table.quietPawnSite(p1)).ready).isRight)
+    parkedOn.assertParked(
+      accepted(start(base.pawn(p2, at = Table.quietPawnSite(p1)).ready)).state,
+      ActionRef.Challenge, "challenge.banner", p1)
 
   test("the amount must exceed the banner and fit the actor's resources"):
     val parked = atAmount(challenger.peoplesFavor(None, favor = 2).ready,
       peoplesFavorOption)
-    assert(chooseAmount(parked, 2).isLeft)
-    assert(chooseAmount(parked, 7).isLeft)
-    assert(chooseAmount(parked, 3).isRight)
-    assert(chooseAmount(parked, 6).isRight)
+    // The banner holds 2 favor, so the amount runs from 3 to the actor's 6.
+    Vector(2, 7).foreach(amount =>
+      assertEquals(rejected(chooseAmount(parked, amount)),
+        OathViolation.InvalidEventOrder(
+          s"decision challenge.amount amount $amount is outside 3..6")))
+    Vector(3, 6).foreach(amount =>
+      assertEquals(banners(accepted(chooseAmount(parked, amount)).state)
+        .peoplesFavor.favor, amount))
 
   test("People's Favor: an unclaimed banner is taken and its favor returns to the least banks"):
     val board = challenger.peoplesFavor(None, favor = 2).ready
@@ -147,13 +159,18 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       a -> 0, b -> 0, c -> 0).ready
     val parked = chooseAmount(atAmount(board, darkestSecretOption), 3)
       .getOrElse(fail("the amount must be accepted"))
-    assert(parked.events.last.isInstanceOf[WalkerParked])
+    parkedOn.assertParked(parked.state, ActionRef.Challenge,
+      "challenge.ribbon-site", p1)
     val siteA = CatalogNames.site(a)
     val siteC = CatalogNames.site(c)
-    assert(chooseSites(parked.state, Vector(siteA)).isLeft)
-    assert(chooseSites(parked.state, Vector(siteA, siteA)).isLeft)
-    assert(chooseSites(parked.state, Vector(siteA,
-      CatalogNames.site("Dunes"))).isLeft)          // Dunes holds 10, not tied
+    def refused(sites: Vector[SiteId], reason: String) =
+      assertEquals(rejected(chooseSites(parked.state, sites)),
+        OathViolation.InvalidEventOrder(s"decision challenge.ribbon-site $reason"))
+    refused(Vector(siteA), "selects 1 options instead of 2")
+    refused(Vector(siteA, siteA), "selects an option more than once")
+    // Dunes holds 10, not tied.
+    refused(Vector(siteA, CatalogNames.site("Dunes")),
+      "does not offer a selected option")
     val done = chooseSites(parked.state, Vector(siteA, siteC))
       .getOrElse(fail("two tied sites must be accepted"))
     val after = Look(done.state)
@@ -170,7 +187,8 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       .getOrElse(fail("the amount must be accepted"))
     // 5 secrets: 2 are placed (5 / 2), 3 return to the holder. All sites tie
     // at 10, and 2 secrets are fewer than the tied sites, so the actor picks.
-    assert(parked.events.last.isInstanceOf[WalkerParked])
+    parkedOn.assertParked(parked.state, ActionRef.Challenge,
+      "challenge.ribbon-site", p1)
     val done = chooseSites(parked.state,
       Vector("Ancient City", "Broken Peaks").map(CatalogNames.site(_)))
       .getOrElse(fail("two tied sites must be accepted"))
@@ -252,7 +270,9 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       override def operationRestrictions: Vector[OperationRestriction] =
         Vector(noBannerTakenStub)
     val powers = WalkerPowers(Vector(restricting))
-    assert(ProcedureWalker.advance(board, tree, None, powers).isLeft)
+    assertEquals(rejected(ProcedureWalker.advance(board, tree, None, powers)),
+      OathViolation.CoreOperationRejected("test.no-banner",
+        "no banner may be taken"))
 
   test("a completed Challenge replays exactly from its journal"):
     // The first player, p2, places the first pawn: at Fair Isle, which starts

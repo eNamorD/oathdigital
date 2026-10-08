@@ -317,8 +317,8 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       edit(json)
       GameProjectionCodec.decode(ujson.write(json)).left.toOption
     val unknown = rejected(_("walkerDecision")("query")("form") = "choose-two")
-    assertEquals(unknown.map(_.path), Some("$.walkerDecision.query.form"))
-    assert(clue(unknown).exists(_.isInstanceOf[ProtocolDecodeFailure.UnknownVariant]))
+    assertEquals(unknown, Some(ProtocolDecodeFailure.UnknownVariant(
+      "$.walkerDecision.query.form", "unknown decision form 'choose-two'")))
     assertEquals(rejected(_("walkerDecision")("query")("minTotal") = 3).map(_.path),
       Some("$.walkerDecision.query.minTotal"))
     assertEquals(

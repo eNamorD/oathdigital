@@ -131,8 +131,9 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       // the tamper has to match the string actually on the wire here.
       val tampered = encoded.replace("\"family\": \"phase-transition\"",
         s"""\"family\": \"$family\"""")
-      assert(GameEventWire.decodeStream(tampered).isLeft,
-        s"end-wake under family '$family' must not decode")
+      assertEquals(GameEventWire.decodeStream(tampered),
+        Left(WireError.InvalidValue("$[0].payload.procedure",
+          s"unknown walker procedure '$family/end-wake'")), family)
     }
 
   test("every option reference kind round trips through a recorded answer"):
@@ -173,6 +174,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
     Vector("recover-choice", "recover-relic", "forge-assignment").foreach { tag =>
       val mutated = ujson.read(encoded).arr
       mutated.head("payload")("step")("payload")("kind") = tag
-      assert(GameEventWire.decodeStream(ujson.write(mutated)).isLeft,
-        s"a '$tag' answer must not decode")
+      assertEquals(GameEventWire.decodeStream(ujson.write(mutated)),
+        Left(WireError.InvalidValue("$[0].payload.step.payload.kind",
+          s"unknown walker decision answer '$tag'")), tag)
     }

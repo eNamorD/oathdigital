@@ -1,7 +1,7 @@
 package oathdigital.testkit
 
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  PowerCtx, Restriction, Transform}
+  OptionRestriction, PowerCtx, Restriction, Transform}
 import oathdigital.model._
 
 /** Stubs of ContributingPower, shared by the walker suites. */
@@ -53,3 +53,36 @@ object PowerStubs:
     def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
     override def operationRestrictions: Vector[OperationRestriction] =
       Vector(restriction)
+
+  /** The source of every note the hiding and forbidding stubs write. */
+  val hideSource: PowerSourceRef = PowerSourceRef.Site(SiteId("test-site"))
+
+  /** The violation the hiding and forbidding stubs refuse with. */
+  val hiddenByTest: OathViolation =
+    OathViolation.InvalidEventOrder("hidden by test")
+
+  /** The note a hiding stub writes for each option it hides. */
+  def hidNote(ref: DecisionOptionRef): PowerNote = PowerNote(hideSource, "hid",
+    ref match
+      case DecisionOptionRef.Site(site) => Vector(NoteArg.Site(site))
+      case _ => Vector.empty)
+
+  /** Stub of ContributingPower: hides `forbidden` at `hook`, and notes each
+    * one it hid when `says`. */
+  final case class OptionHidingStub(id: PowerId, hook: PowerWindow,
+      forbidden: Set[DecisionOptionRef], says: Boolean = true)
+      extends ContributingPower:
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+    def contributions: Map[PowerWindow, Vector[Contribution]] =
+      Map(hook -> Vector(OptionRestriction(
+        (_, ref) => Option.when(forbidden(ref))(hiddenByTest),
+        (_, ref) => Option.when(says)(hidNote(ref)))))
+
+  /** Stub of ContributingPower: rejects any action whose tree opens `hook`,
+    * and says so. */
+  final case class ActionForbiddingStub(id: PowerId, hook: PowerWindow)
+      extends ContributingPower:
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+    def contributions: Map[PowerWindow, Vector[Contribution]] =
+      Map(hook -> Vector(Restriction((_, _) => Some(hiddenByTest),
+        (_, _) => Some(PowerNote(hideSource, "forbade", Vector.empty)))))

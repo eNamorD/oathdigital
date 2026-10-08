@@ -293,8 +293,9 @@ class CampaignProcedureSuite extends munit.FunSuite:
       DecisionOption.Badged(title, "Defense Plan"),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Defender: choose a battle plan, or finish")))
-    assert(
-      answer(plans.state, b.actor, CampaignIds.defenderPlan, finish).isLeft)
+    assertEquals(
+      answer(plans.state, b.actor, CampaignIds.defenderPlan, finish),
+      Left(OathViolation.WrongPlayer(b.rival, b.actor)))
     val picked = accepted(answer(plans.state, b.rival, CampaignIds.defenderPlan,
       planPick(DecisionOptionRef.Button("title"))))
     assert(
@@ -472,10 +473,12 @@ class CampaignProcedureSuite extends munit.FunSuite:
       SiteForces.Occupied(ForceKind.Exile(lineage), 1))
     assertEquals(Look(placed.state).boardWarbands(b.actor), 2)
     // More than the survivors is rejected.
-    assert(game.resolveWalker(sacrificed.state, b.actor, CampaignIds.placement,
-      DistributeAnswer(Vector(
+    assertEquals(game.resolveWalker(sacrificed.state, b.actor,
+      CampaignIds.placement, DistributeAnswer(Vector(
         DistributeAmount(DecisionOptionRef.Site(b.origin), 4),
-        DistributeAmount(DecisionOptionRef.Site(b.extras.head), 2)))).isLeft)
+        DistributeAmount(DecisionOptionRef.Site(b.extras.head), 2)))),
+      Left(OathViolation.InvalidEventOrder("decision campaign.placement " +
+        "distributes an amount outside 0..5")))
 
   test("a site card is a plan only for the site's ruler, and is never " +
       "revealed"):
@@ -487,7 +490,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
       CampaignIds.attackerPlan, b.actor)
     val done = accepted(answer(plans.state, b.actor, CampaignIds.attackerPlan,
       planPick(DecisionOptionRef.Denizen(outriders))))
-    assert(!ops(done.events).exists(_.isInstanceOf[Reveal]))
+    assertEquals(ops(done.events).collect { case reveal: Reveal => reveal },
+      Vector.empty)
     // The same card at the origin, which the bandits rule, is not the
     // attacker's.
     val bare = board(warbands = 5, supply = 7)
@@ -504,14 +508,16 @@ class CampaignProcedureSuite extends munit.FunSuite:
       ChooseAmountAnswer(0))
     val done = resolved(game, sacrificed, CampaignIds.placement,
       ChooseAmountAnswer(0))
-    assert(done.events.exists(_.isInstanceOf[OathEvent.BanditsRefilled]))
     val capacity = catalog.sites.find(_.id == b.origin).get.capacity
     assertEquals(ready(done.state).game.current.map.sites(b.origin).forces,
       SiteForces.Occupied(ForceKind.Bandit, capacity))
-    val refill = done.events.collectFirst {
-      case event: OathEvent.BanditsRefilled => event }.get
-    assert(game.evolve(sacrificed.state, refill.copy(sites =
-      Vector(b.origin -> 99))).isLeft)
+    val refill = present(done.events.collectFirst {
+      case event: OathEvent.BanditsRefilled => event },
+      "the bandits refilled at the action boundary")
+    val tampered = refill.copy(sites = Vector(b.origin -> 99))
+    assertEquals(game.evolve(sacrificed.state, tampered), Left(
+      OathViolation.InvalidEventOrder("Bandit refill mismatch: expected " +
+        s"Some($refill), recorded $tampered")))
 
   test("a Conquest's targets lock the origin and tally its defense and force"):
     val b = board(extras = 1, warbands = 5, supply = 7)

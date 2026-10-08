@@ -28,8 +28,11 @@ class ShuffleOperationSuite extends munit.FunSuite:
 
   test("an order that drops, adds or swaps a card is refused"):
     Vector(pile.tail, pile :+ deck.last, pile.tail :+ deck.last).foreach(
-      order => assert(executor.execute(discarded,
-        Shuffle(cradle, Some(order))).isLeft, order.toString))
+      order => assertEquals(executor.execute(discarded,
+        Shuffle(cradle, Some(order))).left.toOption,
+        Some(OperationError.InvalidDescription(
+          "a shuffle of the Cradle discard pile must hold exactly its cards")),
+        order.toString))
 
   test("a shuffle the walker never ordered is refused"):
     assertEquals(executor.execute(discarded, Shuffle(SearchSource.WorldDeck))

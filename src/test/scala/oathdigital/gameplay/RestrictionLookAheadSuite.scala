@@ -7,6 +7,7 @@ import oathdigital.model._
 import oathdigital.testkit.PowerStubs.RestrictionStub
 import oathdigital.testkit.Table
 import oathdigital.testkit.Outcomes
+import oathdigital.testkit.Unwrap.accepted
 
 /** The walker hides an option whose answer would break a `Restriction`, even
   * when the restriction's window exists only once that answer is given, so a
@@ -62,9 +63,9 @@ class RestrictionLookAheadSuite extends munit.FunSuite:
       Answered(ask, DecisionAnswer.ChooseOneAnswer(ref("yes")), actor), powers),
       Left(OathViolation.InvalidEventOrder(
         s"decision $ask does not offer the selected option")))
-    assert(ProcedureWalker.resolve(ready, yesOrNo, parked(yesOrNo),
+    accepted(ProcedureWalker.resolve(ready, yesOrNo, parked(yesOrNo),
       Answered(ask, DecisionAnswer.ChooseOneAnswer(ref("no")), actor),
-      powers).isRight)
+      powers))
 
   test("a choose-many loses the forbidden option and keeps its bounds valid"):
     val tree = asking(DecisionQuery.ChooseMany(1, 2,

@@ -43,7 +43,9 @@ class WalkerPreviewSuite extends munit.FunSuite:
       WalkerPowers.empty.copy(probing = false))
       .getOrElse(fail("a tree parked on a choose-one must preview"))
     assertEquals(unsearched.map(_.option.ref), Vector(cheap, dear))
-    assert(unsearched(1).outcome.isLeft,
+    assertEquals(unsearched(1).outcome, Left(
+      OathViolation.CoreOperationRejected("insufficient-supply",
+        "a supply spend of 3 exceeds the 2 available")),
       "three Supply is not affordable with two")
 
   test("an option that finishes the tree is complete and one that parks again is not"):

@@ -39,6 +39,8 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
     val identities = database.identities
     val repository = new InMemoryEventStreamRepository
     val gameId = "auth-negotiation-game"
+    // Replays the real setup: the route test needs a Negotiation reached by
+    // real play, as a client would reach it.
     // initialSituation's pawns: p2, the first player, at Ancient City and
     // p1 alone at Buried Giant. p2 travels to p1.
     val traveled = initialSituation().endingWake(p2)
@@ -252,7 +254,9 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
       val reveal = ujson.read(keptResponse.body())("walkerDecision")
       assertEquals(reveal("decisionId").str,
         SetupProcedure.revealDecisionId(p2))
-      assert(reveal("query")("options").arr.nonEmpty, reveal)
+      assertEquals(reveal("query")("options").arr.map(option =>
+        (option("kind").str, option("id").str, option("label").str)).toVector,
+        Vector(("adviser-slot", s"${p2.value}:0", "Wizard's Conclave")))
       Vector(owner, spectator, p3User).foreach { user =>
         val projection = server.get(gamePath, Some(user.value))
         assert(ujson.read(projection.body())("walkerDecision").isNull)

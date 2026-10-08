@@ -91,5 +91,6 @@ class DesktopConsoleSuite extends munit.FunSuite:
     finally held.close()
 
   test("Akka's BindFailedException is recognized by name"):
-    assert(DesktopConsole.bindFailure(new BindFailedException, 8080, settingsFile).nonEmpty)
+    assertEquals(DesktopConsole.bindFailure(new BindFailedException, 8080, settingsFile),
+      Some(s"port 8080 is in use. Is Oath Digital already running? Change OATH_PORT in $settingsFile."))
     assertEquals(DesktopConsole.bindFailure(new IllegalStateException("other"), 8080, settingsFile), None)

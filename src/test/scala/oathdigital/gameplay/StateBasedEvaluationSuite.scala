@@ -195,11 +195,16 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
       lastEventAtRoundEnd(roundEight, pickSecondCandidate))
     assertEquals(random.kind, VictoryKind.RandomSelection)
     assertEquals(random.winner, random.randomCandidates(1))
-    assert(rules.evolve(Ready(base), random).isLeft,
+    assertEquals(rules.evolve(Ready(base), random), Left(
+      OathViolation.InvalidEventOrder(
+        "War Exhaustion is only resolved after round eight")),
       "War Exhaustion replay must include RoundEnded(8, None) first")
     val afterRound = accepted(rules.evolve(Ready(base), RoundEnded(8, None)))
-    assert(rules.evolve(afterRound, random.copy(
-      randomCandidates = random.randomCandidates.reverse)).isLeft)
+    val reordered = random.copy(
+      randomCandidates = random.randomCandidates.reverse)
+    assertEquals(rules.evolve(afterRound, reordered), Left(
+      OathViolation.InvalidEventOrder("War Exhaustion mismatch: expected " +
+        s"LeftRandom(Vector(p1, p2, p3)), recorded $reordered")))
     val result = rules.evolve(afterRound, random)
       .map(Outcomes.ready(_).game.current.result)
     assertEquals(result,
@@ -254,8 +259,11 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
 
     val below = atRoundEnd(withCount(2, None))
     val afterRound = accepted(rules.evolve(Ready(below), RoundEnded(8, None)))
-    assert(rules.evolve(afterRound, WarExhaustionResolved(p1,
-      VictoryKind.Visionary, Some(VisionRules.Conquest), Vector.empty)).isLeft)
+    val premature = WarExhaustionResolved(p1, VictoryKind.Visionary,
+      Some(VisionRules.Conquest), Vector.empty)
+    assertEquals(rules.evolve(afterRound, premature), Left(
+      OathViolation.InvalidEventOrder("War Exhaustion mismatch: expected " +
+        s"LeftRandom(Vector(p1, p2, p3)), recorded $premature")))
 
   test("once the game has a result, every command is refused at the lifecycle gate"):
     // No Table step ends the game.
@@ -281,5 +289,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     val wrongKind = refill.copy(piece = Piece.Warbands(
       ForceKind.Exile(Look(empty).player(p1).lineage), 1))
 
-    assert(StateBasedOperationPolicy.validate(empty, refill).isRight)
-    assert(StateBasedOperationPolicy.validate(empty, wrongKind).isLeft)
+    assertEquals(StateBasedOperationPolicy.validate(empty, refill), Right(()))
+    assertEquals(StateBasedOperationPolicy.validate(empty, wrongKind),
+      Left(OperationError.RestrictedOperation(
+        "state-based semantic root is not permitted")))

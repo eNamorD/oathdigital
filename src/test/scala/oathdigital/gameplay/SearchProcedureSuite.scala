@@ -74,8 +74,10 @@ class SearchProcedureSuite extends munit.FunSuite:
 
   test("another region's discard is not offered, and naming it is refused"):
     val initial = atAncientCity.discarded(Region.Provinces, topCards*).ready
-    assert(searched(rules, initial,
-      SearchSource.RegionalDiscard(Region.Provinces)).isLeft)
+    assertEquals(rejected(searched(rules, initial,
+      SearchSource.RegionalDiscard(Region.Provinces))),
+      OathViolation.InvalidEventOrder(
+        "decision search.source does not offer the selected option"))
 
   test("regional Search draws from the end of its pile"):
     val initial = atAncientCity.discarded(region, topCards*).ready
@@ -94,9 +96,10 @@ class SearchProcedureSuite extends munit.FunSuite:
     val drawn = Outcomes.ready(started.state).game.current.temporaryHands(actor)
     assertEquals(drawn, topCards)
     val kept = drawn.head
-    val placements = Vector(DecisionPlacement(ref(kept),
-      SearchProcedure.keepKey)) ++ drawn.tail.map(card =>
-      DecisionPlacement(ref(card), SearchProcedure.discardKey))
+    val placements = Vector(DecisionPlacement(
+      PlacementPicks.optionNaming(kept), SearchProcedure.keepKey)) ++
+      drawn.tail.map(card => DecisionPlacement(
+        PlacementPicks.optionNaming(card), SearchProcedure.discardKey))
     val afterSelection = accepted(
       rules.resolveWalker(started.state, actor, SearchProcedure.cardDecisionId,
         DecisionAnswer.PartitionAnswer(placements)))
@@ -225,6 +228,3 @@ class SearchProcedureSuite extends munit.FunSuite:
     assertEquals(scoped.offerableWalkerPowers(initial, actor, ActionRef.Search)
       .map(_.map(_.id)), Right(Vector(atSearch.id)))
 
-  private def ref(card: WorldCardId): DecisionOptionRef = card match
-    case id: DenizenId => DecisionOptionRef.Denizen(id)
-    case id: VisionId => DecisionOptionRef.Vision(id)

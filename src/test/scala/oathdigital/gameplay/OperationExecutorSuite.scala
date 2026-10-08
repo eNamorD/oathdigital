@@ -305,10 +305,14 @@ class OperationExecutorSuite extends munit.FunSuite:
       0 -> 1)
     // A player with only facedown secrets cannot burn them: the burn fails as
     // if the player held no secrets at all.
-    assert(executor.execute(holder(0, 2), Burn.secrets(2,
-      PositionedLocation(Location.PlayArea(playerId)))).isLeft)
-    assert(executor.execute(holder(0, 0), Burn.secrets(1,
-      PositionedLocation(Location.PlayArea(playerId)))).isLeft)
+    assertEquals(executor.execute(holder(0, 2), Burn.secrets(2,
+      PositionedLocation(Location.PlayArea(playerId)))).left.toOption,
+      Some(OperationError.InsufficientPieces(Piece.Secrets(2),
+        Location.PlayArea(playerId), 0)))
+    assertEquals(executor.execute(holder(0, 0), Burn.secrets(1,
+      PositionedLocation(Location.PlayArea(playerId)))).left.toOption,
+      Some(OperationError.InsufficientPieces(Piece.Secrets(1),
+        Location.PlayArea(playerId), 0)))
 
   test("FlipSecrets and Peek update orientation and knowledge only"):
     val flipped = accepted(executor.execute(ready, FlipSecrets(

@@ -70,16 +70,28 @@ class TradeProcedureSuite extends munit.FunSuite:
     val ready = atAlchemist.ready
     assertEquals(TradeProcedure.resourceOf(favor), Right(TradeResource.Favor))
     assertEquals(TradeProcedure.resourceOf(secret), Right(TradeResource.Secret))
-    Vector(Vector.empty[DecisionOptionRef],
-      Vector[DecisionOptionRef](DecisionOptionRef.Button("gold")),
-      Vector[DecisionOptionRef](DecisionOptionRef.Denizen(alchemist)),
-      favor ++ secret).foreach { args =>
-      assert(TradeProcedure.build(catalog, ready, p1, args).isLeft, args.toString)
-      assert(TradeProcedure.rebuild(catalog, ready, p1, args).isLeft, args.toString)
+    Vector(
+      Vector.empty[DecisionOptionRef] -> "",
+      Vector[DecisionOptionRef](DecisionOptionRef.Button("gold")) ->
+        "button/gold",
+      Vector[DecisionOptionRef](DecisionOptionRef.Denizen(alchemist)) ->
+        s"denizen/${alchemist.value}",
+      (favor ++ secret) -> "button/favor, button/secret"
+    ).foreach { (args, got) =>
+      val refusal = OathViolation.InvalidEventOrder("trade takes exactly one " +
+        s"resource button, favor or secret, as its start selection, got $got")
+      assertEquals(TradeProcedure.build(catalog, ready, p1, args).left.toOption,
+        Some(refusal), args.toString)
+      assertEquals(
+        TradeProcedure.rebuild(catalog, ready, p1, args).left.toOption,
+        Some(refusal), args.toString)
     }
 
   test("an intact edifice is a legal Trade source"):
     val ready = Table.start.favor(p1, 4).secrets(p1, faceUp = 2)
       .edifice("Hallowed Spring", EdificeSide.Intact, at = Table.quietPawnSite(p1)).ready
-    assert(TradeProcedure.startOptions(catalog, ready, p1,
-      TradeResource.Secret, WalkerPowers.empty).exists(_.outcome.isRight))
+    val options = TradeProcedure.startOptions(catalog, ready, p1,
+      TradeResource.Secret, WalkerPowers.empty)
+    assertEquals(options.map(_.option.ref), Vector(DecisionOptionRef.Edifice(
+      CatalogNames.edifice("Hallowed Spring"))))
+    accepted(options.head.outcome)

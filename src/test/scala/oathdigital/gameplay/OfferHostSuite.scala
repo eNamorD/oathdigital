@@ -9,7 +9,7 @@ import oathdigital.model._
 import oathdigital.testkit.{Look, Table}
 import oathdigital.testkit.Outcomes.{finished, parked}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.as
+import oathdigital.testkit.Unwrap.{accepted, as}
 
 /** The `Offer` contribution and the node that hosts it: what the walker hands a
   * host, in which order, and how a host is told the walk is resuming inside it.
@@ -53,7 +53,7 @@ class OfferHostSuite extends munit.FunSuite:
     val powers = WalkerPowers(Vector(Offering("b", _ => Some(offer("b"))),
       Offering("a", _ => Some(offer("a"))), Offering("none", _ => None)))
     val outcome = ProcedureWalker.advance(supplyOfOne, host, None, powers)
-    assert(outcome.isRight)
+    accepted(outcome)
     assertEquals(host.folds.toVector.map(_.offers.map(_.power.value)), Vector(
       Vector("test.a", "test.b")))
     assertEquals(host.folds.head.resuming, false)
@@ -116,8 +116,8 @@ class OfferHostSuite extends munit.FunSuite:
       (true, Vector.empty[Answered])))
     val answer = Answered("test.question", DecisionAnswer.ChooseOneAnswer(
       DecisionOptionRef.Button("yes")), p1)
-    assert(ProcedureWalker.resolve(supplyOfOne, tree, pending, answer,
-      WalkerPowers.empty).isRight)
+    accepted(ProcedureWalker.resolve(supplyOfOne, tree, pending, answer,
+      WalkerPowers.empty))
     // The resume folds the host again, inside it.
     assertEquals(seen.toVector.last, (true, Vector.empty[Answered]))
     // The parked decision is found through the same fold.

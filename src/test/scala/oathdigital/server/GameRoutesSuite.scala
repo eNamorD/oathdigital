@@ -18,7 +18,8 @@ import oathdigital.testkit.Unwrap.accepted
 class GameRoutesSuite extends munit.FunSuite:
   /** The development routes serving "route-game", begun with p2 first and
     * parked on p2's Setup pawn placement; `afterBegin` is its next
-    * sequence. */
+    * sequence. Every route test starts from the real Begin command, since
+    * the routes serving a game from GameStarted onward are the subject. */
   private final case class BegunRoutes(server: HttpTestServer,
       afterBegin: Long)
 

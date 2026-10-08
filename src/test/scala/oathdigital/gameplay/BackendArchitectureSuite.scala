@@ -213,12 +213,28 @@ class BackendArchitectureSuite extends munit.FunSuite:
   test("only tests seed a service's genesis"):
     // The seam lets a test's Table start a stream. Production streams begin
     // at GameStarted until an arranged-start event exists (docs/ROADMAP.md).
-    val root = Paths.get("src/main/scala")
+    // Every production source root is scanned, and the name is matched in
+    // any letter case, so `Genesis` or `withGenesis` cannot slip past.
+    val roots = Vector(Paths.get("src/main/scala"),
+      Paths.get("shared/src/main/scala"), Paths.get("frontend/src/main/scala"))
+      .filter(Files.exists(_))
     val owner = Paths.get(
       "src/main/scala/oathdigital/application/GameApplicationService.scala")
-    val offenders = Files.walk(root).iterator.asScala.filter(path =>
-      path.toString.endsWith(".scala") && path != owner &&
-        Files.readString(path).contains("genesis")).map(_.toString).toVector
+    val offenders = scalaFilesUnder(roots).filter(path =>
+      path != owner && Files.readString(path).toLowerCase.contains("genesis"))
+      .map(_.toString)
+    assertEquals(offenders, Vector.empty)
+
+  test("the in-memory event stream repository is a test fake, not production"):
+    // It carries `seed`, which writes records no command produced. It lives
+    // in src/test; a production file that names it has made a test seam
+    // reachable from production.
+    val roots = Vector(Paths.get("src/main/scala"),
+      Paths.get("shared/src/main/scala"), Paths.get("frontend/src/main/scala"))
+      .filter(Files.exists(_))
+    val offenders = scalaFilesUnder(roots).filter(path =>
+      Files.readString(path).contains("InMemoryEventStreamRepository"))
+      .map(_.toString)
     assertEquals(offenders, Vector.empty)
 
   test("application never imports server or serialization layers"):

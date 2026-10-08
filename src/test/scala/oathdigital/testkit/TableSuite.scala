@@ -72,6 +72,8 @@ class TableSuite extends munit.FunSuite:
       look.supply(p1)), (1, 1, 3, 7))
 
   test("the quiet table holds exactly the cards the game started with"):
+    // Starts the game from the Chronicle: the start it was built from is the
+    // thing compared.
     val started = accepted(GameStartRules.evolve(catalog,
       FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders))
     assertEquals(accepted(CardIndex.from(Table.start.ready.game)).ids,

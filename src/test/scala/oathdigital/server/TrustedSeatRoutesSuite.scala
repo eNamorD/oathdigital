@@ -28,7 +28,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
 
   /** "trusted", begun with p2 first and parked on p2's Setup pawn
     * placement, behind a trusted gateway; `afterBegin` is the sequence after
-    * Begin. */
+    * Begin. It starts from the real Begin command, since the trusted routes
+    * serving a game from GameStarted onward are the subject. */
   private final case class TrustedGatewayGame(service: GameApplicationService,
       gateway: TrustedGameGateway, afterBegin: Long)
 
@@ -74,17 +75,20 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val placed = accepted(
       gateway.submit("trusted", trustedP2Seat, placeP2Pawn(afterBegin)))
     assertEquals(placed.viewerPlayerId, Some("p2"))
-    assert(placed.walkerDecision.nonEmpty)
+    assertEquals(placed.walkerDecision.map(_.decisionId),
+      Some("setup.adviser-choice.p2"))
     assertEquals(
       present(accepted(service.load("trusted")), "the trusted game")
         .nextSequence,
       placed.nextSequence)
     // A fresh load after the answer shows p2's next decision to p2 only.
-    assert(accepted(gateway.load("trusted", trustedP2Seat)).walkerDecision
-      .nonEmpty)
-    assert(accepted(gateway.load("trusted", trustedP3Seat)).walkerDecision
-      .isEmpty)
-    assert(GameHttpWire.decodeCommand("""{"expectedNextSequence":2,"intent":{"type":"resolveWalker","playerId":"p3","decisionId":"setup.pawn-placement.p3","payload":{"kind":"choose-one","optionKind":"site","optionId":"S1"}}}""").isLeft)
+    assertEquals(accepted(gateway.load("trusted", trustedP2Seat))
+      .walkerDecision.map(_.decisionId), Some("setup.adviser-choice.p2"))
+    assertEquals(accepted(gateway.load("trusted", trustedP3Seat)).walkerDecision,
+      None)
+    assertEquals(GameHttpWire.decodeCommand("""{"expectedNextSequence":2,"intent":{"type":"resolveWalker","playerId":"p3","decisionId":"setup.pawn-placement.p3","payload":{"kind":"choose-one","optionKind":"site","optionId":"S1"}}}"""),
+      Left(HttpInputError("$.intent.playerId",
+        "actor identity is bound by the server")))
 
   test("the trusted gateway refuses another game and a stale position"):
     val TrustedGatewayGame(_, gateway, afterBegin) = begunTrustedGame()
@@ -110,7 +114,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val sequence = act.nextSequence
     val request = MajorActionPreviewRequest(sequence, "travel")
     val previewP2Seat = TrustedSeat("preview", p2.value)
-    assert(gateway.preview("preview", previewP2Seat, request).isRight)
+    accepted(gateway.preview("preview", previewP2Seat, request))
     assertEquals(
       gateway.preview("preview", TrustedSeat("preview", p1.value), request)
         .left.toOption,
@@ -207,10 +211,13 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       val answered = send(server, api + "/commands", Some(command),
         Some(s"oath_seat=$code"))
       assertEquals(answered.statusCode(), 200, answered.body())
-      assert(ujson.read(answered.body())("walkerDecision")("query")("options")
-        .arr.nonEmpty)
+      // p2 is next asked to choose among the three cards it was dealt.
+      def adviserChoice(response: JavaResponse[String]) =
+        val decision = ujson.read(response.body())("walkerDecision")
+        (decision("decisionId").str, decision("query")("options").arr.size)
+      assertEquals(adviserChoice(answered), ("setup.adviser-choice.p2", 3))
       val reloaded = send(server, api, cookie = Some(s"oath_seat=$code"))
-      assert(ujson.read(reloaded.body())("walkerDecision")("query")("options").arr.nonEmpty)
+      assertEquals(adviserChoice(reloaded), ("setup.adviser-choice.p2", 3))
     }
 
   test("the other seat sees no decision, and no seat response leaks the code " +
@@ -412,7 +419,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       assertEquals(secondEntry.statusCode(), 303)
       val retainedCookie = secondEntry.headers().firstValue("Set-Cookie").orElse("")
         .takeWhile(_ != ';')
-      assert(retainedCookie.nonEmpty)
+      assertEquals(retainedCookie, s"oath_seat=$secondCode")
       val beforeRestart = send(current.server, "/games/restart-game/api",
         cookie = Some(retainedCookie))
       assertEquals(beforeRestart.statusCode(), 200, beforeRestart.body())
@@ -466,7 +473,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
           assert(!failed.body().contains(code))
           assert(!failed.body().toLowerCase.contains("closed"))
         }
-        assert(captured.list.size() >= 3)
+        assertEquals(captured.list.size(), 3)
         captured.list.asScala.foreach { event =>
           assert(!event.getFormattedMessage.contains(code))
           assertEquals(event.getThrowableProxy, null)

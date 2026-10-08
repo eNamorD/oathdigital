@@ -3,7 +3,7 @@ package oathdigital.catalog
 import oathdigital.gameplay.cards.NewFoundations
 import oathdigital.model.{DenizenId, EdificeId, LegacyId, PowerId, RelicId,
   SiteId, Suit}
-import oathdigital.testkit.TestCards
+import oathdigital.testkit.{CatalogNames, TestCards}
 import oathdigital.testkit.Unwrap.present
 
 class ExecutableCatalogSuite extends munit.FunSuite:
@@ -53,22 +53,24 @@ class ExecutableCatalogSuite extends munit.FunSuite:
       catalog.printedPower(PowerId("site.deep-woods.homeland-beast")), None)
 
   test("suitOf reads denizens and edifices only"):
-    assertEquals(catalog.suitOf(DenizenId("9")), Some(Suit.Arcane))
-    assertEquals(catalog.suitOf(EdificeId("E01")), Some(Suit.Discord))
-    assertEquals(catalog.suitOf(RelicId("R01")), None)
+    assertEquals(catalog.suitOf(CatalogNames.denizen("Alchemist")),
+      Some(Suit.Arcane))
+    assertEquals(catalog.suitOf(CatalogNames.edifice("Hall of Debate")),
+      Some(Suit.Discord))
+    assertEquals(catalog.suitOf(CatalogNames.relic("Sticky Fire")), None)
 
   test("a copied catalog indexes its own components"):
-    val alchemist = present(catalog.denizen(DenizenId("9")),
-      "the Alchemist, denizen 9")
+    val alchemistId = CatalogNames.denizen("Alchemist")
+    val alchemist = present(catalog.denizen(alchemistId), "the Alchemist")
     val renamed = catalog.copy(denizens = catalog.denizens.map(d =>
       if d.id == alchemist.id then TestCards.denizenLike(d)(name = "Renamed")
       else d))
-    assertEquals(renamed.denizen(DenizenId("9")).map(_.name), Some("Renamed"))
-    assertEquals(catalog.denizen(DenizenId("9")).map(_.name), Some("Alchemist"))
+    assertEquals(renamed.denizen(alchemistId).map(_.name), Some("Renamed"))
+    assertEquals(catalog.denizen(alchemistId).map(_.name), Some("Alchemist"))
 
   test("the first of two components sharing an ID wins, as a scan would"):
-    val alchemist = present(catalog.denizen(DenizenId("9")),
-      "the Alchemist, denizen 9")
+    val alchemistId = CatalogNames.denizen("Alchemist")
+    val alchemist = present(catalog.denizen(alchemistId), "the Alchemist")
     val shadowed = catalog.copy(denizens =
       alchemist +: (TestCards.denizenLike(alchemist)(name = "Shadow") +: catalog.denizens))
-    assertEquals(shadowed.denizen(DenizenId("9")).map(_.name), Some("Alchemist"))
+    assertEquals(shadowed.denizen(alchemistId).map(_.name), Some("Alchemist"))

@@ -167,17 +167,19 @@ class TravelProcedureSuite extends munit.FunSuite:
   test("a pass ruled by the actor blocks nothing, and a coast route passes it"):
     val ruled = passRuled(travelBoard(supply = 7))
     val destination = provincePlains
-    assert(simulate(ruled, destination).nonEmpty)
+    // The Cradle to the Provinces costs 2; the pass adds nothing.
+    assertEquals(simulate(ruled, destination), Some(2))
     // A coast route is exempt from the pass even while a bandit holds it.
-    assert(simulate(travelBoard(supply = 7, source = coast), island).nonEmpty)
+    assertEquals(simulate(travelBoard(supply = 7, source = coast), island),
+      Some(1))
 
   // (c) zero Supply is not a build gate, but simulation and execution refuse.
 
   test("zero Supply passes the semantic build and fails at the pay node"):
     val ready = passRuled(travelBoard(supply = 0))
     val destination = coast
-    assert(TravelProcedure.build(catalog, ready, actor, Vector.empty).isRight,
-      "supply is owned by the transformed SpendSupply, not a build gate")
+    // Supply is owned by the transformed SpendSupply, not a build gate.
+    accepted(TravelProcedure.build(catalog, ready, actor, Vector.empty))
     assertEquals(simulate(ready, destination), None)
     assertEquals(rejected(travelled(ready, destination)),
       CoreOperationRejected("insufficient-supply",
@@ -186,9 +188,9 @@ class TravelProcedureSuite extends munit.FunSuite:
   test("simulation omits every destination the actor cannot afford"):
     val ready = passRuled(travelBoard(supply = 2))
     val offered = previewedCosts(ready)
-    assert(offered.nonEmpty)
-    assert(offered.values.forall(_ <= 2))
-    assert(!offered.contains(cradlePlains))
+    // Only the destinations costing 2 or less remain: the coast in the
+    // Cradle, and the pass and Dunes in the Provinces.
+    assertEquals(offered, Map(coast -> 1, pass -> 2, provincePlains -> 2))
 
   // (d) role and Foundation state do not gate Travel.
 
@@ -200,7 +202,7 @@ class TravelProcedureSuite extends munit.FunSuite:
       }))
     val altered = citizen.updateCampaign(campaign => campaign.copy(foundations =
       campaign.foundations.map { case (k, f) => k -> f.copy(face = FoundationFace.Altered) }))
-    assert(TravelProcedure.build(catalog, altered, actor, Vector.empty).isRight)
+    accepted(TravelProcedure.build(catalog, altered, actor, Vector.empty))
 
   // (e) projection uses automatic powers; preview uses the selected vector.
 

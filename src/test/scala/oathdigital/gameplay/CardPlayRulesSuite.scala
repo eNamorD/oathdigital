@@ -1,11 +1,8 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission}
+import oathdigital.gameplay.actions.CardPlayRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay.powers.AdviserLimit
-import oathdigital.gameplay.powers.rest.SilverTongue
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
@@ -19,7 +16,7 @@ import oathdigital.testkit.Unwrap.as
   */
 class CardPlayRulesSuite extends munit.FunSuite:
   import PlacementFixture.{build, limitTwo,
-    options, park, testPermission}
+    options, park, secondTestPermission, testPermission}
 
   /** A plain Beast card p1 plays from hand. */
   private val card = CatalogNames.denizen("Errand Boy")
@@ -40,18 +37,23 @@ class CardPlayRulesSuite extends munit.FunSuite:
       CardPlayRules.DefaultAdviserLimit)
 
   test("site discard permissions stack in the order they are given"):
-    val second = DiscardPermission(PowerId("test.second-discard"),
-      Note(PowerId("test.second-discard"), _ => None))
     val stacked = CardPlayRules.default.permitSiteDiscard(testPermission)
-      .permitSiteDiscard(second)
+      .permitSiteDiscard(secondTestPermission)
     assertEquals(stacked.siteDiscards.map(_.source),
-      Vector(testPermission.source, second.source))
+      Vector(testPermission.source, secondTestPermission.source))
 
   test("without a contributor the tree is the play under the default rules"):
-    val tree = build(Table.start.hand(p1, card).ready, p1, card)
-    // The placement decision and the Branch that acts on its answer.
-    assertEquals(tree.children.size, 2)
-    assert(tree.children.head.isInstanceOf[Decide])
+    val ready = Table.start.pawn(p1, "Ancient City").hand(p1, card).ready
+    val tree = build(ready, p1, card)
+    // Ancient City is empty and p1 holds no adviser, so the default play
+    // offers the discard pile, the first site slot and the first adviser slot
+    // each way.
+    assertEquals(options(ready, tree, park(ready, tree, WalkerPowers.empty),
+      WalkerPowers.empty), Vector[DecisionOptionRef](
+        DecisionOptionRef.DiscardPile(Region.Provinces),
+        DecisionOptionRef.SiteSlot(CatalogNames.site("Ancient City"), 0),
+        DecisionOptionRef.AdviserPlay(p1, 0, faceup = true),
+        DecisionOptionRef.AdviserPlay(p1, 0, faceup = false)))
 
   test("two contributors compose in either order"):
     val tree = as[CardPlayProcedure.PlacementTree](
@@ -89,12 +91,3 @@ class CardPlayRulesSuite extends munit.FunSuite:
       Vector[DecisionOptionRef](
         DecisionOptionRef.AdviserPlay(p1, 0, faceup = true),
         DecisionOptionRef.AdviserPlay(p1, 1, faceup = true)))
-
-  test("Silver Tongue and the adviser-limit read agree on the limit"):
-    val tongue = SilverTongue.forCatalog(catalog)
-    val held = Table.start.adviser(p1, tongue.cardId).ready
-    val bare = Table.start.ready
-    assertEquals(tongue.limitFor(held, p1), Some(SilverTongue.HolderLimit))
-    assertEquals(AdviserLimit.of(catalog, held, p1), SilverTongue.HolderLimit)
-    assertEquals(AdviserLimit.of(catalog, bare, p1), AdviserLimit.Default)
-    assertEquals(tongue.limitFor(bare, p1), None)

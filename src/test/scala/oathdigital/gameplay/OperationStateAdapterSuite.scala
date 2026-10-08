@@ -34,18 +34,20 @@ class OperationStateAdapterSuite extends munit.FunSuite:
         SiteId("S9"), SiteCardArea.Denizens), 0)),
       Right(reliquaryRelic -> CardLocation(CardContainer.Reliquary, 0)),
       Right(dispossessed -> CardLocation(CardContainer.Dispossessed, 0))))
-    assert(rejected(OperationStateAdapter.card(ready, worldDenizen,
-      Location.PlayArea(playerId)))
-      .isInstanceOf[OperationError.MissingPiece])
+    assertEquals(rejected(OperationStateAdapter.card(ready, worldDenizen,
+      Location.PlayArea(playerId))), OperationError.MissingPiece(
+        Piece.Card(worldDenizen), Location.PlayArea(playerId)))
 
   test("temporary hands are not part of a player's play area"):
     val inHand = Table.from(ready).hand(playerId, worldDenizen).unchecked
 
-    assert(OperationStateAdapter.card(inHand, worldDenizen,
-      Location.Hand(playerId)).isRight)
-    assert(rejected(OperationStateAdapter.card(inHand, worldDenizen,
-      Location.PlayArea(playerId)))
-      .isInstanceOf[OperationError.MissingPiece])
+    assertEquals(OperationStateAdapter.card(inHand, worldDenizen,
+      Location.Hand(playerId)).map(_.location),
+      Right(CardLocation(CardContainer.Player(playerId,
+        PlayerCardArea.Hand), 0)))
+    assertEquals(rejected(OperationStateAdapter.card(inHand, worldDenizen,
+      Location.PlayArea(playerId))), OperationError.MissingPiece(
+        Piece.Card(worldDenizen), Location.PlayArea(playerId)))
 
   test("piece quantities cover boards sites cards banners and bounded banks"):
     import AvailableQuantity._

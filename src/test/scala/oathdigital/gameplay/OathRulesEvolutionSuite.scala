@@ -11,5 +11,6 @@ import oathdigital.model.{OathEvent, OathState, OathViolation}
 class OathRulesEvolutionSuite
     extends EventEvolutionContract[OathState, OathEvent, OathViolation]:
   protected val evolution = new OathRules(FirstGameSetupFixture.catalog)
+  // The real setup's events on purpose: the contract replays a real journal.
   protected def events = FirstGameSetupFixture.setupThroughWake().events
   protected def corrupt = events.last

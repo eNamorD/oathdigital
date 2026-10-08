@@ -43,20 +43,27 @@ class PowerNoteWireSuite extends munit.FunSuite:
     val encoded = ujson.read(accepted(
       GameEventWire.encodeEvent("notes", 0, event)))
     encoded("payload")("note")("args")(0)("kind") = "colour"
-    assert(GameEventWire.decode(encoded).isLeft)
+    assertEquals(GameEventWire.decode(encoded), Left(WireError.InvalidValue(
+      "$.payload.note.args[0].kind", "unknown note argument 'colour'")))
 
   test("a note with an unknown source, an unknown unit or a negative " +
       "amount is refused"):
-    def assertRefused(label: String, edit: ujson.Value => Unit): Unit =
+    def assertRefused(label: String, edit: ujson.Value => Unit,
+        refusal: WireError): Unit =
       val event = noteEvent(PowerSourceRef.Site(SiteId("s1")),
         NoteArg.Amount(2, NoteUnit.Favor))
       val encoded = ujson.read(accepted(
         GameEventWire.encodeEvent("notes", 0, event)))
       edit(encoded("payload")("note"))
       val decoded = GameEventWire.decode(encoded)
-      assert(decoded.isLeft, s"$label was accepted: $decoded")
+      assertEquals(decoded, Left(refusal), label)
     assertRefused("an unknown source kind",
-      note => note("source")("kind") = "moon")
-    assertRefused("an unknown unit", note => note("args")(0)("unit") = "gold")
+      note => note("source")("kind") = "moon",
+      WireError.InvalidValue("$.payload.note.source.kind",
+        "unknown note source 'moon'"))
+    assertRefused("an unknown unit", note => note("args")(0)("unit") = "gold",
+      WireError.InvalidValue("$.payload.note.args[0].unit", "unknown note unit"))
     assertRefused("a negative amount",
-      note => note("args")(0)("value") = -1)
+      note => note("args")(0)("value") = -1,
+      WireError.InvalidValue("$.payload.note.args[0].value",
+        "must not be negative"))

@@ -1,6 +1,5 @@
 package oathdigital.gameplay
 
-import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
 import oathdigital.catalog.PrintedPower
 import oathdigital.gameplay.phases.PhasePowerProcedure
@@ -33,6 +32,14 @@ class PhasePowerSuite extends munit.FunSuite:
     * that was Wake's last option ended Wake. */
   private def rewoken(state: OathState): OathState =
     Ready(Table.from(Outcomes.ready(state)).backInPhase(Phase.Wake).unchecked)
+  /** The bandits on every site of `state`. */
+  private def banditsOf(state: OathState): Map[SiteId, SiteForces] =
+    Outcomes.ready(state).game.current.map.sites.map((site, board) =>
+      site -> board.forces)
+  /** The bandits on every site once the action boundary has refilled them:
+    * the quiet table with every empty site's bandits back. */
+  private val refilledBandits: Map[SiteId, SiteForces] =
+    banditsOf(Ready(Table.start.banditsRefilled.ready))
   /** The power Magician's Code prints, which the test powers stand in for. */
   private def printed: PrintedPower = present(catalog.denizen(card)
     .flatMap(_.powers.find(_.id == powerId)), "Magician's Code's power")
@@ -49,7 +56,7 @@ class PhasePowerSuite extends munit.FunSuite:
 
     val used = accepted(use(power, Ready(holding(Phase.Wake))))
     val ref = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card), powerId)
-    assert(used.events.exists(_.isInstanceOf[BanditsRefilled]))
+    assertEquals(banditsOf(used.state), refilledBandits)
     // It was Wake's only option, so Wake ended with it.
     walkerParked(power).assertResumed(used.state, Phase.Act, p1)
     assert(Outcomes.ready(used.state)
@@ -87,7 +94,7 @@ class PhasePowerSuite extends munit.FunSuite:
   test("an ACTION power returns its player to action selection"):
     val power = TestPower(powerId, PowerTiming.Act)
     val used = accepted(use(power, Ready(holding(Phase.Act))))
-    assert(used.events.exists(_.isInstanceOf[BanditsRefilled]))
+    assertEquals(banditsOf(used.state), refilledBandits)
     walkerParked(power).assertResumed(used.state, Phase.Act, p1)
 
   test("another player, the wrong phase and an inaccessible source are refused"):
@@ -164,7 +171,8 @@ class PhasePowerSuite extends munit.FunSuite:
     assertEquals(after.game.current.turn.usedPowers, Set.empty[PowerUseRef])
     assertEquals(PhasePowerProcedure.usable(catalog, after, p1, powers, WalkerPowers.empty),
       Vector.empty)
-    assert(use(power, used.state).isLeft)
+    assertEquals(use(power, used.state).left.toOption,
+      Some(OathViolation.EconomyCardNotEmpty(card)))
 
   test("an unaffordable cost makes the power unusable"):
     val power = TestPower(powerId, PowerTiming.Act, cost = Cost(secret = 1))

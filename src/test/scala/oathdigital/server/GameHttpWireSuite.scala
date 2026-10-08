@@ -25,9 +25,11 @@ class GameHttpWireSuite extends munit.FunSuite:
       oathdigital.protocol.GameIntent.UsePower("Not A Power",
         oathdigital.protocol.WalkerStartArgWire("denizen", "92"))).left.toOption
       .map(_.path), Some("$.intent.powerId"))
-    assert(GameIntentMapper.bind(PlayerId("actor-1"),
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
-        oathdigital.protocol.WalkerStartArgWire("warband", "w1"))).isLeft)
+        oathdigital.protocol.WalkerStartArgWire("warband", "w1"))),
+      Left(oathdigital.application.GameIntentMappingFailure("$.intent.source",
+        "unknown decision option 'warband/w1'")))
 
   test("domain conversion rejects unknown protocol identifiers without throwing"):
     val failure = rejected(GameIntentMapper.bind(PlayerId("trusted"),
