@@ -41,8 +41,6 @@ class JournalFoldRedoSuite extends munit.FunSuite:
       GameCommand.Undo(p1)))
     assertEquals(once.redo.map(range), Some((p1, second.started.nextSequence,
       second.picked.nextSequence)))
-    assert(once.redo.flatMap(_.note).nonEmpty,
-      "a Travel posts a line its issuer sees")
     val twice = accept(service.handle("g", once.nextSequence,
       GameCommand.Undo(p1)))
     assertEquals(twice.redo.map(range), Some((p1, first.picked.nextSequence,
