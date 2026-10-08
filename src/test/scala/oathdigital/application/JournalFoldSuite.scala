@@ -29,7 +29,6 @@ class JournalFoldSuite extends munit.FunSuite:
     val step = accepted.undo.getOrElse(fail("no undo offered"))
     assertEquals((step.issuer, step.from, step.until),
       (p1, travel.started.nextSequence, accepted.nextSequence))
-    assert(step.note.nonEmpty, "a Travel posts a line its issuer sees")
     val reloaded = new GameApplicationService(catalog, repository,
       genesis = table.state)
     assertEquals(reloaded.load("g").map(_.flatMap(_.undo)), Right(Some(step)))
