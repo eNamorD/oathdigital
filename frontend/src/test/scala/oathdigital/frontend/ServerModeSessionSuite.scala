@@ -129,8 +129,10 @@ class ServerModeSessionSuite extends FunSuite:
         assertEquals(notices.map(_.textContent), Vector(
           "Connection lost. Reconnect to see the current table before acting."))
         assertEquals(notices.head.getAttribute("role"), "alert")
-        assertEquals(browser.byClass("reconnectSession").map(_.textContent).toSet,
-          Set("Reconnect"))
+        // The development toolbar offers no second Reconnect: the notice's
+        // button is the one recovery in both modes.
+        assertEquals(browser.byClass("reconnectSession").map(_.textContent),
+          Vector("Reconnect"))
         assert(!browser.text.contains("failed"), browser.text)
       }
 
