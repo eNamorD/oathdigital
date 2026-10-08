@@ -25,11 +25,10 @@ class FearsomeShieldSuite extends munit.FunSuite:
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     // The dice-pool change and the PayCost.
-    assertEquals(picked.since(run).size, 2)
-    assert(
-      picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 2)))
-    assert(picked.ops.contains(PayCost(b.rival, Location.OnCard(relic),
-      Cost(secretBurnt = 2), intoOccupied = true)))
+    assertEquals(picked.since(run).toSet, Set[CoreOperation](
+      ModifyDicePool(CampaignIds.defensePool, 2),
+      PayCost(b.rival, Location.OnCard(relic), Cost(secretBurnt = 2),
+        intoOccupied = true)))
     assertEquals(Look(picked.state).faceUpSecrets(b.rival), 1)
     assertEquals(Look(picked.state).faceDownSecrets(b.rival), 0)
     // Nothing rests on the relic.
