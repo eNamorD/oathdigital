@@ -5,14 +5,14 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
-  WalkerPowers, WalkerProcedureRegistry}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
+  WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseAmountAnswer,
   ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  PowerRules, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
@@ -28,8 +28,7 @@ class KnightsErrantSuite extends munit.FunSuite:
   /** The parked decision, as this file rebuilds it: the same catalog and
     * walker power catalog `rules` was built with.
     */
-  private val parked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog))
+  private val parked = PowerRules.parkedUnderWalkerPowers
 
   /** p1 holds Knights Errant and stands at Ancient City with the token-free
     * Alchemist to muster from. Two bandits rule the site, so a Conquest is

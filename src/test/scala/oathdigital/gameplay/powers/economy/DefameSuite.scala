@@ -1,15 +1,13 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.economy.TradeProcedure
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
-  Look, Outcomes, PhasePowerHarness, Table}
+  Look, Outcomes, PhasePowerHarness, PowerRules, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
@@ -23,10 +21,8 @@ class DefameSuite extends munit.FunSuite:
   private val mercenaries = CatalogNames.denizen("Mercenaries")
   /** A plain Order denizen to Trade with instead. */
   private val wrestlers = CatalogNames.denizen("Wrestlers")
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
-  private val parked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerPowers
+  private val parked = PowerRules.parkedUnderWalkerPowers
 
   /** p1 at Ancient City beside Mercenaries and Wrestlers, holding Defame as
     * a faceup adviser. Every board holds the start's 1 favor, and the

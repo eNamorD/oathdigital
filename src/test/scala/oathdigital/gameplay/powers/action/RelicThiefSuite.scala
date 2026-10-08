@@ -1,20 +1,20 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerDice}
+import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
+  PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
-import oathdigital.testkit.PhasePowerHarness.offered
+import oathdigital.testkit.PhasePowerHarness.{offered, UsedAndAnswered}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
 class RelicThiefSuite extends munit.FunSuite:
   import ActPowerHarness._
 
-  private val walkerParked = new ParkedDecisionAssertions(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val walkerParked = PhasePowerHarness.parked
   private val power = RelicThief.forCatalog(catalog)
   private val thief = CatalogNames.denizen("Relic Thief")
   private val source = DecisionOptionRef.Denizen(thief)
@@ -36,17 +36,13 @@ class RelicThiefSuite extends munit.FunSuite:
     .pawn(p1, at = home).adviser(p1, thief)
     .pawn(p2, at = home).relic(p2, whistle)
 
-  /** The walk Relic Thief started and the walk after `relic` was chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition):
-    def events: Vector[OathEvent] = started.events ++ answered.events
-
-  /** Relic Thief used on `before` and `relic` chosen, the dice showing
-    * `dice`. */
+  /** The walk Relic Thief started on `before` and the walk after `relic` was
+    * chosen, the dice showing `dice`. */
   private def chooseRelic(before: ReadyGame, relic: RelicId,
-      dice: WalkerDice = WalkerDice.unavailable): Chosen =
+      dice: WalkerDice = WalkerDice.unavailable): UsedAndAnswered =
     val rolling = rules(dice)
     val started = accepted(use(rolling, before, RelicThief.id, source))
-    Chosen(started, accepted(answer(rolling, started.state,
+    UsedAndAnswered(started, accepted(answer(rolling, started.state,
       RelicThief.decisionId, DecisionOptionRef.Relic(relic))))
 
   test("it places a favor and a secret and offers the faceup relics of " +

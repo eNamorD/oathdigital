@@ -1,17 +1,16 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  PowerRules, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 
@@ -22,11 +21,8 @@ class VowOfPovertySuite extends munit.FunSuite:
   /** A plain Order denizen to Trade with. */
   private val wrestlers = CatalogNames.denizen("Wrestlers")
   private val market = CatalogNames.denizen("Moving Market")
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
-  private val parked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerAndPhasePowers
+  private val parked = PowerRules.parkedUnderWalkerAndPhasePowers
   private val automatic = WalkerPowers.selected(
     WalkerPowerCatalog.default(catalog), Vector.empty)
 

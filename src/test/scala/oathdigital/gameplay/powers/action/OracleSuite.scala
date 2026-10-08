@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
@@ -9,7 +8,7 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness,
-  PlacementPicks, Table}
+  PlacementPicks, PowerRules, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -25,9 +24,7 @@ class OracleSuite extends munit.FunSuite:
   private val placement = CardPlayProcedure.placementDecisionId(faith)
   /** The production walker rules and phase powers, so a Restriction such as
     * Vow of Obedience's hides what it forbids. */
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerAndPhasePowers
 
   /** p1's Act at Ancient City beside a site Oracle, with two faceup
     * secrets. Every other Vision lies in the Provinces discard pile. Faith is

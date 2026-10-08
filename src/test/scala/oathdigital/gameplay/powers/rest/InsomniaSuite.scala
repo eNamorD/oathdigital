@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.rest
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay.{OathRules, PlacementFixture}
+import oathdigital.gameplay.PlacementFixture
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{AdviserLimit, NoteText, PhasePowerCatalog,
@@ -10,14 +10,13 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks,
+  PowerRules, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 
 class InsomniaSuite extends munit.FunSuite:
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerAndPhasePowers
   /** The automatic production powers, as a command with no modifier walks. */
   private val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
     Vector.empty)

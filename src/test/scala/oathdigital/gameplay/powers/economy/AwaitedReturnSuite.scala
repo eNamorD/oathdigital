@@ -1,13 +1,12 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
-  Look, Table}
+  Look, PowerRules, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
@@ -19,8 +18,7 @@ class AwaitedReturnSuite extends munit.FunSuite:
   private val home = CatalogNames.site("Ancient City")
   /** A plain Order denizen to Trade with. */
   private val wrestlers = CatalogNames.denizen("Wrestlers")
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerPowers
 
   /** p1 at Ancient City beside Wrestlers, holding Awaited Return faceup,
     * `supply` Supply and the start's 3 warbands, 1 favor and 1 faceup secret.

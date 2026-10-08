@@ -30,12 +30,9 @@ class HomesteadersSuite extends munit.FunSuite:
     Table.start.turn(p1, Phase.Act).adviser(p1, homesteaders)
 
   /** The walk Homesteaders started and the walk after `card` was chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition)
-
-  private def choose(ready: ReadyGame, card: DenizenId): Chosen =
-    val started = accepted(use(ready, power, source))
-    Chosen(started, accepted(answer(started, p1, Homesteaders.decisionId,
-      pick(DecisionOptionRef.Denizen(card)))))
+  private def choose(ready: ReadyGame, card: DenizenId): UsedAndAnswered =
+    useAndAnswer(ready, power, source,
+      Homesteaders.decisionId, DecisionOptionRef.Denizen(card))
 
   test("it offers the player's faceup advisers, itself included, and not a " +
       "facedown one"):
@@ -58,7 +55,7 @@ class HomesteadersSuite extends munit.FunSuite:
       "line names it"):
     val ready = holdingHomesteaders.adviser(p1, landWarden)
       .tokens(landWarden, favor = 1).ready
-    val Chosen(t, done) = choose(ready, landWarden)
+    val UsedAndAnswered(t, done) = choose(ready, landWarden)
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = Look(after(done))
     assertEquals(end.cardsAt(home), Vector[CardId](landWarden))
@@ -71,7 +68,7 @@ class HomesteadersSuite extends munit.FunSuite:
     assertWireRoundTrips(t.events ++ done.events)
 
   test("it can move itself"):
-    val Chosen(_, done) = choose(holdingHomesteaders.ready, homesteaders)
+    val UsedAndAnswered(_, done) = choose(holdingHomesteaders.ready, homesteaders)
     assertEquals(Look(after(done)).cardsAt(home), Vector[CardId](homesteaders))
     assertEquals(Look(after(done)).advisers(p1), Vector.empty[CardId])
 

@@ -28,18 +28,14 @@ class ConvoysSuite extends munit.FunSuite:
     .discarded(Region.Cradle, errandBoy)
     .discarded(Region.Provinces, wildMounts, mountainGiant)
 
+  /** The walk Convoys started and the walk after `region`'s pile was
+    * chosen. */
   private def pileOf(ready: ReadyGame, region: Region): Vector[WorldCardId] =
     ready.game.current.commonCards.discard(region)
 
-  /** The walk Convoys started and the walk after `region`'s pile was
-    * chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition):
-    def events: Vector[OathEvent] = started.events ++ answered.events
-
-  private def choosePile(ready: ReadyGame, region: Region): Chosen =
-    val started = accepted(use(ready, Convoys, source))
-    Chosen(started, accepted(answer(started, p1, Convoys.decisionId,
-      pick(Convoys.ref(region)))))
+  private def choosePile(ready: ReadyGame, region: Region): UsedAndAnswered =
+    useAndAnswer(ready, Convoys, source,
+      Convoys.decisionId, Convoys.ref(region))
 
   test("it places a favor and offers the other regions' piles as buttons " +
       "with their own labels"):

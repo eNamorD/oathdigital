@@ -6,11 +6,11 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
-  WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
+  WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PowerRules, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
@@ -23,8 +23,7 @@ class LostTongueSuite extends munit.FunSuite:
   private val crackedHorn = CatalogNames.relic("Cracked Horn")
   private val power = LostTongue.forCatalog(catalog)
   private val raid = ChooseOneAnswer(DecisionOptionRef.Button("raid"))
-  private val parked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog))
+  private val parked = PowerRules.parkedUnderWalkerPowers
 
   private def notes(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)

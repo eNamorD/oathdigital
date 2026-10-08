@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerDice}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
+import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
   PhasePowerHarness, Table}
@@ -14,8 +13,7 @@ class ClayRattleSuite extends munit.FunSuite:
   import ActPowerHarness._
   import PowerFixture._
 
-  private val parked = new ParkedDecisionAssertions(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val parked = PhasePowerHarness.parked
 
   private val rattle = CatalogNames.relic("Clay Rattle")
   private val source = DecisionOptionRef.Relic(rattle)

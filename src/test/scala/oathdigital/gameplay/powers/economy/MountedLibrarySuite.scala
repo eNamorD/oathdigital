@@ -1,11 +1,10 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
-  Look, Table}
+  Look, PowerRules, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
@@ -19,8 +18,7 @@ class MountedLibrarySuite extends munit.FunSuite:
   private val horseArchers = CatalogNames.denizen("Horse Archers")
   /** A plain Order denizen to Trade with instead. */
   private val wrestlers = CatalogNames.denizen("Wrestlers")
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerPowers
 
   /** p1 at Ancient City beside Mounted Library and Wrestlers, holding Horse
     * Archers faceup, 2 favor and the start's 1 faceup secret. The Nomad and

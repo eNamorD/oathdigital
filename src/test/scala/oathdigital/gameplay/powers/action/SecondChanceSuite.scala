@@ -20,17 +20,14 @@ class SecondChanceSuite extends munit.FunSuite:
   private val homesteaders = CatalogNames.denizen("Homesteaders")
 
   /** p1's Act holding Second Chance with `secrets` faceup secrets. */
+  /** The walk Second Chance started and the walk after `target` was
+    * chosen. */
   private def staged(secrets: Int = 1): Table =
     Table.start.turn(p1, Phase.Act).adviser(p1, chance).secrets(p1, secrets)
 
-  /** The walk Second Chance started and the walk after `target` was
-    * chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition)
-
-  private def choose(ready: ReadyGame, target: PlayerId): Chosen =
-    val started = accepted(use(ready, power, source))
-    Chosen(started, accepted(answer(started, p1, SecondChance.decisionId,
-      pick(DecisionOptionRef.Player(target)))))
+  private def choose(ready: ReadyGame, target: PlayerId): UsedAndAnswered =
+    useAndAnswer(ready, power, source,
+      SecondChance.decisionId, DecisionOptionRef.Player(target))
 
   test("it places a secret and offers only players with a faceup Order or " +
       "Discord adviser"):
@@ -46,7 +43,7 @@ class SecondChanceSuite extends munit.FunSuite:
     // 3 warbands each: p2 keeps 3 - 1 = 2 and p1 holds 3 + 1 = 4.
     val ready = staged().boardWarbands(p1, 3).boardWarbands(p2, 3)
       .adviser(p2, codeOfHonor).ready
-    val Chosen(t, done) = choose(ready, p2)
+    val UsedAndAnswered(t, done) = choose(ready, p2)
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).boardWarbands(p2), 2)
     assertEquals(Look(after(done)).boardWarbands(p1), 4)

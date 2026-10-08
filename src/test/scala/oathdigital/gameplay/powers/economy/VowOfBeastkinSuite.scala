@@ -1,13 +1,12 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.economy.MusterProcedure
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
-  Look, PhasePowerHarness, Table}
+  Look, PhasePowerHarness, PowerRules, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
@@ -22,8 +21,7 @@ class VowOfBeastkinSuite extends munit.FunSuite:
   private val wrestlers = CatalogNames.denizen("Wrestlers")
   /** An Order adviser, so that Wrestlers matches one. */
   private val messenger = CatalogNames.denizen("Messenger")
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerPowers
 
   /** p1 at Ancient City beside Errand Boy and Wrestlers, with the start's 1
     * favor, 7 Supply and 3 warbands, and no adviser yet. */

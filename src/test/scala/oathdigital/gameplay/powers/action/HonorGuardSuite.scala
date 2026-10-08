@@ -26,18 +26,15 @@ class HonorGuardSuite extends munit.FunSuite:
   /** p1's Act at Ancient City holding Honor Guard with `favor` favor. p2
     * stands at Ancient City holding Homesteaders faceup with 1 favor and 1
     * secret on it. */
+  /** The walk Honor Guard started and the walk after `card` was chosen. */
   private def staged(favor: Int = 3): Table =
     Table.start.turn(p1, Phase.Act).pawn(p1, home).adviser(p1, guard)
       .favor(p1, favor).pawn(p2, at = home).adviser(p2, homesteaders)
       .tokens(homesteaders, favor = 1, secrets = 1)
 
-  /** The walk Honor Guard started and the walk after `card` was chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition)
-
-  private def choose(ready: ReadyGame, card: DenizenId): Chosen =
-    val started = accepted(use(ready, power, source))
-    Chosen(started, accepted(answer(started, p1, HonorGuard.decisionId,
-      pick(DecisionOptionRef.Denizen(card)))))
+  private def choose(ready: ReadyGame, card: DenizenId): UsedAndAnswered =
+    useAndAnswer(ready, power, source,
+      HonorGuard.decisionId, DecisionOptionRef.Denizen(card))
 
   test("it places 2 favor, burns 1, and offers the faceup advisers of " +
       "players at the site with no faceup Order adviser"):
@@ -54,7 +51,7 @@ class HonorGuardSuite extends munit.FunSuite:
   test("the adviser is buried with its returns"):
     val ready = staged().ready
     val hearth = ready.banks.favor.getOrElse(Suit.Hearth, 0)
-    val Chosen(t, done) = choose(ready, homesteaders)
+    val UsedAndAnswered(t, done) = choose(ready, homesteaders)
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals(Look(end).advisers(p2), Vector.empty[CardId])

@@ -115,3 +115,19 @@ object PhasePowerHarness:
     Unwrap.present(projector.projectPublic("targets",
       LoadedGame(transition.state, 30L)).playerBoards
       .find(_.playerId == owner.value), s"a public board for $owner")
+
+  /** A power used and then its one decision answered: the walk after each
+    * step, and the events of both in order. */
+  final case class UsedAndAnswered(started: OathTransition,
+      answered: OathTransition):
+    def events: Vector[OathEvent] = started.events ++ answered.events
+
+  /** The actor uses `power` from `source` and answers the decision it parks
+    * on by choosing `ref`. Fails with the violation that stopped either
+    * step. */
+  def useAndAnswer(ready: ReadyGame, power: PhasePower,
+      source: DecisionOptionRef, decision: String, ref: DecisionOptionRef)(
+      using munit.Location): UsedAndAnswered =
+    val started = Unwrap.accepted(use(ready, power, source))
+    UsedAndAnswered(started,
+      Unwrap.accepted(answer(started, actor, decision, pick(ref))))

@@ -40,13 +40,9 @@ class AssassinSuite extends munit.FunSuite:
     .pawn(p2, at = home).adviser(p2, landWarden)
 
   /** The walk Assassin started and the walk after `card` was chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition):
-    def events: Vector[OathEvent] = started.events ++ answered.events
-
-  private def chooseAdviser(ready: ReadyGame, card: DenizenId): Chosen =
-    val started = accepted(use(ready, power, source))
-    Chosen(started, accepted(answer(started, p1, Assassin.decisionId,
-      pick(DecisionOptionRef.Denizen(card)))))
+  private def chooseAdviser(ready: ReadyGame, card: DenizenId): UsedAndAnswered =
+    useAndAnswer(ready, power, source,
+      Assassin.decisionId, DecisionOptionRef.Denizen(card))
 
   /** The faceup placement options of `card` from p1's hand, under the
     * production powers. */

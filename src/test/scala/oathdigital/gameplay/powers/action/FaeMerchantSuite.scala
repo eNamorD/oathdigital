@@ -1,11 +1,9 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  WalkerPowerCatalog}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, PowerRules,
+  Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -13,9 +11,7 @@ class FaeMerchantSuite extends munit.FunSuite:
   import ActPowerHarness._
   import PowerFixture._
 
-  private val walkerParked = new ParkedDecisionAssertions(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val walkerParked = PowerRules.parkedUnderWalkerAndPhasePowers
 
   private val fae = CatalogNames.denizen("Fae Merchant")
   private val source = DecisionOptionRef.Denizen(fae)

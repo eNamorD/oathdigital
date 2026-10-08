@@ -3,12 +3,10 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
-  WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PowerRules, Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class BookBindersSuite extends munit.FunSuite:
@@ -19,8 +17,7 @@ class BookBindersSuite extends munit.FunSuite:
   private val holder = Table.p2
   // A relic for the Conspiracy to take from Book Binders' holder.
   private val targetRelic = CatalogNames.relic("Circlet of Command")
-  private val parked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog))
+  private val parked = PowerRules.parkedUnderWalkerPowers
 
   /** `table` with exactly these banks holding favor, every other bank none. */
   private def banksHolding(table: Table, banks: Map[Suit, Int]): Table =

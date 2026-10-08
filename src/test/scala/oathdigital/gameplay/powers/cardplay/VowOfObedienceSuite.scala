@@ -1,16 +1,15 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  SearchFixture, WalkerPowerCatalog}
+  SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PowerRules, Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class VowOfObedienceSuite extends munit.FunSuite:
@@ -71,11 +70,8 @@ class VowOfObedienceSuite extends munit.FunSuite:
 
   // ---- REST: Take a favor from any one favor bank ----
 
-  private val restRules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
-  private val restParked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
+  private val restRules = PowerRules.withWalkerAndPhasePowers
+  private val restParked = PowerRules.parkedUnderWalkerAndPhasePowers
   private val use = ActionRef.UsePower(VowOfObedience.id)
   private val source = DecisionOptionRef.Denizen(vow)
 

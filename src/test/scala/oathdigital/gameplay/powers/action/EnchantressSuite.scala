@@ -20,18 +20,15 @@ class EnchantressSuite extends munit.FunSuite:
 
   /** p1's Act holding Enchantress with `secrets` faceup secrets. p2 holds
     * Homesteaders faceup with 1 favor and 2 secrets on it. */
+  /** The walk Enchantress started and the walk after `card` was chosen. */
   private def staged(secrets: Int = 1): Table =
     Table.start.turn(p1, Phase.Act).adviser(p1, enchantress)
       .secrets(p1, secrets).adviser(p2, homesteaders)
       .tokens(homesteaders, favor = 1, secrets = 2)
 
-  /** The walk Enchantress started and the walk after `card` was chosen. */
-  private case class Chosen(started: OathTransition, answered: OathTransition)
-
-  private def choose(ready: ReadyGame, card: DenizenId): Chosen =
-    val started = accepted(use(ready, Enchantress, source))
-    Chosen(started, accepted(answer(started, p1, Enchantress.decisionId,
-      pick(DecisionOptionRef.Denizen(card)))))
+  private def choose(ready: ReadyGame, card: DenizenId): UsedAndAnswered =
+    useAndAnswer(ready, Enchantress, source,
+      Enchantress.decisionId, DecisionOptionRef.Denizen(card))
 
   test("it places a secret and offers other players' faceup advisers, not " +
       "its own, facedown or locked ones"):
@@ -45,7 +42,7 @@ class EnchantressSuite extends munit.FunSuite:
 
   test("the two cards swap faceup, each with its favor and secrets"):
     val ready = staged().ready
-    val Chosen(t, done) = choose(ready, homesteaders)
+    val UsedAndAnswered(t, done) = choose(ready, homesteaders)
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals(Look(end).player(p1).advisers, Vector[AdviserState](

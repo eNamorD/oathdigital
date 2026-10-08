@@ -7,7 +7,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
   WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Outcomes, PowerRules, Table}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Shared reading for the suites of the rules that keep a player from being
@@ -15,8 +15,7 @@ import oathdigital.testkit.Unwrap.{accepted, present}
   */
 object TargetingFixture:
   /** Rules with the walker power catalog, so the printed protections apply. */
-  val rules: OathRules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  val rules: OathRules = PowerRules.withWalkerPowers
   /** The Fortress edifice: Oaken Fortress intact, Rotting Fortress ruined. */
   val fortress: EdificeId = CatalogNames.edifice("Oaken Fortress")
   /** The relic whose holder's banners and relics cannot be targeted. */

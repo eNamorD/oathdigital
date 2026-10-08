@@ -1,10 +1,9 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
+  PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -12,8 +11,7 @@ class DowsingSticksSuite extends munit.FunSuite:
   import ActPowerHarness._
   import PowerFixture._
 
-  private val parked = new ParkedDecisionAssertions(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val parked = PhasePowerHarness.parked
 
   private val sticks = CatalogNames.relic("Dowsing Sticks")
   private val source = DecisionOptionRef.Relic(sticks)

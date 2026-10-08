@@ -9,6 +9,7 @@ import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.PowerRules
 
 /** A Travel board for the modifiers and rules of Travel: the map of
   * `TravelProcedureSuite`, with named sites and the active player at the
@@ -28,8 +29,7 @@ import oathdigital.testkit.CatalogNames
 object TravelFixture:
   import PowerFixture._
 
-  val rules: OathRules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  val rules: OathRules = PowerRules.withWalkerPowers
 
   private def site(power: String): SiteId = catalog.sites.find(
     _.handlers.exists(_.value.endsWith(s".$power"))).get.id

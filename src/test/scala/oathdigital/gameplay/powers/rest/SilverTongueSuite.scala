@@ -1,28 +1,24 @@
 package oathdigital.gameplay.powers.rest
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay._
 import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
-  WalkerOutcome, WalkerPowers}
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
-  WalkerPowerCatalog}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
+  WalkerPowers}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Outcomes, PlacementPicks, Table}
+import oathdigital.testkit.{CatalogNames, Outcomes, PlacementPicks,
+  PowerRules, Table}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 class SilverTongueSuite extends munit.FunSuite:
   import SilverTongueFixture._
   private val actor = Table.p1
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
-  private val walkerParked = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
+  private val rules = PowerRules.withWalkerAndPhasePowers
+  private val walkerParked = PowerRules.parkedUnderWalkerAndPhasePowers
   private val use = ActionRef.UsePower(SilverTongue.id)
   private val source = DecisionOptionRef.Denizen(tongue)
   private def favor(state: OathState) = Outcomes.ready(state).banks.favor
