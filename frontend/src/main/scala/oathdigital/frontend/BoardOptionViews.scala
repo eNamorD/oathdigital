@@ -97,6 +97,10 @@ private[frontend] object BoardOptionViews:
       OptionView(option, OptionState.Unavailable, option.reason)
     case _ if picks.contains(key(option)) =>
       OptionView(option, OptionState.Selected, None)
+    // Choosable, with its warning on hover.
+    case "warning" => blockedBy(query, picks, option).fold(
+      OptionView(option, OptionState.Available, option.reason))(reason =>
+        OptionView(option, OptionState.Unavailable, Some(reason)))
     case _ => blockedBy(query, picks, option).fold(
       OptionView(option, OptionState.Available, None))(reason =>
         OptionView(option, OptionState.Unavailable, Some(reason)))

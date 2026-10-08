@@ -290,6 +290,7 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       case WalkerStepRecorded(_, _: WalkerStepPayload.DeltaRecorded, ops, _) =>
         !ops.forall {
           case RecordPowerUse(_) => true
+          case QueueFollowUp(_) => true
           case Move(Piece.Favor(_) | Piece.Secrets(_),
               PositionedLocation(Location.PlayArea(payer), _),
               PositionedLocation(Location.OnCard(_) | Location.SharedBank, _),

@@ -16,7 +16,7 @@ import oathdigital.model._
   * runs after the payment that placed a token on the card, which a source must
   * not yet hold. A card whose suit cannot be read pays.
   */
-private[economy] object SupplyWaiver:
+private[economy] object SuitSupplyWaiver:
   def effects(window: PowerWindow, decisionId: String,
       catalog: ExecutableCatalog)(free: (ReadyGame, PlayerId, Suit) => Boolean)
       : Map[PowerWindow, Vector[Contribution]] = Map(

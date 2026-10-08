@@ -108,6 +108,14 @@ object PowerSourceRef:
     case DecisionOptionRef.Banner(banner) => Some(Banner(banner))
     case _ => None
 
+/** An action owed to `player` once the current one ends (follow-up actions
+  * design): a full action of its own, started or skipped by its player
+  * before anything else happens, spending no Supply. `source` is the power
+  * that queued it, which the Game Log credits. `player` is the one place an
+  * off-turn actor (Sneak Attack) will differ from the active player. */
+final case class FollowUp(player: PlayerId, action: ActionRef,
+    source: PowerSourceRef)
+
 /** A stable identity for one use-limited power instance this turn. */
 final case class PowerUseRef(
     timing: PowerTiming,
@@ -180,7 +188,15 @@ final case class CurrentGameState(
     walkerStartFacts: Vector[DecisionOptionRef] = Vector.empty,
     // The public result of the last Campaign fought. Not walker scratch:
     // `WalkerCompleted` leaves it, and the next Campaign replaces it.
-    lastCampaignResult: Option[CampaignResult] = None
+    lastCampaignResult: Option[CampaignResult] = None,
+    // Actions owed once the current one ends, oldest first (follow-up
+    // actions design). Not walker scratch: it outlives runs and phases, and
+    // only `FollowUpStarted` and `FollowUpSkipped` take from it.
+    followUps: Vector[FollowUp] = Vector.empty,
+    // The entry the current run was started from. Walker scratch: replay
+    // sets it from `FollowUpStarted` and `WalkerCompleted` clears it, so the
+    // cost waiver and the Act-phase exemption hold on every resume.
+    walkerFollowUp: Option[FollowUp] = None
 )
 
 final case class OathGame(

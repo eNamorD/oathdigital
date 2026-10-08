@@ -30,7 +30,7 @@ private[frontend] final case class BoardSelectionDraft(
       case _ =>
         if keys.contains(key) then
           copy(keys = keys.filterNot(_ == key), home = None)
-        else if option.state != "available" ||
+        else if !option.choosable ||
             BoardOptionViews.blockedBy(query, keys, option).nonEmpty then this
         else query match
           case _: DecisionQueryState.ChooseOne =>
@@ -44,7 +44,7 @@ private[frontend] final case class BoardSelectionDraft(
   private def open(at: String,
       siblings: Vector[DecisionOptionState]): BoardSelectionDraft =
     if home.contains(at) then copy(keys = Vector.empty, home = None)
-    else siblings.filter(_.state == "available") match
+    else siblings.filter(_.choosable) match
       case Vector() => this
       case Vector(only) =>
         copy(keys = Vector(BoardOptionViews.key(only)), home = Some(at))
@@ -54,7 +54,7 @@ private[frontend] final case class BoardSelectionDraft(
     * option of another home, or one that may not be chosen, changes nothing.
     */
   def choose(option: DecisionOptionState): BoardSelectionDraft =
-    if option.state == "available" &&
+    if option.choosable &&
         home.contains(BoardOptionViews.home(option)) then
       copy(keys = Vector(BoardOptionViews.key(option)))
     else this
@@ -112,7 +112,7 @@ private[frontend] object BoardSelectionDraft:
       parked <- decision.filter(_.decisionId == facedownAdviserDecisionId)
       query <- parked.query.collect { case one: DecisionQueryState.ChooseOne =>
         one }
-      available = query.options.filter(_.state == "available")
+      available = query.options.filter(_.choosable)
       only <- Option.when(available.size == 1)(available.head)
     yield BoardSelectionDraft(context, parked.decisionId, query,
       Vector(BoardOptionViews.key(only)))

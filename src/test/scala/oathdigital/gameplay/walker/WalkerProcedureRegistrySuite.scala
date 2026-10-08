@@ -173,19 +173,19 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
       Set[ProcedureRef](ActionRef.Muster, ActionRef.Trade, ActionRef.Travel,
         ActionRef.Search))
 
-  /** Knights Errant runs a Campaign inside a Muster, so a Campaign question
-    * parked under Muster must show the roll it would under Campaign. Neither
-    * branch exercised here reads `catalog` or `state`, so `null` is safe for
-    * the same reason it is above.
+  /** A Campaign question parks only under Campaign: Knights Errant queues
+    * its Campaign as an action of its own. Neither branch exercised here
+    * reads `catalog` or `state`, so `null` is safe for the same reason it is
+    * above.
     */
-  test("Muster and Campaign declare the same roll for a Campaign question"):
+  test("only Campaign declares a Campaign question's roll"):
     import oathdigital.gameplay.actions.campaign.CampaignIds
-    Vector[ProcedureRef](ActionRef.Muster, ActionRef.Campaign).foreach { procedure =>
-      assertEquals(WalkerProcedureRegistry.rollFeedback(procedure, null, state,
-        actor, CampaignIds.placement),
-        Some(WalkerRollFeedback(CampaignIds.defensePool)))
-      assertEquals(WalkerProcedureRegistry.rollFeedback(procedure, null, state,
-        actor, CampaignIds.force), None)
-    }
+    assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Campaign, null,
+      state, actor, CampaignIds.placement),
+      Some(WalkerRollFeedback(CampaignIds.defensePool)))
+    assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Campaign, null,
+      state, actor, CampaignIds.force), None)
+    assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Muster, null,
+      state, actor, CampaignIds.placement), None)
     assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Forge, null,
       state, actor, ForgeProcedure.assignmentDecisionId), None)

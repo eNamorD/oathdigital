@@ -36,6 +36,8 @@ private[server] object CommandRejectionMessage:
       case oathdigital.model.OathViolation.InsufficientSecrets(required, available) =>
         s"required secrets $required exceed available $available"
       case oathdigital.model.OathViolation.InvalidModifierInvocation(message) => message
+      case oathdigital.model.OathViolation.FollowUpPending(followUp) =>
+        s"Start or skip the queued ${followUp.action.key} first"
       case other => other.toString
 
 final class GameServerGateway(

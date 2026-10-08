@@ -29,7 +29,7 @@ private[frontend] final case class WalkerChooseManyDraft(
     if selected.contains(item) then copy(selected = selected.filterNot(_ == item))
     else if selected.size < maximum && query.options.exists(option =>
         WalkerPartitionDraft.itemId(option) == item &&
-          option.state == "available") then
+          option.choosable) then
       copy(selected = selected :+ item)
     else this
 

@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.search
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.operations.SupplyStrip
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
 import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
@@ -28,14 +29,7 @@ final case class NewsFromAfar private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchCost -> Vector(Transform((ctx, operations) =>
-      operations.map {
-        case payment: BuildOps => payment.copy(build = (ready, pending) =>
-          payment.build(ready, pending).map(_.filterNot {
-            case SpendSupply(player, _, _) => player == ctx.activePlayer
-            case _ => false
-          }))
-        case other => other
-      })))
+      SupplyStrip(ctx.activePlayer, operations))))
 
 object NewsFromAfar:
   val id: PowerId = NewsFromAfarCard.power.id

@@ -37,8 +37,8 @@ import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,
   RustingRayCard, SaltTheEarthCard, ScoutsCard, SealingWardCard, ShieldWallCard,
   StickyFireCard, StormCallerCard, TheGreatLevyCard, ToweringRampartCard,
   TravelingDoctorCard, TributeSpoilsCard, VillageConstableCard, VowOfPeaceCard,
-  WalledGardenCard, WarTortoiseCard, WarningSignalsCard, WatchdogCard,
-  WrestlersCard}
+  SecondWindCard, WalledGardenCard, WarTortoiseCard, WarningSignalsCard,
+  WatchdogCard, WrestlersCard}
 import oathdigital.gameplay.powers.cardplay.{BookBindersCard, GossipCard,
   SacredGroundCard, SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard,
   WelcomingPartyCard, WildCryCard}
@@ -51,7 +51,8 @@ import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}
 import oathdigital.gameplay.powers.search.{AuguryCard, CropRotationCard,
-  DisciplesCard, ForcedLaborCard, NewsFromAfarCard, TruthfulHarpCard}
+  DisciplesCard, ForcedLaborCard, HuntingPartyCard, NewsFromAfarCard,
+  TruthfulHarpCard}
 import oathdigital.gameplay.powers.setup.{GreatForgeCard, GreatMarketCard,
   ProvingGroundsCard}
 import oathdigital.gameplay.powers.targeting.{CircletOfCommandCard,

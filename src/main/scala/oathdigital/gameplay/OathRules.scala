@@ -11,8 +11,8 @@ import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.phases.wake.{ForcedWakeProcedure,
   TakeWealthProcedure}
 import oathdigital.gameplay.powerresolver.{PhasePowers}
-import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerCompleted,
-  WalkerDice, WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
+  PowerNoted, ProcedureWalker, WalkerCompleted, WalkerDice, WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
 import oathdigital.gameplay._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
@@ -88,6 +88,8 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
       case event: PowerNoted => ProcedureWalker.applyRecorded(state, event)
+      case event: FollowUpStarted => ProcedureWalker.applyRecorded(state, event)
+      case event: FollowUpSkipped => ProcedureWalker.applyRecorded(state, event)
       // `WalkerEvent` is open, so an event type this match does not know
       // rejects here instead of escaping as a `MatchError`.
       case other: WalkerEvent =>

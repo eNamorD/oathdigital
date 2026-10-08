@@ -37,4 +37,5 @@ object SimplePlans:
       Vector(FieldPromotion) ++
       Vector(TributeSpoils.forCatalog(catalog)) ++
       Vector(MilitaryParade.forCatalog(catalog)) ++
-      Vector(Scouts)
+      Vector(Scouts) ++
+      Vector(SecondWind)

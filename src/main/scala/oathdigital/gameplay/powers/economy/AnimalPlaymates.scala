@@ -16,7 +16,7 @@ object AnimalPlaymatesCard extends Denizen(DenizenId("40"), "Animal Playmates", 
 /** Animal Playmates (card 40, adviser-only), a selected Muster modifier with
   * no cost: mustering on a beast denizen or edifice spends no Supply. On any
   * other card the Muster pays as usual. It may be selected whatever the card,
-  * as the Cup of Plenty may. The waiver is [[SupplyWaiver]].
+  * as the Cup of Plenty may. The waiver is [[SuitSupplyWaiver]].
   */
 final case class AnimalPlaymates private (catalog: ExecutableCatalog)
     extends SelectedModifier:
@@ -24,7 +24,7 @@ final case class AnimalPlaymates private (catalog: ExecutableCatalog)
   def id: PowerId = AnimalPlaymates.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Muster)
 
-  def effects: Map[PowerWindow, Vector[Contribution]] = SupplyWaiver.effects(
+  def effects: Map[PowerWindow, Vector[Contribution]] = SuitSupplyWaiver.effects(
     PowerWindow.MusterCost, MusterProcedure.decisionId, catalog)(
     (_, _, suit) => suit == Suit.Beast)
 

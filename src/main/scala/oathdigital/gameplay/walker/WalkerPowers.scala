@@ -58,9 +58,11 @@ object WalkerPowers:
     * (command time) and `WalkerDecisionProjector` (park-time projection) so
     * both always fold a shared window identically (Task 5 projector seam).
     * The modifiers are kept, so the active-modifier restriction sees them
-    * from the action's first walk.
+    * from the action's first walk. The engine's follow-up waiver is always
+    * offered; it applies only to a run started from the queue.
     */
   def selected(catalog: WalkerPowers, modifiers: Vector[PowerId]): WalkerPowers =
     catalog.copy(powers = catalog.powers.filter(power =>
       power.resolution == PowerResolution.Automatic ||
-        modifiers.contains(power.id)), modifiers = modifiers)
+        modifiers.contains(power.id)) :+ FollowUpSupplyWaiver,
+      modifiers = modifiers)

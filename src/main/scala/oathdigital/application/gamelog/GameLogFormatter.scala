@@ -5,7 +5,8 @@ import oathdigital.application.{GamePresentationProjector,
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.ReplayStep
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.walker.{PowerNoted, WalkerCompleted, WalkerParked,
+import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
+  FollowUpSupplyWaiver, PowerNoted, WalkerCompleted, WalkerParked,
   WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
@@ -23,8 +24,11 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
     this(catalog, presentation, NoteWordings.default(catalog))
   private val words = new LogWords(catalog, presentation)
-  private val starts = new StartLines(words, WalkerPowerCatalog.default(catalog)
-    .powers.map(power => power.id -> power.resolution).toMap)
+  // The engine's follow-up waiver is offered beside the catalog's powers
+  // (`WalkerPowers.selected`), so it is named automatic here too.
+  private val starts = new StartLines(words, (WalkerPowerCatalog
+    .default(catalog).powers :+ FollowUpSupplyWaiver)
+    .map(power => power.id -> power.resolution).toMap)
   private val choices = new ChoiceWords(words,
     new WalkerDecisionProjector(catalog, presentation))
   private val actions = new ActionLines(words, choices, catalog)
@@ -84,7 +88,13 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
       case ((run, entries), at) =>
         val (lines, next) = eventLines(journal, run, at, viewer)
         val opened = if at == 0 then opening(journal) ++ lines else lines
-        val posted = quietWake(entries.lastOption, opened)
+        val filed = journal.event(at) match
+          // A Skip follows the previous run's completion, so it belongs to
+          // the latest section in time order (follow-up actions design).
+          case _: FollowUpSkipped => opened.map(_.copy(section =
+            entries.reverseIterator.flatMap(_.section).nextOption()))
+          case _ => opened
+        val posted = quietWake(entries.lastOption, filed)
         (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
           LogEntry(journal.sequence(at), ordinal, entry.kind, entry.depth,
             entry.spans, entry.section) })
@@ -156,8 +166,14 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
       case _: OathEvent.BanditsRefilled | _: OathEvent.UsurperFlipped =>
         (events.lines(journal, at, viewer), run)
       case _: WalkerStepRecorded | _: WalkerParked | _: WalkerCompleted |
-          _: PowerNoted =>
+          _: PowerNoted | _: FollowUpStarted =>
         walker(journal, run, at, viewer)
+      // Outside any run; `formatLive` files it in the latest section.
+      case FollowUpSkipped(followUp) =>
+        (Vector(Posted.line(LogKind.Action,
+          words.source(followUp.source, journal.readyBefore(at).toVector,
+            viewer) ++ Vector(Text(s": ${starts.name(followUp.action)
+              .getOrElse(followUp.action.key)} skipped.")))), run)
       case _: WalkerEvent => (Vector.empty, run)
 
   /** Lines for one event of a walker run. A run begins at the first walker

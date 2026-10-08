@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.operations.SupplyStrip
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
@@ -30,7 +31,7 @@ final case class SpecialEnvoy private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      TravelPayments.withoutSupply(operations, ctx.activePlayer) ++ Vector(
+      SupplyStrip(ctx.activePlayer, operations) ++ Vector(
         EnterPhase(Phase.Rest),
         Note(id, _ => Some(SpecialEnvoy.ended(
           PowerSourceRef.Card(cardId))))))))

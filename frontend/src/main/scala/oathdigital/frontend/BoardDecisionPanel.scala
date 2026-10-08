@@ -68,7 +68,7 @@ private[frontend] object BoardDecisionPanel:
           "board-decision-variant")
         choice.setAttribute("aria-pressed",
           open.keys.contains(BoardOptionViews.key(option)).toString)
-        choice.disabled = !canControl || option.state != "available"
+        choice.disabled = !canControl || !option.choosable
         option.reason.foreach(choice.setAttribute("title", _))
         choice.onclick = _ => controls.stage(Draft.Board(Some(
           open.choose(option))))

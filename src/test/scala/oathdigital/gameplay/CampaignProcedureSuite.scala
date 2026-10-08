@@ -60,7 +60,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val tree = accepted(WalkerProcedureRegistry.rebuild(facts.procedure,
       catalog, current, b.actor, Vector.empty))
     ProcedureWalker.openDecisions(current, tree, pending,
-      WalkerPowerCatalog.default(catalog)).head
+      WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
+        current.game.current.walkerModifiers)).head
 
   test("with one legal kind, no extra target and force to commit, the start " +
       "parks on the force"):

@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Answered, CampaignPlanOffer, CoreOperation, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, Operation, OperationRestriction, PlayerId, PowerId, PowerNote, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
+import oathdigital.model.{Answered, CampaignPlanOffer, CoreOperation, Decide, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, Operation, OperationRestriction, OptionReason, PlayerId, PowerId, PowerNote, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -166,6 +166,11 @@ trait ContributingPower extends NotingPower:
   def ignores(ctx: PowerCtx, other: ContributingPower): Boolean =
     shouldIgnore(other)
   def resolution: PowerResolution = PowerResolution.Automatic
+  /** Why `option` of `decide` deserves a second look while this power is
+    * offered, for the projector to show beside it. The option stays
+    * choosable, and the walk never reads this. */
+  def warning(decide: Decide, option: DecisionOptionRef): Option[OptionReason] =
+    None
 
 object ContributingPower:
 

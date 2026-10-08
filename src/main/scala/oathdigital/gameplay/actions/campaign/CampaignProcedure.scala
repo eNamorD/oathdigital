@@ -29,9 +29,14 @@ object CampaignProcedure:
     _ <- noStartArgs(args)
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- Either.cond(CampaignSetup.legalKinds(state, actor).nonEmpty, (),
-      OathViolation.CampaignUnavailable("Campaign needs a ruled pawn site to " +
-        "Conquest or a co-located enemy pawn to Raid"))
+      OathViolation.CampaignUnavailable(NothingToAttack))
   yield tree(catalog, state, actor)
+
+  /** Why a Campaign cannot start with no site to conquer and no pawn to
+    * raid. */
+  val NothingToAttack: String = "Campaign needs a ruled pawn site to " +
+    "Conquest or a co-located enemy pawn to Raid"
+
 
   /** Whether Campaign could start now: the gates pass and the first walk (the
     * Supply cost, up to the first decision) is accepted, restrictions
@@ -41,6 +46,16 @@ object CampaignProcedure:
       powers: WalkerPowers): Boolean =
     build(catalog, state, actor, Vector.empty)
       .exists(WalkerSimulation.starts(_, state, powers))
+
+  /** Why a Campaign could not start now, or `None` when it could (follow-up
+    * actions design, "Projection and UI"). A restriction answers first, so
+    * Vow of Peace is the reason even when nothing could be attacked; then
+    * the gates; then the first walk. */
+  def refusal(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
+      powers: WalkerPowers): Option[OathViolation] =
+    WalkerSimulation.restriction(tree(catalog, state, actor), state, powers)
+      .orElse(build(catalog, state, actor, Vector.empty)
+        .fold(Some(_), WalkerSimulation.refusal(_, state, powers)))
 
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =

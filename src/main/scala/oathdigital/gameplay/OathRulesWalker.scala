@@ -4,8 +4,8 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.model._
 import oathdigital.gameplay.powerresolver.{ContributingPower, PhasePowers}
-import oathdigital.gameplay.walker.{ModifierOffers, ProcedureWalker,
-  WalkerCompleted, WalkerDice,
+import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
+  ModifierOffers, ProcedureWalker, WalkerCompleted, WalkerDice,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
   WalkerSimulation, WalkerStepRecorded}
 import oathdigital.model.OathState._
@@ -56,7 +56,8 @@ private[gameplay] trait OathRulesWalker:
     * command's collector -- automatic powers are always offered regardless.
     * An empty `modifiers` behaves exactly like every Recover before this
     * task: nothing to validate, and `walkerPowers` offers only the
-    * (currently empty) automatic set.
+    * (currently empty) automatic set. With a queue, only the head may start
+    * (`startFollowUp`).
     */
   def startWalker(state: OathState, procedure: StartableRef,
       requester: PlayerId, modifiers: Vector[PowerId] = Vector.empty,
@@ -67,28 +68,79 @@ private[gameplay] trait OathRulesWalker:
           ready.game.current.walkerProcedure.nonEmpty =>
         Left(InvalidEventOrder("a walker procedure is already pending"))
       case Ready(ready) if ready.game.current.result.nonEmpty => Left(GameEnded)
-      case Ready(ready) =>
-        val activePlayer = ready.game.current.turn.activePlayer
-        def run =
-          for
-            _ <- requireActivePlayer(ready, requester)
-            _ <- validateModifiers(ready, activePlayer, procedure, modifiers)
-            powers = walkerPowers(ready, activePlayer, modifiers)
-            tree <- buildWalker(procedure, ready, activePlayer, startArgs,
-              starting = true)
-            _ <- checkRestrictions(tree, powers, ready, activePlayer)
-            outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
-              powers, walkerDice))
-            _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
-            transition <- walkerTransition(state, procedure, tree,
-              outcome, powers, modifiers, startArgs,
-              WalkerProcedureRegistry.startFacts(procedure, catalog, ready,
-                activePlayer))
-          yield transition
-        WalkerProcedureRegistry.fallbackKind(procedure).flatMap:
-          case Some(kind) => withFallback(state, activePlayer, kind)(run)
-          case None => run
+      case Ready(ready) => ready.game.current.followUps.headOption match
+        case Some(head) => startFollowUp(state, head, procedure, requester,
+          modifiers, startArgs)
+        case None => startNow(state, ready, procedure, requester, modifiers,
+          startArgs)
       case _ => Left(GameNotStarted)
+
+  /** The normal start: what `startWalker` did before the follow-up queue. */
+  private def startNow(state: OathState, ready: ReadyGame,
+      procedure: StartableRef, requester: PlayerId, modifiers: Vector[PowerId],
+      startArgs: Vector[DecisionOptionRef])
+      : Either[OathViolation, OathTransition] =
+    val activePlayer = ready.game.current.turn.activePlayer
+    def run =
+      for
+        _ <- requireActivePlayer(ready, requester)
+        _ <- validateModifiers(ready, activePlayer, procedure, modifiers)
+        powers = walkerPowers(ready, activePlayer, modifiers)
+        tree <- buildWalker(procedure, ready, activePlayer, startArgs,
+          starting = true)
+        _ <- checkRestrictions(tree, powers, ready, activePlayer)
+        outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
+          powers, walkerDice))
+        _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
+        transition <- walkerTransition(state, procedure, tree,
+          outcome, powers, modifiers, startArgs,
+          WalkerProcedureRegistry.startFacts(procedure, catalog, ready,
+            activePlayer))
+      yield transition
+    WalkerProcedureRegistry.fallbackKind(procedure).flatMap:
+      case Some(kind) => withFallback(state, activePlayer, kind)(run)
+      case None => run
+
+  /** Starts the queue's head (follow-up actions design, "Start and skip").
+    * The requester is compared with the entry's player here and nowhere
+    * else, so an off-turn actor (Sneak Attack) changes only this comparison.
+    * `FollowUpStarted` is evolved before the normal start runs on the state
+    * it leaves, so the build skips the Act-phase check (`OathLifecycle`) and
+    * the cost waiver sees the entry. A start that fails refuses the whole
+    * command, so the queue is unchanged.
+    */
+  private def startFollowUp(state: OathState, head: FollowUp,
+      procedure: StartableRef, requester: PlayerId, modifiers: Vector[PowerId],
+      startArgs: Vector[DecisionOptionRef])
+      : Either[OathViolation, OathTransition] =
+    val started = FollowUpStarted(head)
+    for
+      _ <- Either.cond(requester == head.player, (),
+        WrongPlayer(head.player, requester))
+      _ <- Either.cond(procedure == head.action, (), FollowUpPending(head))
+      afterStart <- evolve(state, started)
+      ready <- afterStart match
+        case Ready(live) => Right(live)
+        case _ => Left(GameNotStarted)
+      transition <- startNow(afterStart, ready, procedure, requester,
+        modifiers, startArgs)
+    yield transition.copy(events = started +: transition.events)
+
+  /** Declines the queue's head; the next entry is owed next, or the normal
+    * controls return. Accepted whether or not the head could start. */
+  def skipFollowUp(state: OathState, requester: PlayerId)
+      : Either[OathViolation, OathTransition] = state match
+    case Ready(ready) if ready.game.current.result.nonEmpty => Left(GameEnded)
+    case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
+        ready.game.current.walkerProcedure.nonEmpty =>
+      Left(InvalidEventOrder("a walker procedure is pending"))
+    case Ready(ready) => ready.game.current.followUps.headOption match
+      case None => Left(InvalidEventOrder("no follow-up action is queued"))
+      case Some(head) if head.player != requester =>
+        Left(WrongPlayer(head.player, requester))
+      case Some(head) =>
+        GameplayTransition(state, Vector(FollowUpSkipped(head)))(evolve)
+    case _ => Left(GameNotStarted)
 
   /** Starts a procedure the engine triggers, with no client command
     * (walker-ownership spec, Triggered procedures).
@@ -465,11 +517,13 @@ private[gameplay] trait OathRulesWalker:
 
   /** Only after Begin Rest: a player with no usable REST power finishes Rest
     * in the same command. After a REST power is used the player always
-    * finishes Rest deliberately, so nothing else calls this.
+    * finishes Rest deliberately, so nothing else calls this. A queued action
+    * waits for its player first (follow-up actions design, ruling 2).
     */
   private def autoFinishRest(transition: OathTransition)
       : Either[OathViolation, OathTransition] = transition.state match
-    case Ready(ready) if !restPowerUsable(ready,
+    case Ready(ready) if ready.game.current.followUps.isEmpty &&
+        !restPowerUsable(ready,
         ready.game.current.turn.activePlayer) =>
       startWalker(transition.state, PhaseTransitionRef.FinishRest,
         ready.game.current.turn.activePlayer).map(finished =>
@@ -480,11 +534,13 @@ private[gameplay] trait OathRulesWalker:
     * procedure pending: a player with no Wake option left ends Wake in the
     * same command. That skips a Wake with nothing to decide, and ends one
     * once its last option is used. A Finish Rest started by
-    * `autoFinishRest` reaches this through its own completion.
+    * `autoFinishRest` reaches this through its own completion. A queued
+    * action waits for its player first.
     */
   private def autoEndWake(transition: OathTransition)
       : Either[OathViolation, OathTransition] = transition.state match
     case Ready(ready) if ready.game.current.result.isEmpty &&
+        ready.game.current.followUps.isEmpty &&
         ready.game.current.turn.phase == Phase.Wake &&
         ready.game.current.walkerPending.isEmpty &&
         ready.game.current.walkerProcedure.isEmpty &&

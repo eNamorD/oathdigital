@@ -6,14 +6,6 @@ import oathdigital.model._
 /** Reads and rewrites the cost node of a Travel that several powers share. */
 private[travel] object TravelPayments:
 
-  /** The cost node without the traveller's Supply payment. `SpendSupply` cannot
-    * be zero, so a free Travel has no payment at all.
-    */
-  def withoutSupply(operations: Vector[Operation], traveller: PlayerId)
-      : Vector[Operation] = operations.filter:
-    case SpendSupply(player, _, _) => player != traveller
-    case _ => true
-
   def region(ready: ReadyGame, site: SiteId): Option[Region] =
     ready.game.current.map.regionOf(site)
 

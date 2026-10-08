@@ -7,7 +7,7 @@ import oathdigital.gameplay.walker.{DeltaMeaning, RollPayload,
   WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.serialization.WalkerWireEvents.{encodedStream,
   encodedStreamThatRoundTrips, recordedOperation}
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Unwrap.{accepted, as}
 
 /** Walker step events on the wire: the operations, locations, pieces and
@@ -301,7 +301,9 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Shuffle(SearchSource.RegionalDiscard(Region.Cradle), Some(Vector(vision))),
       Shuffle(SearchSource.RegionalDiscard(Region.Hinterland)),
       SetOathkeeper(Some(PlayerId("red"))),
-      SetOathkeeper(None))
+      SetOathkeeper(None),
+      QueueFollowUp(FollowUp(PlayerId("p1"), ActionRef.Campaign,
+        PowerSourceRef.Card(CatalogNames.denizen("Knights Errant")))))
 
     val events = operations.map(operation =>
       recordedOperation("op", operation))

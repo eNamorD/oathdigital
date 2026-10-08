@@ -102,6 +102,20 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     assertEquals(GameProjectionCodec.decode(ujson.write(raw))
       .map(decoded => (decoded.undo, decoded.logRevision)), Right((None, None)))
 
+  test("a queued follow-up round-trips"):
+    assertRoundTrips(projection.copy(followUp = Some(FollowUpProjection("p1",
+      "campaign", "Campaign", "Knights Errant", startable = false,
+      reason = Some("No site to conquer and no enemy pawn to raid"),
+      queuedAfter = Vector("Campaign")))))
+    assertRoundTrips(projection.copy(followUp = Some(FollowUpProjection("p1",
+      "travel", "Travel", "Second Wind", startable = true))))
+
+  test("a payload without a follow-up decodes to none"):
+    val raw = ujson.read(GameProjectionCodec.encode(projection))
+    raw.obj.remove("followUp")
+    assertEquals(GameProjectionCodec.decode(ujson.write(raw))
+      .map(_.followUp), Right(None))
+
   test("the redo offer round-trips"):
     assertRoundTrips(projection.copy(
       redo = Some(StepOfferProjection("Redo: p1 travelled to Buried Giant"))))

@@ -175,3 +175,19 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       Vector("Lost Tongue: Red may not be targeted."))
     control.click()
     assertEquals(ui.submitted, Vector.empty)
+
+  test("an option with a warning stays choosable and says why"):
+    val ui = new RecordingControls()
+    val warned = pub.copy(state = "warning",
+      reason = Some("Hunting Party needs the world deck"))
+    val panel = draw(parked.copy(query = Some(query.copy(
+      options = Vector(oak, warned)))), ui)
+    val control = all(panel, ".walker-choice").last
+      .asInstanceOf[dom.html.Button]
+    assert(!control.disabled)
+    assertEquals(control.getAttribute("title"),
+      "Hunting Party needs the world deck")
+    assertEquals(all(panel, ".walker-choice-reason").map(_.textContent),
+      Vector("Hunting Party needs the world deck"))
+    control.click()
+    assertEquals(ui.submitted.size, 1)

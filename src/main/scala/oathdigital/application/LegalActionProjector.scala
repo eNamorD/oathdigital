@@ -13,7 +13,9 @@ import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.walker.{ModifierOffers, WalkerPowers}
+import oathdigital.gameplay.actions.BannerRules
+import oathdigital.gameplay.walker.{FollowUpStarted, ModifierOffers,
+  ProcedureWalker, WalkerPowers}
 import oathdigital.gameplay.phases.rest.BeginRestProcedure
 import oathdigital.model._
 import oathdigital.protocol.projection._
@@ -123,16 +125,27 @@ private[application] final class LegalActionProjector(
       projectedPhasePowers: Vector[PhasePowerProjection]): LegalProjection =
     val minor = Option.when(context.viewerIsActive &&
       context.current.turn.phase == Phase.Act &&
-      context.current.walkerPending.isEmpty)(minorActionsProjection(context))
-    LegalProjection(controls(context, minor, projectedPhasePowers), minor)
+      context.current.walkerPending.isEmpty &&
+      context.current.followUps.isEmpty)(minorActionsProjection(context))
+    val followUp = followUpProjection(context)
+    LegalProjection(controls(context, minor, projectedPhasePowers, followUp),
+      minor, followUp)
 
   private def controls(context: ScopedProjectionContext,
       minor: Option[MinorActionsProjection],
-      projectedPhasePowers: Vector[PhasePowerProjection]): Vector[String] =
+      projectedPhasePowers: Vector[PhasePowerProjection],
+      followUp: Option[FollowUpProjection]): Vector[String] =
     val current = context.current
     val active = context.active
     if current.result.nonEmpty then Vector.empty
     else if current.walkerPending.nonEmpty then walkerControls(context)
+    // Branches on the queue itself: should the head's projection fail, its
+    // player can still skip it, and no control the service refuses is shown.
+    else if current.followUps.nonEmpty then
+      if context.viewer.contains(current.followUps.head.player) then
+        followUp.fold(Vector("skipFollowUp"))(_ =>
+          Vector("beginFollowUp", "skipFollowUp"))
+      else Vector.empty
     else if !context.viewerIsActive then Vector.empty
     else current.turn.phase match
         case Phase.Act => Vector(
@@ -166,6 +179,50 @@ private[application] final class LegalActionProjector(
         case Phase.Wake =>
           takeableResources(context).map(takeControl) ++
             phasePowers.controls(projectedPhasePowers) :+ "endWake"
+
+  /** The queue's head as every viewer sees it (follow-up actions design,
+    * "Projection and UI"), while no walker is pending and the game is not
+    * over. Whether it can start is asked of the state its start would
+    * leave, so the waiver and the Act-phase exemption apply as they would.
+    */
+  private def followUpProjection(context: ScopedProjectionContext)
+      : Option[FollowUpProjection] =
+    val current = context.current
+    for
+      head <- current.followUps.headOption
+      if current.walkerPending.isEmpty && current.result.isEmpty
+      started <- ProcedureWalker.applyRecorded(Ready(context.ready),
+        FollowUpStarted(head)).toOption.collect { case Ready(ready) => ready }
+      startable = followUpStartable(context.copy(ready = started), head.action)
+    yield FollowUpProjection(head.player.value, head.action.key,
+      actionLabel(head.action), sourceLabel(context.ready, head.source),
+      startable,
+      Option.when(!startable)(LegalActionProjector.followUpReason(
+        head.action, Option.when(head.action == ActionRef.Campaign)(
+          CampaignProcedure.refusal(catalog, started, head.player,
+            WalkerPowers.selected(walkerPowerCatalog, Vector.empty))).flatten)),
+      current.followUps.tail.map(entry => actionLabel(entry.action)))
+
+  /** Whether the queued `action` could start, by the same dry run as its
+    * own start control. */
+  private def followUpStartable(context: ScopedProjectionContext,
+      action: ActionRef): Boolean = action match
+    case ActionRef.Campaign => campaignStartable(context)
+    case ActionRef.Travel => travelStartable(context)
+    case ActionRef.Search => searchStartable(context)
+    case ActionRef.Muster => musterStartable(context)
+    case ActionRef.Challenge => challengeStartable(context)
+    case ActionRef.Recover => recoverEligible(context, context.active)
+    case _ => false
+
+  /** "Campaign", "Travel": an action as a button and the Game Log name it. */
+  private def actionLabel(action: ActionRef): String = action.key.capitalize
+
+  private def sourceLabel(ready: ReadyGame, source: PowerSourceRef): String =
+    source match
+      case PowerSourceRef.Card(card) => presentation.cardLabel(ready, card)
+      case PowerSourceRef.Site(site) => presentation.siteLabel(site)
+      case PowerSourceRef.Banner(banner) => BannerRules.displayName(banner)
 
   /** Whether `active` can start Recover at their current site, Supply cost
     * included. Relic availability is deliberately irrelevant: a successful
@@ -205,3 +262,18 @@ private[application] final class LegalActionProjector(
       _.orientation == Orientation.FaceDown).map(r => presentation.cardDetails(r.id,
       Some(r.orientation), hidden = false)), active.pawnSite.map(_.value),
       if ruled then active.board.warbands else 0, math.max(0, siteWarbands - 1))
+
+object LegalActionProjector:
+  /** Why a queued action cannot start (follow-up actions design): each
+    * action declares its own. A Campaign shows its refusal's text, or names
+    * the missing target. */
+  private[application] def followUpReason(action: ActionRef,
+      campaignRefusal: Option[OathViolation]): String = action match
+    case ActionRef.Campaign => campaignRefusal match
+      case Some(OathViolation.CampaignUnavailable(detail))
+          if detail == CampaignProcedure.NothingToAttack =>
+        "No site to conquer and no enemy pawn to raid"
+      case Some(OathViolation.CampaignUnavailable(detail)) => detail
+      case _ => "Cannot start now"
+    case ActionRef.Travel => "No site to travel to"
+    case _ => "Cannot start now"

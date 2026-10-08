@@ -9,6 +9,9 @@ object GameIntent:
   case object EndWake extends GameIntent
   case object BeginRest extends GameIntent
   case object FinishRest extends GameIntent
+  /** Declines the queued action at the head of the queue (follow-up
+    * actions design). */
+  case object SkipFollowUp extends GameIntent
   /** Takes back the sender's latest step (undo design). */
   case object Undo extends GameIntent
   /** Restores the sender's latest taken-back step (undo design, "Redo"). */

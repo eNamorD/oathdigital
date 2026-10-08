@@ -43,13 +43,6 @@ object CaptainsCard extends Denizen(DenizenId("115"), "Captains", Suit.Order) wi
       "to your force.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object HuntingPartyCard extends Denizen(DenizenId("122"), "Hunting Party", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.hunting-party"),
-    persistent = false, cost = Cost.free,
-    text = "After searching the world deck, you may campaign, spending " +
-      "no Supply.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object CouncilSeatCard extends Denizen(DenizenId("123"), "Council Seat", Suit.Order) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.council-seat"),
     persistent = true, cost = Cost.free,

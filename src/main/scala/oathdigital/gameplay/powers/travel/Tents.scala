@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.operations.SupplyStrip
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
@@ -31,7 +32,7 @@ final case class Tents private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
       if sameRegion(ctx) then
-        TravelPayments.withoutSupply(operations, ctx.activePlayer)
+        SupplyStrip(ctx.activePlayer, operations)
       else operations)))
 
   override def appliesAt(ctx: PowerCtx): Boolean =
