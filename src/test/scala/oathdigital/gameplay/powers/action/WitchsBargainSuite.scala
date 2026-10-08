@@ -75,11 +75,14 @@ class WitchsBargainSuite extends munit.FunSuite:
       playerDecisionId -> DecisionOptionRef.Player(p3),
       exchangeDecisionId -> giveFavor,
       exchangeDecisionId -> stop)
-    assertEquals(offered(walks(1), p1), Some(Vector(
+    // walks(n) is the walk after n answers.
+    val afterChoosingP2 = walks(1)
+    val afterSwitching = walks(3)
+    assertEquals(offered(afterChoosingP2, p1), Some(Vector(
       "button" -> giveSecret.key, "button" -> giveFavor.key,
       "button" -> switch.key, "button" -> stop.key)))
-    assert(awaits(walks(3), playerDecisionId),
-      parked.parkedDecision(walks(3).state).toString)
+    assert(awaits(afterSwitching, playerDecisionId),
+      parked.parkedDecision(afterSwitching.state).toString)
     assert(backToActing(walks.last))
     val events = walks.flatMap(_.events)
     assertEquals(NoteText.said(WitchsBargain, events), Vector(
