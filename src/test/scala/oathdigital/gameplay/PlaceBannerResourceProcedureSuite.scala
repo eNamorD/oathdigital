@@ -6,6 +6,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation.NoPlayableOption
 import oathdigital.testkit.{Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class PlaceBannerResourceProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
@@ -45,12 +46,17 @@ class PlaceBannerResourceProcedureSuite extends munit.FunSuite:
       "place-banner-resource.banner", chooseDarkestSecret)
       .getOrElse(fail("banner"))
     Vector(0, 6 + 1).foreach(amount =>
-      assert(rules.resolveWalker(banner.state, p1,
+      assertEquals(rules.resolveWalker(banner.state, p1,
         "place-banner-resource.amount",
-        DecisionAnswer.ChooseAmountAnswer(amount)).isLeft, s"amount $amount"))
-    assert(rules.resolveWalker(banner.state, p1,
-      "place-banner-resource.amount",
-      DecisionAnswer.ChooseAmountAnswer(6)).isRight)
+        DecisionAnswer.ChooseAmountAnswer(amount)),
+        Left(OathViolation.InvalidEventOrder("decision " +
+          s"place-banner-resource.amount amount $amount is outside 1..6")),
+        s"amount $amount"))
+    val placed = accepted(rules.resolveWalker(banner.state, p1,
+      "place-banner-resource.amount", DecisionAnswer.ChooseAmountAnswer(6)))
+    assertEquals(
+      Outcomes.ready(placed.state).game.current.banners.darkestSecret.secrets,
+      1 + 6)
 
   test("the amount question names the banner and the resource it takes"):
     // A banner is named as it is printed, and each takes one resource, so
@@ -64,9 +70,12 @@ class PlaceBannerResourceProcedureSuite extends munit.FunSuite:
 
   test("only a banner the actor holds is offered"):
     val started = start(holding.ready).getOrElse(fail("must start"))
-    assert(rules.resolveWalker(started.state, p1,
+    assertEquals(rules.resolveWalker(started.state, p1,
       "place-banner-resource.banner", DecisionAnswer.ChooseOneAnswer(
-        DecisionOptionRef.Banner(Banner.PeoplesFavor))).isLeft)
+        DecisionOptionRef.Banner(Banner.PeoplesFavor))),
+      Left(OathViolation.InvalidEventOrder(
+        "decision place-banner-resource.banner does not offer the selected " +
+          "option")))
 
   test("a start with no held banner or no resources is rejected"):
     val unheld = Table.start.secrets(p1, faceUp = 6).ready

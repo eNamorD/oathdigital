@@ -2,7 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted, WalkerParked}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
@@ -45,11 +45,9 @@ class EconomyWalkerSuite extends munit.FunSuite:
   test("starting Muster parks on the source decision and changes nothing yet"):
     val started = start(atAlchemist.ready)
       .getOrElse(fail("a legal Muster must start"))
-    assert(started.events.last.isInstanceOf[WalkerParked])
     parked.assertParked(started.state, ActionRef.Muster,
       MusterProcedure.decisionId, p1)
     assertEquals(current(started.state).walkerProcedure, Some(ActionRef.Muster))
-    assert(current(started.state).walkerPending.nonEmpty)
     // Still the 4 favor and 7 Supply p1 started with.
     assertEquals(Look(started.state).favor(p1), 4)
     assertEquals(Look(started.state).supply(p1), 7)
@@ -97,10 +95,16 @@ class EconomyWalkerSuite extends munit.FunSuite:
   test("a start with nothing playable is rejected before anything is persisted"):
     // The search finds no legal path from any source, so the start is refused
     // with the first rejection it met rather than parking on a decision.
-    assert(start(atAlchemist.favor(p1, 0).ready).isLeft)
-    assert(start(atAlchemist.secrets(p1, faceUp = 0).ready, ActionRef.Trade,
-      favor).isLeft)
-    assert(start(atAlchemist.supply(p1, 0).ready).isLeft)
+    assertEquals(start(atAlchemist.favor(p1, 0).ready).left.toOption,
+      Some(OathViolation.CoreOperationRejected("insufficient-pieces",
+        "player play area contains 0 of requested favor")))
+    assertEquals(start(atAlchemist.secrets(p1, faceUp = 0).ready,
+      ActionRef.Trade, favor).left.toOption,
+      Some(OathViolation.CoreOperationRejected("insufficient-pieces",
+        "player play area contains 0 of requested secrets")))
+    assertEquals(start(atAlchemist.supply(p1, 0).ready).left.toOption,
+      Some(OathViolation.CoreOperationRejected("insufficient-supply",
+        "a supply spend of 1 exceeds the 0 available")))
 
   test("a start with no token-free card, or a wrong selection, is rejected"):
     assertEquals(start(atAlchemist.tokens(alchemist, secrets = 1).ready)
@@ -125,7 +129,9 @@ class EconomyWalkerSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(CatalogNames.denizen("Magician's Code")))
       .left.toOption, Some(OathViolation.InvalidEventOrder(
         "decision muster.source does not offer the selected option")))
-    assert(answer(started.state, p1, MusterProcedure.decisionId, card).isRight)
+    val mustered = accepted(answer(started.state, p1,
+      MusterProcedure.decisionId, card))
+    assertEquals(current(mustered.state).walkerPending, None)
 
   test("an unimplemented optional Economy power does not block a base Trade"):
     val board = Table.start.favor(p1, 4).secrets(p1, faceUp = 2)

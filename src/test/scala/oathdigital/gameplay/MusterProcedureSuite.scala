@@ -104,7 +104,8 @@ class MusterProcedureSuite extends munit.FunSuite:
     // The power waives the favor payment, not the Supply spend.
     assertEquals(outcome.operations.collect { case SpendSupply(_, n, _) => n },
       Vector(1))
-    assert(!outcome.operations.exists(_.isInstanceOf[PayCost]))
+    assertEquals(outcome.operations.collect { case pay: PayCost => pay },
+      Vector.empty)
 
   test("resolve names why a reference is not a source"):
     assertEquals(MusterSource.resolve(catalog,
@@ -113,8 +114,9 @@ class MusterProcedureSuite extends munit.FunSuite:
     assertEquals(MusterSource.resolve(catalog, atAlchemist.ready, p1,
       DecisionOptionRef.Denizen(magiciansCode)),
       Left(EconomyCardUnavailable(ancientCity, magiciansCode)))
-    assert(MusterSource.resolve(catalog, atAlchemist.ready, p1,
-      DecisionOptionRef.Button("site")).isLeft)
+    assertEquals(MusterSource.resolve(catalog, atAlchemist.ready, p1,
+      DecisionOptionRef.Button("site")), Left(InvalidEventOrder(
+        "button/site is not a card a Muster or Trade can draw on")))
 
   test("matching counts the actor's faceup advisers of the source's suit"):
     assertEquals(MusterSource.matching(catalog,
@@ -135,4 +137,4 @@ class MusterProcedureSuite extends munit.FunSuite:
         PowerId("test.add-adviser-source"), magiciansCode))))
     assertEquals(previewed.map(_.option.ref), Vector(
       DecisionOptionRef.Denizen(alchemist)))
-    assert(previewed.head.outcome.isRight)
+    accepted(previewed.head.outcome)
