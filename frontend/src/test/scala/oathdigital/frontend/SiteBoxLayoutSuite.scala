@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.TestBoardOptions.recording
+import oathdigital.frontend.TestSites.quietSite
 import oathdigital.model.PlayerColor
 
 import org.scalajs.dom
@@ -9,9 +11,7 @@ import org.scalajs.dom
   * not change the box, or the board shifts under the player mid-decision.
   */
 class SiteBoxLayoutSuite extends munit.FunSuite:
-  private val site = GameSite("site:woods", "Deep Woods",
-    looseFavor = 0, looseSecrets = 0, denizenCapacity = 3, relicCapacity = 0,
-    denizens = Vector.empty, relics = GameSiteRelics(0), defense = 0)
+  private val site = quietSite("site:woods", "Deep Woods")
 
   private def projection(pawns: Vector[GamePawn] = Vector.empty): GameProjection =
     GameProjection("game", 1L, "act", Some("red"),
@@ -41,9 +41,7 @@ class SiteBoxLayoutSuite extends munit.FunSuite:
   test("the travel supply badge hangs off the site, not inside its details"):
     val badged = OptionView(DecisionOptionState("site", "site:woods",
       "Deep Woods", badge = Some("2 Supply")), OptionState.Available, None)
-    val options = new BoardOptions(
-      Map(BoardOptionViews.home(badged.option) -> badged), _ => ())
-    val node = world(projection(), options)
+    val node = world(projection(), recording(badged).options)
     val badges = Dom.all(node, ".target-detail-badge")
     assertEquals(badges.size, 1)
     assertEquals(badges.head.parentNode.asInstanceOf[dom.Element]

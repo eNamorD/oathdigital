@@ -5,6 +5,7 @@ import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent}
 import Dom.{click, one, press}
 import ParkedDecision.{Routed, Surface}
 import TestProjections.actingProjection
+import TestSites.*
 import org.scalajs.dom
 
 /** The board as the surface for a parked decision. A site is picked by
@@ -15,10 +16,8 @@ import org.scalajs.dom
 class BoardSurfaceSuite extends munit.FunSuite:
   private val fox = CardDetails("denizen:fox", "denizen", "Fox",
     rulesText = Some("Sly."))
-  private val woods = GameSite("site:woods", "Deep Woods",
-    looseFavor = 0, looseSecrets = 0, denizenCapacity = 3, relicCapacity = 0,
-    denizens = Vector(GameSiteCard("denizen:fox", "Fox", Some(fox))),
-    relics = GameSiteRelics(0), defense = 0)
+  private val woods = quietSite("site:woods", "Deep Woods")
+    .withDenizens(GameSiteCard("denizen:fox", "Fox", Some(fox)))
   private val city = woods.copy(siteId = "site:city", label = "Ancient City",
     denizens = Vector.empty)
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)

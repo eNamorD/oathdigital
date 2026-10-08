@@ -1,6 +1,8 @@
 package oathdigital.frontend
 
 import oathdigital.frontend.Dom.one
+import oathdigital.frontend.TestBoardOptions.recording
+import oathdigital.frontend.TestSites.quietSite
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{GameIntent => Intent}
 import oathdigital.testkit.Unwrap.as
@@ -11,9 +13,7 @@ import org.scalajs.dom
   * destination design, rulings 2 to 4). */
 class TravelLaunchSuite extends munit.FunSuite:
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
-  private def site(id: String, name: String) = GameSite(id, name,
-    looseFavor = 0, looseSecrets = 0, denizenCapacity = 3, relicCapacity = 0,
-    denizens = Vector.empty, relics = GameSiteRelics(0), defense = 1)
+  private def site(id: String, name: String) = quietSite(id, name)
   private val table = TestProjections.actingProjection(players = Vector(red),
     world = Vector(GameRegion("cradle", Vector(site("woods", "Deep Woods"),
       site("shore", "Desolate Shore")))),
@@ -36,9 +36,8 @@ class TravelLaunchSuite extends munit.FunSuite:
     val refused = OptionView(DecisionOptionState("site", "shore",
       "Desolate Shore", state = "unavailable", reason = Some(reason)),
       OptionState.Unavailable, Some(reason))
-    val options = new BoardOptions(Vector(badged, refused).map(view =>
-      BoardOptionViews.home(view.option) -> view).toMap, _ => ())
-    val world = WorldBoardRenderer.world(table, options)
+    val world = WorldBoardRenderer.world(table,
+      recording(badged, refused).options)
     assertEquals(one(one(world, """article[aria-label="Deep Woods"]"""),
       ".target-detail-badge").textContent, "2 Supply")
     val shore = one(world, """article[aria-label="Desolate Shore"]""")

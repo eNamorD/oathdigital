@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.frontend.ServerModeFixtures.twoSeatProjection
+import oathdigital.frontend.TestSites.*
 import oathdigital.model.PlayerColor
 
 import munit.FunSuite
@@ -75,10 +76,10 @@ class ServerUiSupportSuite extends FunSuite:
 
   test("peeked site relics replace opaque slots only for the scoped viewer"):
     val known = CardDetails("R1", "relic", "Ancient Crown", rulesText = Some("Rule"))
-    val owner = SiteCardPresentation.from(GameSite("site", "Site", 0, 0, 0, 2,
-      Vector.empty, GameSiteRelics(2, Vector(known))))
-    val other = SiteCardPresentation.from(GameSite("site", "Site", 0, 0, 0, 2,
-      Vector.empty, GameSiteRelics(2)))
+    val site = quietSite("site", "Site").withDenizenCapacity(0)
+      .withRelicCapacity(2)
+    val owner = SiteCardPresentation.from(site.withRelics(2, known))
+    val other = SiteCardPresentation.from(site.withRelics(2))
     assertEquals(owner.unknownRelicCount, 1)
     assertEquals(other.unknownRelicCount, 2)
     assertEquals(owner.peekedRelics.map(_.card.name), Vector("Ancient Crown"))

@@ -1,6 +1,8 @@
 package oathdigital.frontend
 
 import oathdigital.frontend.Dom.{all, one}
+import oathdigital.frontend.TestBoards.quietBoard
+import oathdigital.frontend.TestSites.quietSite
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent}
 import oathdigital.testkit.Unwrap.as
@@ -14,16 +16,11 @@ import org.scalajs.dom
 class BoardDecisionPanelSuite extends munit.FunSuite:
   private val context = BoardSelectionContext("game", "red", 1L)
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
-  private def site(id: String) = GameSite(id, s"Site $id", looseFavor = 0,
-    looseSecrets = 0, denizenCapacity = 3, relicCapacity = 0,
-    denizens = Vector.empty, relics = GameSiteRelics(0), defense = 1)
+  private def site(id: String) = quietSite(id, s"Site $id")
   private val table = TestProjections.actingProjection(players = Vector(red),
     world = Vector(GameRegion("cradle", Vector(site("plains"),
       site("hills"), site("marsh")))))
-    .copy(playerBoards = Vector(PlayerBoard("red", warbands = 0, favor = 0,
-      faceUpSecrets = 0, faceDownSecrets = 0, committedSecrets = 0,
-      totalSecrets = 0, supply = 0, pawnSiteId = None,
-      advisers = Vector.empty, relics = Vector.empty, revealedVision = None)))
+    .copy(playerBoards = Vector(quietBoard("red")))
   private def option(id: String) = DecisionOptionState("site", id, s"Site $id")
   private val origin = option("plains").copy(state = "locked")
   private val force = DecisionTallyState("Defending force", "warbands",

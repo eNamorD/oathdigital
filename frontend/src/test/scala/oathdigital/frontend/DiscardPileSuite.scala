@@ -2,14 +2,14 @@ package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
 import Dom.all
+import TestBoardOptions.{available, recording}
+import TestSites.quietSite
 import TestProjections.actingProjection
 import org.scalajs.dom
 
 /** A region's discard pile opens as a card list, top first. */
 class DiscardPileSuite extends munit.FunSuite:
-  private val site = GameSite("site:woods", "Deep Woods", looseFavor = 0,
-    looseSecrets = 0, denizenCapacity = 3, relicCapacity = 0,
-    denizens = Vector.empty, relics = GameSiteRelics(0), defense = 0)
+  private val site = quietSite("site:woods", "Deep Woods")
 
   private val top = CardDetails("hidden", "denizen", "Facedown denizen",
     orientation = Some("face-down"), hidden = true)
@@ -59,14 +59,11 @@ class DiscardPileSuite extends munit.FunSuite:
       case _ => ()
     val pile = DecisionOptionState("discard-pile", "cradle",
       "Discard to the Cradle discard")
-    var picked = Vector.empty[DecisionOptionState]
-    val options = new BoardOptions(Map(BoardOptionViews.home(pile) ->
-      OptionView(pile, OptionState.Available, None)),
-      chosen => { picked :+= chosen; () })
+    val options = recording(available(pile))
     val root = WorldBoardRenderer.world(projection(Vector(top, known)),
-      options)
+      options.options)
     discard(root).click()
-    assertEquals((picked, opened), (Vector(pile), Vector.empty))
+    assertEquals((options.picks, opened), (Vector(pile), Vector.empty))
     val inspect = all(root, ".region .board-option-inspect").headOption
       .getOrElse(fail("no inspect button"))
     assertEquals(inspect.getAttribute("aria-label"),

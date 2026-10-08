@@ -1,6 +1,8 @@
 package oathdigital.frontend
 
 import oathdigital.frontend.Dom.{all, one}
+import oathdigital.frontend.TestBoardOptions.recording
+import oathdigital.frontend.TestSites.quietSite
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{GameIntent => Intent}
 import oathdigital.testkit.Unwrap.as
@@ -11,9 +13,7 @@ import org.scalajs.dom
   * rulings 2 to 5). */
 class SearchLaunchSuite extends munit.FunSuite:
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
-  private val woods = GameSite("woods", "Deep Woods", looseFavor = 0,
-    looseSecrets = 0, denizenCapacity = 3, relicCapacity = 0,
-    denizens = Vector.empty, relics = GameSiteRelics(0), defense = 1)
+  private val woods = quietSite("woods", "Deep Woods")
   private val table = TestProjections.actingProjection(players = Vector(red),
     world = Vector(GameRegion("cradle", Vector(woods))),
     legalControls = Vector("beginSearch"))
@@ -45,9 +45,8 @@ class SearchLaunchSuite extends munit.FunSuite:
     val discard = OptionView(DecisionOptionState("discard-pile", "cradle",
       "Cradle discard pile", state = "unavailable", reason = Some(reason)),
       OptionState.Unavailable, Some(reason))
-    val options = new BoardOptions(Vector(deck, discard).map(view =>
-      BoardOptionViews.home(view.option) -> view).toMap, _ => ())
-    val world = WorldBoardRenderer.world(table, options)
+    val world = WorldBoardRenderer.world(table,
+      recording(deck, discard).options)
     val pile = one(world, """[data-option-ref="deck:world"]""")
     assert(pile.classList.contains("board-option"))
     assertEquals(one(pile, ".target-detail-badge").textContent, "2 Supply")
