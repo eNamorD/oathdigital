@@ -110,18 +110,21 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     assertEquals(one(panel, ".board-decision-rule-labelled").textContent,
       "Decision")
 
-  test("slots at several sites stay on the table, and a Skip button " +
-      "submits at once"):
-    val ui = new RecordingControls()
-    def slot(site: String, at: Int) = DecisionOptionState("site-slot",
-      s"$site:$at", s"Empty slot at Site $site")
-    val move = DecisionQueryState.ChooseOne(Vector(slot("hills", 0),
-      slot("marsh", 1), DecisionOptionState("button", "skip", "Skip")),
-      Some("Moving Market: move it to another site?"))
-    val panel = pane(ui, move, decision.copy(
-      decisionId = "trade.moving-market.move"))
+  private def slot(site: String, at: Int) = DecisionOptionState("site-slot",
+    s"$site:$at", s"Empty slot at Site $site")
+  private val move = DecisionQueryState.ChooseOne(Vector(slot("hills", 0),
+    slot("marsh", 1), DecisionOptionState("button", "skip", "Skip")),
+    Some("Moving Market: move it to another site?"))
+  private val moving = decision.copy(decisionId = "trade.moving-market.move")
+
+  test("slots at several sites stay on the table, not in the panel"):
+    val panel = pane(new RecordingControls(), move, moving)
     assertEquals(all(panel, ".board-decision-loose-option"), Vector.empty)
-    val skip = as[dom.html.Button](one(panel, ".board-decision-decide"))
+
+  test("a Skip button submits at once"):
+    val ui = new RecordingControls()
+    val skip = as[dom.html.Button](one(pane(ui, move, moving),
+      ".board-decision-decide"))
     assertEquals(skip.textContent, "Skip")
     skip.click()
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker(
@@ -151,27 +154,33 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
 
   test("an open home shows its options as a toggle with no default, and " +
       "Confirm waits for one"):
-    val ui = new RecordingControls()
-    val panel = pane(ui, placement, placing, open(placement))
+    val panel = pane(new RecordingControls(), placement, placing,
+      open(placement))
     assertEquals(variants(panel).map(_.textContent), Vector("Faceup", "Facedown"))
     assertEquals(variants(panel).map(_.getAttribute("aria-pressed")),
       Vector("false", "false"))
     assertEquals(one(panel, ".board-decision-summary").textContent,
       "Choose one: Faceup or Facedown.")
     assert(as[dom.html.Button](one(panel, ".board-decision-confirm")).disabled)
-    variants(panel)(1).click()
+
+  test("a click on a facing toggle drafts that facing"):
+    val ui = new RecordingControls()
+    variants(pane(ui, placement, placing, open(placement)))(1).click()
     assertEquals(ui.drafts.board.map(_.keys),
       Some(Vector("adviser-play:red:2:facedown")))
 
-  test("a picked facing is pressed, the summary is its label, and Confirm " +
-      "submits it"):
-    val ui = new RecordingControls()
-    val panel = pane(ui, placement, placing,
+  test("a picked facing is pressed and the summary is its label"):
+    val panel = pane(new RecordingControls(), placement, placing,
       open(placement, "adviser-play:red:2:faceup"))
     assertEquals(variants(panel).map(_.getAttribute("aria-pressed")),
       Vector("true", "false"))
     assertEquals(one(panel, ".board-decision-summary").textContent,
       "Adviser slot 3, faceup")
+
+  test("Confirm submits the picked facing"):
+    val ui = new RecordingControls()
+    val panel = pane(ui, placement, placing,
+      open(placement, "adviser-play:red:2:faceup"))
     as[dom.html.Button](one(panel, ".board-decision-confirm")).click()
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker(
       "cardplay.place.denizen.spirit",

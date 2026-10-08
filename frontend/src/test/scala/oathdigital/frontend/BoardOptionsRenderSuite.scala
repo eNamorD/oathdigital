@@ -155,8 +155,7 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
       dom.document.body.removeChild(root)
       dom.document.body.removeChild(boards)
 
-  test("an empty site slot is marked by its index, and a site card " +
-      "answers to its slot"):
+  test("an empty site slot is marked by its index and picked by a click"):
     val empty = option("site-slot", "woods:1")
     val shown = recording(available(empty))
     val root = world(shown.options)
@@ -166,9 +165,11 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
       .map(_.getAttribute("data-slot-index")), Vector("1", "2"))
     click(slot)
     assertEquals(shown.picks, Vector(empty))
+
+  test("a site card answers to the slot it would replace"):
     val replace = option("site-slot", "woods:0").copy(replaces = Some(fox))
-    val onReplaced = recording(available(replace))
-    assertEquals(one(world(onReplaced.options), """[data-option-ref="site-slot:woods:0"]""")
+    val shown = recording(available(replace))
+    assertEquals(one(world(shown.options), """[data-option-ref="site-slot:woods:0"]""")
       .getAttribute("data-card-id"), "fox")
 
   test("a Replace option carries the badge, and an empty slot does not"):
@@ -183,8 +184,8 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     assert(marked.classList.contains("board-option-replace"))
     assertEquals(marked.getAttribute("aria-label"), "Fox, Replace")
 
-  test("an adviser play is drawn on its slot: a placeholder or the card " +
-      "there"):
+  test("an adviser play on a free slot is drawn as a placeholder and picked " +
+      "by a click"):
     val placeholder = option("adviser-play", "red:2:facedown")
     val shown = recording(available(placeholder))
     val boards = WorldBoardRenderer.playerBoards(table, "red", shown.options)
@@ -193,11 +194,13 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     assertEquals(slot.getAttribute("aria-label"), "Empty adviser slot")
     click(slot)
     assertEquals(shown.picks, Vector(placeholder))
+
+  test("an adviser play on a held slot is drawn on the card it replaces"):
     val onCard = recording(available(option("adviser-play",
       "red:0:faceup").copy(replaces = Some(oak))))
-    assertEquals(one(WorldBoardRenderer.playerBoards(table, "red", onCard.options),
-      """[data-option-ref="adviser-slot:red:0"]""").textContent
-      .contains("Replace"), true)
+    val held = one(WorldBoardRenderer.playerBoards(table, "red",
+      onCard.options), """[data-option-ref="adviser-slot:red:0"]""")
+    assert(held.textContent.contains("Replace"), held.textContent)
 
   test("the revealed Vision spot is drawn empty only while it is an option"):
     assertEquals(all(WorldBoardRenderer.playerBoards(table, "red",
@@ -210,8 +213,8 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     click(empty)
     assertEquals(shown.picks, Vector(spot))
 
-  test("a discard pile option picks on a click, and its cards open from " +
-      "the inspect button"):
+  test("a discard pile option picks on a click, and with no cards it has " +
+      "no inspect button"):
     val pile = option("discard-pile", "cradle")
     val shown = recording(available(pile))
     val root = world(shown.options)

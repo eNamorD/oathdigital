@@ -28,18 +28,19 @@ class TravelLaunchSuite extends munit.FunSuite:
     assertEquals(ui.submitted, Vector(Intent.StartWalker("travel",
       Vector.empty)))
 
-  test("a destination's badge is drawn on its site box, and a refused one " +
-      "says why on hover"):
-    val reason = "Needs 3 Supply; you have 2"
+  test("a destination's badge is drawn on its site box"):
     val badged = OptionView(DecisionOptionState("site", "woods", "Deep Woods",
       badge = Some("2 Supply")), OptionState.Available, None)
+    val world = WorldBoardRenderer.world(table, recording(badged).options)
+    assertEquals(one(one(world, """article[aria-label="Deep Woods"]"""),
+      ".target-detail-badge").textContent, "2 Supply")
+
+  test("a refused destination says why on hover"):
+    val reason = "Needs 3 Supply; you have 2"
     val refused = OptionView(DecisionOptionState("site", "shore",
       "Desolate Shore", state = "unavailable", reason = Some(reason)),
       OptionState.Unavailable, Some(reason))
-    val world = WorldBoardRenderer.world(table,
-      recording(badged, refused).options)
-    assertEquals(one(one(world, """article[aria-label="Deep Woods"]"""),
-      ".target-detail-badge").textContent, "2 Supply")
+    val world = WorldBoardRenderer.world(table, recording(refused).options)
     val shore = one(world, """article[aria-label="Desolate Shore"]""")
     assertEquals(shore.getAttribute("title"), reason)
     assertEquals(shore.getAttribute("aria-disabled"), "true")

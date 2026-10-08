@@ -189,7 +189,11 @@ class PlayerBoardSuite extends munit.FunSuite:
     assertEquals(all(render(board, supplyMaximum = 7), ".player-slots"),
       Vector.empty)
 
-  test("the title pill opens the Oath text and the Vision pill its card"):
+  /** Red's board with a revealed Vision of Faith and the Oathkeeper title of
+    * Devotion, and the titles the inspector is asked to open while `act`
+    * clicks inside it.
+    */
+  private def opensOnClick(act: dom.Element => Unit): Vector[String] =
     var opened = Vector.empty[String]
     CardInspection.onOpen:
       case CardInspection.Request.Text(title, _, _) => opened = opened :+ title
@@ -200,12 +204,21 @@ class PlayerBoardSuite extends munit.FunSuite:
     val node = renderWith(board.copy(revealedVision = Some(vision)),
       Some(OathkeeperStatus("devotion", Some("red"), "oathkeeper",
         usurperLimited = false, None)))
-    as[dom.html.Button](firstMatch(node, ".player-slots .player-title")
-      .getOrElse(fail("no title pill"))).click()
-    as[dom.html.Button](firstMatch(node, ".player-slot-vision")
-      .getOrElse(fail("no vision pill"))).click()
+    act(node)
     CardInspection.clear()
-    assertEquals(opened, Vector("Oathkeeper of Devotion", "Vision of Faith"))
+    opened
+
+  test("the title pill opens the Oath text"):
+    assertEquals(opensOnClick(node =>
+      as[dom.html.Button](firstMatch(node, ".player-slots .player-title")
+        .getOrElse(fail("no title pill"))).click()),
+      Vector("Oathkeeper of Devotion"))
+
+  test("the Vision pill opens its card"):
+    assertEquals(opensOnClick(node =>
+      as[dom.html.Button](firstMatch(node, ".player-slot-vision")
+        .getOrElse(fail("no vision pill"))).click()),
+      Vector("Vision of Faith"))
 
   test("Supply is a button that opens Supply at Rest for that board"):
     var opened = Vector.empty[Opened]

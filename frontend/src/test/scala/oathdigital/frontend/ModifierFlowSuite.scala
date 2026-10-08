@@ -214,37 +214,54 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(host.previews, Vector.empty)
     assertEquals(host.redraws, 0)
 
-  test("cancelling and backing out each leave only the flow draft"):
-    val ordering = draftWithModifierSelected("recover", recover)
-    val start = draftsForProjection.copy(modifiers = Some(ordering))
-    val FlowUnderTest(cancelled, cancel) = flow(start)
-    cancel.cancelModifiers()
-    assertEquals(cancelled.currentDrafts, draftsForProjection)
-    assertEquals(cancelled.redraws, 1)
-    val FlowUnderTest(backed, back) = flow(start)
-    back.backFromModifiers()
-    assertEquals(backed.currentDrafts, draftsForProjection)
-    assertEquals(backed.redraws, 1)
+  private def draftsWithRecoverOrdering: SessionDrafts =
+    draftsForProjection.copy(modifiers =
+      Some(draftWithModifierSelected("recover", recover)))
 
-  test("toggle and move apply their step and redraw"):
-    val second = PreviewModifier("adviser:p:denizen:b", "h.b", "B")
-    val ordering = ModifierFlowDraft.fromPreview(command = recover,
+  test("cancelling leaves only the flow draft"):
+    val FlowUnderTest(host, ui) = flow(draftsWithRecoverOrdering)
+    ui.cancelModifiers()
+    assertEquals(host.currentDrafts, draftsForProjection)
+    assertEquals(host.redraws, 1)
+
+  test("backing out leaves only the flow draft"):
+    val FlowUnderTest(host, ui) = flow(draftsWithRecoverOrdering)
+    ui.backFromModifiers()
+    assertEquals(host.currentDrafts, draftsForProjection)
+    assertEquals(host.redraws, 1)
+
+  private val second = PreviewModifier("adviser:p:denizen:b", "h.b", "B")
+
+  /** The flow of a Recover preview that offers `modifier` and `second`, with
+    * the first `chosen` of them already selected in that order.
+    */
+  private def orderingOffering(chosen: PreviewModifier*): FlowUnderTest =
+    val offered = ModifierFlowDraft.fromPreview(command = recover,
       parameters = Map.empty,
       response = response("recover", Vector(modifier, second)),
       previous = None,
       context = ModifierSelectionContext("game", "red", 9, "recover"))
-    val FlowUnderTest(host, ui) = flow(draftsForProjection.copy(
-      modifiers = Some(ordering)))
-    def selected = host.currentDrafts.modifiers.map(_.selection.selected)
+    val ordering = offered.copy(selection =
+      chosen.foldLeft(offered.selection)(_.toggle(_)))
+    flow(draftsForProjection.copy(modifiers = Some(ordering)))
+
+  private def selected(host: Host): Option[Vector[PreviewModifier]] =
+    host.currentDrafts.modifiers.map(_.selection.selected)
+
+  test("toggle selects modifiers in click order and redraws each time"):
+    val FlowUnderTest(host, ui) = orderingOffering()
     ui.toggleModifier(modifier)
     ui.toggleModifier(second)
-    assertEquals(selected, Some(Vector(modifier, second)))
+    assertEquals(selected(host), Some(Vector(modifier, second)))
+    assertEquals(host.redraws, 2)
+
+  test("move reorders the selection and redraws each time"):
+    val FlowUnderTest(host, ui) = orderingOffering(modifier, second)
     ui.moveModifier(second, -1)
-    assertEquals(selected, Some(Vector(second, modifier)))
+    assertEquals(selected(host), Some(Vector(second, modifier)))
     ui.moveModifier(second, 1)
-    assertEquals(selected, Some(Vector(modifier, second)))
-    // Two toggles and two moves.
-    assertEquals(host.redraws, 2 + 2)
+    assertEquals(selected(host), Some(Vector(modifier, second)))
+    assertEquals(host.redraws, 2)
 
   test("stage replaces one slot and redraws"):
     val FlowUnderTest(host, ui) = flow()

@@ -37,19 +37,20 @@ class SearchLaunchSuite extends munit.FunSuite:
       new RecordingControls())
     assertEquals(all(pane, ".search-action").size, 0)
 
-  test("a pile's badge is drawn on the pile, and an empty pile says why on " +
-      "hover"):
-    val reason = "The Cradle discard pile is empty"
+  test("a pile's badge is drawn on the pile"):
     val deck = OptionView(DecisionOptionState("deck", "world", "World deck",
       badge = Some("2 Supply")), OptionState.Available, None)
-    val discard = OptionView(DecisionOptionState("discard-pile", "cradle",
-      "Cradle discard pile", state = "unavailable", reason = Some(reason)),
-      OptionState.Unavailable, Some(reason))
-    val world = WorldBoardRenderer.world(table,
-      recording(deck, discard).options)
+    val world = WorldBoardRenderer.world(table, recording(deck).options)
     val pile = one(world, """[data-option-ref="deck:world"]""")
     assert(pile.classList.contains("board-option"))
     assertEquals(one(pile, ".target-detail-badge").textContent, "2 Supply")
+
+  test("an empty pile says why on hover"):
+    val reason = "The Cradle discard pile is empty"
+    val discard = OptionView(DecisionOptionState("discard-pile", "cradle",
+      "Cradle discard pile", state = "unavailable", reason = Some(reason)),
+      OptionState.Unavailable, Some(reason))
+    val world = WorldBoardRenderer.world(table, recording(discard).options)
     val empty = one(world, """[data-option-ref="discard-pile:cradle"]""")
     assertEquals(empty.getAttribute("title"), reason)
     assertEquals(empty.getAttribute("aria-disabled"), "true")
