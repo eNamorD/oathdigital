@@ -164,7 +164,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val event = recordedOperation("pay",
       PayCost(player, Location.Deck(CardDeck.Relic), Cost(secret = 1)))
     val encoded = encodedStream("walker", Vector(event))
-    assert(GameEventWire.decodeStream(encoded).isRight)
+    accepted(GameEventWire.decodeStream(encoded))
 
     def refusing(edit: ujson.Value => Unit, refusal: WireError) =
       (edit, refusal)

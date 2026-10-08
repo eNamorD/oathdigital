@@ -35,7 +35,8 @@ class SetupProcedureSuite extends munit.FunSuite:
       ready.game.current.turn.activePlayer)
     assertEquals(finished.game.current.players.count(_.pawnSite.nonEmpty), 3)
     assertEquals(finished.game.current.players.count(_.advisers.size == 1), 3)
-    assert(finished.game.current.temporaryHands.values.forall(_.isEmpty))
+    assertEquals(finished.game.current.temporaryHands.values.flatten.toVector,
+      Vector.empty)
 
   private val revealAll: Answers =
     case park if park.decisionId ==
