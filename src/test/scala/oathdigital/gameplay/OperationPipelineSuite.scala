@@ -37,8 +37,10 @@ class OperationPipelineSuite extends munit.FunSuite:
     assertEquals(run.executed, Vector.empty)
     assertEquals(run.skipped.size, 1)
     assertEquals(run.state, empty)
-    assert(OperationPipeline.run(empty, Vector.empty,
-      OperationPolicy.Permissive, Vector.empty)(Right(_)).isLeft)
+    assertEquals(OperationPipeline.run(empty, Vector.empty,
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).left.toOption,
+      Some(OathViolation.CoreOperationRejected("empty-operation-batch",
+        "operation batch must not be empty")))
 
   test("legacy claimed count cannot silently accept a partial effect"):
     val claimed = Vector[CoreOperation](Gain.Favor(playerId, Suit.Order, 7))
@@ -47,7 +49,8 @@ class OperationPipelineSuite extends munit.FunSuite:
     // The Order bank holds only 5 of the 7 claimed.
     assertEquals(run.executed,
       Vector[CoreOperation](Gain.Favor(playerId, Suit.Order, 5)))
-    assert(run.expectEffects(claimed, "recorded favor mismatch").isLeft)
+    assertEquals(run.expectEffects(claimed, "recorded favor mismatch"),
+      Left(OathViolation.InvalidEventOrder("recorded favor mismatch")))
 
   test("immune optional effect skips while later legal effect executes"):
     val blocked = Gain.Favor(playerId, Suit.Order, 1)

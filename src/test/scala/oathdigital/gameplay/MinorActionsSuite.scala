@@ -151,8 +151,9 @@ class MinorActionsSuite extends munit.FunSuite:
     assertEquals(atSite.game.current.map.sites(brokenPeaks).forces,
       SiteForces.Occupied(ForceKind.Exile(lineage), 5))
 
-    assert(rules.handle(Ready(base), MinorActionCommand.MoveWarbands(
-      p1, toSite = false, 3)).isLeft)
+    assertEquals(rules.handle(Ready(base), MinorActionCommand.MoveWarbands(
+      p1, toSite = false, 3)), Left(OathViolation.MinorActionUnavailable(
+        "at least one warband must remain at the site")))
     val toBoard = accepted(MinorActions.handle(catalog, Ready(base),
       MinorActionCommand.MoveWarbands(p1, toSite = false, 2), Vector.empty))
     val toBoardEvent = present(toBoard.events.collectFirst {
@@ -173,9 +174,10 @@ class MinorActionsSuite extends munit.FunSuite:
       override def reason(state: ReadyGame, operation: CoreOperation)
           : Option[OperationReason] = Some(OperationReason("refused",
         "every operation is refused", OperationReasonKind.Impossible))
-    assert(MinorActions.handle(catalog, Ready(base),
+    assertEquals(MinorActions.handle(catalog, Ready(base),
       MinorActionCommand.MoveWarbands(p1, toSite = true, 2),
-      Vector(refuseAllStub)).isLeft)
+      Vector(refuseAllStub)), Left(OathViolation.InvalidEventOrder(
+        "Minor action effect differs from recorded outcome")))
 
   test("source-scoped fallback and replay use the recorded off-turn actor"):
     // p2, not the active player, holds Bewitch faceup.
