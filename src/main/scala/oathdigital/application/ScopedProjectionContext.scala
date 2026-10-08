@@ -15,7 +15,8 @@ private[application] final case class ScopedProjectionContext(
 
 private[application] final case class LegalProjection(
     controls: Vector[String],
-    minorActions: Option[MinorActionsProjection]
+    minorActions: Option[MinorActionsProjection],
+    followUp: Option[FollowUpProjection] = None
 )
 
 private[application] final case class PendingProjection(

@@ -18,7 +18,8 @@ object GameProjectionCodec:
     "favorBanks", "tracks",
     "relicDeckCount", "temporaryHandPreview",
     "walkerDecision", "walkerWaiting", "phasePowers", "viewerPlayerId",
-    "supplyMaximum", "restSupplyGain", "supplyBands", "undo", "redo", "logRevision")
+    "supplyMaximum", "restSupplyGain", "supplyBands", "undo", "redo", "logRevision",
+    "followUp")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
@@ -73,7 +74,8 @@ object GameProjectionCodec:
     "undo" -> option(value.undo)(offer => ujson.Obj("note" -> offer.note)),
     "redo" -> option(value.redo)(offer => ujson.Obj("note" -> offer.note)),
     "logRevision" -> option(value.logRevision)(revision =>
-      ujson.Num(revision.toDouble)))
+      ujson.Num(revision.toDouble)),
+    "followUp" -> option(value.followUp)(encodeFollowUp))
     value.viewerPlayerId.foreach(player => result("viewerPlayerId") = ujson.Str(player))
     result
 
@@ -136,18 +138,42 @@ object GameProjectionCodec:
     logRevision <- value.value.get("logRevision") match
       case None | Some(ujson.Null) => Right(None)
       case Some(_) => long(value, "logRevision", path).map(Some(_))
+    followUp <- optionalAbsent(value, "followUp", path)(decodeFollowUp)
   yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
     banks, tracks, relicDeck, preview,
     walkerDecision, walkerWaiting, phasePowers, viewer,
-    supplyMaximum, restGain, bands, undo, redo, logRevision)
+    supplyMaximum, restGain, bands, undo, redo, logRevision, followUp)
 
   private def decodeStepOffer(raw: ujson.Value, path: String)
       : Result[StepOfferProjection] = for
     row <- obj(raw, path); _ <- exact(row, Set("note"), path)
     note <- string(row, "note", path)
   yield StepOfferProjection(note)
+
+  private def encodeFollowUp(followUp: FollowUpProjection): ujson.Value =
+    val result = ujson.Obj("playerId" -> followUp.playerId,
+      "action" -> followUp.action, "actionLabel" -> followUp.actionLabel,
+      "source" -> followUp.source, "startable" -> followUp.startable,
+      "queuedAfter" -> encoded(followUp.queuedAfter)(ujson.Str(_)))
+    followUp.reason.foreach(reason => result("reason") = ujson.Str(reason))
+    result
+
+  private def decodeFollowUp(raw: ujson.Value, path: String)
+      : Result[FollowUpProjection] = for
+    row <- obj(raw, path)
+    _ <- exact(row, Set("playerId", "action", "actionLabel", "source",
+      "startable", "reason", "queuedAfter"), path)
+    player <- string(row, "playerId", path)
+    action <- string(row, "action", path)
+    label <- string(row, "actionLabel", path)
+    source <- string(row, "source", path)
+    startable <- bool(row, "startable", path)
+    reason <- optionalAbsent(row, "reason", path)(string)
+    after <- strings(row, "queuedAfter", path)
+  yield FollowUpProjection(player, action, label, source, startable, reason,
+    after)
 
   private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for
     v <- obj(raw, path); _ <- exact(v, Set("favor", "faceUpSecrets", "faceDownSecrets",

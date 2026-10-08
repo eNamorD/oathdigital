@@ -82,13 +82,25 @@ object WalkerSimulation:
     * a second rule beside `SpendSupply`.
     */
   def starts(tree: Operation, state: ReadyGame, powers: WalkerPowers): Boolean =
+    refusal(tree, state, powers).isEmpty
+
+  /** The first restriction that rejects `tree` now, if any. */
+  def restriction(tree: Operation, state: ReadyGame, powers: WalkerPowers)
+      : Option[OathViolation] =
+    guarded(Right(ProcedureWalker.restrictionViolations(tree, powers, state,
+      state.game.current.turn.activePlayer).headOption)).toOption.flatten
+
+  /** Why `tree` would not start now, or `None` when it would: a restriction,
+    * then the first walk up to its first park. */
+  def refusal(tree: Operation, state: ReadyGame, powers: WalkerPowers)
+      : Option[OathViolation] =
     guarded {
       ProcedureWalker.restrictionViolations(tree, powers, state,
         state.game.current.turn.activePlayer)
         .headOption.toLeft(())
         .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
           WalkerDice.placeholder))
-    }.isRight
+    }.left.toOption
 
   /** Previews a freshly built tree: walks it to its first park and previews
     * that decision. The tree must park before it runs any operation, because

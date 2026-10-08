@@ -34,7 +34,17 @@ final case class GameProjection(
     ,undo: Option[StepOfferProjection] = None
     ,redo: Option[StepOfferProjection] = None
     ,logRevision: Option[Long] = None
+    ,followUp: Option[FollowUpProjection] = None
 )
+
+/** The queue's head, as every viewer sees it (follow-up actions design,
+  * "Projection and UI"). `startable` is false when the action cannot start
+  * now, and `reason` says why. `queuedAfter` names the actions behind it, in
+  * order. */
+final case class FollowUpProjection(playerId: String, action: String,
+    actionLabel: String, source: String, startable: Boolean,
+    reason: Option[String] = None,
+    queuedAfter: Vector[String] = Vector.empty)
 
 /** A step the viewer may take back or restore, with the hover note that
   * says what it is (undo design, "Controls"). Present only for the step's
