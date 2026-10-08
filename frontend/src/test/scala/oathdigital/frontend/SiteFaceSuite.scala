@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.frontend.Dom.{all, firstMatch}
+import oathdigital.frontend.TestSites.*
 import oathdigital.testkit.Unwrap.as
 import org.scalajs.dom
 
@@ -22,21 +23,22 @@ class SiteFaceSuite extends munit.FunSuite:
   /** Deep Woods holds two denizens in three slots; a test that depends on
     * its loose tokens, defense or powers sets them.
     */
-  private val woods = GameSite("site:woods", "Deep Woods",
-    looseFavor = 2, looseSecrets = 1, denizenCapacity = 3, relicCapacity = 0,
-    denizens = Vector(denizen("denizen:fox", "Fox", "beast"),
-      denizen("denizen:owl", "Owl", "arcane")),
-    relics = GameSiteRelics(0), defense = 2,
-    powers = Vector(SitePower("coast", "Coast", Some("Travel along the Coast route."))))
+  private val woods = quietSite("site:woods", "Deep Woods")
+    .withLooseTokens(favor = 2, secrets = 1).withDenizenCapacity(3)
+    .withDenizens(denizen("denizen:fox", "Fox", "beast"),
+      denizen("denizen:owl", "Owl", "arcane"))
+    .withDefense(2)
+    .copy(powers = Vector(SitePower("coast", "Coast",
+      Some("Travel along the Coast route."))))
 
   /** Salt Flats holds one denizen and two facedown relics, no loose tokens;
     * a test that depends on its defense or Recover difficulty sets them.
     */
-  private val saltFlats = GameSite("site:salt-flats", "Salt Flats",
-    looseFavor = 0, looseSecrets = 0, denizenCapacity = 1, relicCapacity = 2,
-    denizens = Vector(denizen("denizen:dune", "Dune", "nomad")),
-    relics = GameSiteRelics(2), defense = 0,
-    recoverDifficulty = Some(4))
+  private val saltFlats = quietSite("site:salt-flats", "Salt Flats")
+    .withDenizenCapacity(1).withRelicCapacity(2)
+    .withDenizens(denizen("denizen:dune", "Dune", "nomad"))
+    .withRelics(facedown = 2)
+    .copy(recoverDifficulty = Some(4))
 
   test("a site's denizens and relics share one row, with no headings"):
     // One denizen and two facedown relics make three boxes in the row.

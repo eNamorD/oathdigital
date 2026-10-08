@@ -31,7 +31,7 @@ class SessionDraftsSuite extends munit.FunSuite:
   test("reconcile fills every slot the projection asks for and sets the context"):
     val drafts = SessionDrafts.empty.reconcile(context, projection())
     assertEquals(drafts.context, Some(context))
-    assert(drafts.partition.exists(_.decisionId == "forge-9"))
+    assertEquals(drafts.partition.map(_.decisionId), Some("forge-9"))
     assertEquals(drafts.distribute, None)
     assertEquals(drafts.selection, None)
     assertEquals(drafts.board, None)
@@ -61,7 +61,7 @@ class SessionDraftsSuite extends munit.FunSuite:
       exit =>
         val left = full.leave(exit)
         assertEquals(left, full.copy(modifiers = None), exit.toString)
-        assert(left.partition.nonEmpty)
+        assertEquals(left.partition, full.partition, exit.toString)
 
   test("Ordering sets only the flow draft"):
     val stepped = full.copy(modifiers = None).step(FlowStep.Ordering(ordering))

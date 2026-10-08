@@ -4,7 +4,7 @@ import oathdigital.model.PlayerColor
 import oathdigital.protocol.{GameIntent => GameCommand, MajorActionPreviewRequest,
   MajorActionPreviewResponse, ModifierInvocation}
 
-import oathdigital.protocol.projection.{LogEntryWire, LogPageWire, LogSpanWire,
+import oathdigital.protocol.projection.{LogPageWire, LogSpanWire,
   LogTakenBackWire}
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -420,8 +420,7 @@ class TableSessionSuite extends munit.FunSuite:
 
   private def page(after: Long, next: Long): LogPageWire =
     LogPageWire("g", after, next, (after until next).toVector.map(sequence =>
-      LogEntryWire(sequence, 0, "action", 1,
-        Vector(LogSpanWire("text", s"line $sequence")))))
+      TestLog.textEntry(sequence, "action", depth = 1, s"line $sequence")))
 
   test("a displayed position fetches the log from the start and appends it"):
     displayed(3).flatMap { fixture =>

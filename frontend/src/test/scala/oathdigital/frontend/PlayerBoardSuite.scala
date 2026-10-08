@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.frontend.Dom.{all, firstMatch}
+import oathdigital.frontend.TestBoards.*
 import oathdigital.model.PlayerColor
 import oathdigital.testkit.Unwrap.{as, present}
 
@@ -10,12 +11,9 @@ import org.scalajs.dom
   * spends its lines on is pinned here.
   */
 class PlayerBoardSuite extends munit.FunSuite:
-  private val board = PlayerBoard("red", warbands = 3, favor = 2,
-    faceUpSecrets = 1, faceDownSecrets = 0, committedSecrets = 0,
-    totalSecrets = 2, supply = 7, pawnSiteId = Some("site:woods"),
-    advisers = Vector(CardDetails("a1", "denizen", "Old Oak",
-      suit = Some("order"), orientation = Some("face-up"))),
-    relics = Vector.empty, revealedVision = None)
+  private val board = quietBoard("red")
+  private val oak = CardDetails("a1", "denizen", "Old Oak",
+    suit = Some("order"), orientation = Some("face-up"))
 
   private val redExile = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
 
@@ -35,7 +33,7 @@ class PlayerBoardSuite extends munit.FunSuite:
   private final case class Opened(title: String, lines: Vector[String])
 
   test("name, role and resources share one line, and the location is gone"):
-    val node = render(board, supplyMaximum = 7)
+    val node = render(board.standingAt("site:woods"), supplyMaximum = 7)
     val identity = firstMatch(node, ".player-identity")
       .getOrElse(fail("no identity"))
     assert(identity.textContent.contains("Red"), identity.textContent)
@@ -50,8 +48,8 @@ class PlayerBoardSuite extends munit.FunSuite:
   test("favor and secrets are glyphs, warbands and supply stay words"):
     // Red has 3 warbands, 2 favor and 1 of 2 secrets faceup, and 7 Supply
     // against a track that holds 7.
-    val tracked = board.copy(warbands = 3, favor = 2, faceUpSecrets = 1,
-      totalSecrets = 2, supply = 7)
+    val tracked = board.withWarbands(3).withFavor(2)
+      .withSecrets(faceUp = 1, faceDown = 1).withSupply(7)
     val resources = firstMatch(render(tracked, supplyMaximum = 7),
       ".resources").getOrElse(fail("no resources"))
     assertEquals(all(resources, ".token-glyph").map(_.getAttribute("aria-label")),
@@ -67,10 +65,10 @@ class PlayerBoardSuite extends munit.FunSuite:
   test("advisers and relics share one unlabelled row; a revealed vision does not"):
     val node = WorldBoardRenderer.playerBoards(
       TestProjections.actingProjection(players = Vector(redExile))
-        .copy(playerBoards = Vector(board.copy(
-          relics = Vector(CardDetails("r1", "relic", "Crown",
-            orientation = Some("face-up"))),
-          revealedVision = Some(CardDetails("v1", "vision", "Vision",
+        .copy(playerBoards = Vector(board.withAdvisers(oak)
+          .withRelics(CardDetails("r1", "relic", "Crown",
+            orientation = Some("face-up")))
+          .copy(revealedVision = Some(CardDetails("v1", "vision", "Vision",
             orientation = Some("face-up")))))),
       "red")
     assertEquals(all(node, ".board-cards").size, 1)
@@ -152,8 +150,7 @@ class PlayerBoardSuite extends munit.FunSuite:
     */
   test("the secrets breakdown survives as the accessible name"):
     // Red owns 2 secrets: 1 faceup and 1 facedown, none committed.
-    val owned = board.copy(faceUpSecrets = 1, faceDownSecrets = 1,
-      committedSecrets = 0, totalSecrets = 2)
+    val owned = board.withSecrets(faceUp = 1, faceDown = 1, committed = 0)
     val secrets = present(all(render(owned, supplyMaximum = 7),
       ".resource").find(resource => all(resource, ".token-glyph")
         .exists(_.getAttribute("aria-label") == "secret")),
@@ -192,7 +189,11 @@ class PlayerBoardSuite extends munit.FunSuite:
     assertEquals(all(render(board, supplyMaximum = 7), ".player-slots"),
       Vector.empty)
 
-  test("the title pill opens the Oath text and the Vision pill its card"):
+  /** Red's board with a revealed Vision of Faith and the Oathkeeper title of
+    * Devotion, and the titles the inspector is asked to open while `act`
+    * clicks inside it.
+    */
+  private def opensOnClick(act: dom.Element => Unit): Vector[String] =
     var opened = Vector.empty[String]
     CardInspection.onOpen:
       case CardInspection.Request.Text(title, _, _) => opened = opened :+ title
@@ -203,12 +204,21 @@ class PlayerBoardSuite extends munit.FunSuite:
     val node = renderWith(board.copy(revealedVision = Some(vision)),
       Some(OathkeeperStatus("devotion", Some("red"), "oathkeeper",
         usurperLimited = false, None)))
-    as[dom.html.Button](firstMatch(node, ".player-slots .player-title")
-      .getOrElse(fail("no title pill"))).click()
-    as[dom.html.Button](firstMatch(node, ".player-slot-vision")
-      .getOrElse(fail("no vision pill"))).click()
+    act(node)
     CardInspection.clear()
-    assertEquals(opened, Vector("Oathkeeper of Devotion", "Vision of Faith"))
+    opened
+
+  test("the title pill opens the Oath text"):
+    assertEquals(opensOnClick(node =>
+      as[dom.html.Button](firstMatch(node, ".player-slots .player-title")
+        .getOrElse(fail("no title pill"))).click()),
+      Vector("Oathkeeper of Devotion"))
+
+  test("the Vision pill opens its card"):
+    assertEquals(opensOnClick(node =>
+      as[dom.html.Button](firstMatch(node, ".player-slot-vision")
+        .getOrElse(fail("no vision pill"))).click()),
+      Vector("Vision of Faith"))
 
   test("Supply is a button that opens Supply at Rest for that board"):
     var opened = Vector.empty[Opened]
@@ -217,7 +227,7 @@ class PlayerBoardSuite extends munit.FunSuite:
         opened :+= Opened(title, lines)
       case _ => ()
     // Red has 7 Supply against a track that holds 7.
-    val sevenOfSeven = board.copy(supply = 7)
+    val sevenOfSeven = board.withSupply(7)
     val supply = as[dom.html.Button](firstMatch(
       render(sevenOfSeven, supplyMaximum = 7), ".resources .supply-open")
       .getOrElse(fail("no Supply button")))
@@ -240,8 +250,8 @@ class PlayerBoardSuite extends munit.FunSuite:
     assert(lines.forall(!_.contains("resources")), lines)
 
   test("empty adviser slots are drawn up to the player's limit"):
-    def placeholders(limit: Int) = all(render(board.copy(adviserLimit = limit),
-      supplyMaximum = 7), ".board-cards .card-slot-empty")
+    def placeholders(limit: Int) = all(render(
+      board.withAdvisers(oak).copy(adviserLimit = limit), supplyMaximum = 7), ".board-cards .card-slot-empty")
       .map(_.getAttribute("data-slot-index"))
     assertEquals(placeholders(3), Vector("1", "2"))
     assertEquals(placeholders(2), Vector("1"))

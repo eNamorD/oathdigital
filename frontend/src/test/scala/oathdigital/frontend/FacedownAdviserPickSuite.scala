@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.frontend.Dom.{all, click, one}
+import oathdigital.frontend.TestBoards.*
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent}
 import oathdigital.testkit.Unwrap.as
@@ -33,11 +34,7 @@ class FacedownAdviserPickSuite extends munit.FunSuite:
       cards: CardDetails*): GameProjection =
     TestProjections.actingProjection(players = Vector(red)).copy(
       actionSelectionOpen = parked.isEmpty,
-      playerBoards = Vector(PlayerBoard("red", warbands = 3, favor = 0,
-        faceUpSecrets = 1, faceDownSecrets = 0, committedSecrets = 0,
-        totalSecrets = 1, supply = 7, pawnSiteId = None,
-        advisers = cards.toVector, relics = Vector.empty,
-        revealedVision = None)),
+      playerBoards = Vector(quietBoard("red").withAdvisers(cards*)),
       minorActions = Some(MinorActionsState(cards.toVector.map(MinorAdviser(_)),
         canPeekSiteRelics = false, facedownRelics = Vector.empty,
         siteId = None, maxBoardToSite = 0, maxSiteToBoard = 0)),
@@ -66,8 +63,7 @@ class FacedownAdviserPickSuite extends munit.FunSuite:
       .map(_.getAttribute("data-option-ref")),
       Vector("denizen:a1", "denizen:a2"))
     click(one(boards, """[data-option-ref="denizen:a2"]"""))
-    assertEquals(ui.staged.collect { case Draft.Board(Some(draft)) =>
-      draft.keys }, Vector(Vector("denizen:a2")))
+    assertEquals(ui.drafts.board.map(_.keys), Some(Vector("denizen:a2")))
 
   test("with one facedown adviser, a fresh position opens with it picked"):
     val draft = SessionDrafts.empty.reconcile(context,

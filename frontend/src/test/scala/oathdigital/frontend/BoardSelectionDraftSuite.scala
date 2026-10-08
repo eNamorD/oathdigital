@@ -1,5 +1,6 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.TestBoardOptions.adviserPlayAtRedSlot3
 import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
   GameIntent => Intent}
 
@@ -116,11 +117,8 @@ class BoardSelectionDraftSuite extends munit.FunSuite:
     assertEquals(BoardSelectionDraft.click(None, context,
       "campaign.targets", many, site("c")).keys, Vector("site:c"))
 
-  private def play(facing: String) = DecisionOptionState("adviser-play",
-    s"red:2:$facing", s"Adviser slot 3, $facing",
-    variant = Some(facing.capitalize))
-  private val faceup = play("faceup")
-  private val facedown = play("facedown")
+  private val faceup = adviserPlayAtRedSlot3("faceup")
+  private val facedown = adviserPlayAtRedSlot3("facedown")
   private val placement = DecisionQueryState.ChooseOne(
     Vector(site("a"), faceup, facedown), Some("Play Wayward Spirit"))
 

@@ -43,8 +43,7 @@ class HttpGameClientSuite extends FunSuite:
     val client = new TrustedHttpGameClient(transport)
     client.submit("game-1", "red-exile", 7, GameIntent.RevealOwnedRelic("relic:a"))
       .map { result =>
-        assert(result.left.toOption.exists(
-          _.isInstanceOf[GameClientFailure.StalePosition]), result.toString)
+        assertEquals(result, Left(GameClientFailure.StalePosition("position changed")))
         assertEquals(transport.requests.map(_.method).toVector, Vector("POST"))
       }
   test("pawn and adviser commands preserve explicit sequence and opaque IDs"):
@@ -151,12 +150,13 @@ class HttpGameClientSuite extends FunSuite:
       )
     )
 
-    malformed.foreach { json =>
-      val result = GameJson.decodeProjection(json)
-      assert(result.left.toOption.exists(
-        _.isInstanceOf[GameClientFailure.DecodeFailure]
-      ), json)
-    }
+    def notAnObject(path: String) =
+      Left(GameClientFailure.DecodeFailure(path, "expected object"))
+    assertEquals(malformed.map(GameJson.decodeProjection), Vector(
+      Left(GameClientFailure.DecodeFailure("$.nextSequence",
+        "missing required field")),
+      notAnObject("$"), notAnObject("$"), notAnObject("$"),
+      notAnObject("$.players[0]"), notAnObject("$.world[0].sites[0]")))
 
   test("nextSequence is bounded to the largest JSON-safe integer"):
     val maximum = GameJson.decodeProjection(
@@ -173,9 +173,8 @@ class HttpGameClientSuite extends FunSuite:
         "\"nextSequence\":9007199254740992"
       )
     )
-    assert(unsafe.left.toOption.exists(
-      _.isInstanceOf[GameClientFailure.DecodeFailure]
-    ))
+    assertEquals(unsafe, Left(GameClientFailure.DecodeFailure(
+      "$.nextSequence", "expected a non-negative safe integer")))
 
   test("stale refresh routes through active-player selection with notice"):
     val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
@@ -280,7 +279,7 @@ class HttpGameClientSuite extends FunSuite:
     new HttpGameClient(transport).loadLog("g", "red exile", 0L).map { result =>
       assertEquals(transport.requests.map(_.url).toVector,
         Vector("/api/dev/first-games/g/log/0?playerId=red%20exile"))
-      assert(result.isRight)
+      assertEquals(result.map(_.entries.map(_.sequence)), Right(Vector(3L)))
     }
 
   test("a log failure is a client failure, never a thrown decode"):
@@ -292,7 +291,10 @@ class HttpGameClientSuite extends FunSuite:
       assertEquals(refused, Left(GameClientFailure.HttpFailure(400,
         "malformed-request", "bad")))
       client.loadLog("g", "", 0L)
-    }.map(garbled => assert(garbled.isLeft))
+    }.map:
+      case Left(GameClientFailure.DecodeFailure(path, _)) =>
+        assertEquals(path, "$")
+      case other => fail(s"expected a decode failure, got $other")
 
   /** A `ScriptedTransport` (a spy and stub of `JsonTransport`) whose script
     * answers `responses` in order, one per request; it records each request

@@ -1,15 +1,15 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.TestBoards.*
+
 /** The lines behind a board's Supply figure. */
 class SupplyAtRestSuite extends munit.FunSuite:
   private val bands = Vector(SupplyBand(9, None, 6), SupplyBand(4, Some(8), 5),
     SupplyBand(0, Some(3), 4))
 
-  private val board = PlayerBoard("red", warbands = 6, favor = 0,
-    faceUpSecrets = 0, faceDownSecrets = 0, committedSecrets = 0,
-    totalSecrets = 0, supply = 5, pawnSiteId = None, advisers = Vector.empty,
-    relics = Vector.empty, revealedVision = None, bankedWarbands = 5,
-    printedWarbands = 14, siteWarbands = 3, restSupplyBase = 5)
+  private val board = quietBoard("red").withWarbands(6).withSupply(5)
+    .copy(bankedWarbands = 5, printedWarbands = 14, siteWarbands = 3,
+      restSupplyBase = 5)
 
   test("an Exile reads the bag, the table with its band marked, and the Rest"):
     assertEquals(SupplyAtRest.lines("exile", board, bands, 7), Vector(

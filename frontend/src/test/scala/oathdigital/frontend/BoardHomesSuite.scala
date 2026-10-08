@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.TestBoards.*
+import oathdigital.frontend.TestSites.*
 import oathdigital.model.PlayerColor
 
 /** Whether an option has a place on the table the projection draws, which
@@ -7,19 +9,15 @@ import oathdigital.model.PlayerColor
   */
 class BoardHomesSuite extends munit.FunSuite:
   private val fox = CardDetails("fox", "denizen", "Fox")
-  private val woods = GameSite("woods", "Deep Woods", looseFavor = 0,
-    looseSecrets = 0, denizenCapacity = 3, relicCapacity = 1,
-    denizens = Vector(GameSiteCard("fox", "Fox", Some(fox))),
-    relics = GameSiteRelics(1, Vector(CardDetails("cup", "relic", "Cup"))),
-    defense = 1)
+  private val woods = quietSite("woods", "Deep Woods")
+    .withDenizenCapacity(3).withRelicCapacity(1)
+    .withDenizens(GameSiteCard("fox", "Fox", Some(fox)))
+    .withRelics(1, CardDetails("cup", "relic", "Cup"))
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
-  private val board = PlayerBoard("red", warbands = 3, favor = 0,
-    faceUpSecrets = 1, faceDownSecrets = 0, committedSecrets = 0,
-    totalSecrets = 1, supply = 7, pawnSiteId = Some("woods"),
-    advisers = Vector(CardDetails("oak", "denizen", "Old Oak"),
-      CardDetails("hidden", "denizen", "Facedown denizen", hidden = true)),
-    relics = Vector(CardDetails("horn", "relic", "Horn")),
-    revealedVision = None)
+  private val board = quietBoard("red").standingAt("woods")
+    .withAdvisers(CardDetails("oak", "denizen", "Old Oak"),
+      CardDetails("hidden", "denizen", "Facedown denizen", hidden = true))
+    .withRelics(CardDetails("horn", "relic", "Horn"))
   private val table = TestProjections.actingProjection(players = Vector(red),
     world = Vector(GameRegion("cradle", Vector(woods))))
     .copy(playerBoards = Vector(board),
