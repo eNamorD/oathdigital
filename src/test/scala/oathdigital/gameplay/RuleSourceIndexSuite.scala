@@ -28,8 +28,10 @@ class RuleSourceIndexSuite extends munit.FunSuite:
     assertEquals(printed.powerIds, present(
       catalog.sites.find(_.id == ancientCity), "Ancient City").handlers)
     assert(facts.exists(_.face == RuleSourceFace.FaceDown))
-    assert(facts.exists(_.source.isInstanceOf[RuleSourceRef.Edifice]))
-    assert(facts.exists(_.source.isInstanceOf[RuleSourceRef.Adviser]))
+    assertEquals(facts.collect { case IndexedRuleSource(
+      edifice: RuleSourceRef.Edifice, _, _, _) => edifice }.size, 1)
+    assertEquals(facts.collect { case IndexedRuleSource(
+      adviser: RuleSourceRef.Adviser, _, _, _) => adviser }.size, 1)
     assertEquals(facts, RuleSourceIndex.enumerate(catalog, ready))
     assertEquals(facts.map(_.source.stableKey).distinct.size, facts.size)
 

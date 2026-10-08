@@ -5,6 +5,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.Outcomes.{parked, recorded}
+import oathdigital.testkit.Unwrap.accepted
 import oathdigital.testkit.WalkerStubs._
 import oathdigital.testkit.ProcedureWalkerFixture._
 
@@ -50,9 +51,10 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
     val pending = parkAtDecide(tree)
 
     Vector(continueOption, stopOption).foreach { option =>
-      assert(ProcedureWalker.resolve(ready, tree, pending,
+      // Declared, so accepted.
+      accepted(ProcedureWalker.resolve(ready, tree, pending,
         Answered(decide.decisionId, ChooseOneAnswer(option), actor),
-        noPowers).isRight, s"$option is declared and must be accepted")
+        noPowers))
     }
 
     val undeclared = Answered(decide.decisionId,
@@ -129,8 +131,8 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
         case (option, section) => DecisionPlacement(option.ref, section)
       }), actor)
 
-    assert(ProcedureWalker.resolve(ready, tree, pending,
-      answer(Vector("left", "left", "right")), noPowers).isRight)
+    accepted(ProcedureWalker.resolve(ready, tree, pending,
+      answer(Vector("left", "left", "right")), noPowers))
     assertEquals(ProcedureWalker.resolve(ready, tree, pending,
       answer(Vector("left", "right", "right")), noPowers),
       Left(OathViolation.InvalidEventOrder(

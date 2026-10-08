@@ -60,8 +60,8 @@ class PayCostSettlementSuite extends munit.FunSuite:
       bank = None)).left.toOption,
       Some(OathViolation.CoreOperationRejected("no-matching-bank",
         "favor paid outside the payer's turn needs the card's suit bank")))
-    assert(run(offTurnPayer().ready,
-      offTurnPay(Cost(secret = 1), bank = None)).isRight)
+    accepted(run(offTurnPayer().ready,
+      offTurnPay(Cost(secret = 1), bank = None)))
 
   test("the recorded operation is the requested one, and replay reaches the same state"):
     val start = offTurnPayer().ready

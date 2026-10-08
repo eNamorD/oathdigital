@@ -15,8 +15,9 @@ class GameStartRulesSuite extends munit.FunSuite:
     val ready = accepted(GameStartRules.evolve(catalog, chronicle, orders))
     assertEquals(ready.game.current.turn.phase, Phase.Setup)
     assertEquals(ready.game.current.turn.activePlayer, orders.firstPlayer)
-    assert(ready.game.current.players.forall(_.pawnSite.isEmpty))
-    assert(ready.game.current.players.forall(_.advisers.isEmpty))
+    assertEquals(ready.game.current.players.map(player =>
+      (player.pawnSite, player.advisers)),
+      Vector.fill(orders.participants.size)((None, Vector.empty)))
 
   test("a started game deals each participant 3 temporary cards"):
     val ready = accepted(GameStartRules.evolve(catalog, chronicle, orders))

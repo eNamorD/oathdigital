@@ -170,7 +170,8 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
         assertEquals(events.size, 1)
         val step = recorded(events.head)
         assertEquals(step.nodeId, "0.1")
-        assert(step.payload.isInstanceOf[ChoicePayload])
+        assertEquals(step.payload, ChoicePayload(decide.decisionId,
+          ChooseOneAnswer(continueOption), actor))
         assertEquals(step.contributions, Vector(powerId))
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
       case other => fail(s"expected the answered resume to finish, got $other")

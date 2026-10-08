@@ -34,7 +34,7 @@ class OperationVocabularySuite extends munit.FunSuite:
       PositionedLocation(Location.PlayArea(actor))))).state
     assertEquals(buried.game.current.commonCards.worldDeck.lastOption,
       Some(vision))
-    assert(Look(buried).player(actor).advisers.isEmpty)
+    assertEquals(Look(buried).player(actor).advisers, Vector.empty)
 
   test("Bury.standard is the discard's returns followed by the bury"):
     val card = DenizenId("denizen:one")
