@@ -28,7 +28,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
 
   /** "trusted", begun with p2 first and parked on p2's Setup pawn
     * placement, behind a trusted gateway; `afterBegin` is the sequence after
-    * Begin. */
+    * Begin. It starts from the real Begin command, since the trusted routes
+    * serving a game from GameStarted onward are the subject. */
   private final case class TrustedGatewayGame(service: GameApplicationService,
       gateway: TrustedGameGateway, afterBegin: Long)
 

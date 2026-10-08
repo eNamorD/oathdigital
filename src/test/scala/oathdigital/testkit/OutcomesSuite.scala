@@ -37,5 +37,6 @@ class OutcomesSuite extends munit.FunSuite:
       .contains("WalkerCompleted"))
 
   test("assertWireRoundTrips passes for the events of a real setup"):
+    // Replays the real setup: its events are the real journal to round trip.
     assertWireRoundTrips(FirstGameSetupFixture.setupThroughWake()
       .events.take(3))

@@ -11,6 +11,7 @@ class GameStartRulesSuite extends munit.FunSuite:
 
   test("a valid Chronicle evolves into a Ready game in Phase.Setup with the " +
       "first player active and no pawns or advisers"):
+    // Starts from the Chronicle itself: the start rule is the subject.
     val ready = accepted(GameStartRules.evolve(catalog, chronicle, orders))
     assertEquals(ready.game.current.turn.phase, Phase.Setup)
     assertEquals(ready.game.current.turn.activePlayer, orders.firstPlayer)
@@ -41,11 +42,13 @@ class GameStartRulesSuite extends munit.FunSuite:
     assert(!ready.game.current.commonCards.edificeDeck.contains(edifice))
 
   test("a non-empty world is refused"):
+    // Starts from the Chronicle itself: the start rule is the subject.
     val withWorld = chronicle.copy(world = chronicle.atlasBox.take(1))
     as[OathViolation.UnsupportedChronicle](
       rejected(GameStartRules.evolve(catalog, withWorld, orders)))
 
   test("a stored denizen on an atlas site is refused"):
+    // Starts from the Chronicle itself: the start rule is the subject.
     val denizen = chronicle.worldDeck.head
     val polluted = chronicle.copy(atlasBox = chronicle.atlasBox.updated(
       0, chronicle.atlasBox.head.copy(items = Vector(denizen))))
@@ -54,12 +57,14 @@ class GameStartRulesSuite extends munit.FunSuite:
       "stored denizens or relics on an atlas site are not supported yet")))
 
   test("too few atlas sites is refused"):
+    // Starts from the Chronicle itself: the start rule is the subject.
     val short = chronicle.copy(atlasBox = chronicle.atlasBox.take(7))
     val result = GameStartRules.evolve(catalog, short, orders)
     assertEquals(result, Left(OathViolation.UnsupportedChronicle(
       "at least 8 atlas sites are required, got 7")))
 
   test("an unknown denizen id is refused"):
+    // Starts from the Chronicle itself: the start rule is the subject.
     val polluted = chronicle.copy(
       worldDeck = chronicle.worldDeck.updated(0, DenizenId("no-such-denizen")))
     assertEquals(GameStartRules.evolve(catalog, polluted, orders).left.toOption,

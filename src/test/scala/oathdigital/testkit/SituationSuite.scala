@@ -34,6 +34,7 @@ class SituationSuite extends munit.FunSuite:
 
   test("wake is the fixture's first game: the first player's Wake, with " +
       "nothing to decide, ended; pawns on the first sites and one adviser each"):
+    // Replays on purpose: `Situation.wake` is the subject.
     // Before FirstGameSetupFixture delegated to it, this compared `wake`
     // with the fixture's own hand-written walk, state and events alike.
     val ready = Situation.wake(Situation.rules(catalog)
@@ -50,6 +51,8 @@ class SituationSuite extends munit.FunSuite:
 
   test("the rules and journaled adapters reach the same game for the same " +
       "steps"):
+    // Replays on purpose: both adapters walking the real first game from
+    // GameStarted is the subject.
     // An arranged Oathkeeper, then the first player's Wake and a Search of
     // the world deck with every park answered by default: the Arrange, the
     // draw and the card play all cross the adapters' seams.
@@ -97,6 +100,7 @@ class SituationSuite extends munit.FunSuite:
     assert(failure.getMessage.contains("table.service"), failure.getMessage)
 
   test("an unanswerable park fails naming the decision"):
+    // Walks from GameStarted: Situation's own walk is the subject.
     val partitionless: Answers =
       case park if !park.decide.query.isInstanceOf[DecisionQuery.Partition] &&
           Situation.defaultAnswer.isDefinedAt(park) =>
@@ -109,6 +113,7 @@ class SituationSuite extends munit.FunSuite:
     assert(failure.getMessage.contains("Partition"), failure.getMessage)
 
   test("parkedAfter leaves the last step's park for ParkedDecisionAssertions"):
+    // Walks from GameStarted: Situation's own walk is the subject.
     val parked = Situation.start(Situation.rules(catalog))
       .parkedAfter(GameCommand.Begin(chronicle, orders))
     new ParkedDecisionAssertions(catalog).assertParked(parked.state,
@@ -116,6 +121,7 @@ class SituationSuite extends munit.FunSuite:
       SetupProcedure.pawnDecisionId(orders.firstPlayer), orders.firstPlayer)
 
   test("an Arrange step crosses the replay path on both adapters"):
+    // Replays on purpose: the Arrange step crossing a real Wake is the subject.
     val (driver, repository) = journaled("arrange")
     // Nobody holds the Oathkeeper title after the wake, so p1 can be made
     // Oathkeeper.
@@ -158,6 +164,7 @@ class SituationSuite extends munit.FunSuite:
         ActionRef.Recover, RecoverProcedure.choiceDecisionId, p1)
 
   test("after with no steps answers the park a situation holds"):
+    // Walks from GameStarted: Situation's own walk is the subject.
     val parked = Situation.start(Situation.rules(catalog))
       .parkedAfter(GameCommand.Begin(chronicle, orders))
     val woken = parked.withAnswers(Situation.pawnsAt(sites)).after()
@@ -165,6 +172,8 @@ class SituationSuite extends munit.FunSuite:
 
   test("the rules adapter refuses ordered modifiers rather than skip their " +
       "check"):
+    // Starts from the replayed first game: the rules adapter's refusal of a
+    // step it cannot journal is the subject.
     val failure = intercept[AssertionError](
       FirstGameSetupFixture.initialSituation().after(GameCommand.WithModifiers(
         GameCommand.EndWake(orders.firstPlayer), Vector.empty)))

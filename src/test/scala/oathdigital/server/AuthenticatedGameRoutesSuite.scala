@@ -39,6 +39,8 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
     val identities = database.identities
     val repository = new InMemoryEventStreamRepository
     val gameId = "auth-negotiation-game"
+    // Replays the real setup: the route test needs a Negotiation reached by
+    // real play, as a client would reach it.
     // initialSituation's pawns: p2, the first player, at Ancient City and
     // p1 alone at Buried Giant. p2 travels to p1.
     val traveled = initialSituation().endingWake(p2)
