@@ -91,8 +91,10 @@ class GameLogTakenBackSuite extends munit.FunSuite:
         direct.game.accepted.nextSequence))
 
   test("a deal declined, taken back and then agreed reads as agreed at once"):
-    // p1 and p2 share Ancient City; p1 proposes that p2 receives 1 favor.
-    val table = Table.start.pawn(p2, "Ancient City").banditsRefilled
+    // p1 and p2 share Ancient City and p3 stands apart at Buried Giant, so p1
+    // negotiates with p2 alone; p1 proposes that p2 receives 1 favor.
+    val table = Table.start.pawn(p1, "Ancient City").pawn(p2, "Ancient City")
+      .pawn(p3, "Buried Giant").banditsRefilled
     def deal(by: PlayerId, answer: DecisionAnswer) = GameCommand.ResolveWalker(
       by, TreeDecision(NegotiationDeal.dealDecisionId, answer))
     def agreedAfter(service: GameApplicationService, gameId: String,
@@ -123,8 +125,10 @@ class GameLogTakenBackSuite extends munit.FunSuite:
       reading(log(direct, "direct", p1), directProposal.nextSequence))
 
   test("a Wake whose only step was taken back still reads as quiet"):
+    // No other pawn stands at Broken Peaks, which would block the take.
     val table = Table.start.turn(p2, Phase.Wake)
-      .pawn(p2, "Broken Peaks").siteTokens("Broken Peaks", secrets = 2)
+      .pawn(p1, "Ancient City").pawn(p2, "Broken Peaks")
+      .pawn(p3, "Buried Giant").siteTokens("Broken Peaks", secrets = 2)
       .banditsRefilled
     val (service, _) = table.service()
     val taken = accepted(service.handle("g", 0L, GameCommand.StartWalker(

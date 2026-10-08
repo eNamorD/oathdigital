@@ -10,6 +10,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
+import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
@@ -45,6 +46,14 @@ final case class Script(name: String, service: GameApplicationService,
       s"$name has no player besides $actor among $players"))
 
 object LogScripts:
+  /** The table every script below begins at: the quiet table with each
+    * pawn stated at the site the scripts' log lines and goldens name, p1 at
+    * Ancient City, p2 at Broken Peaks and p3 at Buried Giant. A script that
+    * needs a pawn elsewhere moves it after this. */
+  private def tableWithOnePawnPerSite: Table =
+    Table.start.pawn(p1, "Ancient City").pawn(p2, "Broken Peaks")
+      .pawn(p3, "Buried Giant")
+
   /** A short journal on a table, for the suites that append their own
     * recorded events to a real board and read the lines they post. The board
     * holds the facts those suites lean on, each stated here: a relic lying at
@@ -52,7 +61,7 @@ object LogScripts:
     * with each of p2 and p3. p1, the actor, wakes and ends Wake, and it is
     * their Act. */
   def recordedEventsBoard(using munit.Location): Script =
-    val (service, waking) = atTable("board", Table.start.turn(p1, Phase.Wake)
+    val (service, waking) = atTable("board", tableWithOnePawnPerSite.turn(p1, Phase.Wake)
       .relicAt("Sticky Fire", "Broken Peaks")
       .edifice("Hiding Place", EdificeSide.Ruined, "Deep Woods")
       .adviser(p2, "Birdsong", facedown = true)
@@ -93,7 +102,7 @@ object LogScripts:
     * Round 2 begins. */
   def round(using munit.Location): Script =
     val (service, woken) = atTable("round",
-      Table.start.turn(p1, Phase.Wake).banditsRefilled)
+      tableWithOnePawnPerSite.turn(p1, Phase.Wake).banditsRefilled)
     val first = Look(woken.ready).active
     val acting = woken.endingWake(first)
     val destination = acting.ready.game.current.map.inPlay
@@ -198,14 +207,26 @@ object LogScripts:
     (service, table.situation(Situation.journaled(service, catalog, repository,
       name)))
 
-  /** The service suite's Oathkeeper tie: a table with two tied leaders, the
-    * active player's Travel, and the holder's choice of the next
-    * Oathkeeper. */
+  /** The Oathkeeper tie, off turn: p3 holds the title, and p1 (at Ancient
+    * City) and p2 (at Broken Peaks) each rule their site with one warband,
+    * the other 2 staying on their boards. p1 Travels to p3's site, Buried
+    * Giant, and the holder's choice of the next Oathkeeper parks; the
+    * script ends with that choice answered by default. Bandits fill the empty
+    * sites first, so the refill that follows a first command journals no
+    * event of its own. */
   def oathkeeperTie(using munit.Location): Script =
-    val ParkedServiceFixture.OathkeeperTiePark(game, mover, _, _) =
-      ParkedServiceFixture.oathkeeperTiePark("oathkeeper")
-    game.situation.after()
-    Script("oathkeeper", game.service, mover)
+    val (service, act) = atTable("oathkeeper", tableWithOnePawnPerSite
+      .oathkeeper(Some(p3))
+      .warbandsAt("Ancient City", p1, 1)
+      .warbandsAt("Broken Peaks", p2, 1)
+      .boardWarbands(p1, 2)
+      .boardWarbands(p2, 2)
+      .banditsRefilled)
+    act.parkedAfter(ParkedServiceFixture.startTravel(p1))
+      .parkedAfter(ParkedServiceFixture.pickTravelDestination(p1,
+        CatalogNames.site("Buried Giant")))
+      .after()
+    Script("oathkeeper", service, p1)
 
   private def start(situation: Situation, action: StartableRef,
       args: DecisionOptionRef*)(using munit.Location): Situation =
@@ -233,7 +254,7 @@ object LogScripts:
   /** Search of the world deck, every decision answered by default. */
   def search(using munit.Location): Script =
     // Three denizens on top of the world deck, so the Search offers a choice.
-    val (service, act) = atTable("search", Table.start
+    val (service, act) = atTable("search", tableWithOnePawnPerSite
       .worldDeckTop("Threatening Roar", "Fae Merchant", "Second Chance")
       .banditsRefilled)
     start(act, ActionRef.Search)
@@ -244,7 +265,7 @@ object LogScripts:
     * 1 favor before it spends 2 Supply. p1 holds 5 Supply and the start's
     * 1 favor. */
   def forcedLaborSearch(using munit.Location): Script =
-    val (service, act) = atTable("forced-labor", Table.start
+    val (service, act) = atTable("forced-labor", tableWithOnePawnPerSite
       .worldDeckTop("Threatening Roar", "Fae Merchant", "Second Chance")
       .supply(p1, 5).denizen("Forced Labor", "Broken Peaks")
       .warbandsAt("Broken Peaks", p2, 1).warbandsAt("Ancient City", p2, 1)
@@ -261,7 +282,7 @@ object LogScripts:
   def facedownAdviser(name: String, placement: Option[PlayedAs])
       (using munit.Location): Script =
     val conclave = CatalogNames.denizen("Wizard's Conclave")
-    val (service, acted) = atTable(name, Table.start
+    val (service, acted) = atTable(name, tableWithOnePawnPerSite
       .adviser(p1, conclave, facedown = true).banditsRefilled)
     val act = placement.fold(acted)(way => acted.withAnswers {
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
@@ -279,14 +300,14 @@ object LogScripts:
   /** p1 musters at Deep Woods. */
   def muster(using munit.Location): Script =
     val (service, act) = atTable("muster",
-      source(Table.start.pawn(p1, "Deep Woods")).banditsRefilled)
+      source(tableWithOnePawnPerSite.pawn(p1, "Deep Woods")).banditsRefilled)
     start(act, ActionRef.Muster)
     Script("muster", service, Look(act.ready).active)
 
   /** p1 musters at Deep Woods holding Initiation Rite, so the card mustered
     * on receives a secret instead of a favor. */
   def initiatedMuster(using munit.Location): Script =
-    val (service, act) = atTable("initiated-muster", source(Table.start
+    val (service, act) = atTable("initiated-muster", source(tableWithOnePawnPerSite
       .pawn(p1, "Deep Woods").adviser(p1, "Initiation Rite")).banditsRefilled)
     start(act, ActionRef.Muster)
     Script("initiated-muster", service, Look(act.ready).active)
@@ -297,7 +318,7 @@ object LogScripts:
     * suit, it gains nothing. */
   def trade(using munit.Location): Script =
     val (service, act) = atTable("trade",
-      source(Table.start.pawn(p2, "Deep Woods")).banditsRefilled)
+      source(tableWithOnePawnPerSite.pawn(p2, "Deep Woods")).banditsRefilled)
     val (waking, actor) = arrangedForNext(act)((_, next) =>
       Vector(Move(Piece.Favor(1),
         PositionedLocation(Location.FavorBank(Suit.all.head)),
@@ -309,7 +330,7 @@ object LogScripts:
   /** One favor lies on p2's site, and p2 wakes there and takes it. That is
     * Wake's only option, so Wake ends with the take. */
   def takeWealth(using munit.Location): Script =
-    val (service, waking) = atTable("take-wealth", Table.start
+    val (service, waking) = atTable("take-wealth", tableWithOnePawnPerSite
       .turn(p2, Phase.Wake).pawn(p2, "Broken Peaks")
       .siteTokens("Broken Peaks", favor = 1)
       .banditsRefilled)
@@ -372,7 +393,7 @@ object LogScripts:
     */
   def banners(using munit.Location): Script =
     val (service, act) = atTable("banners",
-      Table.start.favor(p1, 3).banditsRefilled)
+      tableWithOnePawnPerSite.favor(p1, 3).banditsRefilled)
     start(start(act, ActionRef.Challenge), ActionRef.PlaceBannerResource)
     Script("banners", service, p1)
 
@@ -382,7 +403,7 @@ object LogScripts:
     * defender's board warbands and blank dice: the attacker wins. No battle
     * plan is chosen. */
   def raid(using munit.Location): Script =
-    val (service, act) = atTable("raid", Table.start
+    val (service, act) = atTable("raid", tableWithOnePawnPerSite
       .pawn(p2, "Ancient City")
       .adviser(p2, "Birdsong", facedown = true).banditsRefilled, Dice.raid)
     act.withAnswers {
@@ -407,7 +428,7 @@ object LogScripts:
       using munit.Location)
       : (GameApplicationService, Situation, PlayerId, PlayerId) =
     val (service, act) = atTable(name,
-      extra(Table.start.pawn(p2, "Ancient City")).banditsRefilled)
+      extra(tableWithOnePawnPerSite.pawn(p2, "Ancient City")).banditsRefilled)
     (service, act.parkedAfter(GameCommand.StartWalker(ActionRef.Negotiation,
       StartPayload(p1))), p1, p2)
 
@@ -443,17 +464,29 @@ object LogScripts:
       .after(deal(partner, AcceptDeal))
     Script("negotiation-disclosed", service, actor)
 
-  /** Silver Tongue used in Rest, its bank choice answered by default. */
+  /** Silver Tongue as p1's faceup adviser, with Wrestlers and Bandit Chief
+    * faceup at p1's site, Ancient City. p2 holds a facedown adviser, so the
+    * log has another player's hidden card to show (or hide) from each
+    * viewer. p1 begins Rest, uses Silver Tongue, and its bank choice is
+    * answered by default. Bandits fill the empty sites first, so no refill
+    * is journaled after the first command. */
   def silverTongue(using munit.Location): Script =
-    val ParkedServiceFixture.SilverTonguePark(game, actor, _) =
-      ParkedServiceFixture.silverTonguePark("use-power", Dice.steady)
-    game.situation.after()
-    Script("use-power", game.service, actor)
+    val (service, act) = atTable("use-power", tableWithOnePawnPerSite
+      .adviser(p1, "Silver Tongue")
+      .denizen("Wrestlers", "Ancient City")
+      .denizen("Bandit Chief", "Ancient City")
+      .adviser(p2, "Birdsong", facedown = true)
+      .banditsRefilled)
+    act.after(GameCommand.BeginRest(p1))
+      .parkedAfter(GameCommand.UsePower(p1, SilverTongue.id,
+        DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))))
+      .after()
+    Script("use-power", service, p1)
 
   /** Augury, a free Search modifier, stands at p1's site; the Search selects
     * it. */
   def augury(using munit.Location): Script =
-    val (service, act) = atTable("augury", Table.start
+    val (service, act) = atTable("augury", tableWithOnePawnPerSite
       .denizen("Augury", "Ancient City").banditsRefilled)
     act.after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1,
       Vector(Augury.id), Vector.empty)))
@@ -465,7 +498,7 @@ object LogScripts:
     * never empty. */
   def gamblingHall(using munit.Location): Script =
     val card = CatalogNames.denizen("Gambling Hall")
-    val table = Table.start.denizen("Gambling Hall", "Ancient City")
+    val table = tableWithOnePawnPerSite.denizen("Gambling Hall", "Ancient City")
       .favor(p1, 2).banditsRefilled
     val richest = Suit.all.maxBy(suit => table.ready.banks.favor(suit))
     val (service, act) = atTable("gambling-hall", table)
@@ -482,7 +515,7 @@ object LogScripts:
   def wolves(using munit.Location): Script =
     val card = CatalogNames.denizen("Wolves")
     // p3 has fewer warbands on its board, so p2 is the one with the most.
-    val table = Table.start.denizen("Wolves", "Ancient City")
+    val table = tableWithOnePawnPerSite.denizen("Wolves", "Ancient City")
       .secrets(p1, faceUp = 2).boardWarbands(p3, 2).banditsRefilled
     val victim = table.ready.game.current.players.filter(_.player != p1)
       .maxBy(_.board.warbands).player
@@ -503,7 +536,7 @@ object LogScripts:
   /** Oracle, its drawn Vision of Sanctuary played as `placement` names. */
   def oracle(name: String, placement: PlayedAs)(using munit.Location): Script =
     val card = CatalogNames.denizen("Oracle")
-    val (service, act) = atTable(name, Table.start
+    val (service, act) = atTable(name, tableWithOnePawnPerSite
       .denizen("Oracle", "Ancient City").secrets(p1, faceUp = 3)
       .worldDeckTop(VisionRules.Sanctuary).banditsRefilled)
     act.withAnswers {
@@ -519,7 +552,7 @@ object LogScripts:
   def barbedNet(using munit.Location): Script =
     val net = CatalogNames.relic("Barbed Net")
     val target = CatalogNames.relic("Dowsing Sticks")
-    val (service, act) = atTable("barbed-net", Table.start
+    val (service, act) = atTable("barbed-net", tableWithOnePawnPerSite
       .relic(p1, "Barbed Net")
       .relicAt("Dowsing Sticks", "Ancient City")
       .relicAt("Sticky Fire", "Ancient City")
@@ -538,7 +571,7 @@ object LogScripts:
     * it ends and the log ends with Act. The script's actor is Hunger's
     * holder, p2. */
   def hunger(using munit.Location): Script =
-    val (service, act) = atTable("hunger", Table.start
+    val (service, act) = atTable("hunger", tableWithOnePawnPerSite
       .adviser(p2, "Birdsong", facedown = true).adviser(p2, "Hunger")
       .banditsRefilled)
     act.after(GameCommand.BeginRest(p1))
@@ -549,7 +582,7 @@ object LogScripts:
     * `choice`. Dowsing Sticks tops the relic deck. */
   def familyHeirloom(name: String, choice: DecisionOptionRef.Button)
       (using munit.Location): Script =
-    val (service, act) = atTable(name, Table.start
+    val (service, act) = atTable(name, tableWithOnePawnPerSite
       .adviser(p1, "Family Heirloom", facedown = true)
       .relicDeckTop("Dowsing Sticks").banditsRefilled)
     act.withAnswers {
