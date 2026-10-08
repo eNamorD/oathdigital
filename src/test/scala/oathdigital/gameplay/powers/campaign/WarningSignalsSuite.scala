@@ -89,14 +89,22 @@ class WarningSignalsSuite extends munit.FunSuite:
   test("a site must keep a warband, and the total must be kept"):
     val b = defending
     val run = chosen(b)
-    assert(run.refused(b.rival, decision, arrangement(b, board = 3, origin = 0,
-      extra = 4)).nonEmpty)
-    assert(run.refused(b.rival, decision, arrangement(b, board = 2, origin = 2,
-      extra = 2)).nonEmpty)
-    assert(run.refused(b.rival, decision, arrangement(b, board = 4, origin = 3,
-      extra = 3)).nonEmpty)
-    assert(run.refused(b.rival, decision, arrangement(b, board = 3, origin = 2,
-      extra = 2)).isEmpty)
+    // The rival's 7 warbands: a ruled site holds 1 to 6.
+    val outsideRange = s"decision $decision distributes to " +
+      s"site/${b.origin.value} outside 1..6"
+    val wrongTotal = s"decision $decision distributes an amount other than " +
+      "its total of 7"
+    assertEquals(run.refused(b.rival, decision, arrangement(b, board = 3,
+      origin = 0, extra = 4)), Some(OathViolation.InvalidEventOrder(
+      outsideRange)))
+    assertEquals(run.refused(b.rival, decision, arrangement(b, board = 2,
+      origin = 2, extra = 2)), Some(OathViolation.InvalidEventOrder(
+      wrongTotal)))
+    assertEquals(run.refused(b.rival, decision, arrangement(b, board = 4,
+      origin = 3, extra = 3)), Some(OathViolation.InvalidEventOrder(
+      wrongTotal)))
+    assertEquals(run.refused(b.rival, decision, arrangement(b, board = 3,
+      origin = 2, extra = 2)), None)
 
   test("the query names the board and each ruled site, with what " +
       "each holds now"):

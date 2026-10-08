@@ -126,7 +126,9 @@ class HospitalSuite extends munit.FunSuite:
     val picked = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
       .pick(b.rival, CampaignIds.defenderPlan, wrestlersRef)
-    assert(picked.ops.exists(_.isInstanceOf[Sacrifice]))
+    assertEquals(picked.ops.collect { case s: Sacrifice => s },
+      Vector(Sacrifice(b.rival, Piece.Warbands(kind(b, b.rival), 1),
+        PositionedLocation(Location.Site(b.origin)))))
     // Until the end the sacrificed warband is dead: it leaves the force.
     assertEquals(Look(picked.state).forces(b.origin),
       SiteForces.Occupied(kind(b, b.rival), 1))
