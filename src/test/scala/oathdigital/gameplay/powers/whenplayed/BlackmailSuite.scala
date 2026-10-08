@@ -25,24 +25,16 @@ class BlackmailSuite extends munit.FunSuite:
       .relic(p2, horn, facedown).favor(p2, favor)
       .relic(p1, ring).relic(p3, trumpet)
 
-  private def chose(ref: DecisionOptionRef): DecisionAnswer =
-    DecisionAnswer.ChooseOneAnswer(ref)
-
   private def tookTheHorn: NoteText.Said = NoteText.Said("took",
     s"Took ${horn.value} from ${p2.value}.", covers = false)
-
-  private def options(asked: Decide)(using munit.Location)
-      : Vector[DecisionOption] = asked.query match
-    case query: DecisionQuery.ChooseOne => query.options
-    case other => fail(s"expected a ChooseOne, got $other")
 
   test("the holder gives 3 favor to keep their relic, and only other " +
       "players' relics at p1's site are offered"):
     val ready = p2HoldingTheHorn(favor = 4).ready
     val walked = walkAnswering(ready, power, played,
-      chose(DecisionOptionRef.Relic(horn)), chose(Blackmail.pay))
+      chooseOne(DecisionOptionRef.Relic(horn)), chooseOne(Blackmail.pay))
     assertEquals(walked.asked.map(_.owner), Vector(p1, p2))
-    assertEquals(options(walked.asked.head), Vector(
+    assertEquals(chooseOneOptions(walked.asked.head), Vector(
       DecisionOption.Relic(DecisionOptionRef.Relic(horn))))
     val end = Look(walked.end)
     // p1's 1 favor and the 3 p2 gave.
@@ -56,7 +48,7 @@ class BlackmailSuite extends munit.FunSuite:
 
   test("the holder may hand the relic over instead"):
     val walked = walkAnswering(p2HoldingTheHorn(favor = 4).ready, power,
-      played, chose(DecisionOptionRef.Relic(horn)), chose(Blackmail.handOver))
+      played, chooseOne(DecisionOptionRef.Relic(horn)), chooseOne(Blackmail.handOver))
     val end = Look(walked.end)
     assertEquals(end.relics(p1), Vector(ring, horn))
     assertEquals(end.relics(p2), Vector.empty)
@@ -68,9 +60,9 @@ class BlackmailSuite extends munit.FunSuite:
     val slot = DecisionOptionRef.RelicSlot(p2, 0)
     val walked = walkAnswering(
       p2HoldingTheHorn(favor = 2, facedown = true).ready, power, played,
-      chose(slot))
+      chooseOne(slot))
     assertEquals(walked.asked.map(_.owner), Vector(p1))
-    assertEquals(options(walked.asked.head),
+    assertEquals(chooseOneOptions(walked.asked.head),
       Vector(DecisionOption.RelicSlot(slot)))
     val end = Look(walked.end)
     assertEquals(end.relics(p1), Vector(ring, horn))

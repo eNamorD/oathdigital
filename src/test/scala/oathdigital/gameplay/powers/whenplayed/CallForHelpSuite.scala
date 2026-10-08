@@ -26,9 +26,6 @@ class CallForHelpSuite extends munit.FunSuite:
   private def amount(count: Int): DecisionAnswer =
     DecisionAnswer.ChooseAmountAnswer(count)
 
-  private def chose(ref: DecisionOptionRef): DecisionAnswer =
-    DecisionAnswer.ChooseOneAnswer(ref)
-
   private def named(cards: String*): Vector[WorldCardId] =
     cards.toVector.map(CatalogNames.worldCard(_))
 
@@ -38,10 +35,6 @@ class CallForHelpSuite extends munit.FunSuite:
   private def knows(ready: ReadyGame, viewer: PlayerId, card: WorldCardId)
       : Boolean =
     ready.knowledge.advisers.getOrElse(viewer, Vector.empty).contains(card)
-
-  private def mostAsked(walked: Walked): Vector[Int] =
-    walked.asked.map(_.query).collect {
-      case query: DecisionQuery.ChooseAmount => query.max }
 
   private val nothingLine = NoteText.Said("none", "Nothing was revealed.",
     covers = false)
@@ -53,9 +46,9 @@ class CallForHelpSuite extends munit.FunSuite:
     val ready = cradlePile("Old Songs", "Spinning Bee", "Wild Mounts",
       "Mountain Giant").ready
     val walked = walkAnswering(ready, power, played, amount(3),
-      chose(CallForHelp.stop))
+      chooseOne(CallForHelp.stop))
     val drawn = named("Mountain Giant", "Wild Mounts", "Spinning Bee")
-    assertEquals(mostAsked(walked), Vector(4))
+    assertEquals(amountMaximaAsked(walked), Vector(4))
     // A pile stores its top last, so the first drawn is deepest.
     assertEquals(pileOf(walked.end, next), drawn)
     assertEquals(pileOf(walked.end, cradle), named("Old Songs"))
@@ -74,9 +67,9 @@ class CallForHelpSuite extends munit.FunSuite:
       "Land Warden", "Defame", "Second Wind", "Zealots", "Unstable Summon")
       .ready
     val walked = walkAnswering(ready, power, played, amount(5),
-      chose(CallForHelp.keep), amount(1))
+      chooseOne(CallForHelp.keep), amount(1))
     // Six drawn, so no third question.
-    assertEquals(mostAsked(walked), Vector(6, 1))
+    assertEquals(amountMaximaAsked(walked), Vector(6, 1))
     assertEquals(pileOf(walked.end, cradle), named("Old Songs",
       "Spinning Bee"))
     assertEquals(said(power, walked.events).map(_.key),

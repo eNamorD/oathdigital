@@ -24,13 +24,8 @@ class WizardsConclaveSuite extends munit.FunSuite:
     players.toVector.map(player =>
       DecisionOption.Player(DecisionOptionRef.Player(player)))
 
-  private def options(asked: Decide)(using munit.Location)
-      : Vector[DecisionOption] = asked.query match
-    case query: DecisionQuery.ChooseOne => query.options
-    case other => fail(s"expected a ChooseOne, got $other")
-
   private def chose(player: PlayerId): DecisionAnswer =
-    DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Player(player))
+    chooseOne(DecisionOptionRef.Player(player))
 
   test("the player ruling the most Arcane cards takes the Darkest Secret, " +
       "its secrets with it"):
@@ -49,7 +44,7 @@ class WizardsConclaveSuite extends munit.FunSuite:
     val first = Outcomes.parked(play(ready, power, conclave))
     val asked = question(ready, power, played, first.tree)
     assertEquals(asked.owner, p1)
-    assertEquals(options(asked), playerOptions(p1, p2))
+    assertEquals(chooseOneOptions(asked), playerOptions(p1, p2))
     val done = Outcomes.finished(resume(ready, power, played, first.tree,
       WizardsConclave.decisionId, chose(p1)))
     assertEquals(heldBy(done.treeless), Some(p1))
@@ -61,7 +56,7 @@ class WizardsConclaveSuite extends munit.FunSuite:
     val atGiant = hookAt(conclave, giant)
     val ready = Table.start.denizen(conclave, at = giant).ready
     val first = Outcomes.parked(fire(ready, power, atGiant))
-    assertEquals(options(question(ready, power, atGiant, first.tree)),
+    assertEquals(chooseOneOptions(question(ready, power, atGiant, first.tree)),
       playerOptions(p1, p2, p3))
     val done = Outcomes.finished(resume(ready, power, atGiant, first.tree,
       WizardsConclave.decisionId, chose(p3)))
