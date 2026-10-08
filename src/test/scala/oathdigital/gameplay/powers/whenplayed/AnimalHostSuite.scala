@@ -30,7 +30,7 @@ class AnimalHostSuite extends munit.FunSuite:
       .adviser(p2, "Second Chance").ready
     val done = Outcomes.finished(play(ready, power, host))
     assertEquals(Look(done.treeless).boardWarbands(p1), 3 + 4)
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
     assertEquals(said(power, done.events), Vector(gained(4)))
 
   test("played to a site it counts itself"):

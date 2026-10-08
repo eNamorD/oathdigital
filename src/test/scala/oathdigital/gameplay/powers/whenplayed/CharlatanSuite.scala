@@ -26,7 +26,7 @@ class CharlatanSuite extends munit.FunSuite:
     assertEquals(onBanner(done.treeless), 1)
     assertEquals(done.treeless.game.current.banners.darkestSecret.holder,
       Some(p2))
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
     assertEquals(said(power, done.events), Vector(NoteText.Said("burned",
       "Burned 3 secrets from the Darkest Secret.", covers = false)))
 

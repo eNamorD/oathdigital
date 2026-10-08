@@ -54,7 +54,7 @@ class BanditPrinceSuite extends munit.FunSuite:
     assertEquals(after.forces(awaySite), SiteForces.Occupied(mine, 1))
     // The replacing warbands come from the bank, so p1's board keeps its 3.
     assertEquals(after.boardWarbands(p1), 3)
-    assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
+    assertJournalRebuilds(ready, first.events ++ done.events, done.treeless)
     assertEquals(said(power, done.events), sites.map(replacedAt))
 
   test("declining replaces nothing and writes nothing"):

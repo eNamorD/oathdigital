@@ -49,7 +49,7 @@ class GreatHerdSuite extends munit.FunSuite:
     assertEquals(after.cardsAt(homeSite), Vector[CardId](wildMounts))
     assertEquals(after.cardsAt(nearSite), Vector[CardId](herd))
     assertEquals(after.tokensOn(wildMounts), Tokens(1, 2))
-    assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
+    assertJournalRebuilds(ready, first.events ++ done.events, done.treeless)
     assertEquals(said(power, done.events), Vector(NoteText.Said("swapped",
       s"p1 swapped it with ${wildMounts.value} at ${nearSite.value}.",
       covers = false)))

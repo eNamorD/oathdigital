@@ -53,8 +53,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
     val done = Outcomes.finished(answer(at.state, at.first.tree,
       FamilyHeirloom.keep))
     assert(Look(done.treeless).player(p1).relics.exists(_.id == top))
-    assertEquals(replayed(staged, at.first.events ++ done.events),
-      done.treeless)
+    assertJournalRebuilds(staged, at.first.events ++ done.events, done.treeless)
 
   test("putting it on the bottom returns it to the relic deck"):
     val at = atChoice
@@ -62,8 +61,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
       FamilyHeirloom.bottom))
     assert(!Look(done.treeless).player(p1).relics.exists(_.id == top))
     assertEquals(done.treeless.game.current.commonCards.relicDeck.last, top)
-    assertEquals(replayed(staged, at.first.events ++ done.events),
-      done.treeless)
+    assertJournalRebuilds(staged, at.first.events ++ done.events, done.treeless)
 
   test("it writes the relic it drew and what became of it, covering the " +
       "burial"):

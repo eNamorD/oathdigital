@@ -46,7 +46,7 @@ class ARoundOfAleSuite extends munit.FunSuite:
     val cleanedAt =
       done.events.lastIndexWhere(_.isInstanceOf[WalkerStepRecorded])
     assert(notedAt >= 0 && notedAt < cleanedAt, done.events.toString)
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
 
   test("League Treaty does not redirect the favor, since no Rest favor " +
       "window opens"):

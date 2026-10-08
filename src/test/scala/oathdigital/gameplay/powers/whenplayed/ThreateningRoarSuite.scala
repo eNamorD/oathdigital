@@ -38,7 +38,7 @@ class ThreateningRoarSuite extends munit.FunSuite:
     assertEquals(after.cardsAt(homeSite), Vector[CardId](homesteaders))
     assertEquals(after.cardsAt(nearSite), Vector[CardId](intact))
     assertEquals(after.cardsAt(awaySite), Vector[CardId](faeMerchant))
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
     assertEquals(said(power, done.events), Vector(discarded(inMapOrder(
       homeSite -> Vector(errandBoy), nearSite -> Vector(wildMounts, ruined)))))
 

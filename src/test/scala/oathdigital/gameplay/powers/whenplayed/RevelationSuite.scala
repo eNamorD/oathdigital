@@ -44,9 +44,8 @@ class RevelationSuite extends munit.FunSuite:
     assertEquals(said(power, walked.events), Vector(burned(p2, 1),
       burned(p3, 2), NoteText.Said("declined",
         s"${p1.value} did not burn any favor.", covers = false)))
-    // The journal alone rebuilds the walk's end state, and every event
-    // survives the wire, since a stored game reloads by replaying them.
-    assertEquals(replayed(ready, walked.events), walked.end)
+    // Every event survives the wire, as a stored game's journal does.
+    assertJournalRebuilds(ready, walked.events, walked.end)
     assertWireRoundTrips(walked.events)
 
   test("a player with no favor is not asked"):

@@ -54,7 +54,7 @@ class RiotsSuite extends munit.FunSuite:
     assertEquals(onBanner(done.treeless), 5 - 4)
     assertEquals(done.treeless.game.current.banners.peoplesFavor.holder,
       Some(p2))
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
     assertEquals(said(power, done.events),
       Vector(discarded(targets), burned(4)))
 

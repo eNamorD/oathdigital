@@ -36,7 +36,7 @@ class WizardsConclaveSuite extends munit.FunSuite:
     assertEquals(heldBy(done.treeless), Some(p2))
     assertEquals(done.treeless.game.current.banners.darkestSecret.secrets, 2)
     assertEquals(said(power, done.events), Vector(took(p2)))
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
 
   test("p1 decides a tie among the tied players, themselves included"):
     // The quiet table's Darkest Secret is unheld.

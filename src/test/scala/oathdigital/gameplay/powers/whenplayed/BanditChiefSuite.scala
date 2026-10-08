@@ -36,7 +36,7 @@ class BanditChiefSuite extends munit.FunSuite:
       .map((site, owner) => NoteText.Said("killed",
         s"Killed 1 ${owner.value} warband at ${site.value}.",
         covers = false)))
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
 
   test("with only bandits and empty sites nothing dies, and the line says " +
       "so"):

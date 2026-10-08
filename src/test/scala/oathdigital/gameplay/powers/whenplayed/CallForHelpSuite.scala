@@ -59,7 +59,7 @@ class CallForHelpSuite extends munit.FunSuite:
     assertEquals(said(power, walked.events), Vector(NoteText.Said("revealed",
       s"Revealed and discarded ${drawn.map(_.value).mkString(", ")}, and " +
         "gained 4 warbands.", covers = true)))
-    assertEquals(replayed(ready, walked.events), walked.end)
+    assertJournalRebuilds(ready, walked.events, walked.end)
     assertWireRoundTrips(walked.events)
 
   test("keeping on drawing asks again, for no more than what is left of six"):

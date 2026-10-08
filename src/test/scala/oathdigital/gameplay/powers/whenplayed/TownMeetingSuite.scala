@@ -34,7 +34,7 @@ class TownMeetingSuite extends munit.FunSuite:
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
     assertEquals(Vector(Suit.Order, Suit.Hearth).map(
       done.treeless.banks.favor(_)), Vector(1, 0))
-    assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
+    assertJournalRebuilds(ready, first.events ++ done.events, done.treeless)
     assertEquals(said(power, done.events), Vector(gained(3)))
 
   test("with X or less in all it takes everything without asking"):

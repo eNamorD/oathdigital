@@ -36,7 +36,7 @@ class DazzleSuite extends munit.FunSuite:
     val left = Look(done.treeless).cardsAt(homeSite)
     assert(!left.contains(homesteaders) && !left.contains(wrestlers), left)
     assertEquals(discarded(done.events), Vector(homesteaders, wrestlers))
-    assertEquals(replayed(twoTargets, done.events), done.treeless)
+    assertJournalRebuilds(twoTargets, done.events, done.treeless)
     val asAdviser = RuleSourceRef.Adviser(p1, dazzle)
     val ignored = PowerRuntime.ignoredAtSource(catalog, twoTargets, p1,
       ActionKind.WhenPlayed, asAdviser)

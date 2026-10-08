@@ -25,7 +25,7 @@ class FaithfulFriendSuite extends munit.FunSuite:
     val done = Outcomes.finished(play(ready, power, card))
     assertEquals(Look(done.treeless).player(p1).board.supply,
       SupplyTrack(2 + 4))
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
 
   test("the gain is clamped at the track maximum"):
     val done = Outcomes.finished(play(withSupply(5).ready, power, card))

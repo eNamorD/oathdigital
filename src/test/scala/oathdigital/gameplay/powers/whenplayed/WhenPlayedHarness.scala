@@ -120,6 +120,14 @@ object WhenPlayedHarness:
     accepted(OperationPipeline.run(from, PhasePowerHarness.ops(events),
       OperationPolicy.Permissive, Vector.empty)(Right(_))).state
 
+  /** The recorded operations of `events` alone rebuild `end` from `from`: a
+    * stored game reloads by replaying its journal, so an operation a walk
+    * applied without recording would be lost on reload. */
+  def assertJournalRebuilds(from: ReadyGame, events: Vector[OathEvent],
+      end: ReadyGame)(using munit.Location): Unit =
+    munit.Assertions.assertEquals(replayed(from, events), end,
+      "the recorded operations do not rebuild the walk's end state")
+
   /** The power of type `P` that the default walker catalog registers, so a
     * suite fails when its power is not wired in. */
   def registered[P <: ContributingPower](using tag: ClassTag[P]): P =

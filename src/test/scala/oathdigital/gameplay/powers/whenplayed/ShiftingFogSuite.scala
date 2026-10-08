@@ -23,7 +23,7 @@ class ShiftingFogSuite extends munit.FunSuite:
     val done = Outcomes.finished(play(ready, power, card))
     assertEquals(Suit.all.map(done.treeless.banks.favor(_)),
       Vector(6, 1, 2, 3, 4, 5))
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
     assertEquals(said(power, done.events),
       Vector(NoteText.Said("moved",
         "Every bank's favor moved to the next bank.", covers = false)))

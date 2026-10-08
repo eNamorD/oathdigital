@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.PowerFixture.warbandBank
-import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.WalkerRecordedOpsReducer
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
@@ -13,7 +11,7 @@ import oathdigital.testkit.Unwrap.rejected
 class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
   import WhenPlayedHarness._
 
-  private val power = Garrison
+  private val power = registered[Garrison.type]
   private val card = power.cardId
   private val played = hook(card)
   private val kind = Look(Table.start.ready).forceKind(p1)
@@ -38,9 +36,6 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     DecisionAnswer.ChooseManyAnswer(
       chosen.toVector.map(DecisionOptionRef.Site(_)))
 
-  test("Garrison is in the default walker catalog"):
-    assert(WalkerPowerCatalog.default(catalog).powers.contains(power))
-
   test("it gains one warband per ruled site and puts one on each"):
     val ready = ruling(Vector(1, 1, 1), onBoard = 5)
     val done = Outcomes.finished(play(ready, power, card))
@@ -48,7 +43,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
       SiteForces.Occupied(kind, 2)))
     // 5 on the board, 3 gained from the bank and 3 placed.
     assertEquals(Look(done.treeless).player(p1).board.warbands, 5)
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
 
   test("a player who rules no site gains and places nothing"):
     val ready = ruling(Vector.empty, onBoard = 5)
@@ -62,6 +57,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     val ready = ruling(Vector(4, 4, 5), onBoard = 0)
     assertEquals(warbandBank(ready, kind), 1)
     val first = Outcomes.parked(play(ready, power, card))
+    // The state the walk had reached at the choice: its recorded gain applied.
     val atChoice = foldRecordedOps(ready, first.events, "gain did not replay")
     assertEquals(Look(atChoice).player(p1).board.warbands, 1)
     val decide = question(atChoice, power, played, first.tree)
@@ -80,7 +76,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     assertEquals(forcesAt(done.treeless, buriedGiant),
       SiteForces.Occupied(kind, 5))
     assertEquals(Look(done.treeless).player(p1).board.warbands, 0)
-    assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
+    assertJournalRebuilds(ready, first.events ++ done.events, done.treeless)
 
   test("an empty board and an empty bank ask nothing"):
     // All 14 of the lineage's warbands are at the sites.
@@ -92,6 +88,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
   test("a choice naming an unruled site is rejected"):
     val ready = ruling(Vector(4, 4, 5), onBoard = 0)
     val first = Outcomes.parked(play(ready, power, card))
+    // The state the walk had reached at the choice: its recorded gain applied.
     val atChoice = foldRecordedOps(ready, first.events, "gain did not replay")
     val unruled = CatalogNames.site("Deep Woods")
     assertEquals(rejected(resume(atChoice, power, played, first.tree,

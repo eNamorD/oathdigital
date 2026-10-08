@@ -27,7 +27,7 @@ class KeyToTheCitySuite extends munit.FunSuite:
     val after = Look(done.treeless)
     assertEquals(after.forces(homeSite), SiteForces.Occupied(mine, 1))
     assertEquals(after.boardWarbands(p1), 3)
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
     assertEquals(said(power, done.events), Vector(killedTwo, placed))
 
   test("bandits are killed too"):

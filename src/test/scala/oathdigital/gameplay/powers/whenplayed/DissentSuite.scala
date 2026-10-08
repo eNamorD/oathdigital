@@ -36,7 +36,7 @@ class DissentSuite extends munit.FunSuite:
     assertEquals(RestCleanupPlan.derive(catalog, done.treeless, p1)
       .map(_.returnedFavor), Right(Map(Suit.Discord -> 3)))
     assertEquals(said(power, done.events), Vector(placed(p1, 2), placed(p2, 1)))
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
 
   test("with nobody able to place, the line says so"):
     // p1 rules Dissent but holds no favor; p2 and p3 rule nothing.

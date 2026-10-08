@@ -43,7 +43,7 @@ class SaladDaysSuite extends munit.FunSuite:
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
     assertEquals(banks(done.treeless, Suit.Discord, Suit.Order, Suit.Hearth,
       Suit.Beast), Vector(1, 1, 2, 0))
-    assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
+    assertJournalRebuilds(ready, first.events ++ done.events, done.treeless)
     assertEquals(said(power, done.events),
       Vector.empty)
 

@@ -43,12 +43,13 @@ class BlackmailSuite extends munit.FunSuite:
     assertEquals(end.relics(p2), Vector(horn))
     assertEquals(said(power, walked.events), Vector(NoteText.Said("paid",
       s"${p2.value} gave 3 favor to keep ${horn.value}.", covers = false)))
-    assertEquals(replayed(ready, walked.events), walked.end)
+    assertJournalRebuilds(ready, walked.events, walked.end)
     assertWireRoundTrips(walked.events)
 
   test("the holder may hand the relic over instead"):
     val walked = walkAnswering(p2HoldingTheHorn(favor = 4).ready, power,
-      played, chooseOne(DecisionOptionRef.Relic(horn)), chooseOne(Blackmail.handOver))
+      played, chooseOne(DecisionOptionRef.Relic(horn)),
+      chooseOne(Blackmail.handOver))
     val end = Look(walked.end)
     assertEquals(end.relics(p1), Vector(ring, horn))
     assertEquals(end.relics(p2), Vector.empty)

@@ -29,7 +29,7 @@ class ASmallFavorSuite extends munit.FunSuite:
     val done = Outcomes.finished(play(staged, power, card))
     assertEquals(Look(done.treeless).player(actor).board.warbands,
       Look(staged).player(actor).board.warbands + 4)
-    assertEquals(replayed(staged, done.events), done.treeless)
+    assertJournalRebuilds(staged, done.events, done.treeless)
 
   test("the gain is capped by the warband bank"):
     val short = holding(2)

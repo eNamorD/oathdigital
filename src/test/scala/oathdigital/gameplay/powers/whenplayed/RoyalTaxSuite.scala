@@ -31,7 +31,7 @@ class RoyalTaxSuite extends munit.FunSuite:
     assertEquals(after.favor(p1), 1 + 2 + 1)
     assertEquals(after.favor(p2), 3 - 2)
     assertEquals(after.favor(p3), 0)
-    assertEquals(replayed(ready, done.events), done.treeless)
+    assertJournalRebuilds(ready, done.events, done.treeless)
     assertEquals(said(power, done.events), Vector(took(2, p2), took(1, p3)))
 
   test("a player with no favor is named, and nothing is taken from them"):

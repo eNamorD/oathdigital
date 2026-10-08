@@ -42,7 +42,7 @@ class FabledFeastSuite extends munit.FunSuite:
     // p1's 1 favor and the 3 taken from the Order bank's 5.
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
     assertEquals(done.treeless.banks.favor(Suit.Order), 5 - 3)
-    assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
+    assertJournalRebuilds(ready, first.events ++ done.events, done.treeless)
     assertEquals(said(power, done.events), Vector(took(3, Suit.Order)))
 
   test("a short bank gives what it holds"):
