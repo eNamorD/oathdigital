@@ -22,6 +22,7 @@ class MusterProcedureSuite extends munit.FunSuite:
     * (Arcane) and nothing else; p1 has 4 favor, 7 Supply and 3 warbands on
     * the board. */
   private def atAlchemist: Table = Table.start
+    .pawn(p1, at = ancientCity)
     .denizen(alchemist, at = ancientCity)
     .favor(p1, 4).supply(p1, 7).boardWarbands(p1, 3)
 
@@ -70,7 +71,7 @@ class MusterProcedureSuite extends munit.FunSuite:
 
   test("an edifice of either side is a legal source and takes the favor"):
     Vector(EdificeSide.Ruined, EdificeSide.Intact).foreach { side =>
-      val ready = Table.start.favor(p1, 4)
+      val ready = Table.start.pawn(p1, at = ancientCity).favor(p1, 4)
         .edifice(hallowedSpring, side, at = ancientCity).ready
       val options = MusterProcedure.startOptions(catalog, ready, p1,
         WalkerPowers.empty).map(_.option.ref)

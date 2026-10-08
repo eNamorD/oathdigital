@@ -16,9 +16,12 @@ class RestSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
   private val ancientCity = CatalogNames.site("Ancient City")
 
-  /** p1's Act on the quiet table, p1 at Ancient City. Broken Peaks holds two
-    * secrets, so p2, waking next, has wealth to take and the Wake waits. */
+  /** p1's Act on the quiet table. p1 stands at Ancient City, p2 at Broken
+    * Peaks and p3 at Buried Giant. Broken Peaks holds two secrets, so p2,
+    * waking next, has wealth to take and the Wake waits. */
   private def restBoard: Table = Table.start
+    .pawn(p1, at = "Ancient City").pawn(p2, at = "Broken Peaks")
+    .pawn(p3, at = "Buried Giant")
     .siteTokens("Broken Peaks", secrets = 2)
 
   /** `restBoard`, with Wrestlers as p1's adviser. */

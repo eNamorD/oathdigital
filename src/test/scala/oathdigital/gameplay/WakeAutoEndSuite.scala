@@ -7,7 +7,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, Look, Outcomes, Table}
-import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
 /** A Wake with nothing left to decide ends by itself, in the command that
@@ -16,10 +16,12 @@ class WakeAutoEndSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
 
   /** The quiet table: p1's Act, no site holds favor or secrets, and each
-    * pawn stands alone at a site. Ancient City, p1's site, is the only River
-    * in play, so its River offers nothing. No Wake option is open unless a
-    * test adds one. */
-  private val quiet: ReadyGame = Table.start.ready
+    * pawn stands alone at a site: p1 at Ancient City, p2 at Broken Peaks and
+    * p3 at Buried Giant. Ancient City is the only River in play, so its River
+    * offers nothing. No Wake option is open unless a test adds one. */
+  private val quiet: ReadyGame = Table.start
+    .pawn(p1, at = "Ancient City").pawn(p2, at = "Broken Peaks")
+    .pawn(p3, at = "Buried Giant").ready
   private val actor = p1
 
   private def completed(events: Vector[OathEvent]) =

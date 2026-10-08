@@ -31,7 +31,8 @@ class ForcedLaborSuite extends munit.FunSuite:
   /** p1 in Act at Ancient City with `startingSupply` Supply and the start's
     * 1 favor, the world deck topped by three plain cards, and Forced Labor
     * at Broken Peaks. Nobody rules either site yet. */
-  private def laborTable: Table = Table.start.worldDeckTop(deckTop*)
+  private def laborTable: Table = Table.start.pawn(p1, at = home)
+    .worldDeckTop(deckTop*)
     .supply(p1, startingSupply).denizen(labor, at = peaks)
 
   /** p2 rules Broken Peaks, so Forced Labor is p2's, and Ancient City, where

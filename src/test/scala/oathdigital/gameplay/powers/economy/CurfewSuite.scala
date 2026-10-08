@@ -30,7 +30,7 @@ class CurfewSuite extends munit.FunSuite:
   /** p1 at Ancient City beside Wrestlers, with the start's 1 favor and 1
     * faceup secret, Curfew at Broken Peaks, and the Order bank holding 3
     * favor. Nobody rules either site yet. */
-  private def curfewTable: Table = Table.start
+  private def curfewTable: Table = Table.start.pawn(p1, at = home)
     .denizen(wrestlers, at = home).denizen(curfew, at = peaks)
     .bankFavor(Suit.Order, 3)
 

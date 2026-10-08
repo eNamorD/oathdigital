@@ -113,7 +113,8 @@ class PhasePowerSuite extends munit.FunSuite:
       "site is not"):
     val power = TestPower(powerId, PowerTiming.Act)
     // The card lies at Dunes, away from p1's pawn at Ancient City.
-    val atDunes = Table.start.denizen(card, at = "Dunes")
+    val atDunes = Table.start.pawn(p1, at = "Ancient City")
+      .denizen(card, at = "Dunes")
     val powers = PhasePowers(Vector(power))
     assertEquals(PhasePowerProcedure.usable(catalog,
       atDunes.warbandsAt("Dunes", p1, 1).ready, p1, powers, WalkerPowers.empty).map(_.ref),
@@ -208,7 +209,8 @@ class PhasePowerSuite extends munit.FunSuite:
         ruined = e.ruined.powers :+ printed) else e))
     val power = TestPower(powerId, PowerTiming.Act)
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
-      val state = Table.start.edifice(id, side, at = "Ancient City").ready
+      val state = Table.start.pawn(p1, at = "Ancient City")
+        .edifice(id, side, at = "Ancient City").ready
       assertEquals(PhasePowerProcedure.usable(powered, state, p1,
         PhasePowers(Vector(power)), WalkerPowers.empty).map(p => p.source -> p.ref),
         Vector(PowerSourceRef.Card(id) -> DecisionOptionRef.Edifice(id)),
