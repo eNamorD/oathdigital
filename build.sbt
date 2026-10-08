@@ -73,10 +73,14 @@ lazy val root = (project in file("."))
     // the commit before: Scala 3 instruments statements differently, so the
     // change is in measurement, not tests. Raised to 86.8 when the two
     // `WalkerOperationCodec` matches were split below the compiler's 3000-node
-    // instrumentation limit and entered the measurement (stmt 86.84%). Raise
-    // it as coverage improves; the goal is 100% with justified $COVERAGE-OFF$
-    // exemptions. Enforced by `coverageReport`.
-    coverageMinimumStmtTotal := 86.8,
+    // instrumentation limit and entered the measurement (stmt 86.84%). Raised
+    // to 92.0 after the test-audit sweeps, the dead-code deletions and the
+    // first exemptions (stmt 92.10%), when the branch minimum was added at
+    // the measured 84.44%. Raise both as coverage improves; the goal is 100%
+    // with justified $COVERAGE-OFF$ exemptions, whose marker must stand alone
+    // on its line. Enforced by `coverageReport`.
+    coverageMinimumStmtTotal := 92.0,
+    coverageMinimumBranchTotal := 84.4,
     coverageFailOnMinimum := true,
     Universal / packageName := s"oathdigital-${version.value}",
     verifyReleaseVersion := {

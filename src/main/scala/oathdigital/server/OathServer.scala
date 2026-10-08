@@ -10,6 +10,12 @@ import akka.actor.typed.{ActorSystem, DispatcherSelector}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 
+// Process entry point: it starts an actor system, binds a port and calls
+// sys.exit, so no in-process test can run it. Its decisions live in
+// DesktopLaunchProfile, ServerConfig, ServerRuntime, ServerRoutes and
+// DesktopConsole, which their own suites cover. The marker must stand alone
+// on its line for the Scala 3 instrumenter to honour it.
+// $COVERAGE-OFF$
 object OathServer:
   def main(arguments: Array[String]): Unit =
     val version = Option(getClass.getPackage.getImplementationVersion)
@@ -141,3 +147,4 @@ object OathServer:
         }
 
         Await.result(system.whenTerminated, Duration.Inf)
+// $COVERAGE-ON$

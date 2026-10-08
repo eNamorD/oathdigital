@@ -38,6 +38,10 @@ object LanAddress:
       })
       .map(_.getHostAddress)
 
+  // These read the host's own network, so their result depends on the
+  // machine running the tests. The choice they feed is `choose`, which
+  // LanAddressSuite covers.
+  // $COVERAGE-OFF$
   def detect(): Option[String] =
     choose(probeDefaultRoute(), systemAddresses())
 
@@ -61,3 +65,4 @@ object LanAddress:
       }
     catch
       case NonFatal(_) => Vector.empty
+  // $COVERAGE-ON$
