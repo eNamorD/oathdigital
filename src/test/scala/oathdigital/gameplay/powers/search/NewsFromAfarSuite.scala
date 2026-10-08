@@ -28,7 +28,8 @@ class NewsFromAfarSuite extends munit.FunSuite:
     * plain cards and the Cradle discard holding three more. */
   private def holdingNews(favor: Int = 2): ReadyGame = Table.start
     .worldDeckTop(deckTop*).discarded(region, discardPile*)
-    .supply(p1, startingSupply).adviser(p1, news).favor(p1, favor).ready
+    .pawn(p1, "Ancient City").supply(p1, startingSupply).adviser(p1, news)
+    .favor(p1, favor).ready
 
   private def searchedWithNews(ready: ReadyGame, source: SearchSource)
       : OathTransition = accepted(SearchPlay.searched(rules, Ready(ready), p1,
