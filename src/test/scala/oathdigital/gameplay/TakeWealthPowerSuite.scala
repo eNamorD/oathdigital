@@ -59,7 +59,8 @@ class TakeWealthPowerSuite extends munit.FunSuite:
   private def violation(state: ReadyGame, node: Operation,
       window: PowerWindow = PowerWindow.WakeTakeWealth): Option[OathViolation] =
     val byId = powers.map(power => power.id -> power).toMap
-    ContributionCollector.gather(window, powers, ctx(state, window, node, _))
+    ContributionCollector.gather(window, PowerWindowIndex.of(powers),
+      ctx(state, window, node, _))
       .restrictions.flatMap { case (id, restriction) =>
         restriction.fn(ctx(state, window, node, byId(id)), node)
       }.headOption

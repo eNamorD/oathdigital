@@ -816,7 +816,7 @@ start / reading its park.
 | Spec baseline (37c8563d, by hand) | 46 s | 280 s | 216 s | – | 26% | 33% | 4% | 26 ms / 0 ms |
 | Baseline (load 11.8, busy machine) | 58 s | 340 s | 308 s | 61 s | 30% | 34% | 2% | 33 ms / 0 ms |
 | After Task 2 (load 7.6 gate, 12.3 profile) | 45 s | 288 s | 294 s | 15 s (warm) | 16.8% | 39.2% | 1.8% | 24 ms / 0 ms |
-| After Task 3 | | | | | | | | |
+| After Task 3 (load 7.0 gate, 8.5 profile) | 34 s | 238 s | 168 s | 13 s (warm) | 19.8% | 25.0% | 0.1% | 18 ms / 0 ms |
 
 ### Baseline
 
@@ -852,6 +852,21 @@ cards.
 
 ### After Task 3
 
-Ten slowest suites:
+Load differed between runs (7.0 to 12 across the table), so compare the shares and
+the campaign profile's summed suite time: 130.9 s (baseline), 119.5 s (Task 2),
+93.2 s (Task 3). Samples that ran project code: 1913, 1520, 1390.
 
-Top ten inclusive frames:
+Share of samples with the frame on the stack: `ContributionCollector$.gather`
+34.2% to 25.0% (it was 39.2% after Task 2, because the total shrank around it),
+`WalkerPowerGather$.breaches` 47.2%, `ClassValue` 2.1% to 0.1%. The shares of
+`CardIndex$` (19.8%) and the invariant (23.5%) rose against Task 2 for the same
+reason: the total shrank. Gate wall clock was 34 s with 3089 root tests.
+
+Ten slowest suites in the gate: TrustedSeatRoutesSuite 6.7 s (a server suite, not
+campaign), MercenariesSuite 5.0 s, StickyFireSuite 4.5 s,
+AuthenticatedGameBootstrapRoutesSuite 4.1 s, WrestlersSuite 4.1 s, ShieldWallSuite 3.9 s,
+DisgracedCaptainSuite 3.5 s, GleamingArmorSuite 3.4 s, WarningSignalsSuite 3.2 s,
+HsqldbIdentityRepositorySuite 2.9 s.
+
+Remaining hot spots for a follow-up (spec out-of-scope list): `gather` is still 25%
+because each `attributed` pass calls it two or three times per window; the invariant is still 23.5%.

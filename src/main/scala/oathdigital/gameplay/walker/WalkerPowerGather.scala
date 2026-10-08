@@ -50,7 +50,7 @@ private[walker] object WalkerPowerGather:
         def ctxFor(power: ContributingPower): PowerCtx =
           PowerCtx(state, activePlayer, power.source, w, path, operation,
             procedure, answered)
-        val gathered = ContributionCollector.gather(w, powers.powers, ctxFor)
+        val gathered = ContributionCollector.gather(w, powers.windowIndex, ctxFor)
         val folded = gathered.transforms.foldLeft(ops):
           case (acc, (powerId, transform)) =>
             transform.fn(ctxFor(byId(powerId)), acc)
@@ -191,7 +191,7 @@ private[walker] object WalkerPowerGather:
     val rejected = windows.flatMap:
       case (window, path, operation) =>
         val ctx = ctxFor(window, path, operation)
-        ContributionCollector.gather(window, powers.powers, ctx).restrictions
+        ContributionCollector.gather(window, powers.windowIndex, ctx).restrictions
           .flatMap { case (powerId, restriction) =>
             val at = ctx(byId(powerId))
             restriction.fn(at, tree).map(Attributed(powerId, at, restriction, _))
@@ -200,7 +200,7 @@ private[walker] object WalkerPowerGather:
       case (window, path, decide: Decide) =>
         val ctx = ctxFor(window, path, decide)
         emptiedDecision(decide, ContributionCollector.gather(window,
-          powers.powers, ctx).optionRestrictions, ctx, byId)
+          powers.windowIndex, ctx).optionRestrictions, ctx, byId)
       case _ => Vector.empty
     (rejected, emptied)
 

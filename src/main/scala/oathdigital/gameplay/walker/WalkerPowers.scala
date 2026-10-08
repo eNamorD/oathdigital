@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationRestrictions
-import oathdigital.gameplay.powerresolver.{ContributingPower, Restriction}
+import oathdigital.gameplay.powerresolver.{ContributingPower, PowerWindowIndex}
 import oathdigital.model.{OperationRestriction, PowerId, PowerResolution}
 
 /** The powers available to one `advance`/`roll`/`resolve` command (Task 3).
@@ -23,11 +23,14 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
     probing: Boolean = true,
     restrictionSet: OperationRestrictions = OperationRestrictions.none,
     modifiers: Vector[PowerId] = Vector.empty):
+  /** These powers indexed by the windows they hook, built once per instance
+    * (see [[PowerWindowIndex]]). */
+  lazy val windowIndex: PowerWindowIndex = PowerWindowIndex.of(powers)
+
   /** Whether any power can reject an action through a tree-level
     * `Restriction`. The search's tree check has nothing to find without one.
     */
-  lazy val hasRestrictions: Boolean = powers.exists(_.contributions.values
-    .exists(_.exists(_.isInstanceOf[Restriction])))
+  lazy val hasRestrictions: Boolean = windowIndex.hasRestrictions
 
   /** The operation restrictions every step of this command runs with. A
     * selected power that discards its own card is not held in play by the

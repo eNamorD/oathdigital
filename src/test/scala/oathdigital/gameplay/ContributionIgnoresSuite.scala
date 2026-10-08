@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.powerresolver.{Contribution, ContributionCollector, ContributingPower, PowerCtx, Transform}
+import oathdigital.gameplay.powerresolver.{Contribution, ContributionCollector, ContributingPower, PowerCtx, PowerWindowIndex, Transform}
 import oathdigital.model._
 import oathdigital.testkit.Table
 
@@ -29,8 +29,8 @@ class ContributionIgnoresSuite extends munit.FunSuite:
     Vector.empty, operation)
 
   private def survivors(powers: Vector[ContributingPower], operation: Operation)
-      : Vector[PowerId] = ContributionCollector.gather(window, powers,
-    ctxAt(operation)).order
+      : Vector[PowerId] = ContributionCollector.gather(window,
+    PowerWindowIndex.of(powers), ctxAt(operation)).order
 
   private val plain = power("test.plain")
   private val marker = SpendSupply(actor, 1)
