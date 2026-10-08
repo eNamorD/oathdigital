@@ -35,9 +35,10 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
         assertEquals(state, ready)
         assertEquals(events, Vector.empty)
       case other => fail(s"expected a Finished walk, got $other")
-    assert(ProcedureWalker.advance(ready,
-      Sequence(Vector(SpendSupply(actor, 1))), None,
-      restricting(noSpending)).isLeft)
+    assertEquals(ProcedureWalker.advance(ready,
+      Sequence(Vector(SpendSupply(actor, 1))), None, restricting(noSpending)),
+      Left(OathViolation.CoreOperationRejected("no-spending",
+        "supply cannot be spent")))
 
   test("fresh walk of a legal delta pair finishes and records one event per leaf"):
     val tree: Operation = Sequence(movePawnToS3, spendOneSupply)
@@ -99,9 +100,10 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
         assertEquals(state, ready)
         assertEquals(events, Vector.empty)
       case other => fail(s"expected a Finished walk, got $other")
-    assert(ProcedureWalker.advance(ready,
+    assertEquals(ProcedureWalker.advance(ready,
       Sequence(Vector(discard.copy(required = true))), None,
-      restricting(wholeDiscard)).isLeft)
+      restricting(wholeDiscard)), Left(OathViolation.CoreOperationRejected(
+        "immune", "the discard is refused")))
 
   test("BuildOps filters immune discard and replays the legal discard"):
     val first = Discard.Denizen(siteDenizen.id,
@@ -149,8 +151,10 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
         assertEquals(state, ready)
         assertEquals(events, Vector.empty)
       case other => fail(s"expected a Finished walk, got $other")
-    assert(ProcedureWalker.advance(ready,
-      tree(discard.copy(required = true)), None, restricting(immunity)).isLeft)
+    assertEquals(ProcedureWalker.advance(ready,
+      tree(discard.copy(required = true)), None, restricting(immunity)),
+      Left(OathViolation.CoreOperationRejected("immune",
+        "site card cannot be discarded")))
 
   // `required` lives on the composite (PayCost, Draw, Exchange, a required
   // Play/Replace/Discard), but the walker walks a composite's `Move` children
@@ -163,13 +167,17 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     val payment = PayCost(actor, Location.SharedBank,
       Cost(favorBurnt = tooMuchFavor))
     assert(payment.required)
-    assert(ProcedureWalker.advance(ready, Sequence(payment), None,
-      noPowers).isLeft)
-    assert(ProcedureWalker.advance(ready, Sequence(Vector[Operation](payment)),
-      None, noPowers).isLeft)
+    // The actor holds one favor fewer than the payment burns.
+    val rejection = Left(OathViolation.CoreOperationRejected(
+      "insufficient-pieces",
+      s"player play area contains ${tooMuchFavor - 1} of requested favor"))
+    assertEquals(ProcedureWalker.advance(ready, Sequence(payment), None,
+      noPowers), rejection)
+    assertEquals(ProcedureWalker.advance(ready,
+      Sequence(Vector[Operation](payment)), None, noPowers), rejection)
     // The same payment as a batch item was already strict.
-    assert(ProcedureWalker.advance(ready,
-      BuildOps((_, _) => Right(Vector(payment))), None, noPowers).isLeft)
+    assertEquals(ProcedureWalker.advance(ready,
+      BuildOps((_, _) => Right(Vector(payment))), None, noPowers), rejection)
 
   test("a required composite that can execute records its children and finishes"):
     val payment = PayCost(actor, Location.SharedBank, Cost(favorBurnt = 1))

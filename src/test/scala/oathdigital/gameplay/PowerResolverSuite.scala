@@ -136,8 +136,10 @@ class PowerResolverSuite extends munit.FunSuite:
     intercept[IllegalArgumentException](PowerRegistry(first, second))
     val resolver = new PowerResolver(PowerRegistry())
     val sources = Vector(sourceA -> Vector(PowerId("test.unknown")))
-    assert(resolver.validateSources(sources).isLeft)
-    assert(resolver.resolve(RestStart, sources, NoFacts).isLeft)
+    val unknown = Left(PowerResolverError.UnknownAbility(sourceA,
+      PowerId("test.unknown")))
+    assertEquals(resolver.validateSources(sources), unknown)
+    assertEquals(resolver.resolve(RestStart, sources, NoFacts), unknown)
 
   test("one power may use different resolution modes at distinct windows"):
     val inspector = PowerInspector(always)

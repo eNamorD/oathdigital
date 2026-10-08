@@ -22,10 +22,12 @@ class PowerOperationsSuite extends munit.FunSuite:
     val placedAt = Location.OnCard(card)
     intercept[IllegalArgumentException](Cost(favor = -1))
     // p1 holds only 3 secrets.
-    assert(Costs.plan(ready, p1, placedAt, Cost(secretBurnt = 4)).isLeft)
-    assert(Costs.plan(ready, p1,
+    assertEquals(Costs.plan(ready, p1, placedAt, Cost(secretBurnt = 4)),
+      Left(OathViolation.InsufficientSecrets(4, 3)))
+    assertEquals(Costs.plan(ready, p1,
       Location.OnCard(DenizenId("missing")),
-      Cost(secret = 1)).isLeft)
+      Cost(secret = 1)), Left(OathViolation.InvalidEventOrder(
+        "placed cost portions require an existing token-bearing card")))
 
   test("Costs accepts a burnt-only cost on a facedown card"):
     val facedown = payerAtCard(facedown = true)
