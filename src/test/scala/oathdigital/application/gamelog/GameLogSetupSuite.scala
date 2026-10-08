@@ -10,6 +10,7 @@ class GameLogSetupSuite extends munit.FunSuite:
     .takeWhile(entry => text(entry) != "Round 1").filter(_.depth == 1)
 
   test("every player places a pawn and keeps an adviser, in turn order"):
+    // `woken` replays Setup: its placements and keeps are the subject.
     val script = woken
     val lines = texts(setupLines(script, None))
     assertEquals(lines.count(_.contains(" placed pawn at ")),
@@ -26,6 +27,7 @@ class GameLogSetupSuite extends munit.FunSuite:
       order)
 
   test("a kept adviser is named to its owner and read by its back by others"):
+    // `woken` replays Setup: its keep lines are the subject.
     val script = woken
     val mine = setupLines(script, Some(script.actor))
       .filter(entry => text(entry).contains(" kept "))
@@ -38,6 +40,8 @@ class GameLogSetupSuite extends munit.FunSuite:
     }
 
   test("a card revealed in Reveal Cards is named to every viewer"):
+    // Replays Setup, answering Reveal Cards by revealing all: the reveal
+    // lines are the subject.
     val script = wokenRevealingAll
     val ready = Outcomes.ready(script.history.steps.last.after)
     val revealed = ready.game.current.players.map(player =>

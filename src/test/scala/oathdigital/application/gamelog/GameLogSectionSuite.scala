@@ -31,6 +31,7 @@ class GameLogSectionSuite extends munit.FunSuite:
       None)
 
   test("Wake's Take Wealth, the Oathkeeper and Setup carry no section"):
+    // `woken` replays Setup: the pawn placements it posts are the subject.
     assertEquals(entryStarting(format(takeWealth, None), "Took 1 favor from ")
       .section, None)
     assertEquals(entryStarting(format(oathkeeperTie, None),

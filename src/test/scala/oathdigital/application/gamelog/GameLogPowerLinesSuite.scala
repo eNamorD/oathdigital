@@ -364,6 +364,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       CardPlayRules.discardFirst.name), Some(CardPlayRules.discardFirst.template))
 
   test("a setup note posts under the Setup headline, among the setup lines"):
+    // `woken` replays Setup: the Setup headline and its lines are the subject.
     val script = woken
     val steps = withoutNotes(script.history.steps)
     val placed = steps.indexWhere(_.event.event match
