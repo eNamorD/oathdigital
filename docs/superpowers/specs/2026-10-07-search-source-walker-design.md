@@ -1,6 +1,6 @@
 # Search Source in the Walker
 
-**Status:** designed 2026-10-07. It takes the half of the roadmap item
+**Status:** designed and implemented 2026-10-07. It takes the half of the roadmap item
 **Start controls and modifier combinations** that says a Search source which
 only a modifier makes affordable shows the reduced cost before the player
 selects that modifier. It follows the

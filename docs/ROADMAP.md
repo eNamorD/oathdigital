@@ -316,9 +316,7 @@ one.
   offered when the action could start with no modifier, with any one
   selectable modifier, or with all of them together
   (`ModifierOffers.selections`). A start that needs two modifiers but not a
-  third is not found. A Search source that only a modifier makes affordable
-  shows the cost with that modifier ("0 Supply" for News from Afar) before
-  the player selects it.
+  third is not found.
 - [ ] **The Grand Council and Festival banner faces.** They are listed
   as synthetic ids in the reviewed catalog and have no behaviour.
 - [ ] **Mercenaries' player-chosen sign.** Mercenaries adds attack dice
