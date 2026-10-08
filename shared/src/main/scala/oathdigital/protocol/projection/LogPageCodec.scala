@@ -25,8 +25,7 @@ object LogPageCodec:
 
   def decode(json: String): Either[ProtocolDecodeFailure, LogPageWire] =
     try decodePage(ujson.read(json), "$")
-    catch { case NonFatal(error) => Left(MalformedJson("$",
-      Option(error.getMessage).getOrElse("malformed JSON"))) }
+    catch { case NonFatal(error) => Left(MalformedJson.of(error)) }
 
   private def encodeEntry(entry: LogEntryWire): ujson.Value = ujson.Obj(
     "sequence" -> ujson.Num(entry.sequence.toDouble),

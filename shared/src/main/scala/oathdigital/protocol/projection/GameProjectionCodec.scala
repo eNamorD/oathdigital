@@ -23,8 +23,7 @@ object GameProjectionCodec:
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
     try decodeValue(ujson.read(json), "$")
-    catch { case NonFatal(error) => Left(MalformedJson("$",
-      Option(error.getMessage).getOrElse("malformed JSON"))) }
+    catch { case NonFatal(error) => Left(MalformedJson.of(error)) }
 
   private[projection] def encodeValue(value: GameProjection): ujson.Value =
     val result = ujson.Obj(

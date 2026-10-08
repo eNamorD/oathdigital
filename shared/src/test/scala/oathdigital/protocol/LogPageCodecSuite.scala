@@ -1,7 +1,6 @@
 package oathdigital.protocol
 
 import oathdigital.protocol.projection._
-import oathdigital.testkit.Unwrap.{as, rejected}
 
 class LogPageCodecSuite extends munit.FunSuite:
   private val page = LogPageWire("game", 4L, 9L, Vector(
@@ -77,11 +76,11 @@ class LogPageCodecSuite extends munit.FunSuite:
     assertEquals(LogPageCodec.decode(json).left.map(_.path),
       Left("$.entries[0].section.extra"))
 
-  test("malformed JSON is a decode failure, not an exception"):
-    // The message is the JSON parser's own wording, so only the case and the
-    // path are pinned.
-    assertEquals(as[ProtocolDecodeFailure.MalformedJson](
-      rejected(LogPageCodec.decode("{"))).path, "$")
+  test("malformed JSON is a decode failure that names the parser's clue"):
+    // ujson wraps its parse error in a trace whose own message is only the
+    // JSON path; the clue is the wrapped error's.
+    assertEquals(LogPageCodec.decode("{"),
+      Left(ProtocolDecodeFailure.MalformedJson("$", "exhausted input")))
 
   test("a card list span round-trips its faces and backs"):
     val list = LogPageWire("g", 0, 9, Vector(LogEntryWire(7, 0, "action", 1,
