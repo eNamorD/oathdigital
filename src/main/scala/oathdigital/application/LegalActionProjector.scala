@@ -51,6 +51,12 @@ private[application] final class LegalActionProjector(
       TravelProcedure.startable(catalog, context.ready, context.active.player,
         powers))
 
+  /** Whether a Search could start now, asked of the procedure that owns it. */
+  private def searchStartable(context: ScopedProjectionContext): Boolean =
+    startableWithModifiers(context, ActionRef.Search)(powers =>
+      SearchProcedure.startable(catalog, context.ready, context.active.player,
+        powers))
+
   /** The resources the viewer could take right now -- asked of the procedure
     * that owns Take Wealth, exactly as Travel's destinations are (batch-1
     * Task 7). This projector assembles no gameplay procedure of its own: it
@@ -118,13 +124,7 @@ private[application] final class LegalActionProjector(
     val minor = Option.when(context.viewerIsActive &&
       context.current.turn.phase == Phase.Act &&
       context.current.walkerPending.isEmpty)(minorActionsProjection(context))
-    val ordinaryAct = context.viewerIsActive &&
-      context.current.turn.phase == Phase.Act &&
-      context.current.walkerPending.isEmpty
-    LegalProjection(
-      controls(context, minor, projectedPhasePowers),
-      if ordinaryAct then legalSearch(context) else Vector.empty,
-      minor)
+    LegalProjection(controls(context, minor, projectedPhasePowers), minor)
 
   private def controls(context: ScopedProjectionContext,
       minor: Option[MinorActionsProjection],
@@ -136,6 +136,7 @@ private[application] final class LegalActionProjector(
     else if !context.viewerIsActive then Vector.empty
     else current.turn.phase match
         case Phase.Act => Vector(
+          Option.when(searchStartable(context))("beginSearch"),
           Option.when(BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
           Option.when(active.pawnSite.exists(_ =>
@@ -185,19 +186,6 @@ private[application] final class LegalActionProjector(
     walkerDecisions.project(context).toVector.map:
       case decision if decision.kind == "roll" => "rollWalker"
       case _ => "resolveWalkerDecision"
-
-  /** Every Search source some modifier selection the viewer could make lets
-    * them search, with the Supply it costs without modifiers when it is
-    * legal without them, else under the first selection that allows it. */
-  private def legalSearch(context: ScopedProjectionContext) =
-    ModifierOffers.selections(walkerPowerCatalog, context.ready,
-      context.active.player, ActionRef.Search).flatMap(powers =>
-      SearchProcedure.legalSources(catalog, context.ready,
-        context.active.player, powers)).distinctBy(_._1).map:
-      case (SearchSource.WorldDeck, cost) =>
-        LegalSearchSourceProjection("world", None, cost)
-      case (SearchSource.RegionalDiscard(region), cost) =>
-        LegalSearchSourceProjection("regional-discard", Some(region.key), cost)
 
   private def minorActionsProjection(context: ScopedProjectionContext) =
     val active = context.active

@@ -7,7 +7,7 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.campaign.CampaignProcedure
 import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.actions.search.SearchProcedure
+import oathdigital.gameplay.actions.search.{SearchOptions, SearchProcedure}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.travel.{TravelOptions, TravelProcedure}
 import oathdigital.gameplay.phases.wake.{EndWakeProcedure, ForcedWakeProcedure,
@@ -166,14 +166,16 @@ object WalkerProcedureRegistry:
 
     /** Search parks on its source first (search source design). Nothing
       * runs before that decision, so the start is previewed through the
-      * playable-option gate. */
+      * playable-option gate. Its options are priced: each source shows what
+      * it costs, or why it cannot be searched. */
     ActionRef.Search -> Entry(
       fallbackKind = Some(ActionKind.Search),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.SearchModifierSelection),
       build = SearchProcedure.build,
       rebuild = SearchProcedure.rebuild,
-      requiresPlayableOption = true),
+      requiresPlayableOption = true,
+      optionPricing = Some(SearchOptions.priced)),
 
     ActionRef.Recover -> Entry(
       fallbackKind = Some(ActionKind.Recover),

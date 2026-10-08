@@ -5,7 +5,6 @@ import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, SearchRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
-import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 
 /** Search on the walker (search source design).
@@ -40,19 +39,13 @@ object SearchProcedure:
   val discardKey: String = "discard"
   private val heading = "Choose a Search source"
 
-  /** Every source the preview accepts, with the Supply it spends. Retires
-    * with the Search control (Task 4). */
-  def legalSources(catalog: ExecutableCatalog, ready: ReadyGame,
-      actor: PlayerId, powers: WalkerPowers): Vector[(SearchSource, Int)] =
-    build(catalog, ready, actor, Vector.empty)
-      .flatMap(WalkerSimulation.preview(_, ready, powers))
-      .getOrElse(Vector.empty).flatMap {
-        case PreviewedOption(option, Right(outcome)) =>
-          SearchSource.fromRef(option.ref).map(_ -> outcome.operations.collect {
-            case SpendSupply(player, amount, _) if player == actor => amount
-          }.sum)
-        case _ => None
-      }
+  /** Whether a Search could start now: some source survives the same
+    * preview a start runs. */
+  def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
+      powers: WalkerPowers): Boolean =
+    build(catalog, state, actor, Vector.empty)
+      .flatMap(WalkerSimulation.preview(_, state, powers))
+      .exists(_.exists(_.outcome.isRight))
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for

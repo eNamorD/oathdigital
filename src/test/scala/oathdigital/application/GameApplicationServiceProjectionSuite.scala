@@ -50,8 +50,10 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       active)
     assertEquals(act.phase, "act-action-selection")
     assert(act.actionSelectionOpen)
-    // Broken Peaks also holds a relic: Recover and a peek are offered.
-    assertEquals(act.legalControls, Vector("beginRest", "beginRecover",
+    // Broken Peaks also holds a relic: Recover and a peek are offered, and
+    // the world deck is a Search the player can afford.
+    assertEquals(act.legalControls, Vector("beginSearch", "beginRest",
+      "beginRecover",
       "beginTravel", "beginCampaign", "facedownAdviserMinorAction",
       "peekSiteRelics"))
     assertEquals(projector.projectPublic("game-projection-wake",

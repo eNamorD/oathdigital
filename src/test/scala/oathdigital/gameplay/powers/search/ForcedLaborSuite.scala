@@ -57,12 +57,11 @@ class ForcedLaborSuite extends munit.FunSuite:
   test("a searcher who cannot pay is not offered the Search"):
     val automatic = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       Vector.empty)
-    val sources = (ready: ReadyGame) =>
-      SearchProcedure.legalSources(catalog, ready, p1, automatic).map(_._1)
-    // The Cradle discard is empty, so the world deck is the only source.
-    assertEquals(sources(rivalRulesBoth.ready), Vector(SearchSource.WorldDeck))
+    val startable = (ready: ReadyGame) =>
+      SearchProcedure.startable(catalog, ready, p1, automatic)
+    assert(startable(rivalRulesBoth.ready))
     val broke = rivalRulesBoth.favor(p1, 0).ready
-    assertEquals(sources(broke), Vector.empty)
+    assert(!startable(broke))
     assert(SearchFixture.start(broke).isLeft)
 
   test("when bandits rule, the favor is burnt"):

@@ -10,7 +10,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
 
-/** A start control, and each Search source, counts the modifiers its player
+/** A start control counts the modifiers its player
   * could select: an action that only a modifier makes affordable is still
   * offered, and a modifier the player cannot pay for unlocks nothing. */
 class ModifierStartControlsSuite extends munit.FunSuite:
@@ -107,18 +107,15 @@ class ModifierStartControlsSuite extends munit.FunSuite:
     (if news then table.adviser(p1, CatalogNames.denizen("News from Afar"))
       else table).ready
 
-  private def searchSources(ready: ReadyGame): Vector[String] =
-    legal.project(ScopedProjectionContext(ready, Some(p1))).search.map(_.kind)
-
-  test("the world deck is a Search source at 0 Supply when News from Afar " +
-      "waives it, and the start with it is accepted"):
+  test("Search is offered when News from Afar would make it free, and the " +
+      "start with it is accepted"):
     val ready = brokeSearcher(news = true, favor = 2)
-    assert(searchSources(ready).contains("world"), searchSources(ready))
-    assert(rules.startWalker(OathState.Ready(ready), ActionRef.Search, p1,
-      Vector(NewsFromAfar.id)).isRight)
+    assert(controls(ready, p1).contains("beginSearch"))
+    assert(starts(ready, p1, ActionRef.Search, Vector(NewsFromAfar.id)))
+    assert(!starts(ready, p1, ActionRef.Search, Vector.empty))
 
-  test("News from Afar with too little favor to pay opens no Search source"):
-    assertEquals(searchSources(brokeSearcher(news = true, favor = 1)),
-      Vector.empty)
-    assertEquals(searchSources(brokeSearcher(news = false, favor = 2)),
-      Vector.empty)
+  test("News from Afar with too little favor to pay offers no Search"):
+    assert(!controls(brokeSearcher(news = true, favor = 1), p1)
+      .contains("beginSearch"))
+    assert(!controls(brokeSearcher(news = false, favor = 2), p1)
+      .contains("beginSearch"))
