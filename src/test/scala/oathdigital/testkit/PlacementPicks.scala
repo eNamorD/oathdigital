@@ -89,3 +89,8 @@ object PlacementPicks:
   /** The site slot options among `options`, in order. */
   def siteSlotOptions(options: Vector[DecisionOption]): Vector[DecisionOption] =
     options.filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])
+
+  /** The option that names `card`, a denizen or a Vision. */
+  def optionNaming(card: WorldCardId): DecisionOptionRef = card match
+    case id: DenizenId => DecisionOptionRef.Denizen(id)
+    case id: VisionId => DecisionOptionRef.Vision(id)

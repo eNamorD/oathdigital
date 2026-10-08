@@ -94,9 +94,10 @@ class SearchProcedureSuite extends munit.FunSuite:
     val drawn = Outcomes.ready(started.state).game.current.temporaryHands(actor)
     assertEquals(drawn, topCards)
     val kept = drawn.head
-    val placements = Vector(DecisionPlacement(ref(kept),
-      SearchProcedure.keepKey)) ++ drawn.tail.map(card =>
-      DecisionPlacement(ref(card), SearchProcedure.discardKey))
+    val placements = Vector(DecisionPlacement(
+      PlacementPicks.optionNaming(kept), SearchProcedure.keepKey)) ++
+      drawn.tail.map(card => DecisionPlacement(
+        PlacementPicks.optionNaming(card), SearchProcedure.discardKey))
     val afterSelection = accepted(
       rules.resolveWalker(started.state, actor, SearchProcedure.cardDecisionId,
         DecisionAnswer.PartitionAnswer(placements)))
@@ -225,6 +226,3 @@ class SearchProcedureSuite extends munit.FunSuite:
     assertEquals(scoped.offerableWalkerPowers(initial, actor, ActionRef.Search)
       .map(_.map(_.id)), Right(Vector(atSearch.id)))
 
-  private def ref(card: WorldCardId): DecisionOptionRef = card match
-    case id: DenizenId => DecisionOptionRef.Denizen(id)
-    case id: VisionId => DecisionOptionRef.Vision(id)

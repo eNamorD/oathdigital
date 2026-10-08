@@ -2,6 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.model._
+import oathdigital.testkit.PlacementPicks
 
 /** The facedown-adviser play driven up to its placement, for the suites that
   * test the placement rather than the pick. */
@@ -16,7 +17,5 @@ object FacedownAdviserPlay:
       modifiers)
     picked <- rules.resolveWalker(started.state, actor,
       CardPlayProcedure.facedownAdviserDecisionId,
-      DecisionAnswer.ChooseOneAnswer(card match
-        case id: DenizenId => DecisionOptionRef.Denizen(id)
-        case id: VisionId => DecisionOptionRef.Vision(id)))
+      DecisionAnswer.ChooseOneAnswer(PlacementPicks.optionNaming(card)))
   yield picked.copy(events = started.events ++ picked.events)
