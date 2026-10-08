@@ -6,6 +6,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Outcomes,
   PowerRules}
+import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -19,8 +20,10 @@ class LeagueTreatySuite extends munit.FunSuite:
   private def banks(state: OathState) = Outcomes.ready(state).banks.favor
   /** The worked example: 2 favor each on an Arcane (Disciples), a Discord
     * (Bandit Chief) and a Hearth (Homesteaders) card in the Cradle. */
-  private val example = Vector(("Disciples", "Ancient City", 2),
-    ("Bandit Chief", "Broken Peaks", 2), ("Homesteaders", "Ancient City", 2))
+  private def withExample(table: Table): Table =
+    table.withFavoredCard("Disciples", at = "Ancient City", favor = 2)
+      .withFavoredCard("Bandit Chief", at = "Broken Peaks", favor = 2)
+      .withFavoredCard("Homesteaders", at = "Ancient City", favor = 2)
   /** The worked example's favor, by suit. */
   private val exampleFavorBySuit = Vector(Suit.Arcane -> 2, Suit.Discord -> 2,
     Suit.Hearth -> 2)
@@ -45,7 +48,7 @@ class LeagueTreatySuite extends munit.FunSuite:
 
   test("a bandit-ruled treaty site, or a region without card favor, asks " +
       "nothing"):
-    Vector(leagueTreatyAct(None, example*).ready,
+    Vector(withExample(leagueTreatyAct(None)).ready,
       leagueTreatyAct(Some(p2)).ready)
       .foreach { ready =>
       val rested = accepted(
@@ -56,7 +59,7 @@ class LeagueTreatySuite extends munit.FunSuite:
   test("the off-turn ruler alone answers the destination, and declining " +
       "leaves cleanup to printed banks"):
     val owner = p2 // off p1's turn
-    val ready = leagueTreatyAct(Some(owner), example*).ready
+    val ready = withExample(leagueTreatyAct(Some(owner))).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
       p1, treatySite, treatyCard)
     val parked = accepted(
@@ -78,8 +81,9 @@ class LeagueTreatySuite extends munit.FunSuite:
       "no distribution"):
     val owner = p2 // off p1's turn
     // Two Nomad cards: Rain Boots with 2 favor, Convoys with 1.
-    val ready = leagueTreatyAct(Some(owner), ("Rain Boots", "Ancient City", 2),
-      ("Convoys", "Broken Peaks", 1)).ready
+    val ready = leagueTreatyAct(Some(owner))
+      .withFavoredCard("Rain Boots", at = "Ancient City", favor = 2)
+      .withFavoredCard("Convoys", at = "Broken Peaks", favor = 1).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
       p1, treatySite, treatyCard)
     val parked = accepted(
@@ -93,7 +97,7 @@ class LeagueTreatySuite extends munit.FunSuite:
   test("the worked example moves 2 Arcane and 1 Discord favor to Nomad, " +
       "and a replayed park resumes to the same decision"):
     val owner = p2 // off p1's turn
-    val ready = leagueTreatyAct(Some(owner), example*).ready
+    val ready = withExample(leagueTreatyAct(Some(owner))).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
       p1, treatySite, treatyCard)
     val distribution = LeagueTreatyContribution.distributionDecisionId(ready,
@@ -125,7 +129,8 @@ class LeagueTreatySuite extends munit.FunSuite:
       val owner = p2 // off p1's turn
       val edifice = CatalogNames.edifice("Hall of Debate")
       val edificeSuit = Suit.Discord // Hall of Debate's printed suit
-      val ready = leagueTreatyAct(Some(owner), ("Disciples", "Ancient City", 1))
+      val ready = leagueTreatyAct(Some(owner))
+        .withFavoredCard("Disciples", at = "Ancient City", favor = 1)
         .edifice(edifice, side, at = treatySite).tokens(edifice, favor = 2)
         .ready
       // A suit that is neither Arcane nor Discord.
@@ -154,7 +159,7 @@ class LeagueTreatySuite extends munit.FunSuite:
 
   test("the treaty's line says how much favor the ruler sent to one bank"):
     val owner = p2 // off p1's turn
-    val ready = leagueTreatyAct(Some(owner), example*).ready
+    val ready = withExample(leagueTreatyAct(Some(owner))).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
       p1, treatySite, treatyCard)
     val distribution = LeagueTreatyContribution.distributionDecisionId(ready,
@@ -173,7 +178,7 @@ class LeagueTreatySuite extends munit.FunSuite:
 
   test("a ruler who declines sends nothing, and writes nothing"):
     val owner = p2 // off p1's turn
-    val ready = leagueTreatyAct(Some(owner), example*).ready
+    val ready = withExample(leagueTreatyAct(Some(owner))).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
       p1, treatySite, treatyCard)
     val parked = accepted(

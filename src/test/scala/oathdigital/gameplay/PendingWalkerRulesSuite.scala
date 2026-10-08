@@ -5,6 +5,8 @@ import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution,
   LeagueTreatyFixture, SilverTongue, SilverTongueFixture}
+import oathdigital.gameplay.powers.rest.LeagueTreatyFixture.{
+  leagueTreatyAct, withFavoredCard}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
@@ -27,9 +29,9 @@ class PendingWalkerRulesSuite extends munit.FunSuite:
     // p2 rules League Treaty's site, off p1's turn; an Arcane and a Discord
     // card in the Cradle hold 2 favor each.
     val ruler = Table.p2
-    val ready = LeagueTreatyFixture.leagueTreatyAct(Some(ruler),
-      ("Disciples", "Ancient City", 2), ("Bandit Chief", "Broken Peaks", 2))
-      .ready
+    val ready = leagueTreatyAct(Some(ruler))
+      .withFavoredCard("Disciples", at = "Ancient City", favor = 2)
+      .withFavoredCard("Bandit Chief", at = "Broken Peaks", favor = 2).ready
     val site = LeagueTreatyFixture.treatySite
     val actor = ready.game.current.turn.activePlayer
     val parked = accepted(
