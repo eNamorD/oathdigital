@@ -19,10 +19,7 @@ class ClayRattleSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Relic(rattle)
   private val cradle = SearchSource.RegionalDiscard(Region.Cradle)
 
-  /** Stub of WalkerDice: shuffle reverses every pile, roll fails. */
-  private val reversing: WalkerDice =
-    WalkerDiceFixture.shufflingBy(count => (0 until count).reverse.toVector)
-  private val shuffling = rules(reversing)
+  private val shuffling = rules(WalkerDiceFixture.reversingShuffle)
 
   /** p1's Act holding Clay Rattle and `faceUp` faceup secrets. The Cradle
     * discard pile holds three named cards, Second Chance on top; the

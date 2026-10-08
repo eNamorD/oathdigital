@@ -94,3 +94,10 @@ object PlacementPicks:
   def optionNaming(card: WorldCardId): DecisionOptionRef = card match
     case id: DenizenId => DecisionOptionRef.Denizen(id)
     case id: VisionId => DecisionOptionRef.Vision(id)
+
+  /** The card each site slot of the choose-one `state` is parked on would
+    * replace, in the order offered; `None` is the empty slot, which
+    * replaces nothing. */
+  def parkedSiteSlotReplacements(state: OathState, powers: WalkerPowers)(
+      using munit.Location): Vector[Option[CardId]] =
+    siteSlotOptions(parkedOptions(state, powers)).map(replaces)

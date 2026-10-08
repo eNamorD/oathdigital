@@ -107,3 +107,7 @@ object WalkerDiceFixture:
       Left(OathViolation.InvalidEventOrder("this dice source never rolls"))
     override def shuffle(count: Int): Either[OathViolation, Vector[Int]] =
       Right(order(count))
+
+  /** Stub of WalkerDice: shuffle reverses every pile, and every roll fails. */
+  val reversingShuffle: WalkerDice =
+    shufflingBy(count => (0 until count).reverse.toVector)

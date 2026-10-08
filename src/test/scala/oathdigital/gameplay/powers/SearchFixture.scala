@@ -63,10 +63,6 @@ object SearchFixture:
     SearchPlay.searched(rules, Ready(ready), actor, SearchSource.WorldDeck,
       modifiers)
 
-  private def refOf(card: WorldCardId): DecisionOptionRef = card match
-    case id: DenizenId => DecisionOptionRef.Denizen(id)
-    case id: VisionId => DecisionOptionRef.Vision(id)
-
   /** Keeps `kept` from the drawn hand and discards the others. With only one
     * card drawn there is no question, and the transition comes back with no
     * events of its own. */
@@ -75,9 +71,11 @@ object SearchFixture:
     val drawn = after(from).game.current.temporaryHands(actor)
     if drawn.size == 1 then Right(from.copy(events = Vector.empty))
     else rules.resolveWalker(from.state, actor, SearchProcedure.cardDecisionId,
-      DecisionAnswer.PartitionAnswer(DecisionPlacement(refOf(kept),
-        SearchProcedure.keepKey) +: drawn.filterNot(_ == kept).map(card =>
-        DecisionPlacement(refOf(card), SearchProcedure.discardKey))))
+      DecisionAnswer.PartitionAnswer(
+        DecisionPlacement(PlacementPicks.optionNaming(kept),
+          SearchProcedure.keepKey) +:
+        drawn.filterNot(_ == kept).map(card => DecisionPlacement(
+          PlacementPicks.optionNaming(card), SearchProcedure.discardKey))))
 
   /** Places the card the way `way` names: the parked placement's first
     * option that plays it so, preferring one that may be chosen. A placement
