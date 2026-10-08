@@ -38,13 +38,6 @@ object BannerRules:
     }
     val minimum = totals.map(_._2).min
     totals.collect { case (id, n) if n == minimum => id }
-  def automaticSitePrefix(current: CurrentGameState, existing: Vector[SiteId],
-      remaining: Int): Vector[SiteId] =
-    def loop(placed: Vector[SiteId], left: Int, out: Vector[SiteId]): Vector[SiteId] =
-      if left == 0 then out else leastSites(current, placed) match
-        case Vector(one) => loop(placed :+ one, left - 1, out :+ one)
-        case _ => out
-    loop(existing, remaining, Vector.empty)
   def raidFavorReturn(banks: Map[Suit, Int], amount: Int): Vector[Suit] =
     (0 until amount).foldLeft(Vector.empty[Suit]) { (order, _) =>
       val current = addFavor(banks, order)

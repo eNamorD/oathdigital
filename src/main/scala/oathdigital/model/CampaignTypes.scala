@@ -25,12 +25,6 @@ object CampaignRaidTarget:
   def canonical(targets: Iterable[CampaignRaidTarget]): Vector[CampaignRaidTarget] =
     targets.toVector.sortBy(_.canonicalOrder)
 
-  def isCanonical(targets: Vector[CampaignRaidTarget]): Boolean =
-    targets.nonEmpty && targets.head.isInstanceOf[Pawn] &&
-      targets.map(_.playerId).distinct.size == 1 &&
-      targets.map(_.stableKey).distinct.size == targets.size &&
-      canonical(targets) == targets
-
 sealed trait CampaignDefender extends Product with Serializable
 object CampaignDefender:
   case object Bandits extends CampaignDefender

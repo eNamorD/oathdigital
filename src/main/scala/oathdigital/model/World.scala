@@ -84,8 +84,14 @@ final case class MapState(
     else if hinterland.contains(site) then Some(Region.Hinterland)
     else None
 
+  // The map orders the rules name (CR pp. 9, 45). Nothing calls them yet:
+  // the Chronicle's Stars step archives sites Hinterward and consolidates
+  // winner-ruled sites Cradleward (ROADMAP "End-of-game Chronicle steps").
+  // Test them with that step and remove this exemption then.
+  // $COVERAGE-OFF$
   def hinterward: Vector[SiteId] = inPlay
   def cradleward: Vector[SiteId] = inPlay.reverse
+  // $COVERAGE-ON$
 
 sealed trait AtlasEntry extends Product with Serializable
 object AtlasEntry:
