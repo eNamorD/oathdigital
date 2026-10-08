@@ -16,6 +16,14 @@ command's powers by window once per `WalkerPowers` instance, so
 
 **Spec:** [docs/superpowers/specs/2026-10-07-test-speed-design.md](../specs/2026-10-07-test-speed-design.md)
 
+**Execution rulings:**
+- Ruling (Task 1): the script streams `jfr print` as text, not JSON, and
+  reports the `WATCHED` frames and the load average. The JSON form of a
+  256-frame recording ran to 15 GB. The code block in Task 1 Step 1 is the first draft;
+  `scripts/profile-tests.py` is the authority.
+- Ruling: commit trailers use `Claude Sonnet 5.5`, the model that executes
+  the plan, not the Opus trailer in the commit commands below.
+
 ## Global Constraints
 
 - No game result changes. The gate stays green, and no existing test changes
@@ -806,15 +814,27 @@ start / reading its park.
 | Stage | Gate wall | Gate CPU | Summed root suites | Campaign profile wall | `CardIndex` | `gather` | `ClassValue` self | SearchBudget |
 |---|---|---|---|---|---|---|---|---|
 | Spec baseline (37c8563d, by hand) | 46 s | 280 s | 216 s | – | 26% | 33% | 4% | 26 ms / 0 ms |
-| Baseline | | | | | | | | |
+| Baseline (load 11.8, busy machine) | 58 s | 340 s | 308 s | 61 s | 30% | 34% | 2% | 33 ms / 0 ms |
 | After Task 2 | | | | | | | | |
 | After Task 3 | | | | | | | | |
 
 ### Baseline
 
-Ten slowest suites:
+The machine was busy (load average 11.8), so the gate times are inflated
+against the spec baseline (46 s, 263 s, 216 s on 3050 tests; this run has
+3088). The frame shares and SearchBudget are the comparable numbers.
 
-Top ten inclusive frames:
+Ten slowest suites (gate, under load): MercenariesSuite 12.9 s, ShieldWallSuite 10.1 s,
+WrestlersSuite 9.8 s, DisgracedCaptainSuite 9.6 s, StickyFireSuite 7.9 s,
+FieldPromotionSuite 7.6 s, GreatCrusadeSuite 7.4 s, TrustedSeatRoutesSuite 7.2 s,
+CrackingGroundSuite 7.0 s, MilitaryParadeSuite 6.3 s.
+
+Campaign profile (1913 samples that ran project code), share of samples with the
+frame on the stack: `CardIndex$` 30.3%, `OperationStateInvariant` 30.9%,
+`DomainValidation$.validate` 13.4%, `ContributionCollector$.gather` 34.2%,
+`WalkerPowerGather$.breaches` 47.2%, `ClassValue` 2.1%. Top self frames:
+`BoxesRunTime.equals2` 6.0%, `HashMapBuilder.update` 5.6%,
+`Vector.filterImpl` 3.5%.
 
 ### After Task 2
 
