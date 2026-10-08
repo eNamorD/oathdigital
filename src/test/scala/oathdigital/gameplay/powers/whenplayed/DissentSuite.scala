@@ -32,10 +32,22 @@ class DissentSuite extends munit.FunSuite:
     val end = Look(done.treeless)
     assertEquals(Vector(p1, p2, p3).map(end.favor), Vector(1, 0, 2))
     assertEquals(end.tokensOn(dissent), Tokens(3, 0))
-    // The Rest cleanup returns it all to the Discord bank.
+    assertEquals(said(power, done.events),
+      Vector(placed(p1, 2), placed(p2, 1)))
+
+  test("the favor placed on Dissent returns to the Discord bank at Rest"):
+    // p1 rules Dissent (Discord) and holds 2 favor: it places 1.
+    val ready = Table.start.adviser(p1, dissent).favor(p1, 2).ready
+    val done = Outcomes.finished(play(ready, power, dissent))
+    assertEquals(Look(done.treeless).tokensOn(dissent), Tokens(1, 0))
     assertEquals(RestCleanupPlan.derive(catalog, done.treeless, p1)
-      .map(_.returnedFavor), Right(Map(Suit.Discord -> 3)))
-    assertEquals(said(power, done.events), Vector(placed(p1, 2), placed(p2, 1)))
+      .map(_.returnedFavor), Right(Map(Suit.Discord -> 1)))
+
+  test("the recorded operations rebuild the end state"):
+    // p1 rules Dissent and holds 2 favor; p2 rules Land Warden and holds 1.
+    val ready = Table.start.adviser(p1, dissent).favor(p1, 2)
+      .adviser(p2, "Land Warden").favor(p2, 1).ready
+    val done = Outcomes.finished(play(ready, power, dissent))
     assertJournalRebuilds(ready, done.events, done.treeless)
 
   test("with nobody able to place, the line says so"):
