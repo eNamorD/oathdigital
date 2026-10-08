@@ -10,21 +10,23 @@ import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
+import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
-import ParkedServiceFixture.{firstPlayer, optionRef}
+import ParkedServiceFixture.firstPlayer
 
 /** The application service's projections: who sees which decision, site,
   * hand and preview.
   */
 class GameApplicationServiceProjectionSuite extends munit.FunSuite:
   test("Wake projection is actor-private and Act boundary is informational"):
-    // p2 wakes at Broken Peaks, where no other pawn stands. Its secrets are a
+    // p2 wakes at Broken Peaks, where no other pawn stands: p1 is at Ancient
+    // City and p3 at Buried Giant. Its secrets are a
     // Wake option, so Wake waits for the player. Its relic, a bandit and
     // p2's facedown adviser (any facedown adviser will do) are what Act then
     // offers: Recover, a Campaign, a peek and the minor action.
     val table = Table.start.turn(p2, Phase.Wake)
+      .pawn(p1, "Ancient City").pawn(p3, "Buried Giant")
       .pawn(p2, "Broken Peaks").favor(p2, 1).secrets(p2, faceUp = 1)
       .supply(p2, 7)
       .siteTokens("Broken Peaks", favor = 0, secrets = 2)
@@ -256,9 +258,10 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     val secondChance = CatalogNames.denizen("Second Chance")
     assertEquals(drawn, Vector[WorldCardId](kept, merchant, secondChance))
     // Keep Threatening Roar and discard the other two.
-    val assignments = Vector(DecisionPlacement(optionRef(kept), "keep"),
-      DecisionPlacement(optionRef(merchant), "discard"),
-      DecisionPlacement(optionRef(secondChance), "discard"))
+    val assignments = Vector(
+      DecisionPlacement(PlacementPicks.optionNaming(kept), "keep"),
+      DecisionPlacement(PlacementPicks.optionNaming(merchant), "discard"),
+      DecisionPlacement(PlacementPicks.optionNaming(secondChance), "discard"))
     val chosen = accepted(service.handle(gameId, started.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
         DecisionAnswer.PartitionAnswer(assignments)))))

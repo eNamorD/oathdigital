@@ -4,12 +4,12 @@ import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import oathdigital.serialization.GameEventWire
-import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table,
+  WarExhaustionChoices}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.testkit.Table.p2
+import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, as, rejected}
 import ParkedServiceFixture.{firstPlayer, loaded, pickFacedownAdviser,
   playFacedownAdviser, replayingSecond, setupViaService}
@@ -18,11 +18,6 @@ import ParkedServiceFixture.{firstPlayer, loaded, pickFacedownAdviser,
   * and what it refuses to append or replay.
   */
 class GameApplicationServiceStreamSuite extends munit.FunSuite:
-  /** Stub of WarExhaustionRandomPort: chooses the first candidate. */
-  private val choosesFirstCandidate: WarExhaustionRandomPort =
-    new WarExhaustionRandomPort:
-      def choose(candidates: Vector[PlayerId]): PlayerId = candidates.head
-
   test("all-Exile powered game persists and replays through round-eight victory"):
     // Stays on the replayed setup: the full game from Setup to round eight is
     // the end-to-end smoke test.
@@ -41,7 +36,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     val poweredOrders = ChronicleFirstGamePlan.dealOrder(poweredChronicle,
       FirstGameBootstrapConfig(orders.participants, orders.firstPlayer))
     var service = new GameApplicationService(catalog, repository,
-      warExhaustionRandomPort = choosesFirstCandidate)
+      warExhaustionRandomPort = WarExhaustionChoices.firstCandidate)
     var position = setupViaService(service, "powered-playability", sites,
       poweredChronicle, poweredOrders)
     var played = Set.empty[PlayerId]
@@ -75,7 +70,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       position = accepted(service.handle("powered-playability",
         position.nextSequence, GameCommand.BeginRest(actor)))
       service = new GameApplicationService(catalog, repository,
-        warExhaustionRandomPort = choosesFirstCandidate)
+        warExhaustionRandomPort = WarExhaustionChoices.firstCandidate)
       val reopened = loaded(service.load("powered-playability"))
       assertEquals(reopened.state, position.state)
       assertEquals(reopened.nextSequence, position.nextSequence)
@@ -132,9 +127,11 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         GameEventWire.FormatVersion))
 
   test("gameplay appends at the absolute position and reloads equally"):
-    // p2 wakes at Broken Peaks, whose 2 secrets are its only Wake option.
+    // p2 wakes at Broken Peaks, whose 2 secrets are its only Wake option. No
+    // enemy pawn stands there: p1 is at Ancient City, p3 at Buried Giant.
     val (service, repository) = Table.start.turn(p2, Phase.Wake)
-      .pawn(p2, "Broken Peaks").siteTokens("Broken Peaks", secrets = 2)
+      .pawn(p1, "Ancient City").pawn(p2, "Broken Peaks")
+      .pawn(p3, "Buried Giant").siteTokens("Broken Peaks", secrets = 2)
       // Bandits at every empty site keep the refill out of the command's events.
       .banditsRefilled.service()
     val active = p2

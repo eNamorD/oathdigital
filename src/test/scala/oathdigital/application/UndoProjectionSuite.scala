@@ -2,19 +2,22 @@ package oathdigital.application
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.protocol.projection.StepOfferProjection
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
 /** Who is offered the Undo and the Redo, and what they say (undo design,
   * "Controls" and "Projection"). */
 class UndoProjectionSuite extends munit.FunSuite:
-  private val table = Table.start.pawn(p3, "Buried Giant").banditsRefilled
+  /** p1 stands at Ancient City and p3 at Buried Giant, where p1 will travel. */
+  private val table = Table.start.pawn(p1, "Ancient City")
+    .pawn(p3, "Buried Giant").banditsRefilled
   private val projector = new GameProjector(catalog)
 
   /** p1 Travels to where p3 stands; the pick is the batch to offer. */
   private def travelledToP3(service: GameApplicationService): GameAccepted =
-    ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3).picked
+    ParkedServiceFixture.travelTo(service, "g", 0L, p1,
+      CatalogNames.site("Buried Giant")).picked
 
   test("only the issuer is offered the Undo, named by the batch's first line"):
     val (service, _) = table.service()

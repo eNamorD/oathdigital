@@ -12,7 +12,7 @@ import oathdigital.model.OathViolation.WrongPlayer
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
-import ParkedServiceFixture.{loaded, optionRef, parkedAssertions,
+import ParkedServiceFixture.{loaded, parkedAssertions,
   pickFacedownAdviser, playFacedownAdviser, replayingSecond}
 
 /** The application service persists and reloads the walker actions and
@@ -138,7 +138,7 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
   test("Travel parks on its destination, completes on the pick and reloads pawn Supply and Act"):
     // Bandits at every empty site, so the Travel's own events are the only
     // ones journaled: no refill follows it.
-    val table = Table.start.banditsRefilled
+    val table = Table.start.pawn(p1, "Ancient City").banditsRefilled
     val (service, repository) = table.service()
     val active = p1
     val inAct = Outcomes.ready(table.state)
@@ -293,9 +293,10 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     val secondChance = CatalogNames.denizen("Second Chance")
     assertEquals(drawn, Vector[WorldCardId](roar, merchant, secondChance))
     // Keep Threatening Roar and discard the other two.
-    val assignments = Vector(DecisionPlacement(optionRef(roar), "keep"),
-      DecisionPlacement(optionRef(merchant), "discard"),
-      DecisionPlacement(optionRef(secondChance), "discard"))
+    val assignments = Vector(
+      DecisionPlacement(PlacementPicks.optionNaming(roar), "keep"),
+      DecisionPlacement(PlacementPicks.optionNaming(merchant), "discard"),
+      DecisionPlacement(PlacementPicks.optionNaming(secondChance), "discard"))
     val chosen = accepted(service.handle(gameId, reloaded.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
         DecisionAnswer.PartitionAnswer(assignments)))))
