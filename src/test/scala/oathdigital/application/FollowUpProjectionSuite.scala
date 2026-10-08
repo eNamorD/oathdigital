@@ -84,3 +84,20 @@ class FollowUpProjectionSuite extends munit.FunSuite:
     val over = table(owed(ActionRef.Campaign))
       .update(_.updateCurrent(_.copy(result = Some(GameResult(p2)))))
     assertEquals(project(over, p1).followUp, None)
+
+  test("every queued action is asked whether it can start"):
+    Vector(ActionRef.Search, ActionRef.Muster, ActionRef.Challenge,
+      ActionRef.Recover, ActionRef.Trade).foreach { action =>
+      val shown = project(table(owed(action)), p1).followUp
+      assertEquals(shown.map(_.action), Some(action.key), action)
+    }
+
+  test("a site or a banner names the source too"):
+    val site = CatalogNames.site("Ancient City")
+    val bySite = FollowUp(p1, ActionRef.Campaign, PowerSourceRef.Site(site))
+    assertEquals(project(table(bySite), p1).followUp.map(_.source),
+      Some("Ancient City"))
+    val byBanner = FollowUp(p1, ActionRef.Campaign,
+      PowerSourceRef.Banner(Banner.PeoplesFavor))
+    assertEquals(project(table(byBanner), p1).followUp.map(_.source),
+      Some("People's Favor"))

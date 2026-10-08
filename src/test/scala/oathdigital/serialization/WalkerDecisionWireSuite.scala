@@ -144,6 +144,18 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
     assert(encoded.contains("\"walker.follow-up-started\""), encoded)
     assert(encoded.contains("\"walker.follow-up-skipped\""), encoded)
 
+  test("a follow-up naming something other than an action is refused"):
+    val entry = FollowUp(PlayerId("p1"), ActionRef.Travel,
+      PowerSourceRef.Card(CatalogNames.denizen("Second Wind")))
+    val encoded = encodedStreamThatRoundTrips("follow-up-family",
+      Vector[OathEvent](FollowUpStarted(entry)))
+    val tampered = encoded.replace("\"family\": \"action\"",
+      "\"family\": \"phase-transition\"").replace("\"key\": \"travel\"",
+      "\"key\": \"end-wake\"")
+    assertEquals(GameEventWire.decodeStream(tampered).left.toOption,
+      Some(WireError.InvalidValue("$[0].payload.followUp.action",
+        "a follow-up is an action, not end-wake")))
+
   test("every option reference kind round trips through a recorded answer"):
     val player = PlayerId("red")
     val refs = Vector[DecisionOptionRef](

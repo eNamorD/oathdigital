@@ -74,3 +74,13 @@ class FollowUpSupplyWaiverSuite extends munit.FunSuite:
       Vector(owed(ActionRef.Campaign)))
     // p2 stands at Broken Peaks, so a Raid is legal there.
     assert(rules.startWalker(travelled.state, ActionRef.Campaign, p1).isRight)
+
+  test("each action pays at its own cost window, and Recover at none"):
+    import oathdigital.gameplay.walker.FollowUpSupplyWaiver.costWindow
+    assertEquals(Vector(ActionRef.Campaign, ActionRef.Travel, ActionRef.Search,
+      ActionRef.Muster, ActionRef.Trade, ActionRef.Forge, ActionRef.Challenge,
+      ActionRef.Recover).map(costWindow), Vector(
+      Some(PowerWindow.CampaignCost), Some(PowerWindow.TravelCost),
+      Some(PowerWindow.SearchCost), Some(PowerWindow.MusterCost),
+      Some(PowerWindow.TradeCost), Some(PowerWindow.ForgeCost),
+      Some(PowerWindow.ChallengeCost), None))

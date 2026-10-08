@@ -104,3 +104,15 @@ class FollowUpRulesSuite extends munit.FunSuite:
     assertEquals(rules.startWalker(table().turn(p1, Phase.Rest).state,
       ActionRef.Campaign, p1),
       Left(OathViolation.WrongPhase(Phase.Act, Phase.Rest)))
+
+  test("Skip is refused once the game is over, during a run, and before a " +
+      "game"):
+    val over = table(owed(ActionRef.Campaign))
+      .update(_.updateCurrent(_.copy(result = Some(GameResult(p2))))).state
+    assertEquals(rules.skipFollowUp(over, p1), Left(OathViolation.GameEnded))
+    val running = table(owed(ActionRef.Campaign))
+      .parkedWalker(ActionRef.Muster).state
+    assertEquals(rules.skipFollowUp(running, p1), Left(
+      OathViolation.InvalidEventOrder("a walker procedure is pending")))
+    assertEquals(rules.skipFollowUp(OathState.NoGame, p1),
+      Left(OathViolation.GameNotStarted))

@@ -15,6 +15,12 @@ class CommandRejectionMessageSuite extends FunSuite:
       OathViolation.InvalidModifierInvocation(
         "no facedown adviser can legally be resolved")),
       "no facedown adviser can legally be resolved")
+    assertEquals(CommandRejectionMessage.text(OathViolation.FollowUpPending(
+      oathdigital.model.FollowUp(oathdigital.model.PlayerId("p1"),
+        oathdigital.model.ActionRef.Campaign,
+        oathdigital.model.PowerSourceRef.Card(
+          oathdigital.testkit.CatalogNames.denizen("Knights Errant"))))),
+      "Start or skip the queued campaign first")
 
   test("unmapped rejections fall back to a stable descriptive shape"):
     assertEquals(CommandRejectionMessage.text(OathViolation.GameNotStarted),

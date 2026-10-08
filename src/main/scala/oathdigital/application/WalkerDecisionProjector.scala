@@ -348,11 +348,10 @@ private[application] final class WalkerDecisionProjector(
       case DecisionOption.Unavailable(inner, reason) => optionProjection(ready,
         viewer, index, inner, details).map(_.copy(state = "unavailable",
           reason = Some(reasonText(ready, viewer, reason))))
+      // `OptionWarnings` never warns on an option that cannot be chosen.
       case DecisionOption.Warned(inner, reason) => optionProjection(ready,
-        viewer, index, inner, details).map(row =>
-          if row.state == "unavailable" then row
-          else row.copy(state = "warning",
-            reason = Some(reasonText(ready, viewer, reason))))
+        viewer, index, inner, details).map(_.copy(state = "warning",
+          reason = Some(reasonText(ready, viewer, reason))))
       // Named after the wrapped option is described, so the label says what
       // the play discards and where the card goes.
       case DecisionOption.Replacing(inner, card) =>
