@@ -12,10 +12,9 @@ import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** `CardSlots`: where a card may be played, as the options of its placement
-  * decision (card play slots design, "Slot builder"). p1 stands at Ancient
-  * City (Cradle, room for three, no Homeland) on the quiet table, with no
-  * adviser, unless a test says otherwise; a discard there goes to the
-  * Provinces.
+  * decision (card play slots design, "Slot builder"). `atAncientCity` stands
+  * p1 at Ancient City (Cradle, room for three, no Homeland), with no adviser,
+  * unless a test says otherwise; a discard there goes to the Provinces.
   */
 class CardSlotsSuite extends munit.FunSuite:
   import PlacementFixture.{secondTestPermission, testPermission}
@@ -75,13 +74,18 @@ class CardSlotsSuite extends munit.FunSuite:
       case DecisionOptionRef.AdviserPlay(_, _, up) => up == faceup
       case _ => false)
 
+  /** The quiet table with p1's pawn stood at Ancient City, where the site
+    * slots below are. */
+  private def atAncientCity: Table = Table.start.pawn(p1, home)
+
   /** Ancient City holds `cards`. */
   private def atHome(cards: DenizenId*): Table =
-    cards.foldLeft(Table.start)((table, held) => table.denizen(held, at = home))
+    cards.foldLeft(atAncientCity)((table, held) =>
+      table.denizen(held, at = home))
 
   /** p1 holds `held` as facedown advisers. */
   private def holding(held: DenizenId*): Table =
-    held.foldLeft(Table.start)(_.adviser(p1, _, facedown = true))
+    held.foldLeft(atAncientCity)(_.adviser(p1, _, facedown = true))
 
   /** p1 rules Deep Woods, stands there with `played` in hand, and Deep Woods
     * holds `cards`. */
@@ -229,16 +233,16 @@ class CardSlotsSuite extends munit.FunSuite:
   test("a Vision never goes to a site, and faceup it goes to the revealed " +
       "Vision spot, Replace when one is there"):
     val faith = VisionRules.Faith
-    assertEquals(options(slotsOf(Table.start.hand(p1, faith).ready, faith)),
+    assertEquals(options(slotsOf(atAncientCity.hand(p1, faith).ready, faith)),
       Vector(pile, spot, adviserPlay(0, faceup = false)))
-    val over = Table.start.hand(p1, faith)
+    val over = atAncientCity.hand(p1, faith)
       .revealedVision(p1, VisionRules.Conquest).ready
     assertEquals(options(slotsOf(over, faith)).filter(_.ref == spot.ref),
       Vector(replacing(spot, VisionRules.Conquest)))
 
   test("a faceup Conspiracy is Play, and takes no slot"):
     val conspiracy = VisionRules.Conspiracy
-    val ready = Table.start.hand(p1, conspiracy)
+    val ready = atAncientCity.hand(p1, conspiracy)
       .revealedVision(p1, VisionRules.Faith).ready
     val slots = slotsOf(ready, conspiracy)
     assertEquals(options(slots), Vector(pile, play,
@@ -249,15 +253,15 @@ class CardSlotsSuite extends munit.FunSuite:
 
   test("a site-only card goes to advisers facedown only; an adviser-only " +
       "card never to a site"):
-    assertEquals(options(slotsOf(Table.start.hand(p1, curfew).ready, curfew)),
+    assertEquals(options(slotsOf(atAncientCity.hand(p1, curfew).ready, curfew)),
       Vector(pile, siteSlot(0), adviserPlay(0, faceup = false)))
-    assertEquals(options(slotsOf(Table.start.hand(p1, sealingWard).ready,
+    assertEquals(options(slotsOf(atAncientCity.hand(p1, sealingWard).ready,
       sealingWard)), Vector(pile, adviserPlay(0, faceup = true),
       adviserPlay(0, faceup = false)))
 
   test("a facedown adviser is offered its own slot faceup, and no other " +
       "adviser slot"):
-    val ready = Table.start.adviser(p1, wrestlers, facedown = true)
+    val ready = atAncientCity.adviser(p1, wrestlers, facedown = true)
       .adviser(p1, rainBoots, facedown = true).ready
     assertEquals(options(slotsOf(ready, rainBoots,
       CardPlay.Origin.FacedownAdviser)),
@@ -265,7 +269,7 @@ class CardSlotsSuite extends munit.FunSuite:
 
   test("a facedown Vision goes to the revealed Vision spot, and a facedown " +
       "Conspiracy is Play"):
-    val ready = Table.start.adviser(p1, VisionRules.Faith, facedown = true)
+    val ready = atAncientCity.adviser(p1, VisionRules.Faith, facedown = true)
       .adviser(p1, VisionRules.Conspiracy, facedown = true)
       .revealedVision(p1, VisionRules.Conquest).ready
     assertEquals(options(slotsOf(ready, VisionRules.Faith,
@@ -277,11 +281,11 @@ class CardSlotsSuite extends munit.FunSuite:
   test("a facedown adviser turned faceup must fit its own limit"):
     val rules = CardPlayRules.default.limitPlayedCard(2)
     val three = Vector(rainBoots, binding, wrestlers)
-      .foldLeft(Table.start)(_.adviser(p1, _, facedown = true)).ready
+      .foldLeft(atAncientCity)(_.adviser(p1, _, facedown = true)).ready
     assertEquals(advisers(slotsOf(three, wrestlers,
       CardPlay.Origin.FacedownAdviser, rules), faceup = true), Vector.empty)
     val two = Vector(rainBoots, binding)
-      .foldLeft(Table.start)(_.adviser(p1, _, facedown = true)).ready
+      .foldLeft(atAncientCity)(_.adviser(p1, _, facedown = true)).ready
     assertEquals(advisers(slotsOf(two, binding,
       CardPlay.Origin.FacedownAdviser, rules), faceup = true),
       Vector(adviserPlay(1, faceup = true)))

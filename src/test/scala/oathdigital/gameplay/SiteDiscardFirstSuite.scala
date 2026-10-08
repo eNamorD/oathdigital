@@ -29,7 +29,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
 
   /** p1 stands at Ancient City, which holds `cards`, with Errand Boy in hand. */
   private def playing(cards: DenizenId*): Table =
-    cards.foldLeft(Table.start.hand(p1, card))((table, held) =>
+    cards.foldLeft(Table.start.pawn(p1, home).hand(p1, card))((table, held) =>
       table.denizen(held, at = home))
 
   private def slot(index: Int): DecisionOptionRef =

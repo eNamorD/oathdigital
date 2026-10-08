@@ -111,7 +111,7 @@ class PlacementPicksSuite extends munit.FunSuite:
     // Parks the real facedown-adviser play on its placement: the options a
     // parked state shows are the subject.
     val rules = new OathRules(catalog)
-    val table = Table.start.pawn(p1, "Ancient City")
+    val table = Table.start.turn(p1, Phase.Act).pawn(p1, "Ancient City")
       .adviser(p1, rainBoots, facedown = true)
     val parked = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,
       table.state, p1, rainBoots))
