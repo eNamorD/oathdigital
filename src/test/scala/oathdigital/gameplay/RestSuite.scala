@@ -116,11 +116,10 @@ class RestSuite extends munit.FunSuite:
     assertEquals(rested.advisers.collect { case d: DenizenState => d.tokens },
       Vector(Tokens.empty))
     assertEquals(rested.relics.head.tokens, Tokens(7, 0))
-    assert(after.game.current.map.sites(ancientCity).denizens
-      .forall(_.tokens.isEmpty))
-    assert(after.game.current.map.sites(ruled).denizens.forall(_.tokens.isEmpty))
-    assert(after.game.current.map.sites(outside).denizens
-      .forall(_.tokens.isEmpty))
+    // Each of the three sites holds denizens, and none keeps a token.
+    Vector(ancientCity, ruled, outside).foreach(site =>
+      assertEquals(after.game.current.map.sites(site).denizens
+        .map(_.tokens).distinct, Vector(Tokens.empty), site.value))
     assertEquals(after.game.current.map.sites(outside).relics.head.tokens,
       Tokens.empty)
     plan.returnedFavor.foreach { case (suit, amount) =>
@@ -227,9 +226,9 @@ class RestSuite extends munit.FunSuite:
     val deterministic = new OathRules(catalog,
       warExhaustionRandomPort = WarExhaustionChoices.lastCandidate)
     val finished = accepted(rest(Ready(roundEight), last, deterministic))
-    assert(finished.events.exists(_.isInstanceOf[OathEvent.RoundEnded]))
-    assert(finished.events.exists(
-      _.isInstanceOf[OathEvent.WarExhaustionResolved]))
+    assertEquals(finished.events.collect {
+      case ended: OathEvent.RoundEnded => ended },
+      Vector(OathEvent.RoundEnded(8, None)))
     val after = Outcomes.ready(finished.state)
     assertEquals(after.game.current.result.map(_.winner), Some(last))
     val result = present(finished.events.collectFirst {
@@ -265,7 +264,9 @@ class RestSuite extends munit.FunSuite:
     // The quiet table's turn order is p1, p2, p3.
     val last = Table.from(act).turn(p3, Phase.Act).unchecked
     val rested = accepted(rest(Ready(last), p3))
-    assert(rested.events.exists(_.isInstanceOf[OathEvent.RoundEnded]))
+    val round = act.game.current.tracks.round
+    assertEquals(rested.events.collect { case ended: OathEvent.RoundEnded =>
+      ended }, Vector(OathEvent.RoundEnded(round, Some(round + 1))))
     val after = Outcomes.ready(rested.state).game.current
     assertEquals(after.tracks.round, act.game.current.tracks.round + 1)
     assertEquals(after.turn.activePlayer, p1)

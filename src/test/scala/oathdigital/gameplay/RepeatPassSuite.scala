@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{Look, Table}
-import oathdigital.testkit.Outcomes.finished
+import oathdigital.testkit.Outcomes.{finished, parked}
 import oathdigital.testkit.Table.p1
 
 /** When a `Repeat` stops. Its guard reads only state and answers, so a pass that
@@ -32,4 +32,4 @@ class RepeatPassSuite extends munit.FunSuite:
     val question = Decide("test.question", actor, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(DecisionOptionRef.Button("yes"), "Yes"))))
     val outcome = run(Repeat((_, _) => true, question))
-    assert(outcome.exists(_.isInstanceOf[WalkerOutcome.Parked]))
+    assertEquals(parked(outcome).tree, PendingTree(Vector("0"), Vector.empty))

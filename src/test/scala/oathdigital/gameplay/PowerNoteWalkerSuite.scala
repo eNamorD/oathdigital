@@ -6,7 +6,7 @@ import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 import oathdigital.testkit.Outcomes.{finished, parked}
 import oathdigital.testkit.CatalogNames
-import oathdigital.testkit.Unwrap.present
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** The `Note` node (power log lines design, section 1). */
 class PowerNoteWalkerSuite extends munit.FunSuite:
@@ -44,8 +44,7 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
     val reading = Note(power,
       states => { seen = Some(states); Some(said("read")) })
     val tree = Sequence(Vector[Operation](ModifyDicePool(pool, 1), reading))
-    assert(
-      ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty).isRight)
+    accepted(ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty))
     val states = present(seen, "the note to have been read")
     val (before, after) = present(states.previous, "a previous step")
     assertEquals(after, states.now)
@@ -55,8 +54,8 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
   test("a note before any step has no previous step"):
     var seen = Option.empty[NoteStates]
     val reading = Note(power, states => { seen = Some(states); None })
-    assert(ProcedureWalker.advance(ready, Sequence(Vector[Operation](reading)),
-      None, WalkerPowers.empty).isRight)
+    accepted(ProcedureWalker.advance(ready,
+      Sequence(Vector[Operation](reading)), None, WalkerPowers.empty))
     assertEquals(seen.map(_.previous), Some(None))
 
   test("a note after a leaf that changed nothing reads no change, not an older step"):
@@ -64,8 +63,7 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
     val reading = Note(power, states => { seen = Some(states); None })
     val tree = Sequence(Vector[Operation](ModifyDicePool(pool, 1),
       BuildOps((_, _) => Right(Vector.empty)), reading))
-    assert(
-      ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty).isRight)
+    accepted(ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty))
     val states = present(seen, "the note to have been read")
     val (before, after) = present(states.previous, "a previous step")
     assertEquals(before, after)

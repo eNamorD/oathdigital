@@ -31,8 +31,8 @@ class PowerOperationsSuite extends munit.FunSuite:
 
   test("Costs accepts a burnt-only cost on a facedown card"):
     val facedown = payerAtCard(facedown = true)
-    assert(Costs.plan(facedown, p1, Location.OnCard(card),
-      Cost(secretBurnt = 1)).isRight)
+    accepted(Costs.plan(facedown, p1, Location.OnCard(card),
+      Cost(secretBurnt = 1)))
 
   test("PayCost executes placed and burnt portions atomically"):
     val ready = payerAtCard()
