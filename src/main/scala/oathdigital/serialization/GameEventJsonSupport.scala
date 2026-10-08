@@ -420,35 +420,6 @@ private[serialization] trait GameEventJsonSupport:
     catch { case NonFatal(error) => Left(InvalidValue(path,
       Option(error.getMessage).getOrElse("invalid card reference"))) }
 
-  protected final def encodeSearchPlacement(value: SearchPlacement): ujson.Value = value match
-    case SearchPlacement.Discard => ujson.Obj("kind" -> "discard")
-    case SearchPlacement.Site(replace) => ujson.Obj(
-      "kind" -> "site", "replace" -> replace.fold[ujson.Value](ujson.Null)(encodeCardRef))
-    case SearchPlacement.Adviser(orientation, replace) => ujson.Obj(
-      "kind" -> "adviser",
-      "orientation" -> (if orientation == Orientation.FaceUp then "face-up" else "face-down"),
-      "replace" -> replace.fold[ujson.Value](ujson.Null)(encodeCardRef))
-
-  protected final def decodeSearchPlacement(value: ujson.Value, path: String)
-      : Either[WireError, SearchPlacement] =
-    def replacement: Either[WireError, Option[CardId]] = value("replace") match
-      case ujson.Null => Right(None)
-      case card => decodeCardRef(card, s"$path.replace").map(Some(_))
-    try value("kind").str match
-      case "discard" => Right(SearchPlacement.Discard)
-      case "site" => replacement.map(SearchPlacement.Site.apply)
-      case "adviser" =>
-        for
-          orientation <- value("orientation").str match
-            case "face-up" => Right(Orientation.FaceUp)
-            case "face-down" => Right(Orientation.FaceDown)
-            case other => Left(InvalidValue(s"$path.orientation", s"unknown orientation '$other'"))
-          replace <- replacement
-        yield SearchPlacement.Adviser(orientation, replace)
-      case other => Left(InvalidValue(s"$path.kind", s"unknown placement '$other'"))
-    catch { case NonFatal(error) => Left(InvalidValue(path,
-      Option(error.getMessage).getOrElse("invalid Search placement"))) }
-
   protected final def traverse[A, B](
       values: Vector[A]
   )(f: A => Either[WireError, B]): Either[WireError, Vector[B]] =

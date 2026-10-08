@@ -58,11 +58,6 @@ object CampaignDicePort:
   private def uniform(count: Int): Vector[Int] =
     shuffler.shuffle((0 until count).toVector)
 
-object CardDecisionIds:
-  /** Stable across reload/replay and derived solely from authoritative setup progress. */
-  def startingAdviser(playerId: PlayerId, placementIndex: Int): DecisionId =
-    DecisionId(s"setup-adviser-${placementIndex}-${playerId.value}")
-
 trait SearchDrawPort:
   def prepare(
       ready: oathdigital.model.ReadyGame,
