@@ -107,6 +107,9 @@ object OathViolation:
       extends OathViolation
   final case class WrongPlayer(expected: PlayerId, actual: PlayerId)
       extends OathViolation
+  /** A queued action waits for its player to start or skip it, and nothing
+    * else may happen first (follow-up actions design, ruling 3). */
+  final case class FollowUpPending(followUp: FollowUp) extends OathViolation
   final case class SiteNotInPlay(siteId: SiteId)
       extends OathViolation
   final case class InvalidEventOrder(detail: String)
