@@ -56,6 +56,7 @@ final case class AuthorizedPlayer private[application] (
 
   def beginRest: GameCommand = GameCommand.BeginRest(access.playerId)
   def finishRest: GameCommand = GameCommand.FinishRest(access.playerId)
+  def skipFollowUp: GameCommand = GameCommand.SkipFollowUp(access.playerId)
   def undo: GameCommand = GameCommand.Undo(access.playerId)
   def redo: GameCommand = GameCommand.Redo(access.playerId)
   def usePower(power: PowerId, source: DecisionOptionRef): GameCommand =

@@ -6,7 +6,7 @@ class CommandProtocolSuite extends munit.FunSuite:
   import GameIntent._
 
   private val examples: Vector[GameIntent] = Vector(
-    EndWake, BeginRest, FinishRest, Undo, Redo,
+    EndWake, BeginRest, FinishRest, SkipFollowUp, Undo, Redo,
     UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92")),
     StartWalker("search", Vector.empty,
       Vector(WalkerStartArgWire("button", "search:world"))),
