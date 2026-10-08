@@ -24,12 +24,6 @@ class WarTortoiseSuite extends munit.FunSuite:
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(WarTortoise.id, WarTortoise.noteKeys, run.events)
 
-  /** `run` with `actor`'s plan window finished, if it is still open. */
-  private def attackerDone(run: Run, actor: PlayerId): Run =
-    if awaits(run, actor, CampaignIds.attackerPlan) then
-      run.pick(actor, CampaignIds.attackerPlan, CampaignIds.finish)
-    else run
-
   /** p2 rules the origin with two warbands, holds the Oathkeeper title, War
     * Tortoise faceup and one favor. */
   private def defender: Board =
@@ -54,7 +48,7 @@ class WarTortoiseSuite extends munit.FunSuite:
     val b = withAdviser(defender, general, Orientation.FaceUp)
     val chosen = commit(rules(skullThenSwords), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, DecisionOptionRef.Denizen(general))
-    val done = attackerDone(chosen, b.actor)
+    val done = chosen.finishAttackerPlans(b.actor)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(done.result.attackScore, 1)
     assertEquals(NoteText.said(FearsomeGeneral.id, FearsomeGeneral.noteKeys,
@@ -77,5 +71,9 @@ class WarTortoiseSuite extends munit.FunSuite:
   test("a bandit defender never applies it, since it costs"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
-    assert(!commit(rules(winningDice), b, 2).finishPlanWindows.ops.contains(
+    val done = commit(rules(skullThenSwords), b, 2).finishPlanWindows
+    assert(!done.ops.contains(
       ModifyDicePool(CampaignPlans.appliedMarker(ref), 1)))
+    // Applied, the skull face would score nothing (the first test): it
+    // scores its 2 swords, and the other die 1.
+    assertEquals(done.result.attackScore, 2 + 1)

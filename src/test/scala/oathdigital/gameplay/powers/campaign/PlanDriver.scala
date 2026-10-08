@@ -91,6 +91,13 @@ object PlanDriver:
     def declineSacrifice(attacker: PlayerId): Run =
       answer(attacker, CampaignIds.sacrifice, ChooseAmountAnswer(0))
 
+    /** `attacker` chooses no more plans: Finish in the attacker's window, when
+      * it is still open (a plan chosen last can close it). */
+    def finishAttackerPlans(attacker: PlayerId): Run =
+      if awaits(this, attacker, CampaignIds.attackerPlan) then
+        pick(attacker, CampaignIds.attackerPlan, CampaignIds.finish)
+      else this
+
     /** `defender` chooses no more plans: Finish in the defender's window. */
     def finishDefenderPlans(defender: PlayerId): Run =
       pick(defender, CampaignIds.defenderPlan, CampaignIds.finish)

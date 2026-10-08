@@ -44,7 +44,8 @@ class TravelingDoctorSuite extends munit.FunSuite:
   test("a bandit defender applies it, loses every targeted warband, and " +
       "discards it"):
     val base = board(warbands = 5, supply = 7)
-    val b = withSiteCard(base, base.origin, card)
+    // Two bandits rule the origin, where the Doctor stands.
+    val b = on(base)(_.bandits(base.origin, 2).denizen(card, at = base.origin))
     val done = commit(rules(winningDice), b, 4).finishPlanWindows
     assertEquals(done.winner, Some(true))
     assert(done.ops.contains(Kill(Piece.Warbands(ForceKind.Bandit, 2),

@@ -32,8 +32,9 @@ class ShieldWallSuite extends munit.FunSuite:
     val b = rivalHoldsShieldWall
     val run = commit(rules(winningDice), b, 4)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
-    assert(picked.since(run).contains(
-      ModifyDicePool(CampaignIds.defensePool, ShieldWall.Dice)))
+    // Printed on the card, not read from the power's constant.
+    assertEquals(Look(picked.state).diceInPool(CampaignIds.defensePool) -
+      Look(run.state).diceInPool(CampaignIds.defensePool), 2)
 
   test("a defeated Conquest defender gets none of its warbands back"):
     val b = rivalHoldsShieldWall
