@@ -815,7 +815,7 @@ start / reading its park.
 |---|---|---|---|---|---|---|---|---|
 | Spec baseline (37c8563d, by hand) | 46 s | 280 s | 216 s | – | 26% | 33% | 4% | 26 ms / 0 ms |
 | Baseline (load 11.8, busy machine) | 58 s | 340 s | 308 s | 61 s | 30% | 34% | 2% | 33 ms / 0 ms |
-| After Task 2 | | | | | | | | |
+| After Task 2 (load 7.6 gate, 12.3 profile) | 45 s | 288 s | 294 s | 15 s (warm) | 16.8% | 39.2% | 1.8% | 24 ms / 0 ms |
 | After Task 3 | | | | | | | | |
 
 ### Baseline
@@ -838,9 +838,17 @@ frame on the stack: `CardIndex$` 30.3%, `OperationStateInvariant` 30.9%,
 
 ### After Task 2
 
-Ten slowest suites:
+Load differed from the baseline run, so compare the shares, not the times. The
+campaign profile's summed suite time went from 130.9 s to 119.5 s. Its first run
+(the baseline) included a cold compile in the new worktree, so its wall clock is
+not comparable.
 
-Top ten inclusive frames:
+Share of samples with the frame on the stack: `CardIndex$` 30.3% to 16.8%,
+`OperationStateInvariant` 30.9% to 19.6%, `DomainValidation$.validate` 13.4% to
+4.5%. What remains of `CardIndex$` is one scan per new state (13.7% under
+`OathGame.cardIndex`, which an operation cannot avoid because every run makes a new
+state) and 3.0% in `DomainValidation.validate`'s set difference against the expected
+cards.
 
 ### After Task 3
 

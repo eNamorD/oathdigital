@@ -324,7 +324,7 @@ private[application] final class GamePresentationProjector(
     */
   def identifiesAt(ready: ReadyGame, viewer: Option[PlayerId], id: CardId)
       : Boolean =
-    CardIndex.from(ready.game).toOption.flatMap(_.get(id)).exists(located =>
+    ready.game.cardIndex.toOption.flatMap(_.get(id)).exists(located =>
       identifiesCard(ready, viewer, id,
         GamePresentationProjector.orientationOf(located.state),
         located.location.container))
@@ -332,7 +332,7 @@ private[application] final class GamePresentationProjector(
   /** A card's printed name; an edifice's is the side it shows in `ready`. */
   def cardLabel(ready: ReadyGame, id: CardId): String = id match
     case edifice: EdificeId =>
-      val side = CardIndex.from(ready.game).toOption.flatMap(_.stateOf(edifice))
+      val side = ready.game.cardIndex.toOption.flatMap(_.stateOf(edifice))
         .collect { case EdificeState(_, side, _) => side }
         .getOrElse(EdificeSide.Intact)
       edificeLabel(edifice, side)

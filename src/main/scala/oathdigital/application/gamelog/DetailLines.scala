@@ -148,7 +148,7 @@ private[gamelog] final class DetailLines(words: LogWords,
         Vector(LogSpan.Text(ActionLines.plural(amount, "bandit", "bandits")))
 
   private def faceDown(ready: ReadyGame, id: CardId): Boolean =
-    CardIndex.from(ready.game).toOption.flatMap(_.get(id))
+    ready.game.cardIndex.toOption.flatMap(_.get(id))
       .flatMap(located => GamePresentationProjector.orientationOf(located.state))
       .contains(Orientation.FaceDown)
 

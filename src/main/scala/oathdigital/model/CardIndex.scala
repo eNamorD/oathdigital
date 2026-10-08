@@ -47,7 +47,8 @@ object CardIndexProblem:
 /**
  * Derived reverse lookup over container-owned card state.
  *
- * It is intentionally not part of `OathGame` and must not be serialized.
+ * It is derived, never stored: `OathGame.cardIndex` caches it once per
+ * state, outside the case-class fields, and it must not be serialized.
  */
 final case class CardIndex private (byId: Map[CardId, LocatedCard]):
   def get(id: CardId): Option[LocatedCard] = byId.get(id)
@@ -56,9 +57,34 @@ final case class CardIndex private (byId: Map[CardId, LocatedCard]):
   def ids: Set[CardId] = byId.keySet
 
 object CardIndex:
+  /** Indexes `game` and reports every card of `expectedCards` it lacks. It
+    * reads `game.cardIndex`, so a state is scanned once however often it is
+    * indexed.
+    */
   def from(
       game: OathGame,
       expectedCards: Set[CardId] = Set.empty
+  ): Either[Vector[CardIndexProblem], CardIndex] =
+    game.cardIndex match
+      case Right(index) =>
+        val missing = missingProblems(expectedCards, index.ids)
+        if missing.isEmpty then Right(index) else Left(missing)
+      // The duplicates alone do not say which expected cards are missing, so
+      // this failure path scans again to report both.
+      case Left(_) if expectedCards.nonEmpty => scan(game, expectedCards)
+      case duplicates => duplicates
+
+  private def missingProblems(
+      expectedCards: Set[CardId],
+      present: Set[CardId]
+  ): Vector[CardIndexProblem] =
+    (expectedCards -- present).toVector
+      .sortBy(id => (id.kind, id.value))
+      .map(CardIndexProblem.MissingCard.apply)
+
+  private[model] def scan(
+      game: OathGame,
+      expectedCards: Set[CardId]
   ): Either[Vector[CardIndexProblem], CardIndex] =
     val located = Vector.newBuilder[LocatedCard]
 
@@ -211,10 +237,8 @@ object CardIndex:
             occurrences.map(_.location)
           )
       .sortBy(_.id.value)
-    val missingProblems = (expectedCards -- grouped.keySet).toVector
-      .sortBy(id => (id.kind, id.value))
-      .map(CardIndexProblem.MissingCard.apply)
-    val problems = duplicateProblems ++ missingProblems
+    val problems =
+      duplicateProblems ++ missingProblems(expectedCards, grouped.keySet)
 
     if problems.nonEmpty then Left(problems)
     else

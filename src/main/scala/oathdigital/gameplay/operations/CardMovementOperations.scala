@@ -201,7 +201,7 @@ private[operations] object CardMovementOperations:
     val transfers = cardTransfers(leaves)
     if transfers.isEmpty then Right(ready)
     else for
-      index <- CardIndex.from(ready.game).left.map(InvalidCardIndex.apply)
+      index <- ready.game.cardIndex.left.map(InvalidCardIndex.apply)
       removedCards <- sequence(transfers.map { transfer =>
         val id = transfer.piece.id
         index.get(id).toRight(UnknownCard(id)).map(transfer -> _)

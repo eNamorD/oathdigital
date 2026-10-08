@@ -52,7 +52,7 @@ object Costs:
           "placed cost portions require an existing token-bearing card"))
 
   private def statefulCard(ready: ReadyGame, id: CardId): Boolean =
-    CardIndex.from(ready.game).toOption.exists { index =>
+    ready.game.cardIndex.toOption.exists { index =>
       index.get(id).flatMap(_.state).exists:
         case _: DenizenState | _: EdificeState | _: RelicState => true
         case _ => false

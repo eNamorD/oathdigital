@@ -69,7 +69,7 @@ private[operations] object OperationStateWrites:
 
   def updateCardState(ready: ReadyGame, id: CardId)(
       f: CardState => CardState): Either[OperationError, ReadyGame] =
-    CardIndex.from(ready.game).left.map(InvalidCardIndex.apply).flatMap { index =>
+    ready.game.cardIndex.left.map(InvalidCardIndex.apply).flatMap { index =>
       index.get(id).toRight(UnknownCard(id)).flatMap { located =>
         located.state.toRight(IncompatibleLocation(Piece.Card(id),
           Location.OnCard(id))).flatMap { _ =>
