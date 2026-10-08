@@ -1,56 +1,26 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
-  OptionRestriction, Restriction}
 import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerOutcome,
   WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.Table
+import oathdigital.testkit.Table.p1
+import oathdigital.testkit.PowerStubs.{ActionForbiddingStub, OptionHidingStub, hideSource, hidNote}
 import oathdigital.testkit.Outcomes.{finished, parked}
 
-object PowerNoteHideSuite:
-  val hideSource: PowerSourceRef = PowerSourceRef.Site(SiteId("test-site"))
-  val hidden: OathViolation = OathViolation.InvalidEventOrder("hidden by test")
-
-  def hid(ref: DecisionOptionRef): PowerNote = PowerNote(hideSource, "hid",
-    ref match
-      case DecisionOptionRef.Site(site) => Vector(NoteArg.Site(site))
-      case _ => Vector.empty)
-
-  /** Stub of ContributingPower: hides `forbidden` at `hook`, and notes each
-    * one it hid when `says`. */
-  final case class HidingPower(id: PowerId, hook: PowerWindow,
-      forbidden: Set[DecisionOptionRef], says: Boolean = true)
-      extends ContributingPower:
-    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-    def contributions: Map[PowerWindow, Vector[Contribution]] =
-      Map(hook -> Vector(OptionRestriction(
-        (_, ref) => Option.when(forbidden(ref))(hidden),
-        (_, ref) => Option.when(says)(hid(ref)))))
-
-  /** Stub of ContributingPower: rejects any action whose tree opens `hook`,
-    * and says so. */
-  final case class ForbiddingPower(id: PowerId, hook: PowerWindow)
-      extends ContributingPower:
-    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-    def contributions: Map[PowerWindow, Vector[Contribution]] =
-      Map(hook -> Vector(Restriction((_, _) => Some(hidden),
-        (_, _) => Some(PowerNote(hideSource, "forbade", Vector.empty)))))
-
 class PowerNoteHideSuite extends munit.FunSuite:
-  import PowerNoteHideSuite._
-
   private val window = PowerWindow.ChallengeAmountSelection
+  /** p1's Act on the quiet table: the walks below ask p1 to decide. */
+  private val actor = p1
+  private val ready = Table.start.turn(p1, Phase.Act).ready
   private def site(id: String) = DecisionOptionRef.Site(SiteId(id))
   private def pick(ready: ReadyGame) = Sequence(Vector[Operation](Decide("pick",
-    ready.game.current.turn.activePlayer, DecisionQuery.ChooseOne(
+    actor, DecisionQuery.ChooseOne(
       Vector("a", "b", "c").map(id => DecisionOption.Site(site(id)))),
     window = Some(window))))
   private def notes(events: Vector[OathEvent]): Vector[OathEvent] =
     events.filter(_.isInstanceOf[PowerNoted])
 
-  private val ready = Table.start.ready
-  private val actor = ready.game.current.turn.activePlayer
   private val hider = PowerId("test.hider")
 
   private def offered(tree: Operation, pending: PendingTree,
@@ -62,7 +32,7 @@ class PowerNoteHideSuite extends munit.FunSuite:
 
   test("each option a power hides keeps its note as its reason, journaled " +
       "nowhere"):
-    val powers = WalkerPowers(Vector(HidingPower(hider, window,
+    val powers = WalkerPowers(Vector(OptionHidingStub(hider, window,
       Set(site("b"), site("c")))))
     val tree = pick(ready)
     val WalkerOutcome.Parked(pending, events) =
@@ -71,13 +41,13 @@ class PowerNoteHideSuite extends munit.FunSuite:
     assertEquals(offered(tree, pending, powers), Vector[DecisionOption](
       DecisionOption.Site(site("a")),
       DecisionOption.Unavailable(DecisionOption.Site(site("b")),
-        OptionReason.Noted(hider, hid(site("b")))),
+        OptionReason.Noted(hider, hidNote(site("b")))),
       DecisionOption.Unavailable(DecisionOption.Site(site("c")),
-        OptionReason.Noted(hider, hid(site("c"))))))
+        OptionReason.Noted(hider, hidNote(site("c"))))))
 
   test("answering the decision does not note the hidden options again"):
     val powers = WalkerPowers(
-      Vector(HidingPower(hider, window, Set(site("b")))))
+      Vector(OptionHidingStub(hider, window, Set(site("b")))))
     val tree = pick(ready)
     val pending =
       parked(ProcedureWalker.advance(ready, tree, None, powers)).tree
@@ -87,7 +57,7 @@ class PowerNoteHideSuite extends munit.FunSuite:
     assertEquals(notes(events), Vector.empty)
 
   test("a power that says nothing hides silently"):
-    val powers = WalkerPowers(Vector(HidingPower(hider, window, Set(site("b")),
+    val powers = WalkerPowers(Vector(OptionHidingStub(hider, window, Set(site("b")),
       says = false)))
     val events =
       parked(ProcedureWalker.advance(ready, pick(ready), None, powers)).events
@@ -97,7 +67,7 @@ class PowerNoteHideSuite extends munit.FunSuite:
       "would break as its reason"):
     val nested = PowerWindow.CampaignActionEligibility
     val forbidder = PowerId("test.forbidder")
-    val powers = WalkerPowers(Vector(ForbiddingPower(forbidder, nested)))
+    val powers = WalkerPowers(Vector(ActionForbiddingStub(forbidder, nested)))
     def button(key: String) =
       DecisionOption.Button(DecisionOptionRef.Button(key), key)
     val tree = Sequence(Vector[Operation](Decide("ask", actor,
@@ -122,7 +92,7 @@ class PowerNoteHideSuite extends munit.FunSuite:
   test("a restriction on a tree with no decision to narrow writes no note"):
     // Rejecting a whole action is OathRules' check before the walk, which
     // journals nothing; the walker notes only options it hid.
-    val powers = WalkerPowers(Vector(ForbiddingPower(PowerId("test.forbidder"),
+    val powers = WalkerPowers(Vector(ActionForbiddingStub(PowerId("test.forbidder"),
       PowerWindow.CampaignActionEligibility)))
     val tree = Sequence(Vector[Operation](ModifyDicePool(PoolKey("p"), 1)),
       Some(PowerWindow.CampaignActionEligibility))
