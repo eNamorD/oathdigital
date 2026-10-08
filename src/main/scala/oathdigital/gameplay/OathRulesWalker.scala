@@ -3,9 +3,9 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.model._
-import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
-import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx, PhasePowers}
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted, WalkerDice,
+import oathdigital.gameplay.powerresolver.{ContributingPower, PhasePowers}
+import oathdigital.gameplay.walker.{ModifierOffers, ProcedureWalker,
+  WalkerCompleted, WalkerDice,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
   WalkerSimulation, WalkerStepRecorded}
 import oathdigital.model.OathState._
@@ -167,14 +167,8 @@ private[gameplay] trait OathRulesWalker:
       registrations: Map[ProcedureRef, WalkerProcedureRegistry.Entry] =
         WalkerProcedureRegistry.entries)
       : Either[OathViolation, Vector[ContributingPower]] =
-    WalkerProcedureRegistry.modifierWindow(procedure, registrations).map:
-      case None => Vector.empty
-      case Some(window) => walkerPowerCatalog.powers.filter(power =>
-        power.resolution == PowerResolution.PlayerSelected &&
-        power.applicable(PowerCtx(ready, actor, power.source, window,
-          Vector.empty, Sequence(Vector.empty, Some(window)),
-          Some(procedure))) &&
-        paying(ready, actor, Vector(power)).isRight)
+    ModifierOffers.offerable(walkerPowerCatalog, ready, actor, procedure,
+      registrations)
 
   /** Rejects an unknown or inapplicable `modifiers` id with
     * `InvalidEventOrder` before any node walks and before any event is
@@ -216,20 +210,11 @@ private[gameplay] trait OathRulesWalker:
     */
   private def requirePayable(ready: ReadyGame, actor: PlayerId,
       modifiers: Vector[PowerId]): Either[OathViolation, Unit] =
-    paying(ready, actor, walkerPowerCatalog.powers
-      .filter(power => modifiers.contains(power.id))).left.map(violation =>
+    ModifierOffers.paying(walkerPowerCatalog, ready, actor,
+      walkerPowerCatalog.powers.filter(power => modifiers.contains(power.id)))
+      .left.map(violation =>
       InvalidEventOrder("the selected modifiers cannot all be paid together: " +
         violation))
-
-  /** Dry-runs the selection payments of `powers` together. A modifier whose
-    * own payment fails here is not offered at all. */
-  private def paying(ready: ReadyGame, actor: PlayerId,
-      powers: Vector[ContributingPower]): Either[OathViolation, Unit] =
-    val payments = powers.flatMap(_.selectionPayments(ready, actor))
-    if payments.isEmpty then Right(())
-    else OperationPipeline.run(ready, payments, OperationPolicy.Permissive,
-      WalkerPowers.selected(walkerPowerCatalog, powers.map(_.id))
-        .operationRestrictions)(Right(_)).map(_ => ())
 
   /** Task 3 wiring rule: restrictions run once per command, at command entry,
     * before the walk -- collected across the whole derived `tree` via

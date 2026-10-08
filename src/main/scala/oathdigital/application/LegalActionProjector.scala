@@ -13,7 +13,7 @@ import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.walker.{ModifierOffers, WalkerPowers}
 import oathdigital.gameplay.phases.rest.BeginRestProcedure
 import oathdigital.model._
 import oathdigital.protocol.projection._
@@ -30,17 +30,26 @@ private[application] final class LegalActionProjector(
     this(catalog, presentation, walkerDecisions,
       new PhasePowerProjector(catalog, walkerDecisions))
 
-  /** The automatic walker powers a start control is costed against -- the
-    * same full catalog `OathRules` is constructed with, selected down to the
-    * automatic set because a projection is built before the viewer has
-    * chosen any modifier.
+  /** The walker power catalog a start control is costed against -- the same
+    * full catalog `OathRules` is constructed with. Most controls select it
+    * down to the automatic set, since a projection is built before the viewer
+    * has chosen any modifier.
     */
   private val walkerPowerCatalog = WalkerPowerCatalog.default(catalog)
 
+  /** Whether `procedure` could start under some modifier selection the
+    * viewer could make, no selection included: a start only a modifier makes
+    * affordable is still offered. `starts` is the procedure's own dry run. */
+  private def startableWithModifiers(context: ScopedProjectionContext,
+      procedure: ProcedureRef)(starts: WalkerPowers => Boolean): Boolean =
+    ModifierOffers.selections(walkerPowerCatalog, context.ready,
+      context.active.player, procedure).exists(starts)
+
   /** Whether a Travel could start now, asked of the procedure that owns it. */
   private def travelStartable(context: ScopedProjectionContext): Boolean =
-    TravelProcedure.startable(catalog, context.ready, context.active.player,
-      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+    startableWithModifiers(context, ActionRef.Travel)(powers =>
+      TravelProcedure.startable(catalog, context.ready, context.active.player,
+        powers))
 
   /** The resources the viewer could take right now -- asked of the procedure
     * that owns Take Wealth, exactly as Travel's destinations are (batch-1
@@ -59,9 +68,9 @@ private[application] final class LegalActionProjector(
     * the same preview a start runs. Asked of the procedures that own them.
     */
   private def musterStartable(context: ScopedProjectionContext): Boolean =
-    MusterProcedure.startOptions(catalog, context.ready, context.active.player,
-      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
-      .exists(_.outcome.isRight)
+    startableWithModifiers(context, ActionRef.Muster)(powers =>
+      MusterProcedure.startOptions(catalog, context.ready,
+        context.active.player, powers).exists(_.outcome.isRight))
 
   private def tradeStartable(context: ScopedProjectionContext,
       resource: TradeResource): Boolean =
@@ -77,8 +86,9 @@ private[application] final class LegalActionProjector(
       WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
 
   private def campaignStartable(context: ScopedProjectionContext): Boolean =
-    CampaignProcedure.startable(catalog, context.ready, context.active.player,
-      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+    startableWithModifiers(context, ActionRef.Campaign)(powers =>
+      CampaignProcedure.startable(catalog, context.ready,
+        context.active.player, powers))
 
   private def negotiationStartable(context: ScopedProjectionContext): Boolean =
     NegotiationProcedure.startable(catalog, context.ready,
@@ -159,8 +169,8 @@ private[application] final class LegalActionProjector(
     */
   private def recoverEligible(context: ScopedProjectionContext,
       active: PlayerState): Boolean =
-    RecoverProcedure.startable(catalog, context.ready, active.player,
-      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+    startableWithModifiers(context, ActionRef.Recover)(powers =>
+      RecoverProcedure.startable(catalog, context.ready, active.player, powers))
 
   /** While a generic-walker procedure is parked, no other Act control is legal
     * (`GameApplicationService`/`OathLifecycle` reject every legacy command
