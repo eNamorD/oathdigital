@@ -517,11 +517,13 @@ private[gameplay] trait OathRulesWalker:
 
   /** Only after Begin Rest: a player with no usable REST power finishes Rest
     * in the same command. After a REST power is used the player always
-    * finishes Rest deliberately, so nothing else calls this.
+    * finishes Rest deliberately, so nothing else calls this. A queued action
+    * waits for its player first (follow-up actions design, ruling 2).
     */
   private def autoFinishRest(transition: OathTransition)
       : Either[OathViolation, OathTransition] = transition.state match
-    case Ready(ready) if !restPowerUsable(ready,
+    case Ready(ready) if ready.game.current.followUps.isEmpty &&
+        !restPowerUsable(ready,
         ready.game.current.turn.activePlayer) =>
       startWalker(transition.state, PhaseTransitionRef.FinishRest,
         ready.game.current.turn.activePlayer).map(finished =>
@@ -532,11 +534,13 @@ private[gameplay] trait OathRulesWalker:
     * procedure pending: a player with no Wake option left ends Wake in the
     * same command. That skips a Wake with nothing to decide, and ends one
     * once its last option is used. A Finish Rest started by
-    * `autoFinishRest` reaches this through its own completion.
+    * `autoFinishRest` reaches this through its own completion. A queued
+    * action waits for its player first.
     */
   private def autoEndWake(transition: OathTransition)
       : Either[OathViolation, OathTransition] = transition.state match
     case Ready(ready) if ready.game.current.result.isEmpty &&
+        ready.game.current.followUps.isEmpty &&
         ready.game.current.turn.phase == Phase.Wake &&
         ready.game.current.walkerPending.isEmpty &&
         ready.game.current.walkerProcedure.isEmpty &&
