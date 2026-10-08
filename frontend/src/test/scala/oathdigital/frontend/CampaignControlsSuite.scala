@@ -20,6 +20,7 @@ class CampaignControlsSuite extends munit.FunSuite:
       .buttons.forall(_.disabled))
     assertEquals(ServerUiSupport.actionCategory("campaign"), "major")
 
-  test("Campaign does not start through the modifier flow"):
+  test("Campaign starts through the modifier flow"):
     assertEquals(ModifierFlowDraft.action(
-      GameIntent.StartWalker("campaign", Vector.empty)), None)
+      GameIntent.StartWalker("campaign", Vector.empty)),
+      Some("campaign" -> Map.empty[String, String]))

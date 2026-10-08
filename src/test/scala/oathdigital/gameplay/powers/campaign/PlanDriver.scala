@@ -8,7 +8,7 @@ import oathdigital.gameplay.powers.{NoteText, PowerImplementationStatus,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
-  WalkerDice, WalkerStepRecorded}
+  WalkerDice, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
@@ -114,9 +114,11 @@ object PlanDriver:
       val current = ready(state)
       val tree = CampaignProcedure.rebuild(catalog, current, actor, Vector.empty)
         .toOption.get
+      // The run's own powers: a selected modifier folds only when chosen.
       ProcedureWalker.openDecisions(current, tree,
         current.game.current.walkerPending.get,
-        WalkerPowerCatalog.default(catalog)).head.query
+        WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
+          current.game.current.walkerModifiers)).head.query
 
     /** The options the parked choice shows. */
     def options(actor: PlayerId): Vector[DecisionOption] = query(actor) match
@@ -165,8 +167,9 @@ object PlanDriver:
     */
   def commit(game: OathRules, b: Board, force: Int,
       targets: Vector[DecisionOptionRef] = Vector.empty,
-      raid: Boolean = false): Run =
-    val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
+      raid: Boolean = false, modifiers: Vector[PowerId] = Vector.empty): Run =
+    val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor,
+      modifiers)
       .fold(error => throw new IllegalStateException(s"no start: $error"),
         identity)
     val run = Run(game, started, started.events)

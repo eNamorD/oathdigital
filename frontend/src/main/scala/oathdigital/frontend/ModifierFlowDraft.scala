@@ -24,7 +24,7 @@ private[frontend] object ModifierFlowDraft:
     * an action it does not recognise.
     */
   private val walkerActions: Set[String] = Set("search", "recover", "forge",
-    "travel", "muster", "trade", "challenge")
+    "travel", "muster", "trade", "challenge", "campaign")
 
   /** The flow draft a preview response that offers modifiers opens; the
     * selection is reconciled from `previous` so a re-preview of the same
