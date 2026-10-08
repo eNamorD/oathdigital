@@ -226,10 +226,7 @@ object WalkerProcedureRegistry:
         args).flatMap(_ => MusterProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
         args).flatMap(_ => MusterProcedure.rebuild(catalog, state, activePlayer)),
-      requiresPlayableOption = true,
-      // Knights Errant campaigns inside a Muster, so its battle questions
-      // show the rolls a Campaign's own would.
-      rollFeedback = CampaignProcedure.rollFeedback),
+      requiresPlayableOption = true),
 
     ActionRef.Trade -> Entry(
       fallbackKind = Some(ActionKind.Trade),
