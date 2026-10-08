@@ -7,7 +7,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.{catalog,
 import oathdigital.model._
 import oathdigital.model.OathEvent.{UsurperFlipped, UsurperVictory}
 import oathdigital.serialization.WalkerWireEvents.encodedStream
-import oathdigital.testkit.Unwrap.{accepted, rejected}
+import oathdigital.testkit.Unwrap.{accepted, as, rejected}
 
 /** The event envelope: its fields, ordering, sequences and format version, and
   * the explicit failures for malformed, unsupported and unknown envelopes. */
@@ -23,6 +23,8 @@ class GameEventWireEnvelopeSuite extends munit.FunSuite:
     assertEquals(GameEventWire.decode(stored).map(_.event), Right(event))
 
   test("serialized replay equals command state and preserves ordering"):
+    // Replays the real setup: a wire round trip of a real journal is the
+    // subject.
     val setup = setupThroughWake()
     val json = encodedStream("first-game-001", setup.events)
     val decoded = accepted(GameEventWire.decodeStream(json))
@@ -50,17 +52,18 @@ class GameEventWireEnvelopeSuite extends munit.FunSuite:
     )
 
   test("serialized events are rejected when their order is not contiguous"):
+    // The real setup's events serve as a journal long enough to reorder.
     val events = setupThroughWake().events
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(index.toLong, event)
     }
-    assert(
-      rejected(
-        GameEventWire.encodeStream(
-          "game",
-          records.updated(1, records(1).copy(index = 3))
-        )
-      ).isInstanceOf[WireError.InvalidSequence]
+    // The second record is at position 3, where position 1 was expected.
+    assertEquals(
+      GameEventWire.encodeStream(
+        "game",
+        records.updated(1, records(1).copy(index = 3))
+      ),
+      Left(WireError.InvalidSequence("$[1].sequence", 1L, 3L))
     )
 
   test("decoded streams reject duplicate missing and out-of-order positions"):
@@ -85,8 +88,10 @@ class GameEventWireEnvelopeSuite extends munit.FunSuite:
     }
 
   test("malformed unsupported and unknown envelopes fail explicitly"):
-    assert(rejected(GameEventWire.decodeStream("{"))
-      .isInstanceOf[WireError.MalformedJson])
+    // The message is the JSON parser's own wording, so only the case and the
+    // path are pinned.
+    assertEquals(as[WireError.MalformedJson](
+      rejected(GameEventWire.decodeStream("{"))).path, "$")
 
     val unsupported = encodedBanditsRefilled()
     unsupported("formatVersion") = 2
@@ -107,6 +112,7 @@ class GameEventWireEnvelopeSuite extends munit.FunSuite:
     )
 
   test("single-event and batch writers preserve nonzero absolute sequences"):
+    // The real setup's first two events serve as a batch to number from 41.
     val single = accepted(GameEventWire
       .encodeEvent("game", 41L, OathEvent.BanditsRefilled(Vector.empty)))
     assertEquals(
@@ -126,6 +132,8 @@ class GameEventWireEnvelopeSuite extends munit.FunSuite:
 
   test("contiguous setup and gameplay records round trip at format " +
       "version 1"):
+    // Replays the real setup: a wire round trip of a real journal is the
+    // subject.
     val setupEvents = setupThroughWake().events
     // Any two gameplay events serve. They used to be the Wake phase's
     // own; the Wake phase no longer has any, since both taking wealth and
@@ -149,7 +157,9 @@ class GameEventWireEnvelopeSuite extends munit.FunSuite:
     val wrongVersion = accepted(GameEventWire.encodeEvent(
       "mixed", 8L, UsurperFlipped(PlayerId("p2"))))
     wrongVersion("formatVersion") = 2
-    assert(GameEventWire.decode(wrongVersion).isLeft)
+    // Version 2 found, 1 supported.
+    assertEquals(GameEventWire.decode(wrongVersion),
+      Left(WireError.UnsupportedFormatVersion("$.formatVersion", 2, 1)))
 
   test("format version and sequence reject fractional and nonfinite numbers"):
     Vector(2.9, Double.NaN, Double.PositiveInfinity).foreach { number =>
@@ -206,20 +216,13 @@ class GameEventWireEnvelopeSuite extends munit.FunSuite:
       Left(WireError.InvalidValue("$.formatVersion", rangeMessage))
     )
 
-    assert(
-      GameEventWire
-        .encodeEvent("game", -1L, OathEvent.BanditsRefilled(Vector.empty))
-        .isLeft
-    )
-    assert(
-      GameEventWire
-        .encodeEvent(
-          "game",
-          GameEventWire.MaxSafeSequence + 1L,
-          OathEvent.BanditsRefilled(Vector.empty)
-        )
-        .isLeft
-    )
+    Vector(-1L, GameEventWire.MaxSafeSequence + 1L).foreach { sequence =>
+      assertEquals(
+        GameEventWire.encodeEvent("game", sequence,
+          OathEvent.BanditsRefilled(Vector.empty)),
+        Left(WireError.InvalidValue("$.sequence", rangeMessage))
+      )
+    }
 
     val boundary = accepted(
       GameEventWire.encodeEvent(

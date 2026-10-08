@@ -166,16 +166,26 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val encoded = encodedStream("walker", Vector(event))
     assert(GameEventWire.decodeStream(encoded).isRight)
 
-    Vector[ujson.Value => Unit](
-      _("payload")("ops")(0)("placedAt")("kind") = "not-a-location",
-      _("payload")("ops")(0)("placedAt")("deck") = "not-a-deck",
-      _("payload")("ops")(0)("cost")("secret") = -1,
-      _("payload")("ops")(0)("kind") = "not-an-operation"
-    ).foreach { corrupt =>
+    def refusing(edit: ujson.Value => Unit, refusal: WireError) =
+      (edit, refusal)
+    Vector(
+      refusing(_("payload")("ops")(0)("placedAt")("kind") = "not-a-location",
+        WireError.InvalidValue("$[0].payload.ops[0].placedAt.kind",
+          "unknown recorded walker location 'not-a-location'")),
+      refusing(_("payload")("ops")(0)("placedAt")("deck") = "not-a-deck",
+        WireError.InvalidValue("$[0].payload.ops[0].placedAt.deck",
+          "unknown card deck 'not-a-deck'")),
+      refusing(_("payload")("ops")(0)("cost")("secret") = -1,
+        WireError.InvalidValue("$[0].payload.ops[0].cost.secret",
+          "must be between 0 and 9007199254740991 inclusive")),
+      refusing(_("payload")("ops")(0)("kind") = "not-an-operation",
+        WireError.InvalidValue("$[0].payload.ops[0].kind",
+          "unknown recorded walker operation 'not-an-operation'"))
+    ).foreach { (corrupt, refusal) =>
       val injected = ujson.read(encoded).arr
       corrupt(injected(0))
-      assert(GameEventWire.decodeStream(ujson.write(injected)).isLeft,
-        s"expected a typed WireError for ${ujson.write(injected)}")
+      assertEquals(GameEventWire.decodeStream(ujson.write(injected)),
+        Left(refusal), ujson.write(injected))
     }
 
   test("a WalkerStepRecorded carrying two contribution ids round-trips"):

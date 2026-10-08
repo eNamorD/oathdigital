@@ -37,4 +37,6 @@ class CampaignResultCodecSuite extends munit.FunSuite:
       recordedOperation("campaign", RecordCampaignResult(conquest))))
     val json = ujson.read(encoded)
     json("payload")("ops")(0)("result")("attackFaces") = ujson.Arr("not-a-face")
-    assert(GameEventWire.decode(json.toString).isLeft)
+    assertEquals(GameEventWire.decode(json), Left(WireError.InvalidValue(
+      "$.payload.ops[0].result.attackFaces[0]",
+      "unknown attack die face 'not-a-face'")))
