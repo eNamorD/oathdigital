@@ -139,7 +139,8 @@ class CampaignRaidSuite extends munit.FunSuite:
     assertEquals(actor.board.warbands, 4 - 4 / 2)
 
   test("several enemy pawns at the site ask which to Raid"):
-    val RaidBoard(b, _) = raidBoard()
+    // Only the board matters: the Raid never reaches the relic choice.
+    val b = raidBoard().board
     val crowded = on(b)(_.pawn(b.bystander, at = b.origin))
     val game = rules()
     val started = accepted(game.startWalker(Ready(crowded.ready),

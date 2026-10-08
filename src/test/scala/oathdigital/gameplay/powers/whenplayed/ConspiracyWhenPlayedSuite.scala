@@ -37,8 +37,13 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     Staged(table.adviser(p1, conspiracy, facedown = true).ready,
       CardPlayProcedure.Origin.FacedownAdviser)
 
-  /** p2 stands on p1's site, Ancient City. */
-  private val p2AtAncientCity = Table.start.pawn(p2, "Ancient City")
+  /** p1 and p2 both stand at Ancient City. */
+  private val p2AtAncientCity = Table.start.pawn(p1, "Ancient City")
+    .pawn(p2, "Ancient City")
+
+  /** p1 at Ancient City, p2 at Broken Peaks: no pawn shares p1's site. */
+  private val p2Away = Table.start.pawn(p1, "Ancient City")
+    .pawn(p2, "Broken Peaks")
 
   private def treeFor(f: Staged): Operation = accepted(f.origin match {
     case CardPlayProcedure.Origin.TemporaryHand =>
@@ -171,7 +176,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
 
   test("with no legal target Conspiracy asks nothing and only leaves the game"):
     // p2 stands at Broken Peaks, away from p1, and no banner has a holder.
-    val f = fromHand(Table.start)
+    val f = fromHand(p2Away)
     val done = Outcomes.finished(placedAs(f, PlayedAs.Faceup))
     val after = done.treeless
     assertEquals(after.game.current.temporaryHands(p1), Vector.empty)
@@ -239,6 +244,6 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       "p1 seized Darkest Secret from p2.", covers = false)))
 
   test("a Conspiracy with no target writes no line"):
-    val f = fromHand(Table.start)
+    val f = fromHand(p2Away)
     val done = Outcomes.finished(placedAs(f, PlayedAs.Faceup))
     assertEquals(seized(done.events), Vector.empty)

@@ -28,7 +28,7 @@ class RiotsSuite extends munit.FunSuite:
   /** Riots as p1's adviser, with four discardable cards in p1's region
     * (Homesteaders, Errand Boy, Wild Mounts and the ruined Hall of Bandits),
     * the intact Relic Patrols there and Land Warden in another region. */
-  private def staged: Table = Table.start.adviser(p1, riots)
+  private def staged: Table = p1AtHomeSite.adviser(p1, riots)
     .denizen(homesteaders, at = homeSite).denizen(errandBoy, at = homeSite)
     .denizen(wildMounts, at = nearSite)
     .edifice("Hall of Bandits", EdificeSide.Ruined, at = nearSite)
@@ -55,7 +55,7 @@ class RiotsSuite extends munit.FunSuite:
       Vector(discarded(targets), burned(4)))
 
   test("played to a site it discards and counts itself"):
-    val ready = Table.start.denizen(riots, at = homeSite)
+    val ready = p1AtHomeSite.denizen(riots, at = homeSite)
       .denizen(homesteaders, at = homeSite).peoplesFavor(None, 5).ready
     val done = Outcomes.finished(fire(ready, power, hookAt(riots, homeSite)))
     assertEquals(Look(done.treeless).cardsAt(homeSite), Vector.empty)
@@ -79,7 +79,7 @@ class RiotsSuite extends munit.FunSuite:
         covers = false)))
 
   test("with nothing to discard it burns nothing"):
-    val ready = Table.start.adviser(p1, riots)
+    val ready = p1AtHomeSite.adviser(p1, riots)
       .denizen(landWarden, at = awaySite).peoplesFavor(None, 5).ready
     val done = Outcomes.finished(play(ready, power, riots))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)

@@ -18,11 +18,11 @@ class ConspiracyTargetWindowSuite extends munit.FunSuite:
   private val relics = Vector(CatalogNames.relic("Cracked Horn"),
     CatalogNames.relic("Bandit Crown"))
 
-  /** p1 holds Conspiracy in a temporary hand. p2 stands on p1's site, Ancient
-    * City, holding Cracked Horn and Bandit Crown faceup.
+  /** p1 holds Conspiracy in a temporary hand. p1 and p2 stand at Ancient
+    * City, and p2 holds Cracked Horn and Bandit Crown faceup.
     */
   private val staged: ReadyGame = Table.start
-    .pawn(p2, "Ancient City")
+    .pawn(p1, "Ancient City").pawn(p2, "Ancient City")
     .relic(p2, "Cracked Horn").relic(p2, "Bandit Crown")
     .hand(p1, conspiracy).ready
 

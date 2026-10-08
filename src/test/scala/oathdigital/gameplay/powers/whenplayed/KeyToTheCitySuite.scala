@@ -11,10 +11,11 @@ class KeyToTheCitySuite extends munit.FunSuite:
   private val power = registered[KeyToTheCity.type]
   private val key = power.cardId
   private val played = hookAt(key, homeSite)
-  /** Key to the City is site-only: it stands at p1's site, and p1's board
-    * holds 3 warbands. */
+  /** Key to the City is site-only: it stands at `homeSite`, where p1's pawn
+    * stands too, and p1's board holds 3 warbands. p2's pawn stands at
+    * `awaySite`, so p2 is absent from `homeSite` unless a test moves it. */
   private val start = Table.start.denizen(key, at = homeSite)
-    .boardWarbands(p1, 3)
+    .pawn(p1, homeSite).pawn(p2, awaySite).boardWarbands(p1, 3)
   private val mine = Look(start.ready).forceKind(p1)
 
   private val killedTwo = NoteText.Said("killed",

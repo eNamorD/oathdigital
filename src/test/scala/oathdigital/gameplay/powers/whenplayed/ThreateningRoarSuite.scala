@@ -2,8 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness}
 import oathdigital.testkit.Table.p1
 
 class ThreateningRoarSuite extends munit.FunSuite:
@@ -27,7 +26,7 @@ class ThreateningRoarSuite extends munit.FunSuite:
     // in another region stay.
     val ruined = CatalogNames.edifice("Ruined School")
     val intact = CatalogNames.edifice("Oaken Fortress")
-    val ready = Table.start.adviser(p1, roar)
+    val ready = p1AtHomeSite.adviser(p1, roar)
       .denizen(errandBoy, at = homeSite).denizen(homesteaders, at = homeSite)
       .denizen(wildMounts, at = nearSite)
       .edifice("Ruined School", EdificeSide.Ruined, at = nearSite)
@@ -43,7 +42,7 @@ class ThreateningRoarSuite extends munit.FunSuite:
       homeSite -> Vector(errandBoy), nearSite -> Vector(wildMounts, ruined)))))
 
   test("played to a site it discards itself with the rest"):
-    val ready = Table.start.denizen(roar, at = homeSite)
+    val ready = p1AtHomeSite.denizen(roar, at = homeSite)
       .denizen(wildMounts, at = homeSite).ready
     val done = Outcomes.finished(fire(ready, power, hookAt(roar, homeSite)))
     assertEquals(Look(done.treeless).cardsAt(homeSite), Vector.empty)
@@ -51,7 +50,7 @@ class ThreateningRoarSuite extends munit.FunSuite:
       Vector(discarded(Vector(roar, wildMounts))))
 
   test("with nothing to discard it says so"):
-    val ready = Table.start.adviser(p1, roar)
+    val ready = p1AtHomeSite.adviser(p1, roar)
       .denizen(homesteaders, at = homeSite).ready
     val done = Outcomes.finished(play(ready, power, roar))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
