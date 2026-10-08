@@ -11,6 +11,8 @@ import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 
+/** Curfew's ruler toll on a Trade. The toll is shared with Forced Labor
+  * (`RulerToll`); its bandit case is pinned here only. */
 class CurfewSuite extends munit.FunSuite:
   private val curfew = CatalogNames.denizen("Curfew")
   private val power = Curfew.forCatalog(catalog)

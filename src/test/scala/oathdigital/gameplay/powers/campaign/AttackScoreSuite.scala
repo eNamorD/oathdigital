@@ -1,13 +1,33 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.actions.campaign.CampaignBattle
-import oathdigital.model.AttackDieFace
+import oathdigital.model.{AttackDieFace, CampaignPlanSide, DecisionOptionRef}
 import oathdigital.model.AttackDieFace.{HollowSword, OneSword, TwoSwordsSkull}
+import oathdigital.testkit.CatalogNames
 
 /** The attack scorer's steps (catalog batch 4 rulings, "The attack score"):
-  * face values, Lancers' doubling, the skull cap, War Tortoise, the total. */
+  * face values, Lancers' doubling, the skull cap, War Tortoise, the total.
+  * Each plan's rules come from `AttackScore.changes`, the list a Campaign
+  * reads, so a card mapped to the wrong rules or the wrong side fails here. */
 class AttackScoreSuite extends munit.FunSuite:
-  private def check(faces: Vector[AttackDieFace], force: Int,
+  private final case class Plan(side: CampaignPlanSide, ref: DecisionOptionRef)
+  private def attacker(name: String)(using munit.Location): Plan =
+    Plan(CampaignPlanSide.Attacker,
+      DecisionOptionRef.Denizen(CatalogNames.denizen(name)))
+  private def defender(name: String)(using munit.Location): Plan =
+    Plan(CampaignPlanSide.Defender,
+      DecisionOptionRef.Denizen(CatalogNames.denizen(name)))
+
+  /** The rules once `plans` are chosen, folded from `AttackScore.changes` as
+    * a Campaign folds them; fails if the scorer does not know a plan. */
+  private def chosen(plans: Plan*)(using munit.Location): AttackRules =
+    val changes = AttackScore.changes.filter(change =>
+      plans.contains(Plan(change.side, change.ref)))
+    assertEquals(changes.map(change => Plan(change.side, change.ref)).toSet,
+      plans.toSet, "the attack scorer knows each plan")
+    changes.foldLeft(AttackRules())((rules, change) => change.change(rules))
+
+  private def assertScores(faces: Vector[AttackDieFace], force: Int,
       rules: AttackRules)(score: Int, lost: Int)(using munit.Location): Unit =
     assertEquals(AttackScore.of(faces, force, rules), (score, lost))
 
@@ -16,42 +36,52 @@ class AttackScoreSuite extends munit.FunSuite:
       Vector(TwoSwordsSkull, TwoSwordsSkull, OneSword), Vector(TwoSwordsSkull),
       Vector.empty)
     for faces <- rolls; force <- 0 to 3 do
-      assertEquals(AttackScore.of(faces, force, AttackRules()),
+      assertEquals(AttackScore.of(faces, force, chosen()),
         CampaignBattle.attackResult(faces, force, ignoreSkulls = false))
 
   test("a hollow sword is worth half, a whole sword with Fae Battalion, and " +
-      "nothing with Rusting Ray"):
+      "nothing with the defender's Rusting Ray"):
     val faces = Vector.fill(3)(HollowSword)
-    check(faces, 3, AttackRules())(1, 0)
-    check(faces, 3, AttackRules(hollow = HollowWorth.Whole))(3, 0)
-    check(faces, 3, AttackRules(hollow = HollowWorth.Zero))(0, 0)
+    assertScores(faces, 3, chosen())(score = 1, lost = 0)
+    assertScores(faces, 3, chosen(attacker("Fae Battalion")))(score = 3,
+      lost = 0)
+    assertScores(faces, 3, chosen(defender("Rusting Ray")))(score = 0,
+      lost = 0)
 
   test("Lancers doubles every face, skulls included, before the skull cap"):
     // Two hollow swords make one sword, two swords, and two payable skulls
     // of two swords each.
-    check(Vector(HollowSword, OneSword, TwoSwordsSkull), 5,
-      AttackRules(doubled = true))(1 + 2 + 4, 2)
+    assertScores(Vector(HollowSword, OneSword, TwoSwordsSkull), 5,
+      chosen(attacker("Lancers")))(score = 1 + 2 + 4, lost = 2)
 
   test("the rulings' example: Lancers and Fearsome General with a force of 3"):
     // Doubled: four skulls and two swords. Three skulls are payable and score
     // 12, the fourth scores 0, the swords add 2.
-    check(Vector(TwoSwordsSkull, TwoSwordsSkull, OneSword), 3,
-      AttackRules(doubled = true, skullSwords = 4))(14, 3)
+    assertScores(Vector(TwoSwordsSkull, TwoSwordsSkull, OneSword), 3,
+      chosen(attacker("Lancers"), attacker("Fearsome General")))(score = 14,
+      lost = 3)
 
   test("an unpayable skull scores nothing, with Fearsome General too"):
     val faces = Vector(TwoSwordsSkull, TwoSwordsSkull)
-    check(faces, 1, AttackRules())(2, 1)
-    check(faces, 1, AttackRules(skullSwords = 4))(4, 1)
+    assertScores(faces, 1, chosen())(score = 2, lost = 1)
+    assertScores(faces, 1, chosen(attacker("Fearsome General")))(score = 4,
+      lost = 1)
 
-  test("an ignored skull scores its swords and kills nothing, four with " +
-      "Fearsome General"):
+  test("with Outriders, The Great Levy, Kindred Warriors or Rangers a skull " +
+      "scores its swords and kills nothing, four with Fearsome General"):
     val faces = Vector(TwoSwordsSkull, TwoSwordsSkull)
-    check(faces, 1, AttackRules(skullsIgnored = true))(4, 0)
-    check(faces, 1, AttackRules(skullsIgnored = true, skullSwords = 4))(8, 0)
+    for name <- Vector("Outriders", "The Great Levy", "Kindred Warriors",
+        "Rangers") do
+      assertScores(faces, 1, chosen(attacker(name)))(score = 4, lost = 0)
+    assertScores(faces, 1,
+      chosen(attacker("Outriders"), attacker("Fearsome General")))(score = 8,
+      lost = 0)
 
-  test("War Tortoise scores every skull face as nothing, Fearsome General's " +
-      "included, and payable skulls still kill"):
-    check(Vector(TwoSwordsSkull, TwoSwordsSkull, OneSword), 1,
-      AttackRules(skullFacesScoreNothing = true, skullSwords = 4))(1, 1)
-    check(Vector(TwoSwordsSkull, OneSword), 2,
-      AttackRules(skullFacesScoreNothing = true, skullsIgnored = true))(1, 0)
+  test("the defender's War Tortoise scores every skull face as nothing, " +
+      "Fearsome General's included, and payable skulls still kill"):
+    assertScores(Vector(TwoSwordsSkull, TwoSwordsSkull, OneSword), 1,
+      chosen(defender("War Tortoise"), attacker("Fearsome General")))(
+      score = 1, lost = 1)
+    assertScores(Vector(TwoSwordsSkull, OneSword), 2,
+      chosen(defender("War Tortoise"), attacker("Outriders")))(score = 1,
+      lost = 0)
