@@ -1,33 +1,25 @@
 package oathdigital.application
 
-import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathEvent.StepRestored
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2, p3}
+import oathdigital.testkit.Unwrap.accepted
 
 /** Restoring taken-back command batches through the service (undo design,
   * "Redo"). */
 class RedoServiceSuite extends munit.FunSuite:
   private val table = Table.start.banditsRefilled
-  private def accept(result: Either[GameApplicationError, GameAccepted])
-      : GameAccepted = result.fold(error => fail(s"rejected: $error"), identity)
   private def rejected(violation: OathViolation) =
     Left(GameApplicationError.CommandRejected(violation))
-  private def holderAnswer(park: ParkedServiceFixture.OathkeeperTiePark) =
-    GameCommand.ResolveWalker(park.holder, TreeDecision(
-      OathkeeperProcedure.recipientDecisionId,
-      ChooseOneAnswer(DecisionOptionRef.Player(park.secondLeader))))
 
   test("a redo restores the state after the batch, and a reload agrees"):
     val (service, repository) = table.service()
     val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
     val moved = travel.picked
-    val undone = accept(service.handle("g", moved.nextSequence,
+    val undone = accepted(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
-    val redone = accept(service.handle("g", undone.nextSequence,
+    val redone = accepted(service.handle("g", undone.nextSequence,
       GameCommand.Redo(p1)))
     assertEquals(redone.state, moved.state)
     assertEquals(redone.events, Vector(StepRestored(
@@ -37,24 +29,27 @@ class RedoServiceSuite extends munit.FunSuite:
       Some((travel.started.nextSequence, moved.nextSequence)))
     assertEquals(redone.redo, None)
     assertEquals(redone.logRevision, Some(undone.nextSequence))
-    val reloaded = new GameApplicationService(catalog, repository,
-      genesis = table.state)
-    assertEquals(reloaded.load("g").map(_.map(_.state)),
-      Right(Some(moved.state)))
+    // A fresh service folds the Redo's marker into the same position.
+    val reloaded = ParkedServiceFixture.loaded(
+      ParkedServiceFixture.replayingSecond(service, repository).load("g"))
+    assertEquals(reloaded.state, moved.state)
+    assertEquals(reloaded.undo, redone.undo)
+    assertEquals(reloaded.redo, None)
+    assertEquals(reloaded.logRevision, Some(undone.nextSequence))
 
   test("redos restore in the reverse order of the undos"):
     val (service, _) = table.service()
     val first = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
     val second = ParkedServiceFixture.travelToPawnOf(service, "g",
       first.picked.nextSequence, p1, p2)
-    val once = accept(service.handle("g", second.picked.nextSequence,
+    val once = accepted(service.handle("g", second.picked.nextSequence,
       GameCommand.Undo(p1)))
-    val twice = accept(service.handle("g", once.nextSequence,
+    val twice = accepted(service.handle("g", once.nextSequence,
       GameCommand.Undo(p1)))
-    val firstBack = accept(service.handle("g", twice.nextSequence,
+    val firstBack = accepted(service.handle("g", twice.nextSequence,
       GameCommand.Redo(p1)))
     assertEquals(firstBack.state, second.started.state)
-    val secondBack = accept(service.handle("g", firstBack.nextSequence,
+    val secondBack = accepted(service.handle("g", firstBack.nextSequence,
       GameCommand.Redo(p1)))
     assertEquals(secondBack.state, second.picked.state)
 
@@ -62,11 +57,11 @@ class RedoServiceSuite extends munit.FunSuite:
     val (service, _) = table.service()
     val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
     val moved = travel.picked
-    val undone = accept(service.handle("g", moved.nextSequence,
+    val undone = accepted(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
-    val redone = accept(service.handle("g", undone.nextSequence,
+    val redone = accepted(service.handle("g", undone.nextSequence,
       GameCommand.Redo(p1)))
-    val again = accept(service.handle("g", redone.nextSequence,
+    val again = accepted(service.handle("g", redone.nextSequence,
       GameCommand.Undo(p1)))
     assertEquals(again.state, travel.started.state)
     assertEquals(again.redo.map(step => (step.from, step.until)),
@@ -86,34 +81,38 @@ class RedoServiceSuite extends munit.FunSuite:
 
   test("a new command leaves nothing to redo"):
     val (service, _) = table.service()
-    val moved = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
-      .picked
-    val undone = accept(service.handle("g", moved.nextSequence,
+    val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
+    val moved = travel.picked
+    val undone = accepted(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
-    val again = accept(service.handle("g", undone.nextSequence,
+    assertEquals(undone.redo.map(step => (step.from, step.until)),
+      Some((travel.started.nextSequence, moved.nextSequence)))
+    val again = accepted(service.handle("g", undone.nextSequence,
       ParkedServiceFixture.pickTravelDestination(p1, Table.quietPawnSite(p2))))
+    assertEquals(again.redo, None)
     assertEquals(service.handle("g", again.nextSequence, GameCommand.Redo(p1)),
       rejected(OathViolation.NothingToRedo))
 
   test("only the batch's issuer may restore it"):
     val park = ParkedServiceFixture.oathkeeperTiePark("tie")
     val game = park.game
-    val answered = accept(game.service.handle("tie", game.accepted.nextSequence,
-      holderAnswer(park)))
-    val undone = accept(game.service.handle("tie", answered.nextSequence,
+    val answered = accepted(game.service.handle("tie",
+      game.accepted.nextSequence,
+      ParkedServiceFixture.holderPicksLeader(park, park.secondLeader)))
+    val undone = accepted(game.service.handle("tie", answered.nextSequence,
       GameCommand.Undo(park.holder)))
     assertEquals(game.service.handle("tie", undone.nextSequence,
       GameCommand.Redo(park.mover)),
       rejected(OathViolation.RedoNotIssuer(park.mover, park.holder)))
-    val redone = accept(game.service.handle("tie", undone.nextSequence,
+    val redone = accepted(game.service.handle("tie", undone.nextSequence,
       GameCommand.Redo(park.holder)))
     assertEquals(redone.state, answered.state)
 
   test("the actor restores a step that left another player's question"):
     val park = ParkedServiceFixture.oathkeeperTiePark("tie")
     val game = park.game
-    val undone = accept(game.service.handle("tie", game.accepted.nextSequence,
+    val undone = accepted(game.service.handle("tie", game.accepted.nextSequence,
       GameCommand.Undo(park.mover)))
-    val redone = accept(game.service.handle("tie", undone.nextSequence,
+    val redone = accepted(game.service.handle("tie", undone.nextSequence,
       GameCommand.Redo(park.mover)))
     assertEquals(redone.state, game.accepted.state)

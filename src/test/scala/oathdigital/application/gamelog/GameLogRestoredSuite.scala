@@ -1,22 +1,21 @@
 package oathdigital.application.gamelog
 
-import oathdigital.application.{GameAccepted, GameApplicationError,
-  GameApplicationService, GameCommand, ParkedServiceFixture}
+import oathdigital.application.{GameApplicationService, GameCommand,
+  ParkedServiceFixture}
 import oathdigital.model._
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2, p3}
+import oathdigital.testkit.Unwrap.{accepted, present}
 import LogScripts.formatter
 
 /** What a reader sees of restored moves (undo design, "Redo" 4): a redo
   * leaves no trace, and the restored lines read as if never taken back. */
 class GameLogRestoredSuite extends munit.FunSuite:
   private val table = Table.start.banditsRefilled
-  private def accept(result: Either[GameApplicationError, GameAccepted])
-      : GameAccepted = result.fold(error => fail(s"rejected: $error"), identity)
   private def log(service: GameApplicationService, viewer: PlayerId)
       : Vector[LogEntry] =
-    formatter.format(service.history("g").toOption.flatten
-      .getOrElse(fail("no history")).steps, Some(viewer))
+    formatter.format(present(accepted(service.history("g")),
+      "a stored game").steps, Some(viewer))
   private def withoutMarks(entries: Vector[LogEntry]) =
     entries.map(_.copy(takenBack = None))
 
@@ -25,9 +24,9 @@ class GameLogRestoredSuite extends munit.FunSuite:
     val moved = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
       .picked
     val before = log(service, p2)
-    val undone = accept(service.handle("g", moved.nextSequence,
+    val undone = accepted(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
-    accept(service.handle("g", undone.nextSequence, GameCommand.Redo(p1)))
+    accepted(service.handle("g", undone.nextSequence, GameCommand.Redo(p1)))
     assertEquals(log(service, p2), before)
 
   test("a redo lifts only the restored move out of its group"):
@@ -35,13 +34,13 @@ class GameLogRestoredSuite extends munit.FunSuite:
     val first = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
     val second = ParkedServiceFixture.travelToPawnOf(service, "g",
       first.picked.nextSequence, p1, p2)
-    val once = accept(service.handle("g", second.picked.nextSequence,
+    val once = accepted(service.handle("g", second.picked.nextSequence,
       GameCommand.Undo(p1)))
-    val twice = accept(service.handle("g", once.nextSequence,
+    val twice = accepted(service.handle("g", once.nextSequence,
       GameCommand.Undo(p1)))
-    val thrice = accept(service.handle("g", twice.nextSequence,
+    val thrice = accepted(service.handle("g", twice.nextSequence,
       GameCommand.Undo(p1)))
-    accept(service.handle("g", thrice.nextSequence, GameCommand.Redo(p1)))
+    accepted(service.handle("g", thrice.nextSequence, GameCommand.Redo(p1)))
     val entries = log(service, p1)
     val restored = entries.filter(_.sequence < first.picked.nextSequence)
     val stillBack = entries.filter(entry =>
@@ -57,11 +56,11 @@ class GameLogRestoredSuite extends munit.FunSuite:
     val travel = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
     val moved = travel.picked
     val before = log(service, p2)
-    val undone = accept(service.handle("g", moved.nextSequence,
+    val undone = accepted(service.handle("g", moved.nextSequence,
       GameCommand.Undo(p1)))
-    val redone = accept(service.handle("g", undone.nextSequence,
+    val redone = accepted(service.handle("g", undone.nextSequence,
       GameCommand.Redo(p1)))
-    accept(service.handle("g", redone.nextSequence, GameCommand.Undo(p1)))
+    accepted(service.handle("g", redone.nextSequence, GameCommand.Undo(p1)))
     // The start stays live after the last undo: every line of the pick is
     // taken back.
     val after = log(service, p2)
@@ -76,13 +75,14 @@ class GameLogRestoredSuite extends munit.FunSuite:
   test("an older taken-back move stays in its group across a later undo and redo"):
     val (service, _) = table.service()
     val first = ParkedServiceFixture.travelToPawnOf(service, "g", 0L, p1, p3)
-    val undoneFirst = accept(service.handle("g", first.picked.nextSequence,
+    val undoneFirst = accepted(service.handle("g", first.picked.nextSequence,
       GameCommand.Undo(p1)))
-    val second = accept(service.handle("g", undoneFirst.nextSequence,
+    val second = accepted(service.handle("g", undoneFirst.nextSequence,
       ParkedServiceFixture.pickTravelDestination(p1, Table.quietPawnSite(p2))))
-    val undoneSecond = accept(service.handle("g", second.nextSequence,
+    val undoneSecond = accepted(service.handle("g", second.nextSequence,
       GameCommand.Undo(p1)))
-    accept(service.handle("g", undoneSecond.nextSequence, GameCommand.Redo(p1)))
+    accepted(service.handle("g", undoneSecond.nextSequence,
+      GameCommand.Redo(p1)))
     val entries = log(service, p1)
     val older = entries.filter(entry =>
       entry.sequence >= first.started.nextSequence &&
