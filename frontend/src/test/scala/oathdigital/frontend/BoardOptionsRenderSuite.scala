@@ -118,6 +118,13 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
       .size, 1)
 
   test("locked and unavailable options take no pick, and say why"):
+    // Control: the same two clicks on the same elements, offered as available,
+    // do pick, so the locked case's empty picks come from the state.
+    val control = recording(available(woodsSite), available(foxCard))
+    val controlRoot = world(control.options)
+    click(site(controlRoot))
+    click(one(controlRoot, "button.card-face"))
+    assertEquals(control.picks, Vector(woodsSite, foxCard))
     val shown = recording(
       OptionView(woodsSite, OptionState.Unavailable,
         Some("Not ruled by the defender")),

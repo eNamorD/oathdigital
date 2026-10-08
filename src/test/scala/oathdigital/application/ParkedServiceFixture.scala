@@ -11,8 +11,8 @@ import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerParked}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Dice, Situation, SituationDriver,
-  Table, Unwrap}
+import oathdigital.testkit.{CatalogNames, Dice, PlacementPicks, Situation,
+  SituationDriver, Table, Unwrap}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** Real games parked on a walker through the application service.
@@ -31,11 +31,6 @@ object ParkedServiceFixture:
   val parkedAssertions = new ParkedDecisionAssertions(catalog,
     WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
 
-  /** The option that names `card`, a denizen or a Vision. */
-  def optionRef(card: WorldCardId): DecisionOptionRef = card match
-    case id: DenizenId => DecisionOptionRef.Denizen(id)
-    case id: VisionId => DecisionOptionRef.Vision(id)
-
   /** `actor` starts playing a facedown adviser; the walk parks on the pick. */
   def playFacedownAdviser(actor: PlayerId): GameCommand =
     GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
@@ -45,7 +40,7 @@ object ParkedServiceFixture:
   def pickFacedownAdviser(actor: PlayerId, card: WorldCardId): GameCommand =
     GameCommand.ResolveWalker(actor, TreeDecision(
       CardPlayProcedure.facedownAdviserDecisionId,
-      DecisionAnswer.ChooseOneAnswer(optionRef(card))))
+      DecisionAnswer.ChooseOneAnswer(PlacementPicks.optionNaming(card))))
 
   /** `actor` starts a Travel; the walk parks on the destination. */
   def startTravel(actor: PlayerId): GameCommand =
@@ -76,11 +71,17 @@ object ParkedServiceFixture:
   def travelToPawnOf(service: GameApplicationService, gameId: String,
       sequence: Long, actor: PlayerId, to: PlayerId)(using munit.Location)
       : TravelBatches =
+    travelTo(service, gameId, sequence, actor, Table.quietPawnSite(to))
+
+  /** `actor` Travels through `service` to `site`, at journal position
+    * `sequence` of game `gameId`. */
+  def travelTo(service: GameApplicationService, gameId: String,
+      sequence: Long, actor: PlayerId, site: SiteId)(using munit.Location)
+      : TravelBatches =
     val started = Unwrap.accepted(service.handle(gameId, sequence,
       startTravel(actor)))
     TravelBatches(started, Unwrap.accepted(service.handle(gameId,
-      started.nextSequence, pickTravelDestination(actor,
-        Table.quietPawnSite(to)))))
+      started.nextSequence, pickTravelDestination(actor, site))))
 
   /** The first player of the fixture's first game: Setup seats p2 first. */
   val firstPlayer: PlayerId = p2
@@ -198,7 +199,9 @@ object ParkedServiceFixture:
       table.situation(Situation.journaled(service, catalog, repository, gameId)))
 
   /** League Treaty at Ancient City, ruled by p2's warband and holding 2
-    * favor of its own suit, taken from that suit's bank. p2's board keeps
+    * favor of its own suit, taken from that suit's bank. p1's pawn stands at
+    * Ancient City, p2's at Broken Peaks and p3's at Buried Giant, so p2 is
+    * alone on its site. p2's board keeps
     * the 3 warbands it started with, 1 at the site and 2 at home. p1 begins
     * Rest, which finishes Rest and parks on p2's destination decision.
     * Broken Peaks' secrets give p2's coming Wake an option, so that Wake
@@ -213,13 +216,15 @@ object ParkedServiceFixture:
       .bankFavor(suit, base.ready.banks.favor(suit) - 2)
       .warbandsAt("Ancient City", p2, 1)
       .boardWarbands(p2, 2)
+      .pawn(p1, "Ancient City")
       .pawn(p2, "Broken Peaks")
+      .pawn(p3, "Buried Giant")
       .siteTokens("Broken Peaks", secrets = 2)
     val (service, repository, act) = journaled(table, gameId)
     val parked = act.parkedAfter(GameCommand.BeginRest(p1))
     parkedAssertions.assertParked(parked.state, PhaseTransitionRef.FinishRest,
       LeagueTreatyContribution.destinationDecisionId(table.ready, p1,
-        Table.quietPawnSite(p1), treatyCard), p2)
+        CatalogNames.site("Ancient City"), treatyCard), p2)
     LeagueTreatyPark(
       ParkedGame(service, repository, accepted(parked, act), parked),
       p1, p2)
@@ -250,13 +255,17 @@ object ParkedServiceFixture:
       p1, orders.participants.map(_.playerId))
 
   /** The off-turn Oathkeeper tie: p3 holds the title, and p1 and p2 each
-    * rule a site with one warband (the other 2 stay on their boards). The
-    * holder must pick between the two tied leaders after p1's Travel to
+    * rule a site with one warband (the other 2 stay on their boards). p1's
+    * pawn stands at Ancient City, p2's at Broken Peaks, p3's at Buried Giant.
+    * The holder must pick between the two tied leaders after p1's Travel to
     * p3's pawn site. Bandits fill the empty sites first, so the refill that
     * follows a first command does not journal an event of its own. */
   def oathkeeperTiePark(gameId: String)(using munit.Location)
       : OathkeeperTiePark =
     val table = Table.start
+      .pawn(p1, "Ancient City")
+      .pawn(p2, "Broken Peaks")
+      .pawn(p3, "Buried Giant")
       .oathkeeper(Some(p3))
       .warbandsAt("Ancient City", p1, 1)
       .warbandsAt("Broken Peaks", p2, 1)
@@ -265,7 +274,7 @@ object ParkedServiceFixture:
       .banditsRefilled
     val (service, repository, act) = journaled(table, gameId)
     val parked = act.parkedAfter(startTravel(p1))
-      .parkedAfter(pickTravelDestination(p1, Table.quietPawnSite(p3)))
+      .parkedAfter(pickTravelDestination(p1, CatalogNames.site("Buried Giant")))
     assert(parked.events.last match {
       case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _, _) => true
       case _ => false
@@ -277,7 +286,8 @@ object ParkedServiceFixture:
       mover = p1, holder = p3, secondLeader = p2)
 
   /** Silver Tongue as p1's faceup adviser, with Wrestlers (Order) and
-    * Bandit Chief (Discord) faceup at p1's pawn site. p2 holds a facedown
+    * Bandit Chief (Discord) faceup at Ancient City, where p1's pawn stands
+    * (p2's is at Broken Peaks, p3's at Buried Giant). p2 holds a facedown
     * adviser, so the use-power log has another player's hidden card to show
     * (or hide) from each viewer. Bandits fill the empty sites first, so no
     * refill is journaled after the first command. Every favor bank starts with at
@@ -288,6 +298,9 @@ object ParkedServiceFixture:
       dice: CampaignDicePort = CampaignDicePort.random)(
       using munit.Location): SilverTonguePark =
     val table = Table.start
+      .pawn(p1, "Ancient City")
+      .pawn(p2, "Broken Peaks")
+      .pawn(p3, "Buried Giant")
       .adviser(p1, "Silver Tongue")
       .denizen("Wrestlers", "Ancient City")
       .denizen("Bandit Chief", "Ancient City")

@@ -31,8 +31,8 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite:
   test("Gambling Hall offers the owner all six favor banks"):
     val hall = CatalogNames.denizen("Gambling Hall")
     // p1 stands at Ancient City, where Gambling Hall is, with 3 favor.
-    val ready0 = Table.start.denizen(hall, at = "Ancient City").favor(p1, 3)
-      .ready
+    val ready0 = Table.start.pawn(p1, "Ancient City")
+      .denizen(hall, at = "Ancient City").favor(p1, 3).ready
     val rules0 = rules(defenseDice(DefenseDieFace.OneShield,
       DefenseDieFace.OneShield, DefenseDieFace.TwoShields,
       DefenseDieFace.Blank))
@@ -49,7 +49,8 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite:
       "facedown one just taken"):
     // p1 stands at Ancient City with Fae Merchant, holds the Whistle faceup
     // and 2 faceup secrets; Dowsing Sticks tops the relic deck.
-    val ready0 = Table.start.denizen(fae, at = "Ancient City")
+    val ready0 = Table.start.pawn(p1, "Ancient City")
+      .denizen(fae, at = "Ancient City")
       .relic(p1, whistle).secrets(p1, faceUp = 2)
       .relicDeckTop(dowsingSticks).ready
     val parked = ready(accepted(use(rulesWithPrintedRestrictions(), ready0,
@@ -64,7 +65,8 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite:
 
   test("Fae Merchant does not offer the Grand Scepter"):
     val scepter = CatalogNames.relic("The Grand Scepter")
-    val ready0 = Table.start.denizen(fae, at = "Ancient City")
+    val ready0 = Table.start.pawn(p1, "Ancient City")
+      .denizen(fae, at = "Ancient City")
       .relic(p1, scepter).relic(p1, whistle).secrets(p1, faceUp = 2)
       .relicDeckTop(dowsingSticks).ready
     val parked = ready(accepted(use(rulesWithPrintedRestrictions(), ready0,

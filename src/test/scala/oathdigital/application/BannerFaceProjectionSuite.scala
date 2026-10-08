@@ -19,9 +19,9 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
   private val place = WanderingFlamePlace.id.value
 
   test("the holder is shown both Wandering Flame powers, named, with a text"):
-    // p1 holds the Wandering Flame and a faceup secret; Broken Peaks holds a
-    // secret.
-    val holding = Table.start
+    // p1 stands at Ancient City and holds the Wandering Flame and a faceup
+    // secret; Broken Peaks holds a secret.
+    val holding = Table.start.pawn(p1, "Ancient City")
       .darkestSecret(Some(p1), 1, face = DarkestSecretFace.WanderingFlame)
       .siteTokens("Broken Peaks", secrets = 1).secrets(p1, faceUp = 1).ready
     val projected = projector.project("flame", LoadedGame(Ready(holding), 30L),
@@ -41,17 +41,18 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
       "bearing site, and the place power needs a faceup secret"):
     def shown(ready: ReadyGame) = projector.project("flame",
       LoadedGame(Ready(ready), 30L), p1)
-    // The quiet table has no site secrets, so Move has no target.
-    val noSite = Table.start
+    // p1 stands at Ancient City throughout. The quiet table has no site
+    // secrets, so Move has no target.
+    val noSite = Table.start.pawn(p1, "Ancient City")
       .darkestSecret(Some(p1), 1, face = DarkestSecretFace.WanderingFlame)
       .secrets(p1, faceUp = 1).ready
     assertEquals(shown(noSite).phasePowers.map(_.powerId), Vector(place))
-    val noSecret = Table.start
+    val noSecret = Table.start.pawn(p1, "Ancient City")
       .darkestSecret(Some(p1), 1, face = DarkestSecretFace.WanderingFlame)
       .siteTokens("Broken Peaks", secrets = 1)
       .secrets(p1, faceUp = 0, faceDown = 2).ready
     assertEquals(shown(noSecret).phasePowers.map(_.powerId), Vector(move))
-    val neither = Table.start
+    val neither = Table.start.pawn(p1, "Ancient City")
       .darkestSecret(Some(p1), 1, face = DarkestSecretFace.WanderingFlame)
       .secrets(p1, faceUp = 0, faceDown = 2).ready
     assertEquals(shown(neither).phasePowers, Vector.empty)

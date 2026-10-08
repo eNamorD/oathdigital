@@ -10,7 +10,7 @@ import oathdigital.model.DecisionAnswer.{AcceptDeal, ProposeTerms}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
 import ParkedServiceFixture.{loaded, replayingSecond}
 
@@ -22,8 +22,10 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
     val path = Files.createTempDirectory(
       "oathdigital-rest-reopen-").resolve("journal")
     val gameId = "game-hsql-rest-cleanup"
-    // Broken Peaks' secrets give p2's coming Wake an option, so it waits.
-    val table = Table.start.pawn(p2, "Broken Peaks")
+    // Broken Peaks' secrets give p2's coming Wake an option, so it waits. p2
+    // is alone there: p1 rests at Ancient City, p3 stands at Buried Giant.
+    val table = Table.start.pawn(p1, "Ancient City").pawn(p2, "Broken Peaks")
+      .pawn(p3, "Buried Giant")
       .siteTokens("Broken Peaks", secrets = 2)
     val first = accepted(OwnedHsqldbEventStreamRepository.open(path))
     // p1 rests.
@@ -82,12 +84,14 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
         Vector.empty)
     finally reopened.close()
 
-  /** p1 holds Wizard's Conclave facedown and will travel to p2's site to
-    * negotiate. p3 stands at Buried Giant, away from them, so p2 is the only
-    * player p1 can negotiate with. */
+  /** p1 holds Wizard's Conclave facedown and, from Ancient City, will travel
+    * to p2's site, Broken Peaks, to negotiate. p3 stands at Buried Giant,
+    * away from them, so p2 is the only player p1 can negotiate with. */
   private val negotiationTable = Table.start
     .adviser(p1, "Wizard's Conclave", facedown = true)
+    .pawn(p1, "Ancient City")
     .pawn(p2, "Broken Peaks")
+    .pawn(p3, "Buried Giant")
   private val wizardsConclave = CatalogNames.denizen("Wizard's Conclave")
 
   private def negotiationService(repository: EventStreamRepository)

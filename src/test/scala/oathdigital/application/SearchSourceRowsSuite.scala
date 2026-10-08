@@ -33,8 +33,10 @@ class SearchSourceRowsSuite extends munit.FunSuite:
       Outcomes.ready(started.state), Some(p1))), "the source decision")
       .query.toVector.flatMap(_.offeredOptions).map(row => row.id -> row).toMap
 
-  /** Both piles hold cards, and p1 has `supply` Supply. */
+  /** Both piles hold cards, p1 stands at Ancient City, in the Cradle, and has
+    * `supply` Supply. */
   private def stocked(supply: Int): Table = Table.start
+    .pawn(p1, "Ancient City")
     .worldDeckTop("Wrestlers", "Errand Boy", "Mercenaries")
     .discarded(Region.Cradle, "Threatening Roar", "Fae Merchant",
       "Second Chance")
@@ -81,7 +83,8 @@ class SearchSourceRowsSuite extends munit.FunSuite:
 
   test("an empty pile says it is empty rather than what it would cost"):
     // The Cradle discard is empty on the quiet table.
-    val ready = Table.start.worldDeckTop("Wrestlers").supply(p1, 5).ready
+    val ready = Table.start.pawn(p1, "Ancient City")
+      .worldDeckTop("Wrestlers").supply(p1, 5).ready
     val shown = rows(ready)
     assertEquals(shown("cradle").state, "unavailable")
     assertEquals(shown("cradle").reason,
@@ -90,8 +93,8 @@ class SearchSourceRowsSuite extends munit.FunSuite:
   test("an empty world deck says it is empty"):
     // The whole world deck goes to the Provinces discard, which p1 cannot
     // search; one card in the Cradle discard lets the Search start.
-    val stocked = Table.start.discarded(Region.Cradle, "Wrestlers")
-      .supply(p1, 5)
+    val stocked = Table.start.pawn(p1, "Ancient City")
+      .discarded(Region.Cradle, "Wrestlers").supply(p1, 5)
     val deck = stocked.unchecked.game.current.commonCards.worldDeck
     val shown = rows(stocked.discarded(Region.Provinces, deck*).ready)
     assertEquals(shown("world").state, "unavailable")

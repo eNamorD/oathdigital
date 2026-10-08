@@ -95,7 +95,7 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     val powered = catalog.copy(edifices = catalog.edifices.map(e =>
       if e.id == edifice.id then TestCards.edificeLike(e)(
         intact = e.intact.powers :+ printed) else e))
-    val state = Table.start
+    val state = Table.start.pawn(p1, "Ancient City")
       .edifice(id, EdificeSide.Intact, at = "Ancient City").ready
     val projected = new GameProjector(powered,
       PhasePowers(Vector(TestPower(powerId, PowerTiming.Act))))
