@@ -130,6 +130,10 @@ trait ContributingPower extends NotingPower:
   def id: PowerId
   def source: RuleSourceRef
   def priority: Int = 0
+  /** The windows this power hooks and what it contributes at each. It must
+    * be pure and give the same result on every call for a given instance:
+    * `PowerWindowIndex` calls it once per command and reuses the result.
+    */
   def contributions: Map[PowerWindow, Vector[Contribution]]
   def applicable(ctx: PowerCtx): Boolean = true
   /** Operation restrictions that hold wherever this power is offered: every

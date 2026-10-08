@@ -51,7 +51,7 @@ class ContributionCollectorSuite extends munit.FunSuite:
       Vector(Transform((_, ops) => ops)))
 
     val gathered = ContributionCollector.gather(
-      window, Vector(declaresElsewhere), ctxFor(_, window))
+      window, PowerWindowIndex.of(Vector(declaresElsewhere)), ctxFor(_, window))
 
     assertEquals(gathered.order, Vector.empty[PowerId])
     assertEquals(gathered.transforms, Vector.empty)
@@ -63,7 +63,7 @@ class ContributionCollectorSuite extends munit.FunSuite:
       applicableFlag = false)
 
     val gathered = ContributionCollector.gather(
-      window, Vector(inapplicable), ctxFor(_, window))
+      window, PowerWindowIndex.of(Vector(inapplicable)), ctxFor(_, window))
 
     assertEquals(gathered.order, Vector.empty[PowerId])
     assertEquals(gathered.transforms, Vector.empty)
@@ -79,7 +79,7 @@ class ContributionCollectorSuite extends munit.FunSuite:
     val alphaZ = fixturePower("power.z", "alpha", Set(window), Vector(transformAlphaZ))
 
     val gathered = ContributionCollector.gather(
-      window, Vector(bravoA, alphaZ), ctxFor(_, window))
+      window, PowerWindowIndex.of(Vector(bravoA, alphaZ)), ctxFor(_, window))
 
     assertEquals(gathered.order, Vector(PowerId("power.z"), PowerId("power.a")))
     assertEquals(gathered.transforms, Vector(
@@ -94,7 +94,7 @@ class ContributionCollectorSuite extends munit.FunSuite:
       "power.both", "src", Set(window), Vector(transform, restriction))
 
     val gathered = ContributionCollector.gather(
-      window, Vector(power), ctxFor(_, window))
+      window, PowerWindowIndex.of(Vector(power)), ctxFor(_, window))
 
     assertEquals(gathered.transforms, Vector(PowerId("power.both") -> transform))
     assertEquals(gathered.restrictions, Vector(PowerId("power.both") -> restriction))

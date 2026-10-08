@@ -247,7 +247,7 @@ private[application] final class WalkerDecisionProjector(
       : Option[DecisionQueryProjection] =
     // One index per projection, shared by every option: a Forge partition
     // asks about three denizens and a Recover pick about every site relic.
-    val index = CardIndex.from(ready.game).toOption
+    val index = ready.game.cardIndex.toOption
     // An available option that cannot be presented suppresses the whole
     // decision. An unavailable one is only shown, never answered, so it
     // drops itself instead.
@@ -489,7 +489,7 @@ private[application] final class WalkerDecisionProjector(
   private[application] def subjectCards(ready: ReadyGame,
       viewer: Option[PlayerId], decisionId: String)
       : Vector[CardDetailsProjection] =
-    val index = CardIndex.from(ready.game).toOption
+    val index = ready.game.cardIndex.toOption
     val prefixes = Vector("cardplay.place.", "cardplay.discard.")
     prefixes.find(decisionId.startsWith).toVector.flatMap { prefix =>
       decisionId.stripPrefix(prefix).split("\\.", 2).toVector match
@@ -575,7 +575,7 @@ private[application] final class WalkerDecisionProjector(
   private def answeredOptions(ready: ReadyGame, viewer: Option[PlayerId],
       pending: PendingTree, decisionId: String)
       : Vector[DecisionOptionProjection] =
-    val index = CardIndex.from(ready.game).toOption
+    val index = ready.game.cardIndex.toOption
     pending.answered.collect {
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
     }.flatMap(DecisionOption.forRef)

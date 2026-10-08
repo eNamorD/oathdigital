@@ -58,7 +58,8 @@ class TravelSitePowersSuite extends munit.FunSuite:
   private def gathered(ready: ReadyGame, node: Operation,
       window: PowerWindow = PowerWindow.TravelCost,
       candidates: Vector[ContributingPower] = powers): GatheredContributions =
-    ContributionCollector.gather(window, candidates, ctx(ready, window, node, _))
+    ContributionCollector.gather(window, PowerWindowIndex.of(candidates),
+      ctx(ready, window, node, _))
 
   private def transformedCost(ready: ReadyGame, source: SiteId,
       destination: SiteId, base: Int,

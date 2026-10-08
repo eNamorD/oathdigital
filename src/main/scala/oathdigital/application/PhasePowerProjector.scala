@@ -24,7 +24,7 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
   def project(context: ScopedProjectionContext): Vector[PhasePowerProjection] =
     if !context.viewerIsActive then Vector.empty
     else
-      val index = CardIndex.from(context.ready.game).toOption
+      val index = context.ready.game.cardIndex.toOption
       PhasePowerProcedure.usable(catalog, context.ready, context.active.player,
         powers, walkerPowers).flatMap { usable =>
         for

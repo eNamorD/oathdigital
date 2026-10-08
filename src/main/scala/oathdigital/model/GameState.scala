@@ -186,4 +186,14 @@ final case class CurrentGameState(
 final case class OathGame(
     campaign: CampaignState,
     current: CurrentGameState
-)
+):
+  /** Where every card of this state is, with no expected cards (see
+    * `CardIndex.from`). Built at most once per instance.
+    *
+    * The cache cannot go stale: `OathGame` is immutable and every change makes
+    * a new instance through `copy`. Case-class equality, hashing and `copy`
+    * read only the constructor fields, so the cache changes none of them, and
+    * nothing serializes it.
+    */
+  lazy val cardIndex: Either[Vector[CardIndexProblem], CardIndex] =
+    CardIndex.scan(this, Set.empty)

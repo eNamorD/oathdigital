@@ -16,6 +16,14 @@ command's powers by window once per `WalkerPowers` instance, so
 
 **Spec:** [docs/superpowers/specs/2026-10-07-test-speed-design.md](../specs/2026-10-07-test-speed-design.md)
 
+**Execution rulings:**
+- Ruling (Task 1): the script streams `jfr print` as text, not JSON, and
+  reports the `WATCHED` frames and the load average. The JSON form of a
+  256-frame recording ran to 15 GB. The code block in Task 1 Step 1 is the first draft;
+  `scripts/profile-tests.py` is the authority.
+- Ruling: commit trailers use `Claude Sonnet 5.5`, the model that executes
+  the plan, not the Opus trailer in the commit commands below.
+
 ## Global Constraints
 
 - No game result changes. The gate stays green, and no existing test changes
@@ -803,27 +811,62 @@ shares from `scripts/profile-tests.py 'oathdigital.gameplay.powers.campaign.*'`
 (inclusive, except `ClassValue`, which is self). SearchBudget is Campaign
 start / reading its park.
 
-| Stage | Gate wall | Gate CPU | Summed root suites | Campaign profile wall | `CardIndex` | `gather` | `ClassValue` self | SearchBudget |
+| Stage | Gate wall | Gate CPU | Summed root suites | Campaign profile wall | `CardIndex` | `gather` | `ClassValue` on stack | SearchBudget |
 |---|---|---|---|---|---|---|---|---|
 | Spec baseline (37c8563d, by hand) | 46 s | 280 s | 216 s | – | 26% | 33% | 4% | 26 ms / 0 ms |
-| Baseline | | | | | | | | |
-| After Task 2 | | | | | | | | |
-| After Task 3 | | | | | | | | |
+| Baseline (load 11.8, busy machine) | 58 s | 340 s | 308 s | 61 s | 30% | 34% | 2% | 33 ms / 0 ms |
+| After Task 2 (load 7.6 gate, 12.3 profile) | 45 s | 288 s | 294 s | 15 s (warm) | 16.8% | 39.2% | 1.8% | 24 ms / 0 ms |
+| After Task 3 (load 7.0 gate, 8.5 profile) | 34 s | 238 s | 168 s | 13 s (warm) | 19.8% | 25.0% | 0.1% | 18 ms / 0 ms |
 
 ### Baseline
 
-Ten slowest suites:
+The machine was busy (load average 11.8), so the gate times are inflated
+against the spec baseline (46 s, 263 s, 216 s on 3050 tests; this run has
+3088). The frame shares and SearchBudget are the comparable numbers.
 
-Top ten inclusive frames:
+Ten slowest suites (gate, under load): MercenariesSuite 12.9 s, ShieldWallSuite 10.1 s,
+WrestlersSuite 9.8 s, DisgracedCaptainSuite 9.6 s, StickyFireSuite 7.9 s,
+FieldPromotionSuite 7.6 s, GreatCrusadeSuite 7.4 s, TrustedSeatRoutesSuite 7.2 s,
+CrackingGroundSuite 7.0 s, MilitaryParadeSuite 6.3 s.
+
+Campaign profile (1913 samples that ran project code), share of samples with the
+frame on the stack: `CardIndex$` 30.3%, `OperationStateInvariant` 30.9%,
+`DomainValidation$.validate` 13.4%, `ContributionCollector$.gather` 34.2%,
+`WalkerPowerGather$.breaches` 47.2%, `ClassValue` 2.1%. Top self frames:
+`BoxesRunTime.equals2` 6.0%, `HashMapBuilder.update` 5.6%,
+`Vector.filterImpl` 3.5%.
 
 ### After Task 2
 
-Ten slowest suites:
+Load differed from the baseline run, so compare the shares, not the times. The
+campaign profile's summed suite time went from 130.9 s to 119.5 s. Its first run
+(the baseline) included a cold compile in the new worktree, so its wall clock is
+not comparable.
 
-Top ten inclusive frames:
+Share of samples with the frame on the stack: `CardIndex$` 30.3% to 16.8%,
+`OperationStateInvariant` 30.9% to 19.6%, `DomainValidation$.validate` 13.4% to
+4.5%. What remains of `CardIndex$` is one scan per new state (13.7% under
+`OathGame.cardIndex`, which an operation cannot avoid because every run makes a new
+state) and 3.0% in `DomainValidation.validate`'s set difference against the expected
+cards.
 
 ### After Task 3
 
-Ten slowest suites:
+Load differed between runs (7.0 to 12 across the table), so compare the shares and
+the campaign profile's summed suite time: 130.9 s (baseline), 119.5 s (Task 2),
+93.2 s (Task 3). Samples that ran project code: 1913, 1520, 1390.
 
-Top ten inclusive frames:
+Share of samples with the frame on the stack: `ContributionCollector$.gather`
+34.2% to 25.0% (it was 39.2% after Task 2, because the total shrank around it),
+`WalkerPowerGather$.breaches` 47.2%, `ClassValue` 2.1% to 0.1%. The shares of
+`CardIndex$` (19.8%) and the invariant (23.5%) rose against Task 2 for the same
+reason: the total shrank. Gate wall clock was 34 s with 3089 root tests.
+
+Ten slowest suites in the gate: TrustedSeatRoutesSuite 6.7 s (a server suite, not
+campaign), MercenariesSuite 5.0 s, StickyFireSuite 4.5 s,
+AuthenticatedGameBootstrapRoutesSuite 4.1 s, WrestlersSuite 4.1 s, ShieldWallSuite 3.9 s,
+DisgracedCaptainSuite 3.5 s, GleamingArmorSuite 3.4 s, WarningSignalsSuite 3.2 s,
+HsqldbIdentityRepositorySuite 2.9 s.
+
+Remaining hot spots for a follow-up (spec out-of-scope list): `gather` is still 25%
+because each `attributed` pass calls it two or three times per window; the invariant is still 23.5%.

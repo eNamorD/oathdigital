@@ -33,7 +33,7 @@ object OperationStateAdapter:
       id: CardId,
       at: Location
   ): Either[OperationError, LocatedCard] =
-    CardIndex.from(ready.game).left.map(InvalidCardIndex.apply).flatMap { index =>
+    ready.game.cardIndex.left.map(InvalidCardIndex.apply).flatMap { index =>
       index.get(id).toRight(UnknownCard(id)).flatMap { located =>
         Either.cond(matches(located.location.container, at), located,
           MissingPiece(Piece.Card(id), at))
@@ -114,7 +114,7 @@ object OperationStateAdapter:
       ready: ReadyGame,
       id: CardId
   ): Either[OperationError, Tokens] =
-    CardIndex.from(ready.game).left.map(InvalidCardIndex.apply).flatMap { index =>
+    ready.game.cardIndex.left.map(InvalidCardIndex.apply).flatMap { index =>
       index.stateOf(id).collect {
         case state: SiteDenizenState => state.tokens
         case state: RelicState => state.tokens
