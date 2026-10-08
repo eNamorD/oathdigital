@@ -83,7 +83,8 @@ class TakeWealthPowerSuite extends munit.FunSuite:
     // advance is modelled on `Rest`'s rather than driven through a whole
     // Rest, which the plan puts at the end-to-end level instead.
     val blocked = ready(Some(site), Set(TakeWealthLimit.useRef(site)))
-    assert(violation(blocked, takeNode(site)).isDefined,
+    assertEquals(violation(blocked, takeNode(site)),
+      Some(OathViolation.PowerAlreadyUsed(TakeWealthLimit.useRef(site))),
       "precondition: the site must be blocked before the turn advances")
     assertEquals(violation(advanceTurn(blocked), takeNode(site)), None)
 
