@@ -13,8 +13,8 @@ import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** The card play walk (card play slots design, "Placement procedure"): the
   * slot choice, the follow-up discard and the play. p1 stands at Ancient City
-  * (Cradle, room for three, no Homeland) on the quiet table; a discard there
-  * goes to the Provinces.
+  * (Cradle, room for three, no Homeland); a discard there goes to the
+  * Provinces.
   */
 class CardPlayProcedureSuite extends munit.FunSuite:
   import PlacementFixture.{build, cardPlayDecisionId, park, rulePower,
@@ -37,11 +37,15 @@ class CardPlayProcedureSuite extends munit.FunSuite:
   private val twoPermissions = rulePower("test.two-discards")(
     _.permitSiteDiscard(testPermission).permitSiteDiscard(testPermission))
 
-  /** p1 holds Errand Boy in a temporary hand, on the quiet table. */
-  private def handState: ReadyGame = Table.start.hand(actor, card).ready
+  /** The quiet table with p1's pawn at Ancient City, stated here because
+    * the slots and the discard region follow the pawn. */
+  private def atHome: Table = Table.start.pawn(actor, at = home)
+
+  /** p1 holds Errand Boy in a temporary hand, at Ancient City. */
+  private def handState: ReadyGame = atHome.hand(actor, card).ready
 
   /** p1 holds Errand Boy in hand, and Ancient City is full of `others`. */
-  private def fullSite: ReadyGame = others.foldLeft(Table.start
+  private def fullSite: ReadyGame = others.foldLeft(atHome
     .hand(actor, card))(_.denizen(_, at = home)).ready
 
   /** Errand Boy's card play, under `powers`, parked on its placement. */
@@ -92,7 +96,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
 
   test("a Replace adviser slot discards that adviser and plays the card, " +
       "asking nothing more"):
-    val full = others.foldLeft(Table.start.hand(actor, card))(
+    val full = others.foldLeft(atHome.hand(actor, card))(
       _.adviser(actor, _, facedown = true)).ready
     val done = Outcomes.finished(parkOnPlacement(full)
       .place(DecisionOptionRef.AdviserPlay(actor, 0, faceup = true)))
@@ -102,7 +106,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     assert(!advisers.exists(_.id == others.head))
 
   test("an unavailable Replace slot is refused"):
-    val full = locked.foldLeft(Table.start.hand(actor, card))(
+    val full = locked.foldLeft(atHome.hand(actor, card))(
       _.adviser(actor, _)).ready
     // The slot is offered, shown unavailable, and an answer naming it is
     // refused as one the decision does not offer.
@@ -153,7 +157,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
   test("a picked facedown adviser parks on the shared walker placement tree"):
     // p1 holds a facedown Wrestlers to play.
     val adviser = CatalogNames.denizen("Wrestlers")
-    val ready = Table.start.adviser(actor, adviser, facedown = true).ready
+    val ready = atHome.adviser(actor, adviser, facedown = true).ready
     val rules = new OathRules(catalog)
     val walkerParked = new ParkedDecisionAssertions(catalog)
     val started = FacedownAdviserPlay.parkedOnPlacement(rules,

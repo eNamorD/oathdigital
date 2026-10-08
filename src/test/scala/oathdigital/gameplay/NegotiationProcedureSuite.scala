@@ -27,7 +27,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     * relic: p1 holds Brass Horse with a secret on it, p2 Truthful Harp and
     * p3 Grand Mask. Broken Peaks also holds Sticky Fire, which p1 knows. */
   private def gathered: Table = Table.start
-    .pawn(p1, at = site).pawn(p3, at = site)       // p2 already stands there
+    .pawn(p1, at = site).pawn(p2, at = site).pawn(p3, at = site)
     .favor(p1, 5).favor(p2, 5).favor(p3, 5)
     .relic(p1, p1Relic, facedown = true).tokens(p1Relic, secrets = 1)
     .relic(p2, "Truthful Harp", facedown = true)

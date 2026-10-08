@@ -30,8 +30,11 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
       expected)
 
   /** p2 holds the Oathkeeper title while p1 and p3 each rule one site, a
-    * tie p2 must break off turn. It is p1's Act. */
+    * tie p2 must break off turn. It is p1's Act. p1 stands at Ancient City,
+    * p2 at Broken Peaks and p3 at Buried Giant. */
   private def tied: Table = Table.start
+    .pawn(p1, at = "Ancient City").pawn(p2, at = "Broken Peaks")
+    .pawn(p3, at = "Buried Giant")
     .oathkeeper(Some(p2))
     .warbandsAt("Dunes", p1, 1).warbandsAt("Fair Isle", p3, 1)
   private val active = p1
@@ -39,7 +42,8 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
 
   test("a single new leader takes the title inside the action's own command"):
     val leader = p3
-    val ready = Table.start.warbandsAt("Dunes", p3, 1).ready
+    val ready = Table.start.pawn(p1, at = "Ancient City")
+      .warbandsAt("Dunes", p3, 1).ready
     val traveled = accepted(travel(ready))
     assert(traveled.events.exists {
       case step: WalkerStepRecorded =>

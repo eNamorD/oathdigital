@@ -52,9 +52,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
 
   /** The parked placement's site slots, each as the card it replaces. */
   private def siteSlots(at: OathTransition): Vector[Option[CardId]] =
-    PlacementPicks.parkedOptions(at.state, walkerPowers)
-      .filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])
-      .map(PlacementPicks.replaces)
+    PlacementPicks.parkedSiteSlotReplacements(at.state, walkerPowers)
 
   private def siteCards(ready: ReadyGame): Vector[CardId] =
     Look(ready).cardsAt(ancientCity)
@@ -172,7 +170,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       CardPlayProcedure.playedAs(option.ref).contains(PlayedAs.Faceup))
       .map(PlacementPicks.replaces), Vector(Some(adviser)))
     // The site still offers the Mob's Replace slot beside the empty one.
-    assertEquals(shown.filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])
+    assertEquals(PlacementPicks.siteSlotOptions(shown)
       .map(PlacementPicks.replaces), Vector(None, Some(kept)))
     assert(walkerPowers.powers.exists(_.id == SilverTongue.id))
 

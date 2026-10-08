@@ -3,28 +3,6 @@ package oathdigital.engine
 /** One durable domain event paired with its zero-based stream position. */
 final case class RecordedEvent[E](index: Long, event: E)
 
-sealed trait EventAppendResult[+E]
-object EventAppendResult:
-  final case class Appended[E](records: Vector[RecordedEvent[E]])
-      extends EventAppendResult[E]
-  final case class Conflict(expectedIndex: Long, actualIndex: Long)
-      extends EventAppendResult[Nothing]
-
-/**
- * Generic append-only event persistence boundary.
- *
- * A command may append several events atomically. `expectedIndex` is the
- * position of the first proposed event and prevents stale writers from
- * interleaving event batches.
- */
-trait EventJournal[E]:
-  def size: Long
-  def read(fromIndex: Long): Vector[RecordedEvent[E]]
-  def append(
-      expectedIndex: Long,
-      events: Vector[E]
-  ): EventAppendResult[E]
-
 /** Pure event evolution used both after commands and during replay. */
 trait EventEvolution[S, E, V]:
   def initialState: S

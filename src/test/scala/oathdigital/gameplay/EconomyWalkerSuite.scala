@@ -24,6 +24,7 @@ class EconomyWalkerSuite extends munit.FunSuite:
     * (Arcane) and nothing else. p1 has 4 favor, 2 faceup secrets, 7 Supply
     * and 3 warbands on the board. */
   private def atAlchemist: Table = Table.start
+    .pawn(p1, at = "Ancient City")
     .denizen(alchemist, at = "Ancient City")
     .favor(p1, 4).secrets(p1, faceUp = 2).supply(p1, 7).boardWarbands(p1, 3)
 
@@ -134,7 +135,8 @@ class EconomyWalkerSuite extends munit.FunSuite:
     assertEquals(current(mustered.state).walkerPending, None)
 
   test("an unimplemented optional Economy power does not block a base Trade"):
-    val board = Table.start.favor(p1, 4).secrets(p1, faceUp = 2)
+    val board = Table.start.pawn(p1, at = "Ancient City")
+      .favor(p1, 4).secrets(p1, faceUp = 2)
       .edifice("Hallowed Spring", EdificeSide.Intact, at = "Ancient City").ready
     val started = start(board, ActionRef.Trade, secret)
       .getOrElse(fail("the Trade must start"))

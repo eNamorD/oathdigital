@@ -48,9 +48,7 @@ class CropRotationSuite extends munit.FunSuite:
 
   /** The parked placement's site slots, each as the card it replaces. */
   private def siteSlots(at: OathTransition): Vector[Option[CardId]] =
-    PlacementPicks.parkedOptions(at.state, walkerPowers)
-      .filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])
-      .map(PlacementPicks.replaces)
+    PlacementPicks.parkedSiteSlotReplacements(at.state, walkerPowers)
 
   private def siteCards(ready: ReadyGame): Vector[CardId] =
     Look(ready).cardsAt(home)

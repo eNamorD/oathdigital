@@ -19,9 +19,9 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
   private val pickSecondCandidate: Vector[PlayerId] => PlayerId = _(1)
   private val pickLastCandidate: Vector[PlayerId] => PlayerId = _.last
 
-  /** p1's Wake in `round`, with the Usurper limit as `limited` says. Each
-    * of `rulers` rules one site with a warband: the first Dunes, the second
-    * Fair Isle. `holder` holds the title on `side`. */
+  /** p1's Wake at Ancient City in `round`, with the Usurper limit as
+    * `limited` says. Each of `rulers` rules one site with a warband: the
+    * first Dunes, the second Fair Isle. `holder` holds the title on `side`. */
   private def preparedTable(
       rulers: Vector[PlayerId],
       holder: Option[PlayerId] = None,
@@ -30,7 +30,8 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
       limited: Boolean = true
   ): Table =
     rulers.zip(Vector("Dunes", "Fair Isle")).foldLeft(
-      Table.start.turn(p1, Phase.Wake).oathkeeper(holder, side)) {
+      Table.start.pawn(p1, at = "Ancient City").turn(p1, Phase.Wake)
+        .oathkeeper(holder, side)) {
         case (table, (ruler, site)) => table.warbandsAt(site, ruler, 1) }
       // The round track is the subject here, and no other suite sets it.
       .update(_.updateCurrent(current => current.copy(tracks =

@@ -10,7 +10,7 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 class VisionPlaySuite extends munit.FunSuite:
@@ -30,6 +30,11 @@ class VisionPlaySuite extends munit.FunSuite:
   private def placeId(card: VisionId) =
     PlacementFixture.cardPlayDecisionId(card, "place")
   private val actor = p1
+  private val home = "Ancient City"
+
+  /** The quiet table with p1's pawn stated at Ancient City, in the Cradle:
+    * its next region is the Provinces, where p1's discards go. */
+  private def atHome: Table = Table.start.pawn(actor, at = home)
 
   /** `newVision` tops the world deck and p1's world Search has started, so
     * the walk parks on `newVision`'s own `cardplay.place.*` decision with
@@ -38,7 +43,7 @@ class VisionPlaySuite extends munit.FunSuite:
     */
   private def visionInTemporaryHand(revealed: Option[VisionId] = None)
       : OathState =
-    val stacked = Table.start.worldDeckTop(newVision)
+    val stacked = atHome.worldDeckTop(newVision)
     val initial = revealed.fold(stacked)(stacked.revealedVision(actor, _))
       .ready
     accepted(SearchPlay.searched(rules, Ready(initial), actor)).state
@@ -69,8 +74,6 @@ class VisionPlaySuite extends munit.FunSuite:
   private def revealedVisionOf(state: OathState): Option[VisionState] =
     Look(state).player(actor).revealedVision
 
-  /** p1 stands at Ancient City, in the Cradle: its next region is the
-    * Provinces, where p1's discards go. */
   private def provincesDiscard(state: OathState): Vector[WorldCardId] =
     Outcomes.ready(state).game.current.commonCards.discard(Region.Provinces)
 
@@ -79,7 +82,7 @@ class VisionPlaySuite extends munit.FunSuite:
     // p2, the enemy, shares p1's site, Ancient City, and holds the People's
     // Favor; Conspiracy tops the deck.
     val enemy = p2
-    val initial = Table.start.pawn(enemy, "Ancient City")
+    val initial = atHome.pawn(enemy, at = home)
       .peoplesFavor(Some(enemy), favor = 1).darkestSecret(None, secrets = 1)
       .worldDeckTop(conspiracy).ready
     val started = accepted(
@@ -116,7 +119,7 @@ class VisionPlaySuite extends munit.FunSuite:
       "Vision and costs no Supply"):
     val old = VisionRules.Conquest
     val revealed = VisionRules.Faith
-    val staged = Table.start.adviser(actor, revealed, facedown = true)
+    val staged = atHome.adviser(actor, revealed, facedown = true)
       .revealedVision(actor, old).ready
     val before = Look(staged).player(actor)
     val started = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,
@@ -134,9 +137,10 @@ class VisionPlaySuite extends munit.FunSuite:
 
   test("a Conspiracy played from a facedown adviser through the service " +
       "with nothing to take is boxed"):
-    // p1 holds Conspiracy facedown; on the quiet table no one shares p1's
-    // site, so it has nothing to take.
-    val staged = Table.start.adviser(actor, conspiracy, facedown = true).ready
+    // p1 holds Conspiracy facedown; p2 and p3 stand elsewhere, so no one
+    // shares p1's site and it has nothing to take.
+    val staged = atHome.pawn(p2, at = "Broken Peaks").pawn(p3, at = "Buried Giant")
+      .adviser(actor, conspiracy, facedown = true).ready
     val started = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,
       OathState.Ready(staged), actor, conspiracy))
     val done = accepted(

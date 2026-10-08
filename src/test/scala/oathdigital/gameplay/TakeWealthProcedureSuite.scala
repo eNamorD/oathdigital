@@ -31,14 +31,16 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
   private val favorArg = TakeWealthFixture.favorArg
   private val secretArg = TakeWealthFixture.secretArg
   private val actor = p1
-  // p1's site on the quiet table.
   private val home = CatalogNames.site("Ancient City")
 
-  /** p1's Wake on the quiet table, Ancient City holding `favor` and
-    * `secrets`; with `sharedEnemy`, p2 and p3 stand there too. */
+  /** p1's Wake at Ancient City, which holds `favor` and `secrets`. Without
+    * `sharedEnemy`, p2 stands at Broken Peaks and p3 at Buried Giant; with
+    * it, p2 and p3 stand at Ancient City too. */
   private def wake(favor: Int, secrets: Int,
       sharedEnemy: Boolean = false): ReadyGame =
-    TakeWealthFixture.wakeReady(Table.start.turn(actor, Phase.Wake).ready,
+    TakeWealthFixture.wakeReady(Table.start.turn(actor, Phase.Wake)
+      .pawn(actor, at = home).pawn(p2, at = "Broken Peaks")
+      .pawn(p3, at = "Buried Giant").ready,
       favor = favor, secrets = secrets, sharedEnemy = sharedEnemy)
 
   private def board(ready: ReadyGame): PlayerBoardState =
