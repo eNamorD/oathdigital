@@ -53,9 +53,6 @@ Left behind by the
 - [ ] **Play-test Travel in a browser.** The Travel button, the parked
   destination decision with each site's badge or hover reason, and Way
   Station's question are covered by tests only.
-- [ ] **Delete the board-target styles.** The board targets are gone, but
-  `.board-target`, `.board-target-selected` and `.board-target-control` are
-  still in `frontend/styles.css`.
 
 ### Phase - Board decision follow-ups
 

@@ -243,33 +243,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .site > .target-detail-badge { position: absolute; top: 8px; right: 10px;
   margin: 0; }
 .site-readonly { cursor: default; }
-.board-target { border-color: #d2a85e; box-shadow: inset 0 0 0 1px #d2a85e; }
-.board-target:hover, .board-target:focus-within {
-  border-color: #fff2d6;
-  box-shadow: 0 0 0 3px rgba(210, 168, 94, 0.35);
-}
-.board-target-selected {
-  border-color: #8ecbff;
-  box-shadow: inset 0 0 0 2px #8ecbff;
-  background: #243442;
-}
-.board-target-control {
-  display: block;
-  width: 100%;
-  min-height: 38px;
-  margin-top: 7px;
-  border: 1px solid #d2a85e;
-  border-radius: 6px;
-  background: #211d17;
-  color: #fff2d6;
-  font-weight: 700;
-}
-.board-target-control:hover, .board-target-control:focus-visible {
-  outline: 3px solid #fff2d6;
-  outline-offset: 2px;
-  background: #3b3123;
-}
-.board-target-control[aria-pressed="true"]::before { content: "✓ "; }
 /* Board decisions (spec 2026-10-03): an option drawn where it lies. Nothing
    that is not an option changes, and only an unavailable option is dimmed. */
 .board-option { position: relative; cursor: pointer;
@@ -922,7 +895,6 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .map-compact .pawn { font-size: inherit; }
 .map-compact .site-details { grid-column: 1 / -1; align-self: stretch;
   margin: 0; line-height: 1.15; }
-.map-compact .site > .board-target-control { grid-column: 1 / -1; margin: 0; }
 .map-compact .site-forces { margin-top: 4px; }
 /* The footer is inside the details, so it is counter-scaled with them and
    reads at the glance size; on the zoomed-out map it is one line (the

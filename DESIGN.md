@@ -140,14 +140,6 @@ components:
     rounded: "7px"
     padding: "8px 12px"
     height: "44px"
-  button-board-target:
-    backgroundColor: "{colors.panel}"
-    textColor: "{colors.cream-bright}"
-    rounded: "{rounded.sm}"
-    height: "38px"
-  button-board-target-hover:
-    backgroundColor: "{colors.pressed}"
-    textColor: "{colors.cream-bright}"
   option-pressed:
     backgroundColor: "{colors.pressed}"
     textColor: "{colors.cream-bright}"
@@ -237,7 +229,7 @@ suit, token, die and player colors of the physical board.
 
 ### Primary
 - **Brass** (`brass`): the one accent. Eyebrows, `h2` section titles, the
-  current round segment, the modifier ordinal disc, board-target borders, the
+  current round segment, the modifier ordinal disc, board-option borders, the
   pile card frame, and the Add Player control. Used for emphasis and
   legality, never as a fill for large areas.
 - **Bright Brass** (`brass-bright`): brass raised for small readouts: the
@@ -250,7 +242,7 @@ suit, token, die and player colors of the physical board.
 
 ### Secondary
 - **Selection Blue** (`selection`): the one cool accent, reserved for "this
-  is the thing you picked": the selected board target's border and inset
+  is the thing you picked": the selected board option's border and inset
   ring, on a **Selection Fill** (`selection-fill`) background. It is the same
   hue as the blue player color; selection and blue player never share a
   surface, so it does not collide in practice.
@@ -286,7 +278,7 @@ reused for UI meaning.
   input and restart button. The floor that pieces sit on.
 - **Pane** (`pane`) and **Pane Header** (`pane-header`): the four panes and
   their header strips, one step up from the table.
-- **Panel** (`panel`): status boxes and board-target controls.
+- **Panel** (`panel`): status boxes.
 - **Site** (`site`): a site on the world map, the most raised board surface.
 - **Raised** (`raised`) and **Pressed** (`pressed`): small controls, and the
   fill an option takes when hovered or pressed.
@@ -491,14 +483,14 @@ The trusted-host page (game creation) is the one page-scrolling surface: a
 Flat, layered by tone. Depth is read from the surface ramp (Table, Base,
 Pane, Panel, Site, Raised, Pressed) and 1px borders, like paper laid on a
 table. There are no resting shadows on any board piece. Rings carry state: a
-brass inset ring for a legal board target, a soft brass halo on hover, a
+brass inset ring for a board option, a soft brass halo on hover, a
 2px selection-blue inset ring when picked, a Cream Focus outline (2px, offset
 -3px) for keyboard focus inside the table, and a 3px white outline on the
 host page.
 
 ### Shadow Vocabulary
 - **Target halo** (`box-shadow: 0 0 0 3px rgba(210, 168, 94, 0.35)`): a
-  hovered or focused legal board target. It is a ring, not a lift.
+  hovered or focused board option. It is a ring, not a lift.
 - **Overlay lift** (`box-shadow: 0 12px 45px #000b`): the developer panel
   only, which floats above the table as a fixed aside.
 - **Overlay scrim** (`background: #0b0a08e8`): the card inspection overlay
@@ -541,8 +533,8 @@ Nothing on the board is clipped except by its own `overflow: hidden` box.
 ### Buttons
 Solid, bordered, no gloss. Every action button is at least 44px tall; compact
 controls are 30px.
-- **Shape:** 4px on map controls and the dev toggle; 6px on board-target
-  controls; 7px on load-game, adviser and restart.
+- **Shape:** 4px on map controls and the dev toggle; 7px on load-game,
+  adviser and restart.
 - **Control** (map zoom, Fit, dev tools, overlay close, the log's New chip):
   Raised fill, `#e8d9bb`
   text, Brass Line border, `4px 9px` padding, 0.78rem. Hover: Pressed fill,
@@ -562,9 +554,6 @@ controls are 30px.
   above what follows. Each shows only to the player the server offers that
   step to. The labels are always "Undo" and "Redo"; each hover note names
   the step.
-- **Board target control**: full width of the site, Panel fill, Bright Cream
-  700 text, brass border. Hover and focus: Pressed fill and a 3px Bright
-  Cream outline offset 2px. Pressed state prefixes "✓ ".
 - **Pressed option** (`aria-pressed="true"` on many-options and card choices):
   Pressed fill, Bright Cream border and text, weight 700, "✓ " prefix.
 - **Focus:** 2px Cream Focus outline, -3px offset, inside the table; 3px white
@@ -663,8 +652,8 @@ so the name is centered on the box regardless of token counts; tokens sit
 left, defense right. Below the compact threshold the name owns the first row
 and the two corners flank the pawns on the second (Layout). Powers are two
 clipped lines of labels with hover titles, on the board at every zoom and
-one line on the compact map. A legal target gets a brass border and inset
-ring; hover brightens the border to
+one line on the compact map. A site offered as a board option gets a brass
+border and inset ring; hover brightens the border to
 Bright Cream with the target halo; selected turns Selection blue on Selection
 Fill.
 
