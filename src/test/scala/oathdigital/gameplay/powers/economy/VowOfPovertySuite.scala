@@ -71,10 +71,9 @@ class VowOfPovertySuite extends munit.FunSuite:
 
   /** p1's Rest with no favor, holding a faceup Vow, with exactly these banks
     * holding favor. */
-  private def restingWithNoFavor(stocked: Map[Suit, Int]): ReadyGame =
-    Suit.all.foldLeft(Table.start.turn(p1, Phase.Rest).adviser(p1, vow)
-      .favor(p1, 0))((table, suit) =>
-      table.bankFavor(suit, stocked.getOrElse(suit, 0))).ready
+  private def restingWithNoFavor(stocked: (Suit, Int)*): Table =
+    Table.start.turn(p1, Phase.Rest).adviser(p1, vow).favor(p1, 0)
+      .banksHoldingOnly(stocked*)
 
   private def usedRest(ready: ReadyGame): OathTransition = accepted(
     rules.startWalker(Ready(ready), use, p1, Vector.empty, Vector(source)))
@@ -85,7 +84,7 @@ class VowOfPovertySuite extends munit.FunSuite:
 
   test("REST: with no favor, its holder takes 2 favor from the bank they " +
       "choose, in a line covering the generic one"):
-    val ready = restingWithNoFavor(Map(Suit.Arcane -> 3, Suit.Order -> 3))
+    val ready = restingWithNoFavor(Suit.Arcane -> 3, Suit.Order -> 3).ready
     val choice = VowOfPoverty.choiceDecisionId(ready, p1)
     val started = usedRest(ready)
     parked.assertParked(started.state, use, choice, p1)
@@ -104,9 +103,9 @@ class VowOfPovertySuite extends munit.FunSuite:
   test("REST: a bank holding 1 gives 1 without asking, and a holder with " +
       "favor is not offered it"):
     val after = Outcomes.ready(usedRest(
-      restingWithNoFavor(Map(Suit.Hearth -> 1))).state)
+      restingWithNoFavor(Suit.Hearth -> 1).ready).state)
     assertEquals(Look(after).favor(p1), 1)
     assertEquals(Look(after).bankFavor(Suit.Hearth), 0)
-    val stocked = restingWithNoFavor(Map(Suit.Hearth -> 3))
-    assert(usable(stocked))
-    assert(!usable(Table.from(stocked).favor(p1, 1).unchecked))
+    val stocked = restingWithNoFavor(Suit.Hearth -> 3)
+    assert(usable(stocked.ready))
+    assert(!usable(stocked.favor(p1, 1).ready))

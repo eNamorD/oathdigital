@@ -8,7 +8,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Unwrap.{accepted, as}
 
 /** Diplomat: a player who rules no hearth card cannot Raid or Conquer its
@@ -94,7 +94,7 @@ class DiplomatSuite extends munit.FunSuite:
       Sequence(Vector.empty))
     assert(restriction.fn(ctx(b.ready), Sequence(Vector.empty)).nonEmpty)
     // The Campaign has answered its force decision: it is under way.
-    val underway = b.ready.updateCurrent(_.copy(walkerPending =
-      Some(PendingTree(Vector("2"), Vector(Answered(CampaignIds.force,
-        DecisionAnswer.ChooseAmountAnswer(0), b.actor))))))
+    val underway = Table.from(b.ready).parkedWalker(ActionRef.Campaign,
+      path = "2", answered = Vector(Answered(CampaignIds.force,
+        DecisionAnswer.ChooseAmountAnswer(0), b.actor))).ready
     assertEquals(restriction.fn(ctx(underway), Sequence(Vector.empty)), None)
