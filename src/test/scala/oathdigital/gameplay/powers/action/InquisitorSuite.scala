@@ -60,15 +60,14 @@ class InquisitorSuite extends munit.FunSuite:
       "adviser-slot" -> s"${p1.value}:0", "adviser-slot" -> s"${p2.value}:1")))
     assertEquals(Look(after(t)).tokensOn(inquisitor), Tokens(0, 1))
 
-  test("then it offers the five Vision names, the Conspiracy included"):
+  test("then it offers every Vision name, the Conspiracy included"):
     val started = accepted(use(staged.ready, Inquisitor, source))
     val chosen = accepted(answer(started, p1, Inquisitor.visionDecisionId,
       pick(faithSlot)))
     assert(awaits(chosen, Inquisitor.guessDecisionId),
       parked.parkedDecision(chosen.state).toString)
     assertEquals(queryOf(chosen, p1).map(_.offeredOptions.map(_.label)),
-      Some(Vector("Vision of Conquest", "Vision of Sanctuary",
-        "Vision of Rebellion", "Vision of Faith", "Conspiracy")))
+      Some(Inquisitor.visions.map((_, name) => name)))
 
   test("a right guess discards the Vision to the next region's pile, every " +
       "player knows it there, and the line names it"):

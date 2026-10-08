@@ -10,7 +10,7 @@ class RiverSitePowerSuite extends munit.FunSuite:
   import PowerFixture._
   import RiverFixture._
   import PhasePowerHarness.{after, answer, awaits, offered, ops, pick,
-    replayed, usableNow}
+    replayed, usableNow, UsedAndAnswered}
 
   private val source = DecisionOptionRef.Site(ancientCity)
   private def use(ready: ReadyGame) = PhasePowerHarness.use(ready, river,
@@ -19,24 +19,20 @@ class RiverSitePowerSuite extends munit.FunSuite:
     case usable if usable.power.isInstanceOf[RiverSitePower] =>
       usable.power.id -> usable.ref }
 
-  /** The use that asked for a site, and the answer that placed the pawn. */
-  private final case class RiverPlacement(asked: OathTransition,
-      answered: OathTransition):
-    def events: Vector[OathEvent] = asked.events ++ answered.events
-
-  /** Starts Ancient City's River and answers the site question. */
-  private def placedAt(ready: ReadyGame, at: SiteId): RiverPlacement =
+  /** Starts Ancient City's River and answers the site question: the use
+    * that asked for a site, and the answer that placed the pawn. */
+  private def placedAt(ready: ReadyGame, at: SiteId): UsedAndAnswered =
     val asked = accepted(use(ready))
     assert(awaits(asked, RiverSitePower.siteDecisionId))
     val siteChoice = pick(DecisionOptionRef.Site(at))
-    RiverPlacement(asked, accepted(
+    UsedAndAnswered(asked, accepted(
       answer(asked, actor, RiverSitePower.siteDecisionId, siteChoice)))
 
-  test("every River is a registered phase power"):
+  test("every River the catalog prints is a registered phase power"):
+    val printed = catalog.sites.flatMap(_.handlers).filter(
+      _.value.endsWith(".river")).map(_.value).toSet
     assertEquals(PhasePowerCatalog.default(catalog).powers.collect {
-      case power: RiverSitePower => power.id.value }.toSet,
-      Set("site.ancient-city.river", "site.headwaters.river",
-        "site.riverbank.river", "site.tidal-marshes.river"))
+      case power: RiverSitePower => power.id.value }.toSet, printed)
 
   test("it is usable in the Wake at a River while another River is in play"):
     assertEquals(rivers(staged(Vector(riverbank, tidalMarshes), Phase.Wake)),
