@@ -6,6 +6,7 @@ import oathdigital.application.AuthorizationFailure._
 import oathdigital.application.ProjectionScope._
 import oathdigital.model.{PlayerId, RelicId}
 import oathdigital.persistence.HsqldbDatabaseOwner
+import oathdigital.testkit.IdentityRepositoryStub
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
 class MembershipAuthorizationServiceSuite extends munit.FunSuite:
@@ -146,22 +147,3 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
       )
       test(new MembershipAuthorizationService(identities))
     finally database.close()
-
-  /** Stub of IdentityRepository: every operation fails the test unless a
-    * subclass overrides it. */
-  private abstract class IdentityRepositoryStub extends IdentityRepository:
-    private def unused[A]: Either[IdentityFailure, A] =
-      fail("unexpected identity repository operation")
-    override def createUser(id: UserId, name: String, now: Long): Either[IdentityFailure, Unit] = unused
-    override def linkExternalIdentity(identity: ExternalIdentity, id: UserId): Either[IdentityFailure, Unit] =
-      unused
-    override def findUser(identity: ExternalIdentity): Either[IdentityFailure, Option[UserId]] = unused
-    override def createGame(gameId: String, owner: UserId, now: Long): Either[IdentityFailure, Unit] = unused
-    override def addMembership(membership: GameMembership, now: Long): Either[IdentityFailure, Unit] = unused
-    override def listMemberships(gameId: String): Either[IdentityFailure, Vector[GameMembership]] = unused
-    override def createSession(session: StoredSession): Either[IdentityFailure, Unit] = unused
-    override def resolveSession(digest: SessionTokenDigest, now: Long): Either[IdentityFailure, StoredSession] = unused
-    override def revokeSession(digest: SessionTokenDigest, now: Long): Either[IdentityFailure, Unit] = unused
-    override def touchSession(digest: SessionTokenDigest, seen: Long, idle: Long): Either[IdentityFailure, Unit] =
-      unused
-    override def resolveTrustedSeat(digest: SeatCodeDigest): Either[IdentityFailure, TrustedSeat] = unused
