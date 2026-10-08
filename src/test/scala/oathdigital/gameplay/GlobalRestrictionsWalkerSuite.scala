@@ -63,5 +63,6 @@ class GlobalRestrictionsWalkerSuite extends munit.FunSuite:
 
   test("a required BuildOps rejects the whole batch when one operation is " +
       "refused"):
-    assert(ProcedureWalker.advance(swapping, swapBatch(required = true), None,
-      powers).isLeft)
+    assertEquals(ProcedureWalker.advance(swapping, swapBatch(required = true),
+      None, powers), Left(OathViolation.CoreOperationRejected("locked",
+        s"${lockedCard.value} is locked")))

@@ -23,7 +23,9 @@ class OperationVocabularySuite extends munit.FunSuite:
     val shrunk = accepted(run(funded, give(required = false)))
     assertEquals(shrunk.executed, Vector[CoreOperation](Give(Piece.Favor(1),
       actor, Location.PlayArea(actor), Location.PlayArea(other))))
-    assert(run(funded, give(required = true)).isLeft)
+    assertEquals(run(funded, give(required = true)).left.toOption,
+      Some(OathViolation.CoreOperationRejected("insufficient-pieces",
+        "player play area contains 1 of requested favor")))
 
   test("a Vision adviser can be buried"):
     val vision = VisionRules.Conspiracy

@@ -5,7 +5,7 @@ import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ChoicePayload, ParkedDecisionAssertions,
-  WalkerCompleted, WalkerParked, WalkerStepRecorded}
+  WalkerCompleted, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Outcomes,
@@ -60,7 +60,6 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     val parked = accepted(travel(ready))
     walkerParked.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,
       OathkeeperProcedure.recipientDecisionId, holder)
-    assert(parked.events.last.isInstanceOf[WalkerParked])
     assertEquals(Outcomes.ready(parked.state).game.current.walkerProcedure,
       Some(TriggeredProcedureRef.Oathkeeper))
 
@@ -118,13 +117,15 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     val result = rules.startTriggered(
       OathTransition(parked.state, Vector.empty),
       TriggeredProcedureRef.Oathkeeper)
-    assert(result.left.toOption.exists(_.isInstanceOf[OathViolation.InvalidEventOrder]),
-      s"expected a typed rejection, got $result")
+    assertEquals(result, Left(OathViolation.InvalidEventOrder(
+      "cannot start oathkeeper: another procedure is already pending")))
 
   test("the procedure rejects a start selection and a state with nothing to change"):
     assertEquals(OathkeeperProcedure.build(catalog, Table.start.ready, p1,
       Vector.empty),
       Left(OathViolation.InvalidEventOrder("no Oathkeeper change to perform")))
-    assert(OathkeeperProcedure.build(catalog,
+    assertEquals(OathkeeperProcedure.build(catalog,
       Table.start.warbandsAt("Dunes", p3, 1).ready, p1,
-      Vector(DecisionOptionRef.Site(CatalogNames.site("Ancient City")))).isLeft)
+      Vector(DecisionOptionRef.Site(CatalogNames.site("Ancient City")))),
+      Left(OathViolation.InvalidEventOrder("the Oathkeeper procedure selects " +
+        "nothing, got site/site:ancient-city")))

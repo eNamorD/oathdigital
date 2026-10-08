@@ -74,8 +74,10 @@ class SearchProcedureSuite extends munit.FunSuite:
 
   test("another region's discard is not offered, and naming it is refused"):
     val initial = atAncientCity.discarded(Region.Provinces, topCards*).ready
-    assert(searched(rules, initial,
-      SearchSource.RegionalDiscard(Region.Provinces)).isLeft)
+    assertEquals(rejected(searched(rules, initial,
+      SearchSource.RegionalDiscard(Region.Provinces))),
+      OathViolation.InvalidEventOrder(
+        "decision search.source does not offer the selected option"))
 
   test("regional Search draws from the end of its pile"):
     val initial = atAncientCity.discarded(region, topCards*).ready
