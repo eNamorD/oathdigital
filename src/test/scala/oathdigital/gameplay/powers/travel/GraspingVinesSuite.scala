@@ -19,9 +19,15 @@ class GraspingVinesSuite extends munit.FunSuite:
   /** The Vines stand at the actor's own site, which `ruler` rules with one
     * warband, or one bandit when `ruler` is None. */
   private def vinesAtHome(ruler: Option[PlayerId]): ReadyGame =
-    val vinesTable = Table.from(board()).denizen(vines, at = cradlePlains)
-    ruler.fold(vinesTable.bandits(cradlePlains, 1))(
-      vinesTable.warbandsAt(cradlePlains, _, 1)).unchecked
+    on(board())(table =>
+      val vinesTable = table.denizen(vines, at = cradlePlains)
+      ruler.fold(vinesTable.bandits(cradlePlains, 1))(
+        vinesTable.warbandsAt(cradlePlains, _, 1)))
+
+  private val power = GraspingVines.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
 
   test("an enemy traveling from a site the ruler rules kills a warband of " +
       "their own"):
@@ -44,37 +50,33 @@ class GraspingVinesSuite extends munit.FunSuite:
     assertEquals(warbands(result), warbands(ready))
 
   test("only the site the traveller leaves counts, not the destination"):
-    val ready = Table.from(board()).denizen(vines, at = provincePlains)
-      .warbandsAt(provincePlains, rival, 1).unchecked
+    val ready = on(board())(_.denizen(vines, at = provincePlains)
+      .warbandsAt(provincePlains, rival, 1))
     val result = Outcomes.ready(accepted(travel(ready, coast)).state)
     assertEquals(warbands(result), warbands(ready))
     // Travelling out of the Vines' site does kill.
-    val leaving = Table.from(board(source = provincePlains))
+    val leaving = on(board(source = provincePlains))(_
       .denizen(vines, at = provincePlains).warbandsAt(provincePlains, rival, 1)
-      .unchecked
+      )
     val out = Outcomes.ready(accepted(travel(leaving, coast)).state)
     assertEquals(warbands(out), warbands(leaving) - 1)
 
   test("the kill is not required: a traveller with no warband is not stopped"):
-    val ready = Table.from(vinesAtHome(Some(rival))).boardWarbands(actor, 0)
-      .unchecked
+    val ready = on(vinesAtHome(Some(rival)))(_.boardWarbands(actor, 0)
+      )
     val result = Outcomes.ready(accepted(travel(ready, coast)).state)
     assertEquals(Look(result).player(actor).pawnSite, Some(coast))
     assertEquals(warbands(result), 0)
 
   test("a facedown Grasping Vines is not active"):
     // The Vines rule from the site they stand on, and only faceup there.
-    val ready = Table.from(board())
+    val ready = on(board())(_
       .denizen(vines, at = cradlePlains, facedown = true)
-      .warbandsAt(cradlePlains, rival, 1).unchecked
+      .warbandsAt(cradlePlains, rival, 1))
     val result = Outcomes.ready(accepted(travel(ready, coast)).state)
     assertEquals(warbands(result), warbands(ready))
 
   // ---- Lines ----
-
-  private val power = GraspingVines.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the kill is written as the Vines' line, naming the traveller"):
     assertEquals(said(accepted(travel(vinesAtHome(Some(rival)), coast)).events),
@@ -82,6 +84,6 @@ class GraspingVinesSuite extends munit.FunSuite:
         s"Killed 1 ${actor.value} warband.", covers = false)))
 
   test("a traveller with no warband to lose reads no line"):
-    val ready = Table.from(vinesAtHome(Some(rival))).boardWarbands(actor, 0)
-      .unchecked
+    val ready = on(vinesAtHome(Some(rival)))(_.boardWarbands(actor, 0)
+      )
     assertEquals(said(accepted(travel(ready, coast)).events), Vector.empty)

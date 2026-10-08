@@ -31,6 +31,29 @@ class VowOfObedienceSuite extends munit.FunSuite:
     val ready = arrange(SearchFixture.staged(Vector(vision), supply = 5))
     searched(ready, vision)
 
+  private def hidden(from: OathTransition): Vector[NoteText.Said] =
+    val power = VowOfObedience
+    NoteText.said(power.id, power.noteKeys, from.events)
+
+  private val restRules = PowerRules.withWalkerAndPhasePowers
+
+  private val restParked = PowerRules.parkedUnderWalkerAndPhasePowers
+
+  private val use = ActionRef.UsePower(VowOfObedience.id)
+
+  private val source = DecisionOptionRef.Denizen(vow)
+
+  /** The Rest phase, the actor holding a faceup Vow, with exactly these banks
+    * holding favor.
+    */
+  private def resting(stocked: Map[Suit, Int]): ReadyGame =
+    Suit.all.foldLeft(Table.start.turn(actor, Phase.Rest).adviser(actor, vow))(
+      (table, suit) => table.bankFavor(suit, stocked.getOrElse(suit, 0))).ready
+
+  private def rest(ready: ReadyGame): OathTransition = accepted(
+    restRules.startWalker(Ready(ready), use, actor, Vector.empty,
+      Vector(source)))
+
   test("a faceup holder's Search does not offer a Vision faceup, and " +
       "refuses it"):
     val parkedAt = search(VisionRules.Faith, holding(_))
@@ -52,10 +75,6 @@ class VowOfObedienceSuite extends munit.FunSuite:
     val parkedAt = search(VisionRules.Conspiracy, holding(_))
     assert(!offered(parkedAt).contains(PlayedAs.Faceup))
 
-  private def hidden(from: OathTransition): Vector[NoteText.Said] =
-    val power = VowOfObedience
-    NoteText.said(power.id, power.noteKeys, from.events)
-
   test("the hidden faceup placement writes no line: its reason is on hover"):
     assertEquals(hidden(search(VisionRules.Faith, holding(_))), Vector.empty)
     assertEquals(hidden(fromAdvisers(holding(inPhase(quietTable, Phase.Act)),
@@ -72,22 +91,6 @@ class VowOfObedienceSuite extends munit.FunSuite:
       .contains(PlayedAs.Faceup))
 
   // ---- REST: Take a favor from any one favor bank ----
-
-  private val restRules = PowerRules.withWalkerAndPhasePowers
-  private val restParked = PowerRules.parkedUnderWalkerAndPhasePowers
-  private val use = ActionRef.UsePower(VowOfObedience.id)
-  private val source = DecisionOptionRef.Denizen(vow)
-
-  /** The Rest phase, the actor holding a faceup Vow, with exactly these banks
-    * holding favor.
-    */
-  private def resting(stocked: Map[Suit, Int]): ReadyGame =
-    Suit.all.foldLeft(Table.start.turn(actor, Phase.Rest).adviser(actor, vow))(
-      (table, suit) => table.bankFavor(suit, stocked.getOrElse(suit, 0))).ready
-
-  private def rest(ready: ReadyGame): OathTransition = accepted(
-    restRules.startWalker(Ready(ready), use, actor, Vector.empty,
-      Vector(source)))
 
   test("REST: several stocked banks ask which one to take a favor from"):
     val ready = resting(Map(Suit.Arcane -> 3, Suit.Order -> 3))

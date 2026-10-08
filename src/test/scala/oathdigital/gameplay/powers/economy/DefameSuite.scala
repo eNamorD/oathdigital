@@ -25,11 +25,14 @@ class DefameSuite extends munit.FunSuite:
   private val parked = PowerRules.parkedUnderWalkerPowers
 
   /** p1 at Ancient City beside Mercenaries and Wrestlers, holding Defame as
-    * a faceup adviser. Every board holds the start's 1 favor, and the
-    * Discord and Order banks hold 3 favor each. */
-  private def defameTable: Table = Table.start
+    * a faceup adviser, with 7 Supply and 1 faceup secret to pay a Trade for
+    * favor. Every board holds 1 favor, and the Discord and Order banks hold
+    * 3 favor each. */
+  private def defameTable: Table = Table.start.pawn(p1, at = home)
     .denizen(mercenaries, at = home).denizen(wrestlers, at = home)
-    .adviser(p1, defame).bankFavor(Suit.Discord, 3).bankFavor(Suit.Order, 3)
+    .adviser(p1, defame).supply(p1, 7).secrets(p1, faceUp = 1)
+    .favor(p1, 1).favor(p2, 1).favor(p3, 1)
+    .bankFavor(Suit.Discord, 3).bankFavor(Suit.Order, 3)
 
   /** p1 Trades for favor with Mercenaries, having selected Defame, and is
     * asked whose favor to burn. */

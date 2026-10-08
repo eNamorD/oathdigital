@@ -114,7 +114,7 @@ class CropRotationSuite extends munit.FunSuite:
       Vector(None, Some(fillers(0)), Some(hall)))
 
   test("it applies to a facedown adviser played to a site"):
-    val ready = Table.start.adviser(p1, crop)
+    val ready = Table.start.pawn(p1, at = home).adviser(p1, crop)
       .adviser(p1, played, facedown = true)
       .denizen(fillers(0), at = home).ready
     val started = accepted(FacedownAdviserPlay.parkedOnPlacement(rules,

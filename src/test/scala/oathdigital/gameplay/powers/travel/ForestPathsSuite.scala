@@ -4,7 +4,7 @@ import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Refusals, Table}
+  Refusals}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
@@ -17,13 +17,18 @@ class ForestPathsSuite extends munit.FunSuite:
   // A Beast denizen and a Beast edifice whose powers these tests do not use.
   private val beast = CatalogNames.denizen("Errand Boy")
   private val beastEdifice = CatalogNames.edifice("Hallowed Spring")
-  private def held = Table.from(board(supply = 7)).adviser(actor, paths)
-    .favor(actor, 1).unchecked
+  private def held = on(board(supply = 7))(_.adviser(actor, paths)
+    .favor(actor, 1))
+
+  private val power = ForestPaths.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
 
   test("a destination with a beast card costs no Supply and ignores the " +
       "terrain of sites"):
-    val ready = Table.from(held).warbandsAt(pass, actor, 1)
-      .denizen(beast, at = mountain).unchecked
+    val ready = on(held)(_.warbandsAt(pass, actor, 1)
+      .denizen(beast, at = mountain))
     // The printed 2 and the Mountain's 1.
     assertEquals(candidates(ready).get(mountain), Some(3))
     assertEquals(candidates(ready, modifiers).get(mountain), Some(0))
@@ -38,7 +43,7 @@ class ForestPathsSuite extends munit.FunSuite:
     assertWireRoundTrips(done.events)
 
   test("it ignores Narrow Pass too: a pass the actor does not rule blocks nothing"):
-    val ready = Table.from(held).denizen(beast, at = provincePlains).unchecked
+    val ready = on(held)(_.denizen(beast, at = provincePlains))
     val blocked = travel(ready, provincePlains)
     assertEquals(rejected(blocked), destinationNotOffered)
     assertEquals(candidates(ready).get(provincePlains), None)
@@ -51,13 +56,13 @@ class ForestPathsSuite extends munit.FunSuite:
     assertEquals(Look(result).supply(actor), 7)
 
   test("a ruined beast edifice counts as a beast card"):
-    val ready = Table.from(held).warbandsAt(pass, actor, 1)
-      .edifice(beastEdifice, EdificeSide.Ruined, at = mountain).unchecked
+    val ready = on(held)(_.warbandsAt(pass, actor, 1)
+      .edifice(beastEdifice, EdificeSide.Ruined, at = mountain))
     assertEquals(candidates(ready, modifiers).get(mountain), Some(0))
 
   test("without a beast card at the destination the favor is still paid, but " +
       "no Supply is saved and no site power is ignored"):
-    val ready = Table.from(held).warbandsAt(pass, actor, 1).unchecked
+    val ready = on(held)(_.warbandsAt(pass, actor, 1))
     assertEquals(candidates(ready, modifiers), candidates(ready))
     val done = accepted(travel(ready, mountain, modifiers))
     val result = Outcomes.ready(done.state)
@@ -72,25 +77,21 @@ class ForestPathsSuite extends munit.FunSuite:
       destinationNotOffered)
 
   test("it cannot be selected without a favor to place"):
-    val broke = Table.from(held).warbandsAt(pass, actor, 1)
-      .denizen(beast, at = mountain).favor(actor, 0).unchecked
+    val broke = on(held)(_.warbandsAt(pass, actor, 1)
+      .denizen(beast, at = mountain).favor(actor, 0))
     assertEquals(travel(broke, mountain, modifiers).left.toOption,
       Some(Refusals.notApplicable(ForestPaths.id, "travel")))
 
   // ---- Lines ----
 
-  private val power = ForestPaths.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("a Travel to a beast card writes that site powers are ignored"):
-    val ready = Table.from(held).warbandsAt(pass, actor, 1)
-      .denizen(beast, at = mountain).unchecked
+    val ready = on(held)(_.warbandsAt(pass, actor, 1)
+      .denizen(beast, at = mountain))
     assertEquals(said(accepted(travel(ready, mountain, modifiers)).events),
       Vector(NoteText.Said("ignoring", "Ignoring site powers.",
         covers = false)))
 
   test("without a beast card nothing is ignored, and nothing is written"):
-    val ready = Table.from(held).warbandsAt(pass, actor, 1).unchecked
+    val ready = on(held)(_.warbandsAt(pass, actor, 1))
     assertEquals(said(accepted(travel(ready, mountain, modifiers)).events),
       Vector.empty)

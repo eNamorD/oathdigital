@@ -16,6 +16,11 @@ class DragonskinDrumSuite extends munit.FunSuite:
   private val modifiers = Vector(DragonskinDrum.id)
   private def held = withRelic(board(supply = 7), drum)
 
+  private val power = DragonskinDrum.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
   test("after Travel the player gains one warband, and pays the printed Supply"):
     val ready = held
     val done = accepted(travel(ready, coast, modifiers))
@@ -48,10 +53,6 @@ class DragonskinDrumSuite extends munit.FunSuite:
       Some(Refusals.notApplicable(DragonskinDrum.id, "travel")))
 
   // ---- Lines ----
-
-  private val power = DragonskinDrum.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the warband gained is written as the Drum's line"):
     assertEquals(said(accepted(travel(held, coast, modifiers)).events),

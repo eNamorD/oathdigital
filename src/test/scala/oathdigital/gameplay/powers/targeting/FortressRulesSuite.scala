@@ -8,7 +8,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as}
 
@@ -40,6 +40,25 @@ class FortressRulesSuite extends munit.FunSuite:
   private def startOf(b: Board) = start(b.ready, ActionRef.Campaign, b.actor)
 
   // ---- Oaken Fortress ----
+
+  private def challengeBanners(side: EdificeSide, ruled: Boolean)
+      : Vector[DecisionOptionRef] =
+    // p1 challenges at Ancient City, where p2 stands holding People's Favor.
+    val site = CatalogNames.site("Ancient City")
+    val held = challengeTable.ready
+    val staged = Table.from(held).edifice(fortress, side, at = site)
+    val ready = (if ruled then staged.warbandsAt(site, p2, 2) else staged)
+      .unchecked
+    optionsAt(accepted(start(ready, ActionRef.Challenge, p1)),
+      ActionRef.Challenge)
+
+  private def hidden(power: FortressRule, from: OathTransition)
+      : Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, from.events)
+
+  private val oaken = OakenFortress.forCatalog(catalog)
+
+  private val rotting = RottingFortress.forCatalog(catalog)
 
   test("the Oaken Fortress removes its ruler from a Raid: only the Conquest " +
       "is left"):
@@ -134,17 +153,6 @@ class FortressRulesSuite extends munit.FunSuite:
 
   // ---- Challenge ----
 
-  private def challengeBanners(side: EdificeSide, ruled: Boolean)
-      : Vector[DecisionOptionRef] =
-    // p1 challenges at Ancient City, where p2 stands holding People's Favor.
-    val site = Table.quietPawnSite(p1)
-    val held = challengeTable.ready
-    val staged = Table.from(held).edifice(fortress, side, at = site)
-    val ready = (if ruled then staged.warbandsAt(site, p2, 2) else staged)
-      .unchecked
-    optionsAt(accepted(start(ready, ActionRef.Challenge, p1)),
-      ActionRef.Challenge)
-
   test("a Challenge may not name a banner a protected player holds"):
     val banner = (b: Banner) => DecisionOptionRef.Banner(b): DecisionOptionRef
     // Oaken: the holder rules the site. Rotting: the holder is at the site.
@@ -157,12 +165,6 @@ class FortressRulesSuite extends munit.FunSuite:
       Set(banner(Banner.PeoplesFavor), banner(Banner.DarkestSecret)))
 
   // ---- Lines ----
-
-  private def hidden(power: FortressRule, from: OathTransition)
-      : Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, from.events)
-  private val oaken = OakenFortress.forCatalog(catalog)
-  private val rotting = RottingFortress.forCatalog(catalog)
 
   test("a Raid the Oaken Fortress hides writes no line"):
     val b = fortified(EdificeSide.Intact, ruled = true)
@@ -186,7 +188,7 @@ class FortressRulesSuite extends munit.FunSuite:
     // p1 challenges at Ancient City, where p2 stands holding People's Favor.
     val held = challengeTable.ready
     val staged = Table.from(held).edifice(fortress, EdificeSide.Ruined,
-      at = Table.quietPawnSite(p1)).unchecked
+      at = "Ancient City").unchecked
     assertEquals(
       hidden(rotting, accepted(start(staged, ActionRef.Challenge, p1))),
       Vector.empty)

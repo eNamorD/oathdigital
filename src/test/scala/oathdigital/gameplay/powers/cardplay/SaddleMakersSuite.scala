@@ -38,6 +38,11 @@ class SaddleMakersSuite extends munit.FunSuite:
   private def bank(ready: ReadyGame, suit: Suit): Int =
     ready.banks.favor.getOrElse(suit, 0)
 
+  private val power = SaddleMakers.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
   test("another player's nomad card played as a faceup adviser gains the " +
       "holder 2 favor from the Nomad bank"):
     val ready = held(nomad)
@@ -85,10 +90,6 @@ class SaddleMakersSuite extends munit.FunSuite:
     assertEquals(favor(after, holder), favor(ready, holder))
 
   // ---- Lines ----
-
-  private val power = SaddleMakers.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the holder's gain is Saddle Makers' line"):
     val done = play(held(nomad), Vector.empty, nomad.head, PlayedAs.Faceup)

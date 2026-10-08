@@ -29,12 +29,13 @@ class RelicThiefSuite extends munit.FunSuite:
   private val clayRattle = CatalogNames.relic("Clay Rattle")
   private val lostTongue = CatalogNames.denizen("Lost Tongue")
 
-  /** p1's Act at Ancient City holding Relic Thief, with the quiet table's 1
-    * favor and 1 secret to pay it. p2 stands there too, holding Whistle
-    * faceup. */
+  /** p1's Act at Ancient City holding Relic Thief, with 1 favor and 1 faceup
+    * secret to pay it. p2 stands there too, holding Whistle faceup; p3 stands
+    * at Buried Giant. */
   private def staged: Table = Table.start.turn(p1, Phase.Act)
-    .pawn(p1, at = home).adviser(p1, thief)
-    .pawn(p2, at = home).relic(p2, whistle)
+    .pawn(p1, at = home).adviser(p1, thief).favor(p1, 1)
+    .secrets(p1, faceUp = 1).pawn(p2, at = home).relic(p2, whistle)
+    .pawn(p3, at = "Buried Giant")
 
   /** The walk Relic Thief started on `before` and the walk after `relic` was
     * chosen, the dice showing `dice`. */

@@ -17,7 +17,7 @@ class MarbleFountainsSuite extends munit.FunSuite:
   private val fountains = CatalogNames.edifice("Marble Fountains")
   private val source = DecisionOptionRef.Edifice(fountains)
   private val rules = ActPowerHarness.rules()
-  // The actor's site on the quiet table, and another site.
+  // The actor's site, and another site.
   private val home = CatalogNames.site("Ancient City")
   private val far = CatalogNames.site("Broken Peaks")
 
@@ -27,7 +27,8 @@ class MarbleFountainsSuite extends munit.FunSuite:
     */
   private def staged(side: EdificeSide = EdificeSide.Intact,
       pawnAtEdifice: Boolean = true): ReadyGame =
-    val waking = Table.start.turn(actor, Phase.Wake).supply(actor, 1)
+    val waking = Table.start.turn(actor, Phase.Wake).pawn(actor, home)
+      .supply(actor, 1)
     if pawnAtEdifice then waking.edifice(fountains, side, at = home).ready
     else waking.edifice(fountains, side, at = far).warbandsAt(far, actor, 1)
       .ready

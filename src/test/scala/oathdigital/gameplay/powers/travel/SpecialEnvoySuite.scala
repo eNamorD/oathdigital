@@ -4,7 +4,7 @@ import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  PhasePowerHarness, Table}
+  PhasePowerHarness}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -20,7 +20,7 @@ class SpecialEnvoySuite extends munit.FunSuite:
   /** The actor holds Special Envoy faceup and 7 Supply, at Buried Giant, the
     * Cradle's plains. */
   private def holdingEnvoy: ReadyGame =
-    Table.from(board(supply = 7)).adviser(actor, envoy).unchecked
+    on(board(supply = 7))(_.adviser(actor, envoy))
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)

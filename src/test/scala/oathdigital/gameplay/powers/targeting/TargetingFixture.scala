@@ -25,7 +25,8 @@ object TargetingFixture:
     * and 4 facedown secrets) against p2, who stands there holding the
     * People's Favor with 2 favor. */
   val challengeTable: Table = Table.start
-    .favor(Table.p1, 6).secrets(Table.p1, faceUp = 6, faceDown = 4)
+    .pawn(Table.p1, at = "Ancient City").favor(Table.p1, 6)
+    .secrets(Table.p1, faceUp = 6, faceDown = 4)
     .peoplesFavor(Some(Table.p2), favor = 2)
     .pawn(Table.p2, at = "Ancient City")
 

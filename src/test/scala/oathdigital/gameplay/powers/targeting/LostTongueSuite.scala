@@ -51,6 +51,57 @@ class LostTongueSuite extends munit.FunSuite:
     DecisionOptionRef.Banner(Banner.PeoplesFavor),
     DecisionOptionRef.Banner(Banner.DarkestSecret))
 
+  private val conspiracy = VisionRules.Conspiracy
+
+  private val hook = CardPlayedFaceup(conspiracy,
+    RuleSourceRef.Adviser(p1, conspiracy))
+
+  private val powers = WalkerPowers.selected(
+    WalkerPowerCatalog.default(catalog), Vector.empty)
+
+  /** p1 plays Conspiracy at Ancient City, where p2 stands holding Lost Tongue
+    * faceup, the People's Favor with 2 favor, and Cracked Horn when
+    * `withRelic`. p1 holds a faceup nomad adviser when `nomad`. */
+  private def conspiracyAt(withRelic: Boolean = true, nomad: Boolean = false)
+      : ReadyGame =
+    val staged = Table.start.pawn(p1, at = "Ancient City")
+      .pawn(p2, at = "Ancient City").hand(p1, conspiracy)
+      .peoplesFavor(Some(p2), favor = 2).adviser(p2, tongue)
+    val holding = if withRelic then staged.relic(p2, crackedHorn) else staged
+    (if nomad then holding.adviser(p1, nomadCard) else holding).ready
+
+  /** The target options and the pending tree, both empty when nothing was
+    * asked, and the walk's events. */
+  private final case class ConspiracyTargets(
+      options: Vector[DecisionOptionRef], pending: Option[PendingTree],
+      events: Vector[OathEvent])
+
+  private def targets(ready: ReadyGame): ConspiracyTargets =
+    accepted(ProcedureWalker.advance(ready, hook, None, powers)) match
+      case WalkerOutcome.Parked(pending, events) =>
+        val decide = present(ProcedureWalker.parkedDecide(ready, hook, pending,
+          powers), "the target decision")
+        ConspiracyTargets(
+          as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref),
+          Some(pending), events)
+      case WalkerOutcome.Finished(_, events) =>
+        ConspiracyTargets(Vector.empty, None, events)
+
+  /** Answers p1's target decision with `ref` and returns the state after. */
+  private def take(ready: ReadyGame, ref: DecisionOptionRef): ReadyGame =
+    val pending = present(targets(ready).pending, "a target decision")
+    Outcomes.finished(ProcedureWalker.resolve(ready, hook, pending,
+      Answered(ConspiracyWhenPlayed.decisionId, ChooseOneAnswer(ref), p1),
+      powers)).treeless
+
+  /** p1 challenges at Ancient City, where p2 stands holding Lost Tongue and
+    * People's Favor; p1 holds a faceup nomad adviser when `nomad`. */
+  private def challengeBanners(nomad: Boolean): Vector[DecisionOptionRef] =
+    val table = challengeTable.adviser(p2, tongue)
+    val ready = (if nomad then table.adviser(p1, nomadCard) else table).ready
+    optionsAt(accepted(start(ready, ActionRef.Challenge, p1)),
+      ActionRef.Challenge)
+
   test("a Raid may not target the holder's relics or banners when the " +
       "attacker rules no nomad card"):
     val raided = raidKind(Orientation.FaceUp, nomad = false)
@@ -105,46 +156,6 @@ class LostTongueSuite extends munit.FunSuite:
 
   // ---- Conspiracy ----
 
-  private val conspiracy = VisionRules.Conspiracy
-  private val hook = CardPlayedFaceup(conspiracy,
-    RuleSourceRef.Adviser(p1, conspiracy))
-  private val powers = WalkerPowers.selected(
-    WalkerPowerCatalog.default(catalog), Vector.empty)
-
-  /** p1 plays Conspiracy at Ancient City, where p2 stands holding Lost Tongue
-    * faceup, the People's Favor with 2 favor, and Cracked Horn when
-    * `withRelic`. p1 holds a faceup nomad adviser when `nomad`. */
-  private def conspiracyAt(withRelic: Boolean = true, nomad: Boolean = false)
-      : ReadyGame =
-    val staged = Table.start.pawn(p2, at = "Ancient City").hand(p1, conspiracy)
-      .peoplesFavor(Some(p2), favor = 2).adviser(p2, tongue)
-    val holding = if withRelic then staged.relic(p2, crackedHorn) else staged
-    (if nomad then holding.adviser(p1, nomadCard) else holding).ready
-
-  /** The target options and the pending tree, both empty when nothing was
-    * asked, and the walk's events. */
-  private final case class ConspiracyTargets(
-      options: Vector[DecisionOptionRef], pending: Option[PendingTree],
-      events: Vector[OathEvent])
-
-  private def targets(ready: ReadyGame): ConspiracyTargets =
-    accepted(ProcedureWalker.advance(ready, hook, None, powers)) match
-      case WalkerOutcome.Parked(pending, events) =>
-        val decide = present(ProcedureWalker.parkedDecide(ready, hook, pending,
-          powers), "the target decision")
-        ConspiracyTargets(
-          as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref),
-          Some(pending), events)
-      case WalkerOutcome.Finished(_, events) =>
-        ConspiracyTargets(Vector.empty, None, events)
-
-  /** Answers p1's target decision with `ref` and returns the state after. */
-  private def take(ready: ReadyGame, ref: DecisionOptionRef): ReadyGame =
-    val pending = present(targets(ready).pending, "a target decision")
-    Outcomes.finished(ProcedureWalker.resolve(ready, hook, pending,
-      Answered(ConspiracyWhenPlayed.decisionId, ChooseOneAnswer(ref), p1),
-      powers)).treeless
-
   test("a Conspiracy is not offered the holder's banner, and writes no line"):
     val asked = targets(conspiracyAt())
     assertEquals(asked.options, Vector[DecisionOptionRef](
@@ -172,14 +183,6 @@ class LostTongueSuite extends munit.FunSuite:
     assertEquals(asked.pending, None)
 
   // ---- Challenge ----
-
-  /** p1 challenges at Ancient City, where p2 stands holding Lost Tongue and
-    * People's Favor; p1 holds a faceup nomad adviser when `nomad`. */
-  private def challengeBanners(nomad: Boolean): Vector[DecisionOptionRef] =
-    val table = challengeTable.adviser(p2, tongue)
-    val ready = (if nomad then table.adviser(p1, nomadCard) else table).ready
-    optionsAt(accepted(start(ready, ActionRef.Challenge, p1)),
-      ActionRef.Challenge)
 
   test("a Challenge is not offered the holder's banner: its custody Take " +
       "would be refused"):

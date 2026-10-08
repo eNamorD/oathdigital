@@ -23,10 +23,11 @@ class VowOfBeastkinSuite extends munit.FunSuite:
   private val messenger = CatalogNames.denizen("Messenger")
   private val rules = PowerRules.withWalkerPowers
 
-  /** p1 at Ancient City beside Errand Boy and Wrestlers, with the start's 1
-    * favor, 7 Supply and 3 warbands, and no adviser yet. */
-  private def musterSite: Table = Table.start
+  /** p1 at Ancient City beside Errand Boy and Wrestlers, with 1 favor and 7
+    * Supply to pay a Muster, and no adviser yet. */
+  private def musterSite: Table = Table.start.pawn(p1, at = home)
     .denizen(errandBoy, at = home).denizen(wrestlers, at = home)
+    .favor(p1, 1).supply(p1, 7)
 
   private def mustered(ready: ReadyGame, card: DenizenId)
       : EconomyActions.Completed = EconomyActions.muster(rules, ready, p1,

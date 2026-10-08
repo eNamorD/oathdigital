@@ -19,11 +19,12 @@ class AwaitedReturnSuite extends munit.FunSuite:
   private val rules = PowerRules.withWalkerPowers
 
   /** p1 at Ancient City beside Wrestlers, holding Awaited Return faceup,
-    * `supply` Supply and the start's 3 warbands, 1 favor and 1 faceup secret.
-    * The Order bank holds 3 favor. */
+    * `supply` Supply, 3 warbands, 1 favor and 1 faceup secret. The Order bank
+    * holds 3 favor. */
   private def holdingAwaitedReturn(supply: Int = 7): Table = Table.start
-    .denizen(wrestlers, at = home).adviser(p1, awaited).supply(p1, supply)
-    .bankFavor(Suit.Order, 3)
+    .pawn(p1, at = home).denizen(wrestlers, at = home).adviser(p1, awaited)
+    .supply(p1, supply).boardWarbands(p1, 3).favor(p1, 1)
+    .secrets(p1, faceUp = 1).bankFavor(Suit.Order, 3)
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)

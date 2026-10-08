@@ -32,6 +32,11 @@ class TruthfulHarpSuite extends munit.FunSuite:
       : Vector[WorldCardId] = SearchFixture.after(transition).knowledge
     .advisers.getOrElse(viewer, Vector.empty)
 
+  private val power = TruthfulHarp.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
   test("a Search draws two more cards, and every card drawn is revealed"):
     val top = discordCards.take(7)
     val ready = withHarp(top)
@@ -83,10 +88,6 @@ class TruthfulHarpSuite extends munit.FunSuite:
       Some(Refusals.notApplicable(TruthfulHarp.id, "search")))
 
   // ---- Lines ----
-
-  private val power = TruthfulHarp.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the revealed hand is the Harp's line, in place of the peeks"):
     val top = discordCards.take(7)

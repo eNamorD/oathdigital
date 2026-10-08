@@ -60,6 +60,8 @@ class AncientBindingSuite extends munit.FunSuite:
   test("afterwards each player's board lists one secret, the actor's being " +
       "the one on Ancient Binding"):
     val before = staged
+    // p1, whose Act it is, lists its 4 board secrets and the 4 on cards in
+    // play; p2 and p3 list their boards, 3 and 2.
     assertEquals(Vector(p1, p2, p3).map(listed(before, _)), Vector(8, 3, 2))
     val end = after(accepted(use(before, AncientBinding, source)))
     assertEquals(Vector(p1, p2, p3).map(listed(end, _)), Vector(1, 1, 1))
@@ -76,7 +78,8 @@ class AncientBindingSuite extends munit.FunSuite:
   test("with nothing to burn the line says so"):
     // The cost takes both of p1's secrets; p2 and p3 hold one each.
     val ready = Table.start.turn(p1, Phase.Act).adviser(p1, binding)
-      .secrets(p1, faceUp = 2).ready
+      .secrets(p1, faceUp = 2).secrets(p2, faceUp = 1)
+      .secrets(p3, faceUp = 1).ready
     val done = accepted(use(ready, AncientBinding, source))
     assert(backToActing(done))
     assertEquals(NoteText.said(AncientBinding, done.events), Vector(

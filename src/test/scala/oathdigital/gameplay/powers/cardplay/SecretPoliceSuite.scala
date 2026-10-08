@@ -26,6 +26,10 @@ class SecretPoliceSuite extends munit.FunSuite:
     val drawing = SearchFixture.staged(Vector(vision), supply = 5)
     searched(arrange(Table.from(drawing)).unchecked, vision)
 
+  private def hidden(from: OathTransition): Vector[NoteText.Said] =
+    val power = SecretPolice
+    NoteText.said(power.id, power.noteKeys, from.events)
+
   test("an enemy at a site its ruler rules cannot play a Vision faceup"):
     // p2 rules Ancient City, where the Police stand and p1's pawn is.
     val parkedAt = search()(policeAt(_, home).warbandsAt(home, other, 2))
@@ -66,10 +70,6 @@ class SecretPoliceSuite extends munit.FunSuite:
     val ready = policeAt(Table.start, home).warbandsAt(home, other, 2).ready
     assert(!offered(fromAdvisers(ready, VisionRules.Faith))
       .contains(PlayedAs.Faceup))
-
-  private def hidden(from: OathTransition): Vector[NoteText.Said] =
-    val power = SecretPolice
-    NoteText.said(power.id, power.noteKeys, from.events)
 
   test("the hidden faceup placement writes no line: its reason is on hover"):
     assertEquals(hidden(search()(policeAt(_, home)

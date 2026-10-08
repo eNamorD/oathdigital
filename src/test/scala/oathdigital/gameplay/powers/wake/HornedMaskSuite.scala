@@ -30,12 +30,13 @@ class HornedMaskSuite extends munit.FunSuite:
     "Family Heirloom").map(CatalogNames.denizen(_))
   private val used = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(mask),
     HornedMask.id)
-  // The actor's site on the quiet table, in the Cradle.
+  // The actor's site, in the Cradle.
   private val home = CatalogNames.site("Ancient City")
 
-  /** The actor in Wake, holding the Horned Mask faceup, with no adviser. */
-  private def staged = Table.start.turn(actor, Phase.Wake).relic(actor, mask)
-    .ready
+  /** The actor in Wake at Ancient City, holding the Horned Mask faceup, with
+    * no adviser. */
+  private def staged = Table.start.turn(actor, Phase.Wake)
+    .pawn(actor, home).relic(actor, mask).ready
   /** `staged`, with Wayside Inn at the actor's site. */
   private def innAtHome = Table.from(staged).denizen(inn, at = home).unchecked
   private def denizensHere(ready: ReadyGame): Vector[DenizenId] =

@@ -26,6 +26,8 @@ class GreatForgeRulesSuite extends munit.FunSuite:
   private val cradleRelics = Vector(CatalogNames.relic("Sticky Fire"),
     CatalogNames.relic("Cursed Cauldron"))
 
+  // The Setup walk is the subject (the edifice's effect runs when the walk
+  // reaches it), so these tests start from the fresh Setup, not a Table.
   private def stagedAt(side: EdificeSide): ReadyGame =
     Table.from(FirstGameSetupFixture.freshReady)
       .edifice(edifice, side, at = site).unchecked
@@ -35,6 +37,16 @@ class GreatForgeRulesSuite extends munit.FunSuite:
       ready.game.current.turn.activePlayer, Vector.empty))
     SetupWalkDriver.driveToCompletion(ready, tree, TriggeredProcedureRef.Setup,
       powers)
+
+  private def events(ready: ReadyGame): Vector[OathEvent] =
+    val tree = accepted(SetupProcedure.build(catalog, ready,
+      ready.game.current.turn.activePlayer, Vector.empty))
+    SetupWalkDriver.driveWithEvents(ready, tree, TriggeredProcedureRef.Setup,
+      powers).events
+
+  private val great = GreatForge.forCatalog(catalog)
+
+  private val broken = BrokenForge.forCatalog(catalog)
 
   test("Great Forge gives the placing player the top relic facedown"):
     val staged = stagedAt(EdificeSide.Intact)
@@ -53,15 +65,6 @@ class GreatForgeRulesSuite extends munit.FunSuite:
       "the discarded relics are set aside")
 
   // ---- Lines ----
-
-  private def events(ready: ReadyGame): Vector[OathEvent] =
-    val tree = accepted(SetupProcedure.build(catalog, ready,
-      ready.game.current.turn.activePlayer, Vector.empty))
-    SetupWalkDriver.driveWithEvents(ready, tree, TriggeredProcedureRef.Setup,
-      powers).events
-
-  private val great = GreatForge.forCatalog(catalog)
-  private val broken = BrokenForge.forCatalog(catalog)
 
   test("Great Forge writes the relic its player drew"):
     val staged = stagedAt(EdificeSide.Intact)

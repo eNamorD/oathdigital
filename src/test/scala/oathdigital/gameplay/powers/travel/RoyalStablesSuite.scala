@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Refusals, Table}
+  Refusals}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -14,14 +14,14 @@ class RoyalStablesSuite extends munit.FunSuite:
   private val stables = CatalogNames.denizen("Royal Stables")
   private val modifiers = Vector(RoyalStables.id)
   /** Royal Stables at the actor's site, Buried Giant, the Cradle's plains. */
-  private def stablesAtHome: ReadyGame = Table.from(board(supply = 7))
-    .denizen(stables, at = cradlePlains).unchecked
+  private def stablesAtHome: ReadyGame = on(board(supply = 7))(_
+    .denizen(stables, at = cradlePlains))
 
   // The printed Travel cost is 1 within the Cradle and 2 from the Cradle to
   // the Provinces; the Stables take 1 off, never below 1.
 
   test("a Travel costs one less Supply"):
-    val ready = Table.from(stablesAtHome).warbandsAt(pass, actor, 1).unchecked
+    val ready = on(stablesAtHome)(_.warbandsAt(pass, actor, 1))
     assertEquals(candidates(ready).get(provincePlains), Some(2))
     assertEquals(candidates(ready, modifiers).get(provincePlains), Some(1))
     val done = accepted(travel(ready, provincePlains, modifiers))
@@ -46,30 +46,30 @@ class RoyalStablesSuite extends munit.FunSuite:
     // The cradle holds the mountain and the coast here, so the printed base
     // from the coast to the mountain is 1 and the mountain adds 1. Reducing
     // first would clamp 1 to 1 and then add 1, costing 2.
-    val cradle = Table.from(board(source = mountain)).pawn(actor, coast)
-      .unchecked
-    val ready = Table.from(cradle).denizen(stables, at = coast).unchecked
+    val cradle = on(board(source = mountain))(_.pawn(actor, coast)
+      )
+    val ready = on(cradle)(_.denizen(stables, at = coast))
     assertEquals(candidates(ready).get(mountain), Some(2))
     assertEquals(candidates(ready, modifiers).get(mountain), Some(1))
 
   test("with Tents the Travel is free: Tents removes the payment"):
     val tents = CatalogNames.denizen("Tents")
-    val ready = Table.from(stablesAtHome).adviser(actor, tents).favor(actor, 1)
-      .unchecked
+    val ready = on(stablesAtHome)(_.adviser(actor, tents).favor(actor, 1)
+      )
     val both = Vector(Tents.id, RoyalStables.id)
     assertEquals(candidates(ready, both).get(coast), Some(0))
     val result = Outcomes.ready(accepted(travel(ready, coast, both)).state)
     assertEquals(Look(result).supply(actor), 7)
 
   test("it may be used at a site the actor rules"):
-    val ruled = Table.from(board()).denizen(stables, at = hinterlandPlains)
-      .warbandsAt(hinterlandPlains, actor, 1).unchecked
-    val ready = Table.from(ruled).warbandsAt(pass, actor, 1).unchecked
+    val ruled = on(board())(_.denizen(stables, at = hinterlandPlains)
+      .warbandsAt(hinterlandPlains, actor, 1))
+    val ready = on(ruled)(_.warbandsAt(pass, actor, 1))
     assertEquals(candidates(ready, modifiers).get(provincePlains), Some(1))
 
   test("it may not be used at a site the actor neither stands at nor rules"):
-    val ready = Table.from(board()).denizen(stables, at = hinterlandPlains)
-      .warbandsAt(pass, actor, 1).unchecked
+    val ready = on(board())(_.denizen(stables, at = hinterlandPlains)
+      .warbandsAt(pass, actor, 1))
     assertEquals(travel(ready, provincePlains, modifiers).left.toOption,
       Some(Refusals.notApplicable(RoyalStables.id, "travel")))
 

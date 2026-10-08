@@ -59,6 +59,9 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
   private def siteCards(ready: ReadyGame): Vector[CardId] =
     Look(ready).cardsAt(ancientCity)
 
+  private def mobSaid(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(PeoplesFavorMob.id, PeoplesFavorMob.noteKeys, events)
+
   test("the source index lists Mob on the Mob face and the Grand Council's " +
       "own power on the other"):
     def favor(ready: ReadyGame) = oathdigital.gameplay.RuleSourceIndex
@@ -195,9 +198,6 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     assertEquals(siteCards(end), Vector[CardId](party, played))
 
   // ---- Lines ----
-
-  private def mobSaid(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(PeoplesFavorMob.id, PeoplesFavorMob.noteKeys, events)
 
   test("the discard the Mob permits writes its line when it is made"):
     val asked = toPlacement(

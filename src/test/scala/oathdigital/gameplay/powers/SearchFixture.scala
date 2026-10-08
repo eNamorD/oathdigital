@@ -31,7 +31,8 @@ object SearchFixture:
     * topped by `top`, with `supply` Supply.
     */
   def staged(top: Vector[WorldCardId], supply: Int): ReadyGame =
-    Table.start.worldDeckTop(top*).supply(actor, supply).ready
+    Table.start.pawn(actor, "Ancient City").worldDeckTop(top*)
+      .supply(actor, supply).ready
 
   /** Eight Discord denizens for the world deck. None is played faceup, so
     * no power of theirs applies.

@@ -31,17 +31,18 @@ class KnightsErrantSuite extends munit.FunSuite:
   private val parked = PowerRules.parkedUnderWalkerPowers
 
   /** p1 holds Knights Errant and stands at Ancient City with the token-free
-    * Alchemist to muster from. Two bandits rule the site, so a Conquest is
-    * legal, unless `campaignLegal` is false. p1 has `supply` Supply, 4 favor
-    * and 3 warbands.
+    * Alchemist to muster from; p2 and p3 stand elsewhere. Two bandits rule
+    * the site, so a Conquest is legal, unless `campaignLegal` is false. p1 has
+    * `supply` Supply, 4 favor and 3 warbands.
     */
   private def staged(supply: Int, campaignLegal: Boolean = true): Table =
     Table.start
-      .pawn(p1, at = ancientCity)
+      .pawn(p1, at = ancientCity).pawn(p2, at = "Broken Peaks")
+      .pawn(Table.p3, at = "Buried Giant")
       .adviser(p1, knights)
       .denizen(alchemist, at = ancientCity)
       .bandits(ancientCity, if campaignLegal then 2 else 0)
-      .supply(p1, supply).favor(p1, 4)
+      .supply(p1, supply).favor(p1, 4).boardWarbands(p1, 3)
 
   private def ready(transition: OathTransition): ReadyGame =
     Outcomes.ready(transition.state)
@@ -96,6 +97,15 @@ class KnightsErrantSuite extends munit.FunSuite:
 
   private val campaign = ChooseOneAnswer(KnightsErrant.campaignOption)
   private val decline = ChooseOneAnswer(KnightsErrant.declineOption)
+
+  private def campaigning(from: OathTransition)
+      : Either[OathViolation, OathTransition] =
+    rules.resolveWalker(from.state, p1, KnightsErrant.decisionId, campaign)
+
+  private val power = KnightsErrant.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
 
   test("after the gain it asks whether to campaign, as a Muster decision"):
     val asked = musterFrom(staged(supply = 1).ready, modifiers)
@@ -164,10 +174,6 @@ class KnightsErrantSuite extends munit.FunSuite:
 
   // ---- Restrictions on the whole Campaign apply to the nested one ----
 
-  private def campaigning(from: OathTransition)
-      : Either[OathViolation, OathTransition] =
-    rules.resolveWalker(from.state, p1, KnightsErrant.decisionId, campaign)
-
   test("Vow of Peace forbids the nested Campaign, so the look-ahead hides " +
       "the option, and declining is still allowed"):
     val vowed = staged(supply = 1).adviser(p1, "Vow of Peace").ready
@@ -203,10 +209,6 @@ class KnightsErrantSuite extends munit.FunSuite:
     assertEquals(parkedOn(accepted(campaigning(open))), CampaignIds.force)
 
   // ---- Lines ----
-
-  private val power = KnightsErrant.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("choosing to campaign writes the Knights' line after the choice"):
     val asked = musterFrom(staged(supply = 1).ready, modifiers)

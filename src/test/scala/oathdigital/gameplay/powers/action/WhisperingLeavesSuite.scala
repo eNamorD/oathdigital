@@ -14,14 +14,16 @@ class WhisperingLeavesSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(leaves)
 
   /** p1's Act at Ancient City holding Whispering Leaves with `secrets`
-    * faceup secrets. p2 stands at Ancient City too, with `favor` favor. */
-  /** The walk Whispering Leaves started and the walk after `target` was
-    * chosen. */
+    * faceup secrets. p2 stands at Ancient City too, with `favor` favor, and
+    * p3 at Buried Giant. */
   private def staged(favor: Int = 3, secrets: Int = 1): Table =
     Table.start.turn(p1, Phase.Act).pawn(p1, "Ancient City")
       .adviser(p1, leaves).secrets(p1, secrets)
       .pawn(p2, at = "Ancient City").favor(p2, favor)
+      .pawn(Table.p3, at = "Buried Giant")
 
+  /** The walk Whispering Leaves started and the walk after `target` was
+    * chosen. */
   private def choose(ready: ReadyGame, target: PlayerId): UsedAndAnswered =
     useAndAnswer(ready, WhisperingLeaves, source,
       WhisperingLeaves.decisionId, DecisionOptionRef.Player(target))

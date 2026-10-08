@@ -20,9 +20,14 @@ class TollRoadsSuite extends munit.FunSuite:
     * travels to the coast.
     */
   private def rivalRules: ReadyGame =
-    Table.from(board(supply = 7)).denizen(toll, at = provincePlains)
+    on(board(supply = 7))(_.denizen(toll, at = provincePlains)
       .favor(actor, 1).warbandsAt(provincePlains, rival, 1)
-      .warbandsAt(coast, rival, 1).unchecked
+      .warbandsAt(coast, rival, 1))
+
+  private val power = TollRoads.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
 
   test("an enemy pays the ruler 1 favor to travel to a site the ruler rules"):
     val ready = rivalRules
@@ -37,14 +42,14 @@ class TollRoadsSuite extends munit.FunSuite:
     assertWireRoundTrips(done.events)
 
   test("the rule covers every site the ruler holds, Toll Roads' own included"):
-    val passRuled = Table.from(rivalRules).warbandsAt(pass, actor, 1).unchecked
+    val passRuled = on(rivalRules)(_.warbandsAt(pass, actor, 1))
     val done = accepted(travel(passRuled, provincePlains))
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).favor(actor), 0)
     assertEquals(Look(result).favor(rival), Look(rivalRules).favor(rival) + 1)
 
   test("a traveller who cannot pay does not get the destination"):
-    val broke = Table.from(rivalRules).favor(actor, 0).unchecked
+    val broke = on(rivalRules)(_.favor(actor, 0))
     assertEquals(candidates(broke).get(coast), None)
     assertEquals(travel(broke, coast).left.toOption,
       Some(destinationNotOffered))
@@ -57,35 +62,31 @@ class TollRoadsSuite extends munit.FunSuite:
     assertEquals(Look(result).favor(actor), 1)
 
   test("the ruler itself travels for free"):
-    val mine = Table.from(board()).denizen(toll, at = provincePlains)
+    val mine = on(board())(_.denizen(toll, at = provincePlains)
       .favor(actor, 1).warbandsAt(provincePlains, actor, 1)
-      .warbandsAt(coast, actor, 1).unchecked
+      .warbandsAt(coast, actor, 1))
     val result = Outcomes.ready(accepted(travel(mine, coast)).state)
     assertEquals(Look(result).favor(actor), 1)
 
   test("when bandits rule, the favor is burnt"):
-    val ready = Table.from(board()).denizen(toll, at = provincePlains)
-      .bandits(provincePlains, 1).bandits(coast, 1).favor(actor, 1).unchecked
+    val ready = on(board())(_.denizen(toll, at = provincePlains)
+      .bandits(provincePlains, 1).bandits(coast, 1).favor(actor, 1))
     val result = Outcomes.ready(accepted(travel(ready, coast)).state)
     assertEquals(Look(result).favor(actor), 0)
     assertEquals(Look(result).favor(rival), Look(ready).favor(rival))
-    assertEquals(candidates(Table.from(ready).favor(actor, 0).unchecked)
+    assertEquals(candidates(on(ready)(_.favor(actor, 0)))
       .get(coast), None)
 
   test("a facedown Toll Roads is not active"):
     // Toll Roads charges from the site it stands on, and only faceup there.
-    val ruled = Table.from(board())
+    val ruled = on(board())(_
       .denizen(toll, at = provincePlains, facedown = true).favor(actor, 1)
       .warbandsAt(provincePlains, rival, 1).warbandsAt(coast, rival, 1)
-      .unchecked
+      )
     val result = Outcomes.ready(accepted(travel(ruled, coast)).state)
     assertEquals(Look(result).favor(actor), 1)
 
   // ---- Lines ----
-
-  private val power = TollRoads.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the toll paid to the ruler is written as the Roads' line"):
     assertEquals(said(accepted(travel(rivalRules, coast)).events),
@@ -93,8 +94,8 @@ class TollRoadsSuite extends munit.FunSuite:
         s"${actor.value} paid 1 favor to ${rival.value}.", covers = false)))
 
   test("a toll burnt for bandits is written; a free Travel writes nothing"):
-    val ready = Table.from(board()).denizen(toll, at = provincePlains)
-      .bandits(provincePlains, 1).bandits(coast, 1).favor(actor, 1).unchecked
+    val ready = on(board())(_.denizen(toll, at = provincePlains)
+      .bandits(provincePlains, 1).bandits(coast, 1).favor(actor, 1))
     assertEquals(said(accepted(travel(ready, coast)).events),
       Vector(NoteText.Said("burned", s"${actor.value} burned 1 favor.",
         covers = false)))

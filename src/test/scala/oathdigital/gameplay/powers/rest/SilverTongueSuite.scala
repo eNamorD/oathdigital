@@ -22,6 +22,25 @@ class SilverTongueSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(tongue)
   private def favor(state: OathState) = Outcomes.ready(state).banks.favor
 
+  /** The placement options of `played` from hand, with Silver Tongue's power
+    * in force. */
+  private def placementOptions(ready: ReadyGame, played: DenizenId)
+      : Vector[DecisionOption] =
+    val tree = accepted(CardPlayProcedure.build(catalog, ready, actor, played,
+      CardPlayProcedure.Origin.TemporaryHand))
+    val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog)))
+    val parked = as[WalkerOutcome.Parked](accepted(
+      ProcedureWalker.advance(ready, tree, None, powers))).tree
+    as[DecisionQuery.ChooseOne](present(
+      ProcedureWalker.parkedDecide(ready, tree, parked, powers),
+      "the placement decision").query).options
+
+  /** The faceup plays among `options`, each as the card it replaces. */
+  private def faceupReplacing(options: Vector[DecisionOption])
+      : Vector[Option[CardId]] =
+    options.filter(option => CardPlayProcedure.playedAs(option.ref)
+      .contains(PlayedAs.Faceup)).map(PlacementPicks.replaces)
+
   test("one matching bank with favor gives one favor without a decision, " +
       "once per turn, and runs the action boundary"):
     val ready = silverTongueRest(Vector("Golem Legions", "Rain Boots"),
@@ -68,25 +87,6 @@ class SilverTongueSuite extends munit.FunSuite:
     val next = restedReady.game.current.turn.activePlayer
     assertNotEquals(next, actor)
     walkerParked.assertResumed(rested.state, Phase.Wake, next)
-
-  /** The placement options of `played` from hand, with Silver Tongue's power
-    * in force. */
-  private def placementOptions(ready: ReadyGame, played: DenizenId)
-      : Vector[DecisionOption] =
-    val tree = accepted(CardPlayProcedure.build(catalog, ready, actor, played,
-      CardPlayProcedure.Origin.TemporaryHand))
-    val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog)))
-    val parked = as[WalkerOutcome.Parked](accepted(
-      ProcedureWalker.advance(ready, tree, None, powers))).tree
-    as[DecisionQuery.ChooseOne](present(
-      ProcedureWalker.parkedDecide(ready, tree, parked, powers),
-      "the placement decision").query).options
-
-  /** The faceup plays among `options`, each as the card it replaces. */
-  private def faceupReplacing(options: Vector[DecisionOption])
-      : Vector[Option[CardId]] =
-    options.filter(option => CardPlayProcedure.playedAs(option.ref)
-      .contains(PlayedAs.Faceup)).map(PlacementPicks.replaces)
 
   test("Silver Tongue requires replacement when a third adviser is played"):
     // Two unrestricted denizens: the facedown second adviser and the card

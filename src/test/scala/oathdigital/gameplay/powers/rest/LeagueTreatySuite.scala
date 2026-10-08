@@ -38,6 +38,11 @@ class LeagueTreatySuite extends munit.FunSuite:
     assertNotEquals(next, resting)
     walkerParked.assertResumed(state, Phase.Wake, next)
 
+  private val power = LeagueTreatyContribution.forCatalog(catalog)
+
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
   test("a bandit-ruled treaty site, or a region without card favor, asks " +
       "nothing"):
     Vector(leagueTreatyAct(None, example*).ready,
@@ -146,10 +151,6 @@ class LeagueTreatySuite extends munit.FunSuite:
     }
 
   // ---- Lines ----
-
-  private val power = LeagueTreatyContribution.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
 
   test("the treaty's line says how much favor the ruler sent to one bank"):
     val owner = p2 // off p1's turn

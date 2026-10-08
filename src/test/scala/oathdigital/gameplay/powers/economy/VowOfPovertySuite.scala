@@ -32,40 +32,8 @@ class VowOfPovertySuite extends munit.FunSuite:
       : Vector[DecisionOptionRef] = TradeProcedure.startOptions(catalog, ready,
     p1, resource, automatic).filter(_.outcome.isRight).map(_.option.ref)
 
-  test("its holder is not offered Trade for favor, and may still Trade for " +
-      "secrets"):
-    // 2 favor pays a Trade for secrets; the start's secret pays one for favor.
-    val withoutVow = Table.start.denizen(wrestlers, at = home).favor(p1, 2)
-      .bankFavor(Suit.Order, 3)
-    val held = withoutVow.adviser(p1, vow).ready
-    val wrestlersCard = DecisionOptionRef.Denizen(wrestlers)
-    assertEquals(tradeableCards(withoutVow.ready, TradeResource.Favor),
-      Vector(wrestlersCard))
-    assertEquals(tradeableCards(held, TradeResource.Favor), Vector.empty)
-    assertEquals(tradeableCards(held, TradeResource.Secret),
-      Vector(wrestlersCard))
-    assertEquals(EconomyActions.attemptTrade(rules, held, p1, Vector.empty,
-      "favor", wrestlersCard).left.toOption,
-      Some(OathViolation.NoPlayableOption("trade")))
-
-  test("Moving Market's favor is not from Trade, so its holder still gains " +
-      "it"):
-    val ready = Table.start.denizen(market, at = home).adviser(p1, vow)
-      .favor(p1, 2).bankFavor(Suit.Nomad, 3).ready
-    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1,
-      Vector(MovingMarket.id), Vector(DecisionOptionRef.Button("secret"))))
-    val asked = accepted(rules.resolveWalker(started.state, p1,
-      TradeProcedure.decisionId,
-      ChooseOneAnswer(DecisionOptionRef.Denizen(market))))
-    val moved = accepted(rules.resolveWalker(asked.state, p1,
-      MovingMarket.decisionId,
-      ChooseOneAnswer(DecisionOptionRef.SiteSlot(giant, 0))))
-    // The Trade spent the 2 favor, and Moving Market gave 1.
-    assertEquals(Look(Outcomes.ready(moved.state)).favor(p1), 1)
-
-  // ---- REST: with no favor, take 2 favor from any one favor bank ----
-
   private val use = ActionRef.UsePower(VowOfPoverty.id)
+
   private val source = DecisionOptionRef.Denizen(vow)
 
   /** p1's Rest with no favor, holding a faceup Vow, with exactly these banks
@@ -80,6 +48,41 @@ class VowOfPovertySuite extends munit.FunSuite:
   private def usable(ready: ReadyGame): Boolean = PhasePowerProcedure.usable(
     catalog, ready, p1, PhasePowerCatalog.default(catalog), WalkerPowers.empty)
     .exists(_.power.id == VowOfPoverty.id)
+
+  test("its holder is not offered Trade for favor, and may still Trade for " +
+      "secrets"):
+    // 2 favor pays a Trade for secrets; the 1 faceup secret pays one for
+    // favor.
+    val withoutVow = Table.start.pawn(p1, at = home)
+      .denizen(wrestlers, at = home).favor(p1, 2).secrets(p1, faceUp = 1)
+      .bankFavor(Suit.Order, 3)
+    val held = withoutVow.adviser(p1, vow).ready
+    val wrestlersCard = DecisionOptionRef.Denizen(wrestlers)
+    assertEquals(tradeableCards(withoutVow.ready, TradeResource.Favor),
+      Vector(wrestlersCard))
+    assertEquals(tradeableCards(held, TradeResource.Favor), Vector.empty)
+    assertEquals(tradeableCards(held, TradeResource.Secret),
+      Vector(wrestlersCard))
+    assertEquals(EconomyActions.attemptTrade(rules, held, p1, Vector.empty,
+      "favor", wrestlersCard).left.toOption,
+      Some(OathViolation.NoPlayableOption("trade")))
+
+  test("Moving Market's favor is not from Trade, so its holder still gains " +
+      "it"):
+    val ready = Table.start.pawn(p1, at = home).denizen(market, at = home)
+      .adviser(p1, vow).favor(p1, 2).bankFavor(Suit.Nomad, 3).ready
+    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1,
+      Vector(MovingMarket.id), Vector(DecisionOptionRef.Button("secret"))))
+    val asked = accepted(rules.resolveWalker(started.state, p1,
+      TradeProcedure.decisionId,
+      ChooseOneAnswer(DecisionOptionRef.Denizen(market))))
+    val moved = accepted(rules.resolveWalker(asked.state, p1,
+      MovingMarket.decisionId,
+      ChooseOneAnswer(DecisionOptionRef.SiteSlot(giant, 0))))
+    // The Trade spent the 2 favor, and Moving Market gave 1.
+    assertEquals(Look(Outcomes.ready(moved.state)).favor(p1), 1)
+
+  // ---- REST: with no favor, take 2 favor from any one favor bank ----
 
   test("REST: with no favor, its holder takes 2 favor from the bank they " +
       "choose, in a line covering the generic one"):

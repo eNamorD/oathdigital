@@ -20,8 +20,8 @@ class WayStationSuite extends munit.FunSuite:
     * Cradle's plains, holds `favor` favor and `supply` Supply; a Travel to
     * the coast costs 1. */
   private def rivalRules(favor: Int = 1, supply: Int = 7): ReadyGame =
-    Table.from(board(supply = supply)).denizen(wayStation, at = coast)
-      .warbandsAt(coast, rival, 1).favor(actor, favor).unchecked
+    on(board(supply = supply))(_.denizen(wayStation, at = coast)
+      .warbandsAt(coast, rival, 1).favor(actor, favor))
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(WayStation.id, RulerToll.keys, events)
@@ -35,9 +35,15 @@ class WayStationSuite extends munit.FunSuite:
       : OathTransition = accepted(rules.resolveWalker(state, actor,
     WayStation.decisionId, DecisionAnswer.ChooseOneAnswer(choice)))
 
+  /** The coast also carries Toll Roads' toll of 1 favor on top of the Travel. */
+  private def tolled(favor: Int): ReadyGame =
+    on(rivalRules(favor = favor))(_
+      .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
+      .warbandsAt(provincePlains, rival, 1))
+
   test("its ruler travels there free, unasked"):
-    val ready = Table.from(board()).denizen(wayStation, at = coast)
-      .warbandsAt(coast, actor, 1).unchecked
+    val ready = on(board(supply = 7))(_.denizen(wayStation, at = coast)
+      .warbandsAt(coast, actor, 1))
     val done = accepted(travel(ready, coast))
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).pawn(actor), coast)
@@ -75,16 +81,16 @@ class WayStationSuite extends munit.FunSuite:
     assertEquals(Look(result).supply(actor), 6)
 
   test("a Travel a selected modifier already made free is not asked"):
-    val ready = Table.from(rivalRules(favor = 2))
-      .adviser(actor, CatalogNames.denizen("Tents")).unchecked
+    val ready = on(rivalRules(favor = 2))(_
+      .adviser(actor, CatalogNames.denizen("Tents")))
     val done = accepted(travel(ready, coast, Vector(Tents.id)))
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).pawn(actor), coast)
     assertEquals(Look(result).supply(actor), 7)
 
   test("under bandit rule the favor is burnt"):
-    val ready = Table.from(board()).denizen(wayStation, at = coast)
-      .bandits(coast, 1).favor(actor, 1).unchecked
+    val ready = on(board())(_.denizen(wayStation, at = coast)
+      .bandits(coast, 1).favor(actor, 1))
     val done = answer(accepted(travel(ready, coast)).state,
       WayStation.favorOption)
     val result = Outcomes.ready(done.state)
@@ -101,12 +107,6 @@ class WayStationSuite extends munit.FunSuite:
     val result = Outcomes.ready(answer(asked.state,
       WayStation.favorOption).state)
     assertEquals(Look(result).pawn(actor), coast)
-
-  /** The coast also carries Toll Roads' toll of 1 favor on top of the Travel. */
-  private def tolled(favor: Int): ReadyGame =
-    Table.from(rivalRules(favor = favor))
-      .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
-      .warbandsAt(provincePlains, rival, 1).unchecked
 
   test("a favor the toll takes first is not offered twice"):
     val done = accepted(travel(tolled(favor = 1), coast))

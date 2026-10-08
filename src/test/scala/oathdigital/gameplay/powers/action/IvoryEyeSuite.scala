@@ -20,11 +20,10 @@ class IvoryEyeSuite extends munit.FunSuite:
   private val faith = VisionRules.Faith
   private val elders = CatalogNames.denizen("Elders")
 
-  /** p1's Act: p1 holds the Eye faceup and the quiet table's 1 faceup
-    * secret. Each player holds one facedown adviser: p1 Wrestlers, p2 Battle
-    * Honors, p3 Rain Boots. */
+  /** p1's Act: p1 holds the Eye faceup and 1 faceup secret. Each player holds
+    * one facedown adviser: p1 Wrestlers, p2 Battle Honors, p3 Rain Boots. */
   private def staged = Table.start
-    .relic(p1, eye)
+    .relic(p1, eye).secrets(p1, faceUp = 1)
     .adviser(p1, "Wrestlers", facedown = true)
     .adviser(p2, "Battle Honors", facedown = true)
     .adviser(p3, "Rain Boots", facedown = true)

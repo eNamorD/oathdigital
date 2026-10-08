@@ -28,6 +28,11 @@ class GamblingHallSuite extends munit.FunSuite:
   private val total4 = defenseDice(DefenseDieFace.OneShield,
     DefenseDieFace.OneShield, DefenseDieFace.TwoShields, DefenseDieFace.Blank)
 
+  private val card = PowerSourceRef.Card(hall)
+
+  private def notes(events: Vector[OathEvent]): Vector[PowerNoted] =
+    events.collect { case noted: PowerNoted => noted }
+
   test("the bank question says how much the roll won"):
     // The take is not a choice of amount: the power gains the whole total
     // the bank can pay, so the question states the number rather than
@@ -103,10 +108,6 @@ class GamblingHallSuite extends munit.FunSuite:
       use(rules(total4), staged(favor = 1), GamblingHall.id,
         source).left.toOption,
       Some(OathViolation.InsufficientFavor(2, 1)))
-
-  private val card = PowerSourceRef.Card(hall)
-  private def notes(events: Vector[OathEvent]): Vector[PowerNoted] =
-    events.collect { case noted: PowerNoted => noted }
 
   test("it notes its roll, then what it gained, each covering the generic line"):
     val rules0 = rules(total4)

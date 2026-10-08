@@ -14,7 +14,7 @@ class HomesteadersSuite extends munit.FunSuite:
   private val homesteaders = CatalogNames.denizen("Homesteaders")
   private val source = DecisionOptionRef.Denizen(homesteaders)
   private val power = Homesteaders.forCatalog(catalog)
-  /** p1's pawn site on the quiet table, with room for three cards. */
+  /** p1's pawn site, with room for three cards. */
   private val home = CatalogNames.site("Ancient City")
   /** A plain Hearth denizen. */
   private val landWarden = CatalogNames.denizen("Land Warden")
@@ -27,7 +27,8 @@ class HomesteadersSuite extends munit.FunSuite:
 
   /** p1's Act at Ancient City, holding Homesteaders faceup. */
   private def holdingHomesteaders: Table =
-    Table.start.turn(p1, Phase.Act).adviser(p1, homesteaders)
+    Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
+      .adviser(p1, homesteaders)
 
   /** The walk Homesteaders started and the walk after `card` was chosen. */
   private def choose(ready: ReadyGame, card: DenizenId): UsedAndAnswered =

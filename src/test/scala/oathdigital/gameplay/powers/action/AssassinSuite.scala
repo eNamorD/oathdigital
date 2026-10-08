@@ -32,12 +32,13 @@ class AssassinSuite extends munit.FunSuite:
   private val automaticPowers = WalkerPowers.selected(
     WalkerPowerCatalog.default(catalog), Vector.empty)
 
-  /** p1's Act at Ancient City holding Assassin faceup, with the quiet
-    * table's 1 favor to pay it. p2 stands there too, holding Land Warden
-    * faceup. */
+  /** p1's Act at Ancient City holding Assassin faceup, with 1 favor to pay
+    * it. p2 stands there too, holding Land Warden faceup; p3 stands at Buried
+    * Giant. */
   private def staged: Table = Table.start.turn(p1, Phase.Act)
-    .pawn(p1, at = home).adviser(p1, assassin)
+    .pawn(p1, at = home).adviser(p1, assassin).favor(p1, 1)
     .pawn(p2, at = home).adviser(p2, landWarden)
+    .pawn(p3, at = "Buried Giant")
 
   /** The walk Assassin started and the walk after `card` was chosen. */
   private def chooseAdviser(ready: ReadyGame, card: DenizenId): UsedAndAnswered =
@@ -89,7 +90,8 @@ class AssassinSuite extends munit.FunSuite:
   test("with only the locked Assassin to discard it asks nothing, and the " +
       "line says so"):
     val ready = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
-      .adviser(p1, assassin).ready
+      .pawn(p2, at = "Broken Peaks").pawn(p3, at = "Buried Giant")
+      .adviser(p1, assassin).favor(p1, 1).ready
     val done = accepted(use(ready, power, source))
     assert(backToActing(done))
     assertEquals(Look(after(done)).advisers(p1), Vector[CardId](assassin))

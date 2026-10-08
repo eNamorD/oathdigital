@@ -12,15 +12,15 @@ object SilverTongueFixture:
 
   /** p1's Rest at Ancient City, holding Silver Tongue as the only adviser.
     * Ancient City shows `siteCards` faceup. Every bank in `stocked` holds 3
-    * favor and every other bank none. Broken Peaks holds two secrets, so
-    * p2, waking next, has wealth to take and the Wake waits. No site holds a
-    * bandit, as on the quiet table, so the action boundary visibly refills
-    * the sites with capacity.
+    * favor and every other bank none. Broken Peaks holds two secrets and p2's
+    * pawn, so p2, waking next, has wealth to take and the Wake waits. No site
+    * holds a bandit, so the action boundary visibly refills the sites with
+    * capacity.
     */
   def silverTongueRest(siteCards: Vector[String], stocked: Set[Suit])
       : ReadyGame =
     val resting = Table.start.turn(p1, Phase.Rest).pawn(p1, "Ancient City")
-      .adviser(p1, tongue).siteTokens("Broken Peaks", secrets = 2)
+      .pawn(Table.p2, "Broken Peaks").adviser(p1, tongue)
+      .siteTokens("Broken Peaks", secrets = 2)
     val shown = siteCards.foldLeft(resting)(_.denizen(_, at = "Ancient City"))
-    Suit.all.foldLeft(shown)((table, suit) =>
-      table.bankFavor(suit, if stocked(suit) then 3 else 0)).ready
+    shown.banksHoldingOnly(stocked.toSeq.map(_ -> 3)*).ready

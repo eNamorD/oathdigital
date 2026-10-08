@@ -15,7 +15,8 @@ class SacredGroundSuite extends munit.FunSuite:
   import VisionPlayFixture._
 
   private val e08: EdificeId = SacredGroundCard.id
-  // p1 stands at Ancient City on the quiet table; Broken Peaks is elsewhere.
+  // `SearchFixture.staged` stands p1 at Ancient City; Broken Peaks is
+  // elsewhere.
   private val home = CatalogNames.site("Ancient City")
   private val elsewhere = CatalogNames.site("Broken Peaks")
 
@@ -27,6 +28,10 @@ class SacredGroundSuite extends munit.FunSuite:
       side: EdificeSide = EdificeSide.Intact): OathTransition =
     val drawing = SearchFixture.staged(Vector(vision), supply = 5)
     searched(withE08(drawing, site, side), vision)
+
+  private def hidden(from: OathTransition): Vector[NoteText.Said] =
+    val power = SacredGround
+    NoteText.said(power.id, power.noteKeys, from.events)
 
   test("a player whose pawn is elsewhere cannot play a Vision faceup"):
     val parkedAt = search(elsewhere)
@@ -62,10 +67,6 @@ class SacredGroundSuite extends munit.FunSuite:
     val ready = withE08(inPhase(quietTable, Phase.Act), elsewhere)
     assert(!offered(fromAdvisers(ready, VisionRules.Faith))
       .contains(PlayedAs.Faceup))
-
-  private def hidden(from: OathTransition): Vector[NoteText.Said] =
-    val power = SacredGround
-    NoteText.said(power.id, power.noteKeys, from.events)
 
   test("the hidden faceup placement writes no line: its reason is on hover"):
     assertEquals(hidden(search(elsewhere)), Vector.empty)

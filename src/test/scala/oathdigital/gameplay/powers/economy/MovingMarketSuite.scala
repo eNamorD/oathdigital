@@ -16,8 +16,7 @@ class MovingMarketSuite extends munit.FunSuite:
   private val market = CatalogNames.denizen("Moving Market")
   private val power = MovingMarket.forCatalog(catalog)
   private val modifiers = Vector(MovingMarket.id)
-  /** p1's pawn site, and two other sites in play, each with room for one
-    * card. */
+  /** p1's pawn site, and two other sites in play. */
   private val home = CatalogNames.site("Ancient City")
   private val peaks = CatalogNames.site("Broken Peaks")
   private val giant = CatalogNames.site("Buried Giant")
@@ -28,11 +27,12 @@ class MovingMarketSuite extends munit.FunSuite:
   private val rules = PowerRules.withWalkerPowers
   private val parked = PowerRules.parkedUnderWalkerPowers
 
-  /** p1 at Ancient City beside the token-free Moving Market, with the
-    * start's 1 favor and 1 faceup secret, and the Nomad bank holding `nomad`
-    * favor. Errand Boy fills Broken Peaks; Buried Giant is empty. */
+  /** p1 at Ancient City beside the token-free Moving Market, with 1 favor, 1
+    * faceup secret and 7 Supply, and the Nomad bank holding `nomad` favor.
+    * Errand Boy stands at Broken Peaks; Buried Giant is empty. */
   private def staged(nomad: Int = 3): Table = Table.start
     .pawn(p1, at = home).denizen(market, at = home)
+    .favor(p1, 1).secrets(p1, faceUp = 1).supply(p1, 7)
     .denizen(errandBoy, at = peaks).bankFavor(Suit.Nomad, nomad)
 
   /** p1 Trades for favor with Moving Market, having selected it, and is
@@ -57,15 +57,18 @@ class MovingMarketSuite extends munit.FunSuite:
 
   test("after trading with it, one question offers every empty slot at the " +
       "other sites, then Skip"):
-    val asked = tradedWithMarket(staged().ready)
-    assert(parked.parkedDecision(asked.state)
-      .exists(_.decision == MovingMarket.decisionId),
-      parked.parkedDecision(asked.state).toString)
-    val options = PhasePowerHarness.offered(asked, p1).getOrElse(Vector.empty)
-    assert(options.contains("site-slot" -> s"${giant.value}:0"), options)
-    assert(!options.exists((_, id) =>
-      id.startsWith(home.value) || id.startsWith(peaks.value)), options)
-    assertEquals(options.lastOption, Some("button" -> "skip"))
+    val ready = staged().ready
+    val asked = tradedWithMarket(ready)
+    assertEquals(parked.parkedDecision(asked.state).map(_.decision),
+      Some(MovingMarket.decisionId))
+    // Broken Peaks holds Errand Boy and has no room; Ancient City, where it
+    // stands, is not offered.
+    val emptySlots = ready.game.current.map.inPlay.filter(_ != home)
+      .flatMap(site => (Look(ready).cardsAt(site).size until
+        catalog.site(site).fold(0)(_.capacity)).map(slot =>
+          "site-slot" -> s"${site.value}:$slot"))
+    assertEquals(PhasePowerHarness.offered(asked, p1),
+      Some(emptySlots :+ ("button" -> "skip")))
 
   test("a chosen slot moves it there with its tokens, and it gains 1 favor " +
       "from the Nomad bank"):

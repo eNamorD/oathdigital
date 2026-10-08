@@ -57,7 +57,8 @@ class QuickExitSuite extends munit.FunSuite:
 
   test("with no other pawn at the site, the cost stays paid and the line " +
       "says so"):
-    val ready = Table.start.turn(p1, Phase.Act).adviser(p1, exit)
+    val ready = Table.start.turn(p1, Phase.Act).pawn(p1, home)
+      .pawn(p2, at = away).pawn(p3, at = away).adviser(p1, exit)
       .secrets(p1, 1).ready
     val done = accepted(use(ready, QuickExit, source))
     parked.assertResumed(done.state, Phase.Act, p1)
