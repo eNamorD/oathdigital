@@ -2,7 +2,6 @@ package oathdigital.frontend
 
 import Dom.{click, press}
 import org.scalajs.dom
-import oathdigital.protocol.projection.{LogEntryWire, LogSpanWire}
 
 /** The Log pane's heading opens the whole log over the table (spec,
   * "Overlay"), and the shell keeps each seat's place (spec, "Divider").
@@ -10,7 +9,7 @@ import oathdigital.protocol.projection.{LogEntryWire, LogSpanWire}
   */
 class GameLogOverlaySuite extends munit.FunSuite:
   private def entry(sequence: Long, kind: String, depth: Int, text: String) =
-    LogEntryWire(sequence, 0, kind, depth, Vector(LogSpanWire("text", text)))
+    TestLog.textEntry(sequence, kind, depth, text)
 
   private val entries = Vector(entry(0, "round", 0, "Setup"),
     entry(3, "turn", 0, "Red's turn"), entry(5, "action", 1, "Started Travel"))

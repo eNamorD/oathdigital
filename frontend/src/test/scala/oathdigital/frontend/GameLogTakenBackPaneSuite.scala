@@ -1,7 +1,6 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
-import scala.scalajs.js
 import oathdigital.protocol.projection.{LogEntryWire, LogSectionWire,
   LogSpanWire, LogTakenBackWire}
 
@@ -14,31 +13,17 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     LogSpanWire("text", " took back the following moves:")))
 
   private def travelLine(sequence: Long, words: String): LogEntryWire =
-    LogEntryWire(sequence, 0, "action", 1, Vector(LogSpanWire("text", words)),
-      Some(LogSectionWire(5L, "travel")))
+    TestLog.textEntry(sequence, "action", depth = 1, words,
+      section = Some(LogSectionWire(5L, "travel")))
 
   private def takenBack(entry: LogEntryWire): LogEntryWire =
     entry.copy(takenBack = Some(takenBackByRed))
 
-  private val setup = LogEntryWire(0, 0, "round", 0,
-    Vector(LogSpanWire("text", "Setup")))
+  private val setup = TestLog.textEntry(sequence = 0, kind = "round",
+    depth = 0, text = "Setup")
   private val started = travelLine(5, "Started Travel")
   private val moved = travelLine(6, "Travelled to Buried Giant")
   private val movedAgain = travelLine(8, "Travelled to Great Spire")
-
-  /** A content box jsdom gives a size: `height` tall, `scrolled` from the
-    * top, holding `total` pixels. jsdom does not clamp `scrollTop`. */
-  private def sizedLogContent(total: Int, height: Int, scrolled: Double)
-      : dom.html.Element =
-    val content = dom.document.createElement("div").asInstanceOf[dom.html.Element]
-    def define(name: String, value: js.Any, writable: Boolean) =
-      js.Object.defineProperty(content, name, js.Dynamic.literal(value = value,
-        writable = writable, configurable = true)
-        .asInstanceOf[js.PropertyDescriptor])
-    define("scrollHeight", total, writable = false)
-    define("clientHeight", height, writable = false)
-    define("scrollTop", scrolled, writable = true)
-    content
 
   private def topLevel(content: dom.Element): Vector[dom.Element] =
     val list = content.querySelector("ol.game-log")
@@ -51,7 +36,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     content.querySelector(".log-taken-back-lines")
 
   test("a taken-back run is one collapsed group under its header"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     new GameLogPane(content).show("g|red",
       Vector(setup, takenBack(started), takenBack(moved)),
       Map("red" -> "player-red"))
@@ -67,7 +52,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(groupLines(content).children.length, 2)
 
   test("inside a group the lines keep their band"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     new GameLogPane(content).show("g|red",
       Vector(setup, takenBack(started), takenBack(moved)), Map.empty)
     val lines = groupLines(content)
@@ -77,7 +62,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
       "log-entry log-line log-action log-band log-band-travel log-band-end")
 
   test("the toggle opens and closes the group"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     new GameLogPane(content).show("g|red",
       Vector(setup, takenBack(started)), Map.empty)
     toggle(content).click()
@@ -88,7 +73,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assert(groupLines(content).hasAttribute("hidden"))
 
   test("a group the reader opened stays open through a redraw"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, takenBack(started)), Map.empty)
     toggle(content).click()
@@ -98,7 +83,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(toggle(content).getAttribute("aria-expanded"), "true")
 
   test("a live line after a group starts its own band, even in the same section"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     new GameLogPane(content).show("g|red",
       Vector(setup, takenBack(started), takenBack(moved), movedAgain), Map.empty)
     assertEquals(topLevel(content).last.getAttribute("class"),
@@ -106,7 +91,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
         "log-band-start log-band-end")
 
   test("an appended live line after a group starts its own band"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, takenBack(started)), Map.empty)
     pane.show("g|red", Vector(setup, takenBack(started), movedAgain), Map.empty)
@@ -115,7 +100,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
         "log-band-start log-band-end")
 
   test("lines that gain a group are redrawn, and a reader scrolled up stays put"):
-    val content = sizedLogContent(total = 1000, height = 100, scrolled = 200)
+    val content = TestLog.sizedBox(total = 1000, height = 100, scrolled = 200)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, started, moved), Map.empty)
     content.scrollTop = 200
@@ -128,7 +113,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
   test("a reader at the end stays at the end through a redraw"):
     // 2px short of the end is inside the slack, so the reader counts as at
     // the end, and the redraw must carry them to the new end.
-    val content = sizedLogContent(total = 1000, height = 100, scrolled = 898)
+    val content = TestLog.sizedBox(total = 1000, height = 100, scrolled = 898)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, started, moved), Map.empty)
     pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
@@ -136,7 +121,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(content.scrollTop, 1000.0)
 
   test("a divider that would fall inside a group stands before it"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     new GameLogPane(content).show("g|red",
       Vector(setup, takenBack(started), takenBack(moved)), Map.empty,
       since = Some(5L))
@@ -145,7 +130,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
         "log-taken-back"))
 
   test("a group the reader opened closes again in another session"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, takenBack(started)), Map.empty)
     toggle(content).click()
@@ -153,7 +138,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(toggle(content).getAttribute("aria-expanded"), "false")
 
   test("a new line that arrives already taken back redraws into a group"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, started), Map.empty)
     pane.show("g|red", Vector(setup, started, takenBack(moved)), Map.empty)
@@ -161,7 +146,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
       "log-taken-back")
 
   test("two groups side by side stay two groups"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val later = LogTakenBackWire(8L, takenBackByRed.header)
     new GameLogPane(content).show("g|red",
       Vector(setup, takenBack(started),
@@ -170,7 +155,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(groupLines(content).children.length, 1)
 
   test("live lines that arrive with an undo offer the New chip to a reader scrolled up"):
-    val content = sizedLogContent(total = 1000, height = 100, scrolled = 200)
+    val content = TestLog.sizedBox(total = 1000, height = 100, scrolled = 200)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, started, moved), Map.empty)
     content.scrollTop = 200
@@ -180,7 +165,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assert(!content.querySelector(".log-new").hasAttribute("hidden"))
 
   test("restored lines leave their group and read as ordinary lines"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
       Map.empty)
@@ -195,7 +180,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
       takenBackByRed.header)))
 
   test("a group the reader opened stays open when a Redo restores its first line"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
       Map.empty)
@@ -206,7 +191,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(groupLines(content).children.length, 1)
 
   test("a group the reader left closed stays closed when a Redo restores its first line"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
       Map.empty)
@@ -215,7 +200,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(toggle(content).getAttribute("aria-expanded"), "false")
 
   test("a toggle still works after a Redo changed the group's id"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
       Map.empty)
@@ -228,7 +213,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(toggle(content).getAttribute("aria-expanded"), "true")
 
   test("a group formed by taking back again opens when a line of it was open"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val pane = new GameLogPane(content)
     pane.show("g|red", Vector(setup, takenBack(started), takenBack(moved)),
       Map.empty)
@@ -242,7 +227,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
     assertEquals(toggle(content).getAttribute("aria-expanded"), "true")
 
   test("only the group the reader opened stays open through a redraw"):
-    val content = sizedLogContent(0, 0, 0)
+    val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val pane = new GameLogPane(content)
     val later = takenBackFrom(8L)(_)
     pane.show("g|red", Vector(setup, takenBack(started), moved, later(movedAgain)),
