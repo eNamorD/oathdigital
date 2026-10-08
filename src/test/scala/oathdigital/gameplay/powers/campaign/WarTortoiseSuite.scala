@@ -21,9 +21,6 @@ class WarTortoiseSuite extends munit.FunSuite:
   private val noDefense = NoteText.Said("defense",
     "Double shields added no defense.", covers = false)
 
-  private def lines(run: Run): Vector[NoteText.Said] =
-    NoteText.said(WarTortoise.id, WarTortoise.noteKeys, run.events)
-
   /** p2 rules the origin with two warbands, holds the Oathkeeper title, War
     * Tortoise faceup and one favor. */
   private def defender: Board =
@@ -42,7 +39,7 @@ class WarTortoiseSuite extends munit.FunSuite:
     // A skull face and a sword: the skull face scores nothing.
     assertEquals(done.result.attackScore, 1)
     assertEquals(done.result.skullLosses, 1)
-    assertEquals(lines(done), Vector(noAttack))
+    assertEquals(said(WarTortoise, done.events), Vector(noAttack))
 
   test("used by the defender it silences Fearsome General's four swords"):
     val b = withAdviser(defender, general, Orientation.FaceUp)
@@ -53,7 +50,7 @@ class WarTortoiseSuite extends munit.FunSuite:
     assertEquals(done.result.attackScore, 1)
     assertEquals(NoteText.said(FearsomeGeneral.id, FearsomeGeneral.noteKeys,
       done.events), Vector.empty)
-    assertEquals(lines(done), Vector(noAttack))
+    assertEquals(said(WarTortoise, done.events), Vector(noAttack))
 
   test("an attacker places a favor and the double shields score nothing"):
     val base = withAdviser(board(warbands = 5, supply = 7), card,
@@ -66,7 +63,7 @@ class WarTortoiseSuite extends munit.FunSuite:
     val done = picked.finishPlanWindows
     // Two shields score nothing; one shield and the two bandits remain.
     assertEquals(done.result.defenseScore, 1 + 2)
-    assertEquals(lines(done), Vector(noDefense))
+    assertEquals(said(WarTortoise, done.events), Vector(noDefense))
 
   test("a bandit defender never applies it, since it costs"):
     val base = board(warbands = 5, supply = 7)

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
-import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
@@ -59,20 +58,18 @@ class MercenariesSuite extends munit.FunSuite:
   test("an adviser is discarded to the region after the region of its " +
       "holder's pawn"):
     val b = attackerBoard
-    val own = b.ready.game.current.map.regionOf(b.origin).get
     val done = commit(rules(losingDice), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assert(Look(done.state).discardPile(CardPlay.nextRegion(own)).contains(card))
+    assert(Look(done.state).discardAfter(b.origin).contains(card))
 
   test("a card at a site the attacker rules is discarded from the site, to " +
       "the region after the site's own"):
     val base = board(warbands = 5, supply = 7)
     val current = base.ready.game.current
-    val pawnRegion = current.map.regionOf(base.origin).get
     // Buried Giant, in the Provinces, away from p1's Cradle site.
     val ruled = CatalogNames.site("Buried Giant")
-    assert(!current.map.regionOf(ruled).contains(pawnRegion))
-    val siteRegion = current.map.regionOf(ruled).get
+    assert(!current.map.regionOf(ruled).contains(
+      current.map.regionOf(base.origin).get))
     val b = funded(withSiteCard(actorRules(base, ruled), ruled, card),
       base.actor, 2)
     val done = commit(rules(losingDice), b, 0)
@@ -80,8 +77,8 @@ class MercenariesSuite extends munit.FunSuite:
     assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(ready(done.state).game.current.map.sites(ruled).denizens,
       Vector.empty)
-    assert(Look(done.state).discardPile(CardPlay.nextRegion(siteRegion)).contains(card))
-    assert(!Look(done.state).discardPile(CardPlay.nextRegion(pawnRegion)).contains(card))
+    assert(Look(done.state).discardAfter(ruled).contains(card))
+    assert(!Look(done.state).discardAfter(base.origin).contains(card))
 
   test("an attacker with no favor to place is not offered Mercenaries"):
     val b = funded(attackerBoard, attackerBoard.actor, 0)
@@ -133,18 +130,15 @@ class MercenariesSuite extends munit.FunSuite:
   // ---- Lines ----
 
   private val power = Mercenaries.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("a defeated user's discard is written as the Mercenaries' line"):
     val b = attackerBoard
     val done = commit(rules(losingDice), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(said(done.events), Vector(NoteText.Said("discarded",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("discarded",
       s"Discarded after ${b.actor.value} lost.", covers = false)))
 
   test("a winner keeps Mercenaries and reads no line"):
     val b = attackerBoard
     val done = commit(rules(winningDice), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(said(done.events), Vector.empty)
+    assertEquals(said(power, done.events), Vector.empty)

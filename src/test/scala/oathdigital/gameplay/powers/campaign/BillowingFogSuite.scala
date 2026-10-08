@@ -14,9 +14,6 @@ class BillowingFogSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Billowing Fog")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
-  private def lines(run: Run): Vector[NoteText.Said] =
-    NoteText.said(BillowingFog.id, BillowingFog.noteKeys, run.events)
-
   private def spared(who: PlayerId): NoteText.Said = NoteText.Said("spared",
     s"${who.value}'s force was spared.", covers = false)
 
@@ -34,7 +31,7 @@ class BillowingFogSuite extends munit.FunSuite:
     // defeat would have killed half of the four survivors.
     assertEquals(done.winner, Some(false))
     assertEquals(Look(done.state).boardWarbands(b.actor), 5)
-    assertEquals(lines(done), Vector(spared(b.actor)))
+    assertEquals(said(BillowingFog, done.events), Vector(spared(b.actor)))
 
   test("a defeated attacker still loses its sacrifice"):
     val base = board(extras = 1, warbands = 5, supply = 7)
@@ -53,7 +50,7 @@ class BillowingFogSuite extends munit.FunSuite:
       Piece.Warbands(ForceKind.Exile(b.player(b.actor).lineage), 1),
       PositionedLocation(Location.PlayArea(b.actor)))))
     assertEquals(Look(done.state).boardWarbands(b.actor), 4)
-    assertEquals(lines(done), Vector(spared(b.actor)))
+    assertEquals(said(BillowingFog, done.events), Vector(spared(b.actor)))
 
   test("a defeated Conquest defender gets back every warband at the targets"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
@@ -65,7 +62,7 @@ class BillowingFogSuite extends munit.FunSuite:
     // Both warbands at the origin die, and both return, not one.
     assertEquals(done.winner, Some(true))
     assertEquals(Look(done.state).boardWarbands(b.rival), before + 2)
-    assertEquals(lines(done), Vector(spared(b.rival)))
+    assertEquals(said(BillowingFog, done.events), Vector(spared(b.rival)))
 
   test("a defeated Raid defender loses no warband from its board"):
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
@@ -77,7 +74,7 @@ class BillowingFogSuite extends munit.FunSuite:
       won.offered(b.actor).head)
     assertEquals(done.winner, Some(true))
     assertEquals(Look(done.state).boardWarbands(b.rival), 3)
-    assertEquals(lines(done), Vector(spared(b.rival)))
+    assertEquals(said(BillowingFog, done.events), Vector(spared(b.rival)))
 
   test("a defeated user ignores Sticky Fire: nothing is asked, nothing more " +
       "dies and no favor is given"):
@@ -95,7 +92,7 @@ class BillowingFogSuite extends munit.FunSuite:
     assert(!awaits(done, b.rival, StickyFire.decisionId))
     assertEquals(Look(done.state).boardWarbands(b.actor), 5)
     assertEquals(Look(done.state).player(b.rival).board.favor, 2)
-    assertEquals(lines(done), Vector(spared(b.actor)))
+    assertEquals(said(BillowingFog, done.events), Vector(spared(b.actor)))
 
   test("a defeated defender ignores its own Shield Wall"):
     val wall = CatalogNames.denizen("Shield Wall")
@@ -113,7 +110,7 @@ class BillowingFogSuite extends munit.FunSuite:
     assertEquals(Look(done.state).boardWarbands(b.rival), before + 2)
     assertEquals(NoteText.said(ShieldWall.id, ShieldWall.noteKeys,
       done.events), Vector.empty)
-    assertEquals(lines(done), Vector(spared(b.rival)))
+    assertEquals(said(BillowingFog, done.events), Vector(spared(b.rival)))
 
   test("a victorious user changes nothing and writes nothing"):
     val base = board(warbands = 5, supply = 7)
@@ -122,4 +119,4 @@ class BillowingFogSuite extends munit.FunSuite:
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
     assertEquals(Look(done.state).boardWarbands(b.actor), 5)
-    assertEquals(lines(done), Vector.empty)
+    assertEquals(said(BillowingFog, done.events), Vector.empty)

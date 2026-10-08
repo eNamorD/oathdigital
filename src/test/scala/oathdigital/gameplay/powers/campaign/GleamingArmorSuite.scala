@@ -156,17 +156,14 @@ class GleamingArmorSuite extends munit.FunSuite:
   // ---- Lines ----
 
   private val power = GleamingArmor.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("a taxed plan writes the Armor's line, naming the plan's user"):
     val b = attackerHolds(1)
     val run = commit(rules(losingDice), b, 4)
     // Pricing the offered plans writes nothing: only a plan applied does.
-    assertEquals(said(run.events), Vector.empty)
+    assertEquals(said(power, run.events), Vector.empty)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan,
       DecisionOptionRef.Denizen(watchdog))
-    assertEquals(said(picked.events), Vector(NoteText.Said("taxed",
+    assertEquals(said(power, picked.events), Vector(NoteText.Said("taxed",
       s"${b.rival.value}'s battle plans cost 1 extra secret.", covers = false)))
 
   test("the holder's own plan is not taxed, and writes nothing"):
@@ -177,4 +174,4 @@ class GleamingArmorSuite extends munit.FunSuite:
     val b = on(held)(_.secrets(base.rival, faceUp = 0))
     val picked = commit(rules(losingDice), b, 4).pick(b.rival,
       CampaignIds.defenderPlan, DecisionOptionRef.Denizen(watchdog))
-    assertEquals(said(picked.events), Vector.empty)
+    assertEquals(said(power, picked.events), Vector.empty)

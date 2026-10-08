@@ -3,7 +3,9 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.CampaignFixture.Board
-import oathdigital.gameplay.powers.{PowerImplementationStatus, WalkerPowerCatalog}
+import oathdigital.gameplay.powerresolver.ContributingPower
+import oathdigital.gameplay.powers.{NoteText, PowerImplementationStatus,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerDice, WalkerStepRecorded}
@@ -47,6 +49,11 @@ object PlanDriver:
     planless(name).head
 
   export oathdigital.testkit.Outcomes.ready
+
+  /** The notes `power` journaled in `events`, in order, as plain sentences. */
+  def said(power: ContributingPower, events: Vector[OathEvent])
+      : Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
 
   /** The parked decision, as this file's suites rebuild it: the same catalog
     * and walker power catalog `CampaignFixture.rules(dice)`

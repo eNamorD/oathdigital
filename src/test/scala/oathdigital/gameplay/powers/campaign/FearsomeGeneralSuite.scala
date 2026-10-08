@@ -20,9 +20,6 @@ class FearsomeGeneralSuite extends munit.FunSuite:
   private val outriders: DecisionOptionRef =
     DecisionOptionRef.Denizen(CatalogNames.denizen("Outriders"))
 
-  private def lines(run: Run): Vector[NoteText.Said] =
-    NoteText.said(FearsomeGeneral.id, FearsomeGeneral.noteKeys, run.events)
-
   private def added(n: Int): NoteText.Said = NoteText.Said("added",
     s"Skulls added $n more swords.", covers = false)
 
@@ -47,15 +44,15 @@ class FearsomeGeneralSuite extends munit.FunSuite:
     val done = twoSkullsForOneWarband(Vector(outriders))
     assertEquals(done.result.attackScore, 8)
     assertEquals(done.result.skullLosses, 0)
-    assertEquals(lines(done), Vector(added(4)))
+    assertEquals(said(FearsomeGeneral, done.events), Vector(added(4)))
 
   test("its note counts only the swords the payable skull added"):
     val done = twoSkullsForOneWarband(Vector.empty)
-    assertEquals(lines(done), Vector(added(2)))
+    assertEquals(said(FearsomeGeneral, done.events), Vector(added(2)))
 
   test("with no skull rolled it writes nothing"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
     val done = commit(rules(winningDice), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(lines(done), Vector.empty)
+    assertEquals(said(FearsomeGeneral, done.events), Vector.empty)

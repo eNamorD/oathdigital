@@ -13,9 +13,6 @@ class ShieldWallSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Shield Wall")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
-  private def lines(run: Run): Vector[NoteText.Said] =
-    NoteText.said(ShieldWall.id, ShieldWall.noteKeys, run.events)
-
   private def killed(who: PlayerId): NoteText.Said = NoteText.Said("killed",
     s"${who.value}'s whole force was killed.", covers = false)
 
@@ -44,7 +41,7 @@ class ShieldWallSuite extends munit.FunSuite:
     // at the origin die, and the one the victory returns dies again.
     assertEquals(done.winner, Some(true))
     assertEquals(Look(done.state).boardWarbands(b.rival), 3)
-    assertEquals(lines(done), Vector(killed(b.rival)))
+    assertEquals(said(ShieldWall, done.events), Vector(killed(b.rival)))
 
   test("a defeated Raid defender loses its whole board"):
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
@@ -58,7 +55,7 @@ class ShieldWallSuite extends munit.FunSuite:
       won.offered(b.actor).head)
     assertEquals(done.winner, Some(true))
     assertEquals(Look(done.state).boardWarbands(b.rival), 0)
-    assertEquals(lines(done), Vector(killed(b.rival)))
+    assertEquals(said(ShieldWall, done.events), Vector(killed(b.rival)))
 
   test("a defender who wins loses nothing more"):
     val b = rivalHoldsShieldWall
@@ -69,7 +66,7 @@ class ShieldWallSuite extends munit.FunSuite:
     assertEquals(Look(done.state).boardWarbands(b.rival), 3)
     assertEquals(ready(done.state).game.current.map.sites(b.origin).forces,
       SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), 2))
-    assertEquals(lines(done), Vector.empty)
+    assertEquals(said(ShieldWall, done.events), Vector.empty)
 
   test("Hospital saves the warbands Shield Wall kills"):
     val hospital = CatalogNames.denizen("Hospital")
@@ -88,7 +85,7 @@ class ShieldWallSuite extends munit.FunSuite:
     assertEquals(Look(done.state).boardWarbands(b.rival), 3)
     assertEquals(ready(done.state).game.current.map.sites(site).forces,
       SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), 4))
-    assertEquals(lines(done), Vector(killed(b.rival)))
+    assertEquals(said(ShieldWall, done.events), Vector(killed(b.rival)))
 
   test("with Sticky Fire also killing the force, the returned warband dies " +
       "once"):
@@ -104,4 +101,4 @@ class ShieldWallSuite extends munit.FunSuite:
     // Shield Wall kills the returned warband. Sticky Fire finds nothing more
     // to kill, and the three the rival held before the Campaign stay.
     assertEquals(Look(done.state).boardWarbands(b.rival), 3)
-    assertEquals(lines(done), Vector(killed(b.rival)))
+    assertEquals(said(ShieldWall, done.events), Vector(killed(b.rival)))

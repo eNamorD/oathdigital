@@ -150,9 +150,6 @@ class StickyFireSuite extends munit.FunSuite:
   // ---- Lines ----
 
   private val power = StickyFire
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("a burnt force is written: what died, and the favor given"):
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
     val b = favored(withRelic(on(base)(_.boardWarbands(base.rival, 3)), relic),
@@ -164,7 +161,7 @@ class StickyFireSuite extends munit.FunSuite:
     // The Raid's own losses kill one of the three first; the burn kills the
     // two left, and its line says what the burn did.
     val rival = b.rival.value
-    assertEquals(said(done.events), Vector(NoteText.Said("burned",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("burned",
       s"Killed 2 $rival warbands, and $rival gained 1 favor.",
       covers = false)))
 
@@ -175,7 +172,7 @@ class StickyFireSuite extends munit.FunSuite:
       .finishDefenderPlans(b.rival)
       .declineSacrifice(b.actor)
       .pick(b.actor, decision, StickyFire.yes).finishPlanWindows
-    assertEquals(said(done.events), Vector(NoteText.Said("killed",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("killed",
       s"Killed 1 ${b.rival.value} warband.", covers = false)))
 
   test("sparing the force, or burning bandits, writes nothing"):
@@ -185,11 +182,11 @@ class StickyFireSuite extends munit.FunSuite:
       .finishDefenderPlans(b.rival)
       .declineSacrifice(b.actor)
       .pick(b.actor, decision, StickyFire.no).finishPlanWindows
-    assertEquals(said(spared.events), Vector.empty)
+    assertEquals(said(power, spared.events), Vector.empty)
     val base = board(warbands = 5, supply = 7)
     val bandits = favored(withRelic(base, relic), base.actor, 2)
     val burnt = commit(rules(winningDice), bandits, 4)
       .pick(bandits.actor, CampaignIds.attackerPlan, ref)
       .declineSacrifice(bandits.actor)
       .pick(bandits.actor, decision, StickyFire.yes).finishPlanWindows
-    assertEquals(said(burnt.events), Vector.empty)
+    assertEquals(said(power, burnt.events), Vector.empty)

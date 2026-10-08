@@ -157,7 +157,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     val run = commit(rules(losingDice), sparse, 4).pick(sparse.rival,
       CampaignIds.defenderPlan, ref)
     assert(!awaits(run, sparse.rival, decision))
-    assertEquals(said(run.events), Vector.empty)
+    assertEquals(said(power, run.events), Vector.empty)
     assert(Look(run.finishPlanWindows.state).inRegionalDiscard(card))
 
   test("a bandit defender never uses it, and the attacker's own copy is no " +
@@ -185,16 +185,13 @@ class WarningSignalsSuite extends munit.FunSuite:
   // ---- Lines ----
 
   private val power = WarningSignals.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("the arrangement is written as the Signals' line, after the answer"):
     val b = defending
     val asked = chosen(b)
-    assertEquals(said(asked.events), Vector.empty)
+    assertEquals(said(power, asked.events), Vector.empty)
     val done = asked.answer(b.rival, decision,
       arrangement(b, board = 1, origin = 3, extra = 3))
-    assertEquals(said(done.events), Vector(NoteText.Said("redistributed",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("redistributed",
       s"${b.rival.value} redistributed their warbands.", covers = false)))
 
   test("a defender with nowhere to move to writes nothing"):
@@ -203,4 +200,4 @@ class WarningSignalsSuite extends munit.FunSuite:
       _.boardWarbands(base.rival, 3))
     val done = commit(rules(losingDice), b, 2, raid = true).pick(b.rival,
       CampaignIds.defenderPlan, ref).finishPlanWindows
-    assertEquals(said(done.events), Vector.empty)
+    assertEquals(said(power, done.events), Vector.empty)

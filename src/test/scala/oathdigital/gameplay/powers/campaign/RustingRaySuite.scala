@@ -27,9 +27,6 @@ class RustingRaySuite extends munit.FunSuite:
     if darkest then on(armed)(_.darkestSecret(Some(base.rival), secrets = 1))
     else armed
 
-  private def lines(run: Run): Vector[NoteText.Said] =
-    NoteText.said(RustingRay.id, RustingRay.noteKeys, run.events)
-
   test("the defender places a secret, off turn, and the attacker's hollow " +
       "swords score nothing"):
     val b = defender(darkest = true)
@@ -43,14 +40,14 @@ class RustingRaySuite extends munit.FunSuite:
     val done = picked.finishPlanWindows
     // Four hollow swords would score 2.
     assertEquals(done.result.attackScore, 0)
-    assertEquals(lines(done), Vector(ignored))
+    assertEquals(said(RustingRay, done.events), Vector(ignored))
 
   test("with no hollow sword rolled it writes nothing"):
     val b = defender(darkest = true)
     val done = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(done.result.attackScore, 4)
-    assertEquals(lines(done), Vector.empty)
+    assertEquals(said(RustingRay, done.events), Vector.empty)
 
   test("it is not offered while its user lacks the Darkest Secret"):
     val b = defender(darkest = false)
