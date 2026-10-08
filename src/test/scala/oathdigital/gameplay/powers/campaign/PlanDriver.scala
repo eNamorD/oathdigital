@@ -167,9 +167,8 @@ object PlanDriver:
     */
   def commit(game: OathRules, b: Board, force: Int,
       targets: Vector[DecisionOptionRef] = Vector.empty,
-      raid: Boolean = false, modifiers: Vector[PowerId] = Vector.empty): Run =
-    val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor,
-      modifiers)
+      raid: Boolean = false): Run =
+    val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
       .fold(error => throw new IllegalStateException(s"no start: $error"),
         identity)
     val run = Run(game, started, started.events)

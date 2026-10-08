@@ -54,5 +54,4 @@ object PlanRules:
       Vector(CursedCauldron) ++
       Vector(SaltTheEarth.forCatalog(catalog)) ++
       Vector(SealingWard.forCatalog(catalog)) ++
-      Vector(Herald.forCatalog(catalog)) ++
-      Vector(SecondWind.forCatalog(catalog))
+      Vector(Herald.forCatalog(catalog))

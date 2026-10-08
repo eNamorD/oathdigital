@@ -104,8 +104,7 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
   disabled with its reason on hover when the action cannot start, then Skip
   and a "Then: …" line.
 - The start goes through the modifier flow, and the modifier order replaces
-  the panel while it is open. Campaign joined the modifier flow for Second
-  Wind.
+  the panel while it is open (a queued Travel with Special Envoy, say).
 - A waiting viewer's status reads "{player} may campaign (Knights Errant)".
 
 ## Game Log
@@ -137,13 +136,16 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
 - **Hunting Party** (`powers/search/HuntingParty.scala`) queues a Campaign
   after a Search of the world deck. While it is selected, a discard pile
   warns "Hunting Party needs the world deck".
-- **Second Wind** (`powers/campaign/SecondWind.scala`) queues a Travel and
-  then a Campaign after its holder's Campaign is won as attacker. It reads
-  the outcome at the Campaign's root, as Herald does.
+- **Second Wind** (`powers/campaign/SecondWind.scala`) is an attacker's
+  battle plan. Once the Campaign is won, its `later` step at the root queues
+  a Travel and then a Campaign.
   - The two entries are independent: skipping the Travel still offers the
     Campaign.
-  - Its cost puts a secret on the card. While the secret is there, the
-    queued Campaign cannot select it again, and the chain ends.
+  - A plan's cost may be paid onto a card that already holds tokens, so the
+    queued Campaign offers it again. A chain ends only when its cost cannot
+    be paid.
+  - A defender is not offered it: a winning defender would be owed actions
+    off turn, which waits for the off-turn actor.
 
 ## Queueing another action
 
@@ -178,8 +180,7 @@ follows `activeParticipantId`; both change with the requester check.
 - Recover has no cost window.
 - The Campaign reason is the restriction's own text.
 - `queuedAfter` holds labels, not a count.
-- Second Wind reads the outcome at the root.
+- Second Wind is an attacker-only battle plan, not a start modifier.
 - The warning hook is `Warned`, `ContributingPower.warning` and
   `OptionWarnings`.
-- Campaign starts through the modifier flow.
 - There is no journal version bump.

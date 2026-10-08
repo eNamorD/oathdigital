@@ -245,12 +245,13 @@ the source decision carries the reason "Hunting Party needs the world deck"
 and stays choosable. The plan finds how a selected power adds reasons to the
 source decision's options and adds the smallest hook if none exists.
 
-**Second Wind (16), new.** A selected Campaign modifier; its cost (1 secret,
-1 favor burnt) is paid at the start like every modifier's. At the window where
-the outcome is known (`CampaignAfterOutcome`, or the one the plan confirms), a
-`Branch` checks whether the actor won as attacker and, if so, queues a Travel
-and then a Campaign, both from `Card(16)`. It can be selected on a queued
-Campaign, so a chain is limited only by its cost.
+**Second Wind (16), new.** A battle plan, offered to the attacker only
+(2026-10-08: a winning defender would be owed actions off turn, which waits
+for the off-turn actor). Its cost (1 secret, 1 favor burnt) is paid when the
+plan is chosen, and a plan's cost may be paid onto a card that already holds
+tokens. Once the outcome is known, its `later` step at the Campaign's root
+queues a Travel and then a Campaign, both from `Card(16)`, when its user won.
+A queued Campaign offers it again, so a chain is limited only by its cost.
 
 Hunting Party and Second Wind move out of the holding catalog files into power
 classes registered in `WalkerPowerCatalog`.

@@ -101,6 +101,9 @@ Cards that need an engine change first, grouped by the missing mechanism.
   ([follow-up actions design](superpowers/specs/2026-10-08-follow-up-actions-design.md),
   "Sneak Attack hooks"). Campaign powers read `ctx.activePlayer` as the
   attacker today (`PlanContext`, `BattlePlan`, `VowOfPeaceContribution`).
+  Second Wind waits for the same actor on the defender's side: a defender
+  who wins with it would be owed a Travel and a Campaign off turn, so it is
+  offered to the attacker only.
 - Search Party: a card played after its WHEN PLAYED, as if searched. Nested
   inside the WHEN PLAYED, the played card fires neither its own WHEN PLAYED
   nor the card-play triggers (`WalkerHooks.gathered` is keyed by window), and
