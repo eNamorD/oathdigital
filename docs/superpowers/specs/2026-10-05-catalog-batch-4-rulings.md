@@ -163,7 +163,7 @@ Hospital, which still saves warbands from Shield Wall's kill.
 
 | Card | Where | Why |
 |---|---|---|
-| 240 Search Party | Phase - Follow-up actions | A card played inside a WHEN PLAYED power fires neither its own WHEN PLAYED nor the card-play triggers (`WalkerHooks.gathered` is keyed by window), and Search re-reads its live hand on a single-card draw. |
-| 122 Hunting Party | Phase - Follow-up actions | Built as a Campaign queued after the Search rather than nested in it. The queued Campaign is a full action and may take modifiers. |
+| 240 Search Party | Catalog batch - engine-blocked, its own spec | A card played inside a WHEN PLAYED power fires neither its own WHEN PLAYED nor the card-play triggers (`WalkerHooks.gathered` is keyed by window), and Search re-reads its live hand on a single-card draw. |
+| 122 Hunting Party | Implemented by the [follow-up actions design](2026-10-08-follow-up-actions-design.md) | Built as a Campaign queued after the Search rather than nested in it. The queued Campaign is a full action and may take modifiers. |
 | 32 Magician's Code | Catalog batch - engine-blocked, Challenge | Its 2 secrets count toward placing more than the banner holds ("even none"), but `ChallengeProcedure.legalBanners` gates the start before any modifier acts. Selectable only when the Darkest Secret is reachable with its help. |
 | 169 Way Station | Catalog batch - engine-blocked, Travel | The non-ruler's choice should appear only when Way Station is selected, which needs Travel's destination chosen inside the walker. Implemented with the travel destination design. |

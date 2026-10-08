@@ -62,6 +62,13 @@ Left behind by the
   discard pile, and Clay Rattle's piles on the board are covered by tests
   only.
 
+Left behind by the
+[follow-up actions work](superpowers/specs/2026-10-08-follow-up-actions-design.md):
+
+- [ ] **Play-test follow-ups in a browser.** Knights Errant, Hunting Party
+  and Second Wind, Skip, and a queued Travel with Special Envoy are covered
+  by tests only.
+
 ### Phase - Board decision follow-ups
 
 - Add reasons to the remaining option builders as playtests find options
@@ -80,25 +87,6 @@ did":
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
 
-### Phase - Follow-up actions
-
-An action queued to run after the current one, as its own walker, with its
-costs waived. A queued action is a full action: the player selects modifiers
-for it, and it gets its own Game Log lines and roll feedback. Today Knights
-Errant nests a Campaign inside Muster instead, and that Campaign posts no
-Game Log lines.
-
-- Hunting Party: a Campaign after a Search of the world deck, spending no
-  Supply.
-- Search Party: a card played after its WHEN PLAYED, as if searched. Nested
-  inside the WHEN PLAYED, the played card fires neither its own WHEN PLAYED
-  nor the card-play triggers (`WalkerHooks.gathered` is keyed by window), and
-  Search re-reads its live hand on a single-card draw.
-- Migrate Knights Errant onto it, and unblock Second Wind (a Travel, then a
-  Campaign).
-- Recorded in the
-  [catalog batch 4 rulings](superpowers/specs/2026-10-05-catalog-batch-4-rulings.md#moved-out-of-the-batch).
-
 ### Phase - Catalog batch - engine-blocked
 
 Cards that need an engine change first, grouped by the missing mechanism.
@@ -107,11 +95,18 @@ Cards that need an engine change first, grouped by the missing mechanism.
   participants.
 - Golem Legions needs Muster to allow a per-source exception to the
   token-free rule and to accept the actor's own advisers as sources.
-- Sneak Attack needs an off-turn nested action: a Campaign whose acting
-  player is not the active player, including selecting modifiers off turn.
-  Campaign powers read `ctx.activePlayer` as the attacker today
-  (`PlanContext`, `BattlePlan`, `VowOfPeaceContribution`). Recorded in the
-  powers design and the walker ownership and phases design.
+- Sneak Attack needs an off-turn actor: a Campaign whose acting player is
+  not the active player, including selecting modifiers off turn. It queues
+  through follow-ups via `FollowUp.player`
+  ([follow-up actions design](superpowers/specs/2026-10-08-follow-up-actions-design.md),
+  "Sneak Attack hooks"). Campaign powers read `ctx.activePlayer` as the
+  attacker today (`PlanContext`, `BattlePlan`, `VowOfPeaceContribution`).
+- Search Party: a card played after its WHEN PLAYED, as if searched. Nested
+  inside the WHEN PLAYED, the played card fires neither its own WHEN PLAYED
+  nor the card-play triggers (`WalkerHooks.gathered` is keyed by window), and
+  Search re-reads its live hand on a single-card draw. It needs its own spec.
+  Recorded in the
+  [catalog batch 4 rulings](superpowers/specs/2026-10-05-catalog-batch-4-rulings.md#moved-out-of-the-batch).
 - Peace Envoy, Marsh Spirit, True Names and Code of Honor restrict which
   battle plans a side may choose, which no contribution can hook yet.
 - Council Arbiter, Deed Writer and Traveling Negotiator widen who may
@@ -134,7 +129,7 @@ Found by the survey of 2026-09-29:
   Familiar, Master of Disguise, Acting Troupe, Pledge to Discord, Spiteful
   Mirror, Yew Staff.
 - **A nested Campaign or Travel, or an overridden actor site:** Wild Allies,
-  Captains, Second Wind, Palanquin.
+  Captains, Palanquin.
 - **Raising or exempting the adviser limit** (`AdviserLimit` only lowers it):
   Pied Piper, Marriage, Family Wagon, Vow of Union, Vow of Wandering (which
   also blocks placing warbands), Lost Tapestry.
