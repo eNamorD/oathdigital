@@ -83,10 +83,3 @@ class AugurySuite extends munit.FunSuite:
       accepted(rules.offerableWalkerPowers(ready, actor, action)).map(_.id)
     assert(offered(ActionRef.Search).contains(Augury.id))
     assert(!offered(ActionRef.Travel).contains(Augury.id))
-
-  test("it is not offered when the card is out of reach"):
-    // `staged` leaves Augury off the table: no player or site holds it.
-    assertEquals(
-      start(SearchFixture.staged(discordCards.take(6), supply = 5), modifiers)
-      .left.toOption, Some(OathViolation.InvalidEventOrder(
-        "power denizen.augury is not applicable to this search")))

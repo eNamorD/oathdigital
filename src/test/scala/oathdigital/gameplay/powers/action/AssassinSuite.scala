@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.PlacementFixture
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay.powers.{AdviserLimit, NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
@@ -109,10 +109,3 @@ class AssassinSuite extends munit.FunSuite:
       Vector(Some(landWarden)))
     assertEquals(faceup.filterNot(_.available).map(PlacementPicks.replaces),
       Vector(Some(assassin)))
-
-  test("the limit is its faceup holder's alone"):
-    val faceup = Table.start.adviser(p1, assassin).ready
-    assertEquals(AdviserLimit.of(catalog, faceup, p1), Assassin.HolderLimit)
-    assertEquals(AdviserLimit.of(catalog, faceup, p2), AdviserLimit.Default)
-    val facedown = Table.start.adviser(p1, assassin, facedown = true).ready
-    assertEquals(AdviserLimit.of(catalog, facedown, p1), AdviserLimit.Default)

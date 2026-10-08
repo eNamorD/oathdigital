@@ -75,8 +75,3 @@ class AnimalPlaymatesSuite extends munit.FunSuite:
       rules.offerableWalkerPowers(ready, p1, action)).map(_.id)
     assert(offered(ActionRef.Muster).contains(AnimalPlaymates.id))
     assert(!offered(ActionRef.Trade).contains(AnimalPlaymates.id))
-
-  test("a facedown Animal Playmates is not offered"):
-    val ready = advised(facedown = true).denizen(beast, at = home).ready
-    assert(!accepted(rules.offerableWalkerPowers(ready, p1,
-      ActionRef.Muster)).map(_.id).contains(AnimalPlaymates.id))

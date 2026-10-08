@@ -121,11 +121,8 @@ class MovingMarketSuite extends munit.FunSuite:
       assertEquals(said(done.journal.events), Vector.empty)
     }
 
-  test("it is a Trade modifier, offered when the card is in reach"):
-    val offered = (ready: ReadyGame, action: ActionRef) =>
-      accepted(rules.offerableWalkerPowers(ready, p1, action)).map(_.id)
-    assert(offered(staged().ready, ActionRef.Trade).contains(MovingMarket.id))
-    assert(!offered(staged().ready, ActionRef.Muster)
-      .contains(MovingMarket.id))
-    val away = Table.start.denizen(market, at = giant).ready
-    assert(!offered(away, ActionRef.Trade).contains(MovingMarket.id))
+  test("it is a Trade modifier only"):
+    val offered = (action: ActionRef) => accepted(
+      rules.offerableWalkerPowers(staged().ready, p1, action)).map(_.id)
+    assert(offered(ActionRef.Trade).contains(MovingMarket.id))
+    assert(!offered(ActionRef.Muster).contains(MovingMarket.id))

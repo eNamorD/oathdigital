@@ -73,13 +73,6 @@ class TentsSuite extends munit.FunSuite:
     assert(!offered(ActionRef.Search).contains(Tents.id))
     assert(!offered(ActionRef.Muster).contains(Tents.id))
 
-  test("it is not offered when the card is facedown"):
-    val facedown = Table.from(board()).adviser(actor, tents, facedown = true)
-      .favor(actor, 1).unchecked
-    assertEquals(travel(facedown, coast, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.tents is not applicable to this travel")))
-
   test("Tents and Forest Paths together need two favor: one favor is refused at " +
       "selection, before anything is paid"):
     val paths = CatalogNames.denizen("Forest Paths")

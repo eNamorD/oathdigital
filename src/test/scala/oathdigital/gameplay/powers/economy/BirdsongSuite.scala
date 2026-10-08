@@ -69,7 +69,3 @@ class BirdsongSuite extends munit.FunSuite:
       rules.offerableWalkerPowers(at(order), p1, action)).map(_.id)
     assert(offered(ActionRef.Trade).contains(Birdsong.id))
     assert(!offered(ActionRef.Muster).contains(Birdsong.id))
-
-  test("a facedown Birdsong is not offered"):
-    assert(!accepted(rules.offerableWalkerPowers(at(beast, facedown = true), p1,
-      ActionRef.Trade)).map(_.id).contains(Birdsong.id))

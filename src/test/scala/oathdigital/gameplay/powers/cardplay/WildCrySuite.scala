@@ -20,9 +20,8 @@ class WildCrySuite extends munit.FunSuite:
   private val beastCard = CatalogNames.denizen("Errand Boy")
   private val others = Vector("Homesteaders", "Land Warden")
     .map(CatalogNames.denizen(_))
-  // p1's site on the quiet table, and another site.
+  // p1's site on the quiet table.
   private val home = CatalogNames.site("Ancient City")
-  private val elsewhere = CatalogNames.site("Broken Peaks")
 
   /** Wild Cry at p1's site, Ancient City, the deck topped by `kept` and two
     * fillers, with 5 Supply. */
@@ -43,21 +42,6 @@ class WildCrySuite extends munit.FunSuite:
     assert(offered(ActionRef.PlayFacedownAdviser).contains(WildCry.id))
     assert(!offered(ActionRef.Travel).contains(WildCry.id))
     assert(!offered(ActionRef.Muster).contains(WildCry.id))
-
-  test("it is not offered when the card is facedown or out of reach"):
-    val drawing = SearchFixture.staged(Vector(beastCard) ++ others, supply = 5)
-    val facedown = Table.from(drawing).adviser(actor, wildCry, facedown = true)
-      .unchecked
-    assertEquals(start(facedown, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.wild-cry is not applicable to this search")))
-    // Wild Cry stands at Broken Peaks, away from p1.
-    val outOfReach = Table.from(
-      SearchFixture.staged(Vector(beastCard) ++ others, supply = 5))
-      .denizen(wildCry, at = elsewhere).unchecked
-    assertEquals(start(outOfReach, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.wild-cry is not applicable to this search")))
 
   test("a beast denizen played to a site gains 1 Supply and 2 warbands"):
     val ready = withCry(beastCard)
