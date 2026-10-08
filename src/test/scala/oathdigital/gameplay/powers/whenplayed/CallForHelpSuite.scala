@@ -21,7 +21,7 @@ class CallForHelpSuite extends munit.FunSuite:
   /** Call for Help as p1's adviser with 3 warbands on the board, and `cards`
     * in the Cradle discard pile, the last named on top. */
   private def cradlePile(cards: String*): Table =
-    Table.start.adviser(p1, help).boardWarbands(p1, 3)
+    p1AtHomeSite.adviser(p1, help).boardWarbands(p1, 3)
       .discarded(cradle, cards*)
 
   private def amount(count: Int): DecisionAnswer =
@@ -88,6 +88,6 @@ class CallForHelpSuite extends munit.FunSuite:
     assertEquals(said(power, walked.events), Vector(nothingLine))
 
   test("with the region's pile empty nothing is asked, and the line says so"):
-    val done = Outcomes.finished(play(Table.start.adviser(p1, help).ready,
+    val done = Outcomes.finished(play(p1AtHomeSite.adviser(p1, help).ready,
       power, help))
     assertEquals(said(power, done.events), Vector(nothingLine))

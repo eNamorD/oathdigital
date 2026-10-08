@@ -17,11 +17,13 @@ class BlackmailSuite extends munit.FunSuite:
   private val ring = CatalogNames.relic("Ring of Devotion")
   private val trumpet = CatalogNames.relic("Painted Trumpet")
 
-  /** Blackmail as p1's adviser. p2 stands at p1's site holding the Cracked
-    * Horn, faceup unless `facedown`, and `favor`. p1 holds 1 favor and the
-    * Ring of Devotion, and p3, away at Buried Giant, the Painted Trumpet. */
+  /** Blackmail as p1's adviser. p1 and p2 stand at `homeSite`, and p2 holds
+    * the Cracked Horn, faceup unless `facedown`, and `favor`. p1 holds 1
+    * favor and the Ring of Devotion, and p3, away at Buried Giant, the
+    * Painted Trumpet. */
   private def p2HoldingTheHorn(favor: Int, facedown: Boolean = false): Table =
-    Table.start.adviser(p1, blackmail).favor(p1, 1).pawn(p2, homeSite)
+    Table.start.adviser(p1, blackmail).favor(p1, 1).pawn(p1, homeSite)
+      .pawn(p2, homeSite)
       .relic(p2, horn, facedown).favor(p2, favor)
       .relic(p1, ring).relic(p3, trumpet).pawn(p3, "Buried Giant")
 

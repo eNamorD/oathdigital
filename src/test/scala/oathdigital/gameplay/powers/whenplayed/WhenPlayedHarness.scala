@@ -12,7 +12,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.PhasePowerHarness
+import oathdigital.testkit.{PhasePowerHarness, Table}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Drives a When Played power through its `CardPlayed` hook, the way the
@@ -141,6 +141,11 @@ object WhenPlayedHarness:
   /** A site in another region. */
   val awaySite: SiteId =
     quietTable.game.current.map.inPlay.find(!inRegion.contains(_)).get
+
+  /** The quiet table with p1's pawn placed at `homeSite`: the start of every
+    * test laid out around `homeSite`, `nearSite` and `awaySite`, so each
+    * reads p1's site and region from its own table. */
+  def p1AtHomeSite: Table = Table.start.pawn(Table.p1, homeSite)
 
   private def inRegion: Vector[SiteId] =
     val map = quietTable.game.current.map

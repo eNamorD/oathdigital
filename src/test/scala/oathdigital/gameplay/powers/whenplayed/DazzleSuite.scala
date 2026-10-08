@@ -4,8 +4,7 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.rejected
 
@@ -17,8 +16,8 @@ class DazzleSuite extends munit.FunSuite:
   private val homesteaders = CatalogNames.denizen("Homesteaders")
   private val wrestlers = CatalogNames.denizen("Wrestlers")
 
-  /** p1 holds Dazzle faceup. */
-  private val holding = Table.start.adviser(p1, dazzle)
+  /** p1 holds Dazzle faceup, at `homeSite`. */
+  private val holding = p1AtHomeSite.adviser(p1, dazzle)
 
   /** Homesteaders (Hearth, with 1 favor on it) and Wrestlers (Order) stand
     * at p1's site, and the Hearth bank holds 3.
@@ -73,7 +72,7 @@ class DazzleSuite extends munit.FunSuite:
   test("Dazzle rejects a site denizen absent from the catalog"):
     // No Table step places a card the catalog lacks.
     val unknown = DenizenId("denizen:missing-from-catalog")
-    val ready = Table.start.ready.updateCurrent(c => c.copy(map = c.map.copy(
+    val ready = p1AtHomeSite.ready.updateCurrent(c => c.copy(map = c.map.copy(
       sites = c.map.sites.updated(homeSite, c.map.sites(homeSite).copy(
         denizens = c.map.sites(homeSite).denizens :+
           DenizenState(unknown, Orientation.FaceUp, Tokens.empty))))))

@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class RoyalTaxSuite extends munit.FunSuite:
@@ -14,7 +14,7 @@ class RoyalTaxSuite extends munit.FunSuite:
   /** Royal Tax as p1's adviser, p1 holding 1 favor. p1 rules its own site
     * and another site in its region. p2 stands at the other site with 3
     * favor, and p3 at p1's site with `held`. */
-  private def staged(held: Int): ReadyGame = Table.start.adviser(p1, tax)
+  private def staged(held: Int): ReadyGame = p1AtHomeSite.adviser(p1, tax)
     .favor(p1, 1)
     .warbandsAt(homeSite, p1, 1).warbandsAt(nearSite, p1, 1)
     .pawn(p2, nearSite).favor(p2, 3).pawn(p3, homeSite).favor(p3, held).ready
@@ -45,7 +45,7 @@ class RoyalTaxSuite extends munit.FunSuite:
   test("players at unruled sites or outside the region are not taxed"):
     // p2 stands in p1's region at a site nobody rules; p3 stands at a site
     // p1 rules in another region.
-    val ready = Table.start.adviser(p1, tax).warbandsAt(awaySite, p1, 1)
+    val ready = p1AtHomeSite.adviser(p1, tax).warbandsAt(awaySite, p1, 1)
       .pawn(p2, nearSite).pawn(p3, awaySite).ready
     val done = Outcomes.finished(play(ready, power, tax))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
