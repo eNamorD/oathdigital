@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.campaign.BattlePlan
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerDice, WalkerPowers}
@@ -120,11 +121,11 @@ object CampaignFixture:
     val b = withEnemyAtOrigin(board(warbands = 4, supply = 7))
     // Oracular Pig prints no battle plan, so the defender is offered none.
     val relic = CatalogNames.relic("Oracular Pig")
-    val plans = Set("relic.sticky-fire", "relic.fearsome-shield",
-      "relic.brass-army.campaign", "relic.bag-of-siegeworks",
-      "relic.cursed-cauldron")
-    assert(catalog.relics.find(_.id.value == relic.value).get.powers
-      .forall(power => !plans(power.id.value)), s"$relic prints a battle plan")
+    val relicPlans = WalkerPowerCatalog.default(catalog).powers.collect {
+      case plan: BattlePlan => plan.cardRef }.collect {
+      case DecisionOptionRef.Relic(id) => id }
+    assert(!relicPlans.contains(relic),
+      s"${CatalogNames.nameOf(relic)} prints a battle plan")
     // Ids no card carries stand for cards whose identity the Raid never
     // learns: they join the table as they are.
     val raided = on(b)(_
