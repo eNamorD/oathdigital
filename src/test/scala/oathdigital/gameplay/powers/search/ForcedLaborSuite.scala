@@ -11,6 +11,9 @@ import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
+/** Forced Labor's ruler toll on a Search. The toll itself, including the
+  * favor burnt when bandits rule, is shared with Curfew (`RulerToll`) and
+  * pinned in [[oathdigital.gameplay.powers.economy.CurfewSuite]]. */
 class ForcedLaborSuite extends munit.FunSuite:
   import SearchFixture.rules
 
@@ -63,13 +66,6 @@ class ForcedLaborSuite extends munit.FunSuite:
     val broke = rivalRulesBoth.favor(p1, 0).ready
     assert(!startable(broke))
     assert(SearchFixture.start(broke).isLeft)
-
-  test("when bandits rule, the favor is burnt"):
-    val ready = laborTable.bandits(peaks, 1).bandits(home, 1).ready
-    val started = accepted(SearchFixture.start(ready))
-    assertEquals(Look(SearchFixture.after(started)).favor(p1), 0)
-    assertEquals(said(started.events), Vector(NoteText.Said("burned",
-      "Burned 1 favor.", covers = false)))
 
   test("the ruler searches without paying, and so does an enemy whose pawn " +
       "stands at a site the ruler does not rule"):

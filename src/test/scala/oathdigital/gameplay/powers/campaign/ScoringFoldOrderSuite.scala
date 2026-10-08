@@ -26,19 +26,25 @@ private final class Reprioritised(inner: ContributingPower,
 /** The scorers make the rescoring plans write the same total whatever order
   * their transforms fold in (catalog batch 4 design, "Verify at plan time",
   * "Fold order"). Transforms fold by priority first, so the same Campaign is
-  * run again with the plans' priorities set to fold them in reverse id
-  * order. */
+  * run again with every scoring plan's priority set to fold them in reverse
+  * id order. Every plan in `AttackScore.changes` and `DefenseScore.changes`
+  * writes its total through the scorer's `rescore`, so one mixed Campaign
+  * per side checks the order independence they all rely on. */
 class ScoringFoldOrderSuite extends munit.FunSuite:
 
-  /** The production rules, but the powers named by `ids` fold in the reverse
-    * of their id order: the first id alphabetically folds last. */
-  private def reversedRules(ids: Vector[String], roll: WalkerDice): OathRules =
+  /** The production rules, but every plan the scorers know folds in the
+    * reverse of its id order: the first id alphabetically folds last. */
+  private def reversedRules(roll: WalkerDice): OathRules =
     val default = WalkerPowerCatalog.default(catalog)
-    val rank = ids.sorted.zipWithIndex.toMap
-    assertEquals(default.powers.count(power => rank.contains(power.id.value)),
-      ids.size)
+    val scoring = (AttackScore.changes.map(_.ref) ++
+      DefenseScore.changes.map(_.ref)).toSet
+    val plans = default.powers.collect {
+      case plan: BattlePlan if scoring.contains(plan.cardRef) => plan.id.value }
+    assertEquals(plans.size, scoring.size,
+      "each card the scorers know has one battle plan")
+    val rank = plans.sorted.zipWithIndex.toMap
     val powers = default.powers.map(power => rank.get(power.id.value)
-      .fold(power)(at => Reprioritised(power, ids.size - at)))
+      .fold(power)(at => Reprioritised(power, plans.size - at)))
     new OathRules(catalog, walkerPowerCatalog = default.copy(powers = powers),
       walkerDice = roll)
 
@@ -60,8 +66,7 @@ class ScoringFoldOrderSuite extends munit.FunSuite:
       (done.result.attackScore, done.result.skullLosses)
     // Doubled and ignored: four skulls of four swords, and two swords.
     assertEquals(scored(rules(roll)), (18, 0))
-    assertEquals(scored(reversedRules(Vector("denizen.fearsome-general",
-      "denizen.lancers", "denizen.outriders"), roll)), (18, 0))
+    assertEquals(scored(reversedRules(roll)), (18, 0))
 
   test("Rain Boots, War Tortoise, Bag of Siegeworks and Garrison Armory " +
       "score the same defense in either fold order"):
@@ -87,6 +92,4 @@ class ScoringFoldOrderSuite extends munit.FunSuite:
         refOf("Garrison Armory")).finishPlanWindows.result.defenseScore
     // Both faces are ignored; the two warbands are added twice.
     assertEquals(scored(rules(roll)), 4)
-    assertEquals(scored(reversedRules(Vector("denizen.garrison-armory",
-      "denizen.rain-boots", "denizen.war-tortoise", "relic.bag-of-siegeworks"),
-      roll)), 4)
+    assertEquals(scored(reversedRules(roll)), 4)
