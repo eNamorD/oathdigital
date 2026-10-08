@@ -96,7 +96,7 @@ class ServerModeHostFormSuite extends FunSuite:
           "https://oath.test/s/red-code", "https://oath.test/s/blue-code"))
         assert(links.forall(_.readOnly))
         assertEquals(browser.byClass("copy-seat-link").size, 2)
-        assert(browser.urls.isEmpty)
+        assertEquals(browser.urls, Vector.empty)
         browser.click("copy-seat-link")
         assertEquals(browser.copied, Vector("https://oath.test/s/red-code"))
       }
@@ -208,7 +208,7 @@ class ServerModeHostFormSuite extends FunSuite:
         assert(!browser.text.contains("refreshed"))
         assert(!as[dom.html.Button](
           browser.byClass("create-trusted-game").head).disabled)
-        assert(browser.byClass("seat-link").isEmpty)
+        assertEquals(browser.byClass("seat-link"), Vector.empty)
       }
 
   test("development root without a game shows the start page and opens the " +
@@ -229,5 +229,5 @@ class ServerModeHostFormSuite extends FunSuite:
           .map(_.color), Vector(PlayerColor.Red, PlayerColor.Blue))
         assertEquals(opened.toVector,
           Vector("/?mode=server&gameId=host-game&playerId=Red"))
-        assert(browser.byClass("seat-link").isEmpty)
+        assertEquals(browser.byClass("seat-link"), Vector.empty)
       }

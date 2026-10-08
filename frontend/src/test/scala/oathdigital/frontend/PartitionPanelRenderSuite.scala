@@ -392,13 +392,13 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
   test("a decision option is not a focus stop; the move buttons are the keyboard path"):
     val panel = render(controls(), forgeDraft())
     val options = all(panel, ".decision-option")
-    assert(options.nonEmpty)
-    options.foreach(option =>
-      assertEquals(option.getAttribute("tabindex"), null,
-        "a decision-option has no keydown handler, so a tab stop here is dead"))
-    assert(all(panel, ".move-option").nonEmpty)
-    all(panel, ".move-option").foreach(move =>
-      assert(move.getAttribute("aria-label").startsWith("Move ")))
+    assertEquals(options.map(_.getAttribute("tabindex")),
+      Vector.fill(options.size)(null),
+      "a decision-option has no keydown handler, so a tab stop here is dead")
+    assertEquals(options.size, 3)
+    assertEquals(all(panel, ".move-option").map(_.getAttribute("aria-label")),
+      Vector("Move Denizen 1 to Pay Secret", "Move Denizen 2 to Pay Secret",
+        "Move Denizen 3 to Pay Favor"))
 
   test("a drag on an option swallows the click that follows; a plain press does not"):
     val node = as[dom.html.Element](dom.document.createElement("div"))

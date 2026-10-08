@@ -48,12 +48,13 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       Vector(first), "preview-1").toggle(first)
     assertEquals(ModifierSelectionState.reconcile(Some(selected), context,
       Vector(first), "preview-1").selected, Vector(first))
-    assert(ModifierSelectionState.reconcile(Some(selected), context.copy(sequence = 5),
-      Vector(first), "preview-1").selected.isEmpty)
-    assert(ModifierSelectionState.reconcile(Some(selected), context,
-      Vector(first, second), "preview-1").selected.isEmpty)
-    assert(ModifierSelectionState.reconcile(Some(selected), context,
-      Vector(first), "preview-2").selected.isEmpty)
+    assertEquals(ModifierSelectionState.reconcile(Some(selected),
+      context.copy(sequence = 5), Vector(first), "preview-1").selected,
+      Vector.empty)
+    assertEquals(ModifierSelectionState.reconcile(Some(selected), context,
+      Vector(first, second), "preview-1").selected, Vector.empty)
+    assertEquals(ModifierSelectionState.reconcile(Some(selected), context,
+      Vector(first), "preview-2").selected, Vector.empty)
 
   test("a walker start names a preview action only when the engine " +
       "registers it"):

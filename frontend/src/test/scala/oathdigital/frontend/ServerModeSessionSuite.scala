@@ -60,11 +60,11 @@ class ServerModeSessionSuite extends FunSuite:
         assert(browser.text.contains("Waiting for"))
         assert(browser.byClass("seat-identity").head.textContent
           .contains("Blue Exile"))
-        assert(browser.byClass("debug-toolbar").isEmpty)
-        assert(browser.byClass("player-selector").isEmpty)
-        assert(browser.byClass("raw-event-log").isEmpty)
-        assert(browser.byClass("restart").isEmpty)
-        assert(browser.urls.isEmpty)
+        assertEquals(browser.byClass("debug-toolbar"), Vector.empty)
+        assertEquals(browser.byClass("player-selector"), Vector.empty)
+        assertEquals(browser.byClass("raw-event-log"), Vector.empty)
+        assertEquals(browser.byClass("restart"), Vector.empty)
+        assertEquals(browser.urls, Vector.empty)
       }
 
   test("trusted unauthorized player displays seat-link recovery without " +
@@ -81,7 +81,7 @@ class ServerModeSessionSuite extends FunSuite:
         assertEquals(requests, 1)
         assert(browser.text.contains("assigned seat link"))
         assert(!browser.text.contains("internal detail"))
-        assert(browser.byClass("restart").isEmpty)
+        assertEquals(browser.byClass("restart"), Vector.empty)
       }
 
   test("development root retains query loading and raw history"):
@@ -97,9 +97,10 @@ class ServerModeSessionSuite extends FunSuite:
           Vector("GET" -> "/api/dev/first-games/existing?playerId=red",
             "GET" -> "/api/dev/first-games/existing/events?limit=25",
             "GET" -> "/api/dev/first-games/existing?playerId=red"))
-        assert(browser.byClass("debug-toolbar").nonEmpty)
-        assert(browser.byClass("player-selector").nonEmpty)
-        assert(browser.byClass("raw-event-log").nonEmpty)
+        assertEquals(browser.byClass("debug-toolbar").size, 1)
+        assertEquals(browser.byClass("player-selector").map(_.textContent),
+          Vector("Red Exile", "Blue Exile"))
+        assertEquals(browser.byClass("raw-event-log").size, 1)
         assert(browser.urls.last.contains("gameId=existing&playerId=red"))
         assert(!browser.text.contains("assigned seat link"))
       }
@@ -128,7 +129,8 @@ class ServerModeSessionSuite extends FunSuite:
         assertEquals(notices.map(_.textContent), Vector(
           "Connection lost. Reconnect to see the current table before acting."))
         assertEquals(notices.head.getAttribute("role"), "alert")
-        assert(browser.byClass("reconnectSession").nonEmpty)
+        assertEquals(browser.byClass("reconnectSession").map(_.textContent).toSet,
+          Set("Reconnect"))
         assert(!browser.text.contains("failed"), browser.text)
       }
 
@@ -166,7 +168,7 @@ class ServerModeSessionSuite extends FunSuite:
         assertEquals(loads, 3)
         // The route still shows Forge's partition heading to the new seat;
         // the zones come from a draft, and there is none.
-        assert(browser.byClass("partition-zones").isEmpty, browser.text)
+        assertEquals(browser.byClass("partition-zones"), Vector.empty, browser.text)
         // Not vacuous: blue's frame did render, with Forge's partition panel.
         assert(browser.text.contains(
           "Development-only active-player view: blue"), browser.text)
@@ -204,11 +206,11 @@ class ServerModeSessionSuite extends FunSuite:
         browser.click("recover-action")
         browser.settle
       }.flatMap { _ =>
-        assert(browser.byClass("modifier-confirm").nonEmpty, browser.text)
+        assertEquals(browser.byClass("modifier-confirm").size, 1, browser.text)
         browser.click("modifier-toggle")
         browser.settle
       }.flatMap { _ =>
-        assert(browser.byClass("modifier-ordinal").nonEmpty, browser.text)
+        assertEquals(browser.byClass("modifier-ordinal").size, 1, browser.text)
         browser.click("modifier-confirm")
         browser.settle
       }.map { _ =>
@@ -223,7 +225,7 @@ class ServerModeSessionSuite extends FunSuite:
         assert(command.contains("\"action\":\"recover\""), command)
         assert(command.contains("\"modifiers\":[\"h.a\"]"), command)
         assert(!command.contains("orderedModifiers"), command)
-        assert(browser.byClass("modifier-confirm").isEmpty, browser.text)
+        assertEquals(browser.byClass("modifier-confirm"), Vector.empty, browser.text)
       }
 
   test("development new game button returns to the start page"):
@@ -264,7 +266,7 @@ class ServerModeSessionSuite extends FunSuite:
           .contains("Blue Exile"))
         assert(browser.text.contains("Waiting for"))
         assert(browser.text.contains("refreshed without retrying"))
-        assert(browser.urls.isEmpty)
+        assertEquals(browser.urls, Vector.empty)
       }
 
   test("trusted polling stops and clears private state when cookie access " +
@@ -281,7 +283,7 @@ class ServerModeSessionSuite extends FunSuite:
       browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
         assertEquals(requests, 2)
         assert(browser.text.contains("assigned seat link"))
-        assert(browser.byClass("wake-actions").isEmpty)
+        assertEquals(browser.byClass("wake-actions"), Vector.empty)
         browser.tick()
         assertEquals(requests, 2)
       }
@@ -308,8 +310,8 @@ class ServerModeSessionSuite extends FunSuite:
           browser.tick()
           browser.settle.map { _ =>
             assert(browser.text.contains("assigned seat link"))
-            assert(browser.byClass("wake-actions").isEmpty)
-            assert(browser.byClass("wake-action").isEmpty)
+            assertEquals(browser.byClass("wake-actions"), Vector.empty)
+            assertEquals(browser.byClass("wake-action"), Vector.empty)
             oldControl.onclick(js.Dynamic.literal())
             browser.tick()
             assertEquals(requests.map(r => r.method -> r.url).toVector, Vector(
@@ -348,7 +350,7 @@ class ServerModeSessionSuite extends FunSuite:
           browser.settle
         }.map { _ =>
           assert(browser.text.contains("assigned seat link"))
-          assert(browser.byClass("wake-action").isEmpty)
+          assertEquals(browser.byClass("wake-action"), Vector.empty)
           browser.tick()
           assertEquals(loads, 2)
           assertEquals(commands, 1)
