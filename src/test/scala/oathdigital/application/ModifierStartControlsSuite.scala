@@ -115,8 +115,7 @@ class ModifierStartControlsSuite extends munit.FunSuite:
     val ready = brokeSearcher(news = true, favor = 2)
     assert(searchSources(ready).contains("world"), searchSources(ready))
     assert(rules.startWalker(OathState.Ready(ready), ActionRef.Search, p1,
-      Vector(NewsFromAfar.id),
-      Vector(DecisionOptionRef.Button("search:world"))).isRight)
+      Vector(NewsFromAfar.id)).isRight)
 
   test("News from Afar with too little favor to pay opens no Search source"):
     assertEquals(searchSources(brokeSearcher(news = true, favor = 1)),

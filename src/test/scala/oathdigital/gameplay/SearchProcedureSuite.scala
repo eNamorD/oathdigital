@@ -10,7 +10,7 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, PowerStubs, Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.Unwrap.{accepted, rejected}
 
 class SearchProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
@@ -26,33 +26,61 @@ class SearchProcedureSuite extends munit.FunSuite:
   /** p1's Act on the quiet table, at Ancient City. */
   private def atAncientCity: Table = Table.start.pawn(actor, "Ancient City")
 
-  test("world Search starts from one generic source argument and parks on card selection"):
-    val started = accepted(rules.startWalker(
-      OathState.Ready(atAncientCity.ready), ActionRef.Search, actor,
-      startArgs = Vector(DecisionOptionRef.Button("search:world"))))
+  private def searched(under: OathRules, ready: ReadyGame,
+      pile: SearchSource = SearchSource.WorldDeck)
+      : Either[OathViolation, OathTransition] =
+    SearchPlay.searched(under, OathState.Ready(ready), actor, pile)
+
+  test("a Search parks on its source and draws on the answer"):
+    val initial = atAncientCity.worldDeckTop(topCards*).ready
+    val started = accepted(rules.startWalker(OathState.Ready(initial),
+      ActionRef.Search, actor))
     parked.assertParked(started.state, ActionRef.Search,
+      SearchProcedure.sourceDecisionId, actor)
+    assertEquals(Outcomes.ready(started.state).game.current.temporaryHands
+      .getOrElse(actor, Vector.empty), Vector.empty)
+    val picked = accepted(rules.resolveWalker(started.state, actor,
+      SearchProcedure.sourceDecisionId, SearchPlay.source(SearchSource.WorldDeck)))
+    parked.assertParked(picked.state, ActionRef.Search,
       SearchProcedure.cardDecisionId, actor)
 
-  test("Search rejects a source in another region"):
-    assertEquals(atAncientCity.ready.game.current.map.regionOf(
-      CatalogNames.site("Ancient City")), Some(region))
-    val other = Region.Provinces
-    assert(SearchProcedure.build(catalog, atAncientCity.ready, actor,
-      Vector(DecisionOptionRef.Button(
-        s"search:regional-discard:${other.key}"))).isLeft)
+  test("the source offers the world deck and the actor's region's discard"):
+    val ready = atAncientCity.ready
+    val tree = accepted(SearchProcedure.build(catalog, ready, actor,
+      Vector.empty))
+    val offered = tree.children.head match
+      case Decide(SearchProcedure.sourceDecisionId, `actor`,
+          DecisionQuery.ChooseOne(options, Some("Choose a Search source")),
+          _, _, _, _) => options.map(_.ref)
+      case other => fail(s"not the source decision: $other")
+    assertEquals(offered, Vector[DecisionOptionRef](
+      DecisionOptionRef.Deck(CardDeck.World),
+      DecisionOptionRef.DiscardPile(region)))
 
-  test("Search tree construction defers affordability until cost modifiers run"):
-    val initial = atAncientCity.supply(actor, 0).ready
-    assert(SearchProcedure.build(catalog, initial, actor,
-      Vector(DecisionOptionRef.Button("search:world"))).isRight)
-    assertEquals(SearchProcedure.legalSources(catalog, initial, actor,
-      WalkerPowers.empty), Vector.empty)
+  test("a start that names a selection is refused"):
+    assertEquals(rejected(SearchProcedure.build(catalog, atAncientCity.ready,
+      actor, Vector(DecisionOptionRef.Button("search:world")))),
+      OathViolation.InvalidEventOrder("search takes no start selection"))
+
+  test("a start with no playable source is refused, with the first " +
+      "source's rejection"):
+    // No Supply, and the Cradle discard is empty on the quiet table. The
+    // walk's look-ahead leaves the source decision nothing to offer.
+    val broke = atAncientCity.supply(actor, 0).ready
+    rejected(rules.startWalker(OathState.Ready(broke), ActionRef.Search,
+      actor)) match
+      case OathViolation.CoreOperationRejected("insufficient-supply", _) => ()
+      case other => fail(s"unexpected refusal: $other")
+
+  test("another region's discard is not offered, and naming it is refused"):
+    val initial = atAncientCity.discarded(Region.Provinces, topCards*).ready
+    assert(searched(rules, initial,
+      SearchSource.RegionalDiscard(Region.Provinces)).isLeft)
 
   test("regional Search draws from the end of its pile"):
     val initial = atAncientCity.discarded(region, topCards*).ready
-    val started = accepted(rules.startWalker(OathState.Ready(initial),
-      ActionRef.Search, actor, startArgs = Vector(DecisionOptionRef.Button(
-        s"search:regional-discard:${region.key}"))))
+    val started = accepted(searched(rules, initial,
+      SearchSource.RegionalDiscard(region)))
     val after = Outcomes.ready(started.state)
     assertEquals(after.game.current.temporaryHands(actor), topCards.reverse)
     assertEquals(after.game.current.tracks.visionsDrawn,
@@ -62,9 +90,7 @@ class SearchProcedureSuite extends munit.FunSuite:
     // Three denizens top the deck, so a world Search draws them and asks
     // which to keep.
     val initial = atAncientCity.worldDeckTop(topCards*).ready
-    val started = accepted(rules.startWalker(OathState.Ready(initial),
-      ActionRef.Search, actor,
-      startArgs = Vector(DecisionOptionRef.Button("search:world"))))
+    val started = accepted(searched(rules, initial))
     val drawn = Outcomes.ready(started.state).game.current.temporaryHands(actor)
     assertEquals(drawn, topCards)
     val kept = drawn.head
@@ -93,9 +119,7 @@ class SearchProcedureSuite extends munit.FunSuite:
       walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
     val withPowersParked = new ParkedDecisionAssertions(catalog,
       WalkerPowerCatalog.default(catalog))
-    val started = accepted(
-      withPowers.startWalker(OathState.Ready(initial), ActionRef.Search, actor,
-        startArgs = Vector(DecisionOptionRef.Button("search:world"))))
+    val started = accepted(searched(withPowers, initial))
     val result = accepted(withPowers.resolveWalker(started.state, actor,
       PlacementFixture.cardPlayDecisionId(vision, "place"),
       PlacementPicks.parkedAnswer(started.state, PlayedAs.Faceup,
@@ -124,9 +148,7 @@ class SearchProcedureSuite extends munit.FunSuite:
       walkerPowerCatalog = WalkerPowers(Vector(settlePower)))
     val withPowerParked = new ParkedDecisionAssertions(catalog,
       WalkerPowers(Vector(settlePower)))
-    val started = accepted(
-      withPower.startWalker(OathState.Ready(initial), ActionRef.Search, actor,
-        startArgs = Vector(DecisionOptionRef.Button("search:world"))))
+    val started = accepted(searched(withPower, initial))
     val placed = accepted(
       withPower.resolveWalker(started.state, actor,
         PlacementFixture.cardPlayDecisionId(vision, "place"),
@@ -162,9 +184,7 @@ class SearchProcedureSuite extends munit.FunSuite:
     val withPowers = new OathRules(catalog, walkerPowerCatalog = powers)
     val withPowersParked = new ParkedDecisionAssertions(catalog, powers)
     val kept = topCards.head
-    val started = accepted(withPowers.startWalker(OathState.Ready(initial),
-      ActionRef.Search, actor,
-      startArgs = Vector(DecisionOptionRef.Button("search:world"))))
+    val started = accepted(searched(withPowers, initial))
     val selected = accepted(withPowers.resolveWalker(started.state, actor,
       SearchProcedure.cardDecisionId, DecisionAnswer.PartitionAnswer(
         DecisionPlacement(DecisionOptionRef.Denizen(kept),

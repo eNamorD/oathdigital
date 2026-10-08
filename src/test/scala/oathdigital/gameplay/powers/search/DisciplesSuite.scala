@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.search
 
+import oathdigital.gameplay.SearchPlay
 import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -30,14 +31,14 @@ class DisciplesSuite extends munit.FunSuite:
       .discarded(region, discardPile*).darkestSecret(holder, 1)
       .visionsDrawn(visions).ready
 
-  private val world = "search:world"
-  private def regional = s"search:regional-discard:${region.key}"
+  private val world: SearchSource = SearchSource.WorldDeck
+  private def regional: SearchSource = SearchSource.RegionalDiscard(region)
 
   /** The Supply a Search from `source` spends at its start. */
   private def spent(ready: ReadyGame, selected: Vector[PowerId],
-      source: String = world): Int =
-    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Search, p1,
-      selected, Vector(DecisionOptionRef.Button(source))))
+      source: SearchSource = world): Int =
+    val started = accepted(SearchPlay.searched(rules, Ready(ready), p1,
+      source, selected))
     startingSupply - Look(SearchFixture.after(started)).supply(p1)
 
   // A world Search costs 2 with no Vision drawn, 3 with one or two, and 4
@@ -46,8 +47,8 @@ class DisciplesSuite extends munit.FunSuite:
     val ready = holdingDisciples(visions = 1)
     assertEquals(spent(ready, modifiers), 2)
     assertEquals(spent(ready, Vector.empty), 3)
-    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Search, p1,
-      modifiers, Vector(DecisionOptionRef.Button(world))))
+    val started = accepted(SearchPlay.searched(rules, Ready(ready), p1,
+      world, modifiers))
     assertEquals(ActPowerHarness.replayed(rules, ready, started.events),
       SearchFixture.after(started))
     assertWireRoundTrips(started.events)
@@ -77,6 +78,6 @@ class DisciplesSuite extends munit.FunSuite:
     // Three Visions drawn put the printed cost at 4; Disciples makes it 2.
     val ready = Table.start.worldDeckTop(deckTop*).supply(p1, 2)
       .adviser(p1, disciples).darkestSecret(Some(p1), 1).visionsDrawn(3).ready
-    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Search, p1,
-      modifiers, Vector(DecisionOptionRef.Button(world))))
+    val started = accepted(SearchPlay.searched(rules, Ready(ready), p1,
+      world, modifiers))
     assertEquals(Look(SearchFixture.after(started)).supply(p1), 0)

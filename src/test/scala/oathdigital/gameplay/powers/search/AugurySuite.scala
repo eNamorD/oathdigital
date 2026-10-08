@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.search
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.SearchPlay
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
@@ -71,10 +72,8 @@ class AugurySuite extends munit.FunSuite:
     val pile = discordCards.take(5)
     val ready = Table.from(withAugury(Vector.empty)).discarded(region, pile*)
       .unchecked
-    val regional = DecisionOptionRef.Button(
-      s"search:regional-discard:${region.key}")
-    val started = accepted(rules.startWalker(OathState.Ready(ready),
-      ActionRef.Search, actor, modifiers, Vector(regional)))
+    val started = accepted(SearchPlay.searched(rules, OathState.Ready(ready),
+      actor, SearchSource.RegionalDiscard(region), modifiers))
     // The pile is drawn from its end, and Augury takes a fourth card.
     assertEquals(hand(started), pile.reverse.take(4))
 

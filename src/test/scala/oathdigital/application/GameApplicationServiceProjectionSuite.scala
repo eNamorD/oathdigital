@@ -235,9 +235,10 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       .service()
     val gameId = "game-search-preview"
     val actor = p1
-    val started = accepted(service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
-        Vector.empty, Vector(DecisionOptionRef.Button("search:world"))))))
+    val begun = accepted(service.handle(gameId, 0L,
+      ParkedServiceFixture.startSearch(actor)))
+    val started = accepted(service.handle(gameId, begun.nextSequence,
+      ParkedServiceFixture.pickSearchSource(actor, SearchSource.WorldDeck)))
     val afterDraw = Outcomes.ready(started.state)
     val drawn = afterDraw.game.current.temporaryHands(actor)
     val kept = CatalogNames.denizen("Threatening Roar")

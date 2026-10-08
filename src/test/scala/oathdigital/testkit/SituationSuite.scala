@@ -63,7 +63,7 @@ class SituationSuite extends munit.FunSuite:
     val steps = Vector[GameCommand | Step](
       Step.Arrange(Vector(SetOathkeeper(Some(other)))),
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
-        Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
+        Vector.empty, Vector.empty)))
     val byRules = Situation.wake(
       Situation.productionRules(catalog, Dice.blanks))
       .after(steps*)
@@ -78,8 +78,7 @@ class SituationSuite extends munit.FunSuite:
     val table = Table.start
     val (service, repository) = table.service(campaignDice = Dice.blanks)
     val steps = Vector[GameCommand | Step](GameCommand.StartWalker(
-      ActionRef.Search, StartPayload(p1, Vector.empty,
-        Vector(DecisionOptionRef.Button("search:world")))))
+      ActionRef.Search, StartPayload(p1, Vector.empty, Vector.empty)))
     val byRules = table.situation(
       Situation.productionRules(catalog, Dice.blanks))
       .after(steps*)

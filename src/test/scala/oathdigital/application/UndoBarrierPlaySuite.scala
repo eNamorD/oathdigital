@@ -17,18 +17,6 @@ class UndoBarrierPlaySuite extends munit.FunSuite:
     nothingToUndo(park.game.service, "recover",
       park.game.accepted.nextSequence, park.actor)
 
-  test("a Search's start draws, so it cannot be taken back"):
-    val table = Table.start
-      .worldDeckTop("Threatening Roar", "Fae Merchant", "Second Chance")
-      .banditsRefilled
-    val (service, repository) = table.service()
-    val act = table.situation(Situation.journaled(service, catalog,
-      repository, "search"))
-    val searched = act.parkedAfter(GameCommand.StartWalker(ActionRef.Search,
-      StartPayload(p1, Vector.empty,
-        Vector(DecisionOptionRef.Button("search:world")))))
-    nothingToUndo(service, "search", searched.nextSequence, p1)
-
   test("peeking at a site's relics cannot be taken back"):
     val table = ParkedServiceFixture.recoverTable.banditsRefilled
     val (service, repository) = table.service()

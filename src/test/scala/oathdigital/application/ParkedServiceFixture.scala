@@ -1,8 +1,9 @@
 package oathdigital.application
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.TravelPlay
+import oathdigital.gameplay.{SearchPlay, TravelPlay}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
@@ -55,6 +56,16 @@ object ParkedServiceFixture:
   def pickTravelDestination(actor: PlayerId, site: SiteId): GameCommand =
     GameCommand.ResolveWalker(actor, TreeDecision(
       TravelProcedure.destinationDecisionId, TravelPlay.destination(site)))
+
+  /** `actor` starts a Search; the walk parks on the source. */
+  def startSearch(actor: PlayerId): GameCommand =
+    GameCommand.StartWalker(ActionRef.Search,
+      StartPayload(actor, Vector.empty, Vector.empty))
+
+  /** `actor` answers the source decision with `pile`. */
+  def pickSearchSource(actor: PlayerId, pile: SearchSource): GameCommand =
+    GameCommand.ResolveWalker(actor, TreeDecision(
+      SearchProcedure.sourceDecisionId, SearchPlay.source(pile)))
 
   /** A Travel played through the service: its start and its pick, the two
     * command batches it is. */

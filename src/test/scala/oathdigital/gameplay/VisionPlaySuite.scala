@@ -41,8 +41,7 @@ class VisionPlaySuite extends munit.FunSuite:
     val stacked = Table.start.worldDeckTop(newVision)
     val initial = revealed.fold(stacked)(stacked.revealedVision(actor, _))
       .ready
-    accepted(rules.startWalker(Ready(initial), ActionRef.Search, actor,
-      startArgs = Vector(DecisionOptionRef.Button("search:world")))).state
+    accepted(SearchPlay.searched(rules, Ready(initial), actor)).state
 
   /** The `Decide` node the walk is parked on, rebuilt the same way the
     * projector reads a parked position. */
@@ -84,8 +83,7 @@ class VisionPlaySuite extends munit.FunSuite:
       .peoplesFavor(Some(enemy), favor = 1).darkestSecret(None, secrets = 1)
       .worldDeckTop(conspiracy).ready
     val started = accepted(
-      rules.startWalker(OathState.Ready(initial), ActionRef.Search, actor,
-        startArgs = Vector(DecisionOptionRef.Button("search:world"))))
+      SearchPlay.searched(rules, OathState.Ready(initial), actor))
     val parked = accepted(
       rules.resolveWalker(started.state, actor, placeId(conspiracy),
         faceup(started.state)))

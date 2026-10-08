@@ -4,78 +4,103 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, SearchRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
-  WalkerPowers, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 
-/** Search's draw and card-selection tree; placement is the shared subtree. */
+/** Search on the walker (search source design).
+  *
+  * {{{
+  * Sequence(
+  *   Decide(search.source),             // a board choose-one: the world deck
+  *                                      // and the actor's region's discard
+  *   Branch { after the answer:
+  *     Sequence(cost, draw, query, placement) })  // window = SearchActionEligibility
+  * }}}
+  *
+  * **The source is a decision.** It is picked after the modifiers, so the
+  * parked decision shows what each source costs under them. The start
+  * carries no selection.
+  *
+  * **The windows sit inside the `Branch`.** A selected modifier's payment,
+  * prepended at the eligibility window, is paid after the pick, and nothing
+  * runs before the first decision.
+  *
+  * **The region is read from the pawn.** The pawn does not move during a
+  * Search, so a resume reads the same region and needs no start fact.
+  *
+  * **What does not gate a start.** Supply, tolls and empty piles are not
+  * build gates: the registry's playable-option gate previews both sources
+  * and refuses a start neither can complete. Placement is the shared subtree.
+  */
 object SearchProcedure:
+  val sourceDecisionId: String = "search.source"
   val cardDecisionId: String = "search.cards"
   val keepKey: String = "keep"
   val discardKey: String = "discard"
+  private val heading = "Choose a Search source"
 
-  /** Legal sources and their effective Supply cost under `powers`: 0 when a
-    * power waives the payment. Projection reads this instead of duplicating
-    * the cost gates.
-    */
+  /** Every source the preview accepts, with the Supply it spends. Retires
+    * with the Search control (Task 4). */
   def legalSources(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, powers: WalkerPowers): Vector[(SearchSource, Int)] =
-    actorRegion(ready, actor).toOption.toVector.flatMap { origin =>
-      Vector(SearchSource.WorldDeck,
-        SearchSource.RegionalDiscard(origin)).flatMap { source =>
-        val startArg = source match
-          case SearchSource.WorldDeck => "search:world"
-          case SearchSource.RegionalDiscard(region) =>
-            s"search:regional-discard:${region.key}"
-        build(catalog, ready, actor, Vector(DecisionOptionRef.Button(startArg)))
-          .toOption.filter(tree => ProcedureWalker.restrictionViolations(
-            tree, powers, ready, actor).isEmpty)
-          .flatMap(tree => ProcedureWalker.advance(ready, tree, None, powers)
-            .toOption).flatMap { outcome =>
-            val steps = outcome match
-              case WalkerOutcome.Parked(_, events) => events
-              case WalkerOutcome.Finished(_, events) => events
-            Some(source -> steps.collect {
-              case step: WalkerStepRecorded => step.ops }.flatten.collect {
-                case SpendSupply(`actor`, amount, _) => amount }.sum)
-          }
+    build(catalog, ready, actor, Vector.empty)
+      .flatMap(WalkerSimulation.preview(_, ready, powers))
+      .getOrElse(Vector.empty).flatMap {
+        case PreviewedOption(option, Right(outcome)) =>
+          SearchSource.fromRef(option.ref).map(_ -> outcome.operations.collect {
+            case SpendSupply(player, amount, _) if player == actor => amount
+          }.sum)
+        case _ => None
       }
-    }
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(ready), actor)
-    source <- sourceOf(args)
+    _ <- noSelection(args)
     _ <- Either.cond(ready.game.current.temporaryHands.valuesIterator
       .forall(_.isEmpty), (), OathViolation.SearchDrawMismatch(
       "a temporary card hand already exists"))
-    player <- ready.game.current.players.find(_.player == actor)
-      .toRight(OathViolation.InvalidEventOrder("Search actor is not in the game"))
-    origin <- player.pawnSite.flatMap(ready.game.current.map.regionOf)
-      .toRight(OathViolation.PawnSiteMissing(actor))
-    cards <- SearchRules.draw(ready, source, origin)
-    _ <- Either.cond(cards.nonEmpty, (),
-      OathViolation.SearchSourceUnavailable(source))
-  yield tree(catalog, actor, source)
+    origin <- actorRegion(ready, actor)
+  yield tree(catalog, actor, origin)
 
-  /** Resume never re-runs the start-only source and empty-hand gates. */
+  /** Resume never re-runs the start-only gates. */
   def rebuild(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
-    sourceOf(args).map(tree(catalog, actor, _))
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
+    _ <- noSelection(args)
+    origin <- actorRegion(ready, actor)
+  yield tree(catalog, actor, origin)
 
-  def sourceOf(args: Vector[DecisionOptionRef])
-      : Either[OathViolation, SearchSource] = args match
-    case Vector(DecisionOptionRef.Button("search:world")) =>
-      Right(SearchSource.WorldDeck)
-    case Vector(DecisionOptionRef.Button(key))
-        if key.startsWith("search:regional-discard:") =>
-      Region.all.find(_.key == key.stripPrefix("search:regional-discard:"))
-        .map(region => SearchSource.RegionalDiscard(region))
-        .toRight(OathViolation.InvalidEventOrder("unknown Search region"))
-    case _ => Left(OathViolation.InvalidEventOrder(
-      "Search requires exactly one source selection"))
+  /** The pile a source answer names. */
+  def sourceOf(answer: DecisionAnswer): Either[OathViolation, SearchSource] =
+    (answer match
+      case DecisionAnswer.ChooseOneAnswer(ref) => SearchSource.fromRef(ref)
+      case _ => None).toRight(OathViolation.InvalidEventOrder(
+      "a Search source is the world deck or a discard pile"))
+
+  def actorRegion(ready: ReadyGame, actor: PlayerId)
+      : Either[OathViolation, Region] =
+    ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
+      .flatMap(ready.game.current.map.regionOf)
+      .toRight(OathViolation.PawnSiteMissing(actor))
+
+  private def noSelection(args: Vector[DecisionOptionRef])
+      : Either[OathViolation, Unit] = Either.cond(args.isEmpty, (),
+    OathViolation.InvalidEventOrder("search takes no start selection"))
 
   private def tree(catalog: ExecutableCatalog, actor: PlayerId,
+      origin: Region): Operation =
+    val pick = Decide(sourceDecisionId, actor, DecisionQuery.ChooseOne(
+      Vector(SearchSource.WorldDeck, SearchSource.RegionalDiscard(origin))
+        .map(SearchSource.option), heading = Some(heading)))
+    val search = Branch((_, pending) => pending.answered.collectFirst {
+      case Answered(`sourceDecisionId`, answer, _) => answer
+    }.toVector.map(answer =>
+      sourceOf(answer).fold(fail, body(catalog, actor, _))))
+    Sequence(Vector(pick, search))
+
+  /** The Search from `source`, once it is picked. */
+  private def body(catalog: ExecutableCatalog, actor: PlayerId,
       source: SearchSource): Operation =
     val cost = BuildOps((ready, _) => for
       origin <- actorRegion(ready, actor)
@@ -132,12 +157,6 @@ object SearchProcedure:
 
     Sequence(Vector(cost, draw, query, placement),
       Some(PowerWindow.SearchActionEligibility))
-
-  private def actorRegion(ready: ReadyGame, actor: PlayerId)
-      : Either[OathViolation, Region] =
-    ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
-      .flatMap(ready.game.current.map.regionOf)
-      .toRight(OathViolation.PawnSiteMissing(actor))
 
   private def option(card: WorldCardId): DecisionOption = card match
     case id: DenizenId => DecisionOption.Denizen(DecisionOptionRef.Denizen(id))

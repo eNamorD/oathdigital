@@ -461,26 +461,30 @@ final class GameApplicationService(
         case _ => Left(OathViolation.GameNotStarted)
       case GameCommand.Begin(chronicle, orders) =>
         rules.beginGame(state, chronicle, orders)
-      case GameCommand.StartWalker(ActionRef.Search, start) => state match
-        case OathState.Ready(ready) =>
-          for
-            source <- SearchProcedure.sourceOf(start.startArgs)
-            region <- ready.game.current.players.find(_.player == start.actor)
-              .flatMap(_.pawnSite).flatMap(ready.game.current.map.regionOf)
-              .toRight(OathViolation.PawnSiteMissing(start.actor))
-            prepared <- searchDrawPort.prepare(ready, source, region)
-            authoritative <- oathdigital.gameplay.actions.SearchRules.draw(
-              ready, source, region)
-            _ <- Either.cond(prepared == authoritative, (),
-              OathViolation.SearchDrawMismatch(
-                "prepared draw does not match authoritative source order"))
-            result <- rules.startWalker(state, ActionRef.Search, start.actor,
-              start.modifiers, start.startArgs)
-          yield result
-        case _ => Left(OathViolation.GameNotStarted)
       case GameCommand.StartWalker(procedure, start) =>
         rules.startWalker(state, procedure, start.actor, start.modifiers,
           start.startArgs)
+      // The source answer is where a Search draws, so the prepared draw is
+      // checked there, against the pile the answer names.
+      case GameCommand.ResolveWalker(actor,
+          TreeDecision(SearchProcedure.sourceDecisionId, answer)) =>
+        state match
+          case OathState.Ready(ready)
+              if ready.game.current.walkerProcedure.contains(ActionRef.Search) =>
+            for
+              source <- SearchProcedure.sourceOf(answer)
+              region <- SearchProcedure.actorRegion(ready, actor)
+              prepared <- searchDrawPort.prepare(ready, source, region)
+              authoritative <- oathdigital.gameplay.actions.SearchRules.draw(
+                ready, source, region)
+              _ <- Either.cond(prepared == authoritative, (),
+                OathViolation.SearchDrawMismatch(
+                  "prepared draw does not match authoritative source order"))
+              result <- rules.resolveWalker(state, actor,
+                SearchProcedure.sourceDecisionId, answer)
+            yield result
+          case _ => rules.resolveWalker(state, actor,
+            SearchProcedure.sourceDecisionId, answer)
       case GameCommand.ResolveWalker(actor, treeDecision) =>
         rules.resolveWalker(state, actor, treeDecision.decisionId,
           treeDecision.answer)

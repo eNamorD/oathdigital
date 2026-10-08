@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.search
 
+import oathdigital.gameplay.SearchPlay
 import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -29,13 +30,13 @@ class NewsFromAfarSuite extends munit.FunSuite:
     .worldDeckTop(deckTop*).discarded(region, discardPile*)
     .supply(p1, startingSupply).adviser(p1, news).favor(p1, favor).ready
 
-  private def searchedWithNews(ready: ReadyGame, source: String)
-      : OathTransition = accepted(rules.startWalker(Ready(ready),
-    ActionRef.Search, p1, modifiers, Vector(DecisionOptionRef.Button(source))))
+  private def searchedWithNews(ready: ReadyGame, source: SearchSource)
+      : OathTransition = accepted(SearchPlay.searched(rules, Ready(ready), p1,
+    source, modifiers))
 
   test("selected, a world Search places 2 favor on it and spends no Supply"):
     val ready = holdingNews()
-    val started = searchedWithNews(ready, "search:world")
+    val started = searchedWithNews(ready, SearchSource.WorldDeck)
     val after = Look(SearchFixture.after(started))
     assertEquals(after.supply(p1), startingSupply)
     assertEquals(after.favor(p1), 0)
@@ -46,7 +47,7 @@ class NewsFromAfarSuite extends munit.FunSuite:
 
   test("a Search of a regional discard spends no Supply either"):
     val started = searchedWithNews(holdingNews(),
-      s"search:regional-discard:${region.key}")
+      SearchSource.RegionalDiscard(region))
     assertEquals(Look(SearchFixture.after(started)).supply(p1), startingSupply)
 
   test("it is a Search modifier, and cannot be selected without 2 favor to " +

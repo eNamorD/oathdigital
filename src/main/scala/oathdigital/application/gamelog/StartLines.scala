@@ -56,9 +56,10 @@ private[gamelog] final class StartLines(words: LogWords,
         name(run.procedure).filter(_ =>
           paysCost(journal, run, at) || completing)
           .map(named => (named, Vector.empty))
-      // The first step that does anything after the destination is picked: a
-      // payment of Supply or favor, or the move itself.
-      case ActionRef.Travel =>
+      // The first step that does anything after the source or destination
+      // is picked: a toll, a modifier's payment, the Supply, the draw or the
+      // move.
+      case ActionRef.Travel | ActionRef.Search =>
         name(run.procedure).filter(_ =>
           journal.ops(at).nonEmpty || completing)
           .map(named => (named, Vector.empty))

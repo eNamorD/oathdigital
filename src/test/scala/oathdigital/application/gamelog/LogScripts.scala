@@ -236,7 +236,7 @@ object LogScripts:
     val (service, act) = atTable("search", Table.start
       .worldDeckTop("Threatening Roar", "Fae Merchant", "Second Chance")
       .banditsRefilled)
-    start(act, ActionRef.Search, DecisionOptionRef.Button("search:world"))
+    start(act, ActionRef.Search)
     Script("search", service, Look(act.ready).active)
 
   /** p1's facedown adviser played from its slot. */
@@ -442,7 +442,7 @@ object LogScripts:
     val (service, act) = atTable("augury", Table.start
       .denizen("Augury", "Ancient City").banditsRefilled)
     act.after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1,
-      Vector(Augury.id), Vector(DecisionOptionRef.Button("search:world")))))
+      Vector(Augury.id), Vector.empty)))
     Script("augury", service, p1)
 
   /** Gambling Hall at p1's site, used in Act by a player holding two favor.

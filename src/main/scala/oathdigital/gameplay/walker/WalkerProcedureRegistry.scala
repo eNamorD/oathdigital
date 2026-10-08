@@ -87,7 +87,8 @@ object WalkerProcedureRegistry:
     * 5): what they chose before the walk began, for a procedure whose tree
     * cannot be built without it. Recover and Forge derive their whole tree
     * from the actor's pawn site and select nothing, so they take an empty
-    * vector and reject anything else; Search cannot name its source without one.
+    * vector and reject anything else. No registered procedure takes a start
+    * selection now: Search and Travel ask theirs inside the walk.
     *
     * They are `DecisionOptionRef`s -- the same game-object vocabulary a
     * decision option names, already spelled for the wire once in
@@ -163,12 +164,16 @@ object WalkerProcedureRegistry:
       build = CardPlayProcedure.buildFacedown,
       rebuild = CardPlayProcedure.rebuildFacedown),
 
+    /** Search parks on its source first (search source design). Nothing
+      * runs before that decision, so the start is previewed through the
+      * playable-option gate. */
     ActionRef.Search -> Entry(
       fallbackKind = Some(ActionKind.Search),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.SearchModifierSelection),
       build = SearchProcedure.build,
-      rebuild = SearchProcedure.rebuild),
+      rebuild = SearchProcedure.rebuild,
+      requiresPlayableOption = true),
 
     ActionRef.Recover -> Entry(
       fallbackKind = Some(ActionKind.Recover),

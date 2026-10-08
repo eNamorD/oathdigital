@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
-import oathdigital.gameplay.{FacedownAdviserPlay, OathRules, PlacementFixture}
+import oathdigital.gameplay.{FacedownAdviserPlay, OathRules, PlacementFixture,
+  SearchPlay}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -56,11 +57,11 @@ object SearchFixture:
         index.get(id).forall(_.location.container ==
           CardContainer.Deck(CardDeck.World)))
 
-  /** Starts a world Search with `modifiers`. */
+  /** Starts a Search with `modifiers` and picks the world deck. */
   def start(ready: ReadyGame, modifiers: Vector[PowerId] = Vector.empty)
       : Either[OathViolation, OathTransition] =
-    rules.startWalker(Ready(ready), ActionRef.Search, actor, modifiers,
-      Vector(DecisionOptionRef.Button("search:world")))
+    SearchPlay.searched(rules, Ready(ready), actor, SearchSource.WorldDeck,
+      modifiers)
 
   private def refOf(card: WorldCardId): DecisionOptionRef = card match
     case id: DenizenId => DecisionOptionRef.Denizen(id)

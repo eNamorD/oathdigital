@@ -263,13 +263,15 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     val service = new GameApplicationService(catalog, repository, port,
       genesis = table.state)
     val active = p1
-    assertEquals(service.handle("game-search-tamper", 0L,
-      GameCommand.StartWalker(ActionRef.Search, StartPayload(active,
-        Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
-      .left.toOption, Some(GameApplicationError.CommandRejected(OathViolation.SearchDrawMismatch(
-        "prepared draw does not match authoritative source order"))))
-    assertEquals(loaded(service.load("game-search-tamper")).nextSequence, 0L)
-    assertEquals(repository.load("game-search-tamper"), Right(None))
+    val started = accepted(service.handle("game-search-tamper", 0L,
+      ParkedServiceFixture.startSearch(active)))
+    assertEquals(service.handle("game-search-tamper", started.nextSequence,
+      ParkedServiceFixture.pickSearchSource(active, SearchSource.WorldDeck))
+      .left.toOption, Some(GameApplicationError.CommandRejected(
+        OathViolation.SearchDrawMismatch(
+          "prepared draw does not match authoritative source order"))))
+    assertEquals(loaded(service.load("game-search-tamper")).nextSequence,
+      started.nextSequence)
 
   test("walker Search persists its card choice and completes after reload"):
     // Three denizens on top of the world deck, so the Search offers a choice.
@@ -278,9 +280,10 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
       .service()
     val gameId = "game-walker-search"
     val actor = p1
-    val started = accepted(service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
-        Vector.empty, Vector(DecisionOptionRef.Button("search:world"))))))
+    val begun = accepted(service.handle(gameId, 0L,
+      ParkedServiceFixture.startSearch(actor)))
+    val started = accepted(service.handle(gameId, begun.nextSequence,
+      ParkedServiceFixture.pickSearchSource(actor, SearchSource.WorldDeck)))
     val reloaded = loaded(replayingSecond(service, repository).load(gameId))
     assertEquals(reloaded.state, started.state)
     val afterDraw = Outcomes.ready(reloaded.state)
