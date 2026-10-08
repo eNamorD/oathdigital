@@ -93,8 +93,9 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
       .startWalker(Ready(ready), ActionRef.Recover, p1) match
       case Right(transition) => transition
       case other => fail(s"expected the unrestricted command to run, got $other")
-    assert(started.events.nonEmpty)
-    assert(started.events.last.isInstanceOf[WalkerParked])
+    assertEquals(started.events, Vector[OathEvent](WalkerParked(
+      ActionRef.Recover, Vector("0", "0"), Vector.empty, Vector.empty,
+      Vector.empty)))
 
     // A restriction gathered at the tree's window rejects the whole command.
     // A `Left` carries no transition at all: nothing is appended and the
@@ -157,8 +158,9 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     // check rejects the wrong caller, not the command shape.
     val resumed = rules(p1, WalkerPowers.empty)
       .resolveWalker(started.state, p1, answer.decisionId, answer.answer)
-    assert(resumed.isRight,
-      s"the actual actor's own resume must still succeed, got $resumed")
+    // The actual actor's own resume still succeeds, and is recorded as theirs.
+    assertEquals(Outcomes.ready(accepted(resumed).state).game.current
+      .walkerPending.map(_.answered.map(_.by)), Some(Vector(p1)))
 
   test("a non-active player's RollWalker is rejected before the tree is " +
       "rebuilt, so a restriction cannot mask the wrong player"):
@@ -285,12 +287,13 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
         secondAnswer.decisionId, secondAnswer.answer) match
       case Right(transition) => transition
       case other => fail(s"expected the second resume to finish the tree, got $other")
-    assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
+    assertEquals(finished.events.collect { case done: WalkerCompleted => done },
+      Vector(WalkerCompleted(ActionRef.Recover)))
     val afterCompletion = Outcomes.ready(finished.state)
     assertEquals(afterCompletion.game.current.walkerModifiers,
       Vector.empty[PowerId])
-    assert(afterCompletion.game.current.walkerProcedure.isEmpty)
-    assert(afterCompletion.game.current.walkerPending.isEmpty)
+    assertEquals(afterCompletion.game.current.walkerProcedure, None)
+    assertEquals(afterCompletion.game.current.walkerPending, None)
 
   // -------------------------------------------------------------------------
   // The untested `validateModifiers` branch: a known, PlayerSelected power
@@ -458,7 +461,9 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     val pending = startedReady.game.current.walkerPending.get
     assertEquals(ProcedureWalker.awaitedPlayer(startedReady, rollTree, pending,
       WalkerPowers.empty), Some(p1))
-    assert(started.events.nonEmpty)
+    assertEquals(started.events, Vector[OathEvent](WalkerParked(
+      ActionRef.Recover, Vector("0"), Vector.empty, Vector.empty,
+      Vector.empty)))
 
     // Forge declares none: the rejection is carried through as the command's
     // own `Left`, so no `WalkerParked` is appended and the client is never
@@ -501,22 +506,27 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     val startedReady = Outcomes.ready(started.state)
     assertEquals(startedReady.game.current.walkerProcedure,
       Some(ActionRef.Recover))
-    assert(startedReady.game.current.walkerPending.nonEmpty)
+    assertEquals(startedReady.game.current.walkerPending,
+      Some(PendingTree(Vector("0"), Vector.empty)))
     assertEquals(ownedRules(owner).resolveWalker(started.state, p1,
       RecoverProcedure.choiceDecisionId, continue),
       Left(OathViolation.WrongPlayer(owner, p1)))
     val answered = ownedRules(owner).resolveWalker(started.state, owner,
       RecoverProcedure.choiceDecisionId, continue)
-    assert(answered.isRight,
-      s"the owner's answer must be accepted, got $answered")
+    // The owner's answer is accepted and finishes the one-decision tree.
+    assertEquals(Outcomes.ready(accepted(answered).state).game.current
+      .walkerPending, None)
 
   test("a walker parks and resumes outside the Act phase"):
     val wake = Table.start.turn(p1, Phase.Wake).ready
     val started = accepted(rules(p1, WalkerPowers.empty)
       .startWalker(Ready(wake), ActionRef.Recover, p1))
-    assert(started.events.last.isInstanceOf[WalkerParked])
+    assertEquals(started.events, Vector[OathEvent](WalkerParked(
+      ActionRef.Recover, Vector("0", "0"), Vector.empty, Vector.empty,
+      Vector.empty)))
     val resumed = rules(p1, WalkerPowers.empty).resolveWalker(started.state,
       p1, RecoverProcedure.choiceDecisionId, continue)
-    assert(resumed.isRight,
-      s"a Wake resume must not be phase-gated, got $resumed")
+    // A Wake resume is not phase-gated: it is accepted and stays in Wake.
+    assertEquals(Outcomes.ready(accepted(resumed).state).game.current.turn
+      .phase, Phase.Wake)
 

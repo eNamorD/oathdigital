@@ -53,6 +53,11 @@ final class HttpTestServer private (system: ActorSystem[Nothing],
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
 
+  /** The response body of a GET as bytes, for a binary asset such as a font. */
+  def getBytes(path: String): HttpResponse[Array[Byte]] =
+    client.send(HttpRequest.newBuilder(URI.create(base + path)).GET().build(),
+      HttpResponse.BodyHandlers.ofByteArray())
+
 object HttpTestServer:
   /** The origin the suites configure SameOriginCsrfProtection with, and
     * that `post` sends as Origin. */

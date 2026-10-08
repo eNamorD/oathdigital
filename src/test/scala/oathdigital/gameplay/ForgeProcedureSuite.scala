@@ -315,7 +315,7 @@ class ForgeProcedureSuite extends munit.FunSuite
           case d: DenizenState => d.tokens },
         Vector.fill(3)(
           if f.cost.favor > 0 then Tokens(1, 0) else Tokens(0, 1)))
-      assert(finalState.game.current.walkerPending.isEmpty)
+      assertEquals(finalState.game.current.walkerPending, None)
     }
 
   // ---------------------------------------------------------------------
@@ -453,7 +453,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       f.ready.game.current.commonCards.relicDeck.drop(1).headOption)
     assertEquals(after.relics.last,
       RelicState(f.relic, Orientation.FaceDown, Tokens.empty))
-    assert(finalState.game.current.walkerPending.isEmpty)
+    assertEquals(finalState.game.current.walkerPending, None)
 
   test("the section a target is placed in decides which resource it " +
       "receives, whatever the site's own printed split"):

@@ -75,7 +75,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val placed = accepted(
       gateway.submit("trusted", trustedP2Seat, placeP2Pawn(afterBegin)))
     assertEquals(placed.viewerPlayerId, Some("p2"))
-    assert(placed.walkerDecision.nonEmpty)
+    assertEquals(placed.walkerDecision.map(_.decisionId),
+      Some("setup.adviser-choice.p2"))
     assertEquals(
       present(accepted(service.load("trusted")), "the trusted game")
         .nextSequence,
@@ -210,10 +211,13 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       val answered = send(server, api + "/commands", Some(command),
         Some(s"oath_seat=$code"))
       assertEquals(answered.statusCode(), 200, answered.body())
-      assert(ujson.read(answered.body())("walkerDecision")("query")("options")
-        .arr.nonEmpty)
+      // p2 is next asked to choose among the three cards it was dealt.
+      def adviserChoice(response: JavaResponse[String]) =
+        val decision = ujson.read(response.body())("walkerDecision")
+        (decision("decisionId").str, decision("query")("options").arr.size)
+      assertEquals(adviserChoice(answered), ("setup.adviser-choice.p2", 3))
       val reloaded = send(server, api, cookie = Some(s"oath_seat=$code"))
-      assert(ujson.read(reloaded.body())("walkerDecision")("query")("options").arr.nonEmpty)
+      assertEquals(adviserChoice(reloaded), ("setup.adviser-choice.p2", 3))
     }
 
   test("the other seat sees no decision, and no seat response leaks the code " +
@@ -415,7 +419,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       assertEquals(secondEntry.statusCode(), 303)
       val retainedCookie = secondEntry.headers().firstValue("Set-Cookie").orElse("")
         .takeWhile(_ != ';')
-      assert(retainedCookie.nonEmpty)
+      assertEquals(retainedCookie, s"oath_seat=$secondCode")
       val beforeRestart = send(current.server, "/games/restart-game/api",
         cookie = Some(retainedCookie))
       assertEquals(beforeRestart.statusCode(), 200, beforeRestart.body())
@@ -469,7 +473,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
           assert(!failed.body().contains(code))
           assert(!failed.body().toLowerCase.contains("closed"))
         }
-        assert(captured.list.size() >= 3)
+        assertEquals(captured.list.size(), 3)
         captured.list.asScala.foreach { event =>
           assert(!event.getFormattedMessage.contains(code))
           assertEquals(event.getThrowableProxy, null)

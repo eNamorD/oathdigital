@@ -91,7 +91,7 @@ class ProcedureWalkerRollSuite extends munit.FunSuite:
           case other => fail(s"expected a WalkerStepRecorded, got $other")
         assertEquals(step.payload, RollPayload(recoverPool, faces))
         assertEquals(step.ops, Vector.empty[CoreOperation])
-        assert(finalState.game.current.walkerPending.isEmpty)
+        assertEquals(finalState.game.current.walkerPending, None)
         assertEquals(finalState.game.current.rollPools,
           Map.empty[PoolKey, DicePoolState])
       case other => fail(s"expected the roll to finish the tree, got $other")

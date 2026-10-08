@@ -100,7 +100,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
   test("a taken game ID is drawn again, keeping the seat codes"):
     withDatabase { (owner, connection) =>
       val first = codes.iterator
-      assert(provision(owner, () => first.next()).create(request, "https://games.test").isRight)
+      accepted(provision(owner, () => first.next()).create(request, "https://games.test"))
       val ids = Iterator(gameId, "fresh")
       val second = codes.drop(2).iterator
       val response = provision(owner, () => second.next(), () => ids.next())
@@ -119,7 +119,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
   test("eight taken game IDs and persistent digest collision return generic failures without partial rows"):
     withDatabase { (owner, connection) =>
       val generated = codes.iterator
-      assert(provision(owner, () => generated.next()).create(request, "http://localhost:8080").isRight)
+      accepted(provision(owner, () => generated.next()).create(request, "http://localhost:8080"))
       val before = rows(connection, gameId)
       val duplicates = codes.drop(2).iterator
       var draws = 0
@@ -140,7 +140,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
   test("duplicate generated codes retry per seat with an eight-attempt terminal limit"):
     withDatabase { (owner, connection) =>
       val generated = Vector(codes.head, codes.head, codes(1)).iterator
-      assert(provision(owner, () => generated.next()).create(request, "https://games.test").isRight)
+      accepted(provision(owner, () => generated.next()).create(request, "https://games.test"))
       var count = 0
       val failed = provision(owner, () => { count += 1; codes(2) }, () => "exhausted").create(
         request, "https://games.test")

@@ -32,7 +32,7 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
         assertEquals(recorded(events.last).ops,
           Vector[CoreOperation](spendOneSupply))
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
-        assert(finalState.game.current.walkerPending.isEmpty)
+        assertEquals(finalState.game.current.walkerPending, None)
       case other => fail(s"expected the answered resume to finish, got $other")
 
   /** Walks `tree` to its first Decide park and hands back the park. */
@@ -247,6 +247,6 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
       case Right(WalkerOutcome.Finished(state, recorded)) => (state, recorded)
       case other => fail(s"expected a Finished clear walk, got $other")
     assertEquals(events.size, 1)
-    assert(finalState.game.current.walkerPending.isEmpty)
+    assertEquals(finalState.game.current.walkerPending, None)
     assertEquals(finalState.game.current.rollPools,
       Map.empty[PoolKey, DicePoolState])
