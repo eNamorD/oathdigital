@@ -14,8 +14,9 @@ object SearchProcedure:
   val keepKey: String = "keep"
   val discardKey: String = "discard"
 
-  /** Legal sources and their effective Supply cost under automatic powers.
-    * Projection reads this instead of duplicating unmodified cost gates.
+  /** Legal sources and their effective Supply cost under `powers`: 0 when a
+    * power waives the payment. Projection reads this instead of duplicating
+    * the cost gates.
     */
   def legalSources(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, powers: WalkerPowers): Vector[(SearchSource, Int)] =
@@ -34,9 +35,9 @@ object SearchProcedure:
             val steps = outcome match
               case WalkerOutcome.Parked(_, events) => events
               case WalkerOutcome.Finished(_, events) => events
-            steps.collect { case step: WalkerStepRecorded => step.ops }
-              .flatten.collectFirst:
-                case SpendSupply(`actor`, amount, _) => source -> amount
+            Some(source -> steps.collect {
+              case step: WalkerStepRecorded => step.ops }.flatten.collect {
+                case SpendSupply(`actor`, amount, _) => amount }.sum)
           }
       }
     }

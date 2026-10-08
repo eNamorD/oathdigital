@@ -74,16 +74,17 @@ private[application] final class LegalActionProjector(
 
   private def tradeStartable(context: ScopedProjectionContext,
       resource: TradeResource): Boolean =
-    TradeProcedure.startOptions(catalog, context.ready, context.active.player,
-      resource, WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
-      .exists(_.outcome.isRight)
+    startableWithModifiers(context, ActionRef.Trade)(powers =>
+      TradeProcedure.startOptions(catalog, context.ready,
+        context.active.player, resource, powers).exists(_.outcome.isRight))
 
   /** Whether Challenge or Place Banner Resource could start now: the same
     * dry run a start performs, asked of the procedures that own them.
     */
   private def challengeStartable(context: ScopedProjectionContext): Boolean =
-    ChallengeProcedure.startable(catalog, context.ready, context.active.player,
-      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+    startableWithModifiers(context, ActionRef.Challenge)(powers =>
+      ChallengeProcedure.startable(catalog, context.ready,
+        context.active.player, powers))
 
   private def campaignStartable(context: ScopedProjectionContext): Boolean =
     startableWithModifiers(context, ActionRef.Campaign)(powers =>
@@ -91,13 +92,15 @@ private[application] final class LegalActionProjector(
         context.active.player, powers))
 
   private def negotiationStartable(context: ScopedProjectionContext): Boolean =
-    NegotiationProcedure.startable(catalog, context.ready,
-      context.active.player, WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+    startableWithModifiers(context, ActionRef.Negotiation)(powers =>
+      NegotiationProcedure.startable(catalog, context.ready,
+        context.active.player, powers))
 
   private def placeBannerResourceStartable(
       context: ScopedProjectionContext): Boolean =
-    PlaceBannerResourceProcedure.startable(catalog, context.ready,
-      context.active.player, WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+    startableWithModifiers(context, ActionRef.PlaceBannerResource)(powers =>
+      PlaceBannerResourceProcedure.startable(catalog, context.ready,
+        context.active.player, powers))
 
   /** The control a resource is offered as. A name the client binds a button
     * to is presentation, which is why this mapping is here and the question
@@ -183,10 +186,14 @@ private[application] final class LegalActionProjector(
       case decision if decision.kind == "roll" => "rollWalker"
       case _ => "resolveWalkerDecision"
 
+  /** Every Search source some modifier selection the viewer could make lets
+    * them search, with the Supply it costs without modifiers when it is
+    * legal without them, else under the first selection that allows it. */
   private def legalSearch(context: ScopedProjectionContext) =
-    SearchProcedure.legalSources(catalog, context.ready,
-      context.active.player, WalkerPowers.selected(walkerPowerCatalog,
-        Vector.empty)).map:
+    ModifierOffers.selections(walkerPowerCatalog, context.ready,
+      context.active.player, ActionRef.Search).flatMap(powers =>
+      SearchProcedure.legalSources(catalog, context.ready,
+        context.active.player, powers)).distinctBy(_._1).map:
       case (SearchSource.WorldDeck, cost) =>
         LegalSearchSourceProjection("world", None, cost)
       case (SearchSource.RegionalDiscard(region), cost) =>

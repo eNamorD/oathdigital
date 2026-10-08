@@ -2,16 +2,17 @@ package oathdigital.application
 
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.powers.economy.AnimalPlaymates
+import oathdigital.gameplay.powers.economy.{AnimalPlaymates, Birdsong}
+import oathdigital.gameplay.powers.search.NewsFromAfar
 import oathdigital.gameplay.powers.travel.{Tents, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
 
-/** A start control counts the modifiers its player could select: an action
-  * that only a modifier makes affordable is still offered, and a modifier the
-  * player cannot pay for unlocks nothing. */
+/** A start control, and each Search source, counts the modifiers its player
+  * could select: an action that only a modifier makes affordable is still
+  * offered, and a modifier the player cannot pay for unlocks nothing. */
 class ModifierStartControlsSuite extends munit.FunSuite:
   private val presentation = new GamePresentationProjector(catalog)
   private val legal = new LegalActionProjector(catalog, presentation,
@@ -74,3 +75,51 @@ class ModifierStartControlsSuite extends munit.FunSuite:
   test("without the waiver, Muster at 0 Supply is not offered"):
     assert(!controls(beastMuster(playmates = false), p1)
       .contains("beginMuster"))
+
+  // ---- Trade ----
+
+  /** p1 at Ancient City, which holds Errand Boy, a beast card to trade with,
+    * with 4 favor, 2 faceup secrets and no Supply. */
+  private def beastTrade(birdsong: Boolean): ReadyGame =
+    val table = Table.start.pawn(p1, at = "Ancient City")
+      .denizen(CatalogNames.denizen("Errand Boy"), at = "Ancient City")
+      .favor(p1, 4).secrets(p1, faceUp = 2).supply(p1, 0)
+    (if birdsong then table.adviser(p1, CatalogNames.denizen("Birdsong"))
+      else table).ready
+
+  test("Trade is offered at 0 Supply when Birdsong waives it, and the start " +
+      "with it is accepted"):
+    val ready = beastTrade(birdsong = true)
+    assert(controls(ready, p1).contains("beginTradeFavor"))
+    assert(rules.startWalker(OathState.Ready(ready), ActionRef.Trade, p1,
+      Vector(Birdsong.id), Vector(DecisionOptionRef.Button("favor"))).isRight)
+
+  test("without the waiver, Trade at 0 Supply is not offered"):
+    assert(!controls(beastTrade(birdsong = false), p1)
+      .contains("beginTradeFavor"))
+
+  // ---- Search ----
+
+  /** p1 with no Supply, holding `favor`, and News from Afar faceup when
+    * `news`. */
+  private def brokeSearcher(news: Boolean, favor: Int): ReadyGame =
+    val table = Table.start.supply(p1, 0).favor(p1, favor)
+    (if news then table.adviser(p1, CatalogNames.denizen("News from Afar"))
+      else table).ready
+
+  private def searchSources(ready: ReadyGame): Vector[String] =
+    legal.project(ScopedProjectionContext(ready, Some(p1))).search.map(_.kind)
+
+  test("the world deck is a Search source at 0 Supply when News from Afar " +
+      "waives it, and the start with it is accepted"):
+    val ready = brokeSearcher(news = true, favor = 2)
+    assert(searchSources(ready).contains("world"), searchSources(ready))
+    assert(rules.startWalker(OathState.Ready(ready), ActionRef.Search, p1,
+      Vector(NewsFromAfar.id),
+      Vector(DecisionOptionRef.Button("search:world"))).isRight)
+
+  test("News from Afar with too little favor to pay opens no Search source"):
+    assertEquals(searchSources(brokeSearcher(news = true, favor = 1)),
+      Vector.empty)
+    assertEquals(searchSources(brokeSearcher(news = false, favor = 2)),
+      Vector.empty)
