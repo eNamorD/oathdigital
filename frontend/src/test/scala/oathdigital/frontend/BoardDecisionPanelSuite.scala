@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.frontend.Dom.{all, one}
+import oathdigital.frontend.TestBoardOptions.adviserPlayAtRedSlot3
 import oathdigital.frontend.TestBoards.quietBoard
 import oathdigital.frontend.TestSites.quietSite
 import oathdigital.model.PlayerColor
@@ -31,8 +32,11 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     Some("Also target these sites"), tallies = Vector(force),
     summary = Some(DecisionSummaryState("Target", "site", "sites")))
   private val decision = WalkerDecisionState("campaign", "campaign.targets",
-    "decide", query = Some(targets), presentation = "board")
+    "decide", presentation = "board")
 
+  /** The panel of `parked` asking `query`; the query is the one the panel
+    * reads, so `parked` carries none of its own.
+    */
   private def pane(ui: RecordingControls, query: ParkedDecision.BoardForm,
       parked: WalkerDecisionState,
       draft: Option[BoardSelectionDraft] = None): dom.Element =
@@ -40,7 +44,8 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     val drafts = SessionDrafts.empty.copy(context = Some(context),
       board = draft)
     ParkedDecision.render(table, ServerUiSupport.viewerPresentation(table,
-      "red"), Routed(Some(Surface.BoardDecision(parked, query)), None),
+      "red"), Routed(Some(Surface.BoardDecision(
+      parked.copy(query = Some(query)), query)), None),
       canControl = true, panel, drafts, ui)
     panel
 
@@ -75,8 +80,7 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
 
   test("Confirm is disabled below the minimum and says why"):
     val needsOne = targets.copy(minOptions = 1)
-    val panel = pane(new RecordingControls(), needsOne,
-      decision.copy(query = Some(needsOne)))
+    val panel = pane(new RecordingControls(), needsOne, decision)
     assert(as[dom.html.Button](one(panel, ".board-decision-confirm")).disabled)
     assertEquals(one(panel, ".board-decision-reason").textContent,
       "Choose at least 1.")
@@ -95,7 +99,7 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
       DecisionOptionState("button", "finish", "Finish battle plans")),
       Some("Choose a battle plan, or finish"))
     val panel = pane(ui, plans, decision.copy(decisionId =
-      "campaign.attacker-plan", query = Some(plans)))
+      "campaign.attacker-plan"))
     assertEquals(all(panel, ".board-decision-rule").size, 1)
     val finish = as[dom.html.Button](one(panel, ".board-decision-decide"))
     assertEquals(finish.textContent, "Finish battle plans")
@@ -115,7 +119,7 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
       slot("marsh", 1), DecisionOptionState("button", "skip", "Skip")),
       Some("Moving Market: move it to another site?"))
     val panel = pane(ui, move, decision.copy(
-      decisionId = "trade.moving-market.move", query = Some(move)))
+      decisionId = "trade.moving-market.move"))
     assertEquals(all(panel, ".board-decision-loose-option"), Vector.empty)
     val skip = as[dom.html.Button](one(panel, ".board-decision-decide"))
     assertEquals(skip.textContent, "Skip")
@@ -128,21 +132,17 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     val ui = new RecordingControls()
     val elsewhere = DecisionOptionState("relic", "cup", "Cup")
     val query = targets.copy(options = targets.options :+ elsewhere)
-    val panel = pane(ui, query, decision.copy(query = Some(query)))
+    val panel = pane(ui, query, decision)
     val toggle = as[dom.html.Button](one(panel,
       ".board-decision-loose-option"))
     assertEquals(toggle.textContent, "Cup")
     toggle.click()
     assertEquals(ui.drafts.board.map(_.keys), Some(Vector("relic:cup")))
 
-  private def play(facing: String) = DecisionOptionState("adviser-play",
-    s"red:2:$facing", s"Adviser slot 3, $facing",
-    variant = Some(facing.capitalize))
   private val placement = DecisionQueryState.ChooseOne(
-    Vector(play("faceup"), play("facedown")), Some("Play Wayward Spirit"))
+    Vector(adviserPlayAtRedSlot3("faceup"), adviserPlayAtRedSlot3("facedown")), Some("Play Wayward Spirit"))
   private val placing = WalkerDecisionState("search",
-    "cardplay.place.denizen.spirit", "decide", query = Some(placement),
-    presentation = "board")
+    "cardplay.place.denizen.spirit", "decide", presentation = "board")
   private def open(query: DecisionQueryState.ChooseOne, keys: String*) =
     Some(BoardSelectionDraft(context, "cardplay.place.denizen.spirit", query,
       keys.toVector, Some("adviser-slot:red:2")))
@@ -179,11 +179,10 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
 
   test("an unavailable facing is disabled and says why"):
     val refused = DecisionQueryState.ChooseOne(Vector(
-      play("faceup").copy(state = "unavailable",
-        reason = Some("Refused by a test power")), play("facedown")),
+      adviserPlayAtRedSlot3("faceup").copy(state = "unavailable",
+        reason = Some("Refused by a test power")), adviserPlayAtRedSlot3("facedown")),
       Some("Play Wayward Spirit"))
-    val panel = pane(new RecordingControls(), refused,
-      placing.copy(query = Some(refused)),
+    val panel = pane(new RecordingControls(), refused, placing,
       open(refused, "adviser-play:red:2:facedown"))
     assertEquals(variants(panel).map(_.disabled), Vector(true, false))
     assertEquals(all(panel, ".board-decision-variant-reason")
@@ -195,8 +194,8 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
       replaces = Some(CardDetails("songs", "denizen", "Tavern Songs")))
     val query = DecisionQueryState.ChooseOne(Vector(replace),
       Some("Play Wayward Spirit"))
-    val panel = pane(new RecordingControls(), query,
-      placing.copy(query = Some(query)), Some(BoardSelectionDraft(context,
+    val panel = pane(new RecordingControls(), query, placing,
+      Some(BoardSelectionDraft(context,
         "cardplay.place.denizen.spirit", query, Vector("site-slot:plains:0"))))
     assertEquals(one(panel, ".board-decision-summary").textContent,
       "Discard Tavern Songs; play Wayward Spirit here")

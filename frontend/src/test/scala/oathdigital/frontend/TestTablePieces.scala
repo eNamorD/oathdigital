@@ -79,3 +79,10 @@ private[frontend] object TestBoardOptions:
     RecordingOptions(new BoardOptions(views.map(view =>
       BoardOptionViews.home(view.option) -> view).toMap,
       chosen => { recorded += chosen; () }), recorded)
+
+  /** Red's adviser play at the third adviser slot, in the facing named
+    * `faceup` or `facedown`.
+    */
+  def adviserPlayAtRedSlot3(facing: String): DecisionOptionState =
+    DecisionOptionState("adviser-play", s"red:2:$facing",
+      s"Adviser slot 3, $facing", variant = Some(facing.capitalize))
