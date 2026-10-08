@@ -39,6 +39,8 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val WalkerParkedType = "walker.parked"
   val WalkerCompletedType = "walker.completed"
   val PowerNotedType = "walker.power-noted"
+  val FollowUpStartedType = "walker.follow-up-started"
+  val FollowUpSkippedType = "walker.follow-up-skipped"
   val CommandAcceptedType = "undo.command-accepted"
   val StepTakenBackType = "undo.step-taken-back"
   val StepRestoredType = "undo.step-restored"

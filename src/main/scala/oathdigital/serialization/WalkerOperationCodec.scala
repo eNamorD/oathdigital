@@ -27,7 +27,8 @@ import oathdigital.model._
   * compile here ("match may not be exhaustive") until it is given a real
   * arm.
   */
-private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
+private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
+    with FollowUpWire:
   this: GameEventJsonSupport =>
   import WireError._
 
@@ -45,7 +46,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
   private type ResourceOperation = SpendSupply | GainSupply | FlipSecrets | Gain
   private type TurnOperation = AdvanceVisionsDrawn.type | BeginTurn | EnterPhase |
     SetOathkeeper | RecordPowerUse | RecordCampaignResult | ModifyDicePool | Roll |
-    ModifyRollOutcome
+    ModifyRollOutcome | QueueFollowUp
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match
@@ -235,6 +236,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
       case RecordCampaignResult(result) => ujson.Obj(
         "kind" -> "record-campaign-result",
         "result" -> encodeCampaignResult(result))
+      case QueueFollowUp(followUp) => ujson.Obj(
+        "kind" -> "queue-follow-up",
+        "followUp" -> encodeFollowUp(followUp))
       case ModifyDicePool(pool, delta, _) => ujson.Obj(
         "kind" -> "modify-dice-pool", "pool" -> pool.value,
         "delta" -> delta)
@@ -488,6 +492,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
     case "record-campaign-result" =>
       decodeCampaignResult(value("result"), s"$path.result")
         .map(RecordCampaignResult(_))
+    case "queue-follow-up" =>
+      decodeFollowUp(value("followUp"), s"$path.followUp")
+        .map(QueueFollowUp(_))
     case "modify-dice-pool" =>
       decodeSignedInt(value("delta"), s"$path.delta")
         .map(delta => ModifyDicePool(PoolKey(value("pool").str), delta))

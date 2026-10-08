@@ -1,8 +1,8 @@
 package oathdigital.serialization
 
 import oathdigital.model._
-import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
-  WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, FollowUpSkipped,
+  FollowUpStarted, WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
   PartitionAnswer}
 import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
@@ -135,6 +135,14 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
         Left(WireError.InvalidValue("$[0].payload.procedure",
           s"unknown walker procedure '$family/end-wake'")), family)
     }
+
+  test("a follow-up's start and skip round trip with their entry"):
+    val entry = FollowUp(PlayerId("p1"), ActionRef.Travel,
+      PowerSourceRef.Card(CatalogNames.denizen("Second Wind")))
+    val encoded = encodedStreamThatRoundTrips("follow-ups", Vector[OathEvent](
+      FollowUpStarted(entry), FollowUpSkipped(entry)))
+    assert(encoded.contains("\"walker.follow-up-started\""), encoded)
+    assert(encoded.contains("\"walker.follow-up-skipped\""), encoded)
 
   test("every option reference kind round trips through a recorded answer"):
     val player = PlayerId("red")

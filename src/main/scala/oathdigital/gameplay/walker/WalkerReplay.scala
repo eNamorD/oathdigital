@@ -160,8 +160,28 @@ private[walker] object WalkerReplay:
             walkerModifiers = Vector.empty,
             walkerStartArgs = Vector.empty,
             walkerStartFacts = Vector.empty,
+            walkerFollowUp = None,
             rollPools = Map.empty,
             rollOutcomes = Map.empty)))
+
+      case FollowUpStarted(followUp) =>
+        val current = ready.game.current
+        for
+          _ <- Either.cond(current.followUps.headOption.contains(followUp), (),
+            OathViolation.InvalidEventOrder(
+              "follow-up start does not match the queue head"))
+          _ <- Either.cond(current.walkerProcedure.isEmpty &&
+            current.walkerFollowUp.isEmpty, (), OathViolation.InvalidEventOrder(
+            "a follow-up started while another run is open"))
+        yield ready.updateCurrent(_.copy(followUps = current.followUps.tail,
+          walkerFollowUp = Some(followUp)))
+
+      case FollowUpSkipped(followUp) =>
+        val current = ready.game.current
+        Either.cond(current.followUps.headOption.contains(followUp),
+          ready.updateCurrent(_.copy(followUps = current.followUps.tail)),
+          OathViolation.InvalidEventOrder(
+            "follow-up skip does not match the queue head"))
 
       // An audit fact for the Game Log; replay has nothing to apply.
       case _: PowerNoted => Right(ready)

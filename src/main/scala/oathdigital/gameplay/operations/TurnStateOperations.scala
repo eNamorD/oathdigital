@@ -58,6 +58,10 @@ private[operations] object TurnStateOperations:
   def recordCampaignResult(ready: ReadyGame, fact: CampaignResult): ReadyGame =
     ready.updateCurrent(_.copy(lastCampaignResult = Some(fact)))
 
+  def queueFollowUp(ready: ReadyGame, followUp: FollowUp): ReadyGame =
+    ready.updateCurrent(current =>
+      current.copy(followUps = current.followUps :+ followUp))
+
   def adjustSupply(ready: ReadyGame, player: PlayerId,
       amount: Int): Either[OperationError, ReadyGame] =
     // Sufficiency is the guard's (supplyViolation).

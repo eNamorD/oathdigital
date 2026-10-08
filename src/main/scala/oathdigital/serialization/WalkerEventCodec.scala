@@ -2,8 +2,9 @@ package oathdigital.serialization
 
 import scala.util.control.NonFatal
 
-import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, RollPayload, WalkerCompleted,
-  DeltaMeaning, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, FollowUpSkipped,
+  FollowUpStarted, PowerNoted, RollPayload, WalkerCompleted, DeltaMeaning,
+  WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
 import oathdigital.model._
@@ -19,6 +20,8 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case _: WalkerParked => WalkerParkedType
     case _: WalkerCompleted => WalkerCompletedType
     case _: PowerNoted => PowerNotedType
+    case _: FollowUpStarted => FollowUpStartedType
+    case _: FollowUpSkipped => FollowUpSkippedType
 
   protected final val walkerEncoder: PartialFunction[OathEvent, ujson.Value] =
     case WalkerStepRecorded(nodeId, payload, ops, contributions) =>
@@ -47,6 +50,10 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case PowerNoted(power, note, covers) => ujson.Obj(
       "powerId" -> power.value, "covers" -> ujson.Bool(covers),
       "note" -> encodeNote(note))
+    case FollowUpStarted(followUp) =>
+      ujson.Obj("followUp" -> encodeFollowUp(followUp))
+    case FollowUpSkipped(followUp) =>
+      ujson.Obj("followUp" -> encodeFollowUp(followUp))
 
   protected final def walkerDecode(eventType: String, payload: ujson.Value,
       path: String)
@@ -59,6 +66,12 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
           s"$path.procedure")
       yield WalkerCompleted(procedure)
       case PowerNotedType => decodePowerNoted(payload, path)
+      case FollowUpStartedType =>
+        decodeFollowUp(payload("followUp"), s"$path.followUp")
+          .map(FollowUpStarted(_))
+      case FollowUpSkippedType =>
+        decodeFollowUp(payload("followUp"), s"$path.followUp")
+          .map(FollowUpSkipped(_))
     decoder.lift(eventType)
 
   private def encodeAnswered(answered: Answered): ujson.Value = ujson.Obj(
@@ -111,17 +124,8 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       s"unsupported walker die face $other")
 
   private def encodeNote(note: PowerNote): ujson.Value = ujson.Obj(
-    "source" -> encodeNoteSource(note.source), "key" -> note.key,
+    "source" -> encodePowerSource(note.source), "key" -> note.key,
     "args" -> ujson.Arr.from(note.args.map(encodeNoteArg)))
-
-  private def encodeNoteSource(source: PowerSourceRef): ujson.Value =
-    source match
-      case PowerSourceRef.Site(site) =>
-        ujson.Obj("kind" -> "site", "siteId" -> site.value)
-      case PowerSourceRef.Card(card) =>
-        ujson.Obj("kind" -> "card", "card" -> encodeCardId(card))
-      case PowerSourceRef.Banner(banner) =>
-        ujson.Obj("kind" -> "banner", "bannerKey" -> banner.key)
 
   private def encodeNoteArg(arg: NoteArg): ujson.Value = arg match
     case NoteArg.Player(id) => ujson.Obj("kind" -> "player", "playerId" -> id.value)
@@ -149,20 +153,10 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
 
   private def decodeNote(value: ujson.Value,
       path: String): Either[WireError, PowerNote] = for
-    source <- decodeNoteSource(value("source"), s"$path.source")
+    source <- decodePowerSource(value("source"), s"$path.source")
     args <- traverse(value("args").arr.zipWithIndex.toVector):
       case (arg, index) => decodeNoteArg(arg, s"$path.args[$index]")
   yield PowerNote(source, value("key").str, args)
-
-  private def decodeNoteSource(value: ujson.Value,
-      path: String): Either[WireError, PowerSourceRef] = value("kind").str match
-    case "site" => Right(PowerSourceRef.Site(SiteId(value("siteId").str)))
-    case "card" => decodeCardId(value("card"), s"$path.card")
-      .map(PowerSourceRef.Card.apply)
-    case "banner" => decodeBanner(value("bannerKey").str, s"$path.bannerKey")
-      .map(PowerSourceRef.Banner.apply)
-    case other => Left(InvalidValue(s"$path.kind",
-      s"unknown note source '$other'"))
 
   private def decodeNoteArg(value: ujson.Value,
       path: String): Either[WireError, NoteArg] = value("kind").str match
@@ -234,21 +228,6 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       Right(OperationApplied(value("label").str))
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown walker delta meaning '$other'"))
-
-  /** Wire spelling of a procedure reference (Task 4): a family tag plus its
-    * key, so a decoder can reject a reference read back under the wrong
-    * family (an End Wake key spelled `"action"`) or an unknown family,
-    * rather than resolving on the key alone.
-    */
-  private def encodeProcedure(procedure: ProcedureRef): ujson.Value =
-    ujson.Obj("family" -> procedure.family, "key" -> procedure.key)
-
-  private def decodeProcedure(value: ujson.Value,
-      path: String): Either[WireError, ProcedureRef] =
-    val family = value("family").str
-    val key = value("key").str
-    ProcedureRef.fromFamilyKey(family, key).toRight(InvalidValue(path,
-      s"unknown walker procedure '$family/$key'"))
 
   private def decodeStepRecorded(value: ujson.Value,
       path: String): Either[WireError, OathEvent] = try for
