@@ -25,9 +25,6 @@ class RiotsSuite extends munit.FunSuite:
   private def burned(n: Int): NoteText.Said = NoteText.Said("burned",
     s"Burned $n favor from the People's Favor.", covers = false)
 
-  private def onBanner(ready: ReadyGame): Int =
-    ready.game.current.banners.peoplesFavor.favor
-
   /** Riots as p1's adviser, with four discardable cards in p1's region
     * (Homesteaders, Errand Boy, Wild Mounts and the ruined Hall of Bandits),
     * the intact Relic Patrols there and Land Warden in another region. */
@@ -51,9 +48,8 @@ class RiotsSuite extends munit.FunSuite:
     assertEquals(after.cardsAt(nearSite), Vector[CardId](relicPatrols))
     assertEquals(after.cardsAt(awaySite), Vector[CardId](landWarden))
     // 5 on the banner, less 1 per card discarded.
-    assertEquals(onBanner(done.treeless), 5 - 4)
-    assertEquals(done.treeless.game.current.banners.peoplesFavor.holder,
-      Some(p2))
+    assertEquals(Look(done.treeless).favorOnPeoplesFavor, 5 - 4)
+    assertEquals(Look(done.treeless).peoplesFavorHolder, Some(p2))
     assertJournalRebuilds(ready, done.events, done.treeless)
     assertEquals(said(power, done.events),
       Vector(discarded(targets), burned(4)))
@@ -64,14 +60,14 @@ class RiotsSuite extends munit.FunSuite:
     val done = Outcomes.finished(fire(ready, power, hookAt(riots, homeSite)))
     assertEquals(Look(done.treeless).cardsAt(homeSite), Vector.empty)
     // Riots and Homesteaders are discarded: 5 - 2.
-    assertEquals(onBanner(done.treeless), 5 - 2)
+    assertEquals(Look(done.treeless).favorOnPeoplesFavor, 5 - 2)
     assertEquals(said(power, done.events),
       Vector(discarded(Vector(riots, homesteaders)), burned(2)))
 
   test("the burn takes what the People's Favor holds"):
     val done = Outcomes.finished(
       play(staged.peoplesFavor(None, 1).ready, power, riots))
-    assertEquals(onBanner(done.treeless), 0)
+    assertEquals(Look(done.treeless).favorOnPeoplesFavor, 0)
     assertEquals(said(power, done.events),
       Vector(discarded(targets), burned(1)))
 
@@ -87,6 +83,6 @@ class RiotsSuite extends munit.FunSuite:
       .denizen(landWarden, at = awaySite).peoplesFavor(None, 5).ready
     val done = Outcomes.finished(play(ready, power, riots))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(onBanner(done.treeless), 5)
+    assertEquals(Look(done.treeless).favorOnPeoplesFavor, 5)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "Nothing was discarded.", covers = true)))

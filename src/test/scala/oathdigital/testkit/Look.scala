@@ -79,6 +79,25 @@ final class Look private (ready: ReadyGame):
   def forceKind(p: PlayerId)(using munit.Location): ForceKind =
     Unwrap.accepted(PlayerFacts.forceKind(ready, p))
 
+  /** The cards in `region`'s discard pile, its top last. */
+  def discardPile(region: Region): Vector[WorldCardId] =
+    current.commonCards.discard(region)
+
+  def peoplesFavorHolder: Option[PlayerId] = current.banners.peoplesFavor.holder
+  /** The favor on the People's Favor. */
+  def favorOnPeoplesFavor: Int = current.banners.peoplesFavor.favor
+  def darkestSecretHolder: Option[PlayerId] = current.banners.darkestSecret.holder
+  /** The secrets on the Darkest Secret. */
+  def secretsOnDarkestSecret: Int = current.banners.darkestSecret.secrets
+
+  /** Whether `viewer` knows `card` as an adviser. */
+  def knowsAdviser(viewer: PlayerId, card: WorldCardId): Boolean =
+    ready.knowledge.advisers.getOrElse(viewer, Vector.empty).contains(card)
+
+  /** The dice in the roll pool `pool`; none while it is not open. */
+  def diceInPool(pool: PoolKey): Int =
+    current.rollPools.get(pool).fold(0)(_.count)
+
 object Look:
   def apply(ready: ReadyGame): Look = new Look(ready)
   def apply(state: OathState)(using munit.Location): Look = state match

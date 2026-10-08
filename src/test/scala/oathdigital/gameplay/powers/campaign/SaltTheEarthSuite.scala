@@ -6,7 +6,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseAmountAnswer
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Salt the Earth: an attacker who wins a Conquest buries every card at one
   * targeted site, relics included. */
@@ -23,9 +23,9 @@ class SaltTheEarthSuite extends munit.FunSuite:
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(SaltTheEarth.id, Vector(SaltTheEarth.buried), run.events)
 
-  private def cardsAt(state: OathState, site: SiteId): Vector[CardId] =
-    val held = ready(state).game.current.map.sites(site)
-    held.denizens.map[CardId](_.id) ++ held.relics.map[CardId](_.id)
+  private def cardsAndRelicsAt(state: OathState, site: SiteId)
+      : Vector[CardId] =
+    Look(state).cardsAt(site) ++ Look(state).relicsAt(site)
 
   /** The actor holds Salt the Earth faceup. The origin holds Code of Honor,
     * the Great Clock and Dowsing Sticks, facedown. */
@@ -42,7 +42,7 @@ class SaltTheEarthSuite extends munit.FunSuite:
     val done = commit(rules(winningDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
-    assertEquals(cardsAt(done.state, b.origin), Vector.empty)
+    assertEquals(cardsAndRelicsAt(done.state, b.origin), Vector.empty)
     val decks = ready(done.state).game.current.commonCards
     assert(decks.worldDeck.contains(code))
     assert(decks.edificeDeck.contains(clock))
@@ -69,8 +69,8 @@ class SaltTheEarthSuite extends munit.FunSuite:
       DecisionOptionRef.Site(b.origin), DecisionOptionRef.Site(extra)))
     val done = asked.pick(b.actor, SaltTheEarth.decisionId,
       DecisionOptionRef.Site(extra))
-    assertEquals(cardsAt(done.state, extra), Vector.empty)
-    assertEquals(cardsAt(done.state, b.origin), Vector[CardId](code))
+    assertEquals(cardsAndRelicsAt(done.state, extra), Vector.empty)
+    assertEquals(cardsAndRelicsAt(done.state, b.origin), Vector[CardId](code))
     assertEquals(lines(done), Vector(NoteText.Said("buried",
       s"Buried ${giant.value} from ${extra.value}.", covers = true)))
 
@@ -87,6 +87,6 @@ class SaltTheEarthSuite extends munit.FunSuite:
     val done = commit(rules(losingDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
-    assertEquals(cardsAt(done.state, b.origin),
+    assertEquals(cardsAndRelicsAt(done.state, b.origin),
       Vector[CardId](code, clock, sticks))
     assertEquals(lines(done), Vector.empty)

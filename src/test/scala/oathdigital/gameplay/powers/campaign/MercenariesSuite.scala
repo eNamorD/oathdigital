@@ -56,17 +56,13 @@ class MercenariesSuite extends munit.FunSuite:
     assertEquals(Look(done.state).bankFavor(mercenariesSuit), before + 1)
     assertEquals(Look(done.state).favor(b.actor), 1)
 
-  private def pile(state: OathState, region: Region): Vector[WorldCardId] =
-    ready(state).game.current.commonCards.regionalDiscards.getOrElse(region,
-      Vector.empty)
-
   test("an adviser is discarded to the region after the region of its " +
       "holder's pawn"):
     val b = attackerBoard
     val own = b.ready.game.current.map.regionOf(b.origin).get
     val done = commit(rules(losingDice), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assert(pile(done.state, CardPlay.nextRegion(own)).contains(card))
+    assert(Look(done.state).discardPile(CardPlay.nextRegion(own)).contains(card))
 
   test("a card at a site the attacker rules is discarded from the site, to " +
       "the region after the site's own"):
@@ -84,8 +80,8 @@ class MercenariesSuite extends munit.FunSuite:
     assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(ready(done.state).game.current.map.sites(ruled).denizens,
       Vector.empty)
-    assert(pile(done.state, CardPlay.nextRegion(siteRegion)).contains(card))
-    assert(!pile(done.state, CardPlay.nextRegion(pawnRegion)).contains(card))
+    assert(Look(done.state).discardPile(CardPlay.nextRegion(siteRegion)).contains(card))
+    assert(!Look(done.state).discardPile(CardPlay.nextRegion(pawnRegion)).contains(card))
 
   test("an attacker with no favor to place is not offered Mercenaries"):
     val b = funded(attackerBoard, attackerBoard.actor, 0)

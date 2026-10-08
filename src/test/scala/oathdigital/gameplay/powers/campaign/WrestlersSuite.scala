@@ -4,7 +4,7 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Wrestlers: a defender sacrifices a warband from its force for one more
   * defense die, and the force the defense is scored with is one lower.
@@ -18,16 +18,13 @@ class WrestlersSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     withAdviserFor(base, base.rival, card, Orientation.FaceUp)
 
-  private def siteForces(state: OathState, b: Board): SiteForces =
-    ready(state).game.current.map.sites(b.origin).forces
-
   test("a Conquest defender sacrifices a warband at the target site for a " +
       "defense die"):
     val b = conquest
     val run = commit(rules(losingDice), b, 4)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
-    assertEquals(siteForces(picked.state, b),
+    assertEquals(Look(picked.state).forces(b.origin),
       SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), 1))
     assertEquals(picked.since(run).map(_.getClass.getSimpleName),
       Vector("Sacrifice", "ModifyDicePool"))
@@ -73,7 +70,7 @@ class WrestlersSuite extends munit.FunSuite:
   private def wrestledThenShielded(b: Board): Run =
     val wrestled = commit(rules(winningDice), b, 2)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
-    assertEquals(siteForces(wrestled.state, b), SiteForces.Empty)
+    assertEquals(Look(wrestled.state).forces(b.origin), SiteForces.Empty)
     // The next pass still offers the defender's other plan.
     assert(wrestled.offers(b.actor, b.rival, CampaignIds.defenderPlan,
       DecisionOptionRef.Relic(shield)))
@@ -102,5 +99,5 @@ class WrestlersSuite extends munit.FunSuite:
     val placed = placing.answer(b.actor, CampaignIds.placement,
       DecisionAnswer.ChooseAmountAnswer(2))
     assertEquals(placed.winner, Some(true))
-    assertEquals(siteForces(placed.state, b),
+    assertEquals(Look(placed.state).forces(b.origin),
       SiteForces.Occupied(ForceKind.Exile(b.player(b.actor).lineage), 2))

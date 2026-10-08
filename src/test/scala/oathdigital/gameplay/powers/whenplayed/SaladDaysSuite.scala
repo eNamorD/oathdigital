@@ -18,9 +18,6 @@ class SaladDaysSuite extends munit.FunSuite:
   private def staged(stocks: (Suit, Int)*): ReadyGame =
     Table.start.adviser(p1, salad).favor(p1, 1).banksHoldingOnly(stocks*).ready
 
-  private def banks(ready: ReadyGame, suits: Suit*): Vector[Int] =
-    suits.toVector.map(ready.banks.favor.getOrElse(_, 0))
-
   private def choose(suits: Suit*): DecisionAnswer =
     DecisionAnswer.ChooseManyAnswer(
       suits.toVector.map(DecisionOptionRef.FavorBank(_)))
@@ -41,19 +38,18 @@ class SaladDaysSuite extends munit.FunSuite:
       SaladDays.decisionId, choose(Suit.Discord, Suit.Hearth, Suit.Beast)))
     // p1's 1 favor and 1 from each of the three banks chosen.
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
-    assertEquals(banks(done.treeless, Suit.Discord, Suit.Order, Suit.Hearth,
-      Suit.Beast), Vector(1, 1, 2, 0))
+    assertEquals(Vector(Suit.Discord, Suit.Order, Suit.Hearth, Suit.Beast)
+      .map(Look(done.treeless).bankFavor), Vector(1, 1, 2, 0))
     assertJournalRebuilds(ready, first.events ++ done.events, done.treeless)
-    assertEquals(said(power, done.events),
-      Vector.empty)
+    assertEquals(said(power, done.events), Vector.empty)
 
   test("with three stocked banks it takes 1 from each without asking"):
     val ready = staged(Suit.Arcane -> 1, Suit.Order -> 2, Suit.Nomad -> 5)
     val done = Outcomes.finished(play(ready, power, salad))
     // p1's 1 favor and 1 from each stocked bank.
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
-    assertEquals(banks(done.treeless, Suit.Arcane, Suit.Order, Suit.Nomad),
-      Vector(0, 1, 4))
+    assertEquals(Vector(Suit.Arcane, Suit.Order, Suit.Nomad)
+      .map(Look(done.treeless).bankFavor), Vector(0, 1, 4))
 
   test("with two stocked banks it takes 1 from each"):
     val done = Outcomes.finished(

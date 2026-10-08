@@ -13,9 +13,6 @@ class ShieldWallSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Shield Wall")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
-  private def warbands(state: OathState, who: PlayerId): Int =
-    Look(state).player(who).board.warbands
-
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(ShieldWall.id, ShieldWall.noteKeys, run.events)
 
@@ -45,7 +42,7 @@ class ShieldWallSuite extends munit.FunSuite:
     // Four swords beat the two warbands and four blank dice. Both warbands
     // at the origin die, and the one the victory returns dies again.
     assertEquals(done.winner, Some(true))
-    assertEquals(warbands(done.state, b.rival), 3)
+    assertEquals(Look(done.state).boardWarbands(b.rival), 3)
     assertEquals(lines(done), Vector(killed(b.rival)))
 
   test("a defeated Raid defender loses its whole board"):
@@ -59,7 +56,7 @@ class ShieldWallSuite extends munit.FunSuite:
     val done = won.pick(b.actor, CampaignIds.relocation,
       won.offered(b.actor).head)
     assertEquals(done.winner, Some(true))
-    assertEquals(warbands(done.state, b.rival), 0)
+    assertEquals(Look(done.state).boardWarbands(b.rival), 0)
     assertEquals(lines(done), Vector(killed(b.rival)))
 
   test("a defender who wins loses nothing more"):
@@ -68,7 +65,7 @@ class ShieldWallSuite extends munit.FunSuite:
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     // Four hollow swords make 2, against the origin's two warbands.
     assertEquals(done.winner, Some(false))
-    assertEquals(warbands(done.state, b.rival), 3)
+    assertEquals(Look(done.state).boardWarbands(b.rival), 3)
     assertEquals(ready(done.state).game.current.map.sites(b.origin).forces,
       SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), 2))
     assertEquals(lines(done), Vector.empty)
@@ -87,7 +84,7 @@ class ShieldWallSuite extends munit.FunSuite:
     assertEquals(done.winner, Some(true))
     // Both origin warbands stayed dead, the returned one killed again, and
     // Hospital places both on its site beside the two already there.
-    assertEquals(warbands(done.state, b.rival), 3)
+    assertEquals(Look(done.state).boardWarbands(b.rival), 3)
     assertEquals(ready(done.state).game.current.map.sites(site).forces,
       SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), 4))
     assertEquals(lines(done), Vector(killed(b.rival)))
@@ -105,5 +102,5 @@ class ShieldWallSuite extends munit.FunSuite:
     assertEquals(done.winner, Some(true))
     // Shield Wall kills the returned warband. Sticky Fire finds nothing more
     // to kill, and the three the rival held before the Campaign stay.
-    assertEquals(warbands(done.state, b.rival), 3)
+    assertEquals(Look(done.state).boardWarbands(b.rival), 3)
     assertEquals(lines(done), Vector(killed(b.rival)))

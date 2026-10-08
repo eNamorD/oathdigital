@@ -38,9 +38,6 @@ class WarningSignalsSuite extends munit.FunSuite:
       site != b.origin && map.sites(site).forces == exile(b, 2)),
       "a second site the rival rules")
 
-  private def forcesAt(state: OathState, site: SiteId): SiteForces =
-    ready(state).game.current.map.sites(site).forces
-
   private def exile(b: Board, count: Int): SiteForces =
     SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), count)
 
@@ -59,7 +56,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     val run = chosen(b)
     assert(awaits(run, b.rival, decision))
     // Nothing has moved yet, and the card has not been discarded.
-    assertEquals(forcesAt(run.state, b.origin), exile(b, 2))
+    assertEquals(Look(run.state).forces(b.origin), exile(b, 2))
     assertEquals(Look(run.state).player(b.rival).board.warbands, 3)
 
   test("the answer moves warbands between the board and the sites, keeping " +
@@ -68,8 +65,8 @@ class WarningSignalsSuite extends munit.FunSuite:
     val run = chosen(b)
     val moved = run.answer(b.rival, decision,
       arrangement(b, board = 0, origin = 4, extra = 3))
-    assertEquals(forcesAt(moved.state, b.origin), exile(b, 4))
-    assertEquals(forcesAt(moved.state, secondSite(b)), exile(b, 3))
+    assertEquals(Look(moved.state).forces(b.origin), exile(b, 4))
+    assertEquals(Look(moved.state).forces(secondSite(b)), exile(b, 3))
     assertEquals(Look(moved.state).player(b.rival).board.warbands, 0)
     // The window then offers what is left, so the defender finishes it.
     assert(awaits(moved, b.rival, CampaignIds.defenderPlan))
@@ -78,8 +75,8 @@ class WarningSignalsSuite extends munit.FunSuite:
     val b = defending
     val moved = chosen(b).answer(b.rival, decision, arrangement(b, board = 5,
       origin = 1, extra = 1))
-    assertEquals(forcesAt(moved.state, b.origin), exile(b, 1))
-    assertEquals(forcesAt(moved.state, secondSite(b)), exile(b, 1))
+    assertEquals(Look(moved.state).forces(b.origin), exile(b, 1))
+    assertEquals(Look(moved.state).forces(secondSite(b)), exile(b, 1))
     assertEquals(Look(moved.state).player(b.rival).board.warbands, 5)
 
   test("the defense is scored with the force the rearrangement left " +

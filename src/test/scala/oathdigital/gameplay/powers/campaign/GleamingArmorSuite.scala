@@ -96,8 +96,6 @@ class GleamingArmorSuite extends munit.FunSuite:
     def defenseChanges(run: Run): Int = run.ops.count:
       case ModifyDicePool(pool, _, _) => pool != CampaignIds.attackPool
       case _ => false
-    def orderBank(state: OathState): Int =
-      ready(state).banks.favor.getOrElse(Suit.Order, 0)
     // Without the holder the bandit applies both plans by itself: Watchdog's
     // die and a record of each, on top of the printed defense.
     val plain = commit(rules(losingDice), free, 2)
@@ -112,9 +110,10 @@ class GleamingArmorSuite extends munit.FunSuite:
     val won = plain.finishPlanWindows
     val lost = armored.finishPlanWindows
     assertEquals(won.winner, Some(false))
-    assertEquals(orderBank(won.state),
-      orderBank(OathState.Ready(free.ready)) - 2)
-    assertEquals(orderBank(lost.state), orderBank(OathState.Ready(free.ready)))
+    assertEquals(Look(won.state).bankFavor(Suit.Order),
+      Look(free.ready).bankFavor(Suit.Order) - 2)
+    assertEquals(Look(lost.state).bankFavor(Suit.Order),
+      Look(free.ready).bankFavor(Suit.Order))
 
   // ---- the defender holds it: the attacker's plans cost more ---------------
 

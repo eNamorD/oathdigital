@@ -29,13 +29,6 @@ class CallForHelpSuite extends munit.FunSuite:
   private def named(cards: String*): Vector[WorldCardId] =
     cards.toVector.map(CatalogNames.worldCard(_))
 
-  private def pileOf(ready: ReadyGame, region: Region): Vector[WorldCardId] =
-    ready.game.current.commonCards.discard(region)
-
-  private def knows(ready: ReadyGame, viewer: PlayerId, card: WorldCardId)
-      : Boolean =
-    ready.knowledge.advisers.getOrElse(viewer, Vector.empty).contains(card)
-
   private val nothingLine = NoteText.Said("none", "Nothing was revealed.",
     covers = false)
 
@@ -50,12 +43,12 @@ class CallForHelpSuite extends munit.FunSuite:
     val drawn = named("Mountain Giant", "Wild Mounts", "Spinning Bee")
     assertEquals(amountMaximaAsked(walked), Vector(4))
     // A pile stores its top last, so the first drawn is deepest.
-    assertEquals(pileOf(walked.end, next), drawn)
-    assertEquals(pileOf(walked.end, cradle), named("Old Songs"))
+    assertEquals(Look(walked.end).discardPile(next), drawn)
+    assertEquals(Look(walked.end).discardPile(cradle), named("Old Songs"))
     // The quiet table's 3 warbands, and 2 for each of the two Nomad cards.
     assertEquals(Look(walked.end).boardWarbands(p1), 3 + 4)
     for card <- drawn; viewer <- Vector(p1, p2, p3) do
-      assert(knows(walked.end, viewer, card), s"$viewer does not know $card")
+      assert(Look(walked.end).knowsAdviser(viewer, card), s"$viewer does not know $card")
     assertEquals(said(power, walked.events), Vector(NoteText.Said("revealed",
       s"Revealed and discarded ${drawn.map(_.value).mkString(", ")}, and " +
         "gained 4 warbands.", covers = true)))
@@ -70,7 +63,7 @@ class CallForHelpSuite extends munit.FunSuite:
       chooseOne(CallForHelp.keep), amount(1))
     // Six drawn, so no third question.
     assertEquals(amountMaximaAsked(walked), Vector(6, 1))
-    assertEquals(pileOf(walked.end, cradle), named("Old Songs",
+    assertEquals(Look(walked.end).discardPile(cradle), named("Old Songs",
       "Spinning Bee"))
     assertEquals(said(power, walked.events).map(_.key),
       Vector("discarded", "discarded"))
@@ -89,7 +82,7 @@ class CallForHelpSuite extends munit.FunSuite:
     val ready = cradlePile("Old Songs", "Spinning Bee").ready
     val walked = walkAnswering(ready, power, played, amount(0))
     assertEquals(PhasePowerHarness.ops(walked.events), Vector.empty)
-    assertEquals(pileOf(walked.end, cradle), named("Old Songs",
+    assertEquals(Look(walked.end).discardPile(cradle), named("Old Songs",
       "Spinning Bee"))
     assertEquals(said(power, walked.events), Vector(nothingLine))
 

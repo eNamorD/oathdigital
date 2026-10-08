@@ -25,9 +25,6 @@ class HospitalSuite extends munit.FunSuite:
     * boards have no extras, so nobody else rules it. */
   private val hospitalSite = CatalogNames.site("Broken Peaks")
 
-  private def forces(state: OathState, site: SiteId): SiteForces =
-    ready(state).game.current.map.sites(site).forces
-
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(Hospital.id, Vector(Hospital.placed), run.events)
 
@@ -53,7 +50,7 @@ class HospitalSuite extends munit.FunSuite:
     assert(done.ops.contains(Kill(Piece.Warbands(kind(b, b.actor), 2),
       PositionedLocation(Location.PlayArea(b.actor)))))
     assert(done.ops.contains(returned(b, b.actor, 2, hospitalSite)))
-    assertEquals(forces(done.state, hospitalSite),
+    assertEquals(Look(done.state).forces(hospitalSite),
       SiteForces.Occupied(kind(b, b.actor), 4))
     assertEquals(Look(done.state).player(b.actor).board.warbands, 3)
     assertEquals(lines(done), Vector(placed(2, b.actor, hospitalSite)))
@@ -70,7 +67,7 @@ class HospitalSuite extends munit.FunSuite:
     // Two warbands held the origin: one returns to the board as usual, and
     // the one that died is placed on Hospital's site.
     assertEquals(Look(done.state).player(b.rival).board.warbands, before + 1)
-    assertEquals(forces(done.state, hospitalSite),
+    assertEquals(Look(done.state).forces(hospitalSite),
       SiteForces.Occupied(kind(b, b.rival), 3))
     assertEquals(lines(done), Vector(placed(1, b.rival, hospitalSite)))
 
@@ -83,7 +80,7 @@ class HospitalSuite extends munit.FunSuite:
     assertEquals(done.winner, Some(true))
     assert(!done.ops.contains(returned(b, b.rival, 1, b.origin)))
     // No saved warband comes back to the lost site.
-    assert(forces(done.state, b.origin) match
+    assert(Look(done.state).forces(b.origin) match
       case SiteForces.Occupied(held, _) => held != kind(b, b.rival)
       case SiteForces.Empty => true)
     assertEquals(lines(done), Vector.empty)
@@ -104,7 +101,7 @@ class HospitalSuite extends munit.FunSuite:
     // The two the defeat kills, then the three Sticky Fire kills from the
     // board, all come back to Hospital's site.
     assertEquals(Look(done.state).player(b.actor).board.warbands, 0)
-    assertEquals(forces(done.state, hospitalSite),
+    assertEquals(Look(done.state).forces(hospitalSite),
       SiteForces.Occupied(kind(b, b.actor), 7))
     assertEquals(lines(done), Vector(placed(5, b.actor, hospitalSite)))
 
@@ -131,16 +128,16 @@ class HospitalSuite extends munit.FunSuite:
       .pick(b.rival, CampaignIds.defenderPlan, wrestlersRef)
     assert(picked.ops.exists(_.isInstanceOf[Sacrifice]))
     // Until the end the sacrificed warband is dead: it leaves the force.
-    assertEquals(forces(picked.state, b.origin),
+    assertEquals(Look(picked.state).forces(b.origin),
       SiteForces.Occupied(kind(b, b.rival), 1))
-    assertEquals(forces(picked.state, hospitalSite),
+    assertEquals(Look(picked.state).forces(hospitalSite),
       SiteForces.Occupied(kind(b, b.rival), 2))
     val done = picked.finishPlanWindows
     assertEquals(done.winner, Some(true))
     // The last origin warband dies and returns to the board as the returned
     // half; only the sacrificed one is saved.
     assertEquals(Look(done.state).player(b.rival).board.warbands, before + 1)
-    assertEquals(forces(done.state, hospitalSite),
+    assertEquals(Look(done.state).forces(hospitalSite),
       SiteForces.Occupied(kind(b, b.rival), 3))
     assertEquals(lines(done), Vector(placed(1, b.rival, hospitalSite)))
 
@@ -150,7 +147,7 @@ class HospitalSuite extends munit.FunSuite:
       .pick(b.rival, CampaignIds.defenderPlan, wrestlersRef)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(true))
-    assertEquals(forces(done.state, hospitalSite),
+    assertEquals(Look(done.state).forces(hospitalSite),
       SiteForces.Occupied(kind(b, b.rival), 2))
     assertEquals(lines(done), Vector.empty)
 
@@ -170,7 +167,7 @@ class HospitalSuite extends munit.FunSuite:
     // The Raid kills half of the three on the board, rounded down; the one
     // killed comes back to Hospital's site, not to the board.
     assertEquals(Look(done.state).player(b.rival).board.warbands, 2)
-    assertEquals(forces(done.state, hospitalSite),
+    assertEquals(Look(done.state).forces(hospitalSite),
       SiteForces.Occupied(kind(b, b.rival), 3))
     assertEquals(lines(done), Vector(placed(1, b.rival, hospitalSite)))
 

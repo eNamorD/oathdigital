@@ -29,9 +29,6 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
       case (table, (site, n)) => table.warbandsAt(site, p1, n)
     }.boardWarbands(p1, onBoard).ready
 
-  private def forcesAt(ready: ReadyGame, site: SiteId): SiteForces =
-    ready.game.current.map.sites(site).forces
-
   private def chooseSites(chosen: SiteId*): DecisionAnswer =
     DecisionAnswer.ChooseManyAnswer(
       chosen.toVector.map(DecisionOptionRef.Site(_)))
@@ -39,7 +36,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
   test("it gains one warband per ruled site and puts one on each"):
     val ready = ruling(Vector(1, 1, 1), onBoard = 5)
     val done = Outcomes.finished(play(ready, power, card))
-    sites.foreach(site => assertEquals(forcesAt(done.treeless, site),
+    sites.foreach(site => assertEquals(Look(done.treeless).forces(site),
       SiteForces.Occupied(kind, 2)))
     // 5 on the board, 3 gained from the bank and 3 placed.
     assertEquals(Look(done.treeless).player(p1).board.warbands, 5)
@@ -69,11 +66,11 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
 
     val done = Outcomes.finished(resume(atChoice, power, played, first.tree,
       Garrison.decisionId, chooseSites(brokenPeaks)))
-    assertEquals(forcesAt(done.treeless, brokenPeaks),
+    assertEquals(Look(done.treeless).forces(brokenPeaks),
       SiteForces.Occupied(kind, 4 + 1))
-    assertEquals(forcesAt(done.treeless, ancientCity),
+    assertEquals(Look(done.treeless).forces(ancientCity),
       SiteForces.Occupied(kind, 4))
-    assertEquals(forcesAt(done.treeless, buriedGiant),
+    assertEquals(Look(done.treeless).forces(buriedGiant),
       SiteForces.Occupied(kind, 5))
     assertEquals(Look(done.treeless).player(p1).board.warbands, 0)
     assertJournalRebuilds(ready, first.events ++ done.events, done.treeless)
