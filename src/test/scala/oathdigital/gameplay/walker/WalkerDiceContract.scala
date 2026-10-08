@@ -94,7 +94,6 @@ class WalkerDiceFixtureSuite
       defense = Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank)),
       poolSizes = Vector(2)))
   protected def shufflers = Vector(
-    "reversing shuffle" -> WalkerDiceFixture.shufflingBy(count =>
-      (0 until count).reverse.toVector),
+    "reversing shuffle" -> WalkerDiceFixture.reversingShuffle,
     "unchanged shuffle" -> WalkerDiceFixture.shufflingBy(count =>
       (0 until count).toVector))

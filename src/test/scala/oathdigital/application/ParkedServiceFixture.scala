@@ -11,8 +11,8 @@ import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerParked}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Dice, PlacementPicks, Situation,
-  SituationDriver, Table, Unwrap}
+import oathdigital.testkit.{CatalogNames, Dice, Look, Outcomes, PlacementPicks,
+  Situation, SituationDriver, Table, Unwrap}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** Real games parked on a walker through the application service.
@@ -66,12 +66,14 @@ object ParkedServiceFixture:
     * command batches it is. */
   final case class TravelBatches(started: GameAccepted, picked: GameAccepted)
 
-  /** `actor` Travels through `service` to where `to` stands on the quiet
-    * table, at journal position `sequence` of game `gameId`. */
+  /** `actor` Travels through `service` to the site where `to`'s pawn stands
+    * in game `gameId` as stored, at journal position `sequence`. */
   def travelToPawnOf(service: GameApplicationService, gameId: String,
       sequence: Long, actor: PlayerId, to: PlayerId)(using munit.Location)
       : TravelBatches =
-    travelTo(service, gameId, sequence, actor, Table.quietPawnSite(to))
+    val standing = Look(Outcomes.ready(loaded(service.load(gameId)).state))
+      .pawn(to)
+    travelTo(service, gameId, sequence, actor, standing)
 
   /** `actor` Travels through `service` to `site`, at journal position
     * `sequence` of game `gameId`. */
