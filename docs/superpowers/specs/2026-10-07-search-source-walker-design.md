@@ -35,8 +35,15 @@ the source, and News from Afar waives the Supply whatever the source. Forced
 Labor's toll sits in `SearchCost` and applies to both sources alike.
 
 A regional discard pile is already a board option (`DecisionOptionRef.DiscardPile`,
-option kind `discard-pile`). The world deck pile is drawn as a plain display.
-Clay Rattle offers its four piles as `Button` options in the Action panel.
+option kind `discard-pile`), labelled for card play: "Discard to the Cradle
+discard". `DecisionOptionRef.Deck(CardDeck.World)` (kind `deck`, id `world`)
+already names the world deck, but has no board home: the World pane draws the
+world deck pile as a plain display. Clay Rattle offers its four piles as
+`Button` options in the Action panel.
+
+The service checks a Search's draw against its random port
+(`SearchDrawPort`) when the Search starts, reading the source from the start
+selection.
 
 ## Rulings
 
@@ -45,10 +52,12 @@ Clay Rattle offers its four piles as `Button` options in the Action panel.
    costs are paid inside the walk, after the source is picked.
 2. **The source is a board decision.** The walk's first node is a board
    choose-one, `search.source`, headed "Choose a Search source". Its options
-   are the world deck (`DecisionOptionRef.WorldDeck`, option kind
-   `world-deck`) and the actor's region's discard pile
+   are the world deck (`DecisionOptionRef.Deck(CardDeck.World)`, option kind
+   `deck`) and the actor's region's discard pile
    (`DecisionOptionRef.DiscardPile(region)`). Other regions' discards are not
-   offered.
+   offered. The options read "World deck" and "Cradle discard pile"; a card
+   play's discard option reads the same, in place of "Discard to the Cradle
+   discard".
 3. **Every option says what it costs.** Each available source is `Badged`
    with its cost under the selected modifiers, worded as Travel's ruling 3:
    - Supply only: "3 Supply". A Search that spends no Supply reads "0 Supply".
@@ -75,7 +84,7 @@ Clay Rattle offers its four piles as `Button` options in the Action panel.
    as Travel's does. The source pick posts no "Chose" line, since "Drew …
    from the world deck and kept …" names the source.
 8. **Clay Rattle's piles are on the board.** Its `power.clay-rattle.pile`
-   decision offers `WorldDeck` and the three `DiscardPile` refs instead of
+   decision offers the world deck and the three `DiscardPile` refs instead of
    buttons, so the board-home rule draws them on the board. Empty piles stay
    pickable, as the card allows any pile. They carry no badge: the secrets
    are paid when the power is used, before the pick. Its note is unchanged.
@@ -103,6 +112,8 @@ Sequence(
 - `SearchProcedure.startable` previews the fresh tree for the legal-action
   projection, under each modifier selection through
   `startableWithModifiers`, as Travel's does.
+- The service's draw-port check moves from the start to the `search.source`
+  answer, which is where the draw now happens.
 
 ### Options
 
@@ -129,11 +140,9 @@ buttons in `ActionDecisionRenderer`.
 
 - A `beginSearch` control sends `StartWalker("search")` through the modifier
   flow.
-- `DecisionOptionRef` and its wire codec gain `WorldDeck` (`world-deck`).
-- The World pane draws the world deck pile through `options.control` under
-  the `world-deck` key, as it draws discard piles. `BoardHomes` gains a
-  `world-deck` home. A badge or reason renders on the pile as it does on a
-  site.
+- The World pane marks the world deck pile as the `deck:world` option, and
+  `BoardHomes` gives the world deck a home. A badge renders inside a pile as
+  it does on a site box, and a reason is the pile's hover text.
 
 ### Persistence
 
@@ -148,15 +157,17 @@ release.
   A start with a selection is refused, and a start with no available source is
   refused.
 - **Pricing.** Badges for plain Supply, News from Afar ("0 Supply"),
-  Disciples and Forced Labor's toll. Reasons for a Supply shortfall, a toll
-  shortfall and an empty pile. Travel's pricing suites pass unchanged after the
-  extraction.
+  Disciples and Forced Labor's toll. Reasons for a Supply shortfall and an
+  empty pile. A toll shortfall cannot show at a parked Search, since the toll
+  falls on both piles and a start neither can pay is refused; the shared
+  wording is Travel's, whose suites pass unchanged after the extraction.
 - **Clay Rattle.** Its answers are pile refs, and an empty pile can be picked.
 - **Game Log.** The start line's placement, and no "Chose" line for the
   source pick.
-- **Service.** Undo takes back the start and the source answer.
+- **Service.** Undo takes back the start. The source answer draws, so it is
+  an undo barrier. The draw-port check refuses a tampered draw at the answer.
 - **Frontend.** The launch sends no selection. Both piles render as board
-  options with badges and reasons. The codec round-trips `world-deck`.
+  options with badges and reasons. The world deck has a board home.
 - Existing suites that start a Search with a source selection move to start,
   then answer; most go through `SearchFixture`.
 
