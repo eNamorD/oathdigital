@@ -4,7 +4,7 @@ import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.walker.{WalkerOutcome, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PlacementPicks, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.as
 
@@ -65,9 +65,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     val fillers = Vector(kept, other, CatalogNames.denizen("Wrestlers"))
     val ready = playing(fillers*).ready
     val tree = build(ready, p1, card)
-    def siteSlots(under: WalkerPowers) = options(ready, tree,
-      park(ready, tree, under), under)
-      .filter(_.isInstanceOf[DecisionOptionRef.SiteSlot])
+    def siteSlots(under: WalkerPowers) = PlacementPicks.siteSlotRefs(
+      options(ready, tree, park(ready, tree, under), under))
     assertEquals(siteSlots(WalkerPowers.empty), Vector.empty)
     assertEquals(siteSlots(powers), Vector(slot(0), slot(1), slot(2)))
     val done = playedTo(ready, slot(0))
@@ -93,5 +92,5 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
         DecisionOptionRef.AdviserPlay(p1, 0, faceup = true),
         DecisionOptionRef.AdviserPlay(p1, 1, faceup = true)))
     // And the site still offers its empty slot and the Replace slot.
-    assertEquals(offered.filter(_.isInstanceOf[DecisionOptionRef.SiteSlot]),
+    assertEquals(PlacementPicks.siteSlotRefs(offered),
       Vector(slot(1), slot(0)))

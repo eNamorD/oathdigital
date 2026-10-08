@@ -29,10 +29,17 @@ object PlacementFixture:
             case _ => ops
           })))
 
+  /** A plain site discard permission named `name`, of any card, whose line
+    * says nothing. */
+  def plainPermission(name: String): DiscardPermission = DiscardPermission(
+    PowerId(name), Note(PowerId(name), _ => None))
+
   /** A plain site discard permission, of any card, whose line says nothing. */
-  val testPermission: DiscardPermission = DiscardPermission(
-    PowerId("test.discard-first"),
-    Note(PowerId("test.discard-first"), _ => None))
+  val testPermission: DiscardPermission = plainPermission("test.discard-first")
+
+  /** A second plain site discard permission, besides `testPermission`. */
+  val secondTestPermission: DiscardPermission =
+    plainPermission("test.second-discard")
 
   /** Stub of ContributingPower: adds `testPermission`. */
   val discardFirst: ContributingPower =

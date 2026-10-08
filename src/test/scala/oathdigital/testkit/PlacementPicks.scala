@@ -81,3 +81,11 @@ object PlacementPicks:
       : Vector[DecisionOption] = decide.query match
     case DecisionQuery.ChooseOne(options, _) => options
     case other => munit.Assertions.fail(s"not a choose-one: $other")
+
+  /** The site slot references among `refs`, in order. */
+  def siteSlotRefs(refs: Vector[DecisionOptionRef]): Vector[DecisionOptionRef] =
+    refs.filter(_.isInstanceOf[DecisionOptionRef.SiteSlot])
+
+  /** The site slot options among `options`, in order. */
+  def siteSlotOptions(options: Vector[DecisionOption]): Vector[DecisionOption] =
+    options.filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])

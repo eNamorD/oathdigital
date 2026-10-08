@@ -1,13 +1,13 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{CardPlay, CardPlayRules,
-  DiscardPermission, RuleNotes, VisionRules}
+import oathdigital.gameplay.actions.{CardPlay, CardPlayRules, RuleNotes,
+  VisionRules}
 import oathdigital.gameplay.actions.cardplay.{CardSlot, CardSlots,
   MoreDiscards}
 import oathdigital.gameplay.powers.search.CropRotation
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Table, TestCards}
+import oathdigital.testkit.{CatalogNames, PlacementPicks, Table, TestCards}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -18,7 +18,7 @@ import oathdigital.testkit.Unwrap.{accepted, present}
   * Provinces.
   */
 class CardSlotsSuite extends munit.FunSuite:
-  import PlacementFixture.testPermission
+  import PlacementFixture.{secondTestPermission, testPermission}
 
   private val home = CatalogNames.site("Ancient City")
   /** The Beast Homeland, room for three. */
@@ -39,9 +39,6 @@ class CardSlotsSuite extends munit.FunSuite:
   private val play = DecisionOption.Button(CardSlots.play, "Play")
   private val spot = DecisionOption.RevealedVision(
     DecisionOptionRef.RevealedVision(p1))
-  /** A second plain site discard permission, besides `testPermission`. */
-  private val second = DiscardPermission(PowerId("test.second-discard"),
-    Note(PowerId("test.second-discard"), _ => None))
   private val permitted = CardPlayRules.default.permitSiteDiscard(testPermission)
 
   private def slotsOf(ready: ReadyGame, played: WorldCardId = card,
@@ -69,7 +66,7 @@ class CardSlotsSuite extends munit.FunSuite:
 
   /** The site slot options of `slots`, in order. */
   private def atSite(slots: Vector[CardSlot]): Vector[DecisionOption] =
-    options(slots).filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])
+    PlacementPicks.siteSlotOptions(options(slots))
 
   /** The adviser play options of `slots` with that facing, in order. */
   private def advisers(slots: Vector[CardSlot], faceup: Boolean)
@@ -78,14 +75,13 @@ class CardSlotsSuite extends munit.FunSuite:
       case DecisionOptionRef.AdviserPlay(_, _, up) => up == faceup
       case _ => false)
 
-  /** p1 holds Errand Boy in hand at Ancient City, which holds `cards`. */
+  /** Ancient City holds `cards`. */
   private def atHome(cards: DenizenId*): Table =
-    cards.foldLeft(Table.start.hand(p1, card))((table, held) =>
-      table.denizen(held, at = home))
+    cards.foldLeft(Table.start)((table, held) => table.denizen(held, at = home))
 
-  /** p1 holds Errand Boy in hand and `held` as facedown advisers. */
+  /** p1 holds `held` as facedown advisers. */
   private def holding(held: DenizenId*): Table =
-    held.foldLeft(Table.start.hand(p1, card))(_.adviser(p1, _, facedown = true))
+    held.foldLeft(Table.start)(_.adviser(p1, _, facedown = true))
 
   /** p1 rules Deep Woods, stands there with `played` in hand, and Deep Woods
     * holds `cards`. */
@@ -95,16 +91,18 @@ class CardSlotsSuite extends munit.FunSuite:
 
   test("an empty table offers the discard pile, the first empty site slot " +
       "and the first adviser slot each way, in that order"):
-    assertEquals(options(slotsOf(atHome().ready)), Vector(pile, siteSlot(0),
-      adviserPlay(0, faceup = true), adviserPlay(0, faceup = false)))
+    assertEquals(options(slotsOf(atHome().hand(p1, card).ready)),
+      Vector(pile, siteSlot(0), adviserPlay(0, faceup = true),
+        adviserPlay(0, faceup = false)))
 
   test("a site with room offers only its first empty slot when nothing " +
       "permits a discard"):
-    assertEquals(atSite(slotsOf(atHome(rainBoots, binding).ready)),
-      Vector(siteSlot(2)))
+    val ready = atHome(rainBoots, binding).hand(p1, card).ready
+    assertEquals(atSite(slotsOf(ready)), Vector(siteSlot(2)))
 
   test("a permission marks each site card Replace, after the empty slot"):
-    val slots = slotsOf(atHome(rainBoots, binding).ready, rules = permitted)
+    val ready = atHome(rainBoots, binding).hand(p1, card).ready
+    val slots = slotsOf(ready, rules = permitted)
     assertEquals(atSite(slots), Vector(siteSlot(2),
       replacing(siteSlot(0), rainBoots), replacing(siteSlot(1), binding)))
     assertEquals(slots.find(_.option == replacing(siteSlot(0), rainBoots))
@@ -112,7 +110,7 @@ class CardSlotsSuite extends munit.FunSuite:
 
   test("a full site is offered only as Replace slots, and not at all " +
       "without a permission"):
-    val full = atHome(rainBoots, binding, wrestlers).ready
+    val full = atHome(rainBoots, binding, wrestlers).hand(p1, card).ready
     assertEquals(atSite(slotsOf(full)), Vector.empty)
     assertEquals(atSite(slotsOf(full, rules = permitted)), Vector(
       replacing(siteSlot(0), rainBoots), replacing(siteSlot(1), binding),
@@ -123,10 +121,10 @@ class CardSlotsSuite extends munit.FunSuite:
     assertEquals(CardPlay.homelandSuit(catalog, home), None)
     // A variant Ancient City printing an Order Homeland keeps its handlers.
     val city = present(catalog.site(home), "Ancient City")
-    val variant = catalog.copy(sites = catalog.sites.map(site =>
-      if site.id == city.id then
+    val variant = catalog.copy(sites = catalog.sites.map(printed =>
+      if printed.id == city.id then
         TestCards.siteLike(city)(homeland = Some(Suit.Order))
-      else site))
+      else printed))
     assertEquals(CardPlay.homelandSuit(variant, city.id), Some(Suit.Order))
 
   test("playing a card of the Homeland's suit there may replace any card at " +
@@ -149,22 +147,26 @@ class CardSlotsSuite extends munit.FunSuite:
 
   test("an intact edifice and a faceup locked adviser are shown Locked; a " +
       "facedown locked adviser is not"):
-    val site = atHome(rainBoots).edifice(hall, EdificeSide.Intact, at = home)
+    val hallAtHome = atHome(rainBoots).hand(p1, card)
+      .edifice(hall, EdificeSide.Intact, at = home)
       .warbandsAt(home, p1, 1).ready
-    assertEquals(atSite(slotsOf(site, rules = permitted)), Vector(siteSlot(2),
+    assertEquals(atSite(slotsOf(hallAtHome, rules = permitted)), Vector(siteSlot(2),
       replacing(siteSlot(0), rainBoots), locked(replacing(siteSlot(1), hall))))
     def full(lockedFacedown: Boolean) = holding(rainBoots, binding)
-      .adviser(p1, sealingWard, facedown = lockedFacedown).ready
+      .hand(p1, card).adviser(p1, sealingWard, facedown = lockedFacedown).ready
     assertEquals(advisers(slotsOf(full(lockedFacedown = false)), faceup = true),
       Vector(replacing(adviserPlay(0, faceup = true), rainBoots),
         replacing(adviserPlay(1, faceup = true), binding),
         locked(replacing(adviserPlay(2, faceup = true), sealingWard))))
-    assert(advisers(slotsOf(full(lockedFacedown = true)), faceup = true)
-      .forall(_.available))
+    assertEquals(advisers(slotsOf(full(lockedFacedown = true)), faceup = true),
+      Vector(replacing(adviserPlay(0, faceup = true), rainBoots),
+        replacing(adviserPlay(1, faceup = true), binding),
+        replacing(adviserPlay(2, faceup = true), sealingWard)))
 
   test("a card in use as a modifier shows why it stays"):
     val crop = CatalogNames.denizen("Crop Rotation")
-    val ready = atHome(crop).update(_.updateCurrent(
+    // No Table step states a modifier selected for the action in progress.
+    val ready = atHome(crop).hand(p1, card).update(_.updateCurrent(
       _.copy(walkerModifiers = Vector(CropRotation.id)))).ready
     assertEquals(atSite(slotsOf(ready, rules = permitted)), Vector(siteSlot(1),
       refused(replacing(siteSlot(0), crop), "In use as a modifier this action")))
@@ -184,11 +186,16 @@ class CardSlotsSuite extends munit.FunSuite:
       refused(replacing(siteSlot(0, woods), fillers(0)), hallProtects),
       refused(replacing(siteSlot(1, woods), fillers(1)), hallProtects),
       locked(replacing(siteSlot(2, woods), hall))))
-    assert(atSite(slotsOf(ruledBy(p1), roar)).take(2).forall(_.available))
+    // The Hall protects only against an enemy: its own ruler may replace the
+    // two ordinary cards, and the intact Hall itself stays locked.
+    assertEquals(atSite(slotsOf(ruledBy(p1), roar)), Vector(
+      replacing(siteSlot(0, woods), fillers(0)),
+      replacing(siteSlot(1, woods), fillers(1)),
+      locked(replacing(siteSlot(2, woods), hall))))
 
   test("a full adviser area is offered only as Replace, each adviser, each " +
       "facing"):
-    val ready = holding(rainBoots, binding, wrestlers).ready
+    val ready = holding(rainBoots, binding, wrestlers).hand(p1, card).ready
     Vector(true, false).foreach { faceup =>
       assertEquals(advisers(slotsOf(ready), faceup), Vector(
         replacing(adviserPlay(0, faceup), rainBoots),
@@ -198,24 +205,25 @@ class CardSlotsSuite extends munit.FunSuite:
 
   test("a lowered limit offers fewer slots, and nothing at or past it"):
     val limited = CardPlayRules.default.limitAdvisers(2)
-    val two = holding(rainBoots, binding)
-    assertEquals(advisers(slotsOf(two.ready), faceup = true),
+    val twoHeld = holding(rainBoots, binding).hand(p1, card)
+    assertEquals(advisers(slotsOf(twoHeld.ready), faceup = true),
       Vector(adviserPlay(2, faceup = true)))
-    assertEquals(advisers(slotsOf(two.ready, rules = limited), faceup = true),
+    assertEquals(advisers(slotsOf(twoHeld.ready, rules = limited),
+      faceup = true),
       Vector(replacing(adviserPlay(0, faceup = true), rainBoots),
         replacing(adviserPlay(1, faceup = true), binding)))
-    val three = two.adviser(p1, wrestlers, facedown = true).ready
+    val three = twoHeld.adviser(p1, wrestlers, facedown = true).ready
     Vector(true, false).foreach(faceup =>
       assertEquals(advisers(slotsOf(three, rules = limited), faceup),
         Vector.empty, s"faceup = $faceup"))
 
   test("the played card's own limit lowers only its faceup plays"):
     val rules = CardPlayRules.default.limitPlayedCard(2)
-    val two = holding(rainBoots, binding).ready
-    assertEquals(advisers(slotsOf(two, rules = rules), faceup = true),
+    val twoHeld = holding(rainBoots, binding).hand(p1, card).ready
+    assertEquals(advisers(slotsOf(twoHeld, rules = rules), faceup = true),
       Vector(replacing(adviserPlay(0, faceup = true), rainBoots),
         replacing(adviserPlay(1, faceup = true), binding)))
-    assertEquals(advisers(slotsOf(two, rules = rules), faceup = false),
+    assertEquals(advisers(slotsOf(twoHeld, rules = rules), faceup = false),
       Vector(adviserPlay(2, faceup = false)))
 
   test("a Vision never goes to a site, and faceup it goes to the revealed " +
@@ -280,8 +288,8 @@ class CardSlotsSuite extends munit.FunSuite:
 
   /** Ancient City full: Rain Boots, Ancient Binding and the ruined Hall. */
   private def fullWithHall: ReadyGame = atHome(rainBoots, binding)
-    .edifice(hall, EdificeSide.Ruined, at = home).ready
-  private val two = permitted.permitSiteDiscard(second)
+    .hand(p1, card).edifice(hall, EdificeSide.Ruined, at = home).ready
+  private val twoDiscards = permitted.permitSiteDiscard(secondTestPermission)
 
   private def replacingBoots(ready: ReadyGame, rules: CardPlayRules)
       : CardSlot = present(slotsOf(ready, rules = rules)
@@ -291,7 +299,8 @@ class CardSlotsSuite extends munit.FunSuite:
       "edifice included, up to the permissions left"):
     val ready = fullWithHall
     assertEquals(CardSlots.moreDiscards(catalog, ready, p1, card,
-      CardPlay.Origin.TemporaryHand, two, replacingBoots(ready, two)),
+      CardPlay.Origin.TemporaryHand, twoDiscards,
+      replacingBoots(ready, twoDiscards)),
       Some(MoreDiscards(DecisionOption.Denizen(
         DecisionOptionRef.Denizen(rainBoots)), Vector(
           DecisionOption.Denizen(DecisionOptionRef.Denizen(binding)),
@@ -304,15 +313,16 @@ class CardSlotsSuite extends munit.FunSuite:
   test("the credits name one permission per discard, in the order the " +
       "permissions are given, and refuse more discards than permissions"):
     val ready = fullWithHall
-    assertEquals(CardSlots.credits(catalog, ready, p1, card, two,
+    assertEquals(CardSlots.credits(catalog, ready, p1, card, twoDiscards,
       Vector(hall, rainBoots)), Right(Vector(testPermission.note,
-        second.note)))
-    assert(CardSlots.credits(catalog, ready, p1, card, permitted,
-      Vector(rainBoots, binding)).isLeft)
+        secondTestPermission.note)))
+    assertEquals(CardSlots.credits(catalog, ready, p1, card, permitted,
+      Vector(rainBoots, binding)), Left(OathViolation.InvalidSearchPlacement(
+        "more site cards are discarded than the permissions in play allow")))
 
   test("a play discards every site card named, the replaced one first, " +
       "before the play"):
-    val ready = atHome(rainBoots, binding).ready
+    val ready = atHome(rainBoots, binding).hand(p1, card).ready
     val operations = accepted(CardPlay.operations(catalog, ready, p1, card,
       SearchPlacement.Site(Some(rainBoots)), CardPlay.Origin.TemporaryHand,
       Vector(binding)))
@@ -320,14 +330,16 @@ class CardSlotsSuite extends munit.FunSuite:
       discard.card }, Vector[CardId](rainBoots, binding))
     assert(operations.indexWhere(_.isInstanceOf[Play]) >
       operations.lastIndexWhere(_.isInstanceOf[Discard.Denizen]))
-    assert(CardPlay.operations(catalog, ready, p1, card,
+    assertEquals(CardPlay.operations(catalog, ready, p1, card,
       SearchPlacement.Site(Some(rainBoots)), CardPlay.Origin.TemporaryHand,
-      Vector(rainBoots)).isLeft, "a card is discarded twice")
+      Vector(rainBoots)), Left(OathViolation.InvalidSearchPlacement(
+        "a site card is discarded twice")))
 
   test("a ruined edifice is discarded back to the edifice deck, not buried"):
-    val ready = atHome(rainBoots).edifice(hall, EdificeSide.Ruined, at = home)
+    val ready = atHome(rainBoots).hand(p1, card).edifice(hall, EdificeSide.Ruined, at = home)
       .ready
     val operations = accepted(CardPlay.operations(catalog, ready, p1, card,
       SearchPlacement.Site(Some(hall)), CardPlay.Origin.TemporaryHand))
-    assert(operations.exists(_.isInstanceOf[Discard.RuinedEdifice]))
-    assert(!operations.exists(_.isInstanceOf[Bury]))
+    assertEquals(operations.collect { case ruined: Discard.RuinedEdifice =>
+      ruined.card }, Vector(hall))
+    assertEquals(operations.collect { case bury: Bury => bury }, Vector.empty)
