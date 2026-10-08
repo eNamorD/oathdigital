@@ -14,6 +14,15 @@ private[frontend] object ActionDecisionRenderer:
    val node = element("div", "status")
    presentation.procedureStatus match
      case Some(message) => node.textContent = message
+     // A waiting viewer reads who may act and why; the entry's own player
+     // reads nothing, because the follow-up panel says it.
+     case None if value.followUp.nonEmpty =>
+       value.followUp.filterNot(_.playerId == presentation.playerId)
+         .foreach { followUp =>
+           node.appendChild(playerReference(value, followUp.playerId))
+           node.appendChild(dom.document.createTextNode(
+             s" may ${followUp.action} (${followUp.source})"))
+         }
      case None => presentation.waitingForPlayerId match
      case Some(playerId) =>
        node.appendChild(dom.document.createTextNode("Waiting for "))
@@ -93,7 +102,14 @@ private[frontend] object ActionDecisionRenderer:
        !value.legalControls.contains("endWake")
      end.onclick = _ => submitCommand(GameCommand.EndWake)
      panel.appendChild(end)
-   if showActActionControls(value, presentation) then
+   // A queued action's start opens the modifier flow as any start does, so
+   // its ordering replaces the panel until it is confirmed or cancelled.
+   val followUpPending = value.phase == "follow-up-pending" &&
+     presentation.showGameplayControls
+   if followUpPending && drafts.modifiers.isEmpty then
+     FollowUpControls.render(value, canControl, panel, submitCommand)
+   if showActActionControls(value, presentation) ||
+       (followUpPending && drafts.modifiers.nonEmpty) then
      if drafts.modifiers.nonEmpty then
        val draft = drafts.modifiers.get
        panel.appendChild(text("h2", "", s"Order ${actionLabel(draft.preview.action)} modifiers"))

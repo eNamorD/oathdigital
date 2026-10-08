@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.frontend.ServerModeFixtures.twoSeatProjection
+import oathdigital.protocol.projection.FollowUpProjection
 
 import munit.FunSuite
 
@@ -159,3 +160,15 @@ class ViewerPresentationSuite extends FunSuite:
         ServerUiSupport.viewerPresentation(value, "red-exile"))
       assertEquals(status.textContent, "", phase)
     }
+
+  test("while an action is queued, a waiting player reads who may take it"):
+    val value = twoSeatProjection(Set.empty, phase = "follow-up-pending")
+      .copy(followUp = Some(FollowUpProjection("red-exile", "campaign",
+        "Campaign", "Knights Errant", startable = true)))
+    val waiting = ActionDecisionRenderer.status(value,
+      ServerUiSupport.viewerPresentation(value, "blue-exile"))
+    assert(waiting.textContent.endsWith(" may campaign (Knights Errant)"),
+      waiting.textContent)
+    val owner = ActionDecisionRenderer.status(value,
+      ServerUiSupport.viewerPresentation(value, "red-exile"))
+    assertEquals(owner.textContent, "")
