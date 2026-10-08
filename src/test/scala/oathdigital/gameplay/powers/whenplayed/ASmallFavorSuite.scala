@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.model.ReadyGame
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   Table}
@@ -10,7 +9,7 @@ class ASmallFavorSuite extends munit.FunSuite:
   import PowerFixture._
   import WhenPlayedHarness._
 
-  private val power = ASmallFavor
+  private val power = registered[ASmallFavor.type]
   private val card = power.cardId
   private val kind = Look(quietTable).forceKind(actor)
 
@@ -21,9 +20,6 @@ class ASmallFavorSuite extends munit.FunSuite:
 
   // 6 in the bank, more than the 4 the card gains.
   private val staged = holding(6)
-
-  test("A Small Favor is in the default walker catalog"):
-    assert(WalkerPowerCatalog.default(catalog).powers.contains(power))
 
   test("playing it gains four warbands"):
     val done = Outcomes.finished(play(staged, power, card))
