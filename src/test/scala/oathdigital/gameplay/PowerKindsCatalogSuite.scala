@@ -33,7 +33,8 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
   test("resolution follows the flag"):
     // A missing id would fall back to PlayerSelected, so every id must be
     // catalogued for the check below to mean anything.
-    (modifiers ++ persistentRules).foreach(id => assert(flag(id).isDefined, id))
+    modifiers.foreach(id => assertEquals(flag(id), Some(false), id))
+    persistentRules.foreach(id => assertEquals(flag(id), Some(true), id))
     modifiers.foreach(id => assertEquals(
       CatalogResolution.of(catalog, PowerId(id)), PowerResolution.PlayerSelected, id))
     persistentRules.foreach(id => assertEquals(

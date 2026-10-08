@@ -84,11 +84,12 @@ class MusterProcedureSuite extends munit.FunSuite:
     val ready = atAlchemist.tokens(alchemist, secrets = 1).ready
     // The start itself is legal, so an empty preview is the absence of a
     // source and not a build failure swallowed by `startOptions`.
-    assert(MusterProcedure.build(catalog, ready, p1).isRight)
+    accepted(MusterProcedure.build(catalog, ready, p1))
     assertEquals(MusterProcedure.startOptions(catalog, ready, p1,
       WalkerPowers.empty), Vector.empty)
-    assert(MusterProcedure.startOptions(catalog, atAlchemist.ready, p1,
-      WalkerPowers.empty).nonEmpty)
+    assertEquals(MusterProcedure.startOptions(catalog, atAlchemist.ready, p1,
+      WalkerPowers.empty).map(_.option.ref),
+      Vector(DecisionOptionRef.Denizen(alchemist)))
 
   test("a power that removes the cost lets an unaffordable Muster start"):
     val ready = atAlchemist.favor(p1, 0).ready

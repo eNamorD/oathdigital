@@ -80,11 +80,13 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val citizen = ready.copy(game = ready.game.copy(campaign =
       campaign.copy(lineages = campaign.lineages.updated(lineage.id,
         lineage.copy(role = Role.Citizen)))))
-    assert(start(citizen).isRight)
+    parked.assertParked(accepted(start(citizen)).state, ActionRef.Negotiation,
+      negotiators, p1)
     val altered = ready.copy(game = ready.game.copy(campaign =
       campaign.copy(foundations = campaign.foundations.map { case (k, f) =>
         k -> f.copy(face = FoundationFace.Altered) })))
-    assert(start(altered).isRight)
+    parked.assertParked(accepted(start(altered)).state, ActionRef.Negotiation,
+      negotiators, p1)
 
   test("a bilateral favor and relic transfer settles atomically on the last accept"):
     val before = gathered.ready
@@ -156,7 +158,9 @@ class NegotiationProcedureSuite extends munit.FunSuite:
       .unchecked)
     assertEquals(say(broke, p1, AcceptDeal).left.toOption,
       Some(OathViolation.InsufficientFavor(3, 1)))
-    assert(say(theirs.state, p1, AcceptDeal).isRight)
+    // The deal stayed open: p1, with the favor back, can still accept.
+    assertEquals(Outcomes.ready(accepted(say(theirs.state, p1, AcceptDeal))
+      .state).game.current.walkerPending, None)
 
   test("an agreed disclosure grants durable knowledge to its recipient only"):
     val adviser = CatalogNames.denizen("Errand Boy")
@@ -179,14 +183,16 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val deal = atDeal(gathered.ready, p2)
     val declined = say(deal.state, p2, DeclineDeal)
       .getOrElse(fail("any participant may decline"))
-    assert(declined.events.exists(_.isInstanceOf[OathEvent.BanditsRefilled]),
+    assertEquals(declined.events.collect {
+      case refill: OathEvent.BanditsRefilled => refill }.size, 1,
       "a decline must run the action boundary and its bandit refill")
     val proposed = say(deal.state, p1, gift(p2, 1)).getOrElse(fail("terms"))
     val theirAccept = say(proposed.state, p2, AcceptDeal)
       .getOrElse(fail("p2 accepts"))
     val agreed = say(theirAccept.state, p1, AcceptDeal)
       .getOrElse(fail("p1 accepts"))
-    assert(agreed.events.exists(_.isInstanceOf[OathEvent.BanditsRefilled]),
+    assertEquals(agreed.events.collect {
+      case refill: OathEvent.BanditsRefilled => refill }.size, 1,
       "an agreed deal must run the action boundary and its bandit refill")
     assertEquals(Outcomes.ready(agreed.state).game.current.walkerPending, None)
 
@@ -197,7 +203,8 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val recorded = as[IgnoredRulesRecorded](started.events.head)
     assertEquals(recorded.action, ActionKind.Negotiation)
     assertEquals(recorded.diagnostics.head.handlerId, "denizen.council-arbiter")
-    assert(choose(started.state, p1, p2).isRight)
+    parked.assertParked(accepted(choose(started.state, p1, p2)).state,
+      ActionRef.Negotiation, dealId, p1)
 
   test("a completed Negotiation replays exactly from its journal"):
     val SetupResult(setupState, setupEvents) = setupThroughWake()

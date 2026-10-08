@@ -4,7 +4,6 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignPlans, CampaignSetup}
 import oathdigital.gameplay.powers.campaign.{BattlePlans, BrassArmy, Outriders,
   PlanContext, TitleDefensePlan, Watchdog}
-import oathdigital.gameplay.powers.campaign.BattlePlan
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.CatalogNames
@@ -76,16 +75,17 @@ class CampaignPlansSuite extends munit.FunSuite:
       "not, and adds four attack dice"):
     val occupied = withRelic(board(warbands = 5, supply = 7), brassCard)
     val attacking = context(withSecrets(occupied, 1), CampaignPlanSide.Attacker)
-    val offer = brass.plan(attacking).get
+    val offer = present(brass.plan(attacking), "Brass Army's offer")
     assertEquals(offer.costs,
       Vector[CampaignPlanCost](CampaignPlanCost.Secret(1)))
     assertEquals(offer.effects, Vector[CampaignPlanEffect](
       CampaignPlanEffect.AddAttackDice(4)))
     // Whether the attacker can pay is not the offer's business.
-    assert(brass.plan(context(withSecrets(occupied, 0),
-      CampaignPlanSide.Attacker)).nonEmpty)
+    assertEquals(brass.plan(context(withSecrets(occupied, 0),
+      CampaignPlanSide.Attacker)), Some(offer))
     val holding = on(occupied)(_.tokens(brassCard, favor = 1, secrets = 1))
-    assert(brass.plan(context(holding, CampaignPlanSide.Attacker)).nonEmpty)
+    assertEquals(brass.plan(context(holding, CampaignPlanSide.Attacker)),
+      Some(offer))
     val bare = board(warbands = 5, supply = 7)
     assertEquals(brass.plan(context(bare, CampaignPlanSide.Attacker)), None)
 
@@ -207,7 +207,6 @@ class CampaignPlansSuite extends munit.FunSuite:
     assertEquals(plans.size, 4)
     plans.foreach(plan =>
       assertEquals(plan.resolution, PowerResolution.Automatic))
-    assert(plans.forall(_.isInstanceOf[BattlePlan]))
     assertEquals(plans.map(_.id.value).toSet, Set("title.oathkeeper-defense",
       "denizen.outriders", "relic.brass-army.campaign", "denizen.watchdog"))
 

@@ -56,7 +56,6 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     assertEquals(steps.map(_.ops),
       Vector(Vector[CoreOperation](movePawnToS3),
       Vector[CoreOperation](spendOneSupply)))
-    steps.foreach(step => assert(step.ops.nonEmpty))
     // Re-applying each recorded ops batch reproduces the walked state.
     assertEquals(applyEvents(ready, events), finalState)
 

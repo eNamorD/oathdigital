@@ -7,6 +7,7 @@ import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatacombsGame, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 /** Selecting modifiers refuses a combination the player cannot pay, at
   * selection, because every selected modifier pays at the start of its action.
@@ -46,23 +47,22 @@ class SelectionPaymentsSuite extends munit.FunSuite:
       selected.map(_.id).toVector)
 
   test("a selection whose payments can all be made is accepted"):
-    assert(muster(2, a, b).isRight)
-    assert(muster(1, a).isRight)
-    assert(muster(1, free).isRight)
+    accepted(muster(2, a, b))
+    accepted(muster(1, a))
+    accepted(muster(1, free))
 
   test("two payments that need the only secret are refused at selection"):
     val refused = muster(1, a, b)
-    assert(refused.left.toOption.exists(_ match {
-      case OathViolation.InvalidEventOrder(detail) =>
-        detail.contains("cannot all be paid together")
-      case _ => false
-    }), refused.toString)
+    assertEquals(refused, Left(OathViolation.InvalidEventOrder(
+      "the selected modifiers cannot all be paid together: " +
+        "CoreOperationRejected(insufficient-pieces,player play area " +
+        "contains 0 of requested secrets)")))
     // Either payment alone is affordable (b is a's twin), so the refusal is
     // about the pair.
-    assert(muster(1, a).isRight)
+    accepted(muster(1, a))
 
   test("a free power adds nothing to the payments"):
-    assert(muster(1, a, free).isRight)
+    accepted(muster(1, a, free))
 
   test("Catacombs states its secret as a selection payment"):
     val fixture = CatacombsGame.reliclessSite(secrets = 1)
@@ -72,8 +72,8 @@ class SelectionPaymentsSuite extends munit.FunSuite:
       Vector(oathdigital.gameplay.operations.Costs.onCard(fixture.actor, power.cardId, Cost(secret = 1), catalog)))
     val rules = new OathRules(catalog, walkerPowerCatalog = WalkerPowers(
       Vector(power)), walkerDice = WalkerDiceFixture.blanks)
-    assert(rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
-      fixture.actor, Vector(power.id)).isRight)
+    accepted(rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
+      fixture.actor, Vector(power.id)))
 
   test("Catacombs with no faceup secret is refused at selection, not mid-action"):
     val fixture = CatacombsGame.reliclessSite(secrets = 0)
@@ -84,5 +84,5 @@ class SelectionPaymentsSuite extends munit.FunSuite:
     val refused = rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
       fixture.actor, Vector(power.id))
     // It is not offered at all, so the start refuses it as inapplicable.
-    assert(refused.left.toOption.exists(_.toString.contains(
-      "is not applicable")), refused.toString)
+    assertEquals(refused, Left(OathViolation.InvalidEventOrder(
+      s"power ${power.id.value} is not applicable to this recover")))

@@ -7,6 +7,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 import oathdigital.testkit.Outcomes.parked
+import oathdigital.testkit.Unwrap.accepted
 
 object OptionRestrictionSuite:
   /** Stub of ContributingPower: one OptionRestriction at one window, nothing
@@ -56,8 +57,9 @@ class OptionRestrictionSuite extends munit.FunSuite:
       "pick", DecisionAnswer.ChooseManyAnswer(Vector(site("b"))), actor), powers),
       Left(OathViolation.InvalidEventOrder(
         "decision pick does not offer a selected option")))
-    assert(ProcedureWalker.resolve(ready, optionalPick, pending, Answered("pick",
-      DecisionAnswer.ChooseManyAnswer(Vector(site("a"))), actor), powers).isRight)
+    accepted(ProcedureWalker.resolve(ready, optionalPick, pending,
+      Answered("pick", DecisionAnswer.ChooseManyAnswer(Vector(site("a"))),
+        actor), powers))
 
   test("restrictions from two powers compose"):
     val powers = WalkerPowers(Vector(forbid("test.no-a", "a"),
