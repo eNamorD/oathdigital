@@ -270,6 +270,15 @@ object DecisionOption:
     def ref: DecisionOptionRef = option.ref
     override def available: Boolean = false
 
+  /** An option shown with a reason to think twice, still choosable: a
+    * selected power that has no effect on it says so (Hunting Party on a
+    * discard pile). `ref` is the wrapped option's, so the warning never
+    * affects legality. */
+  final case class Warned(option: DecisionOption, reason: OptionReason)
+      extends DecisionOption:
+    def ref: DecisionOptionRef = option.ref
+    override def available: Boolean = option.available
+
   /** An option whose play discards `card` to make room: the card in that
     * site slot or adviser slot, or the revealed Vision a new one displaces.
     * Wrapping for the reason `Priced` wraps: `ref` is the wrapped option's,

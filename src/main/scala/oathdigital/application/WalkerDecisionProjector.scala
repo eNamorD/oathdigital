@@ -4,8 +4,8 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powerresolver.PhasePowers
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
-  WalkerProcedureRegistry, WalkerSimulation}
+import oathdigital.gameplay.walker.{OptionWarnings, ProcedureWalker,
+  WalkerPowers, WalkerProcedureRegistry, WalkerSimulation}
 import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
   DecisionOptionProjection, DecisionQueryProjection,
@@ -190,12 +190,18 @@ private[application] final class WalkerDecisionProjector(
   private def playable(procedure: ProcedureRef, ready: ReadyGame,
       tree: Operation, pending: PendingTree, powers: WalkerPowers,
       decide: Decide): (DecisionQuery, Map[DecisionOptionRef, Vector[String]]) =
-    WalkerProcedureRegistry.optionPricing(procedure) match
-      case Some(price) => (decide.query match
-        case one: DecisionQuery.ChooseOne =>
-          one.copy(options = price(ready, tree, pending, powers, decide))
-        case other => other, Map.empty)
-      case None => accepting(procedure, ready, tree, pending, powers, decide)
+    val (query, details) =
+      WalkerProcedureRegistry.optionPricing(procedure) match
+        case Some(price) => (decide.query match
+          case one: DecisionQuery.ChooseOne =>
+            one.copy(options = price(ready, tree, pending, powers, decide))
+          case other => other,
+          Map.empty[DecisionOptionRef, Vector[String]])
+        case None => accepting(procedure, ready, tree, pending, powers, decide)
+    (query match
+      case one: DecisionQuery.ChooseOne =>
+        one.copy(options = OptionWarnings.marked(powers, decide, one.options))
+      case other => other, details)
 
   private def accepting(procedure: ProcedureRef, ready: ReadyGame,
       tree: Operation, pending: PendingTree, powers: WalkerPowers,
@@ -342,6 +348,11 @@ private[application] final class WalkerDecisionProjector(
       case DecisionOption.Unavailable(inner, reason) => optionProjection(ready,
         viewer, index, inner, details).map(_.copy(state = "unavailable",
           reason = Some(reasonText(ready, viewer, reason))))
+      case DecisionOption.Warned(inner, reason) => optionProjection(ready,
+        viewer, index, inner, details).map(row =>
+          if row.state == "unavailable" then row
+          else row.copy(state = "warning",
+            reason = Some(reasonText(ready, viewer, reason))))
       // Named after the wrapped option is described, so the label says what
       // the play discards and where the card goes.
       case DecisionOption.Replacing(inner, card) =>

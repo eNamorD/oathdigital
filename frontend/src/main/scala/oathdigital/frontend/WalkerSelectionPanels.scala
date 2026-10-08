@@ -32,7 +32,7 @@ private[frontend] object WalkerSelectionPanels:
     panel.appendChild(text("p", "walker-many-instruction",
       if query.minOptions == query.maxOptions then s"Choose ${query.minOptions}."
       else if query.minOptions == 0 && query.maxOptions >=
-        query.options.count(_.state == "available") then
+        query.options.count(_.choosable) then
         "Choose any number."
       else if query.minOptions == 0 then s"Choose up to ${query.maxOptions}."
       else s"Choose ${query.minOptions} to ${query.maxOptions}."))

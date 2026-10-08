@@ -70,6 +70,15 @@ class BoardSelectionDraftSuite extends munit.FunSuite:
       OptionState.Unavailable, Some("Needs 5 warbands; limit 4")))
     assertEquals(views("site:c").state, OptionState.Available)
 
+  test("an option with a warning is clickable and keeps its reason"):
+    val warned = site("c").copy(state = "warning",
+      reason = Some("Hunting Party needs the world deck"))
+    val withWarning = one.copy(options = Vector(site("a"), warned))
+    assertEquals(draft(withWarning).click(warned).keys, Vector("site:c"))
+    assertEquals(BoardOptionViews.of(decision(withWarning), withWarning, None)(
+      "site:c"), OptionView(warned, OptionState.Available,
+        Some("Hunting Party needs the world deck")))
+
   test("a choose-one's answers so far show locked"):
     val played = DecisionOptionState("denizen", "wrestlers", "Wrestlers")
     val views = BoardOptionViews.of(decision(one).copy(

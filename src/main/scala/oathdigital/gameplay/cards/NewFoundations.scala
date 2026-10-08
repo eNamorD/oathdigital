@@ -51,7 +51,8 @@ import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}
 import oathdigital.gameplay.powers.search.{AuguryCard, CropRotationCard,
-  DisciplesCard, ForcedLaborCard, NewsFromAfarCard, TruthfulHarpCard}
+  DisciplesCard, ForcedLaborCard, HuntingPartyCard, NewsFromAfarCard,
+  TruthfulHarpCard}
 import oathdigital.gameplay.powers.setup.{GreatForgeCard, GreatMarketCard,
   ProvingGroundsCard}
 import oathdigital.gameplay.powers.targeting.{CircletOfCommandCard,

@@ -133,8 +133,9 @@ object DecisionQueryProjection:
   * such as `Attack Plan` -- for a client to draw as a chip. It is separate
   * from `details`, which carries consequences and runs together into one line.
   *
-  * `state` is `available`, `locked` (decided already, shown chosen) or
-  * `unavailable` (shown, with `reason` saying why it may not be chosen now).
+  * `state` is `available`, `locked` (decided already, shown chosen),
+  * `unavailable` (shown, with `reason` saying why it may not be chosen now)
+  * or `warning` (choosable, with `reason` saying why to think twice).
   *
   * `replaces` is the card choosing the option discards to make room (a
   * Replace slot), as the viewer may see it.
@@ -150,7 +151,10 @@ final case class DecisionOptionProjection(kind: String, id: String,
     state: String = "available",
     reason: Option[String] = None,
     replaces: Option[CardDetailsProjection] = None,
-    variant: Option[String] = None)
+    variant: Option[String] = None):
+  /** Whether the viewer may choose it: available, or available with a
+    * warning. */
+  def choosable: Boolean = state == "available" || state == "warning"
 
 /** One named bucket a partition spreads its options across: the stable
   * `key` a placement names, the section's prompt copy, and the fewest

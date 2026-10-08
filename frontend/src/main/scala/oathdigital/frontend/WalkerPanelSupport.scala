@@ -138,13 +138,14 @@ private[frontend] object WalkerPanelSupport:
 
   /** An option shown with why it may not be chosen: its control is disabled,
     * names the reason on hover, and the reason is printed under `after`'s
-    * last child so a touch screen can read it too. Any other option is left
-    * as it is.
+    * last child so a touch screen can read it too. An option with a warning
+    * keeps its control as it is and shows its reason the same way. Any other
+    * option is left as it is.
     */
   private[frontend] def withholds(control: dom.html.Button,
       option: DecisionOptionState, after: dom.Element): Unit =
-    if option.state == "unavailable" then
-      control.disabled = true
+    if option.state == "unavailable" || option.state == "warning" then
+      if option.state == "unavailable" then control.disabled = true
       option.reason.foreach { reason =>
         control.setAttribute("title", reason)
         after.appendChild(text("p", "walker-choice-reason", reason))
