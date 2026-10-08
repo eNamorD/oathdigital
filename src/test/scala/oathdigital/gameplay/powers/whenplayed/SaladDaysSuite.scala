@@ -4,6 +4,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
 import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.rejected
 
 class SaladDaysSuite extends munit.FunSuite:
   import WhenPlayedHarness._
@@ -70,5 +71,8 @@ class SaladDaysSuite extends munit.FunSuite:
   test("an empty bank is not a choice"):
     val ready = staged(four*)
     val first = Outcomes.parked(play(ready, power, salad))
-    assert(resume(ready, power, played, first.tree, SaladDays.decisionId,
-      choose(Suit.Discord, Suit.Arcane, Suit.Beast)).isLeft)
+    // The Arcane bank is empty.
+    assertEquals(rejected(resume(ready, power, played, first.tree,
+      SaladDays.decisionId, choose(Suit.Discord, Suit.Arcane, Suit.Beast))),
+      OathViolation.InvalidEventOrder(s"decision ${SaladDays.decisionId} " +
+        "does not offer a selected option"))

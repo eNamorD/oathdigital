@@ -82,6 +82,6 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
         wardOfSilence)
     yield placed)
     val done = accepted(answer(replaced, take))
-    assert(relics(after(done)).nonEmpty)
+    assert(relics(after(done)).exists(_.id == top))
     assert(!Look(after(done)).player(p1).advisers.exists(
       _.id == wardOfSilence))

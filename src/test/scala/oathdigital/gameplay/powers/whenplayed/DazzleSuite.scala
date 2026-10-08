@@ -7,6 +7,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   Table}
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.rejected
 
 class DazzleSuite extends munit.FunSuite:
   import WhenPlayedHarness._
@@ -76,7 +77,8 @@ class DazzleSuite extends munit.FunSuite:
       sites = c.map.sites.updated(homeSite, c.map.sites(homeSite).copy(
         denizens = c.map.sites(homeSite).denizens :+
           DenizenState(unknown, Orientation.FaceUp, Tokens.empty))))))
-    assert(play(ready, power, dazzle).isLeft)
+    assertEquals(rejected(play(ready, power, dazzle)),
+      OathViolation.UnknownWorldCard(unknown))
 
   test("Dazzle discards a ruined Hearth edifice, not an intact one or " +
       "another suit's"):

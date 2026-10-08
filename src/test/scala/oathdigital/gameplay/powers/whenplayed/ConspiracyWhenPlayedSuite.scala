@@ -12,7 +12,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   PlacementPicks, Table}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.Unwrap.{accepted, as, present}
+import oathdigital.testkit.Unwrap.{accepted, as, present, rejected}
 
 class ConspiracyWhenPlayedSuite extends munit.FunSuite:
   import WhenPlayedHarness.replayed
@@ -190,8 +190,10 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     Vector[DecisionOptionRef](DecisionOptionRef.RelicSlot(p2, 2),
       DecisionOptionRef.RelicSlot(p1, 0),
       DecisionOptionRef.Banner(Banner.PeoplesFavor)).foreach { ref =>
-      assert(answer(f, target.tree, target.at, ConspiracyWhenPlayed.decisionId,
-        ref).isLeft, ref.toString)
+      assertEquals(rejected(answer(f, target.tree, target.at,
+        ConspiracyWhenPlayed.decisionId, ref)), OathViolation
+        .InvalidEventOrder(s"decision ${ConspiracyWhenPlayed.decisionId} " +
+          "does not offer the selected option"), ref.toString)
     }
 
   test("discarding a Conspiracy does not play it"):

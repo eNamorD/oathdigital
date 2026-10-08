@@ -7,7 +7,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   Table}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.Unwrap.as
+import oathdigital.testkit.Unwrap.{as, rejected}
 
 class TwinBrotherSuite extends munit.FunSuite:
   import WhenPlayedHarness._
@@ -85,6 +85,7 @@ class TwinBrotherSuite extends munit.FunSuite:
   test("an option that is not offered is rejected"):
     val ready = staged.ready
     val first = Outcomes.parked(play(ready, power, card))
-    assert(resume(ready, power, played, first.tree, TwinBrother.decisionId,
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(charming)))
-      .isLeft)
+    assertEquals(rejected(resume(ready, power, played, first.tree,
+      TwinBrother.decisionId, chooseOne(DecisionOptionRef.Denizen(charming)))),
+      OathViolation.InvalidEventOrder(s"decision ${TwinBrother.decisionId} " +
+        "does not offer the selected option"))

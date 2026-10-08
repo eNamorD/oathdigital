@@ -8,6 +8,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.rejected
 
 class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
   import WhenPlayedHarness._
@@ -93,5 +94,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     val first = Outcomes.parked(play(ready, power, card))
     val atChoice = foldRecordedOps(ready, first.events, "gain did not replay")
     val unruled = CatalogNames.site("Deep Woods")
-    assert(resume(atChoice, power, played, first.tree, Garrison.decisionId,
-      chooseSites(unruled)).isLeft)
+    assertEquals(rejected(resume(atChoice, power, played, first.tree,
+      Garrison.decisionId, chooseSites(unruled))), OathViolation
+      .InvalidEventOrder(s"decision ${Garrison.decisionId} does not offer " +
+        "a selected option"))

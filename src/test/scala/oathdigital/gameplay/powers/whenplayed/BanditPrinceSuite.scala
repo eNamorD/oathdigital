@@ -4,7 +4,7 @@ import oathdigital.gameplay.powers.{NoteText, PlayerFacts}
 import oathdigital.model._
 import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.as
+import oathdigital.testkit.Unwrap.{as, rejected}
 
 class BanditPrinceSuite extends munit.FunSuite:
   import WhenPlayedHarness._
@@ -74,12 +74,18 @@ class BanditPrinceSuite extends munit.FunSuite:
     val ready = bandited.warbandsInBank(p1, 2).ready
     val first = Outcomes.parked(play(ready, power, prince))
     val query = question(ready, power, played, first.tree).query
-    val offered = as[DecisionQuery.ChooseMany](query).options.filter(_.available)
-    assertEquals(offered.size, 2)
-    assert(resume(ready, power, played, first.tree, BanditPrince.decisionId,
-      choose(sites)).isLeft)
-    assert(resume(ready, power, played, first.tree, BanditPrince.decisionId,
-      choose(Vector(homeSite))).isRight)
+    val offered = as[DecisionQuery.ChooseMany](query).options
+      .filter(_.available)
+    assertEquals(offered.map(_.ref), sites.map(DecisionOptionRef.Site(_)))
+    // p1's site holds 2 bandits and the away site 1, one more than the bank.
+    assertEquals(rejected(resume(ready, power, played, first.tree,
+      BanditPrince.decisionId, choose(sites))), OathViolation
+      .InvalidEventOrder("the chosen sites hold 3 bandits, more than the 2 " +
+        "warbands in the bank"))
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
+      BanditPrince.decisionId, choose(Vector(homeSite))))
+    assertEquals(Look(done.treeless).forces(homeSite),
+      SiteForces.Occupied(mine, 2))
 
   test("only the sites that fit the bank are offered, and the question is " +
       "still asked"):
@@ -100,8 +106,10 @@ class BanditPrinceSuite extends munit.FunSuite:
   test("a site the bandits do not rule is refused"):
     val ready = bandited.ready
     val first = Outcomes.parked(play(ready, power, prince))
-    assert(resume(ready, power, played, first.tree, BanditPrince.decisionId,
-      choose(Vector(nearSite))).isLeft)
+    assertEquals(rejected(resume(ready, power, played, first.tree,
+      BanditPrince.decisionId, choose(Vector(nearSite)))), OathViolation
+      .InvalidEventOrder(s"decision ${BanditPrince.decisionId} does not " +
+        "offer a selected option"))
 
   test("with an empty bank no site can be replaced, so nothing is asked"):
     val ready = bandited.warbandsInBank(p1, 0).ready

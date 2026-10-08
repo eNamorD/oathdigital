@@ -7,7 +7,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.as
+import oathdigital.testkit.Unwrap.{as, rejected}
 
 class FamilyHeirloomSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer:
@@ -88,5 +88,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
 
   test("a choice that is not offered is rejected"):
     val at = atChoice
-    assert(answer(at.state, at.first.tree,
-      DecisionOptionRef.Button("elsewhere")).isLeft)
+    assertEquals(rejected(answer(at.state, at.first.tree,
+      DecisionOptionRef.Button("elsewhere"))), OathViolation
+      .InvalidEventOrder(s"decision ${FamilyHeirloom.decisionId} does not " +
+        "offer the selected option"))
