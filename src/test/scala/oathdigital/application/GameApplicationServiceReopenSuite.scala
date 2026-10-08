@@ -12,7 +12,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
-import ParkedServiceFixture.loaded
+import ParkedServiceFixture.{loaded, replayingSecond}
 
 /** A game reopened from HSQL keeps its Rest cleanup, private relic
   * knowledge and Negotiation state.
@@ -26,15 +26,14 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
     val table = Table.start.siteTokens("Broken Peaks", secrets = 2)
     val first = accepted(OwnedHsqldbEventStreamRepository.open(path))
     // p1 rests.
+    val service = new GameApplicationService(catalog, first,
+      genesis = table.state)
     val done = try
-      val service = new GameApplicationService(catalog, first,
-        genesis = table.state)
       accepted(service.handle(gameId, 0L, GameCommand.BeginRest(p1)))
     finally first.close()
     val reopened = accepted(OwnedHsqldbEventStreamRepository.open(path))
     try
-      val stored = loaded(new GameApplicationService(catalog, reopened,
-        genesis = table.state).load(gameId))
+      val stored = loaded(replayingSecond(service, reopened).load(gameId))
       assertEquals(stored.state, done.state)
       val ready = Outcomes.ready(stored.state)
       // Begin Rest finished the Rest and woke the next player.
@@ -54,17 +53,16 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
     val table = Table.start.turn(p2, Phase.Act)
       .relicAt("Sticky Fire", "Broken Peaks")
     val first = accepted(OwnedHsqldbEventStreamRepository.open(path))
+    val service = new GameApplicationService(catalog, first,
+      genesis = table.state)
     val peeked = try
-      val service = new GameApplicationService(catalog, first,
-        genesis = table.state)
       accepted(service.handle(gameId, 0L, GameCommand.PeekSiteRelics(p2)))
     finally first.close()
 
     val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(
       error => fail(s"failed to reopen minor-action repository: $error"), identity)
     try
-      val stored = loaded(new GameApplicationService(catalog, reopened,
-        genesis = table.state).load(gameId))
+      val stored = loaded(replayingSecond(service, reopened).load(gameId))
       assertEquals(stored.state, peeked.state)
       val ready = Outcomes.ready(stored.state)
       val actor = ready.game.current.turn.activePlayer
@@ -74,7 +72,9 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
       def knownAt(projection: GameProjection) = present(
         projection.world.flatMap(_.sites).find(_.siteId == siteId.value),
         "the peeked site").relics.knownRelics
-      assert(knownAt(projector.project(gameId, stored, actor)).nonEmpty)
+      assertEquals(knownAt(projector.project(gameId, stored, actor))
+        .map(card => (card.cardKind, card.name)),
+        Vector(("relic", "Sticky Fire")))
       assertEquals(knownAt(projector.project(gameId, stored, other)),
         Vector.empty)
       assertEquals(knownAt(projector.projectPublic(gameId, stored)),

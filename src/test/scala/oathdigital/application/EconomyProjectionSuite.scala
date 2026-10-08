@@ -71,7 +71,7 @@ class EconomyProjectionSuite extends munit.FunSuite:
     // matches Alchemist's Arcane, so 2.
     assertEquals(options.map(_.details),
       Vector(Vector("1 Supply", "+2 warbands")))
-    assert(options.head.label.nonEmpty)
+    assertEquals(options.map(_.label), Vector("Alchemist"))
 
   test("a parked Trade shows its yield in the resource it gains"):
     val board = withMatchingAdviser.bankFavor(Suit.Arcane, 1).ready

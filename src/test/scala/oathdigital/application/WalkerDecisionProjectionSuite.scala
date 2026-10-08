@@ -200,8 +200,8 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       GameCommand.ResolveWalker(p1, TreeDecision(
         RecoverProcedure.choiceDecisionId, DecisionAnswer.ChooseOneAnswer(
           DecisionOptionRef.Button(choiceQuery.options.last.id)))))
-    assert(stopped.isRight, s"a projected button option must be accepted by " +
-      s"the engine, got $stopped")
+    // The engine accepts a projected button option.
+    accepted(stopped)
 
   /** Two shields and a Doubler make 4, meeting Broken Peaks' difficulty 4,
     * so the walk parks on the relic choice. */
@@ -306,8 +306,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       GameCommand.ResolveWalker(p1, TreeDecision(
         RecoverProcedure.relicDecisionId,
         DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Relic(chosen)))))
-    assert(resolved.isRight, s"expected a projected candidate relic to be " +
-      s"accepted by the engine, got $resolved")
+    accepted(resolved)
 
   // ---------------------------------------------------------------------
   // Task 5 binding carry-in: the projector must fold a shared window with

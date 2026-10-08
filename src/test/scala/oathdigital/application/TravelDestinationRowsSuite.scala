@@ -6,7 +6,7 @@ import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.protocol.projection.DecisionOptionProjection
 import oathdigital.testkit.{CatalogNames, Outcomes, Table}
-import oathdigital.testkit.Unwrap.{accepted, present}
+import oathdigital.testkit.Unwrap.{accepted, present, rejected}
 
 /** What the parked destination decision shows each site as: its cost under
   * the selected modifiers, or why it cannot be reached (travel destination
@@ -38,6 +38,9 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
     Table.from(board(supply = supply)).warbandsAt(pass, actor, 1).unchecked
 
   test("a destination is badged with the Supply its Travel spends"):
+    // From the Cradle's plains: the coast shares the Cradle (1 Supply), Dunes
+    // lies in the Provinces (2), and Fair Isle in the Hinterland (4, plus
+    // 2 for landing on an island).
     val ready = open(supply = 7)
     assertEquals(row(ready, coast).badge, Some("1 Supply"))
     assertEquals(row(ready, provincePlains).badge, Some("2 Supply"))
@@ -117,5 +120,7 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
       Some("1 Supply · 1 favor or 2 favor"))
 
   test("a toll and no Supply leave a player with one favor no way there"):
-    assert(rules.startWalker(Ready(tolledWayStation(favor = 1, supply = 0)),
-      ActionRef.Travel, actor, Vector.empty).isLeft)
+    assertEquals(rejected(rules.startWalker(Ready(tolledWayStation(favor = 1,
+      supply = 0)), ActionRef.Travel, actor, Vector.empty)),
+      OathViolation.CoreOperationRejected("insufficient-supply",
+        "a supply spend of 1 exceeds the 0 available"))

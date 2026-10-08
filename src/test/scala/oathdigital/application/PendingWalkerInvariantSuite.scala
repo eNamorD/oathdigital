@@ -11,7 +11,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import ParkedServiceFixture.loaded
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.testkit.CatalogNames
-import oathdigital.testkit.Unwrap.present
+import oathdigital.testkit.Unwrap.{accepted, present, rejected}
 
 /** The application half of the pending-walker invariant (spec, Testing).
   * Over each of the spec's four parked contexts, one instance of every
@@ -77,11 +77,13 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
       // Undo and Redo over a park are legal by design (undo design,
       // "Rulings" 4); UndoServiceSuite and RedoServiceSuite cover them.
       command <- everyCommand(player) if !isStepCommand(command)
-    do assert(service.handle(gameId, parked.nextSequence, command).isLeft,
-      s"$command by $player must be refused over a parked walker")
+    do
+      // The refusal differs by command (a rule violation, a duplicate game,
+      // a stale position); that every one is refused is the invariant.
+      rejected(service.handle(gameId, parked.nextSequence, command))
     assertEquals(records, before, "a refused command must append nothing")
-    val resumed = service.handle(gameId, parked.nextSequence, resume)
-    assert(resumed.isRight, s"the parked walker's own $resume must run: $resumed")
+    // The parked walker's own answer runs.
+    accepted(service.handle(gameId, parked.nextSequence, resume))
     assert(records.size > before.size, "an accepted resume appends its events")
 
   private val everyone = participants.map(_.playerId)

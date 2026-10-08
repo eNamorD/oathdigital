@@ -30,7 +30,10 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
       (p.powerId, p.source.kind, p.source.id, p.name)), Vector(
       (move, "banner", "darkest-secret", "Wandering Flame: move"),
       (place, "banner", "darkest-secret", "Wandering Flame: place a secret on your site")))
-    assert(projected.phasePowers.forall(_.rulesText.trim.nonEmpty))
+    assertEquals(projected.phasePowers.map(_.rulesText), Vector(
+      "ACTION: Place your pawn at a site with a secret on it. You may do " +
+        "this multiple times per turn.",
+      "ACTION: Place a secret on the banner or on your site."))
     assert(projected.legalControls.contains(s"usePower:$move:darkest-secret"))
     assert(projected.legalControls.contains(s"usePower:$place:darkest-secret"))
 

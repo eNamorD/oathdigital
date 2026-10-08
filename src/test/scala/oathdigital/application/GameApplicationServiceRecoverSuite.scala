@@ -81,7 +81,8 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     assert(started.events.last.isInstanceOf[WalkerParked])
     assertEquals(walkerDice.calls, 1)
     assertEquals(atRelic.game.current.walkerProcedure, Some(ActionRef.Recover))
-    assert(atRelic.game.current.walkerPending.nonEmpty)
+    parkedAssertions.assertParked(started.state, ActionRef.Recover,
+      RecoverProcedure.relicDecisionId, actor)
 
     walkerService.handle("walker-recover", started.nextSequence,
       GameCommand.PeekSiteRelics(actor)) match
@@ -249,6 +250,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     val walkerDice = new Dice.ScriptedDefense(rolls)
     val walkerService = new GameApplicationService(catalog, walkerRepository,
       campaignDicePort = walkerDice)
+    // Replays Setup: Salt Flats comes into play through the Chronicle.
     val walkerSetup = setupViaService(walkerService,
       "walker-cross-roll-doubler", orderedSites, saltFlatsChronicle)
     val walkerAct = ParkedServiceFixture.endingWake(walkerService,
@@ -441,8 +443,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       walkerDice = WalkerDiceFixture.blanks)
     val started = rules.startWalker(catacombsTable.state, ActionRef.Recover,
       actor, offeredIds)
-    assert(started.isRight,
-      s"expected StartWalker to accept the previewed id, got $started")
+    accepted(started)
 
   test("a Travel preview does not offer Catacombs"):
     // A legacy action's preview is untouched: still resolved through
@@ -451,4 +452,4 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       .service(campaignDice = new Dice.CountingDefense(meetingTheDifficulty))
     val travelPreview = service.preview("catacombs-travel-preview", 0L, p1,
       ActionKind.Travel, Vector.empty)
-    assert(travelPreview.isRight)
+    assertEquals(accepted(travelPreview).options, Vector.empty)
