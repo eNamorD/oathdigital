@@ -25,29 +25,6 @@ trait EventJournal[E]:
       events: Vector[E]
   ): EventAppendResult[E]
 
-final class InMemoryEventJournal[E] extends EventJournal[E]:
-  private var records = Vector.empty[RecordedEvent[E]]
-
-  override def size: Long = synchronized(records.size.toLong)
-
-  override def read(fromIndex: Long): Vector[RecordedEvent[E]] = synchronized:
-    require(fromIndex >= 0, "fromIndex must be non-negative")
-    records.drop(fromIndex.toInt)
-
-  override def append(
-      expectedIndex: Long,
-      events: Vector[E]
-  ): EventAppendResult[E] = synchronized:
-    val actualIndex = records.size.toLong
-    if expectedIndex != actualIndex then
-      EventAppendResult.Conflict(expectedIndex, actualIndex)
-    else
-      val appended = events.zipWithIndex.map { case (event, offset) =>
-        RecordedEvent(actualIndex + offset, event)
-      }
-      records ++= appended
-      EventAppendResult.Appended(appended)
-
 /** Pure event evolution used both after commands and during replay. */
 trait EventEvolution[S, E, V]:
   def initialState: S
