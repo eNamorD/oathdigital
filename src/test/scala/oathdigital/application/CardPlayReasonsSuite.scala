@@ -67,6 +67,8 @@ class CardPlayReasonsSuite extends munit.FunSuite:
   test("a faceup locked adviser's Replace rows say Locked"):
     val sealingWard = CatalogNames.denizen("Sealing Ward")
     val errandBoy = CatalogNames.denizen("Errand Boy")
+    // Three advisers fill p1's adviser limit (3 by default), so keeping the
+    // drawn Errand Boy means replacing one of them: Replace rows exist.
     val ready = Vector("Rain Boots", "Ancient Binding").foldLeft(Table.from(
       SearchFixture.staged(Vector(errandBoy), supply = 5)))(
       _.adviser(p1, _, facedown = true)).adviser(p1, sealingWard).unchecked
