@@ -14,12 +14,17 @@ import oathdigital.testkit.Unwrap.{accepted, as}
 
 class FortressRulesSuite extends munit.FunSuite:
   import CampaignFixture.{Board, board, on, withEnemyAtOrigin}
-  import TargetingFixture.{challengeTable, fortress, optionsAt, start}
+  import TargetingFixture.{challengeTable, fortress, optionsAt, parkedOn,
+    start}
 
   private val powers = WalkerPowers.selected(
     WalkerPowerCatalog.default(catalog), Vector.empty)
   private val conquest = DecisionOptionRef.Button("conquest")
   private val raid = DecisionOptionRef.Button("raid")
+  /** What a Raid is refused with when a Fortress protects every player it
+    * could target. */
+  private val protectedRaid = OathViolation.CampaignUnavailable(
+    "a Fortress protects every player a Raid could target")
 
   /** The Campaign board with the enemy at the actor's origin, the Fortress on
     * `side` there, and the enemy holding the rule of the origin when `ruled`.
@@ -76,8 +81,7 @@ class FortressRulesSuite extends munit.FunSuite:
     val b = fortified(EdificeSide.Ruined, ruled = false)
     assertEquals(CampaignProcedure.startable(catalog, b.ready, b.actor, powers),
       false)
-    assert(startOf(b).left.toOption.exists(
-      _.isInstanceOf[OathViolation.CampaignUnavailable]))
+    assertEquals(startOf(b).left.toOption, Some(protectedRaid))
 
   test("a faceup beast adviser lifts the Rotting Fortress's protection; a " +
       "facedown one, or one of another suit, does not"):
@@ -86,19 +90,17 @@ class FortressRulesSuite extends munit.FunSuite:
     val startable =
       CampaignProcedure.startable(catalog, armed.ready, armed.actor, powers)
     assert(startable)
-    assert(startOf(armed).isRight)
-    val protectedRaid = Some(OathViolation.CampaignUnavailable(
-      "a Fortress protects every player a Raid could target"))
+    assertEquals(parkedOn(accepted(startOf(armed))), Some(CampaignIds.force))
     val hearth = on(b)(_.adviser(b.actor, "Homesteaders"))  // Hearth
-    assertEquals(startOf(hearth).left.toOption, protectedRaid)
+    assertEquals(startOf(hearth).left.toOption, Some(protectedRaid))
     val hidden = on(b)(_.adviser(b.actor, "Errand Boy", facedown = true))
-    assertEquals(startOf(hidden).left.toOption, protectedRaid)
+    assertEquals(startOf(hidden).left.toOption, Some(protectedRaid))
 
   test("the Rotting Fortress protects every player at the site, so a second " +
       "enemy does not open the Raid"):
     val b = fortified(EdificeSide.Ruined, ruled = false)
     val crowded = on(b)(_.pawn(b.bystander, at = b.origin))
-    assert(startOf(crowded).isLeft)
+    assertEquals(startOf(crowded).left.toOption, Some(protectedRaid))
 
   test("the Rotting Fortress leaves a Conquest of the same site alone"):
     val b = fortified(EdificeSide.Ruined, ruled = true)
@@ -113,11 +115,12 @@ class FortressRulesSuite extends munit.FunSuite:
     def ctx(state: ReadyGame) = PowerCtx(state, b.actor, power.source,
       PowerWindow.CampaignActionEligibility, Vector.empty,
       Sequence(Vector.empty))
-    assert(restriction.fn(ctx(b.ready), Sequence(Vector.empty)).nonEmpty)
+    assertEquals(restriction.fn(ctx(b.ready), Sequence(Vector.empty)),
+      Some(protectedRaid))
     // The Campaign has answered its force decision: it is under way.
-    val underway = b.ready.updateCurrent(_.copy(walkerPending =
-      Some(PendingTree(Vector("2"), Vector(Answered(CampaignIds.force,
-        DecisionAnswer.ChooseAmountAnswer(0), b.actor))))))
+    val underway = Table.from(b.ready).parkedWalker(ActionRef.Campaign,
+      path = "2", answered = Vector(Answered(CampaignIds.force,
+        DecisionAnswer.ChooseAmountAnswer(0), b.actor))).ready
     assertEquals(restriction.fn(ctx(underway), Sequence(Vector.empty)), None)
 
   test("a Fortress that protects nobody in the Raid does not disturb it"):

@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
+  Refusals}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -44,8 +45,7 @@ class DragonskinDrumSuite extends munit.FunSuite:
   test("a facedown Drum is not usable"):
     assertEquals(travel(withRelic(board(), drum, Orientation.FaceDown), coast,
       modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power relic.dragonskin-drum is not applicable to this travel")))
+      Some(Refusals.notApplicable(DragonskinDrum.id, "travel")))
 
   // ---- Lines ----
 

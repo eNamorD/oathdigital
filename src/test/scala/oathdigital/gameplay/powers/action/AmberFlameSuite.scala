@@ -88,4 +88,5 @@ class AmberFlameSuite extends munit.FunSuite:
   test("it is unusable without a secret"):
     val broke = staged(secrets = 0).ready
     assert(!usableNow(broke).exists(_.power.id == AmberFlame.id))
-    assert(use(broke, AmberFlame, source).isLeft)
+    assertEquals(use(broke, AmberFlame, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))

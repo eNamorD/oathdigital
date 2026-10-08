@@ -1,12 +1,14 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{PlayerFacts, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Refusals,
+  Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class WildCrySuite extends munit.FunSuite:
@@ -116,8 +118,10 @@ class WildCrySuite extends munit.FunSuite:
     assertEquals(before.size, 3)
     val started = accepted(start(holding, modifiers))
     val chosen = accepted(keep(started, kept))
-    assert(placeReplacing(chosen, kept, PlayedAs.Faceup, wildCry).isLeft,
-      "Wild Cry was discardable")
+    assertEquals(
+      placeReplacing(chosen, kept, PlayedAs.Faceup, wildCry).left.toOption,
+      Some(Refusals.notOffered(
+        CardPlayProcedure.placementDecisionId(kept))))
     val done = accepted(placeReplacing(chosen, kept, PlayedAs.Faceup, extra))
     val after = Look(SearchFixture.after(done)).player(actor).advisers.map(_.id)
       .toSet

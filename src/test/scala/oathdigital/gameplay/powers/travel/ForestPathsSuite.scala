@@ -4,7 +4,7 @@ import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
@@ -75,8 +75,7 @@ class ForestPathsSuite extends munit.FunSuite:
     val broke = Table.from(held).warbandsAt(pass, actor, 1)
       .denizen(beast, at = mountain).favor(actor, 0).unchecked
     assertEquals(travel(broke, mountain, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.forest-paths is not applicable to this travel")))
+      Some(Refusals.notApplicable(ForestPaths.id, "travel")))
 
   // ---- Lines ----
 

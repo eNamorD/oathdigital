@@ -4,7 +4,7 @@ import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
-  PhasePowerHarness, Table}
+  PhasePowerHarness, Refusals, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -93,12 +93,16 @@ class GamblingHallSuite extends munit.FunSuite:
   test("a bank the decision does not offer is rejected"):
     val rules0 = rules(total4)
     val parked = accepted(use(rules0, staged(), GamblingHall.id, source))
-    assert(answer(rules0, parked.state, GamblingHall.decisionId,
-      DecisionOptionRef.Button("elsewhere")).isLeft)
+    assertEquals(answer(rules0, parked.state, GamblingHall.decisionId,
+      DecisionOptionRef.Button("elsewhere")).left.toOption,
+      Some(Refusals.notOffered(GamblingHall.decisionId)))
 
   test("it is unusable without 2 favor"):
     assert(!usableIds(staged(favor = 1)).contains(GamblingHall.id))
-    assert(use(rules(total4), staged(favor = 1), GamblingHall.id, source).isLeft)
+    assertEquals(
+      use(rules(total4), staged(favor = 1), GamblingHall.id,
+        source).left.toOption,
+      Some(OathViolation.InsufficientFavor(2, 1)))
 
   private val card = PowerSourceRef.Card(hall)
   private def notes(events: Vector[OathEvent]): Vector[PowerNoted] =

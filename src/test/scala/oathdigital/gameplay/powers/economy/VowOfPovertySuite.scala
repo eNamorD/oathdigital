@@ -9,8 +9,8 @@ import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  PowerRules, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions, Look,
+  Outcomes, PowerRules, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 
@@ -26,11 +26,11 @@ class VowOfPovertySuite extends munit.FunSuite:
   private val automatic = WalkerPowers.selected(
     WalkerPowerCatalog.default(catalog), Vector.empty)
 
-  /** Whether p1 could Trade for `resource` with some card at the site now,
-    * by the preview a start runs. */
-  private def tradeOffered(ready: ReadyGame, resource: TradeResource)
-      : Boolean = TradeProcedure.startOptions(catalog, ready, p1, resource,
-    automatic).exists(_.outcome.isRight)
+  /** The cards p1 could Trade with for `resource` now, by the preview a
+    * start runs. */
+  private def tradeableCards(ready: ReadyGame, resource: TradeResource)
+      : Vector[DecisionOptionRef] = TradeProcedure.startOptions(catalog, ready,
+    p1, resource, automatic).filter(_.outcome.isRight).map(_.option.ref)
 
   test("its holder is not offered Trade for favor, and may still Trade for " +
       "secrets"):
@@ -38,16 +38,15 @@ class VowOfPovertySuite extends munit.FunSuite:
     val withoutVow = Table.start.denizen(wrestlers, at = home).favor(p1, 2)
       .bankFavor(Suit.Order, 3)
     val held = withoutVow.adviser(p1, vow).ready
-    assert(tradeOffered(withoutVow.ready, TradeResource.Favor))
-    assert(!tradeOffered(held, TradeResource.Favor))
-    assert(tradeOffered(held, TradeResource.Secret))
-    val traded = for
-      started <- rules.startWalker(Ready(held), ActionRef.Trade, p1,
-        Vector.empty, Vector(DecisionOptionRef.Button("favor")))
-      done <- rules.resolveWalker(started.state, p1, TradeProcedure.decisionId,
-        ChooseOneAnswer(DecisionOptionRef.Denizen(wrestlers)))
-    yield done
-    assert(traded.isLeft, traded.toString)
+    val wrestlersCard = DecisionOptionRef.Denizen(wrestlers)
+    assertEquals(tradeableCards(withoutVow.ready, TradeResource.Favor),
+      Vector(wrestlersCard))
+    assertEquals(tradeableCards(held, TradeResource.Favor), Vector.empty)
+    assertEquals(tradeableCards(held, TradeResource.Secret),
+      Vector(wrestlersCard))
+    assertEquals(EconomyActions.attemptTrade(rules, held, p1, Vector.empty,
+      "favor", wrestlersCard).left.toOption,
+      Some(OathViolation.NoPlayableOption("trade")))
 
   test("Moving Market's favor is not from Trade, so its holder still gains " +
       "it"):

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.rest
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
@@ -10,8 +9,8 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Outcomes, PlacementPicks,
-  PowerRules, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks,
+  PowerRules, Refusals, Table}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 class SilverTongueSuite extends munit.FunSuite:
@@ -32,7 +31,10 @@ class SilverTongueSuite extends munit.FunSuite:
     walkerParked.assertResumed(used.state, Phase.Rest, actor)
     // Each stocked bank holds 3; taking one leaves 2.
     assertEquals(favor(used.state)(Suit.Arcane), 2)
-    assert(used.events.exists(_.isInstanceOf[BanditsRefilled]))
+    // The boundary refilled the quiet table's empty Ancient City to its
+    // printed 3 bandits.
+    assertEquals(Look(used.state).forces("Ancient City"),
+      SiteForces.Occupied(ForceKind.Bandit, 3))
     val ref = PowerUseRef(PowerTiming.Rest, PowerSourceRef.Card(tongue),
       SilverTongue.id)
     assertEquals(rules.startWalker(used.state, use, actor, Vector.empty,
@@ -45,9 +47,9 @@ class SilverTongueSuite extends munit.FunSuite:
     val parked = accepted(
       rules.startWalker(Ready(ready), use, actor, Vector.empty, Vector(source)))
     walkerParked.assertParked(parked.state, use, choice, actor)
-    assert(rules.resolveWalker(parked.state, actor, choice,
+    assertEquals(rules.resolveWalker(parked.state, actor, choice,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(Suit.Order)))
-      .isLeft)
+      .left.toOption, Some(Refusals.notOffered(choice)))
     val taken = accepted(rules.resolveWalker(parked.state, actor, choice,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(Suit.Nomad))))
     // Each stocked bank holds 3: Nomad gave one, Arcane none.
@@ -95,8 +97,7 @@ class SilverTongueSuite extends munit.FunSuite:
       .turn(actor, Phase.Act).adviser(actor, second, facedown = true)
       .hand(actor, played).unchecked
     val faceup = faceupReplacing(placementOptions(ready, played))
-    assert(faceup.nonEmpty && faceup.forall(_.nonEmpty), faceup.toString)
-    assert(faceup.contains(Some(second)))
+    assertEquals(faceup, Vector(Some(tongue), Some(second)))
 
   test("playing Silver Tongue itself as a third adviser requires replacement"):
     // Two facedown advisers, and Silver Tongue in hand.
@@ -107,8 +108,7 @@ class SilverTongueSuite extends munit.FunSuite:
     val ready = others.foldLeft(resting)(_.adviser(actor, _, facedown = true))
       .unchecked
     val options = placementOptions(ready, tongue)
-    assert(faceupReplacing(options).forall(_.nonEmpty))
-    assert(faceupReplacing(options).contains(Some(others.head)))
+    assertEquals(faceupReplacing(options), others.map(Some(_)))
     // Facedown it needs no room under its own limit.
     assert(options.exists(_.ref ==
       DecisionOptionRef.AdviserPlay(actor, 2, faceup = false)))

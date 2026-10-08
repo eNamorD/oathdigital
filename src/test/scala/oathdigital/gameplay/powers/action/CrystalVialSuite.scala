@@ -4,7 +4,8 @@ import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
@@ -114,10 +115,12 @@ class CrystalVialSuite extends munit.FunSuite:
 
   test("only the acting player answers, with an offered card"):
     val t = accepted(use(staged, power, source))
-    assert(answer(t, other, CrystalVial.decisionId,
-      pick(DecisionOptionRef.Denizen(held))).isLeft)
-    assert(answer(t, actor, CrystalVial.decisionId,
-      pick(DecisionOptionRef.Denizen(theirs))).isLeft)
+    assertEquals(answer(t, other, CrystalVial.decisionId,
+      pick(DecisionOptionRef.Denizen(held))).left.toOption,
+      Some(OathViolation.WrongPlayer(actor, other)))
+    assertEquals(answer(t, actor, CrystalVial.decisionId,
+      pick(DecisionOptionRef.Denizen(theirs))).left.toOption,
+      Some(Refusals.notOffered(CrystalVial.decisionId)))
 
   test("with no candidate the cost is paid and nothing else happens"):
     val ready = bare
@@ -131,7 +134,8 @@ class CrystalVialSuite extends munit.FunSuite:
     Vector((1, 0), (1, 5)).foreach { case (up, down) =>
       val ready = Table.from(staged).secrets(actor, up, down).unchecked
       assertEquals(usableNow(ready), Vector.empty, s"$up up, $down down")
-      assert(use(ready, power, source).isLeft)
+      assertEquals(use(ready, power, source).left.toOption,
+        Some(OathViolation.InsufficientSecrets(2, 1)))
     }
 
   test("it writes the card it buried in place of the generic line"):

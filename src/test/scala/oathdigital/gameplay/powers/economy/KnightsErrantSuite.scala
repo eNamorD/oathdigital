@@ -12,7 +12,7 @@ import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseAmountAnswer,
   ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  PowerRules, Table}
+  PowerRules, Refusals, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
@@ -137,7 +137,10 @@ class KnightsErrantSuite extends munit.FunSuite:
 
   test("the same Campaign started on its own is refused for want of Supply"):
     val alone = staged(supply = 0).ready
-    assert(rules.startWalker(Ready(alone), ActionRef.Campaign, p1).isLeft)
+    assertEquals(
+      rules.startWalker(Ready(alone), ActionRef.Campaign, p1).left.toOption,
+      Some(OathViolation.CoreOperationRejected("insufficient-supply",
+        "a supply spend of 2 exceeds the 0 available")))
 
   test("a Campaign run this way finishes, and the Muster ends after it"):
     val start = staged(supply = 1).ready
@@ -146,7 +149,9 @@ class KnightsErrantSuite extends munit.FunSuite:
     val done = answer(forced, CampaignIds.force, ChooseAmountAnswer(0))
     val result = ready(done)
     assertEquals(result.game.current.walkerProcedure, None)
-    assert(result.game.current.lastCampaignResult.nonEmpty)
+    assertEquals(result.game.current.lastCampaignResult.map(finished =>
+      (finished.kind, finished.defender, finished.force)),
+      Some((CampaignKind.Conquest, CampaignDefender.Bandits, 0)))
     assertEquals(ActPowerHarness.replayed(rules, start, done.events), result)
 
   test("it cannot be selected for a Campaign, or for any other action"):
@@ -171,11 +176,11 @@ class KnightsErrantSuite extends munit.FunSuite:
     val options = optionRefs(asked)
     assertEquals(options,
       Vector[DecisionOptionRef](KnightsErrant.declineOption))
-    assertEquals(campaigning(asked), Left(OathViolation.InvalidEventOrder(
-      s"decision ${KnightsErrant.decisionId} does not offer the selected " +
-        "option")))
-    assert(rules.resolveWalker(asked.state, p1, KnightsErrant.decisionId,
-      decline).isRight)
+    assertEquals(campaigning(asked),
+      Left(Refusals.notOffered(KnightsErrant.decisionId)))
+    val declined = accepted(rules.resolveWalker(asked.state, p1,
+      KnightsErrant.decisionId, decline))
+    assertEquals(ready(declined).game.current.walkerPending, None)
 
   test("a Fortress that protects every player a Raid could target forbids " +
       "the nested Campaign, so the look-ahead hides the option"):
@@ -191,12 +196,11 @@ class KnightsErrantSuite extends munit.FunSuite:
     val options = optionRefs(asked)
     assertEquals(options,
       Vector[DecisionOptionRef](KnightsErrant.declineOption))
-    assertEquals(campaigning(asked), Left(OathViolation.InvalidEventOrder(
-      s"decision ${KnightsErrant.decisionId} does not offer the selected " +
-        "option")))
+    assertEquals(campaigning(asked),
+      Left(Refusals.notOffered(KnightsErrant.decisionId)))
     // The same board without the Fortress lets the Raid start.
     val open = musterFrom(base, modifiers)
-    assert(campaigning(open).isRight)
+    assertEquals(parkedOn(accepted(campaigning(open))), CampaignIds.force)
 
   // ---- Lines ----
 

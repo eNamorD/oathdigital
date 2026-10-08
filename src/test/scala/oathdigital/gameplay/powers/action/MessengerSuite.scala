@@ -74,8 +74,14 @@ class MessengerSuite extends munit.FunSuite:
   test("a site must keep a warband, and the total must be kept"):
     // 3 warbands on the board, 2 at Ancient City and 1 at Deep Woods: 6.
     val ready = staged(board = 3, atHome = 2)
-    assert(arranged(ready, arrangement(4, 2, 0)).isLeft)
-    assert(arranged(ready, arrangement(3, 2, 2)).isLeft)
+    assertEquals(arranged(ready, arrangement(4, 2, 0)).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        s"decision ${Messenger.decisionId} distributes to " +
+          s"site/${far.value} outside 1..5")))
+    assertEquals(arranged(ready, arrangement(3, 2, 2)).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        s"decision ${Messenger.decisionId} distributes an amount other " +
+          "than its total of 6")))
 
   test("an answer that changes nothing is allowed"):
     // 3 warbands on the board, 2 at Ancient City and 1 at Deep Woods: 6.
@@ -112,4 +118,5 @@ class MessengerSuite extends munit.FunSuite:
   test("it is unusable without a favor"):
     val broke = staged(board = 3, atHome = 2, favor = 0)
     assert(!usableNow(broke).exists(_.power.id == Messenger.id))
-    assert(use(broke, Messenger, source).isLeft)
+    assertEquals(use(broke, Messenger, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))

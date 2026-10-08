@@ -99,4 +99,5 @@ class ArmedMobSuite extends munit.FunSuite:
   test("it is unusable without a favor"):
     val broke = staged(favor = 0).adviser(p2, homesteaders).ready
     assert(!usableNow(broke).exists(_.power.id == ArmedMob.id))
-    assert(use(broke, power, source).isLeft)
+    assertEquals(use(broke, power, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))

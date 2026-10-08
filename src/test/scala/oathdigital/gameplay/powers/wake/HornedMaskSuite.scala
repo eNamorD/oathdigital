@@ -7,7 +7,8 @@ import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -120,8 +121,9 @@ class HornedMaskSuite extends munit.FunSuite:
     val asked = takeInn(t)
     assertEquals(offered(asked, actor).map(_.toSet), Some(Set(
       "denizen" -> elders.value, "denizen" -> fresh.value)))
-    assert(answer(asked, actor, HornedMask.discardDecisionId,
-      choose(locked.head)).isLeft)
+    assertEquals(answer(asked, actor, HornedMask.discardDecisionId,
+      choose(locked.head)).left.toOption,
+      Some(Refusals.notOffered(HornedMask.discardDecisionId)))
 
   test("a facedown locked adviser can be offered for discard"):
     val ready = Table.from(holding(elders, fresh)).adviser(actor, locked.head,
@@ -150,7 +152,9 @@ class HornedMaskSuite extends munit.FunSuite:
   test("a Silver Tongue holder holding two advisers, one of them Silver " +
       "Tongue and nothing else discardable, cannot use it"):
     val ready = holding(tongue, locked.head)
-    assert(use(ready, power, source).isLeft)
+    assertEquals(use(ready, power, source).left.toOption,
+      Some(OathViolation.CoreOperationRejected("locked",
+        s"${tongue.value} is locked")))
     assert(denizensHere(ready).contains(inn))
 
   test("a facedown Silver Tongue does not lower the limit"):
@@ -159,18 +163,22 @@ class HornedMaskSuite extends munit.FunSuite:
     val t = accepted(use(ready, power, source))
     val done = takeInn(t)
     parked.assertNotParked(done.state)
-    assertEquals(Look(after(done)).player(actor).advisers.size, 3)
+    assertEquals(Look(after(done)).advisers(actor).toSet,
+      Set[CardId](tongue, elders, inn))
 
   test("a player who is not the Silver Tongue holder keeps the limit of three"):
     val ready = holding(elders, fresh)
     val t = accepted(use(ready, power, source))
     val done = takeInn(t)
     parked.assertNotParked(done.state)
-    assertEquals(Look(after(done)).player(actor).advisers.size, 3)
+    assertEquals(Look(after(done)).advisers(actor).toSet,
+      Set[CardId](elders, fresh, inn))
 
   test("a full area of locked advisers cannot use it, and it is not offered"):
     val ready = holding(locked*)
-    assert(use(ready, power, source).isLeft)
+    assertEquals(use(ready, power, source).left.toOption,
+      Some(OathViolation.CoreOperationRejected("locked",
+        s"${locked.head.value} is locked")))
     assertEquals(PhasePowerProcedure.usable(catalog, ready, actor,
       PhasePowers(Vector(power)), WalkerPowers(Vector.empty,
         restrictionSet = OperationRestrictions.forCatalog(catalog))),
@@ -186,9 +194,13 @@ class HornedMaskSuite extends munit.FunSuite:
 
   test("only the acting player answers, with an offered denizen"):
     val t = accepted(use(innAtHome, power, source))
-    assert(answer(t, Table.p2, HornedMask.denizenDecisionId,
-      choose(inn)).isLeft)
-    assert(answer(t, actor, HornedMask.denizenDecisionId, choose(elders)).isLeft)
+    assertEquals(answer(t, Table.p2, HornedMask.denizenDecisionId,
+      choose(inn)).left.toOption,
+      Some(OathViolation.WrongPlayer(actor, Table.p2)))
+    assertEquals(
+      answer(t, actor, HornedMask.denizenDecisionId,
+        choose(elders)).left.toOption,
+      Some(Refusals.notOffered(HornedMask.denizenDecisionId)))
 
   test("it writes the denizen it took"):
     val t = accepted(use(innAtHome, power, source))

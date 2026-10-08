@@ -62,4 +62,5 @@ class BanditPaymasterSuite extends munit.FunSuite:
   test("it is unusable without a favor"):
     val broke = staged(2, favor = 0).ready
     assert(!usableNow(broke).exists(_.power.id == BanditPaymaster.id))
-    assert(use(broke, BanditPaymaster, source).isLeft)
+    assertEquals(use(broke, BanditPaymaster, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))

@@ -59,7 +59,9 @@ class LeagueTreatySuite extends munit.FunSuite:
     walkerParked.assertParked(parked.state, PhaseTransitionRef.FinishRest,
       destination, owner)
     val decline = DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("decline"))
-    assert(rules.resolveWalker(parked.state, p1, destination, decline).isLeft)
+    assertEquals(
+      rules.resolveWalker(parked.state, p1, destination, decline).left.toOption,
+      Some(OathViolation.WrongPlayer(owner, p1)))
     val declined = accepted(
       rules.resolveWalker(parked.state, owner, destination, decline))
     assertWake(declined.state, p1)

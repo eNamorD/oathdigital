@@ -70,7 +70,8 @@ class BoneDiceSuite extends munit.FunSuite:
   test("it is unusable without a faceup secret"):
     val noSecret = Table.from(staged(supply = 2)).secrets(actor, 0).unchecked
     assert(!usableIds(noSecret).contains(BoneDice.id))
-    assert(use(rules(), noSecret, BoneDice.id, source).isLeft)
+    assertEquals(use(rules(), noSecret, BoneDice.id, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))
 
   test("it writes its roll and its gain, and no skull writes no bury"):
     val done = accepted(use(rules(attackDice(AttackDieFace.OneSword,

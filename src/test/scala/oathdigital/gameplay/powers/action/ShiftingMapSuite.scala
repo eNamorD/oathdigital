@@ -40,7 +40,8 @@ class ShiftingMapSuite extends munit.FunSuite:
   test("it is unusable without a faceup secret"):
     val broke = staged(faceUp = 0)
     assert(!usableIds(broke).contains(ShiftingMap.id))
-    assert(use(rules(), broke, ShiftingMap.id, source).isLeft)
+    assertEquals(use(rules(), broke, ShiftingMap.id, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))
 
   test("its line reads the Supply gained"):
     val done = accepted(use(rules(), staged(), ShiftingMap.id, source))

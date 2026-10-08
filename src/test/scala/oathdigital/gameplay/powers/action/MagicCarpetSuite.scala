@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.ActPowerHarness.usableIds
 import oathdigital.testkit.Outcomes.ready
 import oathdigital.testkit.Table.{p2, p3}
@@ -62,10 +63,12 @@ class MagicCarpetSuite extends munit.FunSuite:
 
   test("a player at the new site is not eligible to receive it"):
     val Placed(_, placed) = placedAt(staged, "Broken Peaks")
-    assert(choose(placed.state, MagicCarpet.fateDecisionId,
-      DecisionOptionRef.Player(p2)).isLeft)
-    assert(choose(placed.state, MagicCarpet.fateDecisionId,
-      DecisionOptionRef.Player(p3)).isRight)
+    assertEquals(choose(placed.state, MagicCarpet.fateDecisionId,
+      DecisionOptionRef.Player(p2)).left.toOption,
+      Some(Refusals.notOffered(MagicCarpet.fateDecisionId)))
+    val handed = accepted(choose(placed.state, MagicCarpet.fateDecisionId,
+      DecisionOptionRef.Player(p3)))
+    assert(backToActing(handed))
 
   test("choosing the current site skips the move"):
     val Placed(_, placed) = placedAt(staged, "Ancient City")

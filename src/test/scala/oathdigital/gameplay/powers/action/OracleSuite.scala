@@ -8,7 +8,7 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness,
-  PlacementPicks, PowerRules, Table}
+  PlacementPicks, PowerRules, Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -108,7 +108,9 @@ class OracleSuite extends munit.FunSuite:
     assert(!buttons(t).contains(PlayedAs.Faceup), buttons(t).toString)
     assert(buttons(t).contains(PlayedAs.Facedown))
     assert(buttons(t).contains(PlayedAs.Discarded))
-    assert(place(t, PlayedAs.Faceup).isLeft)
+    assertEquals(place(t, PlayedAs.Faceup).left.toOption,
+      Some(Refusals.notOffered(
+        CardPlayProcedure.placementDecisionId(VisionRules.Faith))))
 
   test("its line names the Vision it drew"):
     val t = accepted(start(staged()))
@@ -131,4 +133,5 @@ class OracleSuite extends munit.FunSuite:
   test("it is unusable without two faceup secrets"):
     val broke = Table.from(staged()).secrets(actor, 1, 1).unchecked
     assert(!usableNow(broke).exists(_.power.id == Oracle.id))
-    assert(start(broke).isLeft)
+    assertEquals(start(broke).left.toOption,
+      Some(OathViolation.InsufficientSecrets(2, 1)))

@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -59,12 +59,10 @@ class TentsSuite extends munit.FunSuite:
   test("it cannot be selected without a favor to place, or onto an occupied card"):
     val broke = Table.from(held).favor(actor, 0).unchecked
     assertEquals(travel(broke, coast, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.tents is not applicable to this travel")))
+      Some(Refusals.notApplicable(Tents.id, "travel")))
     val occupied = Table.from(held).tokens(tents, favor = 1).unchecked
     assertEquals(travel(occupied, coast, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.tents is not applicable to this travel")))
+      Some(Refusals.notApplicable(Tents.id, "travel")))
 
   test("it is a Travel modifier only"):
     val offered = (action: ActionRef) => accepted(

@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -71,8 +71,7 @@ class RoyalStablesSuite extends munit.FunSuite:
     val ready = Table.from(board()).denizen(stables, at = hinterlandPlains)
       .warbandsAt(pass, actor, 1).unchecked
     assertEquals(travel(ready, provincePlains, modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power denizen.royal-stables is not applicable to this travel")))
+      Some(Refusals.notApplicable(RoyalStables.id, "travel")))
 
   test("it is a Travel modifier only"):
     val offered = (action: ActionRef) => accepted(

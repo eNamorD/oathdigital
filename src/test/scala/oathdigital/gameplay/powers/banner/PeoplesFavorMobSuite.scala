@@ -9,7 +9,7 @@ import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
-  PlacementPicks, Table}
+  PlacementPicks, Refusals, Table}
 import oathdigital.testkit.Table.p3
 import oathdigital.testkit.Unwrap.accepted
 
@@ -119,8 +119,9 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     assertEquals(siteCards(SearchFixture.after(done)).size, capacity)
     assert(siteCards(SearchFixture.after(done)).contains(played))
     val without = toPlacement(searchAtAncientCityHolding(fillers, identity))
-    assert(place(without, played, PlayedAs.AtSite).isLeft,
-      "a full site accepts no play without Mob")
+    assertEquals(place(without, played, PlayedAs.AtSite).left.toOption,
+      Some(OathViolation.InvalidSearchPlacement("the placement offers no way " +
+        "to play the card AtSite")))
 
   test("nobody else may replace: not another holder, not the Grand Council " +
       "face, not the other banner, not an unheld banner"):
@@ -179,8 +180,10 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val ready = atActorsSite(searchAtAncientCityHolding(Vector(kept)), party)
     val selected = Vector(oathdigital.gameplay.powers.cardplay.WelcomingParty.id)
     val asked = toPlacement(ready, selected)
-    assert(placeReplacing(asked, played, PlayedAs.AtSite, party).isLeft,
-      "a card that prints a selected power cannot be discarded")
+    assertEquals(
+      placeReplacing(asked, played, PlayedAs.AtSite, party).left.toOption,
+      Some(Refusals.notOffered(
+        CardPlayProcedure.placementDecisionId(played))))
     val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite, kept))
     val end = SearchFixture.after(done)
     val hearth = (s: ReadyGame) => s.banks.favor.getOrElse(Suit.Hearth, 0)

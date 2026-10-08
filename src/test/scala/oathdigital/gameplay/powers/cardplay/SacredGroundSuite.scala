@@ -1,10 +1,11 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, Refusals, Table}
 
 /** E08 never appears in a generated game (the Nomad Homeland takes E06), so
   * each test places it by hand.
@@ -32,8 +33,10 @@ class SacredGroundSuite extends munit.FunSuite:
     assert(!offered(parkedAt).contains(PlayedAs.Faceup))
     assert(offered(parkedAt).contains(PlayedAs.Discarded))
     assert(offered(parkedAt).contains(PlayedAs.Facedown))
-    assert(SearchFixture.place(parkedAt, VisionRules.Faith,
-      PlayedAs.Faceup).isLeft)
+    assertEquals(SearchFixture.place(parkedAt, VisionRules.Faith,
+      PlayedAs.Faceup).left.toOption,
+      Some(Refusals.notOffered(
+        CardPlayProcedure.placementDecisionId(VisionRules.Faith))))
 
   test("a player whose pawn is at Sacred Ground plays freely"):
     assert(offered(search(home)).contains(PlayedAs.Faceup))

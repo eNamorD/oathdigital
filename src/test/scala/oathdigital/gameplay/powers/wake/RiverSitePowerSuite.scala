@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.wake
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class RiverSitePowerSuite extends munit.FunSuite:
@@ -41,7 +42,8 @@ class RiverSitePowerSuite extends munit.FunSuite:
   test("it is not usable when no other River is in play"):
     val alone = staged(Vector.empty, Phase.Wake)
     assertEquals(rivers(alone), Vector.empty)
-    assert(use(alone).isLeft)
+    assertEquals(use(alone).left.toOption,
+      Some(Refusals.nothingToDo(river.id, source)))
 
   test("it is not usable from a site that is not a River"):
     val ready = staged(Vector(riverbank, tidalMarshes), Phase.Wake)
@@ -51,7 +53,8 @@ class RiverSitePowerSuite extends munit.FunSuite:
     assert(!RiverSitePower.isRiver(dry))
     val away = Table.from(ready).pawn(actor, dry).unchecked
     assertEquals(rivers(away), Vector.empty)
-    assert(use(away).isLeft)
+    assertEquals(use(away).left.toOption,
+      Some(Refusals.inaccessibleSource(river.id, source)))
 
   test("it offers every other River in play, in map order"):
     val ready = staged(Vector(riverbank, tidalMarshes), Phase.Wake)

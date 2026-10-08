@@ -62,4 +62,5 @@ class MemoryOfHomeSuite extends munit.FunSuite:
   test("it is unusable with a single secret"):
     val short = staged(Suit.Order -> 3).secrets(p1, 1).ready
     assert(!usableNow(short).exists(_.power.id == MemoryOfHome.id))
-    assert(use(short, MemoryOfHome, source).isLeft)
+    assertEquals(use(short, MemoryOfHome, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(2, 1)))

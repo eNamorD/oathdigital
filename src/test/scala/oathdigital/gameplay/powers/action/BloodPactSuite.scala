@@ -30,7 +30,9 @@ class BloodPactSuite extends munit.FunSuite:
     assert(awaits(t, BloodPact.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(Look(after(t)).tokensOn(pact), Tokens(0, 1))
-    assert(answer(t, p1, BloodPact.decisionId, pairs(3)).isLeft)
+    assertEquals(answer(t, p1, BloodPact.decisionId, pairs(3)).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        s"decision ${BloodPact.decisionId} amount 3 is outside 0..2")))
 
   test("each pair sacrificed from the board gains a secret"):
     // 5 warbands less 2 pairs leave 1.
@@ -71,4 +73,5 @@ class BloodPactSuite extends munit.FunSuite:
   test("it is unusable without a faceup secret"):
     val broke = staged(secrets = 0)
     assert(!usableNow(broke).exists(_.power.id == BloodPact.id))
-    assert(use(broke, BloodPact, source).isLeft)
+    assertEquals(use(broke, BloodPact, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))

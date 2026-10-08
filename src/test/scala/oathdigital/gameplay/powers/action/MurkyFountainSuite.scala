@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
-  PhasePowerHarness, Table}
+  PhasePowerHarness, Refusals, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -83,12 +83,14 @@ class MurkyFountainSuite extends munit.FunSuite:
   test("it is unusable without a faceup secret"):
     val noSecret = Table.from(staged(supply = 1)).secrets(actor, 0).unchecked
     assert(!usableIds(noSecret).contains(MurkyFountain.id))
-    assert(use(rules(), noSecret, MurkyFountain.id, source).isLeft)
+    assertEquals(use(rules(), noSecret, MurkyFountain.id, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))
 
   test("the intact face is Marble Fountains and offers no Murky Fountain"):
     val intact = staged(side = EdificeSide.Intact, supply = 1)
     assert(!usableIds(intact).contains(MurkyFountain.id))
-    assert(use(rules(), intact, MurkyFountain.id, source).isLeft)
+    assertEquals(use(rules(), intact, MurkyFountain.id, source).left.toOption,
+      Some(Refusals.inaccessibleSource(MurkyFountain.id, source)))
 
   test("it writes its roll and the Supply it gained"):
     val done = accepted(use(rules(defenseDice(DefenseDieFace.OneShield,

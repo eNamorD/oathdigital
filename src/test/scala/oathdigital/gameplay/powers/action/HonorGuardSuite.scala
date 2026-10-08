@@ -87,4 +87,5 @@ class HonorGuardSuite extends munit.FunSuite:
   test("it is unusable with 2 favor"):
     val broke = staged(favor = 2).ready
     assert(!usableNow(broke).exists(_.power.id == HonorGuard.id))
-    assert(use(broke, power, source).isLeft)
+    assertEquals(use(broke, power, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(3, 2)))

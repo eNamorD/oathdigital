@@ -37,7 +37,8 @@ class ElderSuite extends munit.FunSuite:
     val broke = staged(favor = 1)
     assertEquals(PhasePowerProcedure.usable(catalog, broke, actor,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
-    assert(use(broke).isLeft)
+    assertEquals(use(broke).left.toOption,
+      Some(OathViolation.InsufficientFavor(2, 1)))
 
   test("it writes its gain as its own line, covering the generic one"):
     val done = accepted(use(staged(favor = 3)))

@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
@@ -9,7 +10,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, PowerRules, Table}
+import oathdigital.testkit.{CatalogNames, Look, PowerRules, Refusals, Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class VowOfObedienceSuite extends munit.FunSuite:
@@ -36,8 +37,10 @@ class VowOfObedienceSuite extends munit.FunSuite:
     assert(!offered(parkedAt).contains(PlayedAs.Faceup))
     assert(offered(parkedAt).contains(PlayedAs.Discarded))
     assert(offered(parkedAt).contains(PlayedAs.Facedown))
-    assert(SearchFixture.place(parkedAt, VisionRules.Faith,
-      PlayedAs.Faceup).isLeft)
+    assertEquals(SearchFixture.place(parkedAt, VisionRules.Faith,
+      PlayedAs.Faceup).left.toOption,
+      Some(Refusals.notOffered(
+        CardPlayProcedure.placementDecisionId(VisionRules.Faith))))
 
   test("the holder cannot play a facedown Vision faceup either"):
     val parkedAt = fromAdvisers(holding(inPhase(quietTable, Phase.Act)),

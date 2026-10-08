@@ -1,10 +1,11 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, Refusals, Table}
 
 class SecretPoliceSuite extends munit.FunSuite:
   import PowerFixture._
@@ -31,8 +32,10 @@ class SecretPoliceSuite extends munit.FunSuite:
     assert(!offered(parkedAt).contains(PlayedAs.Faceup))
     assert(offered(parkedAt).contains(PlayedAs.Discarded))
     assert(offered(parkedAt).contains(PlayedAs.Facedown))
-    assert(SearchFixture.place(parkedAt, VisionRules.Faith,
-      PlayedAs.Faceup).isLeft)
+    assertEquals(SearchFixture.place(parkedAt, VisionRules.Faith,
+      PlayedAs.Faceup).left.toOption,
+      Some(Refusals.notOffered(
+        CardPlayProcedure.placementDecisionId(VisionRules.Faith))))
 
   test("any site the ruler rules binds, not only the Police site"):
     // p2 rules Broken Peaks, where the Police stand, and Ancient City.

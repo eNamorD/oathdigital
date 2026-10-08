@@ -46,7 +46,8 @@ class TollRoadsSuite extends munit.FunSuite:
   test("a traveller who cannot pay does not get the destination"):
     val broke = Table.from(rivalRules).favor(actor, 0).unchecked
     assertEquals(candidates(broke).get(coast), None)
-    assert(travel(broke, coast).isLeft)
+    assertEquals(travel(broke, coast).left.toOption,
+      Some(destinationNotOffered))
     // A site the rival does not rule is still offered.
     assert(candidates(broke).contains(hinterlandPlains))
 

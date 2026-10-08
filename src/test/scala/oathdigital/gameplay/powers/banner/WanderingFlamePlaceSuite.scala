@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.banner
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
-  PhasePowerHarness, Table}
+  PhasePowerHarness, Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p3}
 import oathdigital.testkit.Unwrap.accepted
@@ -67,7 +67,8 @@ class WanderingFlamePlaceSuite extends munit.FunSuite:
     Vector(holdingFlameWithSecrets(faceUp = 0),
       holdingFlameWithSecrets(faceUp = 0, faceDown = 2)).foreach { start =>
       assert(!usableIds(start).contains(power.id))
-      assert(use(start, power, darkestSecretOption).isLeft)
+      assertEquals(use(start, power, darkestSecretOption).left.toOption,
+        Some(Refusals.nothingToDo(power.id, darkestSecretOption)))
     }
     assert(usableIds(holdingFlameWithSecrets(faceUp = 1)).contains(power.id))
     val end = after(
@@ -83,7 +84,8 @@ class WanderingFlamePlaceSuite extends munit.FunSuite:
     val notHeld = Table.start.turn(p1, Phase.Act).darkestSecret(None, 1)
       .secrets(p1, 2, 0).ready
     assert(!usableIds(notHeld).contains(power.id))
-    assert(use(notHeld, power, darkestSecretOption).isLeft)
+    assertEquals(use(notHeld, power, darkestSecretOption).left.toOption,
+      Some(Refusals.inaccessibleSource(power.id, darkestSecretOption)))
     val theirs = Table.start.turn(p1, Phase.Act).darkestSecret(Some(p3), 1)
       .secrets(p1, 2, 0).ready
     assert(!usableIds(theirs).contains(power.id))
@@ -91,7 +93,8 @@ class WanderingFlamePlaceSuite extends munit.FunSuite:
       .darkestSecret(Some(p1), 1, DarkestSecretFace.Festival).secrets(p1, 2, 0)
       .ready
     assert(!usableIds(festival).contains(power.id))
-    assert(use(festival, power, darkestSecretOption).isLeft)
+    assertEquals(use(festival, power, darkestSecretOption).left.toOption,
+      Some(Refusals.inaccessibleSource(power.id, darkestSecretOption)))
     assert(!usableIds(inPhase(holdingFlameWithSecrets(2), Phase.Wake))
       .contains(power.id))
 

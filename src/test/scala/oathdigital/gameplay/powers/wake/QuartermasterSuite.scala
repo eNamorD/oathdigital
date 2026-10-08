@@ -7,7 +7,7 @@ import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  Refusals, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 
@@ -55,7 +55,8 @@ class QuartermasterSuite extends munit.FunSuite:
       "pawn there"):
     val ready = staged(supply = 3, ruled = false, pawnThere = true)
     assert(!offered(ready))
-    assert(use(ready).isLeft)
+    assertEquals(use(ready).left.toOption,
+      Some(Refusals.nothingToDo(Quartermaster.id, source)))
 
   test("its line names the Supply gained"):
     assertEquals(NoteText.said(Quartermaster,

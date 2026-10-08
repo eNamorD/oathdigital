@@ -11,7 +11,7 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted,
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, Answers, Look, Outcomes,
-  PhasePowerHarness, Situation, Table}
+  PhasePowerHarness, Refusals, Situation, Table}
 import oathdigital.testkit.Table.{p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -70,11 +70,13 @@ class HungerSuite extends munit.FunSuite:
       })
     assertEquals(parked.parkedDecision(t.state).map(_.decision),
       Some(Hunger.decisionId))
-    assertEquals(PhasePowerHarness.offered(t, next).map(_.map(_._1).distinct),
-      Some(Vector("adviser-slot")))
-    assertEquals(PhasePowerHarness.offered(t, next).map(_.size),
-      Some(expected.size))
-    assert(rules.startWalker(t.state, PhaseTransitionRef.EndWake, next).isLeft)
+    assertEquals(PhasePowerHarness.offered(t, next),
+      Some(expected.map(slot => slot.kind -> slot.wireId)))
+    assertEquals(
+      rules.startWalker(t.state, PhaseTransitionRef.EndWake,
+        next).left.toOption,
+      Some(OathViolation.InvalidEventOrder("a walker procedure is already " +
+        "pending")))
     assert(PhasePowerProcedure.usable(catalog, now, next, phasePowers, WalkerPowers.empty)
       .forall(_.power.id != Hunger.id))
 
@@ -104,7 +106,8 @@ class HungerSuite extends munit.FunSuite:
 
   test("a slot that is not offered is rejected"):
     val t = rested(staged())
-    assert(bury(t, DecisionOptionRef.AdviserSlot(actor, 0)).isLeft)
+    assertEquals(bury(t, DecisionOptionRef.AdviserSlot(actor, 0)).left.toOption,
+      Some(Refusals.notOffered(Hunger.decisionId)))
 
   test("with nothing to bury, Hunger says so and Wake goes on"):
     // p2 wakes alone at Broken Peaks, holding only Hunger. The site's two

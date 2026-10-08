@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
-  PhasePowerHarness, Table}
+  PhasePowerHarness, Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -123,10 +123,12 @@ class BookOfRecordsSuite extends munit.FunSuite:
 
   test("a banner held away from the site is refused"):
     val t = accepted(use(staged(), BookOfRecords, source))
-    assert(answer(t, actor, BookOfRecords.decisionId,
-      choose(Banner.DarkestSecret)).isLeft)
+    assertEquals(answer(t, actor, BookOfRecords.decisionId,
+      choose(Banner.DarkestSecret)).left.toOption,
+      Some(Refusals.notOffered(BookOfRecords.decisionId)))
 
   test("two secrets are not enough"):
     val ready = staged(faceUp = 2)
     assert(!usableNow(ready).exists(_.power.id == BookOfRecords.id))
-    assert(use(ready, BookOfRecords, source).isLeft)
+    assertEquals(use(ready, BookOfRecords, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(3, 2)))

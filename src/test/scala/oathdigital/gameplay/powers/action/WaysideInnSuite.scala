@@ -40,7 +40,8 @@ class WaysideInnSuite extends munit.FunSuite:
     val broke = staged(favor = 0, supply = 2)
     assertEquals(PhasePowerProcedure.usable(catalog, broke, actor,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
-    assert(use(broke).isLeft)
+    assertEquals(use(broke).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))
 
   test("it is usable in the Act phase only"):
     val wake = inPhase(staged(favor = 3, supply = 2), Phase.Wake)

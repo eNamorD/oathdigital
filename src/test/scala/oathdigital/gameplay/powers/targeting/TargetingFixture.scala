@@ -51,3 +51,9 @@ object TargetingFixture:
   def start(state: ReadyGame, procedure: ActionRef, actor: PlayerId)
       : Either[OathViolation, OathTransition] =
     rules.startWalker(Ready(state), procedure, actor)
+
+  /** The decision a started walk is parked on, if any. */
+  def parkedOn(transition: OathTransition)(using munit.Location)
+      : Option[String] =
+    PowerRules.parkedUnderWalkerPowers.parkedDecision(transition.state)
+      .map(_.decision)

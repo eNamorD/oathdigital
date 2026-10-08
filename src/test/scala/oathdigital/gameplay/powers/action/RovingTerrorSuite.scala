@@ -90,4 +90,5 @@ class RovingTerrorSuite extends munit.FunSuite:
   test("it is unusable without a secret"):
     val broke = staged.secrets(p1, 0).ready
     assert(!usableNow(broke).exists(_.power.id == RovingTerror.id))
-    assert(use(broke, power, source).isLeft)
+    assertEquals(use(broke, power, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))

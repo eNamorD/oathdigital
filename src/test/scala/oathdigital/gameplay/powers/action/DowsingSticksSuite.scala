@@ -49,7 +49,9 @@ class DowsingSticksSuite extends munit.FunSuite:
 
   test("it is unusable with fewer than 3 faceup secrets"):
     assert(!usableIds(staged(secrets = 2)).contains(DowsingSticks.id))
-    assert(use(rules(), staged(secrets = 2), DowsingSticks.id, source).isLeft)
+    assertEquals(
+      use(rules(), staged(secrets = 2), DowsingSticks.id, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(3, 2)))
 
   test("it writes the relic it drew"):
     val done = accepted(use(rules(), staged(), DowsingSticks.id, source))

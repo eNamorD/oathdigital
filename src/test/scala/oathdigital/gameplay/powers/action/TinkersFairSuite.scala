@@ -52,4 +52,5 @@ class TinkersFairSuite extends munit.FunSuite:
   test("it is unusable with less than 3 favor"):
     val broke = staged(favor = 2)
     assert(!usableNow(broke).exists(_.power.id == TinkersFair.id))
-    assert(use(broke, TinkersFair, source).isLeft)
+    assertEquals(use(broke, TinkersFair, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(3, 2)))

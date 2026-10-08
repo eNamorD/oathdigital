@@ -68,4 +68,5 @@ class QuickExitSuite extends munit.FunSuite:
   test("it is unusable without a secret"):
     val broke = staged(secrets = 0)
     assert(!usableNow(broke).exists(_.power.id == QuickExit.id))
-    assert(use(broke, QuickExit, source).isLeft)
+    assertEquals(use(broke, QuickExit, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))

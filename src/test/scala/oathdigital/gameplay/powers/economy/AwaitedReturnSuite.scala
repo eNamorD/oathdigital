@@ -1,9 +1,7 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.actions.economy.TradeProcedure
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
   Look, PowerRules, Table}
@@ -45,15 +43,18 @@ class AwaitedReturnSuite extends munit.FunSuite:
       done.result)
     assertWireRoundTrips(done.journal.events)
 
-  test("it lets a player with no Supply trade, and is not offered with no " +
-      "warband on the board"):
-    val tradeable = (ready: ReadyGame, selected: Vector[PowerId]) =>
-      TradeProcedure.startOptions(catalog, ready, p1, TradeResource.Favor,
-        WalkerPowers.selected(WalkerPowerCatalog.default(catalog), selected))
-        .exists(_.outcome.isRight)
+  test("it lets a player with no Supply trade"):
     val noSupply = holdingAwaitedReturn(supply = 0).ready
-    assert(!tradeable(noSupply, Vector.empty))
-    assert(tradeable(noSupply, modifiers))
+    val wrestlersCard = DecisionOptionRef.Denizen(wrestlers)
+    assertEquals(EconomyActions.attemptTrade(rules, noSupply, p1, Vector.empty,
+      "favor", wrestlersCard).left.toOption,
+      Some(OathViolation.CoreOperationRejected("insufficient-supply",
+        "a supply spend of 1 exceeds the 0 available")))
+    val done = EconomyActions.trade(rules, noSupply, p1, modifiers, "favor",
+      wrestlersCard)
+    assertEquals(Look(done.result).supply(p1), 0)
+
+  test("it is not offered with no warband on the board"):
     val offered = (ready: ReadyGame) =>
       accepted(rules.offerableWalkerPowers(ready, p1, ActionRef.Trade))
         .map(_.id)

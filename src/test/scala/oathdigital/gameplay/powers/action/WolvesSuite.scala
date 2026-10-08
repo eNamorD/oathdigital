@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class WolvesSuite extends munit.FunSuite:
@@ -57,13 +58,17 @@ class WolvesSuite extends munit.FunSuite:
 
   test("only the acting player answers, and only with an offered board"):
     val t = started
-    assert(answer(t, victim, Wolves.decisionId, choose(victim)).isLeft)
-    assert(answer(t, actor, Wolves.decisionId,
-      choose(PlayerId("nobody"))).isLeft)
+    assertEquals(
+      answer(t, victim, Wolves.decisionId, choose(victim)).left.toOption,
+      Some(OathViolation.WrongPlayer(actor, victim)))
+    assertEquals(answer(t, actor, Wolves.decisionId,
+      choose(PlayerId("nobody"))).left.toOption,
+      Some(Refusals.notOffered(Wolves.decisionId)))
 
   test("it is unusable without a faceup secret to place"):
     assertEquals(usableNow(staged(secrets = 0)), Vector.empty)
-    assert(use(staged(secrets = 0), Wolves, source).isLeft)
+    assertEquals(use(staged(secrets = 0), Wolves, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))
 
   test("it writes the warband it killed"):
     val done = accepted(answer(started, actor, Wolves.decisionId,

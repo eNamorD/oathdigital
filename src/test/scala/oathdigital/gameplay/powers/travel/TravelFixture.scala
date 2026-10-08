@@ -8,7 +8,7 @@ import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Refusals}
 import oathdigital.testkit.PowerRules
 
 /** A Travel board for the modifiers and rules of Travel: the map of
@@ -84,8 +84,8 @@ object TravelFixture:
   /** What picking a destination the decision left out is refused with: the
     * look-ahead hides a destination no path completes, so the answer names an
     * option the decision does not offer. */
-  val destinationNotOffered: OathViolation = OathViolation.InvalidEventOrder(
-    "decision travel.destination does not offer the selected option")
+  val destinationNotOffered: OathViolation =
+    Refusals.notOffered(TravelProcedure.destinationDecisionId)
 
   /** `actor` starts a Travel with `modifiers` and picks `destination`. */
   def travel(ready: ReadyGame, destination: SiteId,

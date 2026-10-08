@@ -75,8 +75,10 @@ class SingingMaskSuite extends munit.FunSuite:
       chooseErrandBoy).last
     assert(awaits(chosen, amountDecisionId),
       parked.parkedDecision(chosen.state).toString)
-    assert(answer(chosen, p1, amountDecisionId,
-      DecisionAnswer.ChooseAmountAnswer(2)).isLeft)
+    assertEquals(answer(chosen, p1, amountDecisionId,
+      DecisionAnswer.ChooseAmountAnswer(2)).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        s"decision $amountDecisionId amount 2 is outside 0..1")))
     val done = accepted(answer(chosen, p1, amountDecisionId,
       DecisionAnswer.ChooseAmountAnswer(1)))
     val end = after(done)

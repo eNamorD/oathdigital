@@ -82,21 +82,25 @@ class LostTongueSuite extends munit.FunSuite:
     val withNomad = board.adviser(p1, nomadCard).ready
     val facedown = Table.start.adviser(p2, tongue, facedown = true)
       .relic(p2, crackedHorn).peoplesFavor(Some(p2), favor = 2).ready
-    def refused(state: ReadyGame, operation: CoreOperation): Boolean =
-      power.operationRestrictions.exists(_.reason(state, operation).nonEmpty)
+    def reasonFor(state: ReadyGame, operation: CoreOperation)
+        : Vector[OperationReason] =
+      power.operationRestrictions.flatMap(_.reason(state, operation))
     val mine = Location.PlayArea(p1)
     val theirs = Location.PlayArea(p2)
     val takeRelic = Take(Piece.Card(crackedHorn), p1, theirs, mine)
     val takeBanner = Take(Piece.Banner(Banner.PeoplesFavor), p1, theirs, mine)
-    assert(refused(ready, takeRelic))
-    assert(refused(ready, takeBanner))
-    assert(!refused(withNomad, takeRelic))
-    assert(!refused(withNomad, takeBanner))
-    assert(!refused(facedown, takeRelic))
-    assert(!refused(ready, Give(Piece.Card(crackedHorn), p2, theirs, mine)),
-      "a Give is not a Take")
-    assert(!refused(ready, Take(Piece.Favor(1), p1,
-      Location.OnBanner(Banner.PeoplesFavor), mine)),
+    val lostTongue = Vector(OperationReason("lost-tongue",
+      s"${p2.value}'s Lost Tongue keeps ${p1.value} from taking their " +
+        "relics and banners", OperationReasonKind.Impossible))
+    assertEquals(reasonFor(ready, takeRelic), lostTongue)
+    assertEquals(reasonFor(ready, takeBanner), lostTongue)
+    assertEquals(reasonFor(withNomad, takeRelic), Vector.empty)
+    assertEquals(reasonFor(withNomad, takeBanner), Vector.empty)
+    assertEquals(reasonFor(facedown, takeRelic), Vector.empty)
+    assertEquals(reasonFor(ready, Give(Piece.Card(crackedHorn), p2, theirs,
+      mine)), Vector.empty, "a Give is not a Take")
+    assertEquals(reasonFor(ready, Take(Piece.Favor(1), p1,
+      Location.OnBanner(Banner.PeoplesFavor), mine)), Vector.empty,
       "a banner's contents are not the banner")
 
   // ---- Conspiracy ----

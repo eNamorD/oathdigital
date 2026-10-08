@@ -100,4 +100,5 @@ class SecondChanceSuite extends munit.FunSuite:
   test("it is unusable without a secret"):
     val broke = staged(secrets = 0).adviser(p2, codeOfHonor).ready
     assert(!usableNow(broke).exists(_.power.id == SecondChance.id))
-    assert(use(broke, power, source).isLeft)
+    assertEquals(use(broke, power, source).left.toOption,
+      Some(OathViolation.InsufficientSecrets(1, 0)))

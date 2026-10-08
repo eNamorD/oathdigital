@@ -8,7 +8,7 @@ import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  Refusals, Table}
 import oathdigital.testkit.Unwrap.accepted
 
 class MarbleFountainsSuite extends munit.FunSuite:
@@ -56,7 +56,8 @@ class MarbleFountainsSuite extends munit.FunSuite:
       "the edifice must be reachable, or this test proves nothing")
     assertEquals(PhasePowerProcedure.usable(catalog, away, actor,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
-    assert(use(away).isLeft)
+    assertEquals(use(away).left.toOption,
+      Some(Refusals.nothingToDo(MarbleFountains.id, source)))
 
   test("a ruined Marble Fountains offers nothing"):
     val ruined = staged(EdificeSide.Ruined)

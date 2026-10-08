@@ -5,7 +5,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -95,8 +95,9 @@ class WayStationSuite extends munit.FunSuite:
   test("a player short of Supply can still go there by paying the favor"):
     val asked = accepted(travel(rivalRules(supply = 0), coast))
     assertAsked(asked.state)
-    assert(rules.resolveWalker(asked.state, actor, WayStation.decisionId,
-      DecisionAnswer.ChooseOneAnswer(WayStation.supplyOption)).isLeft)
+    assertEquals(rules.resolveWalker(asked.state, actor, WayStation.decisionId,
+      DecisionAnswer.ChooseOneAnswer(WayStation.supplyOption)).left.toOption,
+      Some(Refusals.notOffered(WayStation.decisionId)))
     val result = Outcomes.ready(answer(asked.state,
       WayStation.favorOption).state)
     assertEquals(Look(result).pawn(actor), coast)

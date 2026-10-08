@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Refusals,
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -99,14 +100,22 @@ class SleightOfHandSuite extends munit.FunSuite:
 
   test("only the acting player answers, with an offered player"):
     val t = accepted(use(staged(2, 0), SleightOfHand, source))
-    assert(answer(t, victim, SleightOfHand.decisionId, choose(victim)).isLeft)
-    assert(answer(t, actor, SleightOfHand.decisionId, choose(bystander)).isLeft)
-    assert(answer(t, actor, SleightOfHand.decisionId, choose(actor)).isLeft)
+    assertEquals(
+      answer(t, victim, SleightOfHand.decisionId, choose(victim)).left.toOption,
+      Some(OathViolation.WrongPlayer(actor, victim)))
+    assertEquals(
+      answer(t, actor, SleightOfHand.decisionId,
+        choose(bystander)).left.toOption,
+      Some(Refusals.notOffered(SleightOfHand.decisionId)))
+    assertEquals(
+      answer(t, actor, SleightOfHand.decisionId, choose(actor)).left.toOption,
+      Some(Refusals.notOffered(SleightOfHand.decisionId)))
 
   test("it is unusable without a favor to place"):
     val ready = staged(2, 0, favor = 0)
     assertEquals(usableNow(ready), Vector.empty)
-    assert(use(ready, SleightOfHand, source).isLeft)
+    assertEquals(use(ready, SleightOfHand, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))
 
   test("it writes the secret it took"):
     val t = accepted(use(staged(2, 0), SleightOfHand, source))

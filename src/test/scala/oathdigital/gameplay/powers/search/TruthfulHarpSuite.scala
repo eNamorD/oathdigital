@@ -4,7 +4,8 @@ import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Refusals,
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p2, p3}
 import oathdigital.testkit.Unwrap.accepted
@@ -79,8 +80,7 @@ class TruthfulHarpSuite extends munit.FunSuite:
       SearchFixture.staged(discordCards.take(7), supply = 5), harp,
       Orientation.FaceDown)
     assertEquals(start(facedown, onlyHarp).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
-        "power relic.truthful-harp is not applicable to this search")))
+      Some(Refusals.notApplicable(TruthfulHarp.id, "search")))
 
   // ---- Lines ----
 

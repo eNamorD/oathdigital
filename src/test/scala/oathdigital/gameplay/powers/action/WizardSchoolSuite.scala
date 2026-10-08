@@ -37,7 +37,8 @@ class WizardSchoolSuite extends munit.FunSuite:
   test("it is unusable without a favor"):
     val broke = staged(favor = 0)
     assert(!usableIds(broke).contains(WizardSchool.id))
-    assert(use(rules(), broke, WizardSchool.id, source).isLeft)
+    assertEquals(use(rules(), broke, WizardSchool.id, source).left.toOption,
+      Some(OathViolation.InsufficientFavor(1, 0)))
 
   test("it writes the gain, covering the generic line, then the phase's end"):
     val done = accepted(use(rules(), staged(), WizardSchool.id, source))

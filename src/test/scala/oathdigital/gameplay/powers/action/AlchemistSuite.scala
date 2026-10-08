@@ -80,25 +80,36 @@ class AlchemistSuite extends munit.FunSuite:
   test("a distribution must total four and respect each bank"):
     val ready = staged(Suit.Arcane -> 3, Suit.Discord -> 3, Suit.Nomad -> 2)
     val t = accepted(use(ready, Alchemist, source))
-    assert(answer(t, actor, Alchemist.decisionId,
-      rows(Suit.Arcane -> 3, Suit.Discord -> 0, Suit.Nomad -> 0)).isLeft)
-    assert(answer(t, actor, Alchemist.decisionId,
-      rows(Suit.Arcane -> 1, Suit.Discord -> 0, Suit.Nomad -> 3)).isLeft)
-    assert(answer(t, actor, Alchemist.decisionId,
-      rows(Suit.Arcane -> 4, Suit.Discord -> 0, Suit.Nomad -> 0)).isLeft)
+    assertEquals(answer(t, actor, Alchemist.decisionId,
+      rows(Suit.Arcane -> 3, Suit.Discord -> 0, Suit.Nomad -> 0)).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        s"decision ${Alchemist.decisionId} distributes an amount other " +
+          "than its total of 4")))
+    assertEquals(answer(t, actor, Alchemist.decisionId,
+      rows(Suit.Arcane -> 1, Suit.Discord -> 0, Suit.Nomad -> 3)).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        s"decision ${Alchemist.decisionId} distributes to " +
+          "favor-bank/nomad outside 0..2")))
+    assertEquals(answer(t, actor, Alchemist.decisionId,
+      rows(Suit.Arcane -> 4, Suit.Discord -> 0, Suit.Nomad -> 0)).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        s"decision ${Alchemist.decisionId} distributes to " +
+          "favor-bank/arcane outside 0..3")))
 
   test("only the acting player answers"):
     val ready = staged(Suit.Arcane -> 3, Suit.Discord -> 3)
     val t = accepted(use(ready, Alchemist, source))
-    assert(answer(t, others(ready).head, Alchemist.decisionId,
-      rows(Suit.Arcane -> 2, Suit.Discord -> 2)).isLeft)
+    assertEquals(answer(t, others(ready).head, Alchemist.decisionId,
+      rows(Suit.Arcane -> 2, Suit.Discord -> 2)).left.toOption,
+      Some(OathViolation.WrongPlayer(actor, others(ready).head)))
 
   test("the cost needs two faceup secrets, and facedown ones do not count"):
     Vector((1, 0), (1, 5), (0, 5)).foreach { case (up, down) =>
       val ready = Table.from(staged(Suit.Nomad -> 9)).secrets(actor, up, down)
         .unchecked
       assertEquals(usableNow(ready), Vector.empty, s"$up up, $down down")
-      assert(use(ready, Alchemist, source).isLeft)
+      assertEquals(use(ready, Alchemist, source).left.toOption,
+        Some(OathViolation.InsufficientSecrets(2, up)))
     }
 
   test("it writes the favor it gained, beside each bank's own line"):
