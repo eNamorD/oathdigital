@@ -1,10 +1,10 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.phases.RestCleanupPlan
-import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table,
+  WarExhaustionChoices}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathEvent.IgnoredRulesRecorded
@@ -222,12 +222,8 @@ class RestSuite extends munit.FunSuite:
     val roundEight = Table.from(act).turn(last, Phase.Act).unchecked
       .updateCurrent(c => c.copy(tracks = c.tracks.copy(round = 8)))
 
-    // Stub of WarExhaustionRandomPort: always picks the last candidate.
-    val lastCandidateStub = new WarExhaustionRandomPort {
-      def choose(candidates: Vector[PlayerId]) = candidates.last
-    }
     val deterministic = new OathRules(catalog,
-      warExhaustionRandomPort = lastCandidateStub)
+      warExhaustionRandomPort = WarExhaustionChoices.lastCandidate)
     val finished = accepted(rest(Ready(roundEight), last, deterministic))
     assert(finished.events.exists(_.isInstanceOf[OathEvent.RoundEnded]))
     assert(finished.events.exists(
