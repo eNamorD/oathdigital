@@ -26,14 +26,12 @@ class OutridersSuite extends munit.FunSuite:
     commit(rules(dice(attack, defense)), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
 
-  private def said(run: Run): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, run.events)
-
   test("an attack roll with a skull writes that skulls were ignored"):
-    assertEquals(said(rolled(Vector(AttackDieFace.TwoSwordsSkull,
-      AttackDieFace.OneSword))), Vector(NoteText.Said("ignored",
+    assertEquals(said(power, rolled(Vector(AttackDieFace.TwoSwordsSkull,
+      AttackDieFace.OneSword)).events), Vector(NoteText.Said("ignored",
       "Skulls ignored.", covers = false)))
 
   test("a roll with no skull writes nothing"):
-    assertEquals(said(rolled(Vector.fill(2)(AttackDieFace.OneSword))),
+    assertEquals(
+      said(power, rolled(Vector.fill(2)(AttackDieFace.OneSword)).events),
       Vector.empty)

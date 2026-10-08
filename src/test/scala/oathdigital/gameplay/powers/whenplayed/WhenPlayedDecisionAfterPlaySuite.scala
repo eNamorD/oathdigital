@@ -30,8 +30,6 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
   private def answer(from: OathTransition, choice: DecisionAnswer) =
     rules.resolveWalker(from.state, p1, FamilyHeirloom.decisionId, choice)
 
-  private def relics(ready: ReadyGame) = Look(ready).player(p1).relics
-
   test("a searched Family Heirloom played faceup asks its question and keeps " +
       "the relic"):
     val ready = searching(Vector(heirloom)).ready
@@ -41,7 +39,7 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
       placed <- place(chosen, heirloom, PlayedAs.Faceup)
       answered <- answer(placed, take)
     yield answered)
-    assert(relics(after(done)).exists(_.id == top))
+    assert(Look(after(done)).relics(p1).contains(top))
 
   test("a searched Family Heirloom played faceup can put the relic on the " +
       "bottom of the deck"):
@@ -52,7 +50,7 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
       placed <- place(chosen, heirloom, PlayedAs.Faceup)
       answered <- answer(placed, bottom)
     yield answered)
-    assert(!relics(after(done)).exists(_.id == top))
+    assert(!Look(after(done)).relics(p1).contains(top))
     assertEquals(after(done).game.current.commonCards.relicDeck.last, top)
 
   test("a facedown Family Heirloom played faceup asks its question and keeps " +
@@ -67,7 +65,7 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
       placed <- place(started, heirloom, PlayedAs.Faceup)
       answered <- answer(placed, take)
     yield answered)
-    assert(relics(after(done)).exists(_.id == top))
+    assert(Look(after(done)).relics(p1).contains(top))
 
   test("a Replace slot plays the card in the place of an adviser, and the " +
       "question after the play still resolves"):
@@ -82,6 +80,6 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
         wardOfSilence)
     yield placed)
     val done = accepted(answer(replaced, take))
-    assert(relics(after(done)).nonEmpty)
+    assert(Look(after(done)).relics(p1).contains(top))
     assert(!Look(after(done)).player(p1).advisers.exists(
       _.id == wardOfSilence))

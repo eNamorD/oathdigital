@@ -5,7 +5,8 @@ import scala.reflect.ClassTag
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy,
   OperationRestrictions}
 import oathdigital.gameplay.powerresolver.ContributingPower
-import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.powers.PowerFixture.{actor, quietTable}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
@@ -119,6 +120,14 @@ object WhenPlayedHarness:
     accepted(OperationPipeline.run(from, PhasePowerHarness.ops(events),
       OperationPolicy.Permissive, Vector.empty)(Right(_))).state
 
+  /** The recorded operations of `events` alone rebuild `end` from `from`: a
+    * stored game reloads by replaying its journal, so an operation a walk
+    * applied without recording would be lost on reload. */
+  def assertJournalRebuilds(from: ReadyGame, events: Vector[OathEvent],
+      end: ReadyGame)(using munit.Location): Unit =
+    munit.Assertions.assertEquals(replayed(from, events), end,
+      "the recorded operations do not rebuild the walk's end state")
+
   /** The power of type `P` that the default walker catalog registers, so a
     * suite fails when its power is not wired in. */
   def registered[P <: ContributingPower](using tag: ClassTag[P]): P =
@@ -142,3 +151,24 @@ object WhenPlayedHarness:
     val bySite = cards.toMap
     quietTable.game.current.map.inPlay.flatMap(bySite.getOrElse(_,
       Vector.empty))
+
+  /** The notes `power` journaled in `events`, in order, as plain sentences. */
+  def said(power: ContributingPower, events: Vector[OathEvent])
+      : Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  /** The answer that picks `ref` from a ChooseOne question. */
+  def chooseOne(ref: DecisionOptionRef): DecisionAnswer =
+    DecisionAnswer.ChooseOneAnswer(ref)
+
+  /** The options of a ChooseOne question; fails with the query otherwise. */
+  def chooseOneOptions(asked: Decide)(using munit.Location)
+      : Vector[DecisionOption] = asked.query match
+    case query: DecisionQuery.ChooseOne => query.options
+    case other => munit.Assertions.fail(s"expected a ChooseOne, got $other")
+
+  /** The largest amount each ChooseAmount question of `walked` allowed, in
+    * the order they were asked. */
+  def amountMaximaAsked(walked: Walked): Vector[Int] =
+    walked.asked.map(_.query).collect {
+      case query: DecisionQuery.ChooseAmount => query.max }

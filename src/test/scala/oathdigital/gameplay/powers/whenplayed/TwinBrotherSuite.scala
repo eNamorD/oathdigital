@@ -1,18 +1,17 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.walker.WalkerOutcome
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   Table}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.Unwrap.as
+import oathdigital.testkit.Unwrap.{as, rejected}
 
 class TwinBrotherSuite extends munit.FunSuite:
   import WhenPlayedHarness._
 
-  private val power = TwinBrother.forCatalog(catalog)
+  private val power = registered[TwinBrother]
   private val card = power.cardId
   private val played = hook(card)
   // Horse Archers and Faithful Friend are Nomad, Faithful Friend locked;
@@ -41,9 +40,6 @@ class TwinBrotherSuite extends munit.FunSuite:
       TwinBrother.decisionId, DecisionAnswer.ChooseOneAnswer(ref)))
     Resolved(first, done)
 
-  test("Twin Brother is in the default walker catalog"):
-    assert(WalkerPowerCatalog.default(catalog).powers.contains(power))
-
   test("it offers other players' faceup unlocked nomad advisers, then keeping"):
     // Faithful Friend is locked, Charming Friend is Hearth and Wrestlers is
     // Order. Elders is a Nomad adviser, but p1's own.
@@ -70,21 +66,22 @@ class TwinBrotherSuite extends munit.FunSuite:
     assert(theirs.contains(DenizenState(card, Orientation.FaceUp,
       Tokens.empty)), theirs.toString)
     assert(!mine.exists(_.id == card))
-    assertEquals(replayed(ready, swap.first.events ++ done.events),
+    assertJournalRebuilds(ready, swap.first.events ++ done.events,
       done.treeless)
-    assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+    assertEquals(said(power, done.events),
       Vector(NoteText.Said("swapped",
         s"p1 swapped it for p2's ${archers.value}.", covers = false)))
 
   test("keeping Twin Brother changes nothing and writes nothing"):
     val done = answer(staged.ready, TwinBrother.keep).done
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+    assertEquals(said(power, done.events),
       Vector.empty)
 
   test("an option that is not offered is rejected"):
     val ready = staged.ready
     val first = Outcomes.parked(play(ready, power, card))
-    assert(resume(ready, power, played, first.tree, TwinBrother.decisionId,
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(charming)))
-      .isLeft)
+    assertEquals(rejected(resume(ready, power, played, first.tree,
+      TwinBrother.decisionId, chooseOne(DecisionOptionRef.Denizen(charming)))),
+      OathViolation.InvalidEventOrder(s"decision ${TwinBrother.decisionId} " +
+        "does not offer the selected option"))

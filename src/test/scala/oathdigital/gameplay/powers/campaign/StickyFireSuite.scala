@@ -18,12 +18,6 @@ class StickyFireSuite extends munit.FunSuite:
   private def favored(b: Board, who: PlayerId, favor: Int): Board =
     on(b)(_.favor(who, favor))
 
-  private def warbands(state: OathState, who: PlayerId): Int =
-    Look(state).player(who).board.warbands
-
-  private def favorOf(state: OathState, who: PlayerId): Int =
-    Look(state).player(who).board.favor
-
   // ---- the attacker wins a Conquest against a player ----------------------
 
   private def conquest: Board =
@@ -31,14 +25,14 @@ class StickyFireSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     favored(withRelic(base, relic), base.actor, 2)
 
-  private def bank(state: OathState): Int =
-    ready(state).banks.favor.values.sum
+  private def favorInAllBanks(state: OathState): Int =
+    Suit.all.map(Look(state).bankFavor).sum
 
   test("the winner is asked before anything dies, and the defender keeps no " +
       "returned warband if the attacker says yes"):
     val b = conquest
     val g = rules(winningDice)
-    val before = warbands(OathState.Ready(b.ready), b.rival)
+    val before = Look(b.ready).boardWarbands(b.rival)
     val asked = commit(g, b, 4).pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishDefenderPlans(b.rival)
       .declineSacrifice(b.actor)
@@ -47,23 +41,23 @@ class StickyFireSuite extends munit.FunSuite:
     assertEquals(ready(asked.state).game.current.map.sites(b.origin).forces,
       SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), 2))
     val done = asked.pick(b.actor, decision, StickyFire.yes).finishPlanWindows
-    assertEquals(warbands(done.state, b.rival), before)
+    assertEquals(Look(done.state).boardWarbands(b.rival), before)
     // The winner gave the loser a favor.
-    assertEquals(favorOf(done.state, b.actor), 1)
-    assertEquals(favorOf(done.state, b.rival),
-      favorOf(OathState.Ready(b.ready), b.rival) + 1)
+    assertEquals(Look(done.state).favor(b.actor), 1)
+    assertEquals(Look(done.state).favor(b.rival),
+      Look(b.ready).favor(b.rival) + 1)
 
   test("if the attacker says no, the defender keeps the returned half and " +
       "nothing is given"):
     val b = conquest
-    val before = warbands(OathState.Ready(b.ready), b.rival)
+    val before = Look(b.ready).boardWarbands(b.rival)
     val done = commit(rules(winningDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishDefenderPlans(b.rival)
       .declineSacrifice(b.actor)
       .pick(b.actor, decision, StickyFire.no).finishPlanWindows
-    assertEquals(warbands(done.state, b.rival), before + 1)
-    assertEquals(favorOf(done.state, b.actor), 2)
+    assertEquals(Look(done.state).boardWarbands(b.rival), before + 1)
+    assertEquals(Look(done.state).favor(b.actor), 2)
 
   test("nothing is asked when its user loses, or when it was not chosen"):
     val b = conquest
@@ -87,8 +81,8 @@ class StickyFireSuite extends munit.FunSuite:
       .finishDefenderPlans(b.rival)
       .declineSacrifice(b.actor)
       .pick(b.actor, decision, StickyFire.yes).finishPlanWindows
-    assertEquals(favorOf(done.state, b.rival),
-      favorOf(OathState.Ready(b.ready), b.rival))
+    assertEquals(Look(done.state).favor(b.rival),
+      Look(b.ready).favor(b.rival))
 
   // ---- the attacker wins a Raid -------------------------------------------
 
@@ -101,11 +95,11 @@ class StickyFireSuite extends munit.FunSuite:
       .pick(b.actor, CampaignIds.attackerPlan, ref)
       .declineSacrifice(b.actor)
       .pick(b.actor, decision, StickyFire.yes)
-    assertEquals(warbands(done.state, b.rival), 0)
-    assertEquals(favorOf(done.state, b.actor), 0)
+    assertEquals(Look(done.state).boardWarbands(b.rival), 0)
+    assertEquals(Look(done.state).favor(b.actor), 0)
     // The Raid then burns half of the defender's favor, the given one included.
-    val defenderFavor = favorOf(OathState.Ready(b.ready), b.rival) + 1
-    assertEquals(favorOf(done.state, b.rival),
+    val defenderFavor = Look(b.ready).favor(b.rival) + 1
+    assertEquals(Look(done.state).favor(b.rival),
       defenderFavor - defenderFavor / 2)
 
   // ---- the defender wins --------------------------------------------------
@@ -125,10 +119,10 @@ class StickyFireSuite extends munit.FunSuite:
     assertEquals(asked.winner, Some(false))
     assert(awaits(asked, b.rival, decision))
     val done = asked.pick(b.rival, decision, StickyFire.yes).finishPlanWindows
-    assertEquals(warbands(done.state, b.actor), 0)
-    assertEquals(favorOf(done.state, b.rival), 1)
-    assertEquals(favorOf(done.state, b.actor),
-      favorOf(OathState.Ready(b.ready), b.actor) + 1)
+    assertEquals(Look(done.state).boardWarbands(b.actor), 0)
+    assertEquals(Look(done.state).favor(b.rival), 1)
+    assertEquals(Look(done.state).favor(b.actor),
+      Look(b.ready).favor(b.actor) + 1)
 
   // ---- against bandits ----------------------------------------------------
 
@@ -139,9 +133,10 @@ class StickyFireSuite extends munit.FunSuite:
       .pick(b.actor, CampaignIds.attackerPlan, ref)
       .declineSacrifice(b.actor)
       .pick(b.actor, decision, StickyFire.yes).finishPlanWindows
-    assertEquals(favorOf(done.state, b.actor), 1)
+    assertEquals(Look(done.state).favor(b.actor), 1)
     // The favor left every player's board without reaching a suit bank.
-    assertEquals(bank(done.state), bank(OathState.Ready(b.ready)))
+    assertEquals(favorInAllBanks(done.state),
+      favorInAllBanks(OathState.Ready(b.ready)))
 
   test("a player who does not hold the relic is never asked"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
@@ -155,9 +150,6 @@ class StickyFireSuite extends munit.FunSuite:
   // ---- Lines ----
 
   private val power = StickyFire
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("a burnt force is written: what died, and the favor given"):
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
     val b = favored(withRelic(on(base)(_.boardWarbands(base.rival, 3)), relic),
@@ -169,7 +161,7 @@ class StickyFireSuite extends munit.FunSuite:
     // The Raid's own losses kill one of the three first; the burn kills the
     // two left, and its line says what the burn did.
     val rival = b.rival.value
-    assertEquals(said(done.events), Vector(NoteText.Said("burned",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("burned",
       s"Killed 2 $rival warbands, and $rival gained 1 favor.",
       covers = false)))
 
@@ -180,7 +172,7 @@ class StickyFireSuite extends munit.FunSuite:
       .finishDefenderPlans(b.rival)
       .declineSacrifice(b.actor)
       .pick(b.actor, decision, StickyFire.yes).finishPlanWindows
-    assertEquals(said(done.events), Vector(NoteText.Said("killed",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("killed",
       s"Killed 1 ${b.rival.value} warband.", covers = false)))
 
   test("sparing the force, or burning bandits, writes nothing"):
@@ -190,11 +182,11 @@ class StickyFireSuite extends munit.FunSuite:
       .finishDefenderPlans(b.rival)
       .declineSacrifice(b.actor)
       .pick(b.actor, decision, StickyFire.no).finishPlanWindows
-    assertEquals(said(spared.events), Vector.empty)
+    assertEquals(said(power, spared.events), Vector.empty)
     val base = board(warbands = 5, supply = 7)
     val bandits = favored(withRelic(base, relic), base.actor, 2)
     val burnt = commit(rules(winningDice), bandits, 4)
       .pick(bandits.actor, CampaignIds.attackerPlan, ref)
       .declineSacrifice(bandits.actor)
       .pick(bandits.actor, decision, StickyFire.yes).finishPlanWindows
-    assertEquals(said(burnt.events), Vector.empty)
+    assertEquals(said(power, burnt.events), Vector.empty)

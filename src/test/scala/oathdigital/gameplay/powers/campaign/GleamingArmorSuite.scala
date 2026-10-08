@@ -96,8 +96,6 @@ class GleamingArmorSuite extends munit.FunSuite:
     def defenseChanges(run: Run): Int = run.ops.count:
       case ModifyDicePool(pool, _, _) => pool != CampaignIds.attackPool
       case _ => false
-    def orderBank(state: OathState): Int =
-      ready(state).banks.favor.getOrElse(Suit.Order, 0)
     // Without the holder the bandit applies both plans by itself: Watchdog's
     // die and a record of each, on top of the printed defense.
     val plain = commit(rules(losingDice), free, 2)
@@ -112,9 +110,10 @@ class GleamingArmorSuite extends munit.FunSuite:
     val won = plain.finishPlanWindows
     val lost = armored.finishPlanWindows
     assertEquals(won.winner, Some(false))
-    assertEquals(orderBank(won.state),
-      orderBank(OathState.Ready(free.ready)) - 2)
-    assertEquals(orderBank(lost.state), orderBank(OathState.Ready(free.ready)))
+    assertEquals(Look(won.state).bankFavor(Suit.Order),
+      Look(free.ready).bankFavor(Suit.Order) - 2)
+    assertEquals(Look(lost.state).bankFavor(Suit.Order),
+      Look(free.ready).bankFavor(Suit.Order))
 
   // ---- the defender holds it: the attacker's plans cost more ---------------
 
@@ -157,17 +156,14 @@ class GleamingArmorSuite extends munit.FunSuite:
   // ---- Lines ----
 
   private val power = GleamingArmor.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("a taxed plan writes the Armor's line, naming the plan's user"):
     val b = attackerHolds(1)
     val run = commit(rules(losingDice), b, 4)
     // Pricing the offered plans writes nothing: only a plan applied does.
-    assertEquals(said(run.events), Vector.empty)
+    assertEquals(said(power, run.events), Vector.empty)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan,
       DecisionOptionRef.Denizen(watchdog))
-    assertEquals(said(picked.events), Vector(NoteText.Said("taxed",
+    assertEquals(said(power, picked.events), Vector(NoteText.Said("taxed",
       s"${b.rival.value}'s battle plans cost 1 extra secret.", covers = false)))
 
   test("the holder's own plan is not taxed, and writes nothing"):
@@ -178,4 +174,4 @@ class GleamingArmorSuite extends munit.FunSuite:
     val b = on(held)(_.secrets(base.rival, faceUp = 0))
     val picked = commit(rules(losingDice), b, 4).pick(b.rival,
       CampaignIds.defenderPlan, DecisionOptionRef.Denizen(watchdog))
-    assertEquals(said(picked.events), Vector.empty)
+    assertEquals(said(power, picked.events), Vector.empty)

@@ -18,9 +18,6 @@ class TownMeetingSuite extends munit.FunSuite:
   private val ruling: Table = Table.start.adviser(p1, meeting)
     .adviser(p1, "Homesteaders").adviser(p1, "Land Warden").favor(p1, 1)
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def gained(n: Int): NoteText.Said = NoteText.Said("gained",
     s"${p1.value} gained $n favor.", covers = false)
 
@@ -37,26 +34,26 @@ class TownMeetingSuite extends munit.FunSuite:
     assertEquals(Look(done.treeless).favor(p1), 1 + 3)
     assertEquals(Vector(Suit.Order, Suit.Hearth).map(
       done.treeless.banks.favor(_)), Vector(1, 0))
-    assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
-    assertEquals(said(done.events), Vector(gained(3)))
+    assertJournalRebuilds(ready, first.events ++ done.events, done.treeless)
+    assertEquals(said(power, done.events), Vector(gained(3)))
 
   test("with X or less in all it takes everything without asking"):
     val ready = ruling.banksHoldingOnly(Suit.Order -> 1, Suit.Hearth -> 1).ready
     val done = Outcomes.finished(play(ready, power, meeting))
     // p1's 1 favor and both banks' 1.
     assertEquals(Look(done.treeless).favor(p1), 1 + 2)
-    assertEquals(said(done.events), Vector(gained(2)))
+    assertEquals(said(power, done.events), Vector(gained(2)))
 
   test("ruling no Hearth card it takes nothing, and the line says so"):
     val ready = Table.start.denizen(meeting, at = homeSite)
       .banksHoldingOnly(Suit.Hearth -> 5).ready
     val done = Outcomes.finished(fire(ready, power, hookAt(meeting, homeSite)))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector(NoteText.Said("none",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       s"${p1.value} ruled no Hearth card.", covers = false)))
 
   test("with every bank empty it takes nothing, and the line says so"):
     val empty = ruling.banksHoldingOnly().ready
     val done = Outcomes.finished(play(empty, power, meeting))
-    assertEquals(said(done.events), Vector(NoteText.Said("empty",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("empty",
       "Every favor bank was empty.", covers = false)))

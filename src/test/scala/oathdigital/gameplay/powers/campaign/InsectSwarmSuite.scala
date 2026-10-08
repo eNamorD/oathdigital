@@ -155,16 +155,13 @@ class InsectSwarmSuite extends munit.FunSuite:
   // ---- Lines ----
 
   private val power = InsectSwarm.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("a taxed plan writes the Swarm's line, naming the plan's user"):
     val b = attackerHolds(1)
     val run = commit(rules(losingDice), b, 4)
     // Pricing the offered plans writes nothing: only a plan applied does.
-    assertEquals(said(run.events), Vector.empty)
+    assertEquals(said(power, run.events), Vector.empty)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan,
       ref(watchdog))
-    assertEquals(said(picked.events), Vector(NoteText.Said("taxed",
+    assertEquals(said(power, picked.events), Vector(NoteText.Said("taxed",
       s"${b.rival.value}'s battle plans cost 1 extra favor, burnt.",
       covers = false)))

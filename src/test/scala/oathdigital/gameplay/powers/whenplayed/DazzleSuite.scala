@@ -7,6 +7,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   Table}
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.rejected
 
 class DazzleSuite extends munit.FunSuite:
   import WhenPlayedHarness._
@@ -27,9 +28,6 @@ class DazzleSuite extends munit.FunSuite:
     .denizen(wrestlers, at = homeSite)
     .bankFavor(Suit.Hearth, 3).ready
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def discarded(events: Vector[OathEvent]): Vector[DenizenId] =
     PhasePowerHarness.ops(events).collect { case d: Discard.Denizen => d.card }
 
@@ -38,7 +36,7 @@ class DazzleSuite extends munit.FunSuite:
     val left = Look(done.treeless).cardsAt(homeSite)
     assert(!left.contains(homesteaders) && !left.contains(wrestlers), left)
     assertEquals(discarded(done.events), Vector(homesteaders, wrestlers))
-    assertEquals(replayed(twoTargets, done.events), done.treeless)
+    assertJournalRebuilds(twoTargets, done.events, done.treeless)
     val asAdviser = RuleSourceRef.Adviser(p1, dazzle)
     val ignored = PowerRuntime.ignoredAtSource(catalog, twoTargets, p1,
       ActionKind.WhenPlayed, asAdviser)
@@ -51,13 +49,13 @@ class DazzleSuite extends munit.FunSuite:
 
   test("Dazzle writes the cards it discarded"):
     val done = Outcomes.finished(play(twoTargets, power, dazzle))
-    assertEquals(said(done.events), Vector(NoteText.Said("discarded",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("discarded",
       s"Discarded ${homesteaders.value}, ${wrestlers.value}.", covers = true)))
 
   test("a second Dazzle finds nothing left to discard, and says so"):
     val once = Outcomes.finished(play(twoTargets, power, dazzle)).treeless
     val again = Outcomes.finished(play(once, power, dazzle))
-    assertEquals(said(again.events),
+    assertEquals(said(power, again.events),
       Vector(NoteText.Said("none", "Nothing was discarded.", covers = true)))
 
   test("Dazzle skips a rule-immune target and still discards another"):
@@ -79,7 +77,8 @@ class DazzleSuite extends munit.FunSuite:
       sites = c.map.sites.updated(homeSite, c.map.sites(homeSite).copy(
         denizens = c.map.sites(homeSite).denizens :+
           DenizenState(unknown, Orientation.FaceUp, Tokens.empty))))))
-    assert(play(ready, power, dazzle).isLeft)
+    assertEquals(rejected(play(ready, power, dazzle)),
+      OathViolation.UnknownWorldCard(unknown))
 
   test("Dazzle discards a ruined Hearth edifice, not an intact one or " +
       "another suit's"):

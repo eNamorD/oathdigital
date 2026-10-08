@@ -19,9 +19,6 @@ class RoyalTaxSuite extends munit.FunSuite:
     .warbandsAt(homeSite, p1, 1).warbandsAt(nearSite, p1, 1)
     .pawn(p2, nearSite).favor(p2, 3).pawn(p3, homeSite).favor(p3, held).ready
 
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   private def took(n: Int, from: PlayerId): NoteText.Said = NoteText.Said(
     "took", s"${p1.value} took $n favor from ${from.value}.", covers = false)
 
@@ -34,15 +31,16 @@ class RoyalTaxSuite extends munit.FunSuite:
     assertEquals(after.favor(p1), 1 + 2 + 1)
     assertEquals(after.favor(p2), 3 - 2)
     assertEquals(after.favor(p3), 0)
-    assertEquals(replayed(ready, done.events), done.treeless)
-    assertEquals(said(done.events), Vector(took(2, p2), took(1, p3)))
+    assertJournalRebuilds(ready, done.events, done.treeless)
+    assertEquals(said(power, done.events), Vector(took(2, p2), took(1, p3)))
 
   test("a player with no favor is named, and nothing is taken from them"):
     val done = Outcomes.finished(play(staged(held = 0), power, tax))
     // p1's 1 and p2's 2.
     assertEquals(Look(done.treeless).favor(p1), 1 + 2)
-    assertEquals(said(done.events), Vector(took(2, p2), NoteText.Said("broke",
-      s"${p3.value} had no favor to take.", covers = false)))
+    assertEquals(said(power, done.events), Vector(took(2, p2),
+      NoteText.Said("broke", s"${p3.value} had no favor to take.",
+        covers = false)))
 
   test("players at unruled sites or outside the region are not taxed"):
     // p2 stands in p1's region at a site nobody rules; p3 stands at a site
@@ -51,5 +49,5 @@ class RoyalTaxSuite extends munit.FunSuite:
       .pawn(p2, nearSite).pawn(p3, awaySite).ready
     val done = Outcomes.finished(play(ready, power, tax))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
-    assertEquals(said(done.events), Vector(NoteText.Said("none",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "No player could be taxed.", covers = false)))

@@ -18,6 +18,10 @@ class MountedPatrolSuite extends munit.FunSuite:
   private val discarded = NoteText.Said("discarded",
     "Discarded after the Campaign.", covers = false)
 
+  /** The faces of `n` attack dice rolled with `winningDice`. */
+  private def swords(n: Int): Vector[AttackDieFace] =
+    Vector.fill(n)(AttackDieFace.OneSword)
+
   private def halved(text: String): NoteText.Said =
     NoteText.Said("halved", s"The attack pool was halved to $text.",
       covers = false)
@@ -39,7 +43,7 @@ class MountedPatrolSuite extends munit.FunSuite:
     val done = commit(rules(winningDice), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
-    assertEquals(done.result.attackFaces.size, 2)
+    assertEquals(done.result.attackFaces, swords(2))
     assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(halved("2 dice"), discarded))
 
@@ -51,14 +55,14 @@ class MountedPatrolSuite extends munit.FunSuite:
       .pick(b.rival, CampaignIds.defenderPlan,
         DecisionOptionRef.Denizen(longbows)).finishPlanWindows
     // Four dice, one removed by Longbows, then halved.
-    assertEquals(done.result.attackFaces.size, 1)
+    assertEquals(done.result.attackFaces, swords(1))
     assertEquals(lines(done), Vector(halved("1 die"), discarded))
 
   test("a bandit defender applies it and discards it"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
     val done = commit(rules(winningDice), b, 4).finishPlanWindows
-    assertEquals(done.result.attackFaces.size, 2)
+    assertEquals(done.result.attackFaces, swords(2))
     assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(halved("2 dice"), discarded))
 

@@ -38,9 +38,6 @@ class WarningSignalsSuite extends munit.FunSuite:
       site != b.origin && map.sites(site).forces == exile(b, 2)),
       "a second site the rival rules")
 
-  private def forcesAt(state: OathState, site: SiteId): SiteForces =
-    ready(state).game.current.map.sites(site).forces
-
   private def exile(b: Board, count: Int): SiteForces =
     SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), count)
 
@@ -59,7 +56,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     val run = chosen(b)
     assert(awaits(run, b.rival, decision))
     // Nothing has moved yet, and the card has not been discarded.
-    assertEquals(forcesAt(run.state, b.origin), exile(b, 2))
+    assertEquals(Look(run.state).forces(b.origin), exile(b, 2))
     assertEquals(Look(run.state).player(b.rival).board.warbands, 3)
 
   test("the answer moves warbands between the board and the sites, keeping " +
@@ -68,8 +65,8 @@ class WarningSignalsSuite extends munit.FunSuite:
     val run = chosen(b)
     val moved = run.answer(b.rival, decision,
       arrangement(b, board = 0, origin = 4, extra = 3))
-    assertEquals(forcesAt(moved.state, b.origin), exile(b, 4))
-    assertEquals(forcesAt(moved.state, secondSite(b)), exile(b, 3))
+    assertEquals(Look(moved.state).forces(b.origin), exile(b, 4))
+    assertEquals(Look(moved.state).forces(secondSite(b)), exile(b, 3))
     assertEquals(Look(moved.state).player(b.rival).board.warbands, 0)
     // The window then offers what is left, so the defender finishes it.
     assert(awaits(moved, b.rival, CampaignIds.defenderPlan))
@@ -78,8 +75,8 @@ class WarningSignalsSuite extends munit.FunSuite:
     val b = defending
     val moved = chosen(b).answer(b.rival, decision, arrangement(b, board = 5,
       origin = 1, extra = 1))
-    assertEquals(forcesAt(moved.state, b.origin), exile(b, 1))
-    assertEquals(forcesAt(moved.state, secondSite(b)), exile(b, 1))
+    assertEquals(Look(moved.state).forces(b.origin), exile(b, 1))
+    assertEquals(Look(moved.state).forces(secondSite(b)), exile(b, 1))
     assertEquals(Look(moved.state).player(b.rival).board.warbands, 5)
 
   test("the defense is scored with the force the rearrangement left " +
@@ -92,14 +89,22 @@ class WarningSignalsSuite extends munit.FunSuite:
   test("a site must keep a warband, and the total must be kept"):
     val b = defending
     val run = chosen(b)
-    assert(run.refused(b.rival, decision, arrangement(b, board = 3, origin = 0,
-      extra = 4)).nonEmpty)
-    assert(run.refused(b.rival, decision, arrangement(b, board = 2, origin = 2,
-      extra = 2)).nonEmpty)
-    assert(run.refused(b.rival, decision, arrangement(b, board = 4, origin = 3,
-      extra = 3)).nonEmpty)
-    assert(run.refused(b.rival, decision, arrangement(b, board = 3, origin = 2,
-      extra = 2)).isEmpty)
+    // The rival's 7 warbands: a ruled site holds 1 to 6.
+    val outsideRange = s"decision $decision distributes to " +
+      s"site/${b.origin.value} outside 1..6"
+    val wrongTotal = s"decision $decision distributes an amount other than " +
+      "its total of 7"
+    assertEquals(run.refused(b.rival, decision, arrangement(b, board = 3,
+      origin = 0, extra = 4)), Some(OathViolation.InvalidEventOrder(
+      outsideRange)))
+    assertEquals(run.refused(b.rival, decision, arrangement(b, board = 2,
+      origin = 2, extra = 2)), Some(OathViolation.InvalidEventOrder(
+      wrongTotal)))
+    assertEquals(run.refused(b.rival, decision, arrangement(b, board = 4,
+      origin = 3, extra = 3)), Some(OathViolation.InvalidEventOrder(
+      wrongTotal)))
+    assertEquals(run.refused(b.rival, decision, arrangement(b, board = 3,
+      origin = 2, extra = 2)), None)
 
   test("the query names the board and each ruled site, with what " +
       "each holds now"):
@@ -152,7 +157,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     val run = commit(rules(losingDice), sparse, 4).pick(sparse.rival,
       CampaignIds.defenderPlan, ref)
     assert(!awaits(run, sparse.rival, decision))
-    assertEquals(said(run.events), Vector.empty)
+    assertEquals(said(power, run.events), Vector.empty)
     assert(Look(run.finishPlanWindows.state).inRegionalDiscard(card))
 
   test("a bandit defender never uses it, and the attacker's own copy is no " +
@@ -180,16 +185,13 @@ class WarningSignalsSuite extends munit.FunSuite:
   // ---- Lines ----
 
   private val power = WarningSignals.forCatalog(catalog)
-  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
-    NoteText.said(power.id, power.noteKeys, events)
-
   test("the arrangement is written as the Signals' line, after the answer"):
     val b = defending
     val asked = chosen(b)
-    assertEquals(said(asked.events), Vector.empty)
+    assertEquals(said(power, asked.events), Vector.empty)
     val done = asked.answer(b.rival, decision,
       arrangement(b, board = 1, origin = 3, extra = 3))
-    assertEquals(said(done.events), Vector(NoteText.Said("redistributed",
+    assertEquals(said(power, done.events), Vector(NoteText.Said("redistributed",
       s"${b.rival.value} redistributed their warbands.", covers = false)))
 
   test("a defender with nowhere to move to writes nothing"):
@@ -198,4 +200,4 @@ class WarningSignalsSuite extends munit.FunSuite:
       _.boardWarbands(base.rival, 3))
     val done = commit(rules(losingDice), b, 2, raid = true).pick(b.rival,
       CampaignIds.defenderPlan, ref).finishPlanWindows
-    assertEquals(said(done.events), Vector.empty)
+    assertEquals(said(power, done.events), Vector.empty)

@@ -87,7 +87,8 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
     assertEquals(lines(done), Vector.empty)
 
   test("a Raid targets no site, so it is not offered"):
-    val raid = raidBoard().board
+    // The rival stands at the origin, so a Raid is legal.
+    val raid = withEnemyAtOrigin(board(warbands = 5, supply = 7))
     val b = withSecrets(withRelic(raid, relic), 1)
     val run = commit(rules(winningDice), b, 2, raid = true)
     assert(!awaits(run, b.actor, CampaignIds.attackerPlan))

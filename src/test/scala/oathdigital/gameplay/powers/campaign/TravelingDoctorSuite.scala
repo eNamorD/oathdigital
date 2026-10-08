@@ -21,10 +21,6 @@ class TravelingDoctorSuite extends munit.FunSuite:
   private val discarded = NoteText.Said("discarded",
     "Discarded after the Campaign.", covers = false)
 
-  private def inDiscard(state: OathState): Boolean =
-    ready(state).game.current.commonCards.regionalDiscards.values
-      .exists(_.contains(card))
-
   test("a defeated attacker loses no survivor, and the Doctor is discarded"):
     val base = board(warbands = 5, supply = 7)
     val b = withAdviser(base, card, Orientation.FaceUp)
@@ -32,7 +28,7 @@ class TravelingDoctorSuite extends munit.FunSuite:
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
     assertEquals(Look(done.state).player(b.actor).board.warbands, 5)
-    assert(inDiscard(done.state))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(NoteText.Said("spared",
       s"${b.actor.value}'s force was spared.", covers = false), discarded))
 
@@ -48,10 +44,11 @@ class TravelingDoctorSuite extends munit.FunSuite:
   test("a bandit defender applies it, loses every targeted warband, and " +
       "discards it"):
     val base = board(warbands = 5, supply = 7)
-    val b = withSiteCard(base, base.origin, card)
+    // Two bandits rule the origin, where the Doctor stands.
+    val b = on(base)(_.bandits(base.origin, 2).denizen(card, at = base.origin))
     val done = commit(rules(winningDice), b, 4).finishPlanWindows
     assertEquals(done.winner, Some(true))
     assert(done.ops.contains(Kill(Piece.Warbands(ForceKind.Bandit, 2),
       PositionedLocation(Location.Site(b.origin)))))
-    assert(inDiscard(done.state))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(discarded))

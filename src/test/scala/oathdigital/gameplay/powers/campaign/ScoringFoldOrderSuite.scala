@@ -84,12 +84,9 @@ class ScoringFoldOrderSuite extends munit.FunSuite:
     def scored(game: OathRules): Int =
       val chosen = attackerPlans.foldLeft(commit(game, b, 5))((run, plan) =>
         run.pick(b.actor, CampaignIds.attackerPlan, plan))
-      val attackDone =
-        if awaits(chosen, b.actor, CampaignIds.attackerPlan) then
-          chosen.pick(b.actor, CampaignIds.attackerPlan, CampaignIds.finish)
-        else chosen
-      attackDone.pick(b.rival, CampaignIds.defenderPlan,
-        refOf("Garrison Armory")).finishPlanWindows.result.defenseScore
+      chosen.finishAttackerPlans(b.actor).pick(b.rival,
+        CampaignIds.defenderPlan, refOf("Garrison Armory"))
+        .finishPlanWindows.result.defenseScore
     // Both faces are ignored; the two warbands are added twice.
     assertEquals(scored(rules(roll)), 4)
     assertEquals(scored(reversedRules(roll)), 4)

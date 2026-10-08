@@ -7,7 +7,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.as
+import oathdigital.testkit.Unwrap.{as, rejected}
 
 class FamilyHeirloomSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer:
@@ -53,8 +53,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
     val done = Outcomes.finished(answer(at.state, at.first.tree,
       FamilyHeirloom.keep))
     assert(Look(done.treeless).player(p1).relics.exists(_.id == top))
-    assertEquals(replayed(staged, at.first.events ++ done.events),
-      done.treeless)
+    assertJournalRebuilds(staged, at.first.events ++ done.events, done.treeless)
 
   test("putting it on the bottom returns it to the relic deck"):
     val at = atChoice
@@ -62,8 +61,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
       FamilyHeirloom.bottom))
     assert(!Look(done.treeless).player(p1).relics.exists(_.id == top))
     assertEquals(done.treeless.game.current.commonCards.relicDeck.last, top)
-    assertEquals(replayed(staged, at.first.events ++ done.events),
-      done.treeless)
+    assertJournalRebuilds(staged, at.first.events ++ done.events, done.treeless)
 
   test("it writes the relic it drew and what became of it, covering the " +
       "burial"):
@@ -71,10 +69,10 @@ class FamilyHeirloomSuite extends munit.FunSuite
         FamilyHeirloom.bottom -> "put it on the bottom of the relic deck.")
       .foreach { case (choice, end) =>
         val at = atChoice
-        assertEquals(NoteText.said(power.id, power.noteKeys, at.first.events),
+        assertEquals(said(power, at.first.events),
           Vector.empty)
         val done = Outcomes.finished(answer(at.state, at.first.tree, choice))
-        assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+        assertEquals(said(power, done.events),
           Vector(NoteText.Said(choice.key,
             s"p1 drew ${top.value} and $end", covers = true)))
       }
@@ -88,5 +86,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
 
   test("a choice that is not offered is rejected"):
     val at = atChoice
-    assert(answer(at.state, at.first.tree,
-      DecisionOptionRef.Button("elsewhere")).isLeft)
+    assertEquals(rejected(answer(at.state, at.first.tree,
+      DecisionOptionRef.Button("elsewhere"))), OathViolation
+      .InvalidEventOrder(s"decision ${FamilyHeirloom.decisionId} does not " +
+        "offer the selected option"))

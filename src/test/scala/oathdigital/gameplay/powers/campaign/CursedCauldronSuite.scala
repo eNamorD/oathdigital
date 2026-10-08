@@ -13,12 +13,6 @@ class CursedCauldronSuite extends munit.FunSuite:
   private val relic = CatalogNames.relic("Cursed Cauldron")
   private val ref: DecisionOptionRef = DecisionOptionRef.Relic(relic)
 
-  private def warbands(state: OathState, who: PlayerId): Int =
-    Look(state).player(who).board.warbands
-
-  private def lines(run: Run): Vector[NoteText.Said] =
-    NoteText.said(CursedCauldron.id, CursedCauldron.noteKeys, run.events)
-
   private def gained(who: PlayerId, amount: Int): NoteText.Said =
     val noun = if amount == 1 then "warband" else "warbands"
     NoteText.Said("gained", s"${who.value} gained $amount $noun.",
@@ -31,8 +25,8 @@ class CursedCauldronSuite extends munit.FunSuite:
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     // Both bandits at the origin died, and no survivor was placed.
     assertEquals(done.winner, Some(true))
-    assertEquals(warbands(done.state, b.actor), 7)
-    assertEquals(lines(done), Vector(gained(b.actor, 2)))
+    assertEquals(Look(done.state).boardWarbands(b.actor), 7)
+    assertEquals(said(CursedCauldron, done.events), Vector(gained(b.actor, 2)))
 
   test("a Conquest defender's returned warband did not die"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
@@ -42,8 +36,8 @@ class CursedCauldronSuite extends munit.FunSuite:
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     // Two died at the origin, and one of them returned to the rival's board.
     assertEquals(done.winner, Some(true))
-    assertEquals(warbands(done.state, b.actor), 6)
-    assertEquals(lines(done), Vector(gained(b.actor, 1)))
+    assertEquals(Look(done.state).boardWarbands(b.actor), 6)
+    assertEquals(said(CursedCauldron, done.events), Vector(gained(b.actor, 1)))
 
   test("a victorious defender gains a warband per attacker warband killed"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
@@ -54,8 +48,8 @@ class CursedCauldronSuite extends munit.FunSuite:
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     // The defeat killed half of the attacker's four survivors.
     assertEquals(done.winner, Some(false))
-    assertEquals(warbands(done.state, b.rival), before + 2)
-    assertEquals(lines(done), Vector(gained(b.rival, 2)))
+    assertEquals(Look(done.state).boardWarbands(b.rival), before + 2)
+    assertEquals(said(CursedCauldron, done.events), Vector(gained(b.rival, 2)))
 
   test("a defeated user gains nothing"):
     val base = board(warbands = 5, supply = 7)
@@ -63,8 +57,8 @@ class CursedCauldronSuite extends munit.FunSuite:
     val done = commit(rules(losingDice), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
-    assertEquals(warbands(done.state, b.actor), 3)
-    assertEquals(lines(done), Vector.empty)
+    assertEquals(Look(done.state).boardWarbands(b.actor), 3)
+    assertEquals(said(CursedCauldron, done.events), Vector.empty)
 
   test("a warband the enemy's Hospital places on its site did not die"):
     val hospital = CatalogNames.denizen("Hospital")
@@ -84,5 +78,5 @@ class CursedCauldronSuite extends munit.FunSuite:
     assertEquals(done.winner, Some(true))
     assertEquals(ready(done.state).game.current.map.sites(site).forces,
       SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), 3))
-    assertEquals(warbands(done.state, b.actor), 5)
-    assertEquals(lines(done), Vector.empty)
+    assertEquals(Look(done.state).boardWarbands(b.actor), 5)
+    assertEquals(said(CursedCauldron, done.events), Vector.empty)

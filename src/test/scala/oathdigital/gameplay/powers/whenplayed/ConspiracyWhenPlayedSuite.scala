@@ -12,10 +12,10 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   PlacementPicks, Table}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.Unwrap.{accepted, as, present}
+import oathdigital.testkit.Unwrap.{accepted, as, present, rejected}
 
 class ConspiracyWhenPlayedSuite extends munit.FunSuite:
-  import WhenPlayedHarness.replayed
+  import WhenPlayedHarness.assertJournalRebuilds
 
   private val powers = WalkerPowers(Vector(ConspiracyWhenPlayed))
   private val conspiracy = VisionRules.Conspiracy
@@ -114,7 +114,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     assert(!Look(after).player(p2).relics.exists(_.id == crackedHorn))
     assertEquals(after.game.current.temporaryHands(p1), Vector.empty)
     assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
-    assertEquals(replayed(f.ready, done.events), after)
+    assertJournalRebuilds(f.ready, done.events, after)
 
   test("Conspiracy taking the Peoples Favor returns its favor in the " +
       "least-bank order and takes the banner"):
@@ -142,7 +142,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     // Discord holds the least before each favor: 0, then 1.
     assertEquals(returned, Vector(Suit.Discord, Suit.Discord))
     assertEquals(after.game.current.temporaryHands(p1), Vector.empty)
-    assertEquals(replayed(f.ready, done.events), after)
+    assertJournalRebuilds(f.ready, done.events, after)
 
   test("Conspiracy taking the Darkest Secret burns every secret and takes " +
       "the banner"):
@@ -167,7 +167,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       leaving = Vector(Burn.secrets(3,
         PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))))),
       ops.toString)
-    assertEquals(replayed(f.ready, done.events), after)
+    assertJournalRebuilds(f.ready, done.events, after)
 
   test("with no legal target Conspiracy asks nothing and only leaves the game"):
     // p2 stands at Broken Peaks, away from p1, and no banner has a holder.
@@ -190,8 +190,10 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     Vector[DecisionOptionRef](DecisionOptionRef.RelicSlot(p2, 2),
       DecisionOptionRef.RelicSlot(p1, 0),
       DecisionOptionRef.Banner(Banner.PeoplesFavor)).foreach { ref =>
-      assert(answer(f, target.tree, target.at, ConspiracyWhenPlayed.decisionId,
-        ref).isLeft, ref.toString)
+      assertEquals(rejected(answer(f, target.tree, target.at,
+        ConspiracyWhenPlayed.decisionId, ref)), OathViolation
+        .InvalidEventOrder(s"decision ${ConspiracyWhenPlayed.decisionId} " +
+          "does not offer the selected option"), ref.toString)
     }
 
   test("discarding a Conspiracy does not play it"):
@@ -215,7 +217,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     assert(!Look(after).player(p1).advisers.exists(_.id == conspiracy))
     assertEquals(Look(after).player(p1).revealedVision, revealedBefore)
     assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
-    assertEquals(replayed(f.ready, done.events), after)
+    assertJournalRebuilds(f.ready, done.events, after)
 
   // ---- Lines ----
 

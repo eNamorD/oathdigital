@@ -42,8 +42,9 @@ class VowOfPeaceSuite extends munit.FunSuite:
       Orientation.FaceUp)
     val run = commit(rules(losingDice), defended, 2)
     assert(!decisionsUntilTheCampaignEnds(run).contains(CampaignIds.sacrifice))
-    val done = ready(run.finishPlanWindows.state)
-    assert(done.game.current.lastCampaignResult.nonEmpty)
+    // Two hollow-sword dice against the defender's two warbands: the defender
+    // wins.
+    assertEquals(run.finishPlanWindows.winner, Some(false))
 
   test("a Raid against a faceup holder is protected too"):
     val raided = withEnemyAtOrigin(board(warbands = 5, supply = 7))
@@ -79,7 +80,11 @@ class VowOfPeaceSuite extends munit.FunSuite:
     val run = commit(rules(losingDice), b, 4)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan,
       DecisionOptionRef.Denizen(wrestlers))
-    assert(picked.since(run).exists(_.isInstanceOf[Sacrifice]))
+    // Wrestlers sacrifices the defender's one warband at the origin.
+    assertEquals(picked.since(run).collect { case s: Sacrifice => s },
+      Vector(Sacrifice(b.rival, Piece.Warbands(
+        ForceKind.Exile(b.player(b.rival).lineage), 1),
+        PositionedLocation(Location.Site(b.origin)))))
 
   private def notes(run: Run): Vector[PowerNoted] =
     run.finishPlanWindows.events.collect { case noted: PowerNoted => noted }
