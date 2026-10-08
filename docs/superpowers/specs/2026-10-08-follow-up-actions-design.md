@@ -57,7 +57,9 @@ nested in it. The queued Campaign is a full action and may take modifiers."
    start skips the Act-phase check.
 7. **No journal compatibility.** Stored games whose journals contain a nested
    Knights Errant Campaign stop replaying. The journal version marker is
-   bumped and the break is recorded in the docs.
+   not bumped (2026-10-08): readers accept only the exact version, so a bump
+   would stop every stored game, and the pre-release policy makes it
+   optional.
 8. **The log credits the source.** A queued run's tag reads
    "Campaign · Knights Errant". Skipping writes a line.
 9. **Second Wind's entries are independent.** It queues a Travel and then a
@@ -304,4 +306,3 @@ Campaign and Travel paths for it, since a queued action can run in Rest.
   item "Play-test follow-ups in a browser".
 - Batch-4 rulings: update the Hunting Party and Search Party rows.
 - New architecture note: `docs/architecture/follow-up-actions.md`.
-- Record the journal version bump where the project records breaking changes.

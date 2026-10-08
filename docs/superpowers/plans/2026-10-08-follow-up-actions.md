@@ -8,7 +8,7 @@
 
 - **Queue.** `CurrentGameState.followUps` holds the queue, and `walkerFollowUp` holds the entry the current run was started from. A primitive op `QueueFollowUp` appends to the queue. Two walker events, `FollowUpStarted` and `FollowUpSkipped`, take the head.
 - **Start and skip.** `startWalker` with a non-empty queue accepts only the head's action from the head's player. It evolves `FollowUpStarted` first and then runs the normal start on that state, so the build skips the Act-phase check and the cost waiver sees the entry. `skipFollowUp` emits `FollowUpSkipped`. The application service refuses every other command with `OathViolation.FollowUpPending`.
-- **Waiver.** `WalkerPowers.selected` always appends a built-in automatic power, `FollowUpCostWaiver`. It applies only at the cost window of the action `walkerFollowUp` names, and strips that player's `SpendSupply` through a shared `SupplyStrip`.
+- **Waiver.** `WalkerPowers.selected` always appends a built-in automatic power, `FollowUpSupplyWaiver`. It applies only at the cost window of the action `walkerFollowUp` names, and strips that player's `SpendSupply` through a shared `SupplyStrip`. Every other unconditional Supply strip in the powers moves onto `SupplyStrip`, and the economy's by-suit `SupplyWaiver` becomes `SuitSupplyWaiver`.
 - **Projection.** `followUp: Option[FollowUpProjection]` is added to the projection. The head player gets only `beginFollowUp` and `skipFollowUp`, and the phase reads `follow-up-pending`. The frontend draws a follow-up panel with a start button (disabled, with a hover reason, when the action cannot start) and a Skip button.
 - **Game Log.** `FollowUpStarted` joins the queued run's first segment, and the start tag appends the source: "Campaign · Knights Errant". `FollowUpSkipped` writes "Knights Errant: Campaign skipped." into the latest section.
 - **Cards.**
@@ -24,9 +24,13 @@
 
 The spec left these to the plan, or the code forced them. Each task repeats the one it uses.
 
-1. **The waiver is always offered and gated by state.** It is not appended only when `walkerFollowUp` is set. `WalkerPowers.selected` has no state, and most of its callers have none to give. `FollowUpCostWaiver.applicable` reads `ctx.state.game.current.walkerFollowUp`, so a command with no entry folds nothing.
-2. **The shared strip is named `SupplyStrip`, not `SupplyWaiver`.** A `private[economy] object SupplyWaiver` already exists (Cup of Plenty, Animal Playmates, Birdsong). The new object lives at `gameplay/operations/SupplyStrip.scala`, which both the walker and the powers may import.
-3. **Recover has no cost window.** It pays inside its `Repeat` body with no window, so `FollowUpCostWaiver.costWindow` returns `Option[PowerWindow]`, and Recover, like every non-major procedure, maps to `None`. Nothing queues a Recover.
+1. **The waiver is always offered and gated by state.** It is not appended only when `walkerFollowUp` is set. `WalkerPowers.selected` has no state, and most of its callers have none to give. `FollowUpSupplyWaiver.applicable` reads `ctx.state.game.current.walkerFollowUp`, so a command with no entry folds nothing.
+2. **One unconditional strip, and two consistently named waivers.** The economy's `private[economy] object SupplyWaiver` (Cup of Plenty, Animal Playmates, Birdsong) cannot absorb the follow-up waiver. It decides at run time from the suit of the answered source card, and it needs `PowerAnswers` from `gameplay.powers`, which the walker does not import. What does repeat is the unconditional strip: `TravelPayments.withoutSupply` (six travel powers), Awaited Return's filter, News from Afar's and Knights Errant's. Task 3 therefore:
+   - creates `gameplay/operations/SupplyStrip.scala`, which the walker and the powers may both import, and moves every unconditional strip onto it (Knights Errant's goes in Task 8);
+   - renames the economy object to `SuitSupplyWaiver` (its method `effects` stays), so the two waivers read `SuitSupplyWaiver` and `FollowUpSupplyWaiver`.
+
+   The travel strips now also filter a `BuildOps`'s built payments. No `BuildOps` in a travel cost node builds the traveller's payment today (Dragonskin Drum's gain, Tyrant's kill, the Travel's error node), so behaviour is unchanged.
+3. **Recover has no cost window.** It pays inside its `Repeat` body with no window, so `FollowUpSupplyWaiver.costWindow` returns `Option[PowerWindow]`, and Recover, like every non-major procedure, maps to `None`. Nothing queues a Recover.
 4. **The Campaign reason uses the restriction's own text.** Vow of Peace's restriction already returns `CampaignUnavailable("Vow of Peace prevents its ruler from campaigning")`, and the hover reason shows that text. The spec's "Forbidden by Vow of Peace" was an example. A new wording would be a second copy of the same rule.
 5. **The projection's `queuedAfter` is `Vector[String]`, not a count.** It holds the action labels of the entries behind the head ("Campaign"), so the panel can print "Then: Campaign". A count cannot name the action.
 6. **Second Wind reads the outcome at the Campaign's root.** It does not use `CampaignAfterOutcome`. Like Herald (`powers/campaign/Herald.scala:47-53`), it appends a `Branch` to the `CampaignActionEligibility` children. The `Branch` reads `lastCampaignResult` after the whole outcome, Conquest or Raid included. It checks `attacker == actor && attackerWins`: a selected modifier is only ever offered on the holder's own Campaign.
@@ -37,7 +41,7 @@ The spec left these to the plan, or the code forced them. Each task repeats the 
 
    The warning is projection-only: it never reaches the walk, legality or the journal.
 8. **Campaign starts through the modifier flow.** Second Wind is the first selected Campaign modifier. `ModifierFlowDraft.walkerActions` gains `"campaign"`, so the Campaign button and the follow-up button both offer it.
-9. **The journal version bump makes every stored game unreadable.** The spec bumps the version, but readers accept only an exact `FormatVersion`. The bump therefore stops every stored game, not only the ones holding a nested Knights Errant Campaign. `docs/ROADMAP.md` ("backward compatibility, migrations, and version bumps are not required") says the bump is optional before release. Task 11 does the bump as its own commit, so it can be dropped on its own.
+9. **No journal version bump.** Readers accept only an exact `FormatVersion`, so a bump would stop every stored game, not only the ones holding a nested Knights Errant Campaign. `docs/ROADMAP.md` ("backward compatibility, migrations, and version bumps are not required") makes it optional before release, and the user dropped it (2026-10-08). The spec's ruling 7 records the same.
 
 ## Global Constraints
 
@@ -726,20 +730,23 @@ Also stage `OathRules.scala` if it gained a forwarder.
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/operations/SupplyStrip.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/search/NewsFromAfar.scala:29-38`
-- Create: `src/main/scala/oathdigital/gameplay/walker/FollowUpCostWaiver.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/powers/economy/AwaitedReturn.scala` (the `TradeCost` filter)
+- Modify: `src/main/scala/oathdigital/gameplay/powers/travel/TravelPayments.scala` (delete `withoutSupply`), and its callers `WayStation.scala` (2), `AFastSteed.scala`, `ForestPaths.scala`, `Tents.scala`, `SpecialEnvoy.scala`
+- Rename: `src/main/scala/oathdigital/gameplay/powers/economy/SupplyWaiver.scala` to `SuitSupplyWaiver.scala`, and its callers `CupOfPlenty.scala`, `AnimalPlaymates.scala`, `Birdsong.scala`
+- Create: `src/main/scala/oathdigital/gameplay/walker/FollowUpSupplyWaiver.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerPowers.scala` (`selected`)
-- Create: `src/test/scala/oathdigital/gameplay/FollowUpCostWaiverSuite.scala`
+- Create: `src/test/scala/oathdigital/gameplay/FollowUpSupplyWaiverSuite.scala`
 
 **Interfaces:**
 - Consumes: Task 2's queued start, and `CurrentGameState.walkerFollowUp`.
 - Produces:
   - `SupplyStrip(actor: PlayerId, operations: Vector[Operation]): Vector[Operation]`.
-  - `FollowUpCostWaiver.id = PowerId("engine.follow-up-supply")`.
-  - `FollowUpCostWaiver.costWindow(action: ActionRef): Option[PowerWindow]`.
+  - `FollowUpSupplyWaiver.id = PowerId("engine.follow-up-supply")`.
+  - `FollowUpSupplyWaiver.costWindow(action: ActionRef): Option[PowerWindow]`.
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `src/test/scala/oathdigital/gameplay/FollowUpCostWaiverSuite.scala`:
+Create `src/test/scala/oathdigital/gameplay/FollowUpSupplyWaiverSuite.scala`:
 
 ```scala
 package oathdigital.gameplay
@@ -757,7 +764,7 @@ import oathdigital.testkit.Unwrap.accepted
 
 /** A queued action spends no Supply (follow-up actions design, ruling 4),
   * on its start and on every resume, and a queued action may run in Rest. */
-class FollowUpCostWaiverSuite extends munit.FunSuite:
+class FollowUpSupplyWaiverSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     walkerDice = WalkerDiceFixture.blanks)
@@ -824,7 +831,7 @@ class FollowUpCostWaiverSuite extends munit.FunSuite:
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.FollowUpCostWaiverSuite"`
+Run: `./sbtw "testOnly oathdigital.gameplay.FollowUpSupplyWaiverSuite"`
 Expected: FAIL. The first test's start is refused for insufficient Supply, and the Travel tests spend Supply.
 
 - [ ] **Step 3: Extract the strip**
@@ -863,9 +870,18 @@ In `NewsFromAfar.scala`, replace the `SearchCost` Transform body (L29-38) with:
 
 Import `oathdigital.gameplay.operations.SupplyStrip`, and delete any import the compiler then names unused.
 
+Move the other unconditional strips onto it (plan decision 2):
+- `AwaitedReturn.scala`: replace the `operations.filterNot { case SpendSupply … }` in its `TradeCost` Transform with `SupplyStrip(ctx.activePlayer, operations)`, keeping the `++ Vector(sacrifice(…), Note(…))` after it.
+- `TravelPayments.scala`: delete `withoutSupply` and its doc. In each caller, replace `TravelPayments.withoutSupply(operations, X)` with `SupplyStrip(X, operations)`. The argument order flips: the actor comes first.
+
+Rename the economy waiver: `git mv src/main/scala/oathdigital/gameplay/powers/economy/SupplyWaiver.scala src/main/scala/oathdigital/gameplay/powers/economy/SuitSupplyWaiver.scala`, rename the object to `SuitSupplyWaiver`, and change `SupplyWaiver.effects(` to `SuitSupplyWaiver.effects(` in `CupOfPlenty.scala`, `AnimalPlaymates.scala` and `Birdsong.scala`. Check that nothing else names it: `grep -rn "SupplyWaiver\b\|withoutSupply" src docs`.
+
+Run: `./sbtw "testOnly oathdigital.gameplay.powers.*"`
+Expected: PASS. The strips behave as before.
+
 - [ ] **Step 4: Add the waiver**
 
-Create `src/main/scala/oathdigital/gameplay/walker/FollowUpCostWaiver.scala`:
+Create `src/main/scala/oathdigital/gameplay/walker/FollowUpSupplyWaiver.scala`:
 
 ```scala
 package oathdigital.gameplay.walker
@@ -885,7 +901,7 @@ import oathdigital.model.{ActionRef, PowerId, PowerWindow, RuleSourceRef}
   * from the queue, which `applicable` reads from state; a command with no
   * entry folds nothing.
   */
-object FollowUpCostWaiver extends ContributingPower:
+object FollowUpSupplyWaiver extends ContributingPower:
   val id: PowerId = PowerId("engine.follow-up-supply")
   val source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
@@ -926,13 +942,13 @@ In `WalkerPowers.selected`, append the waiver and extend the doc:
   def selected(catalog: WalkerPowers, modifiers: Vector[PowerId]): WalkerPowers =
     catalog.copy(powers = catalog.powers.filter(power =>
       power.resolution == PowerResolution.Automatic ||
-        modifiers.contains(power.id)) :+ FollowUpCostWaiver,
+        modifiers.contains(power.id)) :+ FollowUpSupplyWaiver,
       modifiers = modifiers)
 ```
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.FollowUpCostWaiverSuite oathdigital.gameplay.powers.search.*"`
+Run: `./sbtw "testOnly oathdigital.gameplay.FollowUpSupplyWaiverSuite oathdigital.gameplay.powers.search.*"`
 Expected: PASS, News from Afar's suite included.
 
 - [ ] **Step 6: Run the whole server suite**
@@ -943,7 +959,7 @@ Expected: PASS. A suite that asserts the exact `powers` of a `WalkerPowers.selec
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/main/scala/oathdigital/gameplay/operations/SupplyStrip.scala src/main/scala/oathdigital/gameplay/powers/search/NewsFromAfar.scala src/main/scala/oathdigital/gameplay/walker/FollowUpCostWaiver.scala src/main/scala/oathdigital/gameplay/walker/WalkerPowers.scala src/test/scala/oathdigital/gameplay/FollowUpCostWaiverSuite.scala
+git add src/main/scala/oathdigital/gameplay/operations/SupplyStrip.scala src/main/scala/oathdigital/gameplay/powers/search/NewsFromAfar.scala src/main/scala/oathdigital/gameplay/powers/economy/AwaitedReturn.scala src/main/scala/oathdigital/gameplay/powers/economy/SupplyWaiver.scala src/main/scala/oathdigital/gameplay/powers/economy/SuitSupplyWaiver.scala src/main/scala/oathdigital/gameplay/powers/economy/CupOfPlenty.scala src/main/scala/oathdigital/gameplay/powers/economy/AnimalPlaymates.scala src/main/scala/oathdigital/gameplay/powers/economy/Birdsong.scala src/main/scala/oathdigital/gameplay/powers/travel/TravelPayments.scala src/main/scala/oathdigital/gameplay/powers/travel/WayStation.scala src/main/scala/oathdigital/gameplay/powers/travel/AFastSteed.scala src/main/scala/oathdigital/gameplay/powers/travel/ForestPaths.scala src/main/scala/oathdigital/gameplay/powers/travel/Tents.scala src/main/scala/oathdigital/gameplay/powers/travel/SpecialEnvoy.scala src/main/scala/oathdigital/gameplay/walker/FollowUpSupplyWaiver.scala src/main/scala/oathdigital/gameplay/walker/WalkerPowers.scala src/test/scala/oathdigital/gameplay/FollowUpSupplyWaiverSuite.scala
 git commit -m "feat(walker): a queued action spends no Supply"
 ```
 
@@ -2433,19 +2449,12 @@ Also stage any suite that named the moved card object.
 
 ---
 
-### Task 11: Docs, the version bump and the full gate
+### Task 11: Docs and the full gate
 
 **Files:**
 - Modify: `docs/ROADMAP.md` (the phase at L83-100; the Sneak Attack item at L108-112; the survey's nested-Campaign line at L137)
 - Modify: `docs/superpowers/specs/2026-10-05-catalog-batch-4-rulings.md` ("Moved out of the batch" table)
 - Create: `docs/architecture/follow-up-actions.md`
-- Modify: `docs/architecture/authoritative-events.md` (L26, and "Pre-release compatibility policy" at L96-102)
-- Modify: `src/main/scala/oathdigital/serialization/GameEventWire.scala:24-25` (`FormatVersion`)
-- Modify the tests that use 2 as the unsupported version:
-  - `GameEventWireEnvelopeSuite.scala` (L37, 97-101, 151, 159-162)
-  - `GameEventFactsWireSuite.scala:52`
-  - `GameApplicationServiceStreamSuite.scala` (L126, 163, 213)
-  - `src/test/resources/serialization/search-event-stream-v4.json` (2 occurrences)
 
 - [ ] **Step 1: Update the roadmap and the rulings**
 
@@ -2465,7 +2474,7 @@ In the batch-4 rulings' "Moved out of the batch" table:
 Create `docs/architecture/follow-up-actions.md`, in the style of its neighbours (a short overview, then one section per part). Cover these parts, each in a few sentences, naming the files:
 - the queue and its replay (`FollowUp`, `QueueFollowUp`, `FollowUpStarted`, `FollowUpSkipped`, `walkerFollowUp`);
 - the start and skip path, and the service gate;
-- the waiver (`FollowUpCostWaiver`, `SupplyStrip`);
+- the waiver (`FollowUpSupplyWaiver`, `SupplyStrip`, and `SuitSupplyWaiver` beside them);
 - the projection and the panel;
 - the Game Log;
 - option warnings;
@@ -2491,25 +2500,4 @@ git add docs/ROADMAP.md docs/superpowers/specs/2026-10-05-catalog-batch-4-ruling
 git commit -m "docs: record follow-up actions"
 ```
 
-- [ ] **Step 5: Bump the journal version (its own commit, see plan decision 9)**
-
-In `GameEventWire.scala`, set `val FormatVersion: Int = 2`, and extend its doc: "2: follow-up actions replaced the nested Knights Errant Campaign (2026-10-08); a version-1 stream is not read."
-
-In the four test files listed above:
-- Every place that writes 2 as the unsupported version now writes 3.
-- Every place that writes 1 as the current version now writes 2.
-- In `search-event-stream-v4.json`, change both `"formatVersion": 1` to 2.
-
-In `authoritative-events.md`, change L26 to `formatVersion = 2`, and add one line under "Pre-release compatibility policy":
-
-> 2026-10-08: format version 2 (follow-up actions). Knights Errant no longer nests a Campaign, and every version-1 stream stops loading.
-
-Run: `./sbtw test`
-Expected: PASS.
-
-```bash
-git add src/main/scala/oathdigital/serialization/GameEventWire.scala docs/architecture/authoritative-events.md src/test/scala/oathdigital/serialization/GameEventWireEnvelopeSuite.scala src/test/scala/oathdigital/serialization/GameEventFactsWireSuite.scala src/test/scala/oathdigital/application/GameApplicationServiceStreamSuite.scala src/test/resources/serialization/search-event-stream-v4.json
-git commit -m "chore(serialization): bump the journal format for follow-up actions"
-```
-
-Find the exact paths of the suites with `grep -rln "FormatVersion\|formatVersion" src/test`.
+The journal version is not bumped (plan decision 9).
