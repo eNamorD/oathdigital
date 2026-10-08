@@ -239,6 +239,19 @@ object LogScripts:
     start(act, ActionRef.Search)
     Script("search", service, Look(act.ready).active)
 
+  /** Forced Labor at Broken Peaks, and p2 ruling both Broken Peaks and
+    * Ancient City, where p1 stands: p1's Search of the world deck gives p2
+    * 1 favor before it spends 2 Supply. p1 holds 5 Supply and the start's
+    * 1 favor. */
+  def forcedLaborSearch(using munit.Location): Script =
+    val (service, act) = atTable("forced-labor", Table.start
+      .worldDeckTop("Threatening Roar", "Fae Merchant", "Second Chance")
+      .supply(p1, 5).denizen("Forced Labor", "Broken Peaks")
+      .warbandsAt("Broken Peaks", p2, 1).warbandsAt("Ancient City", p2, 1)
+      .banditsRefilled)
+    start(act, ActionRef.Search)
+    Script("forced-labor", service, p1)
+
   /** p1's facedown adviser played from its slot. */
   def facedownAdviser(using munit.Location): Script =
     facedownAdviser("facedown-adviser", None)

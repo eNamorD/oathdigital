@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.gameplay.powers.search.NewsFromAfar
 import oathdigital.model._
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.p1
@@ -21,6 +22,19 @@ class SearchSourceServiceSuite extends munit.FunSuite:
     val undone = accept(service.handle("g", started.nextSequence,
       GameCommand.Undo(p1)))
     assertEquals(undone.state, table.state)
+
+  test("Undo takes back a start that selected a modifier, leaving the table " +
+      "as it was"):
+    // News from Afar costs 2 favor, paid after the pick: the start only
+    // records the selection, and Undo must drop it.
+    val withNews = table.adviser(p1, "News from Afar").favor(p1, 2)
+    val (service, _) = withNews.service()
+    val started = accept(service.handle("g", 0L, GameCommand.StartWalker(
+      ActionRef.Search, StartPayload(p1, Vector(NewsFromAfar.id),
+        Vector.empty))))
+    val undone = accept(service.handle("g", started.nextSequence,
+      GameCommand.Undo(p1)))
+    assertEquals(undone.state, withNews.state)
 
   test("the source answer draws, so it cannot be taken back"):
     val (service, _) = table.service()

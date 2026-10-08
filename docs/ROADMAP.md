@@ -61,11 +61,6 @@ Left behind by the
   decision with a badge or hover reason on the world deck and the region's
   discard pile, and Clay Rattle's piles on the board are covered by tests
   only.
-- [ ] **Search source test gaps.** No test covers an empty world deck ("The
-  world deck is empty"), the fallback reason "Cannot search there now", a
-  single-card draw whose badge joins follow-up answers, the start line when
-  Forced Labor's toll is the first recorded step, or Undo of a start that
-  selected a modifier.
 
 ### Phase - Board decision follow-ups
 

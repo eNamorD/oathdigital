@@ -1,12 +1,15 @@
 package oathdigital.application
 
-import oathdigital.gameplay.powers.SearchFixture
+import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.search.{Disciples, NewsFromAfar}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.protocol.projection.DecisionOptionProjection
-import oathdigital.testkit.{CatalogNames, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Outcomes, PowerStubs, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -14,16 +17,18 @@ import oathdigital.testkit.Unwrap.{accepted, present}
   * selected modifiers, or why it cannot be searched (search source design,
   * rulings 3 and 4). p1 stands at Ancient City, in the Cradle. */
 class SearchSourceRowsSuite extends munit.FunSuite:
-  private val projector = new WalkerDecisionProjector(catalog,
-    new GamePresentationProjector(catalog))
+  private val presentation = new GamePresentationProjector(catalog)
   private val home = CatalogNames.site("Ancient City")
 
   /** The source rows p1 is shown, by pile id ("world", "cradle"), once a
-    * Search with `modifiers` starts at `ready`. */
-  private def rows(ready: ReadyGame, modifiers: Vector[PowerId] = Vector.empty)
+    * Search with `modifiers` starts at `ready` under `powers`. */
+  private def rows(ready: ReadyGame, modifiers: Vector[PowerId] = Vector.empty,
+      powers: WalkerPowers = WalkerPowerCatalog.default(catalog))
       (using munit.Location): Map[String, DecisionOptionProjection] =
-    val started = accepted(SearchFixture.rules.startWalker(Ready(ready),
-      ActionRef.Search, p1, modifiers))
+    val rules = new OathRules(catalog, walkerPowerCatalog = powers)
+    val projector = new WalkerDecisionProjector(catalog, presentation, powers)
+    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Search,
+      p1, modifiers))
     present(projector.project(ScopedProjectionContext(
       Outcomes.ready(started.state), Some(p1))), "the source decision")
       .query.toVector.flatMap(_.offeredOptions).map(row => row.id -> row).toMap
@@ -81,3 +86,39 @@ class SearchSourceRowsSuite extends munit.FunSuite:
     assertEquals(shown("cradle").state, "unavailable")
     assertEquals(shown("cradle").reason,
       Some("The Cradle discard pile is empty"))
+
+  test("an empty world deck says it is empty"):
+    // The whole world deck goes to the Provinces discard, which p1 cannot
+    // search; one card in the Cradle discard lets the Search start.
+    val stocked = Table.start.discarded(Region.Cradle, "Wrestlers")
+      .supply(p1, 5)
+    val deck = stocked.unchecked.game.current.commonCards.worldDeck
+    val shown = rows(stocked.discarded(Region.Provinces, deck*).ready)
+    assertEquals(shown("world").state, "unavailable")
+    assertEquals(shown("world").reason, Some("The world deck is empty"))
+    assertEquals(shown("cradle").state, "available")
+
+  test("a pile refused for no reason the pricing knows says it cannot be " +
+      "searched now"):
+    // A stub fails every Search of a discard pile once the pile is picked,
+    // whatever Supply and favor p1 holds, so neither a shortfall nor an
+    // empty pile explains the refusal.
+    val closed = PowerStubs.TransformStub(PowerId("test.discard-closed"),
+      PowerWindow.SearchBeforeDraw, (ctx, children) =>
+        if ctx.answered.exists(_.answer == DecisionAnswer.ChooseOneAnswer(
+            DecisionOptionRef.DiscardPile(Region.Cradle)))
+        then Vector(BuildOps((_, _) => Left(OathViolation.InvalidEventOrder(
+          "test: the Cradle discard pile is closed"))))
+        else children)
+    val shown = rows(stocked(supply = 5).ready, powers = WalkerPowers(
+      Vector(closed)))
+    assertEquals(shown("cradle").state, "unavailable")
+    assertEquals(shown("cradle").reason, Some("Cannot search there now"))
+    assertEquals(shown("world").badge, Some("2 Supply"))
+
+  test("a single-card draw reads its cost once, though each way to place " +
+      "the card is previewed"):
+    // A Vision on top stops the draw at one card, so the walk goes straight
+    // to placing it, faceup or discarded, each costing the same 2 Supply.
+    val ready = Table.start.worldDeckTop(VisionRules.Faith).supply(p1, 5).ready
+    assertEquals(rows(ready)("world").badge, Some("2 Supply"))
