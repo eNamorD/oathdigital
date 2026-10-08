@@ -396,7 +396,7 @@ private[application] final class WalkerDecisionProjector(
           extra = Vector(s"Currently ${BannerRules.resources(current,
             held.banner)} ${BannerRules.resourceName(held.banner)}"))
       case DecisionOption.Deck(deck) =>
-        row(presentation.safeLabel(deck.id.key))
+        row(s"${presentation.safeLabel(deck.id.key)} deck")
       case DecisionOption.FavorBank(bank) =>
         row(presentation.safeLabel(bank.suit.key))
       case DecisionOption.SiteSlot(slot) =>
@@ -413,8 +413,10 @@ private[application] final class WalkerDecisionProjector(
         if ready.game.current.players.exists(_.player == spot.owner) then
           row("Revealed Vision")
         else None
+      // A pile names itself: a card play discards to it and a Search draws
+      // from it, so the label says neither.
       case DecisionOption.DiscardPile(pile) =>
-        row(s"Discard to the ${pile.region.key.capitalize} discard")
+        row(SearchSource.name(SearchSource.RegionalDiscard(pile.region)))
 
   /** A Replace option's label: the card it discards, and where the played
     * card goes. */

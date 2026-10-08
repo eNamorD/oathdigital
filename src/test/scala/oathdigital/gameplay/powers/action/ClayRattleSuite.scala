@@ -58,6 +58,10 @@ class ClayRattleSuite extends munit.FunSuite:
     assertEquals(PhasePowerHarness.offered(started, actor),
       Some(ClayRattle.piles.map(ClayRattle.ref).map(r => r.kind -> r.wireId)))
     assertEquals(ClayRattle.piles.size, 4)
+    // The piles are the board's own options, not buttons.
+    assertEquals(ClayRattle.piles.map(ClayRattle.ref),
+      DecisionOptionRef.Deck(CardDeck.World) +:
+        Region.all.map(DecisionOptionRef.DiscardPile(_)))
 
   test("the world deck takes the source's order, and replay applies it"):
     val Shuffled(ready0, started, answered) = shuffled(SearchSource.WorldDeck)

@@ -30,6 +30,25 @@ object SearchSource:
     case WorldDeck => "world deck"
     case RegionalDiscard(region) => s"$region discard pile"
 
+  /** The board option that names `source`: the world deck, or a region's
+    * discard pile. A Search's source decision and Clay Rattle offer these. */
+  def ref(source: SearchSource): DecisionOptionRef = source match
+    case WorldDeck => DecisionOptionRef.Deck(CardDeck.World)
+    case RegionalDiscard(region) => DecisionOptionRef.DiscardPile(region)
+
+  /** The pile `ref` names, when it names a pile a Search could draw from. */
+  def fromRef(ref: DecisionOptionRef): Option[SearchSource] = ref match
+    case DecisionOptionRef.Deck(CardDeck.World) => Some(WorldDeck)
+    case DecisionOptionRef.DiscardPile(region) => Some(RegionalDiscard(region))
+    case _ => None
+
+  /** `source` as a decision option. */
+  def option(source: SearchSource): DecisionOption = source match
+    case WorldDeck =>
+      DecisionOption.Deck(DecisionOptionRef.Deck(CardDeck.World))
+    case RegionalDiscard(region) =>
+      DecisionOption.DiscardPile(DecisionOptionRef.DiscardPile(region))
+
 sealed trait SearchPlacement extends Product with Serializable
 object SearchPlacement:
   case object Discard extends SearchPlacement

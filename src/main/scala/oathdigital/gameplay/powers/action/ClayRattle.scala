@@ -13,8 +13,9 @@ object ClayRattleCard extends Relic(RelicId("R47"), "Clay Rattle", value = 45, d
 /** Clay Rattle (relic R47), ACTION: place 2 secrets on this relic, then
   * shuffle the world deck or any region's discard pile.
   *
-  * The player chooses the pile among four buttons, empty piles included:
-  * the card lets any pile be chosen. The shuffle is declared with no order,
+  * The player chooses the pile on the board, among the world deck and the
+  * three discard piles, empty piles included: the card lets any pile be
+  * chosen. The shuffle is declared with no order,
   * and the walker draws the order from its random source and records it
   * (the `Shuffle` operation). A `Branch` reads the answer, since the tree is
   * built before it is given.
@@ -30,16 +31,12 @@ case object ClayRattle extends PaidAction(ClayRattleCard.power):
   val piles: Vector[SearchSource] =
     SearchSource.WorldDeck +: Region.all.map(SearchSource.RegionalDiscard(_))
 
-  def ref(pile: SearchSource): DecisionOptionRef.Button =
-    val key = pile match
-      case SearchSource.WorldDeck => "world-deck"
-      case SearchSource.RegionalDiscard(region) => region.key
-    DecisionOptionRef.Button(key)
+  def ref(pile: SearchSource): DecisionOptionRef = SearchSource.ref(pile)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector(
-    Decide(decisionId, player, DecisionQuery.ChooseOne(piles.map(pile =>
-      DecisionOption.Button(ref(pile), SearchSource.name(pile).capitalize)),
+    Decide(decisionId, player, DecisionQuery.ChooseOne(
+      piles.map(SearchSource.option),
       heading = Some("Clay Rattle: shuffle a pile"))),
     Branch((_, pending) => chosen(pending.answered).toVector.map(Shuffle(_))),
     Note(id, states => for
@@ -51,4 +48,4 @@ case object ClayRattle extends PaidAction(ClayRattleCard.power):
     answered.collectFirst {
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(picked), _) =>
         picked
-    }.flatMap(picked => piles.find(ref(_) == picked))
+    }.flatMap(SearchSource.fromRef)

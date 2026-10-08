@@ -73,10 +73,13 @@ class SlotOptionRowsSuite extends munit.FunSuite:
       .label, s"Replace ${presentation.cardLabel(board, VisionRules.Conquest)}" +
         " as revealed Vision")
 
-  test("the discard pile names its region"):
+  test("the discard pile and the world deck name themselves, for a card " +
+      "play and a Search alike"):
     assertEquals(rowOf(DecisionOption.DiscardPile(
       DecisionOptionRef.DiscardPile(Region.Provinces))).label,
-      "Discard to the Provinces discard")
+      "Provinces discard pile")
+    assertEquals(rowOf(DecisionOption.Deck(
+      DecisionOptionRef.Deck(CardDeck.World))).label, "World deck")
 
   test("an adviser play carries its facing as the word its toggle shows"):
     assertEquals(Vector(true, false).map(faceup => rowOf(

@@ -18,7 +18,8 @@ object ConvoysCard extends Denizen(DenizenId("151"), "Convoys", Suit.Nomad) with
   *
   * Your region is the pawn's. The two other regions' piles are offered as
   * buttons with their own labels, in region order: the `DiscardPile` option
-  * reads "Discard to the X discard", which asks something else. The pile
+  * is the pile a card is discarded to or a Search draws from, which is not
+  * this card's question. The pile
   * moves card by card, bottom first, each to the top of the pawn's region's
   * pile, so it keeps its order on top. An empty pile moves nothing, and the
   * line still names both piles. No generic line exists for these moves.
