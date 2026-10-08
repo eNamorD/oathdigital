@@ -4,9 +4,12 @@ import oathdigital.protocol.{GameIntent => Intent, PreviewModifier}
 
 /** Spy of `ActionControls`: records what was staged and submitted instead
   * of touching a session, shared by every panel render suite. `stage` and
-  * `submitCommand` record; every other method is a no-op stub. `drafts` is the draft set the stages so far leave, from
-  * `empty`, so a suite re-renders a panel from exactly what the panel
-  * staged.
+  * `submitCommand` record; every other method is a no-op stub. `drafts` is
+  * the draft set the stages so far leave, from `empty`, so a suite
+  * re-renders a panel from exactly what the panel staged and asserts on that
+  * state, not on how often `stage` ran. `submitted` is the one place a call
+  * is the whole effect: a command leaves the client and nothing observable
+  * comes back, so a suite asserts the command itself.
   */
 private[frontend] class RecordingControls extends ActionControls:
   var staged: Vector[Draft] = Vector.empty

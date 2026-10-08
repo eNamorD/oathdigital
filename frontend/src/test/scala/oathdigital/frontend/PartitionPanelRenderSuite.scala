@@ -211,7 +211,6 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
       """[aria-label="Move Denizen 1 to Pay Secret"]""")
     assertEquals(move.textContent, "Pay Secret")
     click(move)
-    assertEquals(ui.staged.size, 1)
     // The draft the panel will be re-rendered from has actually moved.
     val moved = render(ui, ui.drafts.partition)
     assertEquals(optionLabelsIn(moved, "pay-favor"), Vector("Denizen 2"))
@@ -291,7 +290,6 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     val dragged = dragStartPayload(optionNode(panel, 3))
     assertEquals(dragged, optionKey(3))
     drop(one(panel, """[data-section-key="pay-favor"]"""), dragged)
-    assertEquals(ui.staged.size, 1)
     val moved = render(ui, ui.drafts.partition)
     assertEquals(optionLabelsIn(moved, "pay-favor"),
       Vector("Denizen 1", "Denizen 2", "Denizen 3"))

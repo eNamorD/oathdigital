@@ -63,8 +63,7 @@ class FacedownAdviserPickSuite extends munit.FunSuite:
       .map(_.getAttribute("data-option-ref")),
       Vector("denizen:a1", "denizen:a2"))
     click(one(boards, """[data-option-ref="denizen:a2"]"""))
-    assertEquals(ui.staged.collect { case Draft.Board(Some(draft)) =>
-      draft.keys }, Vector(Vector("denizen:a2")))
+    assertEquals(ui.drafts.board.map(_.keys), Some(Vector("denizen:a2")))
 
   test("with one facedown adviser, a fresh position opens with it picked"):
     val draft = SessionDrafts.empty.reconcile(context,

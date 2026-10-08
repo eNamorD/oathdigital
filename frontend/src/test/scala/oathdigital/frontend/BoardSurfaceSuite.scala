@@ -62,21 +62,30 @@ class BoardSurfaceSuite extends munit.FunSuite:
   private def site(root: dom.Element, label: String): dom.Element =
     one(root, s"""article[aria-label="$label"]""")
 
+  override def afterEach(context: AfterEach): Unit = CardInspection.clear()
+
   test("a click on a card inside a site reads the card, not the site"):
+    var inspected = Vector.empty[String]
+    CardInspection.onOpen:
+      case CardInspection.Request.Card(card, _) => inspected :+= card.name
+      case _ => ()
     val ui = new RecordingControls()
     click(one(world(ui), "button.card-face"))
-    assertEquals(ui.staged, Vector.empty)
+    assertEquals(inspected, Vector("Fox"))
+    assertEquals(ui.drafts.board, None)
+    // A pick would go out as a command: nothing does.
     assertEquals(ui.submitted, Vector.empty)
 
   test("Enter on a card inside a site does not pick the site"):
     val ui = new RecordingControls()
     press(one(world(ui), "button.card-face"), "Enter")
-    assertEquals(ui.staged, Vector.empty)
+    assertEquals(ui.drafts.board, None)
 
   test("a site click drafts the pick and submits nothing"):
     val ui = new RecordingControls()
     click(site(world(ui), "Deep Woods"))
     assertEquals(ui.drafts.board, Some(woodsDraft))
+    // A draft waits for Confirm: the click sends no command.
     assertEquals(ui.submitted, Vector.empty)
 
   test("a second click on the drafted site clears the pick"):

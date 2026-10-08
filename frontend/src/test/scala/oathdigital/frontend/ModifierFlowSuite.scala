@@ -44,7 +44,12 @@ class ModifierFlowSuite extends munit.FunSuite:
 
   /** Spy of `FlowHost`: records redraws, failures, sent commands and preview
     * requests. It computes no preview: `answer` completes the oldest one the
-    * test is waiting on.
+    * test is waiting on. The drafts the flow writes are real state
+    * (`currentDrafts`), and a test asserts on them first. The other
+    * recordings stand for calls with no state behind them: `sent` and
+    * `previews` are requests that leave the client, and `redraws` counts the
+    * host's only way to show the change, so a test asserts them only when
+    * the call is the effect it names.
     */
   private final class Host(var currentDrafts: SessionDrafts) extends FlowHost:
     var displayedProjection: Option[GameProjection] = Some(projection)
@@ -153,7 +158,9 @@ class ModifierFlowSuite extends munit.FunSuite:
     host.currentDrafts = moved
     host.answer(Right(response("recover", Vector(modifier)))).map { _ =>
       assertEquals(host.currentDrafts.partition, moved.partition)
-      assert(host.currentDrafts.modifiers.nonEmpty)
+      assertEquals(modifiersOf(host).preview,
+        response("recover", Vector(modifier)))
+      assertEquals(modifiersOf(host).command, recover)
     }
 
   test("with no projection displayed, nothing previews or sends"):

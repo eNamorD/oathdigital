@@ -91,7 +91,7 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
       Vector.empty)
     as[dom.html.Button](one(pane(ui, targets, decision, picked("site:hills")),
       ".board-decision-clear")).click()
-    assertEquals(ui.staged, Vector(Draft.Board(picked().map(_.cleared))))
+    assertEquals(ui.drafts.board, picked().map(_.cleared))
 
   test("a Decide button submits at once, under its own rule"):
     val ui = new RecordingControls()

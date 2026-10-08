@@ -60,8 +60,6 @@ class DistributePanelRenderSuite extends munit.FunSuite:
     click(one(staged(), """[data-option-id="favor-bank:nomad"] .distribute-increment"""),
       shift = true)
     assertEquals(amount(staged(), "favor-bank:nomad"), "2")
-    // One stage per click.
-    assertEquals(ui.staged.size, 3)
 
   test("confirm is enabled exactly when nothing remains and submits the amounts"):
     val ui = new RecordingControls()

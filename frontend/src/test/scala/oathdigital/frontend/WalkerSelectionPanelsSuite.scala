@@ -108,7 +108,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     assertEquals(listOf(panel).querySelectorAll("[role=option]").toVector
       .map(_.textContent), Vector("3", "4", "5"))
     type_(input, "5")
-    assertEquals(ui.staged, Vector.empty)
+    assertEquals(ui.drafts, SessionDrafts.empty)
     assertEquals(confirmOf(panel).textContent, "Take banner")
     confirmOf(panel).click()
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker("challenge.amount",
