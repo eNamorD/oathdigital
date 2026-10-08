@@ -13,6 +13,8 @@ class ProcedureRefSuite extends munit.FunSuite:
 
   test("procedure reference keys are listed per family and unique across " +
       "all of them"):
+    // The hand lists below pin wire values: each key is persisted in the
+    // journal and sent by clients, so a renamed key breaks saved games.
     assertEquals(ActionRef.all.map(_.key),
       Vector("search", "play-facedown-adviser", "recover", "forge",
         "travel", "take-wealth", "muster", "trade", "challenge",

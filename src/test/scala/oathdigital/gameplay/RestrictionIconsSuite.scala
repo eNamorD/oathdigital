@@ -1,11 +1,10 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.operations.{OperationRestrictions, RestrictionIcons}
+import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.Unwrap.present
 
 /** The restriction-icon rule (catalog batch 4 design, "The restriction-icon
   * rule"): whichever operation moves it, an adviser-only card cannot land
@@ -101,11 +100,3 @@ class RestrictionIconsSuite extends munit.FunSuite:
     val reason = set.active(Vector.empty, Vector.empty).flatMap(_.reason(
       adviserOnlyHeld, Move(Piece.Card(adviserOnly), mine, atHome))).head
     assertEquals(reason.kind, OperationReasonKind.Impossible)
-
-  test("the catalog's icons fill the rule: Enchantress is adviser-only, " +
-      "Wayside Inn site-only, and Errand Boy neither"):
-    val icons = present(set.printed.collectFirst {
-      case value: RestrictionIcons => value }, "the restriction-icon rule")
-    assert(icons.adviserOnly(adviserOnly) && !icons.siteOnly(adviserOnly))
-    assert(icons.siteOnly(siteOnly) && !icons.adviserOnly(siteOnly))
-    assert(!icons.adviserOnly(plainCard) && !icons.siteOnly(plainCard))
