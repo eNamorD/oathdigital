@@ -213,6 +213,7 @@ object ParkedServiceFixture:
       .bankFavor(suit, base.ready.banks.favor(suit) - 2)
       .warbandsAt("Ancient City", p2, 1)
       .boardWarbands(p2, 2)
+      .pawn(p2, "Broken Peaks")
       .siteTokens("Broken Peaks", secrets = 2)
     val (service, repository, act) = journaled(table, gameId)
     val parked = act.parkedAfter(GameCommand.BeginRest(p1))

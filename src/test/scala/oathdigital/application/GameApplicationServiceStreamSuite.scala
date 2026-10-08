@@ -134,7 +134,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
   test("gameplay appends at the absolute position and reloads equally"):
     // p2 wakes at Broken Peaks, whose 2 secrets are its only Wake option.
     val (service, repository) = Table.start.turn(p2, Phase.Wake)
-      .siteTokens("Broken Peaks", secrets = 2)
+      .pawn(p2, "Broken Peaks").siteTokens("Broken Peaks", secrets = 2)
       // Bandits at every empty site keep the refill out of the command's events.
       .banditsRefilled.service()
     val active = p2

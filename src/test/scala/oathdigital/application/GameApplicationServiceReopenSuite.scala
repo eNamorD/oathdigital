@@ -23,7 +23,8 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
       "oathdigital-rest-reopen-").resolve("journal")
     val gameId = "game-hsql-rest-cleanup"
     // Broken Peaks' secrets give p2's coming Wake an option, so it waits.
-    val table = Table.start.siteTokens("Broken Peaks", secrets = 2)
+    val table = Table.start.pawn(p2, "Broken Peaks")
+      .siteTokens("Broken Peaks", secrets = 2)
     val first = accepted(OwnedHsqldbEventStreamRepository.open(path))
     // p1 rests.
     val service = new GameApplicationService(catalog, first,
@@ -50,7 +51,7 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
       "oathdigital-minor-reopen-").resolve("journal")
     val gameId = "game-hsql-minor-relics"
     // p2 acts at Broken Peaks, where a relic lies.
-    val table = Table.start.turn(p2, Phase.Act)
+    val table = Table.start.turn(p2, Phase.Act).pawn(p2, "Broken Peaks")
       .relicAt("Sticky Fire", "Broken Peaks")
     val first = accepted(OwnedHsqldbEventStreamRepository.open(path))
     val service = new GameApplicationService(catalog, first,
@@ -86,6 +87,7 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
     * player p1 can negotiate with. */
   private val negotiationTable = Table.start
     .adviser(p1, "Wizard's Conclave", facedown = true)
+    .pawn(p2, "Broken Peaks")
   private val wizardsConclave = CatalogNames.denizen("Wizard's Conclave")
 
   private def negotiationService(repository: EventStreamRepository)
