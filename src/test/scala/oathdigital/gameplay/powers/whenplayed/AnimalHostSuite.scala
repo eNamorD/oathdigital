@@ -20,7 +20,7 @@ class AnimalHostSuite extends munit.FunSuite:
     // Four Beast cards count: Errand Boy at p1's site, the Ruined School at a
     // bandit site, and the Oaken Fortress and Fae Merchant at p2's site.
     // Homesteaders (Hearth) and p2's Beast adviser Second Chance do not.
-    val ready = Table.start.adviser(p1, host)
+    val ready = Table.start.adviser(p1, host).boardWarbands(p1, 3)
       .denizen("Errand Boy", at = homeSite)
       .denizen("Homesteaders", at = homeSite)
       .bandits(nearSite, 2)
@@ -35,7 +35,7 @@ class AnimalHostSuite extends munit.FunSuite:
 
   test("played to a site it counts itself"):
     // Animal Host itself and Errand Boy.
-    val ready = Table.start.denizen(host, at = homeSite)
+    val ready = Table.start.denizen(host, at = homeSite).boardWarbands(p1, 3)
       .denizen("Errand Boy", at = nearSite).ready
     val done = Outcomes.finished(fire(ready, power, hookAt(host, homeSite)))
     assertEquals(Look(done.treeless).boardWarbands(p1), 3 + 2)

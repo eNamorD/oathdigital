@@ -16,10 +16,11 @@ class RevelationSuite extends munit.FunSuite:
   private val played = hook(revelation)
 
   /** Revelation as p1's adviser, with p1, p2 and p3 holding the favor given
-    * and the quiet table's one faceup secret each. */
+    * and one faceup secret each. */
   private def holdingFavor(p1Favor: Int, p2Favor: Int, p3Favor: Int): Table =
     Table.start.adviser(p1, revelation).favor(p1, p1Favor)
       .favor(p2, p2Favor).favor(p3, p3Favor)
+      .secrets(p1, faceUp = 1).secrets(p2, faceUp = 1).secrets(p3, faceUp = 1)
 
   private def burn(amount: Int): DecisionAnswer =
     DecisionAnswer.ChooseAmountAnswer(amount)
@@ -66,7 +67,11 @@ class RevelationSuite extends munit.FunSuite:
       "no other player may answer it"):
     // Played from a Search, not a bare walk: the rules' resolveWalker, which
     // checks who answers a parked question, is the subject.
-    val ready = SearchFixture.staged(Vector(revelation), supply = 5)
+    // p1 is the first player, so the questions go p1, p2, p3; each of the
+    // three holds 1 favor and 1 faceup secret.
+    val ready = Table.from(SearchFixture.staged(Vector(revelation), supply = 5))
+      .favor(p1, 1).favor(p2, 1).favor(p3, 1).secrets(p1, faceUp = 1)
+      .secrets(p2, faceUp = 1).secrets(p3, faceUp = 1).ready
     val placed = SearchFixture.play(ready, Vector.empty, revelation,
       PlayedAs.Faceup)
     def answer(from: OathTransition, by: PlayerId, amount: Int) =
@@ -78,6 +83,5 @@ class RevelationSuite extends munit.FunSuite:
     val p2Declined = accepted(answer(p1Burnt, p2, 0))
     val done = accepted(answer(p2Declined, p3, 1))
     val end = Look(SearchFixture.after(done))
-    // Each started with 1 favor and 1 faceup secret.
     assertEquals(Vector(p1, p2, p3).map(end.favor), Vector(0, 1, 0))
     assertEquals(Vector(p1, p2, p3).map(end.faceUpSecrets), Vector(2, 1, 2))

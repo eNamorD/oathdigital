@@ -18,10 +18,11 @@ class CallForHelpSuite extends munit.FunSuite:
   private val cradle = Region.Cradle
   private val next = CardPlay.nextRegion(cradle)
 
-  /** Call for Help as p1's adviser, with `cards` in the Cradle discard pile,
-    * the last named on top. */
+  /** Call for Help as p1's adviser with 3 warbands on the board, and `cards`
+    * in the Cradle discard pile, the last named on top. */
   private def cradlePile(cards: String*): Table =
-    Table.start.adviser(p1, help).discarded(cradle, cards*)
+    Table.start.adviser(p1, help).boardWarbands(p1, 3)
+      .discarded(cradle, cards*)
 
   private def amount(count: Int): DecisionAnswer =
     DecisionAnswer.ChooseAmountAnswer(count)

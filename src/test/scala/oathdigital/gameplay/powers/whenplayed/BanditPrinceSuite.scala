@@ -12,8 +12,9 @@ class BanditPrinceSuite extends munit.FunSuite:
   private val power = registered[BanditPrince.type]
   private val prince = power.cardId
   private val played = hook(prince)
-  /** Bandit Prince is adviser-only: p1 holds it. */
-  private val start = Table.start.adviser(p1, prince)
+  /** Bandit Prince is adviser-only: p1 holds it, with 3 warbands on the
+    * board. */
+  private val start = Table.start.adviser(p1, prince).boardWarbands(p1, 3)
   /** Bandits hold p1's site (2) and a site in another region (1). */
   private val bandited = start.bandits(homeSite, 2).bandits(awaySite, 1)
   private val mine = Look(start.ready).forceKind(p1)
