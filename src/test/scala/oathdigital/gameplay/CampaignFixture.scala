@@ -10,8 +10,8 @@ import oathdigital.testkit.{CatalogNames, Look, Table}
 
 /** The boards the Campaign suites share, built on the quiet `Table`.
   *
-  * p1, the actor, stands at Ancient City (the origin), which two Bandits
-  * rule, in p1's Act with `warbands` warbands and `supply` Supply. `extras`
+  * p1, the actor, is placed at Ancient City (the origin, `originName`) by
+  * the board itself, which two Bandits rule, in p1's Act with `warbands` warbands and `supply` Supply. `extras`
   * further sites are Bandit-ruled too, in map order after the origin: Broken
   * Peaks, Buried Giant, Deep Woods, and so on. Every other site is empty.
   * p2, the rival, and p3, the bystander, stand at the first site nobody
@@ -26,13 +26,17 @@ object CampaignFixture:
       site != origin && ready.game.current.map.sites(site).forces ==
         SiteForces.Occupied(ForceKind.Bandit, 2))
 
+  /** The site p1 stands at and the Bandits rule: the origin of every board. */
+  val originName = "Ancient City"
+
   def board(extras: Int = 0, warbands: Int, supply: Int)(
       using munit.Location): Board =
-    val origin = Table.quietPawnSite(Table.p1)
+    val origin = CatalogNames.site(originName)
     val inPlay = Table.start.ready.game.current.map.inPlay
     val ruled = origin +: inPlay.filter(_ != origin).take(extras)
     val elsewhere = inPlay.find(!ruled.contains(_)).get
     val table = ruled.foldLeft(Table.start)(_.bandits(_, 2))
+      .pawn(Table.p1, at = origin)
       .pawn(Table.p2, at = elsewhere).pawn(Table.p3, at = elsewhere)
       .boardWarbands(Table.p1, warbands).supply(Table.p1, supply)
     Board(table.ready, Table.p1, Table.p2, Table.p3, origin)
