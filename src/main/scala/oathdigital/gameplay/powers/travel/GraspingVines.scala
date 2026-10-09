@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
+import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport, PayOrAsk}
 import oathdigital.model._
 
 object GraspingVinesCard extends Denizen(DenizenId("178"), "Grasping Vines", Suit.Beast) with SiteOnly:
@@ -18,12 +18,15 @@ object GraspingVinesCard extends Denizen(DenizenId("178"), "Grasping Vines", Sui
   * own board if able. The Vines' ruler is the ruler of the site it stands at,
   * and that ruler is exempt.
   *
-  * The kill is unconditional and not required: it is a plain `Kill` placed
-  * before the pawn's move, which does nothing for a board with no warband, so a
-  * traveller with none is not stopped.
+  * The kill is not required: a traveller with no warband on their board owes
+  * nothing and is not stopped. Otherwise it is a plain `Kill` placed after
+  * the rest of the Travel's cost and before the pawn's move. When a player
+  * rules the Vines, the traveller is asked first to kill a warband or to
+  * travel without killing, which its ruler may consent to (consent slice 4).
   *
   * The kill writes "Killed 1 {Red} warband.", read from its step, so a
   * traveller with no warband reads nothing.
+  * Travelling free writes "Killed nothing, with {Blue}'s consent."
   */
 final case class GraspingVines private (catalog: ExecutableCatalog)
     extends ContributingPower:
@@ -33,30 +36,72 @@ final case class GraspingVines private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = Vector(GraspingVines.killed)
+  override def noteKeys: Vector[NoteKey] = Vector(GraspingVines.killed,
+    GraspingVines.spared, GraspingVines.mustKill,
+    GraspingVines.mustKillConsent)
+  override def narratedDecisions: Set[String] = Set(GraspingVines.decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      kill(ctx).fold(operations)(_ ++ operations))))
+      charged(ctx, operations).getOrElse(operations))),
+    PowerWindow.PayOrAsk -> Vector(GraspingVines.step.restriction))
 
-  override def applicable(ctx: PowerCtx): Boolean = kill(ctx).nonEmpty
+  override def applicable(ctx: PowerCtx): Boolean =
+    if ctx.window == PowerWindow.PayOrAsk then GraspingVines.step.asking(ctx)
+    else charged(ctx, Vector.empty).nonEmpty
 
-  /** The kill this Travel owes and its line, if it owes one. */
-  private def kill(ctx: PowerCtx): Option[Vector[Operation]] = for
+  /** `operations` with what this Travel owes, if it owes anything: the step
+    * first when a player rules the Vines, the kill alone when bandits do.
+    * Either way the kill runs after the rest of the cost and before the
+    * pawn's move ([[TravelRoute.beforeMove]]). */
+  private def charged(ctx: PowerCtx, operations: Vector[Operation])
+      : Option[Vector[Operation]] = for
     route <- TravelRoute.pawnMove(ctx.operation)
     ruler <- SiteRulers.rulerOfCard(ctx.state, cardId)
     if SiteRule.enemies(ruler, SiteRuler.Player(route.player))
     if SiteRulers.rulerOf(ctx.state, route.source).contains(ruler)
+    if ctx.state.game.current.players.find(_.player == route.player)
+      .exists(_.board.warbands >= GraspingVines.Warbands)
     warband <- TravelPayments.ownWarband(ctx.state, route.player,
       GraspingVines.Warbands)
-  yield Vector(Kill(warband, PositionedLocation(Location.PlayArea(route.player))),
-    Note(id, NoteSupport.killedNote(GraspingVines.killed,
-      PowerSourceRef.Card(cardId), route.player)))
+  yield
+    val killed = Vector(Kill(warband,
+      PositionedLocation(Location.PlayArea(route.player))),
+      Note(id, NoteSupport.killedNote(GraspingVines.killed,
+        PowerSourceRef.Card(cardId), route.player)))
+    ruler match
+      case SiteRuler.Player(owner) =>
+        GraspingVines.step.question(route.player, route.source.value,
+          "Grasping Vines: kill 1 warband to travel on?",
+          DecisionOption.Button(PayOrAsk.pay, "Kill 1 warband"),
+          "Travel without killing") +:
+          TravelRoute.beforeMove(operations, Vector(GraspingVines.step.outcome(
+            killed, Vector(Note(id, _ => Some(GraspingVines.spared(
+              PowerSourceRef.Card(cardId), NoteArg.Player(owner))))))))
+      case _ => TravelRoute.beforeMove(operations, killed)
 
 object GraspingVines:
   val id: PowerId = GraspingVinesCard.power.id
   val Warbands: Int = 1
   val killed: NoteKey = NoteSupport.killedKey("killed")
+  val decisionId: String = "power.grasping-vines.kill"
+  /** "Killed nothing, with {Blue}'s consent." */
+  val spared: NoteKey = NoteKey("spared", Vector(
+    NotePart.Text("Killed nothing, with "), NotePart.Arg(0),
+    NotePart.Text("'s consent.")))
+  /** "Must kill a warband when traveling from its ruler's sites.": the
+    * reason of the free option once its ruler refused. */
+  val mustKill: NoteKey = NoteKey("must-kill", Vector(NotePart.Text(
+    "Must kill a warband when traveling from its ruler's sites.")))
+  /** The free option's reason while its ruler may be asked. */
+  val mustKillConsent: NoteKey = NoteKey("must-kill-consent", Vector(
+    NotePart.Text("Must kill a warband when traveling from its ruler's " +
+      "sites, unless ruler consents.")))
+  val step: PayOrAsk = PayOrAsk(id, GraspingVinesCard.id, decisionId,
+    mustKill, mustKillConsent)
+
+  /** The free option of a Travel out of `site`. */
+  def free(site: SiteId): DecisionOptionRef.Button = PayOrAsk.free(site.value)
 
   def forCatalog(catalog: ExecutableCatalog): GraspingVines =
     new GraspingVines(catalog)

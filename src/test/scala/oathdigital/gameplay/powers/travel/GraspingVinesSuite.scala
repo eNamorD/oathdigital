@@ -1,12 +1,12 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PayOrAsk, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  PlacementPicks, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
-import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class GraspingVinesSuite extends munit.FunSuite:
   import PowerFixture._
@@ -29,10 +29,16 @@ class GraspingVinesSuite extends munit.FunSuite:
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 
+  /** A Travel to `destination`, with the Vines' step answered by killing. */
+  private def travelledKilling(ready: ReadyGame, destination: SiteId)
+      : Either[OathViolation, OathTransition] =
+    travel(ready, destination).flatMap(
+      answeringStep(_, GraspingVines.decisionId, PayOrAsk.pay))
+
   test("an enemy traveling from a site the ruler rules kills a warband of " +
       "their own"):
     val ready = vinesAtHome(Some(rival))
-    val done = accepted(travel(ready, coast))
+    val done = accepted(travelledKilling(ready, coast))
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).player(actor).pawnSite, Some(coast))
     assertEquals(warbands(result), warbands(ready) - 1)
@@ -58,7 +64,7 @@ class GraspingVinesSuite extends munit.FunSuite:
     val leaving = on(board(source = provincePlains))(_
       .denizen(vines, at = provincePlains).warbandsAt(provincePlains, rival, 1)
       )
-    val out = Outcomes.ready(accepted(travel(leaving, coast)).state)
+    val out = Outcomes.ready(accepted(travelledKilling(leaving, coast)).state)
     assertEquals(warbands(out), warbands(leaving) - 1)
 
   test("the kill is not required: a traveller with no warband is not stopped"):
@@ -79,7 +85,8 @@ class GraspingVinesSuite extends munit.FunSuite:
   // ---- Lines ----
 
   test("the kill is written as the Vines' line, naming the traveller"):
-    assertEquals(said(accepted(travel(vinesAtHome(Some(rival)), coast)).events),
+    assertEquals(said(accepted(travelledKilling(vinesAtHome(Some(rival)),
+      coast)).events),
       Vector(NoteText.Said("killed",
         s"Killed 1 ${actor.value} warband.", covers = false)))
 
@@ -87,3 +94,24 @@ class GraspingVinesSuite extends munit.FunSuite:
     val ready = on(vinesAtHome(Some(rival)))(_.boardWarbands(actor, 0)
       )
     assertEquals(said(accepted(travel(ready, coast)).events), Vector.empty)
+
+  test("an enemy of a player ruler may ask to travel without killing; once " +
+      "granted, no warband dies"):
+    val ready = vinesAtHome(Some(rival))
+    val free = GraspingVines.free(cradlePlains)
+    val asked = present(PlacementPicks.parkedOptions(
+      accepted(travel(ready, coast)).state, powers(Vector.empty))
+      .find(_.ref == free), "the free option")
+    assertEquals(asked, DecisionOption.Unavailable(
+      DecisionOption.Button(free, "Travel without killing"),
+      OptionReason.Askable(GraspingVines.id, GraspingVines.mustKillConsent(
+        PowerSourceRef.Card(GraspingVinesCard.id)),
+        Vector(ConsentAsk(rival, Vector(GraspingVines.id))))))
+    val granted = ready.copy(consent = ConsentState().granting(Vector(
+      ConsentKey(GraspingVines.id, actor, GraspingVines.decisionId, free)),
+      ConsentTurn.of(ready)))
+    val done = accepted(travel(granted, coast).flatMap(
+      answeringStep(_, GraspingVines.decisionId, free)))
+    assertEquals(warbands(Outcomes.ready(done.state)), warbands(ready))
+    assertEquals(said(done.events), Vector(NoteText.Said("spared",
+      s"Killed nothing, with ${rival.value}'s consent.", covers = false)))
