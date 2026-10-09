@@ -62,9 +62,9 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
       : Vector[Operation] =
     val decisionId = CampaignIds.planDecision(side)
     val chosen = CampaignAnswers.picks(pending, decisionId)
-    def unavailable(offered: OfferedPlan, reason: String): DecisionOption =
-      DecisionOption.Unavailable(CampaignPlans.optionOf(offered),
-        OptionReason.Written(reason))
+    def unavailable(offered: OfferedPlan, reason: OptionReason)
+        : DecisionOption =
+      DecisionOption.Unavailable(CampaignPlans.optionOf(offered), reason)
     val listed = offers.filterNot(offered =>
       chosen.contains(CampaignPlans.refOf(offered.offer.source)))
       .map(offered => offered.offer.withheld match
@@ -73,8 +73,8 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
           case Right(operations) => PlanPrice.priced(
             CampaignPlans.optionOf(offered), offered.offer, operations)
           case Left(violation) =>
-            unavailable(offered, PlanPrice.shortfall(pass.state, user,
-              offered.offer, violation)))
+            unavailable(offered, OptionReason.Written(PlanPrice.shortfall(
+              pass.state, user, offered.offer, violation))))
     val playable = listed.exists(_.available)
     if !playable && !pass.resuming then Vector.empty
     else Vector[Operation](

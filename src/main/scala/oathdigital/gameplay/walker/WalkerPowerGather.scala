@@ -43,8 +43,9 @@ private[walker] object WalkerPowerGather:
     * `answered` are the decisions answered so far, which a contribution reads
     * from its `PowerCtx`. `resuming` is true when the walk is resuming inside
     * this node: an [[OfferHost]] then keeps its shape whatever it is offered.
-    * When the node is an [[OfferHost]], the offers the window gathered are
-    * turned into its children after the transforms have run.
+    * When the node is an [[OfferHost]], the offers the window gathered, with
+    * its option restrictions run over them ([[restrictOffers]]), are turned
+    * into its children after the transforms have run.
     */
   def applyWindow(window: Option[PowerWindow], operation: Operation,
       state: ReadyGame,
@@ -69,9 +70,10 @@ private[walker] object WalkerPowerGather:
             (restrictOptions(folded, gathered.optionRestrictions, ctxFor, byId),
               gathered.order)
           case host: OfferHost =>
-            val offered = gathered.offers.flatMap { case (powerId, offer) =>
-              offer.plan(ctxFor(byId(powerId))).map(OfferedPlan(powerId, _))
-            }
+            val offered = restrictOffers(
+              gathered.offers.flatMap { case (powerId, offer) =>
+                offer.plan(ctxFor(byId(powerId))).map(OfferedPlan(powerId, _))
+              }, gathered.optionRestrictions, ctxFor, byId)
             (folded ++ host.expand(offered, OfferHost.Pass(state, answered,
               resuming, WalkerSimulation.applies(_, state, powers))),
               gathered.order)
@@ -81,6 +83,33 @@ private[walker] object WalkerPowerGather:
     * choose, in order. */
   private def optionRefs(decide: Decide): Vector[DecisionOptionRef] =
     WalkerSearch.choosable(decide)
+
+  /** The offers an [[OfferHost]] gathered, with the window's option
+    * restrictions run over each by its source's option (catalog batch 6,
+    * "Option restrictions over offers"). A forbidden offer is withheld with
+    * the first forbidding restriction's note, or dropped when that one has
+    * none, as a forbidden `Decide` option is. An offer its own rule already
+    * withheld keeps its reason. No plan is asked about, so a waiver is not
+    * consulted.
+    */
+  private def restrictOffers(offers: Vector[OfferedPlan],
+      restrictions: Vector[(PowerId, OptionRestriction)],
+      ctxFor: ContributingPower => PowerCtx,
+      byId: Map[PowerId, ContributingPower]): Vector[OfferedPlan] =
+    if restrictions.isEmpty then offers
+    else offers.flatMap { offered =>
+      if offered.offer.withheld.nonEmpty then Vector(offered)
+      else
+        val ref = offered.offer.source.ref
+        restrictions.iterator.flatMap { case (id, restriction) =>
+          val ctx = ctxFor(byId(id))
+          restriction.fn(ctx, ref).map(Forbidding(id, restriction, ctx, _))
+        }.nextOption() match
+          case None => Vector(offered)
+          case Some(first) => first.restriction.note(first.ctx, ref).toVector
+            .map(note => offered.copy(offer = offered.offer.copy(
+              withheld = Some(OptionReason.Noted(first.power, note)))))
+    }
 
   /** The restrictions that forbid `ref` of `decide`, in power order. A
     * waivable one is left out once a grant for its power, the decision's
