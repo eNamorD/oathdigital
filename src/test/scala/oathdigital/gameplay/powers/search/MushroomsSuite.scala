@@ -5,7 +5,7 @@ import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Table}
-import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
 /** Mushrooms (card 183): for 1 secret, the Search spends no Supply and
@@ -54,6 +54,17 @@ class MushroomsSuite extends munit.FunSuite:
     assertEquals(Look(after).supply(p1), 5)
     assertEquals(Look(after).tokensOn(mushrooms), Tokens(0, 1))
     assertEquals(Look(after).player(p1).board.faceUpSecrets, 0)
+
+  test("a ruler's toll is still paid: only the Supply is waived"):
+    val home = CatalogNames.site("Ancient City")
+    val peaks = CatalogNames.site("Broken Peaks")
+    val table = besideMushrooms.denizen("Forced Labor", at = "Broken Peaks")
+      .warbandsAt(peaks, p2, 1).warbandsAt(home, p2, 1)
+    val before = Look(table.ready)
+    val after = Look(searched(table, Region.Cradle, modifiers))
+    assertEquals(after.favor(p1), before.favor(p1) - 1)
+    assertEquals(after.favor(p2), before.favor(p2) + 1)
+    assertEquals(after.supply(p1), 5)
 
   test("with Augury it draws two cards from the bottom"):
     val table = besideMushrooms.denizen("Augury", at = "Ancient City")

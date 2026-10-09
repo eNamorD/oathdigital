@@ -20,7 +20,8 @@ private[search] object BottomDraw:
   def reshaped(operations: Vector[Operation], count: Int,
       takes: SearchSource => Boolean): Vector[Operation] =
     operations.map:
-      case node: BuildOps if node.window.contains(PowerWindow.SearchBeforeDraw) =>
+      case node: BuildOps
+          if node.window.contains(PowerWindow.SearchBeforeDraw) =>
         node.copy(build = (ready, pending) =>
           node.build(ready, pending).flatMap(redrawn(ready, count, takes)))
       case other => other

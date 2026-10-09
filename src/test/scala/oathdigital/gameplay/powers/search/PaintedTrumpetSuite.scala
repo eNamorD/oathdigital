@@ -6,7 +6,7 @@ import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Table}
-import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
 /** Painted Trumpet (relic R23): a Search of a discard pile draws the top
@@ -57,6 +57,15 @@ class PaintedTrumpetSuite extends munit.FunSuite:
       Vector(PaintedTrumpet.id, Augury.id))
     assertEquals(after.game.current.temporaryHands(p1),
       Vector(cradleTop, provincesTop, hinterlandTop))
+
+  test("Truthful Harp still reveals the cards Painted Trumpet drew"):
+    val table = holdingTrumpet().relic(p1, "Truthful Harp")
+    val after = searched(table, cradle,
+      Vector(PaintedTrumpet.id, TruthfulHarp.id))
+    val drawn = Vector(cradleTop, provincesTop, hinterlandTop)
+    assertEquals(after.game.current.temporaryHands(p1), drawn)
+    assertEquals(after.knowledge.advisers.getOrElse(p2, Vector.empty).toSet,
+      drawn.toSet[WorldCardId])
 
   test("an empty pile may be picked while another pile has a card"):
     val table = holdingTrumpet(emptyCradle = true)
