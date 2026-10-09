@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{CardPlay, CardPlayRules, RuleNotes,
-  VisionRules}
+import oathdigital.gameplay.actions.{AdviserFace, CardPlay, CardPlayRules,
+  RuleNotes, VisionRules}
 import oathdigital.gameplay.actions.cardplay.{CardSlot, CardSlots,
   MoreDiscards}
 import oathdigital.gameplay.powers.search.CropRotation
@@ -32,7 +32,11 @@ class CardSlotsSuite extends munit.FunSuite:
   private val sealingWard = CatalogNames.denizen("Sealing Ward")
   /** Site-only. */
   private val curfew = CatalogNames.denizen("Curfew")
-  private val hall = CatalogNames.edifice("Hall of Ministers")
+  /** Faceup, it does not count toward the adviser limit. */
+  private val piper = CatalogNames.denizen("Pied Piper")
+  private val ignoresPiper = CardPlayRules.default
+    .ignoreLimit(AdviserFace(piper, Orientation.FaceUp))
+    private val hall = CatalogNames.edifice("Hall of Ministers")
   private val pile = DecisionOption.DiscardPile(
     DecisionOptionRef.DiscardPile(Region.Provinces))
   private val play = DecisionOption.Button(CardSlots.play, "Play")
@@ -221,14 +225,51 @@ class CardSlotsSuite extends munit.FunSuite:
       assertEquals(advisers(slotsOf(three, rules = limited), faceup),
         Vector.empty, s"faceup = $faceup"))
 
-  test("the played card's own limit lowers only its faceup plays"):
-    val rules = CardPlayRules.default.limitPlayedCard(2)
+  test("the played card's own limit holds only when it is played faceup"):
+    val rules = CardPlayRules.default.limitWhileFaceUp(card, 2)
     val twoHeld = holding(rainBoots, binding).hand(p1, card).ready
     assertEquals(advisers(slotsOf(twoHeld, rules = rules), faceup = true),
       Vector(replacing(adviserPlay(0, faceup = true), rainBoots),
         replacing(adviserPlay(1, faceup = true), binding)))
     assertEquals(advisers(slotsOf(twoHeld, rules = rules), faceup = false),
       Vector(adviserPlay(2, faceup = false)))
+
+  test("a played card that will not count takes a free slot at the limit, " +
+      "and only that slot"):
+    val full = holding(rainBoots, binding, wrestlers).hand(p1, piper).ready
+    val slots = slotsOf(full, piper, rules = ignoresPiper)
+    assertEquals(advisers(slots, faceup = true),
+      Vector(adviserPlay(3, faceup = true)))
+    // Facedown it has no power, so it counts.
+    assertEquals(advisers(slots, faceup = false), Vector(
+      replacing(adviserPlay(0, faceup = false), rainBoots),
+      replacing(adviserPlay(1, faceup = false), binding),
+      replacing(adviserPlay(2, faceup = false), wrestlers)))
+
+  test("at the limit, an adviser that does not count is shown unavailable " +
+      "for Replace"):
+    val ready = atAncientCity.adviser(p1, piper)
+      .adviser(p1, rainBoots, facedown = true)
+      .adviser(p1, binding, facedown = true)
+      .adviser(p1, wrestlers, facedown = true).hand(p1, card).ready
+    assertEquals(advisers(slotsOf(ready, rules = ignoresPiper),
+      faceup = true), Vector(
+      refused(replacing(adviserPlay(0, faceup = true), piper),
+        "Does not count toward the adviser limit"),
+      replacing(adviserPlay(1, faceup = true), rainBoots),
+      replacing(adviserPlay(2, faceup = true), binding),
+      replacing(adviserPlay(3, faceup = true), wrestlers)))
+
+  test("a play that replaces the card setting the limit is checked without " +
+      "that limit"):
+    // Wrestlers, faceup, limits p1 to two, and p1 holds three: only
+    // replacing Wrestlers leaves an area within the limit.
+    val rules = CardPlayRules.default.limitWhileFaceUp(wrestlers, 2)
+    val ready = atAncientCity.adviser(p1, wrestlers)
+      .adviser(p1, rainBoots, facedown = true)
+      .adviser(p1, binding, facedown = true).hand(p1, card).ready
+    assertEquals(advisers(slotsOf(ready, rules = rules), faceup = true),
+      Vector(replacing(adviserPlay(0, faceup = true), wrestlers)))
 
   test("a Vision never goes to a site, and faceup it goes to the revealed " +
       "Vision spot, Replace when one is there"):
@@ -279,15 +320,17 @@ class CardSlotsSuite extends munit.FunSuite:
       CardPlay.Origin.FacedownAdviser)), Vector(pile, play))
 
   test("a facedown adviser turned faceup must fit its own limit"):
-    val rules = CardPlayRules.default.limitPlayedCard(2)
+    def ownLimit(held: DenizenId) =
+      CardPlayRules.default.limitWhileFaceUp(held, 2)
     val three = Vector(rainBoots, binding, wrestlers)
       .foldLeft(atAncientCity)(_.adviser(p1, _, facedown = true)).ready
     assertEquals(advisers(slotsOf(three, wrestlers,
-      CardPlay.Origin.FacedownAdviser, rules), faceup = true), Vector.empty)
+      CardPlay.Origin.FacedownAdviser, ownLimit(wrestlers)), faceup = true),
+      Vector.empty)
     val two = Vector(rainBoots, binding)
       .foldLeft(atAncientCity)(_.adviser(p1, _, facedown = true)).ready
     assertEquals(advisers(slotsOf(two, binding,
-      CardPlay.Origin.FacedownAdviser, rules), faceup = true),
+      CardPlay.Origin.FacedownAdviser, ownLimit(binding)), faceup = true),
       Vector(adviserPlay(1, faceup = true)))
 
   /** Ancient City full: Rain Boots, Ancient Binding and the ruined Hall. */

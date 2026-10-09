@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.{CardPlay, CardPlayRules,
+import oathdigital.gameplay.actions.{AdviserFace, CardPlay, CardPlayRules,
   DiscardPermission, VisionRules}
 import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.model._
@@ -31,9 +31,11 @@ final case class MoreDiscards(locked: DecisionOption,
   * The options, in order: the discard pile; the site's first empty slot,
   * then, when a permission allows a site discard, each site card marked
   * Replace; the faceup plays;
-  * the facedown plays. An adviser play offers the first empty slot below the
-  * limit or, with none, every held adviser marked Replace, and nothing at or
-  * past the limit. A facedown adviser offers only its own slot, faceup. A
+  * the facedown plays. An adviser play is checked against the advisers as
+  * they would be after it (`CardPlayRules.fits`): it offers a new slot when
+  * that fits, and only that; or else each held adviser marked Replace whose
+  * replacement fits, an adviser that does not count shown unavailable with
+  * its reason; and nothing when no replacement fits. A facedown adviser offers only its own slot, faceup. A
   * Vision played faceup goes to the revealed Vision spot, and a Conspiracy
   * played faceup is the "Play" button.
   *
@@ -120,7 +122,8 @@ object CardSlots:
       option: DecisionOption,
       planned: Either[OathViolation, Vector[CoreOperation]])
       : Option[DecisionOption] =
-    planned.toOption.flatMap { operations =>
+    if !option.available then Some(option)
+    else planned.toOption.flatMap { operations =>
       val restrictions = OperationRestrictions.forCatalog(catalog)
         .active(Vector.empty, ready.game.current.walkerModifiers)
       operations.iterator.flatMap(operation => restrictions.iterator
@@ -179,24 +182,38 @@ object CardSlots:
   private def adviserSlots(player: PlayerState, card: WorldCardId,
       origin: CardPlay.Origin, orientation: Orientation, rules: CardPlayRules)
       : Vector[(DecisionOption, SearchPlacement)] =
-    val limit = rules.limitAfter(orientation == Orientation.FaceUp)
     val held = player.advisers
+    val faces = held.map(AdviserFace.of)
+    val played = AdviserFace(card, orientation)
     def slot(index: Int): DecisionOption = DecisionOption.AdviserPlay(
       DecisionOptionRef.AdviserPlay(player.player, index,
         orientation == Orientation.FaceUp))
     origin match
       case CardPlay.Origin.FacedownAdviser =>
-        // The card turns faceup where it lies, so the count stays.
+        // The card turns faceup where it lies.
         val own = held.indexWhere(_.id == card)
-        if own < 0 || held.size > limit then Vector.empty
+        if own < 0 || !rules.fits(faces.updated(own, played)) then Vector.empty
         else Vector(slot(own) -> SearchPlacement.Adviser(orientation, None))
       case CardPlay.Origin.TemporaryHand =>
-        if held.size < limit then
+        if rules.fits(faces :+ played) then
           Vector(slot(held.size) -> SearchPlacement.Adviser(orientation, None))
-        else if held.size == limit then held.zipWithIndex.map(
-          (adviser, index) => DecisionOption.Replacing(slot(index), adviser.id) ->
-            SearchPlacement.Adviser(orientation, Some(adviser.id)))
-        else Vector.empty
+        else replacements(faces, played, rules).map((index, fits) =>
+          val option = DecisionOption.Replacing(slot(index), held(index).id)
+          (if fits then option else DecisionOption.Unavailable(option,
+            OptionReason.Written(CardPlayRules.notCounted))) ->
+            SearchPlacement.Adviser(orientation, Some(held(index).id)))
+
+  /** The held advisers a play with no free slot may replace, by index, and
+    * whether the area after the replacement fits. One that does not fit is
+    * kept only when it does not count, to be shown unavailable: replacing it
+    * frees no room. Nothing when no replacement fits. */
+  private def replacements(faces: Vector[AdviserFace], played: AdviserFace,
+      rules: CardPlayRules): Vector[(Int, Boolean)] =
+    val fitting = faces.indices.toVector.map(index =>
+      index -> rules.fits(faces.updated(index, played)))
+    if !fitting.exists(_._2) then Vector.empty
+    else fitting.filter((index, fits) =>
+      fits || rules.uncounted(faces(index)))
 
   private def siteCards(ready: ReadyGame, actor: PlayerId)
       : Vector[SiteDenizenState] =

@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.CardPlayRules
+import oathdigital.gameplay.actions.{AdviserFace, CardPlayRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.walker.WalkerPowers
@@ -20,21 +20,39 @@ class CardPlayRulesSuite extends munit.FunSuite:
 
   /** A plain Beast card p1 plays from hand. */
   private val card = CatalogNames.denizen("Errand Boy")
-
+  private val tongue = CatalogNames.denizen("Silver Tongue")
+  private val piper = CatalogNames.denizen("Pied Piper")
+  private val wrestlers = CatalogNames.denizen("Wrestlers")
+  private def faceup(held: CardId) = AdviserFace(held, Orientation.FaceUp)
+  private def facedown(held: CardId) = AdviserFace(held, Orientation.FaceDown)
+  
   test("one limit counts every adviser, faceup or facedown, and only lowers"):
     val rules = CardPlayRules.default.limitAdvisers(2)
-    assertEquals(rules.limitAfter(faceup = true), 2)
-    assertEquals(rules.limitAfter(faceup = false), 2)
+    assert(rules.fits(Vector(faceup(card), facedown(tongue))))
+    assert(!rules.fits(Vector(faceup(card), facedown(tongue),
+      facedown(wrestlers))))
     assertEquals(CardPlayRules.default.limitAdvisers(5), CardPlayRules.default)
 
-  test("the played card's own limit counts only when it is played faceup"):
-    // The rulebook checks a play that changes the adviser limit against the
-    // new limit. Silver Tongue played facedown has no power, so the old limit
-    // holds for that play.
-    val rules = CardPlayRules.default.limitPlayedCard(2)
-    assertEquals(rules.limitAfter(faceup = true), 2)
-    assertEquals(rules.limitAfter(faceup = false),
+  test("a card's limit holds only while it is a faceup adviser after the " +
+      "play"):
+    // The rulebook checks a play against the state after it. Silver Tongue
+    // facedown has no power, and a Silver Tongue the play replaces is gone.
+    val rules = CardPlayRules.default.limitWhileFaceUp(tongue, 2)
+    assertEquals(rules.limitOver(Vector(faceup(tongue), faceup(card))), 2)
+    assertEquals(rules.limitOver(Vector(facedown(tongue), faceup(card))),
       CardPlayRules.DefaultAdviserLimit)
+    assertEquals(rules.limitOver(Vector(faceup(card))),
+      CardPlayRules.DefaultAdviserLimit)
+    assertEquals(rules.limitWhileFaceUp(tongue, 3), rules)
+
+  test("an adviser face that ignores the limit is not counted, in that " +
+      "face only"):
+    val rules = CardPlayRules.default.ignoreLimit(faceup(piper))
+    val four = Vector(faceup(piper), faceup(card), facedown(tongue),
+      faceup(wrestlers))
+    assertEquals(rules.counted(four), 3)
+    assert(rules.fits(four))
+    assert(!rules.fits(four.updated(0, facedown(piper))))
 
   test("site discard permissions stack in the order they are given"):
     val stacked = CardPlayRules.default.permitSiteDiscard(testPermission)
