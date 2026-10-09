@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.operations.OperationRestrictions
-import oathdigital.gameplay.powers.action.Assassin
+import oathdigital.gameplay.powers.action.{Assassin, PiedPiper}
 import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRules, SimplePlans, VowOfPeaceContribution}
 import oathdigital.gameplay.powers.economy.{KnightsErrant, Marriage}
@@ -56,6 +56,7 @@ object WalkerPowerCatalog:
       Vector(Insomnia) ++
       Vector(Assassin.forCatalog(catalog)) ++
       Vector(LostTapestry) ++
+      Vector(PiedPiper) ++
       Vector(ASmallFavor) ++
       Vector(FaithfulFriend) ++
       Vector(Garrison) ++

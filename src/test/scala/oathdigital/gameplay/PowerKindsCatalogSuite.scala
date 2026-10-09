@@ -55,6 +55,12 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
     assertEquals(oathdigital.gameplay.powers.cardplay.VowOfObedience
       .resolution, PowerResolution.Automatic)
 
+  test("Pied Piper's limit is automatic whatever its flag: the flag is " +
+      "false because of its ACTION"):
+    assertEquals(flag("denizen.pied-piper"), Some(false))
+    assertEquals(oathdigital.gameplay.powers.action.PiedPiper.resolution,
+      PowerResolution.Automatic)
+
   test("Chaos Cult is a persistent rule and fires on every title change"):
     assertEquals(flag("denizen.chaos-cult"), Some(true))
     assertEquals(oathdigital.gameplay.powers.title.ChaosCult

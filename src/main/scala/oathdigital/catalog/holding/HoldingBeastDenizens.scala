@@ -21,14 +21,6 @@ object SmallFriendsCard extends Denizen(DenizenId("177"), "Small Friends", Suit.
       "card. _(You may use Trade modifiers there.)_")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object PiedPiperCard extends Denizen(DenizenId("182"), "Pied Piper", Suit.Beast) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.pied-piper"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "This card ignores the adviser limit. **ACTION:** Move this " +
-      "card to any other player's advisers. Take [favor] [favor] " +
-      "from them.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object MushroomsCard extends Denizen(DenizenId("183"), "Mushrooms", Suit.Beast) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.mushrooms"),
     persistent = false, cost = Cost(secret = 1),

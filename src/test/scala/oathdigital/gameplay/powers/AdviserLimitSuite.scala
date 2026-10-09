@@ -32,3 +32,13 @@ class AdviserLimitSuite extends munit.FunSuite:
       Vector(AdviserFace(faith, Orientation.FaceDown)))
     assertEquals(AdviserLimit.towardLimit(held(false), p1), 1)
     assertEquals(AdviserLimit.towardLimit(held(true), p1), 2)
+
+  test("a faceup Pied Piper does not count toward its holder's limit; " +
+      "facedown it does"):
+    val piper = CatalogNames.denizen("Pied Piper")
+    def held(facedown: Boolean) = Table.start
+      .adviser(p1, piper, facedown = facedown).adviser(p1, "Wrestlers").ready
+    assertEquals(AdviserLimit.ignored(held(false), p1),
+      Vector(AdviserFace(piper, Orientation.FaceUp)))
+    assertEquals(AdviserLimit.towardLimit(held(false), p1), 1)
+    assertEquals(AdviserLimit.towardLimit(held(true), p1), 2)
