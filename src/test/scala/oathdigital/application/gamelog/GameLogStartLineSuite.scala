@@ -94,3 +94,22 @@ class GameLogStartLineSuite extends munit.FunSuite:
     val tag = entryStarting(format(facedownAdviser, None), "Play facedown")
     assertEquals(tag.kind, LogKind.Section)
     assertEquals(tag.spans, Vector[LogSpan](LogSpan.Text("Play facedown adviser")))
+
+  test("a Search with two picks names both once, in pick order, with no " +
+      "Chose line"):
+    val entries = format(twoPicks, None)
+    val tag = entryStarting(entries, "Search")
+    assertEquals(tag.kind, LogKind.Section)
+    // News from Afar spends no Supply, so the tag carries no cost.
+    assertEquals(text(tag), "Search")
+    assertEquals(text(entries(entries.indexOf(tag) + 1)),
+      "With News from Afar and Augury")
+    assertEquals(texts(entries).count(_.startsWith("With ")), 1)
+    assert(!texts(entries).exists(_.startsWith("Chose")), texts(entries))
+
+  test("a facedown-adviser play with a pick is tagged at the adviser's " +
+      "pick, naming it"):
+    val entries = format(facedownWithCry, None)
+    val tag = entryStarting(entries, "Play facedown")
+    assertEquals(text(entries(entries.indexOf(tag) + 1)), "With Wild Cry")
+    assert(!texts(entries).exists(_.startsWith("Chose")), texts(entries))
