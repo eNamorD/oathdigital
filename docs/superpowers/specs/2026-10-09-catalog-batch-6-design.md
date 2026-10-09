@@ -1,9 +1,10 @@
 # Catalog Batch 6: Battle Plan Restrictions and Search Sources
 
-**Status:** designed 2026-10-09. Slices 1 and 2 are ready to plan. Slices 3
-and 4 wait for [modifier selection on the walker](2026-10-09-modifier-walker-design.md),
-and are re-read against that design before they are planned. The per-card
-rulings are in [the rulings appendix](2026-10-09-catalog-batch-6-rulings.md).
+**Status:** designed 2026-10-09. Slices 1 and 2 are done. Slice 3 is
+planned against [modifier selection on the walker](2026-10-09-modifier-walker-design.md),
+whose slice 1 moved Search's modifiers into the walk. Slice 4 is re-read
+against that design before it is planned. The per-card rulings are in
+[the rulings appendix](2026-10-09-catalog-batch-6-rulings.md).
 
 **Builds on** [Catalog batch 4](2026-10-05-catalog-batch-4-design.md),
 [Catalog batch 5](2026-10-08-catalog-batch-5-design.md) and the
@@ -49,12 +50,15 @@ approved changes outside `gameplay/powers/`:
   Peace Envoy's option is priced with its gift.
 - **A Search source window** (slice 3). `PowerWindow.SearchSourceSelection`
   on the `search.source` decision.
-- **Search costs and draws** (slice 3). `SearchRules.cost` and
-  `SearchRules.draw` accept another region's discard pile, a draw from the
-  bottom, and a draw of the top card of every discard pile, when a power asks
-  for one.
-- **Modifiers that restrict or warn about other modifiers** (slices 3 and 4)
-  come from the modifier walker phase, not from this batch.
+- **Search costs and draws** (slice 3, settled at plan time).
+  `SearchRules.cost` charges 2 Supply for any region's discard pile, and
+  `SearchRules.draw` draws from any pile, from the top or the bottom.
+  Which piles a Search may pick is the source decision's business.
+  `Draw` gains `position`, and `SearchDrawPort.prepare` no longer takes
+  the actor's region.
+- **Modifiers that restrict or warn about other modifiers** (slices 3 and
+  4) use the modifier walker's `offerReason` (modifier walker design,
+  ruling 5).
 
 ### Out of scope
 
@@ -190,7 +194,7 @@ rules.
 
 ## Slice 3: Search sources
 
-Re-read against the modifier walker design before planning.
+Planned against slice 1 of the modifier walker design.
 
 ### The source window
 
@@ -201,10 +205,10 @@ drawn is read from the selected powers when the draw is built.
 
 ### Costs and draws
 
-`SearchRules.cost` refuses another region's discard pile today. It takes
-the selected powers' permissions instead: a discard pile costs 2 Supply
-wherever it is, once a power offers it. `SearchRules.draw` takes a draw
-shape:
+`SearchRules.cost` charges 2 Supply for a discard pile wherever it lies.
+The source decision offers another region's pile only when a picked
+modifier adds it, and the walker accepts only an answer the decision
+offers. `SearchRules.draw` takes a draw shape:
 
 - **Top**, the printed draw: three cards, plus any draw extension.
 - **Bottom**, Wine of Welcome on the world deck and Mushrooms on a discard
@@ -212,8 +216,9 @@ shape:
 - **Each pile**, Painted Trumpet: the top card of every discard pile. Draw
   extensions do not apply.
 
-The plan checks whether `Draw` can take cards from the bottom of a pile.
-If not, that is one more change, inside this slice.
+`Draw` takes cards from the top or the bottom (`Draw.position`). The move
+guard already checks a bottom take. Painted Trumpet's draw is one `Draw`
+per pile.
 
 ### The powers
 
@@ -225,9 +230,24 @@ If not, that is one more change, inside this slice.
 - **Wine of Welcome** draws the world deck from the bottom.
 - **Painted Trumpet**: a discard pile picked draws the top card of each pile.
 
-The modifier walker phase supplies two modifier rules: Mushrooms and
-Painted Trumpet exclude each other, and Wine of Welcome is warned while
-Mushrooms is selected.
+Each card states its own modifier rules through `offerReason`. Mushrooms
+and Painted Trumpet exclude each other, and Wine of Welcome and Mushrooms
+warn each other.
+
+### Plan-time rulings
+
+- **The draw order is the powers' priority.** Wine of Welcome and
+  Mushrooms fold at -1 and redraw from the bottom. The draw extensions
+  fold at 0 and keep the end the draw takes from, so Augury adds cards
+  from the bottom too. Painted Trumpet folds at 1 and replaces the draw,
+  so nothing modifies it.
+- **Warnings.** Wine of Welcome and Painted Trumpet warn the sources they
+  leave alone through the `warning` hook, as Hunting Party does. Errand
+  Boy's warning depends on the actor's region, which that hook cannot
+  see, so Errand Boy marks it in its own Transform.
+- **The Search line** names a bottom draw ("from the bottom of the Cradle
+  discard") and Painted Trumpet's draw ("from each discard pile"). No
+  slice 3 power writes a line of its own.
 
 ## Slice 4: Search draws
 
@@ -261,6 +281,9 @@ product owner.
 - A Transform that removes a `Roll` and rewrites `RecordCampaignResult`
   (Peace Envoy).
 - A marked end-of-Campaign discard replaced by a decision (Wild Mounts).
+- A Transform at the Search source window that adds and marks options
+  (Observatory, Errand Boy, Mushrooms).
+- A draw from the bottom of a pile (Mushrooms, Wine of Welcome).
 
 ## Testing
 
