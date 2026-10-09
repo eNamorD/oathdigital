@@ -5,7 +5,8 @@ import oathdigital.frontend.TestBoardOptions.adviserPlayAtRedSlot3
 import oathdigital.frontend.TestBoards.quietBoard
 import oathdigital.frontend.TestSites.quietSite
 import oathdigital.model.PlayerColor
-import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent}
+import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent,
+  WalkerStartArgWire}
 import oathdigital.testkit.Unwrap.as
 import ParkedDecision.{Routed, Surface}
 import org.scalajs.dom
@@ -215,3 +216,30 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     as[dom.html.Button](one(panel, ".board-decision-clear")).click()
     assertEquals(ui.drafts.board.map(draft => (draft.home, draft.keys)),
       Some((None, Vector.empty)))
+
+  test("an askable Decide button asks before it sends"):
+    val ui = new RecordingControls()
+    var opened = Vector.empty[CardInspection.Request]
+    CardInspection.onOpen(request => opened :+= request)
+    try
+      val play = DecisionOptionState("button", "play", "Play",
+        state = "askable", reason = Some("Secret Police: Cannot play a " +
+          "Vision faceup without ruler's consent."),
+        consent = Some(ConsentAskState(Vector("red"), Vector("Secret Police"))))
+      val placement = DecisionQueryState.ChooseOne(Vector(option("hills"),
+        play))
+      val panel = pane(ui, placement, decision.copy(decisionId =
+        "cardplay.place.vision.vision:conspiracy"))
+      val decide = as[dom.html.Button](one(panel, ".board-decision-decide"))
+      assert(decide.classList.contains("board-option-askable"))
+      assert(!decide.disabled)
+      decide.click()
+      assertEquals(ui.submitted, Vector.empty)
+      opened match
+        case Vector(confirm: CardInspection.Request.Confirm) =>
+          confirm.confirm()
+        case other => fail(s"expected one confirmation, got $other")
+      assertEquals(ui.submitted, Vector(Intent.RequestConsent(
+        "cardplay.place.vision.vision:conspiracy",
+        WalkerStartArgWire("button", "play"))))
+    finally CardInspection.clear()

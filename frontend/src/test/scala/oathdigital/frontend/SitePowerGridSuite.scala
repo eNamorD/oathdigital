@@ -111,3 +111,36 @@ class SitePowerGridSuite extends munit.FunSuite:
 
   private def present[A](value: Option[A])(using munit.Location): A =
     value.getOrElse(fail("expected a grid"))
+
+  private val policeCard = CardDetails("113", "denizen", "Secret Police")
+  private val policed = table.copy(world = Vector(GameRegion("provinces",
+    Vector(narrowPass.copy(denizens = Vector(GameSiteCard("113",
+      "Secret Police", Some(policeCard))))))))
+
+  private def face(world: dom.Element): dom.html.Element =
+    world.querySelector("[data-denizen-id='113']")
+      .asInstanceOf[dom.html.Element]
+
+  test("a site card whose power the viewer rules opens with their grid"):
+    var sent = Vector.empty[Intent]
+    val ruled = policed.copy(consentPreferences = Vector(
+      ConsentPreferencesState("denizen.secret-police", "Secret Police",
+        Vector(ConsentPreferenceRowState("blue", "case-by-case")),
+        Some("113"))))
+    face(WorldBoardRenderer.world(ruled, BoardOptions.none,
+      Some(command => sent :+= command))).click()
+    opened match
+      case Vector(CardInspection.Request.RuledCard(card, grid, _)) =>
+        assertEquals(card.cardId, "113")
+        assertEquals(grid.rows, Vector(ConsentGridRow("blue", "Blue",
+          "case-by-case")))
+        grid.choose.foreach(_("blue", "never"))
+      case other => fail(s"expected one ruled card, got $other")
+    assertEquals(sent, Vector(Intent.SetConsentPreference(
+      "denizen.secret-police", "blue", "never")))
+
+  test("a site card whose power the viewer does not rule opens as a card"):
+    face(WorldBoardRenderer.world(policed, BoardOptions.none)).click()
+    assert(opened match
+      case Vector(_: CardInspection.Request.Card) => true
+      case _ => false)

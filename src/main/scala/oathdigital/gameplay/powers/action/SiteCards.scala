@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.CardPlay
+import oathdigital.gameplay.actions.cardplay.CardSlots
 import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
@@ -60,17 +61,27 @@ private[powers] final class SiteCards(catalog: ExecutableCatalog,
     case DecisionOptionRef.Edifice(id) => Some(id)
     case _ => None
 
-  /** The question over the cards at the player's site, or nothing when
-    * there is none. The discard that follows is a required batch, so a
-    * refused discard hides its option, and the question passes when none is
-    * left. */
+  /** `card`'s option as the printed restrictions judge `actor`'s discard of
+    * it from `site` (consent design, slice 3). It is kept as it is when
+    * nothing refuses, askable when only waivable refusals stop it, shown
+    * unavailable with a protection's reason, or left out. */
+  def judged(ready: ReadyGame, actor: PlayerId, site: SiteId,
+      card: SiteDenizenState, suit: Suit): Option[DecisionOption] =
+    CardSlots.judge(catalog, ready, actor, option(card),
+      discard(ready, site, card, suit, actor, required = true).map(Vector(_)))
+
+  /** The question over the cards at the player's site, each judged for the
+    * player's discard. It is asked only when some card may be chosen: a
+    * choose-one has no empty answer, so a question with only askable cards
+    * would wait with nothing to choose after a refusal (consent slice 3). */
   def ask(ready: ReadyGame, player: PlayerId, decisionId: String,
       heading: String): Vector[Operation] =
-    PowerAccess.pawnSite(ready, player).toVector.flatMap(at(ready, _)) match
-      case Vector() => Vector.empty
-      case found => Vector(Decide(decisionId, player, DecisionQuery.ChooseOne(
-        found.map((card, _) => option(card)), heading = Some(heading)),
-        passWhenEmpty = true))
+    val found = PowerAccess.pawnSite(ready, player).toVector.flatMap(site =>
+      at(ready, site).flatMap((card, suit) =>
+        judged(ready, player, site, card, suit)))
+    if !found.exists(_.available) then Vector.empty
+    else Vector(Decide(decisionId, player, DecisionQuery.ChooseOne(found,
+      heading = Some(heading)), passWhenEmpty = true))
 
   /** The answered card, with its site and suit, while it is still at the
     * player's site. Nothing when the question was not asked, or passed. */

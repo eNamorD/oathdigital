@@ -58,7 +58,7 @@ class NarrowPassCampaignConsentSuite extends munit.FunSuite:
   test("a target only a player-ruled Pass forbids is askable of its ruler"):
     woods(targetOptions(started())) match
       case DecisionOption.Unavailable(_, OptionReason.Askable(power, note,
-          asks)) =>
+          asks, _)) =>
         assertEquals(power, passPower)
         assertEquals(note, NarrowPassSitePower.noTargetConsent(
           PowerSourceRef.Site(NarrowPassSite.id)))
@@ -136,7 +136,7 @@ class NarrowPassCampaignConsentSuite extends munit.FunSuite:
     val state = started(onlyWoodsExtra)
     assertEquals(parkedAt(state), Some(CampaignIds.targets))
     woods(targetOptions(state)) match
-      case DecisionOption.Unavailable(_, OptionReason.Askable(_, _, asks)) =>
+      case DecisionOption.Unavailable(_, OptionReason.Askable(_, _, asks, _)) =>
         assertEquals(asks, Vector(ConsentAsk(p3, Vector(passPower))))
       case other => fail(s"expected an askable target, got $other")
     val none = accepted(rules().resolveWalker(state, p1, CampaignIds.targets,

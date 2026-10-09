@@ -125,8 +125,14 @@ private[frontend] object BoardDecisionPanel:
       decides.foreach { option =>
         val decide = button(option.label, "board-decision-decide")
         decide.disabled = !canControl
-        decide.onclick = _ => controls.submitCommand(
-          WalkerPanelSupport.resolveChooseOneCommand(decision, option))
+        // An askable button asks its granters first (consent design,
+        // "Frontend"), as the Conspiracy's Play does under Secret Police.
+        val askable = option.state == "askable"
+        if askable then decide.classList.add("board-option-askable")
+        decide.onclick = _ =>
+          if askable then ask(option, decide)
+          else controls.submitCommand(
+            WalkerPanelSupport.resolveChooseOneCommand(decision, option))
         panel.appendChild(decide)
         WalkerPanelSupport.withholds(decide, option, panel)
       }

@@ -203,6 +203,8 @@ class PlayerBoardSuite extends munit.FunSuite:
         opened = opened :+ question
       case CardInspection.Request.Power(title, _, _, _) =>
         opened = opened :+ title
+      case CardInspection.Request.RuledCard(card, _, _) =>
+        opened = opened :+ card.name
     val vision = CardDetails("vision:vision-of-faith", "vision",
       "Vision of Faith", orientation = Some("face-up"))
     val node = renderWith(board.copy(revealedVision = Some(vision)),

@@ -299,12 +299,13 @@ private[gameplay] trait OathRulesWalker:
           .flatMap(walkerTransition(state, procedure, tree, _, powers,
             modifiers, startArgs, ready.game.current.walkerStartFacts))
 
-  /** The asks a consent request for `target` sends (consent design,
+  /** The ask a consent request for `target` sends (consent design,
     * "Commands"). `target` must be an askable option of the parked
     * `decisionId`, which `requester` owns; the look-ahead decided that, so
     * nothing here re-derives who may consent. */
-  def consentAsks(state: OathState, requester: PlayerId, decisionId: String,
-      target: DecisionOptionRef): Either[OathViolation, Vector[ConsentAsk]] =
+  def consentAsk(state: OathState, requester: PlayerId, decisionId: String,
+      target: DecisionOptionRef)
+      : Either[OathViolation, OptionReason.Askable] =
     walkerResumeContext(state).flatMap:
       case (ready, _, tree, pending, powers, _, _) =>
         walkerCall(Right(ProcedureWalker.parkedDecide(ready, tree, pending,
@@ -313,11 +314,15 @@ private[gameplay] trait OathRulesWalker:
             found.owner == requester)
           .flatMap(found => offered(found).collectFirst {
             case DecisionOption.Unavailable(option,
-                OptionReason.Askable(_, _, asks)) if option.ref == target =>
-              asks
+                ask: OptionReason.Askable) if option.ref == target => ask
           })
           .toRight(ConsentUnavailable(
             s"${target.wireId} is not an option to ask consent for")))
+
+  /** The granters [[consentAsk]] would ask, with their powers. */
+  def consentAsks(state: OathState, requester: PlayerId, decisionId: String,
+      target: DecisionOptionRef): Either[OathViolation, Vector[ConsentAsk]] =
+    consentAsk(state, requester, decisionId, target).map(_.asks)
 
   /** Whether a grant answers `requester`'s parked `decisionId` with its
     * target. Only a choose-one: one option is its whole answer. A grant at a

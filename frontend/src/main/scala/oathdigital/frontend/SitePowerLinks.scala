@@ -12,18 +12,30 @@ private[frontend] final case class ConsentGrid(rows: Vector[ConsentGridRow],
 private[frontend] final case class ConsentGridRow(playerId: String,
     name: String, setting: String)
 
-/** What a site power's label opens (consent design, "Frontend"): the
-  * power's printed text, and the viewer's grid when they rule the power.
-  * `submit` sends a preference, and is `None` without control. */
+/** What a site power's label, or a site card, opens (consent design,
+  * "Frontend"; slice 3): the power's printed text, and the viewer's grid
+  * when they rule the power. `submit` sends a preference, and is `None`
+  * without control. */
 private[frontend] final class SitePowerLinks(value: Option[GameProjection],
     submit: Option[GameCommand => Unit]):
-  def grid(power: SitePower): Option[ConsentGrid] = for
-    projection <- value
-    preferences <- projection.consentPreferences.find(_.powerId == power.id)
-  yield ConsentGrid(preferences.rows.map(row => ConsentGridRow(row.playerId,
-      ConsentAsking.name(projection, row.playerId), row.setting)),
-    submit.map(send => (requester, setting) =>
-      send(GameCommand.SetConsentPreference(power.id, requester, setting))))
+  def grid(power: SitePower): Option[ConsentGrid] =
+    value.flatMap(_.consentPreferences.find(_.powerId == power.id))
+      .flatMap(gridOf)
+
+  /** The viewer's grid for the power `card` prints, when they rule it
+    * (consent slice 3). */
+  def cardGrid(card: CardDetails): Option[ConsentGrid] =
+    value.flatMap(_.consentPreferences.find(_.cardId.contains(card.cardId)))
+      .flatMap(gridOf)
+
+  private def gridOf(preferences: ConsentPreferencesState)
+      : Option[ConsentGrid] =
+    value.map(projection => ConsentGrid(preferences.rows.map(row =>
+        ConsentGridRow(row.playerId, ConsentAsking.name(projection,
+          row.playerId), row.setting)),
+      submit.map(send => (requester, setting) =>
+        send(GameCommand.SetConsentPreference(preferences.powerId, requester,
+          setting)))))
 
 private[frontend] object SitePowerLinks:
   val none: SitePowerLinks = new SitePowerLinks(None, None)

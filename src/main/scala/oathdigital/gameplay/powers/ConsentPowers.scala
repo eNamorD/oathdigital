@@ -1,21 +1,24 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.operations.HallOfMinisters
 import oathdigital.gameplay.powerresolver.{ContributingPower,
   OptionRestriction, Restriction, Waiver}
 import oathdigital.model.{PlayerId, PowerId, PowerSourceRef, ReadyGame}
 
 /** The waivable powers (consent design, "Powers declare waivability"): every
   * power with a contribution, of either restriction kind, that declares a
-  * `Waiver`. The grid, the
+  * `Waiver`, and the operation restrictions in `operations` (the Hall of
+  * Ministers, slice 3). The grid, the
   * stale-preference check and the log all look a power up here. */
-final class ConsentPowers(powers: Vector[ContributingPower]):
+final class ConsentPowers(powers: Vector[ContributingPower],
+    operations: Vector[(PowerId, Waiver)] = Vector.empty):
   private val waivers: Map[PowerId, Waiver] = (for
     power <- powers
     waiver <- power.contributions.values.flatten.collectFirst {
       case Restriction(_, _, Some(waiver)) => waiver
       case OptionRestriction(_, _, Some(waiver)) => waiver }
-  yield power.id -> waiver).toMap
+  yield power.id -> waiver).toMap ++ operations
 
   def waiver(power: PowerId): Option[Waiver] = waivers.get(power)
 
@@ -32,4 +35,7 @@ final class ConsentPowers(powers: Vector[ContributingPower]):
 
 object ConsentPowers:
   def default(catalog: ExecutableCatalog): ConsentPowers =
-    new ConsentPowers(WalkerPowerCatalog.default(catalog).powers)
+    new ConsentPowers(WalkerPowerCatalog.default(catalog).powers,
+      Vector(HallOfMinisters.id -> Waiver(HallOfMinisters.granter,
+        HallOfMinisters.source,
+        (_, _) => HallOfMinisters.noDiscardConsent(HallOfMinisters.source))))

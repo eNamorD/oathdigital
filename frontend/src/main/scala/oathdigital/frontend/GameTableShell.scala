@@ -141,6 +141,8 @@ private[frontend] final class GameTableShell(mount: dom.Element,
       inspector.showConfirm(question, confirm, origin)
     case CardInspection.Request.Power(title, lines, grid, origin) =>
       inspector.showPower(title, lines, grid, origin)
+    case CardInspection.Request.RuledCard(card, grid, origin) =>
+      inspector.showRuled(card, grid, origin)
   private var previousGame = ""
   private var previousDecision = ""
 

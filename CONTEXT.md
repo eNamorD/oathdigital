@@ -80,9 +80,10 @@ _Avoid_: ruler (the ruler may be bandits), owner
 **Askable option**:
 An option of a parked choose-one, or of a choose-many whose options a power
 forbids one by one, blocked only by waivable powers whose granters are other
-players, with nothing refused for it this turn, which a grant would open.
-Choosing it asks the granters first. A grant answers a choose-one with it,
-and only opens it in a choose-many.
+players, with nothing refused for it this turn, which a grant would open. An
+option whose plan only a waivable operation restriction refuses (the Hall of
+Ministers) is askable too. Choosing it asks the granters first. A grant
+answers a choose-one with it, and only opens it in a choose-many.
 _Avoid_: consent option, amber option
 
 **Consent request**:

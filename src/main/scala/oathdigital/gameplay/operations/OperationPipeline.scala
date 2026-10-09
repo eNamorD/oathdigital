@@ -69,6 +69,9 @@ object OperationPipeline:
   ): Either[OathViolation, OperationRun] =
     if operations.isEmpty then Left(OperationError.EmptyOperationBatch.toViolation)
     else
+      // The batch's operations happen at the same time, so a grant for one
+      // lifts its power for all of them (consent design, slice 3).
+      val batch = OperationConsent.together(ready, operations, restrictions)
       for
         expected <- OperationStateInvariant.cardIds(ready)
           .left.map(_.toViolation)
@@ -77,7 +80,7 @@ object OperationPipeline:
           (result, operation) => result.flatMap { current =>
             PayCostSettlement.prepare(current.state, operation).flatMap { prepared =>
               OperationResolution.resolve(current.state, prepared, allowlist,
-                restrictions, requireAll)
+                batch, requireAll)
                 .flatMap:
                   case OperationResolution.Skip(reasons) =>
                     Right(current.copy(skipped = current.skipped :+

@@ -23,13 +23,32 @@ object HallOfMinistersCard extends Edifice(EdificeId("E16"), Suit.Order):
   * cannot discard them. The actor is the discard's own acting player; a
   * Vision's discard names none, so it is the active player's.
   *
+  * Its ruler may consent (consent design, slice 3). The refusal names the
+  * ruler and the card, and a grant covers that card's discard by that player
+  * for the turn, on whichever path discards it.
+  *
   * There is one Hall of Ministers, so the restriction names its card and
   * holds whichever edifices a catalog lists.
   */
 case object HallOfMinisters extends OperationRestriction:
+  val id: PowerId = HallOfMinistersCard.intact.power.id
+  val source: PowerSourceRef = PowerSourceRef.Card(HallOfMinistersCard.id)
+
+  /** The decision slot of a Hall grant's key. The grant covers a card's
+    * discard, which the operation check sees without its decision, so the
+    * key names the discard instead. */
+  val discardKey: String = "operation.discard"
+
+  /** "Cannot discard cards from its ruler's sites without ruler's
+    * consent.": the reason of an option the Hall's ruler may be asked
+    * about. */
+  val noDiscardConsent: NoteKey = NoteKey("no-discard-consent", Vector(
+    NotePart.Text("Cannot discard cards from its ruler's sites without " +
+      "ruler's consent.")))
+
   override def reason(ready: ReadyGame,
       operation: CoreOperation): Option[OperationReason] =
-    discardAt(ready, operation).flatMap { case (site, actor) =>
+    discardAt(ready, operation).flatMap { case (site, actor, card) =>
       val current = ready.game.current
       val actorSide = current.players.find(_.player == actor).flatMap { player =>
         ready.game.campaign.lineages.get(player.lineage).map { lineage =>
@@ -37,33 +56,53 @@ case object HallOfMinisters extends OperationRestriction:
           else SiteRuler.Player(actor)
         }
       }
-      val targetRuler = current.map.sites.get(site).flatMap(state =>
-        SiteRule.ruler(state.forces, current.players).toOption)
       for
         sourceSide <- actorSide
-        ruler <- targetRuler
+        ruler <- siteRuler(ready, site)
         if SiteRule.enemies(sourceSide, ruler)
-        if current.map.sites.exists { case (_, state) =>
-          SiteRule.ruler(state.forces, current.players).toOption.contains(ruler) &&
-            state.denizens.exists:
-              case edifice: EdificeState if edifice.side == EdificeSide.Intact =>
-                edifice.id == HallOfMinistersCard.id
-              case _ => false
-        }
+        if hallRuler(ready).contains(ruler)
       yield OperationReason("discard-immune",
         s"cards at site ${site.value} cannot be discarded by ${actor.value}",
-        OperationReasonKind.Impossible)
+        OperationReasonKind.Impossible, Some(OperationWaiver(id,
+          granter(ready), ConsentKey(id, actor, discardKey, card),
+          noDiscardConsent(source))))
     }
 
-  /** The site a discard takes a card from, and who discards it. */
+  /** The player who rules the intact Hall, who may consent; `None` when
+    * bandits, the Empire or nobody rules it. */
+  def granter(ready: ReadyGame): Option[PlayerId] =
+    hallRuler(ready).collect { case SiteRuler.Player(player) => player }
+
+  /** The ruler of the site where the intact Hall stands. */
+  private def hallRuler(ready: ReadyGame): Option[SiteRuler] =
+    ready.game.current.map.sites.collectFirst {
+      case (site, state) if state.denizens.exists(intactHall) => site
+    }.flatMap(siteRuler(ready, _))
+
+  private def siteRuler(ready: ReadyGame, site: SiteId): Option[SiteRuler] =
+    val current = ready.game.current
+    current.map.sites.get(site).flatMap(state =>
+      SiteRule.ruler(state.forces, current.players).toOption)
+
+  private def intactHall(card: SiteDenizenState): Boolean = card match
+    case edifice: EdificeState =>
+      edifice.side == EdificeSide.Intact &&
+        edifice.id == HallOfMinistersCard.id
+    case _ => false
+
+  /** The site a discard takes a card from, who discards it, and the card. */
   private def discardAt(ready: ReadyGame, operation: CoreOperation)
-      : Option[(SiteId, PlayerId)] =
+      : Option[(SiteId, PlayerId, DecisionOptionRef)] =
     val active = ready.game.current.turn.activePlayer
     val source = operation match
-      case value: Discard.Denizen => Some(value.from.location -> value.actingPlayer)
-      case value: Discard.Vision => Some(value.from.location -> active)
-      case value: Discard.RuinedEdifice =>
-        Some(value.from.location -> value.actingPlayer)
-      case value: Discard.Relic => Some(value.from.location -> value.actingPlayer)
+      case value: Discard.Denizen => Some((value.from.location,
+        value.actingPlayer, DecisionOptionRef.Denizen(value.card)))
+      case value: Discard.Vision => Some((value.from.location, active,
+        DecisionOptionRef.Vision(value.card)))
+      case value: Discard.RuinedEdifice => Some((value.from.location,
+        value.actingPlayer, DecisionOptionRef.Edifice(value.card)))
+      case value: Discard.Relic => Some((value.from.location,
+        value.actingPlayer, DecisionOptionRef.Relic(value.card)))
       case _ => None
-    source.collect { case (Location.Site(site), actor) => site -> actor }
+    source.collect { case (Location.Site(site), actor, card) =>
+      (site, actor, card) }

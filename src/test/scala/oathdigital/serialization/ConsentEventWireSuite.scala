@@ -3,6 +3,7 @@ package oathdigital.serialization
 import oathdigital.model._
 import oathdigital.model.OathEvent.{ConsentAnswered, ConsentPreferenceSet,
   ConsentPreferencesCleared, ConsentRequestWithdrawn, ConsentRequested}
+import oathdigital.testkit.CatalogNames
 
 /** The consent facts round-trip through the envelope (consent design,
   * "Events"). */
@@ -41,3 +42,12 @@ class ConsentEventWireSuite extends munit.FunSuite:
       ConsentPreferenceSet(p2, pass, p1, ConsentSetting.Always))
       .map(value => { value("payload")("setting") = "sometimes"; value })
     assert(encoded.flatMap(GameEventWire.decode(_)).isLeft)
+
+  test("a request's covers round-trip, and a request without them writes " +
+      "none"):
+    val covered = ConsentRequested(request.copy(covers = Vector(ConsentKey(
+      PowerId("edifice.e16.intact"), p1, "operation.discard",
+      DecisionOptionRef.Denizen(CatalogNames.denizen("Errand Boy"))))))
+    assertEquals(roundTrip(covered), Right(covered))
+    assertEquals(GameEventWire.encodeEvent("g", 0L, ConsentRequested(request))
+      .map(_("payload").obj.contains("covers")), Right(false))

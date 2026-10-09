@@ -4,6 +4,7 @@ import oathdigital.gameplay.powers.travel.NarrowPassSite
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.protocol.projection._
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -109,3 +110,13 @@ class ConsentProjectionSuite extends munit.FunSuite:
       requestDunes))
     assertEquals(view(automatic, p1).copy(nextSequence = 0L),
       view(manual, p1).copy(nextSequence = 0L))
+
+  test("a card's waivable power carries the card's id; a site's carries " +
+      "none"):
+    val police = CatalogNames.denizen("Secret Police")
+    val home = CatalogNames.site("Ancient City")
+    val ready = Table.start.denizen(police, at = home)
+      .warbandsAt(home, p2, 2).ready
+    assertEquals(projector.project(gameId, LoadedGame(OathState.Ready(ready),
+      0L), p2).consentPreferences.map(entry => (entry.powerId, entry.cardId)),
+      Vector(("denizen.secret-police", Some(police.value))))

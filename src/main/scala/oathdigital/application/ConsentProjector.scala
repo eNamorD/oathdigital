@@ -11,6 +11,10 @@ private[application] final class ConsentNames(
     presentation: GamePresentationProjector, powers: ConsentPowers):
   def power(id: PowerId): String = powers.source(id) match
     case Some(PowerSourceRef.Site(site)) => presentation.siteLabel(site)
+    // A waivable edifice power is printed on its intact face (the Hall of
+    // Ministers), so the power is named for that face.
+    case Some(PowerSourceRef.Card(edifice: EdificeId)) =>
+      presentation.edificeLabel(edifice, EdificeSide.Intact)
     case Some(PowerSourceRef.Card(card)) =>
       presentation.cardDetails(card, None, hidden = false).name
     case Some(PowerSourceRef.Banner(banner)) => BannerRules.displayName(banner)
@@ -54,7 +58,9 @@ private[application] final class ConsentProjector(
       ready.game.current.players.map(_.player).filter(_ != viewer).map(
         other => ConsentPreferenceRowProjection(other.value,
           ready.consent.preference(viewer, power, other)
-            .fold(ConsentSetting.CaseByCase.key)(_.key)))))
+            .fold(ConsentSetting.CaseByCase.key)(_.key))),
+      powers.source(power).collect { case PowerSourceRef.Card(card) =>
+        card.value }))
 
   /** The option asked about, named as its decision row names it. */
   private def target(context: ScopedProjectionContext,

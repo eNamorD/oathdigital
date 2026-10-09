@@ -2,10 +2,13 @@ package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, Waiver}
+import oathdigital.gameplay.operations.HallOfMinisters
+import oathdigital.gameplay.powers.cardplay.SecretPolice
 import oathdigital.gameplay.powers.travel.{MinesSite, NarrowPassSite,
   NarrowPassSitePower, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 /** Which powers can be waived, and who may waive them (consent design,
@@ -46,3 +49,26 @@ class ConsentPowersSuite extends munit.FunSuite:
   test("a power waivable only on its options is waivable"):
     val only = new ConsentPowers(Vector(TargetBarrier))
     assertEquals(only.granter(ruled, TargetBarrier.id), Some(p2))
+
+  test("Secret Police is waivable, its granter the player who rules its " +
+      "site, and nobody under bandits"):
+    val police = CatalogNames.denizen("Secret Police")
+    val home = CatalogNames.site("Ancient City")
+    val policed = Table.start.denizen(police, at = home)
+    assertEquals(powers.source(SecretPolice.id),
+      Some(PowerSourceRef.Card(police)))
+    assertEquals(powers.granter(policed.warbandsAt(home, p2, 2).ready,
+      SecretPolice.id), Some(p2))
+    assertEquals(powers.granter(policed.bandits(home, 2).ready,
+      SecretPolice.id), None)
+
+  test("the Hall of Ministers is waivable, its granter the player who rules " +
+      "its site"):
+    val hall = CatalogNames.edifice("Hall of Ministers")
+    val woods = CatalogNames.site("Deep Woods")
+    val ready = Table.start.edifice(hall, EdificeSide.Intact, at = woods)
+      .warbandsAt(woods, p2, 1).ready
+    assertEquals(powers.source(HallOfMinisters.id),
+      Some(PowerSourceRef.Card(hall)))
+    assertEquals(powers.granter(ready, HallOfMinisters.id), Some(p2))
+    assertEquals(powers.ruledBy(ready, p2), Vector(HallOfMinisters.id))

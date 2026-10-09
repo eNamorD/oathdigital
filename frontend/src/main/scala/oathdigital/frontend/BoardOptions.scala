@@ -55,12 +55,13 @@ private[frontend] final class BoardOptions(views: Map[String, OptionView],
         }
 
   /** A card face, marked when it is an option. A card the viewer may not
-    * identify has nothing to read and gets no inspect button.
-    */
+    * identify has nothing to read and gets no inspect button. `open`
+    * replaces the plain inspector, for a card that opens with a grid. */
   def card(face: dom.html.Button, details: CardDetails,
-      keys: Vector[String]): dom.Element =
+      keys: Vector[String],
+      open: Option[dom.html.Element => Unit] = None): dom.Element =
     control(face, keys, Option.unless(details.hidden)(
-      details.name -> (CardInspection.open(details, _))))
+      details.name -> open.getOrElse(CardInspection.open(details, _))))
 
   private def mark(target: dom.Element, found: OptionView): Unit =
     val key = BoardOptionViews.home(found.option)

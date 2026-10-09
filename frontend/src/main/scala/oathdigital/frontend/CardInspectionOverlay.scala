@@ -73,6 +73,13 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     showText(title, lines, origin)
     grid.foreach(value => body.appendChild(ConsentGridView.render(value)))
 
+  /** A card, and below it the viewer's consent preferences for the power it
+    * prints that they rule (consent slice 3). */
+  def showRuled(card: CardDetails, grid: ConsentGrid,
+      origin: dom.html.Element): Unit =
+    show(card, origin)
+    body.appendChild(ConsentGridView.render(grid))
+
   /** Cards in the order given, as a card list (catalog batch 2, N5): a log
     * line's "6 cards". Each is its face or its back as projected; a face
     * still opens that one card here.

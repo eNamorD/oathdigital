@@ -3,12 +3,14 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.{CardPlay, CardPlayRules, VisionRules}
 import oathdigital.gameplay.actions.cardplay.{CardPlayProcedure, CardSlots}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
+import oathdigital.gameplay.operations.{HallOfMinisters,
+  OperationRestrictions}
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerOutcome, WalkerPowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
-import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** The card play walk (card play slots design, "Placement procedure"): the
@@ -146,6 +148,32 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       DecisionAnswer.ChooseManyAnswer(Vector.empty)))
     assertEquals(Look(none.treeless).cardsAt(home),
       Vector[CardId](others(1), others(2), card))
+
+  test("a grant for the replaced card lets the follow-up discard another " +
+      "card the Hall of Ministers protects: a play's discards happen at " +
+      "the same time"):
+    // Errand Boy is Beast, so Deep Woods' Homeland permits a discard, and
+    // the stub a second one; p2 rules Deep Woods and its intact Hall.
+    val woods = CatalogNames.site("Deep Woods")
+    val hall = CatalogNames.edifice("Hall of Ministers")
+    val guarded = Table.start.pawn(actor, at = woods).hand(actor, card)
+      .denizen(others(1), at = woods).denizen(others(2), at = woods)
+      .edifice(hall, EdificeSide.Intact, at = woods)
+      .warbandsAt(woods, p2, 1).ready
+    val granted = guarded.copy(consent = ConsentState(answers = Map(
+      ConsentKey(HallOfMinisters.id, actor, HallOfMinisters.discardKey,
+        DecisionOptionRef.Denizen(others(1))) -> ConsentAnswer.Granted),
+      turn = Some(ConsentTurn.of(guarded))))
+    val parked = parkOnPlacement(granted, WalkerPowers(
+      Vector(PlacementFixture.discardFirst),
+      restrictionSet = OperationRestrictions.forCatalog(catalog)))
+    val asked = Outcomes.parked(parked.place(
+      DecisionOptionRef.SiteSlot(woods, 0)))
+    val done = Outcomes.finished(parked.resolve(asked.tree, discardId,
+      DecisionAnswer.ChooseManyAnswer(Vector(
+        DecisionOptionRef.Denizen(others(2))))))
+    assertEquals(Look(done.treeless).cardsAt(woods),
+      Vector[CardId](hall, card))
 
   test("a Replace site slot that spends the only permission asks nothing more"):
     val powers = WalkerPowers(Vector(PlacementFixture.discardFirst))

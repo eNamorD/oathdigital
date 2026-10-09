@@ -31,6 +31,10 @@ private[frontend] object CardInspection:
       * when they rule it (consent design, user story step 7). */
     final case class Power(title: String, lines: Vector[String],
         grid: Option[ConsentGrid], origin: dom.html.Element) extends Request
+    /** A card that prints a power the viewer rules, with their consent
+      * preferences for it (consent slice 3). */
+    final case class RuledCard(card: CardDetails, grid: ConsentGrid,
+        origin: dom.html.Element) extends Request
 
   private var handler = Option.empty[Request => Unit]
 
@@ -56,3 +60,7 @@ private[frontend] object CardInspection:
   def openPower(title: String, lines: Vector[String],
       grid: Option[ConsentGrid], origin: dom.html.Element): Unit =
     handler.foreach(_(Request.Power(title, lines, grid, origin)))
+
+  def openRuled(card: CardDetails, grid: ConsentGrid,
+      origin: dom.html.Element): Unit =
+    handler.foreach(_(Request.RuledCard(card, grid, origin)))

@@ -5,7 +5,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathEvent.{ConsentAnswered, ConsentPreferenceSet,
   ConsentPreferencesCleared, ConsentRequestWithdrawn, ConsentRequested}
-import oathdigital.testkit.{Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -42,3 +42,15 @@ class ConsentEvolutionSuite extends munit.FunSuite:
 
   test("an answer with no request waiting is refused"):
     assert(rules.evolve(table, ConsentAnswered(p2, true)).isLeft)
+
+  test("a request that covers other keys settles those, not its option's"):
+    val covered = ConsentKey(PowerId("edifice.e16.intact"), p1,
+      "operation.discard", DecisionOptionRef.Denizen(
+        CatalogNames.denizen("Errand Boy")))
+    val after = folded(ConsentRequested(request.copy(covers = Vector(covered))),
+      ConsentAnswered(p2, true))
+    val now = ConsentTurn.of(after)
+    assertEquals(after.consent.remembered(covered, now),
+      Some(ConsentAnswer.Granted))
+    assertEquals(after.consent.remembered(
+      ConsentKey(pass, p1, "travel.destination", dunes), now), None)

@@ -1,7 +1,7 @@
 # Consent system
 
 **Status:** designed 2026-10-08. It covers the roadmap's **Phase - Consent
-system**. Slices 1 and 2 are implemented ([slice 1 plan](../plans/2026-10-09-consent-slice1.md), [slice 2 plan](../plans/2026-10-09-consent-slice2.md)), and their plans' decisions are folded in below.
+system**. Slices 1 to 3 are implemented ([slice 1 plan](../plans/2026-10-09-consent-slice1.md), [slice 2 plan](../plans/2026-10-09-consent-slice2.md), [slice 3 plan](../plans/2026-10-09-consent-slice3.md)), and their plans' decisions are folded in below.
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **parked decision**.
 The [undo design](2026-10-06-undo-design.md) defines **command batch**,
@@ -53,19 +53,23 @@ Pass blocks.
 
 1. **Waivable powers.** A persistent power is waivable when its text
    restricts the ruler's "enemies" (CR p.29, NF p.16). This includes
-   "cannot" powers (the Pass, Secret Police, Hall of Ministers, Forgotten
-   Vault), "cannot … unless they give favor" powers (Toll Roads, Forced
-   Labor, Curfew), where consent skips the payment, and "must" powers
-   (Grasping Vines), where consent skips the penalty. Powers worded
-   "players" or "other players" (Lost Tongue, Sacred Ground, Rotting
-   Fortress, Diplomat) are not waivable.
+   "cannot" powers (the Pass, Secret Police, Hall of Ministers), "cannot
+   … unless they give favor" powers (Toll Roads, Forced Labor, Curfew),
+   where consent skips the payment, and "must" powers (Grasping Vines),
+   where consent skips the penalty. Powers worded "players" or "other
+   players" (Lost Tongue, Sacred Ground, Rotting Fortress, Diplomat) are
+   not waivable.
 2. **Campaign actions.** No consent inside a Campaign action (CR p.29),
    except the Pass's own campaign-targeting clause, whose text grants it.
    Campaign-only cards (Gleaming Armor, Insect Swarm, True Names, Beast
-   Tamer) are never waivable. Forgotten Vault is waivable only outside a
-   campaign.
+   Tamer) are never waivable. Forgotten Vault is never waivable either:
+   "target" means a Campaign's target selection only (catalog batch 3
+   rulings), so all of its effect is inside a Campaign.
 3. **Enforcement.** The game always enforces. There is no "forgot to
-   enforce" rule (CR p.43, ambiguities decision 3).
+   enforce" rule (CR p.43, ambiguities decision 3). Enforcement is
+   all-or-nothing: a waiver applies to every operation that happens at the
+   same time. A waived Hall of Ministers lets all of that moment's discards
+   through (official ruling on the Hall of Ministers, recorded 2026-10-09).
 4. **Bandits** never consent. An option blocked by a bandit-ruled power is
    not askable.
 5. **Own powers.** A ruler is never asked about a power they rule; ruling it
@@ -142,9 +146,14 @@ stack. The walker gains one new thing: options in an askable state.
 - `answers: Map[ConsentKey, ConsentAnswer]`, where `ConsentKey` is
   `(power, requester, decisionId, target: DecisionOptionRef)` and
   `ConsentAnswer` is `Granted | Refused`. The decision id keeps Deep Woods as
-  a travel destination apart from Deep Woods in a toll step.
+  a travel destination apart from Deep Woods in a toll step. An operation
+  restriction's grant is keyed by what it refuses instead: the Hall of
+  Ministers' key is the requester, `operation.discard` and the card, so it
+  covers that card's discard on any path for the turn, and, by ruling 3,
+  every other discard of the same batch.
 - `pending: Option[ConsentRequest]`, where `ConsentRequest` holds the
-  requester, decision id, target and `asks: Vector[ConsentAsk]`. A
+  requester, decision id, target, `asks: Vector[ConsentAsk]` and `covers`,
+  the keys it settles when they are not the asked option's. A
   `ConsentAsk` is a granter, its powers and an optional answer. Slice 1 has
   one ask at most.
 - `turn`: the turn `answers` belongs to.
@@ -282,12 +291,33 @@ nothing to pick yet, so its player may ask or answer without the target.
 used only while the option is askable. The Pass gets `no-travel-consent`:
 "Cannot travel to other sites in the region without ruler's consent." Its
 campaign clause gets `no-target-consent`: "Cannot target other sites in the
-region without ruler's consent." A refused option uses the ordinary reason.
+region without ruler's consent." Secret Police gets `no-faceup-consent`:
+"Cannot play a Vision faceup without ruler's consent." The Hall of
+Ministers gets `no-discard-consent`: "Cannot discard cards from its ruler's
+sites without ruler's consent.", registered as a game-rule note. A refused
+option uses the ordinary reason.
 
 **Toll and penalty steps.** In slice 4, Toll Roads, Forced Labor, Curfew and
 Grasping Vines each become a `Decide` step whose free option is barred by
 that power's waivable `OptionRestriction`. The step appears only when its
 ruler is a player other than the actor.
+
+**Operation restrictions.** The Hall of Ministers is an operation
+restriction, which refuses a discard wherever it runs. Its refusal names
+an `OperationWaiver`: the power, the granter and the key a grant covers.
+`ConsentedRestriction` wraps each printed restriction in
+`OperationRestrictions.active` and drops a refusal whose grant is
+remembered, the operation path's one ledger check. A batch's operations
+happen at the same time, so `OperationConsent.together` lifts a power for
+the whole batch once any of its operations has a grant (ruling 3): a grant
+for a Replace slot's card frees the follow-up's other site cards. Card play's Replace
+site slots and their follow-up, and the site-card questions of Roving
+Terror, Taming Charm and Great Feast, judge each option's plan:
+`OperationConsent.ask` makes it askable when only waivable refusals stop
+it, with no search. A site-card question is asked only when some card
+may be chosen. Discards with no option behind them (Dark Enforcer,
+region discards, Mounted Library, setup, a Campaign plan) stay enforced
+without consent.
 
 **Settling a grant** runs the ordinary walker resume. The ledger check drops
 the breach, so there is no special path.
@@ -302,8 +332,9 @@ the breach, so there is no special path.
   `consentPrompt` with the requester, powers and target label. Other players
   see the usual waiting banner. `awaitedPlayers` is unchanged, since it hands the parked decision to everyone it names; the prompt is its own field. The requester's `walkerDecision` is withheld while their request waits, and nobody is offered Redo.
 - `consentPreferences` goes to the viewer only: one entry per waivable power
-  the viewer rules, with a row per other player. A power is waivable when any
-  of its contributions declares a `waiver`.
+  the viewer rules, with a row per other player. A power a card prints
+  carries the card's id, so the card opens the grid. A power is waivable
+  when any of its contributions declares a `waiver`.
 - No other player's preferences, and nothing that marks an answer as
   automatic, leave the server.
 
@@ -319,7 +350,8 @@ the breach, so there is no special path.
   preferences notice.
 - Site power labels become clickable and open `CardInspectionOverlay` with
   the power text. For a power the viewer rules, the overlay also shows the
-  grid. Each change sends `SetConsentPreference` at once.
+  grid. Each change sends `SetConsentPreference` at once. A site card that
+  prints a power the viewer rules opens with the grid too.
 - The confirmation and the grid open in the card overlay, the client's one
   document-level dialog. Site powers carry their power id, which the grid is
   matched by.
@@ -375,8 +407,9 @@ the breach, so there is no special path.
    roadmap phase.
 2. **The Pass on campaign targeting.** A waiver on its `OptionRestriction`,
    through the `restrictOptions` path.
-3. **Hard-block cards.** Secret Police, Hall of Ministers, and Forgotten
-   Vault outside campaigns.
+3. **Hard-block cards.** Secret Police on the tree path, and the Hall of
+   Ministers through its operation refusals. Forgotten Vault is never
+   waivable (ruling 2).
 4. **Toll and penalty cards.** Toll Roads, Forced Labor, Curfew and Grasping
    Vines, each converted to a pay-or-ask `Decide` step.
 
@@ -399,14 +432,21 @@ holding, Forbidden Forest with the Pass is the likely first case.
   The ledger check drops a waivable `Restriction`'s breach for any granted
   choose-one answer of the walk. The option path's key names the decision,
   so it is exact. The key does not name the granter. The Pass's Travel
-  destination is the only tree-path decision so far; slice 4 must tie
-  them.
+  destination and Secret Police's placement are each the only such
+  decision in their walk; slice 4 must tie them.
 - Hiding the decision's phase from the requester while their request waits.
   The decision itself is withheld.
-- Askable options on the client's shared board homes, variant toggles and
-  board-decision buttons, and on a choose-many drawn in the panel. Those
-  paths treat an askable option as unavailable or submit it directly; no
-  option yet takes them.
+- Askable options on the client's shared board homes and variant toggles,
+  and on a choose-many drawn in the panel. Those paths treat an askable
+  option as unavailable or submit it directly; no option yet takes them.
+- The Hall of Ministers on discards with no option to ask from: Dark
+  Enforcer and the region discards (Dazzle, Threatening Roar, Riots)
+  skip a protected card, and Mounted Library's self-discard has no
+  consent point. Slice 4's pay-or-ask step could reach them. By ruling 3,
+  one grant would waive the Hall for a whole region discard.
+- Asking from a site-card question whose every candidate the Hall
+  protects. A choose-one has no empty answer, so after a refusal it
+  would wait with nothing to choose; the question is not asked.
 - Keeping a campaigner's picks across a consent request. The client drops
   a board draft when the sequence moves, so after a grant the other
   targets are picked again.

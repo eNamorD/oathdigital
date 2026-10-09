@@ -54,10 +54,15 @@ final case class ConsentAsk(granter: PlayerId, powers: Vector[PowerId],
     answer: Option[Boolean] = None)
 
 final case class ConsentRequest(requester: PlayerId, decisionId: String,
-    target: DecisionOptionRef, asks: Vector[ConsentAsk]):
-  /** Every key the request settles: each asked power, for this option. */
-  def keys: Vector[ConsentKey] = asks.flatMap(ask =>
-    ask.powers.map(ConsentKey(_, requester, decisionId, target)))
+    target: DecisionOptionRef, asks: Vector[ConsentAsk],
+    covers: Vector[ConsentKey] = Vector.empty):
+  /** Every key the request settles: what it covers when it names any (an
+    * operation restriction's grant, slice 3), else each asked power for this
+    * option. */
+  def keys: Vector[ConsentKey] =
+    if covers.nonEmpty then covers
+    else asks.flatMap(ask =>
+      ask.powers.map(ConsentKey(_, requester, decisionId, target)))
 
   /** The asks still waiting on their granter. */
   def open: Vector[ConsentAsk] = asks.filter(_.answer.isEmpty)

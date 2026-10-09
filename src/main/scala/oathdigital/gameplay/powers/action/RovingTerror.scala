@@ -22,8 +22,9 @@ object RovingTerrorCard extends Denizen(DenizenId("46"), "Roving Terror", Suit.B
   * bank, secrets to the player facedown. Roving Terror then moves to that
   * site carrying its secret, and takes the site's last slot, since a row
   * has no gaps. The discard and the move are one required batch, so a card
-  * whose discard a restriction refuses (the Hall of Ministers) is hidden,
-  * and the question passes when nothing is left. With no candidate the cost
+  * the Hall of Ministers protects is shown with its reason, or askable of
+  * the Hall's ruler (consent slice 3), and the question passes when no card
+  * may be chosen. With no candidate the cost
   * stays paid and one line says so.
   *
   * The line covers the generic discard line.
@@ -53,13 +54,15 @@ final case class RovingTerror private (catalog: ExecutableCatalog)
         cards.at(ready, site).map((card, suit) =>
           Candidate(site, card, suit))))
 
+  /** The question over the candidates, each judged for the actor's
+    * discard; asked only when some card may be chosen (`SiteCards.ask`). */
   private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
-    candidates(ready) match
-      case Vector() => Vector.empty
-      case found => Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
-        found.map(c => cards.option(c.card)),
-        heading = Some("Roving Terror: discard a card at another site and " +
-          "move there")), passWhenEmpty = true))
+    val found = candidates(ready).flatMap(c =>
+      cards.judged(ready, actor, c.site, c.card, c.suit))
+    if !found.exists(_.available) then Vector.empty
+    else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(found,
+      heading = Some("Roving Terror: discard a card at another site and " +
+        "move there")), passWhenEmpty = true))
 
   /** No answer means no card could be replaced. */
   private def replace(ready: ReadyGame, actor: PlayerId,
