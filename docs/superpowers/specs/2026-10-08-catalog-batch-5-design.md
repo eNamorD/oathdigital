@@ -125,6 +125,16 @@ the actor's faceup advisers of the source suit, and a selectable Golem is a
 faceup Arcane adviser. Golem adds nothing to the count. A test pins the
 count at its own value plus the other Arcane advisers.
 
+### Implementation notes from slice 1
+
+- **The cost mark reads the answer.** An exemption marks the actor's
+  `PayCost` onto the answered source `intoOccupied` whenever it is selected,
+  not only when the source holds tokens. The source decision is the gate, so
+  the mark changes nothing for a token-free card, and the fold depends on the
+  answers alone.
+- **No slice 1 power writes a line.** Each is named on its action's start
+  line, and the Muster and Trade lines name the source wherever it stands.
+
 ## Slice 2: Vow of Wandering
 
 - **The Muster gain** adds two warbands to the Muster's own gain at

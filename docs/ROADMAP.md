@@ -11,7 +11,8 @@ specs.
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest.
+2026-10-01 playtest. **Phase - Catalog batch 5** is in progress: slice 1 is
+done.
 
 ## Next
 
@@ -94,8 +95,6 @@ engine-blocked phase
 ([design](superpowers/specs/2026-10-08-catalog-batch-5-design.md),
 [rulings](superpowers/specs/2026-10-08-catalog-batch-5-rulings.md)).
 
-- [ ] **Slice 1: Muster and Trade sources.** Golem Legions, Map Library,
-  Skilled Merchants, Old Songs, Pressgangs.
 - [ ] **Slice 2: Warband placement.** Vow of Wandering.
 - [ ] **Slice 3: Adviser counting.** Marriage, Pied Piper, Lost Tapestry.
 - [ ] **Slice 4: Adviser arrival.** Family Wagon.
