@@ -64,7 +64,8 @@ class FollowUpSupplyWaiverSuite extends munit.FunSuite:
       "Campaign still starts there"):
     val board = table(supply = 0, owed(ActionRef.Travel),
       owed(ActionRef.Campaign)).adviser(p1, "Special Envoy").state
-    val started = accepted(rules.startWalker(board, ActionRef.Travel, p1,
+    val started = accepted(ModifierPlay.started(rules, board,
+      ActionRef.Travel, p1, PowerWindow.TravelModifierSelection,
       Vector(SpecialEnvoy.id)))
     val travelled = accepted(rules.resolveWalker(started.state, p1,
       TravelProcedure.destinationDecisionId,

@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.{ModifierPlay, OathRules}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   Restriction}
@@ -52,8 +52,10 @@ class NarrowPassConsentSuite extends munit.FunSuite:
       : DecisionOption =
     val powers = WalkerPowers(WalkerPowerCatalog.default(catalog).powers ++
       extra)
-    val started = accepted(new OathRules(catalog, walkerPowerCatalog = powers)
-      .startWalker(Ready(ready), ActionRef.Travel, actor, modifiers))
+    val started = accepted(ModifierPlay.started(
+      new OathRules(catalog, walkerPowerCatalog = powers), Ready(ready),
+      ActionRef.Travel, actor, PowerWindow.TravelModifierSelection,
+      modifiers, powers))
     present(PlacementPicks.parkedOptions(started.state,
       WalkerPowers.selected(powers, modifiers)).find(_.ref == dunes),
       "Dunes among the destinations")

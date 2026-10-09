@@ -17,14 +17,14 @@ class UndoServiceSuite extends munit.FunSuite:
     * mover's pick answered. */
   private def assertAtTravelDestination(state: OathState)(
       using munit.Location): Unit =
-    val destination = Table.start.parkedWalker(ActionRef.Travel).ready
-      .game.current
     state match
       case OathState.Ready(ready) =>
         assertEquals(ready.game.current.walkerProcedure,
-          destination.walkerProcedure)
+          Some(ActionRef.Travel))
+        // The destination follows the modifier decision, which asked
+        // nothing.
         assertEquals(ready.game.current.walkerPending,
-          destination.walkerPending)
+          Some(PendingTree(Vector("1", "0"), Vector.empty)))
       case other => fail(s"expected a ready game, got $other")
 
   test("an undo restores the state before the batch, and a reload agrees"):

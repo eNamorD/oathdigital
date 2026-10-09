@@ -2,6 +2,7 @@ package oathdigital.application
 
 import oathdigital.gameplay.{ModifierPlay, OathRules}
 import oathdigital.gameplay.actions.search.SearchProcedure
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.economy.{AnimalPlaymates, Birdsong}
@@ -59,13 +60,30 @@ class ModifierStartControlsSuite extends munit.FunSuite:
     (if tents then table.adviser(actor, CatalogNames.denizen("Tents"))
       else table).unchecked
 
-  test("Travel is offered at 0 Supply when Tents would make it free, and " +
-      "the start with Tents is accepted"):
+  test("Travel is offered at 0 Supply when Tents would make it free; the " +
+      "start asks for the modifier, and picking it reaches the destination"):
     val ready = broke(favor = 1, tents = true)
     assert(controls(ready, actor).contains("beginTravel"))
-    assertStarts(ready, actor, ActionRef.Travel, Vector(Tents.id))
-    assertEquals(refusal(ready, actor, ActionRef.Travel, Vector.empty),
-      noSupplyFor(1))
+    val started = accepted(rules.startWalker(OathState.Ready(ready),
+      ActionRef.Travel, actor))
+    val modifiers = parked(started.state)
+    assertEquals(modifiers.decisionId, travelModifiers)
+    assertEquals(modifiers.query match
+      case DecisionQuery.ChooseOne(options, _) => options.headOption
+      case _ => None,
+      Some(DecisionOption.Unavailable(
+        DecisionOption.Button(ModifierPicks.start, "Start Travel"),
+        OptionReason.Written("Needs 1 Supply; you have 0"))))
+    val picked = accepted(rules.resolveWalker(started.state, actor,
+      travelModifiers, ModifierPlay.pick(Tents.id)))
+    assertEquals(parked(picked.state).decisionId,
+      TravelProcedure.destinationDecisionId)
+    // Without Tents nothing can be picked, and the start is refused.
+    assertEquals(refusal(broke(favor = 1, tents = false), actor,
+      ActionRef.Travel, Vector.empty), noSupplyFor(1))
+
+  private val travelModifiers =
+    ModifierPicks.decisionId(PowerWindow.TravelModifierSelection)
 
   test("without a modifier that waives it, Travel at 0 Supply is not offered"):
     assert(!controls(broke(favor = 1, tents = false), actor)
