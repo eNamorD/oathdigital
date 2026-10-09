@@ -21,7 +21,7 @@ final class ConsentPowers(powers: Vector[ContributingPower]):
     waiver(power).flatMap { _.granter(ready) }
 
   def source(power: PowerId): Option[PowerSourceRef] =
-    waivers.get(power).map(_.source)
+    waiver(power).map(_.source)
 
   /** The waivable powers `player` rules now, by id (ruling 16). */
   def ruledBy(ready: ReadyGame, player: PlayerId): Vector[PowerId] =

@@ -92,10 +92,14 @@ class ConsentPreferenceServiceSuite extends munit.FunSuite:
     // the first command's append clears it.
     val stale = TravelFixture.board().copy(consent = ConsentState()
       .preferenceSet(p2, NarrowPassSite.pass, p1, ConsentSetting.Always))
-    val (service, _) = ConsentFixture.service(stale)
+    val (service, repository) = ConsentFixture.service(stale)
     val started = startTravel(service)
     assertEquals(started.events.last,
       ConsentPreferencesCleared(p2, NarrowPassSite.pass))
     assertEquals(consent(started), ConsentState())
-    // The clearing is not part of p1's start: the start is still offered.
+    // The clearing is not part of p1's start: the start is still offered,
+    // live and after a reload, which meets the clearing inside one pass.
     assertEquals(started.undo.map(_.until), Some(started.nextSequence - 1L))
+    val reloaded = ParkedServiceFixture.replayingSecond(service, repository)
+    assertEquals(reloaded.load(gameId).map(_.flatMap(_.undo)),
+      Right(started.undo))

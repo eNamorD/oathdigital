@@ -48,6 +48,7 @@ The code forced these, or the spec left them open. Task 13 records each one in t
 12. **`SitePowerProjection` gains `id`**, the power's id, so the client can attach a power's preference grid to its label.
 13. **A withdrawn request's line is marked `takenBack` with an empty header.** The log pane draws such an entry in place as a struck line (`log-withdrawn`), not as a collapsible group.
 14. **Bandits.** The fixture board's Narrow Pass holds bandits, so the existing tests that expect the Pass to block a destination with its ordinary reason keep passing unchanged.
+15. **A clearing is not undone.** Stale preferences are cleared after every append, including the batch that takes a card from its ruler. Undoing that batch gives the card back but not the preferences, since the ledger outlives undo. Found in the Tasks 1–3 review; accepted as a consequence of ruling 17 and "Undo".
 
 ## Global Constraints
 

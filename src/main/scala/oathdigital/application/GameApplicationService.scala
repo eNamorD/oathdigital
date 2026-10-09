@@ -559,8 +559,8 @@ final class GameApplicationService(
         rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
       case GameCommand.SkipFollowUp(playerId) =>
         rules.skipFollowUp(state, playerId)
-      // An Undo or Redo on a stream with history never gets here (`handle`
-      // folds it first); on a missing stream nothing has been taken.
+      // `routed` sends Undo and Redo to the fold on every stream; these arms
+      // only keep the match exhaustive.
       case GameCommand.Undo(_) => Left(OathViolation.NothingToUndo)
       case GameCommand.Redo(_) => Left(OathViolation.NothingToRedo)
       // `routed` sends these to the consent desk; none reaches the rules.

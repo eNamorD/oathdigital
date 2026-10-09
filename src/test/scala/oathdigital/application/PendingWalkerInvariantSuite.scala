@@ -69,7 +69,9 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     assertEquals(everyCommand(PlayerId("p1")).map(_.productPrefix).toSet, declared)
 
   /** Every constructor but Undo and Redo, for every player, is refused and
-    * appends nothing.
+    * appends nothing. A preference is legal over a park by design (consent
+    * design, ruling 18); the sample's is refused only because the Mines'
+    * power cannot be waived.
     * The sample's `ResolveWalker` and `RollWalker` name no parked position,
     * so they are refused too. Then `resume`, the parked walker's own answer,
     * is accepted and appends: only a matching resume runs.
