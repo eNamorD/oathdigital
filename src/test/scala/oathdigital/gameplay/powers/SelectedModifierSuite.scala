@@ -78,6 +78,10 @@ class SelectedModifierSuite extends munit.FunSuite:
     val windows = priced.contributions.keySet
     assertEquals(windows, Set[PowerWindow](PowerWindow.TravelActionEligibility))
     assertEquals(free.contributions, Map.empty[PowerWindow, Vector[Contribution]])
+    val both = Probe(card, Cost(favor = 1),
+      Set(MajorActionType.Travel, MajorActionType.Search))
+    assertEquals(both.contributions.keySet,
+      Set[PowerWindow](PowerWindow.TravelActionEligibility))
 
   test("at the action's eligibility window a selected modifier always applies"):
     // A probe that applies at no node still applies at the eligibility

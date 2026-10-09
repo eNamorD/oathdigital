@@ -22,9 +22,10 @@ final class OperationRestrictions private (catalog: Option[ExecutableCatalog]):
     catalog.fold(Vector.empty)(OperationRestrictions.printedBy)
 
   def active(powerRestrictions: Vector[OperationRestriction],
-      modifiers: Vector[PowerId]): Vector[OperationRestriction] =
-    printed ++ catalog.filter(_ => modifiers.nonEmpty)
-      .map(ActiveModifier(_, modifiers)).toVector ++ powerRestrictions
+      modifiers: Vector[PowerId], picked: Vector[CardId] = Vector.empty)
+      : Vector[OperationRestriction] =
+    printed ++ catalog.filter(_ => modifiers.nonEmpty || picked.nonEmpty)
+      .map(ActiveModifier(_, modifiers, picked)).toVector ++ powerRestrictions
 
 object OperationRestrictions:
   /** No catalog: only the powers' own restrictions hold. For suites that
@@ -54,9 +55,11 @@ object OperationRestrictions:
 
 /** A card that prints a power selected for the running action cannot be
   * discarded while the action runs: a modifier a player selected at the start
-  * of an action stays in play until the action ends. */
+  * of an action stays in play until the action ends. A card picked in the
+  * modifier decision counts as one a selected modifier prints. */
 final case class ActiveModifier(catalog: ExecutableCatalog,
-    modifiers: Vector[PowerId]) extends OperationRestriction:
+    modifiers: Vector[PowerId], picked: Vector[CardId] = Vector.empty)
+    extends OperationRestriction:
   override def reason(ready: ReadyGame,
       operation: CoreOperation): Option[OperationReason] = operation match
     case value: Discard.Denizen
@@ -68,7 +71,8 @@ final case class ActiveModifier(catalog: ExecutableCatalog,
     case _ => None
 
   private def refused(card: CardId): Option[OperationReason] =
-    Option.when(modifiers.exists(power => printedBy(power).contains(card)))(
+    Option.when(picked.contains(card) ||
+        modifiers.exists(power => printedBy(power).contains(card)))(
       OperationReason("active-modifier", s"${card.value} is a modifier " +
         "selected for this action and cannot be discarded",
         OperationReasonKind.Impossible))

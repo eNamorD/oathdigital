@@ -127,6 +127,10 @@ object WalkerProcedureRegistry:
       rebuild: (ExecutableCatalog, ReadyGame, PlayerId,
         Vector[DecisionOptionRef]) => Either[OathViolation, Operation],
       requiresPlayableOption: Boolean = false,
+      /** Whether the tree asks for its modifiers itself, through the
+        * modifier decision (modifier walker design), so a start carries
+        * none. */
+      choosesModifiers: Boolean = false,
       /** What the engine derives at a fresh start and stores as
         * `walkerStartFacts` (travel destination design, ruling 6). A
         * procedure's `rebuild` reads them from the state it is handed. None
@@ -162,12 +166,14 @@ object WalkerProcedureRegistry:
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.SearchModifierSelection),
       build = CardPlayProcedure.buildFacedown,
-      rebuild = CardPlayProcedure.rebuildFacedown),
+      rebuild = CardPlayProcedure.rebuildFacedown,
+      choosesModifiers = true),
 
-    /** Search parks on its source first (search source design). Nothing
-      * runs before that decision, so the start is previewed through the
-      * playable-option gate. Its options are priced: each source shows what
-      * it costs, or why it cannot be searched. */
+    /** Search asks for its modifiers, then parks on its source (search
+      * source design; modifier walker design). Nothing runs before those
+      * decisions, so the start is previewed through the playable-option
+      * gate. Its source options are priced: each shows what it costs, or why
+      * it cannot be searched. */
     ActionRef.Search -> Entry(
       fallbackKind = Some(ActionKind.Search),
       rollDecisionId = None,
@@ -175,6 +181,7 @@ object WalkerProcedureRegistry:
       build = SearchProcedure.build,
       rebuild = SearchProcedure.rebuild,
       requiresPlayableOption = true,
+      choosesModifiers = true,
       optionPricing = Some(SearchOptions.priced)),
 
     ActionRef.Recover -> Entry(
@@ -504,6 +511,10 @@ object WalkerProcedureRegistry:
   /** Whether `procedure` opts in to the playable-option gate (see `Entry`). */
   def requiresPlayableOption(procedure: ProcedureRef): Boolean =
     lookup(procedure, entries).exists(_.requiresPlayableOption)
+
+  /** Whether `procedure` asks for its modifiers inside the walk. */
+  def choosesModifiers(procedure: ProcedureRef): Boolean =
+    lookup(procedure, entries).exists(_.choosesModifiers)
 
   /** How `procedure` prices the options of a parked decision, if it does. */
   def optionPricing(procedure: ProcedureRef): Option[OptionPricing] =

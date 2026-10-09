@@ -3,6 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.application._
 import oathdigital.engine.{RecordedEvent, ReplayStep}
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
@@ -490,13 +491,14 @@ object LogScripts:
     game.situation.after()
     Script("use-power", game.service, actor)
 
-  /** Augury, a free Search modifier, stands at p1's site; the Search selects
+  /** Augury, a free Search modifier, stands at p1's site; the Search picks
     * it. */
   def augury(using munit.Location): Script =
     val (service, act) = atTable("augury", tableWithOnePawnPerSite
       .denizen("Augury", "Ancient City").banditsRefilled)
-    act.after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1,
-      Vector(Augury.id), Vector.empty)))
+    act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
+      Vector(Augury.id))).after(GameCommand.StartWalker(ActionRef.Search,
+      StartPayload(p1)))
     Script("augury", service, p1)
 
   /** Gambling Hall at p1's site, used in Act by a player holding two favor.

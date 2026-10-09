@@ -11,13 +11,18 @@ import oathdigital.model._
   * major action, and that then applies to that action for free unless it names
   * a cost.
   *
-  * A modifier that names a `cost` pays it at the very start of its action,
-  * whatever the modifier then does: the kit prepends the payment to the root of
-  * the action's tree (the action's eligibility window). The player owns the
-  * choice to select it, so the payment is made whether or not the modifier then
-  * has an effect. The same payment is `selectionPayments`, so a command that
-  * selects several modifiers dry-runs all of their payments together and refuses
-  * a combination the player cannot pay, before anything happens.
+  * A modifier that names a `cost` pays it whatever the modifier then does. The
+  * player owns the choice to select it, so the payment is made whether or not
+  * the modifier then has an effect. The payment is `selectionPayments`:
+  *
+  *  - A Search modifier is paid when it is picked in the walk's modifier
+  *    decision (`paidAtPick`).
+  *  - Every other action's modifier is paid at the very start of its action,
+  *    until that action's slice moves it: the kit prepends the payment to the
+  *    root of the action's tree (the action's eligibility window). A command
+  *    that selects several modifiers dry-runs all of their payments together
+  *    and refuses a combination the player cannot pay, before anything
+  *    happens.
   *
   * `applicable` answers three questions, told apart by the window:
   *
@@ -58,9 +63,10 @@ trait SelectedModifier extends ContributingPower:
   final override lazy val contributions: Map[PowerWindow, Vector[Contribution]] =
     val payments: Map[PowerWindow, Vector[Contribution]] =
       if cost == Cost.free then Map.empty
-      else actions.map(action => SelectedModifier.eligibility(action) ->
-        Vector[Contribution](Transform((ctx, operations) =>
-          payment(ctx.activePlayer) +: operations))).toMap
+      else actions.filterNot(SelectedModifier.paidAtPick)
+        .map(action => SelectedModifier.eligibility(action) ->
+          Vector[Contribution](Transform((ctx, operations) =>
+            payment(ctx.activePlayer) +: operations))).toMap
     (payments.keySet ++ effects.keySet).map(window => window ->
       (payments.getOrElse(window, Vector.empty) ++
         effects.getOrElse(window, Vector.empty))).toMap
@@ -128,6 +134,12 @@ object SelectedModifier:
 
   /** The modifier-selection window of `action`. */
   def selectionWindow(action: MajorActionType): PowerWindow = windowOf(action)
+
+  /** The actions whose modifier decision pays each pick (modifier walker
+    * design): their modifiers prepend no payment at the eligibility window.
+    * It grows slice by slice, with `WalkerProcedureRegistry`'s
+    * `choosesModifiers`, until slice 4 deletes the payment Transform. */
+  val paidAtPick: Set[MajorActionType] = Set(MajorActionType.Search)
 
   /** The window at the root of `action`'s tree, where a payment goes. */
   def eligibility(action: MajorActionType): PowerWindow =

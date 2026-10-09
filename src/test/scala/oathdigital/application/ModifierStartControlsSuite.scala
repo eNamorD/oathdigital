@@ -1,13 +1,15 @@
 package oathdigital.application
 
-import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.{ModifierPlay, OathRules}
+import oathdigital.gameplay.actions.search.SearchProcedure
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.economy.{AnimalPlaymates, Birdsong}
 import oathdigital.gameplay.powers.search.NewsFromAfar
 import oathdigital.gameplay.powers.travel.{Tents, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, ParkedNode, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
@@ -126,13 +128,33 @@ class ModifierStartControlsSuite extends munit.FunSuite:
     (if news then table.adviser(p1, CatalogNames.denizen("News from Afar"))
       else table).ready
 
-  test("Search is offered when News from Afar would make it free, and the " +
-      "start with it is accepted"):
+  test("Search is offered when News from Afar would make it free; the start " +
+      "asks for the modifier, and picking it reaches the source"):
     val ready = brokeSearcher(news = true, favor = 2)
     assert(controls(ready, p1).contains("beginSearch"))
-    assertStarts(ready, p1, ActionRef.Search, Vector(NewsFromAfar.id))
-    assertEquals(refusal(ready, p1, ActionRef.Search, Vector.empty),
-      noSupplyFor(2))
+    val started = accepted(rules.startWalker(OathState.Ready(ready),
+      ActionRef.Search, p1))
+    val modifiers = parked(started.state)
+    assertEquals(modifiers.decisionId, search)
+    assertEquals(modifiers.query match
+      case DecisionQuery.ChooseOne(options, _) => options.headOption
+      case _ => None,
+      Some(DecisionOption.Unavailable(
+        DecisionOption.Button(ModifierPicks.start, "Start Search"),
+        OptionReason.Written("Needs 2 Supply; you have 0"))))
+    val picked = accepted(rules.resolveWalker(started.state, p1, search,
+      ModifierPlay.pick(NewsFromAfar.id)))
+    assertEquals(parked(picked.state).decisionId,
+      SearchProcedure.sourceDecisionId)
+
+  private val search =
+    ModifierPicks.decisionId(PowerWindow.SearchModifierSelection)
+
+  /** The decision the walk is parked on, as the projector rebuilds it. */
+  private def parked(state: OathState)(using munit.Location): Decide =
+    ParkedNode.of(state, catalog, WalkerPowerCatalog.default(catalog)) match
+      case Right(Some(ParkedNode.Decision(_, decide, _))) => decide
+      case other => fail(s"expected a parked decision, got $other")
 
   test("News from Afar with too little favor to pay offers no Search"):
     assert(!controls(brokeSearcher(news = true, favor = 1), p1)
