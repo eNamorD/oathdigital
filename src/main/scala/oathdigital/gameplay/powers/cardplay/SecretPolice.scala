@@ -25,6 +25,8 @@ object SecretPoliceCard extends Denizen(DenizenId("113"), "Secret Police", Suit.
   * and not through `PowerAccess`.
   * When the look-ahead hides a faceup placement because of it, it writes
   * "{Red} cannot play a Vision faceup."
+  * Its ruler may consent to a faceup play (consent design, slice 3); bandits
+  * and the Empire never do.
   */
 case object SecretPolice extends ContributingPower:
   val cardId: DenizenId = SecretPoliceCard.id
@@ -32,11 +34,26 @@ case object SecretPolice extends ContributingPower:
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
-  override def noteKeys: Vector[NoteKey] = Vector(VisionPlay.noFaceup)
+  /** "Cannot play a Vision faceup without ruler's consent.": the reason of
+    * a faceup play the Police's ruler may be asked about. */
+  val noFaceupConsent: NoteKey = NoteKey("no-faceup-consent", Vector(
+    NotePart.Text("Cannot play a Vision faceup without ruler's consent.")))
+
+  override def noteKeys: Vector[NoteKey] =
+    Vector(VisionPlay.noFaceup, noFaceupConsent)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup ->
-      Vector(Restriction((ctx, _) => blocked(ctx), VisionPlay.note(cardId))))
+      Vector(Restriction((ctx, _) => blocked(ctx), VisionPlay.note(cardId),
+        Some(waiver))))
+
+  /** "Enemies cannot" (consent design, ruling 1): the player who rules the
+    * Police's site may waive it. */
+  private def waiver: Waiver = Waiver(
+    ready => SiteRulers.rulerOfCard(ready, cardId).collect {
+      case SiteRuler.Player(player) => player },
+    PowerSourceRef.Card(cardId),
+    (_, _) => noFaceupConsent(PowerSourceRef.Card(cardId)))
 
   private def blocked(ctx: PowerCtx): Option[OathViolation] = for
     _ <- VisionPlay.pending(ctx)

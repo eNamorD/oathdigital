@@ -2,10 +2,12 @@ package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, Waiver}
+import oathdigital.gameplay.powers.cardplay.SecretPolice
 import oathdigital.gameplay.powers.travel.{MinesSite, NarrowPassSite,
   NarrowPassSitePower, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 /** Which powers can be waived, and who may waive them (consent design,
@@ -46,3 +48,15 @@ class ConsentPowersSuite extends munit.FunSuite:
   test("a power waivable only on its options is waivable"):
     val only = new ConsentPowers(Vector(TargetBarrier))
     assertEquals(only.granter(ruled, TargetBarrier.id), Some(p2))
+
+  test("Secret Police is waivable, its granter the player who rules its " +
+      "site, and nobody under bandits"):
+    val police = CatalogNames.denizen("Secret Police")
+    val home = CatalogNames.site("Ancient City")
+    val policed = Table.start.denizen(police, at = home)
+    assertEquals(powers.source(SecretPolice.id),
+      Some(PowerSourceRef.Card(police)))
+    assertEquals(powers.granter(policed.warbandsAt(home, p2, 2).ready,
+      SecretPolice.id), Some(p2))
+    assertEquals(powers.granter(policed.bandits(home, 2).ready,
+      SecretPolice.id), None)
