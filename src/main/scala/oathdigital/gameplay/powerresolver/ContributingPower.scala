@@ -88,11 +88,15 @@ final case class Waiver(
   * validates and from what a simulation answers. Covers cannot-effects that
   * name a choice rather than the whole action. `note` is the hover reason of
   * each option it hides; it writes no Game Log line (travel destination
-  * design, ruling 10).
+  * design, ruling 10). `waiver` is set when the power restricts its ruler's
+  * enemies: a grant remembered for the decision and the option lifts it, and
+  * at a choose-many an option it alone forbids may be asked about (consent
+  * design, slice 2).
   */
 final case class OptionRestriction(
     fn: (PowerCtx, DecisionOptionRef) => Option[OathViolation],
-    note: (PowerCtx, DecisionOptionRef) => Option[PowerNote] = Contribution.silent
+    note: (PowerCtx, DecisionOptionRef) => Option[PowerNote] = Contribution.silent,
+    waiver: Option[Waiver] = None
 ) extends Contribution
 
 /** Offers one option to the node its window hooks, when that node is an

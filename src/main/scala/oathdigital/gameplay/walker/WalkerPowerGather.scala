@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, Restriction}
+import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, Restriction, Waiver}
 import oathdigital.model.{Answered, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
@@ -20,6 +20,16 @@ private[walker] object WalkerPowerGather:
     * so the look-ahead can ask that restriction for its note. */
   private final case class Attributed(power: PowerId, ctx: PowerCtx,
       restriction: Restriction, violation: OathViolation)
+
+  /** An option restriction that forbids an option, with the context it
+    * judged in and its violation. */
+  private final case class Forbidding(power: PowerId,
+      restriction: OptionRestriction, ctx: PowerCtx, violation: OathViolation)
+
+  /** One block on an option, from either kind of restriction: its power, its
+    * waiver and the context it judged in. */
+  private final case class Block(power: PowerId, waiver: Option[Waiver],
+      ctx: PowerCtx)
 
   /** Gathers powers at `window` (a no-op for `None` -- spec decision 9's
     * third case: an engine-internal node contributes nothing) and folds
@@ -72,29 +82,29 @@ private[walker] object WalkerPowerGather:
   private def optionRefs(decide: Decide): Vector[DecisionOptionRef] =
     WalkerSearch.choosable(decide)
 
-  /** The note of the first power in `restrictions` that forbids `ref`, when
-    * that power says why.
+  /** The restrictions that forbid `ref` of `decide`, in power order. A
+    * waivable one is left out once a grant for its power, the decision's
+    * owner, the decision and `ref` is remembered this turn (consent design,
+    * "One ledger check"). The reference is the option itself, so the grant
+    * is tied to its decision.
     */
-  private def firstNote(restrictions: Vector[(PowerId, OptionRestriction)],
+  private def forbidding(decide: Decide,
+      restrictions: Vector[(PowerId, OptionRestriction)],
       ctxFor: ContributingPower => PowerCtx,
       byId: Map[PowerId, ContributingPower])(ref: DecisionOptionRef)
-      : Option[PowerNoted] =
-    restrictions.find { case (id, restriction) =>
-      restriction.fn(ctxFor(byId(id)), ref).nonEmpty
-    }.flatMap { case (id, restriction) =>
-      restriction.note(ctxFor(byId(id)), ref)
-        .map(PowerNoted(id, _, covers = false))
+      : Vector[Forbidding] =
+    restrictions.flatMap { case (id, restriction) =>
+      val ctx = ctxFor(byId(id))
+      restriction.fn(ctx, ref)
+        .filterNot(_ => restriction.waiver.nonEmpty && ctx.state.consent
+          .remembered(ConsentKey(id, decide.owner, decide.decisionId, ref),
+            ConsentTurn.of(ctx.state)).contains(ConsentAnswer.Granted))
+        .map(Forbidding(id, restriction, ctx, _))
     }
 
-  private def permits(restrictions: Vector[(PowerId, OptionRestriction)],
-      ctxFor: ContributingPower => PowerCtx,
-      byId: Map[PowerId, ContributingPower]): DecisionOptionRef => Boolean =
-    ref => restrictions.forall { case (id, restriction) =>
-      restriction.fn(ctxFor(byId(id)), ref).isEmpty
-    }
-
-  /** Removes the forbidden options from every `Decide` in `ops`, keeping one
-    * as unavailable when the restriction that forbids it notes why; see
+  /** Removes the forbidden options from every `Decide` in `ops`. A
+    * forbidden option is kept as askable when it may be asked about, else as
+    * unavailable when the first restriction that forbids it notes why; see
     * [[OptionRestriction]] for what happens when nothing is left.
     */
   private def restrictOptions(ops: Vector[Operation],
@@ -102,13 +112,26 @@ private[walker] object WalkerPowerGather:
       ctxFor: ContributingPower => PowerCtx,
       byId: Map[PowerId, ContributingPower]): Vector[Operation] =
     if restrictions.isEmpty then ops
-    else
-      val permitted = permits(restrictions, ctxFor, byId)
-      ops.flatMap:
-        case decide: Decide => WalkerSearch.narrowed(decide, permitted, ref =>
-          firstNote(restrictions, ctxFor, byId)(ref).map(noted =>
-            OptionReason.Noted(noted.power, noted.note))).toVector
-        case other => Vector(other)
+    else ops.flatMap:
+      case decide: Decide =>
+        val forbids = forbidding(decide, restrictions, ctxFor, byId)
+        WalkerSearch.narrowed(decide, forbids(_).isEmpty, { ref =>
+          val found = forbids(ref)
+          optionAskable(decide, ref, found).orElse(found.headOption.flatMap(
+            first => first.restriction.note(first.ctx, ref)
+              .map(OptionReason.Noted(first.power, _))))
+        }).toVector
+      case other => Vector(other)
+
+  /** `ref`'s consent ask on the option path. Only at a choose-many: a grant
+    * there opens the option and answers nothing, so no request can be left
+    * waiting on a grant that does not answer (consent slice 2). */
+  private def optionAskable(decide: Decide, ref: DecisionOptionRef,
+      found: Vector[Forbidding]): Option[OptionReason] =
+    if !decide.query.isInstanceOf[DecisionQuery.ChooseMany] then None
+    else found.headOption.flatMap(first => consentAsk(decide, ref,
+      found.map(forbid => Block(forbid.power, forbid.restriction.waiver,
+        forbid.ctx)), first.ctx.state))
 
   /** A required decision with every option forbidden cannot be answered: the
     * violation is the first restriction's, for the first option.
@@ -123,9 +146,8 @@ private[walker] object WalkerPowerGather:
         Some(optionRefs(decide))
       case _ => None
     required.filter(_.nonEmpty).toVector.flatMap { refs =>
-      val verdicts = refs.map(ref => restrictions.flatMap {
-        case (id, restriction) => restriction.fn(ctx(byId(id)), ref)
-      }.headOption)
+      val verdicts = refs.map(ref => forbidding(decide, restrictions, ctx,
+        byId)(ref).headOption.map(_.violation))
       if verdicts.forall(_.nonEmpty) then verdicts.head.toVector else Vector.empty
     }
 
@@ -272,34 +294,41 @@ private[walker] object WalkerPowerGather:
           .map(ref -> _)
       }
 
-  /** `ref`'s consent ask, when every breach answering it adds is waivable by
-    * a player other than the decision's owner, none of their powers' answers
-    * on it was refused this turn, and a grant of them would open it: a
-    * destination the traveller cannot pay for is not worth asking about.
-    * Only a choose-one: a grant answers the decision with `ref` alone (plan
-    * decision 8). */
+  /** `ref`'s consent ask on the tree path, when a grant of its powers would
+    * open it: a destination the traveller cannot pay for is not worth asking
+    * about. Only a choose-one: a grant answers the decision with `ref` alone
+    * (slice 1 plan decision 8). */
   private def askable(decide: Decide, ref: DecisionOptionRef,
       fresh: Vector[Attributed], state: ReadyGame,
       grantable: (DecisionOptionRef, Vector[PowerId]) => Boolean)
       : Option[OptionReason] =
+    if !decide.query.isInstanceOf[DecisionQuery.ChooseOne] then None
+    else consentAsk(decide, ref, fresh.map(breach => Block(breach.power,
+      breach.restriction.waiver, breach.ctx)), state)
+      .filter(ask => grantable(ref, ask.asks.flatMap(_.powers).distinct))
+
+  /** The ask for `ref` when every block on it is waivable by a player other
+    * than the decision's owner and none of their answers on it was refused
+    * this turn (consent design, ruling 8). Its reason is the first block's
+    * consent note, and it asks each granter about all of their powers. */
+  private def consentAsk(decide: Decide, ref: DecisionOptionRef,
+      blocks: Vector[Block], state: ReadyGame)
+      : Option[OptionReason.Askable] =
     val requester = decide.owner
     val turn = ConsentTurn.of(state)
-    val waivers = fresh.map(breach => breach.restriction.waiver.flatMap(
-      waiver => waiver.granter(state).filter(_ != requester)
-        .map(granter => (breach, waiver, granter))))
-    val choosesOne = decide.query.isInstanceOf[DecisionQuery.ChooseOne]
-    if !choosesOne || fresh.isEmpty || waivers.exists(_.isEmpty) then None
+    val granters = blocks.map(_.waiver.flatMap(_.granter(state))
+      .filter(_ != requester))
+    val refused = blocks.exists(block => state.consent.remembered(
+      ConsentKey(block.power, requester, decide.decisionId, ref), turn)
+      .contains(ConsentAnswer.Refused))
+    if blocks.isEmpty || granters.exists(_.isEmpty) || refused then None
     else
-      val all = waivers.flatten
-      val refused = all.exists((breach, _, _) => state.consent.remembered(
-        ConsentKey(breach.power, requester, decide.decisionId, ref), turn)
-        .contains(ConsentAnswer.Refused))
-      Option.when(!refused &&
-          grantable(ref, all.map(_._1.power).distinct)):
-        val (first, waiver, _) = all.head
-        val asks = all.map(_._3).distinct.map(granter => ConsentAsk(granter,
-          all.collect { case (breach, _, `granter`) => breach.power }.distinct))
-        OptionReason.Askable(first.power, waiver.note(first.ctx, ref), asks)
+      val owed = blocks.map(_.power).zip(granters.flatten)
+      val asks = owed.map(_._2).distinct.map(granter => ConsentAsk(granter,
+        owed.collect { case (power, `granter`) => power }.distinct))
+      val first = blocks.head
+      first.waiver.map(waiver => OptionReason.Askable(first.power,
+        waiver.note(first.ctx, ref), asks))
 
   /** Resolves the node addressed by `pending.at` (a child-index path rooted
     * at `action`), or `None` when a segment is non-numeric or out of range (a

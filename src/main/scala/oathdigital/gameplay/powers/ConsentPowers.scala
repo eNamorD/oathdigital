@@ -1,18 +1,20 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.powerresolver.{ContributingPower, Restriction,
-  Waiver}
+import oathdigital.gameplay.powerresolver.{ContributingPower,
+  OptionRestriction, Restriction, Waiver}
 import oathdigital.model.{PlayerId, PowerId, PowerSourceRef, ReadyGame}
 
 /** The waivable powers (consent design, "Powers declare waivability"): every
-  * power with a contribution that declares a `Waiver`. The grid, the
+  * power with a contribution, of either restriction kind, that declares a
+  * `Waiver`. The grid, the
   * stale-preference check and the log all look a power up here. */
 final class ConsentPowers(powers: Vector[ContributingPower]):
   private val waivers: Map[PowerId, Waiver] = (for
     power <- powers
     waiver <- power.contributions.values.flatten.collectFirst {
-      case Restriction(_, _, Some(waiver)) => waiver }
+      case Restriction(_, _, Some(waiver)) => waiver
+      case OptionRestriction(_, _, Some(waiver)) => waiver }
   yield power.id -> waiver).toMap
 
   def waiver(power: PowerId): Option[Waiver] = waivers.get(power)

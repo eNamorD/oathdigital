@@ -4,10 +4,9 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.VowOfPeaceContribution
 import oathdigital.gameplay.powers.travel.{NarrowPassSitePower,
   TravelSitePowers}
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Outcomes, Table}
+import oathdigital.testkit.{Outcomes, Table}
 import oathdigital.testkit.Unwrap.present
 
 class CampaignPowersSuite extends munit.FunSuite:
@@ -41,35 +40,11 @@ class CampaignPowersSuite extends munit.FunSuite:
     assertEquals(vowViolations(initial), Vector.empty[OathViolation])
 
   // ---- Narrow Pass -------------------------------------------------------
-  private val pass = CatalogNames.site("Narrow Pass")
-  private val ancientCity = CatalogNames.site("Ancient City")
-  private val brokenPeaks = CatalogNames.site("Broken Peaks")
-  private val buriedGiant = CatalogNames.site("Buried Giant")
-  private val deepWoods = CatalogNames.site("Deep Woods")
-  private val desolateShore = CatalogNames.site("Desolate Shore")
-  private val dunes = CatalogNames.site("Dunes")
-  private val fairIsle = CatalogNames.site("Fair Isle")
-  /** Cradle: Ancient City, Broken Peaks. Provinces: the Pass, Buried Giant,
-    * Deep Woods. Hinterland: Desolate Shore, Dunes, Fair Isle. Each site
-    * holds its printed bandits. No Table step lays out regions, so the map
-    * is built here.
-    */
-  private val passMap =
-    val cradle = Vector(ancientCity, brokenPeaks)
-    val provinces = Vector(pass, buriedGiant, deepWoods)
-    val hinterland = Vector(desolateShore, dunes, fairIsle)
-    val states = (cradle ++ provinces ++ hinterland).map { id =>
-      val definition = catalog.sites.find(_.id == id).get
-      id -> SiteState(
-        if definition.capacity == 0 then SiteForces.Empty
-        else SiteForces.Occupied(ForceKind.Bandit, definition.capacity),
-        Vector.empty, Vector.empty, definition.startingResources)
-    }.toMap
-    MapState(cradle, provinces, hinterland, states)
-  private def withPawnAt(site: SiteId, map: MapState = passMap): ReadyGame =
-    // No Table step lays out regions, so the map is replaced.
-    Table.from(initial.updateCurrent(_.copy(map = map))).pawn(actor, at = site)
-      .ready
+  import PassMap.{ancientCity, brokenPeaks, buriedGiant, deepWoods,
+    desolateShore, pass}
+  private def withPawnAt(site: SiteId, map: MapState = PassMap.map)
+      : ReadyGame =
+    PassMap.withPawnAt(initial, actor, site, map)
 
   private val passPower = TravelSitePowers.all.collectFirst {
     case power: NarrowPassSitePower => power }.getOrElse(
@@ -118,8 +93,8 @@ class CampaignPowersSuite extends munit.FunSuite:
     assertEquals(offered(withPawnAt(ancientCity), relics), relics)
 
   test("a Pass that is not in play forbids nothing"):
-    val without = passMap.copy(sites = passMap.sites - pass,
-      provinces = passMap.provinces.filterNot(_ == pass))
+    val without = PassMap.map.copy(sites = PassMap.map.sites - pass,
+      provinces = PassMap.map.provinces.filterNot(_ == pass))
     val sameRegion = Vector(buriedGiant, deepWoods).map(siteOption)
     assertEquals(offered(withPawnAt(ancientCity, without), sameRegion),
       sameRegion)

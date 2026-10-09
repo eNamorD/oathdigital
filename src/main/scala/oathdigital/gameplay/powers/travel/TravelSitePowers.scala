@@ -148,21 +148,24 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
   def source: RuleSourceRef = RuleSourceRef.Site(site)
   override def noteKeys: Vector[NoteKey] =
     Vector(NarrowPassSitePower.noTarget, NarrowPassSitePower.noTravel,
-      NarrowPassSitePower.noTravelConsent)
+      NarrowPassSitePower.noTravelConsent, NarrowPassSitePower.noTargetConsent)
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelActionEligibility ->
       Vector(Restriction((ctx, _) => blocked(ctx), travelNote,
-        Some(travelWaiver))),
+        Some(waiver(NarrowPassSitePower.noTravelConsent)))),
     PowerWindow.CampaignTargetSelection ->
-      Vector(OptionRestriction(campaignBlocked, campaignNote)))
+      Vector(OptionRestriction(campaignBlocked, campaignNote,
+        Some(waiver(NarrowPassSitePower.noTargetConsent)))))
 
   /** "Unless you have the consent of the Pass's ruler" (consent design,
-    * slice 1): the player who rules the Pass may waive it for a Travel. */
-  private val travelWaiver = Waiver(
+    * slices 1 and 2): the player who rules the Pass may waive it, for a
+    * Travel or for a campaign target. `note` words the reason of an option
+    * its ruler may be asked about. */
+  private def waiver(note: NoteKey): Waiver = Waiver(
     ready => SiteRulers.rulerOf(ready, site).collect {
       case SiteRuler.Player(player) => player },
     PowerSourceRef.Site(site),
-    (_, _) => NarrowPassSitePower.noTravelConsent(PowerSourceRef.Site(site)))
+    (_, _) => note(PowerSourceRef.Site(site)))
 
   /** A blocked destination's hover reason (travel destination design,
     * ruling 4). */
@@ -191,8 +194,8 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
   /** Campaign: "If your pawn is outside this region, you cannot ... target
     * other sites in this region in campaigns, unless you have the consent of
     * the Pass's ruler." Judged per candidate site, never against the other
-    * targets. Consent is approximated as ruling the Pass, as it was before
-    * this was a power. Only site options are considered: a Raid targets a
+    * targets. Its ruler is never blocked (consent design, ruling 5); anyone
+    * else may ask its ruler for consent (slice 2). Only site options are considered: a Raid targets a
     * pawn, relics and banners, never a site.
     */
   private def campaignBlocked(ctx: PowerCtx, ref: DecisionOptionRef)
@@ -241,6 +244,12 @@ object NarrowPassSitePower:
     * the reason of a destination its ruler may be asked about. */
   val noTravelConsent: NoteKey = NoteKey("no-travel-consent", Vector(
     NotePart.Text("Cannot travel to other sites in the region without " +
+      "ruler's consent.")))
+
+  /** "Cannot target other sites in the region without ruler's consent.":
+    * the reason of a campaign target its ruler may be asked about. */
+  val noTargetConsent: NoteKey = NoteKey("no-target-consent", Vector(
+    NotePart.Text("Cannot target other sites in the region without " +
       "ruler's consent.")))
 
 /** The sites' Travel terrain contributions. Static site topology lives on

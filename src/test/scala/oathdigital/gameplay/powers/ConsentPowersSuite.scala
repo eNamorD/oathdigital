@@ -1,7 +1,9 @@
 package oathdigital.gameplay.powers
 
+import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
+  OptionRestriction, Waiver}
 import oathdigital.gameplay.powers.travel.{MinesSite, NarrowPassSite,
-  TravelFixture}
+  NarrowPassSitePower, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.Table.{p1, p2}
@@ -30,3 +32,17 @@ class ConsentPowersSuite extends munit.FunSuite:
   test("a player rules the waivable powers of the sites they rule"):
     assertEquals(powers.ruledBy(ruled, p2), Vector(NarrowPassSite.pass))
     assertEquals(powers.ruledBy(ruled, p1), Vector.empty)
+
+  /** A power waivable only on its options. */
+  private object TargetBarrier extends ContributingPower:
+    val id: PowerId = PowerId("test.target-barrier")
+    val source: RuleSourceRef = RuleSourceRef.Site(NarrowPassSite.id)
+    private val at = PowerSourceRef.Site(NarrowPassSite.id)
+    def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
+      PowerWindow.CampaignTargetSelection -> Vector(OptionRestriction(
+        (_, _) => None, Contribution.silent, Some(Waiver(_ => Some(p2), at,
+          (_, _) => NarrowPassSitePower.noTargetConsent(at))))))
+
+  test("a power waivable only on its options is waivable"):
+    val only = new ConsentPowers(Vector(TargetBarrier))
+    assertEquals(only.granter(ruled, TargetBarrier.id), Some(p2))

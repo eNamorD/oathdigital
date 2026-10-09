@@ -5,7 +5,7 @@ import oathdigital.engine.EventEvolution
 import oathdigital.model._
 import oathdigital.gameplay.powerresolver.{ContributingPower, PhasePowers}
 import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
-  ModifierOffers, PricedOptions, ProcedureWalker, WalkerCompleted, WalkerDice,
+  ModifierOffers, ProcedureWalker, WalkerCompleted, WalkerDice,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
   WalkerSimulation, WalkerStepRecorded}
 import oathdigital.model.OathState._
@@ -311,13 +311,20 @@ private[gameplay] trait OathRulesWalker:
           powers))).flatMap(decide => decide
           .filter(found => found.decisionId == decisionId &&
             found.owner == requester)
-          .flatMap(found => PricedOptions.options(found).collectFirst {
+          .flatMap(found => offered(found).collectFirst {
             case DecisionOption.Unavailable(option,
                 OptionReason.Askable(_, _, asks)) if option.ref == target =>
               asks
           })
           .toRight(ConsentUnavailable(
             s"${target.wireId} is not an option to ask consent for")))
+
+  /** The options of a choose-one or a choose-many, as offered. */
+  private def offered(decide: Decide): Vector[DecisionOption] =
+    decide.query match
+      case one: DecisionQuery.ChooseOne => one.options
+      case many: DecisionQuery.ChooseMany => many.options
+      case _ => Vector.empty
 
   /** Validates and derives the action tree once, then asks the application for
     * exactly the parked pool's authoritative number of faces.
