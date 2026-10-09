@@ -91,8 +91,9 @@ final case class WayStation private (catalog: ExecutableCatalog)
         SupplyStrip(traveller, operations)
 
 object WayStation:
-  /** The favor `operations` already take from `traveller` (a toll, a
-    * selected modifier's payment), which the favor answer must leave. */
+  /** The favor `operations` already take from `traveller` (a toll), which
+    * the favor answer must leave. A Travel modifier's payment is not among
+    * them: it was paid at the pick, before this node. */
   private[travel] def favorOwed(operations: Vector[Operation],
       traveller: PlayerId): Int = operations.collect {
     case Give(Piece.Favor(amount), giver, _, _, _) if giver == traveller =>
