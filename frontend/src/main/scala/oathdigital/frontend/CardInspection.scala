@@ -23,6 +23,10 @@ private[frontend] object CardInspection:
     /** Cards in order, as a log line's card list opens them (N5). */
     final case class Cards(title: String, cards: Vector[CardDetails],
         origin: dom.html.Element) extends Request
+    /** A yes-or-no question whose Yes runs `confirm` (consent design,
+      * "Frontend"). */
+    final case class Confirm(question: String, confirm: () => Unit,
+        origin: dom.html.Element) extends Request
 
   private var handler = Option.empty[Request => Unit]
 
@@ -40,3 +44,7 @@ private[frontend] object CardInspection:
   def openCards(title: String, cards: Vector[CardDetails],
       origin: dom.html.Element): Unit =
     handler.foreach(_(Request.Cards(title, cards, origin)))
+
+  def openConfirm(question: String, confirm: () => Unit,
+      origin: dom.html.Element): Unit =
+    handler.foreach(_(Request.Confirm(question, confirm, origin)))

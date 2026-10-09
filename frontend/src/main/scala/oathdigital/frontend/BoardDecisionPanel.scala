@@ -100,17 +100,23 @@ private[frontend] object BoardDecisionPanel:
       case _ => Vector.empty
     val loose = shown.filter(option => !decides.contains(option) &&
       option.state != "locked" && !BoardHomes.has(value, option))
+    // An askable option asks its granters instead of staging (consent
+    // design, "Frontend").
+    val ask = ConsentAsking.asker(decision.decisionId, value, canControl,
+      controls)
     loose.foreach { option =>
       val key = BoardOptionViews.key(option)
       val found = views.get(key)
+      val askable = found.exists(_.state == OptionState.Askable)
       val toggle = button(label(option), "board-decision-loose-option")
+      if askable then toggle.classList.add("board-option-askable")
       toggle.setAttribute("data-option-ref", key)
       toggle.setAttribute("aria-pressed",
         found.exists(_.state == OptionState.Selected).toString)
       toggle.disabled = !canControl ||
         found.exists(_.state == OptionState.Unavailable)
       found.flatMap(_.reason).foreach(toggle.setAttribute("title", _))
-      toggle.onclick = _ => stage(option)
+      toggle.onclick = _ => if askable then ask(option, toggle) else stage(option)
       BoardOptions.hoverSync(toggle, key)
       panel.appendChild(toggle)
     }

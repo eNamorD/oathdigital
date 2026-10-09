@@ -100,7 +100,7 @@ private[frontend] final class TableScreen(
           pane.prompt).mkString("|")
         val options = routed.surface.collect {
           case board: ParkedDecision.Surface.BoardDecision => BoardOptions.of(
-            board, drafts, view.controlsAvailable, controls)
+            board, drafts, view.controlsAvailable, controls, value)
         }.getOrElse(BoardOptions.none)
         (WorldBoardRenderer.players(value, selectedPlayer, options),
           WorldBoardRenderer.world(value, options),

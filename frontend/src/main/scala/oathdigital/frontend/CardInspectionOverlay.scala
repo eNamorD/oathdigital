@@ -77,6 +77,23 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     body.appendChild(CardList.render(title, cards))
     open(origin)
 
+  /** A yes-or-no question (consent design, "Frontend"): Yes closes the
+    * overlay and runs `confirm`; No only closes it. */
+  def showConfirm(question: String, confirm: () => Unit,
+      origin: dom.html.Element): Unit =
+    clear()
+    node.setAttribute("aria-label", question)
+    val panel = element("div", "card-overlay-details overlay-confirm")
+    panel.appendChild(text("p", "overlay-question", question))
+    val yes = button("Yes", "overlay-confirm-yes")
+    val no = button("No", "overlay-confirm-no")
+    yes.onclick = _ => { hide(); confirm() }
+    no.onclick = _ => hide()
+    panel.appendChild(yes)
+    panel.appendChild(no)
+    body.appendChild(panel)
+    open(origin)
+
   private def clear(): Unit =
     while body.firstChild != null do body.removeChild(body.firstChild)
 

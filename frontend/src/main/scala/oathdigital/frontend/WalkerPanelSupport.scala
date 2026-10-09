@@ -144,7 +144,8 @@ private[frontend] object WalkerPanelSupport:
     */
   private[frontend] def withholds(control: dom.html.Button,
       option: DecisionOptionState, after: dom.Element): Unit =
-    if option.state == "unavailable" || option.state == "warning" then
+    if option.state == "unavailable" || option.state == "warning" ||
+        option.state == "askable" then
       if option.state == "unavailable" then control.disabled = true
       option.reason.foreach { reason =>
         control.setAttribute("title", reason)
@@ -156,6 +157,8 @@ private[frontend] object WalkerPanelSupport:
       canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     val decision = surface.decision
     val query = surface.query
+    val ask = ConsentAsking.asker(decision.decisionId, value, canControl,
+      controls)
     // The roll the question is asked after (a Campaign's relocation),
     // first, as on every panel a roll belongs beside.
     rollFeedback(decision, panel)
@@ -191,8 +194,13 @@ private[frontend] object WalkerPanelSupport:
         choose.setAttribute("aria-label", s"$label, $badge")
       }
       choose.disabled = !canControl
-      choose.onclick = _ => controls.submitCommand(
-        resolveChooseOneCommand(decision, option))
+      // An askable option asks its granters first (consent design,
+      // "Frontend").
+      val askable = option.state == "askable"
+      if askable then choose.classList.add("walker-choice-askable")
+      choose.onclick = _ =>
+        if askable then ask(option, choose)
+        else controls.submitCommand(resolveChooseOneCommand(decision, option))
       // A battle plan is chosen by reading what it does, so its card is
       // drawn above its button -- beside it, never inside: the face is
       // itself a button that opens the inspector, and a click meant to

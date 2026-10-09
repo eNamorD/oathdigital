@@ -15,7 +15,8 @@ import ServerUiSupport.{button, element, text}
   * nothing.
   */
 private[frontend] final class BoardOptions(views: Map[String, OptionView],
-    pick: DecisionOptionState => Unit):
+    pick: DecisionOptionState => Unit,
+    ask: (DecisionOptionState, dom.html.Element) => Unit = (_, _) => ()):
 
   def view(keys: Vector[String]): Option[OptionView] =
     keys.iterator.flatMap(views.get).nextOption()
@@ -81,13 +82,20 @@ private[frontend] final class BoardOptions(views: Map[String, OptionView],
       target.setAttribute("role", "button")
       target.setAttribute("tabindex", "0")
     found.state match
-      case OptionState.Available | OptionState.Selected =>
+      case OptionState.Available | OptionState.Selected |
+          OptionState.Askable =>
+        // An askable option asks its granters first (consent design,
+        // "Frontend"); any other is picked.
+        val act: DecisionOptionState => Unit =
+          if found.state == OptionState.Askable then
+            option => ask(option, target.asInstanceOf[dom.html.Element])
+          else pick
         target.setAttribute("aria-pressed",
           (found.state == OptionState.Selected).toString)
         target.addEventListener("click", (event: dom.Event) =>
           if own(event, target) then
             event.stopPropagation()
-            pick(found.option))
+            act(found.option))
         // A button turns Enter and Space into a click by itself.
         if !native then
           target.addEventListener("keydown", (event: dom.Event) => {
@@ -96,7 +104,7 @@ private[frontend] final class BoardOptions(views: Map[String, OptionView],
             then
               event.preventDefault()
               event.stopPropagation()
-              pick(found.option)
+              act(found.option)
           })
       case OptionState.Locked =>
         target.setAttribute("aria-pressed", "true")
@@ -129,9 +137,12 @@ private[frontend] object BoardOptions:
         context, surface.decision.decisionId, surface.query, option)))))
 
   def of(surface: ParkedDecision.Surface.BoardDecision, drafts: SessionDrafts,
-      canControl: Boolean, controls: TableControls): BoardOptions =
+      canControl: Boolean, controls: TableControls,
+      value: GameProjection): BoardOptions =
     new BoardOptions(BoardOptionViews.of(surface.decision, surface.query,
-      drafts.board), stager(surface, drafts, canControl, controls))
+      drafts.board), stager(surface, drafts, canControl, controls),
+      ConsentAsking.asker(surface.decision.decisionId, value, canControl,
+        controls))
 
   /** A card's kind as an option names it. */
   def cardKind(card: CardDetails): String = card.cardKind match

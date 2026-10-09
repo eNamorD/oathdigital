@@ -48,7 +48,8 @@ class BoardSurfaceSuite extends munit.FunSuite:
     val drafts = SessionDrafts.empty.copy(context = Some(context),
       board = draft)
     WorldBoardRenderer.world(projection(),
-      BoardOptions.of(surface, drafts, canControl = true, ui))
+      BoardOptions.of(surface, drafts, canControl = true, ui,
+        projection()))
 
   private def pane(ui: RecordingControls,
       draft: Option[BoardSelectionDraft] = None): dom.Element =

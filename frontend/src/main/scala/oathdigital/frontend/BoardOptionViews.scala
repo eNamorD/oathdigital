@@ -9,6 +9,8 @@ private[frontend] enum OptionState(val classes: Vector[String]):
     Vector("board-option", "board-option-locked"))
   case Unavailable extends OptionState(
     Vector("board-option", "board-option-unavailable"))
+  case Askable extends OptionState(
+    Vector("board-option", "board-option-askable"))
 
 /** One option as the table draws it, and why it may not be chosen. */
 private[frontend] final case class OptionView(option: DecisionOptionState,
@@ -95,6 +97,7 @@ private[frontend] object BoardOptionViews:
     case "locked" => OptionView(option, OptionState.Locked, None)
     case "unavailable" =>
       OptionView(option, OptionState.Unavailable, option.reason)
+    case "askable" => OptionView(option, OptionState.Askable, option.reason)
     case _ if picks.contains(key(option)) =>
       OptionView(option, OptionState.Selected, None)
     // Choosable, with its warning on hover.

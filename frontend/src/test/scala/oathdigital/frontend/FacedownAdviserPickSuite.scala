@@ -58,7 +58,8 @@ class FacedownAdviserPickSuite extends munit.FunSuite:
       case other => fail(s"expected a board decision, got $other")
     val drafts = SessionDrafts.empty.reconcile(context, parked)
     val boards = WorldBoardRenderer.playerBoards(parked, "red",
-      BoardOptions.of(surface, drafts, canControl = true, ui))
+      BoardOptions.of(surface, drafts, canControl = true, ui,
+        parked))
     assertEquals(all(boards, ".board-cards .board-option")
       .map(_.getAttribute("data-option-ref")),
       Vector("denizen:a1", "denizen:a2"))
