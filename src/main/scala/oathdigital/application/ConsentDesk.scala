@@ -105,10 +105,11 @@ private[application] final class ConsentDesk(rules: OathRules,
       case refusal => answers.take(refusal + 1)
 
   /** `events`, followed, when their last answer completes the request with
-    * every ask granted, by the requester's answer to the parked decision.
-    * That answer is the requester's command batch, though the granter's
-    * command produced it, so the requester can undo the move (consent
-    * design, "Settling"). */
+    * every ask granted at a choose-one, by the requester's answer to the
+    * parked decision. That answer is the requester's command batch, though
+    * the granter's command produced it, so the requester can undo the move
+    * (consent design, "Settling"). At a choose-many, the grant only opens
+    * the option, and the requester goes on choosing (slice 2). */
   private def settled(state: OathState, events: Vector[OathEvent]): Result =
     folded(state, events).flatMap { after =>
       val request = events.collectFirst { case ConsentRequested(opened) =>
@@ -117,11 +118,13 @@ private[application] final class ConsentDesk(rules: OathRules,
         case Some(ConsentAnswered(_, true)) => true
         case _ => false)
       request.filter(_ => granted) match
-        case Some(done) => rules.resolveWalker(after, done.requester,
-            done.decisionId, DecisionAnswer.ChooseOneAnswer(done.target))
+        case Some(done) if rules.grantAnswers(after, done.requester,
+            done.decisionId) =>
+          rules.resolveWalker(after, done.requester, done.decisionId,
+            DecisionAnswer.ChooseOneAnswer(done.target))
           .map(answered =>
             events ++ (CommandAccepted(done.requester) +: answered.events))
-        case None => Right(events)
+        case _ => Right(events)
     }
 
   private def folded(state: OathState, events: Vector[OathEvent])

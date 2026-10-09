@@ -319,6 +319,21 @@ private[gameplay] trait OathRulesWalker:
           .toRight(ConsentUnavailable(
             s"${target.wireId} is not an option to ask consent for")))
 
+  /** Whether a grant answers `requester`'s parked `decisionId` with its
+    * target. Only a choose-one: one option is its whole answer. A grant at a
+    * choose-many opens the option, and the requester goes on choosing
+    * (consent slice 2). */
+  def grantAnswers(state: OathState, requester: PlayerId, decisionId: String)
+      : Boolean =
+    val parked = walkerResumeContext(state).flatMap {
+      case (ready, _, tree, pending, powers, _, _) =>
+        walkerCall(Right(ProcedureWalker.parkedDecide(ready, tree, pending,
+          powers)))
+    }
+    parked.toOption.flatten.exists(decide =>
+      decide.decisionId == decisionId && decide.owner == requester &&
+        decide.query.isInstanceOf[DecisionQuery.ChooseOne])
+
   /** The options of a choose-one or a choose-many, as offered. */
   private def offered(decide: Decide): Vector[DecisionOption] =
     decide.query match
