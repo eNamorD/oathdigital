@@ -206,8 +206,8 @@ private[walker] object WalkerPowerGather:
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
       state: ReadyGame, activePlayer: PlayerId,
       answered: Vector[Answered] = Vector.empty): Vector[OathViolation] =
-    val (rejected, emptied) = attributed(tree, powers, state, activePlayer,
-      answered)
+    val (rejected, emptied) = attributed(tree, powers.withAnswers(answered),
+      state, activePlayer, answered)
     rejected.map(_.violation) ++ emptied
 
   /** [[restrictionViolations]], keeping who rejected: the restrictions'
@@ -392,10 +392,11 @@ private[walker] object WalkerPowerGather:
     */
   def leafAt(state: ReadyGame, action: Operation, pending: PendingTree,
       powers: WalkerPowers): Option[Operation] =
-    resolveAt(state, pending, powers, action, pending.at, Vector.empty,
+    val picked = powers.withAnswers(pending.answered)
+    resolveAt(state, pending, picked, action, pending.at, Vector.empty,
       Set.empty).map:
         case decide: Decide => ProcedureWalker.narrowParked(state, action,
-          pending, powers, decide)
+          pending, picked, decide)
         case other => other
 
   private def resolveAt(state: ReadyGame, pending: PendingTree,

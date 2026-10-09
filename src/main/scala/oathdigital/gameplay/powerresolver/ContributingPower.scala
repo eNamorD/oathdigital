@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Answered, CampaignPlanOffer, CoreOperation, Decide, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, Operation, OperationRestriction, OptionReason, PlayerId, PowerId, PowerNote, PowerResolution, PowerSourceRef, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
+import oathdigital.model.{Answered, CampaignPlanOffer, CardId, CoreOperation, Decide, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, Operation, OperationRestriction, OptionReason, PlayerId, PowerId, PowerNote, PowerResolution, PowerSourceRef, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -109,6 +109,13 @@ final case class Offer(
     plan: PowerCtx => Option[CampaignPlanOffer]
 ) extends Contribution
 
+/** A modifier's own verdict on its option in the modifier decision, given
+  * the picks so far (modifier walker design, ruling 5): unavailable with a
+  * reason, or available with a warning. */
+enum OfferReason:
+  case Unavailable(reason: String)
+  case Warned(reason: String)
+
 /** A windowed node that turns what the powers offer into the children it walks.
   * The walker gathers the window's [[Offer]]s, asks each for its plan, and hands
   * the plans to `expand` in the deterministic power order.
@@ -163,13 +170,24 @@ trait ContributingPower extends NotingPower:
     * ends, so the active-modifier rule must not hold that card in play. No by
     * default. */
   def discardsItself: Boolean = false
-  /** What selecting this power pays, as the operations its action runs first.
-    * A command that selects several powers dry-runs all of their payments
-    * together (`OathRules.validateModifiers`), so a combination the player
-    * cannot pay is refused at selection. Free by default.
+  /** What selecting this power pays: the operations the modifier decision
+    * runs when the player picks it, and, for an action not yet on that
+    * decision, the operations a start's selection is dry-run against
+    * (`OathRules.validateModifiers`). Free by default.
     */
   def selectionPayments(ready: ReadyGame, actor: PlayerId)
       : Vector[CoreOperation] = Vector.empty
+  /** The card a player-selected power is printed on: its option in the
+    * modifier decision names this card. None for any other power. */
+  def selectionCard: Option[CardId] = None
+  /** The modifier-selection windows at which the player may pick this
+    * power. Empty for any power that is not player-selected. */
+  def selectionWindows: Set[PowerWindow] = Set.empty
+  /** Why this power's option in the modifier decision is unavailable or
+    * deserves a warning, given the picks so far in `ctx.answered`. A rule
+    * that one modifier states about another lives on the card that states
+    * it. None by default. */
+  def offerReason(ctx: PowerCtx): Option[OfferReason] = None
   /** Decision 10(b)'s named ignore. Receives the whole candidate rather than
     * its id, because a rule of the shape "ignore other modifiers of this
     * action" needs the candidate's classification, and that lives on the

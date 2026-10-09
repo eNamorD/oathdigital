@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
-import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx}
+import oathdigital.gameplay.powerresolver.{Contribution, ModifierPicks,
+  PowerCtx}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
@@ -116,3 +117,25 @@ class SelectedModifierSuite extends munit.FunSuite:
       oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
         catalog)))
     assertEquals(second(at, Vector.empty), Vector.empty[Operation])
+
+  test("its option names its card, at its actions' selection windows"):
+    val both = Probe(card, Cost.free,
+      Set(MajorActionType.Travel, MajorActionType.Search))
+    assertEquals(both.selectionCard, Some(card))
+    assertEquals(both.selectionWindows, Set[PowerWindow](
+      PowerWindow.TravelModifierSelection,
+      PowerWindow.SearchModifierSelection))
+
+  test("once picked it applies at its selection window, though it could not " +
+      "be paid for again"):
+    val priced = Probe(card, Cost(favor = 1), travel)
+    // The card now holds the favor the pick paid, so a second payment would
+    // be refused; the pick still applies, for its option restrictions.
+    val paid = tentsAtAncientCity(0).tokens(card, favor = 1).ready
+    val answered = Vector(Answered(
+      ModifierPicks.decisionId(PowerWindow.TravelModifierSelection),
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(card)), p1))
+    val window = PowerWindow.TravelModifierSelection
+    assert(!priced.applicable(ctx(paid, priced, window)))
+    assert(priced.applicable(ctx(paid, priced, window)
+      .copy(answered = answered)))

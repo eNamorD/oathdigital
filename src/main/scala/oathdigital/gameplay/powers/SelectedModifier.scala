@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.operations.Costs
-import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
+  ModifierPicks, PowerCtx, Transform}
 import oathdigital.model._
 
 /** A power the player selects in a command's `modifiers` at the start of a
@@ -23,7 +24,8 @@ import oathdigital.model._
   *  - At a `*ModifierSelection` window it asks "may the player select this
   *    now?": the power belongs to that action, its card is one the player may
   *    use (`PowerAccess`), and its `cost` is payable on its own, including the
-  *    empty-card rule.
+  *    empty-card rule. A power already picked in `ctx.answered` always
+  *    applies there.
   *  - At the action's eligibility window (the root, where the payment goes) a
   *    selected modifier always applies.
   *  - At every other window it asks `appliesAt`, which reads only the node the
@@ -66,10 +68,18 @@ trait SelectedModifier extends ContributingPower:
   /** Whether the power applies at the node it is hooked on. */
   def appliesAt(ctx: PowerCtx): Boolean = true
 
+  override def selectionCard: Option[CardId] = Some(cardId)
+  override def selectionWindows: Set[PowerWindow] =
+    actions.map(SelectedModifier.selectionWindow)
+
+  /** At its selection window: a picked power always applies there, so its
+    * option restrictions reach the options left; an unpicked one applies
+    * when the player may select it now. */
   final override def applicable(ctx: PowerCtx): Boolean =
     SelectedModifier.selectionAction(ctx.window) match
       case Some(action) => actions(action) &&
-        selectable(ctx.state, ctx.activePlayer)
+        (ModifierPicks.isPicked(ctx.answered, ctx.window, cardId) ||
+          selectable(ctx.state, ctx.activePlayer))
       case None => SelectedModifier.isEligibility(ctx.window) ||
         appliesAt(ctx)
 
@@ -112,6 +122,12 @@ object SelectedModifier:
     */
   def selectionAction(window: PowerWindow): Option[MajorActionType] =
     selection.get(window)
+
+  private val windowOf: Map[MajorActionType, PowerWindow] =
+    selection.map(_.swap)
+
+  /** The modifier-selection window of `action`. */
+  def selectionWindow(action: MajorActionType): PowerWindow = windowOf(action)
 
   /** The window at the root of `action`'s tree, where a payment goes. */
   def eligibility(action: MajorActionType): PowerWindow =
