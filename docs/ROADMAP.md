@@ -123,7 +123,7 @@ It reverses ruling 1 of the
 
 - [x] Slice 1: the modifier decision, then Search and facedown-adviser play.
 - [x] Slice 2: Travel.
-- [ ] Slice 3: Muster and Trade.
+- [x] Slice 3: Muster and Trade.
 - [ ] Slice 4: Recover, the empty windows, and deleting the client modifier
   flow and the preview endpoint.
 

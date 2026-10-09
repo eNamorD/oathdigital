@@ -6,7 +6,7 @@ import oathdigital.protocol.{GameIntent, MajorActionPreviewResponse,
 import TestProjections.actingProjection
 
 class ModifierSelectionStateSuite extends munit.FunSuite:
-  private val context = ModifierSelectionContext("g", "p", 4, "trade")
+  private val context = ModifierSelectionContext("g", "p", 4, "recover")
   private val first = PreviewModifier("adviser:p:denizen:a", "h.a", "A")
   private val second = PreviewModifier("site-card:s:denizen:b", "h.b", "B")
 
@@ -15,12 +15,12 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     */
   private def renderOrderingPanel(modifiers: Vector[PreviewModifier])
       : org.scalajs.dom.Element =
-    val response = MajorActionPreviewResponse(4L, "muster", modifiers,
+    val response = MajorActionPreviewResponse(4L, "recover", modifiers,
       Vector.empty)
     val selection = ModifierSelectionState.reconcile(None,
-      context.copy(action = "muster"), modifiers, "ordering-preview")
+      context.copy(action = "recover"), modifiers, "ordering-preview")
     val draft = ModifierFlowDraft(
-      command = GameIntent.StartWalker("muster", Vector.empty),
+      command = GameIntent.StartWalker("recover", Vector.empty),
       baseParameters = Map.empty, preview = response, selection = selection)
     ActionDecisionRenderer.actionsPanel(
       actingProjection(gameId = "g", nextSequence = 4L,
@@ -69,12 +69,12 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
         Vector(oathdigital.protocol.WalkerStartArgWire("button", "search:world"))),
       GameIntent.StartWalker("play-facedown-adviser", Vector.empty),
       GameIntent.StartWalker("place-banner-resource", Vector.empty))
-    // A registered key names its action whatever start arguments it carries
-    // (Trade carries its own). Search, play-facedown-adviser and Travel
+    // A registered key names its action whatever start arguments it
+    // carries. Search, play-facedown-adviser, Travel, Muster and Trade
     // choose their modifiers inside the walk, and place-banner-resource is
     // not registered, so none of them names one.
     assertEquals(commands.flatMap(ModifierFlowDraft.action).map(_._1),
-      Vector("recover", "forge", "muster", "trade"))
+      Vector("recover", "forge"))
     assertEquals(ModifierFlowDraft.action(GameIntent.BeginRest), None)
     // An unregistered walker key is not swept in: the server would reject a
     // preview for an action it does not know.
@@ -82,12 +82,12 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       None)
 
   test("a stale context clears the flow draft"):
-    val response = MajorActionPreviewResponse(4, "muster", Vector(first),
+    val response = MajorActionPreviewResponse(4, "recover", Vector(first),
       Vector.empty)
     val selected = ModifierSelectionState.reconcile(None, context,
       Vector(first), "preview").toggle(first)
     val draft = ModifierFlowDraft(
-      command = GameIntent.StartWalker("muster", Vector.empty),
+      command = GameIntent.StartWalker("recover", Vector.empty),
       baseParameters = Map.empty[String, String], preview = response,
       selection = selected)
     assertEquals(ModifierFlowDraft.reconcile(Some(draft),
@@ -128,24 +128,25 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       selection.invocations)
     assertEquals(submitted, GameIntent.StartWalker("recover", Vector("denizen.catacombs")))
 
-  test("a selected game-rule modifier such as Rowdy Pub invokes without throwing"):
-    val rowdyPub = PreviewModifier("game:denizen.rowdy-pub", "denizen.rowdy-pub",
-      "Rowdy Pub")
+  test("a selected game-rule modifier such as Relic Worship invokes " +
+      "without throwing"):
+    val relicWorship = PreviewModifier("game:denizen.relic-worship",
+      "denizen.relic-worship", "Relic Worship")
     val selection = ModifierSelectionState.reconcile(None,
-      context.copy(action = "muster"), Vector(rowdyPub), "muster-preview")
-      .toggle(rowdyPub)
-    assertEquals(selection.invocations, Vector(
-      ModifierInvocation("game", "denizen.rowdy-pub", None, "denizen.rowdy-pub")))
+      context.copy(action = "recover"), Vector(relicWorship),
+      "recover-preview").toggle(relicWorship)
+    assertEquals(selection.invocations, Vector(ModifierInvocation("game",
+      "denizen.relic-worship", None, "denizen.relic-worship")))
     assertEquals(ModifierFlowDraft.submission(
-      GameIntent.StartWalker("muster", Vector.empty), selection.invocations),
-      GameIntent.StartWalker("muster", Vector("denizen.rowdy-pub")))
+      GameIntent.StartWalker("recover", Vector.empty), selection.invocations),
+      GameIntent.StartWalker("recover", Vector("denizen.relic-worship")))
 
-  test("a Trade walker start retains its start argument"):
+  test("a walker start keeps its start arguments through the fold"):
     val invocation = ModifierInvocation("site-card", "catacombs",
       Some("site:a"), "denizen.some-power")
     Vector(
-      GameIntent.StartWalker("trade", Vector.empty,
-        Vector(oathdigital.protocol.WalkerStartArgWire("button", "favor"))))
+      GameIntent.StartWalker("recover", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("button", "example"))))
       .foreach { intent =>
         val submitted = ModifierFlowDraft.submission(intent, Vector(invocation))
         assertEquals(submitted.startArgs, intent.startArgs)

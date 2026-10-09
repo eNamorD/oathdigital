@@ -2,7 +2,8 @@ package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{GameIntent => GameCommand, MajorActionPreviewRequest,
-  MajorActionPreviewResponse, ModifierInvocation, PreviewModifier}
+  MajorActionPreviewResponse, ModifierInvocation, PreviewModifier,
+  WalkerStartArgWire}
 import TestProjections.actingProjection
 
 import scala.concurrent.{Future, Promise}
@@ -24,7 +25,6 @@ class ModifierFlowSuite extends munit.FunSuite:
   private val invocation = ModifierInvocation("adviser", "a", None, "h.a")
   private val recover = GameCommand.StartWalker("recover", Vector.empty)
   private val travel = GameCommand.StartWalker("travel", Vector.empty)
-  private val muster = GameCommand.StartWalker("muster", Vector.empty)
   private def response(action: String, modifiers: Vector[PreviewModifier]) =
     MajorActionPreviewResponse(9L, action, modifiers, Vector.empty)
   /** The drafts a session holds for `projection`: empty, then reconciled
@@ -179,16 +179,33 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(host.sent, Vector(start -> Vector.empty))
     assertEquals(host.currentDrafts.modifiers, None)
 
+  test("a Muster start goes out directly"):
+    val FlowUnderTest(host, ui) = flow()
+    val start = GameCommand.StartWalker("muster", Vector.empty)
+    ui.submitCommand(start)
+    assertEquals(host.previews, Vector.empty)
+    assertEquals(host.sent, Vector(start -> Vector.empty))
+    assertEquals(host.currentDrafts.modifiers, None)
+
+  test("a Trade start goes out directly, with its resource"):
+    val FlowUnderTest(host, ui) = flow()
+    val start = GameCommand.StartWalker("trade", Vector.empty,
+      Vector(WalkerStartArgWire("button", "favor")))
+    ui.submitCommand(start)
+    assertEquals(host.previews, Vector.empty)
+    assertEquals(host.sent, Vector(start -> Vector.empty))
+    assertEquals(host.currentDrafts.modifiers, None)
+
   test("confirming leaves the flow and sends the folded submission without a redraw"):
-    val ordering = draftWithModifierSelected("muster", muster)
+    val ordering = draftWithModifierSelected("recover", recover)
     val FlowUnderTest(host, ui) = flow(
       draftsForProjection.copy(modifiers = Some(ordering)))
     ui.confirmModifiers()
-    assertEquals(host.previews, Vector(MajorActionPreviewRequest(9L, "muster",
+    assertEquals(host.previews, Vector(MajorActionPreviewRequest(9L, "recover",
       Map.empty, Vector(invocation))))
-    host.answer(Right(response("muster", Vector(modifier)))).map { _ =>
+    host.answer(Right(response("recover", Vector(modifier)))).map { _ =>
       assertEquals(host.sent, Vector(
-        GameCommand.StartWalker("muster", Vector("h.a")) -> Vector.empty))
+        GameCommand.StartWalker("recover", Vector("h.a")) -> Vector.empty))
       assertEquals(host.currentDrafts.modifiers, None)
       assertEquals(host.redraws, 0)
     }
