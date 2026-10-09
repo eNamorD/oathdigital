@@ -87,14 +87,25 @@ did":
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
 
+### Phase - Catalog batch 5
+
+Muster and Trade sources and adviser counting, the cheapest groups of the
+engine-blocked phase
+([design](superpowers/specs/2026-10-08-catalog-batch-5-design.md),
+[rulings](superpowers/specs/2026-10-08-catalog-batch-5-rulings.md)).
+
+- [ ] **Slice 1: Muster and Trade sources.** Golem Legions, Map Library,
+  Skilled Merchants, Old Songs, Pressgangs.
+- [ ] **Slice 2: Warband placement.** Vow of Wandering.
+- [ ] **Slice 3: Adviser counting.** Marriage, Pied Piper, Lost Tapestry.
+- [ ] **Slice 4: Adviser arrival.** Family Wagon.
+
 ### Phase - Catalog batch - engine-blocked
 
 Cards that need an engine change first, grouped by the missing mechanism.
 
 - The Gathering and Whispering Stone need a nested Negotiation with its own
   participants.
-- Golem Legions needs Muster to allow a per-source exception to the
-  token-free rule and to accept the actor's own advisers as sources.
 - Sneak Attack needs an off-turn actor: a Campaign whose acting player is
   not the active player, including selecting modifiers off turn. It queues
   through follow-ups via `FollowUp.player`
@@ -103,7 +114,9 @@ Cards that need an engine change first, grouped by the missing mechanism.
   attacker today (`PlanContext`, `BattlePlan`, `VowOfPeaceContribution`).
   Second Wind waits for the same actor on the defender's side: a defender
   who wins with it would be owed a Travel and a Campaign off turn, so it is
-  offered to the attacker only.
+  offered to the attacker only. Vow of Union waits for it too: its holder
+  may move warbands at the start of any Campaign
+  ([catalog batch 5 rulings](superpowers/specs/2026-10-08-catalog-batch-5-rulings.md#moved-out-of-the-batch)).
 - Search Party: a card played after its WHEN PLAYED, as if searched. Nested
   inside the WHEN PLAYED, the played card fires neither its own WHEN PLAYED
   nor the card-play triggers (`WalkerHooks.gathered` is keyed by window), and
@@ -125,17 +138,11 @@ Found by the survey of 2026-09-29:
   Cracked Horn, Ring of Devotion.
 - **A choice of discard or placement destination:** Bracken, Baron, New
   Growth, Forest Warden, Vow of Wisdom.
-- **A Muster or Trade source rule** (`MusterSource.resolve` accepts only
-  token-free cards at the pawn's site): Map Library, Skilled Merchants, Old
-  Songs, Pressgangs.
 - **Acting as if elsewhere, or overriding a suit:** Small Friends, Friendly
   Familiar, Master of Disguise, Acting Troupe, Pledge to Discord, Spiteful
   Mirror, Yew Staff.
 - **A nested Campaign or Travel, or an overridden actor site:** Wild Allies,
   Captains, Palanquin.
-- **Raising or exempting the adviser limit** (`AdviserLimit` only lowers it):
-  Pied Piper, Marriage, Family Wagon, Vow of Union, Vow of Wandering (which
-  also blocks placing warbands), Lost Tapestry.
 - **Plans that a power restricts or changes:** Beast Tamer, Specialist, Wild
   Mounts.
 - **Overriding scoring or the victor:** Hearts and Minds, Careful Plans,
@@ -293,13 +300,6 @@ one.
   [catalog batch 3 rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md)
   leave it unresolved. A product-owner answer settles it; one bank would
   reuse Fabled Feast's question.
-- [ ] **Limit cards that count or ignore advisers.** `CardPlayRules` holds
-  one adviser limit that only lowers, plus the played card's own limit, which
-  fits Silver Tongue, Insomnia and Assassin. Family Wagon (removes the limit
-  for Nomad advisers), Pied Piper (ignores the limit), Marriage (counts as
-  one adviser) and Lost Tapestry (facedown Visions do not count) change what
-  counts toward the limit, so they need a counting rule that
-  `CardSlots.adviserSlots` and `AdviserLimit` share.
 - [ ] **Plan-restricting powers, Bag of Siegeworks and Empire defenders.**
   Peace Envoy and other powers that restrict which plans a side may choose have
   no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
