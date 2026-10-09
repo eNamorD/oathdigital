@@ -26,8 +26,8 @@ object MushroomsCard extends Denizen(DenizenId("183"), "Mushrooms", Suit.Beast) 
   *    may be another region's when Observatory or Errand Boy offers it. A
   *    draw extension such as Augury adds cards, still from the bottom: it
   *    folds first ([[BottomDraw.Priority]]).
-  *  - It is warned while Wine of Welcome is picked, which then does
-  *    nothing.
+  *  - It cannot be picked with Painted Trumpet, and is warned while Wine
+  *    of Welcome is picked, which then does nothing.
   *
   * It writes no line: the start line names it, and the Search line says
   * the card came from the bottom.
@@ -51,7 +51,10 @@ final case class Mushrooms private (catalog: ExecutableCatalog)
         _.isInstanceOf[SearchSource.RegionalDiscard]))))
 
   override def offerReason(ctx: PowerCtx): Option[OfferReason] =
-    Option.when(ModifierPicks.isPicked(ctx.answered, ctx.window,
+    if ModifierPicks.isPicked(ctx.answered, ctx.window,
+        PaintedTrumpetCard.id) then
+      Some(OfferReason.Unavailable(Mushrooms.notWithTrumpet))
+    else Option.when(ModifierPicks.isPicked(ctx.answered, ctx.window,
       WineOfWelcomeCard.id))(OfferReason.Warned(WineOfWelcome.withMushrooms))
 
 object Mushrooms:
@@ -60,6 +63,7 @@ object Mushrooms:
   /** The cards it draws, before any draw extension. */
   val Cards: Int = 1
   val worldDeck: String = "Mushrooms draws from a discard pile"
+  val notWithTrumpet: String = "Cannot be used with Painted Trumpet"
 
   def forCatalog(catalog: ExecutableCatalog): Mushrooms =
     new Mushrooms(catalog)

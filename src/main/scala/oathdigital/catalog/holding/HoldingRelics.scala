@@ -52,14 +52,6 @@ object AncientWritCard extends Relic(RelicId("R22"), "Ancient Writ", value = 81,
       "facedown, and discard the other 2.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object PaintedTrumpetCard extends Relic(RelicId("R23"), "Painted Trumpet", value = 46, defense = 1):
-  val power = PrintedPower(PowerId("relic.painted-trumpet"),
-    persistent = false, cost = Cost.free,
-    text = "Instead of drawing from one discard pile, you may draw the " +
-      "top card from each discard pile. This draw amount " +
-      "**cannot** be modified.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object ImperialSealCard extends Relic(RelicId("R26"), "Imperial Seal", value = 35, defense = 2):
   val power = PrintedPower(PowerId("relic.imperial-seal"),
     persistent = false, cost = Cost(secret = 1),

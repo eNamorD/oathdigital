@@ -59,8 +59,8 @@ import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}
 import oathdigital.gameplay.powers.search.{AuguryCard, CropRotationCard,
   DisciplesCard, ErrandBoyCard, ForcedLaborCard, HuntingPartyCard,
-  MushroomsCard, NewsFromAfarCard, ObservatoryCard, TruthfulHarpCard,
-  WineOfWelcomeCard}
+  MushroomsCard, NewsFromAfarCard, ObservatoryCard, PaintedTrumpetCard,
+  TruthfulHarpCard, WineOfWelcomeCard}
 import oathdigital.gameplay.powers.setup.{GreatForgeCard, GreatMarketCard,
   ProvingGroundsCard}
 import oathdigital.gameplay.powers.targeting.{CircletOfCommandCard,
