@@ -25,12 +25,13 @@ object WarningSignalsCard extends Denizen(DenizenId("25"), "Warning Signals", Su
   * leaves each site at least one warband ([[WarbandArrangement]], shared with
   * Messenger). Nothing is asked when there is nowhere to move to: no ruled
   * site, or no warband beyond the one each site keeps. The card is discarded
-  * when the Campaign has resolved, whether or not the defender won, marked
-  * (`PlanDiscard.Marked`) so that Wild Mounts can replace it.
+  * when the Campaign has resolved, whether or not the defender won, by
+  * `PlanDiscard.afterCampaign`, so Wild Mounts can replace it.
   *
   * Once the defender has answered it writes "{Blue} redistributed their
   * warbands."; the line follows the decision, so a game parked on it resumes
-  * where it was.
+  * where it was. The discard writes "Discarded after the Campaign.", as every
+  * plan that says "At end, discard" does.
   */
 final case class WarningSignals private (catalog: ExecutableCatalog)
     extends BattlePlan:
@@ -38,7 +39,8 @@ final case class WarningSignals private (catalog: ExecutableCatalog)
   def id: PowerId = WarningSignals.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(WarningSignals.redistributed)
+  override def noteKeys: Vector[NoteKey] =
+    Vector(WarningSignals.redistributed, PlanDiscard.discarded)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.user.flatMap(user => context.denizen(cardId).map(source =>
@@ -47,8 +49,7 @@ final case class WarningSignals private (catalog: ExecutableCatalog)
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>
-      use.user.toVector.map(user => PlanDiscard.Marked(cardId, use.user,
-        Vector(PlanDiscard.denizen(catalog, user, cardId))))))
+      PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
   /** The sites the user defends as a player, in map order. */
   private def defended(ready: ReadyGame, user: PlayerId): Vector[SiteId] =
