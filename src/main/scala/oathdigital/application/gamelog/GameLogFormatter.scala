@@ -4,7 +4,7 @@ import oathdigital.application.{GamePresentationProjector,
   WalkerDecisionProjector}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.ReplayStep
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.{ConsentPowers, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
   FollowUpSupplyWaiver, PowerNoted, WalkerCompleted, WalkerParked,
   WalkerStepRecorded}
@@ -36,6 +36,8 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val events = new EventLines(words)
   private val notes = new PowerLines(words, wordings)
   private val takenBack = new TakenBackGroups(words)
+  private val consent = new ConsentLines(words, choices,
+    ConsentPowers.default(catalog))
 
   /** Taken-back moves (undo design, "Game Log"). The live entries are the
     * live journal formatted alone, so no line reads a voided event or a
@@ -71,8 +73,25 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     val voided = stood.flatMap((at, marker) =>
       formatLive(live(at), viewer).filter(entry =>
         entry.sequence >= marker.from && entry.sequence < marker.until))
-    takenBack.mark(stood.map(_._2), (formatLive(live(steps.size), viewer) ++
-      voided).sortBy(entry => (entry.sequence, entry.ordinal)))
+    withdrawn(steps, takenBack.mark(stood.map(_._2),
+      (formatLive(live(steps.size), viewer) ++ voided)
+        .sortBy(entry => (entry.sequence, entry.ordinal))))
+
+  /** A withdrawn request's line, struck through under no header (consent
+    * design, "Game Log"). At most one request waits at a time, so each
+    * withdrawal takes back the latest request before it. */
+  private def withdrawn(steps: Vector[ReplayStep[OathState, OathEvent]],
+      entries: Vector[LogEntry]): Vector[LogEntry] =
+    val struck = steps.foldLeft((Option.empty[Long], Set.empty[Long])) {
+      case ((open, done), step) => step.event.event match
+        case _: OathEvent.ConsentRequested => (Some(step.event.index), done)
+        case _: OathEvent.ConsentRequestWithdrawn => (None, done ++ open)
+        case _ => (open, done)
+    }._2
+    entries.map(entry =>
+      if struck(entry.sequence) then entry.copy(takenBack =
+        Some(LogTakenBack(entry.sequence, Vector.empty)))
+      else entry)
 
   /** Whether `event` voids or restores a batch: it posts no line and is no
     * part of any journal a formatting reads. */
@@ -89,10 +108,11 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         val (lines, next) = eventLines(journal, run, at, viewer)
         val opened = if at == 0 then opening(journal) ++ lines else lines
         val filed = journal.event(at) match
-          // A Skip follows the previous run's completion, so it belongs to
-          // the latest section in time order (follow-up actions design).
-          case _: FollowUpSkipped => opened.map(_.copy(section =
-            entries.reverseIterator.flatMap(_.section).nextOption()))
+          // A Skip follows the previous run's completion, and a consent
+          // line comes between a walk's steps, so each belongs to the latest
+          // section in time order (follow-up actions and consent designs).
+          case _: FollowUpSkipped | _: ConsentEvent => opened.map(_.copy(
+            section = entries.reverseIterator.flatMap(_.section).nextOption()))
           case _ => opened
         val posted = quietWake(entries.lastOption, filed)
         (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
@@ -151,8 +171,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         (Vector(victory(winner, exhaustion(kind, vision))), run)
       // A diagnostic, not play.
       case _: OathEvent.IgnoredRulesRecorded => (Vector.empty, run)
-      // Consent's lines are Task 8's; until then a consent fact posts none.
-      case _: ConsentEvent => (Vector.empty, run)
+      case _: ConsentEvent => (consent.lines(journal, at, viewer), run)
       // Undo's facts post no line of their own; `format` keeps markers out
       // of every journal it formats.
       case _: OathEvent.CommandAccepted | _: OathEvent.StepTakenBack |
