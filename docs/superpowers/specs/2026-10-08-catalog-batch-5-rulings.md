@@ -50,10 +50,20 @@
 
 - **247 Vow of Wandering.** Its Muster power adds two warbands to the
   Muster's gain, best effort from the supply. While it is a faceup adviser,
-  its holder cannot move warbands onto a site, from the board or from another
-  site. Moving warbands from a site to the board stays legal. After a
-  Conquest victory, the placement question is not asked and the survivors
-  stay on the board, with a line saying why.
+  its holder cannot place warbands on a site, from anywhere: the board, the
+  bank or another site. Moving warbands from a site to the board stays
+  legal. After a Conquest victory, the placement question is not asked and
+  the survivors stay on the board, with a line saying why.
+  - The holder's warbands are those leaving the holder's board, and those
+    of the holder's kind. Imperial warbands, which the Chancellor and the
+    Citizens share, count only while the holder is the active player.
+  - Garrison and Key to the City still gain their warbands, and place none.
+    Bandit Prince replaces nothing. Hospital saves nothing.
+  - Ballot Box: none of the warbands can be replaced, so it removes them
+    all.
+  - Messenger and Warning Signals may only bring warbands back to the
+    board.
+  - The minor action refuses a move to the site, naming the Vow.
 
 ## Slice 3: Adviser counting
 

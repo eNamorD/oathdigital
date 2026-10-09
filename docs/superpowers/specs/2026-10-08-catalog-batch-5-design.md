@@ -32,12 +32,14 @@ with the limit: it is a Muster gain and a ban on placing warbands on sites.
 
 Batch 4's bar holds: no new operation, walker window, decision query kind,
 option kind, `NoteArg` kind, protocol change or frontend change. Refactors
-inside `gameplay/powers/` are allowed. The product owner approved four
+inside `gameplay/powers/` are allowed. The product owner approved five
 changes outside `gameplay/powers/`:
 
 - **The Muster and Trade source query and `MusterSource.resolve`** (slice 1).
 - **A warband placement restriction**, an `OperationRestriction` that a power
   registers (slice 2).
+- **The minor action's refusal** names the reason of an operation a
+  restriction skipped, in `MinorActions` (slice 2, approved at plan time).
 - **The adviser limit count** in `CardSlots.adviserSlots` and
   `AdviserLimit.of` (slice 3).
 - **An adviser arrival pass** in the walker (slice 4).
@@ -139,21 +141,44 @@ count at its own value plus the other Arcane advisers.
 
 - **The Muster gain** adds two warbands to the Muster's own gain at
   `MusterGain`, as Vow of Beastkin's does. It is best effort from the
-  supply. Its line reads what the gain added beyond the base.
+  supply. Its line reads what the gain added beyond its amount before the
+  Vow, at most two. A Muster under both Vows writes each Vow's own part.
 - **The placement restriction** is an `OperationRestriction` the card
   registers through `ContributingPower.operationRestrictions`, as Lost
   Tongue does. While the card is a faceup adviser, the restriction refuses
-  any `Move` of its holder's warbands whose destination is a site, from the
-  board or from another site. A move from a site to the board stays legal.
-  It covers every path found: the minor action, `WarbandArrangement`
-  (Messenger, Warning Signals), Garrison, Key to the City, Hospital, Bandit
-  Prince and Ballot Box. An option it refuses is hidden by the search, and
-  the minor action already runs restrictions.
+  any `Move` that puts its holder's warbands on a site: from the board, from
+  the bank or from another site. It reads the leaves of a composite, so a
+  `Replace` is refused too. A move from a site to the board stays legal.
+  - Warbands are the holder's when they leave the holder's board, or when
+    they are of the holder's kind. The Chancellor and the Citizens share
+    Imperial warbands, so Imperial ones count only while the holder is the
+    active player.
+  - The refusal is `Impossible`: an optional placement it refuses is
+    skipped, and no walk fails because of it. The search hides an option
+    only when its walk fails, so it hides nothing here. Each power that
+    places warbands reads the Vow itself:
+    - Garrison gains its warbands, does not ask for sites, and writes the
+      Vow's line.
+    - Key to the City kills and gains, and writes the Vow's line instead of
+      its placement line.
+    - Bandit Prince does not ask, and writes the Vow's line. The walker
+      never asks an optional question whose every option is unavailable, so
+      the line takes the place of the hover reasons.
+    - Ballot Box can replace none of the warbands, so it removes them all,
+      after the Vow's line.
+    - Hospital saves nothing: the holder's dead stay killed.
+    - Messenger and Warning Signals cap each site at what it holds, so the
+      holder can only bring warbands back to the board.
+  - The Vow's line, under the power it stopped: "Vow of Wandering forbids
+    placing warbands on sites."
+  - The minor action refuses a move to the site with the reason of the
+    operation the restriction skipped: "Vow of Wandering forbids placing
+    warbands on sites". The client still offers the move.
 - **Campaign conquest** asks "place up to N survivors" with a
   `ChooseAmount`, which cannot carry a hover reason. A Transform on
-  `CampaignPlacement` removes the question, so the survivors stay on the
-  board. Its line says Vow of Wandering kept them there. The restriction
-  still guards the placement.
+  `CampaignPlacement` replaces the question with a line, so the survivors
+  stay on the board: "Kept {n} surviving warbands on the board." The
+  restriction still guards the placement.
 
 ## Slice 3: Adviser counting
 
