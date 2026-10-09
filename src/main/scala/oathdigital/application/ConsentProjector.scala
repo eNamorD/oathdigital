@@ -58,7 +58,9 @@ private[application] final class ConsentProjector(
       ready.game.current.players.map(_.player).filter(_ != viewer).map(
         other => ConsentPreferenceRowProjection(other.value,
           ready.consent.preference(viewer, power, other)
-            .fold(ConsentSetting.CaseByCase.key)(_.key)))))
+            .fold(ConsentSetting.CaseByCase.key)(_.key))),
+      powers.source(power).collect { case PowerSourceRef.Card(card) =>
+        card.value }))
 
   /** The option asked about, named as its decision row names it. */
   private def target(context: ScopedProjectionContext,

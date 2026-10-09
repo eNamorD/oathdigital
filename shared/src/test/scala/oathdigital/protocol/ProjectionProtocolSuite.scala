@@ -123,7 +123,10 @@ class ProjectionProtocolSuite extends munit.FunSuite:
         Vector("Narrow Pass"), "Dunes")),
       consentPreferences = Vector(ConsentPreferencesProjection(
         "site.narrow-pass.pass", "Narrow Pass",
-        Vector(ConsentPreferenceRowProjection("p1", "always"))))))
+        Vector(ConsentPreferenceRowProjection("p1", "always"))),
+        ConsentPreferencesProjection("denizen.secret-police",
+          "Secret Police", Vector(ConsentPreferenceRowProjection("p1",
+            "never")), Some("113")))))
 
   test("an askable option's consent ask and a site power's id round-trip"):
     assertRoundTrips(projection.copy(

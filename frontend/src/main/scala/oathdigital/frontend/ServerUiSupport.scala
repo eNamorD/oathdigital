@@ -57,8 +57,14 @@ private[frontend] object ServerUiSupport:
         case Some(details) =>
           val face = CardFace.render(details)
           face.setAttribute("data-denizen-id", denizen.denizenId)
+          // A card printing a power the viewer rules opens with their
+          // consent grid (consent slice 3).
+          val ruled = links.cardGrid(details).map(grid =>
+            (origin: dom.html.Element) =>
+              CardInspection.openRuled(details, grid, origin))
+          ruled.foreach(open => face.onclick = _ => open(face))
           cards.appendChild(options.card(face, details,
-            Vector(BoardOptions.cardKey(details), siteSlot(site, at))))
+            Vector(BoardOptions.cardKey(details), siteSlot(site, at)), ruled))
         case None =>
           val back = facedownCard("denizen")
           back.setAttribute("data-denizen-id", denizen.denizenId)
