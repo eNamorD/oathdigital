@@ -239,13 +239,15 @@ private[walker] object WalkerPowerGather:
     * restrictions whose violation answering it would add. It is askable
     * when every one of them is waivable by a player other than the
     * decision's owner and nothing on the option was refused this turn
-    * (consent design, ruling 8); otherwise it is the first one's note. Empty
-    * without a power that restricts, since only a restriction can explain a
-    * hidden option.
+    * (consent design, ruling 8), and `grantable` says a grant of their powers
+    * would open it; otherwise it is the first one's note. Empty without a
+    * power that restricts, since only a restriction can explain a hidden
+    * option.
     */
   def lookAheadNoted(root: Operation, decide: Decide, narrowed: Decide,
       state: ReadyGame, activePlayer: PlayerId, powers: WalkerPowers,
-      answered: Vector[Answered], procedure: Option[ProcedureRef])
+      answered: Vector[Answered], procedure: Option[ProcedureRef],
+      grantable: (DecisionOptionRef, Vector[PowerId]) => Boolean)
       : Vector[(DecisionOptionRef, OptionReason)] =
     val offered = optionRefs(narrowed).toSet
     val hidden = optionRefs(decide).filterNot(offered)
@@ -264,18 +266,22 @@ private[walker] object WalkerPowerGather:
           case _ => DecisionAnswer.ChooseOneAnswer(ref)
         val fresh = found(answered :+ Answered(decide.decisionId, answer,
           decide.owner)).filterNot(breach => baseline(breach.violation))
-        askable(decide, ref, fresh, seen).orElse(fresh.headOption.flatMap(
+        askable(decide, ref, fresh, seen, grantable).orElse(fresh.headOption.flatMap(
           breach => breach.restriction.note(breach.ctx, ref).map(note =>
             OptionReason.Noted(breach.power, note))))
           .map(ref -> _)
       }
 
   /** `ref`'s consent ask, when every breach answering it adds is waivable by
-    * a player other than the decision's owner, and none of their powers'
-    * answers on it was refused this turn. Only a choose-one: a grant answers
-    * the decision with `ref` alone (plan decision 8). */
+    * a player other than the decision's owner, none of their powers' answers
+    * on it was refused this turn, and a grant of them would open it: a
+    * destination the traveller cannot pay for is not worth asking about.
+    * Only a choose-one: a grant answers the decision with `ref` alone (plan
+    * decision 8). */
   private def askable(decide: Decide, ref: DecisionOptionRef,
-      fresh: Vector[Attributed], state: ReadyGame): Option[OptionReason] =
+      fresh: Vector[Attributed], state: ReadyGame,
+      grantable: (DecisionOptionRef, Vector[PowerId]) => Boolean)
+      : Option[OptionReason] =
     val requester = decide.owner
     val turn = ConsentTurn.of(state)
     val waivers = fresh.map(breach => breach.restriction.waiver.flatMap(
@@ -288,7 +294,8 @@ private[walker] object WalkerPowerGather:
       val refused = all.exists((breach, _, _) => state.consent.remembered(
         ConsentKey(breach.power, requester, decide.decisionId, ref), turn)
         .contains(ConsentAnswer.Refused))
-      Option.unless(refused):
+      Option.when(!refused &&
+          grantable(ref, all.map(_._1.power).distinct)):
         val (first, waiver, _) = all.head
         val asks = all.map(_._3).distinct.map(granter => ConsentAsk(granter,
           all.collect { case (breach, _, `granter`) => breach.power }.distinct))

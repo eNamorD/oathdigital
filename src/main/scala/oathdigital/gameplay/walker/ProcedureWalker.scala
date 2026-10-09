@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DecisionAnswer, DieFace, Note, NoteStates, OathState, OathViolation, Operation, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, Note, NoteStates, OathState, OathViolation, Operation, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -446,8 +446,8 @@ object ProcedureWalker:
     else WalkerSearch.narrow(decide, verdict(decide, ctx, path)).map(_.map {
       cut =>
         val reasons = WalkerPowerGather.lookAheadNoted(ctx.root, decide, cut,
-          ctx.state, ctx.activePlayer, ctx.powers, ctx.answered, ctx.procedure)
-          .toMap
+          ctx.state, ctx.activePlayer, ctx.powers, ctx.answered, ctx.procedure,
+          grantable(decide, ctx, path)).toMap
         WalkerSearch.explained(decide, cut, reasons)
     })
 
@@ -486,6 +486,18 @@ object ProcedureWalker:
       val base = new SearchMemo.Base(ctx.root, path, ctx.state, ctx.answered,
         ctx.procedure, ctx.activePlayer, decide.decisionId, decide.owner)
       answer => ctx.powers.searchMemo.verdict(base, answer)(reached(answer))
+
+  /** Whether a grant of `powers` on `ref` would leave some path from it to a
+    * legal end: the verdict, asked of the state as it would stand with the
+    * grant remembered this turn (consent design, ruling 8). */
+  private def grantable(decide: Decide, ctx: WalkCtx, path: Vector[String])(
+      ref: DecisionOptionRef, powers: Vector[PowerId]): Boolean =
+    val turn = ConsentTurn.of(ctx.state)
+    val keys = powers.map(ConsentKey(_, decide.owner, decide.decisionId, ref))
+    val granted = ctx.state.copy(consent =
+      ctx.state.consent.granting(keys, turn))
+    verdict(decide, ctx.copy(state = granted), path)(
+      DecisionAnswer.ChooseOneAnswer(ref)).isRight
 
   /** A search's walk as a verdict. A broken position is a rejection, as it
     * is for a simulation. */

@@ -130,13 +130,22 @@ final case class ConsentState(
     copy(preferences = preferences.filterNot { case ((by, on, _), _) =>
       by == granter && on == power })
 
+  /** The ledger had `keys` been granted at `now`: what the look-ahead tries
+    * before it offers to ask, so an option a grant still would not open is
+    * never askable. */
+  def granting(keys: Vector[ConsentKey], now: ConsentTurn): ConsentState =
+    copy(answers = answersAt(now) ++ keys.map(_ -> ConsentAnswer.Granted),
+      turn = Some(now))
+
   /** What survives an undo or a redo: everything but a waiting request
     * (consent design, "Undo"). */
   def carried: ConsentState = copy(pending = None)
 
   private def settled(request: ConsentRequest, answer: ConsentAnswer,
       now: ConsentTurn): ConsentState =
-    val kept = if turn.contains(now) then answers
-      else Map.empty[ConsentKey, ConsentAnswer]
-    copy(answers = kept ++ request.keys.map(_ -> answer), pending = None,
-      turn = Some(now))
+    copy(answers = answersAt(now) ++ request.keys.map(_ -> answer),
+      pending = None, turn = Some(now))
+
+  /** The answers still standing at `now`: none once their turn has ended. */
+  private def answersAt(now: ConsentTurn): Map[ConsentKey, ConsentAnswer] =
+    if turn.contains(now) then answers else Map.empty

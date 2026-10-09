@@ -88,9 +88,9 @@ class ConsentRequestServiceSuite extends munit.FunSuite:
   test("Always Allow grants and sets the ruler's preference"):
     val (service, _) = ConsentFixture.service()
     val always = answering(service, asking(service), ConsentChoice.Always)
-    assertEquals(always.events.take(2), Vector(
-      ConsentPreferenceSet(p2, pass, p1, ConsentSetting.Always),
-      ConsentAnswered(p2, granted = true)))
+    assertEquals(always.events.head, ConsentAnswered(p2, granted = true))
+    assertEquals(always.events.last,
+      ConsentPreferenceSet(p2, pass, p1, ConsentSetting.Always))
     assertEquals(consent(always).preference(p2, pass, p1),
       Some(ConsentPreference.Always))
     assertEquals(pawnOfP1(always), Some(TravelFixture.provincePlains))
@@ -98,9 +98,8 @@ class ConsentRequestServiceSuite extends munit.FunSuite:
   test("Never Allow refuses and sets the ruler's preference"):
     val (service, _) = ConsentFixture.service()
     val never = answering(service, asking(service), ConsentChoice.Never)
-    assertEquals(never.events, Vector(
-      ConsentPreferenceSet(p2, pass, p1, ConsentSetting.Never),
-      ConsentAnswered(p2, granted = false)))
+    assertEquals(never.events, Vector(ConsentAnswered(p2, granted = false),
+      ConsentPreferenceSet(p2, pass, p1, ConsentSetting.Never)))
     assert(parked(never))
 
   test("a ruler's Always answers a request at once"):

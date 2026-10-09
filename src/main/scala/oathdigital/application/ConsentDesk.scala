@@ -48,8 +48,10 @@ private[application] final class ConsentDesk(rules: OathRules,
       ConsentRequested(request) +: automatic(ready.consent, request))
   yield events
 
-  /** `granter`'s answer. Never Allow and Always Allow first set their
-    * preference for the requester on every power of their ask. */
+  /** `granter`'s answer. Never Allow and Always Allow also set their
+    * preference for the requester on every power of their ask, after the
+    * answer and anything it settles, so the requester's log reads a manual
+    * Always as it reads a Yes: the answer comes right after the question. */
   def answer(state: OathState, granter: PlayerId, choice: ConsentChoice)
       : Result = for
     ready <- playing(state)
@@ -60,9 +62,8 @@ private[application] final class ConsentDesk(rules: OathRules,
         s"${granter.value} has not been asked for consent"))
     preferences = choice.setting.toVector.flatMap(setting => ask.powers.map(
       ConsentPreferenceSet(granter, _, request.requester, setting)))
-    events <- settled(state,
-      preferences :+ ConsentAnswered(granter, choice.granted))
-  yield events
+    events <- settled(state, Vector(ConsentAnswered(granter, choice.granted)))
+  yield events ++ preferences
 
   /** The requester's Undo while their request waits (ruling 14). Anyone
     * else's Undo waits for the answer. */

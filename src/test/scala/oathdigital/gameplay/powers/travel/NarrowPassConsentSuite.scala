@@ -97,6 +97,13 @@ class NarrowPassConsentSuite extends munit.FunSuite:
       case DecisionOption.Unavailable(_, _: OptionReason.Noted) => ()
       case other => fail(s"expected a plain unavailable option, got $other")
 
+  test("a destination a grant would still not open is not askable: the " +
+      "traveller cannot pay for it"):
+    // One Supply pays for the Cradle's coast, not for a journey to the
+    // Provinces.
+    val poor = on(board(supply = 1))(_.warbandsAt(pass, p2, 1))
+    assertNotedBy(dunesOffered(poor), "no-travel")
+
   test("a grant remembered this turn opens the destination, and the Travel " +
       "goes there"):
     val granted = remembering(ruled, ConsentAnswer.Granted,
