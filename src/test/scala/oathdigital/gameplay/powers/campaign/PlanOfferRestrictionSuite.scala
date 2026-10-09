@@ -80,8 +80,14 @@ class PlanOfferRestrictionSuite extends munit.FunSuite:
     val b = rivalDefendsWithLongbows
     val run = defenderWindow(b,
       plansWith(ForbidsDefenderPlan(longbowsRef, noted = true)))
+    assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     assert(run.refused(b.rival, CampaignIds.defenderPlan,
       ChooseOneAnswer(longbowsRef)).nonEmpty)
+    // Without the restriction, the same answer is accepted.
+    val free = defenderWindow(b,
+      Vector(TitleDefensePlan.plan, Longbows, Encirclement))
+    assert(free.refused(b.rival, CampaignIds.defenderPlan,
+      ChooseOneAnswer(longbowsRef)).isEmpty)
 
   test("a plan its own rule withheld keeps that reason"):
     // Two warbands committed against the rival's two: the forces are equal.

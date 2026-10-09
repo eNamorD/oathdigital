@@ -91,6 +91,11 @@ private[walker] object WalkerPowerGather:
     * none, as a forbidden `Decide` option is. An offer its own rule already
     * withheld keeps its reason. No plan is asked about, so a waiver is not
     * consulted.
+    *
+    * A restriction without a note must not forbid a plan already picked in
+    * the window: the pass that applies the pick looks the plan up among
+    * these offers, and a dropped plan fails that resume. A noted one is
+    * safe, because the pick is applied whatever the offer's reason.
     */
   private def restrictOffers(offers: Vector[OfferedPlan],
       restrictions: Vector[(PowerId, OptionRestriction)],
