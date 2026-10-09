@@ -49,7 +49,7 @@ class RivalKhanSuite extends munit.FunSuite:
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviser(base, card, Orientation.FaceUp),
-      base.rival, planlessCard("Golem Legions"), Orientation.FaceUp)
+      base.rival, planlessCard("Ward of Silence"), Orientation.FaceUp)
     assert(!commit(rules(losingDice), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 

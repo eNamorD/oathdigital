@@ -12,7 +12,7 @@ import oathdigital.testkit.{CatalogNames, Look}
 class CrackedSageSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Cracked Sage")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val arcane = planlessCard("Golem Legions")
+  private val arcane = planlessCard("Ward of Silence")
 
   private def funded(b: Board, who: PlayerId): Board =
     on(b)(_.favor(who, 2).secrets(who, faceUp = 1))

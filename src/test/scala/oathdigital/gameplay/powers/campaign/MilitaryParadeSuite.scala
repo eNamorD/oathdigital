@@ -18,7 +18,7 @@ class MilitaryParadeSuite extends munit.FunSuite:
     DecisionOptionRef.Denizen(honors)
   private val orders = planless("Martial Culture", "Code of Honor")
   private val beast = planlessCard("Errand Boy")
-  private val arcane = planlessCard("Golem Legions")
+  private val arcane = planlessCard("Ward of Silence")
 
   /** The attacker holds Military Parade. The other player rules the origin and
     * holds two order advisers and a beast adviser faceup, and an arcane
