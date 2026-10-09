@@ -1,7 +1,6 @@
 package oathdigital.catalog.holding
 
-import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower,
-  SiteOnly}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.model.{Cost, DenizenId, PowerId, Suit}
 
 // Generated from the retired runtime JSON (card classes slice 1).
@@ -63,13 +62,6 @@ object SecretSignalCard extends Denizen(DenizenId("55"), "Secret Signal", Suit.A
   val power = PrintedPower(PowerId("denizen.secret-signal"),
     persistent = false, cost = Cost.free,
     text = "If you gain only one [favor], gain one more [favor].")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object ObservatoryCard extends Denizen(DenizenId("64"), "Observatory", Suit.Arcane) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.observatory"),
-    persistent = false, cost = Cost.free,
-    text = "While your pawn is here, you may draw from any one discard " +
-      "pile.")
   val powers: Vector[PrintedPower] = Vector(power)
 
 object BewitchCard extends Denizen(DenizenId("67"), "Bewitch", Suit.Arcane):

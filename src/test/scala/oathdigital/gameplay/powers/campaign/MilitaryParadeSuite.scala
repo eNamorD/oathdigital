@@ -17,7 +17,7 @@ class MilitaryParadeSuite extends munit.FunSuite:
   private val honorsRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(honors)
   private val orders = planless("Martial Culture", "Baron")
-  private val beast = planlessCard("Errand Boy")
+  private val beast = planlessCard("Bracken")
   private val arcane = planlessCard("Ward of Silence")
   /** Implemented, but its power offers no battle plan. */
   private val marriage = CatalogNames.denizen("Marriage")
