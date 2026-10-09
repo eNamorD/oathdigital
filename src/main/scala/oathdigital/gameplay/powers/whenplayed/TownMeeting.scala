@@ -39,8 +39,8 @@ final case class TownMeeting private (catalog: ExecutableCatalog)
     val actor = ctx.activePlayer
     val source = PowerSourceRef.Card(cardId)
     Vector(Branch((live, _) =>
-      val count = RuledCards.of(catalog, live, SiteRuler.Player(actor),
-        Suit.Hearth).size
+      val count = RuledCards.count(catalog, live, SiteRuler.Player(actor),
+        Suit.Hearth)
       if count == 0 then Vector(Note(id, _ =>
         Some(none(source, NoteArg.Player(actor)))))
       else if banks.stocked(live).isEmpty then

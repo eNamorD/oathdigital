@@ -57,3 +57,12 @@ class TownMeetingSuite extends munit.FunSuite:
     val done = Outcomes.finished(play(empty, power, meeting))
     assertEquals(said(power, done.events), Vector(NoteText.Said("empty",
       "Every favor bank was empty.", covers = false)))
+
+  test("a faceup Marriage counts as two Hearth cards"):
+    // Town Meeting and Marriage make X = 3: the 3 favor across two banks
+    // is taken unasked. Counted once, X = 2 would ask for the split.
+    val ready = Table.start.adviser(p1, meeting).adviser(p1, "Marriage")
+      .favor(p1, 1).banksHoldingOnly(Suit.Order -> 1, Suit.Hearth -> 2).ready
+    val done = Outcomes.finished(play(ready, power, meeting))
+    assertEquals(Look(done.treeless).favor(p1), 1 + 3)
+    assertEquals(said(power, done.events), Vector(gained(3)))

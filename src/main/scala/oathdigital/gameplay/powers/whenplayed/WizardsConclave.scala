@@ -51,8 +51,8 @@ final case class WizardsConclave private (catalog: ExecutableCatalog)
     * when nobody rules one. */
   private def leaders(ready: ReadyGame): Vector[PlayerId] =
     val counts = ready.game.current.players.map(seat => seat.player ->
-      RuledCards.of(catalog, ready, SiteRuler.Player(seat.player),
-        Suit.Arcane).size)
+      RuledCards.count(catalog, ready, SiteRuler.Player(seat.player),
+        Suit.Arcane))
     val most = counts.map(_._2).maxOption.getOrElse(0)
     counts.collect { case (player, count) if count == most => player }
 

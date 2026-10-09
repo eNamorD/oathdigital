@@ -71,16 +71,12 @@ object MusterSource:
       : Option[SiteDenizenState] =
     cardIdOf(ref).flatMap(locate(state, actor, _)).map(_.card)
 
-  /** The actor's faceup advisers of `suit`: how many warbands, favor or
-    * secrets a Muster or Trade adds to its base yield.
+  /** The actor's faceup advisers of `suit`, a Marriage counting as two
+    * (`AdviserSuits`): how many warbands, favor or secrets a Muster or Trade
+    * adds to its base yield.
     */
   def matching(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      suit: Suit): Int =
-    state.game.current.players.find(_.player == actor).toVector
-      .flatMap(_.advisers).count:
-        case DenizenState(id, Orientation.FaceUp, _) =>
-          catalog.suitOf(id).contains(suit)
-        case _ => false
+      suit: Suit): Int = AdviserSuits.count(catalog, state, actor, suit)
 
   /** A card and where it stands. */
   private final case class Located(card: SiteDenizenState,

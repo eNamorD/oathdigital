@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.actions.economy.AdviserSuits
 import oathdigital.model._
 
 /** The cards a ruler rules (catalog batch 3 rulings, "Cards a player
@@ -29,3 +30,9 @@ object RuledCards:
         case edifice: EdificeState => edifice.id
       }
     (advisers ++ atSites).filter(card => catalog.suitOf(card).contains(suit))
+
+  /** How many cards of `suit` `ruler` rules, a faceup Marriage counting as
+    * two (`AdviserSuits.weight`). */
+  def count(catalog: ExecutableCatalog, ready: ReadyGame, ruler: SiteRuler,
+      suit: Suit): Int =
+    of(catalog, ready, ruler, suit).map(AdviserSuits.weight).sum

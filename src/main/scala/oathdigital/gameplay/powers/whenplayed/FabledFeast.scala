@@ -16,11 +16,11 @@ object FabledFeastCard extends Denizen(DenizenId("136"), "Fabled Feast", Suit.He
 /** Fabled Feast (card 136), WHEN PLAYED: take X favor equal to the number of
   * Hearth cards you rule (including Fabled Feast) from any one favor bank.
   *
-  * X is read live with `RuledCards.of`, so Fabled Feast counts itself as a
-  * faceup adviser or at a site the actor rules, and not at a site the actor
-  * does not rule. The actor chooses one bank that holds favor; with only one
-  * it is taken unasked. The gain is best effort, so a short bank gives what
-  * it holds. Its line names the bank, so the choice is narrated, and it
+  * X is read live with `RuledCards.count`, so Fabled Feast counts itself as
+  * a faceup adviser or at a site the actor rules, and not at a site the
+  * actor does not rule. The actor chooses one bank that holds favor; with
+  * only one it is taken unasked. The gain is best effort, so a short bank
+  * gives what it holds. Its line names the bank, so the choice is narrated, and it
   * covers the Gain line.
   */
 final case class FabledFeast private (catalog: ExecutableCatalog)
@@ -36,8 +36,8 @@ final case class FabledFeast private (catalog: ExecutableCatalog)
     val actor = ctx.activePlayer
     val source = PowerSourceRef.Card(cardId)
     Vector(Branch((live, _) =>
-      val count = RuledCards.of(catalog, live, SiteRuler.Player(actor),
-        Suit.Hearth).size
+      val count = RuledCards.count(catalog, live, SiteRuler.Player(actor),
+        Suit.Hearth)
       val banks = stocked(live)
       if count == 0 then Vector(Note(id, _ =>
         Some(none(source, NoteArg.Player(actor)))))

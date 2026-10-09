@@ -2,6 +2,7 @@ package oathdigital.gameplay.cards
 
 import oathdigital.catalog.{Denizen, Edifice, ExecutableCatalog, Legacy, Relic, Site}
 import oathdigital.catalog.holding._
+import oathdigital.gameplay.actions.economy.MarriageCard
 import oathdigital.gameplay.operations.{HallOfMinistersCard,
   TheGrandScepterCard}
 import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,

@@ -19,6 +19,8 @@ class MilitaryParadeSuite extends munit.FunSuite:
   private val orders = planless("Martial Culture", "Code of Honor")
   private val beast = planlessCard("Errand Boy")
   private val arcane = planlessCard("Ward of Silence")
+  /** Implemented, but its power offers no battle plan. */
+  private val marriage = CatalogNames.denizen("Marriage")
 
   /** The attacker holds Military Parade. The other player rules the origin and
     * holds two order advisers and a beast adviser faceup, and an arcane
@@ -104,3 +106,17 @@ class MilitaryParadeSuite extends munit.FunSuite:
     // adviser gets 1 from the Beast bank.
     assertEquals(Look(done.state).favor(b.actor),
       Look(before).favor(b.actor) + 1 + 1)
+
+  test("an enemy's faceup Marriage gives two Hearth favor"):
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val b = withAdviser(withAdviserFor(base, base.rival, marriage,
+      Orientation.FaceUp), card, Orientation.FaceUp)
+    val before = OathState.Ready(b.ready)
+    val done = commit(rules(winningDice), b, 4)
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
+    assertEquals(done.winner, Some(true))
+    assertEquals(Look(done.state).favor(b.actor),
+      Look(before).favor(b.actor) + 2)
+    assertEquals(Look(done.state).bankFavor(Suit.Hearth),
+      Look(before).bankFavor(Suit.Hearth) - 2)

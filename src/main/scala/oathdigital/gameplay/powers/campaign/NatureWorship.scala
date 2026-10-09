@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.actions.economy.AdviserSuits
 import oathdigital.model._
 
 object NatureWorshipCard extends Denizen(DenizenId("175"), "Nature Worship", Suit.Beast):
@@ -42,11 +43,11 @@ final case class NatureWorship private (catalog: ExecutableCatalog)
   /** The user's faceup beast advisers other than this card. */
   private def otherBeasts(context: PlanContext): Int =
     context.ready.game.current.players.filter(p => context.user.contains(p.player))
-      .flatMap(_.advisers).count {
-        case DenizenState(held, Orientation.FaceUp, _) =>
-          held != cardId && catalog.suitOf(held).contains(Suit.Beast)
-        case _ => false
-      }
+      .flatMap(_.advisers).collect {
+        case DenizenState(held, Orientation.FaceUp, _)
+            if held != cardId && catalog.suitOf(held).contains(Suit.Beast) =>
+          AdviserSuits.weight(held)
+      }.sum
 
 object NatureWorship:
   val id: PowerId = NatureWorshipCard.power.id

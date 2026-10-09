@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.actions.economy.AdviserSuits
 import oathdigital.model._
 
 object GreatCrusadeCard extends Denizen(DenizenId("164"), "Great Crusade", Suit.Nomad):
@@ -49,7 +50,8 @@ object GreatCrusade:
     */
   private[campaign] def nomads(catalog: ExecutableCatalog, context: PlanContext,
       card: DenizenId): Int =
-    context.cardsRuled(catalog, context.ruler, Suit.Nomad).count(_ != card) + 1
+    context.cardsRuled(catalog, context.ruler, Suit.Nomad).filter(_ != card)
+      .map(AdviserSuits.weight).sum + 1
 
   def forCatalog(catalog: ExecutableCatalog): GreatCrusade =
     new GreatCrusade(catalog)

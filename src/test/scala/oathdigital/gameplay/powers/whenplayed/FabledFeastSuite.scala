@@ -79,3 +79,12 @@ class FabledFeastSuite extends munit.FunSuite:
     val done = Outcomes.finished(play(empty, power, feast))
     assertEquals(said(power, done.events), Vector(NoteText.Said("empty",
       "Every favor bank was empty.", covers = false)))
+
+  test("a faceup Marriage counts as two Hearth cards"):
+    // Fabled Feast and Marriage make X = 3, from the only stocked bank.
+    val ready = Table.start.adviser(p1, feast).adviser(p1, "Marriage")
+      .favor(p1, 1).banksHoldingOnly(Suit.Order -> 5).ready
+    val done = Outcomes.finished(play(ready, power, feast))
+    assertEquals(Look(done.treeless).favor(p1), 1 + 3)
+    assertEquals(done.treeless.banks.favor(Suit.Order), 5 - 3)
+    assertEquals(said(power, done.events), Vector(took(3, Suit.Order)))

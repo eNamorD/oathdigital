@@ -5,7 +5,7 @@ import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.powers.action.Assassin
 import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRules, SimplePlans, VowOfPeaceContribution}
-import oathdigital.gameplay.powers.economy.KnightsErrant
+import oathdigital.gameplay.powers.economy.{KnightsErrant, Marriage}
 import oathdigital.gameplay.powers.cardplay.CardPlayTriggers
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.powers.rest.{Insomnia, LeagueTreatyContribution, SilverTongue}
@@ -65,6 +65,7 @@ object WalkerPowerCatalog:
       ActionModifiers.forCatalog(catalog) ++
       TargetProtections.forCatalog(catalog) ++
       Vector(KnightsErrant.forCatalog(catalog)) ++
+      Vector(Marriage) ++
       BattlePlans.forCatalog(catalog) ++
       PlanRules.forCatalog(catalog) ++
       SimplePlans.forCatalog(catalog) ++

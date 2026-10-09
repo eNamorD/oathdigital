@@ -159,6 +159,10 @@ class MusterProcedureSuite extends munit.FunSuite:
     assertEquals(MusterSource.matching(catalog, atAlchemist.ready, p1,
       Suit.Arcane), 0)
 
+  test("matching counts a faceup Marriage as two Hearth advisers"):
+    assertEquals(MusterSource.matching(catalog,
+      atAlchemist.adviser(p1, "Marriage").ready, p1, Suit.Hearth), 2)
+
   test("Muster cannot start outside the Act phase"):
     val ready = atAlchemist.turn(p1, Phase.Wake).ready
     assertEquals(MusterProcedure.build(catalog, ready, p1).left.toOption,

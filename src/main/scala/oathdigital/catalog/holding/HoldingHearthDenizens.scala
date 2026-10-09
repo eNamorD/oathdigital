@@ -29,13 +29,6 @@ object DeedWriterCard extends Denizen(DenizenId("146"), "Deed Writer", Suit.Hear
       "and new ruler moves warbands to site from their board.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object MarriageCard extends Denizen(DenizenId("148"), "Marriage", Suit.Hearth) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.marriage"),
-    persistent = true, cost = Cost.free,
-    text = "Marriage counts as two [suit-hearth] advisers, but only " +
-      "counts as one toward your adviser limit.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SpinningBeeCard extends Denizen(DenizenId("232"), "Spinning Bee", Suit.Hearth):
   val power = PrintedPower(PowerId("denizen.spinning-bee"),
     persistent = false, cost = Cost.free,
