@@ -4,6 +4,7 @@ import oathdigital.gameplay.actions.{AdviserFace, AdviserPlayNote, CardPlay,
   CardPlayRules, RuleNotes, VisionRules}
 import oathdigital.gameplay.actions.cardplay.{CardSlot, CardSlots,
   MoreDiscards}
+import oathdigital.gameplay.operations.HallOfMinisters
 import oathdigital.gameplay.powers.search.CropRotation
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
@@ -36,7 +37,7 @@ class CardSlotsSuite extends munit.FunSuite:
   private val piper = CatalogNames.denizen("Pied Piper")
   private val ignoresPiper = CardPlayRules.default
     .ignoreLimit(AdviserFace(piper, Orientation.FaceUp))
-    private val hall = CatalogNames.edifice("Hall of Ministers")
+  private val hall = CatalogNames.edifice("Hall of Ministers")
   private val pile = DecisionOption.DiscardPile(
     DecisionOptionRef.DiscardPile(Region.Provinces))
   private val play = DecisionOption.Button(CardSlots.play, "Play")
@@ -179,27 +180,62 @@ class CardSlotsSuite extends munit.FunSuite:
     assertEquals(atSite(slotsOf(ready, rules = permitted)), Vector(siteSlot(1),
       refused(replacing(siteSlot(0), crop), "In use as a modifier this action")))
 
-  test("the Hall of Ministers protects its ruler's site from an enemy, and " +
-      "says so"):
-    // Threatening Roar is Beast, so Deep Woods' Homeland permits a discard.
+  /** p1 stands at Deep Woods with Threatening Roar, a Beast card, so Deep
+    * Woods' Homeland permits a discard; the intact Hall and two plain cards
+    * stand there, with `ruled` deciding who rules it. */
+  private def guarded(ruled: Table => Table): ReadyGame =
+    val roar = CatalogNames.denizen("Threatening Roar")
+    ruled(Vector("Fae Merchant", "Second Chance").map(CatalogNames.denizen(_))
+      .foldLeft(Table.start.pawn(p1, at = woods).hand(p1, roar))(
+        _.denizen(_, at = woods))
+      .edifice(CatalogNames.edifice("Hall of Ministers"), EdificeSide.Intact,
+        at = woods)).ready
+
+  private def askingP2(replaced: DenizenId): OptionReason =
+    OptionReason.Askable(HallOfMinisters.id,
+      HallOfMinisters.noDiscardConsent(HallOfMinisters.source),
+      Vector(ConsentAsk(p2, Vector(HallOfMinisters.id))),
+      Vector(ConsentKey(HallOfMinisters.id, p1, HallOfMinisters.discardKey,
+        DecisionOptionRef.Denizen(replaced))))
+
+  test("the Hall of Ministers makes its ruler's site cards askable of that " +
+      "ruler, protects them from everyone under bandits, and binds no ruler " +
+      "of its own"):
     val roar = CatalogNames.denizen("Threatening Roar")
     val fillers = Vector("Fae Merchant", "Second Chance")
       .map(CatalogNames.denizen(_))
-    def ruledBy(ruler: PlayerId) = fillers.foldLeft(Table.start
-      .pawn(p1, at = woods).hand(p1, roar))(_.denizen(_, at = woods))
-      .edifice(hall, EdificeSide.Intact, at = woods)
-      .warbandsAt(woods, ruler, 1).ready
+    def slotsAt(ruled: Table => Table) =
+      atSite(slotsOf(guarded(ruled), roar))
+    assertEquals(slotsAt(_.warbandsAt(woods, p2, 1)), Vector(
+      DecisionOption.Unavailable(replacing(siteSlot(0, woods), fillers(0)),
+        askingP2(fillers(0))),
+      DecisionOption.Unavailable(replacing(siteSlot(1, woods), fillers(1)),
+        askingP2(fillers(1))),
+      locked(replacing(siteSlot(2, woods), hall))))
     val hallProtects = "Protected by the Hall of Ministers"
-    assertEquals(atSite(slotsOf(ruledBy(p2), roar)), Vector(
+    assertEquals(slotsAt(_.bandits(woods, 2)), Vector(
       refused(replacing(siteSlot(0, woods), fillers(0)), hallProtects),
       refused(replacing(siteSlot(1, woods), fillers(1)), hallProtects),
       locked(replacing(siteSlot(2, woods), hall))))
-    // The Hall protects only against an enemy: its own ruler may replace the
-    // two ordinary cards, and the intact Hall itself stays locked.
-    assertEquals(atSite(slotsOf(ruledBy(p1), roar)), Vector(
+    assertEquals(slotsAt(_.warbandsAt(woods, p1, 1)), Vector(
       replacing(siteSlot(0, woods), fillers(0)),
       replacing(siteSlot(1, woods), fillers(1)),
       locked(replacing(siteSlot(2, woods), hall))))
+
+  test("a grant remembered for a site card opens its Replace slot; a " +
+      "refusal leaves the Hall's reason"):
+    val roar = CatalogNames.denizen("Threatening Roar")
+    val fae = CatalogNames.denizen("Fae Merchant")
+    val ready = guarded(_.warbandsAt(woods, p2, 1))
+    def remembering(answer: ConsentAnswer) = ready.copy(consent =
+      ConsentState(answers = Map(ConsentKey(HallOfMinisters.id, p1,
+        HallOfMinisters.discardKey, DecisionOptionRef.Denizen(fae)) ->
+        answer), turn = Some(ConsentTurn.of(ready))))
+    assertEquals(atSite(slotsOf(remembering(ConsentAnswer.Granted), roar))
+      .head, replacing(siteSlot(0, woods), fae))
+    assertEquals(atSite(slotsOf(remembering(ConsentAnswer.Refused), roar))
+      .head, refused(replacing(siteSlot(0, woods), fae),
+        "Protected by the Hall of Ministers"))
 
   test("a full adviser area is offered only as Replace, each adviser, each " +
       "facing"):

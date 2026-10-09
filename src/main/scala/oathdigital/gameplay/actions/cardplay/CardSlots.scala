@@ -3,7 +3,8 @@ package oathdigital.gameplay.actions.cardplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.{AdviserFace, CardPlay, CardPlayRules,
   DiscardPermission, VisionRules}
-import oathdigital.gameplay.operations.OperationRestrictions
+import oathdigital.gameplay.operations.{OperationConsent,
+  OperationRestrictions}
 import oathdigital.model._
 
 /** One way to play a card: the option the placement decision offers, and
@@ -42,10 +43,11 @@ final case class MoreDiscards(locked: DecisionOption,
   * Conspiracy played faceup is the "Play" button.
   *
   * Each option is planned with `CardPlay.operations`, and the printed
-  * restrictions in force judge the plan: an option a protection refuses is
-  * shown unavailable with its reason; an option the planner or another
-  * restriction refuses is left out. Powers' own restrictions (Vow of
-  * Obedience) are the walker look-ahead's to apply.
+  * restrictions in force judge the plan (`judge`): an option only a waivable
+  * protection refuses is askable of its ruler, an option another protection
+  * refuses is shown unavailable with its reason, and an option the planner
+  * or another restriction refuses is left out. Powers' own restrictions (Vow
+  * of Obedience) are the walker look-ahead's to apply.
   */
 object CardSlots:
   /** The answer that plays a faceup Conspiracy, which takes no slot. */
@@ -67,8 +69,8 @@ object CardSlots:
           faceup(player, card, origin, rules) ++
           facedown(player, card, origin, rules)
         candidates.flatMap { (option, placement) =>
-          judged(catalog, ready, option, CardPlay.operations(catalog, ready,
-            actor, card, placement, origin)).map(CardSlot(_, placement))
+          judge(catalog, ready, actor, option, CardPlay.operations(catalog,
+            ready, actor, card, placement, origin)).map(CardSlot(_, placement))
         }
     }
 
@@ -99,8 +101,9 @@ object CardSlots:
       replaced <- held.find(_.id == replacedId)
       if permitted.size > 1
       options = held.filter(_.id != replacedId).flatMap(other =>
-        judged(catalog, ready, optionOf(other), CardPlay.operations(catalog,
-          ready, actor, card, slot.placement, origin, Vector(other.id))))
+        judge(catalog, ready, actor, optionOf(other), CardPlay.operations(
+          catalog, ready, actor, card, slot.placement, origin,
+          Vector(other.id))))
       most = math.min(permitted.size - 1, options.count(_.available))
       if most >= 1
     yield MoreDiscards(optionOf(replaced), options, most)
@@ -118,9 +121,12 @@ object CardSlots:
       OathViolation.InvalidSearchPlacement(
         "more site cards are discarded than the permissions in play allow"))
 
-  /** `option` as the restrictions in force leave its plan: as it is, shown
-    * unavailable with a protection's reason, or left out. */
-  private def judged(catalog: ExecutableCatalog, ready: ReadyGame,
+  /** `option` as the restrictions in force judge the plan it stands for,
+    * played by `actor`. It is kept as it is when nothing refuses. When only
+    * waivable refusals stop it, it is kept askable of their granters
+    * (consent design, slice 3). Otherwise it is shown unavailable with a
+    * protection's reason, or left out. */
+  def judge(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       option: DecisionOption,
       planned: Either[OathViolation, Vector[CoreOperation]])
       : Option[DecisionOption] =
@@ -128,11 +134,14 @@ object CardSlots:
     else planned.toOption.flatMap { operations =>
       val restrictions = OperationRestrictions.forCatalog(catalog)
         .active(Vector.empty, ready.game.current.walkerModifiers)
-      operations.iterator.flatMap(operation => restrictions.iterator
-        .flatMap(_.reason(ready, operation))).nextOption() match
-        case None => Some(option)
-        case Some(refusal) => reasons.get(refusal.code).map(reason =>
-          DecisionOption.Unavailable(option, OptionReason.Written(reason)))
+      val refusals = OperationConsent.refusals(ready, operations,
+        restrictions)
+      if refusals.isEmpty then Some(option)
+      else OperationConsent.ask(ready, actor, refusals)
+        .map(DecisionOption.Unavailable(option, _))
+        .orElse(refusals.headOption.flatMap(refusal => reasons
+          .get(refusal.code).map(reason =>
+            DecisionOption.Unavailable(option, OptionReason.Written(reason)))))
     }
 
   private def discardPile(ready: ReadyGame, actor: PlayerId)
