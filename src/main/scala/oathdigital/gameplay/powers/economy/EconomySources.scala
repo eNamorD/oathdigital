@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.economy.MusterSource
 import oathdigital.gameplay.powers.PowerAnswers
@@ -24,14 +25,16 @@ private[economy] object EconomySources:
         .filterNot(option => offered(option.ref))
     }
 
-  /** Every card at the sites in play in the region of `actor`'s pawn, the
-    * pawn's own site included, in map then site order. */
-  def inPawnRegion(ready: ReadyGame, actor: PlayerId)
-      : Vector[SiteDenizenState] =
+  /** Every card with a suit at the sites in play in the region of `actor`'s
+    * pawn, the pawn's own site included, in map then site order. A card
+    * without a suit is no source, as at the pawn site. */
+  def inPawnRegion(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId): Vector[SiteDenizenState] =
     val map = ready.game.current.map
     val region = PowerAccess.pawnSite(ready, actor).flatMap(map.regionOf)
     map.inPlay.filter(site => region.exists(map.regionOf(site).contains))
       .flatMap(site => map.sites.get(site).toVector.flatMap(_.denizens))
+      .filter(card => catalog.suitOf(card.id).nonEmpty)
 
   /** The priority an exemption folds at: after the powers that add cards,
     * at 0, so that a card one of them adds can be exempted too. */

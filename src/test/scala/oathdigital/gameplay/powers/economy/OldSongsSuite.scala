@@ -23,12 +23,18 @@ class OldSongsSuite extends munit.FunSuite:
   private val wrestlers = CatalogNames.denizen("Wrestlers")
   /** A plain Beast denizen, holding nothing. */
   private val errandBoy = CatalogNames.denizen("Errand Boy")
+  private val merchants = CatalogNames.denizen("Skilled Merchants")
+  private val map = Table.start.unchecked.game.current.map
+  /** Another site in play in the pawn's region. */
+  private val near = map.inPlay.find(site => site != home &&
+    map.regionOf(site) == map.regionOf(home)).get
   private val rules = PowerRules.withWalkerPowers
 
   /** p1 at Ancient City holding Old Songs faceup, with the start's 1 faceup
     * secret, beside Alchemist (1 secret), Wrestlers (1 secret and 1 favor)
     * and Errand Boy (nothing). The Arcane bank holds 3 favor. */
-  private def staged: Table = Table.start.pawn(p1, at = home)
+  private def holdingSongsBesideTokenedCards: Table =
+    Table.start.pawn(p1, at = home)
     .adviser(p1, songs).denizen(alchemist, at = home)
     .denizen(wrestlers, at = home).denizen(errandBoy, at = home)
     .tokens(alchemist, secrets = 1).tokens(wrestlers, favor = 1, secrets = 1)
@@ -51,12 +57,13 @@ class OldSongsSuite extends munit.FunSuite:
 
   test("selected, a card with exactly one secret and no favor is a Trade " +
       "source, and one with favor too is not"):
-    assertEquals(states(tradeStarted(staged.ready, selected)), Some(Vector(
+    assertEquals(states(tradeStarted(holdingSongsBesideTokenedCards.ready,
+      selected)), Some(Vector(
       alchemist.value -> "available", wrestlers.value -> "unavailable",
       errandBoy.value -> "available")))
 
   test("trading with it places the secret beside the one already there"):
-    val ready = staged.ready
+    val ready = holdingSongsBesideTokenedCards.ready
     val done = EconomyActions.trade(rules, ready, p1, selected, "favor",
       DecisionOptionRef.Denizen(alchemist))
     val after = Look(done.result)
@@ -70,7 +77,8 @@ class OldSongsSuite extends munit.FunSuite:
 
   test("without it, the card with one secret is shown unavailable and " +
       "refused"):
-    val started = tradeStarted(staged.ready, Vector.empty)
+    val started = tradeStarted(holdingSongsBesideTokenedCards.ready,
+      Vector.empty)
     assertEquals(states(started), Some(Vector(
       alchemist.value -> "unavailable", wrestlers.value -> "unavailable",
       errandBoy.value -> "available")))
@@ -80,6 +88,17 @@ class OldSongsSuite extends munit.FunSuite:
       Some(Refusals.notOffered(TradeProcedure.decisionId)))
 
   test("it is a Trade modifier only"):
-    val ready = staged.ready
+    val ready = holdingSongsBesideTokenedCards.ready
     assert(modifiers(ready, ActionRef.Trade).contains(OldSongs.id))
     assert(!modifiers(ready, ActionRef.Muster).contains(OldSongs.id))
+
+  test("with Skilled Merchants, it admits a card with one secret that the " +
+      "widening adds, because it folds after it"):
+    // At equal priority Old Songs would fold first, by id, and find no
+    // Wrestlers to admit.
+    val ready = Table.start.pawn(p1, at = home).adviser(p1, songs)
+      .adviser(p1, merchants).denizen(wrestlers, at = near)
+      .tokens(wrestlers, secrets = 1).bankFavor(Suit.Order, 3).ready
+    assertEquals(states(tradeStarted(ready,
+      Vector(OldSongs.id, SkilledMerchants.id))),
+      Some(Vector(wrestlers.value -> "available")))

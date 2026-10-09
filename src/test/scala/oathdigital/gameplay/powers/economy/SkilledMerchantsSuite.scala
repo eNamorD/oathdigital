@@ -32,7 +32,8 @@ class SkilledMerchantsSuite extends munit.FunSuite:
     * with the start's 1 faceup secret. Wrestlers and the intact Hallowed
     * Spring stand at the other site in the region, Errand Boy in another
     * region, and the Order bank holds 3 favor. */
-  private def staged: Table = Table.start.pawn(p1, at = home)
+  private def holdingMerchantsWithRegionCards: Table =
+    Table.start.pawn(p1, at = home)
     .adviser(p1, merchants).denizen(alchemist, at = home)
     .denizen(wrestlers, at = near)
     .edifice(hallowedSpring, EdificeSide.Intact, at = near)
@@ -45,13 +46,14 @@ class SkilledMerchantsSuite extends munit.FunSuite:
 
   test("selected, a Trade offers every card at the sites in the pawn's " +
       "region, edifices too, and none elsewhere"):
-    assertEquals(PhasePowerHarness.offered(tradeStarted(staged.ready,
+    assertEquals(PhasePowerHarness.offered(tradeStarted(
+      holdingMerchantsWithRegionCards.ready,
       Vector(SkilledMerchants.id)), p1), Some(Vector(
         "denizen" -> alchemist.value, "denizen" -> wrestlers.value,
         "edifice" -> hallowedSpring.value)))
 
   test("trading with a card at another site places the secret there"):
-    val ready = staged.ready
+    val ready = holdingMerchantsWithRegionCards.ready
     val done = EconomyActions.trade(rules, ready, p1,
       Vector(SkilledMerchants.id), "favor",
       DecisionOptionRef.Denizen(wrestlers))
@@ -61,7 +63,8 @@ class SkilledMerchantsSuite extends munit.FunSuite:
     assertEquals(after.favor(p1), Look(ready).favor(p1) + 1)
 
   test("with Map Library, each card is offered once"):
-    val ready = staged.denizen(library, at = home).ready
+    val ready = holdingMerchantsWithRegionCards
+      .denizen(library, at = home).ready
     assertEquals(PhasePowerHarness.offered(tradeStarted(ready,
       Vector(MapLibrary.id, SkilledMerchants.id)), p1), Some(Vector(
         "denizen" -> alchemist.value, "denizen" -> library.value,

@@ -8,7 +8,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
   Look, PhasePowerHarness, PowerRules, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
-import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
 class MapLibrarySuite extends munit.FunSuite:
@@ -34,7 +34,7 @@ class MapLibrarySuite extends munit.FunSuite:
     * to pay a Trade for favor. Wrestlers and the intact Hallowed Spring stand
     * at the other site in the region, Errand Boy in another region, and the
     * Order bank holds 3 favor. */
-  private def staged: Table = Table.start.pawn(p1, at = home)
+  private def atLibraryWithRegionCards: Table = Table.start.pawn(p1, at = home)
     .denizen(library, at = home).denizen(wrestlers, at = near)
     .edifice(hallowedSpring, EdificeSide.Intact, at = near)
     .denizen(errandBoy, at = away).bankFavor(Suit.Order, 3)
@@ -49,13 +49,14 @@ class MapLibrarySuite extends munit.FunSuite:
 
   test("selected, a Trade offers every card at the sites in the pawn's " +
       "region, edifices too, and none elsewhere"):
-    assertEquals(PhasePowerHarness.offered(tradeStarted(staged.ready), p1),
+    assertEquals(PhasePowerHarness.offered(
+      tradeStarted(atLibraryWithRegionCards.ready), p1),
       Some(Vector("denizen" -> library.value, "denizen" -> wrestlers.value,
         "edifice" -> hallowedSpring.value)))
 
   test("trading with a card at another site places the secret there and " +
       "gains favor of its suit"):
-    val ready = staged.ready
+    val ready = atLibraryWithRegionCards.ready
     val done = EconomyActions.trade(rules, ready, p1, selected, "favor",
       DecisionOptionRef.Denizen(wrestlers))
     val after = Look(done.result)
@@ -69,15 +70,22 @@ class MapLibrarySuite extends munit.FunSuite:
 
   test("a card at another site that holds favor or secrets is shown " +
       "unavailable"):
-    val started = tradeStarted(staged.tokens(wrestlers, favor = 1).ready)
+    val started = tradeStarted(atLibraryWithRegionCards
+      .tokens(wrestlers, favor = 1).ready)
     assertEquals(PhasePowerHarness.queryOf(started, p1).map(_.offeredOptions
       .map(option => (option.id, option.state))), Some(Vector(
         library.value -> "available", wrestlers.value -> "unavailable",
         hallowedSpring.value -> "available")))
 
   test("it is selectable only while the pawn stands at its site"):
-    assert(tradeModifiers(staged.ready).contains(MapLibrary.id))
+    assert(tradeModifiers(atLibraryWithRegionCards.ready)
+      .contains(MapLibrary.id))
     // p1 rules Map Library's site with two warbands, but the pawn stands in
     // another region.
-    val ruledOnly = staged.pawn(p1, at = away).warbandsAt(home, p1, 2).ready
+    val ruledOnly = atLibraryWithRegionCards.pawn(p1, at = away)
+      .warbandsAt(home, p1, 2).ready
     assert(!tradeModifiers(ruledOnly).contains(MapLibrary.id))
+
+  test("it is selectable at its site while another player rules the site"):
+    val ruledByP2 = atLibraryWithRegionCards.warbandsAt(home, p2, 2).ready
+    assert(tradeModifiers(ruledByP2).contains(MapLibrary.id))
