@@ -96,15 +96,6 @@ object TheRedSeerCard extends Denizen(DenizenId("244"), "The Red Seer", Suit.Nom
       "Oathkeeper goal to anything but Devotion.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object VowOfWanderingCard extends Denizen(DenizenId("247"), "Vow of Wandering", Suit.Nomad) with Locked with AdviserOnly:
-  val muster = PrintedPower(PowerId("denizen.vow-of-wandering.muster"),
-    persistent = false, cost = Cost.free,
-    text = "Gain two more warbands.")
-  val power = PrintedPower(PowerId("denizen.vow-of-wandering"),
-    persistent = true, cost = Cost.free,
-    text = "You **cannot** place warbands on sites.")
-  val powers: Vector[PrintedPower] = Vector(muster, power)
-
 object TheGatheringCard extends Denizen(DenizenId("27"), "The Gathering", Suit.Nomad) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.the-gathering"),
     persistent = false, cost = Cost.free,

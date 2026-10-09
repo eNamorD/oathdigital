@@ -6,14 +6,14 @@ import oathdigital.gameplay.powers.economy.{AnimalPlaymates, AwaitedReturn,
   Birdsong, CupOfPlenty, Curfew, Defame, Downtrodden, GolemLegions,
   InitiationRite, MapLibrary, MountedLibrary, MovingMarket, OldSongs,
   Pressgangs, RowdyPub, SkilledMerchants, TheOldOak, VillageIdiot,
-  VowOfBeastkin, VowOfPoverty}
+  VowOfBeastkin, VowOfPoverty, VowOfWanderingMuster}
 import oathdigital.gameplay.powers.recover.RelicWorship
 import oathdigital.gameplay.powers.search.{Augury, CropRotation, Disciples,
   ForcedLabor, HuntingParty, NewsFromAfar, TruthfulHarp}
 
 /** The Search, Trade, Muster and Recover modifiers, registered together with
   * the rules that change those actions: Initiation Rite's Muster cost, the
-  * tolls of Curfew and Forced Labor, and the Vows' limits. Each names its
+  * tolls of Curfew and Forced Labor, and the Vows' limits and extra warbands. Each names its
   * card, so all are always present.
   */
 object ActionModifiers:
@@ -44,5 +44,6 @@ object ActionModifiers:
       Vector(ForcedLabor.forCatalog(catalog)) ++
       Vector(InitiationRite) ++
       Vector(VowOfBeastkin.forCatalog(catalog)) ++
+      Vector(VowOfWanderingMuster) ++
       Vector(VowOfPoverty) ++
       Vector(RelicWorship.forCatalog(catalog))
