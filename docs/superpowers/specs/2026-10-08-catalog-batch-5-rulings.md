@@ -67,19 +67,26 @@
 
 ## Slice 3: Adviser counting
 
+- **Limits are checked after the play.** Powers related to adviser limits
+  are evaluated against the advisers as they would be once the card is
+  played. A card that sets a limit, such as Silver Tongue, sets it only
+  while it is a faceup adviser after the play.
 - **148 Marriage.** Counts as two Hearth advisers in every count of the
   holder's advisers by suit, Muster and Trade matching included. Counts as
   one toward the adviser limit.
-- **182 Pied Piper.** Does not count toward the adviser limit. Its ACTION
-  moves Pied Piper into any other player's advisers, even when that player is
-  at or over the limit, then takes two favor from them, best effort. If the
-  receiver holds Family Wagon, the receiver buries Pied Piper (slice 4); the
-  favor is still taken.
-- **R29 Lost Tapestry.** The holder's facedown Visions do not count toward the
-  holder's adviser limit.
+- **182 Pied Piper.** Faceup, it does not count toward the adviser limit:
+  played faceup at the limit, it takes a free slot. Facedown it has no power
+  and counts. Its ACTION moves Pied Piper, with the secret paid for it, into
+  any other player's advisers, even when that player is at or over the
+  limit, then takes two favor from them, best effort. If the receiver holds
+  Family Wagon, the receiver buries Pied Piper (slice 4); the favor is still
+  taken.
+- **R29 Lost Tapestry.** The holder's facedown Visions do not count toward
+  the holder's adviser limit. A Vision played facedown at the limit takes a
+  free slot.
 - **At the limit,** an adviser that does not count toward the limit is shown
-  unavailable for Replace, with the reason "Does not count toward the adviser
-  limit".
+  unavailable for Replace, and for Horned Mask's discard, with the reason
+  "Does not count toward the adviser limit".
 
 ## Slice 4: Adviser arrival
 

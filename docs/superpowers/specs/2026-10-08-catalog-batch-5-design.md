@@ -32,7 +32,7 @@ with the limit: it is a Muster gain and a ban on placing warbands on sites.
 
 Batch 4's bar holds: no new operation, walker window, decision query kind,
 option kind, `NoteArg` kind, protocol change or frontend change. Refactors
-inside `gameplay/powers/` are allowed. The product owner approved five
+inside `gameplay/powers/` are allowed. The product owner approved six
 changes outside `gameplay/powers/`:
 
 - **The Muster and Trade source query and `MusterSource.resolve`** (slice 1).
@@ -40,8 +40,11 @@ changes outside `gameplay/powers/`:
   registers (slice 2).
 - **The minor action's refusal** names the reason of an operation a
   restriction skipped, in `MinorActions` (slice 2, approved at plan time).
-- **The adviser limit count** in `CardSlots.adviserSlots` and
-  `AdviserLimit.of` (slice 3).
+- **The adviser limit count** in `CardPlayRules`, `CardSlots.adviserSlots`
+  and `AdviserLimit` (slice 3), and **the weighted suit count**
+  `AdviserSuits` beside `MusterSource` (slice 3, placed at plan time).
+- **The board's adviser slots** in `GamePresentationProjector` add one slot
+  per adviser that does not count (slice 3, approved at plan time).
 - **An adviser arrival pass** in the walker (slice 4).
 
 ### Out of scope
@@ -185,44 +188,69 @@ count at its own value plus the other Arcane advisers.
 ### The weighted suit count
 
 `AdviserSuits.count(catalog, ready, player, suit)` counts a player's faceup
-advisers of a suit, with Marriage counting as two Hearth advisers. Every
-caller that counts moves onto it:
-- `MusterSource.matching`, so Muster, Trade, Cup of Plenty, Vow of Beastkin
-  and The Old Oak follow
-- the callers of `RuledCards.of` that count rather than list
-- `FavorBySuit` as Military Parade feeds it
-- Nature Worship
+advisers of a suit, with a faceup Marriage counting as two.
+`AdviserSuits.weight(card)` gives the weight. Both live in
+`gameplay/actions/economy` beside `MusterSource`, with `MarriageCard`: Muster
+and Trade read the count, and `gameplay/actions` never imports
+`gameplay/powers`. The registered Marriage power adds nothing; it makes the
+card count as implemented.
 
-A caller that lists targets or only asks whether a player has one adviser
-of a suit stays on cards, because a second Marriage changes nothing there.
-The plan sorts each `RuledCards.of` caller into one kind or the other and
-records the sort.
+These callers count and move onto the weight:
+- `MusterSource.matching`, so Muster and Trade: warbands, favor and secrets
+- Town Meeting, Fabled Feast and Wizards Conclave, through
+  `RuledCards.count`
+- Great Crusade and Pledge of Defense, through `GreatCrusade.nomads`
+- Nature Worship
+- Military Parade, which lists a Marriage twice for `FavorBySuit`
+
+These list targets or check for one, and stay on cards: Curfew, Resettle,
+Twin Brother, Ballot Box, Dissent, Kindred Warriors, Lost Tongue, Diplomat,
+Disgraced Captain, Battle Axes, Rival Khan, Cracked Sage, Cup of Plenty, Vow
+of Beastkin, Rotting Fortress, Honor Guard and Second Chance. Tribute Spoils
+feeds `FavorBySuit` site cards only, and Marriage is adviser-only.
 
 ### The count toward the limit
 
-`AdviserLimit.towardLimit(catalog, ready, player)` counts the advisers that
-count toward the limit. It skips:
-- Pied Piper, which ignores the limit
-- facedown Visions, while the player holds Lost Tapestry
+Limits are checked against the advisers as they would be after the card is
+played. `CardPlayRules`:
+- keeps `adviserLimit`, a limit whatever is held
+- gains per-card limits, `limitWhileFaceUp(card, limit)`, which hold while
+  their card is a faceup adviser after the play. Silver Tongue's, Insomnia's
+  and Assassin's `HolderAdviserLimit` moves onto it, and `playedCardLimit`
+  goes.
+- gains the adviser faces that do not count, `ignoreLimit(face)`
+- answers `fits(advisers)` for the advisers after a play
 
-Marriage counts once, as any adviser does. Family Wagon makes the limit
-unbounded. `AdviserLimit.of` returns the unbounded limit for its holder
-before the lowering powers apply.
+`CardSlots.adviserSlots` offers a new slot when the area after it fits, and
+only that. Otherwise it offers each Replace whose result fits. A Replace of
+an adviser that does not count is shown unavailable with the reason "Does
+not count toward the adviser limit", because replacing it frees no room.
+With no Replace that fits, it offers nothing.
 
-`CardSlots.adviserSlots` compares the count toward the limit, not
-`held.size`, against the limit. At the limit, Replace offers each held
-adviser. An adviser that does not count is shown unavailable with the reason
-"Does not count toward the adviser limit", because replacing it frees no
-room. Horned Mask's check reads the same count.
+The faces that do not count:
+- Pied Piper, faceup. A facedown Pied Piper has no power and counts.
+- The holder's facedown Visions, while the holder has Lost Tapestry faceup.
+
+Each power marks its faces with a Transform at `SearchPlayAdviser`.
+`AdviserLimit.ignored` and `AdviserLimit.towardLimit` read the same facts
+for Horned Mask and the board. Marriage counts once, as any adviser does.
+
+Horned Mask is full when the count toward the limit reaches the limit. Its
+discard question shows an adviser that does not count unavailable, with the
+same reason. The board projection adds one slot per adviser that does not
+count, so the empty slots drawn match the free room.
 
 ### Pied Piper
 
-Pied Piper's ACTION (cost one secret) moves Pied Piper from the actor's
-advisers into another player's advisers, faceup. It then takes two favor
-from that player, best effort. The receiver may be at or over the limit,
-since Pied Piper does not count. `RestrictionIcons` allows the move, because
-Pied Piper is adviser-only. The move is a plain `Move` between play areas.
-No power has moved a denizen adviser one way between players before.
+Pied Piper's ACTION (cost one secret, placed on the card) asks which other
+player takes it, any player at any site. It moves Pied Piper, with its
+secret, from the actor's advisers into that player's, faceup, with a
+required `Give`. It then takes up to two favor from that player with a
+`Take`. The receiver may be at or over the limit, since Pied Piper does not
+count. `RestrictionIcons` allows the move, because Pied Piper is
+adviser-only. Its lines:
+- "Moved to {Blue}'s advisers and took {2 favor} from them."
+- "Moved to {Blue}'s advisers. {Blue} had no favor to take."
 
 ## Slice 4: The adviser arrival pass and Family Wagon
 
@@ -253,9 +281,13 @@ own arrival counts. The buried cards include:
 Advisers are buried in held order with `Bury`. Family Wagon's line names the
 buried cards each viewer may identify.
 
+Family Wagon makes its holder's limit unbounded. `AdviserLimit.of` and card
+play's rules give its holder no limit before the lowering powers apply. It
+waited for this slice so the card lands whole.
+
 A card play that would add a non-Nomad or facedown adviser stays on offer.
 Its option carries a note that the card will be buried. Card play's slots
-give Family Wagon's holder no limit (slice 3).
+give Family Wagon's holder no limit.
 
 ## Seams used for the first time
 
