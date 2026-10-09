@@ -136,11 +136,14 @@ object CardSlots:
         .active(Vector.empty, ready.game.current.walkerModifiers)
       val refusals = OperationConsent.refusals(ready, operations,
         restrictions)
+      // A refusal no consent can lift names the blocker, whatever order
+      // the restrictions run in.
+      val shown = refusals.find(_.waiver.isEmpty).orElse(refusals.headOption)
       if refusals.isEmpty then Some(option)
       else OperationConsent.ask(ready, actor, refusals)
         .map(DecisionOption.Unavailable(option, _))
-        .orElse(refusals.headOption.flatMap(refusal => reasons
-          .get(refusal.code).map(reason =>
+        .orElse(shown.flatMap(refusal => reasons.get(refusal.code).map(
+          reason =>
             DecisionOption.Unavailable(option, OptionReason.Written(reason)))))
     }
 
