@@ -118,7 +118,14 @@ it: Spinning Bee excludes other Search modifiers, Mushrooms and Painted
 Trumpet exclude each other, and Wine of Welcome is warned beside Mushrooms.
 It reverses ruling 1 of the
 [search source design](superpowers/specs/2026-10-07-search-source-walker-design.md)
-("Modifiers stay before the start"). Not yet designed.
+("Modifiers stay before the start")
+([design](superpowers/specs/2026-10-09-modifier-walker-design.md)).
+
+- [ ] Slice 1: the modifier decision, then Search and facedown-adviser play.
+- [ ] Slice 2: Travel.
+- [ ] Slice 3: Muster and Trade.
+- [ ] Slice 4: Recover, the empty windows, and deleting the client modifier
+  flow and the preview endpoint.
 
 ### Phase - Catalog batch - engine-blocked
 

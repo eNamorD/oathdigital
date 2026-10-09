@@ -1,8 +1,8 @@
 # Catalog Batch 6: Battle Plan Restrictions and Search Sources
 
 **Status:** designed 2026-10-09. Slices 1 and 2 are ready to plan. Slices 3
-and 4 wait for **Phase - Modifier selection on the walker** (roadmap), and
-are re-read against that design before they are planned. The per-card
+and 4 wait for [modifier selection on the walker](2026-10-09-modifier-walker-design.md),
+and are re-read against that design before they are planned. The per-card
 rulings are in [the rulings appendix](2026-10-09-catalog-batch-6-rulings.md).
 
 **Builds on** [Catalog batch 4](2026-10-05-catalog-batch-4-design.md),
