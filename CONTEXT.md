@@ -126,9 +126,16 @@ _Avoid_: session state, UI state, pending selections, the drafts
 The steps a viewer walks between choosing a major action and sending it:
 previewing the action and ordering the modifiers it offers. A viewer is in at most one at a time, and leaves it by sending,
 cancelling, backing out, or a failed preview. A flow step keeps the viewer
-in the flow; a flow exit takes them out of it.
+in the flow; a flow exit takes them out of it. Search and facedown-adviser
+play have no flow: they ask for their modifiers inside the walk, in the
+modifier decision.
 _Avoid_: preview flow, targeting flow, modifier stage (a stage is one step of
 the flow)
+
+**Modifier decision**:
+A major action's first walker decision, `{action}.modifiers`. It is asked
+one modifier at a time, and each pick is paid at once. "Start" ends it.
+_Avoid_: modifier stage, modifier step
 
 **Table session**:
 One viewer's live connection to one game from one seat. It knows the
