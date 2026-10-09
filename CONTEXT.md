@@ -106,6 +106,12 @@ The preferences, the turn's answers and the waiting request, kept beside the
 game so that undo leaves them be.
 _Avoid_: consent state (the type's name, not the concept)
 
+**Pay-or-ask step**:
+The choice a toll or penalty card puts to an enemy of its ruling player: pay,
+or go on without paying. The free option is askable until that ruler
+answers, even for a payer who cannot pay.
+_Avoid_: toll prompt, consent step
+
 ### Action pane
 
 **Act-action control**:

@@ -1,7 +1,7 @@
 # Consent system
 
 **Status:** designed 2026-10-08. It covers the roadmap's **Phase - Consent
-system**. Slices 1 to 3 are implemented ([slice 1 plan](../plans/2026-10-09-consent-slice1.md), [slice 2 plan](../plans/2026-10-09-consent-slice2.md), [slice 3 plan](../plans/2026-10-09-consent-slice3.md)), and their plans' decisions are folded in below.
+system**. All four slices are implemented ([slice 1 plan](../plans/2026-10-09-consent-slice1.md), [slice 2 plan](../plans/2026-10-09-consent-slice2.md), [slice 3 plan](../plans/2026-10-09-consent-slice3.md), [slice 4 plan](../plans/2026-10-09-consent-slice4.md)), and their plans' decisions are folded in below.
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **parked decision**.
 The [undo design](2026-10-06-undo-design.md) defines **command batch**,
@@ -282,8 +282,17 @@ when ruling 8 holds, the decision is a choose-one, and a search with the grant
 remembered reaches a legal end from it; otherwise it keeps its ordinary
 reason. On the `restrictOptions` path that `OptionRestriction` uses, an
 option that only waivable restrictions forbid becomes askable at a
-choose-many only, with no search: a grant there answers nothing, so it cannot
-leave a request waiting on a grant that fails. An optional choose-many left
+choose-many with no search: a grant there answers nothing, so it cannot
+leave a request waiting on a grant that fails. At a choose-one hooked by
+its own window, the fold keeps the option's ordinary reason, and the
+walker makes it askable where it narrows the parked decision, when a
+search with the grant remembered reaches a legal end from it
+(`optionAsks`). A search that finds no answer at such a decision still
+stops there when an option may be asked about, and the walk keeps the
+decision, so a player whose only way on needs consent may ask. The
+tree-level check that refuses a required decision with every option
+forbidden does not count such a choose-one option as forbidden; the
+search at the decision judges the grant instead. An optional choose-many left
 with only askable options is still asked, and `wellFormed` accepts it with
 nothing to pick yet, so its player may ask or answer without the target.
 
@@ -294,13 +303,47 @@ campaign clause gets `no-target-consent`: "Cannot target other sites in the
 region without ruler's consent." Secret Police gets `no-faceup-consent`:
 "Cannot play a Vision faceup without ruler's consent." The Hall of
 Ministers gets `no-discard-consent`: "Cannot discard cards from its ruler's
-sites without ruler's consent.", registered as a game-rule note. A refused
-option uses the ordinary reason.
+sites without ruler's consent.", registered as a game-rule note.
+Each toll step's free option has an ordinary and a consent reason:
+Toll Roads `no-free-travel` ("Cannot travel to its ruler's sites without
+giving favor.") and `no-free-travel-consent` ("… without giving favor or
+ruler's consent."), Forced Labor `no-free-search` and
+`no-free-search-consent` ("Cannot search at its ruler's sites …"),
+Curfew `no-free-trade` and `no-free-trade-consent` ("Cannot trade with
+its ruler's cards …"), and Grasping Vines `must-kill` ("Must kill a
+warband when traveling from its ruler's sites.") and `must-kill-consent`
+("…, unless ruler consents."). A favor toll's paying option, when its
+payer is short, reads "Needs 1 favor; you have 0". A refused option uses
+the ordinary reason.
 
-**Toll and penalty steps.** In slice 4, Toll Roads, Forced Labor, Curfew and
-Grasping Vines each become a `Decide` step whose free option is barred by
-that power's waivable `OptionRestriction`. The step appears only when its
-ruler is a player other than the actor.
+**Toll and penalty steps.** Toll Roads, Forced Labor, Curfew and Grasping
+Vines each ask a choose-one, "Give 1 favor to Red" (or "Kill 1 warband")
+or "Travel without paying", in the window `PowerWindow.PayOrAsk`
+(`PayOrAsk`). The free option is barred by that power's waivable
+`OptionRestriction` until its ruler consents. Its key names the occasion
+(the destination, the pawn's site, the traded card, the site left), so a
+grant covers that occasion for the turn. The step appears only when a
+player other than the actor rules the card; under bandits the toll or
+the kill is taken unasked. Grasping Vines asks only a traveller with a
+warband on their board.
+
+Every question of a cost is asked before any of it is paid: each step
+goes first in the cost node, and every payment, Way Station's included,
+runs after the rest of the cost. In a Search's or a Trade's cost node
+that is last. A Travel's cost node also holds the pawn's move, so its
+payments run just before the move (`TravelRoute.beforeMove`). A resume
+folds the node again against the state it parked in, and Way Station
+decides whether to ask from the favor held. Nothing after the move is a
+decision today; a power that puts one there would bring this hazard back.
+
+A payer who cannot pay sees the paying option unavailable with what it
+needs, and may ask to go on free. After a refusal the step has nothing to
+choose; Undo takes back the pick that led there, before anything hidden
+is shown, and the pick is then shut for the turn. Paying keeps its lines;
+going free writes "Gave nothing, with Red's consent." or its card's
+parallel line. A preview follows an answer through a pay-or-ask step, and
+reads a short payer's free option as if granted, so a destination's
+badge and a shortfall reason still show the toll.
 
 **Operation restrictions.** The Hall of Ministers is an operation
 restriction, which refuses a discard wherever it runs. Its refusal names
@@ -329,7 +372,8 @@ the breach, so there is no special path.
   which the client uses to word the confirmation.
 - While a request is pending, the requester gets `consentWaiting` ("Waiting
   for Red's consent…") with Undo offered as withdraw. Each asked granter gets
-  `consentPrompt` with the requester, powers and target label. Other players
+  `consentPrompt` with the requester, powers and target label. A button's
+  label is read from the parked decision. Other players
   see the usual waiting banner. `awaitedPlayers` is unchanged, since it hands the parked decision to everyone it names; the prompt is its own field. The requester's `walkerDecision` is withheld while their request waits, and nobody is offered Redo.
 - `consentPreferences` goes to the viewer only: one entry per waivable power
   the viewer rules, with a row per other player. A power a card prints
@@ -411,7 +455,8 @@ the breach, so there is no special path.
    Ministers through its operation refusals. Forgotten Vault is never
    waivable (ruling 2).
 4. **Toll and penalty cards.** Toll Roads, Forced Labor, Curfew and Grasping
-   Vines, each converted to a pay-or-ask `Decide` step.
+   Vines, each converted to a pay-or-ask step, with the walker asking at a
+   choose-one on the option path.
 
 Several pending asks (ruling 9) land in the first slice where two hard
 blocks from different rulers can fall on one option. Among cards still in
@@ -433,7 +478,7 @@ holding, Forbidden Forest with the Pass is the likely first case.
   choose-one answer of the walk. The option path's key names the decision,
   so it is exact. The key does not name the granter. The Pass's Travel
   destination and Secret Police's placement are each the only such
-  decision in their walk; slice 4 must tie them.
+  decision in their walk; the first change that puts two in one walk must tie them.
 - Hiding the decision's phase from the requester while their request waits.
   The decision itself is withheld.
 - Askable options on the client's shared board homes and variant toggles,
@@ -442,7 +487,7 @@ holding, Forbidden Forest with the Pass is the likely first case.
 - The Hall of Ministers on discards with no option to ask from: Dark
   Enforcer and the region discards (Dazzle, Threatening Roar, Riots)
   skip a protected card, and Mounted Library's self-discard has no
-  consent point. Slice 4's pay-or-ask step could reach them. By ruling 3,
+  consent point. A pay-or-ask step could reach them, once they offer an option. By ruling 3,
   one grant would waive the Hall for a whole region discard.
 - Asking from a site-card question whose every candidate the Hall
   protects. A choose-one has no empty answer, so after a refusal it

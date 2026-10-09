@@ -74,10 +74,10 @@ Left behind by the
 [consent work](superpowers/specs/2026-10-08-consent-system-design.md):
 
 - [ ] **Play-test consent in a browser.** The amber destination, campaign
-  target, faceup Vision and Hall-protected card, the confirmation, the
+  target, faceup Vision, Hall-protected card and free option of a toll, the confirmation, the
   ruler's prompt, automatic answers, the preferences grid and withdrawing
   with Undo are covered by tests only. Seeding a game with a player-ruled
-  Narrow Pass, Secret Police or Hall of Ministers needs the journaled
+  Narrow Pass, Secret Police, Hall of Ministers or toll card needs the journaled
   arranged start.
 
 ### Phase - Board decision follow-ups
@@ -210,8 +210,9 @@ consent, and rulers can set private per-player standing answers
 - [x] 3. Hard-block cards: Secret Police and Hall of Ministers; Forgotten
   Vault is never waivable
   ([plan](superpowers/plans/2026-10-09-consent-slice3.md)).
-- [ ] 4. Toll and penalty cards: Toll Roads, Forced Labor, Curfew and
-  Grasping Vines.
+- [x] 4. Toll and penalty cards: Toll Roads, Forced Labor, Curfew and
+    Grasping Vines
+    ([plan](superpowers/plans/2026-10-09-consent-slice4.md)).
 
 ### Phase - All-Exile alpha readiness
 
