@@ -12,6 +12,11 @@ sealed trait OathEvent extends Product with Serializable
   * would forbid — mirroring the `Operation` root decision in Task 1.
   */
 trait WalkerEvent extends OathEvent
+
+/** The consent facts (consent design, "Events"). None opens a command
+  * batch: the journal fold closes any open batch before one, so consent
+  * stays off the undo stack. */
+sealed trait ConsentEvent extends OathEvent
 object OathEvent:
   final case class IgnoredRulesRecorded(
       playerId: PlayerId,
@@ -64,6 +69,23 @@ object OathEvent:
     * "Redo"). Only the application's journal fold replays it. */
   final case class StepRestored(from: Long, until: Long, by: PlayerId)
       extends OathEvent
+  /** `request.requester` asks the granters in `request.asks`; every ask is
+    * unanswered. */
+  final case class ConsentRequested(request: ConsentRequest)
+      extends ConsentEvent
+  /** `granter`'s answer to the waiting request. A refusal, or the last
+    * grant, settles it. */
+  final case class ConsentAnswered(granter: PlayerId, granted: Boolean)
+      extends ConsentEvent
+  /** The requester took their unanswered request back with Undo. */
+  final case class ConsentRequestWithdrawn(requester: PlayerId)
+      extends ConsentEvent
+  final case class ConsentPreferenceSet(granter: PlayerId, power: PowerId,
+      requester: PlayerId, setting: ConsentSetting) extends ConsentEvent
+  /** `granter` no longer rules `power`'s card: their preferences on it go
+    * (ruling 17). */
+  final case class ConsentPreferencesCleared(granter: PlayerId,
+      power: PowerId) extends ConsentEvent
 
 enum TradeResource { case Favor, Secret }
 

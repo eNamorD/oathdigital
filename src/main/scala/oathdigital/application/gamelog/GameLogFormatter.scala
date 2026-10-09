@@ -151,6 +151,8 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         (Vector(victory(winner, exhaustion(kind, vision))), run)
       // A diagnostic, not play.
       case _: OathEvent.IgnoredRulesRecorded => (Vector.empty, run)
+      // Consent's lines are Task 8's; until then a consent fact posts none.
+      case _: ConsentEvent => (Vector.empty, run)
       // Undo's facts post no line of their own; `format` keeps markers out
       // of every journal it formats.
       case _: OathEvent.CommandAccepted | _: OathEvent.StepTakenBack |

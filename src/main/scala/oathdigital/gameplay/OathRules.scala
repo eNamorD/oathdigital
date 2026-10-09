@@ -2,6 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
+import oathdigital.gameplay.consent.ConsentEvolution
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.phases.rest.{TurnBoundary,
   WarExhaustionRandomPort}
@@ -104,6 +105,10 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: RoundEnded => StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
       case event: WarExhaustionResolved =>
         StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
+      case event: ConsentEvent => state match
+        case Ready(ready) => ConsentEvolution.evolve(ready, event)
+          .map(Ready.apply)
+        case _ => Left(GameNotStarted)
       // Undo's facts (undo design, "Storage"). A batch's opening fact
       // changes nothing; a marker rewinds or restores, which only the
       // application's journal fold can do.

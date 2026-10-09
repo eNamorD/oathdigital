@@ -33,7 +33,8 @@ final case class ReadyGame(
     playerColors: Map[PlayerId, PlayerColor],
     setup: FirstGameSupportState,
     banks: MaterialBankState,
-    knowledge: CardKnowledge = CardKnowledge()
+    knowledge: CardKnowledge = CardKnowledge(),
+    consent: ConsentState = ConsentState()
 ):
   def updateCurrent(f: CurrentGameState => CurrentGameState): ReadyGame =
     copy(game = game.copy(current = f(game.current)))

@@ -18,7 +18,7 @@ final case class GameEventEnvelope(
  */
 object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     with ActionEventCodec with EndingEventCodec
-    with WalkerEventCodec with UndoEventCodec:
+    with WalkerEventCodec with UndoEventCodec with ConsentEventCodec:
   import WireError._
 
   /** The pre-release stream has one current format and no compatibility reader. */
@@ -44,6 +44,11 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val CommandAcceptedType = "undo.command-accepted"
   val StepTakenBackType = "undo.step-taken-back"
   val StepRestoredType = "undo.step-restored"
+  val ConsentRequestedType = "consent.requested"
+  val ConsentAnsweredType = "consent.answered"
+  val ConsentRequestWithdrawnType = "consent.request-withdrawn"
+  val ConsentPreferenceSetType = "consent.preference-set"
+  val ConsentPreferencesClearedType = "consent.preferences-cleared"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
@@ -246,10 +251,11 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   private val discriminatorDispatch = lifecycleDiscriminator
     .orElse(actionDiscriminator)
     .orElse(endingDiscriminator).orElse(walkerDiscriminator)
-    .orElse(undoDiscriminator)
+    .orElse(undoDiscriminator).orElse(consentDiscriminator)
 
   private val encoderDispatch = lifecycleEncoder.orElse(actionEncoder)
     .orElse(endingEncoder).orElse(walkerEncoder).orElse(undoEncoder)
+    .orElse(consentEncoder)
 
   private def discriminator(event: OathEvent): String =
     discriminatorDispatch(event)
@@ -268,6 +274,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
         .orElse(endingDecode(eventType, payload, path))
         .orElse(walkerDecode(eventType, payload, path))
         .orElse(undoDecode(eventType, payload, path))
+        .orElse(consentDecode(eventType, payload, path))
         .getOrElse(Left(UnknownEventType(s"$path.eventType", eventType)))
     catch
       case NonFatal(error) => Left(InvalidValue(path,
