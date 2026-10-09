@@ -40,7 +40,8 @@ class KnightsErrantSuite extends munit.FunSuite:
   /** Starts a Muster with `selected` and answers its source. */
   private def musterFrom(state: ReadyGame, selected: Vector[PowerId])
       : OathTransition =
-    val started = accepted(ModifierPlay.started(rules, Ready(state), ActionRef.Muster, p1,
+    val started = accepted(ModifierPlay.started(rules, Ready(state),
+      ActionRef.Muster, p1,
       PowerWindow.MusterModifierSelection, selected))
     val done = accepted(rules.resolveWalker(started.state, p1,
       MusterProcedure.decisionId,

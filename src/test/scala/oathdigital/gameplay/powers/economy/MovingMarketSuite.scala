@@ -39,7 +39,8 @@ class MovingMarketSuite extends munit.FunSuite:
   /** p1 Trades for favor with Moving Market, having selected it, and is
     * asked where to move it. */
   private def tradedWithMarket(ready: ReadyGame): OathTransition =
-    val started = accepted(ModifierPlay.started(rules, Ready(ready), ActionRef.Trade, p1,
+    val started = accepted(ModifierPlay.started(rules, Ready(ready),
+      ActionRef.Trade, p1,
       PowerWindow.TradeModifierSelection, modifiers,
       startArgs = Vector(DecisionOptionRef.Button("favor"))))
     val asked = accepted(rules.resolveWalker(started.state, p1,

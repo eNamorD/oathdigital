@@ -38,7 +38,8 @@ class DefameSuite extends munit.FunSuite:
   /** p1 Trades for favor with Mercenaries, having selected Defame, and is
     * asked whose favor to burn. */
   private def tradedForFavorWithMercenaries(ready: ReadyGame): OathTransition =
-    val started = accepted(ModifierPlay.started(rules, Ready(ready), ActionRef.Trade, p1,
+    val started = accepted(ModifierPlay.started(rules, Ready(ready),
+      ActionRef.Trade, p1,
       PowerWindow.TradeModifierSelection, modifiers,
       startArgs = Vector(DecisionOptionRef.Button("favor"))))
     val asked = accepted(rules.resolveWalker(started.state, p1,
