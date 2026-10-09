@@ -1,7 +1,7 @@
 # Consent system
 
 **Status:** designed 2026-10-08. It covers the roadmap's **Phase - Consent
-system**. Slice 1 is implemented ([plan](../plans/2026-10-09-consent-slice1.md)), and its plan's decisions are folded in below.
+system**. Slices 1 and 2 are implemented ([slice 1 plan](../plans/2026-10-09-consent-slice1.md), [slice 2 plan](../plans/2026-10-09-consent-slice2.md)), and their plans' decisions are folded in below.
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **parked decision**.
 The [undo design](2026-10-06-undo-design.md) defines **command batch**,
@@ -218,11 +218,14 @@ any ask is refused.
 
 - On any refusal, record Refused for every key and clear the request. The
   parked decision re-renders with the target unavailable.
-- When all asks are granted, record Granted, clear the request, and answer
-  the parked decision with `target` for the requester. That answer opens a
-  `CommandAccepted(requester)` batch even though the granter's command
-  produced it, so the requester can undo the move itself. This is the one
-  case where a batch's issuer is not the command's actor.
+- When all asks are granted at a choose-one, record Granted, clear the
+  request, and answer the parked decision with `target` for the requester.
+  That answer opens a `CommandAccepted(requester)` batch even though the
+  granter's command produced it, so the requester can undo the move itself.
+  This is the one case where a batch's issuer is not the command's actor.
+- At a choose-many, a grant answers nothing. It records Granted and clears
+  the request, and the decision re-renders with the target choosable. The
+  requester goes on choosing, so no batch opens.
 
 **`SetConsentPreference(granter, power, requester, setting)`**
 
@@ -242,8 +245,8 @@ with the current ruler of its card. Where they differ it appends
 ### Walker and powers
 
 **Powers declare waivability; they never read the ledger.**
-`Restriction` gains a field `waiver: Option[Waiver]`, and `OptionRestriction`
-gains the same in slice 2. A `Waiver` holds `granter: ReadyGame =>
+`Restriction` and `OptionRestriction` each have a field
+`waiver: Option[Waiver]`. A `Waiver` holds `granter: ReadyGame =>
 Option[PlayerId]` (the ruling player; none for bandits, the Empire or
 nobody), the `source` that names the power, and the consent-worded `note`.
 Campaign-only contributions never set it, which enforces ruling 2 card by
@@ -258,6 +261,8 @@ contribution is dropped when `answers` holds Granted for its power, the
 requester, the decision and the reference:
 
 - For an `OptionRestriction`, the reference is the option being judged.
+  Its key names the decision and the option, so the grant is tied to its
+  decision.
 - For a tree-level `Restriction`, it is the walk's `Answered` value for the
   decision.
 
@@ -266,13 +271,18 @@ new breach today. It will collect all new breaches. The option becomes
 `DecisionOption.Unavailable(option, OptionReason.Askable(power, note, asks))`
 when ruling 8 holds, the decision is a choose-one, and a search with the grant
 remembered reaches a legal end from it; otherwise it keeps its ordinary
-reason. The same classification applies
-on the `restrictOptions` and `firstNote` path that `OptionRestriction` uses.
+reason. On the `restrictOptions` path that `OptionRestriction` uses, an
+option that only waivable restrictions forbid becomes askable at a
+choose-many only, with no search: a grant there answers nothing, so it cannot
+leave a request waiting on a grant that fails. An optional choose-many left
+with only askable options is still asked, and `wellFormed` accepts it with
+nothing to pick yet, so its player may ask or answer without the target.
 
 **Reasons.** Each waivable contribution declares a consent-worded `NoteKey`,
 used only while the option is askable. The Pass gets `no-travel-consent`:
-"Cannot travel to other sites in the region without ruler's consent." A
-refused option uses the ordinary reason.
+"Cannot travel to other sites in the region without ruler's consent." Its
+campaign clause gets `no-target-consent`: "Cannot target other sites in the
+region without ruler's consent." A refused option uses the ordinary reason.
 
 **Toll and penalty steps.** In slice 4, Toll Roads, Forced Labor, Curfew and
 Grasping Vines each become a `Decide` step whose free option is barred by
@@ -364,7 +374,7 @@ the breach, so there is no special path.
    row in `docs/rules/implementation-traceability.md`, and update the
    roadmap phase.
 2. **The Pass on campaign targeting.** A waiver on its `OptionRestriction`,
-   through the `restrictOptions` and `firstNote` path.
+   through the `restrictOptions` path.
 3. **Hard-block cards.** Secret Police, Hall of Ministers, and Forgotten
    Vault outside campaigns.
 4. **Toll and penalty cards.** Toll Roads, Forced Labor, Curfew and Grasping
@@ -385,12 +395,18 @@ holding, Forbidden Forest with the Pass is the likely first case.
 - Hiding the speed leak of automatic answers (ruling 11).
 - Hiding the sequence numbers a preference change or a clearing uses. The
   log shows no line for them, but the next line's sequence moves past them.
-- Tying a grant to the decision that caused the breach. The ledger check
-  drops a waivable power's breach for any granted choose-one answer of the
-  walk, and the key does not name the granter. Slice 1's Travel has one
-  destination decision, so this is exact there; slices 2 and 4 must tie them.
+- Tying a grant to the decision that caused the breach on the tree path.
+  The ledger check drops a waivable `Restriction`'s breach for any granted
+  choose-one answer of the walk. The option path's key names the decision,
+  so it is exact. The key does not name the granter. The Pass's Travel
+  destination is the only tree-path decision so far; slice 4 must tie
+  them.
 - Hiding the decision's phase from the requester while their request waits.
   The decision itself is withheld.
 - Askable options on the client's shared board homes, variant toggles and
-  board-decision buttons. Those paths treat an askable option as unavailable
-  or submit it directly; no slice-1 option takes them.
+  board-decision buttons, and on a choose-many drawn in the panel. Those
+  paths treat an askable option as unavailable or submit it directly; no
+  option yet takes them.
+- Keeping a campaigner's picks across a consent request. The client drops
+  a board draft when the sequence moves, so after a grant the other
+  targets are picked again.

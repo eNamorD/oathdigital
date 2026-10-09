@@ -109,3 +109,32 @@ class ConsentAskingSuite extends munit.FunSuite:
     overlay.dispose()
     root.remove()
     opener.remove()
+
+  test("in a choose-many on the board an askable target asks, is never " +
+      "picked, and the other targets still pick"):
+    val peaks = DecisionOptionState("site", "site:broken-peaks",
+      "Broken Peaks")
+    val targets = DecisionQueryState.ChooseMany(Vector(peaks, woods), 0, 2)
+    val conquest = WalkerDecisionState("campaign", "campaign.targets",
+      "decide", query = Some(targets), presentation = "board")
+    val ui = new RecordingControls()
+    var picked = Vector.empty[String]
+    val views = BoardOptionViews.of(conquest, targets, None)
+    assertEquals(views.get(BoardOptionViews.key(woods)).map(_.state),
+      Some(OptionState.Askable))
+    val options = new BoardOptions(views, option => picked :+= option.id,
+      ConsentAsking.asker("campaign.targets", table, canControl = true, ui))
+    val woodsBox = dom.document.createElement("article")
+    val peaksBox = dom.document.createElement("article")
+    options.decorate(woodsBox, Vector(BoardOptionViews.key(woods)))
+    options.decorate(peaksBox, Vector(BoardOptionViews.key(peaks)))
+    click(woodsBox)
+    confirmation.confirm()
+    assertEquals(ui.submitted, Vector(Intent.RequestConsent(
+      "campaign.targets", WalkerStartArgWire("site", "site:deep-woods"))))
+    click(peaksBox)
+    assertEquals(picked, Vector("site:broken-peaks"))
+    // A draft never holds it either.
+    val draft = BoardSelectionDraft(BoardSelectionContext("g", "blue", 1L),
+      "campaign.targets", targets, Vector.empty)
+    assertEquals(draft.click(woods).keys, Vector.empty)
