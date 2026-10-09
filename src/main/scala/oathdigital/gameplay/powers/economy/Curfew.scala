@@ -4,8 +4,8 @@ import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogResolution, PowerAnswers,
-  RuledCards, RulerToll}
+import oathdigital.gameplay.powers.{CatalogResolution, PayOrAsk,
+  PowerAnswers, RuledCards, RulerToll}
 import oathdigital.model._
 
 object CurfewCard extends Denizen(DenizenId("119"), "Curfew", Suit.Order) with SiteOnly:
@@ -21,11 +21,13 @@ object CurfewCard extends Denizen(DenizenId("119"), "Curfew", Suit.Order) with S
   * adviser included, gives the ruler 1 favor, or burns it when bandits rule,
   * on top of the Trade's cost ([[RulerToll]]). The ruler is exempt.
   *
-  * The toll is a required batch placed before the Trade's cost, so a trader
-  * who cannot pay is refused, and the restriction look-ahead hides that
-  * source. The batch reads the Trade's source when it runs and is placed for
-  * every Trade by an enemy, so the cost node's shape never depends on the
-  * answer. Its line reads the payment's step.
+  * The toll runs after the rest of the Trade's cost and reads the Trade's
+  * source when it runs. Under bandits it is a required batch placed for
+  * every Trade by an enemy. When a player rules Curfew, the trader is asked
+  * first to pay or to trade without paying, which its ruler may consent to
+  * (consent slice 4), only for a source that ruler rules. A trader who
+  * cannot pay and is not let off is refused, and the restriction look-ahead
+  * hides that source. Its line reads the payment's step.
   */
 final case class Curfew private (catalog: ExecutableCatalog)
     extends ContributingPower:
@@ -35,25 +37,49 @@ final case class Curfew private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = RulerToll.keys
+  override def noteKeys: Vector[NoteKey] = RulerToll.keys ++
+    Vector(Curfew.noFreeTrade, Curfew.noFreeTradeConsent)
+  override def narratedDecisions: Set[String] = Set(Curfew.decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeCost -> Vector(Transform((ctx, operations) =>
       RulerToll.enemyRuler(ctx.state, cardId, ctx.activePlayer)
-        .fold(operations)(ruler => Vector(toll(ctx.activePlayer, ruler),
-          Note(id, RulerToll.note(cardId, ctx.activePlayer, ruler))) ++
-          operations))))
+        .fold(operations)(charged(ctx.activePlayer, _, operations)))),
+    PowerWindow.PayOrAsk -> Vector(Curfew.step.restriction))
 
   override def applicable(ctx: PowerCtx): Boolean =
-    RulerToll.enemyRuler(ctx.state, cardId, ctx.activePlayer).nonEmpty
+    if ctx.window == PowerWindow.PayOrAsk then Curfew.step.asking(ctx)
+    else RulerToll.enemyRuler(ctx.state, cardId, ctx.activePlayer).nonEmpty
 
-  /** The payment, when the Trade's source is a card `ruler` rules. */
-  private def toll(trader: PlayerId, ruler: SiteRuler): Operation =
-    BuildOps((ready, pending) => Right(
-      PowerAnswers.one(pending, TradeProcedure.decisionId).flatMap(cardOf)
-        .filter(ruled(ready, ruler, _))
+  /** `operations` with what a Trade with a card `ruler` rules owes, read
+    * against the Trade's source when it runs: the step first and its outcome
+    * last when a player rules Curfew, the payment and its line last under
+    * bandits. */
+  private def charged(trader: PlayerId, ruler: SiteRuler,
+      operations: Vector[Operation]): Vector[Operation] = ruler match
+    case SiteRuler.Player(owner) =>
+      val paid = Vector(RulerToll.payment(trader, ruler),
+        Note(id, RulerToll.note(cardId, trader, ruler)))
+      val waived = Vector(Note(id, _ => Some(RulerToll.waived(
+        Curfew.step.source, NoteArg.Player(owner)))))
+      Branch((ready, pending) => tradedWith(ready, ruler, pending).toVector
+        .map(source => Curfew.step.question(trader, source.wireId,
+          "Curfew: give 1 favor to trade with this card?",
+          RulerToll.payOption(ready, trader, owner),
+          "Trade without paying"))) +: operations :+
+        Branch((ready, pending) => tradedWith(ready, ruler, pending).toVector
+          .map(_ => Curfew.step.outcome(paid, waived)))
+    case _ => operations ++ Vector(
+      BuildOps((ready, pending) => Right(tradedWith(ready, ruler, pending)
         .map(_ => RulerToll.payment(trader, ruler)).toVector),
-      required = true)
+        required = true),
+      Note(id, RulerToll.note(cardId, trader, ruler)))
+
+  /** The Trade's source, when it is a card `ruler` rules. */
+  private def tradedWith(ready: ReadyGame, ruler: SiteRuler,
+      pending: PendingTree): Option[DecisionOptionRef] =
+    PowerAnswers.one(pending, TradeProcedure.decisionId).filter(ref =>
+      cardOf(ref).exists(ruled(ready, ruler, _)))
 
   private def cardOf(ref: DecisionOptionRef): Option[CardId] = ref match
     case DecisionOptionRef.Denizen(card) => Some(card)
@@ -68,5 +94,20 @@ final case class Curfew private (catalog: ExecutableCatalog)
 
 object Curfew:
   val id: PowerId = CurfewCard.power.id
+  val decisionId: String = "power.curfew.toll"
+  /** "Cannot trade with its ruler's cards without giving favor.": the
+    * reason of the free option once its ruler refused. */
+  val noFreeTrade: NoteKey = NoteKey("no-free-trade", Vector(NotePart.Text(
+    "Cannot trade with its ruler's cards without giving favor.")))
+  /** The free option's reason while its ruler may be asked. */
+  val noFreeTradeConsent: NoteKey = NoteKey("no-free-trade-consent",
+    Vector(NotePart.Text("Cannot trade with its ruler's cards without " +
+      "giving favor or ruler's consent.")))
+  val step: PayOrAsk = PayOrAsk(id, CurfewCard.id, decisionId, noFreeTrade,
+    noFreeTradeConsent)
+
+  /** The free option of a Trade with `source`. */
+  def free(source: DecisionOptionRef): DecisionOptionRef.Button =
+    PayOrAsk.free(source.wireId)
 
   def forCatalog(catalog: ExecutableCatalog): Curfew = new Curfew(catalog)

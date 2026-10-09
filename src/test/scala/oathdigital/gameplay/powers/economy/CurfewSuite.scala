@@ -2,14 +2,16 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.economy.TradeProcedure
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PayOrAsk, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
+import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
-  Look, Table}
+  Look, Outcomes, PlacementPicks, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Curfew's ruler toll on a Trade. The toll is shared with Forced Labor
   * (`RulerToll`); its bandit case is pinned here only. */
@@ -53,20 +55,39 @@ class CurfewSuite extends munit.FunSuite:
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 
+  /** The Trade for favor with Wrestlers, parked on Curfew's step, with the
+    * events of its start and its source pick. */
+  private def tradedToStep(ready: ReadyGame)(using munit.Location)
+      : OathTransition =
+    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1,
+      Vector.empty, Vector(DecisionOptionRef.Button("favor"))))
+    val picked = accepted(rules.resolveWalker(started.state, p1,
+      TradeProcedure.decisionId,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(wrestlers))))
+    picked.copy(events = started.events ++ picked.events)
+
+  /** The Trade for favor with Wrestlers, with Curfew's step answered with
+    * `choice`: the events of both, and the state after. */
+  private def tradedAnswering(ready: ReadyGame, choice: DecisionOptionRef)(
+      using munit.Location): (Vector[OathEvent], ReadyGame) =
+    val stepped = tradedToStep(ready)
+    val done = accepted(rules.resolveWalker(stepped.state, p1,
+      Curfew.decisionId, DecisionAnswer.ChooseOneAnswer(choice)))
+    (stepped.events ++ done.events, Outcomes.ready(done.state))
+
   test("an enemy trading with a card the ruler rules gives the ruler 1 favor " +
       "on top of the Trade's cost"):
     val ready = rivalRulesBoth.ready
-    val done = tradedForFavorWithWrestlers(ready)
-    val end = Look(done.result)
+    val (events, result) = tradedAnswering(ready, PayOrAsk.pay)
+    val end = Look(result)
     // The start's 1 favor went to p2, then the Trade gained 1 Order favor.
     assertEquals(end.favor(p1), 1)
     assertEquals(end.favor(p2), Look(ready).favor(p2) + 1)
     assertEquals(end.bankFavor(Suit.Order), 3 - 1)
-    assertEquals(said(done.journal.events), Vector(NoteText.Said("gave",
+    assertEquals(said(events), Vector(NoteText.Said("gave",
       s"Gave 1 favor to ${p2.value}.", covers = false)))
-    assertEquals(ActPowerHarness.replayed(rules, ready, done.journal.events),
-      done.result)
-    assertWireRoundTrips(done.journal.events)
+    assertEquals(ActPowerHarness.replayed(rules, ready, events), result)
+    assertWireRoundTrips(events)
 
   test("a trader who cannot pay is not offered the card"):
     assert(wrestlersOffered(rivalRulesBoth.ready))
@@ -91,3 +112,23 @@ class CurfewSuite extends munit.FunSuite:
       assertEquals(Look(done.result).favor(p1), Look(ready).favor(p1) + 1)
       assertEquals(said(done.journal.events), Vector.empty)
     }
+
+  test("an enemy of a player ruler may ask to trade without paying; once " +
+      "granted, it gives nothing"):
+    val ready = rivalRulesBoth.ready
+    val free = Curfew.free(DecisionOptionRef.Denizen(wrestlers))
+    val asked = present(PlacementPicks.parkedOptions(
+      tradedToStep(ready).state, automatic)
+      .find(_.ref == free), "the free option")
+    assertEquals(asked, DecisionOption.Unavailable(
+      DecisionOption.Button(free, "Trade without paying"),
+      OptionReason.Askable(Curfew.id, Curfew.noFreeTradeConsent(
+        PowerSourceRef.Card(CurfewCard.id)),
+        Vector(ConsentAsk(p2, Vector(Curfew.id))))))
+    val granted = ready.copy(consent = ConsentState().granting(Vector(
+      ConsentKey(Curfew.id, p1, Curfew.decisionId, free)),
+      ConsentTurn.of(ready)))
+    val (events, result) = tradedAnswering(granted, free)
+    assertEquals(Look(result).favor(p1), Look(ready).favor(p1) + 1)
+    assertEquals(said(events), Vector(NoteText.Said("waived",
+      s"Gave nothing, with ${p2.value}'s consent.", covers = false)))

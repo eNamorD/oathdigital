@@ -8,9 +8,11 @@ import oathdigital.model._
   * when bandits rule. The rule card's ruler is the ruler of the site holding
   * it faceup; Empire rulers are not supported.
   *
-  * The payment is required, so an enemy who cannot pay is refused. Toll
-  * Roads charges the same toll for Travel, with lines that name the
-  * traveller.
+  * The payment is required, so an enemy who cannot pay, and is not let off,
+  * is refused. When a player rules the card, the payer is asked first to
+  * pay or to go on free, which that ruler may consent to ([[PayOrAsk]]).
+  * The payment runs after the rest of the cost either way. Toll Roads
+  * charges the same toll for Travel, with lines that name the traveller.
   */
 private[powers] object RulerToll:
   val Favor: Int = 1
@@ -21,7 +23,26 @@ private[powers] object RulerToll:
   /** "Burned {1 favor}.", when bandits rule. */
   val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
     NotePart.Arg(0), NotePart.Text(".")))
-  val keys: Vector[NoteKey] = Vector(gave, burned)
+  /** "Gave nothing, with {Blue}'s consent.", when the ruler waived it. */
+  val waived: NoteKey = NoteKey("waived", Vector(
+    NotePart.Text("Gave nothing, with "), NotePart.Arg(0),
+    NotePart.Text("'s consent.")))
+  val keys: Vector[NoteKey] = Vector(gave, burned, waived)
+
+  /** `operations` with what `payer` owes `ruler` for `step`'s card on
+    * `occasion`: the step when a player rules it, the payment and its line
+    * under bandits, run after the rest of the cost either way. */
+  def owed(step: PayOrAsk, ready: ReadyGame, payer: PlayerId,
+      ruler: SiteRuler, operations: Vector[Operation], occasion: String,
+      heading: String, freeLabel: String): Vector[Operation] =
+    val paid = Vector(payment(payer, ruler),
+      Note(step.power, note(step.card, payer, ruler)))
+    ruler match
+      case SiteRuler.Player(owner) => step.around(operations, payer,
+        occasion, heading, payOption(ready, payer, owner), freeLabel, paid,
+        Vector(Note(step.power, _ => Some(waived(step.source,
+          NoteArg.Player(owner))))))
+      case _ => operations ++ paid
 
   /** The ruler of the site holding `card` faceup, when `payer` is its
     * enemy. */

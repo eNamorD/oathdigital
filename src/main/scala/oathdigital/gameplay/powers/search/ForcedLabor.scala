@@ -4,7 +4,7 @@ import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.{PowerAccess, SiteRulers}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogResolution, RulerToll}
+import oathdigital.gameplay.powers.{CatalogResolution, PayOrAsk, RulerToll}
 import oathdigital.model._
 
 object ForcedLaborCard extends Denizen(DenizenId("112"), "Forced Labor", Suit.Order) with SiteOnly:
@@ -21,9 +21,11 @@ object ForcedLaborCard extends Denizen(DenizenId("112"), "Forced Labor", Suit.Or
   * ruler rules gives the ruler 1 favor, or burns it when bandits rule, on top
   * of a Search's cost ([[RulerToll]]). The ruler is exempt.
   *
-  * The payment is required and comes before the Search's Supply, so a
-  * searcher who cannot pay is refused and the Search is not offered. Its line
-  * reads the payment's step.
+  * The payment is required and comes after the Search's Supply, so a
+  * searcher who cannot pay is refused and the Search is not offered. When a
+  * player rules it, the searcher is asked first to pay or to search without
+  * paying, which its ruler may consent to (consent slice 4). Its line reads
+  * the payment's step.
   */
 final case class ForcedLabor private (catalog: ExecutableCatalog)
     extends ContributingPower:
@@ -33,24 +35,45 @@ final case class ForcedLabor private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = RulerToll.keys
+  override def noteKeys: Vector[NoteKey] = RulerToll.keys ++
+    Vector(ForcedLabor.noFreeSearch, ForcedLabor.noFreeSearchConsent)
+  override def narratedDecisions: Set[String] = Set(ForcedLabor.decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchCost -> Vector(Transform((ctx, operations) =>
-      toll(ctx).fold(operations)(_ ++ operations))))
+      charged(ctx, operations).getOrElse(operations))),
+    PowerWindow.PayOrAsk -> Vector(ForcedLabor.step.restriction))
 
-  override def applicable(ctx: PowerCtx): Boolean = toll(ctx).nonEmpty
+  override def applicable(ctx: PowerCtx): Boolean =
+    if ctx.window == PowerWindow.PayOrAsk then ForcedLabor.step.asking(ctx)
+    else charged(ctx, Vector.empty).nonEmpty
 
-  /** The payment this Search owes and its line, if it owes one. */
-  private def toll(ctx: PowerCtx): Option[Vector[Operation]] = for
+  /** `operations` with what this Search owes, if it owes anything. */
+  private def charged(ctx: PowerCtx, operations: Vector[Operation])
+      : Option[Vector[Operation]] = for
     ruler <- RulerToll.enemyRuler(ctx.state, cardId, ctx.activePlayer)
     site <- PowerAccess.pawnSite(ctx.state, ctx.activePlayer)
     if SiteRulers.rulerOf(ctx.state, site).contains(ruler)
-  yield Vector(RulerToll.payment(ctx.activePlayer, ruler),
-    Note(id, RulerToll.note(cardId, ctx.activePlayer, ruler)))
+  yield RulerToll.owed(ForcedLabor.step, ctx.state, ctx.activePlayer, ruler,
+    operations, site.value, "Forced Labor: give 1 favor to search here?",
+    "Search without paying")
 
 object ForcedLabor:
   val id: PowerId = ForcedLaborCard.power.id
+  val decisionId: String = "power.forced-labor.toll"
+  /** "Cannot search at its ruler's sites without giving favor.": the reason
+    * of the free option once its ruler refused. */
+  val noFreeSearch: NoteKey = NoteKey("no-free-search", Vector(NotePart.Text(
+    "Cannot search at its ruler's sites without giving favor.")))
+  /** The free option's reason while its ruler may be asked. */
+  val noFreeSearchConsent: NoteKey = NoteKey("no-free-search-consent",
+    Vector(NotePart.Text("Cannot search at its ruler's sites without " +
+      "giving favor or ruler's consent.")))
+  val step: PayOrAsk = PayOrAsk(id, ForcedLaborCard.id, decisionId,
+    noFreeSearch, noFreeSearchConsent)
+
+  /** The free option of a Search from `site`. */
+  def free(site: SiteId): DecisionOptionRef.Button = PayOrAsk.free(site.value)
 
   def forCatalog(catalog: ExecutableCatalog): ForcedLabor =
     new ForcedLabor(catalog)

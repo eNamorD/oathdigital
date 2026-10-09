@@ -73,8 +73,8 @@ class GameLogStartLineSuite extends munit.FunSuite:
     assertEquals(chosen.kind, LogKind.Action)
     assertEquals(chosen.section, tag.section)
 
-  test("a Search whose first recorded step is Forced Labor's toll opens " +
-      "with one tag above the toll, carrying the Supply spent after it"):
+  test("a Search that pays Forced Labor's toll opens with one tag above " +
+      "the toll, carrying the Supply spent before it"):
     val log = texts(format(forcedLaborSearch, None))
     val tag = log.indexOf("Search −2 Supply")
     val toll = log.indexWhere(_.startsWith("Forced Labor: Gave 1 favor"))

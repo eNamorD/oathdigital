@@ -252,9 +252,9 @@ object LogScripts:
     Script("search", service, Look(act.ready).active)
 
   /** Forced Labor at Broken Peaks, and p2 ruling both Broken Peaks and
-    * Ancient City, where p1 stands: p1's Search of the world deck gives p2
-    * 1 favor before it spends 2 Supply. p1 holds 5 Supply and the start's
-    * 1 favor. */
+    * Ancient City, where p1 stands: p1's Search of the world deck spends 2
+    * Supply and, its step answered by paying, gives p2 1 favor. p1 holds 5
+    * Supply and the start's 1 favor. */
   def forcedLaborSearch(using munit.Location): Script =
     val (service, act) = atTable("forced-labor", tableWithOnePawnPerSite
       .worldDeckTop("Threatening Roar", "Fae Merchant", "Second Chance")
