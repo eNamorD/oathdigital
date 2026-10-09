@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.powers.travel.{Tents, TollRoads, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -22,8 +23,9 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
     * starts at `ready`. */
   private def rows(ready: ReadyGame, modifiers: Vector[PowerId])
       (using munit.Location): Map[String, DecisionOptionProjection] =
-    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Travel,
-      actor, modifiers))
+    val started = accepted(ModifierPlay.started(rules, Ready(ready),
+      ActionRef.Travel, actor, PowerWindow.TravelModifierSelection,
+      modifiers))
     present(projector.project(ScopedProjectionContext(
       Outcomes.ready(started.state), Some(actor))), "the destination decision")
       .query.toVector.flatMap(_.offeredOptions).map(row => row.id -> row).toMap

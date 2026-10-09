@@ -2,14 +2,16 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.gameplay.{OathRules, TravelPlay}
 import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Refusals, Table}
+import oathdigital.testkit.{CatalogNames, ParkedNode, Refusals, Table}
 import oathdigital.testkit.PowerRules
+import oathdigital.testkit.Unwrap.accepted
 
 /** A Travel board for the modifiers and rules of Travel: the map of
   * `TravelProcedureSuite`, with named sites and the active player at the
@@ -79,7 +81,7 @@ object TravelFixture:
   /** The destinations Travel offers with `modifiers` selected, and their Supply. */
   def candidates(ready: ReadyGame, modifiers: Vector[PowerId] = Vector.empty)
       : Map[SiteId, Int] =
-    TravelProcedure.build(catalog, ready, actor, Vector.empty)
+    TravelProcedure.afterModifiers(catalog, ready, actor)
       .flatMap(WalkerSimulation.preview(_, ready, powers(modifiers)))
       .getOrElse(Vector.empty).collect {
         case PreviewedOption(DecisionOption.Site(DecisionOptionRef.Site(site)),
@@ -106,3 +108,21 @@ object TravelFixture:
     rules.resolveWalker(from.state, actor, decisionId,
       DecisionAnswer.ChooseOneAnswer(choice))
       .map(done => done.copy(events = from.events ++ done.events))
+
+  /** Travel's modifier decision, `travel.modifiers`. */
+  val modifierDecisionId: String =
+    ModifierPicks.decisionId(PowerWindow.TravelModifierSelection)
+
+  /** The decision a walk at `state` is parked on, rebuilt as the projector
+    * rebuilds it. */
+  def parkedDecision(state: OathState)(using munit.Location): Decide =
+    ParkedNode.of(state, catalog, WalkerPowerCatalog.default(catalog)) match
+      case Right(Some(ParkedNode.Decision(_, decide, _))) => decide
+      case other =>
+        munit.Assertions.fail(s"expected a parked decision, got $other")
+
+  /** The id of the decision a Travel `actor` starts at `ready` parks on
+    * first. */
+  def startParksOn(ready: ReadyGame)(using munit.Location): String =
+    parkedDecision(accepted(rules.startWalker(Ready(ready), ActionRef.Travel,
+      actor)).state).decisionId

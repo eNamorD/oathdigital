@@ -17,10 +17,10 @@ object TentsCard extends Denizen(DenizenId("29"), "Tents", Suit.Nomad):
   * card. If the destination is in the region of the pawn's current site, Travel
   * costs no Supply.
   *
-  * The player owns the choice to select it. Selecting Tents places the favor at
-  * the start of every Travel (the kit does), whether or not the destination is
-  * in the pawn's region, and the Supply payment (terrain adds included) is
-  * removed only when it is.
+  * The player owns the choice to pick it. Picking Tents places the favor at
+  * once, in the modifier decision, whether or not the destination is in the
+  * pawn's region, and the Supply payment (terrain adds included) is removed
+  * only when it is.
   */
 final case class Tents private (catalog: ExecutableCatalog)
     extends SelectedModifier:

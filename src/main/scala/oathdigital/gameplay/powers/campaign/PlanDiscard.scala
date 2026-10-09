@@ -14,7 +14,8 @@ import oathdigital.model._
   * when the card is no longer in either place.
   *
   * `afterCampaign` is the discard of a plan that says "At end, discard" (Horse
-  * Archers, Storm Caller), with its line.
+  * Archers, Storm Caller), with its line, marked so that a power can replace
+  * it (Wild Mounts).
   */
 object PlanDiscard:
   def denizen(catalog: ExecutableCatalog, user: PlayerId, card: DenizenId)
@@ -24,16 +25,26 @@ object PlanDiscard:
   val discarded: NoteKey = NoteKey("discarded",
     Vector(NotePart.Text("Discarded after the Campaign.")))
 
+  /** A discard `afterCampaign` appended, marked with the plan's `card` and
+    * its `user`, `None` for a bandit defender. A power that replaces the
+    * discard of a plan (Wild Mounts) finds it by this mark among the last
+    * children of the Campaign, so a plan appends it through `later`: the
+    * mark must be among what a root `Branch` selects. It runs its children
+    * as they are. */
+  final case class Marked(card: DenizenId, user: Option[PlayerId],
+      children: Vector[Operation]) extends Operation
+
   /** The standard discard of `card` once the Campaign has resolved, whoever
     * won, and `power`'s line. A bandit defender has no user, so the attacker
     * is the acting player of its discard. The line is written only when the
     * discard happened. */
   def afterCampaign(catalog: ExecutableCatalog, power: PowerId, use: PlanUse,
-      card: DenizenId): Vector[Operation] = Vector(
-    denizen(catalog, use.user.getOrElse(use.actor), card),
-    Note(power, states => Option.when(states.previous.exists {
-      case (before, after) => !inDiscard(before, card) && inDiscard(after, card)
-    })(discarded(PowerSourceRef.Card(card)))))
+      card: DenizenId): Vector[Operation] = Vector(Marked(card, use.user,
+    Vector(denizen(catalog, use.user.getOrElse(use.actor), card),
+      Note(power, states => Option.when(states.previous.exists {
+        case (before, after) =>
+          !inDiscard(before, card) && inDiscard(after, card)
+      })(discarded(PowerSourceRef.Card(card)))))))
 
   private def inDiscard(ready: ReadyGame, card: DenizenId): Boolean =
     ready.game.current.commonCards.regionalDiscards.values.exists(_.contains(card))

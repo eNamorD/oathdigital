@@ -17,10 +17,9 @@ object ForestPathsCard extends Denizen(DenizenId("43"), "Forest Paths", Suit.Bea
   * the card. If the destination holds a beast denizen or edifice, Travel costs
   * no Supply and the powers of sites are ignored for that Travel.
   *
-  * The player owns the choice to select it. Selecting Forest Paths places the
-  * favor at the start of every Travel (the kit does). Only when the destination
-  * holds a beast card does it remove the Supply payment and ignore the site
-  * powers.
+  * The player owns the choice to select it. Picking Forest Paths places the
+  * favor at once, in the modifier decision. Only when the destination holds a
+  * beast card does it remove the Supply payment and ignore the site powers.
   *
   * Ignoring a power is a named ignore, decided per Travel (`ignores` reads the
   * route from the context): while the destination qualifies, every power whose

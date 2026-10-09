@@ -2,21 +2,28 @@ package oathdigital.gameplay.actions.travel
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.TravelRules
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
+  WalkerSimulation}
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 
-/** Travel on the walker (travel destination design).
+/** Travel on the walker (travel destination design; modifier walker design).
   *
   * {{{
   * Sequence(
-  *   Decide(travel.destination),              // a board choose-one over sites
-  *   Branch { after the answer:
-  *     Sequence(                              // window = TravelActionEligibility
-  *       Sequence(                            // window = TravelCost
-  *         SpendSupply(actor, printedBase),
-  *         Move(Pawn, source -> destination))) })
+  *   Repeat(ModifierChoice),                // the modifiers, one per pass,
+  *                                          // then "Start Travel"
+  *   Sequence(
+  *     Decide(travel.destination),          // a board choose-one over sites
+  *     Branch { after the answer:
+  *       Sequence(                          // window = TravelActionEligibility
+  *         Sequence(                        // window = TravelCost
+  *           SpendSupply(actor, printedBase),
+  *           Move(Pawn, source -> destination))) }))
   * }}}
+  *
+  * **The modifiers come first.** Each pick pays at once, so the destination
+  * decision shows what each site costs under them.
   *
   * **The destination is a decision.** A power that cares which site was
   * picked acts inside the walk and may ask its own question (Way Station).
@@ -24,21 +31,21 @@ import oathdigital.model._
   *
   * **The windows sit inside the `Branch`.** Every Travel power finds the
   * route by flattening its windowed node to the `Move`, and a `Branch`
-  * flattens to nothing, so a window above it would see no route. A selected
-  * modifier's payment, prepended at the eligibility window, is therefore paid
-  * after the pick, and nothing runs before the first decision.
+  * flattens to nothing, so a window above it would see no route.
   *
   * **The source is a start fact.** A resume after the pawn moved could not
   * read it from the pawn, so a fresh build reads the pawn and the start
   * stores it; a resume reads it back from `walkerStartFacts`.
   *
   * **What does not gate a start.** Supply, terrain, role and Foundation faces
-  * are not build gates: the registry's playable-option gate previews every
-  * destination and refuses a start none of them can complete.
+  * are not build gates: "Start Travel" previews every destination and says
+  * why none can be reached, and with no modifier to pick, the registry's
+  * playable-option gate refuses a start none of them can complete.
   */
 object TravelProcedure:
   val destinationDecisionId: String = "travel.destination"
   private val heading = "Choose a Travel destination"
+  private val startLabel = "Start Travel"
 
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef])
@@ -77,7 +84,25 @@ object TravelProcedure:
     case _ => Left(OathViolation.InvalidEventOrder(
       "a resumed Travel needs its source site as its one start fact"))
 
+  /** The destination decision and the Travel to it: what a fresh start runs
+    * after its modifier decision. The Act panel's [[startable]] previews it,
+    * and so do the Travel suites. */
+  def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId): Either[OathViolation, Operation] = for
+    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
+    source <- actorSite(state, actor).toRight(
+      OathViolation.PawnSiteMissing(actor))
+  yield journey(catalog, state, actor, source)
+
   private def tree(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId, source: SiteId): Operation =
+    val rest = journey(catalog, state, actor, source)
+    Sequence(Vector(ModifierChoice.loop(actor,
+      PowerWindow.TravelModifierSelection, rest, startLabel,
+      Some(TravelOptions.priced)), rest))
+
+  /** The destination pick and the route to it. */
+  private def journey(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId, source: SiteId): Operation =
     val pick = Decide(destinationDecisionId, actor, DecisionQuery.ChooseOne(
       state.game.current.map.inPlay.filter(_ != source).map(site =>
@@ -106,10 +131,11 @@ object TravelProcedure:
         Some(PowerWindow.TravelCost))),
       Some(PowerWindow.TravelActionEligibility))
 
-  /** Whether a Travel could start now: some destination survives the same
-    * preview a start runs. */
+  /** Whether a Travel could start now under `powers`: some destination
+    * survives the preview of what follows the modifier decision. The Act
+    * panel asks it of each selection `ModifierOffers.selections` tries. */
   def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       powers: WalkerPowers): Boolean =
-    build(catalog, state, actor, Vector.empty)
+    afterModifiers(catalog, state, actor)
       .flatMap(WalkerSimulation.preview(_, state, powers))
       .exists(_.exists(_.outcome.isRight))

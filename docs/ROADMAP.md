@@ -11,8 +11,8 @@ specs.
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest. **Phase - Catalog batch 6** is in progress: slice 1
-is done.
+2026-10-01 playtest. **Phase - Catalog batch 6** is in progress: slices 1
+and 2 are done.
 
 ## Next
 
@@ -104,7 +104,6 @@ Battle plan restrictions and Search sources
 ([design](superpowers/specs/2026-10-09-catalog-batch-6-design.md),
 [rulings](superpowers/specs/2026-10-09-catalog-batch-6-rulings.md)).
 
-- [ ] Slice 2, plan rewrites: Peace Envoy, Wild Mounts.
 - [ ] Slice 3, Search sources: Observatory, Errand Boy, Wine of Welcome,
   Mushrooms, Painted Trumpet. Waits for the modifier walker phase.
 - [ ] Slice 4, Search draws: Spinning Bee, Land Warden. Waits for the
@@ -123,7 +122,7 @@ It reverses ruling 1 of the
 ([design](superpowers/specs/2026-10-09-modifier-walker-design.md)).
 
 - [x] Slice 1: the modifier decision, then Search and facedown-adviser play.
-- [ ] Slice 2: Travel.
+- [x] Slice 2: Travel.
 - [ ] Slice 3: Muster and Trade.
 - [ ] Slice 4: Recover, the empty windows, and deleting the client modifier
   flow and the preview endpoint.

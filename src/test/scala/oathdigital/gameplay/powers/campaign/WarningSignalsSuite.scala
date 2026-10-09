@@ -136,6 +136,9 @@ class WarningSignalsSuite extends munit.FunSuite:
       .answer(b.rival, decision, keep).finishPlanWindows
     assertEquals(won.winner, Some(true))
     assert(Look(won.state).inRegionalDiscard(card))
+    assertEquals(said(power, won.events).map(_.text), Vector(
+      s"${b.rival.value} redistributed their warbands.",
+      "Discarded after the Campaign."))
 
   test("a defender that rules no site has nowhere to move to, so nothing is " +
       "asked, and the card is still discarded"):
@@ -195,13 +198,14 @@ class WarningSignalsSuite extends munit.FunSuite:
     assertEquals(said(power, done.events), Vector(NoteText.Said("redistributed",
       s"${b.rival.value} redistributed their warbands.", covers = false)))
 
-  test("a defender with nowhere to move to writes nothing"):
+  test("a defender with nowhere to move to writes only the discard"):
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))
     val b = on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
       _.boardWarbands(base.rival, 3))
     val done = commit(rules(losingDice), b, 2, raid = true).pick(b.rival,
       CampaignIds.defenderPlan, ref).finishPlanWindows
-    assertEquals(said(power, done.events), Vector.empty)
+    assertEquals(said(power, done.events), Vector(NoteText.Said("discarded",
+      "Discarded after the Campaign.", covers = false)))
 
   test("a defender holding Vow of Wandering may only bring warbands back " +
       "to the board"):

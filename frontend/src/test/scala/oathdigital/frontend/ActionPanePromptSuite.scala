@@ -30,7 +30,7 @@ class ActionPanePromptSuite extends munit.FunSuite:
   test("the prompt is the modifier confirm while ordering"):
     val draft = ModifierFlowDrafts.orderingDraft(1L).copy(
       preview = MajorActionPreviewResponse(nextSequence = 1L,
-        action = "travel", modifiers = Vector.empty,
+        action = "muster", modifiers = Vector.empty,
         ignoredRules = Vector.empty))
     val result = pane(projection(open = true),
       SessionDrafts.empty.copy(modifiers = Some(draft)))

@@ -72,16 +72,19 @@ class SelectedModifierSuite extends munit.FunSuite:
     val broke = Table.start.favor(p1, 0).ready
     assert(priced.applicable(ctx(broke, priced, PowerWindow.TravelCost)))
 
-  test("a cost is paid at the root of the action's tree, and only for a costed " +
-      "modifier"):
-    val priced = Probe(card, Cost(favor = 1), travel)
-    val windows = priced.contributions.keySet
-    assertEquals(windows, Set[PowerWindow](PowerWindow.TravelActionEligibility))
-    assertEquals(free.contributions, Map.empty[PowerWindow, Vector[Contribution]])
-    val both = Probe(card, Cost(favor = 1),
+  test("a cost not paid at the pick is paid at the root of the action's " +
+      "tree, and only for a costed modifier"):
+    val muster: Set[MajorActionType] = Set(MajorActionType.Muster)
+    val priced = Probe(card, Cost(favor = 1), muster)
+    assertEquals(priced.contributions.keySet,
+      Set[PowerWindow](PowerWindow.MusterActionEligibility))
+    assertEquals(Probe(card, Cost.free, muster).contributions,
+      Map.empty[PowerWindow, Vector[Contribution]])
+    // Search and Travel pay at the pick, in the modifier decision.
+    val picked = Probe(card, Cost(favor = 1),
       Set(MajorActionType.Travel, MajorActionType.Search))
-    assertEquals(both.contributions.keySet,
-      Set[PowerWindow](PowerWindow.TravelActionEligibility))
+    assertEquals(picked.contributions,
+      Map.empty[PowerWindow, Vector[Contribution]])
 
   test("at the action's eligibility window a selected modifier always applies"):
     // A probe that applies at no node still applies at the eligibility
@@ -100,23 +103,24 @@ class SelectedModifierSuite extends munit.FunSuite:
     assertEquals(free.selectionPayments(ready, actor), Vector.empty)
 
   test("a payment and an effect at the same window keep the payment first"):
-    // Stub of SelectedModifier: the Tents id, a cost of one favor and one
-    // Transform that changes nothing.
+    // Stub of SelectedModifier: the Tents id on a Muster modifier, whose
+    // payment is not made at a pick, a cost of one favor and one Transform
+    // that changes nothing.
     val both = new SelectedModifier:
       def catalog = oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
       def cardId: CardId = card
       def id: PowerId = PowerId("denizen.tents")
-      def actions: Set[MajorActionType] = travel
+      def actions: Set[MajorActionType] = Set(MajorActionType.Muster)
       override def cost: Cost = Cost(favor = 1)
       def effects: Map[PowerWindow, Vector[Contribution]] = Map(
-        PowerWindow.TravelActionEligibility ->
+        PowerWindow.MusterActionEligibility ->
           Vector(oathdigital.gameplay.powerresolver.Transform((_, ops) => ops)))
     val transforms = both.contributions(
-      PowerWindow.TravelActionEligibility).collect {
+      PowerWindow.MusterActionEligibility).collect {
         case oathdigital.gameplay.powerresolver.Transform(fn) => fn }
     assertEquals(transforms.size, 2)
     val (first, second) = (transforms(0), transforms(1))
-    val at = ctx(quietTable, both, PowerWindow.TravelActionEligibility)
+    val at = ctx(quietTable, both, PowerWindow.MusterActionEligibility)
     assertEquals(first(at, Vector.empty), Vector[Operation](
       oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
         catalog)))

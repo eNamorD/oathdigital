@@ -21,12 +21,12 @@ private[frontend] object ModifierFlowDraft:
     * frontend cannot depend on, and the key rides every walker command as
     * an uninterpreted string already. A key absent here falls through to
     * `None`, which is the safe answer -- the server rejects a preview for
-    * an action it does not recognise. Search and facedown-adviser play ask
-    * for their modifiers inside the walk (modifier walker design), so they
-    * are absent and start directly.
+    * an action it does not recognise. Search, facedown-adviser play and
+    * Travel ask for their modifiers inside the walk (modifier walker
+    * design), so they are absent and start directly.
     */
   private val walkerActions: Set[String] = Set("recover", "forge",
-    "travel", "muster", "trade", "challenge")
+    "muster", "trade", "challenge")
 
   /** The flow draft a preview response that offers modifiers opens; the
     * selection is reconciled from `previous` so a re-preview of the same

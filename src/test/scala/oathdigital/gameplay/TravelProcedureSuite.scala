@@ -88,7 +88,7 @@ class TravelProcedureSuite extends munit.FunSuite:
   /** Every destination the preview accepts, with the Supply it spends. */
   private def previewedCosts(ready: ReadyGame, using: WalkerPowers = powers)
       : Map[SiteId, Int] =
-    TravelProcedure.build(catalog, ready, actor, Vector.empty)
+    TravelProcedure.afterModifiers(catalog, ready, actor)
       .flatMap(WalkerSimulation.preview(_, ready, using))
       .getOrElse(Vector.empty).collect {
         case PreviewedOption(DecisionOption.Site(DecisionOptionRef.Site(site)),
@@ -241,7 +241,8 @@ class TravelProcedureSuite extends munit.FunSuite:
     val ready = travelBoard(supply = 7)
     val tree = accepted(TravelProcedure.build(catalog, ready, actor,
       Vector.empty))
-    val offered = tree.children.head match
+    // The modifier decision comes first; the destination opens what follows.
+    val offered = tree.children(1).children.head match
       case Decide(TravelProcedure.destinationDecisionId, `actor`,
           DecisionQuery.ChooseOne(options, Some("Choose a Travel destination")),
           _, _, _, _) => options.map(_.ref)
@@ -258,10 +259,10 @@ class TravelProcedureSuite extends munit.FunSuite:
         else player)))
     val rebuilt = accepted(TravelProcedure.rebuild(catalog, moved, actor,
       Vector.empty))
-    val pending = PendingTree(Vector("1"), Vector(Answered(
+    val pending = PendingTree(Vector("1", "1"), Vector(Answered(
       TravelProcedure.destinationDecisionId, TravelPlay.destination(coast),
       actor)))
-    val selected = rebuilt.children(1) match
+    val selected = rebuilt.children(1).children(1) match
       case branch: Branch => branch.select(moved, pending)
       case other => fail(s"not the route branch: $other")
     assertEquals(selected.flatMap(Operation.flatten).collect {

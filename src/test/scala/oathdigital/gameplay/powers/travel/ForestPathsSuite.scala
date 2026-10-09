@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powers.travel
 
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Refusals}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
@@ -76,11 +76,11 @@ class ForestPathsSuite extends munit.FunSuite:
     assertEquals(rejected(travel(ready, provincePlains, modifiers)),
       destinationNotOffered)
 
-  test("it cannot be selected without a favor to place"):
+  test("without a favor to place it is not offered: the Travel starts on " +
+      "its destination"):
     val broke = on(held)(_.warbandsAt(pass, actor, 1)
       .denizen(beast, at = mountain).favor(actor, 0))
-    assertEquals(travel(broke, mountain, modifiers).left.toOption,
-      Some(Refusals.notApplicable(ForestPaths.id, "travel")))
+    assertEquals(startParksOn(broke), TravelProcedure.destinationDecisionId)
 
   // ---- Lines ----
 

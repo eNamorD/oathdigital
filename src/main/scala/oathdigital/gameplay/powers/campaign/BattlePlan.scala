@@ -27,6 +27,10 @@ import oathdigital.model._
   *  - `restrictions` are the options the plan's power forbids at a window,
   *    whether or not the plan was chosen. A restriction that holds only once
   *    the plan is used reads the answered plan picks (Specialist).
+  *  - `rewrites` change a window's children whether or not the plan was
+  *    chosen. Such a rewrite keeps the children's shape the same on every
+  *    fold and learns inside a `Branch`, at walk time, whether the plan was
+  *    used, which also sees a bandit's use (Wild Mounts).
   */
 trait BattlePlan extends ContributingPower:
   /** How the plan's source is named in the plan decision. */
@@ -46,6 +50,8 @@ trait BattlePlan extends ContributingPower:
     Map.empty
   /** The options this plan's power forbids at a window. */
   def restrictions: Map[PowerWindow, Vector[OptionRestriction]] = Map.empty
+  /** What the plan's power does to a window's children, chosen or not. */
+  def rewrites: Map[PowerWindow, Transform] = Map.empty
 
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   final override def resolution: PowerResolution = PowerResolution.Automatic
@@ -66,11 +72,12 @@ trait BattlePlan extends ContributingPower:
         (ctx, children) => PlanUse.chosen(ctx.state, PendingTree(ctx.nodePath,
           ctx.answered), ctx.activePlayer, cardRef, sides,
           BattlePlan.outcomeKnown(window)).fold(children)(wrap(_, children))))
-    (offers.keySet ++ afterwards.keySet ++ around.keySet ++
+    (offers.keySet ++ afterwards.keySet ++ around.keySet ++ rewrites.keySet ++
       restrictions.keySet).map(window =>
       window -> (offers.getOrElse(window, Vector.empty) ++
         afterwards.getOrElse(window, Vector.empty) ++
         around.getOrElse(window, Vector.empty) ++
+        rewrites.get(window).toVector ++
         restrictions.getOrElse(window, Vector.empty))).toMap
 
 object BattlePlan:

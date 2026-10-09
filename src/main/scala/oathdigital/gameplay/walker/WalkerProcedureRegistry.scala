@@ -206,10 +206,11 @@ object WalkerProcedureRegistry:
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
         args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, activePlayer))),
 
-    /** Travel parks on its destination first (travel destination design).
-      * Nothing runs before that decision, so the start is previewed through
-      * the playable-option gate. Its source is a start fact: a resume after
-      * the pawn moved reads it back rather than from the pawn.
+    /** Travel asks for its modifiers, then parks on its destination (travel
+      * destination design; modifier walker design). Nothing runs before
+      * those decisions, so the start is previewed through the
+      * playable-option gate. Its source is a start fact: a resume after the
+      * pawn moved reads it back rather than from the pawn.
       */
     ActionRef.Travel -> Entry(
       fallbackKind = Some(ActionKind.Travel),
@@ -218,6 +219,7 @@ object WalkerProcedureRegistry:
       build = TravelProcedure.build,
       rebuild = TravelProcedure.rebuild,
       requiresPlayableOption = true,
+      choosesModifiers = true,
       startFacts = TravelProcedure.startFacts,
       optionPricing = Some(TravelOptions.priced)),
 
