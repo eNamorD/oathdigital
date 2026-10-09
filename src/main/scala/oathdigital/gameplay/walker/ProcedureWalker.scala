@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DecisionAnswer, DieFace, Note, NoteStates, OathState, OathViolation, Operation, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -445,10 +445,9 @@ object ProcedureWalker:
     if !ctx.powers.probing then Right(Some(decide))
     else WalkerSearch.narrow(decide, verdict(decide, ctx, path)).map(_.map {
       cut =>
-        val noted = WalkerPowerGather.lookAheadNoted(ctx.root, decide, cut,
+        val reasons = WalkerPowerGather.lookAheadNoted(ctx.root, decide, cut,
           ctx.state, ctx.activePlayer, ctx.powers, ctx.answered, ctx.procedure)
-        val reasons: Map[DecisionOptionRef, OptionReason] = noted.map(
-          (ref, note) => ref -> OptionReason.Noted(note.power, note.note)).toMap
+          .toMap
         WalkerSearch.explained(decide, cut, reasons)
     })
 

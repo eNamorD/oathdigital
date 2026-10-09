@@ -5,7 +5,7 @@ import oathdigital.engine.EventEvolution
 import oathdigital.model._
 import oathdigital.gameplay.powerresolver.{ContributingPower, PhasePowers}
 import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
-  ModifierOffers, ProcedureWalker, WalkerCompleted, WalkerDice,
+  ModifierOffers, PricedOptions, ProcedureWalker, WalkerCompleted, WalkerDice,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
   WalkerSimulation, WalkerStepRecorded}
 import oathdigital.model.OathState._
@@ -298,6 +298,26 @@ private[gameplay] trait OathRulesWalker:
           pending.answered :+ recorded).map(_ => outcome))
           .flatMap(walkerTransition(state, procedure, tree, _, powers,
             modifiers, startArgs, ready.game.current.walkerStartFacts))
+
+  /** The asks a consent request for `target` sends (consent design,
+    * "Commands"). `target` must be an askable option of the parked
+    * `decisionId`, which `requester` owns; the look-ahead decided that, so
+    * nothing here re-derives who may consent. */
+  def consentAsks(state: OathState, requester: PlayerId, decisionId: String,
+      target: DecisionOptionRef): Either[OathViolation, Vector[ConsentAsk]] =
+    walkerResumeContext(state).flatMap:
+      case (ready, _, tree, pending, powers, _, _) =>
+        walkerCall(Right(ProcedureWalker.parkedDecide(ready, tree, pending,
+          powers))).flatMap(decide => decide
+          .filter(found => found.decisionId == decisionId &&
+            found.owner == requester)
+          .flatMap(found => PricedOptions.options(found).collectFirst {
+            case DecisionOption.Unavailable(option,
+                OptionReason.Askable(_, _, asks)) if option.ref == target =>
+              asks
+          })
+          .toRight(ConsentUnavailable(
+            s"${target.wireId} is not an option to ask consent for")))
 
   /** Validates and derives the action tree once, then asks the application for
     * exactly the parked pool's authoritative number of faces.

@@ -329,6 +329,11 @@ sealed trait OptionReason extends Product with Serializable
 object OptionReason:
   final case class Written(text: String) extends OptionReason
   final case class Noted(power: PowerId, note: PowerNote) extends OptionReason
+  /** Blocked only by waivable powers whose rulers may be asked (consent
+    * design, ruling 8). `power` and `note` are the first such power and its
+    * consent-worded reason; `asks` are the granters with their powers. */
+  final case class Askable(power: PowerId, note: PowerNote,
+      asks: Vector[ConsentAsk]) extends OptionReason
 
 /** One named bucket a [[DecisionQuery.Partition]] spreads its options across.
   *

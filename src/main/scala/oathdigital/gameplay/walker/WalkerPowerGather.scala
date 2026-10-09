@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, Restriction}
-import oathdigital.model.{Answered, Branch, Decide, DecisionAnswer, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
+import oathdigital.model.{Answered, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -194,7 +194,8 @@ private[walker] object WalkerPowerGather:
         ContributionCollector.gather(window, powers.windowIndex, ctx).restrictions
           .flatMap { case (powerId, restriction) =>
             val at = ctx(byId(powerId))
-            restriction.fn(at, tree).map(Attributed(powerId, at, restriction, _))
+            restriction.fn(at, tree).filterNot(_ => waived(powerId,
+              restriction, at)).map(Attributed(powerId, at, restriction, _))
           }
     val emptied = windows.flatMap:
       case (window, path, decide: Decide) =>
@@ -203,6 +204,23 @@ private[walker] object WalkerPowerGather:
           powers.windowIndex, ctx).optionRestrictions, ctx, byId)
       case _ => Vector.empty
     (rejected, emptied)
+
+  /** Whether a remembered grant drops `power`'s breach (consent design, "One
+    * ledger check"): the restriction is waivable, and a decision of this
+    * walk was answered with an option its answerer was granted this turn.
+    * Every caller of the tree check passes through here, so the walk, the
+    * search and the previews agree. */
+  private def waived(power: PowerId, restriction: Restriction,
+      ctx: PowerCtx): Boolean =
+    restriction.waiver.nonEmpty && {
+      val turn = ConsentTurn.of(ctx.state)
+      ctx.answered.exists:
+        case Answered(decisionId, DecisionAnswer.ChooseOneAnswer(target),
+            by) =>
+          ctx.state.consent.remembered(ConsentKey(power, by, decisionId,
+            target), turn).contains(ConsentAnswer.Granted)
+        case _ => false
+    }
 
   /** The tree-level `Restriction` violations of `root` with `answered`,
     * against the state as the walk sees it: no pending tree, the walk's
@@ -217,14 +235,18 @@ private[walker] object WalkerPowerGather:
       _.copy(walkerPending = None, walkerProcedure = procedure)),
       activePlayer, answered)
 
-  /** The notes that explain the options `narrowed` no longer offers, each with its option: the note of the restriction whose
-    * violation answering it would add. Empty without a power that restricts,
-    * since only a restriction can explain a hidden option.
+  /** Why each option `narrowed` no longer offers is hidden, read from the
+    * restrictions whose violation answering it would add. It is askable
+    * when every one of them is waivable by a player other than the
+    * decision's owner and nothing on the option was refused this turn
+    * (consent design, ruling 8); otherwise it is the first one's note. Empty
+    * without a power that restricts, since only a restriction can explain a
+    * hidden option.
     */
   def lookAheadNoted(root: Operation, decide: Decide, narrowed: Decide,
       state: ReadyGame, activePlayer: PlayerId, powers: WalkerPowers,
       answered: Vector[Answered], procedure: Option[ProcedureRef])
-      : Vector[(DecisionOptionRef, PowerNoted)] =
+      : Vector[(DecisionOptionRef, OptionReason)] =
     val offered = optionRefs(narrowed).toSet
     val hidden = optionRefs(decide).filterNot(offered)
     if hidden.isEmpty || !powers.hasRestrictions then Vector.empty
@@ -240,11 +262,37 @@ private[walker] object WalkerPowerGather:
           case _: DecisionQuery.ChooseMany =>
             DecisionAnswer.ChooseManyAnswer(Vector(ref))
           case _ => DecisionAnswer.ChooseOneAnswer(ref)
-        found(answered :+ Answered(decide.decisionId, answer, decide.owner))
-          .find(breach => !baseline(breach.violation))
-          .flatMap(breach => breach.restriction.note(breach.ctx, ref)
-            .map(note => ref -> PowerNoted(breach.power, note, covers = false)))
+        val fresh = found(answered :+ Answered(decide.decisionId, answer,
+          decide.owner)).filterNot(breach => baseline(breach.violation))
+        askable(decide, ref, fresh, seen).orElse(fresh.headOption.flatMap(
+          breach => breach.restriction.note(breach.ctx, ref).map(note =>
+            OptionReason.Noted(breach.power, note))))
+          .map(ref -> _)
       }
+
+  /** `ref`'s consent ask, when every breach answering it adds is waivable by
+    * a player other than the decision's owner, and none of their powers'
+    * answers on it was refused this turn. Only a choose-one: a grant answers
+    * the decision with `ref` alone (plan decision 8). */
+  private def askable(decide: Decide, ref: DecisionOptionRef,
+      fresh: Vector[Attributed], state: ReadyGame): Option[OptionReason] =
+    val requester = decide.owner
+    val turn = ConsentTurn.of(state)
+    val waivers = fresh.map(breach => breach.restriction.waiver.flatMap(
+      waiver => waiver.granter(state).filter(_ != requester)
+        .map(granter => (breach, waiver, granter))))
+    val choosesOne = decide.query.isInstanceOf[DecisionQuery.ChooseOne]
+    if !choosesOne || fresh.isEmpty || waivers.exists(_.isEmpty) then None
+    else
+      val all = waivers.flatten
+      val refused = all.exists((breach, _, _) => state.consent.remembered(
+        ConsentKey(breach.power, requester, decide.decisionId, ref), turn)
+        .contains(ConsentAnswer.Refused))
+      Option.unless(refused):
+        val (first, waiver, _) = all.head
+        val asks = all.map(_._3).distinct.map(granter => ConsentAsk(granter,
+          all.collect { case (breach, _, `granter`) => breach.power }.distinct))
+        OptionReason.Askable(first.power, waiver.note(first.ctx, ref), asks)
 
   /** Resolves the node addressed by `pending.at` (a child-index path rooted
     * at `action`), or `None` when a segment is non-numeric or out of range (a

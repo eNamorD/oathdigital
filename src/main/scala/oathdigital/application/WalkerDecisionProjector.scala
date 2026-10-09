@@ -562,6 +562,8 @@ private[application] final class WalkerDecisionProjector(
     case OptionReason.Written(text) => text
     case OptionReason.Noted(power, note) =>
       reasons.text(power, note, ready, viewer).getOrElse("Not on offer now")
+    case OptionReason.Askable(power, note, _) =>
+      reasons.text(power, note, ready, viewer).getOrElse("Not on offer now")
 
   /** A card as its viewer may see it: its face when they may identify it,
     * else the redacted back [[GamePresentationProjector.hiddenCard]] gives an
