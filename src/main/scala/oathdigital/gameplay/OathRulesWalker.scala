@@ -84,6 +84,10 @@ private[gameplay] trait OathRulesWalker:
     def run =
       for
         _ <- requireActivePlayer(ready, requester)
+        _ <- Either.cond(modifiers.isEmpty ||
+          !WalkerProcedureRegistry.choosesModifiers(procedure), (),
+          InvalidEventOrder(
+            s"${procedure.key} chooses its modifiers inside the walk"))
         _ <- validateModifiers(ready, activePlayer, procedure, modifiers)
         powers = walkerPowers(ready, activePlayer, modifiers)
         tree <- buildWalker(procedure, ready, activePlayer, startArgs,

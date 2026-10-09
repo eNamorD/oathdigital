@@ -1,6 +1,6 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-1.0 section 1 play-facedown-adviser@1 | Play facedown adviser
+3.0 section 1 play-facedown-adviser@1 | Play facedown adviser
 7.0 action 1 play-facedown-adviser@1 | Played [card:133|Family Heirloom] as an adviser
 13.0 trigger 1 play-facedown-adviser@1 | [card:133|Family Heirloom]: [player:p1|p1] drew a Relic and put it on the bottom of the relic deck.

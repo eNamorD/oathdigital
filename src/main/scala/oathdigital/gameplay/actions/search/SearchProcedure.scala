@@ -4,33 +4,35 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, SearchRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.powerresolver.ModifierPicks
+import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
+  WalkerSimulation}
 import oathdigital.model._
 
-/** Search on the walker (search source design).
+/** Search on the walker (search source design; modifier walker design).
   *
   * {{{
   * Sequence(
+  *   Repeat(ModifierChoice),            // the modifiers, one per pass, then
+  *                                      // "Start Search"
   *   Decide(search.source),             // a board choose-one: the world deck
   *                                      // and the actor's region's discard
   *   Branch { after the answer:
   *     Sequence(cost, draw, query, placement) })  // window = SearchActionEligibility
   * }}}
   *
-  * **The source is a decision.** It is picked after the modifiers, so the
-  * parked decision shows what each source costs under them. The start
-  * carries no selection.
-  *
-  * **The windows sit inside the `Branch`.** A selected modifier's payment,
-  * prepended at the eligibility window, is paid after the pick, and nothing
-  * runs before the first decision.
+  * **The modifiers come first.** Each pick pays at once, so the source
+  * decision shows what each source costs under them. The start carries no
+  * selection.
   *
   * **The region is read from the pawn.** The pawn does not move during a
   * Search, so a resume reads the same region and needs no start fact.
   *
   * **What does not gate a start.** Supply, tolls and empty piles are not
-  * build gates: the registry's playable-option gate previews both sources
-  * and refuses a start neither can complete. Placement is the shared subtree.
+  * build gates: "Start Search" previews both sources and says why neither
+  * can be searched, and with no modifier to pick, the registry's
+  * playable-option gate refuses a start neither source can complete.
+  * Placement is the shared subtree.
   */
 object SearchProcedure:
   val sourceDecisionId: String = "search.source"
@@ -38,24 +40,32 @@ object SearchProcedure:
   val keepKey: String = "keep"
   val discardKey: String = "discard"
   private val heading = "Choose a Search source"
+  private val startLabel = "Start Search"
 
-  /** Whether a Search could start now: some source survives the same
-    * preview a start runs. */
+  /** Whether a Search could start now under `powers`: some source survives
+    * the preview of what follows the modifier decision. The Act panel asks
+    * it of each selection `ModifierOffers.selections` tries. */
   def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       powers: WalkerPowers): Boolean =
-    build(catalog, state, actor, Vector.empty)
+    gated(state, actor, Vector.empty)
+      .map(afterModifiers(catalog, actor, _))
       .flatMap(WalkerSimulation.preview(_, state, powers))
       .exists(_.exists(_.outcome.isRight))
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
+    gated(ready, actor, args).map(tree(catalog, actor, _))
+
+  /** The start-only gates, and the region searched from. */
+  private def gated(ready: ReadyGame, actor: PlayerId,
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Region] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(ready), actor)
     _ <- noSelection(args)
     _ <- Either.cond(ready.game.current.temporaryHands.valuesIterator
       .forall(_.isEmpty), (), OathViolation.SearchDrawMismatch(
       "a temporary card hand already exists"))
     origin <- actorRegion(ready, actor)
-  yield tree(catalog, actor, origin)
+  yield origin
 
   /** Resume never re-runs the start-only gates. */
   def rebuild(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
@@ -82,6 +92,14 @@ object SearchProcedure:
     OathViolation.InvalidEventOrder("search takes no start selection"))
 
   private def tree(catalog: ExecutableCatalog, actor: PlayerId,
+      origin: Region): Operation =
+    val rest = afterModifiers(catalog, actor, origin)
+    Sequence(Vector(ModifierChoice.loop(actor,
+      PowerWindow.SearchModifierSelection, rest, startLabel,
+      Some(SearchOptions.priced)), rest))
+
+  /** The source pick and the Search from it. */
+  private def afterModifiers(catalog: ExecutableCatalog, actor: PlayerId,
       origin: Region): Operation =
     val pick = Decide(sourceDecisionId, actor, DecisionQuery.ChooseOne(
       Vector(SearchSource.WorldDeck, SearchSource.RegionalDiscard(origin))
@@ -143,7 +161,8 @@ object SearchProcedure:
               yield previous ++ operations
             })
           val cardTree = CardPlayProcedure.unchecked(catalog, ready, actor, kept,
-            CardPlayProcedure.Origin.TemporaryHand)
+            CardPlayProcedure.Origin.TemporaryHand,
+            ModifierPicks.cards(pending.answered))
           Vector(removeOthers, cardTree)
       }
     })

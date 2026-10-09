@@ -1,7 +1,9 @@
 package oathdigital.gameplay.powers.search
 
 import oathdigital.application.{GameCommand, GameProjector, LoadedGame,
-  StartPayload}
+  StartPayload, TreeDecision}
+import oathdigital.gameplay.ModifierPlay
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -36,11 +38,15 @@ class HuntingPartySuite extends munit.FunSuite:
     * decision answered by default. */
   private def queuedAfter(pile: SearchSource, selected: Vector[PowerId])
       : Vector[FollowUp] =
-    board.situation(Situation.productionRules(catalog)).withAnswers {
+    val source: oathdigital.testkit.Answers = {
       case park if park.decisionId == SearchProcedure.sourceDecisionId =>
         ChooseOneAnswer(SearchSource.ref(pile))
-    }.after(GameCommand.StartWalker(ActionRef.Search,
-      StartPayload(p1, selected))).ready.game.current.followUps
+    }
+    board.situation(Situation.productionRules(catalog)).withAnswers(
+      source.orElse(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
+        selected)))
+      .after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1)))
+      .ready.game.current.followUps
 
   test("a Search of the world deck queues a Campaign"):
     assertEquals(queuedAfter(SearchSource.WorldDeck, modifiers), Vector(owed))
@@ -55,8 +61,13 @@ class HuntingPartySuite extends munit.FunSuite:
 
   test("while it is selected the discard pile warns and stays choosable"):
     val rules = Situation.productionRules(catalog)
-    val parked = board.situation(rules).parkedAfter(GameCommand.StartWalker(
-      ActionRef.Search, StartPayload(p1, modifiers)))
+    // Hunting Party is the only modifier, so once it is picked the Search
+    // starts by itself and parks on its source.
+    val parked = board.situation(rules)
+      .parkedAfter(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1)))
+      .parkedAfter(GameCommand.ResolveWalker(p1, TreeDecision(
+        ModifierPicks.decisionId(PowerWindow.SearchModifierSelection),
+        ModifierPlay.pick(HuntingParty.id))))
     val shown = new GameProjector(catalog).project("hunting",
       LoadedGame(parked.state, 1), p1)
     val options = shown.walkerDecision.flatMap(_.query).collect {

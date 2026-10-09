@@ -121,7 +121,7 @@ It reverses ruling 1 of the
 ("Modifiers stay before the start")
 ([design](superpowers/specs/2026-10-09-modifier-walker-design.md)).
 
-- [ ] Slice 1: the modifier decision, then Search and facedown-adviser play.
+- [x] Slice 1: the modifier decision, then Search and facedown-adviser play.
 - [ ] Slice 2: Travel.
 - [ ] Slice 3: Muster and Trade.
 - [ ] Slice 4: Recover, the empty windows, and deleting the client modifier

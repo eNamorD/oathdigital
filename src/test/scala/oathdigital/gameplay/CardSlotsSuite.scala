@@ -47,8 +47,9 @@ class CardSlotsSuite extends munit.FunSuite:
 
   private def slotsOf(ready: ReadyGame, played: WorldCardId = card,
       origin: CardPlay.Origin = CardPlay.Origin.TemporaryHand,
-      rules: CardPlayRules = CardPlayRules.default): Vector[CardSlot] =
-    CardSlots.slots(catalog, ready, p1, played, origin, rules)
+      rules: CardPlayRules = CardPlayRules.default,
+      picked: Vector[CardId] = Vector.empty): Vector[CardSlot] =
+    CardSlots.slots(catalog, ready, p1, played, origin, rules, picked)
 
   private def options(slots: Vector[CardSlot]): Vector[DecisionOption] =
     slots.map(_.option)
@@ -179,6 +180,15 @@ class CardSlotsSuite extends munit.FunSuite:
       _.copy(walkerModifiers = Vector(CropRotation.id)))).ready
     assertEquals(atSite(slotsOf(ready, rules = permitted)), Vector(siteSlot(1),
       refused(replacing(siteSlot(0), crop), "In use as a modifier this action")))
+
+  test("a card picked as a modifier this action is refused as a Replace " +
+      "slot"):
+    val crop = CatalogNames.denizen("Crop Rotation")
+    val ready = atHome(crop).hand(p1, card).ready
+    assertEquals(atSite(slotsOf(ready, rules = permitted,
+      picked = Vector(crop))), Vector(siteSlot(1),
+      refused(replacing(siteSlot(0), crop),
+        "In use as a modifier this action")))
 
   /** p1 stands at Deep Woods with Threatening Roar, a Beast card, so Deep
     * Woods' Homeland permits a discard; the intact Hall and two plain cards

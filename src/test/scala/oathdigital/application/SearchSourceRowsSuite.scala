@@ -1,6 +1,6 @@
 package oathdigital.application
 
-import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.{ModifierPlay, OathRules}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.search.{Disciples, NewsFromAfar}
@@ -21,14 +21,15 @@ class SearchSourceRowsSuite extends munit.FunSuite:
   private val home = CatalogNames.site("Ancient City")
 
   /** The source rows p1 is shown, by pile id ("world", "cradle"), once a
-    * Search with `modifiers` starts at `ready` under `powers`. */
+    * Search that picks `modifiers` starts at `ready` under `powers`. */
   private def rows(ready: ReadyGame, modifiers: Vector[PowerId] = Vector.empty,
       powers: WalkerPowers = WalkerPowerCatalog.default(catalog))
       (using munit.Location): Map[String, DecisionOptionProjection] =
     val rules = new OathRules(catalog, walkerPowerCatalog = powers)
     val projector = new WalkerDecisionProjector(catalog, presentation, powers)
-    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Search,
-      p1, modifiers))
+    val started = accepted(ModifierPlay.started(rules, Ready(ready),
+      ActionRef.Search, p1, PowerWindow.SearchModifierSelection, modifiers,
+      powers))
     present(projector.project(ScopedProjectionContext(
       Outcomes.ready(started.state), Some(p1))), "the source decision")
       .query.toVector.flatMap(_.offeredOptions).map(row => row.id -> row).toMap

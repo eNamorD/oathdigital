@@ -70,10 +70,11 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       GameIntent.StartWalker("play-facedown-adviser", Vector.empty),
       GameIntent.StartWalker("place-banner-resource", Vector.empty))
     // A registered key names its action whatever start arguments it carries
-    // (Trade and Search carry theirs); play-facedown-adviser previews as
-    // Search; place-banner-resource is not registered, so it names none.
+    // (Trade carries its own). Search and play-facedown-adviser choose their
+    // modifiers inside the walk, and place-banner-resource is not
+    // registered, so none of them names one.
     assertEquals(commands.flatMap(ModifierFlowDraft.action).map(_._1),
-      Vector("recover", "forge", "muster", "trade", "travel", "search", "search"))
+      Vector("recover", "forge", "muster", "trade", "travel"))
     assertEquals(ModifierFlowDraft.action(GameIntent.BeginRest), None)
     // An unregistered walker key is not swept in: the server would reject a
     // preview for an action it does not know.
@@ -139,12 +140,12 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       GameIntent.StartWalker("muster", Vector.empty), selection.invocations),
       GameIntent.StartWalker("muster", Vector("denizen.rowdy-pub")))
 
-  test("a Search walker start retains its source argument"):
+  test("a Trade walker start retains its start argument"):
     val invocation = ModifierInvocation("site-card", "catacombs",
       Some("site:a"), "denizen.some-power")
     Vector(
-      GameIntent.StartWalker("search", Vector.empty,
-        Vector(oathdigital.protocol.WalkerStartArgWire("button", "search:world"))))
+      GameIntent.StartWalker("trade", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("button", "favor"))))
       .foreach { intent =>
         val submitted = ModifierFlowDraft.submission(intent, Vector(invocation))
         assertEquals(submitted.startArgs, intent.startArgs)

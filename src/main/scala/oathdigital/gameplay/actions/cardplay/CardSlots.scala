@@ -60,8 +60,8 @@ object CardSlots:
     "discard-immune" -> "Protected by the Hall of Ministers")
 
   def slots(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      card: WorldCardId, origin: CardPlay.Origin, rules: CardPlayRules)
-      : Vector[CardSlot] =
+      card: WorldCardId, origin: CardPlay.Origin, rules: CardPlayRules,
+      picked: Vector[CardId] = Vector.empty): Vector[CardSlot] =
     ready.game.current.players.find(_.player == actor).toVector.flatMap {
       player =>
         val candidates = discardPile(ready, actor).toVector ++
@@ -70,7 +70,8 @@ object CardSlots:
           facedown(player, card, origin, rules)
         candidates.flatMap { (option, placement) =>
           judge(catalog, ready, actor, option, CardPlay.operations(catalog,
-            ready, actor, card, placement, origin)).map(CardSlot(_, placement))
+            ready, actor, card, placement, origin), picked)
+            .map(CardSlot(_, placement))
         }
     }
 
@@ -93,7 +94,8 @@ object CardSlots:
     * `None` when nothing more may be discarded. */
   def moreDiscards(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: CardPlay.Origin,
-      rules: CardPlayRules, slot: CardSlot): Option[MoreDiscards] =
+      rules: CardPlayRules, slot: CardSlot,
+      picked: Vector[CardId] = Vector.empty): Option[MoreDiscards] =
     val permitted = permissions(catalog, ready, actor, card, rules)
     val held = siteCards(ready, actor)
     for
@@ -103,7 +105,7 @@ object CardSlots:
       options = held.filter(_.id != replacedId).flatMap(other =>
         judge(catalog, ready, actor, optionOf(other), CardPlay.operations(
           catalog, ready, actor, card, slot.placement, origin,
-          Vector(other.id))))
+          Vector(other.id)), picked))
       most = math.min(permitted.size - 1, options.count(_.available))
       if most >= 1
     yield MoreDiscards(optionOf(replaced), options, most)
@@ -128,12 +130,12 @@ object CardSlots:
     * protection's reason, or left out. */
   def judge(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       option: DecisionOption,
-      planned: Either[OathViolation, Vector[CoreOperation]])
-      : Option[DecisionOption] =
+      planned: Either[OathViolation, Vector[CoreOperation]],
+      picked: Vector[CardId] = Vector.empty): Option[DecisionOption] =
     if !option.available then Some(option)
     else planned.toOption.flatMap { operations =>
       val restrictions = OperationRestrictions.forCatalog(catalog)
-        .active(Vector.empty, ready.game.current.walkerModifiers)
+        .active(Vector.empty, ready.game.current.walkerModifiers, picked)
       val refusals = OperationConsent.refusals(ready, operations,
         restrictions)
       // A refusal no consent can lift names the blocker, whatever order

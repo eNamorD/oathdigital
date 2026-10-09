@@ -10,13 +10,14 @@ object SearchPlay:
   def source(pile: SearchSource): DecisionAnswer =
     DecisionAnswer.ChooseOneAnswer(SearchSource.ref(pile))
 
-  /** `actor` starts a Search with `modifiers` and picks `pile`. The events
-    * are both commands'. */
+  /** `actor` starts a Search, picks `modifiers` in its modifier decision,
+    * and picks `pile`. The events are every command's. */
   def searched(rules: OathRules, state: OathState, actor: PlayerId,
       pile: SearchSource = SearchSource.WorldDeck,
       modifiers: Vector[PowerId] = Vector.empty)
       : Either[OathViolation, OathTransition] = for
-    started <- rules.startWalker(state, ActionRef.Search, actor, modifiers)
+    started <- ModifierPlay.started(rules, state, ActionRef.Search, actor,
+      PowerWindow.SearchModifierSelection, modifiers)
     picked <- rules.resolveWalker(started.state, actor,
       SearchProcedure.sourceDecisionId, source(pile))
   yield picked.copy(events = started.events ++ picked.events)

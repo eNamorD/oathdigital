@@ -4,6 +4,7 @@ import oathdigital.application.{GamePresentationProjector,
   WalkerDecisionProjector}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.ReplayStep
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.{ConsentPowers, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
   FollowUpSupplyWaiver, PowerNoted, WalkerCompleted, WalkerParked,
@@ -26,9 +27,11 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val words = new LogWords(catalog, presentation)
   // The engine's follow-up waiver is offered beside the catalog's powers
   // (`WalkerPowers.selected`), so it is named automatic here too.
-  private val starts = new StartLines(words, (WalkerPowerCatalog
-    .default(catalog).powers :+ FollowUpSupplyWaiver)
-    .map(power => power.id -> power.resolution).toMap)
+  private val walkerPowers = WalkerPowerCatalog.default(catalog).powers
+  private val starts = new StartLines(words,
+    (walkerPowers :+ FollowUpSupplyWaiver)
+      .map(power => power.id -> power.resolution).toMap,
+    ModifierPicks.picks(walkerPowers, _))
   private val choices = new ChoiceWords(words,
     new WalkerDecisionProjector(catalog, presentation))
   private val actions = new ActionLines(words, choices, catalog)
