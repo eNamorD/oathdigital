@@ -62,7 +62,7 @@ private[economy] object EconomyTree:
   def tree(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       kind: Kind): Operation = Sequence(Vector[Operation](
     Decide(kind.decisionId, actor, DecisionQuery.ChooseOne(
-      MusterSource.atSite(catalog, state, actor).map(_.option),
+      MusterSource.atSite(catalog, state, actor),
       heading = Some(kind.heading)), window = Some(kind.sourceSelection)),
     Branch((ready, pending) => answered(pending, kind.decisionId).toVector
       .flatMap(ref => afterSource(catalog, ready, actor, kind, ref)

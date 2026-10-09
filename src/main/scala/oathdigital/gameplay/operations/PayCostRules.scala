@@ -6,9 +6,10 @@ import oathdigital.model._
   * card is empty. Battle plans opt out with `PayCost.intoOccupied`. Burnt
   * portions never rest on the card, so they are exempt.
   *
-  * Muster and Trade check the same fact earlier (`MusterSource`, with its own
-  * rejection) so their projection can drop the option. This is the enforcement
-  * point for every other `PayCost`.
+  * Muster and Trade show a card that holds tokens as unavailable at their
+  * source decision (`MusterSource.Occupied`), so the decision is their gate.
+  * A power that makes such a card a source again marks the action's payment
+  * `intoOccupied`. This is the enforcement point for every `PayCost`.
   */
 private[gameplay] object PayCostRules:
   def isEmpty(ready: ReadyGame, card: CardId): Boolean =

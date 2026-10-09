@@ -5,45 +5,70 @@ import oathdigital.model._
 
 /** What a Muster or Trade draws on: the card its cost is placed on, the suit
   * that decides which advisers match and which favor bank a Trade draws from,
-  * and where the card sits. Resolved from the answered reference on every
+  * and where the card stands. Resolved from the answered reference on every
   * command and never persisted.
   */
-final case class MusterSource(card: CardId, suit: Suit, origin: RuleSourceRef,
-    option: DecisionOption)
+final case class MusterSource(card: CardId, suit: Suit, origin: RuleSourceRef)
 
 object MusterSource:
 
-  /** The sources the base rule offers: the token-free cards at the actor's
-    * pawn site, in site order.
+  /** Why a card that holds favor or secrets is shown at the source decision
+    * but cannot be chosen: the token-free rule. A power that lets the actor
+    * draw on such a card makes its option available again.
+    */
+  val Occupied: OptionReason =
+    OptionReason.Written("Already holds favor or secrets")
+
+  /** The sources the base rule offers: every card at the actor's pawn site,
+    * in site order, one that holds favor or secrets shown unavailable. The
+    * decision is the gate: the walker accepts only an available option.
     */
   def atSite(catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId): Vector[MusterSource] =
+      actor: PlayerId): Vector[DecisionOption] =
     for
       siteId <- pawnSite(state, actor).toVector
       site <- state.game.current.map.sites.get(siteId).toVector
       card <- site.denizens
-      if card.tokens.isEmpty
-      suit <- catalog.suitOf(card.id).toVector
-    yield sourceOf(siteId, card, suit)
+      if catalog.suitOf(card.id).nonEmpty
+    yield offered(card)
 
-  /** The source a reference names, or why it is not one. This is the single
-    * acceptance function: a rule that lets a Muster draw on some other kind of
-    * card widens it here. The token-free rule applies to every source.
+  /** `card` as an option of the source decision: available while it holds
+    * no favor or secret, and unavailable for [[Occupied]] otherwise.
+    */
+  def offered(card: SiteDenizenState): DecisionOption =
+    val option = card match
+      case value: DenizenState =>
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(value.id))
+      case value: EdificeState =>
+        DecisionOption.Edifice(DecisionOptionRef.Edifice(value.id))
+    if card.tokens.isEmpty then option
+    else DecisionOption.Unavailable(option, Occupied)
+
+  /** The source a reference names, wherever it stands: at a site in play, or
+    * among the actor's advisers. It checks neither the pawn site nor the
+    * tokens. The source decision offers only what a rule allows, and the
+    * walker accepts only an available option, so a power that lets a Muster
+    * or Trade draw on another card adds it to the decision and changes
+    * nothing here. A Muster or Trade resumed after its cost finds its source
+    * although the cost put tokens on it.
     */
   def resolve(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       ref: DecisionOptionRef): Either[OathViolation, MusterSource] = for
     id <- cardIdOf(ref).toRight(OathViolation.InvalidEventOrder(
       s"${ref.kind}/${ref.wireId} is not a card a Muster or Trade can draw on"))
     siteId <- pawnSite(state, actor).toRight(OathViolation.PawnSiteMissing(actor))
-    site <- state.game.current.map.sites.get(siteId)
-      .toRight(OathViolation.SiteNotInPlay(siteId))
-    card <- site.denizens.find(_.id == id)
+    found <- locate(state, actor, id)
       .toRight(OathViolation.EconomyCardUnavailable(siteId, id))
-    _ <- Either.cond(card.tokens.isEmpty, (),
-      OathViolation.EconomyCardNotEmpty(id))
-    suit <- catalog.suitOf(card.id).toRight(
-      OathViolation.UnsupportedEconomyState(s"no catalog suit for ${card.id}"))
-  yield sourceOf(siteId, card, suit)
+    suit <- catalog.suitOf(id).toRight(
+      OathViolation.UnsupportedEconomyState(s"no catalog suit for $id"))
+  yield MusterSource(id, suit, found.origin)
+
+  /** The card a reference names, at a site in play or among the actor's
+    * advisers, for a power that reads what it holds.
+    */
+  def cardOf(state: ReadyGame, actor: PlayerId, ref: DecisionOptionRef)
+      : Option[SiteDenizenState] =
+    cardIdOf(ref).flatMap(locate(state, actor, _)).map(_.card)
 
   /** The actor's faceup advisers of `suit`: how many warbands, favor or
     * secrets a Muster or Trade adds to its base yield.
@@ -56,6 +81,31 @@ object MusterSource:
           catalog.suitOf(id).contains(suit)
         case _ => false
 
+  /** A card and where it stands. */
+  private final case class Located(card: SiteDenizenState,
+      origin: RuleSourceRef)
+
+  /** `id` at the first site in play that holds it, in map order, or else
+    * among the actor's advisers. */
+  private def locate(state: ReadyGame, actor: PlayerId, id: CardId)
+      : Option[Located] =
+    val current = state.game.current
+    val atSites = current.map.inPlay.iterator.flatMap(siteId =>
+      current.map.sites.get(siteId).iterator.flatMap(_.denizens).collect {
+        case card if card.id == id => Located(card, originAt(siteId, card))
+      })
+    val held = current.players.find(_.player == actor).iterator
+      .flatMap(_.advisers).collect {
+        case card: DenizenState if card.id == id =>
+          Located(card, RuleSourceRef.Adviser(actor, card.id))
+      }
+    (atSites ++ held).nextOption()
+
+  private def originAt(siteId: SiteId, card: SiteDenizenState)
+      : RuleSourceRef = card match
+    case value: DenizenState => RuleSourceRef.SiteCard(siteId, value.id)
+    case value: EdificeState => RuleSourceRef.Edifice(siteId, value.id)
+
   private def cardIdOf(ref: DecisionOptionRef): Option[CardId] = ref match
     case DecisionOptionRef.Denizen(id) => Some(id)
     case DecisionOptionRef.Edifice(id) => Some(id)
@@ -63,12 +113,3 @@ object MusterSource:
 
   private def pawnSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
     state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
-
-  private def sourceOf(siteId: SiteId, card: SiteDenizenState,
-      suit: Suit): MusterSource = card match
-    case value: DenizenState => MusterSource(value.id, suit,
-      RuleSourceRef.SiteCard(siteId, value.id),
-      DecisionOption.Denizen(DecisionOptionRef.Denizen(value.id)))
-    case value: EdificeState => MusterSource(value.id, suit,
-      RuleSourceRef.Edifice(siteId, value.id),
-      DecisionOption.Edifice(DecisionOptionRef.Edifice(value.id)))

@@ -21,9 +21,9 @@ object MovingMarketCard extends Denizen(DenizenId("241"), "Moving Market", Suit.
   * site with capacity, and if they do, gains 1 favor from the Nomad bank.
   *
   * One `Branch` is appended to the Trade's root, after the source, cost and
-  * gain, as Knights Errant appends to a Muster's. A decision inside the
-  * Economy `Branch` would be re-derived through `MusterSource.resolve`,
-  * which refuses a source holding the Trade's tokens.
+  * gain, as Knights Errant appends to a Muster's. It went there because
+  * `MusterSource.resolve` once refused a source holding the Trade's tokens
+  * on resume. `resolve` is now a lookup, and the `Branch` stays at the root.
   *
   * The `Branch` asks only when Moving Market was the Trade's source and
   * another site in play has room. Its one question offers every empty slot

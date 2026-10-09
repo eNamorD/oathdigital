@@ -10,7 +10,7 @@ import oathdigital.testkit.{CatalogNames, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class EconomyProjectionSuite extends munit.FunSuite:
-  import EconomyFixture.AddAdviserSource
+  import EconomyFixture.AddSource
 
   private val rules = new OathRules(catalog)
   private val projector = new GameProjector(catalog)
@@ -18,6 +18,8 @@ class EconomyProjectionSuite extends munit.FunSuite:
   private val secret = Vector[DecisionOptionRef](DecisionOptionRef.Button("secret"))
   private val alchemist = CatalogNames.denizen("Alchemist")
   private val magiciansCode = CatalogNames.denizen("Magician's Code")
+  /** A plain Order denizen, in the deck unless a test places it. */
+  private val wrestlers = CatalogNames.denizen("Wrestlers")
 
   /** p1 stands at Ancient City, which holds the token-free Alchemist
     * (Arcane) and nothing else. p1 has 4 favor and 2 faceup secrets, and
@@ -89,21 +91,32 @@ class EconomyProjectionSuite extends munit.FunSuite:
       Vector.empty).map(_.details), Vector(Vector("1 Supply")))
 
   test("an option the preview drops is not shown"):
-    val board = withMatchingAdviser.ready
+    val board = atAlchemist.ready
     val started = rules.startWalker(Ready(board), ActionRef.Muster, p1)
       .getOrElse(fail("the action must start"))
     val parked = Outcomes.ready(started.state)
     val context = ScopedProjectionContext(parked, Some(p1))
-    // The stub adds Magician's Code as a second Muster source. It is an
-    // adviser, not a card at p1's site, so MusterSource.resolve refuses it,
-    // and the preview keeps only the sources the walk accepts.
+    // The stub adds Wrestlers as a second Muster source. Wrestlers is in no
+    // site and no player's advisers, so MusterSource.resolve refuses it, and
+    // the preview keeps only the sources the walk accepts.
     val withPower = new WalkerDecisionProjector(catalog,
       new GamePresentationProjector(catalog), WalkerPowers(Vector(
-        AddAdviserSource(PowerId("test.add-adviser-source"), magiciansCode))))
+        AddSource(PowerId("test.add-source"), wrestlers))))
     val options = withPower.project(context).flatMap(_.query)
       .map(_.offeredOptions)
       .getOrElse(fail("the decision must project"))
     assertEquals(options.map(_.id), Vector(alchemist.value))
+
+  test("a parked Muster shows a card holding favor or secrets as " +
+      "unavailable, with why"):
+    val board = atAlchemist.denizen(wrestlers, at = "Ancient City")
+      .tokens(wrestlers, favor = 1).ready
+    val options = parkedOptions(board, ActionRef.Muster, Vector.empty)
+    assertEquals(options.map(option =>
+      (option.id, option.state, option.reason)), Vector(
+        (alchemist.value, "available", None),
+        (wrestlers.value, "unavailable",
+          Some("Already holds favor or secrets"))))
 
   test("operation details word the recorded Supply and gains"):
     val actor = PlayerId("p")
