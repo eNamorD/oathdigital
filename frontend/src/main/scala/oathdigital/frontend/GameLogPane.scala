@@ -109,6 +109,12 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
           case None =>
             list.appendChild(node)
             None
+          // A withdrawn consent request: struck in place, under no header
+          // (consent design, "Game Log").
+          case Some(taken) if taken.header.isEmpty =>
+            node.classList.add("log-withdrawn")
+            list.appendChild(node)
+            None
           case Some(taken) =>
             val lines = open.filter(_._1 == taken.group).map(_._2)
               .getOrElse(group(taken, colors))
