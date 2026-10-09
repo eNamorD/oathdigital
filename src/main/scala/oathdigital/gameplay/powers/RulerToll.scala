@@ -39,7 +39,9 @@ private[powers] object RulerToll:
       Note(step.power, note(step.card, payer, ruler)))
     ruler match
       case SiteRuler.Player(owner) => step.around(operations, payer,
-        occasion, heading, payOption(ready, payer, owner), freeLabel, paid,
+        occasion, heading,
+        payOption(ready, payer, owner, favorTaken(operations, payer)),
+        freeLabel, paid,
         Vector(Note(step.power, _ => Some(waived(step.source,
           NoteArg.Player(owner))))))
       case _ => operations ++ paid
@@ -52,18 +54,31 @@ private[powers] object RulerToll:
       SiteRule.enemies(ruler, SiteRuler.Player(payer)))
 
   /** The paying option of a toll step, "Give 1 favor to {owner}",
-    * unavailable with what it needs when `payer` holds less than the toll.
-    * The step is asked before any of its cost is paid, so the favor held
-    * now is the favor the payment will find. */
-  def payOption(ready: ReadyGame, payer: PlayerId, owner: PlayerId)
-      : DecisionOption =
+    * unavailable with what it needs when `payer` holds less than the toll
+    * and `taken`, the favor the rest of the cost takes first. The step is
+    * asked before any of its cost is paid, so the favor held now is the
+    * favor the cost will find. */
+  def payOption(ready: ReadyGame, payer: PlayerId, owner: PlayerId,
+      taken: Int = 0): DecisionOption =
     val option = DecisionOption.Button(PayOrAsk.pay,
       s"Give $Favor favor to ${owner.value}")
     val held = ready.game.current.players.find(_.player == payer)
       .fold(0)(_.board.favor)
-    if held >= Favor then option
+    val needed = Favor + taken
+    if held >= needed then option
     else DecisionOption.Unavailable(option,
-      OptionReason.Written(s"Needs $Favor favor; you have $held"))
+      OptionReason.Written(s"Needs $needed favor; you have $held"))
+
+  /** The favor `operations` take from `payer` as they stand: a favor given,
+    * or a cost's favor paid or burnt. A batch built when it runs is not
+    * read. */
+  def favorTaken(operations: Vector[Operation], payer: PlayerId): Int =
+    operations.collect {
+      case Give(Piece.Favor(amount), giver, _, _, _) if giver == payer =>
+        amount
+      case PayCost(player, _, cost, _, _, _) if player == payer =>
+        cost.favor + cost.favorBurnt
+    }.sum
 
   /** The required payment from `payer` to `ruler`. */
   def payment(payer: PlayerId, ruler: SiteRuler): CoreOperation = ruler match

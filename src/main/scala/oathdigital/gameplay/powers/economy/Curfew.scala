@@ -53,7 +53,8 @@ final case class Curfew private (catalog: ExecutableCatalog)
 
   /** `operations` with what a Trade with a card `ruler` rules owes, read
     * against the Trade's source when it runs: the step first and its outcome
-    * last when a player rules Curfew, the payment and its line last under
+    * last when a player rules Curfew (the outcome runs nothing when the step
+    * was not asked), the payment and its line last under
     * bandits. */
   private def charged(trader: PlayerId, ruler: SiteRuler,
       operations: Vector[Operation]): Vector[Operation] = ruler match
@@ -65,10 +66,10 @@ final case class Curfew private (catalog: ExecutableCatalog)
       Branch((ready, pending) => tradedWith(ready, ruler, pending).toVector
         .map(source => Curfew.step.question(trader, source.wireId,
           "Curfew: give 1 favor to trade with this card?",
-          RulerToll.payOption(ready, trader, owner),
+          RulerToll.payOption(ready, trader, owner,
+            RulerToll.favorTaken(operations, trader)),
           "Trade without paying"))) +: operations :+
-        Branch((ready, pending) => tradedWith(ready, ruler, pending).toVector
-          .map(_ => Curfew.step.outcome(paid, waived)))
+        Curfew.step.outcome(paid, waived)
     case _ => operations ++ Vector(
       BuildOps((ready, pending) => Right(tradedWith(ready, ruler, pending)
         .map(_ => RulerToll.payment(trader, ruler)).toVector),

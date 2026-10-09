@@ -70,7 +70,8 @@ final case class TollRoads private (catalog: ExecutableCatalog)
       case SiteRuler.Player(owner) =>
         TollRoads.step.question(route.player, route.destination.value,
           "Toll Roads: give 1 favor to travel there?",
-          RulerToll.payOption(ctx.state, route.player, owner),
+          RulerToll.payOption(ctx.state, route.player, owner,
+            RulerToll.favorTaken(operations, route.player)),
           "Travel without paying") +:
           TravelRoute.beforeMove(operations, Vector(TollRoads.step.outcome(
             paid, Vector(Note(id, _ => Some(TollRoads.waived(

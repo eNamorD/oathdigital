@@ -208,7 +208,7 @@ private[walker] object WalkerPowerGather:
 
   /** A required decision with every option forbidden cannot be answered: the
     * violation is the first restriction's, for the first option. A
-    * choose-one's option that may be asked about does not count as
+    * pay-or-ask step's option that may be asked about does not count as
     * forbidden: the search at the decision judges whether a grant would open
     * it, so a payer who cannot pay may still reach the step to ask (consent
     * slice 4).
@@ -226,6 +226,7 @@ private[walker] object WalkerPowerGather:
       val verdicts = refs.map { ref =>
         val found = forbidding(decide, restrictions, ctx, byId)(ref)
         val askable = decide.query.isInstanceOf[DecisionQuery.ChooseOne] &&
+          decide.window.contains(PowerWindow.PayOrAsk) &&
           found.headOption.exists(first => consentAsk(decide, ref,
             found.map(forbid => Block(forbid.power, forbid.restriction.waiver,
               forbid.ctx)), first.ctx.state).nonEmpty)

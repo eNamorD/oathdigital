@@ -41,7 +41,7 @@ private[application] final class ConsentProjector(
       viewer <- context.viewer
       ask <- waiting.open.find(_.granter == viewer)
     yield ConsentPromptProjection(waiting.requester.value,
-      ask.powers.map(names.power), target(context, waiting.target))
+      ask.powers.map(names.power), target(context, waiting))
     projection.copy(
       walkerDecision =
         if requesting.nonEmpty then None else projection.walkerDecision,
@@ -64,13 +64,15 @@ private[application] final class ConsentProjector(
 
   /** The option asked about, named as its decision row names it. A button
     * has no name of its own, so its label is read from the parked
-    * decision. */
+    * decision the request is about. */
   private def target(context: ScopedProjectionContext,
-      ref: DecisionOptionRef): String =
+      request: ConsentRequest): String =
+    val ref = request.target
     val option = ref match
       case button: DecisionOptionRef.Button => decisions
-        .parkedDecide(context.ready).toVector.flatMap(offered)
-        .find(_.ref == button)
+        .parkedDecide(context.ready)
+        .filter(_.decisionId == request.decisionId).toVector
+        .flatMap(offered).find(_.ref == button)
       case _ => DecisionOption.forRef(ref)
     option.flatMap(decisions.optionProjection(context.ready, context.viewer,
         context.ready.game.cardIndex.toOption, _))

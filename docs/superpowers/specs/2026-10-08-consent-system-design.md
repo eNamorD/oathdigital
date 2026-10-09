@@ -313,7 +313,8 @@ Curfew `no-free-trade` and `no-free-trade-consent` ("Cannot trade with
 its ruler's cards …"), and Grasping Vines `must-kill` ("Must kill a
 warband when traveling from its ruler's sites.") and `must-kill-consent`
 ("…, unless ruler consents."). A favor toll's paying option, when its
-payer is short, reads "Needs 1 favor; you have 0". A refused option uses
+payer is short, reads "Needs 1 favor; you have 0", counting the favor the
+rest of the cost takes first. A refused option uses
 the ordinary reason.
 
 **Toll and penalty steps.** Toll Roads, Forced Labor, Curfew and Grasping

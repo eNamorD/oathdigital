@@ -99,13 +99,9 @@ object WayStation:
     * Roads' step counts as owed, though its ruler may waive it. */
   private[travel] def favorOwed(operations: Vector[Operation],
       traveller: PlayerId): Int = operations.collect {
-    case Give(Piece.Favor(amount), giver, _, _, _) if giver == traveller =>
-      amount
-    case PayCost(player, _, cost, _, _, _) if player == traveller =>
-      cost.favor + cost.favorBurnt
     case step: Decide if step.decisionId == TollRoads.decisionId &&
         step.owner == traveller => TollRoads.Favor
-  }.sum
+  }.sum + RulerToll.favorTaken(operations, traveller)
 
   val id: PowerId = WayStationCard.power.id
   val Favor: Int = 1

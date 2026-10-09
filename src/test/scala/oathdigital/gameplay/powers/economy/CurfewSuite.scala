@@ -134,3 +134,17 @@ class CurfewSuite extends munit.FunSuite:
     assertEquals(Look(result).favor(p1), Look(ready).favor(p1) + 1)
     assertEquals(said(events), Vector(NoteText.Said("waived",
       s"Gave nothing, with ${p2.value}'s consent.", covers = false)))
+
+  test("a Trade whose own cost takes the favor shows paying unavailable, " +
+      "with what it needs"):
+    // A Trade for secrets takes 2 favor before Curfew's toll.
+    val ready = rivalRulesBoth.favor(p1, 2).ready
+    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1,
+      Vector.empty, Vector(DecisionOptionRef.Button("secret"))))
+    val picked = accepted(rules.resolveWalker(started.state, p1,
+      TradeProcedure.decisionId,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(wrestlers))))
+    assertEquals(PlacementPicks.parkedOptions(picked.state, automatic)
+      .find(_.ref == PayOrAsk.pay), Some(DecisionOption.Unavailable(
+        DecisionOption.Button(PayOrAsk.pay, s"Give 1 favor to ${p2.value}"),
+        OptionReason.Written("Needs 3 favor; you have 2"))))

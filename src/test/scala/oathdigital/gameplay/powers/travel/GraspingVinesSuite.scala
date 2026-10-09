@@ -115,3 +115,22 @@ class GraspingVinesSuite extends munit.FunSuite:
     assertEquals(warbands(Outcomes.ready(done.state)), warbands(ready))
     assertEquals(said(done.events), Vector(NoteText.Said("spared",
       s"Killed nothing, with ${rival.value}'s consent.", covers = false)))
+
+  test("with Toll Roads too, both steps are asked before either is paid"):
+    // The rival also rules the coast and Toll Roads at the Provinces' plains.
+    val ready = on(vinesAtHome(Some(rival)))(_
+      .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
+      .warbandsAt(provincePlains, rival, 1).warbandsAt(coast, rival, 1)
+      .favor(actor, 1))
+    val first = accepted(travel(ready, coast))
+    val second = accepted(answeringStep(first, TollRoads.decisionId,
+      PayOrAsk.pay))
+    // Nothing is paid yet: the toll waits for the Vines' step.
+    assertEquals(Look(Outcomes.ready(second.state)).favor(actor), 1)
+    val done = accepted(answeringStep(second, GraspingVines.decisionId,
+      PayOrAsk.pay))
+    val result = Outcomes.ready(done.state)
+    assertEquals(Look(result).player(actor).pawnSite, Some(coast))
+    assertEquals(warbands(result), warbands(ready) - 1)
+    assertEquals(Look(result).favor(actor), 0)
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
