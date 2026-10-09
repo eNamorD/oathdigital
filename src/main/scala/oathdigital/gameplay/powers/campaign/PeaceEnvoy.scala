@@ -87,7 +87,8 @@ case object PeaceEnvoy extends BattlePlan:
         alone = true)
       parties(context) match
         case Some((user, enemy)) => offer.copy(effects = Vector(
-          CampaignPlanEffect.Run(Vector(gift(user, enemy),
+          CampaignPlanEffect.Run(Vector(
+            gift(user, enemy, favor(context.ready, user)),
             giftNote(context.side, user, enemy)))))
         case None => offer.copy(withheld =
           Some(OptionReason.Written(PeaceEnvoy.Apart)))
@@ -161,18 +162,22 @@ case object PeaceEnvoy extends BattlePlan:
   private def pawnSite(ready: ReadyGame, player: PlayerId): Option[SiteId] =
     ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
 
+  private def favor(ready: ReadyGame, player: PlayerId): Int =
+    ready.game.current.players.find(_.player == player).fold(0)(_.board.favor)
+
   /** One favor per die in the defense pool, from `user` to `enemy`. It
-    * runs after the payment, so the favor placed onto the card is added
-    * back into the shortfall it reports. */
-  private def gift(user: PlayerId, enemy: PlayerId): Operation =
+    * runs after the payments, so its shortfall is reported against
+    * `before`, the user's favor when the plan was offered: everything the
+    * payments took (the favor placed onto the card, and any surcharge, as
+    * Insect Swarm's) is added back. */
+  private def gift(user: PlayerId, enemy: PlayerId, before: Int): Operation =
     BuildOps((ready, _) => {
       val dice = ready.game.current.rollPools.get(CampaignIds.defensePool)
         .fold(0)(_.count)
-      val held = ready.game.current.players.find(_.player == user)
-        .fold(0)(_.board.favor)
+      val held = favor(ready, user)
       if dice == 0 then Right(Vector.empty)
       else if held < dice then Left(OathViolation.InsufficientFavor(
-        PeaceEnvoy.Favor + dice, PeaceEnvoy.Favor + held))
+        before - held + dice, before))
       else Right(Vector[CoreOperation](Give(Piece.Favor(dice), user,
         Location.PlayArea(user), Location.PlayArea(enemy), required = true)))
     })

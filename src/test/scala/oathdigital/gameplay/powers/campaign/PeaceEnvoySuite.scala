@@ -79,6 +79,15 @@ class PeaceEnvoySuite extends munit.FunSuite:
     assertEquals(run.withheld(b.actor, ref),
       Some(OptionReason.Written("Needs 3 favor; you have 2")))
 
+  test("the shortfall counts a surcharge paid before the gift"):
+    // The rival's Insect Swarm burns one more favor for each attacker plan.
+    val base = withLongbowsHeld(envoyAttackerWithRivalAtOrigin(favor = 3))
+    val b = withAdviserFor(base, base.rival,
+      CatalogNames.denizen("Insect Swarm"), Orientation.FaceUp)
+    val run = commit(rules(losingDice), b, 2)
+    assertEquals(run.withheld(b.actor, ref),
+      Some(OptionReason.Written("Needs 4 favor; you have 3")))
+
   test("it is withheld unless the enemy's pawn is at the user's site"):
     // The rival rules the origin but stands elsewhere.
     val apart = rivalRulesOriginAndHoldsOathkeeper(
@@ -121,6 +130,15 @@ class PeaceEnvoySuite extends munit.FunSuite:
       "gave-off-turn",
       s"${b.rival.value} gave 2 favor to ${b.actor.value}.",
       covers = false)))
+
+  test("a defender who cannot give it all sees the shortfall"):
+    val base = envoyDefenderAtOrigin
+    val b = on(base)(_.favor(base.rival, 2))
+    // The title's defense keeps the defender's window asked.
+    val run = commit(rules(winningDice), b, 4).finishAttackerPlans(b.actor)
+    assert(awaits(run, b.rival, CampaignIds.defenderPlan))
+    assertEquals(run.withheld(b.actor, ref),
+      Some(OptionReason.Written("Needs 3 favor; you have 2")))
 
   test("its reasons read as ruled"):
     def sentence(note: PowerNote): String =
