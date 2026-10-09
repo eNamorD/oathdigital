@@ -29,12 +29,6 @@ object PalanquinCard extends Denizen(DenizenId("107"), "Palanquin", Suit.Order) 
       "travel to that site, spending no Supply.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object SpecialistCard extends Denizen(DenizenId("114"), "Specialist", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.specialist"),
-    persistent = false, cost = Cost(favor = 2),
-    text = "The defender **cannot** use battle plans.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object CaptainsCard extends Denizen(DenizenId("115"), "Captains", Suit.Order) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.captains"),
     persistent = false, cost = Cost(favor = 1),

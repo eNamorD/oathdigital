@@ -22,7 +22,8 @@ object NoteText:
     events.collect { case PowerNoted(`id`, note, covers) =>
       Said(note.key, sentence(keys, note), covers) }
 
-  private def sentence(keys: Vector[NoteKey], note: PowerNote): String =
+  /** `note` as the plain sentence its key in `keys` words. */
+  def sentence(keys: Vector[NoteKey], note: PowerNote): String =
     keys.find(_.name == note.key).fold(s"<no template for ${note.key}>")(
       _.template.map {
         case NotePart.Text(words) => words
