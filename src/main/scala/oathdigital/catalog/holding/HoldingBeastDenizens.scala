@@ -14,13 +14,6 @@ object SmallFriendsCard extends Denizen(DenizenId("177"), "Small Friends", Suit.
       "card. _(You may use Trade modifiers there.)_")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object MushroomsCard extends Denizen(DenizenId("183"), "Mushrooms", Suit.Beast) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.mushrooms"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "Spend no Supply, but draw only one card _(not three)_ from " +
-      "the bottom of your region's discard pile.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object VowOfUnionCard extends Denizen(DenizenId("185"), "Vow of Union", Suit.Beast) with Locked with AdviserOnly:
   val campaign = PrintedPower(PowerId("denizen.vow-of-union.campaign"),
     persistent = true, cost = Cost.free,

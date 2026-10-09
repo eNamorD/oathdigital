@@ -76,12 +76,6 @@ object SilverCharmCard extends Relic(RelicId("R31"), "Silver Charm", value = 37,
       "time.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object WineOfWelcomeCard extends Relic(RelicId("R33"), "Wine of Welcome", value = 7, defense = 1):
-  val power = PrintedPower(PowerId("relic.wine-of-welcome"),
-    persistent = false, cost = Cost.free,
-    text = "Draw from the bottom of the world deck instead of the top.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object WhisperingStoneCard extends Relic(RelicId("R34"), "Whispering Stone", value = 13, defense = 2):
   val power = PrintedPower(PowerId("relic.whispering-stone"),
     persistent = false, cost = Cost(secret = 1),
