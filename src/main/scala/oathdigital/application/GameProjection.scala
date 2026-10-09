@@ -5,7 +5,8 @@ import oathdigital.model.OathState.{NoGame, Ready}
 import oathdigital.gameplay.PlayerSecretSummary
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
-import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{ConsentPowers, PhasePowerCatalog,
+  WalkerPowerCatalog}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -24,6 +25,8 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
     walkerDecisions, phasePowerProjector)
   private val pendingProjector = new PendingProjector(catalog,
     presentation, walkerDecisions)
+  private val consent = new ConsentProjector(presentation, walkerDecisions,
+    ConsentPowers.default(catalog))
 
   private val logs = new gamelog.GameLogProjector(catalog, presentation)
 
@@ -47,10 +50,19 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
       ready = false, completed = false)
     case Ready(ready) =>
       val context = ScopedProjectionContext(ready, requestingPlayer)
-      readyProjection(gameId, loaded.nextSequence, context).copy(
-        undo = offer(loaded.undo, requestingPlayer, "Undo"),
-        redo = offer(loaded.redo, requestingPlayer, "Redo"),
-        logRevision = loaded.logRevision)
+      val waiting = ready.consent.pending
+      // While a request waits, its requester's Undo withdraws it, and nobody
+      // redoes past it (consent design, plan decision 7).
+      val withdraws = waiting.exists(request =>
+        requestingPlayer.contains(request.requester))
+      consent.applied(context, readyProjection(gameId, loaded.nextSequence,
+        context).copy(
+        undo = if withdraws then
+            Some(StepOfferProjection(ConsentProjector.withdrawNote))
+          else offer(loaded.undo, requestingPlayer, "Undo"),
+        redo = if waiting.nonEmpty then None
+          else offer(loaded.redo, requestingPlayer, "Redo"),
+        logRevision = loaded.logRevision))
 
   /** `step` offered to its issuer alone (undo design, "Rulings" and
     * "Controls"): "Undo: {line}", or "Undo your last step" when the batch

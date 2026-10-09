@@ -134,8 +134,10 @@ object DecisionQueryProjection:
   * from `details`, which carries consequences and runs together into one line.
   *
   * `state` is `available`, `locked` (decided already, shown chosen),
-  * `unavailable` (shown, with `reason` saying why it may not be chosen now)
-  * or `warning` (choosable, with `reason` saying why to think twice).
+  * `unavailable` (shown, with `reason` saying why it may not be chosen now),
+  * `warning` (choosable, with `reason` saying why to think twice) or
+  * `askable` (shown, choosable only by asking `consent`'s granters, with
+  * `reason` saying why).
   *
   * `replaces` is the card choosing the option discards to make room (a
   * Replace slot), as the viewer may see it.
@@ -151,7 +153,8 @@ final case class DecisionOptionProjection(kind: String, id: String,
     state: String = "available",
     reason: Option[String] = None,
     replaces: Option[CardDetailsProjection] = None,
-    variant: Option[String] = None):
+    variant: Option[String] = None,
+    consent: Option[ConsentAskProjection] = None):
   /** Whether the viewer may choose it: available, or available with a
     * warning. */
   def choosable: Boolean = state == "available" || state == "warning"

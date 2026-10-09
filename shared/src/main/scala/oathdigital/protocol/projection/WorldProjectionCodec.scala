@@ -46,12 +46,14 @@ private[protocol] object WorldProjectionCodec:
 
   private def encodePower(value: SitePowerProjection): ujson.Value = ujson.Obj(
     "kind" -> value.kind, "label" -> value.label,
-    "description" -> stringOption(value.description))
+    "description" -> stringOption(value.description), "id" -> value.id)
   private def decodePower(raw: ujson.Value, path: String): Result[SitePowerProjection] = for
-    value <- obj(raw, path); _ <- exact(value, Set("kind", "label", "description"), path)
+    value <- obj(raw, path)
+    _ <- exact(value, Set("kind", "label", "description", "id"), path)
     kind <- string(value, "kind", path); label <- string(value, "label", path)
     description <- optionalString(value, "description", path)
-  yield SitePowerProjection(kind, label, description)
+    id <- default(value, "id", path, "")(string)
+  yield SitePowerProjection(kind, label, description, id)
 
   private def encodeSiteCard(value: SiteCardProjection): ujson.Value = ujson.Obj(
     "denizenId" -> value.cardId, "label" -> value.label,

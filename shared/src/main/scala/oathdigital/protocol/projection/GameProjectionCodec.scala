@@ -19,7 +19,7 @@ object GameProjectionCodec:
     "relicDeckCount", "temporaryHandPreview",
     "walkerDecision", "walkerWaiting", "phasePowers", "viewerPlayerId",
     "supplyMaximum", "restSupplyGain", "supplyBands", "undo", "redo", "logRevision",
-    "followUp")
+    "followUp", "consentWaiting", "consentPrompt", "consentPreferences")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
@@ -75,7 +75,13 @@ object GameProjectionCodec:
     "redo" -> option(value.redo)(offer => ujson.Obj("note" -> offer.note)),
     "logRevision" -> option(value.logRevision)(revision =>
       ujson.Num(revision.toDouble)),
-    "followUp" -> option(value.followUp)(encodeFollowUp))
+    "followUp" -> option(value.followUp)(encodeFollowUp),
+    "consentWaiting" -> option(value.consentWaiting)(
+      ConsentProjectionCodec.encodeWaiting),
+    "consentPrompt" -> option(value.consentPrompt)(
+      ConsentProjectionCodec.encodePrompt),
+    "consentPreferences" -> encoded(value.consentPreferences)(
+      ConsentProjectionCodec.encodePreferences))
     value.viewerPlayerId.foreach(player => result("viewerPlayerId") = ujson.Str(player))
     result
 
@@ -139,12 +145,21 @@ object GameProjectionCodec:
       case None | Some(ujson.Null) => Right(None)
       case Some(_) => long(value, "logRevision", path).map(Some(_))
     followUp <- optionalAbsent(value, "followUp", path)(decodeFollowUp)
+    consentWaiting <- optionalAbsent(value, "consentWaiting", path)(
+      ConsentProjectionCodec.decodeWaiting)
+    consentPrompt <- optionalAbsent(value, "consentPrompt", path)(
+      ConsentProjectionCodec.decodePrompt)
+    preferenceRaws <- default(value, "consentPreferences", path,
+      Vector.empty[ujson.Value])(array)
+    consentPreferences <- traverse(preferenceRaws,
+      s"$path.consentPreferences")(ConsentProjectionCodec.decodePreferences)
   yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
     banks, tracks, relicDeck, preview,
     walkerDecision, walkerWaiting, phasePowers, viewer,
-    supplyMaximum, restGain, bands, undo, redo, logRevision, followUp)
+    supplyMaximum, restGain, bands, undo, redo, logRevision, followUp,
+    consentWaiting, consentPrompt, consentPreferences)
 
   private def decodeStepOffer(raw: ujson.Value, path: String)
       : Result[StepOfferProjection] = for

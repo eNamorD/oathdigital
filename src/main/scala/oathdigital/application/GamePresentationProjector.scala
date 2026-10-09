@@ -402,8 +402,9 @@ private[application] final class GamePresentationProjector(
     case value: VisionId => safeLabel(value.value)
   private def sitePower(handler: PowerId): SitePowerProjection =
     val kind = SitePowerText.kindOf(handler.value)
-    SitePowerText.of(kind).fold(SitePowerProjection(kind, safeLabel(kind), None))(
-      printed => SitePowerProjection(kind, printed.label, Some(printed.text)))
+    SitePowerText.of(kind).fold(SitePowerProjection(kind, safeLabel(kind), None,
+      handler.value))(printed => SitePowerProjection(kind, printed.label,
+      Some(printed.text), handler.value))
 
 private[application] object GamePresentationProjector:
   /** A card's orientation from its container state; `None` for a state

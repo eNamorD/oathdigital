@@ -35,6 +35,9 @@ final case class GameProjection(
     ,redo: Option[StepOfferProjection] = None
     ,logRevision: Option[Long] = None
     ,followUp: Option[FollowUpProjection] = None
+    ,consentWaiting: Option[ConsentWaitingProjection] = None
+    ,consentPrompt: Option[ConsentPromptProjection] = None
+    ,consentPreferences: Vector[ConsentPreferencesProjection] = Vector.empty
 )
 
 /** The queue's head, as every viewer sees it (follow-up actions design,

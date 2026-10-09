@@ -69,7 +69,10 @@ final case class SetupRegionProjection(
       * its faces are not. */
     discardCards: Vector[CardDetailsProjection] = Vector.empty
 )
-final case class SitePowerProjection(kind: String, label: String, description: Option[String])
+/** A site's power: its printed kind, label and text, and `id`, the power's
+  * id, which a client keys the power's consent preferences on. */
+final case class SitePowerProjection(kind: String, label: String,
+    description: Option[String], id: String = "")
 final case class PawnLocationProjection(playerId: String, siteId: String)
 final case class ActivePlayerResourcesProjection(
     favor: Int,

@@ -116,6 +116,37 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     assertEquals(GameProjectionCodec.decode(ujson.write(raw))
       .map(_.followUp), Right(None))
 
+  test("the consent parts of a projection round-trip"):
+    assertRoundTrips(projection.copy(
+      consentWaiting = Some(ConsentWaitingProjection(Vector("p2"))),
+      consentPrompt = Some(ConsentPromptProjection("p1",
+        Vector("Narrow Pass"), "Dunes")),
+      consentPreferences = Vector(ConsentPreferencesProjection(
+        "site.narrow-pass.pass", "Narrow Pass",
+        Vector(ConsentPreferenceRowProjection("p1", "always"))))))
+
+  test("an askable option's consent ask and a site power's id round-trip"):
+    assertRoundTrips(projection.copy(
+      walkerDecision = Some(WalkerDecisionProjection("travel",
+        "travel.destination", "decide", query = Some(
+          DecisionQueryProjection.ChooseOne(Vector(DecisionOptionProjection(
+            "site", "site:dunes", "Dunes", state = "askable",
+            reason = Some("Narrow Pass: needs consent"),
+            consent = Some(ConsentAskProjection(Vector("p2"),
+              Vector("Narrow Pass"))))))))),
+      world = projection.world.map(region => region.copy(sites =
+        region.sites.map(site => site.copy(powers = Vector(
+          SitePowerProjection("pass", "Pass", Some("text"),
+            "site.narrow-pass.pass"))))))))
+
+  test("a payload without consent parts decodes to none"):
+    val raw = ujson.read(GameProjectionCodec.encode(projection))
+    Vector("consentWaiting", "consentPrompt", "consentPreferences")
+      .foreach(raw.obj.remove)
+    assertEquals(GameProjectionCodec.decode(ujson.write(raw)).map(decoded =>
+      (decoded.consentWaiting, decoded.consentPrompt,
+        decoded.consentPreferences)), Right((None, None, Vector.empty)))
+
   test("the redo offer round-trips"):
     assertRoundTrips(projection.copy(
       redo = Some(StepOfferProjection("Redo: p1 travelled to Buried Giant"))))

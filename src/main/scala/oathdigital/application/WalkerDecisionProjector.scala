@@ -2,13 +2,14 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
-import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{ConsentPowers, PhasePowerCatalog,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.walker.{OptionWarnings, ProcedureWalker,
   WalkerPowers, WalkerProcedureRegistry, WalkerSimulation}
 import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
-  DecisionOptionProjection, DecisionQueryProjection,
+  ConsentAskProjection, DecisionOptionProjection, DecisionQueryProjection,
   DecisionSectionProjection, DecisionSlotProjection, DecisionSummaryProjection,
   DecisionTallyProjection, DecisionTallyValueProjection,
   WalkerDecisionProjection, WalkerRollOutcomeProjection,
@@ -47,6 +48,8 @@ private[application] final class WalkerDecisionProjector(
     phasePowers: PhasePowers = PhasePowers.empty):
   private val deals = new NegotiationDealProjector(presentation)
   private lazy val reasons = new gamelog.NoteReasons(catalog, presentation)
+  private lazy val consentNames = new ConsentNames(presentation,
+    ConsentPowers.default(catalog))
 
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
     this(catalog, presentation, WalkerPowerCatalog.default(catalog),
@@ -345,6 +348,14 @@ private[application] final class WalkerDecisionProjector(
       // whichever order a caller wraps price and badge in.
       case DecisionOption.Badged(inner, badge) => optionProjection(ready,
         viewer, index, inner, details).map(_.copy(badge = Some(badge)))
+      // Unavailable, but its rulers may be asked (consent design,
+      // "Projection"): shown as askable, with whom to ask.
+      case DecisionOption.Unavailable(inner,
+          reason @ OptionReason.Askable(_, _, asks)) =>
+        optionProjection(ready, viewer, index, inner, details).map(_.copy(
+          state = "askable", reason = Some(reasonText(ready, viewer, reason)),
+          consent = Some(ConsentAskProjection(asks.map(_.granter.value),
+            asks.flatMap(_.powers).distinct.map(consentNames.power)))))
       case DecisionOption.Unavailable(inner, reason) => optionProjection(ready,
         viewer, index, inner, details).map(_.copy(state = "unavailable",
           reason = Some(reasonText(ready, viewer, reason))))
