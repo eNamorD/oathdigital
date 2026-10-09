@@ -62,13 +62,6 @@ object AncientPactCard extends Denizen(DenizenId("166"), "Ancient Pact", Suit.No
       "your Act Phase._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object FamilyWagonCard extends Denizen(DenizenId("168"), "Family Wagon", Suit.Nomad) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.family-wagon"),
-    persistent = true, cost = Cost.free,
-    text = "You have no adviser limit but may only have [suit-nomad] " +
-      "advisers-—bury other advisers you have or would gain.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object HospitalityCard extends Denizen(DenizenId("171"), "Hospitality", Suit.Nomad) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.hospitality"),
     persistent = false, cost = Cost.free,

@@ -19,8 +19,14 @@ trait WhenPlayedPower extends ContributingPower:
 
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
+  /** Fires on its card's faceup play, unless the card went to the world
+    * deck before the hook: Family Wagon buried it on arrival, so it was
+    * never gained (catalog batch 5 rulings, slice 4). A move of the card
+    * elsewhere (Twin Brother, Great Herd) keeps it firing, so a resumed walk
+    * folds the hook the same way. */
   final override def applicable(ctx: PowerCtx): Boolean = ctx.operation match
-    case CardPlayedFaceup(card, _) => card == cardId
+    case CardPlayedFaceup(card, _) => card == cardId &&
+      !ctx.state.game.current.commonCards.worldDeck.contains(cardId)
     case _ => false
 
   final def contributions: Map[PowerWindow, Vector[Contribution]] =

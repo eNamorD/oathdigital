@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.{AdviserFace, CardPlayRules}
 import oathdigital.gameplay.powers.action.{Assassin, PiedPiper}
-import oathdigital.gameplay.powers.cardplay.LostTapestry
+import oathdigital.gameplay.powers.cardplay.{FamilyWagon, LostTapestry}
 import oathdigital.gameplay.powers.rest.{Insomnia, SilverTongue}
 import oathdigital.model._
 
@@ -12,11 +12,13 @@ import oathdigital.model._
   *
   * Card play gets its limit from [[oathdigital.gameplay.actions.CardPlayRules]],
   * which the [[oathdigital.gameplay.powers.rest.HolderAdviserLimit]] of Silver
-  * Tongue, of Insomnia and of Assassin narrows. This reads the same facts as a read of
-  * state, so the limit is defined once: the default is
+  * Tongue, of Insomnia and of Assassin narrows. This reads the same facts as
+  * a read of state, so the limit is defined once: the default is
   * `CardPlayRules.DefaultAdviserLimit`, and the lowest limit a held card sets
-  * wins. `ignored` and `towardLimit` read the facts by which card play's
-  * rules leave an adviser out of the count (Lost Tapestry, Pied Piper).
+  * wins. A faceup Family Wagon gives its holder no limit
+  * (`CardPlayRules.Unbounded`) before those apply. `ignored` and
+  * `towardLimit` read the facts by which card play's rules leave an adviser
+  * out of the count (Lost Tapestry, Pied Piper).
   */
 object AdviserLimit:
   val Default: Int = CardPlayRules.DefaultAdviserLimit
@@ -25,7 +27,9 @@ object AdviserLimit:
     Vector(SilverTongue.forCatalog(catalog).limitFor(ready, player),
       Insomnia.limitFor(ready, player),
       Assassin.forCatalog(catalog).limitFor(ready, player))
-      .flatten.minOption.getOrElse(Default)
+      .flatten.minOption.getOrElse(
+        if FamilyWagon.lifts(ready, player) then CardPlayRules.Unbounded
+        else Default)
 
   /** The advisers `player` holds that do not count toward the limit, as card
     * play's rules mark them: a faceup Pied Piper, and a Lost Tapestry

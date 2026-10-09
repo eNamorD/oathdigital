@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers
 
-import oathdigital.gameplay.actions.{AdviserFace, VisionRules}
+import oathdigital.gameplay.actions.{AdviserFace, CardPlayRules, VisionRules}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model.Orientation
 import oathdigital.testkit.{CatalogNames, Table}
@@ -42,3 +42,13 @@ class AdviserLimitSuite extends munit.FunSuite:
       Vector(AdviserFace(piper, Orientation.FaceUp)))
     assertEquals(AdviserLimit.towardLimit(held(false), p1), 1)
     assertEquals(AdviserLimit.towardLimit(held(true), p1), 2)
+
+  test("a faceup Family Wagon gives its holder no limit; a lowering power " +
+      "still applies, and facedown it lifts nothing"):
+    val wagon = CatalogNames.denizen("Family Wagon")
+    assertEquals(AdviserLimit.of(catalog,
+      Table.start.adviser(p1, wagon).ready, p1), CardPlayRules.Unbounded)
+    assertEquals(AdviserLimit.of(catalog,
+      Table.start.adviser(p1, wagon).adviser(p1, tongue).ready, p1), 2)
+    assertEquals(AdviserLimit.of(catalog,
+      Table.start.adviser(p1, wagon, facedown = true).ready, p1), 3)
