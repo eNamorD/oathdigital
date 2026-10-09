@@ -45,12 +45,13 @@ object MusterSource:
     else DecisionOption.Unavailable(option, Occupied)
 
   /** The source a reference names, wherever it stands: at a site in play, or
-    * among the actor's advisers. It checks neither the pawn site nor the
-    * tokens. The source decision offers only what a rule allows, and the
-    * walker accepts only an available option, so a power that lets a Muster
-    * or Trade draw on another card adds it to the decision and changes
-    * nothing here. A Muster or Trade resumed after its cost finds its source
-    * although the cost put tokens on it.
+    * among the actor's advisers. It requires neither that the card stand at
+    * the pawn site nor that it be token-free. The pawn site only names the
+    * site in the refusal of a card found nowhere. The source decision offers
+    * only what a rule allows, and the walker accepts only an available
+    * option, so a power that lets a Muster or Trade draw on another card adds
+    * it to the decision and changes nothing here. A Muster or Trade resumed
+    * after its cost finds its source although the cost put tokens on it.
     */
   def resolve(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       ref: DecisionOptionRef): Either[OathViolation, MusterSource] = for

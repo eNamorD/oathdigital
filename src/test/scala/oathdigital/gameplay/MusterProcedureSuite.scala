@@ -48,7 +48,7 @@ class MusterProcedureSuite extends munit.FunSuite:
     Outcomes.finished(ProcedureWalker.resolve(ready, walk.tree, walk.pending,
       answer, powers)).treeless
 
-  test("the tree parks on the token-free cards at the pawn site"):
+  test("the tree parks on the cards at the pawn site"):
     val ready = atAlchemist.ready
     val walk = parked(ready)
     val decide = present(ProcedureWalker.parkedDecide(ready, walk.tree,
