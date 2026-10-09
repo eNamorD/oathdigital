@@ -24,6 +24,11 @@
         "displayName": "Bright Brass",
         "canonical": "#f1c781"
       },
+      "consent-amber": {
+        "role": "secondary",
+        "displayName": "Consent Amber",
+        "canonical": "#e8a33d"
+      },
       "brass-label": {
         "role": "primary",
         "displayName": "Brass Label",

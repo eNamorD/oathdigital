@@ -35,6 +35,8 @@
   --die-attack: #c0392b;
   --die-defense: #3d6fb4;
   --die-round: #9b59b6;
+  /* An option the viewer may ask consent for, and nothing else. */
+  --consent-amber: #e8a33d;
 }
 /* Selected text is brass on the table's base, not the browser's blue. */
 ::selection { background: #d2a85e; color: #17140f; }
@@ -255,6 +257,14 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .board-option-locked { cursor: default; }
 .board-option-unavailable { opacity: 0.45; cursor: not-allowed;
   box-shadow: none; }
+/* An option the viewer may ask consent for (consent design): amber, not
+   brass, and clickable. */
+.board-option-askable { border-color: var(--consent-amber);
+  box-shadow: inset 0 0 0 2px var(--consent-amber); }
+.board-option-askable:hover, .board-option-askable:focus-visible {
+  border-color: #fff2d6; box-shadow: 0 0 0 3px rgba(232, 163, 61, 0.4); }
+.walker-choice-askable { border-color: var(--consent-amber);
+  color: var(--consent-amber); }
 /* The badge sits inside the corner: card faces and site boxes clip what
    overflows them. Small marks (a name, a pawn, a banner) carry the ring
    alone. */
@@ -323,7 +333,11 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .site-powers { min-width: 0; margin: 0; overflow: hidden;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   line-height: 1.25; }
-.site-power { cursor: help; }
+/* A button that opens the power: it reads as the label it was. */
+.site-power { appearance: none; background: none; border: 0; padding: 0;
+  margin: 0; font: inherit; color: inherit; cursor: pointer;
+  text-decoration: underline dotted; text-underline-offset: 2px; }
+.site-power:hover { color: #fff2d6; }
 .site-requirement { display: flex; align-items: center; flex: 0 0 auto;
   gap: 0.15em; align-self: flex-end; color: #fff2d6; font-weight: 700; }
 .site-requirement-label { margin-right: 0.2em; }
@@ -1005,6 +1019,11 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .walker-waiting, .seat-identity,
 .walker-choice-details, .decision-instruction, .empty-state {
   color: #a99f8c; font-size: .82rem; }
+/* The asked ruler's prompt (consent design). */
+.consent-prompt { display: grid; gap: 8px; }
+.consent-question { margin: 0; }
+.consent-answers { display: flex; flex-wrap: wrap; gap: 6px; }
+.consent-notice { margin: 0; color: #a99f8c; font-size: .82rem; }
 /* A pane with nothing to show yet says so in the helper ink, at the top of
    the pane like any first line. On the map, which is transform-scaled, the
    line is set against the scale so it reads at one size whatever Fit came
@@ -1094,6 +1113,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .game-log .log-taken-back-lines { list-style: none; margin: 0; padding: 0; }
 .game-log .log-taken-back-lines .log-entry { text-decoration: line-through;
   text-decoration-color: #928876; }
+/* A withdrawn consent request: struck in place, no group (consent design). */
+.game-log .log-withdrawn { text-decoration: line-through;
+  text-decoration-color: #928876; }
 /* Reading aids. In the pane the current turn's headline stays at the top
    while its lines scroll under it; in the overlay the round's does. The
    list is flat, so the latest headline past the top covers the earlier
@@ -1181,6 +1203,26 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .card-overlay-property { display: contents; }
 .card-overlay-property dt { color: #a99f8c; }
 .card-overlay-property dd { margin: 0; text-transform: capitalize; }
+/* The consent confirmation and a ruler's preferences grid (consent
+   design), in the overlay's own button style. */
+.overlay-confirm { display: grid; grid-template-columns: auto auto;
+  justify-content: start; gap: 12px; }
+.overlay-question { grid-column: 1 / -1; margin: 0; }
+.consent-grid { margin-top: 16px; display: grid; gap: 8px; }
+.consent-grid-heading { margin: 0; color: #d5bd8f; }
+.consent-grid-row { display: flex; flex-wrap: wrap; align-items: center;
+  gap: 6px; }
+.consent-grid-player { flex: 1 1 6rem; min-width: 0; }
+.overlay-confirm button, .consent-grid-choice { min-width: 32px;
+  min-height: 30px; padding: 4px 9px; color: #d9cdb5; background: #302a20;
+  border: 1px solid #7c694b; border-radius: 4px; font-size: 0.78rem;
+  cursor: pointer; }
+.overlay-confirm button:hover, .consent-grid-choice:hover {
+  border-color: #fff2d6; }
+.overlay-confirm button:focus-visible, .consent-grid-choice:focus-visible {
+  outline: 2px solid #fff0c9; }
+.consent-grid-choice[aria-pressed="true"] { border-color: #8ecbff;
+  background: #243442; }
 .card-overlay-close { position: absolute; top: 2vmin; right: 2vmin;
   min-width: 32px; min-height: 30px; padding: 4px 9px; color: #e8d9bb;
   background: #302a20; border: 1px solid #7c694b; border-radius: 4px;

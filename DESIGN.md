@@ -4,6 +4,7 @@ description: A dark table for the painted world of Oath, built for players who k
 colors:
   brass: "#d2a85e"
   brass-bright: "#f1c781"
+  consent-amber: "#e8a33d"
   brass-label: "#d5bd8f"
   brass-line: "#7c694b"
   cream: "#f5ecd7"
@@ -321,6 +322,10 @@ tokens, dice and players. UI surfaces stay in the warm neutral ramp; the only
 UI accents are brass and selection blue. Two exceptions: the three map
 regions carry the board's colors, not new ones, and the Game Log's action
 bands follow The Action Band Rule.
+
+One exception: **consent amber** (`consent-amber`) marks an option the viewer
+may ask another player's consent to choose (consent design). It appears on
+nothing else, so amber always means "ask first".
 
 **The Action Band Rule.** In the Game Log the lines of one action share a
 band: its color mixed 9% into the Pane fill, edged with the color mixed 28%
