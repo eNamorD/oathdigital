@@ -6,7 +6,7 @@ import oathdigital.gameplay.powers.action.Assassin
 import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRules, SimplePlans, VowOfPeaceContribution}
 import oathdigital.gameplay.powers.economy.{KnightsErrant, Marriage}
-import oathdigital.gameplay.powers.cardplay.CardPlayTriggers
+import oathdigital.gameplay.powers.cardplay.{CardPlayTriggers, LostTapestry}
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.powers.rest.{Insomnia, LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.powers.setup.{BanditMarket, BrokenForge, EmptyGrounds, GreatForge, GreatMarket, ProvingGrounds}
@@ -32,7 +32,8 @@ import oathdigital.gameplay.walker.WalkerPowers
   * since discovery keeps only powers that hook the window being gathered.
   * League Treaty is inert until Finish Rest walks its `RestReturnFavor` window.
   * Silver Tongue's, Insomnia's and Assassin's adviser limits are inert until
-  * Search walks `SearchPlayAdviser`.
+  * Search walks `SearchPlayAdviser`. Lost Tapestry's and Pied Piper's
+  * exemptions are inert until Search walks `SearchPlayAdviser` too.
   * Conspiracy's power carries no catalog id (a Vision has no catalog powers),
   * so like Take Wealth's limit it is always present and inert until a card
   * play runs `ActionCardPlayedFaceup` for Conspiracy.
@@ -54,6 +55,7 @@ object WalkerPowerCatalog:
       Vector(SilverTongue.forCatalog(catalog)) ++
       Vector(Insomnia) ++
       Vector(Assassin.forCatalog(catalog)) ++
+      Vector(LostTapestry) ++
       Vector(ASmallFavor) ++
       Vector(FaithfulFriend) ++
       Vector(Garrison) ++

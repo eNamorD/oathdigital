@@ -41,8 +41,8 @@ import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,
   SecondWindCard, WalledGardenCard, WarTortoiseCard, WarningSignalsCard,
   WatchdogCard, WrestlersCard}
 import oathdigital.gameplay.powers.cardplay.{BookBindersCard, GossipCard,
-  SacredGroundCard, SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard,
-  WelcomingPartyCard, WildCryCard}
+  LostTapestryCard, SacredGroundCard, SaddleMakersCard, SecretPoliceCard,
+  VowOfObedienceCard, WelcomingPartyCard, WildCryCard}
 import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard,
   AwaitedReturnCard, BirdsongCard, CupOfPlentyCard, CurfewCard,
   DefameCard, DowntroddenCard, GolemLegionsCard, InitiationRiteCard,

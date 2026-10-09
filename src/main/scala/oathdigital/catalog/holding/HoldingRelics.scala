@@ -68,12 +68,6 @@ object ImperialSealCard extends Relic(RelicId("R26"), "Imperial Seal", value = 3
       "site or Imperial player board.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object LostTapestryCard extends Relic(RelicId("R29"), "Lost Tapestry", value = 85, defense = 1):
-  val power = PrintedPower(PowerId("relic.lost-tapestry"),
-    persistent = true, cost = Cost.free,
-    text = "Facedown Visions do not count against your adviser limit.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SilverCharmCard extends Relic(RelicId("R31"), "Silver Charm", value = 37, defense = 1):
   val power = PrintedPower(PowerId("relic.silver-charm"),
     persistent = false, cost = Cost.free,
