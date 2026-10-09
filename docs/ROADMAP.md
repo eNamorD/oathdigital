@@ -164,6 +164,14 @@ Found by the survey of 2026-09-29:
   changes), Tracker (memory across turns), Keep (replacing a Raid's defeat),
   Obsidian Cage (a new warband store), Secret Signal (no generic gain window),
   and False Prophet, True Oath and The Red Seer (the Oathkeeper goal is not modelled).
+  False Prophet is also the only card that plays a card outside the active
+  player's turn: its holder plays the Vision when another player's action
+  discards it. Card play assumes the player is the walk's `ctx.activePlayer`
+  (the `SearchPlayAdviser` transforms, such as `HolderAdviserLimit`, Pied
+  Piper and Lost Tapestry, and the `ActionCardPlayedFaceup` readers, such as
+  Book Binders, Secret Police and Conspiracy). So the play must either run
+  as its own procedure for its holder, or give `PlacementTree` and
+  `CardPlayedFaceup` the playing player and move those readers onto it.
 
 ### Phase - Consent system
 
