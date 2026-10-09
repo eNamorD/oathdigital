@@ -1,0 +1,145 @@
+package oathdigital.gameplay.powers.campaign
+
+import oathdigital.catalog.{Denizen, PrintedPower}
+import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignIds}
+import oathdigital.gameplay.powerresolver.{OptionRestriction, PowerCtx}
+import oathdigital.gameplay.powers.NoteSupport
+import oathdigital.model._
+
+object PeaceEnvoyCard extends Denizen(DenizenId("125"), "Peace Envoy", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.peace-envoy"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "You **cannot** use other battle plans. If your enemy's pawn " +
+      "is at your site, give them one [favor] per [defense-die] in " +
+      "the pool. You're victorious now. **Ignore** killing " +
+      "warbands.")
+  val powers: Vector[PrintedPower] = Vector(power)
+
+/** Peace Envoy (card 125), a battle plan for either side: "[favor] You
+  * cannot use other battle plans. If your enemy's pawn is at your site,
+  * give them one [favor] per [defense-die] in the pool. You're victorious
+  * now. Ignore killing warbands."
+  *
+  * One favor is placed onto the card. The gift is part of the plan's
+  * application: one favor per die the defense pool holds then goes from the
+  * user's board to the enemy's. The plan window's dry run therefore prices
+  * it, and a user who cannot give it all sees the plan unavailable with the
+  * shortfall. The shortfall counts the favor already placed.
+  *
+  * It is withheld, with "Your enemy's pawn must be at your site", unless
+  * both pawns stand at one site. Bandits have no pawn, so it is never used
+  * by or against them. It is used with no other plan (`SolePlan`). When the
+  * attacker chose it, every defender plan is withheld with "Peace Envoy:
+  * The battle is decided.", so the defender is not asked.
+  *
+  * The gift writes "Gave {2 favor} to {Blue}.", or, for a defender, "{Blue}
+  * gave {2 favor} to {Red}.".
+  */
+case object PeaceEnvoy extends BattlePlan:
+  val cardId: DenizenId = PeaceEnvoyCard.id
+  val id: PowerId = PeaceEnvoyCard.power.id
+  /** The favor placed onto the card. */
+  val Favor: Int = 1
+  /** Why the plan is shown but not offered. */
+  val Apart: String = "Your enemy's pawn must be at your site"
+  /** "Cannot be used with other battle plans." */
+  val notWithOthers: NoteKey = NoteKey("not-with-others",
+    Vector(NotePart.Text("Cannot be used with other battle plans.")))
+  /** "No other battle plans." */
+  val noOthers: NoteKey = NoteKey("no-others",
+    Vector(NotePart.Text("No other battle plans.")))
+  /** "The battle is decided.", on the defender's plans. */
+  val decided: NoteKey = NoteKey("decided",
+    Vector(NotePart.Text("The battle is decided.")))
+  /** "Gave {2 favor} to {Blue}." */
+  val gave: NoteKey = NoteKey("gave", Vector(NotePart.Text("Gave "),
+    NotePart.Arg(0), NotePart.Text(" to "), NotePart.Arg(1),
+    NotePart.Text(".")))
+  /** "{Blue} gave {2 favor} to {Red}.", for a defender. */
+  val gaveOffTurn: NoteKey = NoteKey("gave-off-turn", Vector(NotePart.Arg(0),
+    NotePart.Text(" gave "), NotePart.Arg(1), NotePart.Text(" to "),
+    NotePart.Arg(2), NotePart.Text(".")))
+
+  def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
+  def sides: Set[CampaignPlanSide] =
+    Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
+  override def noteKeys: Vector[NoteKey] = Vector(PeaceEnvoy.notWithOthers,
+    PeaceEnvoy.noOthers, PeaceEnvoy.decided, PeaceEnvoy.gave,
+    PeaceEnvoy.gaveOffTurn)
+
+  def plan(context: PlanContext): Option[CampaignPlanOffer] =
+    context.denizen(cardId).map { source =>
+      val offer = CampaignPlanOffer(source,
+        "Peace Envoy: give one favor per defense die and win",
+        Vector(CampaignPlanCost.Favor(PeaceEnvoy.Favor)), Vector.empty,
+        alone = true)
+      parties(context) match
+        case Some((user, enemy)) => offer.copy(effects = Vector(
+          CampaignPlanEffect.Run(Vector(gift(user, enemy),
+            giftNote(context.side, user, enemy)))))
+        case None => offer.copy(withheld =
+          Some(OptionReason.Written(PeaceEnvoy.Apart)))
+    }
+
+  override def restrictions: Map[PowerWindow, Vector[OptionRestriction]] =
+    val sole = SolePlan.restrictions(cardRef, sides,
+      PowerSourceRef.Card(cardId), PeaceEnvoy.notWithOthers,
+      PeaceEnvoy.noOthers)
+    val window = PowerWindow.CampaignDefenderBattlePlans
+    sole.updated(window, sole.getOrElse(window, Vector.empty) :+ settled)
+
+  /** Every defender plan, once the attacker chose this one. */
+  private def settled: OptionRestriction = OptionRestriction(
+    (ctx, _) => Option.when(attackerChose(ctx))(
+      OathViolation.CampaignUnavailable("Peace Envoy decided the battle")),
+    (ctx, _) => Option.when(attackerChose(ctx))(
+      PeaceEnvoy.decided(PowerSourceRef.Card(cardId))))
+
+  private def attackerChose(ctx: PowerCtx): Boolean = CampaignAnswers.picks(
+    PendingTree(Vector.empty, ctx.answered), CampaignIds.attackerPlan)
+    .contains(cardRef)
+
+  /** The user and the enemy, when both are players whose pawns stand at
+    * one site. */
+  private def parties(context: PlanContext): Option[(PlayerId, PlayerId)] =
+    val enemy = context.enemy match
+      case CampaignDefender.Player(player) => Some(player)
+      case CampaignDefender.Bandits => None
+    for
+      user <- context.user
+      other <- enemy
+      site <- pawnSite(context.ready, user)
+      if pawnSite(context.ready, other).contains(site)
+    yield (user, other)
+
+  private def pawnSite(ready: ReadyGame, player: PlayerId): Option[SiteId] =
+    ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
+
+  /** One favor per die in the defense pool, from `user` to `enemy`. It
+    * runs after the payment, so the favor placed onto the card is added
+    * back into the shortfall it reports. */
+  private def gift(user: PlayerId, enemy: PlayerId): Operation =
+    BuildOps((ready, _) => {
+      val dice = ready.game.current.rollPools.get(CampaignIds.defensePool)
+        .fold(0)(_.count)
+      val held = ready.game.current.players.find(_.player == user)
+        .fold(0)(_.board.favor)
+      if dice == 0 then Right(Vector.empty)
+      else if held < dice then Left(OathViolation.InsufficientFavor(
+        PeaceEnvoy.Favor + dice, PeaceEnvoy.Favor + held))
+      else Right(Vector[CoreOperation](Give(Piece.Favor(dice), user,
+        Location.PlayArea(user), Location.PlayArea(enemy), required = true)))
+    })
+
+  /** The gift's line, from what the enemy gained. A defender is named. */
+  private def giftNote(side: CampaignPlanSide, user: PlayerId,
+      enemy: PlayerId): Note = Note(id, states => states.previous
+    .map(NoteSupport.favor(_, enemy)).filter(_ > 0).map { count =>
+      val source = PowerSourceRef.Card(cardId)
+      val amount = NoteArg.Amount(count, NoteUnit.Favor)
+      side match
+        case CampaignPlanSide.Attacker =>
+          PeaceEnvoy.gave(source, amount, NoteArg.Player(enemy))
+        case CampaignPlanSide.Defender => PeaceEnvoy.gaveOffTurn(source,
+          NoteArg.Player(user), amount, NoteArg.Player(enemy))
+    })

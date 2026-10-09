@@ -38,15 +38,6 @@ object CouncilSeatCard extends Denizen(DenizenId("123"), "Council Seat", Suit.Or
       "yourself.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object PeaceEnvoyCard extends Denizen(DenizenId("125"), "Peace Envoy", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.peace-envoy"),
-    persistent = false, cost = Cost(favor = 1),
-    text = "You **cannot** use other battle plans. If your enemy's pawn " +
-      "is at your site, give them one [favor] per [defense-die] in " +
-      "the pool. You're victorious now. **Ignore** killing " +
-      "warbands.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object RelicHunterCard extends Denizen(DenizenId("126"), "Relic Hunter", Suit.Order):
   val power = PrintedPower(PowerId("denizen.relic-hunter"),
     persistent = false, cost = Cost.free,
