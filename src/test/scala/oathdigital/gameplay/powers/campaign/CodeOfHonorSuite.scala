@@ -54,6 +54,16 @@ class CodeOfHonorSuite extends munit.FunSuite:
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
 
+  test("an attacker's Code of Honor leaves the defender's plans alone"):
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val b = withAdviser(withAdviserFor(base, base.rival, longbows,
+      Orientation.FaceUp), card, Orientation.FaceUp)
+    val picked = commit(rules(winningDice), b, 3)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+    assert(picked.offers(b.actor, b.rival, CampaignIds.defenderPlan,
+      longbowsRef))
+
   test("a bandit defender applies it and no other plan"):
     // Both stand at the origin, which the bandits rule; both are free.
     val base = board(warbands = 5, supply = 7)
