@@ -172,6 +172,10 @@ trait ContributingPower extends NotingPower:
   def warning(decide: Decide, option: DecisionOptionRef): Option[OptionReason] =
     None
 
+  /** The follow-up this power adds after a walker leaf in which advisers
+    * arrived (catalog batch 5, "The arrival pass"). None by default. */
+  def onArrival(arrived: AdviserArrivals): Option[ArrivalFollowUp] = None
+
 object ContributingPower:
 
   /** The single deterministic ordering used everywhere contributions are

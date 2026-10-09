@@ -44,7 +44,9 @@ private[walker] object WalkerSteps:
     * the two leaf kinds that run rather than park (spec decision 5: one
     * hookable node, one event, its final operation batch). `ops` must already
     * be non-empty; callers short-circuit an empty batch themselves (an empty
-    * [[oathdigital.model.BuildOps]] batch records nothing).
+    * [[oathdigital.model.BuildOps]] batch records nothing). The adviser
+    * arrival pass then runs the follow-ups of any adviser that arrived in the
+    * batch (`AdviserArrivalPass`).
     */
   def recordBatch(ops: Vector[CoreOperation],
       contributions: Vector[PowerId], ctx: WalkCtx, path: Vector[String],
@@ -53,7 +55,7 @@ private[walker] object WalkerSteps:
       : Either[OathViolation, WalkCtx] =
     OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive,
       ctx.powers.operationRestrictions, requireAll)(
-      Right(_)).map { updated =>
+      Right(_)).flatMap { updated =>
       val nodeId = if path.isEmpty then label else path.mkString(".")
       val events = if updated.executed.isEmpty then ctx.events else
         ctx.events :+ WalkerStepRecorded(
@@ -62,8 +64,9 @@ private[walker] object WalkerSteps:
             DeltaMeaning.of(updated.executed, label)),
           ops = updated.executed,
           contributions = contributions)
-      ctx.copy(state = updated.state, events = events,
-        previous = Some((ctx.state, updated.state)))
+      AdviserArrivalPass.after(ctx.state, ctx.copy(state = updated.state,
+        events = events, previous = Some((ctx.state, updated.state))),
+        nodeId)
     }
 
   /** Validates a resolved answer against the parked Decide and records its
