@@ -135,6 +135,8 @@ final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)
   * board force. The attacker prevails when `attackTotal > defenseScore`, and
   * `attackerWins` records that fact: it is true for an attacker victory and
   * false for a defender victory, whichever side a battle plan's user is on.
+  * A plan that decides the battle (Peace Envoy) sets it whatever the
+  * scores, with nothing rolled.
   */
 final case class CampaignResult(
     attacker: PlayerId,

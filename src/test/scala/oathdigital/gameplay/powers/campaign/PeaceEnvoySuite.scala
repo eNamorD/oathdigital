@@ -41,6 +41,19 @@ class PeaceEnvoySuite extends munit.FunSuite:
     on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
       _.favor(base.rival, 5).favor(base.actor, 0))
 
+  /** Peace Envoy's gift lines in `events`, without its victory line. */
+  private def giftLines(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    said(PeaceEnvoy, events).filter(line =>
+      line.key == "gave" || line.key == "gave-off-turn")
+
+  /** Whether `ops` kill any warband from `player`'s board. */
+  private def killsFromBoard(ops: Vector[CoreOperation], player: PlayerId)
+      : Boolean = ops.exists {
+    case Kill(Piece.Warbands(_, _),
+        PositionedLocation(Location.PlayArea(`player`), _)) => true
+    case _ => false
+  }
+
   test("the attacker places one favor and gives one per defense die, and " +
       "the defender is not asked"):
     val b = envoyAttackerWithRivalAtOrigin(favor = 5)
@@ -51,7 +64,7 @@ class PeaceEnvoySuite extends munit.FunSuite:
     assertEquals(Look(picked.state).favor(b.actor), 2)
     assertEquals(Look(picked.state).favor(b.rival), 2)
     assert(!awaits(picked, b.rival, CampaignIds.defenderPlan))
-    assertEquals(said(PeaceEnvoy, picked.events), Vector(NoteText.Said(
+    assertEquals(giftLines(picked.events), Vector(NoteText.Said(
       "gave", s"Gave 2 favor to ${b.rival.value}.", covers = false)))
 
   test("its price counts the gift"):
@@ -104,7 +117,7 @@ class PeaceEnvoySuite extends munit.FunSuite:
     assertEquals(Look(run.state).favor(b.actor), 2)
     // Five, less the favor placed (settled off turn) and the two given.
     assertEquals(Look(run.state).favor(b.rival), 2)
-    assertEquals(said(PeaceEnvoy, run.events), Vector(NoteText.Said(
+    assertEquals(giftLines(run.events), Vector(NoteText.Said(
       "gave-off-turn",
       s"${b.rival.value} gave 2 favor to ${b.actor.value}.",
       covers = false)))
@@ -118,3 +131,48 @@ class PeaceEnvoySuite extends munit.FunSuite:
       "No other battle plans.")
     assertEquals(sentence(PeaceEnvoy.decided(source)),
       "The battle is decided.")
+
+  test("an attacker wins a Conquest without a roll, and the defender's " +
+      "warbands all return to their board"):
+    val b = envoyAttackerWithRivalAtOrigin(favor = 5)
+    val done = commit(rules(losingDice), b, 2)
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
+    assertEquals(done.winner, Some(true))
+    assertEquals(done.result.attackFaces, Vector.empty)
+    assertEquals(done.result.defenseFaces, Vector.empty)
+    assertEquals(done.result.sacrificed, 0)
+    assertEquals(Look(done.state).boardWarbands(b.rival),
+      Look(b.ready).boardWarbands(b.rival) + 2)
+    // Emptied and left unplaced, the origin refills with bandits after the
+    // command.
+    assert(Look(done.state).forces(b.origin) match
+      case SiteForces.Occupied(ForceKind.Bandit, _) => true
+      case _ => false)
+    assert(!killsFromBoard(done.ops, b.actor))
+    assertEquals(said(PeaceEnvoy, done.events), Vector(
+      NoteText.Said("gave", s"Gave 2 favor to ${b.rival.value}.",
+        covers = false),
+      NoteText.Said("won", "Won the battle without a roll.",
+        covers = false)))
+
+  test("a defender wins without a roll, and the attacker loses no warband"):
+    val b = envoyDefenderAtOrigin
+    val done = commit(rules(winningDice), b, 4).finishAttackerPlans(b.actor)
+      .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
+    assertEquals(done.winner, Some(false))
+    assertEquals(done.result.attackFaces, Vector.empty)
+    assert(!killsFromBoard(done.ops, b.actor))
+    assertEquals(Look(done.state).boardWarbands(b.actor), 5)
+    assertEquals(said(PeaceEnvoy, done.events).map(_.text), Vector(
+      s"${b.rival.value} gave 2 favor to ${b.actor.value}.",
+      s"${b.rival.value} won the battle without a roll."))
+
+  test("a Raid won with it kills none of the defender's board"):
+    val raid = raidBoard(defenderWarbands = 3)
+    val b = on(withAdviser(raid.board, card, Orientation.FaceUp))(
+      _.favor(raid.board.actor, 5))
+    val done = commit(rules(losingDice), b, 2, raid = true)
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
+    assertEquals(done.winner, Some(true))
+    assert(!killsFromBoard(done.ops, b.rival))
+    assertEquals(Look(done.state).boardWarbands(b.rival), 3)

@@ -32,6 +32,12 @@ object PeaceEnvoyCard extends Denizen(DenizenId("125"), "Peace Envoy", Suit.Orde
   * attacker chose it, every defender plan is withheld with "Peace Envoy:
   * The battle is decided.", so the defender is not asked.
   *
+  * Once used, it decides the battle (`VictoriousNow`): nothing is rolled
+  * or sacrificed, and its user's side wins, with "Won the battle without
+  * a roll.", or, for a defender, "{Blue} won the battle without a roll.".
+  * The losses kill no warband. After a Conquest the attacker wins with it,
+  * the defender's warbands at the targets all return to their board.
+  *
   * The gift writes "Gave {2 favor} to {Blue}.", or, for a defender, "{Blue}
   * gave {2 favor} to {Red}.".
   */
@@ -59,13 +65,19 @@ case object PeaceEnvoy extends BattlePlan:
   val gaveOffTurn: NoteKey = NoteKey("gave-off-turn", Vector(NotePart.Arg(0),
     NotePart.Text(" gave "), NotePart.Arg(1), NotePart.Text(" to "),
     NotePart.Arg(2), NotePart.Text(".")))
+  /** "Won the battle without a roll." */
+  val won: NoteKey = NoteKey("won",
+    Vector(NotePart.Text("Won the battle without a roll.")))
+  /** "{Blue} won the battle without a roll.", for a defender. */
+  val wonOffTurn: NoteKey = NoteKey("won-off-turn", Vector(NotePart.Arg(0),
+    NotePart.Text(" won the battle without a roll.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
   override def noteKeys: Vector[NoteKey] = Vector(PeaceEnvoy.notWithOthers,
     PeaceEnvoy.noOthers, PeaceEnvoy.decided, PeaceEnvoy.gave,
-    PeaceEnvoy.gaveOffTurn)
+    PeaceEnvoy.gaveOffTurn, PeaceEnvoy.won, PeaceEnvoy.wonOffTurn)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map { source =>
@@ -87,6 +99,40 @@ case object PeaceEnvoy extends BattlePlan:
       PeaceEnvoy.noOthers)
     val window = PowerWindow.CampaignDefenderBattlePlans
     sole.updated(window, sole.getOrElse(window, Vector.empty) :+ settled)
+
+  override def wrapping
+      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] =
+    VictoriousNow.wrapping(victory).updated(PowerWindow.CampaignLosses,
+      (use: PlanUse, losses: Vector[Operation]) => spared(use, losses))
+
+  /** The victory's line. A defender is named. */
+  private def victory(use: PlanUse): Note = Note(id, _ => {
+    val source = PowerSourceRef.Card(cardId)
+    use.side match
+      case CampaignPlanSide.Attacker => Some(PeaceEnvoy.won(source))
+      case CampaignPlanSide.Defender => use.user.map(user =>
+        PeaceEnvoy.wonOffTurn(source, NoteArg.Player(user)))
+  })
+
+  /** The losses, killing no warband. No kill from a board is left. After a
+    * Conquest the attacker won, the warbands at the targets still leave
+    * them, so the victor can place warbands, but all of them return to the
+    * defender's board, not half. Read when the losses window is folded,
+    * before the losses run. */
+  private def spared(use: PlanUse, losses: Vector[Operation])
+      : Vector[Operation] =
+    val atTargets = use.result.fold(0)(result => result.targetSites
+      .flatMap(use.ready.game.current.map.sites.get).map(_.forces).collect {
+        case SiteForces.Occupied(_, count) => count }.sum)
+    LossRewrite(losses) {
+      case Kill(Piece.Warbands(_, _),
+          PositionedLocation(Location.PlayArea(_), _)) => Vector.empty
+      case move @ Move(Piece.Warbands(kind, _),
+          PositionedLocation(Location.WarbandBank(_), _),
+          PositionedLocation(Location.PlayArea(_), _), None) =>
+        Vector(move.copy(piece = Piece.Warbands(kind, atTargets)))
+      case other => Vector(other)
+    }
 
   /** Every defender plan, once the attacker chose this one. */
   private def settled: OptionRestriction = OptionRestriction(
