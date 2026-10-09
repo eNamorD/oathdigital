@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PayOrAsk, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
@@ -29,9 +29,15 @@ class TollRoadsSuite extends munit.FunSuite:
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 
+  /** A Travel to `destination`, with Toll Roads' step answered by paying. */
+  private def travelledPaying(ready: ReadyGame, destination: SiteId)
+      : Either[OathViolation, OathTransition] =
+    travel(ready, destination).flatMap(
+      answeringStep(_, TollRoads.decisionId, PayOrAsk.pay))
+
   test("an enemy pays the ruler 1 favor to travel to a site the ruler rules"):
     val ready = rivalRules
-    val done = accepted(travel(ready, coast))
+    val done = accepted(travelledPaying(ready, coast))
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).player(actor).pawnSite, Some(coast))
     assertEquals(Look(result).favor(actor), 0)
@@ -43,7 +49,7 @@ class TollRoadsSuite extends munit.FunSuite:
 
   test("the rule covers every site the ruler holds, Toll Roads' own included"):
     val passRuled = on(rivalRules)(_.warbandsAt(pass, actor, 1))
-    val done = accepted(travel(passRuled, provincePlains))
+    val done = accepted(travelledPaying(passRuled, provincePlains))
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).favor(actor), 0)
     assertEquals(Look(result).favor(rival), Look(rivalRules).favor(rival) + 1)
@@ -89,7 +95,7 @@ class TollRoadsSuite extends munit.FunSuite:
   // ---- Lines ----
 
   test("the toll paid to the ruler is written as the Roads' line"):
-    assertEquals(said(accepted(travel(rivalRules, coast)).events),
+    assertEquals(said(accepted(travelledPaying(rivalRules, coast)).events),
       Vector(NoteText.Said("paid",
         s"${actor.value} paid 1 favor to ${rival.value}.", covers = false)))
 

@@ -27,7 +27,10 @@ object WayStationCard extends Denizen(DenizenId("169"), "Way Station", Suit.Noma
   * Action panel; the Supply answer is offered only when affordable. The
   * pawn's move stays outside the question, so later windows still see the
   * route. The question parks before the move, and Travel's source is a start
-  * fact, so a resume rebuilds the same tree.
+  * fact, so a resume rebuilds the same tree. Its payment runs after the rest
+  * of the cost and just before the move, so every question of the cost, a
+  * toll's step included, is asked before any of it is paid
+  * (`TravelRoute.beforeMove`).
   *
   * The favor writes the toll lines Curfew and Forced Labor write: "Gave
   * {1 favor} to {Blue}." or "Burned {1 favor}."
@@ -80,25 +83,28 @@ final case class WayStation private (catalog: ExecutableCatalog)
       Vector[Operation](
         Decide(WayStation.decisionId, traveller, DecisionQuery.ChooseOne(
           options, heading = Some("Way Station: spend no Supply?")),
-          presentation = DecisionPresentation.Panel),
-        Branch((_, pending) =>
-          PowerAnswers.one(pending, WayStation.decisionId) match
-            case Some(WayStation.favorOption) => Vector(
-              RulerToll.payment(traveller, ruler),
-              Note(id, RulerToll.note(cardId, traveller, ruler)))
-            case Some(_) => payment
-            case None => Vector.empty)) ++
-        SupplyStrip(traveller, operations)
+          presentation = DecisionPresentation.Panel)) ++
+        TravelRoute.beforeMove(SupplyStrip(traveller, operations), Vector(
+          Branch((_, pending) =>
+            PowerAnswers.one(pending, WayStation.decisionId) match
+              case Some(WayStation.favorOption) => Vector(
+                RulerToll.payment(traveller, ruler),
+                Note(id, RulerToll.note(cardId, traveller, ruler)))
+              case Some(_) => payment
+              case None => Vector.empty)))
 
 object WayStation:
   /** The favor `operations` already take from `traveller` (a toll, a
-    * selected modifier's payment), which the favor answer must leave. */
+    * selected modifier's payment), which the favor answer must leave. Toll
+    * Roads' step counts as owed, though its ruler may waive it. */
   private[travel] def favorOwed(operations: Vector[Operation],
       traveller: PlayerId): Int = operations.collect {
     case Give(Piece.Favor(amount), giver, _, _, _) if giver == traveller =>
       amount
     case PayCost(player, _, cost, _, _, _) if player == traveller =>
       cost.favor + cost.favorBurnt
+    case step: Decide if step.decisionId == TollRoads.decisionId &&
+        step.owner == traveller => TollRoads.Favor
   }.sum
 
   val id: PowerId = WayStationCard.power.id

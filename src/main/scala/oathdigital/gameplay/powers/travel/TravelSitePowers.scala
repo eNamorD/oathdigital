@@ -101,6 +101,16 @@ private[travel] object TravelRoute:
           PositionedLocation(Location.Site(destination), _), _) =>
         PawnMove(player, source, destination)
 
+  /** `operations` with `payments` just before the pawn's move: after the
+    * rest of the cost and every question in it (consent slice 4), and
+    * before the traveller arrives. Last when the node holds no move. */
+  def beforeMove(operations: Vector[Operation], payments: Vector[Operation])
+      : Vector[Operation] =
+    val (cost, move) = operations.span:
+      case Move(Piece.Pawn(_), _, _, _) => false
+      case _ => true
+    cost ++ payments ++ move
+
   def adjustSupply(operations: Vector[Operation], actor: PlayerId)
       (rewrite: Int => Int): Vector[Operation] =
     operations.map:

@@ -30,6 +30,20 @@ private[powers] object RulerToll:
     SiteRulers.rulerOfCard(ready, card).filter(ruler =>
       SiteRule.enemies(ruler, SiteRuler.Player(payer)))
 
+  /** The paying option of a toll step, "Give 1 favor to {owner}",
+    * unavailable with what it needs when `payer` holds less than the toll.
+    * The step is asked before any of its cost is paid, so the favor held
+    * now is the favor the payment will find. */
+  def payOption(ready: ReadyGame, payer: PlayerId, owner: PlayerId)
+      : DecisionOption =
+    val option = DecisionOption.Button(PayOrAsk.pay,
+      s"Give $Favor favor to ${owner.value}")
+    val held = ready.game.current.players.find(_.player == payer)
+      .fold(0)(_.board.favor)
+    if held >= Favor then option
+    else DecisionOption.Unavailable(option,
+      OptionReason.Written(s"Needs $Favor favor; you have $held"))
+
   /** The required payment from `payer` to `ruler`. */
   def payment(payer: PlayerId, ruler: SiteRuler): CoreOperation = ruler match
     case SiteRuler.Player(owner) => Give(Piece.Favor(Favor), payer,

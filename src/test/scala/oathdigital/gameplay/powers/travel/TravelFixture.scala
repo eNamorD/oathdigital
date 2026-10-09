@@ -98,3 +98,11 @@ object TravelFixture:
       modifiers: Vector[PowerId] = Vector.empty)
       : Either[OathViolation, OathTransition] =
     TravelPlay.travelled(rules, Ready(ready), actor, destination, modifiers)
+
+  /** `from`, parked on a pay-or-ask step, continued by `actor` answering it
+    * with `choice`. The events are both transitions'. */
+  def answeringStep(from: OathTransition, decisionId: String,
+      choice: DecisionOptionRef): Either[OathViolation, OathTransition] =
+    rules.resolveWalker(from.state, actor, decisionId,
+      DecisionAnswer.ChooseOneAnswer(choice))
+      .map(done => done.copy(events = from.events ++ done.events))

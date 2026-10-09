@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
+import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport, PayOrAsk, RulerToll}
 import oathdigital.model._
 
 object TollRoadsCard extends Denizen(DenizenId("118"), "Toll Roads", Suit.Order) with SiteOnly:
@@ -20,12 +20,16 @@ object TollRoadsCard extends Denizen(DenizenId("118"), "Toll Roads", Suit.Order)
   * of the site it stands at, and the rule covers every site that ruler holds,
   * Toll Roads' own included. Empire rulers are not supported.
   *
-  * The payment is a required operation placed before the pawn's move, so a
-  * traveller who cannot pay is rejected, and Travel's destination list does not
-  * offer that destination. The ruler is exempt.
+  * When a player rules it, the traveller is asked first to pay or to travel
+  * without paying, which its ruler may consent to ([[PayOrAsk]], consent
+  * slice 4). Under bandits the favor is burnt, unasked. The payment is a
+  * required operation placed after the rest of the Travel's cost and before
+  * the pawn's move, so a traveller who cannot pay and is not let off is
+  * rejected. The ruler is exempt.
   *
   * The payment writes "{Red} paid 1 favor to {Blue}.", or "{Red} burned 1
-  * favor." when bandits rule, read from the payment's step.
+  * favor." when bandits rule, read from the payment's step. Travelling free
+  * writes "{Red} paid nothing, with {Blue}'s consent."
   */
 final case class TollRoads private (catalog: ExecutableCatalog)
     extends ContributingPower:
@@ -35,22 +39,44 @@ final case class TollRoads private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = Vector(TollRoads.paid, TollRoads.burned)
+  override def noteKeys: Vector[NoteKey] = Vector(TollRoads.paid,
+    TollRoads.burned, TollRoads.waived, TollRoads.noFreeTravel,
+    TollRoads.noFreeTravelConsent)
+  override def narratedDecisions: Set[String] = Set(TollRoads.decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      toll(ctx).fold(operations)(_ ++ operations))))
+      charged(ctx, operations).getOrElse(operations))),
+    PowerWindow.PayOrAsk -> Vector(TollRoads.step.restriction))
 
-  override def applicable(ctx: PowerCtx): Boolean = toll(ctx).nonEmpty
+  override def applicable(ctx: PowerCtx): Boolean =
+    if ctx.window == PowerWindow.PayOrAsk then TollRoads.step.asking(ctx)
+    else charged(ctx, Vector.empty).nonEmpty
 
-  /** The payment this Travel owes and its line, if it owes one. */
-  private def toll(ctx: PowerCtx): Option[Vector[Operation]] = for
+  /** `operations` with what this Travel owes, if it owes anything: the step
+    * first when a player rules Toll Roads, the payment alone when bandits
+    * do. Either way the payment runs after the rest of the cost and before
+    * the pawn's move ([[TravelRoute.beforeMove]]). */
+  private def charged(ctx: PowerCtx, operations: Vector[Operation])
+      : Option[Vector[Operation]] = for
     route <- TravelRoute.pawnMove(ctx.operation)
     ruler <- SiteRulers.rulerOfCard(ctx.state, cardId)
     if SiteRule.enemies(ruler, SiteRuler.Player(route.player))
     if SiteRulers.rulerOf(ctx.state, route.destination).contains(ruler)
-  yield Vector(payment(route.player, ruler),
-    Note(id, paidNote(route.player, ruler)))
+  yield
+    val paid = Vector(payment(route.player, ruler),
+      Note(id, paidNote(route.player, ruler)))
+    ruler match
+      case SiteRuler.Player(owner) =>
+        TollRoads.step.question(route.player, route.destination.value,
+          "Toll Roads: give 1 favor to travel there?",
+          RulerToll.payOption(ctx.state, route.player, owner),
+          "Travel without paying") +:
+          TravelRoute.beforeMove(operations, Vector(TollRoads.step.outcome(
+            paid, Vector(Note(id, _ => Some(TollRoads.waived(
+              PowerSourceRef.Card(cardId), NoteArg.Player(route.player),
+              NoteArg.Player(owner))))))))
+      case _ => TravelRoute.beforeMove(operations, paid)
 
   private def payment(traveller: PlayerId, ruler: SiteRuler): CoreOperation =
     ruler match
@@ -84,6 +110,25 @@ object TollRoads:
   /** "{Red} burned {1 favor}.", when bandits rule. */
   val burned: NoteKey = NoteKey("burned", Vector(NotePart.Arg(0),
     NotePart.Text(" burned "), NotePart.Arg(1), NotePart.Text(".")))
+  val decisionId: String = "power.toll-roads.toll"
+  /** "{Red} paid nothing, with {Blue}'s consent." */
+  val waived: NoteKey = NoteKey("waived", Vector(NotePart.Arg(0),
+    NotePart.Text(" paid nothing, with "), NotePart.Arg(1),
+    NotePart.Text("'s consent.")))
+  /** "Cannot travel to its ruler's sites without giving favor.": the reason
+    * of the free option once its ruler refused. */
+  val noFreeTravel: NoteKey = NoteKey("no-free-travel", Vector(NotePart.Text(
+    "Cannot travel to its ruler's sites without giving favor.")))
+  /** The free option's reason while its ruler may be asked. */
+  val noFreeTravelConsent: NoteKey = NoteKey("no-free-travel-consent",
+    Vector(NotePart.Text("Cannot travel to its ruler's sites without " +
+      "giving favor or ruler's consent.")))
+  val step: PayOrAsk = PayOrAsk(id, TollRoadsCard.id, decisionId,
+    noFreeTravel, noFreeTravelConsent)
+
+  /** The free option of a Travel to `destination`. */
+  def free(destination: SiteId): DecisionOptionRef.Button =
+    PayOrAsk.free(destination.value)
 
   def forCatalog(catalog: ExecutableCatalog): TollRoads =
     new TollRoads(catalog)

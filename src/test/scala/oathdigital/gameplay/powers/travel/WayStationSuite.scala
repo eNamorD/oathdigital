@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, RulerToll}
+import oathdigital.gameplay.powers.{NoteText, PayOrAsk, PowerFixture,
+  RulerToll}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
@@ -109,16 +110,26 @@ class WayStationSuite extends munit.FunSuite:
     assertEquals(Look(result).pawn(actor), coast)
 
   test("a favor the toll takes first is not offered twice"):
-    val done = accepted(travel(tolled(favor = 1), coast))
+    val stepped = accepted(travel(tolled(favor = 1), coast))
+    // Not asked: the toll's step owes the only favor.
+    parked.assertParked(stepped.state, ActionRef.Travel, TollRoads.decisionId,
+      actor)
+    val done = accepted(answeringStep(stepped, TollRoads.decisionId,
+      PayOrAsk.pay))
     val result = Outcomes.ready(done.state)
-    // Not asked: the toll takes the only favor, and the Supply is paid.
     assertEquals(Look(result).pawn(actor), coast)
     assertEquals(Look(result).supply(actor), 6)
     assertEquals(Look(result).favor(actor), 0)
 
-  test("with favor for both, the answer pays the toll and the Way Station"):
+  test("with favor for both, both questions are asked before either is " +
+      "paid, and the answers pay the toll and the Way Station"):
     val asked = accepted(travel(tolled(favor = 2), coast))
     assertAsked(asked.state)
-    val result = Outcomes.ready(answer(asked.state, WayStation.favorOption).state)
+    val stepped = answer(asked.state, WayStation.favorOption)
+    // Still 2 favor: the Way Station pays last.
+    assertEquals(Look(Outcomes.ready(stepped.state)).favor(actor), 2)
+    val done = accepted(answeringStep(stepped, TollRoads.decisionId,
+      PayOrAsk.pay))
+    val result = Outcomes.ready(done.state)
     assertEquals(Look(result).supply(actor), 7)
     assertEquals(Look(result).favor(actor), 0)

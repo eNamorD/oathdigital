@@ -1,6 +1,6 @@
 package oathdigital.application
 
-import oathdigital.gameplay.powers.travel.{Tents, TravelFixture}
+import oathdigital.gameplay.powers.travel.{Tents, TollRoads, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -52,6 +52,17 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
       .favor(actor, 1).warbandsAt(provincePlains, Table.p2, 1)
       .warbandsAt(coast, Table.p2, 1).unchecked
     assertEquals(row(ready, coast).badge, Some("1 Supply · 1 favor"))
+
+  test("a toll its ruler waived reads both ways on"):
+    val tolled = Table.from(open(supply = 7))
+      .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
+      .favor(actor, 1).warbandsAt(provincePlains, Table.p2, 1)
+      .warbandsAt(coast, Table.p2, 1).unchecked
+    val granted = tolled.copy(consent = ConsentState().granting(Vector(
+      ConsentKey(TollRoads.id, actor, TollRoads.decisionId,
+        TollRoads.free(coast))), ConsentTurn.of(tolled)))
+    assertEquals(row(granted, coast).badge,
+      Some("1 Supply · 1 favor or 1 Supply"))
 
   test("a selected modifier that makes the Travel free reads 0 Supply, and " +
       "its own card payment is not in the badge"):
