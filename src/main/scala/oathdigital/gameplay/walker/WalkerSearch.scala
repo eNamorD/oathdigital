@@ -85,8 +85,9 @@ private[walker] object WalkerSearch:
     * refuses is kept as unavailable when `explain` gives its reason, and is
     * removed otherwise; an option already unavailable stays as it is.
     * `None` is an optional choose-many or a choose-one passed when empty,
-    * left with no option that may be chosen, which is not asked. Other query
-    * kinds are returned unchanged.
+    * left with no option that may be chosen, which is not asked. A
+    * choose-many with an askable option is kept, so its player can ask
+    * (consent slice 2). Other query kinds are returned unchanged.
     */
   def narrowed(decide: Decide, permitted: DecisionOptionRef => Boolean,
       explain: DecisionOptionRef => Option[OptionReason] = _ => None)
@@ -103,7 +104,7 @@ private[walker] object WalkerSearch:
       case many: DecisionQuery.ChooseMany =>
         val options = cut(many.options)
         val left = options.count(_.available)
-        if many.min == 0 && left == 0 then None
+        if many.min == 0 && left == 0 && !options.exists(_.askable) then None
         else Some(decide.copy(query = many.copy(
           min = math.min(many.min, left), max = math.min(many.max, left),
           options = options)))

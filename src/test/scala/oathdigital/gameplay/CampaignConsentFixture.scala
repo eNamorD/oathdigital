@@ -27,6 +27,14 @@ object CampaignConsentFixture:
   val passRuledByP2: ReadyGame =
     Table.from(passHeldByBandits).warbandsAt(PassMap.pass, p2, 1).ready
 
+  /** p2 rules Ancient City and Deep Woods, and p3 rules the Pass, so a
+    * Campaign by p1 is a Conquest of p2 whose only extra target is Deep
+    * Woods, which the Pass forbids. */
+  val onlyWoodsExtra: ReadyGame =
+    Table.from(passHeldByBandits).warbandsAt(PassMap.ancientCity, p2, 1)
+      .warbandsAt(PassMap.deepWoods, p2, 1).warbandsAt(PassMap.pass, p3, 1)
+      .ready
+
   val deepWoodsRef: DecisionOptionRef.Site =
     DecisionOptionRef.Site(PassMap.deepWoods)
 

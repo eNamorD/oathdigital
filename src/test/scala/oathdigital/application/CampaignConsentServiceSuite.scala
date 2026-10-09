@@ -2,7 +2,7 @@ package oathdigital.application
 
 import oathdigital.gameplay.CampaignConsentFixture
 import oathdigital.gameplay.CampaignConsentFixture.{deepWoodsRef,
-  passRuledByP2}
+  onlyWoodsExtra, passRuledByP2}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.travel.NarrowPassSite
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -11,7 +11,7 @@ import oathdigital.model.OathEvent.{ConsentAnswered, ConsentPreferenceSet,
   ConsentRequested}
 import oathdigital.protocol.projection.ConsentAskProjection
 import oathdigital.testkit.Table
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Asking for consent at a Campaign's targets through the service (consent
@@ -108,3 +108,32 @@ class CampaignConsentServiceSuite extends munit.FunSuite:
       "in the region without ruler's consent."))
     assertEquals(row.consent, Some(ConsentAskProjection(Vector("p2"),
       Vector("Narrow Pass"))))
+
+  test("a ruler's Always opens Deep Woods at once, and the campaigner goes " +
+      "on choosing"):
+    val (service, _) = Table.from(passRuledByP2).service()
+    val set = accepted(service.handle(gameId, 0L,
+      GameCommand.SetConsentPreference(p2, pass, p1, ConsentSetting.Always)))
+    val begun = started(service, set.nextSequence)
+    val asked = accepted(service.handle(gameId, begun.nextSequence,
+      requestWoods))
+    assertEquals(asked.events, Vector(ConsentRequested(request),
+      ConsentAnswered(p2, granted = true)))
+    assertEquals(CampaignConsentFixture.parkedAt(asked.state),
+      Some(CampaignIds.targets))
+    assert(woods(asked).available)
+
+  test("when Deep Woods is the only extra, a grant opens it and the " +
+      "Campaign takes it"):
+    val (service, _) = Table.from(onlyWoodsExtra).service()
+    val begun = started(service)
+    val asked = accepted(service.handle(gameId, begun.nextSequence,
+      requestWoods))
+    val yes = accepted(service.handle(gameId, asked.nextSequence,
+      GameCommand.AnswerConsent(p3, ConsentChoice.Yes)))
+    assert(woods(yes).available)
+    val chosen = accepted(service.handle(gameId, yes.nextSequence,
+      GameCommand.ResolveWalker(p1, TreeDecision(CampaignIds.targets,
+        DecisionAnswer.ChooseManyAnswer(Vector(deepWoodsRef))))))
+    assertEquals(CampaignConsentFixture.parkedAt(chosen.state),
+      Some(CampaignIds.force))

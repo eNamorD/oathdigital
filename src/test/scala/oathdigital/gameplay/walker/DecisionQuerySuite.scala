@@ -1,6 +1,7 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DecisionTally, DenizenId, DistributeAmount, DistributeSlot, NegotiationBounds, NegotiationDisclosure, NegotiationDisclosureRef, NegotiationTerms, NegotiationTransfer, OathViolation, OptionReason, PlayerId, RelicId, SiteId, Suit}
+import oathdigital.gameplay.powers.travel.NarrowPassSitePower
+import oathdigital.model.{ConsentAsk, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DecisionTally, DenizenId, DistributeAmount, DistributeSlot, NegotiationBounds, NegotiationDisclosure, NegotiationDisclosureRef, NegotiationTerms, NegotiationTransfer, OathViolation, OptionReason, PlayerId, PowerId, PowerSourceRef, RelicId, SiteId, Suit}
 
 /** Task 2: the generic decision contract, exercised with hand-built queries
   * and no game state at all.
@@ -439,6 +440,21 @@ class DecisionQuerySuite extends munit.FunSuite:
       "nothing to decide"))
     assertEquals(wellFormed(many(1, sites :+ sites.head)),
       invalid("decision recover.choice declares duplicate options"))
+
+  test("a choose-many whose only blocked options are askable still asks: " +
+      "none may be picked yet, and none is an answer"):
+    val askable = DecisionOption.Unavailable(sites.head, OptionReason.Askable(
+      PowerId("site.narrow-pass.pass"), NarrowPassSitePower.noTargetConsent(
+        PowerSourceRef.Site(SiteId("a"))),
+      Vector(ConsentAsk(PlayerId("blue"), Vector(PowerId("site.narrow-pass.pass"))))))
+    val noted = DecisionOption.Unavailable(sites.head, OptionReason.Noted(
+      PowerId("site.narrow-pass.pass"), NarrowPassSitePower.noTarget(
+        PowerSourceRef.Site(SiteId("a")))))
+    assertEquals(wellFormed(many(0, Vector(askable))), Right(()))
+    assertEquals(accepts(many(0, Vector(askable)),
+      DecisionAnswer.ChooseManyAnswer(Vector.empty)), Right(()))
+    assertEquals(wellFormed(many(0, Vector(noted))),
+      invalid("decision recover.choice declares no selection to make"))
 
   test("a choose-many answer names distinct offered options within its range"):
     val q = many(2)

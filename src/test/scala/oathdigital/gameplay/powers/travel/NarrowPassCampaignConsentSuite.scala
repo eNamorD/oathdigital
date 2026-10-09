@@ -8,7 +8,7 @@ import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{Outcomes, Table}
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Which campaign targets the Narrow Pass makes askable (consent design,
@@ -130,3 +130,17 @@ class NarrowPassCampaignConsentSuite extends munit.FunSuite:
       case one: DecisionQuery.ChooseOne =>
         assertNotedBy(woods(one.options), "no-target")
       case other => fail(s"expected a choose-one, got $other")
+
+  test("a target the Pass alone forbids is askable when it is the only " +
+      "extra, and no extras is still an answer"):
+    val state = started(onlyWoodsExtra)
+    assertEquals(parkedAt(state), Some(CampaignIds.targets))
+    woods(targetOptions(state)) match
+      case DecisionOption.Unavailable(_, OptionReason.Askable(_, _, asks)) =>
+        assertEquals(asks, Vector(ConsentAsk(p3, Vector(passPower))))
+      case other => fail(s"expected an askable target, got $other")
+    val none = accepted(rules().resolveWalker(state, p1, CampaignIds.targets,
+      DecisionAnswer.ChooseManyAnswer(Vector.empty)))
+    assertEquals(parkedAt(none.state), Some(CampaignIds.force))
+    assert(rules().resolveWalker(state, p1, CampaignIds.targets, woodsOnly)
+      .isLeft)

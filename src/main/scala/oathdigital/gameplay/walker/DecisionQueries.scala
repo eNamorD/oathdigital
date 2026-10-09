@@ -104,15 +104,19 @@ object DecisionQueries:
       val (min, max) = (many.min, many.max)
       val shown = (many.options ++ many.locked).map(_.ref)
       val choosable = many.options.count(_.available)
+      // An askable option is a choice too: its player may ask for it, or
+      // answer without it (consent slice 2).
+      val asking = many.options.exists(_.askable)
       for
         _ <- require(shown.distinct.size == shown.size, decisionId,
           "declares duplicate options")
-        _ <- require(max >= 1, decisionId, "declares no selection to make")
+        _ <- require(max >= 1 || asking, decisionId,
+          "declares no selection to make")
         _ <- require(min >= 0 && min <= max, decisionId,
           s"declares a selection range $min..$max")
         _ <- require(max <= choosable, decisionId,
           "declares a maximum above its option count")
-        _ <- require(!(min == max && max == choosable), decisionId,
+        _ <- require(asking || !(min == max && max == choosable), decisionId,
           "declares a selection that already takes every option, leaving " +
             "nothing to decide")
         _ <- require(many.locked.forall(_.available), decisionId,

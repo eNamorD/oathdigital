@@ -213,6 +213,10 @@ sealed trait DecisionOption extends Product with Serializable:
     * wraps.
     */
   def available: Boolean = true
+
+  /** Whether the option may not be chosen now but its blockers may be asked
+    * to waive it (consent design). */
+  def askable: Boolean = false
 object DecisionOption:
   final case class Button(ref: DecisionOptionRef.Button, label: String)
       extends DecisionOption
@@ -269,6 +273,7 @@ object DecisionOption:
       extends DecisionOption:
     def ref: DecisionOptionRef = option.ref
     override def available: Boolean = false
+    override def askable: Boolean = reason.isInstanceOf[OptionReason.Askable]
 
   /** An option shown with a reason to think twice, still choosable: a
     * selected power that has no effect on it says so (Hunting Party on a
