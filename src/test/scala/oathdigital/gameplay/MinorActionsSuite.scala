@@ -5,7 +5,7 @@ import oathdigital.gameplay.actions.{MinorActionCommand,
   MinorActionOperationPolicy, MinorActions}
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Journal, Look, Outcomes, PlacementPicks, Table}
+import oathdigital.testkit.{CatalogNames, Journal, Look, Outcomes, PlacementPicks, PowerRules, Table}
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.gameplay.setup._
@@ -176,8 +176,20 @@ class MinorActionsSuite extends munit.FunSuite:
         "every operation is refused", OperationReasonKind.Impossible))
     assertEquals(MinorActions.handle(catalog, Ready(base),
       MinorActionCommand.MoveWarbands(p1, toSite = true, 2),
-      Vector(refuseAllStub)), Left(OathViolation.InvalidEventOrder(
-        "Minor action effect differs from recorded outcome")))
+      Vector(refuseAllStub)), Left(OathViolation.MinorActionUnavailable(
+        "every operation is refused")))
+
+  test("Vow of Wandering refuses a move to the site with its reason, and " +
+      "allows one back to the board"):
+    val holding = minorBoard.adviser(p1,
+      CatalogNames.denizen("Vow of Wandering")).ready
+    val withPowers = PowerRules.withWalkerPowers
+    assertEquals(withPowers.handle(Ready(holding),
+      MinorActionCommand.MoveWarbands(p1, toSite = true, 1)),
+      Left(OathViolation.MinorActionUnavailable(
+        "Vow of Wandering forbids placing warbands on sites")))
+    assert(withPowers.handle(Ready(holding),
+      MinorActionCommand.MoveWarbands(p1, toSite = false, 2)).isRight)
 
   test("source-scoped fallback and replay use the recorded off-turn actor"):
     // p2, not the active player, holds Bewitch faceup.

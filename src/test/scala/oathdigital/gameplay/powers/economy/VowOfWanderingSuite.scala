@@ -71,3 +71,78 @@ class VowOfWanderingSuite extends munit.FunSuite:
         Look(ready).boardWarbands(p1) + 1)
       assertEquals(wanderingSaid(done.journal.events), Vector.empty)
     }
+
+  // ---- the restriction ----------------------------------------------------
+  private val near = CatalogNames.site("Broken Peaks")
+  private val placing = VowOfWandering.operationRestrictions.head
+  private val refusal = Some(OperationReason("vow-of-wandering",
+    "Vow of Wandering forbids placing warbands on sites",
+    OperationReasonKind.Impossible))
+
+  /** p1's Act holding Vow of Wandering faceup, with 3 warbands on the board
+    * and 2 at Broken Peaks. */
+  private def holdingVowInAct: Table = Table.start.turn(p1, Phase.Act)
+    .adviser(p1, vow).boardWarbands(p1, 3).warbandsAt(near, p1, 2)
+
+  /** One warband of `kind` moved from `from` to `to`. */
+  private def moved(kind: ForceKind, from: Location, to: Location)
+      : CoreOperation = Move(Piece.Warbands(kind, 1),
+    PositionedLocation(from), PositionedLocation(to))
+
+  /** `ready` with `player`'s lineage made Citizens. No Table step reaches
+    * lineage roles. */
+  private def asCitizen(ready: ReadyGame, player: PlayerId): ReadyGame =
+    val lineage = Look(ready).player(player).lineage
+    ready.updateCampaign(campaign => campaign.copy(lineages =
+      campaign.lineages.updatedWith(lineage)(
+        _.map(_.copy(role = Role.Citizen)))))
+
+  test("the holder's warbands may not reach a site from the board, the " +
+      "bank or another site"):
+    val ready = holdingVowInAct.ready
+    val mine = Look(ready).forceKind(p1)
+    Vector(Location.PlayArea(p1), Location.WarbandBank(mine),
+      Location.Site(near)).foreach(from => assertEquals(
+        placing.reason(ready, moved(mine, from, Location.Site(home))),
+        refusal, from.toString))
+
+  test("a Replace that brings them to a site is refused too"):
+    val ready = holdingVowInAct.ready
+    assertEquals(placing.reason(ready, Replace(
+      Piece.Warbands(ForceKind.Bandit, 2),
+      Piece.Warbands(Look(ready).forceKind(p1), 2),
+      PositionedLocation(Location.Site(home)))), refusal)
+
+  test("moving them back to the board, and other players' warbands, are " +
+      "allowed"):
+    val ready = holdingVowInAct.ready
+    assertEquals(placing.reason(ready, moved(Look(ready).forceKind(p1),
+      Location.Site(near), Location.PlayArea(p1))), None)
+    assertEquals(placing.reason(ready, moved(Look(ready).forceKind(p2),
+      Location.PlayArea(p2), Location.Site(home))), None)
+    assertEquals(placing.reason(ready, moved(ForceKind.Bandit,
+      Location.WarbandBank(ForceKind.Bandit), Location.Site(home))), None)
+
+  test("a facedown Vow refuses nothing, and another player's binds only " +
+      "them"):
+    val facedown = Table.start.turn(p1, Phase.Act)
+      .adviser(p1, vow, facedown = true).ready
+    assertEquals(placing.reason(facedown, moved(Look(facedown).forceKind(p1),
+      Location.PlayArea(p1), Location.Site(home))), None)
+    val rivals = Table.start.turn(p1, Phase.Act).adviser(p2, vow).ready
+    assertEquals(placing.reason(rivals, moved(Look(rivals).forceKind(p1),
+      Location.PlayArea(p1), Location.Site(home))), None)
+    assertEquals(placing.reason(rivals, moved(Look(rivals).forceKind(p2),
+      Location.PlayArea(p2), Location.Site(home))), refusal)
+
+  test("a Citizen holder's Imperial warbands are refused on their own " +
+      "turn, or from their own board"):
+    val fromBank = moved(ForceKind.Imperial,
+      Location.WarbandBank(ForceKind.Imperial), Location.Site(home))
+    assertEquals(placing.reason(asCitizen(holdingVowInAct.ready, p1),
+      fromBank), refusal)
+    // On p2's turn, Imperial warbands from the bank may be the Chancellor's.
+    val p2sTurn = asCitizen(holdingVowInAct.turn(p2, Phase.Act).ready, p1)
+    assertEquals(placing.reason(p2sTurn, fromBank), None)
+    assertEquals(placing.reason(p2sTurn, moved(ForceKind.Imperial,
+      Location.PlayArea(p1), Location.Site(home))), refusal)

@@ -166,6 +166,9 @@ object MinorActions:
         "minor actions are limited to fixed unaltered all-Exile first-game rules"))
     }
 
+  /** Runs `operations` as the event's effect. A restriction that skips one
+    * refuses the minor action with its own reason, such as Vow of
+    * Wandering's. */
   private def evolveOperations(
       restrictions: Vector[OperationRestriction],
       ready: ReadyGame,
@@ -173,8 +176,10 @@ object MinorActions:
   ): Either[OathViolation, ReadyGame] =
     OperationPipeline.run(ready, operations, operationAllowlist,
       restrictions)(Right(_))
-      .flatMap(_.expectEffects(operations,
-        "Minor action effect differs from recorded outcome"))
+      .flatMap(run => run.skipped.flatMap(_.reasons).headOption match
+        case Some(reason) => Left(MinorActionUnavailable(reason.detail))
+        case None => run.expectEffects(operations,
+          "Minor action effect differs from recorded outcome"))
 
   private def transition(catalog: ExecutableCatalog, state: OathState,
       event: OathEvent, restrictions: Vector[OperationRestriction])
