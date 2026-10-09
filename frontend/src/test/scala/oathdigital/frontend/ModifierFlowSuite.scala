@@ -171,16 +171,23 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(host.sent, Vector.empty)
     assertEquals(host.currentDrafts, draftsForProjection)
 
-  test("a facedown-adviser start previews as Search and goes out with no card"):
+  // Search and facedown-adviser play ask for their modifiers inside the
+  // walk (modifier walker design), so their starts preview nothing.
+  test("a facedown-adviser start goes out directly"):
     val FlowUnderTest(host, ui) = flow()
     val start = GameCommand.StartWalker("play-facedown-adviser", Vector.empty)
     ui.submitCommand(start)
-    assertEquals(host.previews, Vector(MajorActionPreviewRequest(9L, "search",
-      Map("procedure" -> "facedown-adviser"))))
-    host.answer(Right(response("search", Vector.empty))).map { _ =>
-      assertEquals(host.sent, Vector(start -> Vector.empty))
-      assertEquals(host.currentDrafts.modifiers, None)
-    }
+    assertEquals(host.previews, Vector.empty)
+    assertEquals(host.sent, Vector(start -> Vector.empty))
+    assertEquals(host.currentDrafts.modifiers, None)
+
+  test("a Search start goes out directly"):
+    val FlowUnderTest(host, ui) = flow()
+    val start = GameCommand.StartWalker("search", Vector.empty)
+    ui.submitCommand(start)
+    assertEquals(host.previews, Vector.empty)
+    assertEquals(host.sent, Vector(start -> Vector.empty))
+    assertEquals(host.currentDrafts.modifiers, None)
 
   test("confirming leaves the flow and sends the folded submission without a redraw"):
     val ordering = draftWithModifierSelected("travel", travel)

@@ -84,7 +84,8 @@ object ProcedureWalker:
     // running walk must not carry it inside CurrentGameState, so clear the
     // stored field before executing deltas.
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice,
+    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered,
+      powers.withAnswers(answered), dice,
       state.game.current.walkerProcedure, action),
       Vector.empty, cursor, PlainResume, WalkerHooks.none).flatMap(toOutcome)
 
@@ -110,7 +111,8 @@ object ProcedureWalker:
       : Either[OathViolation, WalkerOutcome] =
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered, powers, dice,
+      state.game.current.turn.activePlayer, pending.answered,
+      powers.withAnswers(pending.answered), dice,
       state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
       .flatMap(toOutcome)
@@ -135,7 +137,8 @@ object ProcedureWalker:
       : Either[OathViolation, WalkerOutcome] =
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered, powers, dice,
+      state.game.current.turn.activePlayer, pending.answered,
+      powers.withAnswers(pending.answered), dice,
       state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), AnswerResume(answer), WalkerHooks.none)
       .flatMap(toOutcome)
@@ -515,8 +518,9 @@ object ProcedureWalker:
   private[walker] def narrowParked(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers, decide: Decide): Decide =
     val ctx = WalkCtx(strip(state), Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered, powers,
-      WalkerDice.placeholder, state.game.current.walkerProcedure, action)
+      state.game.current.turn.activePlayer, pending.answered,
+      powers.withAnswers(pending.answered), WalkerDice.placeholder,
+      state.game.current.walkerProcedure, action)
     narrowAt(decide, ctx, pending.at).toOption.flatten.getOrElse(decide)
 
   /** Whether the leaf is where a decision is asked: reached fresh, or at the
@@ -552,8 +556,12 @@ object ProcedureWalker:
           case AnswerResume(answer) =>
             leaf match
               case decide: Decide if decide.decisionId == answer.decisionId =>
-                WalkerSteps.answerDecide(decide, ctx, path, answer, contributions)
-                  .map(Done(_))
+                // A pick joins the powers at once, so the rest of this
+                // command walks with it (modifier walker design, ruling 4).
+                WalkerSteps.answerDecide(decide, ctx, path, answer,
+                    contributions)
+                  .map(next => Done(next.copy(
+                    powers = next.powers.withAnswers(next.answered))))
               case decide: Decide => Left(OathViolation.InvalidEventOrder(
                 s"resolve() answer ${answer.decisionId} does not match the " +
                   s"parked Decide ${decide.decisionId} at " +

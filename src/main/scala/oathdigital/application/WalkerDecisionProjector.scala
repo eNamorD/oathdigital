@@ -64,8 +64,9 @@ private[application] final class WalkerDecisionProjector(
       tree <- rebuild(context.ready, procedure,
         context.current.turn.activePlayer,
         context.current.walkerStartArgs).toOption
+      // The modifiers picked in the walk join, so their warnings show.
       powers = WalkerPowers.selected(walkerPowerCatalog,
-        context.current.walkerModifiers)
+        context.current.walkerModifiers).withAnswers(pending.answered)
       awaited <- ProcedureWalker.awaitedPlayer(context.ready, tree, pending,
         powers)
       owners = ProcedureWalker.awaitedPlayers(context.ready, tree, pending,

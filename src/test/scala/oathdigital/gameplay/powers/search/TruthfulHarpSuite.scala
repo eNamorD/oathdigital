@@ -1,10 +1,12 @@
 package oathdigital.gameplay.powers.search
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
+import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Refusals,
+import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, PowerRules,
   Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p2, p3}
@@ -80,12 +82,14 @@ class TruthfulHarpSuite extends munit.FunSuite:
     viewers.foreach(viewer =>
       assertEquals(known(started, viewer), Vector.empty[WorldCardId]))
 
-  test("a facedown Harp cannot be selected"):
+  test("a facedown Harp is not offered, so the Search starts on its source"):
     val facedown = withRelic(
       SearchFixture.staged(discordCards.take(7), supply = 5), harp,
       Orientation.FaceDown)
-    assertEquals(start(facedown, onlyHarp).left.toOption,
-      Some(Refusals.notApplicable(TruthfulHarp.id, "search")))
+    val started = accepted(SearchFixture.rules.startWalker(Ready(facedown),
+      ActionRef.Search, actor))
+    PowerRules.parkedUnderWalkerPowers.assertParked(started.state,
+      ActionRef.Search, SearchProcedure.sourceDecisionId, actor)
 
   // ---- Lines ----
 

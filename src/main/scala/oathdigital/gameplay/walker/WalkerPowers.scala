@@ -1,8 +1,10 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationRestrictions
-import oathdigital.gameplay.powerresolver.{ContributingPower, PowerWindowIndex}
-import oathdigital.model.{OperationRestriction, PowerId, PowerResolution}
+import oathdigital.gameplay.powerresolver.{ContributingPower, ModifierPicks,
+  PowerWindowIndex}
+import oathdigital.model.{Answered, OperationRestriction, PowerId,
+  PowerResolution}
 
 /** The powers available to one `advance`/`roll`/`resolve` command (Task 3).
   * `OathRules` supplies it at command entry; `applyRecorded` (replay) never
@@ -18,11 +20,14 @@ import oathdigital.model.{OperationRestriction, PowerId, PowerResolution}
   * `modifiers` the powers selected for this command. Together with the
   * offered powers' own restrictions they make `operationRestrictions`, which
   * every walker step runs with (global operation restrictions design).
+  * `pool` is the full catalog a selection was made from, so the modifiers a
+  * walk picks can join it (`withAnswers`).
   */
 final case class WalkerPowers(powers: Vector[ContributingPower],
     probing: Boolean = true,
     restrictionSet: OperationRestrictions = OperationRestrictions.none,
-    modifiers: Vector[PowerId] = Vector.empty):
+    modifiers: Vector[PowerId] = Vector.empty,
+    pool: Vector[ContributingPower] = Vector.empty):
   /** These powers indexed by the windows they hook, built once per instance
     * (see [[PowerWindowIndex]]). */
   lazy val windowIndex: PowerWindowIndex = PowerWindowIndex.of(powers)
@@ -49,6 +54,21 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
   lazy val quiet: WalkerPowers =
     if probing then copy(probing = false) else this
 
+  /** These powers with the modifiers picked in `answered` added (modifier
+    * walker design, "Active powers"). Picks are only ever added: a dry run
+    * that starts from no answers keeps the picks already made. Without a
+    * pool there is nothing to add from. */
+  def withAnswers(answered: Vector[Answered]): WalkerPowers =
+    val wanted = (modifiers ++ ModifierPicks.picks(pool, answered)).distinct
+    if wanted == modifiers then this
+    else withPicks.computeIfAbsent(wanted,
+      picked => WalkerPowers.selected(copy(powers = pool), picked))
+
+  /** The instances `withAnswers` built, by selection, so that every call for
+    * the same picks shares one instance and its search memo. */
+  private lazy val withPicks =
+    new java.util.concurrent.ConcurrentHashMap[Vector[PowerId], WalkerPowers]
+
 object WalkerPowers:
   val empty: WalkerPowers = WalkerPowers(Vector.empty)
 
@@ -65,4 +85,4 @@ object WalkerPowers:
     catalog.copy(powers = catalog.powers.filter(power =>
       power.resolution == PowerResolution.Automatic ||
         modifiers.contains(power.id)) :+ FollowUpSupplyWaiver,
-      modifiers = modifiers)
+      modifiers = modifiers, pool = catalog.powers)

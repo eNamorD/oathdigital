@@ -50,6 +50,9 @@ selection.
 1. **Modifiers stay before the start.** `StartWalker("search")` carries no
    start selection; a start that names one is refused. Selected modifiers'
    costs are paid inside the walk, after the source is picked.
+   [Modifier selection on the walker](2026-10-09-modifier-walker-design.md)
+   moved Search's modifiers into the walk in its slice 1; this ruling is
+   rewritten in its slice 4.
 2. **The source is a board decision.** The walk's first node is a board
    choose-one, `search.source`, headed "Choose a Search source". Its options
    are the world deck (`DecisionOptionRef.Deck(CardDeck.World)`, option kind

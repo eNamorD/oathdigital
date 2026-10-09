@@ -45,7 +45,9 @@ private[walker] object WalkerPowerGather:
     * this node: an [[OfferHost]] then keeps its shape whatever it is offered.
     * When the node is an [[OfferHost]], the offers the window gathered, with
     * its option restrictions run over them ([[restrictOffers]]), are turned
-    * into its children after the transforms have run.
+    * into its children after the transforms have run. When the node is a
+    * [[ModifierChoice]], its pass is expanded with these powers, and the
+    * window's option restrictions apply to its decision.
     */
   def applyWindow(window: Option[PowerWindow], operation: Operation,
       state: ReadyGame,
@@ -77,6 +79,10 @@ private[walker] object WalkerPowerGather:
             (folded ++ host.expand(offered, OfferHost.Pass(state, answered,
               resuming, WalkerSimulation.applies(_, state, powers))),
               gathered.order)
+          case choice: ModifierChoice =>
+            (restrictOptions(folded ++ choice.expand(ModifierChoice.Pass(
+              state, answered, resuming, powers)),
+              gathered.optionRestrictions, ctxFor, byId), gathered.order)
           case _ => (folded, gathered.order)
 
   /** The options of a choose-one or choose-many decision that a player may
@@ -206,8 +212,8 @@ private[walker] object WalkerPowerGather:
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
       state: ReadyGame, activePlayer: PlayerId,
       answered: Vector[Answered] = Vector.empty): Vector[OathViolation] =
-    val (rejected, emptied) = attributed(tree, powers, state, activePlayer,
-      answered)
+    val (rejected, emptied) = attributed(tree, powers.withAnswers(answered),
+      state, activePlayer, answered)
     rejected.map(_.violation) ++ emptied
 
   /** [[restrictionViolations]], keeping who rejected: the restrictions'
@@ -392,10 +398,11 @@ private[walker] object WalkerPowerGather:
     */
   def leafAt(state: ReadyGame, action: Operation, pending: PendingTree,
       powers: WalkerPowers): Option[Operation] =
-    resolveAt(state, pending, powers, action, pending.at, Vector.empty,
+    val picked = powers.withAnswers(pending.answered)
+    resolveAt(state, pending, picked, action, pending.at, Vector.empty,
       Set.empty).map:
         case decide: Decide => ProcedureWalker.narrowParked(state, action,
-          pending, powers, decide)
+          pending, picked, decide)
         case other => other
 
   private def resolveAt(state: ReadyGame, pending: PendingTree,

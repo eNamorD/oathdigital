@@ -48,7 +48,8 @@ class SearchProcedureSuite extends munit.FunSuite:
     val ready = atAncientCity.ready
     val tree = accepted(SearchProcedure.build(catalog, ready, actor,
       Vector.empty))
-    val offered = tree.children.head match
+    // The modifier decision comes first; the source opens what follows it.
+    val offered = tree.children(1).children.head match
       case Decide(SearchProcedure.sourceDecisionId, `actor`,
           DecisionQuery.ChooseOne(options, Some("Choose a Search source")),
           _, _, _, _) => options.map(_.ref)

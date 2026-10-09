@@ -11,6 +11,7 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{ChoicePayload, RollPayload,
   WalkerStepRecorded}
 import oathdigital.model._
@@ -183,8 +184,8 @@ private[gamelog] object DetailLines:
   /** Decisions other lines tell: Setup's own lines, Card Play's placement
     * line and the follow-up discard of a Replace site slot, the
     * facedown-adviser pick, which the played adviser's line names, every
-    * Campaign and Negotiation line, and each action line that names its
-    * choice. */
+    * Campaign and Negotiation line, each action line that names its
+    * choice, and the modifier decision, which the start line names. */
   private val NarratedPrefixes = Vector("setup.", ActionLines.PlacePrefix,
     "cardplay.discard.", "campaign.", "negotiation.", "travel.")
   private val NarratedIds = Set(SearchProcedure.sourceDecisionId,
@@ -205,4 +206,5 @@ private[gamelog] object DetailLines:
     else Vector.empty
 
   def narrated(decisionId: String): Boolean =
-    NarratedIds(decisionId) || NarratedPrefixes.exists(decisionId.startsWith)
+    NarratedIds(decisionId) || ModifierPicks.isDecision(decisionId) ||
+      NarratedPrefixes.exists(decisionId.startsWith)

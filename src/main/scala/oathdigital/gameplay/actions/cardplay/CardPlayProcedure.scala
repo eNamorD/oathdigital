@@ -3,6 +3,8 @@ package oathdigital.gameplay.actions.cardplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, CardPlayRules}
+import oathdigital.gameplay.powerresolver.ModifierPicks
+import oathdigital.gameplay.walker.ModifierChoice
 import oathdigital.model._
 
 /** The embeddable card play (card play slots design, "Placement procedure"):
@@ -68,9 +70,10 @@ object CardPlayProcedure:
     else facedownCard(args).map(unchecked(catalog, ready, actor, _,
       Origin.FacedownAdviser))
 
-  /** The pick, then the picked card's placement. Once the card has been
-    * played, a resumed walk rebuilds the pick without it; the walk is past
-    * the pick by then, and the placement settles from its answers. */
+  /** The modifiers, then the pick, then the picked card's placement. Once
+    * the card has been played, a resumed walk rebuilds the pick without it;
+    * the walk is past the pick by then, and the placement settles from its
+    * answers. */
   private def facedownTree(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId): Operation =
     val pick = Decide(facedownAdviserDecisionId, actor, DecisionQuery.ChooseOne(
@@ -83,8 +86,12 @@ object CardPlayProcedure:
         case Answered(`facedownAdviserDecisionId`,
             DecisionAnswer.ChooseOneAnswer(ref), _) => ref
       }.flatMap(worldCard).toVector.map(card =>
-        unchecked(catalog, current, actor, card, Origin.FacedownAdviser)))
-    Sequence(Vector(pick, placement))
+        unchecked(catalog, current, actor, card, Origin.FacedownAdviser,
+          ModifierPicks.cards(pending.answered))))
+    val rest = Sequence(Vector(pick, placement))
+    Sequence(Vector(ModifierChoice.loop(actor,
+      PowerWindow.SearchModifierSelection, rest, "Play facedown adviser"),
+      rest))
 
   /** The cards `actor` holds as facedown advisers, in board order. */
   private def facedownAdvisers(ready: ReadyGame, actor: PlayerId)
@@ -167,9 +174,10 @@ object CardPlayProcedure:
     * resumes rebuilds the tree from the state after the play, when it is not.
     */
   def unchecked(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      card: WorldCardId, origin: Origin): Operation =
+      card: WorldCardId, origin: Origin,
+      picked: Vector[CardId] = Vector.empty): Operation =
     new PlacementTree(card, rules =>
-      childrenFor(catalog, ready, actor, card, origin, rules))
+      childrenFor(catalog, ready, actor, card, origin, rules, picked))
 
   private val placementPrefix = "cardplay.place."
   private val discardPrefix = "cardplay.discard."
@@ -214,11 +222,11 @@ object CardPlayProcedure:
 
   private def childrenFor(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: Origin,
-      rules: CardPlayRules): Vector[Operation] =
+      rules: CardPlayRules, picked: Vector[CardId]): Vector[Operation] =
     val from = cardPlayOrigin(origin)
     val held = heldAtOrigin(ready, actor, card, origin)
     val slots = if held then CardSlots.slots(catalog, ready, actor, card, from,
-      rules) else Vector.empty
+      rules, picked) else Vector.empty
     val placeId = placementDecisionId(card)
     val choose = Decide(placeId, actor, DecisionQuery.ChooseOne(
       slots.map(_.option), heading = Some("Play the card")))
@@ -232,7 +240,8 @@ object CardPlayProcedure:
       if !held then answer.toVector.flatMap(ref =>
         settled(ready, actor, card, ref))
       else answer.flatMap(ref => slots.find(_.ref == ref)).toVector.flatMap(
-        slot => played(catalog, ready, actor, card, from, rules, slot))
+        slot => played(catalog, ready, actor, card, from, rules, slot,
+          picked))
     })
     Vector(choose, selected)
 
@@ -244,9 +253,10 @@ object CardPlayProcedure:
     * left, recording no answer). */
   private def played(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, from: CardPlay.Origin,
-      rules: CardPlayRules, slot: CardSlot): Vector[Operation] =
+      rules: CardPlayRules, slot: CardSlot, picked: Vector[CardId])
+      : Vector[Operation] =
     val followUp: Operation = CardSlots.moreDiscards(catalog, ready, actor,
-      card, from, rules, slot).fold[Operation](noFollowUp)(offer =>
+      card, from, rules, slot, picked).fold[Operation](noFollowUp)(offer =>
       Decide(discardDecisionId(card), actor,
         DecisionQuery.ChooseMany(0, offer.most, offer.options,
           heading = Some("Discard more cards from the site"),

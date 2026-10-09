@@ -3,6 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.application._
 import oathdigital.engine.{RecordedEvent, ReplayStep}
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
@@ -10,8 +11,9 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
+import oathdigital.gameplay.powers.cardplay.WildCry
 import oathdigital.gameplay.powers.economy.GolemLegions
-import oathdigital.gameplay.powers.search.Augury
+import oathdigital.gameplay.powers.search.{Augury, NewsFromAfar}
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -490,14 +492,41 @@ object LogScripts:
     game.situation.after()
     Script("use-power", game.service, actor)
 
-  /** Augury, a free Search modifier, stands at p1's site; the Search selects
+  /** Augury, a free Search modifier, stands at p1's site; the Search picks
     * it. */
   def augury(using munit.Location): Script =
     val (service, act) = atTable("augury", tableWithOnePawnPerSite
       .denizen("Augury", "Ancient City").banditsRefilled)
-    act.after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1,
-      Vector(Augury.id), Vector.empty)))
+    act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
+      Vector(Augury.id))).after(GameCommand.StartWalker(ActionRef.Search,
+      StartPayload(p1)))
     Script("augury", service, p1)
+
+  /** Augury at p1's site and News from Afar as p1's adviser, with 2 favor
+    * to pay for it. The Search picks News from Afar, then Augury; every
+    * modifier is then picked, so it starts by itself. News from Afar spends
+    * no Supply. */
+  def twoPicks(using munit.Location): Script =
+    val (service, act) = atTable("two-picks", tableWithOnePawnPerSite
+      .denizen("Augury", "Ancient City").adviser(p1, "News from Afar")
+      .favor(p1, 2).banditsRefilled)
+    act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
+      Vector(NewsFromAfar.id, Augury.id))).after(GameCommand.StartWalker(
+      ActionRef.Search, StartPayload(p1, Vector.empty, Vector.empty)))
+    Script("two-picks", service, p1)
+
+  /** Wild Cry at p1's site and a facedown adviser: the play picks Wild Cry,
+    * then plays the adviser by default. */
+  def facedownWithCry(using munit.Location): Script =
+    val conclave = CatalogNames.denizen("Wizard's Conclave")
+    val (service, act) = atTable("facedown-cry", tableWithOnePawnPerSite
+      .denizen("Wild Cry", "Ancient City")
+      .adviser(p1, conclave, facedown = true).banditsRefilled)
+    act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
+      Vector(WildCry.id))).after(GameCommand.StartWalker(
+      ActionRef.PlayFacedownAdviser, StartPayload(p1, Vector.empty,
+        Vector.empty)))
+    Script("facedown-cry", service, p1)
 
   /** Gambling Hall at p1's site, used in Act by a player holding two favor.
     * Gambling Hall rolls 4 defense dice and Dice.steady makes each two

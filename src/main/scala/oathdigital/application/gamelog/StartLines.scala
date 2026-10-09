@@ -1,8 +1,10 @@
 package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.campaign.CampaignSetup
-import oathdigital.gameplay.walker.{FollowUpStarted, WalkerCompleted,
-  WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.powerresolver.ModifierPicks
+import oathdigital.gameplay.walker.{ChoicePayload, FollowUpStarted,
+  WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
 
@@ -13,10 +15,12 @@ import LogSpan.Text
   * player chose.
   *
   * `resolutions` is each walker power's resolution: a power that resolves
-  * automatically is not a choice, so it is not named.
+  * automatically is not a choice, so it is not named. `picks` reads the
+  * modifiers picked in a run's answers, in pick order.
   */
 private[gamelog] final class StartLines(words: LogWords,
-    resolutions: Map[PowerId, PowerResolution]):
+    resolutions: Map[PowerId, PowerResolution],
+    picks: Vector[Answered] => Vector[PowerId]):
 
   def start(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
@@ -54,8 +58,10 @@ private[gamelog] final class StartLines(words: LogWords,
   /** The tag's name and what its line says beyond the modifiers, but only at
     * the tag's anchor: the run's first event, except Muster and Trade (their
     * cost step, after the source decision), Travel (its first step after the
-    * destination decision) and Campaign (the first event by
-    * which kind and defender are both settled). */
+    * destination decision), Search (its first step once no more modifiers
+    * can be picked), the facedown-adviser play (its adviser's pick) and
+    * Campaign (the first event by which kind and defender are both
+    * settled). */
   private def opening(journal: LogJournal, run: Run, at: Int)
       : Option[(String, Vector[LogSpan])] =
     val completing = journal.event(at).isInstanceOf[WalkerCompleted]
@@ -69,9 +75,20 @@ private[gamelog] final class StartLines(words: LogWords,
       // The first step that does anything after the source or destination
       // is picked: a toll, a modifier's payment, the Supply, the draw or the
       // move.
+      // A pick's payment does not count: the tag waits until no more picks
+      // can follow, so that it names them all.
       case ActionRef.Travel | ActionRef.Search =>
         name(run.procedure).filter(_ =>
-          journal.ops(at).nonEmpty || completing)
+          (journal.ops(at).nonEmpty &&
+            ModifierPicks.settled(journal.answers(run, at))) || completing)
+          .map(named => (named, Vector.empty))
+      // The adviser's pick: every modifier is picked by then.
+      case ActionRef.PlayFacedownAdviser =>
+        name(run.procedure).filter(_ => completing ||
+          (journal.event(at) match
+            case WalkerStepRecorded(_, ChoicePayload(id, _, _), _, _) =>
+              id == CardPlayProcedure.facedownAdviserDecisionId
+            case _ => false))
           .map(named => (named, Vector.empty))
       case other =>
         name(other).filter(_ => at == run.first)
@@ -131,9 +148,9 @@ private[gamelog] final class StartLines(words: LogWords,
       case CampaignDefender.Player(player) =>
         Vector(Text(s"$named against "), words.player(player))
 
-  /** The player's selection as a parked run records it, or, for a run that
-    * never parked, the powers its steps record as contributing; automatic
-    * powers are left out either way. */
+  /** The player's selection as a parked run records it, and the picks its
+    * answers make; or, for a run that never parked, the powers its steps
+    * record as contributing. Automatic powers are left out either way. */
   private def modifiers(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[LogSpan] =
     val through = (run.first to journal.segmentEnd(at)).toVector
@@ -143,7 +160,8 @@ private[gamelog] final class StartLines(words: LogWords,
       case step: WalkerStepRecorded => step.contributions
       case _ => Vector.empty
     }.distinct)
-    val shown = chosen.filterNot(id =>
+    val picked = picks(journal.answers(run, journal.segmentEnd(at)))
+    val shown = (chosen ++ picked).distinct.filterNot(id =>
       resolutions.get(id).contains(PowerResolution.Automatic))
     journal.readyBefore(run.first).filter(_ => shown.nonEmpty)
       .fold(Vector.empty[LogSpan])(ready => LogWords.join(
