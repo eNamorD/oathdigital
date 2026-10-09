@@ -183,33 +183,47 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
 
   /** "Drew {cards} from the {source} and kept {cards}", at the keep/discard
     * answer, or at completion when only one card was drawn. Each card is
-    * judged where the draw took it from and put it. */
+    * judged where its draw took it from and put it. Painted Trumpet draws
+    * with one `Draw` per pile, read together ([[drawnFrom]]). */
   private def search(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
-    journal.runOps(run, at).collectFirst {
-      case (_, OpStep(Draw(_, cards, from, _, _), before, after)) =>
-        (cards.map(card => card -> words.card(card, before, after, viewer)), from)
-    }.toVector.flatMap { case (drawn, from) =>
-      val kept: Option[Vector[CardId]] = journal.event(at) match
-        case WalkerStepRecorded(_, ChoicePayload(SearchProcedure.cardDecisionId,
-            PartitionAnswer(placements), _), _, _) =>
-          Some(placements.collect {
-            case DecisionPlacement(ref, SearchProcedure.keepKey) => ref
-          }.flatMap(worldCard))
-        // One card drawn: its placement answer completes the line, so the
-        // line precedes the placement line it leads to.
-        case WalkerStepRecorded(_, ChoicePayload(id, _, _), _, _)
-            if drawn.size == 1 && id.startsWith(PlacePrefix) =>
-          Some(drawn.map(_._1))
-        case _: WalkerCompleted if drawn.size == 1 && !journal.answers(run, at)
-            .exists(_.decisionId.startsWith(PlacePrefix)) =>
-          Some(drawn.map(_._1))
-        case _ => None
-      kept.toVector.map(ids => action(Vector(Text("Drew ")) ++
-        words.cards(drawn.map(_._2)) ++
-        Vector(Text(s" from ${sourceName(from)} and kept ")) ++
-        words.cards(ids.flatMap(id => drawn.find(_._1 == id).map(_._2)))))
+    val draws = journal.runOps(run, at).collect {
+      case (_, OpStep(draw: Draw, before, after)) => draw -> draw.cards.map(
+        card => card -> words.card(card, before, after, viewer))
     }
+    Option.when(draws.nonEmpty)(
+      (draws.flatMap(_._2), drawnFrom(draws.map(_._1))))
+      .toVector.flatMap { case (drawn, from) =>
+        val kept: Option[Vector[CardId]] = journal.event(at) match
+          case WalkerStepRecorded(_, ChoicePayload(
+              SearchProcedure.cardDecisionId, PartitionAnswer(placements), _),
+              _, _) =>
+            Some(placements.collect {
+              case DecisionPlacement(ref, SearchProcedure.keepKey) => ref
+            }.flatMap(worldCard))
+          // One card drawn: its placement answer completes the line, so the
+          // line precedes the placement line it leads to.
+          case WalkerStepRecorded(_, ChoicePayload(id, _, _), _, _)
+              if drawn.size == 1 && id.startsWith(PlacePrefix) =>
+            Some(drawn.map(_._1))
+          case _: WalkerCompleted if drawn.size == 1 && !journal.answers(run,
+              at).exists(_.decisionId.startsWith(PlacePrefix)) =>
+            Some(drawn.map(_._1))
+          case _ => None
+        kept.toVector.map(ids => action(Vector(Text("Drew ")) ++
+          words.cards(drawn.map(_._2)) ++
+          Vector(Text(s" from $from and kept ")) ++
+          words.cards(ids.flatMap(id => drawn.find(_._1 == id).map(_._2)))))
+      }
+
+  /** Where a Search drew from: "the World Deck", "the bottom of the Cradle
+    * discard", or "each discard pile" for Painted Trumpet's draw of every
+    * pile's top card. */
+  private def drawnFrom(draws: Vector[Draw]): String = draws match
+    case Vector(draw) if draw.position == StackPosition.Bottom =>
+      s"the bottom of ${sourceName(draw.source)}"
+    case Vector(draw) => sourceName(draw.source)
+    case _ => "each discard pile"
 
   /** Where the played card went, at the first batch after the placement
     * answer. */
