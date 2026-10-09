@@ -69,6 +69,14 @@ Left behind by the
   and Second Wind, Skip, and a queued Travel with Special Envoy are covered
   by tests only.
 
+Left behind by the
+[consent work](superpowers/specs/2026-10-08-consent-system-design.md):
+
+- [ ] **Play-test consent in a browser.** The amber destination, the
+  confirmation, the ruler's prompt, automatic answers, the preferences grid
+  and withdrawing with Undo are covered by tests only. Seeding a game with a
+  player-ruled Narrow Pass needs the journaled arranged start.
+
 ### Phase - Board decision follow-ups
 
 - Add reasons to the remaining option builders as playtests find options
@@ -165,10 +173,17 @@ Found by the survey of 2026-09-29:
 
 ### Phase - Consent system
 
-A way for players to request and give consent, including per-player
-permissions that approve it automatically. It interacts with certain
-Restrictions, probably through their "ignore" features. Narrow Pass and later
-cards need it, and it is a system of its own, separate from Negotiation.
+A player blocked by an enemy's persistent power can ask its ruler for
+consent, and rulers can set private per-player standing answers
+([consent design](superpowers/specs/2026-10-08-consent-system-design.md)).
+
+- [x] 1. Machinery and the Pass on Travel
+  ([plan](superpowers/plans/2026-10-09-consent-slice1.md)).
+- [ ] 2. The Pass on campaign targeting.
+- [ ] 3. Hard-block cards: Secret Police, Hall of Ministers, and Forgotten
+  Vault outside campaigns.
+- [ ] 4. Toll and penalty cards: Toll Roads, Forced Labor, Curfew and
+  Grasping Vines.
 
 ### Phase - All-Exile alpha readiness
 

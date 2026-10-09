@@ -64,6 +64,45 @@ confirmed. A viewer has at most one, and only for a decision that asks to be
 confirmed.
 _Avoid_: pending selection, staged choice, highlighted site
 
+### Consent
+
+**Waivable power**:
+A persistent power that restricts its ruler's enemies, whose ruler may
+consent to a player ignoring it for one choice. A power worded "players" is
+not one.
+_Avoid_: optional power, consent power
+
+**Granter**:
+The player who may consent to a waivable power being ignored: the player who
+rules it. Bandits, the Empire and nobody are never granters.
+_Avoid_: ruler (the ruler may be bandits), owner
+
+**Askable option**:
+An option of a parked choose-one blocked only by waivable powers whose
+granters are other players, with nothing refused for it this turn, which a
+grant would open. Choosing it asks the granters first.
+_Avoid_: consent option, amber option
+
+**Consent request**:
+A player's ask, from an askable option, to the granters of the powers blocking
+it. At most one waits at a time.
+_Avoid_: consent prompt (that is what a granter sees)
+
+**Consent answer**:
+A granter's yes or no to a consent request, remembered for the rest of the
+turn for its power, requester, decision and option.
+_Avoid_: consent, permission
+
+**Consent preference**:
+A granter's private standing answer for one requester on one power: never,
+always, or case by case (no entry).
+_Avoid_: permission, auto-consent
+
+**Consent ledger**:
+The preferences, the turn's answers and the waiting request, kept beside the
+game so that undo leaves them be.
+_Avoid_: consent state (the type's name, not the concept)
+
 ### Action pane
 
 **Act-action control**:

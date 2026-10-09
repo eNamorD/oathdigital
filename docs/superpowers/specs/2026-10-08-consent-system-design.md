@@ -1,7 +1,7 @@
 # Consent system
 
 **Status:** designed 2026-10-08. It covers the roadmap's **Phase - Consent
-system**. Not yet implemented.
+system**. Slice 1 is implemented ([plan](../plans/2026-10-09-consent-slice1.md)), and its plan's decisions are folded in below.
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **parked decision**.
 The [undo design](2026-10-06-undo-design.md) defines **command batch**,
@@ -154,22 +154,27 @@ The state sits outside `CurrentGameState` because undo rewinds to a saved
 
 ### Events
 
-New `OathEvent` cases. None opens a `CommandAccepted` batch, so the journal
-fold keeps them off the undo stack without further changes.
+New `OathEvent` cases under a sealed `ConsentEvent`. None opens a
+`CommandAccepted` batch, and the journal fold closes any open batch when it
+meets one, so a whole-journal replay batches exactly as live appends did and
+consent stays off the undo stack.
 
-- `ConsentRequested(requester, decisionId, target, asks)`
+- `ConsentRequested(request: ConsentRequest)`
 - `ConsentAnswered(granter, granted: Boolean)`
 - `ConsentRequestWithdrawn(requester)`
 - `ConsentPreferenceSet(granter, power, requester, setting)`, where
   `setting` is `Never | CaseByCase | Always`. Case-by-case removes the entry.
 - `ConsentPreferencesCleared(granter, power)`
 
-A manual Never Allow or Always Allow emits `ConsentPreferenceSet` and then
-`ConsentAnswered` in the same append. An automatic answer is
-`ConsentAnswered` alone, emitted in the requester's command.
+A manual Never Allow or Always Allow emits `ConsentAnswered`, anything it
+settles, and then `ConsentPreferenceSet` in the same append, so the
+requester's log shows no gap between the question and the answer. An
+automatic answer is `ConsentAnswered` alone, emitted in the requester's
+command.
 
-The fold clears `answers` when the turn changes. That expiry writes no event
-and no log line.
+`answers` belong to `turn`: they read as empty once the turn has changed,
+and the next settlement replaces them. That expiry writes no event and no log
+line.
 
 ### Undo
 
@@ -180,6 +185,10 @@ same.
 
 When a consent request is pending, the requester's `Undo` does not take back
 a batch. It emits `ConsentRequestWithdrawn`.
+
+A stale-preference clearing is not undone. Undoing the batch that took a card
+from its ruler gives the card back but not the preferences, since the ledger
+outlives undo (ruling 17).
 
 ### Commands
 
@@ -233,10 +242,12 @@ with the current ruler of its card. Where they differ it appends
 ### Walker and powers
 
 **Powers declare waivability; they never read the ledger.**
-`Restriction` and `OptionRestriction` gain a field `waiver: PowerCtx =>
-Option[SiteRuler]`. It defaults to not waivable and otherwise returns the
-power's ruler, the granter. Campaign-only contributions never set it, which
-enforces ruling 2 card by card.
+`Restriction` gains a field `waiver: Option[Waiver]`, and `OptionRestriction`
+gains the same in slice 2. A `Waiver` holds `granter: ReadyGame =>
+Option[PlayerId]` (the ruling player; none for bandits, the Empire or
+nobody), the `source` that names the power, and the consent-worded `note`.
+Campaign-only contributions never set it, which enforces ruling 2 card by
+card.
 
 The Pass sets it on its Travel `Restriction` in slice 1 and on its campaign
 `OptionRestriction` in slice 2. Its "the actor rules the Pass" check stays
@@ -252,8 +263,10 @@ requester, the decision and the reference:
 
 **The look-ahead decides askability.** `lookAheadNoted` keeps only the first
 new breach today. It will collect all new breaches. The option becomes
-`DecisionOption.Askable(option, reason, granters)` when ruling 8 holds, and
-stays `DecisionOption.Unavailable` otherwise. The same classification applies
+`DecisionOption.Unavailable(option, OptionReason.Askable(power, note, asks))`
+when ruling 8 holds, the decision is a choose-one, and a search with the grant
+remembered reaches a legal end from it; otherwise it keeps its ordinary
+reason. The same classification applies
 on the `restrictOptions` and `firstNote` path that `OptionRestriction` uses.
 
 **Reasons.** Each waivable contribution declares a consent-worded `NoteKey`,
@@ -277,7 +290,7 @@ the breach, so there is no special path.
 - While a request is pending, the requester gets `consentWaiting` ("Waiting
   for Red's consent…") with Undo offered as withdraw. Each asked granter gets
   `consentPrompt` with the requester, powers and target label. Other players
-  see the usual waiting banner. `awaitedPlayers` includes the asked granters.
+  see the usual waiting banner. `awaitedPlayers` is unchanged, since it hands the parked decision to everyone it names; the prompt is its own field. The requester's `walkerDecision` is withheld while their request waits, and nobody is offered Redo.
 - `consentPreferences` goes to the viewer only: one entry per waivable power
   the viewer rules, with a row per other player. A power is waivable when any
   of its contributions declares a `waiver`.
@@ -297,6 +310,9 @@ the breach, so there is no special path.
 - Site power labels become clickable and open `CardInspectionOverlay` with
   the power text. For a power the viewer rules, the overlay also shows the
   grid. Each change sends `SetConsentPreference` at once.
+- The confirmation and the grid open in the card overlay, the client's one
+  document-level dialog. Site powers carry their power id, which the grid is
+  matched by.
 
 ### Game Log
 
@@ -306,8 +322,8 @@ the breach, so there is no special path.
   because they are off turn, and several granters may answer one request.
 - Withdrawal marks the request line `takenBack`, with no "took back" group
   header.
-- `LogEntry` gains `visibleTo: Option[PlayerId]`; the formatter drops such
-  an entry for every other viewer. Private lines:
+- The formatter writes a private line only when it formats for that line's
+  granter. Private lines:
   - Preference set: "Red now always allows Blue to ignore Narrow Pass."
     Also "never allows" and "decides case by case whether Blue may ignore".
   - Preferences cleared: "Red's consent preferences for Narrow Pass were
@@ -336,7 +352,7 @@ the breach, so there is no special path.
   automatic Yes and a manual Yes. No other viewer receives the preference
   rows or the private lines.
 - **Frontend:** askable rendering, the confirmation, the prompt panel and
-  the grid. One browser acceptance run of the user story.
+  the grid. One browser acceptance run of the user story, once a game with a player-ruled Pass can be seeded (roadmap play-test item).
 - The coverage gate applies as usual.
 
 ## Slices
@@ -367,3 +383,11 @@ holding, Forbidden Forest with the Pass is the likely first case.
 - Timeouts for unanswered requests, covered by the roadmap's unanswered
   off-turn decisions item.
 - Hiding the speed leak of automatic answers (ruling 11).
+- Hiding the sequence numbers a preference change or a clearing uses. The
+  log shows no line for them, but the next line's sequence moves past them.
+- Tying a grant to the decision that caused the breach. The ledger check
+  drops a waivable power's breach for any granted choose-one answer of the
+  walk, and the key does not name the granter. Slice 1's Travel has one
+  destination decision, so this is exact there; slices 2 and 4 must tie them.
+- Hiding the decision's phase from the requester while their request waits.
+  The decision itself is withheld.
