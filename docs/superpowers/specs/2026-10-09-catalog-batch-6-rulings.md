@@ -17,31 +17,38 @@
   on hover, never hidden.
 - **Bandits are enemies.** A rule against its holder's enemy applies to a
   bandit defender too, as Gleaming Armor's does.
+- **A reason reads as the Game Log words it:** the card's name, a colon, then
+  the sentence. The reasons below are written that way.
 
 ## Slice 1: Plan restrictions
 
 - **114 Specialist.** The attacker's battle plan, costing two favor. Once it
   is chosen, every defender plan is withheld with the reason "Specialist:
-  the defender cannot use battle plans", so the defender is not asked.
+  The defender cannot use battle plans.", so the defender is not asked.
 - **192 Marsh Spirit.** A persistent site rule. While its site is among a
   Campaign's targets, every attacker plan is withheld with the reason "Marsh
-  Spirit: players who target its site cannot use battle plans". Who defends
-  does not matter. The defender's plans are not affected.
+  Spirit: Players who target its site cannot use battle plans." Who defends
+  does not matter. The defender's plans are not affected. A Raid targets no
+  site, so it never applies to one.
 - **90 Beast Tamer.** A persistent rule of a faceup adviser. While its
   holder is the attacker or the defender, the enemy's Beast and Nomad plans
-  are withheld with the reason "Beast Tamer: no Beast or Nomad battle plans".
+  are withheld with the reason "Beast Tamer: No Beast or Nomad battle
+  plans."
 - **41 True Names.** A persistent rule of a faceup adviser. While its holder
   is the attacker or the defender, every enemy plan whose suit matches one of
-  the holder's faceup advisers is withheld with the reason "True Names: no
-  battle plans matching {Blue}'s advisers". Facedown advisers do not count,
+  the holder's faceup advisers is withheld with the reason "True Names: No
+  battle plans matching {Blue}'s advisers." Facedown advisers do not count,
   because their suits are hidden. An adviser turned faceup during plan
   selection counts from the next pass of the window. A plan chosen before
   that stays chosen.
 - **103 Code of Honor.** A free battle plan for either side. An attacker
   adds two attack dice; a defender removes two. It is withheld once its user
   has chosen another plan in the window, with the reason "Code of Honor:
-  cannot be used with other battle plans". Once chosen, the user's other
-  plans are withheld with the reason "Code of Honor: no other battle plans".
+  Cannot be used with other battle plans." Once chosen, the user's other
+  plans are withheld with the reason "Code of Honor: No other battle plans."
+  A bandit defender that would apply it applies it and no other plan
+  (FAQ). When another power withholds it, the bandits apply their other
+  plans as usual.
 
 ## Slice 2: Plan rewrites
 
