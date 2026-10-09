@@ -1,5 +1,7 @@
 package oathdigital.application
 
+import oathdigital.gameplay.ModifierPlay
+import oathdigital.gameplay.powers.travel.Tents
 import oathdigital.model._
 import oathdigital.model.OathEvent.StepTakenBack
 import oathdigital.testkit.Table
@@ -106,3 +108,19 @@ class UndoServiceSuite extends munit.FunSuite:
           p1), "g")
     assertEquals(UndoJournals.replayFailureIndex(service, forged, "g"),
       moved.nextSequence)
+
+  test("Undo takes back a Travel modifier pick, and then the start"):
+    val withTents = table.pawn(p1, "Ancient City").adviser(p1, "Tents")
+      .favor(p1, 1)
+    val (service, _) = withTents.service()
+    val started = accepted(service.handle("g", 0L,
+      ParkedServiceFixture.startTravel(p1)))
+    val picked = accepted(service.handle("g", started.nextSequence,
+      GameCommand.ResolveWalker(p1, TreeDecision("travel.modifiers",
+        ModifierPlay.pick(Tents.id)))))
+    val unpicked = accepted(service.handle("g", picked.nextSequence,
+      GameCommand.Undo(p1)))
+    assertEquals(unpicked.state, started.state)
+    val undone = accepted(service.handle("g", unpicked.nextSequence,
+      GameCommand.Undo(p1)))
+    assertEquals(undone.state, withTents.state)
