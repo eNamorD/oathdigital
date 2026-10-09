@@ -111,11 +111,16 @@ object CampaignPlanSource:
   * such as Encirclement's force rule, or another power's restriction, which
   * the walker writes in when it gathers the window. The plan window shows it
   * unavailable with that reason, and no one applies it.
+  *
+  * `alone` marks a plan its user may use with no other (Code of Honor). A
+  * player's window withholds the rest through the power's own restrictions.
+  * A bandit defender, which chooses nothing, applies such a plan and no
+  * other when it would apply it (FAQ).
   */
 final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
     costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect],
     sides: Set[CampaignPlanSide] = Set.empty,
-    withheld: Option[OptionReason] = None)
+    withheld: Option[OptionReason] = None, alone: Boolean = false)
 
 /** An offer with the power that made it. */
 final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)

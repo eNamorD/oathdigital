@@ -48,14 +48,17 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
 
   /** Bandits pay nothing, so a plan that costs is never applied, and neither is
     * one a power makes unpayable for them (a surcharge in secrets, which bandits
-    * do not hold).
+    * do not hold). A plan used alone (Code of Honor) is applied with no other
+    * when it would be applied.
     */
   private def banditPlans(setup: CampaignSetup, offers: Vector[OfferedPlan],
-      pass: OfferHost.Pass): Vector[Operation] = offers
-    .filter(offered => offered.offer.costs.isEmpty &&
-      offered.offer.withheld.isEmpty)
-    .map(applicationOf(setup, _))
-    .filter(application => pass.applies(application).isRight)
+      pass: OfferHost.Pass): Vector[Operation] =
+    val applied = offers
+      .filter(offered => offered.offer.costs.isEmpty &&
+        offered.offer.withheld.isEmpty)
+      .map(applicationOf(setup, _))
+      .filter(application => pass.applies(application).isRight)
+    applied.find(_.offered.offer.alone).fold(applied)(Vector(_))
 
   private def userPass(setup: CampaignSetup, user: PlayerId,
       offers: Vector[OfferedPlan], pending: PendingTree, pass: OfferHost.Pass)

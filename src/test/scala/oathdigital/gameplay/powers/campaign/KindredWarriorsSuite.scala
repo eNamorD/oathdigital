@@ -31,7 +31,7 @@ class KindredWarriorsSuite extends munit.FunSuite:
 
   test("an attacker ruling a Nomad and an Order card adds two dice, places " +
       "a secret and ignores every skull"):
-    val b = attacker(planless("Mountain Giant", "Code of Honor"))
+    val b = attacker(planless("Mountain Giant", "Baron"))
     val run = commit(rules(skullThenSwords), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assertEquals(attackDice(picked.since(run)), Vector(2))
