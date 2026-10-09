@@ -56,12 +56,12 @@ object PricedOptions:
       outcome.next.exists(_.outcome.exists(answerable))
 
   /** The operations along each way the walk goes on from `outcome`: its own,
-    * then those of each accepted answer to the further question, a
-    * pay-or-ask step's included. Its own alone when no further answer is
-    * accepted. */
+    * then those of each answer to the further question from which the walk
+    * can go on, a pay-or-ask step's included. Its own alone when no further
+    * answer can. */
   private def paths(outcome: PreviewOutcome): Vector[Vector[CoreOperation]] =
-    outcome.next.collect { case PreviewedOption(_, Right(following)) =>
-      following }.flatMap(paths) match
+    outcome.next.collect { case PreviewedOption(_, Right(following))
+        if answerable(following) => following }.flatMap(paths) match
       case Vector() => Vector(outcome.operations)
       case found => found.map(outcome.operations ++ _)
 

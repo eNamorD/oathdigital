@@ -73,3 +73,17 @@ class TollRoadsConsentSuite extends munit.FunSuite:
     val bothOpen = granted(on(rivalRules)(_.warbandsAt(pass, actor, 1)))
     assert(offered(bothOpen, provincePlains,
       TollRoads.free(provincePlains)).askable)
+
+  test("a traveller who cannot pay is offered the destination to ask, and " +
+      "a grant lets them through"):
+    val broke = on(rivalRules)(_.favor(actor, 0))
+    assert(candidates(broke).contains(coast))
+    assertEquals(offered(broke, coast, PayOrAsk.pay),
+      DecisionOption.Unavailable(DecisionOption.Button(PayOrAsk.pay,
+        s"Give 1 favor to ${rival.value}"),
+        OptionReason.Written("Needs 1 favor; you have 0")))
+    assert(offered(broke, coast, free).askable)
+    val done = accepted(travel(granted(broke), coast).flatMap(
+      answeringStep(_, TollRoads.decisionId, free)))
+    assertEquals(Look(Outcomes.ready(done.state)).player(actor).pawnSite,
+      Some(coast))

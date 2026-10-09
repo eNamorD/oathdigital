@@ -1,8 +1,9 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{Answered, CoreOperation, Decide, DecisionAnswer,
-  DecisionOption, DecisionQuery, OathEvent, OathState, OathViolation,
-  Operation, PendingTree, PowerWindow, ReadyGame}
+import oathdigital.model.{Answered, ConsentKey, ConsentTurn, CoreOperation,
+  Decide, DecisionAnswer, DecisionOption, DecisionQuery, OathEvent,
+  OathState, OathViolation, Operation, OptionReason, PendingTree,
+  PowerWindow, ReadyGame}
 
 /** Runs a declared action tree to completion against immutable state and
   * throws the result away, reporting only the operations it would have
@@ -133,6 +134,9 @@ object WalkerSimulation:
     * (one level deep). A pay-or-ask step is previewed whether or not
     * `followUp` asks for it, and does not use up that level, so a priced
     * option still shows the toll its step asks (consent slice 4).
+    * A pay-or-ask step with no option its payer may take previews each
+    * askable option as if its ruler had consented, so a priced option shows
+    * what going on free costs.
     */
   def previewParked(state: ReadyGame, tree: Operation, pending: PendingTree,
       powers: WalkerPowers, followUp: Boolean = false)
@@ -147,7 +151,10 @@ object WalkerSimulation:
               Right(options.filter(_.available).map(option =>
                 PreviewedOption(option,
                   answer(state, tree, pending, powers, decide, option,
-                    followUp))))
+                    followUp))) ++
+                consented(state, decide, options).map((option, granted) =>
+                  PreviewedOption(option, answer(granted, tree, pending,
+                    powers, decide, option, followUp))))
             case _ => Left(OathViolation.InvalidEventOrder(
               s"decision ${decide.decisionId} is not a choose-one, so it " +
                 "cannot be previewed"))
@@ -174,6 +181,20 @@ object WalkerSimulation:
       next: PendingTree, powers: WalkerPowers): Boolean =
     ProcedureWalker.parkedDecide(ready, tree, next, powers, probing = false)
       .exists(_.window.contains(PowerWindow.PayOrAsk))
+
+  /** For a pay-or-ask step with no option its payer may take, each askable
+    * option with the state as it would stand once its ruler consents. Empty
+    * for any other decision. */
+  private def consented(state: ReadyGame, decide: Decide,
+      options: Vector[DecisionOption]): Vector[(DecisionOption, ReadyGame)] =
+    if !decide.window.contains(PowerWindow.PayOrAsk) ||
+        options.exists(_.available) then Vector.empty
+    else options.collect {
+      case option @ DecisionOption.Unavailable(_, ask: OptionReason.Askable) =>
+        option -> state.copy(consent = state.consent.granting(
+          ask.asks.flatMap(_.powers).distinct.map(ConsentKey(_, decide.owner,
+            decide.decisionId, option.ref)), ConsentTurn.of(state)))
+    }
 
   /** The parked position an answer leads to: its recorded steps applied to
     * `state` as replay applies them, parked at `next`. The steps start from

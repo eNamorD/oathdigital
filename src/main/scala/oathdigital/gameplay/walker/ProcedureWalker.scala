@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, Branch, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, Note, NoteStates, OathState, OathViolation, Operation, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -443,32 +443,49 @@ object ProcedureWalker:
     * option a restriction's note explains kept as unavailable (the note is
     * its hover reason and nothing is journaled), or as declared when the
     * powers do not search. An option its own window's waivable restriction
-    * bars is made askable when a grant would open it (consent slice 4). */
+    * bars is made askable when a grant would open it (consent slice 4). A
+    * required decision with nothing left is kept when such an option
+    * remains, as the search kept it ([[reach]]): its player may ask. */
   private def narrowAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Option[Decide]] =
     if !ctx.powers.probing then Right(Some(decide))
-    else WalkerSearch.narrow(decide, verdict(decide, ctx, path)).map(_.map {
-      cut =>
-        val grants = grantable(decide, ctx, path)
+    else WalkerSearch.narrow(decide, verdict(decide, ctx, path)) match
+      case Left(refused) =>
+        val asks = asksAt(decide, ctx, path)
+        if asks.isEmpty then Left(refused)
+        else Right(Some(WalkerSearch.reasoned(WalkerSearch.narrowed(decide,
+          _ => false).getOrElse(decide), asks)))
+      case Right(narrowed) => Right(narrowed.map { cut =>
         val reasons = WalkerPowerGather.lookAheadNoted(ctx.root, decide, cut,
-          ctx.state, ctx.activePlayer, ctx.powers, ctx.answered, ctx.procedure,
-          grants).toMap
-        val asks = WalkerPowerGather.optionAsks(decide, ctx.state,
-          ctx.activePlayer, ctx.powers, path, ctx.procedure, ctx.answered,
-          grants).toMap
+          ctx.state, ctx.activePlayer, ctx.powers, ctx.answered,
+          ctx.procedure, grantable(decide, ctx, path)).toMap
         WalkerSearch.reasoned(WalkerSearch.explained(decide, cut, reasons),
-          asks)
-    })
+          asksAt(decide, ctx, path))
+      })
 
   /** A search at a decision it reaches. Back at a decision it already stands
     * at in the same state, it stops: the loop leads on exactly when the first
-    * visit does, and the first visit tries the other answers. */
+    * visit does, and the first visit tries the other answers. A decision no
+    * answer leads on from is still a stop when one of its options may be
+    * asked about and a grant would open it: a payer who cannot pay may ask
+    * to go on free (consent slice 4). */
   private def reach(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Step] =
     if ctx.visited((path, ctx.state)) then Right(Stopped(ctx))
-    else WalkerSearch.reach(decide, verdict(decide, ctx, path)).map:
-      case WalkerSearch.Reach.Skipped => Done(ctx)
-      case WalkerSearch.Reach.Answerable => Stopped(ctx)
+    else WalkerSearch.reach(decide, verdict(decide, ctx, path)) match
+      case Left(refused) =>
+        if asksAt(decide, ctx, path).nonEmpty then Right(Stopped(ctx))
+        else Left(refused)
+      case Right(WalkerSearch.Reach.Skipped) => Right(Done(ctx))
+      case Right(WalkerSearch.Reach.Answerable) => Right(Stopped(ctx))
+
+  /** The asks `decide`'s own window allows, each kept only where a grant
+    * would open its option. */
+  private def asksAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
+      : Map[DecisionOptionRef, OptionReason] =
+    WalkerPowerGather.optionAsks(decide, ctx.state, ctx.activePlayer,
+      ctx.powers, path, ctx.procedure, ctx.answered,
+      grantable(decide, ctx, path)).toMap
 
   /** Whether one answer to `decide`, given by its owner, can reach a legal
     * end: it adds no tree-level `Restriction` violation the answers so far do

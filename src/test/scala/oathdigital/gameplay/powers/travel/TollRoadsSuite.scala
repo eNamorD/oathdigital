@@ -54,13 +54,18 @@ class TollRoadsSuite extends munit.FunSuite:
     assertEquals(Look(result).favor(actor), 0)
     assertEquals(Look(result).favor(rival), Look(rivalRules).favor(rival) + 1)
 
-  test("a traveller who cannot pay does not get the destination"):
+  test("a traveller who cannot pay, and was refused this turn, does not " +
+      "get the destination"):
     val broke = on(rivalRules)(_.favor(actor, 0))
-    assertEquals(candidates(broke).get(coast), None)
-    assertEquals(travel(broke, coast).left.toOption,
+    val refused = broke.copy(consent = ConsentState(
+      answers = Map(ConsentKey(TollRoads.id, actor, TollRoads.decisionId,
+        TollRoads.free(coast)) -> ConsentAnswer.Refused),
+      turn = Some(ConsentTurn.of(broke))))
+    assertEquals(candidates(refused).get(coast), None)
+    assertEquals(travel(refused, coast).left.toOption,
       Some(destinationNotOffered))
     // A site the rival does not rule is still offered.
-    assert(candidates(broke).contains(hinterlandPlains))
+    assert(candidates(refused).contains(hinterlandPlains))
 
   test("a destination the ruler does not rule costs nothing extra"):
     val done = accepted(travel(rivalRules, hinterlandPlains))

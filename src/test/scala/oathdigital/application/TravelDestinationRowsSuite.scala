@@ -76,14 +76,23 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
     assertEquals(shown.reason, Some("Needs 2 Supply; you have 1"))
     assertEquals(row(open(supply = 1), coast).state, "available")
 
-  test("a toll the actor cannot pay says how much favor it needs"):
+  test("a toll the actor cannot pay says how much favor it needs, under " +
+      "bandits"):
+    val ready = Table.from(open(supply = 7))
+      .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
+      .favor(actor, 0).bandits(provincePlains, 1).bandits(coast, 1).unchecked
+    val shown = row(ready, coast)
+    assertEquals(shown.state, "unavailable")
+    assertEquals(shown.reason, Some("Needs 1 favor; you have 0"))
+
+  test("a toll the actor cannot pay, under a player, reads its free way on"):
     val ready = Table.from(open(supply = 7))
       .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
       .favor(actor, 0).warbandsAt(provincePlains, Table.p2, 1)
       .warbandsAt(coast, Table.p2, 1).unchecked
     val shown = row(ready, coast)
-    assertEquals(shown.state, "unavailable")
-    assertEquals(shown.reason, Some("Needs 1 favor; you have 0"))
+    assertEquals(shown.state, "available")
+    assertEquals(shown.badge, Some("1 Supply"))
 
   test("Way Station's site offers the favor beside the Supply"):
     val ready = Table.from(open(supply = 7))

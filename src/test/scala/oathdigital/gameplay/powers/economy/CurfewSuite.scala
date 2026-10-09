@@ -89,9 +89,11 @@ class CurfewSuite extends munit.FunSuite:
     assertEquals(ActPowerHarness.replayed(rules, ready, events), result)
     assertWireRoundTrips(events)
 
-  test("a trader who cannot pay is not offered the card"):
-    assert(wrestlersOffered(rivalRulesBoth.ready))
-    assert(!wrestlersOffered(rivalRulesBoth.favor(p1, 0).ready))
+  test("a trader who cannot pay is offered the card only to ask its ruler; " +
+      "under bandits, not at all"):
+    assert(wrestlersOffered(rivalRulesBoth.favor(p1, 0).ready))
+    assert(!wrestlersOffered(curfewTable.bandits(peaks, 1).bandits(home, 1)
+      .favor(p1, 0).ready))
 
   test("when bandits rule, the favor is burnt"):
     val ready = curfewTable.bandits(peaks, 1).bandits(home, 1).ready

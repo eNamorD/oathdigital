@@ -207,7 +207,11 @@ private[walker] object WalkerPowerGather:
       case _ => Vector.empty
 
   /** A required decision with every option forbidden cannot be answered: the
-    * violation is the first restriction's, for the first option.
+    * violation is the first restriction's, for the first option. A
+    * choose-one's option that may be asked about does not count as
+    * forbidden: the search at the decision judges whether a grant would open
+    * it, so a payer who cannot pay may still reach the step to ask (consent
+    * slice 4).
     */
   private def emptiedDecision(decide: Decide,
       restrictions: Vector[(PowerId, OptionRestriction)],
@@ -219,8 +223,14 @@ private[walker] object WalkerPowerGather:
         Some(optionRefs(decide))
       case _ => None
     required.filter(_.nonEmpty).toVector.flatMap { refs =>
-      val verdicts = refs.map(ref => forbidding(decide, restrictions, ctx,
-        byId)(ref).headOption.map(_.violation))
+      val verdicts = refs.map { ref =>
+        val found = forbidding(decide, restrictions, ctx, byId)(ref)
+        val askable = decide.query.isInstanceOf[DecisionQuery.ChooseOne] &&
+          found.headOption.exists(first => consentAsk(decide, ref,
+            found.map(forbid => Block(forbid.power, forbid.restriction.waiver,
+              forbid.ctx)), first.ctx.state).nonEmpty)
+        found.headOption.filterNot(_ => askable).map(_.violation)
+      }
       if verdicts.forall(_.nonEmpty) then verdicts.head.toVector else Vector.empty
     }
 

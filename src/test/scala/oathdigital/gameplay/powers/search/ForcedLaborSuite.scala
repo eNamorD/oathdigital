@@ -71,13 +71,15 @@ class ForcedLaborSuite extends munit.FunSuite:
       SearchFixture.after(started))
     assertWireRoundTrips(started.events)
 
-  test("a searcher who cannot pay is not offered the Search"):
+  test("a searcher who cannot pay may start the Search only to ask its " +
+      "ruler; under bandits, not at all"):
     val startable = (ready: ReadyGame) =>
       SearchProcedure.startable(catalog, ready, p1, automatic)
-    assert(startable(rivalRulesBoth.ready))
-    val broke = rivalRulesBoth.favor(p1, 0).ready
-    assert(!startable(broke))
-    assert(SearchFixture.start(broke).isLeft)
+    assert(startable(rivalRulesBoth.favor(p1, 0).ready))
+    val banditBroke = laborTable.bandits(peaks, 1).bandits(home, 1)
+      .favor(p1, 0).ready
+    assert(!startable(banditBroke))
+    assert(SearchFixture.start(banditBroke).isLeft)
 
   test("the ruler searches without paying, and so does an enemy whose pawn " +
       "stands at a site the ruler does not rule"):
