@@ -27,12 +27,7 @@ object CampaignPlans:
     case CampaignPlanSource.Title(_) => None
 
   /** What a decision option names a source by: the card, or the title's button. */
-  def refOf(source: CampaignPlanSource): DecisionOptionRef = source match
-    case CampaignPlanSource.Adviser(_, id) => DecisionOptionRef.Denizen(id)
-    case CampaignPlanSource.SiteCard(_, id) => DecisionOptionRef.Denizen(id)
-    case CampaignPlanSource.SiteEdifice(_, id) => DecisionOptionRef.Edifice(id)
-    case CampaignPlanSource.Relic(_, id) => DecisionOptionRef.Relic(id)
-    case CampaignPlanSource.Title(_) => DecisionOptionRef.Button("title")
+  def refOf(source: CampaignPlanSource): DecisionOptionRef = source.ref
 
   /** The pool a bandit defender's application of the plan named by `ref` is
     * recorded in. A plan a player chooses is an answer, which a later window

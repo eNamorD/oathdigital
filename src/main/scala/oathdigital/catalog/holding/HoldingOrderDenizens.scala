@@ -15,24 +15,12 @@ object MartialCultureCard extends Denizen(DenizenId("10"), "Martial Culture", Su
       "Phase._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object CodeOfHonorCard extends Denizen(DenizenId("103"), "Code of Honor", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.code-of-honor"),
-    persistent = false, cost = Cost.free,
-    text = "±2 [attack-die] but you **cannot** use other battle plans.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object PalanquinCard extends Denizen(DenizenId("107"), "Palanquin", Suit.Order) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.palanquin"),
     persistent = false, cost = Cost(favor = 1),
     text = "**ACTION:** Choose a player whose pawn is at your site. Put " +
       "your pawn on a site that they can travel to. Make them " +
       "travel to that site, spending no Supply.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object SpecialistCard extends Denizen(DenizenId("114"), "Specialist", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.specialist"),
-    persistent = false, cost = Cost(favor = 2),
-    text = "The defender **cannot** use battle plans.")
   val powers: Vector[PrintedPower] = Vector(power)
 
 object CaptainsCard extends Denizen(DenizenId("115"), "Captains", Suit.Order) with SiteOnly:

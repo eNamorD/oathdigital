@@ -4,7 +4,8 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.powers.action.{Assassin, PiedPiper}
 import oathdigital.gameplay.powers.banner.BannerFacePowers
-import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRules, SimplePlans, VowOfPeaceContribution}
+import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRestrictions,
+  PlanRules, SimplePlans, VowOfPeaceContribution}
 import oathdigital.gameplay.powers.economy.{KnightsErrant, Marriage}
 import oathdigital.gameplay.powers.cardplay.{CardPlayTriggers, FamilyWagon,
   LostTapestry}
@@ -77,6 +78,7 @@ object WalkerPowerCatalog:
       BattlePlans.forCatalog(catalog) ++
       PlanRules.forCatalog(catalog) ++
       SimplePlans.forCatalog(catalog) ++
+      PlanRestrictions.forCatalog(catalog) ++
       CardPlayTriggers.forCatalog(catalog) ++
       BannerFacePowers.contributions ++
       Vector(Dazzle.forCatalog(catalog), GreatMarket.forCatalog(catalog),

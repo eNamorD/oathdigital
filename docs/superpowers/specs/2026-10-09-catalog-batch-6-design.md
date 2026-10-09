@@ -37,7 +37,13 @@ approved changes outside `gameplay/powers/`:
 
 - **Option restrictions over offers** (slice 1). `WalkerPowerGather` applies
   a window's `OptionRestriction`s to the plans an `OfferHost` gathers, and
-  `CampaignPlanOffer.withheld` becomes an `OptionReason`.
+  `CampaignPlanOffer.withheld` becomes an `OptionReason`. A plan source
+  names its own option (`CampaignPlanSource.ref`), so the walker keys offers
+  without importing the Campaign package.
+- **Plans used alone** (slice 1, approved at plan time).
+  `CampaignPlanOffer.alone` marks a plan its user may use with no other. A
+  bandit defender that would apply one applies it and nothing else
+  (`CampaignPlanChoice`).
 - **A Search source window** (slice 3). `PowerWindow.SearchSourceSelection`
   on the `search.source` decision.
 - **Search costs and draws** (slice 3). `SearchRules.cost` and
@@ -104,6 +110,26 @@ Each is an `OptionRestriction` at `CampaignAttackerBattlePlans`,
 
 A plan's suit is its source card's suit. A relic and the title have no
 suit.
+
+### Plan-time rulings
+
+- **Reasons read as the Game Log words them.** A withheld plan's reason is
+  its power's note: the card's name, a colon, then the sentence, as
+  "Specialist: The defender cannot use battle plans." No slice 1 power
+  writes a Game Log line.
+- **An offer its own rule withheld keeps that reason.** A restriction does
+  not replace Encirclement's force rule.
+- **No plan is asked about.** A restriction's waiver is not consulted at the
+  plan windows. None of this slice's restrictions is waivable.
+- **Bandits and Code of Honor.** A bandit defender that would apply Code of
+  Honor applies it and no other plan (FAQ). A Code of Honor another power
+  withholds is not applied, and the bandits apply their other plans as
+  usual.
+- **Where the restrictions live.** `BattlePlan.restrictions` lets a plan's
+  power forbid options at a window (Specialist, Code of Honor). Code of
+  Honor's pair of restrictions is `SolePlan`, which Peace Envoy reuses in
+  slice 2. Beast Tamer and True Names share `EnemyPlans`: the faceup holder
+  when they are the enemy of the window's side, and a plan's suit.
 
 ## Slice 2: Plan rewrites
 

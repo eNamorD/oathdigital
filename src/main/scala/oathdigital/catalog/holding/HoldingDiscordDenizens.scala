@@ -82,13 +82,6 @@ object RoyalAmbitionsCard extends Denizen(DenizenId("88"), "Royal Ambitions", Su
       "your Act Phase._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object BeastTamerCard extends Denizen(DenizenId("90"), "Beast Tamer", Suit.Discord) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.beast-tamer"),
-    persistent = true, cost = Cost.free,
-    text = "Enemies cannot use [suit-beast] or [suit-nomad] battle " +
-      "plans against you.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SneakAttackCard extends Denizen(DenizenId("98"), "Sneak Attack", Suit.Discord) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.sneak-attack"),
     persistent = true, cost = Cost.free,

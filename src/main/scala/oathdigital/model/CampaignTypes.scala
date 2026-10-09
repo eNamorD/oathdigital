@@ -68,21 +68,29 @@ object CampaignPlanEffect:
 
 sealed trait CampaignPlanSource extends Product with Serializable:
   def stableKey: String
+  /** How a decision option names the source: its card, or the title's
+    * button. */
+  def ref: DecisionOptionRef
 object CampaignPlanSource:
   final case class Adviser(playerId: PlayerId, id: DenizenId)
       extends CampaignPlanSource:
     def stableKey: String = s"adviser:${playerId.value}:denizen:${id.value}"
+    def ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
   final case class SiteCard(siteId: SiteId, id: DenizenId)
       extends CampaignPlanSource:
     def stableKey: String = s"site-card:${siteId.value}:denizen:${id.value}"
+    def ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
   final case class SiteEdifice(siteId: SiteId, id: EdificeId)
       extends CampaignPlanSource:
     def stableKey: String = s"site-edifice:${siteId.value}:edifice:${id.value}"
+    def ref: DecisionOptionRef = DecisionOptionRef.Edifice(id)
   final case class Relic(playerId: PlayerId, id: RelicId)
       extends CampaignPlanSource:
     def stableKey: String = s"relic:${playerId.value}:${id.value}"
+    def ref: DecisionOptionRef = DecisionOptionRef.Relic(id)
   final case class Title(playerId: PlayerId) extends CampaignPlanSource:
     def stableKey: String = s"title:${playerId.value}"
+    def ref: DecisionOptionRef = DecisionOptionRef.Button("title")
 
 /** One battle plan a power offers now: where it comes from, what it costs and
   * what it does. `label` is the words of the option when the source has no card
@@ -99,14 +107,20 @@ object CampaignPlanSource:
   * windows it offers at, and repeating that in every `plan` body is how the
   * two would drift.
   *
-  * `withheld` is why the plan stands but cannot be used now, such as
-  * Encirclement's force rule: the plan window shows it unavailable with that
-  * reason, and no one applies it.
+  * `withheld` is why the plan stands but cannot be used now: its own rule,
+  * such as Encirclement's force rule, or another power's restriction, which
+  * the walker writes in when it gathers the window. The plan window shows it
+  * unavailable with that reason, and no one applies it.
+  *
+  * `alone` marks a plan its user may use with no other (Code of Honor). A
+  * player's window withholds the rest through the power's own restrictions.
+  * A bandit defender, which chooses nothing, applies such a plan and no
+  * other when it would apply it (FAQ).
   */
 final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
     costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect],
     sides: Set[CampaignPlanSide] = Set.empty,
-    withheld: Option[String] = None)
+    withheld: Option[OptionReason] = None, alone: Boolean = false)
 
 /** An offer with the power that made it. */
 final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)

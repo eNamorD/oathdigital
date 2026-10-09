@@ -43,7 +43,8 @@ case object Encirclement extends BattlePlan:
         Vector(CampaignPlanCost.Favor(1)),
         Vector(PlanDice.effect(context.side, Encirclement.Dice)))
       if larger(context) then offer
-      else offer.copy(withheld = Some(Encirclement.SmallerForce))
+      else offer.copy(withheld =
+        Some(OptionReason.Written(Encirclement.SmallerForce)))
     }
 
   /** Whether the user's force is strictly larger than the enemy's. */

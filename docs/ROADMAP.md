@@ -11,7 +11,8 @@ specs.
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest.
+2026-10-01 playtest. **Phase - Catalog batch 6** is in progress: slice 1
+is done.
 
 ## Next
 
@@ -101,8 +102,6 @@ Battle plan restrictions and Search sources
 ([design](superpowers/specs/2026-10-09-catalog-batch-6-design.md),
 [rulings](superpowers/specs/2026-10-09-catalog-batch-6-rulings.md)).
 
-- [ ] Slice 1, plan restrictions: Specialist, Marsh Spirit, Beast Tamer, True
-  Names, Code of Honor.
 - [ ] Slice 2, plan rewrites: Peace Envoy, Wild Mounts.
 - [ ] Slice 3, Search sources: Observatory, Errand Boy, Wine of Welcome,
   Mushrooms, Painted Trumpet. Waits for the modifier walker phase.

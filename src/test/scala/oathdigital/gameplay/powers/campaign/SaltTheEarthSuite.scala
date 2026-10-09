@@ -13,7 +13,7 @@ import oathdigital.testkit.{CatalogNames, Look}
 class SaltTheEarthSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Salt the Earth")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val code = planlessCard("Code of Honor")
+  private val baron = planlessCard("Baron")
   private val giant = planlessCard("Mountain Giant")
   /** An edifice whose powers are not built, so it changes no Campaign. It is
     * locked, which a burial ignores. */
@@ -27,12 +27,12 @@ class SaltTheEarthSuite extends munit.FunSuite:
       : Vector[CardId] =
     Look(state).cardsAt(site) ++ Look(state).relicsAt(site)
 
-  /** The actor holds Salt the Earth faceup. The origin holds Code of Honor,
+  /** The actor holds Salt the Earth faceup. The origin holds Baron,
     * the Great Clock and Dowsing Sticks, facedown. */
   private def saltableOrigin: Board =
     val base = board(warbands = 5, supply = 7)
     on(withAdviser(base, card, Orientation.FaceUp))(_
-      .denizen(code, at = base.origin)
+      .denizen(baron, at = base.origin)
       .edifice(clock, EdificeSide.Intact, at = base.origin)
       .relicAt(sticks, at = base.origin))
 
@@ -44,11 +44,11 @@ class SaltTheEarthSuite extends munit.FunSuite:
     assertEquals(done.winner, Some(true))
     assertEquals(cardsAndRelicsAt(done.state, b.origin), Vector.empty)
     val decks = ready(done.state).game.current.commonCards
-    assert(decks.worldDeck.contains(code))
+    assert(decks.worldDeck.contains(baron))
     assert(decks.edificeDeck.contains(clock))
     assert(decks.relicDeck.contains(sticks))
     assertEquals(lines(done), Vector(NoteText.Said("buried",
-      s"Buried ${code.value}, ${clock.value}, ${sticks.value} from " +
+      s"Buried ${baron.value}, ${clock.value}, ${sticks.value} from " +
         s"${b.origin.value}.", covers = true)))
 
   test("with two targets the attacker chooses the site, and the other " +
@@ -56,7 +56,7 @@ class SaltTheEarthSuite extends munit.FunSuite:
     val base = board(extras = 1, warbands = 5, supply = 7)
     val extra = base.extras.head
     val b = on(withAdviser(base, card, Orientation.FaceUp))(_
-      .denizen(code, at = base.origin).denizen(giant, at = extra))
+      .denizen(baron, at = base.origin).denizen(giant, at = extra))
     val asked = commit(rules(winningDice), b, 3,
         targets = Vector(DecisionOptionRef.Site(extra)))
       .pick(b.actor, CampaignIds.attackerPlan, ref)
@@ -70,7 +70,7 @@ class SaltTheEarthSuite extends munit.FunSuite:
     val done = asked.pick(b.actor, SaltTheEarth.decisionId,
       DecisionOptionRef.Site(extra))
     assertEquals(cardsAndRelicsAt(done.state, extra), Vector.empty)
-    assertEquals(cardsAndRelicsAt(done.state, b.origin), Vector[CardId](code))
+    assertEquals(cardsAndRelicsAt(done.state, b.origin), Vector[CardId](baron))
     assertEquals(lines(done), Vector(NoteText.Said("buried",
       s"Buried ${giant.value} from ${extra.value}.", covers = true)))
 
@@ -88,5 +88,5 @@ class SaltTheEarthSuite extends munit.FunSuite:
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
     assertEquals(cardsAndRelicsAt(done.state, b.origin),
-      Vector[CardId](code, clock, sticks))
+      Vector[CardId](baron, clock, sticks))
     assertEquals(lines(done), Vector.empty)

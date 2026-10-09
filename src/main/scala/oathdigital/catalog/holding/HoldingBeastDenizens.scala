@@ -59,12 +59,6 @@ object NewGrowthCard extends Denizen(DenizenId("188"), "New Growth", Suit.Beast)
       "site _(that has space)_.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object MarshSpiritCard extends Denizen(DenizenId("192"), "Marsh Spirit", Suit.Beast) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.marsh-spirit"),
-    persistent = true, cost = Cost.free,
-    text = "Players who target this site **cannot** use battle plans.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object ForestCouncilCard extends Denizen(DenizenId("194"), "Forest Council", Suit.Beast) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.forest-council"),
     persistent = true, cost = Cost.free,
@@ -116,13 +110,6 @@ object ForestWardenCard extends Denizen(DenizenId("218"), "Forest Warden", Suit.
     persistent = false, cost = Cost.free,
     text = "If you play a [suit-beast] card to a site, you may bury a " +
       "card at the site first.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object TrueNamesCard extends Denizen(DenizenId("41"), "True Names", Suit.Beast) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.true-names"),
-    persistent = true, cost = Cost.free,
-    text = "Your enemy **cannot** use battle plans that match any of " +
-      "your advisers against you.")
   val powers: Vector[PrintedPower] = Vector(power)
 
 object LongLostHeirCard extends Denizen(DenizenId("44"), "Long-Lost Heir", Suit.Beast) with Locked with AdviserOnly:

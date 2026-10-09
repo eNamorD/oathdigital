@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Offer, Transform}
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
+  Offer, OptionRestriction, Transform}
 import oathdigital.model._
 
 /** A power that offers a Campaign battle plan. It is chosen at the plan step,
@@ -23,6 +24,9 @@ import oathdigital.model._
   *    (Sticky Fire asks its question before the losses run).
   *  - `cardRef` is how the plan's source is named in a decision, which is how a
   *    later window learns the plan was chosen.
+  *  - `restrictions` are the options the plan's power forbids at a window,
+  *    whether or not the plan was chosen. A restriction that holds only once
+  *    the plan is used reads the answered plan picks (Specialist).
   */
 trait BattlePlan extends ContributingPower:
   /** How the plan's source is named in the plan decision. */
@@ -40,6 +44,8 @@ trait BattlePlan extends ContributingPower:
     */
   def wrapping: Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] =
     Map.empty
+  /** The options this plan's power forbids at a window. */
+  def restrictions: Map[PowerWindow, Vector[OptionRestriction]] = Map.empty
 
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   final override def resolution: PowerResolution = PowerResolution.Automatic
@@ -60,10 +66,12 @@ trait BattlePlan extends ContributingPower:
         (ctx, children) => PlanUse.chosen(ctx.state, PendingTree(ctx.nodePath,
           ctx.answered), ctx.activePlayer, cardRef, sides,
           BattlePlan.outcomeKnown(window)).fold(children)(wrap(_, children))))
-    (offers.keySet ++ afterwards.keySet ++ around.keySet).map(window =>
+    (offers.keySet ++ afterwards.keySet ++ around.keySet ++
+      restrictions.keySet).map(window =>
       window -> (offers.getOrElse(window, Vector.empty) ++
         afterwards.getOrElse(window, Vector.empty) ++
-        around.getOrElse(window, Vector.empty))).toMap
+        around.getOrElse(window, Vector.empty) ++
+        restrictions.getOrElse(window, Vector.empty))).toMap
 
 object BattlePlan:
   def windowOf(side: CampaignPlanSide): PowerWindow = side match

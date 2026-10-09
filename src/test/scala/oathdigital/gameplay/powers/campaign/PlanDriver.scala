@@ -109,30 +109,39 @@ object PlanDriver:
     def finishDefenderPlans(defender: PlayerId): Run =
       pick(defender, CampaignIds.defenderPlan, CampaignIds.finish)
 
-    /** The parked decision's query, as `actor`'s Campaign builds it. */
-    def query(actor: PlayerId): DecisionQuery =
+    /** The parked decision's query, as `actor`'s Campaign builds it with
+      * `catalogPowers`: the production catalog unless a suite runs its own.
+      */
+    def query(actor: PlayerId,
+        catalogPowers: WalkerPowers = WalkerPowerCatalog.default(catalog))
+        : DecisionQuery =
       val current = ready(state)
       val tree = CampaignProcedure.rebuild(catalog, current, actor, Vector.empty)
         .toOption.get
       // The run's own powers: a selected modifier folds only when chosen.
       ProcedureWalker.openDecisions(current, tree,
         current.game.current.walkerPending.get,
-        WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
+        WalkerPowers.selected(catalogPowers,
           current.game.current.walkerModifiers)).head.query
 
     /** The options the parked choice shows. */
-    def options(actor: PlayerId): Vector[DecisionOption] = query(actor) match
+    def options(actor: PlayerId,
+        catalogPowers: WalkerPowers = WalkerPowerCatalog.default(catalog))
+        : Vector[DecisionOption] = query(actor, catalogPowers) match
       case DecisionQuery.ChooseOne(options, _) => options
       case _ => Vector.empty
 
     /** The options the parked choice offers that may be chosen. */
-    def offered(actor: PlayerId): Vector[DecisionOptionRef] =
-      options(actor).filter(_.available).map(_.ref)
+    def offered(actor: PlayerId,
+        catalogPowers: WalkerPowers = WalkerPowerCatalog.default(catalog))
+        : Vector[DecisionOptionRef] =
+      options(actor, catalogPowers).filter(_.available).map(_.ref)
 
     /** Why the parked choice shows `ref` without offering it. */
-    def withheld(actor: PlayerId, ref: DecisionOptionRef)
+    def withheld(actor: PlayerId, ref: DecisionOptionRef,
+        catalogPowers: WalkerPowers = WalkerPowerCatalog.default(catalog))
         : Option[OptionReason] =
-      options(actor).collectFirst {
+      options(actor, catalogPowers).collectFirst {
         case shown: DecisionOption.Unavailable if shown.ref == ref =>
           shown.reason
       }

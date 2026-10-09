@@ -40,7 +40,8 @@ import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,
   StickyFireCard, StormCallerCard, TheGreatLevyCard, ToweringRampartCard,
   TravelingDoctorCard, TributeSpoilsCard, VillageConstableCard, VowOfPeaceCard,
   SecondWindCard, WalledGardenCard, WarTortoiseCard, WarningSignalsCard,
-  WatchdogCard, WrestlersCard}
+  WatchdogCard, WrestlersCard, SpecialistCard, CodeOfHonorCard,
+  MarshSpiritCard, BeastTamerCard, TrueNamesCard}
 import oathdigital.gameplay.powers.cardplay.{BookBindersCard,
   FamilyWagonCard, GossipCard, LostTapestryCard, SacredGroundCard,
   SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard, WelcomingPartyCard,
