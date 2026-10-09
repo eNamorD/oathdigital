@@ -62,15 +62,29 @@
   - Once chosen, the user's other plans are withheld, as Code of Honor's
     are.
   - "You're victorious now": when the attacker used it, the defender's plans
-    are withheld with the reason "Peace Envoy decided the battle". Nothing is
-    rolled and nothing is sacrificed. The user's side wins.
+    are withheld with the reason "Peace Envoy: The battle is decided.".
+    Nothing is rolled and nothing is sacrificed. The user's side wins.
   - "Ignore killing warbands": the losses kill no warband on either side.
-    Victory then resolves as usual.
+    After a Conquest the attacker wins with it, the defender's warbands at
+    the targets all return to the defender's board. Victory then resolves
+    as usual.
+  - Its price includes the gift: with two defense dice, 3 favor.
+  - Its reasons and lines: "Peace Envoy: Cannot be used with other battle
+    plans.", "Peace Envoy: No other battle plans.", "Peace Envoy: The
+    battle is decided.", "Gave {2 favor} to {Blue}." and "Won the battle
+    without a roll.". A defender's lines name them: "{Blue} gave {2 favor}
+    to {Red}." and "{Blue} won the battle without a roll.".
 - **153 Wild Mounts.** A free battle plan for either side, with no effect
   when chosen.
   - At the end of the Campaign, when any of the user's Nomad plans would be
-    discarded, Wild Mounts' own discard included, the user is asked: discard
-    one Beast card they rule instead, or "Discard the battle plans".
+    discarded, the user is asked: discard one Beast card they rule instead,
+    or "Skip Wild Mounts". Wild Mounts prints no discard of its own.
+  - Bandits (FAQ): "If they would discard two or more Nomads, they discard
+    the first Beast card they rule starting at the top of the Cradle and
+    going down through the regions." With one Nomad discard, they discard
+    it as usual.
+  - Its line: "Discarded {card} instead of the battle plans.", or, for a
+    defender, "{Blue} discarded {card} instead of the battle plans.".
   - Cards the user rules are their advisers and the denizens at sites they
     rule.
   - No question is asked when nothing would be discarded, or when the user

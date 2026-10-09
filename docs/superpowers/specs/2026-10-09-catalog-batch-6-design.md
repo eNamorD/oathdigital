@@ -44,6 +44,9 @@ approved changes outside `gameplay/powers/`:
   `CampaignPlanOffer.alone` marks a plan its user may use with no other. A
   bandit defender that would apply one applies it and nothing else
   (`CampaignPlanChoice`).
+- **A gift in a plan's price** (slice 2, approved at plan time).
+  `PlanPrice` counts a favor `Give` that the plan's dry run recorded, so
+  Peace Envoy's option is priced with its gift.
 - **A Search source window** (slice 3). `PowerWindow.SearchSourceSelection`
   on the `search.source` decision.
 - **Search costs and draws** (slice 3). `SearchRules.cost` and
@@ -148,16 +151,22 @@ Once applied:
 - Its "no other plans" restriction is Code of Honor's, shared through one
   helper.
 - An `OptionRestriction` withholds every defender plan when the attacker
-  used it, with the reason "Peace Envoy decided the battle". Nothing is
+  used it, with the reason "Peace Envoy: The battle is decided.". Nothing is
   playable, so the defender is not asked.
 - Transforms at `CampaignAttackRoll`, `CampaignSacrificeSelection` and
   `CampaignDefenseRoll` return no children: nothing is rolled or sacrificed.
 - A Transform at `CampaignAfterOutcome` rewrites `RecordCampaignResult` so
   that the user's side wins.
-- The losses kill no warbands on either side, through `LossRewrite`.
+- The losses kill no warbands on either side, through `LossRewrite`. After
+  a Conquest it wins, the defender's warbands at the targets all leave
+  them and all return to the defender's board, so the victor can place
+  warbands as usual (ruled at plan time).
 
 The rewrite reads whether Peace Envoy was applied in this Campaign from the
 answered plan picks, so it is a pure function of the walk.
+
+The roll removal and the result rewrite are `VictoriousNow`, a helper that
+Hearts and Minds can reuse.
 
 ### Wild Mounts
 
@@ -166,13 +175,15 @@ at the time; it arms a replacement at the end of the Campaign.
 
 The end-of-Campaign discards of plans that say "At end, discard" are
 appended at `CampaignActionEligibility` by `PlanDiscard.afterCampaign`.
-That helper starts marking what it appends: a node naming the plan's card
-and user. Wild Mounts' Transform at the same window, ordered after the
-plans that append, finds its user's marked discards of Nomad plans. When
-there is at least one, and the user rules a Beast card, it puts a decision
-before them: discard each Beast card the user rules, or "Discard the battle
-plans". Choosing a Beast card discards that card instead and drops the
-marked discards.
+That helper marks what it appends with a `PlanDiscard.Marked` node naming
+the plan's card and user. Wild Mounts' rewrite at the same window, through
+the `BattlePlan#rewrites` hook and at a priority after every plan that
+appends, strips its user's marked discards of Nomad plans and appends one
+step. That step asks the user, when they rule a Beast card: discard one of
+them, or "Skip Wild Mounts". Choosing a Beast card discards that card
+instead and drops the marked discards; skipping runs them. A bandit user
+follows the FAQ: with two or more Nomad discards, the first Beast card the
+bandits rule in map order is discarded instead.
 
 "Cards you rule" are the user's advisers and the denizens at sites the user
 rules.

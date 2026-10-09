@@ -7,9 +7,10 @@ import oathdigital.model._
   * `BuildOps`, `Sequence` and `Branch`, the only nodes the plan application
   * and losses windows hold, and leaves every other node as it is.
   *
-  * Billowing Fog and Traveling Doctor rewrite the losses with it. `counted`
-  * is the shared loss counter: Hospital counts its user's dead with it, and
-  * Cursed Cauldron its enemy's.
+  * Billowing Fog, Traveling Doctor and Peace Envoy rewrite the losses with
+  * it, and `VictoriousNow` the recorded result. `counted` is the shared loss
+  * counter: Hospital counts its user's dead with it, and Cursed Cauldron its
+  * enemy's.
   */
 private[campaign] object LossRewrite:
   def apply(children: Vector[Operation])(

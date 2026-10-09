@@ -25,7 +25,8 @@ object WarningSignalsCard extends Denizen(DenizenId("25"), "Warning Signals", Su
   * leaves each site at least one warband ([[WarbandArrangement]], shared with
   * Messenger). Nothing is asked when there is nowhere to move to: no ruled
   * site, or no warband beyond the one each site keeps. The card is discarded
-  * when the Campaign has resolved, whether or not the defender won.
+  * when the Campaign has resolved, whether or not the defender won, marked
+  * (`PlanDiscard.Marked`) so that Wild Mounts can replace it.
   *
   * Once the defender has answered it writes "{Blue} redistributed their
   * warbands."; the line follows the decision, so a game parked on it resumes
@@ -46,7 +47,8 @@ final case class WarningSignals private (catalog: ExecutableCatalog)
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>
-      use.user.toVector.map(PlanDiscard.denizen(catalog, _, cardId))))
+      use.user.toVector.map(user => PlanDiscard.Marked(cardId, use.user,
+        Vector(PlanDiscard.denizen(catalog, user, cardId))))))
 
   /** The sites the user defends as a player, in map order. */
   private def defended(ready: ReadyGame, user: PlayerId): Vector[SiteId] =

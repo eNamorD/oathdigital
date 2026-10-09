@@ -6,7 +6,8 @@ import oathdigital.model._
   * are read from the operations a dry run of the plan's application recorded,
   * not from the offer, so a power that adds to the cost (a surcharge on the
   * enemy's plans) shows in it: a payment is a `PayCost` whether it is placed or
-  * burnt, and a secret paid by turning it facedown is a `FlipSecrets`.
+  * burnt, a secret paid by turning it facedown is a `FlipSecrets`, and favor
+  * the plan gives another player (Peace Envoy's gift) is a `Give`.
   *
   * A warband sacrifice is read from the offer. The dry run stops at the decision
   * that asks which force pays, before the warband is killed, so it may not have
@@ -23,6 +24,8 @@ private[campaign] object PlanPrice:
         secretsBurnt = price.secretsBurnt + cost.secretBurnt)
       case (price, FlipSecrets(_, amount, SecretSide.FaceUp, SecretSide.FaceDown)) =>
         price.copy(secrets = price.secrets + amount)
+      case (price, Give(Piece.Favor(count), _, _, _, _)) =>
+        price.copy(favor = price.favor + count)
       case (price, _) => price
     if offer.costs.contains(CampaignPlanCost.SacrificeWarband) then
       paid.copy(warbands = 1)
