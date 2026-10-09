@@ -95,6 +95,31 @@ did":
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
 
+### Phase - Catalog batch 6
+
+Battle plan restrictions and Search sources
+([design](superpowers/specs/2026-10-09-catalog-batch-6-design.md),
+[rulings](superpowers/specs/2026-10-09-catalog-batch-6-rulings.md)).
+
+- [ ] Slice 1, plan restrictions: Specialist, Marsh Spirit, Beast Tamer, True
+  Names, Code of Honor.
+- [ ] Slice 2, plan rewrites: Peace Envoy, Wild Mounts.
+- [ ] Slice 3, Search sources: Observatory, Errand Boy, Wine of Welcome,
+  Mushrooms, Painted Trumpet. Waits for the modifier walker phase.
+- [ ] Slice 4, Search draws: Spinning Bee, Land Warden. Waits for the
+  modifier walker phase.
+
+### Phase - Modifier selection on the walker
+
+Move modifier selection from the client's modifier flow onto the walker, as
+the walk's first decision, so that `OptionRestriction` and `Warned` cover
+modifiers as they cover battle plans. Catalog batch 6's slices 3 and 4 need
+it: Spinning Bee excludes other Search modifiers, Mushrooms and Painted
+Trumpet exclude each other, and Wine of Welcome is warned beside Mushrooms.
+It reverses ruling 1 of the
+[search source design](superpowers/specs/2026-10-07-search-source-walker-design.md)
+("Modifiers stay before the start"). Not yet designed.
+
 ### Phase - Catalog batch - engine-blocked
 
 Cards that need an engine change first, grouped by the missing mechanism.
@@ -118,8 +143,6 @@ Cards that need an engine change first, grouped by the missing mechanism.
   Search re-reads its live hand on a single-card draw. It needs its own spec.
   Recorded in the
   [catalog batch 4 rulings](superpowers/specs/2026-10-05-catalog-batch-4-rulings.md#moved-out-of-the-batch).
-- Peace Envoy, Marsh Spirit, True Names and Code of Honor restrict which
-  battle plans a side may choose, which no contribution can hook yet.
 - Council Arbiter, Deed Writer and Traveling Negotiator widen who may
   negotiate and what a deal may hold.
 
@@ -127,20 +150,15 @@ Found by the survey of 2026-09-29:
 
 - **A reroll operation:** Jinx, Master at Arms, Silver Charm, Unstable Summon
   (which also needs a variable X).
-- **A Search source or draw other than the world deck or the actor's own
-  regional discard** (a bottom draw, a single-card draw): Observatory, Errand
-  Boy, Mushrooms, Spinning Bee, Painted Trumpet, Wine of Welcome, Land Warden,
-  Cracked Horn, Ring of Devotion.
-- **A choice of discard or placement destination:** Bracken, Baron, New
-  Growth, Forest Warden, Vow of Wisdom.
+- **A choice of discard or placement destination:** Bracken, Cracked Horn,
+  Ring of Devotion, Baron, New Growth, Forest Warden, Vow of Wisdom.
 - **Acting as if elsewhere, or overriding a suit:** Small Friends, Friendly
   Familiar, Master of Disguise, Acting Troupe, Pledge to Discord, Spiteful
   Mirror, Yew Staff.
 - **A nested Campaign or Travel, or an overridden actor site:** Wild Allies,
   Captains, Palanquin.
-- **Plans that a power restricts or changes:** Beast Tamer, Specialist, Wild
-  Mounts.
-- **Overriding scoring or the victor:** Hearts and Minds, Careful Plans,
+- **Overriding scoring or the victor:** Hearts and Minds (which can reuse
+  Peace Envoy's victory rewrite from Catalog batch 6), Careful Plans,
   Weeping Banner, Zealots.
 - **A variable X or dice set to a face:** Ward of Silence, Arcane Armor,
   Mountain Giant.
@@ -312,8 +330,8 @@ one.
   leave it unresolved. A product-owner answer settles it; one bank would
   reuse Fabled Feast's question.
 - [ ] **Plan-restricting powers, Bag of Siegeworks and Empire defenders.**
-  Peace Envoy and other powers that restrict which plans a side may choose have
-  no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
+  Powers that restrict which plans a side may choose get their hook in Catalog
+  batch 6. Bag of Siegeworks has a reviewed-catalog entry
   in `CampaignPowers` and no plan. Empire defenders are not modelled. The reviewed
   catalog's entries for Outriders, Brass Army and Watchdog are inert since slice
   3b and go with the reviewed catalog.
