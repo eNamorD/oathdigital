@@ -96,13 +96,6 @@ object VowOfSilenceCard extends Denizen(DenizenId("74"), "Vow of Silence", Suit.
       "enemy burns [secret-burnt], you take those secrets.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object MapLibraryCard extends Denizen(DenizenId("76"), "Map Library", Suit.Arcane) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.map-library"),
-    persistent = false, cost = Cost.free,
-    text = "While your pawn is at this site, you may trade with a card " +
-      "at any site in your region.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object MasterOfDisguiseCard extends Denizen(DenizenId("78"), "Master of Disguise", Suit.Arcane) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.master-of-disguise"),
     persistent = false, cost = Cost(secret = 1),

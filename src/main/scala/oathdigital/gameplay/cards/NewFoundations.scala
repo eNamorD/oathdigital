@@ -45,8 +45,9 @@ import oathdigital.gameplay.powers.cardplay.{BookBindersCard, GossipCard,
 import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard,
   AwaitedReturnCard, BirdsongCard, CupOfPlentyCard, CurfewCard,
   DefameCard, DowntroddenCard, GolemLegionsCard, InitiationRiteCard,
-  KnightsErrantCard, MountedLibraryCard, MovingMarketCard, RowdyPubCard,
-  TheOldOakCard, VillageIdiotCard, VowOfBeastkinCard, VowOfPovertyCard}
+  KnightsErrantCard, MapLibraryCard, MountedLibraryCard, MovingMarketCard,
+  RowdyPubCard, SkilledMerchantsCard, TheOldOakCard, VillageIdiotCard,
+  VowOfBeastkinCard, VowOfPovertyCard}
 import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}

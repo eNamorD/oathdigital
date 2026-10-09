@@ -57,9 +57,3 @@ object FavoredSonCard extends Denizen(DenizenId("235"), "Favored Son", Suit.Hear
     text = "**WHEN PLAYED,** take the People's Favor. If you do, adjust " +
       "its [favor] using its left ribbon.")
   val powers: Vector[PrintedPower] = Vector(power)
-
-object SkilledMerchantsCard extends Denizen(DenizenId("238"), "Skilled Merchants", Suit.Hearth) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.skilled-merchants"),
-    persistent = false, cost = Cost.free,
-    text = "You may trade with any denizens in your region.")
-  val powers: Vector[PrintedPower] = Vector(power)

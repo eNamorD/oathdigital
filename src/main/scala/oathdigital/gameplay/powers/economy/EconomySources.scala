@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.economy.MusterSource
 import oathdigital.model._
 
@@ -21,6 +22,15 @@ private[economy] object EconomySources:
       options ++ cards.map(MusterSource.offered)
         .filterNot(option => offered(option.ref))
     }
+
+  /** Every card at the sites in play in the region of `actor`'s pawn, the
+    * pawn's own site included, in map then site order. */
+  def inPawnRegion(ready: ReadyGame, actor: PlayerId)
+      : Vector[SiteDenizenState] =
+    val map = ready.game.current.map
+    val region = PowerAccess.pawnSite(ready, actor).flatMap(map.regionOf)
+    map.inPlay.filter(site => region.exists(map.regionOf(site).contains))
+      .flatMap(site => map.sites.get(site).toVector.flatMap(_.denizens))
 
   /** `operations` with `change` applied to the options of each choose-one
     * decision. */
