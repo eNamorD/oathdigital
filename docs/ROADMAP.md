@@ -73,10 +73,12 @@ Left behind by the
 Left behind by the
 [consent work](superpowers/specs/2026-10-08-consent-system-design.md):
 
-- [ ] **Play-test consent in a browser.** The amber destination and campaign target, the
-  confirmation, the ruler's prompt, automatic answers, the preferences grid
-  and withdrawing with Undo are covered by tests only. Seeding a game with a
-  player-ruled Narrow Pass needs the journaled arranged start.
+- [ ] **Play-test consent in a browser.** The amber destination, campaign
+  target, faceup Vision and Hall-protected card, the confirmation, the
+  ruler's prompt, automatic answers, the preferences grid and withdrawing
+  with Undo are covered by tests only. Seeding a game with a player-ruled
+  Narrow Pass, Secret Police or Hall of Ministers needs the journaled
+  arranged start.
 
 ### Phase - Board decision follow-ups
 
@@ -205,8 +207,9 @@ consent, and rulers can set private per-player standing answers
   ([plan](superpowers/plans/2026-10-09-consent-slice1.md)).
 - [x] 2. The Pass on campaign targeting
   ([plan](superpowers/plans/2026-10-09-consent-slice2.md)).
-- [ ] 3. Hard-block cards: Secret Police, Hall of Ministers, and Forgotten
-  Vault outside campaigns.
+- [x] 3. Hard-block cards: Secret Police and Hall of Ministers; Forgotten
+  Vault is never waivable
+  ([plan](superpowers/plans/2026-10-09-consent-slice3.md)).
 - [ ] 4. Toll and penalty cards: Toll Roads, Forced Labor, Curfew and
   Grasping Vines.
 
