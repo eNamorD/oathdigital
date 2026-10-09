@@ -351,7 +351,7 @@ private[application] final class WalkerDecisionProjector(
       // Unavailable, but its rulers may be asked (consent design,
       // "Projection"): shown as askable, with whom to ask.
       case DecisionOption.Unavailable(inner,
-          reason @ OptionReason.Askable(_, _, asks)) =>
+          reason @ OptionReason.Askable(_, _, asks, _)) =>
         optionProjection(ready, viewer, index, inner, details).map(_.copy(
           state = "askable", reason = Some(reasonText(ready, viewer, reason)),
           consent = Some(ConsentAskProjection(asks.map(_.granter.value),
@@ -573,7 +573,7 @@ private[application] final class WalkerDecisionProjector(
     case OptionReason.Written(text) => text
     case OptionReason.Noted(power, note) =>
       reasons.text(power, note, ready, viewer).getOrElse("Not on offer now")
-    case OptionReason.Askable(power, note, _) =>
+    case OptionReason.Askable(power, note, _, _) =>
       reasons.text(power, note, ready, viewer).getOrElse("Not on offer now")
 
   /** A card as its viewer may see it: its face when they may identify it,

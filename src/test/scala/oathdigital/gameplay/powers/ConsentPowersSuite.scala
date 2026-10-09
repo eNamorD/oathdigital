@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, Waiver}
+import oathdigital.gameplay.operations.HallOfMinisters
 import oathdigital.gameplay.powers.cardplay.SecretPolice
 import oathdigital.gameplay.powers.travel.{MinesSite, NarrowPassSite,
   NarrowPassSitePower, TravelFixture}
@@ -60,3 +61,14 @@ class ConsentPowersSuite extends munit.FunSuite:
       SecretPolice.id), Some(p2))
     assertEquals(powers.granter(policed.bandits(home, 2).ready,
       SecretPolice.id), None)
+
+  test("the Hall of Ministers is waivable, its granter the player who rules " +
+      "its site"):
+    val hall = CatalogNames.edifice("Hall of Ministers")
+    val woods = CatalogNames.site("Deep Woods")
+    val ready = Table.start.edifice(hall, EdificeSide.Intact, at = woods)
+      .warbandsAt(woods, p2, 1).ready
+    assertEquals(powers.source(HallOfMinisters.id),
+      Some(PowerSourceRef.Card(hall)))
+    assertEquals(powers.granter(ready, HallOfMinisters.id), Some(p2))
+    assertEquals(powers.ruledBy(ready, p2), Vector(HallOfMinisters.id))

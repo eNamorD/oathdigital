@@ -71,7 +71,7 @@ class NarrowPassConsentSuite extends munit.FunSuite:
   test("a destination only a player-ruled Pass blocks is askable of its ruler"):
     dunesOffered(ruled) match
       case DecisionOption.Unavailable(_, OptionReason.Askable(power, note,
-          asks)) =>
+          asks, _)) =>
         assertEquals(power, passPower)
         assertEquals(note, NarrowPassSitePower.noTravelConsent(
           PowerSourceRef.Site(NarrowPassSite.id)))

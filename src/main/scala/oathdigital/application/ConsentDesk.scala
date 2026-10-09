@@ -42,8 +42,9 @@ private[application] final class ConsentDesk(rules: OathRules,
     ready <- playing(state)
     _ <- Either.cond(ready.consent.pending.isEmpty, (),
       OathViolation.ConsentPending)
-    asks <- rules.consentAsks(state, requester, decisionId, target)
-    request = ConsentRequest(requester, decisionId, target, asks)
+    ask <- rules.consentAsk(state, requester, decisionId, target)
+    request = ConsentRequest(requester, decisionId, target, ask.asks,
+      ask.covers)
     events <- settled(state,
       ConsentRequested(request) +: automatic(ready.consent, request))
   yield events

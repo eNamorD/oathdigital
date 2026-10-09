@@ -62,7 +62,7 @@ class SecretPoliceConsentSuite extends munit.FunSuite:
   test("an enemy's faceup Vision is askable of the Police's ruler"):
     faceup(searched(board(), faith)) match
       case DecisionOption.Unavailable(_, OptionReason.Askable(power, note,
-          asks)) =>
+          asks, _)) =>
         assertEquals(power, SecretPolice.id)
         assertEquals(note, SecretPolice.noFaceupConsent(
           PowerSourceRef.Card(police)))

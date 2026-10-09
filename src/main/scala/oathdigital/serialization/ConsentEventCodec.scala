@@ -17,13 +17,23 @@ private[serialization] trait ConsentEventCodec { this: GameEventJsonSupport =>
       case _: ConsentPreferencesCleared => ConsentPreferencesClearedType
 
   protected final val consentEncoder: PartialFunction[OathEvent, ujson.Value] =
-      case ConsentRequested(request) => ujson.Obj(
-        "requester" -> request.requester.value,
-        "decisionId" -> request.decisionId,
-        "target" -> DecisionAnswerCodec.encodeRef(request.target),
-        "asks" -> ujson.Arr.from(request.asks.map(ask => ujson.Obj(
-          "granter" -> ask.granter.value,
-          "powers" -> stringArray(ask.powers.map(_.value))))))
+      case ConsentRequested(request) =>
+        val encoded = ujson.Obj(
+          "requester" -> request.requester.value,
+          "decisionId" -> request.decisionId,
+          "target" -> DecisionAnswerCodec.encodeRef(request.target),
+          "asks" -> ujson.Arr.from(request.asks.map(ask => ujson.Obj(
+            "granter" -> ask.granter.value,
+            "powers" -> stringArray(ask.powers.map(_.value))))))
+        // Written only when set, so a request from before slice 3 reads
+        // back as it was written.
+        if request.covers.nonEmpty then
+          encoded("covers") = ujson.Arr.from(request.covers.map(key =>
+            ujson.Obj("powerId" -> key.power.value,
+              "requester" -> key.requester.value,
+              "decisionId" -> key.decisionId,
+              "target" -> DecisionAnswerCodec.encodeRef(key.target))))
+        encoded
       case ConsentAnswered(granter, granted) =>
         ujson.Obj("granter" -> granter.value, "granted" -> granted)
       case ConsentRequestWithdrawn(requester) =>
@@ -37,15 +47,29 @@ private[serialization] trait ConsentEventCodec { this: GameEventJsonSupport =>
   protected final def consentDecode(eventType: String, payload: ujson.Value,
       path: String): Option[Either[WireError, OathEvent]] =
     def player(name: String) = PlayerId(payload(name).str)
+    def covers: Either[WireError, Vector[ConsentKey]] =
+      payload.obj.get("covers").fold[Either[WireError, Vector[ConsentKey]]](
+        Right(Vector.empty))(raw => raw.arr.toVector.zipWithIndex
+        .foldLeft[Either[WireError, Vector[ConsentKey]]](Right(Vector.empty)) {
+          case (done, (key, index)) => for
+            keys <- done
+            target <- DecisionAnswerCodec.decodeRef(key("target"),
+              s"$path.covers[$index].target")
+          yield keys :+ ConsentKey(PowerId(key("powerId").str),
+            PlayerId(key("requester").str), key("decisionId").str, target)
+        })
     val decoder: PartialFunction[String, Either[WireError, OathEvent]] =
         case ConsentRequestedType =>
-          DecisionAnswerCodec.decodeRef(payload("target"), s"$path.target")
-            .map(target => ConsentRequested(ConsentRequest(player("requester"),
-              payload("decisionId").str, target,
-              payload("asks").arr.toVector.map(ask => ConsentAsk(
-                PlayerId(ask("granter").str),
-                ask("powers").arr.toVector.map(power => PowerId(power.str))))
-            )))
+          for
+            target <- DecisionAnswerCodec.decodeRef(payload("target"),
+              s"$path.target")
+            covered <- covers
+          yield ConsentRequested(ConsentRequest(player("requester"),
+            payload("decisionId").str, target,
+            payload("asks").arr.toVector.map(ask => ConsentAsk(
+              PlayerId(ask("granter").str),
+              ask("powers").arr.toVector.map(power => PowerId(power.str)))),
+            covered))
         case ConsentAnsweredType =>
           Right(ConsentAnswered(player("granter"), payload("granted").bool))
         case ConsentRequestWithdrawnType =>

@@ -1,12 +1,12 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations.{GrandScepter, HallOfMinisters,
-  LockedCards, OperationPipeline, OperationPolicy, OperationRestrictions,
-  RestrictionIcons}
+  LockedCards, OperationConsent, OperationPipeline, OperationPolicy,
+  OperationRestrictions, RestrictionIcons}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
 /** The global operation restrictions (global operation restrictions design,
@@ -217,3 +217,61 @@ class OperationRestrictionsSuite extends munit.FunSuite:
         discard(card, Location.PlayArea(p1)))).headOption.map(_.code)
     assertEquals(refused(cropRotation), Some("active-modifier"))
     assertEquals(refused(mountedLibrary), None)
+
+  /** p1 rules Ancient City, where the intact Hall and the plain card stand. */
+  private def hallRuledByP1: ReadyGame = Table.start.pawn(p1, at = hallSite)
+    .edifice(hall, EdificeSide.Intact, at = hallSite)
+    .warbandsAt(hallSite, p1, 1).denizen(plainCard, at = hallSite).ready
+
+  private val coversPlainCard = ConsentKey(HallOfMinisters.id, p2,
+    HallOfMinisters.discardKey, DecisionOptionRef.Denizen(plainCard))
+
+  private def waiverOf(ready: ReadyGame, operation: CoreOperation)
+      : Option[OperationWaiver] =
+    set.active(Vector.empty, Vector.empty).flatMap(_.reason(ready, operation))
+      .headOption.flatMap(_.waiver)
+
+  test("the Hall's refusal names its ruler as the one who may consent, and " +
+      "the card a grant covers"):
+    val byEnemy = discard(plainCard, Location.Site(hallSite), actor = p2)
+    assertEquals(waiverOf(hallRuledByP1, byEnemy), Some(OperationWaiver(
+      HallOfMinisters.id, Some(p1), coversPlainCard,
+      HallOfMinisters.noDiscardConsent(HallOfMinisters.source))))
+
+  test("under bandit rule the Hall's refusal names nobody to ask"):
+    val banditHall = Table.start.edifice(hall, EdificeSide.Intact,
+      at = hallSite).bandits(hallSite, 2).denizen(plainCard, at = hallSite)
+      .ready
+    val byEnemy = discard(plainCard, Location.Site(hallSite), actor = p2)
+    assertEquals(waiverOf(banditHall, byEnemy).map(_.granter), Some(None))
+
+  test("a grant remembered for the card lifts the Hall's refusal; a grant " +
+      "for another card does not"):
+    val ready = hallRuledByP1
+    val granted = ready.copy(consent = ConsentState(
+      answers = Map(coversPlainCard -> ConsentAnswer.Granted),
+      turn = Some(ConsentTurn.of(ready))))
+    val byEnemy = discard(plainCard, Location.Site(hallSite), actor = p2)
+    assertEquals(refusal(granted, byEnemy), None)
+    assertEquals(refusal(granted, byEnemy.copy(actingPlayer = p3)),
+      Some("discard-immune"))
+
+  test("only waivable refusals make an option askable, of other players, " +
+      "with what they cover"):
+    val byEnemy = discard(plainCard, Location.Site(hallSite), actor = p2)
+    val restrictions = set.active(Vector.empty, Vector.empty)
+    val refusals = OperationConsent.refusals(hallRuledByP1, Vector(byEnemy),
+      restrictions)
+    assertEquals(OperationConsent.ask(hallRuledByP1, p2, refusals),
+      Some(OptionReason.Askable(HallOfMinisters.id,
+        HallOfMinisters.noDiscardConsent(HallOfMinisters.source),
+        Vector(ConsentAsk(p1, Vector(HallOfMinisters.id))),
+        Vector(coversPlainCard))))
+    val locked = OperationReason("locked", "locked",
+      OperationReasonKind.Impossible)
+    assertEquals(OperationConsent.ask(hallRuledByP1, p2, refusals :+ locked),
+      None)
+    val refused = hallRuledByP1.copy(consent = ConsentState(
+      answers = Map(coversPlainCard -> ConsentAnswer.Refused),
+      turn = Some(ConsentTurn.of(hallRuledByP1))))
+    assertEquals(OperationConsent.ask(refused, p2, refusals), None)
