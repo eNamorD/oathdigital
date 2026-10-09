@@ -37,6 +37,20 @@ object GameIntentMapper:
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
+      case Intent.RequestConsent(id, target) =>
+        optionRef(target.optionKind, target.optionId, "$.intent.target")
+          .map(actor.requestConsent(id, _))
+      case Intent.AnswerConsent(value) => ConsentChoice.fromKey(value)
+        .toRight(GameIntentMappingFailure("$.intent.choice",
+          s"invalid consent choice '$value'")).map(actor.answerConsent)
+      case Intent.SetConsentPreference(value, requester, setting) =>
+        for
+          power <- PowerId.fromValue(value).toRight(GameIntentMappingFailure(
+            "$.intent.powerId", s"invalid power id '$value'"))
+          chosen <- ConsentSetting.fromKey(setting).toRight(
+            GameIntentMappingFailure("$.intent.setting",
+              s"invalid consent setting '$setting'"))
+        yield actor.setConsentPreference(power, PlayerId(requester), chosen)
 
   def bind(actorId: PlayerId, intent: Intent,
       modifiers: Vector[ModifierInvocation]): Result[GameCommand] =

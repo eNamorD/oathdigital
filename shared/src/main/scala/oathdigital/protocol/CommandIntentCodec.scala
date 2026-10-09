@@ -24,6 +24,13 @@ private[protocol] object CommandIntentCodec:
     case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)
     case ResolveWalker(id, payload) => tagged("resolveWalker", "decisionId" -> id,
       "payload" -> CommandNestedCodecs.encodeDecisionAnswerWire(payload))
+    case RequestConsent(id, target) => tagged("requestConsent",
+      "decisionId" -> id,
+      "target" -> CommandNestedCodecs.encodeStartArgWire(target))
+    case AnswerConsent(choice) => tagged("answerConsent", "choice" -> choice)
+    case SetConsentPreference(power, requester, setting) =>
+      tagged("setConsentPreference", "powerId" -> power,
+        "requesterId" -> requester, "setting" -> setting)
 
   def decode(value: ujson.Value, path: String): Either[ProtocolDecodeFailure, GameIntent] =
     obj(value, path).flatMap { value =>

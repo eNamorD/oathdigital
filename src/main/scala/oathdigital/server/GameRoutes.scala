@@ -38,6 +38,9 @@ private[server] object CommandRejectionMessage:
       case oathdigital.model.OathViolation.InvalidModifierInvocation(message) => message
       case oathdigital.model.OathViolation.FollowUpPending(followUp) =>
         s"Start or skip the queued ${followUp.action.key} first"
+      case oathdigital.model.OathViolation.ConsentPending =>
+        "Waiting for an answer to a consent request"
+      case oathdigital.model.OathViolation.ConsentUnavailable(reason) => reason
       case other => other.toString
 
 final class GameServerGateway(

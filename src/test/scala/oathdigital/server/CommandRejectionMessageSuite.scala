@@ -21,6 +21,10 @@ class CommandRejectionMessageSuite extends FunSuite:
         oathdigital.model.PowerSourceRef.Card(
           oathdigital.testkit.CatalogNames.denizen("Knights Errant"))))),
       "Start or skip the queued campaign first")
+    assertEquals(CommandRejectionMessage.text(OathViolation.ConsentPending),
+      "Waiting for an answer to a consent request")
+    assertEquals(CommandRejectionMessage.text(OathViolation.ConsentUnavailable(
+      "the game is over")), "the game is over")
 
   test("unmapped rejections fall back to a stable descriptive shape"):
     assertEquals(CommandRejectionMessage.text(OathViolation.GameNotStarted),

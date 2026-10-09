@@ -52,6 +52,27 @@ private[protocol] object CommandIntentDecoders:
         payload <- field(value, "payload", path).flatMap(
           CommandNestedCodecs.decodeDecisionAnswerWire(_, s"$path.payload"))
       yield ResolveWalker(id, payload)
+    case "requestConsent" =>
+      for
+        _ <- exact(value, Set("type", "decisionId", "target"), path)
+        id <- string(value, "decisionId", path)
+        target <- field(value, "target", path).flatMap(raw =>
+          CommandNestedCodecs.decodeStartArgsWire(ujson.Arr(raw),
+            s"$path.target"))
+          .flatMap:
+            case Vector(one) => Right(one)
+            case _ => Left(InvalidValue(s"$path.target",
+              "expected one consent target"))
+      yield RequestConsent(id, target)
+    case "answerConsent" => one(value, path, "choice")(AnswerConsent.apply)
+    case "setConsentPreference" =>
+      for
+        _ <- exact(value, Set("type", "powerId", "requesterId", "setting"),
+          path)
+        power <- string(value, "powerId", path)
+        requester <- string(value, "requesterId", path)
+        setting <- string(value, "setting", path)
+      yield SetConsentPreference(power, requester, setting)
     case other => Left(InvalidValue(s"$path.type", s"unknown intent type '$other'"))
 
   private def empty(value: ujson.Obj, path: String, result: GameIntent) = exact(value, Set("type"), path).map(_ => result)

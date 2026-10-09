@@ -40,7 +40,11 @@ class CommandProtocolSuite extends munit.FunSuite:
         Vector(NegotiationDisclosure("blue",
           NegotiationInformation.HeldRelic("red", "r2")))))),
     ResolveWalker("negotiation.deal", DecisionAnswerWire.AcceptDealWire),
-    ResolveWalker("negotiation.deal", DecisionAnswerWire.DeclineDealWire)
+    ResolveWalker("negotiation.deal", DecisionAnswerWire.DeclineDealWire),
+    RequestConsent("travel.destination", WalkerStartArgWire("site",
+      "site:deep-woods")),
+    AnswerConsent("always"),
+    SetConsentPreference("site.narrow-pass.pass", "blue", "case-by-case")
   )
 
   test("a usePower intent with an unknown field is rejected"):

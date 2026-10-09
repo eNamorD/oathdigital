@@ -42,6 +42,18 @@ object GameIntent:
   final case class RollWalker(pool: String) extends GameIntent
   final case class ResolveWalker(decisionId: String,
       payload: DecisionAnswerWire) extends GameIntent
+  /** Asks the rulers of the powers blocking `target` at the parked
+    * `decisionId` for consent to choose it (consent design). */
+  final case class RequestConsent(decisionId: String,
+      target: WalkerStartArgWire) extends GameIntent
+  /** Answers the consent request waiting on the sender: `never`, `no`,
+    * `yes` or `always`. */
+  final case class AnswerConsent(choice: String) extends GameIntent
+  /** Sets the sender's standing answer for `requesterId` on `powerId`:
+    * `never`, `case-by-case` or `always`. Not `playerId`: the codec refuses
+    * a field that could name the sender. */
+  final case class SetConsentPreference(powerId: String, requesterId: String,
+      setting: String) extends GameIntent
 
 /** One game-object reference in a walker procedure's start selection, spelled
   * exactly as a decision answer spells one: a kind and an id, decoded by the
