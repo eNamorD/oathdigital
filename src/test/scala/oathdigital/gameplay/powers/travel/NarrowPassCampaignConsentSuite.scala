@@ -114,8 +114,9 @@ class NarrowPassCampaignConsentSuite extends munit.FunSuite:
     assertEquals(rules().consentAsks(started(), p1, CampaignIds.targets,
       deepWoodsRef), Right(Vector(ConsentAsk(p2, Vector(passPower)))))
 
-  test("at a choose-one the Pass's target clause is not askable: a grant " +
-      "there would answer the decision"):
+  test("at a choose-one hooked by its own window the Pass's target clause " +
+      "is askable: the search finds a grant would answer the decision " +
+      "(consent slice 4)"):
     val passOnly = WalkerPowers(Vector(present(TravelSitePowers.all
       .collectFirst { case power: NarrowPassSitePower => power },
       "the Pass power")))
@@ -128,7 +129,7 @@ class NarrowPassCampaignConsentSuite extends munit.FunSuite:
     present(ProcedureWalker.parkedDecide(passRuledByP2, tree, pending,
         passOnly), "the choose-one").query match
       case one: DecisionQuery.ChooseOne =>
-        assertNotedBy(woods(one.options), "no-target")
+        assert(askable(woods(one.options)))
       case other => fail(s"expected a choose-one, got $other")
 
   test("a target the Pass alone forbids is askable when it is the only " +

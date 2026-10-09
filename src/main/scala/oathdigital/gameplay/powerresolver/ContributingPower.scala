@@ -89,9 +89,10 @@ final case class Waiver(
   * name a choice rather than the whole action. `note` is the hover reason of
   * each option it hides; it writes no Game Log line (travel destination
   * design, ruling 10). `waiver` is set when the power restricts its ruler's
-  * enemies: a grant remembered for the decision and the option lifts it, and
-  * at a choose-many an option it alone forbids may be asked about (consent
-  * design, slice 2).
+  * enemies: a grant remembered for the decision and the option lifts it. An
+  * option it alone forbids may be asked about at a choose-many (consent
+  * design, slice 2), and at a choose-one hooked by its own window when the
+  * search finds a grant would open it (slice 4).
   */
 final case class OptionRestriction(
     fn: (PowerCtx, DecisionOptionRef) => Option[OathViolation],

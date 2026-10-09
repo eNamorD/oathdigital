@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.model.{Answered, CoreOperation, Decide, DecisionAnswer,
   DecisionOption, DecisionQuery, OathEvent, OathState, OathViolation,
-  Operation, PendingTree, ReadyGame}
+  Operation, PendingTree, PowerWindow, ReadyGame}
 
 /** Runs a declared action tree to completion against immutable state and
   * throws the result away, reporting only the operations it would have
@@ -130,7 +130,9 @@ object WalkerSimulation:
     * and the walk continues until it finishes or parks again. Nothing is
     * persisted. Any other query shape is rejected. With `followUp`, an answer
     * that parks at a further choose-one also previews that decision's options
-    * (one level deep).
+    * (one level deep). A pay-or-ask step is previewed whether or not
+    * `followUp` asks for it, and does not use up that level, so a priced
+    * option still shows the toll its step asks (consent slice 4).
     */
   def previewParked(state: ReadyGame, tree: Operation, pending: PendingTree,
       powers: WalkerPowers, followUp: Boolean = false)
@@ -160,11 +162,18 @@ object WalkerSimulation:
       case WalkerOutcome.Finished(_, events) =>
         PreviewOutcome(recordedOperations(events), complete = true)
       case WalkerOutcome.Parked(next, events) =>
+        val at = after(state, pending, next, events)
+        val step = at.toOption.exists(waitsOnStep(_, tree, next, powers))
         PreviewOutcome(recordedOperations(events), complete = false,
-          next = if !followUp then Vector.empty
-            else after(state, pending, next, events)
-              .flatMap(previewParked(_, tree, next, powers))
-              .getOrElse(Vector.empty))
+          next = if !followUp && !step then Vector.empty
+            else at.flatMap(previewParked(_, tree, next, powers,
+              followUp = followUp && step)).getOrElse(Vector.empty))
+
+  /** Whether the walk parked at `next` waits on a pay-or-ask step. */
+  private def waitsOnStep(ready: ReadyGame, tree: Operation,
+      next: PendingTree, powers: WalkerPowers): Boolean =
+    ProcedureWalker.parkedDecide(ready, tree, next, powers, probing = false)
+      .exists(_.window.contains(PowerWindow.PayOrAsk))
 
   /** The parked position an answer leads to: its recorded steps applied to
     * `state` as replay applies them, parked at `next`. The steps start from

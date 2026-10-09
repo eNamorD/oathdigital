@@ -50,20 +50,25 @@ object PricedOptions:
       case _ => Vector.empty
 
   /** Whether the walk can go on from `outcome`: it finished, its further
-    * question could not be previewed, or some answer to it is accepted. */
+    * question could not be previewed, or some answer to it can go on. */
   private def answerable(outcome: PreviewOutcome): Boolean =
     outcome.complete || outcome.next.isEmpty ||
-      outcome.next.exists(_.outcome.isRight)
+      outcome.next.exists(_.outcome.exists(answerable))
 
-  /** "2 Supply", "2 Supply · 1 favor", "1 favor", or each answer of a
-    * further question joined with " or ": "2 Supply or 1 favor". */
+  /** The operations along each way the walk goes on from `outcome`: its own,
+    * then those of each accepted answer to the further question, a
+    * pay-or-ask step's included. Its own alone when no further answer is
+    * accepted. */
+  private def paths(outcome: PreviewOutcome): Vector[Vector[CoreOperation]] =
+    outcome.next.collect { case PreviewedOption(_, Right(following)) =>
+      following }.flatMap(paths) match
+      case Vector() => Vector(outcome.operations)
+      case found => found.map(outcome.operations ++ _)
+
+  /** "2 Supply", "2 Supply · 1 favor", "1 favor", or each way on joined
+    * with " or ": "2 Supply or 1 favor". */
   def badge(outcome: PreviewOutcome, actor: PlayerId): String =
-    val answers = outcome.next.collect {
-      case PreviewedOption(_, Right(following)) =>
-        outcome.operations ++ following.operations
-    }
-    if answers.isEmpty then words(outcome.operations, actor)
-    else answers.map(words(_, actor)).distinct.mkString(" or ")
+    paths(outcome).map(words(_, actor)).distinct.mkString(" or ")
 
   private def words(operations: Vector[CoreOperation], actor: PlayerId)
       : String =
@@ -99,7 +104,7 @@ object PricedOptions:
         followUp = false).get(ref).flatMap(_.toOption)
     (board, lifted(favor = false).orElse(lifted(favor = true))) match
       case (Some(board), Some(outcome)) =>
-        val (supply, favor) = spent(outcome.operations, actor)
+        val (supply, favor) = spent(paths(outcome).head, actor)
         if supply > board.supply.supply then
           s"Needs $supply Supply; you have ${board.supply.supply}"
         else if favor > board.favor then

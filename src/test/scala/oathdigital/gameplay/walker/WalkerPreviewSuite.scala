@@ -1,7 +1,8 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.testkit.PowerStubs.TransformStub
-import oathdigital.gameplay.walker.WalkerSimulation.PreviewOutcome
+import oathdigital.gameplay.walker.WalkerSimulation.{PreviewOutcome,
+  PreviewedOption}
 import oathdigital.model._
 import oathdigital.testkit.{Outcomes, Table}
 import oathdigital.testkit.Table.p1
@@ -126,3 +127,49 @@ class WalkerPreviewSuite extends munit.FunSuite:
     assert(WalkerSimulation.starts(spend, ready, WalkerPowers.empty))
     val unaffordable = Sequence(Vector[Operation](SpendSupply(p1, 3)))
     assert(!WalkerSimulation.starts(unaffordable, ready, WalkerPowers.empty))
+
+  /** Two plain decisions, then a step in `stepWindow`, then 2 Supply. */
+  private def chain(stepWindow: Option[PowerWindow]): Operation =
+    Sequence(Vector[Operation](
+      Decide("first", p1, DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Button(cheap, "Cheap")))),
+      Decide("second", p1, DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Button(dear, "Dear")))),
+      Decide("step", p1, DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Button(extra, "Pay"))), window = stepWindow),
+      SpendSupply(p1, 2)))
+
+  /** What `previewParked` with a follow-up says the first answer leads to. */
+  private def followed(action: Operation)(using munit.Location)
+      : Either[OathViolation, Vector[Either[OathViolation, PreviewOutcome]]] =
+    val ready = withSupply(5)
+    val parked = Outcomes.parked(
+      ProcedureWalker.advance(ready, action, None, WalkerPowers.empty))
+    WalkerSimulation.previewParked(ready, action, parked.tree,
+      WalkerPowers.empty, followUp = true).map(_.map(_.outcome))
+
+  test("a pay-or-ask step is previewed past the one follow-up level"):
+    val paid = PreviewOutcome(Vector(SpendSupply(p1, 2)), complete = true)
+    val stepped = PreviewOutcome(Vector.empty, complete = false,
+      next = Vector(PreviewedOption(DecisionOption.Button(extra, "Pay"),
+        Right(paid))))
+    assertEquals(followed(chain(Some(PowerWindow.PayOrAsk))),
+      Right(Vector(Right(PreviewOutcome(Vector.empty, complete = false,
+        next = Vector(PreviewedOption(DecisionOption.Button(dear, "Dear"),
+          Right(stepped))))))))
+    // Any other decision past the first follow-up is not previewed.
+    assertEquals(followed(chain(None)),
+      Right(Vector(Right(PreviewOutcome(Vector.empty, complete = false,
+        next = Vector(PreviewedOption(DecisionOption.Button(dear, "Dear"),
+          Right(PreviewOutcome(Vector.empty, complete = false)))))))))
+
+  test("a badge reads every way on, through each further question"):
+    val paying = PreviewOutcome(Vector(SpendSupply(p1, 2)), complete = true)
+    val waived = PreviewOutcome(Vector.empty, complete = true)
+    val stepped = PreviewOutcome(Vector(SpendSupply(p1, 1)), complete = false,
+      next = Vector(
+        PreviewedOption(DecisionOption.Button(cheap, "Pay"), Right(paying)),
+        PreviewedOption(DecisionOption.Button(dear, "Free"), Right(waived))))
+    val outer = PreviewOutcome(Vector.empty, complete = false, next = Vector(
+      PreviewedOption(DecisionOption.Button(extra, "Go"), Right(stepped))))
+    assertEquals(PricedOptions.badge(outer, p1), "3 Supply or 1 Supply")

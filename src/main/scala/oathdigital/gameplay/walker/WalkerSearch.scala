@@ -133,6 +133,22 @@ private[walker] object WalkerSearch:
         this.narrowed(decide, kept, reasons.get).getOrElse(narrowed)
       case _ => narrowed
 
+  /** `decide` with each unavailable option `reasons` names given that reason
+    * instead: an option the fold barred with its note, made askable once the
+    * search found that a grant would open it (consent slice 4). */
+  def reasoned(decide: Decide, reasons: Map[DecisionOptionRef, OptionReason])
+      : Decide =
+    if reasons.isEmpty then decide
+    else decide.query match
+      case one: DecisionQuery.ChooseOne => decide.copy(query = one.copy(
+        options = one.options.map {
+          case DecisionOption.Unavailable(option, _)
+              if reasons.contains(option.ref) =>
+            DecisionOption.Unavailable(option, reasons(option.ref))
+          case other => other
+        }))
+      case _ => decide
+
   private def kept(decide: Decide, refs: Vector[DecisionOptionRef],
       verdicts: Map[DecisionOptionRef, Either[OathViolation, Unit]],
       required: Boolean): Either[OathViolation, Option[Decide]] =

@@ -170,5 +170,10 @@ object PowerWindow:
     val key = "negotiation.eligibility"
   case object NegotiationSettlement extends OtherWindow:
     val key = "negotiation.settlement"
+  /** A toll or penalty step an enemy of the card's player ruler answers: pay,
+    * or go on without paying, which that ruler may consent to (consent
+    * design, "Toll and penalty steps"). Only the card's waivable restriction
+    * hooks it. */
+  case object PayOrAsk extends OtherWindow { val key = "consent.pay-or-ask" }
 
 enum PowerResolution { case PlayerSelected, Automatic }

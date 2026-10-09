@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, Restriction, Waiver}
-import oathdigital.model.{Answered, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
+import oathdigital.model.{Answered, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -172,6 +172,39 @@ private[walker] object WalkerPowerGather:
     else found.headOption.flatMap(first => consentAsk(decide, ref,
       found.map(forbid => Block(forbid.power, forbid.restriction.waiver,
         forbid.ctx)), first.ctx.state))
+
+  /** The asks of a parked choose-one's options that its own window's option
+    * restrictions bar (consent slice 4). The fold cannot search, so it marks
+    * each such option unavailable with the first restriction's note; here an
+    * option every one of whose blocks is waivable (ruling 8) becomes askable
+    * when `grantable` says a grant would open it. Empty for any other query
+    * and for a decision with no window of its own. */
+  def optionAsks(decide: Decide, state: ReadyGame, activePlayer: PlayerId,
+      powers: WalkerPowers, path: Vector[String],
+      procedure: Option[ProcedureRef], answered: Vector[Answered],
+      grantable: (DecisionOptionRef, Vector[PowerId]) => Boolean)
+      : Vector[(DecisionOptionRef, OptionReason)] =
+    (decide.query, decide.window) match
+      case (one: DecisionQuery.ChooseOne, Some(window)) =>
+        val byId: Map[PowerId, ContributingPower] =
+          powers.powers.map(power => power.id -> power).toMap
+        def ctxFor(power: ContributingPower): PowerCtx =
+          PowerCtx(state, activePlayer, power.source, window, path, decide,
+            procedure, answered)
+        val forbids = forbidding(decide, ContributionCollector.gather(window,
+          powers.windowIndex, ctxFor).optionRestrictions, ctxFor, byId)
+        one.options.collect {
+          case DecisionOption.Unavailable(option,
+              OptionReason.Noted(power, _)) => (option.ref, power)
+        }.flatMap { (ref, noted) =>
+          val found = forbids(ref)
+          found.headOption.filter(_.power == noted).flatMap(first =>
+            consentAsk(decide, ref, found.map(forbid => Block(forbid.power,
+              forbid.restriction.waiver, forbid.ctx)), first.ctx.state))
+            .filter(ask => grantable(ref, ask.asks.flatMap(_.powers).distinct))
+            .map(ref -> _)
+        }
+      case _ => Vector.empty
 
   /** A required decision with every option forbidden cannot be answered: the
     * violation is the first restriction's, for the first option.

@@ -442,16 +442,22 @@ object ProcedureWalker:
     * end (global operation restrictions design, "Lazy pruning"), each hidden
     * option a restriction's note explains kept as unavailable (the note is
     * its hover reason and nothing is journaled), or as declared when the
-    * powers do not search. */
+    * powers do not search. An option its own window's waivable restriction
+    * bars is made askable when a grant would open it (consent slice 4). */
   private def narrowAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Option[Decide]] =
     if !ctx.powers.probing then Right(Some(decide))
     else WalkerSearch.narrow(decide, verdict(decide, ctx, path)).map(_.map {
       cut =>
+        val grants = grantable(decide, ctx, path)
         val reasons = WalkerPowerGather.lookAheadNoted(ctx.root, decide, cut,
           ctx.state, ctx.activePlayer, ctx.powers, ctx.answered, ctx.procedure,
-          grantable(decide, ctx, path)).toMap
-        WalkerSearch.explained(decide, cut, reasons)
+          grants).toMap
+        val asks = WalkerPowerGather.optionAsks(decide, ctx.state,
+          ctx.activePlayer, ctx.powers, path, ctx.procedure, ctx.answered,
+          grants).toMap
+        WalkerSearch.reasoned(WalkerSearch.explained(decide, cut, reasons),
+          asks)
     })
 
   /** A search at a decision it reaches. Back at a decision it already stands
