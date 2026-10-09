@@ -11,8 +11,7 @@ specs.
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest. **Phase - Catalog batch 5** is in progress: slices 1
-to 3 are done.
+2026-10-01 playtest. **Phase - Catalog batch 5** is complete.
 
 ## Next
 
@@ -95,7 +94,7 @@ engine-blocked phase
 ([design](superpowers/specs/2026-10-08-catalog-batch-5-design.md),
 [rulings](superpowers/specs/2026-10-08-catalog-batch-5-rulings.md)).
 
-- [ ] **Slice 4: Adviser arrival.** Family Wagon.
+Every slice is done.
 
 ### Phase - Catalog batch - engine-blocked
 
