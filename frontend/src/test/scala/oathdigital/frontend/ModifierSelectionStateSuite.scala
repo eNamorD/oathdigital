@@ -15,12 +15,12 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     */
   private def renderOrderingPanel(modifiers: Vector[PreviewModifier])
       : org.scalajs.dom.Element =
-    val response = MajorActionPreviewResponse(4L, "travel", modifiers,
+    val response = MajorActionPreviewResponse(4L, "muster", modifiers,
       Vector.empty)
     val selection = ModifierSelectionState.reconcile(None,
-      context.copy(action = "travel"), modifiers, "ordering-preview")
+      context.copy(action = "muster"), modifiers, "ordering-preview")
     val draft = ModifierFlowDraft(
-      command = GameIntent.StartWalker("travel", Vector.empty),
+      command = GameIntent.StartWalker("muster", Vector.empty),
       baseParameters = Map.empty, preview = response, selection = selection)
     ActionDecisionRenderer.actionsPanel(
       actingProjection(gameId = "g", nextSequence = 4L,
@@ -70,11 +70,11 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       GameIntent.StartWalker("play-facedown-adviser", Vector.empty),
       GameIntent.StartWalker("place-banner-resource", Vector.empty))
     // A registered key names its action whatever start arguments it carries
-    // (Trade carries its own). Search and play-facedown-adviser choose their
-    // modifiers inside the walk, and place-banner-resource is not
-    // registered, so none of them names one.
+    // (Trade carries its own). Search, play-facedown-adviser and Travel
+    // choose their modifiers inside the walk, and place-banner-resource is
+    // not registered, so none of them names one.
     assertEquals(commands.flatMap(ModifierFlowDraft.action).map(_._1),
-      Vector("recover", "forge", "muster", "trade", "travel"))
+      Vector("recover", "forge", "muster", "trade"))
     assertEquals(ModifierFlowDraft.action(GameIntent.BeginRest), None)
     // An unregistered walker key is not swept in: the server would reject a
     // preview for an action it does not know.
@@ -82,12 +82,12 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       None)
 
   test("a stale context clears the flow draft"):
-    val response = MajorActionPreviewResponse(4, "travel", Vector(first),
+    val response = MajorActionPreviewResponse(4, "muster", Vector(first),
       Vector.empty)
     val selected = ModifierSelectionState.reconcile(None, context,
       Vector(first), "preview").toggle(first)
     val draft = ModifierFlowDraft(
-      command = GameIntent.StartWalker("travel", Vector.empty),
+      command = GameIntent.StartWalker("muster", Vector.empty),
       baseParameters = Map.empty[String, String], preview = response,
       selection = selected)
     assertEquals(ModifierFlowDraft.reconcile(Some(draft),
