@@ -31,6 +31,16 @@ class GameLogStartLineSuite extends munit.FunSuite:
     val destination = travelled.spans.collect { case site: LogSpan.Site => site }
     assertEquals(destination.size, 1)
 
+  test("a Muster with a pick names it on its own line, with no Chose line"):
+    val entries = format(golemMuster, None)
+    val tag = entryStarting(entries, "Muster")
+    assertEquals(tag.kind, LogKind.Section)
+    // Muster's printed cost; Golem Legions, a free modifier, adds nothing.
+    assertEquals(text(tag), "Muster −1 Supply")
+    assertEquals(text(entries(entries.indexOf(tag) + 1)),
+      "With Golem Legions")
+    assert(!texts(entries).exists(_.startsWith("Chose")), texts(entries))
+
   test("the first player's Finish Rest reports the supply it restored"):
     val script = round
     val restored = lines(format(script, None))
