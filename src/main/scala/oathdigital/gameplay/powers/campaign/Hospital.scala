@@ -101,7 +101,8 @@ case object Hospital extends BattlePlan:
 
   /** How many saved warbands the placement moves to Hospital's site: none
     * unless `user` rules it now and holds no Vow of Wandering, and no more
-    * than their supply holds. Cursed Cauldron reads it to leave out the warbands that did not stay dead. */
+    * than their supply holds. Cursed Cauldron reads it to leave out the
+    * warbands that did not stay dead. */
   def placeable(ready: ReadyGame, user: PlayerId): Int = (for
     site <- SiteRulers.siteOf(ready, cardId)
     if SiteRulers.rulerOf(ready, site).contains(SiteRuler.Player(user))

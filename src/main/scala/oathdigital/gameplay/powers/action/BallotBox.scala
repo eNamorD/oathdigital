@@ -24,8 +24,8 @@ object BallotBoxCard extends Denizen(DenizenId("141"), "Ballot Box", Suit.Hearth
   * the player's, bandits included, is replaced from the player's supply with
   * a `Replace`. Those the supply cannot cover are killed first, since a site
   * holds one kind of warband. A holder of Vow of Wandering can replace none,
-  * so every one is killed, after the Vow's line. A site left empty is refilled with bandits
-  * after the action. Nothing is asked.
+  * so every one is killed, after the Vow's line. A site left empty is
+  * refilled with bandits after the action. Nothing is asked.
   *
   * Its `used` lines cover the Moved line of the `Replace`. A short supply
   * adds a `removed` line for the warbands killed.
