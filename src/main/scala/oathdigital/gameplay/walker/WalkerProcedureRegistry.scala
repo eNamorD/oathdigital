@@ -223,9 +223,11 @@ object WalkerProcedureRegistry:
       startFacts = TravelProcedure.startFacts,
       optionPricing = Some(TravelOptions.priced)),
 
-    /** Economy. The first walker actions whose first node is a `Decide`
-      * and that opt in to the playable-option gate: nothing runs before the
-      * source decision, so the start can be previewed from the fresh tree.
+    /** Economy. Muster and Trade ask for their modifiers, then park on their
+      * source (modifier walker design). Nothing runs before those decisions,
+      * so the start is previewed through the playable-option gate. Their
+      * source decision shows only the sources a start could complete; it is
+      * not priced.
       */
     ActionRef.Muster -> Entry(
       fallbackKind = Some(ActionKind.Muster),
@@ -235,7 +237,8 @@ object WalkerProcedureRegistry:
         args).flatMap(_ => MusterProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
         args).flatMap(_ => MusterProcedure.rebuild(catalog, state, activePlayer)),
-      requiresPlayableOption = true),
+      requiresPlayableOption = true,
+      choosesModifiers = true),
 
     ActionRef.Trade -> Entry(
       fallbackKind = Some(ActionKind.Trade),
@@ -243,7 +246,8 @@ object WalkerProcedureRegistry:
       modifierWindow = Some(PowerWindow.TradeModifierSelection),
       build = TradeProcedure.build,
       rebuild = TradeProcedure.rebuild,
-      requiresPlayableOption = true),
+      requiresPlayableOption = true,
+      choosesModifiers = true),
 
     /** Challenge. Its first step spends the Supply, so a start runs an
       * operation before its first decision and cannot use the playable-option

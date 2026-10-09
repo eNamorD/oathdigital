@@ -1,6 +1,7 @@
 package oathdigital.application
 
 import oathdigital.gameplay.ModifierPlay
+import oathdigital.gameplay.powers.economy.GolemLegions
 import oathdigital.gameplay.powers.travel.Tents
 import oathdigital.model._
 import oathdigital.model.OathEvent.StepTakenBack
@@ -124,3 +125,20 @@ class UndoServiceSuite extends munit.FunSuite:
     val undone = accepted(service.handle("g", unpicked.nextSequence,
       GameCommand.Undo(p1)))
     assertEquals(undone.state, withTents.state)
+
+  test("Undo takes back a Muster modifier pick, and then the start"):
+    // No card stands at p1's site, so Start waits for Golem Legions.
+    val withGolem = table.adviser(p1, "Golem Legions")
+    val (service, _) = withGolem.service()
+    val started = accepted(service.handle("g", 0L,
+      GameCommand.StartWalker(ActionRef.Muster,
+        StartPayload(p1, Vector.empty, Vector.empty))))
+    val picked = accepted(service.handle("g", started.nextSequence,
+      GameCommand.ResolveWalker(p1, TreeDecision("muster.modifiers",
+        ModifierPlay.pick(GolemLegions.id)))))
+    val unpicked = accepted(service.handle("g", picked.nextSequence,
+      GameCommand.Undo(p1)))
+    assertEquals(unpicked.state, started.state)
+    val undone = accepted(service.handle("g", unpicked.nextSequence,
+      GameCommand.Undo(p1)))
+    assertEquals(undone.state, withGolem.state)

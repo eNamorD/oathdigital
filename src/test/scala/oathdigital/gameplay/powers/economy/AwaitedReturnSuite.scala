@@ -47,10 +47,10 @@ class AwaitedReturnSuite extends munit.FunSuite:
   test("it lets a player with no Supply trade"):
     val noSupply = holdingAwaitedReturn(supply = 0).ready
     val wrestlersCard = DecisionOptionRef.Denizen(wrestlers)
-    assertEquals(EconomyActions.attemptTrade(rules, noSupply, p1, Vector.empty,
-      "favor", wrestlersCard).left.toOption,
-      Some(OathViolation.CoreOperationRejected("insufficient-supply",
-        "a supply spend of 1 exceeds the 0 available")))
+    // Without it the Trade cannot start: Start waits for the pick.
+    assertEquals(EconomyActions.optionStatesAtStart(rules, noSupply, p1,
+      ActionRef.Trade, Vector(DecisionOptionRef.Button("favor"))),
+      Some(Vector("start" -> "unavailable", awaited.value -> "available")))
     val done = EconomyActions.trade(rules, noSupply, p1, modifiers, "favor",
       wrestlersCard)
     assertEquals(Look(done.result).supply(p1), 0)

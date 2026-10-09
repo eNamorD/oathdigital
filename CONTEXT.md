@@ -134,8 +134,8 @@ The steps a viewer walks between choosing a major action and sending it:
 previewing the action and ordering the modifiers it offers. A viewer is in at most one at a time, and leaves it by sending,
 cancelling, backing out, or a failed preview. A flow step keeps the viewer
 in the flow; a flow exit takes them out of it. Search, facedown-adviser
-play and Travel have no flow: they ask for their modifiers inside the walk,
-in the modifier decision.
+play, Travel, Muster and Trade have no flow: they ask for their modifiers
+inside the walk, in the modifier decision.
 _Avoid_: preview flow, targeting flow, modifier stage (a stage is one step of
 the flow)
 

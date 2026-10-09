@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
@@ -71,8 +72,10 @@ class VowOfPovertySuite extends munit.FunSuite:
       "it"):
     val ready = Table.start.pawn(p1, at = home).denizen(market, at = home)
       .adviser(p1, vow).favor(p1, 2).bankFavor(Suit.Nomad, 3).ready
-    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1,
-      Vector(MovingMarket.id), Vector(DecisionOptionRef.Button("secret"))))
+    val started = accepted(ModifierPlay.started(rules, Ready(ready),
+      ActionRef.Trade, p1,
+      PowerWindow.TradeModifierSelection, Vector(MovingMarket.id),
+      startArgs = Vector(DecisionOptionRef.Button("secret"))))
     val asked = accepted(rules.resolveWalker(started.state, p1,
       TradeProcedure.decisionId,
       ChooseOneAnswer(DecisionOptionRef.Denizen(market))))

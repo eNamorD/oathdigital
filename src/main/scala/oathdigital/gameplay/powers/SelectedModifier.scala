@@ -16,8 +16,8 @@ import oathdigital.model._
   * player owns the choice to select it, so the payment is made whether or not
   * the modifier then has an effect. The payment is `selectionPayments`:
   *
-  *  - A Search or Travel modifier is paid when it is picked in the walk's
-  *    modifier decision (`paidAtPick`).
+  *  - A Search, Travel, Muster or Trade modifier is paid when it is picked in
+  *    the walk's modifier decision (`paidAtPick`).
   *  - Every other action's modifier is paid at the very start of its action,
   *    until that action's slice moves it: the kit prepends the payment to the
   *    root of the action's tree (the action's eligibility window). A command
@@ -141,7 +141,8 @@ object SelectedModifier:
     * It grows slice by slice, with `WalkerProcedureRegistry`'s
     * `choosesModifiers`, until slice 4 deletes the payment Transform. */
   val paidAtPick: Set[MajorActionType] =
-    Set(MajorActionType.Search, MajorActionType.Travel)
+    Set(MajorActionType.Search, MajorActionType.Travel, MajorActionType.Muster,
+      MajorActionType.Trade)
 
   /** The window at the root of `action`'s tree, where a payment goes. */
   def eligibility(action: MajorActionType): PowerWindow =

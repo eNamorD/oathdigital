@@ -25,19 +25,21 @@ object ModifierPlay:
   val start: DecisionAnswer =
     DecisionAnswer.ChooseOneAnswer(ModifierPicks.start)
 
-  /** `actor` starts `procedure`, picks `modifiers` in order and starts. With
-    * no modifier, "Start" is answered only when the decision was asked. The
-    * events are every command's. */
+  /** `actor` starts `procedure` with `startArgs`, picks `modifiers` in
+    * order and starts. With no modifier, "Start" is answered only when the
+    * decision was asked. The events are every command's. */
   def started(rules: OathRules, state: OathState, procedure: StartableRef,
       actor: PlayerId, window: PowerWindow, modifiers: Vector[PowerId],
-      powers: WalkerPowers = production)
+      powers: WalkerPowers = production,
+      startArgs: Vector[DecisionOptionRef] = Vector.empty)
       : Either[OathViolation, OathTransition] =
     val decisionId = ModifierPicks.decisionId(window)
     def answer(from: OathTransition, chosen: DecisionAnswer) =
       rules.resolveWalker(from.state, actor, decisionId, chosen)
         .map(next => next.copy(events = from.events ++ next.events))
     for
-      begun <- rules.startWalker(state, procedure, actor)
+      begun <- rules.startWalker(state, procedure, actor,
+        startArgs = startArgs)
       picked <- modifiers.foldLeft[Either[OathViolation, OathTransition]](
         Right(begun))((done, power) => done.flatMap(answer(_,
           pick(power, powers))))

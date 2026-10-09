@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -42,8 +43,9 @@ class OldSongsSuite extends munit.FunSuite:
 
   private def tradeStarted(ready: ReadyGame, modifiers: Vector[PowerId])
       : OathTransition =
-    accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1, modifiers,
-      Vector(DecisionOptionRef.Button("favor"))))
+    accepted(ModifierPlay.started(rules, Ready(ready), ActionRef.Trade, p1,
+      PowerWindow.TradeModifierSelection, modifiers,
+      startArgs = Vector(DecisionOptionRef.Button("favor"))))
 
   private def states(started: OathTransition)
       : Option[Vector[(String, String)]] =

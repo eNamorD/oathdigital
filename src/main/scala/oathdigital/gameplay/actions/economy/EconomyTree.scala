@@ -2,17 +2,29 @@ package oathdigital.gameplay.actions.economy
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
+import oathdigital.gameplay.walker.{ModifierChoice, PricedOptions,
+  WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 
-/** The tree Muster and Trade share:
+/** The tree Muster and Trade share (modifier walker design for its first
+  * node):
   *
   * {{{
-  * Sequence(                                       // window = <Action>ActionEligibility
-  *   Decide(source),                               // window = <Action>SourceSelection
-  *   Branch { after the answer:
-  *     Sequence(PayCost, SpendSupply(1)),           // window = <Action>Cost
-  *     Sequence(the gain) })                       // window = <Action>Gain
+  * Sequence(
+  *   Repeat(ModifierChoice),                 // the modifiers, one per pass,
+  *                                           // then "Start Muster" or
+  *                                           // "Start Trade"
+  *   Sequence(                               // window = <Action>ActionEligibility
+  *     Decide(source),                       // window = <Action>SourceSelection
+  *     Branch { after the answer:
+  *       Sequence(PayCost, SpendSupply(1)),  // window = <Action>Cost
+  *       Sequence(the gain) }))              // window = <Action>Gain
   * }}}
+  *
+  * The modifiers come first. Each pick pays at once, and a picked modifier
+  * then folds at the windows after the decision. The start carries no
+  * selection of modifiers; Trade's resource is still its start selection.
   *
   * The source is a decision, not a start argument, so a power can add to or
   * remove from the offered cards through the decision's window. The gain is a
@@ -28,6 +40,8 @@ private[economy] object EconomyTree:
   final case class Kind(
       decisionId: String,
       heading: String,
+      modifiers: PowerWindow,
+      startLabel: String,
       eligibility: PowerWindow,
       sourceSelection: PowerWindow,
       cost: PowerWindow,
@@ -39,12 +53,27 @@ private[economy] object EconomyTree:
     * every site.
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      kind: Kind): Either[OathViolation, Operation] = for
+      kind: Kind): Either[OathViolation, Operation] =
+    gated(state, actor).map(_ => tree(catalog, state, actor, kind))
+
+  /** Every source the actor could draw on now under `powers`, each previewed
+    * through what follows the modifier decision. Empty when the action cannot
+    * start at all. The start control and the parked decision read it.
+    */
+  def startOptions(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId, kind: Kind, powers: WalkerPowers)
+      : Vector[PreviewedOption] =
+    gated(state, actor).map(_ => afterModifiers(catalog, state, actor, kind))
+      .flatMap(WalkerSimulation.preview(_, state, powers))
+      .getOrElse(Vector.empty)
+
+  private def gated(state: ReadyGame, actor: PlayerId)
+      : Either[OathViolation, Unit] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
       .toRight(OathViolation.PawnSiteMissing(actor))
     _ <- siteRulers(state)
-  yield tree(catalog, state, actor, kind)
+  yield ()
 
   /** Every site's forces must name a ruler the game can identify. Legacy
     * Economy refused a board where one did not, and nothing else rejects an
@@ -60,7 +89,14 @@ private[economy] object EconomyTree:
 
   /** The same tree without the start-only gates, for a resume. */
   def tree(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      kind: Kind): Operation = Sequence(Vector[Operation](
+      kind: Kind): Operation =
+    val rest = afterModifiers(catalog, state, actor, kind)
+    Sequence(Vector(ModifierChoice.loop(actor, kind.modifiers, rest,
+      kind.startLabel, Some(startReason)), rest))
+
+  /** The source pick, then the payment and the gain. */
+  private def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId, kind: Kind): Operation = Sequence(Vector[Operation](
     Decide(kind.decisionId, actor, DecisionQuery.ChooseOne(
       MusterSource.atSite(catalog, state, actor),
       heading = Some(kind.heading)), window = Some(kind.sourceSelection)),
@@ -68,6 +104,16 @@ private[economy] object EconomyTree:
       .flatMap(ref => afterSource(catalog, ready, actor, kind, ref)
         .fold(error => Vector[Operation](fail(error)), identity)))),
     Some(kind.eligibility))
+
+  /** Why "Start" cannot go on: the source decision priced, so that a
+    * shortfall of Supply is named ("Needs 1 Supply; you have 0"). The parked
+    * source decision itself still shows only the sources a start could
+    * complete. */
+  private def startReason(state: ReadyGame, tree: Operation,
+      pending: PendingTree, powers: WalkerPowers, decide: Decide)
+      : Vector[DecisionOption] =
+    PricedOptions.priced(state, tree, pending, powers, decide,
+      fallback = ModifierChoice.cannotStart)
 
   private def afterSource(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, kind: Kind, ref: DecisionOptionRef)

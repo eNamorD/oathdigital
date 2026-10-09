@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
+import oathdigital.gameplay.{ModifierPlay, OathRules, WalkerDiceFixture}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -40,8 +40,9 @@ class KnightsErrantSuite extends munit.FunSuite:
   /** Starts a Muster with `selected` and answers its source. */
   private def musterFrom(state: ReadyGame, selected: Vector[PowerId])
       : OathTransition =
-    val started = accepted(rules.startWalker(Ready(state), ActionRef.Muster, p1,
-      selected))
+    val started = accepted(ModifierPlay.started(rules, Ready(state),
+      ActionRef.Muster, p1,
+      PowerWindow.MusterModifierSelection, selected))
     val done = accepted(rules.resolveWalker(started.state, p1,
       MusterProcedure.decisionId,
       ChooseOneAnswer(DecisionOptionRef.Denizen(alchemist))))

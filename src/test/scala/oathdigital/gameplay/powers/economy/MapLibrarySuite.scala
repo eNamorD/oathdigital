@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ModifierOffers
@@ -40,8 +41,9 @@ class MapLibrarySuite extends munit.FunSuite:
     .denizen(errandBoy, at = away).bankFavor(Suit.Order, 3)
 
   private def tradeStarted(ready: ReadyGame): OathTransition =
-    accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1, selected,
-      Vector(DecisionOptionRef.Button("favor"))))
+    accepted(ModifierPlay.started(rules, Ready(ready), ActionRef.Trade, p1,
+      PowerWindow.TradeModifierSelection, selected,
+      startArgs = Vector(DecisionOptionRef.Button("favor"))))
 
   private def tradeModifiers(ready: ReadyGame): Vector[PowerId] =
     accepted(ModifierOffers.offerable(WalkerPowerCatalog.default(catalog),
