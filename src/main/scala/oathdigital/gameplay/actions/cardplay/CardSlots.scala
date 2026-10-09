@@ -35,9 +35,11 @@ final case class MoreDiscards(locked: DecisionOption,
   * they would be after it (`CardPlayRules.fits`): it offers a new slot when
   * that fits, and only that; or else each held adviser marked Replace whose
   * replacement fits, an adviser that does not count shown unavailable with
-  * its reason; and nothing when no replacement fits. A facedown adviser offers only its own slot, faceup. A
-  * Vision played faceup goes to the revealed Vision spot, and a Conspiracy
-  * played faceup is the "Play" button.
+  * its reason; and nothing when no replacement fits. An adviser play after
+  * which a note of `CardPlayRules` applies is shown `Warned` with its
+  * reason, and stays on offer. A facedown adviser offers only its own slot,
+  * faceup. A Vision played faceup goes to the revealed Vision spot, and a
+  * Conspiracy played faceup is the "Play" button.
   *
   * Each option is planned with `CardPlay.operations`, and the printed
   * restrictions in force judge the plan: an option a protection refuses is
@@ -188,18 +190,28 @@ object CardSlots:
     def slot(index: Int): DecisionOption = DecisionOption.AdviserPlay(
       DecisionOptionRef.AdviserPlay(player.player, index,
         orientation == Orientation.FaceUp))
+    def noted(option: DecisionOption, after: Vector[AdviserFace])
+        : DecisionOption =
+      rules.noteOn(after, played).fold(option)(
+        DecisionOption.Warned(option, _))
     origin match
       case CardPlay.Origin.FacedownAdviser =>
         // The card turns faceup where it lies.
         val own = held.indexWhere(_.id == card)
-        if own < 0 || !rules.fits(faces.updated(own, played)) then Vector.empty
-        else Vector(slot(own) -> SearchPlacement.Adviser(orientation, None))
+        if own < 0 then Vector.empty
+        else
+          val after = faces.updated(own, played)
+          if !rules.fits(after) then Vector.empty
+          else Vector(noted(slot(own), after) ->
+            SearchPlacement.Adviser(orientation, None))
       case CardPlay.Origin.TemporaryHand =>
-        if rules.fits(faces :+ played) then
-          Vector(slot(held.size) -> SearchPlacement.Adviser(orientation, None))
+        val added = faces :+ played
+        if rules.fits(added) then Vector(noted(slot(held.size), added) ->
+          SearchPlacement.Adviser(orientation, None))
         else replacements(faces, played, rules).map((index, fits) =>
           val option = DecisionOption.Replacing(slot(index), held(index).id)
-          (if fits then option else DecisionOption.Unavailable(option,
+          (if fits then noted(option, faces.updated(index, played))
+          else DecisionOption.Unavailable(option,
             OptionReason.Written(CardPlayRules.notCounted))) ->
             SearchPlacement.Adviser(orientation, Some(held(index).id)))
 

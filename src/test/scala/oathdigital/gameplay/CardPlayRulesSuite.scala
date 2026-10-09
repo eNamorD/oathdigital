@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{AdviserFace, CardPlayRules}
+import oathdigital.gameplay.actions.{AdviserFace, AdviserPlayNote,
+  CardPlayRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.walker.WalkerPowers
@@ -23,6 +24,7 @@ class CardPlayRulesSuite extends munit.FunSuite:
   private val tongue = CatalogNames.denizen("Silver Tongue")
   private val piper = CatalogNames.denizen("Pied Piper")
   private val wrestlers = CatalogNames.denizen("Wrestlers")
+  private val wagon = CatalogNames.denizen("Family Wagon")
   private def faceup(held: CardId) = AdviserFace(held, Orientation.FaceUp)
   private def facedown(held: CardId) = AdviserFace(held, Orientation.FaceDown)
   
@@ -53,6 +55,31 @@ class CardPlayRulesSuite extends munit.FunSuite:
     assertEquals(rules.counted(four), 3)
     assert(rules.fits(four))
     assert(!rules.fits(four.updated(0, facedown(piper))))
+
+  test("a card that lifts the limit removes it while it is a faceup " +
+      "adviser after the play; cards' own limits still apply"):
+    val rules = CardPlayRules.default.liftWhileFaceUp(wagon)
+    val five = Vector(faceup(wagon), faceup(card), facedown(tongue),
+      faceup(wrestlers), facedown(piper))
+    assertEquals(rules.limitOver(five), CardPlayRules.Unbounded)
+    assert(rules.fits(five))
+    assertEquals(rules.limitOver(five.updated(0, facedown(wagon))),
+      CardPlayRules.DefaultAdviserLimit)
+    assertEquals(rules.limitWhileFaceUp(tongue, 2)
+      .limitOver(five.updated(2, faceup(tongue))), 2)
+
+  test("an adviser play's note is the first that applies after the play"):
+    val first = OptionReason.Written("First")
+    val second = OptionReason.Written("Second")
+    val rules = CardPlayRules.default
+      .noteAdviserPlay(AdviserPlayNote(first, (after, _) => after.size > 1))
+      .noteAdviserPlay(AdviserPlayNote(second, (_, _) => true))
+    assertEquals(rules.noteOn(Vector(faceup(tongue), faceup(card)),
+      faceup(card)), Some(first))
+    assertEquals(rules.noteOn(Vector(faceup(card)), faceup(card)),
+      Some(second))
+    assertEquals(CardPlayRules.default.noteOn(Vector(faceup(card)),
+      faceup(card)), None)
 
   test("site discard permissions stack in the order they are given"):
     val stacked = CardPlayRules.default.permitSiteDiscard(testPermission)

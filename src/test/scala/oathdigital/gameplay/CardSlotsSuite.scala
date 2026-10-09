@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{AdviserFace, CardPlay, CardPlayRules,
-  RuleNotes, VisionRules}
+import oathdigital.gameplay.actions.{AdviserFace, AdviserPlayNote, CardPlay,
+  CardPlayRules, RuleNotes, VisionRules}
 import oathdigital.gameplay.actions.cardplay.{CardSlot, CardSlots,
   MoreDiscards}
 import oathdigital.gameplay.powers.search.CropRotation
@@ -332,6 +332,28 @@ class CardSlotsSuite extends munit.FunSuite:
     assertEquals(advisers(slotsOf(two, binding,
       CardPlay.Origin.FacedownAdviser, ownLimit(binding)), faceup = true),
       Vector(adviserPlay(1, faceup = true)))
+
+  test("a card that lifts the limit, faceup after the play, gives a new " +
+      "slot past three; played facedown it lifts nothing"):
+    val rules = CardPlayRules.default.liftWhileFaceUp(card)
+    val three = holding(rainBoots, binding, wrestlers).ready
+    assertEquals(advisers(slotsOf(three, rules = rules), faceup = true),
+      Vector(adviserPlay(3, faceup = true)))
+    assertEquals(advisers(slotsOf(three, rules = rules), faceup = false),
+      Vector(replacing(adviserPlay(0, faceup = false), rainBoots),
+        replacing(adviserPlay(1, faceup = false), binding),
+        replacing(adviserPlay(2, faceup = false), wrestlers)))
+
+  test("an adviser play after which a note applies carries it and stays " +
+      "on offer"):
+    val note = OptionReason.Written("Test note")
+    val rules = CardPlayRules.default.noteAdviserPlay(AdviserPlayNote(note,
+      (_, played) => played.orientation == Orientation.FaceDown))
+    val slots = slotsOf(atAncientCity.ready, rules = rules)
+    assertEquals(advisers(slots, faceup = true),
+      Vector(adviserPlay(0, faceup = true)))
+    assertEquals(advisers(slots, faceup = false),
+      Vector(DecisionOption.Warned(adviserPlay(0, faceup = false), note)))
 
   /** Ancient City full: Rain Boots, Ancient Binding and the ruined Hall. */
   private def fullWithHall: ReadyGame = atHome(rainBoots, binding)
