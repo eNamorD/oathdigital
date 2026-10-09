@@ -81,7 +81,8 @@ private[application] final class JournalFold(
           val settled = closedAt(record.index)
           settled.live match
             case top :: rest if top.namedBy(from, until, by) =>
-              Right(Progress(settled.recorded(record, top.before)
+              Right(Progress(settled.recorded(record,
+                JournalFold.carried(top.before, settled.state))
                 .copy(live = rest, redo = top :: settled.redo), None))
             case _ => Left(EventReplayFailure(record.index,
               OathViolation.InvalidEventOrder(s"taken-back [$from, $until) " +
@@ -90,11 +91,30 @@ private[application] final class JournalFold(
           val settled = closedAt(record.index)
           settled.redo match
             case top :: rest if top.namedBy(from, until, by) =>
-              Right(Progress(settled.recorded(record, top.after)
+              Right(Progress(settled.recorded(record,
+                JournalFold.carried(top.after, settled.state))
                 .copy(live = top :: settled.live, redo = rest), None))
             case _ => Left(EventReplayFailure(record.index,
               OathViolation.InvalidEventOrder(s"restored [$from, $until) " +
                 s"by ${by.value} is not the latest taken-back batch")))
+        // A consent fact opens no batch and joins none (consent design,
+        // "Events"): it closes the open batch, as a batch opening does, so
+        // a whole-journal replay batches exactly as live appends did.
+        case event: ConsentEvent =>
+          val settled = closedAt(record.index)
+          evolve(settled.state, event).left
+            .map(EventReplayFailure(record.index, _))
+            .map(after => Progress(settled.recorded(record, after), None))
         case event => evolve(journal.state, event).left
           .map(EventReplayFailure(record.index, _))
           .map(after => copy(journal = journal.recorded(record, after)))
+
+private[application] object JournalFold:
+  /** `target`, a state an undo or a redo returns to, with the consent
+    * ledger of `current` minus any waiting request (consent design,
+    * "Undo"): grants, refusals and preferences outlive the rewind. */
+  def carried(target: OathState, current: OathState): OathState =
+    (target, current) match
+      case (OathState.Ready(game), OathState.Ready(now)) =>
+        OathState.Ready(game.copy(consent = now.consent.carried))
+      case _ => target

@@ -4,7 +4,8 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.{PowerRuntime, OathRules}
 import oathdigital.gameplay.actions.search.SearchProcedure
-import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{ConsentPowers, PhasePowerCatalog,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
@@ -115,6 +116,7 @@ final class GameApplicationService(
   private val presentation = new GamePresentationProjector(catalog)
   private val descriptions = new PreviewModifierDescriptions(catalog, presentation)
   private val journalFold = new JournalFold(rules.evolve)
+  private val consent = new ConsentDesk(rules, ConsentPowers.default(catalog))
   private val log = new gamelog.GameLogFormatter(catalog, presentation)
 
   /** Derives a validated initial journal and state without accessing storage. */
@@ -238,13 +240,8 @@ final class GameApplicationService(
             !command.isInstanceOf[GameCommand.Begin] then
           Left(GameApplicationError.StreamNotFound(gameId))
         else
-          handleAgainst(
-            gameId,
-            FoldedJournal(genesis, Vector.empty, Nil),
-            command,
-            ExpectedStream.MustNotExist,
-            0L
-          )
+          routed(gameId, FoldedJournal(genesis, Vector.empty, Nil), command,
+            ExpectedStream.MustNotExist, 0L)
       case Some(stream) =>
         if expectedNextSequence != stream.nextSequence then
           Left(StaleClientPosition(
@@ -254,24 +251,40 @@ final class GameApplicationService(
         else
           command match
             case GameCommand.Begin(_, _) => Left(DuplicateGame(gameId))
-            // Undo and Redo go through the fold, not the rules: both are
-            // legal over a pending walker (undo design, "Rulings").
-            case GameCommand.Undo(actor) =>
-              reconstruct(gameId, stream).flatMap(journal =>
-                takeBack(gameId, journal, actor, stream.nextSequence))
-            case GameCommand.Redo(actor) =>
-              reconstruct(gameId, stream).flatMap(journal =>
-                restore(gameId, journal, actor, stream.nextSequence))
             case _ =>
-              reconstruct(gameId, stream).flatMap { journal =>
-                handleAgainst(
-                  gameId,
-                  journal,
-                  command,
+              reconstruct(gameId, stream).flatMap(journal =>
+                routed(gameId, journal, command,
                   ExpectedStream.AtNextSequence(stream.nextSequence),
-                  stream.nextSequence
-                )
-              }
+                  stream.nextSequence))
+
+  /** Undo and Redo go through the fold, not the rules: both are legal over a
+    * pending walker (undo design, "Rulings"). Consent commands go to the
+    * consent desk, legal at any time (consent design, "Commands").
+    * Everything else runs in the rules. */
+  private def routed(gameId: String, journal: FoldedJournal,
+      command: GameCommand, expected: ExpectedStream, nextSequence: Long)
+      : Either[GameApplicationError, GameAccepted] =
+    command match
+      case GameCommand.Undo(actor) =>
+        takeBack(gameId, journal, actor, expected, nextSequence)
+      case GameCommand.Redo(actor) =>
+        restore(gameId, journal, actor, expected, nextSequence)
+      case GameCommand.SetConsentPreference(granter, power, requester,
+          setting) =>
+        consentBatch(gameId, journal, consent.setPreference(journal.state,
+          granter, power, requester, setting), expected, nextSequence)
+      case _ => handleAgainst(gameId, journal, command, expected, nextSequence)
+
+  /** A consent command's events, appended as one batch. Any batch opening
+    * among them is left out of the reported events, as it is for every
+    * command. */
+  private def consentBatch(gameId: String, journal: FoldedJournal,
+      events: Either[OathViolation, Vector[OathEvent]],
+      expected: ExpectedStream, nextSequence: Long)
+      : Either[GameApplicationError, GameAccepted] =
+    events.left.map(CommandRejected.apply).flatMap(appended =>
+      appendBatch(gameId, journal, appended, appended.filterNot(
+        _.isInstanceOf[OathEvent.CommandAccepted]), expected, nextSequence))
 
   private def reconstruct(
       gameId: String,
@@ -338,14 +351,14 @@ final class GameApplicationService(
         .map(OathEvent.CommandAccepted(_)).toVector ++
         transition.events
       accepted <- appendBatch(gameId, journal, appended, transition.events,
-        transition.state, expected, nextSequence)
+        expected, nextSequence)
     yield accepted
 
   /** Appends the marker that takes back the latest live batch, and returns
     * the state before it (undo design, "Commands and authorization").
     * Nothing runs in the rules engine. */
   private def takeBack(gameId: String, journal: FoldedJournal,
-      actor: PlayerId, nextSequence: Long)
+      actor: PlayerId, expected: ExpectedStream, nextSequence: Long)
       : Either[GameApplicationError, GameAccepted] =
     for
       batch <- journal.undoable.toRight(
@@ -354,15 +367,14 @@ final class GameApplicationService(
         CommandRejected(OathViolation.UndoNotIssuer(actor, batch.issuer)))
       marker = OathEvent.StepTakenBack(batch.from, batch.until, actor)
       accepted <- appendBatch(gameId, journal, Vector(marker), Vector(marker),
-        batch.before, ExpectedStream.AtNextSequence(nextSequence),
-        nextSequence)
+        expected, nextSequence)
     yield accepted
 
   /** Appends the marker that restores the batch most recently taken back,
     * and returns the state after it (undo design, "Redo"). Nothing runs in
     * the rules engine. */
   private def restore(gameId: String, journal: FoldedJournal,
-      actor: PlayerId, nextSequence: Long)
+      actor: PlayerId, expected: ExpectedStream, nextSequence: Long)
       : Either[GameApplicationError, GameAccepted] =
     for
       batch <- journal.redoable.toRight(
@@ -371,37 +383,37 @@ final class GameApplicationService(
         CommandRejected(OathViolation.RedoNotIssuer(actor, batch.issuer)))
       marker = OathEvent.StepRestored(batch.from, batch.until, actor)
       accepted <- appendBatch(gameId, journal, Vector(marker), Vector(marker),
-        batch.after, ExpectedStream.AtNextSequence(nextSequence),
-        nextSequence)
+        expected, nextSequence)
     yield accepted
 
-  /** Appends `appended` as one batch and reports `reported` as the events
-    * the command produced. `state` is what the command left, which the fold
-    * reproduces from the batch. The fold runs before the append, so a batch
-    * it would reject is never written. */
+  /** Appends `appended`, then any stale-preference clearing it leaves
+    * (consent design, "Commands"), as one append, and reports `reported`
+    * plus the clearing. The state reported is the fold's, which an undo
+    * or a redo has given the current consent ledger. The fold runs before
+    * the append, so a batch it would reject is never written. */
   private def appendBatch(
       gameId: String,
       journal: FoldedJournal,
       appended: Vector[OathEvent],
       reported: Vector[OathEvent],
-      state: OathState,
       expected: ExpectedStream,
       nextSequence: Long
   ): Either[GameApplicationError, GameAccepted] =
     for
-      records <- encode(gameId, nextSequence, appended)
-      extended <- journalFold.extend(journal, appended.zipWithIndex.map {
-          case (event, offset) => RecordedEvent(nextSequence + offset, event) })
-        .left.map(failure => ReplayFailure(failure.index, failure.violation))
+      opened <- extended(journal, appended, nextSequence)
+      clearing = consent.stale(opened.state)
+      folded <- extended(opened, clearing, nextSequence + appended.size)
+      records <- encode(gameId, nextSequence, appended ++ clearing)
       result <- repository.append(gameId, expected, records)
         .left.map(storageError)
       accepted <- result match
         case Appended(first, count)
             if first == nextSequence && count == records.size =>
-          Right(GameAccepted(state, reported, nextSequence + count,
-            undo = extended.undoable.map(offered(extended, _)),
-            redo = extended.redoable.map(offered(extended, _)),
-            logRevision = extended.logRevision))
+          Right(GameAccepted(folded.state, reported ++ clearing,
+            nextSequence + count,
+            undo = folded.undoable.map(offered(folded, _)),
+            redo = folded.redoable.map(offered(folded, _)),
+            logRevision = folded.logRevision))
         case StreamAlreadyExists => Left(DuplicateGame(gameId))
         case RepositoryAppendResult.StreamNotFound =>
           Left(GameApplicationError.StreamNotFound(gameId))
@@ -413,6 +425,12 @@ final class GameApplicationService(
               s"repository returned first=$first count=$count"
           ))
     yield accepted
+
+  private def extended(journal: FoldedJournal, events: Vector[OathEvent],
+      from: Long): Either[GameApplicationError, FoldedJournal] =
+    journalFold.extend(journal, events.zipWithIndex.map {
+        case (event, offset) => RecordedEvent(from + offset, event) })
+      .left.map(failure => ReplayFailure(failure.index, failure.violation))
 
   /** Begin's journal, built against the rules' initial state: it has no
     * `CommandAccepted`. */
@@ -529,6 +547,9 @@ final class GameApplicationService(
       // folds it first); on a missing stream nothing has been taken.
       case GameCommand.Undo(_) => Left(OathViolation.NothingToUndo)
       case GameCommand.Redo(_) => Left(OathViolation.NothingToRedo)
+      // `routed` sends these to the consent desk; none reaches the rules.
+      case _: GameCommand.ConsentCommand => Left(OathViolation.InvalidEventOrder(
+        "a consent command never reaches the rules"))
 
   private def isWalkerResume(command: GameCommand): Boolean = command match
     case _: GameCommand.ResolveWalker | _: GameCommand.RollWalker => true

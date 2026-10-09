@@ -41,6 +41,13 @@ object GameCommand:
   /** Restores the batch most recently taken back since the last command
     * batch, which `actor` must have issued (undo design, "Redo"). */
   final case class Redo(actor: PlayerId) extends GameCommand
+  /** A command the service routes to its consent desk, never to the rules'
+    * walker gate: each is legal over a parked decision (consent design,
+    * "Commands"). */
+  sealed trait ConsentCommand extends GameCommand
+  /** `granter` sets their standing answer for `requester` on `power`. */
+  final case class SetConsentPreference(granter: PlayerId, power: PowerId,
+      requester: PlayerId, setting: ConsentSetting) extends ConsentCommand
 
   /** The player a command's batch is recorded for, in the `CommandAccepted`
     * that opens it (undo design, "Terms"): its actor. Begin has none, so a
@@ -62,6 +69,7 @@ object GameCommand:
     case UsePower(player, _, _) => Some(player)
     case Undo(_) => None
     case Redo(_) => None
+    case _: ConsentCommand => None
 
 /** Generic action-start data. Action-specific starts may widen this family
   * when another walker procedure needs more than its actor.

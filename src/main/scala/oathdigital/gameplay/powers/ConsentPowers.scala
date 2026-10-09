@@ -9,15 +9,16 @@ import oathdigital.model.{PlayerId, PowerId, PowerSourceRef, ReadyGame}
   * power with a contribution that declares a `Waiver`. The grid, the
   * stale-preference check and the log all look a power up here. */
 final class ConsentPowers(powers: Vector[ContributingPower]):
-  private val waivers: Map[PowerId, Waiver] = powers.flatMap(power =>
-    power.contributions.values.flatten.collectFirst {
-      case Restriction(_, _, Some(waiver)) => power.id -> waiver
-    }).toMap
+  private val waivers: Map[PowerId, Waiver] = (for
+    power <- powers
+    waiver <- power.contributions.values.flatten.collectFirst {
+      case Restriction(_, _, Some(waiver)) => waiver }
+  yield power.id -> waiver).toMap
 
   def waiver(power: PowerId): Option[Waiver] = waivers.get(power)
 
   def granter(ready: ReadyGame, power: PowerId): Option[PlayerId] =
-    waivers.get(power).flatMap(_.granter(ready))
+    waiver(power).flatMap { _.granter(ready) }
 
   def source(power: PowerId): Option[PowerSourceRef] =
     waivers.get(power).map(_.source)

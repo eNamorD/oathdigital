@@ -110,6 +110,12 @@ object OathViolation:
   /** A queued action waits for its player to start or skip it, and nothing
     * else may happen first (follow-up actions design, ruling 3). */
   final case class FollowUpPending(followUp: FollowUp) extends OathViolation
+  /** A consent request waits on its granters: only their answers, the
+    * requester's withdrawal and preference changes run (consent design,
+    * "Commands"). */
+  case object ConsentPending extends OathViolation
+  /** A consent command that cannot apply now, and why. */
+  final case class ConsentUnavailable(reason: String) extends OathViolation
   final case class SiteNotInPlay(siteId: SiteId)
       extends OathViolation
   final case class InvalidEventOrder(detail: String)

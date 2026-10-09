@@ -45,7 +45,10 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     GameCommand.SkipFollowUp(actor),
     GameCommand.UsePower(actor, SilverTongue.id,
       DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))),
-    GameCommand.Undo(actor), GameCommand.Redo(actor))
+    GameCommand.Undo(actor), GameCommand.Redo(actor),
+    GameCommand.SetConsentPreference(actor,
+      oathdigital.gameplay.powers.travel.MinesSite.mountain,
+      PlayerId("p2"), ConsentSetting.Always))
 
   private def isStepCommand(command: GameCommand): Boolean = command match
     case _: GameCommand.Undo | _: GameCommand.Redo => true
