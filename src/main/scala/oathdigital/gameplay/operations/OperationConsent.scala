@@ -5,11 +5,31 @@ import oathdigital.model._
 /** Consent on the operation path (consent design, slice 3): the refusals an
   * option's plan meets, and the ask they allow. */
 object OperationConsent:
-  /** Every refusal `restrictions` give `operations`, in plan order. */
+  /** Every refusal `restrictions` give `operations`, one batch, in plan
+    * order. */
   def refusals(ready: ReadyGame, operations: Vector[CoreOperation],
       restrictions: Vector[OperationRestriction]): Vector[OperationReason] =
+    val lifted = together(ready, operations, restrictions)
     operations.flatMap(operation =>
-      restrictions.flatMap(_.reason(ready, operation)))
+      lifted.flatMap(_.reason(ready, operation)))
+
+  /** `restrictions` for one batch of `operations`, which happen at the same
+    * time. Enforcement is all-or-nothing (the Hall of Ministers ruling): a
+    * grant remembered for any operation of the batch lifts its power for
+    * every operation of the batch by the same requester. */
+  def together(ready: ReadyGame, operations: Vector[CoreOperation],
+      restrictions: Vector[OperationRestriction])
+      : Vector[OperationRestriction] =
+    val now = ConsentTurn.of(ready)
+    restrictions.map {
+      case consented: ConsentedRestriction =>
+        consented.copy(together = operations
+          .flatMap(consented.inner.reason(ready, _)).flatMap(_.waiver)
+          .filter(waiver => ready.consent.remembered(waiver.covers, now)
+            .contains(ConsentAnswer.Granted))
+          .map(waiver => waiver.power -> waiver.covers.requester).toSet)
+      case other => other
+    }
 
   /** The ask for an option whose plan only `refusals` stop. It exists when
     * every refusal is waivable by a player other than `actor` and nothing it

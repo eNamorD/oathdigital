@@ -275,3 +275,23 @@ class OperationRestrictionsSuite extends munit.FunSuite:
       answers = Map(coversPlainCard -> ConsentAnswer.Refused),
       turn = Some(ConsentTurn.of(hallRuledByP1))))
     assertEquals(OperationConsent.ask(refused, p2, refusals), None)
+
+  test("a grant for one card's discard lifts the Hall for every discard of " +
+      "the same batch, which happen at the same time, and for no other " +
+      "batch"):
+    val wrestlers = CatalogNames.denizen("Wrestlers")
+    val ready = Table.from(hallRuledByP1).denizen(wrestlers, at = hallSite)
+      .ready
+    val granted = ready.copy(consent = ConsentState(
+      answers = Map(coversPlainCard -> ConsentAnswer.Granted),
+      turn = Some(ConsentTurn.of(ready))))
+    def byEnemy(card: DenizenId): CoreOperation =
+      discard(card, Location.Site(hallSite), actor = p2).copy(required = true)
+    val restrictions = set.active(Vector.empty, Vector.empty)
+    def run(operations: Vector[CoreOperation]) = OperationPipeline.run(granted,
+      operations, OperationPolicy.Permissive, restrictions)(Right(_))
+    assert(run(Vector(byEnemy(plainCard), byEnemy(wrestlers))).isRight)
+    assert(run(Vector(byEnemy(wrestlers))).isLeft)
+    assertEquals(OperationConsent.refusals(granted,
+      Vector(byEnemy(plainCard), byEnemy(wrestlers)), restrictions),
+      Vector.empty)

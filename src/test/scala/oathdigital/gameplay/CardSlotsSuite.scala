@@ -448,3 +448,21 @@ class CardSlotsSuite extends munit.FunSuite:
     assertEquals(operations.collect { case ruined: Discard.RuinedEdifice =>
       ruined.card }, Vector(hall))
     assertEquals(operations.collect { case bury: Bury => bury }, Vector.empty)
+
+  test("a grant for the replaced card frees the follow-up's other site " +
+      "cards: they are discarded with it, at the same time"):
+    val roar = CatalogNames.denizen("Threatening Roar")
+    val fae = CatalogNames.denizen("Fae Merchant")
+    val secondChance = CatalogNames.denizen("Second Chance")
+    val ready = guarded(_.warbandsAt(woods, p2, 1))
+    val granted = ready.copy(consent = ConsentState(answers = Map(
+      ConsentKey(HallOfMinisters.id, p1, HallOfMinisters.discardKey,
+        DecisionOptionRef.Denizen(fae)) -> ConsentAnswer.Granted),
+      turn = Some(ConsentTurn.of(ready))))
+    val slot = present(slotsOf(granted, roar, rules = permitted)
+      .find(_.option == replacing(siteSlot(0, woods), fae)), "the Replace slot")
+    val more = present(CardSlots.moreDiscards(catalog, granted, p1, roar,
+      CardPlay.Origin.TemporaryHand, permitted, slot), "the follow-up")
+    assert(more.options.contains(DecisionOption.Denizen(
+      DecisionOptionRef.Denizen(secondChance))), more.options.toString)
+    assertEquals(more.most, 1)

@@ -66,7 +66,10 @@ Pass blocks.
    "target" means a Campaign's target selection only (catalog batch 3
    rulings), so all of its effect is inside a Campaign.
 3. **Enforcement.** The game always enforces. There is no "forgot to
-   enforce" rule (CR p.43, ambiguities decision 3).
+   enforce" rule (CR p.43, ambiguities decision 3). Enforcement is
+   all-or-nothing: a waiver applies to every operation that happens at the
+   same time. A waived Hall of Ministers lets all of that moment's discards
+   through (official ruling on the Hall of Ministers, recorded 2026-10-09).
 4. **Bandits** never consent. An option blocked by a bandit-ruled power is
    not askable.
 5. **Own powers.** A ruler is never asked about a power they rule; ruling it
@@ -146,7 +149,8 @@ stack. The walker gains one new thing: options in an askable state.
   a travel destination apart from Deep Woods in a toll step. An operation
   restriction's grant is keyed by what it refuses instead: the Hall of
   Ministers' key is the requester, `operation.discard` and the card, so it
-  covers that card's discard on any path for the turn.
+  covers that card's discard on any path for the turn, and, by ruling 3,
+  every other discard of the same batch.
 - `pending: Option[ConsentRequest]`, where `ConsentRequest` holds the
   requester, decision id, target, `asks: Vector[ConsentAsk]` and `covers`,
   the keys it settles when they are not the asked option's. A
@@ -303,7 +307,10 @@ restriction, which refuses a discard wherever it runs. Its refusal names
 an `OperationWaiver`: the power, the granter and the key a grant covers.
 `ConsentedRestriction` wraps each printed restriction in
 `OperationRestrictions.active` and drops a refusal whose grant is
-remembered, the operation path's one ledger check. Card play's Replace
+remembered, the operation path's one ledger check. A batch's operations
+happen at the same time, so `OperationConsent.together` lifts a power for
+the whole batch once any of its operations has a grant (ruling 3): a grant
+for a Replace slot's card frees the follow-up's other site cards. Card play's Replace
 site slots and their follow-up, and the site-card questions of Roving
 Terror, Taming Charm and Great Feast, judge each option's plan:
 `OperationConsent.ask` makes it askable when only waivable refusals stop
@@ -435,7 +442,8 @@ holding, Forbidden Forest with the Pass is the likely first case.
 - The Hall of Ministers on discards with no option to ask from: Dark
   Enforcer and the region discards (Dazzle, Threatening Roar, Riots)
   skip a protected card, and Mounted Library's self-discard has no
-  consent point. Slice 4's pay-or-ask step could reach them.
+  consent point. Slice 4's pay-or-ask step could reach them. By ruling 3,
+  one grant would waive the Hall for a whole region discard.
 - Asking from a site-card question whose every candidate the Hall
   protects. A choose-one has no empty answer, so after a refusal it
   would wait with nothing to choose; the question is not asked.
