@@ -11,6 +11,7 @@ import oathdigital.testkit.{CatalogNames, Look}
   * saved, and placed on Hospital's site at the end of the Campaign if the
   * user rules it then. */
 class HospitalSuite extends munit.FunSuite:
+  private val vow = CatalogNames.denizen("Vow of Wandering")
   private val card = CatalogNames.denizen("Hospital")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
@@ -186,3 +187,15 @@ class HospitalSuite extends munit.FunSuite:
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     assert(!ready(run.state).game.current.rollPools.contains(
       CampaignPlans.appliedMarker(ref)))
+
+  test("a holder of Vow of Wandering has the dead killed as usual"):
+    val base = board(warbands = 5, supply = 7)
+    val b = withAdviser(hospitalFor(base, base.actor, hospitalSite), vow,
+      Orientation.FaceUp)
+    val done = commit(rules(losingDice), b, 4)
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
+    assertEquals(done.winner, Some(false))
+    assert(!done.ops.contains(returned(b, b.actor, 2, hospitalSite)))
+    assertEquals(Look(done.state).forces(hospitalSite),
+      SiteForces.Occupied(kind(b, b.actor), 2))
+    assertEquals(lines(done), Vector.empty)

@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.PowerFixture.warbandBank
 import oathdigital.gameplay.WalkerRecordedOpsReducer
 import oathdigital.model._
@@ -9,6 +10,9 @@ import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.rejected
 
 class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
+  private val vow = CatalogNames.denizen("Vow of Wandering")
+  private val forbidden = NoteText.Said("vow-of-wandering",
+    "Vow of Wandering forbids placing warbands on sites.", covers = false)
   import WhenPlayedHarness._
 
   private val power = registered[Garrison.type]
@@ -92,3 +96,22 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
       Garrison.decisionId, chooseSites(unruled))), OathViolation
       .InvalidEventOrder(s"decision ${Garrison.decisionId} does not offer " +
         "a selected option"))
+
+  test("a holder of Vow of Wandering gains the warbands but places none"):
+    val ready = Table.from(ruling(Vector(1, 1, 1), onBoard = 5))
+      .adviser(p1, vow).ready
+    val done = Outcomes.finished(play(ready, power, card))
+    sites.foreach(site => assertEquals(Look(done.treeless).forces(site),
+      SiteForces.Occupied(kind, 1)))
+    // 5 on the board and 3 gained, none placed.
+    assertEquals(Look(done.treeless).player(p1).board.warbands, 8)
+    assertEquals(said(power, done.events), Vector(forbidden))
+    assertJournalRebuilds(ready, done.events, done.treeless)
+
+  test("a holder short of warbands is not asked to choose the sites"):
+    // The bank holds one warband, so the board holds fewer than the sites.
+    val ready = Table.from(ruling(Vector(4, 4, 5), onBoard = 0))
+      .adviser(p1, vow).ready
+    val done = Outcomes.finished(play(ready, power, card))
+    assertEquals(Look(done.treeless).player(p1).board.warbands, 1)
+    assertEquals(said(power, done.events), Vector(forbidden))

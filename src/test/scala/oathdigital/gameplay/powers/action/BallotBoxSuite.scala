@@ -9,6 +9,9 @@ import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
 class BallotBoxSuite extends munit.FunSuite:
+  private val vow = CatalogNames.denizen("Vow of Wandering")
+  private val forbidden = NoteText.Said("vow-of-wandering",
+    "Vow of Wandering forbids placing warbands on sites.", covers = false)
   import PhasePowerHarness._
 
   private val box = CatalogNames.denizen("Ballot Box")
@@ -105,3 +108,18 @@ class BallotBoxSuite extends munit.FunSuite:
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
       "used.none", s"${home.value} held no warband to replace.",
       covers = false)))
+
+  test("a holder of Vow of Wandering removes the warbands, since none can " +
+      "be replaced"):
+    val ready = matching.adviser(p1, vow).warbandsAt(home, p2, 2).ready
+    val t = accepted(use(ready, power, source))
+    // Ancient City's printed bandit capacity is 3.
+    assertEquals(Look(after(t)).forces(home),
+      SiteForces.Occupied(ForceKind.Bandit, 3))
+    assertEquals(Look(after(t)).boardWarbands(p1),
+      Look(ready).boardWarbands(p1))
+    assertEquals(NoteText.said(power, t.events), Vector(forbidden,
+      NoteText.Said("removed",
+        s"Removed 2 ${p2.value} warbands at ${home.value}.",
+        covers = false)))
+    assertEquals(replayed(ready, t.events), Right(t.state))

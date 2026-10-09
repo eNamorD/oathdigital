@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers}
+import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
 
 object BanditPrinceCard extends Denizen(DenizenId("226"), "Bandit Prince", Suit.Discord) with Locked with AdviserOnly:
@@ -22,7 +23,9 @@ object BanditPrinceCard extends Denizen(DenizenId("226"), "Bandit Prince", Suit.
   * refused, so a site is never half replaced. A site whose bandits alone
   * exceed the bank is shown unavailable with what it needs, and a tally of
   * the warbands needed, limited by the bank, guides the choice; the answer's
-  * sum check stays. With no site left that fits, the question is not asked. One line per site tells the replacement, in answer order, and
+  * sum check stays. With no site left that fits, the question is not asked.
+  * A holder of Vow of Wandering is not asked either, and the Vow's line says
+  * why. One line per site tells the replacement, in answer order, and
   * covers that site's Moved line.
   */
 case object BanditPrince extends WhenPlayedPower:
@@ -82,7 +85,8 @@ case object BanditPrince extends WhenPlayedPower:
       Piece.Warbands(ForceKind.Bandit, count), Piece.Warbands(kind, count),
       PositionedLocation(Location.Site(site))) }
 
-  override def noteKeys: Vector[NoteKey] = Vector(replaced, none)
+  override def noteKeys: Vector[NoteKey] =
+    Vector(replaced, none, VowOfWandering.forbidden)
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
@@ -94,6 +98,8 @@ case object BanditPrince extends WhenPlayedPower:
       def ref(site: SiteId) = DecisionOptionRef.Site(site)
       if sites.isEmpty then Vector(Note(id, _ =>
         Some(none(PowerSourceRef.Card(cardId)))))
+      else if VowOfWandering.holds(live, actor) then Vector(Note(id, _ =>
+        Some(VowOfWandering.forbidden(PowerSourceRef.Card(cardId)))))
       else if fits.isEmpty then Vector.empty
       else Vector(
         Decide(decisionId, actor, DecisionQuery.ChooseMany(0, fits.size,

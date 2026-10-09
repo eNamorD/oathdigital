@@ -2,10 +2,14 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
+  Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class KeyToTheCitySuite extends munit.FunSuite:
+  private val vow = CatalogNames.denizen("Vow of Wandering")
+  private val forbidden = NoteText.Said("vow-of-wandering",
+    "Vow of Wandering forbids placing warbands on sites.", covers = false)
   import WhenPlayedHarness._
 
   private val power = registered[KeyToTheCity.type]
@@ -74,3 +78,13 @@ class KeyToTheCitySuite extends munit.FunSuite:
     assertEquals(said(power, done.events), Vector(killedTwo,
       NoteText.Said("unplaced", s"${p1.value} had no warband to place.",
         covers = true)))
+
+  test("a holder of Vow of Wandering kills and gains, but places nothing"):
+    val ready = start.adviser(p1, vow).warbandsAt(homeSite, p2, 2).ready
+    val done = Outcomes.finished(fire(ready, power, played))
+    val after = Look(done.treeless)
+    assertEquals(after.forces(homeSite), SiteForces.Empty)
+    // 3 on the board and 1 gained.
+    assertEquals(after.boardWarbands(p1), 4)
+    assertEquals(said(power, done.events), Vector(killedTwo, forbidden))
+    assertJournalRebuilds(ready, done.events, done.treeless)

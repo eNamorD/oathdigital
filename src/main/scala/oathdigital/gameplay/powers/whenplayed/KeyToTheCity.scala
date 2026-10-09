@@ -4,6 +4,7 @@ import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PlayerFacts
+import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
 
 object KeyToTheCityCard extends Denizen(DenizenId("18"), "Key to the City", Suit.Discord) with SiteOnly:
@@ -25,7 +26,8 @@ object KeyToTheCityCard extends Denizen(DenizenId("18"), "Key to the City", Suit
   * there is killed, the actor gains 1 warband, and 1 warband moves from the
   * actor's board to the site. Each is best effort. With no warband on the
   * board, nothing is placed, and the refill after the command puts bandits
-  * on the emptied site.
+  * on the emptied site. A holder of Vow of Wandering places nothing: the
+  * Vow's line replaces the placement line.
   */
 case object KeyToTheCity extends WhenPlayedPower:
   val cardId: DenizenId = KeyToTheCityCard.id
@@ -80,7 +82,8 @@ case object KeyToTheCity extends WhenPlayedPower:
       PlayerForceKind.of(ready, state).contains(kind)).map(_.player)
 
   override def noteKeys: Vector[NoteKey] =
-    Vector(killed, bandits, placed, unplaced, guarded)
+    Vector(killed, bandits, placed, unplaced, guarded,
+      VowOfWandering.forbidden)
 
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 
@@ -98,11 +101,15 @@ case object KeyToTheCity extends WhenPlayedPower:
       Note(id, killedNote(_, site)),
       BuildOps((live, _) => PlayerFacts.forceKind(live, actor).map(kind =>
         Vector(Gain.Warbands(actor, kind, Placed)))),
-      BuildOps((live, _) => PlayerFacts.forceKind(live, actor).map(kind =>
-        Vector(Move(Piece.Warbands(kind, Placed),
-          PositionedLocation(Location.PlayArea(actor)),
-          PositionedLocation(Location.Site(site)))))),
-      Note(id, placedNote(_, actor, site), covers = true))
+      BuildOps((live, _) =>
+        if VowOfWandering.holds(live, actor) then Right(Vector.empty)
+        else PlayerFacts.forceKind(live, actor).map(kind =>
+          Vector(Move(Piece.Warbands(kind, Placed),
+            PositionedLocation(Location.PlayArea(actor)),
+            PositionedLocation(Location.Site(site)))))),
+      Note(id, placedNote(_, actor, site), covers = true),
+      Note(id, states => Option.when(VowOfWandering.holds(states.now, actor))(
+        VowOfWandering.forbidden(cardSource))))
 
   /** The warbands the kill step took from the site. */
   private def killedNote(states: NoteStates, site: SiteId)
@@ -122,7 +129,8 @@ case object KeyToTheCity extends WhenPlayedPower:
   /** The actor's warbands the place step put at the site. */
   private def placedNote(states: NoteStates, actor: PlayerId, site: SiteId)
       : Option[PowerNote] =
-    PlayerFacts.forceKind(states.now, actor).toOption.map { kind =>
+    if VowOfWandering.holds(states.now, actor) then None
+    else PlayerFacts.forceKind(states.now, actor).toOption.map { kind =>
       val moved = states.previous.fold(0)((before, after) =>
         held(after, site, kind) - held(before, site, kind))
       if moved > 0 then placed(cardSource, NoteArg.Player(actor),

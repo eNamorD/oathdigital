@@ -2,11 +2,15 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, PlayerFacts}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
+  Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{as, rejected}
 
 class BanditPrinceSuite extends munit.FunSuite:
+  private val vow = CatalogNames.denizen("Vow of Wandering")
+  private val forbidden = NoteText.Said("vow-of-wandering",
+    "Vow of Wandering forbids placing warbands on sites.", covers = false)
   import WhenPlayedHarness._
 
   private val power = registered[BanditPrince.type]
@@ -117,3 +121,10 @@ class BanditPrinceSuite extends munit.FunSuite:
     val done = Outcomes.finished(play(ready, power, prince))
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector.empty)
+
+  test("a holder of Vow of Wandering is not asked, and the bandits stay"):
+    val ready = bandited.adviser(p1, vow).ready
+    val done = Outcomes.finished(play(ready, power, prince))
+    assertEquals(Look(done.treeless).forces(homeSite),
+      SiteForces.Occupied(ForceKind.Bandit, 2))
+    assertEquals(said(power, done.events), Vector(forbidden))

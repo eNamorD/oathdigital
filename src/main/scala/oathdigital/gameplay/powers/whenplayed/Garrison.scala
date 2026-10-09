@@ -4,6 +4,7 @@ import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PlayerFacts
+import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
 
 object GarrisonCard extends Denizen(DenizenId("7"), "Garrison", Suit.Order) with SiteOnly:
@@ -20,7 +21,9 @@ object GarrisonCard extends Denizen(DenizenId("7"), "Garrison", Suit.Order) with
   * The decision is a live `Branch` that exists only when the board holds
   * fewer warbands than there are ruled sites, read after the gain ran (the
   * walker re-selects it against the same stored state on resume). The
-  * placement puts a warband on every ruled site, or on the chosen ones.
+  * placement puts a warband on every ruled site, or on the chosen ones. A
+  * holder of Vow of Wandering places none and is not asked: the Vow's line
+  * takes the place of the question.
   */
 case object Garrison extends WhenPlayedPower:
   val cardId: DenizenId = GarrisonCard.id
@@ -68,9 +71,21 @@ case object Garrison extends WhenPlayedPower:
     }.toRight(OathViolation.InvalidEventOrder(
       "no Garrison site choice is recorded"))
 
+  override def noteKeys: Vector[NoteKey] = Vector(VowOfWandering.forbidden)
+
+  /** Whether Vow of Wandering stops the placement: the actor holds it and
+    * rules a site. */
+  private def barred(ready: ReadyGame, actor: PlayerId): Boolean =
+    VowOfWandering.holds(ready, actor) && ruled(ready, actor).nonEmpty
+
   def effect(ctx: PowerCtx): Vector[Operation] =
     val actor = ctx.activePlayer
     Vector(
       BuildOps((ready, _) => gain(ready, actor)),
-      Branch((ready, _) => ask(ready, actor)),
-      BuildOps((ready, pending) => place(ready, actor, pending)))
+      Branch((ready, _) =>
+        if barred(ready, actor) then Vector(Note(id, _ =>
+          Some(VowOfWandering.forbidden(PowerSourceRef.Card(cardId)))))
+        else ask(ready, actor)),
+      BuildOps((ready, pending) =>
+        if barred(ready, actor) then Right(Vector.empty)
+        else place(ready, actor, pending)))

@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powers.PlayerFacts
+import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
 
 object HospitalCard extends Denizen(DenizenId("149"), "Hospital", Suit.Hearth) with SiteOnly:
@@ -33,7 +34,8 @@ object HospitalCard extends Denizen(DenizenId("149"), "Hospital", Suit.Hearth) w
   * When the Campaign ends, that many warbands move from the user's supply to
   * Hospital's site, if the user rules it then, and Hospital says so. When
   * its site was a Conquest target the attacker won, the user rules it no
-  * longer and nothing comes back.
+  * longer and nothing comes back. Nor does it for a holder of Vow of
+  * Wandering: their dead stay killed, and Hospital writes no line.
   */
 case object Hospital extends BattlePlan:
   val cardId: DenizenId = HospitalCard.id
@@ -98,11 +100,12 @@ case object Hospital extends BattlePlan:
     children)).getOrElse(children)
 
   /** How many saved warbands the placement moves to Hospital's site: none
-    * unless `user` rules it now, and no more than their supply holds. Cursed
-    * Cauldron reads it to leave out the warbands that did not stay dead. */
+    * unless `user` rules it now and holds no Vow of Wandering, and no more
+    * than their supply holds. Cursed Cauldron reads it to leave out the warbands that did not stay dead. */
   def placeable(ready: ReadyGame, user: PlayerId): Int = (for
     site <- SiteRulers.siteOf(ready, cardId)
     if SiteRulers.rulerOf(ready, site).contains(SiteRuler.Player(user))
+    if !VowOfWandering.holds(ready, user)
     kind <- PlayerFacts.forceKind(ready, user).toOption
   yield Hospital.saved(ready)
     .min(ready.banks.warbandSupply.getOrElse(kind, 0))).getOrElse(0)

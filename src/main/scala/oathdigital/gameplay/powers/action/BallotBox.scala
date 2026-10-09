@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powers.PlayerFacts
+import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
 
 object BallotBoxCard extends Denizen(DenizenId("141"), "Ballot Box", Suit.Hearth) with SiteOnly:
@@ -22,7 +23,8 @@ object BallotBoxCard extends Denizen(DenizenId("141"), "Ballot Box", Suit.Hearth
   * face, at the site, Ballot Box included. Every warband there that is not
   * the player's, bandits included, is replaced from the player's supply with
   * a `Replace`. Those the supply cannot cover are killed first, since a site
-  * holds one kind of warband. A site left empty is refilled with bandits
+  * holds one kind of warband. A holder of Vow of Wandering can replace none,
+  * so every one is killed, after the Vow's line. A site left empty is refilled with bandits
   * after the action. Nothing is asked.
   *
   * Its `used` lines cover the Moved line of the `Replace`. A short supply
@@ -33,7 +35,7 @@ final case class BallotBox private (catalog: ExecutableCatalog)
   import BallotBox._
 
   override def noteKeys: Vector[NoteKey] = Vector(replaced, replacedBandits,
-    removed, removedBandits, unmatched, empty)
+    removed, removedBandits, unmatched, empty, VowOfWandering.forbidden)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match
@@ -55,10 +57,13 @@ final case class BallotBox private (catalog: ExecutableCatalog)
       line(unmatched, NoteArg.Player(player), NoteArg.Site(site))
     else enemies(ready, player, site) match
       case None => line(empty, NoteArg.Site(site))
-      case Some((kind, count)) => Vector(
-        BuildOps((live, _) => replacement(live, player, site, kind, count)),
-        Note(this.id, replacedNote(_, site, kind, source), covers = true),
-        Note(this.id, removedNote(_, site, kind, source)))
+      case Some((kind, count)) =>
+        (if VowOfWandering.holds(ready, player) then
+          line(VowOfWandering.forbidden) else Vector.empty) ++ Vector(
+          BuildOps((live, _) =>
+            replacement(live, player, site, kind, count)),
+          Note(this.id, replacedNote(_, site, kind, source), covers = true),
+          Note(this.id, removedNote(_, site, kind, source)))
 
   /** Whether a faceup denizen adviser of the player's shares a suit with a
     * faceup denizen or an edifice at the site. */
@@ -88,7 +93,9 @@ final case class BallotBox private (catalog: ExecutableCatalog)
       kind: ForceKind, count: Int)
       : Either[OathViolation, Vector[CoreOperation]] =
     PlayerFacts.forceKind(ready, player).map { mine =>
-      val covered = count.min(PlayerFacts.banked(ready, mine))
+      val covered =
+        if VowOfWandering.holds(ready, player) then 0
+        else count.min(PlayerFacts.banked(ready, mine))
       val at = PositionedLocation(Location.Site(site))
       Vector[CoreOperation]() ++
         Option.when(count > covered)(
