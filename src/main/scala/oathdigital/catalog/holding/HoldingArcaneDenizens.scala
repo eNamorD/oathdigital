@@ -7,13 +7,6 @@ import oathdigital.model.{Cost, DenizenId, PowerId, Suit}
 // Generated from the retired runtime JSON (card classes slice 1).
 // Hand-edited from here on; a card moves out when it is implemented.
 
-object GolemLegionsCard extends Denizen(DenizenId("199"), "Golem Legions", Suit.Arcane) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.golem-legions"),
-    persistent = false, cost = Cost.free,
-    text = "You may muster by placing [favor] on Golem Legions. _It " +
-      "counts itself as a matching adviser._")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object CouncilArbiterCard extends Denizen(DenizenId("200"), "Council Arbiter", Suit.Arcane) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.council-arbiter"),
     persistent = false, cost = Cost.free,

@@ -42,6 +42,11 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val mustered = mine.indexWhere(_.startsWith("Mustered "))
     assert(start >= 0 && mustered > start, mine)
 
+  test("Muster on Golem Legions: the line names the adviser as the source"):
+    val mine = lines(golemMuster, None)
+    // 1, plus 1 for Golem Legions, a faceup Arcane adviser.
+    assert(mine.contains("Mustered 2 warbands with Golem Legions"), mine)
+
   test("Trade: the tag waits for the cost, then says what it bought"):
     val script = trade
     val mine = lines(script, None)

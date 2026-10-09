@@ -10,6 +10,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
+import oathdigital.gameplay.powers.economy.GolemLegions
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
@@ -299,6 +300,15 @@ object LogScripts:
       .pawn(p1, "Deep Woods").adviser(p1, "Initiation Rite")).banditsRefilled)
     start(act, ActionRef.Muster)
     Script("initiated-muster", service, Look(act.ready).active)
+
+  /** p1 musters on Golem Legions, their adviser, with no card at their site.
+    * Golem Legions is selected for the Muster. */
+  def golemMuster(using munit.Location): Script =
+    val (service, act) = atTable("golem-muster", tableWithOnePawnPerSite
+      .adviser(p1, "Golem Legions").banditsRefilled)
+    act.after(GameCommand.StartWalker(ActionRef.Muster,
+      StartPayload(p1, Vector(GolemLegions.id))))
+    Script("golem-muster", service, p1)
 
   /** Trade for secrets, on the second player's turn, at the site with the
     * source. It costs two favor and a player starts with one, so a second
