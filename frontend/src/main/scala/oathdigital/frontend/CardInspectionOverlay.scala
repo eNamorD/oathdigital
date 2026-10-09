@@ -100,6 +100,8 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     panel.appendChild(no)
     body.appendChild(panel)
     open(origin)
+    // The safe answer first: Enter on arrival asks nobody.
+    no.focus()
 
   private def clear(): Unit =
     while body.firstChild != null do body.removeChild(body.firstChild)

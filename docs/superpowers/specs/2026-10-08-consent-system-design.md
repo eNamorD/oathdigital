@@ -391,3 +391,6 @@ holding, Forbidden Forest with the Pass is the likely first case.
   destination decision, so this is exact there; slices 2 and 4 must tie them.
 - Hiding the decision's phase from the requester while their request waits.
   The decision itself is withheld.
+- Askable options on the client's shared board homes, variant toggles and
+  board-decision buttons. Those paths treat an askable option as unavailable
+  or submit it directly; no slice-1 option takes them.

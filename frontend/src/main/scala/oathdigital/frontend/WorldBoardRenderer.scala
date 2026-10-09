@@ -154,7 +154,7 @@ private[frontend] object WorldBoardRenderer:
  def world(
      value: GameProjection,
      options: BoardOptions,
-     submit: GameCommand => Unit = _ => ()
+     submit: Option[GameCommand => Unit] = None
  ): dom.Element =
    val panel = element("section", "panel world")
    panel.setAttribute("aria-label", "The World")

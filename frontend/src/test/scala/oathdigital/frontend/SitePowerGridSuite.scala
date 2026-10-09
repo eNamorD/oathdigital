@@ -53,14 +53,23 @@ class SitePowerGridSuite extends munit.FunSuite:
       "preference"):
     var sent = Vector.empty[Intent]
     val world = WorldBoardRenderer.world(ruling, BoardOptions.none,
-      command => sent :+= command)
+      Some(command => sent :+= command))
     label(world).click()
     val grid = present(power.grid)
     assertEquals(grid.rows, Vector(ConsentGridRow("blue", "Blue",
       "case-by-case")))
-    grid.choose("blue", "always")
+    grid.choose.foreach(_("blue", "always"))
     assertEquals(sent, Vector(Intent.SetConsentPreference(
       "site.narrow-pass.pass", "blue", "always")))
+
+  test("without control the ruler's grid shows the settings and changes " +
+      "none"):
+    label(WorldBoardRenderer.world(ruling, BoardOptions.none)).click()
+    val grid = present(power.grid)
+    assertEquals(grid.choose, None)
+    val drawn = ConsentGridView.render(grid)
+    assert(all(drawn, ".consent-grid-choice")
+      .forall(_.asInstanceOf[dom.html.Button].disabled))
 
   test("opening the power does not pick the site it stands on"):
     var picked = Vector.empty[DecisionOptionState]
@@ -82,7 +91,7 @@ class SitePowerGridSuite extends munit.FunSuite:
     var chosen = Vector.empty[(String, String)]
     overlay.showPower("Pass", Vector(passText), Some(ConsentGrid(
       Vector(ConsentGridRow("blue", "Blue", "case-by-case")),
-      (player, setting) => chosen :+= (player -> setting))), opener)
+      Some((player, setting) => chosen :+= (player -> setting)))), opener)
     assertEquals(root.querySelector(".consent-grid-heading").textContent,
       "Consent preferences")
     val choices = all(root, ".consent-grid-choice")

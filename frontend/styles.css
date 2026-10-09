@@ -261,10 +261,17 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
    brass, and clickable. */
 .board-option-askable { border-color: var(--consent-amber);
   box-shadow: inset 0 0 0 2px var(--consent-amber); }
-.board-option-askable:hover, .board-option-askable:focus-visible {
+.board-option-askable:hover, .board-option-askable:focus-visible,
+.board-option-askable.board-option-hover {
   border-color: #fff2d6; box-shadow: 0 0 0 3px rgba(232, 163, 61, 0.4); }
-.walker-choice-askable { border-color: var(--consent-amber);
-  color: var(--consent-amber); }
+/* In the pane the Action face paints every button at one class of
+   specificity, so these carry the pane's class too. */
+.pane-actions .walker-choice-askable,
+.pane-actions .board-decision-loose-option.board-option-askable {
+  border-color: var(--consent-amber); color: var(--consent-amber); }
+.pane-actions .walker-choice-askable:hover:not(:disabled),
+.pane-actions .board-decision-loose-option.board-option-askable:hover:not(:disabled) {
+  border-color: #fff2d6; color: var(--consent-amber); }
 /* The badge sits inside the corner: card faces and site boxes clip what
    overflows them. Small marks (a name, a pawn, a banner) carry the ring
    alone. */
