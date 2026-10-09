@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.Site
+import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.wake.{HeadwatersSite, TidalMarshesSite}
 import oathdigital.model.{DecisionOptionRef, Location, Move, NoteKey,
@@ -146,12 +147,22 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
     extends ContributingPower:
   def source: RuleSourceRef = RuleSourceRef.Site(site)
   override def noteKeys: Vector[NoteKey] =
-    Vector(NarrowPassSitePower.noTarget, NarrowPassSitePower.noTravel)
+    Vector(NarrowPassSitePower.noTarget, NarrowPassSitePower.noTravel,
+      NarrowPassSitePower.noTravelConsent)
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelActionEligibility ->
-      Vector(Restriction((ctx, _) => blocked(ctx), travelNote)),
+      Vector(Restriction((ctx, _) => blocked(ctx), travelNote,
+        Some(travelWaiver))),
     PowerWindow.CampaignTargetSelection ->
       Vector(OptionRestriction(campaignBlocked, campaignNote)))
+
+  /** "Unless you have the consent of the Pass's ruler" (consent design,
+    * slice 1): the player who rules the Pass may waive it for a Travel. */
+  private val travelWaiver = Waiver(
+    ready => SiteRulers.rulerOf(ready, site).collect {
+      case SiteRuler.Player(player) => player },
+    PowerSourceRef.Site(site),
+    (_, _) => NarrowPassSitePower.noTravelConsent(PowerSourceRef.Site(site)))
 
   /** A blocked destination's hover reason (travel destination design,
     * ruling 4). */
@@ -226,6 +237,11 @@ object NarrowPassSitePower:
   /** "Cannot travel to other sites in the region." */
   val noTravel: NoteKey = NoteKey("no-travel", Vector(
     NotePart.Text("Cannot travel to other sites in the region.")))
+  /** "Cannot travel to other sites in the region without ruler's consent.":
+    * the reason of a destination its ruler may be asked about. */
+  val noTravelConsent: NoteKey = NoteKey("no-travel-consent", Vector(
+    NotePart.Text("Cannot travel to other sites in the region without " +
+      "ruler's consent.")))
 
 /** The sites' Travel terrain contributions. Static site topology lives on
   * the power objects; command state supplies only the current route through

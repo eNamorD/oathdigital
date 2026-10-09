@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Answered, CampaignPlanOffer, CoreOperation, Decide, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, Operation, OperationRestriction, OptionReason, PlayerId, PowerId, PowerNote, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
+import oathdigital.model.{Answered, CampaignPlanOffer, CoreOperation, Decide, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, Operation, OperationRestriction, OptionReason, PlayerId, PowerId, PowerNote, PowerResolution, PowerSourceRef, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -61,12 +61,26 @@ final case class Transform(
 /** Validates the whole action tree root, returning a violation to reject the
   * action wholesale. Covers cannot-effects. `note` is the hover reason of an
   * option the restriction look-ahead hides because of it; it writes no Game
-  * Log line (travel destination design, ruling 10).
+  * Log line (travel destination design, ruling 10). `waiver` is set when the
+  * power restricts its ruler's enemies, whose ruler may consent to ignore
+  * it (consent design, "Powers declare waivability").
   */
 final case class Restriction(
     fn: (PowerCtx, Operation) => Option[OathViolation],
-    note: (PowerCtx, DecisionOptionRef) => Option[PowerNote] = Contribution.silent
+    note: (PowerCtx, DecisionOptionRef) => Option[PowerNote] = Contribution.silent,
+    waiver: Option[Waiver] = None
 ) extends Contribution
+
+/** How a restriction on enemies may be waived (consent design, rulings 1 and
+  * 4). `granter` is the player who may consent: the power's ruler, or `None`
+  * when bandits, the Empire or nobody rules it, since none of them consents.
+  * `source` names the power in the log. `note` is the hover reason of an
+  * option the player may ask consent for.
+  */
+final case class Waiver(
+    granter: ReadyGame => Option[PlayerId],
+    source: PowerSourceRef,
+    note: (PowerCtx, DecisionOptionRef) => PowerNote)
 
 /** Forbids one option of the `Decide` the window hooks. Called once per offered
   * option in the window fold, before the query is parked, so a forbidden
