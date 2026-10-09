@@ -306,12 +306,15 @@ object LogScripts:
     Script("initiated-muster", service, Look(act.ready).active)
 
   /** p1 musters on Golem Legions, their adviser, with no card at their site.
-    * Golem Legions is selected for the Muster. */
+    * The Muster picks Golem Legions, its only modifier, so it starts by
+    * itself. */
   def golemMuster(using munit.Location): Script =
     val (service, act) = atTable("golem-muster", tableWithOnePawnPerSite
       .adviser(p1, "Golem Legions").banditsRefilled)
-    act.after(GameCommand.StartWalker(ActionRef.Muster,
-      StartPayload(p1, Vector(GolemLegions.id))))
+    act.withAnswers(ModifierPlay.answers(PowerWindow.MusterModifierSelection,
+      Vector(GolemLegions.id)))
+      .after(GameCommand.StartWalker(ActionRef.Muster,
+        StartPayload(p1, Vector.empty)))
     Script("golem-muster", service, p1)
 
   /** Trade for secrets, on the second player's turn, at the site with the

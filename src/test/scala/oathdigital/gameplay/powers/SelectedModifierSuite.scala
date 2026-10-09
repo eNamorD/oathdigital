@@ -74,15 +74,16 @@ class SelectedModifierSuite extends munit.FunSuite:
 
   test("a cost not paid at the pick is paid at the root of the action's " +
       "tree, and only for a costed modifier"):
-    val muster: Set[MajorActionType] = Set(MajorActionType.Muster)
-    val priced = Probe(card, Cost(favor = 1), muster)
+    val recover: Set[MajorActionType] = Set(MajorActionType.Recover)
+    val priced = Probe(card, Cost(favor = 1), recover)
     assertEquals(priced.contributions.keySet,
-      Set[PowerWindow](PowerWindow.MusterActionEligibility))
-    assertEquals(Probe(card, Cost.free, muster).contributions,
+      Set[PowerWindow](PowerWindow.RecoverActionEligibility))
+    assertEquals(Probe(card, Cost.free, recover).contributions,
       Map.empty[PowerWindow, Vector[Contribution]])
-    // Search and Travel pay at the pick, in the modifier decision.
-    val picked = Probe(card, Cost(favor = 1),
-      Set(MajorActionType.Travel, MajorActionType.Search))
+    // Search, Travel, Muster and Trade pay at the pick, in the modifier
+    // decision.
+    val picked = Probe(card, Cost(favor = 1), Set(MajorActionType.Search,
+      MajorActionType.Travel, MajorActionType.Muster, MajorActionType.Trade))
     assertEquals(picked.contributions,
       Map.empty[PowerWindow, Vector[Contribution]])
 
@@ -103,24 +104,24 @@ class SelectedModifierSuite extends munit.FunSuite:
     assertEquals(free.selectionPayments(ready, actor), Vector.empty)
 
   test("a payment and an effect at the same window keep the payment first"):
-    // Stub of SelectedModifier: the Tents id on a Muster modifier, whose
+    // Stub of SelectedModifier: the Tents id on a Recover modifier, whose
     // payment is not made at a pick, a cost of one favor and one Transform
     // that changes nothing.
     val both = new SelectedModifier:
       def catalog = oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
       def cardId: CardId = card
       def id: PowerId = PowerId("denizen.tents")
-      def actions: Set[MajorActionType] = Set(MajorActionType.Muster)
+      def actions: Set[MajorActionType] = Set(MajorActionType.Recover)
       override def cost: Cost = Cost(favor = 1)
       def effects: Map[PowerWindow, Vector[Contribution]] = Map(
-        PowerWindow.MusterActionEligibility ->
+        PowerWindow.RecoverActionEligibility ->
           Vector(oathdigital.gameplay.powerresolver.Transform((_, ops) => ops)))
     val transforms = both.contributions(
-      PowerWindow.MusterActionEligibility).collect {
+      PowerWindow.RecoverActionEligibility).collect {
         case oathdigital.gameplay.powerresolver.Transform(fn) => fn }
     assertEquals(transforms.size, 2)
     val (first, second) = (transforms(0), transforms(1))
-    val at = ctx(quietTable, both, PowerWindow.MusterActionEligibility)
+    val at = ctx(quietTable, both, PowerWindow.RecoverActionEligibility)
     assertEquals(first(at, Vector.empty), Vector[Operation](
       oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
         catalog)))

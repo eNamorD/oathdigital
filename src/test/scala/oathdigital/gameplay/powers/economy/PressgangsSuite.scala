@@ -1,7 +1,9 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.application.{GameProjector, LoadedGame}
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ModifierOffers
@@ -32,9 +34,13 @@ class PressgangsSuite extends munit.FunSuite:
     .adviser(p1, pressgangs).favor(p1, 2)
     .denizen(alchemist, at = home).tokens(alchemist, favor = 1, secrets = 1)
 
+  private val musterModifiers =
+    ModifierPicks.decisionId(PowerWindow.MusterModifierSelection)
+
   private def musterStarted(ready: ReadyGame, modifiers: Vector[PowerId])
       : OathTransition =
-    accepted(rules.startWalker(Ready(ready), ActionRef.Muster, p1, modifiers))
+    accepted(ModifierPlay.started(rules, Ready(ready), ActionRef.Muster, p1,
+      PowerWindow.MusterModifierSelection, modifiers))
 
   private def states(started: OathTransition)
       : Option[Vector[(String, String)]] =
@@ -61,11 +67,12 @@ class PressgangsSuite extends munit.FunSuite:
       ChooseOneAnswer(DecisionOptionRef.Denizen(alchemist))).left.toOption,
       Some(Refusals.notOffered(MusterProcedure.decisionId)))
 
-  test("with only such a card at the site, Muster starts only with it " +
-      "selected"):
+  test("with only such a card at the site, Muster cannot start until it is " +
+      "picked"):
     val ready = occupiedAlchemist.ready
-    assertEquals(rules.startWalker(Ready(ready), ActionRef.Muster, p1)
-      .left.toOption, Some(OathViolation.NoPlayableOption(ActionRef.Muster.key)))
+    assertEquals(states(accepted(rules.startWalker(Ready(ready),
+      ActionRef.Muster, p1))), Some(Vector("start" -> "unavailable",
+      pressgangs.value -> "available")))
     assert(controls(ready).contains("beginMuster"), controls(ready))
     assertEquals(states(musterStarted(ready, selected)),
       Some(Vector(alchemist.value -> "available")))
@@ -87,9 +94,14 @@ class PressgangsSuite extends munit.FunSuite:
       .adviser(p1, pressgangs).favor(p1, 2).ready
     val first = EconomyActions.muster(rules, ready, p1,
       Vector(GolemLegions.id), DecisionOptionRef.Denizen(golem))
-    assertEquals(rules.startWalker(Ready(first.result), ActionRef.Muster, p1,
-      Vector(GolemLegions.id)).left.toOption,
-      Some(OathViolation.NoPlayableOption(ActionRef.Muster.key)))
+    // Golem Legions now holds favor, so with it picked alone the Muster
+    // cannot start: Start waits for Pressgangs.
+    val again = accepted(rules.startWalker(Ready(first.result),
+      ActionRef.Muster, p1))
+    val golemPicked = accepted(rules.resolveWalker(again.state, p1,
+      musterModifiers, ModifierPlay.pick(GolemLegions.id)))
+    assertEquals(states(golemPicked), Some(Vector(
+      "start" -> "unavailable", pressgangs.value -> "available")))
     val second = EconomyActions.muster(rules, first.result, p1,
       Vector(GolemLegions.id, Pressgangs.id), DecisionOptionRef.Denizen(golem))
     assertEquals(Look(second.result).tokensOn(golem), Tokens(2, 0))

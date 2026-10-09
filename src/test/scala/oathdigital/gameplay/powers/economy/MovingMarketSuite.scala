@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -38,8 +39,9 @@ class MovingMarketSuite extends munit.FunSuite:
   /** p1 Trades for favor with Moving Market, having selected it, and is
     * asked where to move it. */
   private def tradedWithMarket(ready: ReadyGame): OathTransition =
-    val started = accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1,
-      modifiers, Vector(DecisionOptionRef.Button("favor"))))
+    val started = accepted(ModifierPlay.started(rules, Ready(ready), ActionRef.Trade, p1,
+      PowerWindow.TradeModifierSelection, modifiers,
+      startArgs = Vector(DecisionOptionRef.Button("favor"))))
     val asked = accepted(rules.resolveWalker(started.state, p1,
       TradeProcedure.decisionId,
       ChooseOneAnswer(DecisionOptionRef.Denizen(market))))

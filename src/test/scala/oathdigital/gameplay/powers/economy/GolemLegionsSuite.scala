@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.application.{GameProjector, LoadedGame}
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -35,17 +36,20 @@ class GolemLegionsSuite extends munit.FunSuite:
     projector.project("golem", LoadedGame(Ready(ready), 4), p1).legalControls
 
   private def musterStarted(ready: ReadyGame): OathTransition =
-    accepted(rules.startWalker(Ready(ready), ActionRef.Muster, p1, selected))
+    accepted(ModifierPlay.started(rules, Ready(ready), ActionRef.Muster, p1,
+      PowerWindow.MusterModifierSelection, selected))
 
   private def musteredOnGolem(ready: ReadyGame): EconomyActions.Completed =
     EconomyActions.muster(rules, ready, p1, selected,
       DecisionOptionRef.Denizen(golem))
 
-  test("selected, it offers Golem Legions as a Muster source, so a Muster " +
+  test("picked, it offers Golem Legions as a Muster source, so a Muster " +
       "with no card at the pawn site can start"):
     val ready = holdingGolem.ready
-    assertEquals(rules.startWalker(Ready(ready), ActionRef.Muster, p1)
-      .left.toOption, Some(OathViolation.NoPlayableOption(ActionRef.Muster.key)))
+    // Nothing can be mustered on until Golem Legions is picked.
+    assertEquals(EconomyActions.optionStatesAtStart(rules, ready, p1,
+      ActionRef.Muster), Some(Vector("start" -> "unavailable",
+      golem.value -> "available")))
     assert(controls(ready).contains("beginMuster"), controls(ready))
     assertEquals(PhasePowerHarness.offered(musterStarted(ready), p1),
       Some(Vector("denizen" -> golem.value)))

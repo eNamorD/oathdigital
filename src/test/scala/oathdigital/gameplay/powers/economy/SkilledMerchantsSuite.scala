@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, EconomyActions, Look,
@@ -41,8 +42,9 @@ class SkilledMerchantsSuite extends munit.FunSuite:
 
   private def tradeStarted(ready: ReadyGame, modifiers: Vector[PowerId])
       : OathTransition =
-    accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1, modifiers,
-      Vector(DecisionOptionRef.Button("favor"))))
+    accepted(ModifierPlay.started(rules, Ready(ready), ActionRef.Trade, p1,
+      PowerWindow.TradeModifierSelection, modifiers,
+      startArgs = Vector(DecisionOptionRef.Button("favor"))))
 
   test("selected, a Trade offers every card at the sites in the pawn's " +
       "region, edifices too, and none elsewhere"):

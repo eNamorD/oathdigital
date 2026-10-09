@@ -6,12 +6,12 @@ import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatacombsGame, Table}
-import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 
-/** Selecting modifiers refuses a combination the player cannot pay, at
-  * selection, because every selected modifier pays at the start of its action.
-  */
+/** Selecting modifiers for an action that still takes them at its start
+  * refuses a combination the player cannot pay, at selection, because every
+  * selected modifier pays at the start of its action. Search, Travel, Muster
+  * and Trade pay at each pick instead (modifier walker design). */
 class SelectionPaymentsSuite extends munit.FunSuite:
   /** Stub of ContributingPower: a PlayerSelected modifier whose selection
     * burns `secrets` secrets. */
@@ -34,35 +34,37 @@ class SelectionPaymentsSuite extends munit.FunSuite:
     def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
     override def resolution: PowerResolution = PowerResolution.PlayerSelected
 
-  private def muster(secrets: Int, selected: ContributingPower*)
+  /** p1 starts a Recover at a site holding a facedown relic, with `secrets`
+    * faceup secrets, selecting `selected`. Only the selected powers' secrets
+    * are in question. */
+  private def recoverSelecting(secrets: Int, selected: ContributingPower*)
       : Either[OathViolation, OathTransition] =
     val rules = new OathRules(catalog,
-      walkerPowerCatalog = WalkerPowers(Vector(a, b, free)))
-    // The start's 1 favor and 7 Supply pay for a Muster from the Alchemist
-    // at Ancient City; only the selected powers' secrets are in question.
-    val ready = Table.start.pawn(p1, at = "Ancient City")
-      .denizen("Alchemist", at = "Ancient City")
-      .secrets(p1, faceUp = secrets).ready
-    rules.startWalker(Ready(ready), ActionRef.Muster, p1,
+      walkerPowerCatalog = WalkerPowers(Vector(a, b, free)),
+      walkerDice = WalkerDiceFixture.blanks)
+    val fixture = CatacombsGame.relicSite()
+    val ready = Table.from(fixture.ready)
+      .secrets(fixture.actor, faceUp = secrets).ready
+    rules.startWalker(Ready(ready), ActionRef.Recover, fixture.actor,
       selected.map(_.id).toVector)
 
   test("a selection whose payments can all be made is accepted"):
-    accepted(muster(2, a, b))
-    accepted(muster(1, a))
-    accepted(muster(1, free))
+    accepted(recoverSelecting(2, a, b))
+    accepted(recoverSelecting(1, a))
+    accepted(recoverSelecting(1, free))
 
   test("two payments that need the only secret are refused at selection"):
-    val refused = muster(1, a, b)
+    val refused = recoverSelecting(1, a, b)
     assertEquals(refused, Left(OathViolation.InvalidEventOrder(
       "the selected modifiers cannot all be paid together: " +
         "CoreOperationRejected(insufficient-pieces,player play area " +
         "contains 0 of requested secrets)")))
     // Either payment alone is affordable (b is a's twin), so the refusal is
     // about the pair.
-    accepted(muster(1, a))
+    accepted(recoverSelecting(1, a))
 
   test("a free power adds nothing to the payments"):
-    accepted(muster(1, a, free))
+    accepted(recoverSelecting(1, a, free))
 
   test("Catacombs states its secret as a selection payment"):
     val fixture = CatacombsGame.reliclessSite(secrets = 1)

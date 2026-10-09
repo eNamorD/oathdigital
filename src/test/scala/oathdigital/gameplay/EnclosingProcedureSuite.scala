@@ -16,22 +16,33 @@ import oathdigital.testkit.Unwrap.accepted
 class EnclosingProcedureSuite extends munit.FunSuite:
   private val seen = ArrayBuffer.empty[(PowerWindow, Option[ProcedureRef])]
 
-  /** Spy of ContributingPower: records (window, procedure) in `seen` each
-    * time it is asked if it applies, at three Muster windows; always
-    * applicable. */
-  private val probe: ContributingPower = new ContributingPower:
-    def id: PowerId = PowerId("test.enclosing-procedure")
-    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-    override def resolution: PowerResolution = PowerResolution.PlayerSelected
-    def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
-      PowerWindow.MusterSourceSelection -> Vector.empty,
-      PowerWindow.MusterCost -> Vector.empty)
-    override def applicable(ctx: PowerCtx): Boolean =
-      seen += ctx.window -> ctx.procedure
-      true
+  /** Spy of ContributingPower with `chosen` resolution: records (window,
+    * procedure) in `seen` each time it is asked if it applies, at the Muster
+    * windows; always applicable. */
+  private def spy(name: String, chosen: PowerResolution): ContributingPower =
+    new ContributingPower:
+      def id: PowerId = PowerId(name)
+      def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+      override def resolution: PowerResolution = chosen
+      def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
+        PowerWindow.MusterSourceSelection -> Vector.empty,
+        PowerWindow.MusterCost -> Vector.empty)
+      override def applicable(ctx: PowerCtx): Boolean =
+        seen += ctx.window -> ctx.procedure
+        true
+
+  /** Selected, so it is asked at the Muster modifier window. */
+  private val probe = spy("test.enclosing-procedure",
+    PowerResolution.PlayerSelected)
+  /** Automatic, so a Muster walks it without a pick: it has no card to be
+    * picked by. */
+  private val walked = spy("test.enclosing-procedure.walked",
+    PowerResolution.Automatic)
 
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowers(Vector(probe)))
+  private val walkingRules = new OathRules(catalog,
+    walkerPowerCatalog = WalkerPowers(Vector(walked)))
 
   /** p1 stands at Ancient City with the Alchemist; the start's 1 favor and
     * 7 Supply pay for a Muster from it. */
@@ -48,11 +59,12 @@ class EnclosingProcedureSuite extends munit.FunSuite:
   test("the command that starts a procedure has not recorded it yet, and a " +
       "resume walks its windows for it"):
     seen.clear()
-    val started = accepted(rules.startWalker(Ready(staged), ActionRef.Muster,
-      p1, Vector(probe.id)))
+    val started = accepted(walkingRules.startWalker(Ready(staged),
+      ActionRef.Muster, p1))
     assert(seen.contains(PowerWindow.MusterSourceSelection -> None), seen.toString)
     seen.clear()
-    accepted(rules.resolveWalker(started.state, p1, MusterProcedure.decisionId,
+    accepted(walkingRules.resolveWalker(started.state, p1,
+      MusterProcedure.decisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(
         CatalogNames.denizen("Alchemist")))))
     assert(seen.contains(PowerWindow.MusterCost -> Some(ActionRef.Muster)),

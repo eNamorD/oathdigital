@@ -1,6 +1,7 @@
 package oathdigital.application
 
 import oathdigital.gameplay.{ModifierPlay, OathRules}
+import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
@@ -27,15 +28,6 @@ class ModifierStartControlsSuite extends munit.FunSuite:
 
   private def controls(ready: ReadyGame, viewer: PlayerId): Vector[String] =
     legal.project(ScopedProjectionContext(ready, Some(viewer))).controls
-
-  /** `viewer` starts `action` at `ready` with `modifiers`; fails the test
-    * if the start is refused. */
-  private def assertStarts(ready: ReadyGame, viewer: PlayerId,
-      action: ActionRef, modifiers: Vector[PowerId])(using munit.Location)
-      : Unit =
-    accepted(rules.startWalker(OathState.Ready(ready), action, viewer,
-      modifiers))
-    ()
 
   /** Why `viewer` may not start `action` at `ready` with `modifiers`; fails
     * the test if the start is accepted. */
@@ -104,11 +96,26 @@ class ModifierStartControlsSuite extends munit.FunSuite:
     (if playmates then table.adviser(p1,
       CatalogNames.denizen("Animal Playmates")) else table).ready
 
-  test("Muster is offered at 0 Supply when Animal Playmates waives it, and " +
-      "the start with it is accepted"):
+  test("Muster is offered at 0 Supply when Animal Playmates waives it; the " +
+      "start asks for the modifier, and picking it reaches the source"):
     val ready = beastMuster(playmates = true)
     assert(controls(ready, p1).contains("beginMuster"))
-    assertStarts(ready, p1, ActionRef.Muster, Vector(AnimalPlaymates.id))
+    val started = accepted(rules.startWalker(OathState.Ready(ready),
+      ActionRef.Muster, p1))
+    val modifiers = parked(started.state)
+    assertEquals(modifiers.decisionId, musterModifiers)
+    assertEquals(modifiers.query match
+      case DecisionQuery.ChooseOne(options, _) => options.headOption
+      case _ => None,
+      Some(DecisionOption.Unavailable(
+        DecisionOption.Button(ModifierPicks.start, "Start Muster"),
+        OptionReason.Written("Needs 1 Supply; you have 0"))))
+    val picked = accepted(rules.resolveWalker(started.state, p1,
+      musterModifiers, ModifierPlay.pick(AnimalPlaymates.id)))
+    assertEquals(parked(picked.state).decisionId, MusterProcedure.decisionId)
+
+  private val musterModifiers =
+    ModifierPicks.decisionId(PowerWindow.MusterModifierSelection)
 
   test("without the waiver, Muster at 0 Supply is not offered"):
     assert(!controls(beastMuster(playmates = false), p1)
@@ -125,13 +132,27 @@ class ModifierStartControlsSuite extends munit.FunSuite:
     (if birdsong then table.adviser(p1, CatalogNames.denizen("Birdsong"))
       else table).ready
 
-  test("Trade is offered at 0 Supply when Birdsong waives it, and the start " +
-      "with it is accepted"):
+  test("Trade is offered at 0 Supply when Birdsong waives it; the start " +
+      "asks for the modifier, and picking it reaches the source"):
     val ready = beastTrade(birdsong = true)
     assert(controls(ready, p1).contains("beginTradeFavor"))
-    accepted(rules.startWalker(OathState.Ready(ready), ActionRef.Trade, p1,
-      Vector(Birdsong.id), Vector(DecisionOptionRef.Button("favor"))))
-    ()
+    val started = accepted(rules.startWalker(OathState.Ready(ready),
+      ActionRef.Trade, p1, startArgs = Vector(DecisionOptionRef.Button(
+        "favor"))))
+    val modifiers = parked(started.state)
+    assertEquals(modifiers.decisionId, tradeModifiers)
+    assertEquals(modifiers.query match
+      case DecisionQuery.ChooseOne(options, _) => options.headOption
+      case _ => None,
+      Some(DecisionOption.Unavailable(
+        DecisionOption.Button(ModifierPicks.start, "Start Trade"),
+        OptionReason.Written("Needs 1 Supply; you have 0"))))
+    val picked = accepted(rules.resolveWalker(started.state, p1,
+      tradeModifiers, ModifierPlay.pick(Birdsong.id)))
+    assertEquals(parked(picked.state).decisionId, TradeProcedure.decisionId)
+
+  private val tradeModifiers =
+    ModifierPicks.decisionId(PowerWindow.TradeModifierSelection)
 
   test("without the waiver, Trade at 0 Supply is not offered"):
     assert(!controls(beastTrade(birdsong = false), p1)
