@@ -78,7 +78,7 @@ The product owner settled these on 2026-10-09. Task 1 writes them into the spec.
 Also settled at plan time:
 
 7. **Powers that trigger on a play still fire.** Saddle Makers, Wild Cry, Gossip and Welcoming Party react to a card being played, and the card was played. Only the buried card's own WHEN PLAYED is skipped.
-8. **A follow-up is required.** If a restriction refuses part of it, the leaf fails, so the walker's search hides the option that leads there rather than leave a non-Nomad beside a faceup Family Wagon.
+8. **A follow-up is required** (`requireAll = true`, one argument). No restriction in this edition refuses a `Bury` of an adviser: Locked does not, and the Grand Scepter's refusal covers only that relic. So this is a guard, not a rule any game reaches. It needs no test.
 9. **How WHEN PLAYED learns the card was buried.** `WhenPlayedPower` checks that its card is not in the world deck when the hook is gathered. A check of the card's place would break a resumed walk after Twin Brother or Great Herd moves its own card. No WHEN PLAYED power puts its own card into the world deck.
 
 ---
