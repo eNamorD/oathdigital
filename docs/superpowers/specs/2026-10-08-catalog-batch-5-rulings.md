@@ -103,6 +103,16 @@
     Pied Piper's move.
   - A card play that would add a non-Nomad or facedown adviser stays on
     offer, with a note that the card will be buried.
+  - A card it buries on arrival was never gained, since it says "would
+    gain": its WHEN PLAYED does not run. Powers that trigger on a play still
+    fire, because the card was played.
+  - The buried cards' favor goes to their suit banks, and their secrets to
+    the active player's board, facedown.
+  - Its line reads "Buried {cards}." on the holder's turn, and "{Blue}
+    buried {cards}." when the holder is not the active player.
+  - The note on a card play it will bury reads "Family Wagon will bury it".
+    Playing Family Wagon itself carries no note.
+  - The board draws the holder's advisers and one empty slot.
 
 ## Moved out of the batch
 

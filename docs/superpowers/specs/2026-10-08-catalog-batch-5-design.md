@@ -32,7 +32,7 @@ with the limit: it is a Muster gain and a ban on placing warbands on sites.
 
 Batch 4's bar holds: no new operation, walker window, decision query kind,
 option kind, `NoteArg` kind, protocol change or frontend change. Refactors
-inside `gameplay/powers/` are allowed. The product owner approved six
+inside `gameplay/powers/` are allowed. The product owner approved seven
 changes outside `gameplay/powers/`:
 
 - **The Muster and Trade source query and `MusterSource.resolve`** (slice 1).
@@ -44,8 +44,12 @@ changes outside `gameplay/powers/`:
   and `AdviserLimit` (slice 3), and **the weighted suit count**
   `AdviserSuits` beside `MusterSource` (slice 3, placed at plan time).
 - **The board's adviser slots** in `GamePresentationProjector` add one slot
-  per adviser that does not count (slice 3, approved at plan time).
-- **An adviser arrival pass** in the walker (slice 4).
+  per adviser that does not count (slice 3, approved at plan time), and draw
+  the advisers and one empty slot for a player with no limit (slice 4).
+- **An adviser arrival pass** in the walker, with `ContributingPower.onArrival`
+  and `AdviserArrivals` in `gameplay/powerresolver` (slice 4).
+- **Card play's lifted limit and adviser play notes** in `CardPlayRules` and
+  `CardSlots.adviserSlots` (slice 4, approved at plan time).
 
 ### Out of scope
 
@@ -258,15 +262,24 @@ adviser-only. Its lines:
 
 No hook runs when an adviser arrives by a route other than card play:
 Horned Mask, `Swap` (Enchantress, Twin Brother, Dream Thief) and Pied
-Piper's move add advisers silently. After a leaf's operations apply, the
-walker compares each player's advisers before and after. An adviser that
-is new, or that turned faceup, is an arrival. For each arrival, the pass
-asks the registered arrival rules for follow-up operations. It runs them as
-journaled operations in the same step, so replay and the Game Log see them.
+Piper's move add advisers silently. The pass sits where every walker leaf
+runs its operations (`WalkerSteps.recordBatch`), so it sees every route,
+card play included. After a leaf's operations apply, it compares each
+player's advisers before and after (`AdviserArrivals.between`). An adviser
+that is new, or that turned faceup, is an arrival.
 
-Powers register arrival rules through a new member of `ContributingPower`.
-The pass names no card. It runs once per leaf, and the follow-up operations
-it adds do not start another pass.
+Powers register arrival rules through `ContributingPower.onArrival`, which
+returns an `ArrivalFollowUp`: operations and a line. The pass asks every
+power, in the order contributions chain. Each follow-up runs as one
+required batch, recorded as its own step at the leaf's node and credited to
+its power, and its line is journaled right after it. Replay applies the
+recorded operations, and the Game Log reads the step and the line. The pass
+names no card. It runs once per leaf, and the follow-up operations it adds
+do not start another pass.
+
+A line after the leaf reads the leaf and its follow-ups together. So when
+Pied Piper moves into a Family Wagon holder's advisers, Family Wagon's line
+comes before Pied Piper's.
 
 ### Family Wagon
 
@@ -278,16 +291,28 @@ own arrival counts. The buried cards include:
 - locked advisers such as Marriage, because Locked guards against a
   discard and a bury is not a discard
 
-Advisers are buried in held order with `Bury`. Family Wagon's line names the
-buried cards each viewer may identify.
+Advisers are buried in held order with `Bury.standard`: favor goes to the
+card's suit bank, and secrets to the active player, facedown. The line
+names the buried cards each viewer may identify: "Buried {cards}." on the
+holder's turn, "{Blue} buried {cards}." otherwise. It covers the generic
+"Buried" lines.
 
-Family Wagon makes its holder's limit unbounded. `AdviserLimit.of` and card
-play's rules give its holder no limit before the lowering powers apply. It
-waited for this slice so the card lands whole.
+A card Family Wagon buries on arrival was never gained, so its WHEN PLAYED
+does not run: `WhenPlayedPower` skips a card that went to the world deck
+before its hook. Powers that trigger on a play (Saddle Makers, Wild Cry,
+Gossip, Welcoming Party) still fire, because the card was played.
+
+Family Wagon makes its holder's limit unbounded. `AdviserLimit.of` gives
+its holder no limit before the lowering powers apply. In card play, Family
+Wagon's Transform at `SearchPlayAdviser` lifts the base limit while Family
+Wagon is a faceup adviser after the play (`CardPlayRules.liftWhileFaceUp`),
+and cards' own limits still apply. The board draws the holder's advisers and
+one empty slot.
 
 A card play that would add a non-Nomad or facedown adviser stays on offer.
-Its option carries a note that the card will be buried. Card play's slots
-give Family Wagon's holder no limit.
+Card play shows it `Warned` with the reason "Family Wagon will bury it",
+from the note Family Wagon adds to `CardPlayRules`. A play that replaces
+Family Wagon, and the play of Family Wagon itself, carry no note.
 
 ## Seams used for the first time
 
