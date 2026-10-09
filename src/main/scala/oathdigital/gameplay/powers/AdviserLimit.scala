@@ -42,3 +42,14 @@ object AdviserLimit:
   def towardLimit(ready: ReadyGame, player: PlayerId): Int =
     ready.game.current.players.find(_.player == player)
       .fold(0)(_.advisers.size) - ignored(ready, player).size
+
+  /** How many adviser slots `player`'s board draws: the limit and one more
+    * per adviser that does not count, or, with no limit, the advisers held
+    * and one empty slot. */
+  def drawn(catalog: ExecutableCatalog, ready: ReadyGame,
+      player: PlayerId): Int =
+    val limit = of(catalog, ready, player)
+    if limit == CardPlayRules.Unbounded then
+      ready.game.current.players.find(_.player == player)
+        .fold(0)(_.advisers.size) + 1
+    else limit + ignored(ready, player).size

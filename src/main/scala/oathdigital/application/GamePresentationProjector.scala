@@ -203,9 +203,7 @@ private[application] final class GamePresentationProjector(
           Some(card.orientation), hidden = false)),
         banners(ready).filter(_.holderPlayerId.contains(player.player.value)),
         banked, printed, atSites, restBase,
-        // An adviser that does not count takes a slot past the limit.
-        AdviserLimit.of(catalog, ready, player.player) +
-          AdviserLimit.ignored(ready, player.player).size)
+        AdviserLimit.drawn(catalog, ready, player.player))
     }
 
   private def withTokens(details: CardDetailsProjection,

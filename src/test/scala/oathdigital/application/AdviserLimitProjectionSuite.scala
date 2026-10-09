@@ -28,3 +28,11 @@ class AdviserLimitProjectionSuite extends munit.FunSuite:
     assertEquals(limits(p1.value), 4)
     assertEquals(limits(p2.value), 4)
     assertEquals(limits(p3.value), 3)
+
+  test("a board with no limit draws its advisers and one empty slot"):
+    val ready = Table.start.adviser(p1, "Family Wagon").adviser(p1, "Elders")
+      .adviser(p1, "Rain Boots").adviser(p1, "Lancers").ready
+    val limits = presentation.playerBoards(ready, Some(p1))
+      .map(board => board.playerId -> board.adviserLimit).toMap
+    assertEquals(limits(p1.value), 5)
+    assertEquals(limits(p2.value), 3)
