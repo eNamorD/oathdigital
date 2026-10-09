@@ -62,13 +62,26 @@ private[application] final class ConsentProjector(
       powers.source(power).collect { case PowerSourceRef.Card(card) =>
         card.value }))
 
-  /** The option asked about, named as its decision row names it. */
+  /** The option asked about, named as its decision row names it. A button
+    * has no name of its own, so its label is read from the parked
+    * decision. */
   private def target(context: ScopedProjectionContext,
       ref: DecisionOptionRef): String =
-    DecisionOption.forRef(ref).flatMap(option => decisions.optionProjection(
-        context.ready, context.viewer, context.ready.game.cardIndex.toOption,
-        option))
+    val option = ref match
+      case button: DecisionOptionRef.Button => decisions
+        .parkedDecide(context.ready).toVector.flatMap(offered)
+        .find(_.ref == button)
+      case _ => DecisionOption.forRef(ref)
+    option.flatMap(decisions.optionProjection(context.ready, context.viewer,
+        context.ready.game.cardIndex.toOption, _))
       .fold(ref.wireId)(_.label)
+
+  /** The options of a choose-one or a choose-many, as offered. */
+  private def offered(decide: Decide): Vector[DecisionOption] =
+    decide.query match
+      case one: DecisionQuery.ChooseOne => one.options
+      case many: DecisionQuery.ChooseMany => many.options
+      case _ => Vector.empty
 
 private[application] object ConsentProjector:
   val withdrawNote = "Withdraw your consent request"

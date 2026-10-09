@@ -1,7 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.application.{ConsentFixture, GameAccepted,
-  GameApplicationService, GameCommand}
+  GameApplicationService, GameCommand, TollConsentFixture}
 import oathdigital.gameplay.powers.travel.{NarrowPassSite, TravelFixture}
 import oathdigital.model._
 import oathdigital.testkit.Table.{p1, p2, p3}
@@ -90,3 +90,11 @@ class GameLogConsentSuite extends munit.FunSuite:
     val started = startTravel(automatic, set.nextSequence)
     accepted(automatic.handle(gameId, started.nextSequence, requestDunes))
     assertEquals(texts(log(automatic, p1)), texts(log(manual, p1)))
+
+  test("a request from a button names it by its label"):
+    val (service, _) = ConsentFixture.service(TollConsentFixture.tolled)
+    accepted(service.handle(gameId,
+      TollConsentFixture.atTheStep(service).nextSequence,
+      TollConsentFixture.requestFree))
+    assert(texts(log(service, p1)).contains("Asked p2 for consent to ignore " +
+      "Toll Roads and select Travel without paying."), texts(log(service, p1)))

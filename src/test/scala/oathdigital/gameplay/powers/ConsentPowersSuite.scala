@@ -4,8 +4,10 @@ import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, Waiver}
 import oathdigital.gameplay.operations.HallOfMinisters
 import oathdigital.gameplay.powers.cardplay.SecretPolice
-import oathdigital.gameplay.powers.travel.{MinesSite, NarrowPassSite,
-  NarrowPassSitePower, TravelFixture}
+import oathdigital.gameplay.powers.economy.Curfew
+import oathdigital.gameplay.powers.search.ForcedLabor
+import oathdigital.gameplay.powers.travel.{GraspingVines, MinesSite,
+  NarrowPassSite, NarrowPassSitePower, TollRoads, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
@@ -72,3 +74,21 @@ class ConsentPowersSuite extends munit.FunSuite:
       Some(PowerSourceRef.Card(hall)))
     assertEquals(powers.granter(ready, HallOfMinisters.id), Some(p2))
     assertEquals(powers.ruledBy(ready, p2), Vector(HallOfMinisters.id))
+
+  test("the toll and penalty cards are waivable, each named for its card"):
+    Vector(TollRoads.step, ForcedLabor.step, Curfew.step, GraspingVines.step)
+      .foreach { step =>
+        assert(powers.waiver(step.power).nonEmpty, step.power)
+        assertEquals(powers.source(step.power),
+          Some(PowerSourceRef.Card(step.card)))
+      }
+
+  test("Toll Roads' granter is the player who rules it, and nobody under " +
+      "bandits"):
+    val toll = CatalogNames.denizen("Toll Roads")
+    val ruledByP2 = on(board())(_.denizen(toll,
+      at = TravelFixture.provincePlains)
+      .warbandsAt(TravelFixture.provincePlains, p2, 1))
+    assertEquals(powers.granter(ruledByP2, TollRoads.id), Some(p2))
+    assertEquals(powers.granter(on(board())(_.denizen(toll,
+      at = TravelFixture.provincePlains)), TollRoads.id), None)
