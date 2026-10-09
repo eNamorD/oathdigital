@@ -272,7 +272,8 @@ Powers register arrival rules through `ContributingPower.onArrival`, which
 returns an `ArrivalFollowUp`: operations and a line. The pass asks every
 power, in the order contributions chain. Each follow-up runs as one
 required batch, recorded as its own step at the leaf's node and credited to
-its power, and its line is journaled right after it. Replay applies the
+its power, and its line is journaled right after it. A follow-up with no
+operations records no step and journals only its line. Replay applies the
 recorded operations, and the Game Log reads the step and the line. The pass
 names no card. It runs once per leaf, and the follow-up operations it adds
 do not start another pass.

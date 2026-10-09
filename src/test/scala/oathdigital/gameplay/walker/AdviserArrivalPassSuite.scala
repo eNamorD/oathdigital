@@ -83,9 +83,9 @@ class AdviserArrivalPassSuite extends munit.FunSuite:
         Right(OathState.Ready(ready)))((state, event) =>
         state.flatMap(ProcedureWalker.applyRecorded(_, event)))
     assertEquals(replayed.map {
-      case OathState.Ready(game) => game.game.current.players
+      case OathState.Ready(game) => game.game.current
       case other => fail(s"expected a ready game, got $other")
-    }, Right(done.treeless.game.current.players))
+    }, Right(done.treeless.game.current))
 
   test("an adviser turned faceup is an arrival; one that stays faceup is " +
       "not"):
