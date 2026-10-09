@@ -112,13 +112,6 @@ object ForestWardenCard extends Denizen(DenizenId("218"), "Forest Warden", Suit.
       "card at the site first.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object TrueNamesCard extends Denizen(DenizenId("41"), "True Names", Suit.Beast) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.true-names"),
-    persistent = true, cost = Cost.free,
-    text = "Your enemy **cannot** use battle plans that match any of " +
-      "your advisers against you.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object LongLostHeirCard extends Denizen(DenizenId("44"), "Long-Lost Heir", Suit.Beast) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.long-lost-heir"),
     persistent = false, cost = Cost.free,
