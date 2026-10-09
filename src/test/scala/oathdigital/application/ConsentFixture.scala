@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.travel.{NarrowPassSite, TravelFixture}
 import oathdigital.model._
 import oathdigital.testkit.{Outcomes, Table}
@@ -29,6 +30,10 @@ object ConsentFixture:
       requester: PlayerId = p1): GameCommand =
     GameCommand.SetConsentPreference(granter, NarrowPassSite.pass, requester,
       setting)
+
+  /** p1 asks for consent to travel to Dunes. */
+  val requestDunes: GameCommand = GameCommand.RequestConsent(p1,
+    TravelProcedure.destinationDecisionId, dunes)
 
   def consent(accepted: GameAccepted)(using munit.Location): ConsentState =
     Outcomes.ready(accepted.state).consent

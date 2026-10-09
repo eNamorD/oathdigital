@@ -48,7 +48,10 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     GameCommand.Undo(actor), GameCommand.Redo(actor),
     GameCommand.SetConsentPreference(actor,
       oathdigital.gameplay.powers.travel.MinesSite.mountain,
-      PlayerId("p2"), ConsentSetting.Always))
+      PlayerId("p2"), ConsentSetting.Always),
+    GameCommand.RequestConsent(actor, "not-parked",
+      DecisionOptionRef.Button("go")),
+    GameCommand.AnswerConsent(actor, ConsentChoice.Yes))
 
   private def isStepCommand(command: GameCommand): Boolean = command match
     case _: GameCommand.Undo | _: GameCommand.Redo => true

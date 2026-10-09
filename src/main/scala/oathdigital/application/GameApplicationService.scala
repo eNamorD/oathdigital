@@ -265,10 +265,21 @@ final class GameApplicationService(
       command: GameCommand, expected: ExpectedStream, nextSequence: Long)
       : Either[GameApplicationError, GameAccepted] =
     command match
-      case GameCommand.Undo(actor) =>
-        takeBack(gameId, journal, actor, expected, nextSequence)
+      // The requester's Undo withdraws an unanswered request (ruling 14).
+      case GameCommand.Undo(actor) => consent.pending(journal.state) match
+        case Some(_) => consentBatch(gameId, journal,
+          consent.withdraw(journal.state, actor), expected, nextSequence)
+        case None => takeBack(gameId, journal, actor, expected, nextSequence)
       case GameCommand.Redo(actor) =>
-        restore(gameId, journal, actor, expected, nextSequence)
+        if consent.pending(journal.state).nonEmpty then
+          Left(CommandRejected(OathViolation.ConsentPending))
+        else restore(gameId, journal, actor, expected, nextSequence)
+      case GameCommand.RequestConsent(requester, decisionId, target) =>
+        consentBatch(gameId, journal, consent.request(journal.state,
+          requester, decisionId, target), expected, nextSequence)
+      case GameCommand.AnswerConsent(granter, choice) =>
+        consentBatch(gameId, journal, consent.answer(journal.state, granter,
+          choice), expected, nextSequence)
       case GameCommand.SetConsentPreference(granter, power, requester,
           setting) =>
         consentBatch(gameId, journal, consent.setPreference(journal.state,
@@ -450,6 +461,11 @@ final class GameApplicationService(
       nextSequence: Long
   ): Either[OathViolation, OathTransition] =
     state match
+      // A consent request waits on its granters; nothing the rules run may
+      // move past it (consent design, "Commands"). `routed` sends what may
+      // run to the consent desk instead.
+      case OathState.Ready(ready) if ready.consent.pending.nonEmpty =>
+        Left(OathViolation.ConsentPending)
       case OathState.Ready(ready)
           if (ready.game.current.walkerPending.nonEmpty ||
             ready.game.current.walkerProcedure.nonEmpty) &&

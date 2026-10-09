@@ -48,6 +48,13 @@ object GameCommand:
   /** `granter` sets their standing answer for `requester` on `power`. */
   final case class SetConsentPreference(granter: PlayerId, power: PowerId,
       requester: PlayerId, setting: ConsentSetting) extends ConsentCommand
+  /** `requester` asks the rulers of the powers blocking `target` at the
+    * parked `decisionId` for consent to choose it. */
+  final case class RequestConsent(requester: PlayerId, decisionId: String,
+      target: DecisionOptionRef) extends ConsentCommand
+  /** `granter` answers the request waiting on them. */
+  final case class AnswerConsent(granter: PlayerId, choice: ConsentChoice)
+      extends ConsentCommand
 
   /** The player a command's batch is recorded for, in the `CommandAccepted`
     * that opens it (undo design, "Terms"): its actor. Begin has none, so a
