@@ -42,7 +42,8 @@ object ParkedServiceFixture:
       CardPlayProcedure.facedownAdviserDecisionId,
       DecisionAnswer.ChooseOneAnswer(PlacementPicks.optionNaming(card))))
 
-  /** `actor` starts a Travel; the walk parks on the destination. */
+  /** `actor` starts a Travel; the walk parks on the modifier decision, or
+    * on the destination when no modifier can be picked. */
   def startTravel(actor: PlayerId): GameCommand =
     GameCommand.StartWalker(ActionRef.Travel,
       StartPayload(actor, Vector.empty, Vector.empty))

@@ -57,6 +57,9 @@ slice 3).
 1. **Modifiers stay before the start.** The modifier flow is unchanged:
    a player selects modifiers, then the walker starts. Selected modifiers'
    costs are paid inside the walk, after the destination is picked.
+   [Modifier selection on the walker](2026-10-09-modifier-walker-design.md)
+   moved Travel's modifiers into the walk in its slice 2; this ruling is
+   rewritten in its slice 4.
 2. **The destination is a board decision.** `StartWalker("travel")` carries
    no start selection. The walk's first node is a board choose-one,
    `travel.destination`, headed "Choose a Travel destination", over every

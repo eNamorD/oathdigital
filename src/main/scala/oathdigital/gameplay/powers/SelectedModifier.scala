@@ -7,16 +7,17 @@ import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
   ModifierPicks, PowerCtx, Transform}
 import oathdigital.model._
 
-/** A power the player selects in a command's `modifiers` at the start of a
-  * major action, and that then applies to that action for free unless it names
-  * a cost.
+/** A power the player selects for a major action, and that then applies to
+  * that action for free unless it names a cost. A Search or Travel modifier
+  * is picked in the walk's modifier decision; every other action's is
+  * selected in its start command's `modifiers`.
   *
   * A modifier that names a `cost` pays it whatever the modifier then does. The
   * player owns the choice to select it, so the payment is made whether or not
   * the modifier then has an effect. The payment is `selectionPayments`:
   *
-  *  - A Search modifier is paid when it is picked in the walk's modifier
-  *    decision (`paidAtPick`).
+  *  - A Search or Travel modifier is paid when it is picked in the walk's
+  *    modifier decision (`paidAtPick`).
   *  - Every other action's modifier is paid at the very start of its action,
   *    until that action's slice moves it: the kit prepends the payment to the
   *    root of the action's tree (the action's eligibility window). A command
@@ -31,8 +32,8 @@ import oathdigital.model._
   *    use (`PowerAccess`), and its `cost` is payable on its own, including the
   *    empty-card rule. A power already picked in `ctx.answered` always
   *    applies there.
-  *  - At the action's eligibility window (the root, where the payment goes) a
-  *    selected modifier always applies.
+  *  - At the action's eligibility window (the root, where a payment not
+  *    made at the pick goes) a selected modifier always applies.
   *  - At every other window it asks `appliesAt`, which reads only the node the
   *    power is hooked on. It must not read state the action itself changes,
   *    because the walker folds every window again on each resume and a fold
@@ -42,14 +43,14 @@ import oathdigital.model._
   * offered for a Search, whichever window a later power hooks.
   *
   * A power states what it does inside the walk as `effects`, by window, and the
-  * kit adds the payment to them. Its resolution is read from the catalog
-  * (`persistent: false` is selected).
+  * kit adds the payment to them unless the action is in `paidAtPick`. Its
+  * resolution is read from the catalog (`persistent: false` is selected).
   */
 trait SelectedModifier extends ContributingPower:
   def catalog: ExecutableCatalog
   /** The card the power is printed on. */
   def cardId: CardId
-  /** The major actions at whose start the power may be selected. */
+  /** The major actions the power may be selected for. */
   def actions: Set[MajorActionType]
   /** What selecting the power costs, placed onto its card. */
   def cost: Cost = Cost.free
@@ -139,7 +140,8 @@ object SelectedModifier:
     * design): their modifiers prepend no payment at the eligibility window.
     * It grows slice by slice, with `WalkerProcedureRegistry`'s
     * `choosesModifiers`, until slice 4 deletes the payment Transform. */
-  val paidAtPick: Set[MajorActionType] = Set(MajorActionType.Search)
+  val paidAtPick: Set[MajorActionType] =
+    Set(MajorActionType.Search, MajorActionType.Travel)
 
   /** The window at the root of `action`'s tree, where a payment goes. */
   def eligibility(action: MajorActionType): PowerWindow =

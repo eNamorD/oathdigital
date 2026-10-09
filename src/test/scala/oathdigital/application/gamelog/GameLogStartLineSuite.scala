@@ -113,3 +113,14 @@ class GameLogStartLineSuite extends munit.FunSuite:
     val tag = entryStarting(entries, "Play facedown")
     assertEquals(text(entries(entries.indexOf(tag) + 1)), "With Wild Cry")
     assert(!texts(entries).exists(_.startsWith("Chose")), texts(entries))
+
+  test("a Travel with a pick names it on its own line, with no Chose line"):
+    val entries = format(travelWithTents, None)
+    val tag = entryStarting(entries, "Travel")
+    assertEquals(tag.kind, LogKind.Section)
+    // Tents makes the Travel free, so the tag carries no cost.
+    assertEquals(text(tag), "Travel")
+    assertEquals(text(entries(entries.indexOf(tag) + 1)), "With Tents")
+    assert(text(entries(entries.indexOf(tag) + 2))
+      .startsWith("Travelled to "), texts(entries))
+    assert(!texts(entries).exists(_.startsWith("Chose")), texts(entries))

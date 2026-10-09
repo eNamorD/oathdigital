@@ -3,17 +3,19 @@ package oathdigital.application.gamelog
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.application._
 import oathdigital.engine.{RecordedEvent, ReplayStep}
-import oathdigital.gameplay.ModifierPlay
+import oathdigital.gameplay.{ModifierPlay, TravelPlay}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
 import oathdigital.gameplay.powers.cardplay.WildCry
 import oathdigital.gameplay.powers.economy.GolemLegions
 import oathdigital.gameplay.powers.search.{Augury, NewsFromAfar}
+import oathdigital.gameplay.powers.travel.Tents
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -527,6 +529,26 @@ object LogScripts:
       ActionRef.PlayFacedownAdviser, StartPayload(p1, Vector.empty,
         Vector.empty)))
     Script("facedown-cry", service, p1)
+
+  /** Tents as p1's adviser, with 1 favor to pay for it. The Travel picks
+    * Tents, its only modifier, so it starts by itself, then goes to the
+    * other site of Ancient City's region, which Tents makes free. */
+  def travelWithTents(using munit.Location): Script =
+    val (service, act) = atTable("tents", tableWithOnePawnPerSite
+      .adviser(p1, "Tents").favor(p1, 1).banditsRefilled)
+    val map = act.ready.game.current.map
+    val home = Look(act.ready).pawn(p1)
+    val nearby = map.inPlay.find(site => site != home &&
+      map.regionOf(site) == map.regionOf(home)).getOrElse(
+      munit.Assertions.fail("Ancient City's region has one site"))
+    val destination: Answers = {
+      case park if park.decisionId == TravelProcedure.destinationDecisionId =>
+        TravelPlay.destination(nearby)
+    }
+    act.withAnswers(destination.orElse(ModifierPlay.answers(
+      PowerWindow.TravelModifierSelection, Vector(Tents.id))))
+      .after(ParkedServiceFixture.startTravel(p1))
+    Script("tents", service, p1)
 
   /** Gambling Hall at p1's site, used in Act by a player holding two favor.
     * Gambling Hall rolls 4 defense dice and Dice.steady makes each two

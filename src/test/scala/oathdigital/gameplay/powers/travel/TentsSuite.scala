@@ -1,9 +1,11 @@
 package oathdigital.gameplay.powers.travel
 
+import oathdigital.gameplay.ModifierPlay
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Refusals}
+import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -56,13 +58,13 @@ class TentsSuite extends munit.FunSuite:
     assertEquals(Look(result).favor(actor), 0)
     assertEquals(Look(result).tokensOn(tents), Tokens(1, 0))
 
-  test("it cannot be selected without a favor to place, or onto an occupied card"):
+  test("without a favor to place, or onto an occupied card, it is not " +
+      "offered: the Travel starts on its destination"):
     val broke = on(held)(_.favor(actor, 0))
-    assertEquals(travel(broke, coast, modifiers).left.toOption,
-      Some(Refusals.notApplicable(Tents.id, "travel")))
+    assertEquals(startParksOn(broke), TravelProcedure.destinationDecisionId)
     val occupied = on(held)(_.tokens(tents, favor = 1))
-    assertEquals(travel(occupied, coast, modifiers).left.toOption,
-      Some(Refusals.notApplicable(Tents.id, "travel")))
+    assertEquals(startParksOn(occupied),
+      TravelProcedure.destinationDecisionId)
 
   test("it is a Travel modifier only"):
     val offered = (action: ActionRef) => accepted(
@@ -71,15 +73,23 @@ class TentsSuite extends munit.FunSuite:
     assert(!offered(ActionRef.Search).contains(Tents.id))
     assert(!offered(ActionRef.Muster).contains(Tents.id))
 
-  test("Tents and Forest Paths together need two favor: one favor is refused at " +
-      "selection, before anything is paid"):
+  test("Tents and Forest Paths together need two favor: with one, picking " +
+      "Tents leaves Forest Paths unpaid for"):
     val paths = CatalogNames.denizen("Forest Paths")
     val both = Vector(Tents.id, ForestPaths.id)
     def ready(favor: Int) = on(held)(_.adviser(actor, paths)
       .favor(actor, favor))
-    val refused = travel(ready(1), coast, both)
-    assert(refused.left.toOption.exists(_.toString.contains(
-      "cannot all be paid together")), refused.toString)
+    val begun = accepted(rules.startWalker(Ready(ready(1)), ActionRef.Travel,
+      actor))
+    val picked = accepted(rules.resolveWalker(begun.state, actor,
+      modifierDecisionId, ModifierPlay.pick(Tents.id)))
+    val listed = parkedDecision(picked.state).query match
+      case DecisionQuery.ChooseOne(options, _) => options
+      case other => fail(s"expected a choose-one, got $other")
+    assertEquals(listed.find(_.ref == DecisionOptionRef.Denizen(paths)),
+      Some(DecisionOption.Unavailable(
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(paths)),
+        OptionReason.Written("Needs 1 favor; you have 0"))))
     val done = Outcomes.ready(accepted(travel(ready(2), coast, both)).state)
     assertEquals(Look(done).favor(actor), 0)
     assertEquals(Look(done).tokensOn(tents), Tokens(1, 0))

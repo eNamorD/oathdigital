@@ -10,12 +10,13 @@ object TravelPlay:
   def destination(site: SiteId): DecisionAnswer =
     DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site))
 
-  /** `actor` starts a Travel with `modifiers` and picks `destination`. The
-    * events are both commands'. */
+  /** `actor` starts a Travel, picks `modifiers` in its modifier decision,
+    * and picks `destination`. The events are every command's. */
   def travelled(rules: OathRules, state: OathState, actor: PlayerId,
       destination: SiteId, modifiers: Vector[PowerId] = Vector.empty)
       : Either[OathViolation, OathTransition] = for
-    started <- rules.startWalker(state, ActionRef.Travel, actor, modifiers)
+    started <- ModifierPlay.started(rules, state, ActionRef.Travel, actor,
+      PowerWindow.TravelModifierSelection, modifiers)
     picked <- rules.resolveWalker(started.state, actor,
       TravelProcedure.destinationDecisionId, this.destination(destination))
   yield picked.copy(events = started.events ++ picked.events)

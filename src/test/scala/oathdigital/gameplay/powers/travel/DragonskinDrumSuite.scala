@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powers.travel
 
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Refusals}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -47,10 +47,10 @@ class DragonskinDrumSuite extends munit.FunSuite:
     assertEquals(Look(result).boardWarbands(actor),
       Look(empty).boardWarbands(actor))
 
-  test("a facedown Drum is not usable"):
-    assertEquals(travel(withRelic(board(), drum, Orientation.FaceDown), coast,
-      modifiers).left.toOption,
-      Some(Refusals.notApplicable(DragonskinDrum.id, "travel")))
+  test("a facedown Drum is not offered: the Travel starts on its " +
+      "destination"):
+    assertEquals(startParksOn(withRelic(board(), drum,
+      Orientation.FaceDown)), TravelProcedure.destinationDecisionId)
 
   // ---- Lines ----
 

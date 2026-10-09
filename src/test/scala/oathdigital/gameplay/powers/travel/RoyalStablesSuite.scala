@@ -1,9 +1,9 @@
 package oathdigital.gameplay.powers.travel
 
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Refusals}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
 
@@ -67,11 +67,11 @@ class RoyalStablesSuite extends munit.FunSuite:
     val ready = on(ruled)(_.warbandsAt(pass, actor, 1))
     assertEquals(candidates(ready, modifiers).get(provincePlains), Some(1))
 
-  test("it may not be used at a site the actor neither stands at nor rules"):
+  test("it is not offered at a site the actor neither stands at nor rules: " +
+      "the Travel starts on its destination"):
     val ready = on(board())(_.denizen(stables, at = hinterlandPlains)
       .warbandsAt(pass, actor, 1))
-    assertEquals(travel(ready, provincePlains, modifiers).left.toOption,
-      Some(Refusals.notApplicable(RoyalStables.id, "travel")))
+    assertEquals(startParksOn(ready), TravelProcedure.destinationDecisionId)
 
   test("it is a Travel modifier only"):
     val offered = (action: ActionRef) => accepted(
