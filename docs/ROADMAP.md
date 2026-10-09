@@ -11,7 +11,7 @@ specs.
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest. **Phase - Catalog batch 5** is complete.
+2026-10-01 playtest.
 
 ## Next
 
@@ -86,15 +86,6 @@ did":
   totals and the winner. It is not always visible.
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
-
-### Phase - Catalog batch 5
-
-Muster and Trade sources and adviser counting, the cheapest groups of the
-engine-blocked phase
-([design](superpowers/specs/2026-10-08-catalog-batch-5-design.md),
-[rulings](superpowers/specs/2026-10-08-catalog-batch-5-rulings.md)).
-
-Every slice is done.
 
 ### Phase - Catalog batch - engine-blocked
 

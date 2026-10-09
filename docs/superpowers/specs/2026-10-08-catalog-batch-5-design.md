@@ -1,6 +1,7 @@
 # Catalog Batch 5: Muster and Trade Sources, Adviser Counting
 
-**Status:** designed 2026-10-08. The per-card rulings are in
+**Status:** designed 2026-10-08; every slice implemented by 2026-10-09.
+The per-card rulings are in
 [the rulings appendix](2026-10-08-catalog-batch-5-rulings.md).
 
 **Builds on** [Powers batch 1](2026-09-20-powers-design.md),
