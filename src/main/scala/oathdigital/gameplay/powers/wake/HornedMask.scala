@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.wake
 
 import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.actions.CardPlay
+import oathdigital.gameplay.actions.{AdviserFace, CardPlay, CardPlayRules}
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.{AdviserLimit, NoteSupport, PlayerFacts,
   PowerAnswers}
@@ -34,7 +34,9 @@ object HornedMaskCard extends Relic(RelicId("R06"), "Horned Mask", value = 48, d
   * search hides an adviser whose discard is refused, and every denizen when
   * no adviser can go.
   * "Full" is the player's adviser limit, [[AdviserLimit.of]]: 3, or 2 for a
-  * holder of Silver Tongue or Insomnia.
+  * holder of Silver Tongue or Insomnia. Full counts the advisers toward the
+  * limit (`AdviserLimit.towardLimit`), and an adviser that does not count is
+  * shown unavailable for the discard.
   */
 final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
   import HornedMask._
@@ -76,7 +78,8 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
     PlayerFacts.player(ready, actor).map(_.advisers).getOrElse(Vector.empty)
 
   private def full(ready: ReadyGame, actor: PlayerId): Boolean =
-    advisers(ready, actor).size >= AdviserLimit.of(catalog, ready, actor)
+    AdviserLimit.towardLimit(ready, actor) >=
+      AdviserLimit.of(catalog, ready, actor)
 
   private def takeable(ready: ReadyGame, actor: PlayerId): Vector[DenizenState] =
     site(ready, actor).toVector.flatMap(_._2.denizens.collect {
@@ -98,8 +101,20 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
     if !full(ready, actor) ||
         PowerAnswers.one(pending, denizenDecisionId).isEmpty then Vector.empty
     else Vector(Decide(discardDecisionId, actor, DecisionQuery.ChooseOne(
-      advisers(ready, actor).flatMap(a => DecisionOption.forRef(ref(a))),
+      discardable(ready, actor),
       heading = Some("Horned Mask: choose an adviser to discard"))))
+
+  /** The discard question's options: every adviser, one that does not count
+    * toward the limit shown unavailable, since discarding it frees no room.
+    */
+  private def discardable(ready: ReadyGame, actor: PlayerId)
+      : Vector[DecisionOption] =
+    val ignored = AdviserLimit.ignored(ready, actor).toSet
+    advisers(ready, actor).flatMap(adviser =>
+      DecisionOption.forRef(ref(adviser)).map(option =>
+        if ignored(AdviserFace.of(adviser)) then DecisionOption.Unavailable(
+          option, OptionReason.Written(CardPlayRules.notCounted))
+        else option))
 
   private def take(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =

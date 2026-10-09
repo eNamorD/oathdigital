@@ -25,6 +25,7 @@ class HornedMaskSuite extends munit.FunSuite:
   // A denizen with no restriction on discard.
   private val fresh = CatalogNames.denizen("Wrestlers")
   private val tongue = CatalogNames.denizen("Silver Tongue")
+  private val piper = CatalogNames.denizen("Pied Piper")
   // Each is printed Locked: faceup, it cannot be discarded.
   private val locked = Vector("Faithful Friend", "A Small Favor",
     "Family Heirloom").map(CatalogNames.denizen(_))
@@ -174,6 +175,26 @@ class HornedMaskSuite extends munit.FunSuite:
     parked.assertNotParked(done.state)
     assertEquals(Look(after(done)).advisers(actor).toSet,
       Set[CardId](elders, fresh, inn))
+
+  test("a Pied Piper holder is full at three other advisers, and Pied " +
+      "Piper is shown unavailable for the discard"):
+    val ready = holding(piper, elders, fresh, wolves)
+    val asked = takeInn(accepted(use(ready, power, source)))
+    assert(awaits(asked, HornedMask.discardDecisionId),
+      parked.parkedDecision(asked.state).toString)
+    assertEquals(queryOf(asked, actor).map(_.offeredOptions
+      .map(option => (option.id, option.state, option.reason))), Some(Vector(
+      (piper.value, "unavailable",
+        Some("Does not count toward the adviser limit")),
+      (elders.value, "available", None), (fresh.value, "available", None),
+      (wolves.value, "available", None))))
+
+  test("Pied Piper beside two other advisers leaves room"):
+    val ready = holding(piper, elders, fresh)
+    val done = takeInn(accepted(use(ready, power, source)))
+    parked.assertNotParked(done.state)
+    assertEquals(Look(after(done)).advisers(actor).toSet,
+      Set[CardId](piper, elders, fresh, inn))
 
   test("a full area of locked advisers cannot use it, and it is not offered"):
     val ready = holding(locked*)
