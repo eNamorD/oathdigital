@@ -138,8 +138,8 @@ By the last slice:
   `orderedModifiers` channel (`ModifierInvocation`, `WithModifiers`).
 - `OathRulesWalker.validateModifiers` and `requirePayable`, and
   `ModifierOffers.paying`.
-- `SelectedModifier`'s eligibility-window payment Transform and
-  `selectionPayments`.
+- `SelectedModifier`'s eligibility-window payment Transform. Its
+  `selectionPayments` stays as the pick's payment (plan-time ruling 5).
 - `WalkerParked.modifiers` and `CurrentGameState.walkerModifiers`.
 - The preview endpoint and its routes (`GameRoutes`, `TrustedGameGateway`,
   `AuthenticatedGameRoutes`, `MajorActionPreviewGuard`) and
@@ -155,6 +155,52 @@ By the last slice:
 The start line keeps its wording and lists the modifiers in pick order,
 read from the answers. A walk whose modifier decision was not asked has no
 modifiers, as today.
+
+## Plan-time rulings
+
+Settled while planning slice 1:
+
+1. **The decision is `{action}.modifiers`** (`search.modifiers`), one id per
+   modifier window, so a facedown-adviser play shares Search's. A pick
+   answers with the modifier's card. "Start" answers with the button
+   `start`, and it is listed first, so a test's default answer starts the
+   action with no modifier.
+2. **Who is listed.** Every player-selected power that may be picked at the
+   window and whose card the actor may use now. Each is judged in this
+   order:
+   - Its own `offerReason`, from the picks so far.
+   - A dry run of its payment, priced, or unavailable with the shortfall.
+   - Whether it is applicable, else "Cannot be used now".
+
+   An `offerReason` warning marks an otherwise available option.
+3. **When a pass asks.** The first pass asks only when some modifier can be
+   picked, so a player with nothing to pick is asked nothing (ruling 1).
+   After a pick, a pass asks while any modifier is still listed, available
+   or not, so the reasons stay visible. Once every listed modifier is
+   picked, the action starts by itself.
+4. **"Start"'s reason** is the first refused option of the action's first
+   decision, as the procedure prices it (Search: "Needs 2 Supply; you
+   have 0"). A procedure that prices nothing says "Cannot start now".
+5. **`selectionPayments` stays.** It is the pick's payment. Only the
+   eligibility-window Transform goes, action by action as each moves
+   (`SelectedModifier.paidAtPick`).
+6. **The powers follow the answers.** `WalkerPowers` keeps the full catalog
+   as its pool. `ProcedureWalker` adds the powers picked in the answers at
+   every entry and after each answer. Within a command, picks are only ever
+   added.
+7. **A picked modifier applies at its own selection window,** however much
+   it could still pay, so its option restrictions reach the remaining
+   options.
+8. **Picked cards are protected.** `CardSlots` reads the picked cards from
+   the answers, and `ActiveModifier` refuses their discard, as it does for
+   the modifiers a start selected.
+9. **The Game Log.** The modifier decision posts no "Chose" line. The Search
+   tag waits until the decision is settled: it was never asked, "Start" was
+   answered, or a later decision was (a walk whose every modifier is picked
+   starts by itself). The facedown-adviser tag moves from the start to the
+   adviser's pick.
+10. **Labels.** Search's button reads "Start Search", and the facedown-adviser
+    play's reads "Play facedown adviser".
 
 ## Slices
 
