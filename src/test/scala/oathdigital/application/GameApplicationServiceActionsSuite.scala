@@ -255,7 +255,8 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
   test("Search draw port cannot inject card identities inconsistent with state"):
     /** Stub of SearchDrawPort: always draws DenizenId("denizen:tampered"). */
     val port = new SearchDrawPort:
-      def prepare(ready: ReadyGame, source: SearchSource, origin: Region): Either[OathViolation, Vector[WorldCardId]] =
+      def prepare(ready: ReadyGame, source: SearchSource)
+          : Either[OathViolation, Vector[WorldCardId]] =
         Right(Vector(DenizenId("denizen:tampered")))
     // Built by hand: `Table#service` takes no draw port.
     val repository = new InMemoryEventStreamRepository

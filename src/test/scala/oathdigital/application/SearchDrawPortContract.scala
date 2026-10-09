@@ -1,16 +1,17 @@
 package oathdigital.application
 
-import oathdigital.model.{OathViolation, Region, SearchSource}
+import oathdigital.model.{Region, SearchSource}
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.*
 
 /** What every `SearchDrawPort` promises (the trait's doc): a draw takes its
   * cards from the pile of the source it was asked for, in the pile's own
-  * order, and a source the origin region cannot reach is refused. Only the
-  * authoritative port exists in production; the one stub of this port, which
-  * draws a card the pile does not hold, breaks the promise on purpose to test
-  * that the service refuses it. */
+  * order, whichever region the pile lies in. Which piles a Search may pick
+  * is the source decision's business (catalog batch 6, slice 3). Only the
+  * authoritative port exists in production; the one stub of this port,
+  * which draws a card the pile does not hold, breaks the promise on purpose
+  * to test that the service refuses it. */
 trait SearchDrawPortContract extends munit.FunSuite:
   protected def port: SearchDrawPort
 
@@ -22,7 +23,7 @@ trait SearchDrawPortContract extends munit.FunSuite:
     val table = atAncientCity.worldDeckTop("Errand Boy", "Wrestlers",
       "Alchemist", "Homesteaders")
     assertEquals(
-      accepted(port.prepare(table.ready, SearchSource.WorldDeck, origin)),
+      accepted(port.prepare(table.ready, SearchSource.WorldDeck)),
       table.ready.game.current.commonCards.worldDeck.take(3))
 
   test("a regional discard draw takes the pile's last-placed cards first"):
@@ -30,14 +31,16 @@ trait SearchDrawPortContract extends munit.FunSuite:
       "Alchemist", "Homesteaders")
     assertEquals(
       accepted(port.prepare(table.ready,
-        SearchSource.RegionalDiscard(origin), origin)),
+        SearchSource.RegionalDiscard(origin))),
       table.ready.game.current.commonCards.discard(origin).reverse.take(3))
 
-  test("another region's discard is refused"):
-    val table = atAncientCity.discarded(Region.Provinces, "Errand Boy")
-    val source = SearchSource.RegionalDiscard(Region.Provinces)
-    assertEquals(rejected(port.prepare(table.ready, source, origin)),
-      OathViolation.SearchSourceUnavailable(source))
+  test("another region's discard is drawn the same way"):
+    val table = atAncientCity.discarded(Region.Provinces, "Errand Boy",
+      "Wrestlers")
+    assertEquals(
+      accepted(port.prepare(table.ready,
+        SearchSource.RegionalDiscard(Region.Provinces))),
+      table.ready.game.current.commonCards.discard(Region.Provinces).reverse)
 
 class AuthoritativeSearchDrawPortSuite extends SearchDrawPortContract:
   protected def port = SearchDrawPort.authoritative

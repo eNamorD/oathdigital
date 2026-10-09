@@ -245,17 +245,22 @@ object Discard:
     if amount == 0 then Vector.empty
     else Vector(Move(piece(amount), from, to))
 
-/** Takes known cards from the top of a prompted draw source, in top-first
-  * order. The destination is intentionally supplied by the prompting rule.
+/** Takes known cards from a prompted draw source, in the order drawn: from
+  * the top, or from the bottom when `position` says so (a Search drawn
+  * bottom up, catalog batch 6). The destination is intentionally supplied
+  * by the prompting rule.
   */
 final case class Draw(player: PlayerId, cards: Vector[CardId],
-    source: Location, destination: Location)
+    source: Location, destination: Location,
+    position: StackPosition = StackPosition.Top)
     extends CoreOperation:
   override val required: Boolean = true
   require(cards.nonEmpty, "draw must contain at least one card")
+  require(position != StackPosition.Unspecified,
+    "a draw takes from the top or the bottom")
 
   val takes: Vector[Take] = cards.map(card => Take(Piece.Card(card),
-    player, source, destination, sourcePosition = StackPosition.Top))
+    player, source, destination, sourcePosition = position))
   override val children: Vector[Operation] =
     takes.flatMap(_.children)
 

@@ -217,6 +217,15 @@ final case class Table private (private val game: ReadyGame,
       commonCards = c.commonCards.copy(worldDeck = ids ++
         c.commonCards.worldDeck))))
 
+  /** These cards at the bottom of the world deck, last named at the
+    * bottom. */
+  def worldDeckBottom(cards: (String | WorldCardId)*)(
+      using munit.Location): Table =
+    val ids = cards.toVector.map(CatalogNames.worldCard)
+    ids.foldLeft(this)(_.moving(_)).update(_.updateCurrent(c => c.copy(
+      commonCards = c.commonCards.copy(worldDeck =
+        c.commonCards.worldDeck ++ ids))))
+
   /** These relics on top of the relic deck, first named on top. */
   def relicDeckTop(cards: (String | RelicId)*)(using munit.Location): Table =
     val ids = cards.toVector.map(CatalogNames.relic)

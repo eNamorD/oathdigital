@@ -265,6 +265,8 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         secrets = 2, actingPlayer = player),
       Draw(player, Vector(relic), Location.Deck(CardDeck.Relic),
         Location.PlayArea(player)),
+      Draw(player, Vector(denizen), Location.RegionalDiscard(Region.Cradle),
+        Location.Hand(player), StackPosition.Bottom),
       Exchange(
         Give(Piece.Favor(1), player, Location.PlayArea(player),
           Location.PlayArea(other)),

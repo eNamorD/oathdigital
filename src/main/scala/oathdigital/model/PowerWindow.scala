@@ -66,6 +66,10 @@ object PowerWindow:
   case object SearchPlayToSite extends SearchWindow { val key = "search.play-to-site" }
   case object SearchPlayAdviser extends SearchWindow:
     val key = "search.play-adviser"
+  /** The `search.source` decision: a power adds piles to it, warns one, or
+    * makes one unavailable (catalog batch 6, slice 3). */
+  case object SearchSourceSelection extends SearchWindow:
+    val key = "search.source-selection"
   case object TravelCost extends TravelWindow { val key = "travel.cost" }
   case object CampaignBeforeTargets extends CampaignWindow:
     val key = "campaign.before-targets"

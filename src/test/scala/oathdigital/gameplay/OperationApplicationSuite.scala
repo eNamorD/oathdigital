@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Unwrap.accepted
 
 /** The shape guard through the two interfaces that cross it: the resolver's
@@ -212,3 +212,27 @@ class OperationApplicationSuite extends munit.FunSuite:
     assertEquals(OperationResolution.reasons(ready, operation,
       OperationPolicy.Permissive, Vector(blocking)).map(_.code),
       Vector("power-blocked"))
+
+  /** Three denizens in the Cradle discard: the first named at the bottom. */
+  private val cradlePile = Vector("Threatening Roar", "Fae Merchant",
+    "Second Chance").map(CatalogNames.denizen(_))
+
+  private def bottomDraw(cards: Vector[CardId]): Draw =
+    Draw(Table.p1, cards, Location.RegionalDiscard(Region.Cradle),
+      Location.Hand(Table.p1), StackPosition.Bottom)
+
+  test("a Draw from the bottom takes the pile's bottom cards, bottom first"):
+    val source = Table.start.discarded(Region.Cradle, cradlePile*).ready
+    val after = accepted(OperationPipeline.run(source,
+      Vector(bottomDraw(cradlePile.take(2))), OperationPolicy.Permissive,
+      Vector.empty)(Right(_))).state
+    assertEquals(after.game.current.commonCards.discard(Region.Cradle),
+      Vector(cradlePile(2)))
+    assertEquals(after.game.current.temporaryHands(Table.p1),
+      cradlePile.take(2))
+
+  test("a Draw from the bottom refuses a card above the bottom"):
+    val source = Table.start.discarded(Region.Cradle, cradlePile*).ready
+    val operation = bottomDraw(Vector(cradlePile(1)))
+    assertEquals(codes(OperationApplication.validate(source, operation)),
+      Vector("invalid-stack-position"))

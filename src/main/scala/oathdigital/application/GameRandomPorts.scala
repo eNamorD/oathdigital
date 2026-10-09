@@ -61,11 +61,10 @@ object CampaignDicePort:
 trait SearchDrawPort:
   def prepare(
       ready: oathdigital.model.ReadyGame,
-      source: SearchSource,
-      origin: Region
+      source: SearchSource
   ): Either[OathViolation, Vector[WorldCardId]]
 
 object SearchDrawPort:
   val authoritative: SearchDrawPort = new SearchDrawPort:
-    def prepare(ready: oathdigital.model.ReadyGame, source: SearchSource,
-        origin: Region) = SearchRules.draw(ready, source, origin)
+    def prepare(ready: oathdigital.model.ReadyGame, source: SearchSource) =
+      Right(SearchRules.draw(ready, source))

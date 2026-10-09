@@ -111,7 +111,7 @@ private[gamelog] final class DetailLines(words: LogWords,
         line(LogSpan.Text(s"Moved $amount ") +:
           (whose(kind, amount, actor, before) ++
             Vector(LogSpan.Text(" to "), words.site(site))))
-      case Draw(player, cards, _, _) if run.procedure != ActionRef.Search =>
+      case Draw(player, cards, _, _, _) if run.procedure != ActionRef.Search =>
         line(words.subject(player, actor, "drew") ++
           words.cards(cards.map(card)))
       case discard: Discard.Denizen if !placedDiscard.contains(discard.card) =>

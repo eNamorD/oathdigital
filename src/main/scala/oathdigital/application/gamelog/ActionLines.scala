@@ -187,7 +187,7 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
   private def search(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     journal.runOps(run, at).collectFirst {
-      case (_, OpStep(Draw(_, cards, from, _), before, after)) =>
+      case (_, OpStep(Draw(_, cards, from, _, _), before, after)) =>
         (cards.map(card => card -> words.card(card, before, after, viewer)), from)
     }.toVector.flatMap { case (drawn, from) =>
       val kept: Option[Vector[CardId]] = journal.event(at) match

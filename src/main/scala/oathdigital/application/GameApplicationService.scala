@@ -517,10 +517,9 @@ final class GameApplicationService(
               if ready.game.current.walkerProcedure.contains(ActionRef.Search) =>
             for
               source <- SearchProcedure.sourceOf(answer)
-              region <- SearchProcedure.actorRegion(ready, actor)
-              prepared <- searchDrawPort.prepare(ready, source, region)
-              authoritative <- oathdigital.gameplay.actions.SearchRules.draw(
-                ready, source, region)
+              prepared <- searchDrawPort.prepare(ready, source)
+              authoritative = oathdigital.gameplay.actions.SearchRules.draw(
+                ready, source)
               _ <- Either.cond(prepared == authoritative, (),
                 OathViolation.SearchDrawMismatch(
                   "prepared draw does not match authoritative source order"))

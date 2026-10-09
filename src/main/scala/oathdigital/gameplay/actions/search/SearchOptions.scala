@@ -15,13 +15,10 @@ object SearchOptions:
       PricedOptions.options(decide)
     else PricedOptions.priced(state, tree, pending, powers, decide,
       fallback = "Cannot search there now",
-      explain = empty(state, decide.owner))
+      explain = empty(state))
 
   /** "The world deck is empty", "The Cradle discard pile is empty". */
-  private def empty(state: ReadyGame, actor: PlayerId)(
-      ref: DecisionOptionRef): Option[String] = for
-    source <- SearchSource.fromRef(ref)
-    origin <- SearchProcedure.actorRegion(state, actor).toOption
-    cards <- SearchRules.draw(state, source, origin).toOption
-    if cards.isEmpty
-  yield s"The ${SearchSource.name(source)} is empty"
+  private def empty(state: ReadyGame)(ref: DecisionOptionRef)
+      : Option[String] =
+    SearchSource.fromRef(ref).filter(SearchRules.draw(state, _).isEmpty)
+      .map(source => s"The ${SearchSource.name(source)} is empty")
