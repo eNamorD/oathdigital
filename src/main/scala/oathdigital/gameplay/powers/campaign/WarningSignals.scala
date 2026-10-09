@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.campaign.{CampaignProcedure, CampaignSetup}
 import oathdigital.gameplay.powers.{PowerAnswers, WarbandArrangement}
+import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
 
 object WarningSignalsCard extends Denizen(DenizenId("25"), "Warning Signals", Suit.Nomad):
@@ -55,11 +56,13 @@ final case class WarningSignals private (catalog: ExecutableCatalog)
   private def rearrange(user: PlayerId): Operation = Branch((ready, _) => {
     val (board, sites) = WarbandArrangement.holdings(ready, user,
       defended(ready, user))
-    if !WarbandArrangement.movable(board, sites) then Vector.empty
+    val toSites = !VowOfWandering.holds(ready, user)
+    if !WarbandArrangement.movable(board, sites, toSites) then Vector.empty
     else Vector(
       Decide(WarningSignals.decisionId, user, WarbandArrangement.query(user,
         board, sites, "Warning Signals: arrange your warbands. Your board " +
-          "holds the ones no site keeps, and each site keeps at least one")),
+          "holds the ones no site keeps, and each site keeps at least one",
+        toSites)),
       Note(id, _ => Some(WarningSignals.redistributed(
         PowerSourceRef.Card(cardId), NoteArg.Player(user)))),
       BuildOps((state, pending) => PowerAnswers.distribution(pending,

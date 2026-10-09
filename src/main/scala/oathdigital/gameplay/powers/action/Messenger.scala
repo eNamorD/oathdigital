@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{PowerAnswers, WarbandArrangement}
+import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
 
 object MessengerCard extends Denizen(DenizenId("105"), "Messenger", Suit.Order):
@@ -41,12 +42,13 @@ case object Messenger extends PaidAction(MessengerCard.power):
       : Either[OathViolation, Operation] = Right(Branch((live, _) => {
     val (board, sites) = WarbandArrangement.holdings(live, player,
       ruled(live, player))
-    if !WarbandArrangement.movable(board, sites) then
+    val toSites = !VowOfWandering.holds(live, player)
+    if !WarbandArrangement.movable(board, sites, toSites) then
       Vector(Note(id, _ => PowerSourceRef.of(source).map(stuck(_))))
     else Vector(
       Decide(decisionId, player, WarbandArrangement.query(player, board, sites,
         "Messenger: arrange your warbands. Your board holds the ones no site " +
-          "keeps, and each site keeps at least one")),
+          "keeps, and each site keeps at least one", toSites)),
       Note(id, _ => PowerSourceRef.of(source).map(card =>
         redistributed(card, NoteArg.Player(player)))),
       BuildOps((state, pending) => PowerAnswers.distribution(pending,

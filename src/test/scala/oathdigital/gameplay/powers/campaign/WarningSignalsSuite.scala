@@ -16,6 +16,7 @@ import oathdigital.testkit.Outcomes.assertWireRoundTrips
   * the sites they rule, before their force is scored, and the card is discarded
   * when the Campaign has resolved. */
 class WarningSignalsSuite extends munit.FunSuite:
+  private val vow = CatalogNames.denizen("Vow of Wandering")
   private val card = CatalogNames.denizen("Warning Signals")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val decision = WarningSignals.decisionId
@@ -201,3 +202,17 @@ class WarningSignalsSuite extends munit.FunSuite:
     val done = commit(rules(losingDice), b, 2, raid = true).pick(b.rival,
       CampaignIds.defenderPlan, ref).finishPlanWindows
     assertEquals(said(power, done.events), Vector.empty)
+
+  test("a defender holding Vow of Wandering may only bring warbands back " +
+      "to the board"):
+    val base = defending
+    val b = withAdviserFor(base, base.rival, vow, Orientation.FaceUp)
+    val run = chosen(b)
+    // The origin holds 2, so its slot tops out at 2.
+    assertEquals(run.refused(b.rival, decision,
+      arrangement(b, board = 0, origin = 4, extra = 3)),
+      Some(OathViolation.InvalidEventOrder(s"decision $decision " +
+        s"distributes to site/${b.origin.value} outside 1..2")))
+    val moved = run.answer(b.rival, decision,
+      arrangement(b, board = 5, origin = 1, extra = 1))
+    assertEquals(Look(moved.state).player(b.rival).board.warbands, 5)

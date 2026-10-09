@@ -8,6 +8,7 @@ import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 
 class MessengerSuite extends munit.FunSuite:
+  private val vow = CatalogNames.denizen("Vow of Wandering")
   import PhasePowerHarness._
 
   private val messenger = CatalogNames.denizen("Messenger")
@@ -120,3 +121,25 @@ class MessengerSuite extends munit.FunSuite:
     assert(!usableNow(broke).exists(_.power.id == Messenger.id))
     assertEquals(use(broke, Messenger, source).left.toOption,
       Some(OathViolation.InsufficientFavor(1, 0)))
+
+  test("a holder of Vow of Wandering may only bring warbands back to the " +
+      "board"):
+    // 3 on the board, 2 at Ancient City and 1 at Deep Woods: 6. No site
+    // may grow.
+    val ready = Table.from(staged(board = 3, atHome = 2)).adviser(p1, vow)
+      .ready
+    assertEquals(arranged(ready, arrangement(1, 4, 1)).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        s"decision ${Messenger.decisionId} distributes to " +
+          s"site/${home.value} outside 1..2")))
+    val end = after(accepted(arranged(ready, arrangement(4, 1, 1))))
+    assertEquals(Look(end).boardWarbands(p1), 4)
+    assertEquals(count(end, home), 1)
+
+  test("a holder whose sites keep one warband each has nothing to move"):
+    val ready = Table.from(staged(board = 3, atHome = 1)).adviser(p1, vow)
+      .ready
+    val t = accepted(use(ready, Messenger, source))
+    assert(!awaits(t, Messenger.decisionId))
+    assertEquals(NoteText.said(Messenger, t.events), Vector(NoteText.Said(
+      "used.none", "No warband could be moved.", covers = false)))

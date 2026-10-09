@@ -20,19 +20,25 @@ object WarbandArrangement:
     }))
 
   /** Whether a warband can move: there is a site, and a warband beyond the
-    * one each site keeps. */
-  def movable(board: Int, sites: Vector[(SiteId, Int)]): Boolean =
-    sites.nonEmpty && board + sites.map(_._2).sum > sites.size
+    * one each site keeps. When the sites may not grow (`toSites` false),
+    * only a site holding more than its one can send a warband back. */
+  def movable(board: Int, sites: Vector[(SiteId, Int)], toSites: Boolean)
+      : Boolean =
+    if toSites then sites.nonEmpty && board + sites.map(_._2).sum > sites.size
+    else sites.exists(_._2 > 1)
 
   /** The exact distribution over the board and `sites`, each slot opening on
-    * what it holds now. */
+    * what it holds now. When the sites may not grow (`toSites` false), as for
+    * a holder of Vow of Wandering, each site's slot tops out at what it
+    * holds. */
   def query(user: PlayerId, board: Int, sites: Vector[(SiteId, Int)],
-      heading: String): DecisionQuery =
+      heading: String, toSites: Boolean): DecisionQuery =
     val total = board + sites.map(_._2).sum
     val room = total - (sites.size - 1)
     val slots = DistributeSlot(DecisionOptionRef.Player(user), 0, total,
       Some(board)) +: sites.map { case (site, count) => DistributeSlot(
-        DecisionOptionRef.Site(site), 1, room, Some(count)) }
+        DecisionOptionRef.Site(site), 1, if toSites then room else count,
+        Some(count)) }
     DecisionQuery.Distribute.exactly(slots, total, Some(heading),
       "Move warbands")
 
