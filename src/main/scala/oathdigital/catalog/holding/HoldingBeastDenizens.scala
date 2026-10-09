@@ -59,12 +59,6 @@ object NewGrowthCard extends Denizen(DenizenId("188"), "New Growth", Suit.Beast)
       "site _(that has space)_.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object MarshSpiritCard extends Denizen(DenizenId("192"), "Marsh Spirit", Suit.Beast) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.marsh-spirit"),
-    persistent = true, cost = Cost.free,
-    text = "Players who target this site **cannot** use battle plans.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object ForestCouncilCard extends Denizen(DenizenId("194"), "Forest Council", Suit.Beast) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.forest-council"),
     persistent = true, cost = Cost.free,
