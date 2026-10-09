@@ -36,13 +36,6 @@ object MarriageCard extends Denizen(DenizenId("148"), "Marriage", Suit.Hearth) w
       "counts as one toward your adviser limit.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object OldSongsCard extends Denizen(DenizenId("229"), "Old Songs", Suit.Hearth):
-  val power = PrintedPower(PowerId("denizen.old-songs"),
-    persistent = false, cost = Cost.free,
-    text = "You may trade with cards that have exactly one [secret] on " +
-      "them.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SpinningBeeCard extends Denizen(DenizenId("232"), "Spinning Bee", Suit.Hearth):
   val power = PrintedPower(PowerId("denizen.spinning-bee"),
     persistent = false, cost = Cost.free,

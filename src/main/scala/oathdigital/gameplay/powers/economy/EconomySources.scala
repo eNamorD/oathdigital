@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.economy.MusterSource
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 /** What the Muster and Trade source powers share (catalog batch 5 design,
@@ -31,6 +32,42 @@ private[economy] object EconomySources:
     val region = PowerAccess.pawnSite(ready, actor).flatMap(map.regionOf)
     map.inPlay.filter(site => region.exists(map.regionOf(site).contains))
       .flatMap(site => map.sites.get(site).toVector.flatMap(_.denizens))
+
+  /** The priority an exemption folds at: after the powers that add cards,
+    * at 0, so that a card one of them adds can be exempted too. */
+  val ExemptionPriority: Int = 1
+
+  /** `operations` with every source the token-free rule withheld made
+    * available, when `admits` accepts its card. */
+  def exempted(operations: Vector[Operation],
+      admits: DecisionOptionRef => Boolean): Vector[Operation] =
+    withOptions(operations)(_.map {
+      case DecisionOption.Unavailable(option, MusterSource.Occupied)
+          if admits(option.ref) => option
+      case other => other
+    })
+
+  /** `operations` with `actor`'s payment onto the answered source marked
+    * `intoOccupied`, which `PayCostRules` would refuse onto a card that holds
+    * tokens. The source decision is the gate: an occupied card is answerable
+    * only when an exemption made it available, so the mark changes nothing
+    * for a token-free card. Every other payment keeps the check.
+    */
+  def intoOccupied(operations: Vector[Operation], actor: PlayerId,
+      decisionId: String, answered: Vector[Answered]): Vector[Operation] =
+    PowerAnswers.last(answered, decisionId).flatMap(idOf) match
+      case None => operations
+      case Some(card) => operations.map {
+        case pay: PayCost if pay.player == actor &&
+            pay.placedAt == Location.OnCard(card) =>
+          pay.copy(intoOccupied = true)
+        case other => other
+      }
+
+  private def idOf(ref: DecisionOptionRef): Option[CardId] = ref match
+    case DecisionOptionRef.Denizen(id) => Some(id)
+    case DecisionOptionRef.Edifice(id) => Some(id)
+    case _ => None
 
   /** `operations` with `change` applied to the options of each choose-one
     * decision. */

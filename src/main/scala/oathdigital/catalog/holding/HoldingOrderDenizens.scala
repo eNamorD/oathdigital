@@ -109,10 +109,3 @@ object KeepCard extends Denizen(DenizenId("5"), "Keep", Suit.Order) with SiteOnl
       "targeted, place your pawn at this site and end the action. " +
       "_Do not burn favor, move pawn, etc._")
   val powers: Vector[PrintedPower] = Vector(power)
-
-object PressgangsCard extends Denizen(DenizenId("6"), "Pressgangs", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.pressgangs"),
-    persistent = false, cost = Cost.free,
-    text = "You can muster on cards that already have [favor] or " +
-      "[secret] on them.")
-  val powers: Vector[PrintedPower] = Vector(power)

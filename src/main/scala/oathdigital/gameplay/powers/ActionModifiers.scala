@@ -4,8 +4,9 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.gameplay.powers.economy.{AnimalPlaymates, AwaitedReturn,
   Birdsong, CupOfPlenty, Curfew, Defame, Downtrodden, GolemLegions,
-  InitiationRite, MapLibrary, MountedLibrary, MovingMarket, RowdyPub,
-  SkilledMerchants, TheOldOak, VillageIdiot, VowOfBeastkin, VowOfPoverty}
+  InitiationRite, MapLibrary, MountedLibrary, MovingMarket, OldSongs,
+  Pressgangs, RowdyPub, SkilledMerchants, TheOldOak, VillageIdiot,
+  VowOfBeastkin, VowOfPoverty}
 import oathdigital.gameplay.powers.recover.RelicWorship
 import oathdigital.gameplay.powers.search.{Augury, CropRotation, Disciples,
   ForcedLabor, HuntingParty, NewsFromAfar, TruthfulHarp}
@@ -37,6 +38,8 @@ object ActionModifiers:
       Vector(GolemLegions.forCatalog(catalog)) ++
       Vector(MapLibrary.forCatalog(catalog)) ++
       Vector(SkilledMerchants.forCatalog(catalog)) ++
+      Vector(Pressgangs.forCatalog(catalog)) ++
+      Vector(OldSongs.forCatalog(catalog)) ++
       Vector(Curfew.forCatalog(catalog)) ++
       Vector(ForcedLabor.forCatalog(catalog)) ++
       Vector(InitiationRite) ++
