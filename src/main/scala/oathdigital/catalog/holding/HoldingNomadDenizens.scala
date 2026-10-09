@@ -16,14 +16,6 @@ object VowOfKinshipCard extends Denizen(DenizenId("152"), "Vow of Kinship", Suit
       "your board.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object WildMountsCard extends Denizen(DenizenId("153"), "Wild Mounts", Suit.Nomad):
-  val power = PrintedPower(PowerId("denizen.wild-mounts"),
-    persistent = false, cost = Cost.free,
-    text = "If you would discard any number of [suit-nomad] battle " +
-      "plans, you may instead discard any one [suit-beast] card " +
-      "you rule.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object MountainGiantCard extends Denizen(DenizenId("155"), "Mountain Giant", Suit.Nomad):
   val power = PrintedPower(PowerId("denizen.mountain-giant"),
     persistent = false, cost = Cost(secret = 1),

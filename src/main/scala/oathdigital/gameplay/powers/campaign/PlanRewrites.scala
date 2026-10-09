@@ -10,4 +10,4 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   */
 object PlanRewrites:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
-    Vector(PeaceEnvoy)
+    Vector(PeaceEnvoy, WildMounts.forCatalog(catalog))
