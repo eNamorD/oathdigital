@@ -123,8 +123,13 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
     * picks, or `None` when one does. */
   private def refusal(pass: ModifierChoice.Pass): Option[String] =
     val powers = pass.powers.quiet
-    val previewed = WalkerSimulation.preview(rest, pass.state, powers)
-    if previewed.exists(_.exists(_.outcome.isRight)) then None
+    // A preview needs `rest` to park on a choose-one before it runs
+    // anything; any other `rest` is asked only whether it would start.
+    val opens = WalkerSimulation.preview(rest, pass.state, powers) match
+      case Right(previewed) => previewed.exists(_.outcome.isRight)
+      case Left(_) =>
+        WalkerSimulation.refusal(rest, pass.state, powers).isEmpty
+    if opens then None
     else Some(explained(pass.state, powers)
       .getOrElse(ModifierChoice.cannotStart))
 

@@ -61,7 +61,13 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
   def withAnswers(answered: Vector[Answered]): WalkerPowers =
     val wanted = (modifiers ++ ModifierPicks.picks(pool, answered)).distinct
     if wanted == modifiers then this
-    else WalkerPowers.selected(copy(powers = pool), wanted)
+    else withPicks.computeIfAbsent(wanted,
+      picked => WalkerPowers.selected(copy(powers = pool), picked))
+
+  /** The instances `withAnswers` built, by selection, so that every call for
+    * the same picks shares one instance and its search memo. */
+  private lazy val withPicks =
+    new java.util.concurrent.ConcurrentHashMap[Vector[PowerId], WalkerPowers]
 
 object WalkerPowers:
   val empty: WalkerPowers = WalkerPowers(Vector.empty)

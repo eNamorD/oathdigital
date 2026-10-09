@@ -519,7 +519,8 @@ object ProcedureWalker:
       pending: PendingTree, powers: WalkerPowers, decide: Decide): Decide =
     val ctx = WalkCtx(strip(state), Vector.empty,
       state.game.current.turn.activePlayer, pending.answered,
-      powers.withAnswers(pending.answered), WalkerDice.placeholder, state.game.current.walkerProcedure, action)
+      powers.withAnswers(pending.answered), WalkerDice.placeholder,
+      state.game.current.walkerProcedure, action)
     narrowAt(decide, ctx, pending.at).toOption.flatten.getOrElse(decide)
 
   /** Whether the leaf is where a decision is asked: reached fresh, or at the
