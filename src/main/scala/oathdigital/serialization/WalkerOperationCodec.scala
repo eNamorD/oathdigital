@@ -116,11 +116,12 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "kind" -> "discard-relic", "card" -> card.value,
         "from" -> encodePositionedLocation(from), "secrets" -> secrets,
         "actingPlayerId" -> actingPlayer.value)
-      case Draw(player, cards, source, destination) => ujson.Obj(
+      case Draw(player, cards, source, destination, position) => ujson.Obj(
         "kind" -> "draw", "playerId" -> player.value,
         "cards" -> ujson.Arr.from(cards.map(encodeCardRef)),
         "source" -> encodeLocation(source),
-        "destination" -> encodeLocation(destination))
+        "destination" -> encodeLocation(destination),
+        "position" -> encodeStackPosition(position))
       case Play(card, from, destination, orientation, _) => ujson.Obj(
         "kind" -> "play", "card" -> encodeCardRef(card),
         "from" -> encodePositionedLocation(from),
@@ -328,7 +329,14 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "draw must contain at least one card"))
       source <- decodeLocation(value("source"), s"$path.source")
       destination <- decodeLocation(value("destination"), s"$path.destination")
-    yield Draw(PlayerId(value("playerId").str), cards, source, destination)
+      position <- value.obj.get("position").fold[Either[WireError,
+          StackPosition]](Right(StackPosition.Top))(found =>
+        decodeStackPosition(found.str, s"$path.position"))
+      _ <- Either.cond(position != StackPosition.Unspecified, (),
+        InvalidValue(s"$path.position",
+          "a draw takes from the top or the bottom"))
+    yield Draw(PlayerId(value("playerId").str), cards, source, destination,
+      position)
     case "play" => for
       card <- decodeCardRef(value("card"), s"$path.card")
       from <- decodePositionedLocation(value("from"), s"$path.from")

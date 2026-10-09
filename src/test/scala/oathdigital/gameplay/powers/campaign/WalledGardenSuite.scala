@@ -11,7 +11,7 @@ import oathdigital.testkit.CatalogNames
 class WalledGardenSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Walled Garden")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val beasts = planless("Errand Boy", "Small Friends")
+  private val beasts = planless("Bracken", "Small Friends")
   private val beast = beasts.head
   private val arcane = planlessCard("Ward of Silence")
   // Beast, on either face: Hallowed Spring intact, Hiding Place ruined.

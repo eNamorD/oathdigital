@@ -57,10 +57,11 @@ selection.
    choose-one, `search.source`, headed "Choose a Search source". Its options
    are the world deck (`DecisionOptionRef.Deck(CardDeck.World)`, option kind
    `deck`) and the actor's region's discard pile
-   (`DecisionOptionRef.DiscardPile(region)`). Other regions' discards are not
-   offered. The options read "World deck" and "Cradle discard pile"; a card
-   play's discard option reads the same, in place of "Discard to the Cradle
-   discard".
+   (`DecisionOptionRef.DiscardPile(region)`). Other regions' discards are
+   offered only when a picked modifier adds them (catalog batch 6, slice 3:
+   Observatory and Errand Boy). The options read "World deck" and "Cradle
+   discard pile"; a card play's discard option reads the same, in place of
+   "Discard to the Cradle discard".
 3. **Every option says what it costs.** Each available source is `Badged`
    with its cost under the selected modifiers, worded as Travel's ruling 3:
    - Supply only: "3 Supply". A Search that spends no Supply reads "0 Supply".

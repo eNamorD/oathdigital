@@ -106,13 +106,35 @@
   with Observatory and Errand Boy (any pile they offer) and with draw
   extensions such as Augury (more cards, still from the bottom).
 - **R33 Wine of Welcome.** A selected Search modifier. The world deck is
-  drawn from the bottom, stopping at the first Vision as usual.
+  drawn from the bottom, stopping at the first Vision as usual. While it is
+  picked, each discard pile is warned "Wine of Welcome needs the world
+  deck" and stays choosable.
 - **R23 Painted Trumpet.** A selected Search modifier. Picking any discard
   pile draws the top card of each discard pile instead. Draw extensions do
-  not apply. The world deck is unaffected.
-- **Modifier rules,** from the modifier walker phase. Mushrooms and Painted
-  Trumpet exclude each other. Wine of Welcome is warned while Mushrooms is
-  selected, because Mushrooms makes the world deck unavailable.
+  not apply. The world deck is unaffected. While it is picked, the world
+  deck is warned "Painted Trumpet needs a discard pile" and stays
+  choosable. The pile picked may be empty while another pile holds a card,
+  and it costs its usual 2 Supply. Truthful Harp still reveals the cards
+  drawn.
+- **Modifier rules.** Each card states its own, through `offerReason`.
+  Painted Trumpet is unavailable while Mushrooms is picked, with the
+  reason "Cannot be used with Mushrooms". Mushrooms is unavailable while
+  Painted Trumpet is picked, with "Cannot be used with Painted Trumpet".
+  Wine of Welcome is warned while Mushrooms is picked, and Mushrooms
+  while Wine of Welcome is, each with "Wine of Welcome does nothing with
+  Mushrooms".
+- **Plan-time rulings** (2026-10-09):
+  - Any region's discard pile costs 2 Supply. The source decision is the
+    only gate.
+  - A power adds piles after the printed two, in region order (Cradle,
+    Provinces, Hinterland), each once. Painted Trumpet draws the piles
+    in the same order.
+  - Mushrooms waives only Supply. Forced Labor's toll is still paid, as
+    with News from Afar.
+  - The Search line reads "Drew {cards} from the bottom of the Cradle
+    discard and kept {card}", "… from the bottom of the World Deck …",
+    and for Painted Trumpet "Drew {cards} from each discard pile and
+    kept {card}".
 
 ## Slice 4: Search draws
 

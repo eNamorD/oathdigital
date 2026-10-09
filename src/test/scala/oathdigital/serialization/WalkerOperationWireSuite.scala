@@ -188,6 +188,27 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         Left(refusal), ujson.write(injected))
     }
 
+  test("a draw written before it had a position decodes as a draw from the " +
+      "top, and a draw of no position is refused"):
+    val player = PlayerId("red")
+    val draw = Draw(player, Vector(DenizenId("denizen")),
+      Location.RegionalDiscard(Region.Cradle), Location.Hand(player))
+    val encoded = encodedStream("walker",
+      Vector(recordedOperation("draw", draw)))
+    def withPosition(edit: ujson.Value => Unit): String =
+      val stream = ujson.read(encoded).arr
+      edit(stream(0)("payload")("ops")(0))
+      ujson.write(stream)
+    assertEquals(ujson.read(encoded).arr(0)("payload")("ops")(0)("position")
+      .str, "top")
+    val oldJournal = withPosition(_.obj.remove("position"))
+    assertEquals(accepted(GameEventWire.decodeStream(oldJournal))
+      .map(_.event), Vector(recordedOperation("draw", draw)))
+    assertEquals(GameEventWire.decodeStream(withPosition(
+      _("position") = "unspecified")), Left(WireError.InvalidValue(
+        "$[0].payload.ops[0].position",
+        "a draw takes from the top or the bottom")))
+
   test("a WalkerStepRecorded carrying two contribution ids round-trips"):
     val pool = PoolKey("recover")
     val event: OathEvent = WalkerStepRecorded("0",
@@ -265,6 +286,8 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         secrets = 2, actingPlayer = player),
       Draw(player, Vector(relic), Location.Deck(CardDeck.Relic),
         Location.PlayArea(player)),
+      Draw(player, Vector(denizen), Location.RegionalDiscard(Region.Cradle),
+        Location.Hand(player), StackPosition.Bottom),
       Exchange(
         Give(Piece.Favor(1), player, Location.PlayArea(player),
           Location.PlayArea(other)),

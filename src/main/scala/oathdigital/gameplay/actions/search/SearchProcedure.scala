@@ -16,7 +16,8 @@ import oathdigital.model._
   *   Repeat(ModifierChoice),            // the modifiers, one per pass, then
   *                                      // "Start Search"
   *   Decide(search.source),             // a board choose-one: the world deck
-  *                                      // and the actor's region's discard
+  *                                      // and the actor's region's discard;
+  *                                      // window = SearchSourceSelection
   *   Branch { after the answer:
   *     Sequence(cost, draw, query, placement) })  // window = SearchActionEligibility
   * }}}
@@ -103,7 +104,8 @@ object SearchProcedure:
       origin: Region): Operation =
     val pick = Decide(sourceDecisionId, actor, DecisionQuery.ChooseOne(
       Vector(SearchSource.WorldDeck, SearchSource.RegionalDiscard(origin))
-        .map(SearchSource.option), heading = Some(heading)))
+        .map(SearchSource.option), heading = Some(heading)),
+      window = Some(PowerWindow.SearchSourceSelection))
     val search = Branch((_, pending) => pending.answered.collectFirst {
       case Answered(`sourceDecisionId`, answer, _) => answer
     }.toVector.map(answer =>
@@ -113,26 +115,25 @@ object SearchProcedure:
   /** The Search from `source`, once it is picked. */
   private def body(catalog: ExecutableCatalog, actor: PlayerId,
       source: SearchSource): Operation =
-    val cost = BuildOps((ready, _) => for
-      origin <- actorRegion(ready, actor)
-      amount <- SearchRules.cost(ready, source, origin)
-    yield Vector(SpendSupply(actor, amount)),
+    val cost = BuildOps((ready, _) =>
+      Right(Vector(SpendSupply(actor, SearchRules.cost(ready, source)))),
       window = Some(PowerWindow.SearchCost))
 
-    val draw = BuildOps((ready, _) => for
-      origin <- actorRegion(ready, actor)
-      cards <- SearchRules.draw(ready, source, origin)
-      _ <- Either.cond(cards.nonEmpty, (),
-        OathViolation.SearchSourceUnavailable(source))
-    yield {
+    val draw = BuildOps((ready, _) => {
+      val cards = SearchRules.draw(ready, source)
       val location = source match {
         case SearchSource.WorldDeck => Location.Deck(CardDeck.World)
         case SearchSource.RegionalDiscard(region) =>
           Location.RegionalDiscard(region)
       }
-      Vector[CoreOperation](Draw(actor, cards, location, Location.Hand(actor))) ++
+      // Not `Either.cond`: it builds its value eagerly, and a `Draw`
+      // of no card fails its `require`.
+      if cards.isEmpty then
+        Left(OathViolation.SearchSourceUnavailable(source))
+      else Right(Vector[CoreOperation](Draw(actor, cards, location,
+        Location.Hand(actor))) ++
         Option.when(source == SearchSource.WorldDeck &&
-          cards.exists(_.isInstanceOf[VisionId]))(AdvanceVisionsDrawn)
+          cards.exists(_.isInstanceOf[VisionId]))(AdvanceVisionsDrawn))
     }, window = Some(PowerWindow.SearchBeforeDraw))
 
     val query = Branch((ready, pending) => {

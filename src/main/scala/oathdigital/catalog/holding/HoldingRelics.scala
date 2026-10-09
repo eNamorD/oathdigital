@@ -52,14 +52,6 @@ object AncientWritCard extends Relic(RelicId("R22"), "Ancient Writ", value = 81,
       "facedown, and discard the other 2.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object PaintedTrumpetCard extends Relic(RelicId("R23"), "Painted Trumpet", value = 46, defense = 1):
-  val power = PrintedPower(PowerId("relic.painted-trumpet"),
-    persistent = false, cost = Cost.free,
-    text = "Instead of drawing from one discard pile, you may draw the " +
-      "top card from each discard pile. This draw amount " +
-      "**cannot** be modified.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object ImperialSealCard extends Relic(RelicId("R26"), "Imperial Seal", value = 35, defense = 2):
   val power = PrintedPower(PowerId("relic.imperial-seal"),
     persistent = false, cost = Cost(secret = 1),
@@ -74,12 +66,6 @@ object SilverCharmCard extends Relic(RelicId("R31"), "Silver Charm", value = 37,
     text = "Each time you spend Supply to roll [attack-die], you may " +
       "also reroll any number of previous [attack-die] at the same " +
       "time.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object WineOfWelcomeCard extends Relic(RelicId("R33"), "Wine of Welcome", value = 7, defense = 1):
-  val power = PrintedPower(PowerId("relic.wine-of-welcome"),
-    persistent = false, cost = Cost.free,
-    text = "Draw from the bottom of the world deck instead of the top.")
   val powers: Vector[PrintedPower] = Vector(power)
 
 object WhisperingStoneCard extends Relic(RelicId("R34"), "Whispering Stone", value = 13, defense = 2):
