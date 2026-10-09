@@ -66,6 +66,13 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     body.appendChild(panel)
     open(origin)
 
+  /** A power's printed text, and below it the viewer's consent preferences
+    * when they rule it (ruling 16). */
+  def showPower(title: String, lines: Vector[String],
+      grid: Option[ConsentGrid], origin: dom.html.Element): Unit =
+    showText(title, lines, origin)
+    grid.foreach(value => body.appendChild(ConsentGridView.render(value)))
+
   /** Cards in the order given, as a card list (catalog batch 2, N5): a log
     * line's "6 cards". Each is its face or its back as projected; a face
     * still opens that one card here.

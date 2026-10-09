@@ -27,6 +27,10 @@ private[frontend] object CardInspection:
       * "Frontend"). */
     final case class Confirm(question: String, confirm: () => Unit,
         origin: dom.html.Element) extends Request
+    /** A power's printed text, with the viewer's consent preferences for it
+      * when they rule it (consent design, user story step 7). */
+    final case class Power(title: String, lines: Vector[String],
+        grid: Option[ConsentGrid], origin: dom.html.Element) extends Request
 
   private var handler = Option.empty[Request => Unit]
 
@@ -48,3 +52,7 @@ private[frontend] object CardInspection:
   def openConfirm(question: String, confirm: () => Unit,
       origin: dom.html.Element): Unit =
     handler.foreach(_(Request.Confirm(question, confirm, origin)))
+
+  def openPower(title: String, lines: Vector[String],
+      grid: Option[ConsentGrid], origin: dom.html.Element): Unit =
+    handler.foreach(_(Request.Power(title, lines, grid, origin)))

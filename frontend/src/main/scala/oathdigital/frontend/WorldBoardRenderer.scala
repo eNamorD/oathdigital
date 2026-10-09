@@ -1,5 +1,6 @@
 package oathdigital.frontend
 
+import oathdigital.protocol.{GameIntent => GameCommand}
 import org.scalajs.dom
 import ServerUiSupport._
 
@@ -152,7 +153,8 @@ private[frontend] object WorldBoardRenderer:
    */
  def world(
      value: GameProjection,
-     options: BoardOptions
+     options: BoardOptions,
+     submit: GameCommand => Unit = _ => ()
  ): dom.Element =
    val panel = element("section", "panel world")
    panel.setAttribute("aria-label", "The World")
@@ -207,7 +209,8 @@ private[frontend] object WorldBoardRenderer:
        // of height either way, so the cards below it sit at the same place in
        // every site on the board.
        control.appendChild(pawns)
-       control.appendChild(siteDetails(site, options))
+       control.appendChild(siteDetails(site, options,
+         SitePowerLinks.of(value, submit)))
        sites.appendChild(control)
      }
      section.appendChild(sites)

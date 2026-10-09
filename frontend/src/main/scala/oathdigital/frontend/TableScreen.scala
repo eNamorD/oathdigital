@@ -103,7 +103,8 @@ private[frontend] final class TableScreen(
             board, drafts, view.controlsAvailable, controls, value)
         }.getOrElse(BoardOptions.none)
         (WorldBoardRenderer.players(value, selectedPlayer, options),
-          WorldBoardRenderer.world(value, options),
+          WorldBoardRenderer.world(value, options, command =>
+            if view.controlsAvailable then controls.submitCommand(command)),
           decisionKey)
     val development = element("div", "development-content")
     if !view.trusted then

@@ -45,7 +45,8 @@ private[frontend] object ServerUiSupport:
       text("span", "site-token-count", count.toString))
 
   private[frontend] def siteDetails(site: GameSite,
-      options: BoardOptions = BoardOptions.none): dom.Element =
+      options: BoardOptions = BoardOptions.none,
+      links: SitePowerLinks = SitePowerLinks.none): dom.Element =
     val presentation = SiteCardPresentation.from(site)
     val details = element("div", "site-details")
     // Denizens and relics share one row: capacity and relic slots always sum
@@ -90,14 +91,20 @@ private[frontend] object ServerUiSupport:
       details.appendChild(row)
     }
     val footer = element("div", "site-footer")
-    // Two lines of labels at most (`.site-powers`); each power's rules
-    // text rides on its hover title.
+    // Two lines of labels at most (`.site-powers`). Each label keeps its
+    // rules text on its hover title, and opens the power in the inspector.
+    // A button, so the site box it sits in leaves the click to it
+    // (`BoardOptions.own`).
     val powers = element("p", "site-powers")
     site.powers.zipWithIndex.foreach { case (power, index) =>
       if index > 0 then powers.appendChild(dom.document.createTextNode(" · "))
-      val item = text("span", "site-power", power.label)
+      val item = button(power.label, "site-power")
       item.setAttribute("title", power.description.fold(power.label)(
         description => s"${power.label}: $description"))
+      item.onclick = (event: dom.MouseEvent) =>
+        event.stopPropagation()
+        CardInspection.openPower(power.label, power.description.toVector,
+          links.grid(power), item)
       powers.appendChild(item)
     }
     footer.appendChild(powers)
