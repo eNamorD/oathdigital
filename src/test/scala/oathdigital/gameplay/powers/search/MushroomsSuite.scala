@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.gameplay.SearchPlay
-import oathdigital.gameplay.powers.SearchFixture
+import oathdigital.gameplay.{ModifierPlay, SearchPlay}
+import oathdigital.gameplay.actions.search.SearchProcedure
+import oathdigital.gameplay.powers.{PayOrAsk, SearchFixture}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Table}
@@ -61,7 +62,14 @@ class MushroomsSuite extends munit.FunSuite:
     val table = besideMushrooms.denizen("Forced Labor", at = "Broken Peaks")
       .warbandsAt(peaks, p2, 1).warbandsAt(home, p2, 1)
     val before = Look(table.ready)
-    val after = Look(searched(table, Region.Cradle, modifiers))
+    val started = accepted(ModifierPlay.started(rules, Ready(table.ready),
+      ActionRef.Search, p1, PowerWindow.SearchModifierSelection, modifiers))
+    val picked = accepted(rules.resolveWalker(started.state, p1,
+      SearchProcedure.sourceDecisionId, SearchPlay.source(
+        SearchSource.RegionalDiscard(Region.Cradle))))
+    val paid = accepted(rules.resolveWalker(picked.state, p1,
+      ForcedLabor.decisionId, DecisionAnswer.ChooseOneAnswer(PayOrAsk.pay)))
+    val after = Look(SearchFixture.after(paid))
     assertEquals(after.favor(p1), before.favor(p1) - 1)
     assertEquals(after.favor(p2), before.favor(p2) + 1)
     assertEquals(after.supply(p1), 5)
