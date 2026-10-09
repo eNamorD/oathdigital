@@ -16,6 +16,7 @@ class WildMountsSuite extends munit.FunSuite:
   private val lancers = CatalogNames.denizen("Lancers")
   private val stormCaller = CatalogNames.denizen("Storm Caller")
   private val mountedPatrol = CatalogNames.denizen("Mounted Patrol")
+  private val warningSignals = CatalogNames.denizen("Warning Signals")
   private val smallFriends = planlessCard("Small Friends")
   private val python = planlessCard("Giant Python")
   private val newGrowth = planlessCard("New Growth")
@@ -79,6 +80,7 @@ class WildMountsSuite extends munit.FunSuite:
     val advisers = Look(done.state).advisers(b.actor)
     assert(advisers.contains(horseArchers) && advisers.contains(lancers))
     assert(Look(done.state).inRegionalDiscard(smallFriends))
+    assertEquals(lines(done), Vector(swapped(smallFriends)))
 
   test("a user who rules no Beast card is not asked"):
     val b = Vector(card, horseArchers).foldLeft(
@@ -104,6 +106,25 @@ class WildMountsSuite extends munit.FunSuite:
     assertEquals(lines(done), Vector(NoteText.Said("swapped-off-turn",
       s"${b.rival.value} discarded ${smallFriends.value} instead of the " +
         "battle plans.", covers = false)))
+
+  test("Warning Signals' discard is replaced too"):
+    // One warband at the origin and none on the board: Warning Signals has
+    // nothing to move, so it asks nothing.
+    val ruled = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val base = on(ruled)(_.warbandsAt(ruled.origin, ruled.rival, 1)
+      .boardWarbands(ruled.rival, 0))
+    val b = Vector(card, warningSignals, smallFriends).foldLeft(base)(
+      (b, id) => withAdviserFor(b, base.rival, id, Orientation.FaceUp))
+    val asked = commit(rules(losingDice), b, 4).finishAttackerPlans(b.actor)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
+      .pick(b.rival, CampaignIds.defenderPlan,
+        DecisionOptionRef.Denizen(warningSignals)).finishPlanWindows
+    assert(awaits(asked, b.rival, WildMounts.decisionId))
+    val done = asked.pick(b.rival, WildMounts.decisionId,
+      DecisionOptionRef.Denizen(smallFriends))
+    assert(Look(done.state).advisers(b.rival).contains(warningSignals))
+    assert(Look(done.state).inRegionalDiscard(smallFriends))
 
   test("bandits discard the first Beast card they rule, in map order, " +
       "instead of two Nomad plans"):

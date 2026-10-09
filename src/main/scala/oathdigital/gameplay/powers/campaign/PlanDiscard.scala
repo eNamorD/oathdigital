@@ -28,7 +28,9 @@ object PlanDiscard:
   /** A discard `afterCampaign` appended, marked with the plan's `card` and
     * its `user`, `None` for a bandit defender. A power that replaces the
     * discard of a plan (Wild Mounts) finds it by this mark among the last
-    * children of the Campaign. It runs its children as they are. */
+    * children of the Campaign, so a plan appends it through `later`: the
+    * mark must be among what a root `Branch` selects. It runs its children
+    * as they are. */
   final case class Marked(card: DenizenId, user: Option[PlayerId],
       children: Vector[Operation]) extends Operation
 
