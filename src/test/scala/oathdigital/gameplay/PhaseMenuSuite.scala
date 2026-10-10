@@ -261,3 +261,13 @@ class PhaseMenuSuite extends munit.FunSuite:
     assert(used.events.contains(
       WalkerCompleted(ActionRef.UsePower(WanderingFlamePlace.id))),
       used.events)
+
+  test("an option of another phase's menu is refused"):
+    val refused = Some(Refusals.notOffered(PhaseMenu.decisionId))
+    assertEquals(MenuPlay.picked(rules, waking.phaseMenuParked.state, p1,
+      PhaseMenu.Menu.Act.endingOption).left.toOption, refused)
+    assertEquals(MenuPlay.picked(rules, acting().phaseMenuParked.state, p1,
+      favor).left.toOption, refused)
+    assertEquals(MenuPlay.picked(rules, resting.phaseMenuParked.state, p1,
+      act(ActionRef.Search)).left.toOption, refused)
+

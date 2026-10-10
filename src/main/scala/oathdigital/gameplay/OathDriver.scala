@@ -27,8 +27,7 @@ import oathdigital.model.OathViolation._
   *     when the last player has rested, then Wake's entry and the Forced
   *     Wake walk when one is due, which hands back here when it ends.
   *  3. the phase's menu: in Wake and Rest, the menu, or the phase's ending
-  *     when it is the only option available (ruling 3). Act parks nothing
-  *     until its menu exists (slice 4).
+  *     when it is the only option available (ruling 3). Act always asks.
   *
   * Each start runs on the state the steps before it left, so a turn that
   * changes inside one command gives the next walk the new active player.

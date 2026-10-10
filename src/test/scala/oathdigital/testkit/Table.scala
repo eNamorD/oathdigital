@@ -426,7 +426,8 @@ final case class Table private (private val game: ReadyGame,
     * design, slice 4). */
   private def served(using munit.Location): Table =
     val current = game.game.current
-    if current.walkerPending.nonEmpty || current.result.nonEmpty ||
+    if current.walkerPending.nonEmpty || current.queue.nonEmpty ||
+        current.result.nonEmpty ||
         PhaseMenu.of(current.turn.phase).isEmpty then this
     else phaseMenuParked
 
