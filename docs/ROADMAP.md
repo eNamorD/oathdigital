@@ -78,9 +78,6 @@ Left behind by the
   menus, their price badges and hover reasons, a source with two powers of
   one phase, Undo back to a menu and the minor actions on the walker are
   covered by tests only.
-- [ ] **Remove `WalkerSimulation.starts`.** It has no production caller since
-  the procedures' start checks went; only four suites use it. Move them onto
-  `WalkerSimulation.refusal` or the menu's check.
 
 Left behind by the
 [consent work](superpowers/specs/2026-10-08-consent-system-design.md):

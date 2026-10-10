@@ -111,7 +111,8 @@ class RestrictionLookAheadSuite extends munit.FunSuite:
       _ => true)
     assertEquals(ProcedureWalker.advance(ready, onlyYes, None, powers),
       Left(violation))
-    assert(!WalkerSimulation.starts(onlyYes, ready, powers))
+    assertEquals(WalkerSimulation.refusal(onlyYes, ready, powers),
+      Some(violation))
 
   test("a violation the answers so far already produce hides nothing"):
     val always = Sequence(Vector[Operation](Sequence(Vector.empty, Some(nested)),
