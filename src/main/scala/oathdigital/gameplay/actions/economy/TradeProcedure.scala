@@ -1,8 +1,6 @@
 package oathdigital.gameplay.actions.economy
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.walker.WalkerPowers
-import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 
 /** Trade on the walker. The start selection is one resource button, `favor`
@@ -56,9 +54,3 @@ object TradeProcedure:
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
     resourceOf(args).map(resource =>
       EconomyTree.tree(catalog, state, actor, kind(resource)))
-
-  /** As [[MusterProcedure.startOptions]], for one resource. */
-  def startOptions(catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId, resource: TradeResource,
-      powers: WalkerPowers): Vector[PreviewedOption] =
-    EconomyTree.startOptions(catalog, state, actor, kind(resource), powers)

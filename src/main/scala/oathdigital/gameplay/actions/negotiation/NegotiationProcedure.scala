@@ -1,7 +1,6 @@
 package oathdigital.gameplay.actions.negotiation
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.model._
 
 /** Negotiation on the walker: choose who to negotiate with, then loop one
@@ -27,14 +26,6 @@ object NegotiationProcedure:
       OathViolation.NegotiationUnavailable(
         "no other player has a pawn at your site"))
   yield tree(state, actor)
-
-  /** Whether Negotiation could start now: the gates pass and the first walk
-    * (up to the first decision) is accepted.
-    */
-  def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): Boolean =
-    build(catalog, state, actor, Vector.empty)
-      .exists(WalkerSimulation.starts(_, state, powers))
 
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =

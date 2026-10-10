@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.wake
 
 import oathdigital.gameplay.operations.OperationRestrictions
-import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.walker.WalkerPowers
@@ -201,7 +200,7 @@ class HornedMaskSuite extends munit.FunSuite:
     assertEquals(use(ready, power, source).left.toOption,
       Some(OathViolation.CoreOperationRejected("locked",
         s"${locked.head.value} is locked")))
-    assertEquals(PhasePowerProcedure.usable(catalog, ready, actor,
+    assertEquals(PhasePowerHarness.menuPowers(catalog, ready, actor,
       PhasePowers(Vector(power)), WalkerPowers(Vector.empty,
         restrictionSet = OperationRestrictions.forCatalog(catalog))),
       Vector.empty)

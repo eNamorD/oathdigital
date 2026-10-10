@@ -1,7 +1,6 @@
 package oathdigital.testkit
 
 import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
-import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerDice,
@@ -60,7 +59,7 @@ object ActPowerHarness:
 
   /** Ids of the phase powers the actor can use now. */
   def usableIds(ready: ReadyGame): Vector[PowerId] =
-    PhasePowerProcedure.usable(catalog, ready, actor,
+    PhasePowerHarness.menuPowers(catalog, ready, actor,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty).map(_.power.id)
 
   /** The state a journal replay of `events` reaches from `from`; fails with

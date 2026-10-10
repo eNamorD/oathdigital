@@ -5,7 +5,7 @@ import oathdigital.gameplay.CampaignFixture.{Board, actorRules, board, on,
   rivalRulesOriginAndHoldsOathkeeper, rules, withAdviser, withEnemyAtOrigin,
   withRelic, withRelicFor, withSecrets, withSiteCard}
 import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds,
-  CampaignProcedure, CampaignSetup}
+  CampaignSetup}
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -17,6 +17,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EmptyWindowModifier,
   Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
+import oathdigital.testkit.StartPreview
 
 /** Campaign through the rules, as a client drives it. */
 class CampaignProcedureSuite extends munit.FunSuite:
@@ -133,18 +134,18 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val stuck = on(b)(_.bandits(b.origin, 0))
     assert(start(stuck).left.toOption.exists(
       _.isInstanceOf[OathViolation.CampaignUnavailable]))
-    assert(!CampaignProcedure.startable(catalog, stuck.ready, stuck.actor,
-      WalkerPowers.empty))
-    assert(CampaignProcedure.startable(catalog, b.ready, b.actor,
-      WalkerPowers.empty))
+    assert(!StartPreview.opens(catalog, stuck.ready, stuck.actor,
+        ActionRef.Campaign, WalkerPowers.empty))
+    assert(StartPreview.opens(catalog, b.ready, b.actor, ActionRef.Campaign,
+        WalkerPowers.empty))
 
   test("a Campaign the actor cannot pay for is not offered and does not start"):
     val b = board(supply = 1, warbands = 5)
     assertEquals(start(b).left.toOption,
       Some(OathViolation.CoreOperationRejected("insufficient-supply",
         "a supply spend of 2 exceeds the 1 available")))
-    assert(!CampaignProcedure.startable(catalog, b.ready, b.actor,
-      WalkerPowers.empty))
+    assert(!StartPreview.opens(catalog, b.ready, b.actor, ActionRef.Campaign,
+        WalkerPowers.empty))
 
   test("committing force pins the kind and defender and gathers the attack " +
       "pool and the printed defense pool"):

@@ -6,10 +6,8 @@ import oathdigital.model.{OathViolation, PlayerId, PowerResolution,
   ProcedureRef, ReadyGame, Sequence}
 
 /** The modifiers a player may select for a procedure, read from one walker
-  * power catalog. An Act panel start control asks `selections` whether some
-  * selection the player could make lets the procedure start (modifier walker
-  * design, ruling 9). The modifier decision itself judges each option
-  * exactly, inside the walk.
+  * power catalog. The modifier decision asks `offerable` which to list, and
+  * judges each option exactly, inside the walk.
   */
 object ModifierOffers:
 
@@ -45,19 +43,3 @@ object ModifierOffers:
     else OperationPipeline.run(ready, payments, OperationPolicy.Permissive,
       WalkerPowers.selected(catalog, powers.map(_.id))
         .operationRestrictions)(Right(_)).map(_ => ())
-
-  /** The selections a start control tries, as the powers each start would
-    * walk with: none, each offerable modifier alone, and all of them when
-    * their payments can be made together. Each is a selection the player
-    * could make, so a control these open is a start the command accepts. A
-    * start that needs two modifiers out of three, but not the third, is not
-    * found.
-    */
-  def selections(catalog: WalkerPowers, ready: ReadyGame, actor: PlayerId,
-      procedure: ProcedureRef): Vector[WalkerPowers] =
-    val offered = offerable(catalog, ready, actor, procedure)
-      .getOrElse(Vector.empty)
-    val together = Option.when(offered.size > 1 &&
-      paying(catalog, ready, actor, offered).isRight)(offered)
-    (Vector(Vector.empty) ++ offered.map(Vector(_)) ++ together)
-      .map(chosen => WalkerPowers.selected(catalog, chosen.map(_.id)))

@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.wake
 
 import oathdigital.application.{GameCommand, ParkedServiceFixture}
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -77,7 +77,8 @@ class HungerSuite extends munit.FunSuite:
         next).left.toOption,
       Some(OathViolation.InvalidEventOrder("a walker procedure is already " +
         "pending")))
-    assert(PhasePowerProcedure.usable(catalog, now, next, phasePowers, WalkerPowers.empty)
+    assert(PhasePowerHarness.menuPowers(catalog, now, next, phasePowers,
+        WalkerPowers.empty)
       .forall(_.power.id != Hunger.id))
 
   test("burying another player's adviser returns its favor and gives its " +

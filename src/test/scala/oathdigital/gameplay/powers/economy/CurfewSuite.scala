@@ -12,6 +12,7 @@ import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
+import oathdigital.testkit.StartPreview
 
 /** Curfew's ruler toll on a Trade. The toll is shared with Forced Labor
   * (`RulerToll`); its bandit case is pinned here only. */
@@ -48,8 +49,9 @@ class CurfewSuite extends munit.FunSuite:
   /** Whether a Trade for favor with Wrestlers survives the preview a start
     * runs. */
   private def wrestlersOffered(ready: ReadyGame): Boolean =
-    TradeProcedure.startOptions(catalog, ready, p1, TradeResource.Favor,
-      automatic).exists(previewed => previewed.outcome.isRight &&
+    StartPreview.firstDecisionOptions(catalog, ready, p1, ActionRef.Trade,
+      automatic, TradeProcedure.selection(TradeResource.Favor))
+      .exists(previewed => previewed.outcome.isRight &&
         previewed.option.ref == DecisionOptionRef.Denizen(wrestlers))
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =

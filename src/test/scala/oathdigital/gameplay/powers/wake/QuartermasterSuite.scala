@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.wake
 
 import oathdigital.testkit.MenuPlay
-import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
@@ -11,6 +10,7 @@ import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
   Refusals, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.PhasePowerHarness
 
 class QuartermasterSuite extends munit.FunSuite:
   private val quartermaster = CatalogNames.denizen("Quartermaster")
@@ -32,9 +32,10 @@ class QuartermasterSuite extends munit.FunSuite:
   private def use(ready: ReadyGame) = rules.startWalker(Ready(MenuPlay.withoutMenu(ready)),
     ActionRef.UsePower(Quartermaster.id), p1, Vector(source))
 
-  private def offered(ready: ReadyGame): Boolean = PhasePowerProcedure.usable(
-    catalog, ready, p1, PhasePowerCatalog.default(catalog), WalkerPowers.empty)
-    .exists(_.power.id == Quartermaster.id)
+  private def offered(ready: ReadyGame): Boolean =
+    PhasePowerHarness.menuPowers(catalog, ready, p1,
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty)
+      .exists(_.power.id == Quartermaster.id)
 
   test("its site's ruler gains 1 Supply, wherever their pawn is"):
     val ready = staged(supply = 3)

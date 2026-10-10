@@ -2,7 +2,6 @@ package oathdigital.gameplay.actions.challenge
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.model._
 
 /** Place Banner Resource on the walker: the holder of a banner moves favor or
@@ -26,12 +25,6 @@ object PlaceBannerResourceProcedure:
     _ <- Either.cond(heldBanners(state, actor).nonEmpty, (),
       OathViolation.NoPlayableOption(ActionRef.PlaceBannerResource.key))
   yield tree(actor)
-
-  /** Whether Place Banner Resource could start now. */
-  def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): Boolean =
-    build(catalog, state, actor, Vector.empty)
-      .exists(WalkerSimulation.starts(_, state, powers))
 
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =

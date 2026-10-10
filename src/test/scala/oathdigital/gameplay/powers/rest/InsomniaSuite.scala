@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.rest
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.PlacementFixture
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{AdviserLimit, NoteText, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -14,6 +13,7 @@ import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks,
   PowerRules, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.PhasePowerHarness
 
 class InsomniaSuite extends munit.FunSuite:
   private val rules = PowerRules.withWalkerAndPhasePowers
@@ -75,8 +75,8 @@ class InsomniaSuite extends munit.FunSuite:
 
   test("a facedown Insomnia offers no REST power and sets no limit"):
     val ready = resting(facedown = true)
-    assert(!PhasePowerProcedure.usable(catalog, ready, p1,
-      PhasePowerCatalog.default(catalog), WalkerPowers.empty)
+    assert(!PhasePowerHarness.menuPowers(catalog, ready, p1,
+        PhasePowerCatalog.default(catalog), WalkerPowers.empty)
       .exists(_.power.id == Insomnia.id))
     assertEquals(AdviserLimit.of(catalog, ready, p1), AdviserLimit.Default)
 

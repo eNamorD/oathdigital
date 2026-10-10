@@ -10,6 +10,7 @@ import oathdigital.model.OathViolation._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
+import oathdigital.testkit.StartPreview
 
 class MusterProcedureSuite extends munit.FunSuite:
   import EconomyFixture.{AddSource, AskAtGain, FreePayment}
@@ -80,8 +81,8 @@ class MusterProcedureSuite extends munit.FunSuite:
     Vector(EdificeSide.Ruined, EdificeSide.Intact).foreach { side =>
       val ready = Table.start.pawn(p1, at = ancientCity).favor(p1, 4)
         .edifice(hallowedSpring, side, at = ancientCity).ready
-      val options = MusterProcedure.startOptions(catalog, ready, p1,
-        WalkerPowers.empty).map(_.option.ref)
+      val options = StartPreview.firstDecisionOptions(catalog, ready, p1,
+          ActionRef.Muster, WalkerPowers.empty).map(_.option.ref)
       assertEquals(options, Vector(DecisionOptionRef.Edifice(hallowedSpring)),
         side.toString)
       assertEquals(Look(muster(ready, DecisionOptionRef.Edifice(hallowedSpring)))
@@ -92,7 +93,7 @@ class MusterProcedureSuite extends munit.FunSuite:
       "nothing to start"):
     val ready = atAlchemist.tokens(alchemist, secrets = 1).ready
     // The start itself is legal, so an empty preview is the absence of a
-    // source and not a build failure swallowed by `startOptions`.
+    // source and not a build failure swallowed by the preview.
     accepted(MusterProcedure.build(catalog, ready, p1))
     val walk = parked(ready)
     val decide = present(ProcedureWalker.parkedDecide(ready, walk.tree,
@@ -102,20 +103,21 @@ class MusterProcedureSuite extends munit.FunSuite:
         DecisionOption.Denizen(DecisionOptionRef.Denizen(alchemist)),
         OptionReason.Written("Already holds favor or secrets"))),
       Some("Choose a card to Muster from")))
-    assertEquals(MusterProcedure.startOptions(catalog, ready, p1,
-      WalkerPowers.empty), Vector.empty)
-    assertEquals(MusterProcedure.startOptions(catalog, atAlchemist.ready, p1,
-      WalkerPowers.empty).map(_.option.ref),
+    assertEquals(StartPreview.firstDecisionOptions(catalog, ready, p1,
+        ActionRef.Muster, WalkerPowers.empty), Vector.empty)
+    assertEquals(StartPreview.firstDecisionOptions(catalog, atAlchemist.ready,
+        p1, ActionRef.Muster, WalkerPowers.empty).map(_.option.ref),
       Vector(DecisionOptionRef.Denizen(alchemist)))
 
   test("a power that removes the cost lets an unaffordable Muster start"):
     val ready = atAlchemist.favor(p1, 0).ready
     // Without the power the search finds no legal path from the only source,
     // so the decision is left with nothing to offer and the start is refused.
-    assertEquals(MusterProcedure.startOptions(catalog, ready, p1,
-      WalkerPowers.empty), Vector.empty)
-    val previewed = MusterProcedure.startOptions(catalog, ready, p1,
-      WalkerPowers(Vector(FreePayment(PowerId("test.free-payment")))))
+    assertEquals(StartPreview.firstDecisionOptions(catalog, ready, p1,
+        ActionRef.Muster, WalkerPowers.empty), Vector.empty)
+    val previewed = StartPreview.firstDecisionOptions(catalog, ready, p1,
+        ActionRef.Muster,
+        WalkerPowers(Vector(FreePayment(PowerId("test.free-payment")))))
     assertEquals(previewed.map(_.option.ref),
       Vector(DecisionOptionRef.Denizen(alchemist)))
     val outcome = accepted(previewed.head.outcome)
@@ -168,7 +170,8 @@ class MusterProcedureSuite extends munit.FunSuite:
     val ready = atAlchemist.adviser(p1, magiciansCode).ready
     val powers = WalkerPowers(Vector(AddSource(
       PowerId("test.add-source"), magiciansCode)))
-    assertEquals(MusterProcedure.startOptions(catalog, ready, p1, powers)
+    assertEquals(StartPreview.firstDecisionOptions(catalog, ready, p1,
+        ActionRef.Muster, powers)
       .map(_.option.ref), Vector(DecisionOptionRef.Denizen(alchemist),
         DecisionOptionRef.Denizen(magiciansCode)))
     val after = Look(muster(ready, DecisionOptionRef.Denizen(magiciansCode),

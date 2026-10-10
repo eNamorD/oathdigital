@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.targeting
 
 import oathdigital.gameplay.CampaignFixture
-import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
+import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powerresolver.{PowerCtx, Restriction}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -10,6 +10,7 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Unwrap.{accepted, as}
+import oathdigital.testkit.StartPreview
 
 /** Diplomat: a player who rules no hearth card cannot Raid or Conquer its
   * holder. The kinds and defenders it blocks are hidden, and a Campaign left
@@ -46,7 +47,8 @@ class DiplomatSuite extends munit.FunSuite:
   test("an attacker who rules no hearth card cannot Conquer the holder, so " +
       "the Campaign is refused"):
     val b = rivalRulesOriginWithDiplomat
-    assertEquals(CampaignProcedure.startable(catalog, b.ready, b.actor, powers),
+    assertEquals(StartPreview.opens(catalog, b.ready, b.actor,
+        ActionRef.Campaign, powers),
       false)
     assertEquals(startCampaign(b).left.toOption, Some(protectsEveryDefender))
 

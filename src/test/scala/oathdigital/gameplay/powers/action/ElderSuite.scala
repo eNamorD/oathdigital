@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
@@ -9,6 +8,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
   Table}
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.PhasePowerHarness
 
 class ElderSuite extends munit.FunSuite:
   import PowerFixture._
@@ -35,8 +35,8 @@ class ElderSuite extends munit.FunSuite:
 
   test("one favor is not enough"):
     val broke = staged(favor = 1)
-    assertEquals(PhasePowerProcedure.usable(catalog, broke, actor,
-      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog, broke, actor,
+        PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
     assertEquals(use(broke).left.toOption,
       Some(OathViolation.InsufficientFavor(2, 1)))
 

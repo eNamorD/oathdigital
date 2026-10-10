@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.powers.PhasePowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerPowers}
@@ -9,6 +9,7 @@ import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, Look, MenuPlay, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.PhasePowerHarness
 
 /** A Wake with nothing left to decide ends by itself, in the command that
   * left it so: at the turn boundary, and after the last Wake option. */
@@ -40,8 +41,9 @@ class WakeAutoEndSuite extends munit.FunSuite:
     val next = restedReady.game.current.turn
     assertNotEquals(next.activePlayer, actor)
     val inWake = Table.from(restedReady).backInPhase(Phase.Wake).unchecked
-    assertEquals(PhasePowerProcedure.usable(catalog, inWake, next.activePlayer,
-      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog, inWake,
+        next.activePlayer, PhasePowerCatalog.default(catalog),
+        WalkerPowers.empty), Vector.empty)
     assertEquals(completed(rested.events), Vector(PhaseTransitionRef.BeginRest,
       PhaseTransitionRef.FinishRest, PhaseTransitionRef.EndWake))
     assertEquals(next.phase, Phase.Act)

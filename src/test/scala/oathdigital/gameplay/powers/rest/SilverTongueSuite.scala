@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.rest
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
@@ -12,6 +12,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks,
   PowerRules, Refusals, Table}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
+import oathdigital.testkit.PhasePowerHarness
 
 class SilverTongueSuite extends munit.FunSuite:
   import SilverTongueFixture._
@@ -89,8 +90,8 @@ class SilverTongueSuite extends munit.FunSuite:
 
   test("without matching favor Silver Tongue is not usable and Rest skips ahead"):
     val ready = silverTongueRest(Vector("Golem Legions"), Set(Suit.Nomad))
-    assertEquals(PhasePowerProcedure.usable(catalog, ready, actor,
-      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog, ready, actor,
+        PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
     val act = Table.from(ready).turn(actor, Phase.Act).unchecked
     val rested = accepted(
       rules.startWalker(Ready(act), PhaseTransitionRef.BeginRest, actor))

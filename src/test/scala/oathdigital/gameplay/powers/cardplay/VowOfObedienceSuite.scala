@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
   SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -12,6 +11,7 @@ import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, PowerRules, Refusals, Table}
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.PhasePowerHarness
 
 class VowOfObedienceSuite extends munit.FunSuite:
   import PowerFixture._
@@ -110,8 +110,8 @@ class VowOfObedienceSuite extends munit.FunSuite:
     assertEquals(Look(after).favor(actor), Look(ready).favor(actor) + 1)
 
   test("REST: with every bank empty the power is not offered"):
-    assert(!PhasePowerProcedure.usable(catalog, resting(Map.empty), actor,
-      PhasePowerCatalog.default(catalog), WalkerPowers.empty)
+    assert(!PhasePowerHarness.menuPowers(catalog, resting(Map.empty), actor,
+        PhasePowerCatalog.default(catalog), WalkerPowers.empty)
       .exists(_.power.id == VowOfObedience.id))
 
   test("REST: the take is written as its own line, covering the generic one"):
