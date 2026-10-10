@@ -1,6 +1,6 @@
 package oathdigital.application.gamelog
 
-import oathdigital.application.{GameCommand, StartPayload}
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.search.{LandWarden, SpinningBee}
@@ -22,7 +22,7 @@ class GameLogSearchKeepSuite extends munit.FunSuite:
     val (service, act) = atTable(name, table.banditsRefilled)
     act.withAnswers(answers.orElse(ModifierPlay.answers(
       PowerWindow.SearchModifierSelection, modifiers)))
-      .after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1)))
+      .after(MenuPlay.start(p1, ActionRef.Search))
     texts(format(Script(name, service, p1), Some(p1)).filter(_.depth == 1))
 
   private def declaring(suit: Suit): Answers = {

@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.powers.economy.GolemLegions
 import oathdigital.gameplay.powers.recover.RelicWorship
@@ -125,15 +126,14 @@ class UndoServiceSuite extends munit.FunSuite:
     assertEquals(unpicked.state, started.state)
     val undone = accepted(service.handle("g", unpicked.nextSequence,
       GameCommand.Undo(p1)))
-    assertEquals(undone.state, withTents.state)
+    assertEquals(undone.state, withTents.phaseMenuParked.state)
 
   test("Undo takes back a Muster modifier pick, and then the start"):
     // No card stands at p1's site, so Start waits for Golem Legions.
     val withGolem = table.adviser(p1, "Golem Legions")
     val (service, _) = withGolem.service()
     val started = accepted(service.handle("g", 0L,
-      GameCommand.StartWalker(ActionRef.Muster,
-        StartPayload(p1))))
+      MenuPlay.starting(p1, ActionRef.Muster)))
     val picked = accepted(service.handle("g", started.nextSequence,
       GameCommand.ResolveWalker(p1, TreeDecision("muster.modifiers",
         ModifierPlay.pick(GolemLegions.id)))))
@@ -142,7 +142,7 @@ class UndoServiceSuite extends munit.FunSuite:
     assertEquals(unpicked.state, started.state)
     val undone = accepted(service.handle("g", unpicked.nextSequence,
       GameCommand.Undo(p1)))
-    assertEquals(undone.state, withGolem.state)
+    assertEquals(undone.state, withGolem.phaseMenuParked.state)
 
   test("Undo takes back a Recover modifier pick, and then the start"):
     // Catacombs and Relic Worship can both be picked, so picking one asks
@@ -151,7 +151,7 @@ class UndoServiceSuite extends munit.FunSuite:
       .denizen("Catacombs", at = "Fair Isle").adviser(p1, "Relic Worship")
     val (service, _) = withBoth.service()
     val started = accepted(service.handle("g", 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1))))
+      MenuPlay.starting(p1, ActionRef.Recover)))
     val picked = accepted(service.handle("g", started.nextSequence,
       GameCommand.ResolveWalker(p1, TreeDecision("recover.modifiers",
         ModifierPlay.pick(RelicWorship.id)))))
@@ -160,4 +160,4 @@ class UndoServiceSuite extends munit.FunSuite:
     assertEquals(unpicked.state, started.state)
     val undone = accepted(service.handle("g", unpicked.nextSequence,
       GameCommand.Undo(p1)))
-    assertEquals(undone.state, withBoth.state)
+    assertEquals(undone.state, withBoth.phaseMenuParked.state)

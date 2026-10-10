@@ -1,6 +1,6 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-1.0 section 1 recover@1 | Recover[cost:1 Supply]
-3.0 roll 1 recover@1 | Rolled [dice:defense two-shields two-shields|two shields, two shields]
-7.0 action 1 recover@1 | Recovered a Relic at [site:site:broken-peaks|Broken Peaks]
+5.0 section 1 recover@4 | Recover[cost:1 Supply]
+7.0 roll 1 recover@4 | Rolled [dice:defense two-shields two-shields|two shields, two shields]
+11.0 action 1 recover@4 | Recovered a Relic at [site:site:broken-peaks|Broken Peaks]

@@ -1,8 +1,8 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-3.0 decision 1 move-warbands@1 | Chose To your site
-7.0 action 1 move-warbands@1 | Moved 2 warbands to [site:site:broken-peaks|Broken Peaks]
-10.0 trigger 1 | Oathkeeper passed to [player:p1|p1]
-15.0 decision 1 move-warbands@13 | Chose To your board
-19.0 action 1 move-warbands@13 | Moved 1 warband from [site:site:broken-peaks|Broken Peaks]
+7.0 decision 1 move-warbands@4 | Chose To your site
+11.0 action 1 move-warbands@4 | Moved 2 warbands to [site:site:broken-peaks|Broken Peaks]
+14.0 trigger 1 | Oathkeeper passed to [player:p1|p1]
+24.0 decision 1 move-warbands@21 | Chose To your board
+28.0 action 1 move-warbands@21 | Moved 1 warband from [site:site:broken-peaks|Broken Peaks]

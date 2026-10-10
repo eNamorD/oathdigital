@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.testkit.{CatalogNames, Table, TestCards}
@@ -78,6 +79,6 @@ object ForgeWalkerFixture:
     val forgeCatalog = mixedForgeCostCatalog
     val (service, _) = forgeService(forgeCatalog)
     val started = service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.Forge, StartPayload(p1)))
+      MenuPlay.starting(p1, ActionRef.Forge))
       .fold(error => throw AssertionError(s"Forge refused: $error"), identity)
     ParkedForge(forgeCatalog, started)

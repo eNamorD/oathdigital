@@ -70,6 +70,10 @@ private[frontend] object ParkedDecision:
       */
     case ChooseOne(decision: WalkerDecisionState,
         query: DecisionQueryState.ChooseOne)
+    /** A phase menu: the grouped panel (walker-driven game loop design,
+      * slice 4). */
+    case Menu(decision: WalkerDecisionState,
+        query: DecisionQueryState.ChooseOne)
     case Partition(decision: WalkerDecisionState,
         query: DecisionQueryState.Partition)
     case Distribute(decision: WalkerDecisionState,
@@ -119,6 +123,8 @@ private[frontend] object ParkedDecision:
         surface, value, canControl, panel, controls)
       case surface: Surface.ChooseOne => WalkerPanelSupport.renderChooseOnePanel(
         surface, value, canControl, panel, controls)
+      case surface: Surface.Menu => MenuPanel.render(surface, canControl,
+        panel, controls)
       case surface: Surface.Partition => WalkerPanelSupport.renderPartitionPanel(
         surface, drafts.partition, presentation.playerId, canControl, panel,
         controls)
@@ -189,6 +195,11 @@ private[frontend] object ParkedDecision:
       query: DecisionQueryState, value: GameProjection,
       showGameplayControls: Boolean): Option[Surface] =
     query match
+      // A phase menu: one grouped panel for Wake, Act and Rest.
+      case one: DecisionQueryState.ChooseOne
+          if decision.decisionId == MenuPanel.decisionId &&
+            decision.kind == "decide" =>
+        Some(Surface.Menu(decision, one))
       // On the table: the decision says it is answered there, and the table
       // draws at least one of its options.
       case one: DecisionQueryState.ChooseOne if decision.kind == "decide" &&

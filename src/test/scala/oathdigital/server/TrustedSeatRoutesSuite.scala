@@ -281,7 +281,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val code = codeOf(
       accepted(TrustedGameCreateResponseCodec.decode(created.body())), "p2")
     OriginGame(code, Some(s"oath_seat=$code"),
-      """{"expectedNextSequence":0,"intent":{"type":"beginRest"}}""")
+      """{"expectedNextSequence":0,"intent":{"type":"undo"}}""")
 
   test("trusted endpoints reject queries and cross-origin mutations"):
     withServer(Some("https://games.example.test")) { (server, _) =>

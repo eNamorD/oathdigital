@@ -1,6 +1,6 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-4.0 section 1 travel@1 | Travel[cost:2 Supply]
-5.0 action 1 travel@1 | Travelled to [site:site:buried-giant|Buried Giant]
-11.0 trigger 1 | Oathkeeper passed to [player:p1|p1]
+8.0 section 1 travel@4 | Travel[cost:2 Supply]
+9.0 action 1 travel@4 | Travelled to [site:site:buried-giant|Buried Giant]
+15.0 trigger 1 | Oathkeeper passed to [player:p1|p1]

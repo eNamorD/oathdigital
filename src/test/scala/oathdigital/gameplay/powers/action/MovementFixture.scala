@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{Look, MenuPlay, PhasePowerHarness, Table}
 
 /** Staging and driving shared by the Whistle, Brass Horse and Magic Carpet
   * suites, on the quiet table: the actor p1 at Ancient City, p2 at Broken
@@ -29,7 +29,7 @@ object MovementFixture:
 
   /** The actor uses `power` of their relic `relic`. */
   def use(ready: ReadyGame, power: PowerId, relic: RelicId)
-      : Either[OathViolation, OathTransition] = rules.startWalker(Ready(ready),
+      : Either[OathViolation, OathTransition] = rules.startWalker(Ready(MenuPlay.withoutMenu(ready)),
     ActionRef.UsePower(power), actor, Vector(DecisionOptionRef.Relic(relic)))
 
   def choose(state: OathState, decisionId: String, ref: DecisionOptionRef)

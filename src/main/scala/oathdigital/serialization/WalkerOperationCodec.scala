@@ -653,7 +653,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     * to the leaf shapes this slice records. A location is a closed sealed
     * hierarchy whose every case is cheap to name, and the bounded form was a
     * production defect rather than a safety margin: Catacombs' relic move out
-    * of `Location.Deck` reached this method only through `StartWalker`, the
+    * of `Location.Deck` reached this method only through a walker start, the
     * one path no test drove, and turned into an append-time codec failure.
     * Being total means a new `Location` case only warns here ("match may
     * not be exhaustive"), since this project builds without

@@ -165,7 +165,7 @@ class HospitalSuite extends munit.FunSuite:
     assert(awaits(won, b.actor, CampaignIds.relocation))
     val done = won.pick(b.actor, CampaignIds.relocation,
       won.offered(b.actor).head)
-    assertEquals(parked.parkedDecision(done.state), None)
+    parked.assertNotParked(done.state)
     assertEquals(done.winner, Some(true))
     // The Raid kills half of the three on the board, rounded down; the one
     // killed comes back to Hospital's site, not to the board.

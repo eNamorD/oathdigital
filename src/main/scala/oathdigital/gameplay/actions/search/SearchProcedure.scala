@@ -1,7 +1,6 @@
 package oathdigital.gameplay.actions.search
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, SearchRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
@@ -64,7 +63,6 @@ object SearchProcedure:
   /** The start-only gates, and the region searched from. */
   private def gated(ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Region] = for
-    _ <- OathLifecycle.validateAct(OathState.Ready(ready), actor)
     _ <- noSelection(args)
     _ <- Either.cond(ready.game.current.temporaryHands.valuesIterator
       .forall(_.isEmpty), (), OathViolation.SearchDrawMismatch(

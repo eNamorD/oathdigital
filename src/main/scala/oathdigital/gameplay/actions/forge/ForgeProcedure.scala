@@ -2,7 +2,6 @@ package oathdigital.gameplay.actions.forge
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.ForgeRules
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.walker.ModifierChoice
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.PartitionAnswer
@@ -107,7 +106,6 @@ object ForgeProcedure:
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId): Either[OathViolation, Operation] = for
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), activePlayer)
     player <- actorState(state, activePlayer)
     siteId <- player.pawnSite.toRight(OathViolation.PawnSiteMissing(activePlayer))
     facts <- ForgeRules.validate(catalog, state, player, siteId)

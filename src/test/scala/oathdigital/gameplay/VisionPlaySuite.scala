@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.VisionRules
@@ -69,7 +70,7 @@ class VisionPlaySuite extends munit.FunSuite:
       : OathState = accepted(answerPlacementResult(state, ref))
 
   private def walkerIsFinished(state: OathState): Boolean =
-    Outcomes.ready(state).game.current.walkerPending.isEmpty
+    MenuPlay.pendingBeyondMenu(Outcomes.ready(state)).isEmpty
 
   private def revealedVisionOf(state: OathState): Option[VisionState] =
     Look(state).player(actor).revealedVision
@@ -112,7 +113,7 @@ class VisionPlaySuite extends munit.FunSuite:
     val after = Outcomes.ready(resolved.state)
     assertEquals(after.game.current.banners.peoplesFavor.holder, Some(actor))
     assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
-    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
     assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
 
   test("Reveal is a facedown Vision played faceup: it replaces the revealed " +
@@ -133,7 +134,7 @@ class VisionPlaySuite extends munit.FunSuite:
     assertEquals(updated.revealedVision.map(_.id), Some(revealed))
     assert(!updated.advisers.exists(_.id == revealed))
     assert(provincesDiscard(done.state).contains(old))
-    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
 
   test("a Conspiracy played from a facedown adviser through the service " +
       "with nothing to take is boxed"):
@@ -148,7 +149,7 @@ class VisionPlaySuite extends munit.FunSuite:
         faceup(started.state)))
     val after = Outcomes.ready(done.state)
     assert(!Look(after).player(actor).advisers.exists(_.id == conspiracy))
-    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
     assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
 
   test("a Vision's placement offers the discard pile, the revealed Vision " +

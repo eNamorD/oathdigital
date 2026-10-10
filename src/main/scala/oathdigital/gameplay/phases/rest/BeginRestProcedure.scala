@@ -1,22 +1,16 @@
 package oathdigital.gameplay.phases.rest
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.model.OathViolation._
 import oathdigital.model._
 
-/** Begin Rest: the Act-phase gate and the phase change, nothing else.
+/** Begin Rest: the supported-state gate and the phase change, nothing else.
   *
   * Cleanup waits for Finish Rest so REST powers can be used in between. The
   * exile-only check stays here because Rest's cleanup and Supply bands
   * are reviewed only for that game.
   */
 object BeginRestProcedure:
-  def validateBegin(catalog: ExecutableCatalog, state: OathState,
-      playerId: PlayerId): Either[OathViolation, ReadyGame] =
-    OathLifecycle.validateAct(state, playerId).flatMap(ready =>
-      validateSupportedState(catalog, ready).map(_ => ready))
-
   def validateSupportedState(catalog: ExecutableCatalog,
       ready: ReadyGame): Either[OathViolation, Unit] =
     val game = ready.game
@@ -37,5 +31,5 @@ object BeginRestProcedure:
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- Either.cond(args.isEmpty, (), InvalidEventOrder(
       "Begin Rest selects nothing"))
-    _ <- validateBegin(catalog, OathState.Ready(ready), player)
+    _ <- validateSupportedState(catalog, ready)
   yield Sequence(Vector(EnterPhase(Phase.Rest)))

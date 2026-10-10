@@ -1,8 +1,9 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.model.OathViolation
+import oathdigital.model.{OathViolation, PhaseTransitionRef}
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
@@ -14,12 +15,12 @@ class GenesisServiceSuite extends munit.FunSuite:
   test("a missing stream loads as the genesis at sequence 0"):
     val table = Table.start
     val (service, _) = table.service()
-    assertEquals(service.load("g"), Right(Some(LoadedGame(table.state, 0L))))
+    assertEquals(service.load("g"), Right(Some(LoadedGame(table.phaseMenuParked.state, 0L))))
 
   test("the first command runs against the genesis, and replay starts there"):
     val table = Table.start
     val (service, repository) = table.service()
-    val rested = accepted(service.handle("g", 0L, GameCommand.BeginRest(p1)))
+    val rested = accepted(service.handle("g", 0L, MenuPlay.starting(p1, PhaseTransitionRef.BeginRest)))
     assert(rested.events.nonEmpty)
     // the batch opens with CommandAccepted, which events omits
     assertEquals(rested.nextSequence, rested.events.size.toLong + 1L)
@@ -29,7 +30,10 @@ class GenesisServiceSuite extends munit.FunSuite:
       Right(Some(rested.state)))
 
   test("a started genesis refuses Begin, and appends nothing"):
-    val (service, repository) = Table.start.service()
+    // A genesis with no menu parked: a live game would refuse for the menu.
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      genesis = Table.start.state)
     assertEquals(service.handle("g", 0L, GameCommand.Begin(
       FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders)),
       Left(GameApplicationError.CommandRejected(OathViolation.GameAlreadyExists)))
@@ -43,5 +47,5 @@ class GenesisServiceSuite extends munit.FunSuite:
     val service = new GameApplicationService(catalog,
       new InMemoryEventStreamRepository)
     assertEquals(service.load("g"), Right(None))
-    assertEquals(service.handle("g", 0L, GameCommand.BeginRest(p1)),
+    assertEquals(service.handle("g", 0L, MenuPlay.starting(p1, PhaseTransitionRef.BeginRest)),
       Left(GameApplicationError.StreamNotFound("g")))

@@ -13,9 +13,10 @@ import oathdigital.model.OathViolation._
 
 /** The walker command surface of [[OathRules]], mixed into it.
   *
-  * This is the whole of what a client can do to a walker procedure --
-  * `startWalker`, `resolveWalker`, `rollWalkerPrepared` and the power and
-  * park plumbing they share -- held in one file so `OathRules` can keep
+  * A client acts on a walker procedure only through `resolveWalker` and
+  * `rollWalkerPrepared`: it picks from a phase menu, which queues the next
+  * procedure. `startWalker` is for the driver and the tests. Those and the
+  * power and park plumbing they share are held in one file so `OathRules` can keep
   * carrying the turn/phase plumbing without either half crowding the other
   * out. Every method below moved here unchanged; the abstract members are exactly what that block
   * reaches for on the class it is mixed into.
@@ -54,8 +55,8 @@ private[gameplay] trait OathRulesWalker:
         startNow(state, ready, procedure, requester, startArgs)
       case _ => Left(GameNotStarted)
 
-  /** The start itself, for a client command and for the driver's dequeued
-    * `Run` entries alike. */
+  /** The start itself, for the driver's dequeued `Run` entries and for a
+    * test's direct start. */
   private def startNow(state: OathState, ready: ReadyGame,
       procedure: StartableRef, requester: PlayerId,
       startArgs: Vector[DecisionOptionRef])
@@ -308,13 +309,15 @@ private[gameplay] trait OathRulesWalker:
     procedure match
       case _: ActionRef.UsePower | TriggeredProcedureRef.ForcedWake |
           TriggeredProcedureRef.FollowUpOffer |
-          TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu
+          TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu |
+          TriggeredProcedureRef.ActMenu
           if starting =>
         WalkerProcedureRegistry.build(procedure, catalog, ready, actor,
           startArgs, phasePowerCatalog, walkerPowers = walkerPowers)
       case _: ActionRef.UsePower | TriggeredProcedureRef.ForcedWake |
           TriggeredProcedureRef.FollowUpOffer |
-          TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu =>
+          TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu |
+          TriggeredProcedureRef.ActMenu =>
         WalkerProcedureRegistry.rebuild(procedure, catalog, ready, actor,
           startArgs, phasePowerCatalog, walkerPowers = walkerPowers)
       case _ => walkerTree(catalog, procedure, ready, actor, startArgs, starting)

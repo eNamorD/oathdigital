@@ -1,9 +1,12 @@
 package oathdigital.gameplay.walker
 
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.model.{Answered, ConsentKey, ConsentTurn, CoreOperation,
-  Decide, DecisionAnswer, DecisionOption, DecisionQuery, OathEvent,
-  OathState, OathViolation, Operation, OptionReason, PendingTree,
+  Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery,
+  OathEvent, OathState, OathViolation, Operation, OptionReason, PendingTree,
   PowerWindow, ReadyGame}
+
+import scala.collection.mutable
 
 /** Runs a declared action tree to completion against immutable state and
   * throws the result away, reporting only the operations it would have
@@ -103,6 +106,101 @@ object WalkerSimulation:
           WalkerDice.placeholder))
     }.left.toOption
 
+  /** Where a start's walk is once it is past its modifier decision: the
+    * state and the position it parked at, `None` once it has finished, and
+    * the operations it recorded on the way. */
+  final case class Started(at: Option[(ReadyGame, PendingTree)],
+      operations: Vector[CoreOperation])
+
+  /** The first way a freshly built `tree` gets past its modifier decision
+    * (walker-driven game loop design, ruling 8): the restriction check and
+    * the first walk a start runs, then, at the modifier decision, "Start"
+    * when it is available, or else each available pick in turn, depth
+    * first, never the same picks twice. A walk the picks took past the
+    * decision without "Start" counts only when its next decision has an
+    * answer the walk can go on from. `Left` is the start's own refusal, or
+    * `StartUnavailable` with the reason "Start" shows before any pick.
+    * Nothing is persisted. */
+  def started(tree: Operation, state: ReadyGame, powers: WalkerPowers)
+      : Either[OathViolation, Started] = guarded:
+    val tried = mutable.Set.empty[Set[DecisionOptionRef]]
+    ProcedureWalker.restrictionViolations(tree, powers, state,
+      state.game.current.turn.activePlayer)
+      .headOption.toLeft(())
+      .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
+        WalkerDice.placeholder))
+      .flatMap(reached(state, tree, None, Vector.empty, powers,
+        picked = false, tried))
+
+  /** Where `outcome` leaves the walk, given the position `from` it was
+    * walked from and the operations recorded `before` it. */
+  private def reached(state: ReadyGame, tree: Operation,
+      from: Option[PendingTree], before: Vector[CoreOperation],
+      powers: WalkerPowers, picked: Boolean,
+      tried: mutable.Set[Set[DecisionOptionRef]])(outcome: WalkerOutcome)
+      : Either[OathViolation, Started] = outcome match
+    case WalkerOutcome.Finished(_, events) =>
+      Right(Started(None, before ++ recordedOperations(events)))
+    case WalkerOutcome.Parked(next, events) =>
+      val operations = before ++ recordedOperations(events)
+      after(state, from, next, events).flatMap { here =>
+        ProcedureWalker.parkedDecide(here, tree, next, powers) match
+          case Some(decide) if ModifierPicks.isDecision(decide.decisionId) =>
+            through(here, tree, next, decide, operations, powers, tried)
+          case _ if picked && !opens(here, tree, next, powers) =>
+            Left(OathViolation.InvalidEventOrder(
+              "no answer goes on past the modifiers"))
+          case _ => Right(Started(Some(here -> next), operations))
+      }
+
+  /** "Start" when it is available, else each available pick not yet tried
+    * with the same picks. */
+  private def through(state: ReadyGame, tree: Operation,
+      pending: PendingTree, decide: Decide, before: Vector[CoreOperation],
+      powers: WalkerPowers, tried: mutable.Set[Set[DecisionOptionRef]])
+      : Either[OathViolation, Started] =
+    val options = PricedOptions.options(decide)
+    val start = options.find(_.ref == ModifierPicks.start)
+    val chosen = picks(pending)
+    val ways = start.filter(_.available).toVector ++ options.filter(option =>
+      option.available && option.ref != ModifierPicks.start &&
+        tried.add(chosen + option.ref))
+    def answering(option: DecisionOption) =
+      ProcedureWalker.resolve(state, tree, pending, Answered(
+          decide.decisionId, DecisionAnswer.ChooseOneAnswer(option.ref),
+          decide.owner), powers, WalkerDice.placeholder)
+        .flatMap(reached(state, tree, Some(pending), before, powers,
+          picked = option.ref != ModifierPicks.start, tried))
+    // "Start" available yet refused: its own violation says why, where the
+    // reason of a "Start" that is unavailable is all there is.
+    var startRefusal: Option[OathViolation] = None
+    ways.iterator.map(option => answering(option) match
+      case refused @ Left(violation) =>
+        if option.ref == ModifierPicks.start && startRefusal.isEmpty then
+          startRefusal = Some(violation)
+        refused
+      case found => found).collectFirst { case Right(found) => found }
+      .toRight(startRefusal.getOrElse(OathViolation.StartUnavailable(
+        start.collect {
+          case DecisionOption.Unavailable(_, OptionReason.Written(text)) =>
+            text
+        }.getOrElse(ModifierChoice.cannotStart))))
+
+  /** The modifiers picked so far, as their options. */
+  private def picks(pending: PendingTree): Set[DecisionOptionRef] =
+    pending.answered.collect {
+      case Answered(id, DecisionAnswer.ChooseOneAnswer(ref), _)
+          if ModifierPicks.isDecision(id) && ref != ModifierPicks.start => ref
+    }.toSet
+
+  /** Whether the walk can go on from where it parked: a choose-one with an
+    * answer that can be completed. Any other park is taken to go on. */
+  private def opens(state: ReadyGame, tree: Operation, pending: PendingTree,
+      powers: WalkerPowers): Boolean =
+    previewParked(state, tree, pending, powers) match
+      case Right(options) => options.exists(_.outcome.isRight)
+      case Left(_) => true
+
   /** Previews a freshly built tree: walks it to its first park and previews
     * that decision. The tree must park before it runs any operation, because
     * the state after an executed prefix is not reported by `advance`.
@@ -169,7 +267,7 @@ object WalkerSimulation:
       case WalkerOutcome.Finished(_, events) =>
         PreviewOutcome(recordedOperations(events), complete = true)
       case WalkerOutcome.Parked(next, events) =>
-        val at = after(state, pending, next, events)
+        val at = after(state, Some(pending), next, events)
         val step = at.toOption.exists(waitsOnStep(_, tree, next, powers))
         PreviewOutcome(recordedOperations(events), complete = false,
           next = if !followUp && !step then Vector.empty
@@ -198,13 +296,14 @@ object WalkerSimulation:
 
   /** The parked position an answer leads to: its recorded steps applied to
     * `state` as replay applies them, parked at `next`. The steps start from
-    * the position the answer was given at, which a start's preview has not
-    * recorded yet. */
-  private def after(state: ReadyGame, pending: PendingTree, next: PendingTree,
-      events: Vector[OathEvent]): Either[OathViolation, ReadyGame] =
+    * the position the answer was given at, `None` for a start's first walk,
+    * which a start's preview has not recorded yet. */
+  private def after(state: ReadyGame, from: Option[PendingTree],
+      next: PendingTree, events: Vector[OathEvent])
+      : Either[OathViolation, ReadyGame] =
     events.collect { case step: WalkerStepRecorded => step }
       .foldLeft[Either[OathViolation, OathState]](Right(OathState.Ready(
-        state.updateCurrent(_.copy(walkerPending = Some(pending)))))) {
+        state.updateCurrent(_.copy(walkerPending = from))))) {
         (folded, step) => folded.flatMap(ProcedureWalker.applyRecorded(_, step))
       }.flatMap:
         case OathState.Ready(ready) =>

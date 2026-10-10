@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -38,7 +39,7 @@ class PlaceBannerResourceProcedureSuite extends munit.FunSuite:
     assertEquals(Look(after).faceDownSecrets(p1), 4)
     assertEquals(Look(after).supply(p1), 7)
     assertEquals(after.game.current.banners.darkestSecret.secrets, 1 + 2)
-    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
 
   test("the amount ranges from one to the actor's relevant resources"):
     val started = start(holding.ready).getOrElse(fail("must start"))

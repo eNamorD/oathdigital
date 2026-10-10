@@ -4,7 +4,6 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.TravelRules
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
   WalkerSimulation}
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 
 /** Travel on the walker (travel destination design; modifier walker design).
@@ -50,7 +49,6 @@ object TravelProcedure:
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), activePlayer)
     _ <- noSelection(args)
     source <- actorSite(state, activePlayer).toRight(
       OathViolation.PawnSiteMissing(activePlayer))
@@ -89,7 +87,6 @@ object TravelProcedure:
     * and so do the Travel suites. */
   def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] = for
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     source <- actorSite(state, actor).toRight(
       OathViolation.PawnSiteMissing(actor))
   yield journey(catalog, state, actor, source)

@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.search
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.application.{GameCommand, GameProjector, LoadedGame,
-  StartPayload, TreeDecision}
+  TreeDecision}
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.walker.{FollowUpOffer, FollowUpSkipped}
 import oathdigital.gameplay.powerresolver.ModifierPicks
@@ -51,7 +52,7 @@ class HuntingPartySuite extends munit.FunSuite:
     val after = board.situation(Situation.productionRules(catalog))
       .withAnswers(source.orElse(skipOffer).orElse(ModifierPlay.answers(
         PowerWindow.SearchModifierSelection, selected)))
-      .after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1)))
+      .after(MenuPlay.start(p1, ActionRef.Search))
     after.journal.collectFirst { case FollowUpSkipped(entry) => entry }
 
   test("a Search of the world deck offers a Campaign"):
@@ -69,7 +70,7 @@ class HuntingPartySuite extends munit.FunSuite:
     // Hunting Party is the only modifier, so once it is picked the Search
     // starts by itself and parks on its source.
     val parked = board.situation(rules)
-      .parkedAfter(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1)))
+      .parkedAfter(MenuPlay.start(p1, ActionRef.Search))
       .parkedAfter(GameCommand.ResolveWalker(p1, TreeDecision(
         ModifierPicks.decisionId(PowerWindow.SearchModifierSelection),
         ModifierPlay.pick(HuntingParty.id))))

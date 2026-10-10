@@ -1,7 +1,7 @@
 package oathdigital.testkit
 
-import oathdigital.application.{GameApplicationService, GameCommand,
-  InMemoryEventStreamRepository, ParkedServiceFixture, StartPayload}
+import oathdigital.application.{GameApplicationService, 
+  InMemoryEventStreamRepository, ParkedServiceFixture}
 import oathdigital.gameplay.StateBasedEvaluation
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
@@ -237,14 +237,14 @@ class TableSuite extends munit.FunSuite:
 
   test("real commands run from a table: Rest passes the turn to p2"):
     val rested = Table.start.situation(Situation.rules(catalog))
-      .after(GameCommand.BeginRest(p1))
+      .after(MenuPlay.start(p1, PhaseTransitionRef.BeginRest))
     assertEquals(Look(rested.state).active, p2)
 
   test("real commands run from a table: Muster from a denizen at the pawn's site"):
     val mustered = Table.start.pawn(p1, "Ancient City")
       .denizen("Alchemist", at = "Ancient City")
       .situation(Situation.rules(catalog))
-      .after(GameCommand.StartWalker(ActionRef.Muster, StartPayload(p1)))
+      .after(MenuPlay.start(p1, ActionRef.Muster))
     val look = Look(mustered.state)
     // From the quiet start of 1 favor, 3 warbands and 7 Supply: the favor
     // moves onto the card, one warband joins the board, and Muster costs
@@ -253,7 +253,8 @@ class TableSuite extends munit.FunSuite:
     assertEquals(look.tokensOn("Alchemist"), Tokens(1, 0))
 
   test("real commands run from a table: Travel moves the pawn"):
-    val travelled = Table.start.situation(Situation.rules(catalog))
+    val travelled = Table.start.phaseMenuParked
+      .situation(Situation.rules(catalog))
       .parkedAfter(ParkedServiceFixture.startTravel(p1))
       .after(ParkedServiceFixture.pickTravelDestination(p1,
         CatalogNames.site("Dunes")))

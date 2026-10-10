@@ -6,13 +6,7 @@ class CommandProtocolSuite extends munit.FunSuite:
   import GameIntent._
 
   private val examples: Vector[GameIntent] = Vector(
-    BeginRest, Undo, Redo,
-    UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92")),
-    StartWalker("search", Vector(WalkerStartArgWire("button", "search:world"))),
-    StartWalker("play-facedown-adviser", Vector(WalkerStartArgWire("denizen", "d1"))),
-    StartWalker("move-warbands"),
-    StartWalker("campaign"),
-    StartWalker("recover"),
+    Undo, Redo,
     RollWalker("recover.pool"),
     ResolveWalker("recover.choice",
       DecisionAnswerWire.ChooseOneWire("button", "continue")),
@@ -20,7 +14,6 @@ class CommandProtocolSuite extends munit.FunSuite:
       DecisionAnswerWire.ChooseOneWire("button", "stop")),
     ResolveWalker("recover.relic",
       DecisionAnswerWire.ChooseOneWire("relic", "relic-1")),
-    StartWalker("forge"),
     ResolveWalker("forge.assignment", DecisionAnswerWire.PartitionWire(
       Vector(DecisionPlacementWire("denizen", "d1", "pay-favor"),
         DecisionPlacementWire("denizen", "d2", "pay-favor"),
@@ -43,12 +36,6 @@ class CommandProtocolSuite extends munit.FunSuite:
     SetConsentPreference("site.narrow-pass.pass", "blue", "case-by-case")
   )
 
-  test("a usePower intent with an unknown field is rejected"):
-    val json = """{"type":"usePower","powerId":"denizen.silver-tongue",""" +
-      """"source":{"optionKind":"denizen","optionId":"92"},"extra":1}"""
-    assertEquals(CommandIntentCodec.decode(ujson.read(json), "$"),
-      Left(ProtocolDecodeFailure.UnexpectedField("$.extra")))
-
   test("a walker answer carrying a deleted legacy tag is rejected"):
     val legacy = ujson.Obj("kind" -> "recover-choice", "choice" -> "continue")
     Vector("recover-choice", "recover-relic", "forge-assignment").foreach { tag =>
@@ -68,15 +55,16 @@ class CommandProtocolSuite extends munit.FunSuite:
 
   test("actor injection is rejected at command identity fields"):
     Vector("playerId", "actor", "actorId", "actorPlayerId").foreach { field =>
-      val json = s"""{"expectedNextSequence":0,"intent":{"type":"beginRest","$field":"spoof"}}"""
+      val json = s"""{"expectedNextSequence":0,"intent":{"type":"undo","$field":"spoof"}}"""
       assertEquals(rejected(ActorlessCommandCodec.decode(json)),
         ProtocolDecodeFailure.ActorInjection(s"$$.intent.$field"), field)
     }
 
-  test("the retired Campaign intents are rejected as unknown types"):
+  test("the retired Campaign and start intents are rejected as unknown types"):
     Vector("beginCampaignConquest", "beginCampaignRaid", "chooseCampaignPlan",
       "finishCampaignPlans", "chooseCampaignSacrifice", "placeCampaignForce",
-      "relocateCampaignRaidPawn").foreach { tag =>
+      "relocateCampaignRaidPawn", "startWalker", "usePower", "beginRest")
+      .foreach { tag =>
       val json = s"""{"expectedNextSequence":0,"intent":{"type":"$tag"}}"""
       val failure = rejected(ActorlessCommandCodec.decode(json))
       assertEquals(failure.path, "$.intent.type", tag)
@@ -97,13 +85,12 @@ class CommandProtocolSuite extends munit.FunSuite:
 
   test("malformed fields and structural duplicates retain exact paths"):
     assertEquals(rejected(ActorlessCommandCodec.decode("{")).path, "$")
-    // Travel's destination moved onto `StartWalker`'s start selection
-    // (batch-1 Task 5), so the path a malformed one reports moved with it --
-    // still exact, and now indexed because a selection is a list.
-    val missing = """{"expectedNextSequence":8,"intent":{"type":"startWalker",""" +
-      """"action":"travel","startArgs":[{"optionKind":"site"}]}}"""
+    // A consent target is a one-element list on the wire, so the path of a
+    // malformed one is indexed.
+    val missing = """{"expectedNextSequence":8,"intent":{"type":"requestConsent",""" +
+      """"decisionId":"travel.destination","target":{"optionKind":"site"}}}"""
     assertEquals(rejected(ActorlessCommandCodec.decode(missing)).path,
-      "$.intent.startArgs[0].optionId")
+      "$.intent.target[0].optionId")
     val duplicate = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker","decisionId":"negotiation.deal","payload":{"kind":"propose-terms","terms":{"transfers":[{"recipientPlayerId":"p2","favor":1,"relicIds":[]},{"recipientPlayerId":"p2","favor":2,"relicIds":[]}],"disclosures":[]}}}}"""
     assertEquals(rejected(ActorlessCommandCodec.decode(duplicate)).path,
       "$.intent.payload.terms.transfers")
@@ -145,12 +132,6 @@ class CommandProtocolSuite extends munit.FunSuite:
       s""""amounts":[$row,$row]}}}"""
     assertEquals(rejected(ActorlessCommandCodec.decode(json)).path,
       "$.intent.payload.amounts")
-
-  test("a start no longer carries modifiers: the key is an unexpected field"):
-    val json = """{"expectedNextSequence":0,"intent":{"type":"startWalker",""" +
-      """"action":"recover","modifiers":[]}}"""
-    assertEquals(rejected(ActorlessCommandCodec.decode(json)),
-      ProtocolDecodeFailure.UnexpectedField("$.intent.modifiers"))
 
   test("an unknown walker intent type is rejected without throwing"):
     val json = """{"expectedNextSequence":0,"intent":{"type":"teleportWalker"}}"""

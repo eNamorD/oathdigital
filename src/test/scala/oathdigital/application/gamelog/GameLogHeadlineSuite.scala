@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
-import oathdigital.application.{GameApplicationService, GameCommand}
+import oathdigital.testkit.MenuPlay
+import oathdigital.application.{GameApplicationService}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -48,7 +49,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val table = Table.start
     val (service, repository) = table.service()
     table.situation(Situation.journaled(service, catalog, repository, "t"))
-      .after(GameCommand.BeginRest(p1))
+      .after(MenuPlay.start(p1, PhaseTransitionRef.BeginRest))
     val steps = historyOf(service, "t")
     val whole = formatter.format(steps, Some(p1))
     assertEquals(texts(whole).take(3), Vector("Round 1",

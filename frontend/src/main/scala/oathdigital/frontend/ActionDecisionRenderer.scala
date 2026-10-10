@@ -1,5 +1,5 @@
 package oathdigital.frontend
-import oathdigital.protocol.GameIntent => GameCommand; import org.scalajs.dom
+import org.scalajs.dom
 import ServerUiSupport._
 private[frontend] object ActionDecisionRenderer:
  def status(value: GameProjection, presentation: ViewerPresentation): dom.Element =
@@ -18,9 +18,6 @@ private[frontend] object ActionDecisionRenderer:
        // fallback below would show the wrong or no turn indicator at all.
        node.textContent = value.walkerDecision.flatMap(_.query).flatMap(_.heading)
          .getOrElse("Your decision.")
-     // The Game Log names the phase and the controls below say what can be
-     // done, so the Act phase prints no instruction of its own.
-     case None if value.phase == "act-action-selection" => ()
      case None if value.phase == "game-over" =>
        node.textContent = value.oathkeeper.flatMap(_.winnerPlayerId)
          .fold("Game over.") { winner =>
@@ -65,72 +62,6 @@ private[frontend] object ActionDecisionRenderer:
        cards.appendChild(CardFace.render(card)))
      preview.appendChild(cards)
      panel.appendChild(preview)
-   if showActActionControls(value, presentation) then
-     val groups = new ActionSections
-     if value.legalControls.contains("beginSearch") then
-       val search = button("Search", "act-action search-action")
-       search.disabled = !canControl || !presentation.showGameplayControls
-       search.onclick = _ => submitCommand(
-         GameCommand.StartWalker("search"))
-       groups.appendKind("search", search)
-     if value.legalControls.contains("beginRecover") then
-       val recover = button("Recover (1 Supply)", "act-action recover-action")
-       recover.disabled = !canControl
-       recover.onclick = _ => submitCommand(GameCommand.StartWalker("recover"))
-       groups.appendKind("recover", recover)
-     if value.legalControls.contains("beginForge") then
-       val forge = button("Forge (1 Supply)", "act-action forge-action")
-       forge.disabled = !canControl
-       forge.onclick = _ => submitCommand(
-         GameCommand.StartWalker("forge"))
-       groups.appendKind("forge", forge)
-     if value.legalControls.contains("beginTravel") then
-       val travel = button("Travel", "act-action travel-action")
-       travel.disabled = !canControl
-       travel.onclick = _ => submitCommand(
-         GameCommand.StartWalker("travel"))
-       groups.appendKind("travel", travel)
-     EconomyControls.render(value, canControl, groups, submitCommand)
-     BannerControls.render(value, canControl, groups, submitCommand)
-     NegotiationControls.render(value, canControl, groups, submitCommand)
-     CampaignControls.render(value, canControl, groups, submitCommand)
-     value.minorActions.foreach { minor =>
-       if facedownAdviserLaunchCount(minor) == 1 then
-         val play = button("Play facedown adviser", "minor-adviser-launch")
-         play.disabled = !canControl
-         play.onclick = _ => submitCommand(
-           GameCommand.StartWalker("play-facedown-adviser"))
-         groups.appendKind("facedown-adviser", play)
-     }
-     // The legacy minor actions are walker procedures (walker-driven game
-     // loop design, slice 3): a button starts one, and the walk asks the
-     // rest. Slice 4's Act menu replaces these buttons.
-     Vector(
-       ("peekSiteRelics", "Peek at relics at your site", "minor-peek-relics",
-         "peek-site-relics"),
-       ("revealOwnedRelic", "Reveal a relic", "minor-reveal-relic",
-         "reveal-owned-relic"),
-       ("moveWarbands", "Move warbands", "minor-move-warband",
-         "move-warbands"))
-       .filter((control, _, _, _) => value.legalControls.contains(control))
-       .foreach { (_, label, style, action) =>
-         val start = button(label, style)
-         start.disabled = !canControl
-         start.onclick = _ => submitCommand(GameCommand.StartWalker(action))
-         groups.appendKind(action, start)
-       }
-     PhasePowerButtons.appendTo(value, canControl, groups, submitCommand)
-     groups.appendTo(panel)
-     if value.legalControls.contains("beginRest") then
-       // What Rest returns before the track's ceiling takes its cut, so
-       // the number doubles as the Supply this Act may still spend for
-       // free. A band that returns nothing says nothing.
-       val regained = value.restSupplyGain.filter(_ > 0)
-         .fold("")(gain => s" (+$gain Supply)")
-       val rest = button(s"End Act and Rest$regained", "rest-action")
-       rest.disabled = !canControl
-       rest.onclick = _ => submitCommand(GameCommand.BeginRest)
-       panel.appendChild(rest)
    ParkedDecision.render(value, presentation, routed, canControl, panel, drafts,
      controls)
    panel

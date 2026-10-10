@@ -81,8 +81,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     assertEquals(transition.events.collect {
       case oathdigital.gameplay.walker.WalkerCompleted(procedure) => procedure
     }, Vector(ActionRef.TakeWealth, PhaseTransitionRef.EndWake))
-    assertEquals(state.game.current.walkerPending, None)
-    assertEquals(state.game.current.walkerProcedure, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(state), None)
+    assertEquals(MenuPlay.procedureBeyondMenu(state), None)
 
   test("a take moves a face-up secret"):
     val ready = wake(favor = 1, secrets = 1)
@@ -117,12 +117,6 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     val once = Table.from(tookOnce).backInPhase(Phase.Wake).unchecked
     assertEquals(take(once).left.toOption,
       Some(PowerAlreadyUsed(TakeWealthLimit.useRef(home))))
-
-  test("a take outside the Wake phase is rejected"):
-    val ready = wake(favor = 1, secrets = 1)
-    val inAct = Table.from(ready).turn(actor, Phase.Act).unchecked
-    assertEquals(rejected(take(inAct)),
-      WrongPhase(Phase.Wake, Phase.Act): OathViolation)
 
   test("an enemy pawn at the site blocks the take"):
     assertEquals(take(wake(favor = 1, secrets = 1, sharedEnemy = true))

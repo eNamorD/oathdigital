@@ -55,19 +55,15 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     val ended = accepted(service.handle(
       "game-projection-wake",
       0L,
-      MenuPlay.ending(table.state, PhaseMenu.Menu.Wake, active)))
+      MenuPlay.picking(active, PhaseMenu.Menu.Wake.endingOption)))
     val act = projector.project(
       "game-projection-wake",
       LoadedGame(ended.state, ended.nextSequence),
       active)
-    assertEquals(act.phase, "act-action-selection")
-    assert(act.actionSelectionOpen)
-    // Broken Peaks also holds a relic: Recover and a peek are offered, and
-    // the world deck is a Search the player can afford.
-    assertEquals(act.legalControls, Vector("beginSearch", "beginRest",
-      "beginRecover",
-      "beginTravel", "beginCampaign", "facedownAdviserMinorAction",
-      "peekSiteRelics"))
+    // Act is played at its menu, which the active player answers.
+    assertEquals(act.phase, "act-menu-walker-decision")
+    assert(!act.actionSelectionOpen)
+    assertEquals(act.legalControls, Vector("resolveWalkerDecision"))
     assertEquals(projector.projectPublic("game-projection-wake",
       LoadedGame(ended.state, ended.nextSequence)).legalControls,
       Vector.empty)

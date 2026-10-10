@@ -221,13 +221,9 @@ class MinorActionsSuite extends munit.FunSuite:
       p1).left.toOption, Some(OathViolation.CoreOperationRejected("refused",
         "every operation is refused")))
 
-  test("a minor action refuses an off-turn actor, a wrong phase and a " +
-      "start selection"):
+  test("a minor action refuses an off-turn actor and a start selection"):
     assertEquals(rules.startWalker(Ready(base), ActionRef.PeekSiteRelics, p2)
       .left.toOption, Some(OathViolation.WrongPlayer(p1, p2)))
-    val waking = minorBoard.turn(p1, Phase.Wake).state
-    assertEquals(rules.startWalker(waking, ActionRef.MoveWarbands, p1)
-      .left.toOption, Some(OathViolation.WrongPhase(Phase.Act, Phase.Wake)))
     val selected = rules.startWalker(Ready(base), ActionRef.RevealOwnedRelic,
       p1, Vector(DecisionOptionRef.Relic(cursedCauldron)))
     assert(selected.isLeft, selected)

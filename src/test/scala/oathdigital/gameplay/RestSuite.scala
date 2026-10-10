@@ -28,8 +28,8 @@ class RestSuite extends munit.FunSuite:
   private def act: ReadyGame = restBoard.adviser(p1, "Wrestlers").ready
 
   private def rest(state: OathState, player: PlayerId,
-      using: OathRules = rules) =
-    using.startWalker(state, PhaseTransitionRef.BeginRest, player)
+      under: OathRules = rules) =
+    MenuPlay.started(under, state, player, PhaseTransitionRef.BeginRest)
 
   private def inRest(ready: ReadyGame) =
     Table.from(ready).turn(p1, Phase.Rest).unchecked
@@ -246,17 +246,11 @@ class RestSuite extends munit.FunSuite:
         Ready(roundEight), 30L), last)
     assert(projection.legalControls.contains("beginRest"))
 
-  test("Finish Rest belongs to the active player in the Rest phase, and " +
-      "Begin Rest is refused inside Rest"):
+  test("Finish Rest belongs to the active player"):
     val act = this.act
     assertEquals(rules.startWalker(Ready(inRest(act)),
       PhaseTransitionRef.FinishRest, p2).left.toOption,
       Some(OathViolation.WrongPlayer(p1, p2)))
-    assertEquals(rules.startWalker(Ready(act), PhaseTransitionRef.FinishRest,
-      p1).left.toOption, Some(OathViolation.WrongPhase(Phase.Rest, Phase.Act)))
-    assertEquals(rules.startWalker(Ready(inRest(act)),
-      PhaseTransitionRef.BeginRest, p1).left.toOption,
-      Some(OathViolation.WrongPhase(Phase.Act, Phase.Rest)))
     val finished = accepted(rules.startWalker(Ready(inRest(act)),
       PhaseTransitionRef.FinishRest, p1))
     assertEquals(Outcomes.ready(finished.state).game.current.turn.phase,

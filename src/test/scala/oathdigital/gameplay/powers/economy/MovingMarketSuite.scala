@@ -118,7 +118,7 @@ class MovingMarketSuite extends munit.FunSuite:
     val unselected = EconomyActions.trade(rules, ready, p1, Vector.empty,
       "favor", DecisionOptionRef.Denizen(market))
     Vector(elsewhere, unselected).foreach { done =>
-      assertEquals(parked.parkedDecision(Ready(done.result)), None)
+      parked.assertNotParked(Ready(done.result))
       assert(Look(done.result).cardsAt(home).contains(market))
       assertEquals(said(done.journal.events), Vector.empty)
     }

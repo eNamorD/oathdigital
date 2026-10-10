@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -66,7 +67,8 @@ object CampaignConsentFixture:
   def parkedAt(state: OathState)(using munit.Location): Option[String] =
     ParkedNode.of(state, catalog, WalkerPowers.selected(powers(Vector.empty),
         Vector.empty)) match
-      case Right(node) => node.map(_.decisionId)
+      case Right(node) => node.filter(parked =>
+        PhaseMenu.asking(parked.procedure).isEmpty).map(_.decisionId)
       case Left(reason) => munit.Assertions.fail(reason)
 
   private def powers(extra: Vector[ContributingPower]): WalkerPowers =

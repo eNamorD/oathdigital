@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.wake
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
@@ -32,7 +33,7 @@ class MarbleFountainsSuite extends munit.FunSuite:
     if pawnAtEdifice then waking.edifice(fountains, side, at = home).ready
     else waking.edifice(fountains, side, at = far).warbandsAt(far, actor, 1)
       .ready
-  private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
+  private def use(ready: ReadyGame) = rules.startWalker(Ready(MenuPlay.withoutMenu(ready)),
     ActionRef.UsePower(MarbleFountains.id), actor, Vector(source))
 
   test("it refreshes Supply to the maximum when the pawn is at the site"):

@@ -129,7 +129,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     val expected = BannerRules.addFavor(board.banks.favor,
       BannerRules.raidFavorReturn(board.banks.favor, 2))
     assertEquals(after.banks.favor, expected)
-    assertEquals(current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(current), None)
 
   test("People's Favor: an enemy-held banner moves to the challenger"):
     val board = challenger.peoplesFavor(Some(p2), favor = 2)
@@ -181,7 +181,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       after.siteTokens(c).secrets), (1, 0, 1))
     assertEquals(banners(done.state).darkestSecret.holder,
       Some(p1))
-    assertEquals(Outcomes.ready(done.state).game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(Outcomes.ready(done.state)), None)
 
   test("Wandering Flame: an enemy holder gets the retained half back"):
     val board = siteSecrets(challenger.darkestSecret(Some(p2), secrets = 5)
@@ -296,7 +296,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       PhaseMenu.Menu.Wake.endingOption))
     val prior = BannerRules.resources(Outcomes.ready(act.state).game.current,
       Banner.PeoplesFavor)
-    val started = rules.startWalker(act.state, ActionRef.Challenge, activeId)
+    val started = MenuPlay.started(rules, act.state, activeId, ActionRef.Challenge)
       .getOrElse(fail("Challenge must start"))
     val banner = rules.resolveWalker(started.state, activeId, "challenge.banner",
       DecisionAnswer.ChooseOneAnswer(peoplesFavorOption))

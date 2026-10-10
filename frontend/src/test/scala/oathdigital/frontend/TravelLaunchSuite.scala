@@ -4,12 +4,8 @@ import oathdigital.frontend.Dom.one
 import oathdigital.frontend.TestBoardOptions.recording
 import oathdigital.frontend.TestSites.quietSite
 import oathdigital.model.PlayerColor
-import oathdigital.protocol.{GameIntent => Intent}
-import oathdigital.testkit.Unwrap.as
-import org.scalajs.dom
 
-/** Travel starts the walker with no destination, and the parked destination
-  * decision draws each site's cost or reason on its site box (travel
+/** The parked destination decision draws each site's cost or reason on its site box (travel
   * destination design, rulings 2 to 4). */
 class TravelLaunchSuite extends munit.FunSuite:
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
@@ -18,14 +14,6 @@ class TravelLaunchSuite extends munit.FunSuite:
     world = Vector(GameRegion("cradle", Vector(site("woods", "Deep Woods"),
       site("shore", "Desolate Shore")))),
     legalControls = Vector("beginTravel")).copy(actionSelectionOpen = true)
-
-  test("the Travel control starts the walker and names no destination"):
-    val ui = new RecordingControls()
-    val pane = ActionDecisionRenderer.actionsPanel(table,
-      ActionPanels.actingViewer("red"), ParkedDecision.Routed(None, None),
-      canControl = true, SessionDrafts.empty, ui)
-    as[dom.html.Button](one(pane, ".travel-action")).click()
-    assertEquals(ui.submitted, Vector(Intent.StartWalker("travel")))
 
   test("a destination's badge is drawn on its site box"):
     val badged = OptionView(DecisionOptionState("site", "woods", "Deep Woods",

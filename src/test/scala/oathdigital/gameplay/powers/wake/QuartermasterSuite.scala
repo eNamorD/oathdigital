@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.wake
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -28,7 +29,7 @@ class QuartermasterSuite extends munit.FunSuite:
       .denizen(quartermaster, at = far)
     (if ruled then table.warbandsAt(far, p1, 1) else table).ready
 
-  private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
+  private def use(ready: ReadyGame) = rules.startWalker(Ready(MenuPlay.withoutMenu(ready)),
     ActionRef.UsePower(Quartermaster.id), p1, Vector(source))
 
   private def offered(ready: ReadyGame): Boolean = PhasePowerProcedure.usable(

@@ -93,12 +93,3 @@ class ServerUiSupportSuite extends FunSuite:
     assertEquals(ServerUiSupport.pileSymbol(0, Some("denizen")), "")
     assertEquals(ServerUiSupport.pileCardClasses(2), "pile-card pile-back")
     assertEquals(ServerUiSupport.pileCardClasses(0), "pile-card pile-empty")
-
-  test("action kinds sort into major and minor, and trade variants share a family"):
-    assertEquals(ServerUiSupport.actionCategory("travel"), "major")
-    assertEquals(ServerUiSupport.actionCategory("challenge"), "major")
-    // Using a power's "Action:" is itself a minor action, so an unrecognised
-    // kind joins them rather than opening a section of its own.
-    assertEquals(ServerUiSupport.actionCategory("unrecognized-power"), "minor")
-    assertEquals(Vector("trade-favor", "trade-secret").map(
-      ServerUiSupport.actionFamily), Vector("trade", "trade"))

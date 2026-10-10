@@ -34,23 +34,25 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     .pawn(p1, "Ancient City")
 
   private def endWake(state: OathState, actor: PlayerId) =
-    rules.startWalker(state, PhaseTransitionRef.EndWake, actor)
+    MenuPlay.started(rules, state, actor, PhaseTransitionRef.EndWake)
 
   test("ending Wake journals a phase change and enters Act action selection"):
     // Both other players stand at p1's site: End Wake must journal only its
     // own two events and stay legal, since nothing in it reads other pawns.
     val state = p1Wake.pawn(p2, "Ancient City").pawn(p3, "Ancient City").state
     val ended = accepted(endWake(state, p1))
+    // The Act menu is parked once End Wake is done.
     assertEquals(ended.events.map(_.productPrefix),
-      Vector("WalkerStepRecorded", "WalkerCompleted"))
+      Vector("WalkerStepRecorded", "WalkerCompleted", "WalkerParked"))
     assertEquals(ended.events.collect {
       case step: WalkerStepRecorded => step.ops
     }.flatten, Vector[oathdigital.model.CoreOperation](
       EnterPhase(Phase.Act)))
-    assertEquals(ended.events.last,
-      WalkerCompleted(PhaseTransitionRef.EndWake): OathEvent)
+    assert(ended.events.contains(WalkerCompleted(PhaseTransitionRef.EndWake)),
+      ended.events)
     parked.assertResumed(ended.state, Phase.Act, p1)
-    assertEquals(Outcomes.ready(ended.state).game.current.walkerProcedure, None)
+    assertEquals(MenuPlay.procedureBeyondMenu(Outcomes.ready(ended.state)),
+      None)
 
   test("ending Wake does not run the Act action boundary"):
     // The boundary runs only after a completed ACTION, decided by the
@@ -78,11 +80,6 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     val state = p1Wake.state
     assertEquals(rejected(endWake(state, p2)),
       WrongPlayer(p1, p2): OathViolation)
-
-  test("ending Wake outside the Wake is refused"):
-    val ended = accepted(endWake(p1Wake.state, p1)).state
-    assertEquals(rejected(endWake(ended, p1)),
-      WrongPhase(Phase.Wake, Phase.Act): OathViolation)
 
   test("ending Wake selects nothing"):
     assertEquals(rules.startWalker(p1Wake.state, PhaseTransitionRef.EndWake, p1,
@@ -118,8 +115,9 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     val initial = Ready(initialReady)
     val ended = accepted(endWake(initial, Look(initial).active))
     val setupEvents = setupThroughWake().events
-    // End Wake journals two events: its step and its completion.
-    assertEquals(ended.events.size, 2)
+    // End Wake journals its step and its completion, then the Act menu's
+    // park.
+    assertEquals(ended.events.size, 3)
     val corrupt = new EventReplayEngine(rules).replay(
       (setupEvents ++ ended.events ++ ended.events).zipWithIndex.map {
         case (event, index) => RecordedEvent(index.toLong, event)

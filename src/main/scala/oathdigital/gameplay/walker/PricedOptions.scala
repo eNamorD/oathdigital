@@ -51,7 +51,7 @@ object PricedOptions:
 
   /** Whether the walk can go on from `outcome`: it finished, its further
     * question could not be previewed, or some answer to it can go on. */
-  private def answerable(outcome: PreviewOutcome): Boolean =
+  private[walker] def answerable(outcome: PreviewOutcome): Boolean =
     outcome.complete || outcome.next.isEmpty ||
       outcome.next.exists(_.outcome.exists(answerable))
 
@@ -59,7 +59,8 @@ object PricedOptions:
     * then those of each answer to the further question from which the walk
     * can go on, a pay-or-ask step's included. Its own alone when no further
     * answer can. */
-  private def paths(outcome: PreviewOutcome): Vector[Vector[CoreOperation]] =
+  private[walker] def paths(outcome: PreviewOutcome)
+      : Vector[Vector[CoreOperation]] =
     outcome.next.collect { case PreviewedOption(_, Right(following))
         if answerable(following) => following }.flatMap(paths) match
       case Vector() => Vector(outcome.operations)
@@ -80,8 +81,8 @@ object PricedOptions:
     * leaves their play area for anywhere but a card: a selected modifier's
     * payment onto its card is the same for every option. A `Give` and a
     * `PayCost` are walked as their moves, so the moves are read. */
-  private def spent(operations: Vector[CoreOperation], actor: PlayerId)
-      : (Int, Int) =
+  private[walker] def spent(operations: Vector[CoreOperation],
+      actor: PlayerId): (Int, Int) =
     val supply = operations.collect {
       case SpendSupply(player, amount, _) if player == actor => amount }.sum
     val favor = operations.collect {
@@ -112,8 +113,8 @@ object PricedOptions:
         else fallback
       case _ => fallback
 
-  private def lift(state: ReadyGame, actor: PlayerId, favor: Boolean)
-      : ReadyGame = state.updateCurrent(current => current.copy(
+  private[walker] def lift(state: ReadyGame, actor: PlayerId,
+      favor: Boolean): ReadyGame = state.updateCurrent(current => current.copy(
     players = current.players.map(player =>
       if player.player != actor then player
       else player.copy(board = player.board.copy(

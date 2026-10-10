@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.model._
 import oathdigital.gameplay.{ModifierPlay, OathRules, WalkerDiceFixture}
 import oathdigital.testkit.CatacombsGame
@@ -85,7 +86,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     val (service, _) = ParkedServiceFixture.recoverTable
       .service(campaignDice = dice)
     StartedRecover(service, accepted(service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))))
+      MenuPlay.starting(p1, ActionRef.Recover))))
 
   /** A power that folds a parked `Roll` into Recover, after the node that
     * opens the pool. Recover's own roll is automatic, so this is the only

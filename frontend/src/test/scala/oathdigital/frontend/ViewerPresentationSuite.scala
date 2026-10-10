@@ -45,7 +45,7 @@ class ViewerPresentationSuite extends FunSuite:
     assertEquals(active.waitingForPlayerId, Some("blue-exile"))
     assertEquals(active.waitingForDisplayName, Some("Blue Exile"))
 
-  test("inactive Act viewer sees no action-selection controls"):
+  test("an inactive Act viewer waits for the active player"):
     val value = twoSeatProjection(Set("beginRest"),
       phase = "act-action-selection")
       .copy(actionSelectionOpen = true)
@@ -53,8 +53,7 @@ class ViewerPresentationSuite extends FunSuite:
     val active = ServerUiSupport.viewerPresentation(value, "red-exile")
 
     assertEquals(inactive.waitingForPlayerId, Some("red-exile"))
-    assert(!ServerUiSupport.showActActionControls(value, inactive))
-    assert(ServerUiSupport.showActActionControls(value, active))
+    assertEquals(active.waitingForPlayerId, None)
 
   /** Regression: the owner of a parked walker decision has
     * `waitingForPlayerId = None` (Task 5, tested above), but the status line
@@ -98,11 +97,16 @@ class ViewerPresentationSuite extends FunSuite:
       ServerUiSupport.viewerPresentation(value, "blue-exile"))
     assertEquals(ownerStatus.textContent, "Your decision.")
 
-  test("the Act phase leaves the active player's status empty"):
-    // The Game Log names the phase, and the Act prompt went stale after the
-    // first action, so the phase prints no instruction of its own.
-    val value = twoSeatProjection(Set.empty, phase = "act-action-selection")
+  test("a parked Act menu states its heading as the active player's status"):
+    // A live Act always has its menu parked, so the status is its heading.
+    val query = DecisionQueryState.ChooseOne(
+      Vector(DecisionOptionState("button", "end-act", "End Act and Rest")),
+      heading = Some("Act: take an action, use a power or rest"))
+    val value = twoSeatProjection(Set.empty,
+      phase = "act-menu-walker-decision").copy(walkerDecision = Some(
+      WalkerDecisionState("act-menu", "phase.menu", "decide",
+        query = Some(query))))
     val status = ActionDecisionRenderer.status(value,
       ServerUiSupport.viewerPresentation(value, "red-exile"))
-    assertEquals(status.textContent, "")
-
+    assertEquals(status.textContent,
+      "Act: take an action, use a power or rest")

@@ -1,10 +1,10 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-1.0 phase 0 | Rest
-11.0 decision 1 use-power:denizen.silver-tongue@8 | Chose the Discord bank
-13.0 action 1 use-power:denizen.silver-tongue@8 | [card:92|Silver Tongue]: [player:p1|p1] took [amount:1 favor] from the Discord bank.
-17.0 turn 0 | [player:p2|p2]'s turn
-17.1 phase 0 | Wake
-19.0 action 1 | Nothing happened in Wake
-19.1 phase 0 | Act
+5.0 phase 0 | Rest
+15.0 decision 1 use-power:denizen.silver-tongue@12 | Chose the Discord bank
+17.0 action 1 use-power:denizen.silver-tongue@12 | [card:92|Silver Tongue]: [player:p1|p1] took [amount:1 favor] from the Discord bank.
+21.0 turn 0 | [player:p2|p2]'s turn
+21.1 phase 0 | Wake
+23.0 action 1 | Nothing happened in Wake
+23.1 phase 0 | Act

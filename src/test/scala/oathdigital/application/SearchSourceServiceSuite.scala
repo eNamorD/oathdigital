@@ -21,7 +21,7 @@ class SearchSourceServiceSuite extends munit.FunSuite:
       ParkedServiceFixture.startSearch(p1)))
     val undone = accepted(service.handle("g", started.nextSequence,
       GameCommand.Undo(p1)))
-    assertEquals(undone.state, table.state)
+    assertEquals(undone.state, table.phaseMenuParked.state)
 
   test("Undo takes back a pick, and then the start"):
     val withNews = table.adviser(p1, "News from Afar").favor(p1, 2)
@@ -36,7 +36,7 @@ class SearchSourceServiceSuite extends munit.FunSuite:
     assertEquals(unpicked.state, started.state)
     val undone = accepted(service.handle("g", unpicked.nextSequence,
       GameCommand.Undo(p1)))
-    assertEquals(undone.state, withNews.state)
+    assertEquals(undone.state, withNews.phaseMenuParked.state)
 
   test("the source answer draws, so it cannot be taken back"):
     val (service, _) = table.service()

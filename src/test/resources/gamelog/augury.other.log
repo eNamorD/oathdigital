@@ -1,8 +1,8 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-7.0 section 1 search@1 | Search[cost:2 Supply]
-7.1 action 1 search@1 | With [card:56|Augury]
-11.0 action 1 search@1 | Drew 4 Denizens from the World Deck and kept a Denizen
-12.0 delta 1 search@1 | Discarded 3 Denizens to the Provinces discard
-16.0 action 1 search@1 | Discarded a Denizen to the Provinces discard
+11.0 section 1 search@4 | Search[cost:2 Supply]
+11.1 action 1 search@4 | With [card:56|Augury]
+15.0 action 1 search@4 | Drew 4 Denizens from the World Deck and kept a Denizen
+16.0 delta 1 search@4 | Discarded 3 Denizens to the Provinces discard
+20.0 action 1 search@4 | Discarded a Denizen to the Provinces discard

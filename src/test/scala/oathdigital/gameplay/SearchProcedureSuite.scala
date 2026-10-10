@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.VisionRules
@@ -112,7 +113,7 @@ class SearchProcedureSuite extends munit.FunSuite:
           WalkerPowers.empty)))
     val finalReady = Outcomes.ready(completed.state)
     assertEquals(finalReady.game.current.temporaryHands(actor), Vector.empty)
-    assertEquals(finalReady.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(finalReady), None)
 
   test("a faceup Conspiracy from Search with nothing to take is played and boxed"):
     val vision = VisionRules.Conspiracy
@@ -130,7 +131,7 @@ class SearchProcedureSuite extends munit.FunSuite:
         WalkerPowerCatalog.default(catalog))))
     val after = Outcomes.ready(result.state)
     assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
-    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
     withPowersParked.assertNotParked(result.state)
     assert(!accepted(CardIndex.from(after.game)).ids.contains(vision),
       "the played Conspiracy is boxed")
@@ -164,7 +165,7 @@ class SearchProcedureSuite extends munit.FunSuite:
       withPower.resolveWalker(placed.state, actor, settleDecision,
         DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("ok"))))
     val finalReady = Outcomes.ready(completed.state)
-    assertEquals(finalReady.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(finalReady), None)
 
   test("a follow-up discard answered before a power's Decide after the play " +
       "resolves on resume, which settles from the answers"):
@@ -213,7 +214,7 @@ class SearchProcedureSuite extends munit.FunSuite:
     val completed = accepted(withPowers.resolveWalker(more.state, actor,
       afterDecision, DecisionAnswer.ChooseOneAnswer(
         DecisionOptionRef.Button("ok"))))
-    assertEquals(Outcomes.ready(completed.state).game.current.walkerPending,
+    assertEquals(MenuPlay.pendingBeyondMenu(Outcomes.ready(completed.state)),
       None)
 
   test("Search uses its registered modifier-selection window"):

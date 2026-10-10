@@ -27,8 +27,7 @@ import oathdigital.model.OathViolation._
   *     when the last player has rested, then Wake's entry and the Forced
   *     Wake walk when one is due, which hands back here when it ends.
   *  3. the phase's menu: in Wake and Rest, the menu, or the phase's ending
-  *     when it is the only option available (ruling 3). Act parks nothing
-  *     until its menu exists (slice 4).
+  *     when it is the only option available (ruling 3). Act always asks.
   *
   * Each start runs on the state the steps before it left, so a turn that
   * changes inside one command gives the next walk the new active player.
@@ -157,7 +156,7 @@ private[gameplay] trait OathDriver:
   /** Step 3: the phase's menu (walker-driven game loop design, "The
     * menus"). When its ending is the only option available, the ending
     * starts without asking (ruling 3; slice 1, plan-time ruling 2). Act
-    * parks nothing until its menu exists (slice 4). */
+    * always asks. */
   private def phaseEnd(transition: OathTransition)
       : Either[OathViolation, OathTransition] = transition.state match
     case Ready(ready) if ready.game.current.result.isEmpty =>

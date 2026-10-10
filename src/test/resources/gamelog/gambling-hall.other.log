@@ -1,5 +1,5 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-4.0 action 1 use-power:denizen.gambling-hall@1 | [card:93|Gambling Hall]: [player:p1|p1] rolled [dice:defense two-shields two-shields two-shields two-shields|two shields, two shields, two shields, two shields], Total: 8
-9.0 trigger 1 use-power:denizen.gambling-hall@1 | [card:93|Gambling Hall]: [player:p1|p1] gained [amount:4 favor] from the Hearth bank.
+8.0 action 1 use-power:denizen.gambling-hall@4 | [card:93|Gambling Hall]: [player:p1|p1] rolled [dice:defense two-shields two-shields two-shields two-shields|two shields, two shields, two shields, two shields], Total: 8
+13.0 trigger 1 use-power:denizen.gambling-hall@4 | [card:93|Gambling Hall]: [player:p1|p1] gained [amount:4 favor] from the Hearth bank.

@@ -5,15 +5,8 @@ private[protocol] object CommandIntentCodec:
   import CommandJsonSupport._
 
   def encode(intent: GameIntent): ujson.Obj = intent match
-    case BeginRest => tagged("beginRest")
     case Undo => tagged("undo")
     case Redo => tagged("redo")
-    case UsePower(power, source) => tagged("usePower", "powerId" -> power,
-      "source" -> CommandNestedCodecs.encodeStartArgWire(source))
-    case StartWalker(action, startArgs) =>
-      tagged("startWalker", "action" -> action,
-        "startArgs" -> ujson.Arr.from(startArgs.map(
-          CommandNestedCodecs.encodeStartArgWire)))
     case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)
     case ResolveWalker(id, payload) => tagged("resolveWalker", "decisionId" -> id,
       "payload" -> CommandNestedCodecs.encodeDecisionAnswerWire(payload))

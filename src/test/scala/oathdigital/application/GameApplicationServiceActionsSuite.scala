@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model._
@@ -77,7 +78,7 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     val gameId = "game-challenge-persistence"
     val actor = p1
     var position = accepted(service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.Challenge, StartPayload(actor))))
+      MenuPlay.starting(actor, ActionRef.Challenge)))
     position = accepted(service.handle(gameId, position.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision("challenge.banner",
         ChooseOneAnswer(DecisionOptionRef.Banner(Banner.PeoplesFavor))))))
@@ -133,19 +134,24 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     // and the park. The pick's batch holds the recorded answer, the pay node,
     // the pawn move, the completion and the action boundary's marker, behind
     // its own `CommandAccepted`.
-    assertEquals(parked.events.map(_.productPrefix), Vector("WalkerParked"))
-    assertEquals(stored.nextSequence, 8L)
+    // The menu's pick queues the Travel, which starts in the same command
+    // and parks on its destination.
+    assertEquals(parked.events.map(_.productPrefix), Vector(
+      "WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted",
+      "ProcedureDequeued", "WalkerParked"))
+    assertEquals(stored.nextSequence, 13L)
+    // The destination's pick ends the Travel, and the Act menu parks again.
     assertEquals(traveled.events.map(_.productPrefix), Vector(
       "WalkerStepRecorded", "WalkerStepRecorded", "WalkerStepRecorded",
-      "WalkerCompleted", "ActionBoundaryRan"))
-    // Nothing is left parked once the destination is picked.
-    assertEquals(after.game.current.walkerPending, None)
-    assertEquals(after.game.current.walkerProcedure, None)
+      "WalkerCompleted", "ActionBoundaryRan", "WalkerParked"))
+    // Nothing is left parked once the destination is picked, but the menu.
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
+    assertEquals(MenuPlay.procedureBeyondMenu(after), None)
     val types = loaded(repository.load("game-travel")).records
-      .takeRight(5).map(ujson.read(_)("eventType").str)
+      .takeRight(6).map(ujson.read(_)("eventType").str)
     assertEquals(types, Vector("walker.step-recorded", "walker.step-recorded",
       "walker.step-recorded", "walker.completed",
-      "walker.action-boundary-ran"))
+      "walker.action-boundary-ran", "walker.parked"))
 
   /** An off-turn Oathkeeper tie, reached and resolved entirely through
     * `GameApplicationService`, survives reload on both sides of the park.
@@ -204,7 +210,7 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
       .edifice("Hiding Place", EdificeSide.Ruined, siteId).service()
     val active = p1
     val started = accepted(service.handle("game-walker-economy", 0L,
-      GameCommand.StartWalker(ActionRef.Muster, StartPayload(active))))
+      MenuPlay.starting(active, ActionRef.Muster)))
     parkedAssertions.assertParked(started.state, ActionRef.Muster,
       MusterProcedure.decisionId, active)
     val mustered = accepted(service.handle("game-walker-economy",
@@ -234,7 +240,7 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     val repository = new InMemoryEventStreamRepository
     val table = Table.start
     val service = new GameApplicationService(catalog, repository, port,
-      genesis = table.state)
+      genesis = table.phaseMenuParked.state)
     val active = p1
     val started = accepted(service.handle("game-search-tamper", 0L,
       ParkedServiceFixture.startSearch(active)))

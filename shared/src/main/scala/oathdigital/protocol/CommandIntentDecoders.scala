@@ -7,31 +7,8 @@ private[protocol] object CommandIntentDecoders:
 
   def decode(kind: String, value: ujson.Obj, path: String)
       : Either[ProtocolDecodeFailure, GameIntent] = kind match
-    case "beginRest" => empty(value, path, BeginRest)
     case "undo" => empty(value, path, Undo)
     case "redo" => empty(value, path, Redo)
-    case "usePower" =>
-      for
-        _ <- exact(value, Set("type", "powerId", "source"), path)
-        power <- string(value, "powerId", path)
-        source <- field(value, "source", path).flatMap(raw =>
-          CommandNestedCodecs.decodeStartArgsWire(ujson.Arr(raw), s"$path.source"))
-          .flatMap:
-            case Vector(one) => Right(one)
-            case _ => Left(InvalidValue(s"$path.source",
-              "expected one power source"))
-      yield UsePower(power, source)
-    case "startWalker" =>
-      for
-        _ <- exact(value, Set("type", "action", "startArgs"), path)
-        action <- string(value, "action", path)
-        // Optional and empty by default: most procedures select nothing
-        // before they start.
-        startArgs <- value.value.get("startArgs") match
-          case None => Right(Vector.empty[WalkerStartArgWire])
-          case Some(args) => CommandNestedCodecs.decodeStartArgsWire(args,
-            s"$path.startArgs")
-      yield StartWalker(action, startArgs)
     case "rollWalker" => one(value, path, "pool")(RollWalker.apply)
     case "resolveWalker" =>
       for

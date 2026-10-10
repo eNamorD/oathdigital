@@ -13,20 +13,8 @@ object GameIntentMapper:
   def bind(actorId: PlayerId, intent: Intent): Result[GameCommand] =
     val actor = AuthorizedPlayer.forPlayer(actorId)
     intent match
-      case Intent.BeginRest => Right(actor.beginRest)
       case Intent.Undo => Right(actor.undo)
       case Intent.Redo => Right(actor.redo)
-      case Intent.UsePower(value, source) =>
-        for
-          power <- PowerId.fromValue(value).toRight(GameIntentMappingFailure(
-            "$.intent.powerId", s"invalid power id '$value'"))
-          ref <- optionRef(source.optionKind, source.optionId, "$.intent.source")
-        yield actor.usePower(power, ref)
-      case Intent.StartWalker(value, startArgs) =>
-        for
-          ref <- actionRef(value)
-          args <- traverse(startArgs.zipWithIndex)(walkerStartArg.tupled)
-        yield GameCommand.StartWalker(ref, StartPayload(actorId, args))
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
@@ -52,19 +40,6 @@ object GameIntentMapper:
     case NegotiationInformation.Adviser(owner, c) => world(c, "$.intent.terms.disclosures.information.card").map(v => oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.Adviser(PlayerId(owner), v)))
     case NegotiationInformation.HeldRelic(owner, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.HeldRelic(PlayerId(owner), RelicId(relic))))
     case NegotiationInformation.SiteRelic(site, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.SiteRelic(SiteId(site), RelicId(relic))))
-  /** One wire start selection to the engine's own reference, through the SAME
-    * `DecisionOptionRef.fromWire` a walker answer is decoded with (see
-    * `optionRef`). Whether the action accepts this reference at all is not
-    * asked here: that is the registered action's own question, answered when
-    * it builds its tree.
-    */
-  private def walkerStartArg(value: WalkerStartArgWire, index: Int)
-      : Result[DecisionOptionRef] = optionRef(value.optionKind, value.optionId,
-    s"$$.intent.startArgs[$index]")
-
-  private def actionRef(value: String): Result[StartableRef] =
-    StartableRef.fromKey(value).toRight(GameIntentMappingFailure(
-      "$.intent.action", s"unknown action '$value'"))
   /** The kind/id pair back to the engine's option reference. Total over the
     * seven declared variants, and deliberately not a table written here:
     * `DecisionOptionRef.fromWire` is the same function the journal codec

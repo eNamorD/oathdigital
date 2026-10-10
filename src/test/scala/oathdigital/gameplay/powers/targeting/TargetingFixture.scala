@@ -7,7 +7,8 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
   WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Outcomes, PowerRules, Table}
+import oathdigital.testkit.{CatalogNames, MenuPlay, Outcomes, PowerRules,
+  Table}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Shared reading for the suites of the rules that keep a player from being
@@ -51,7 +52,7 @@ object TargetingFixture:
 
   def start(state: ReadyGame, procedure: ActionRef, actor: PlayerId)
       : Either[OathViolation, OathTransition] =
-    rules.startWalker(Ready(state), procedure, actor)
+    rules.startWalker(Ready(MenuPlay.withoutMenu(state)), procedure, actor)
 
   /** The decision a started walk is parked on, if any. */
   def parkedOn(transition: OathTransition)(using munit.Location)

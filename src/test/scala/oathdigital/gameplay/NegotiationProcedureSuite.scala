@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.actions.negotiation.{NegotiationDeal, NegotiationProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
@@ -105,7 +106,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
       before.game.current.players.map(_.board.favor).sum)
     assert(Look(after).relics(p2).contains(p1Relic))
     assertEquals(Look(after).tokensOn(p1Relic), Tokens(0, 1))
-    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
     parked.assertResumed(done.state, Phase.Act, p1)
 
   test("three players answer in any order and a changed term resets consent"):
@@ -122,7 +123,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
         .state
     // p1 started with 5, gave 1 to p2 and received 2 from p3.
     assertEquals(Look(closed).favor(p1), 5 - 1 + 2)
-    assertEquals(Outcomes.ready(closed).game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(Outcomes.ready(closed)), None)
 
   test("a decline ends the action with nothing moved"):
     val before = gathered.ready
@@ -132,7 +133,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
       .getOrElse(fail("any participant may decline"))
     val after = Outcomes.ready(declined.state)
     assertEquals(after.game.current.players, before.game.current.players)
-    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
     parked.assertResumed(declined.state, Phase.Act, p1)
 
   test("a player outside the chosen negotiators cannot answer"):
@@ -159,8 +160,8 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     assertEquals(say(broke, p1, AcceptDeal).left.toOption,
       Some(OathViolation.InsufficientFavor(3, 1)))
     // The deal stayed open: p1, with the favor back, can still accept.
-    assertEquals(Outcomes.ready(accepted(say(theirs.state, p1, AcceptDeal))
-      .state).game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(Outcomes.ready(accepted(
+      say(theirs.state, p1, AcceptDeal)).state)), None)
 
   test("an agreed disclosure grants durable knowledge to its recipient only"):
     val adviser = CatalogNames.denizen("Errand Boy")
@@ -194,7 +195,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     assertEquals(agreed.events.collect {
       case refill: OathEvent.BanditsRefilled => refill }.size, 1,
       "an agreed deal must run the action boundary and its bandit refill")
-    assertEquals(Outcomes.ready(agreed.state).game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(Outcomes.ready(agreed.state)), None)
 
   test("unsupported Negotiation rules are recorded as ignored, not blocking"):
     val powered = gathered.adviser(p1, "Council Arbiter").ready
@@ -220,7 +221,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val adviser = present(Look(traveled.state).player(actor).advisers
       .headOption.map(_.id).collect { case id: WorldCardId => id },
       "a kept adviser")
-    val started = rules.startWalker(traveled.state, ActionRef.Negotiation, actor)
+    val started = MenuPlay.started(rules, traveled.state, actor, ActionRef.Negotiation)
       .getOrElse(fail("Negotiation must start"))
     val chosen =
       if parked.parkedDecision(started.state).exists(facts =>

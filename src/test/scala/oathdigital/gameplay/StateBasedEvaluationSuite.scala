@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
@@ -105,10 +106,12 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     // A Wake with nothing to decide has already ended by itself.
     def endWake(player: PlayerId): Unit =
       if Look(state).phase == Phase.Wake
-      then accept(rules.startWalker(state, PhaseTransitionRef.EndWake, player))
+      then accept(MenuPlay.started(rules, state, player,
+        PhaseTransitionRef.EndWake))
     def finishTurn(player: PlayerId): Unit =
       endWake(player)
-      accept(rules.startWalker(state, PhaseTransitionRef.BeginRest, player))
+      accept(MenuPlay.started(rules, state, player,
+        PhaseTransitionRef.BeginRest))
 
     turnOrder.foreach(finishTurn)
     val roundFour = Outcomes.ready(state)
@@ -124,7 +127,8 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     accept(TravelPlay.travelled(rules, state, holder, destination))
     assertEquals(Outcomes.ready(state).game.current.title,
       OathkeeperState(Some(holder), TitleSide.Usurper))
-    accept(rules.startWalker(state, PhaseTransitionRef.BeginRest, holder))
+    accept(MenuPlay.started(rules, state, holder,
+      PhaseTransitionRef.BeginRest))
     turnOrder.tail.foreach(finishTurn)
 
     val won = Outcomes.ready(state)

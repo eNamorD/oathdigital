@@ -342,9 +342,9 @@ class TableSessionSuite extends munit.FunSuite:
 
   test("a stale-position submit empties the drafts, reloads, and keeps the notice"):
     displayed(2).flatMap { fixture =>
-      fixture.session.submitCommand(GameCommand.BeginRest)
+      fixture.session.submitCommand(GameCommand.Undo)
       assertEquals(fixture.client.submits,
-        Vector(Submit(2L, GameCommand.BeginRest)))
+        Vector(Submit(2L, GameCommand.Undo)))
       val before = fixture.redraws
       val stale = GameClientFailure.StalePosition("moved")
       fixture.client.answerSubmit(Left(stale))
@@ -363,14 +363,14 @@ class TableSessionSuite extends munit.FunSuite:
 
   test("a submitted command is sent as it is, at the displayed position"):
     displayed(2).map { fixture =>
-      val start = GameCommand.StartWalker("recover")
+      val start = GameCommand.RollWalker("recover.pool")
       fixture.session.submitCommand(start)
       assertEquals(fixture.client.submits, Vector(Submit(2L, start)))
     }
 
   test("with no position displayed, nothing is sent"):
     val fixture = new Fixture(trusted = false)
-    fixture.session.submitCommand(GameCommand.BeginRest)
+    fixture.session.submitCommand(GameCommand.Undo)
     assertEquals(fixture.client.submits, Vector.empty)
 
   test("staging replaces one slot and redraws"):

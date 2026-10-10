@@ -1,7 +1,6 @@
 package oathdigital.gameplay.actions.challenge
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.model._
@@ -24,7 +23,6 @@ object PlaceBannerResourceProcedure:
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- Either.cond(heldBanners(state, actor).nonEmpty, (),
       OathViolation.NoPlayableOption(ActionRef.PlaceBannerResource.key))
   yield tree(actor)

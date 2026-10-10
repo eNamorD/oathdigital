@@ -56,7 +56,8 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       case TriggeredProcedureRef.ForcedWake |
           TriggeredProcedureRef.FollowUpOffer |
           TriggeredProcedureRef.WakeMenu |
-          TriggeredProcedureRef.RestMenu => Vector.empty
+          TriggeredProcedureRef.RestMenu |
+          TriggeredProcedureRef.ActMenu => Vector.empty
       case TriggeredProcedureRef.Setup => setup.lines(journal, at, viewer)
       case ActionRef.Search =>
         search(journal, run, at, viewer) ++

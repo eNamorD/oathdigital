@@ -1,10 +1,12 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import java.nio.file.Files
 
 import oathdigital.protocol.projection.{DecisionQueryProjection,
   GameProjection}
 import oathdigital.model._
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ProposeTerms}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
@@ -30,9 +32,9 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
     val first = accepted(OwnedHsqldbEventStreamRepository.open(path))
     // p1 rests.
     val service = new GameApplicationService(catalog, first,
-      genesis = table.state)
+      genesis = table.phaseMenuParked.state)
     val done = try
-      accepted(service.handle(gameId, 0L, GameCommand.BeginRest(p1)))
+      accepted(service.handle(gameId, 0L, MenuPlay.starting(p1, PhaseTransitionRef.BeginRest)))
     finally first.close()
     val reopened = accepted(OwnedHsqldbEventStreamRepository.open(path))
     try
@@ -57,10 +59,10 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
       .relicAt("Sticky Fire", "Broken Peaks")
     val first = accepted(OwnedHsqldbEventStreamRepository.open(path))
     val service = new GameApplicationService(catalog, first,
-      genesis = table.state)
+      genesis = table.phaseMenuParked.state)
     val peeked = try
       accepted(service.handle(gameId, 0L,
-        GameCommand.StartWalker(ActionRef.PeekSiteRelics, StartPayload(p2))))
+        MenuPlay.starting(p2, ActionRef.PeekSiteRelics)))
     finally first.close()
 
     val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(
@@ -98,7 +100,7 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
   private def negotiationService(repository: EventStreamRepository)
       : GameApplicationService =
     new GameApplicationService(catalog, repository,
-      genesis = negotiationTable.state)
+      genesis = negotiationTable.phaseMenuParked.state)
 
   /** p1 travels to Broken Peaks, p2's site, and opens a Negotiation with
     * p2, the only player there: no negotiators decision is asked. */
@@ -112,7 +114,7 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
     assertEquals(NegotiationDeal.eligible(Outcomes.ready(traveled.state), p1),
       Vector(p2))
     service.handle(gameId, traveled.nextSequence,
-      GameCommand.StartWalker(ActionRef.Negotiation, StartPayload(p1)))
+      MenuPlay.starting(p1, ActionRef.Negotiation))
       .fold(error => fail(s"Negotiation must start: $error"), identity)
 
   /** `by` answers the open deal decision with `answer`. */
@@ -173,7 +175,8 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
       val stored = loaded(negotiationService(reopened).load(gameId))
       assertEquals(stored.state, completed.state)
       val projector = new GameProjector(catalog)
-      assertEquals(projector.project(gameId, stored, p1).walkerDecision, None)
+      assertEquals(projector.project(gameId, stored, p1).walkerDecision
+        .map(_.decisionId), Some(PhaseMenu.decisionId))
       val recipientBoard = present(projector.project(gameId, stored, p2)
         .playerBoards.find(_.playerId == p1.value), "p1's board")
       assert(recipientBoard.advisers.exists(card =>
@@ -182,5 +185,7 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
         .playerBoards.find(_.playerId == p1.value), "p1's public board")
       assert(publicBoard.advisers.forall(card =>
         card.cardId != wizardsConclave.value || card.hidden))
-      assertEquals(projector.projectPublic(gameId, stored).walkerWaiting, None)
+      // Only the Act menu waits now, on its player.
+      assertEquals(projector.projectPublic(gameId, stored).walkerWaiting
+        .map(_.playerId), Some(p1.value))
     finally reopened.close()

@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.CampaignConsentFixture
 import oathdigital.gameplay.CampaignConsentFixture.{deepWoodsRef,
   onlyWoodsExtra, passRuledByP2}
@@ -22,8 +23,7 @@ class CampaignConsentServiceSuite extends munit.FunSuite:
   private val pass = NarrowPassSite.pass
   private val request = ConsentRequest(p1, CampaignIds.targets, deepWoodsRef,
     Vector(ConsentAsk(p2, Vector(pass))))
-  private val startCampaign = GameCommand.StartWalker(ActionRef.Campaign,
-    StartPayload(p1))
+  private val startCampaign = MenuPlay.starting(p1, ActionRef.Campaign)
   private val requestWoods = GameCommand.RequestConsent(p1,
     CampaignIds.targets, deepWoodsRef)
   private val projector = new GameProjector(catalog)

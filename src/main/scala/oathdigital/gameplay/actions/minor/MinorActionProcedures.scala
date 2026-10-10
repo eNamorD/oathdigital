@@ -1,7 +1,6 @@
 package oathdigital.gameplay.actions.minor
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
 import oathdigital.model.OathViolation.{InvalidEventOrder,
@@ -12,8 +11,8 @@ import oathdigital.model.OathViolation.{InvalidEventOrder,
   * and Move Warbands. Their rules are the legacy handler's, moved into
   * walker trees.
   *
-  * A start checks the Act phase and the first-game rules gate, as the
-  * handler did, and takes no start selection: what the player picks is
+  * A start checks the first-game rules gate, as the handler did, and
+  * takes no start selection: what the player picks is
   * asked inside the walk. Every operation is required, so a restriction
   * that refuses one refuses the action with its own reason. A resume
   * rebuilds the same tree without the start's gates.
@@ -174,8 +173,8 @@ object MinorActionProcedures:
       .flatMap(_ => sitedPawn(ready, actor).map(_._2).toRight(
         MinorActionUnavailable("pawn site is not in play")))
 
-  /** The legacy handler's gates: no start selection, the Act phase, and
-    * the first-game rules. */
+  /** The legacy handler's gates: no start selection, and the first-game
+    * rules. */
   private def started(ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef], action: ActionRef)
       : Either[OathViolation, Unit] =
@@ -183,7 +182,6 @@ object MinorActionProcedures:
       _ <- Either.cond(args.isEmpty, (), InvalidEventOrder(
         s"walker procedure ${action.key} takes no start selection, got " +
           args.map(_.kind).mkString(", ")))
-      _ <- OathLifecycle.validateAct(OathState.Ready(ready), actor)
       _ <- Either.cond(supported(ready), (), MinorActionUnavailable(
         "minor actions are limited to fixed unaltered all-Exile " +
           "first-game rules"))

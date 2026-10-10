@@ -111,7 +111,7 @@ object WalkerProcedureRegistry:
     * from state.
     *
     * `requiresPlayableOption` opts a procedure in to the preview gate:
-    * `StartWalker` rejects a start whose first decision has no option the
+    * `OathRules.startWalker` rejects a start whose first decision has no option the
     * procedure's own answer would accept, and the parked decision is shown
     * with only such options, each annotated with what answering it records.
     * Procedures that do not opt in are untouched.
@@ -484,6 +484,8 @@ object WalkerProcedureRegistry:
         Right(menuEntry(PhaseMenu.Menu.Wake, powers, walkerPowers))
       case TriggeredProcedureRef.RestMenu =>
         Right(menuEntry(PhaseMenu.Menu.Rest, powers, walkerPowers))
+      case TriggeredProcedureRef.ActMenu =>
+        Right(menuEntry(PhaseMenu.Menu.Act, powers, walkerPowers))
       case _ => registrations.get(procedure).toRight(OathViolation
         .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
 

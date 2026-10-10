@@ -23,7 +23,7 @@ import oathdigital.gameplay.powers.travel.Tents
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{FollowUpOffer, PowerNoted}
+import oathdigital.gameplay.walker.{FollowUpOffer, PowerNoted, WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
@@ -104,8 +104,7 @@ object LogScripts:
   /** The same take, started directly, as before the menus. */
   def wealthStarted(using munit.Location): Script =
     val (service, waking) = atTable("started-wealth", wealthTable)
-    waking.after(GameCommand.StartWalker(ActionRef.TakeWealth,
-      StartPayload(p1, TakeWealthProcedure.selection(WakeResource.Favor))))
+    waking.after(MenuPlay.start(p1, ActionRef.TakeWealth, TakeWealthProcedure.selection(WakeResource.Favor)))
     Script("started-wealth", service, p1)
 
   /** Setup to the first player's Wake, on the real start: the script that
@@ -154,7 +153,7 @@ object LogScripts:
       val awake = if turn == 1 then situation
         else situation.endingWake(player)
       // Begin Rest runs on into Finish Rest when Rest asks nothing.
-      val resting = awake.after(GameCommand.BeginRest(player))
+      val resting = awake.after(MenuPlay.start(player, PhaseTransitionRef.BeginRest))
       if Look(resting.ready).active == player then
         resting.finishingRest(player)
       else resting
@@ -222,8 +221,12 @@ object LogScripts:
       lastStateAfter: OathState => OathState = identity)(
       using munit.Location): Vector[LogEntry] =
     val steps = script.history.steps
-    val last = steps.last.after
-    formatter.format(steps ++ events.zipWithIndex.map { case (event, index) =>
+    // The appended events stand for a walk of their own: the script's phase
+    // menu, if it ends at one, is picked from first and so completed.
+    val last = MenuPlay.withoutMenu(steps.last.after)
+    val picked: Vector[OathEvent] = MenuPlay.parked(steps.last.after)
+      .map(menu => WalkerCompleted(menu.procedure)).toVector
+    formatter.format(steps ++ (picked ++ events).zipWithIndex.map { case (event, index) =>
       ReplayStep(RecordedEvent(steps.size.toLong + index, event), last,
         lastStateAfter(last))
     }, viewer)
@@ -257,8 +260,7 @@ object LogScripts:
 
   private def start(situation: Situation, action: StartableRef,
       args: DecisionOptionRef*)(using munit.Location): Situation =
-    situation.after(GameCommand.StartWalker(action,
-      StartPayload(Look(situation.ready).active, args.toVector)))
+    situation.after(MenuPlay.start(Look(situation.ready).active, action, args.toVector))
 
   /** Arranges `ops` at the end of the first player's turn, just before
     * their Begin Rest, and plays on to the second player's Wake, returning
@@ -273,7 +275,7 @@ object LogScripts:
     val first = Look(acting.ready).active
     val next = FinishRestProcedure.turnOrder(acting.ready)(1)
     val resting = acting.after(Step.Arrange(ops(acting, next)),
-      GameCommand.BeginRest(first))
+      MenuPlay.starting(first, PhaseTransitionRef.BeginRest))
     val rested = if Look(resting.ready).active == first then
       resting.finishingRest(first) else resting
     (rested, next)
@@ -347,8 +349,7 @@ object LogScripts:
       .adviser(p1, "Golem Legions").banditsRefilled)
     act.withAnswers(ModifierPlay.answers(PowerWindow.MusterModifierSelection,
       Vector(GolemLegions.id)))
-      .after(GameCommand.StartWalker(ActionRef.Muster,
-        StartPayload(p1)))
+      .after(MenuPlay.start(p1, ActionRef.Muster))
     Script("golem-muster", service, p1)
 
   /** Trade for secrets, on the second player's turn, at the site with the
@@ -390,8 +391,7 @@ object LogScripts:
     def answer(key: String) = GameCommand.ResolveWalker(actor, TreeDecision(
       RecoverProcedure.choiceDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Button(key))))
-    act.parkedAfter(GameCommand.StartWalker(ActionRef.Recover,
-        StartPayload(actor)))
+    act.parkedAfter(MenuPlay.start(actor, ActionRef.Recover))
       .parkedAfter(answer("continue"))
       .after(answer("stop"))
     Script("recover-failed", service, actor)
@@ -408,7 +408,7 @@ object LogScripts:
     val (service, act) = recovering("reveal-relic", Dice.steady)
     val actor = Look(act.ready).active
     start(act, ActionRef.Recover).after(
-      GameCommand.StartWalker(ActionRef.RevealOwnedRelic, StartPayload(actor)))
+      MenuPlay.start(actor, ActionRef.RevealOwnedRelic))
     Script("reveal-relic", service, actor)
 
   /** p1 peeks at Broken Peaks, where Sticky Fire lies. p2 and p3 stand
@@ -418,8 +418,7 @@ object LogScripts:
       .pawn(p1, at = "Broken Peaks").pawn(p2, at = "Ancient City")
       .pawn(p3, at = "Buried Giant").relicAt("Sticky Fire", "Broken Peaks")
       .banditsRefilled)
-    act.after(GameCommand.StartWalker(ActionRef.PeekSiteRelics,
-      StartPayload(p1)))
+    act.after(MenuPlay.start(p1, ActionRef.PeekSiteRelics))
     Script("peek-relics", service, p1)
 
   /** p1 rules Broken Peaks with 3 warbands and holds 4 more. Two minor
@@ -432,8 +431,7 @@ object LogScripts:
       GameCommand.ResolveWalker(p1, TreeDecision(decisionId, value))
     def moved(from: Situation, way: DecisionOptionRef.Button,
         amount: Int): Situation =
-      from.parkedAfter(GameCommand.StartWalker(ActionRef.MoveWarbands,
-          StartPayload(p1)))
+      from.parkedAfter(MenuPlay.start(p1, ActionRef.MoveWarbands))
         .parkedAfter(answer(MinorActionProcedures.directionDecisionId,
           ChooseOneAnswer(way)))
         .after(answer(MinorActionProcedures.amountDecisionId,
@@ -451,7 +449,7 @@ object LogScripts:
         .secrets(p1, faceUp = 1).banditsRefilled, Dice.steady)
     act.withAnswers(ModifierPlay.answers(
       PowerWindow.RecoverModifierSelection, Vector(RelicWorship.id)))
-      .after(GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
+      .after(MenuPlay.start(p1, ActionRef.Recover))
     Script("recover-worship", service, p1)
 
   /** The Forge fixture's table, then the Forge itself, which never parks at
@@ -459,8 +457,7 @@ object LogScripts:
   def forge(using munit.Location): Script =
     val (service, _) = ForgeWalkerFixture.forgeService()
     val actor = Table.p1
-    service.handle("forge", 0L, GameCommand.StartWalker(
-      ActionRef.Forge, StartPayload(actor))).fold(
+    service.handle("forge", 0L, MenuPlay.starting(actor, ActionRef.Forge)).fold(
       error => munit.Assertions.fail(s"Forge refused: $error"), identity)
     Script("forge", service, actor)
 
@@ -484,8 +481,7 @@ object LogScripts:
     val (service, act) = atTable("raid", tableWithOnePawnPerSite
       .pawn(p2, "Ancient City")
       .adviser(p2, "Birdsong", facedown = true).banditsRefilled, Dice.raid)
-    raidAnswers(act).after(GameCommand.StartWalker(ActionRef.Campaign,
-      StartPayload(p1)))
+    raidAnswers(act).after(MenuPlay.start(p1, ActionRef.Campaign))
     Script("raid", service, p1)
 
   /** The `raid` table with a Campaign offered to p1 by Knights Errant, which
@@ -551,8 +547,7 @@ object LogScripts:
       : (GameApplicationService, Situation, PlayerId, PlayerId) =
     val (service, act) = atTable(name,
       extra(tableWithOnePawnPerSite.pawn(p2, "Ancient City")).banditsRefilled)
-    (service, act.parkedAfter(GameCommand.StartWalker(ActionRef.Negotiation,
-      StartPayload(p1))), p1, p2)
+    (service, act.parkedAfter(MenuPlay.start(p1, ActionRef.Negotiation)), p1, p2)
 
   private def deal(by: PlayerId, answer: DecisionAnswer): GameCommand =
     GameCommand.ResolveWalker(by, TreeDecision(NegotiationDeal.dealDecisionId,
@@ -600,8 +595,7 @@ object LogScripts:
     val (service, act) = atTable("augury", tableWithOnePawnPerSite
       .denizen("Augury", "Ancient City").banditsRefilled)
     act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
-      Vector(Augury.id))).after(GameCommand.StartWalker(ActionRef.Search,
-      StartPayload(p1)))
+      Vector(Augury.id))).after(MenuPlay.start(p1, ActionRef.Search))
     Script("augury", service, p1)
 
   /** Augury at p1's site and News from Afar as p1's adviser, with 2 favor
@@ -613,8 +607,7 @@ object LogScripts:
       .denizen("Augury", "Ancient City").adviser(p1, "News from Afar")
       .favor(p1, 2).banditsRefilled)
     act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
-      Vector(NewsFromAfar.id, Augury.id))).after(GameCommand.StartWalker(
-      ActionRef.Search, StartPayload(p1)))
+      Vector(NewsFromAfar.id, Augury.id))).after(MenuPlay.start(p1, ActionRef.Search))
     Script("two-picks", service, p1)
 
   /** Wild Cry at p1's site and a facedown adviser: the play picks Wild Cry,
@@ -625,8 +618,7 @@ object LogScripts:
       .denizen("Wild Cry", "Ancient City")
       .adviser(p1, conclave, facedown = true).banditsRefilled)
     act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
-      Vector(WildCry.id))).after(GameCommand.StartWalker(
-      ActionRef.PlayFacedownAdviser, StartPayload(p1)))
+      Vector(WildCry.id))).after(MenuPlay.start(p1, ActionRef.PlayFacedownAdviser))
     Script("facedown-cry", service, p1)
 
   /** Tents as p1's adviser, with 1 favor to pay for it. The Travel picks
@@ -662,8 +654,7 @@ object LogScripts:
     act.withAnswers {
       case park if park.decisionId == GamblingHall.decisionId =>
         ChooseOneAnswer(DecisionOptionRef.FavorBank(richest))
-    }.after(GameCommand.UsePower(p1, GamblingHall.id,
-      DecisionOptionRef.Denizen(card)))
+    }.after(MenuPlay.start(p1, ActionRef.UsePower(GamblingHall.id), Vector(DecisionOptionRef.Denizen(card))))
     Script("gambling-hall", service, p1)
 
   /** Wolves at p1's site, used in Act by a player holding two secrets. The
@@ -680,8 +671,7 @@ object LogScripts:
     act.withAnswers {
       case park if park.decisionId == Wolves.decisionId =>
         ChooseOneAnswer(DecisionOptionRef.Player(victim))
-    }.after(GameCommand.UsePower(p1, Wolves.id,
-      DecisionOptionRef.Denizen(card)))
+    }.after(MenuPlay.start(p1, ActionRef.UsePower(Wolves.id), Vector(DecisionOptionRef.Denizen(card))))
     Script("wolves", service, p1)
 
   /** Oracle at p1's site, used in Act by a player holding three secrets.
@@ -699,8 +689,7 @@ object LogScripts:
     act.withAnswers {
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
         ChooseOneAnswer(PlacementPicks.pick(park.decide, placement))
-    }.after(GameCommand.UsePower(p1, Oracle.id,
-      DecisionOptionRef.Denizen(card)))
+    }.after(MenuPlay.start(p1, ActionRef.UsePower(Oracle.id), Vector(DecisionOptionRef.Denizen(card))))
     Script(name, service, p1)
 
   /** Barbed Net in p1's play area and two relics at p1's site, used in Act
@@ -717,8 +706,7 @@ object LogScripts:
     act.withAnswers {
       case park if park.decisionId == BarbedNet.decisionId =>
         ChooseOneAnswer(DecisionOptionRef.Relic(target))
-    }.after(GameCommand.UsePower(p1, BarbedNet.id,
-      DecisionOptionRef.Relic(net)))
+    }.after(MenuPlay.start(p1, ActionRef.UsePower(BarbedNet.id), Vector(DecisionOptionRef.Relic(net))))
     Script("barbed-net", service, p1)
 
   /** Hunger faceup with p2, added after their facedown adviser (so that
@@ -731,7 +719,7 @@ object LogScripts:
     val (service, act) = atTable("hunger", tableWithOnePawnPerSite
       .adviser(p2, "Birdsong", facedown = true).adviser(p2, "Hunger")
       .banditsRefilled)
-    act.after(GameCommand.BeginRest(p1))
+    act.after(MenuPlay.start(p1, PhaseTransitionRef.BeginRest))
     Script("hunger", service, p2)
 
   /** Family Heirloom held by p1 as a facedown adviser, then played faceup as
@@ -747,8 +735,7 @@ object LogScripts:
         ChooseOneAnswer(PlacementPicks.pick(park.decide, PlayedAs.Faceup))
       case park if park.decisionId == FamilyHeirloom.decisionId =>
         ChooseOneAnswer(choice)
-    }.after(GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-      StartPayload(p1)))
+    }.after(MenuPlay.start(p1, ActionRef.PlayFacedownAdviser))
     Script(name, service, p1)
 
   def heirloomKept(using munit.Location): Script =

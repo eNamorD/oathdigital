@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.CampaignFixture.{Board, actorRules, board, on,
   rivalRulesOriginAndHoldsOathkeeper, rules, withAdviser, withEnemyAtOrigin,
   withRelic, withRelicFor, withSecrets, withSiteCard}
@@ -364,7 +365,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       SiteForces.Occupied(ForceKind.Exile(lineage), 3))
     assertEquals(Look(placed.state).boardWarbands(b.actor), 2)
     parked.assertResumed(placed.state, Phase.Act, b.actor)
-    assertEquals(ready(placed.state).game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(ready(placed.state)), None)
     assertEquals(ready(placed.state).game.current.rollPools,
       Map.empty[PoolKey, DicePoolState])
 

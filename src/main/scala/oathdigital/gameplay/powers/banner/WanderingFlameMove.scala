@@ -20,6 +20,8 @@ case object WanderingFlameMove extends PaidAction(
   val decisionId: String = "power.wandering-flame.site"
   val placed: NoteKey = PawnMoves.placedKey(NoteKey.Used)
   override def noteKeys: Vector[NoteKey] = Vector(placed)
+  override def buttonName: Option[String] =
+    BannerFacePowers.printed(id).map(_._1)
 
   override def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = destinations(ready, player).nonEmpty

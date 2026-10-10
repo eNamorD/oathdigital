@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.operations.HallOfMinisters
 import oathdigital.gameplay.powers.action.RovingTerror
 import oathdigital.model._
@@ -27,9 +28,7 @@ class HallOfMinistersConsentServiceSuite extends munit.FunSuite:
       at = woods).warbandsAt(woods, p2, 1)
     .denizen(CatalogNames.denizen("Wrestlers"),
       at = CatalogNames.site("Broken Peaks"))
-  private val useTerror = GameCommand.StartWalker(
-    ActionRef.UsePower(RovingTerror.id),
-    StartPayload(p1, startArgs = Vector(DecisionOptionRef.Denizen(terror))))
+  private val useTerror = MenuPlay.starting(p1, ActionRef.UsePower(RovingTerror.id), Vector(DecisionOptionRef.Denizen(terror)))
   private val request = ConsentRequest(p1, RovingTerror.decisionId,
     errandBoyRef, Vector(ConsentAsk(p2, Vector(HallOfMinisters.id))),
     Vector(ConsentKey(HallOfMinisters.id, p1, HallOfMinisters.discardKey,

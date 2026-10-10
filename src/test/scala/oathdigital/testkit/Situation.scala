@@ -23,6 +23,12 @@ enum Step:
     * for a rule under test.
     */
   case Arrange(ops: Vector[CoreOperation], label: String = "arrange")
+  /** Starts `procedure` as `player`: picks its option from the parked phase
+    * menu, or, on a table where no menu is parked, starts it through the
+    * rules (walker-driven game loop design, slice 4, plan-time ruling 11).
+    */
+  case Start(player: PlayerId, procedure: StartableRef,
+      args: Vector[DecisionOptionRef] = Vector.empty)
 
 object Step:
   /** A command is a step as it stands; tests list either. */
@@ -75,7 +81,7 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
   private def ending(menu: PhaseMenu.Menu, player: PlayerId)(
       using munit.Location): Situation =
     if ready.game.current.turn.phase != menu.phase then this
-    else after(MenuPlay.ending(state, menu, player))
+    else after(MenuPlay.ending(menu, player))
 
   /** Issues each step and answers every parked decision it causes, the last
     * step's included: the result is not parked, though it may sit at a phase
@@ -203,4 +209,4 @@ object Situation:
       chronicle: Chronicle = FirstGameSetupFixture.chronicle,
       orders: SetupOrders = FirstGameSetupFixture.orders)(
       using munit.Location): Situation =
-    act(driver, actor, chronicle, orders).after(GameCommand.BeginRest(actor))
+    act(driver, actor, chronicle, orders).after(MenuPlay.start(actor, PhaseTransitionRef.BeginRest))

@@ -50,6 +50,10 @@ object OathViolation:
   final case class EconomyCardNotEmpty(cardId: CardId) extends OathViolation
   /** A start whose first decision offers nothing the procedure would accept. */
   final case class NoPlayableOption(procedure: String) extends OathViolation
+  /** No way through an action's modifier decision starts it. `reason` is
+    * the one its "Start" option shows before any pick (walker-driven game
+    * loop design, slice 4, plan-time ruling 1). */
+  final case class StartUnavailable(reason: String) extends OathViolation
   final case class InsufficientFavor(required: Int, available: Int)
       extends OathViolation
   final case class InsufficientSecrets(required: Int, available: Int)

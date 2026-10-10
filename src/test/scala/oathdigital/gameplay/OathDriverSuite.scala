@@ -173,10 +173,15 @@ class OathDriverSuite extends munit.FunSuite:
     assert(used.events.contains(
       WalkerCompleted(PhaseTransitionRef.FinishRest)), used.events)
 
-  test("a menu's walk leaves no boundary, and Act parks nothing yet"):
+  test("a menu's walk leaves no boundary, and Act parks its menu"):
     val start = table.turn(p1, Phase.Wake).phaseMenuParked.state
     val ended = accepted(MenuPlay.picked(rules, start, p1,
       PhaseMenu.Menu.Wake.endingOption))
     assertEquals(boundaries(ended.events), 0)
     assertEquals(current(ended.state).turn.phase, Phase.Act)
-    assertEquals(current(ended.state).walkerPending, None)
+    assertEquals(MenuPlay.parked(ended.state), Some(PhaseMenu.Menu.Act))
+
+  test("an action in Act ends at the Act menu"):
+    val traveled = accepted(TravelPlay.travelled(rules,
+      table.phaseMenuParked.state, p1, CatalogNames.site("Broken Peaks")))
+    assertEquals(MenuPlay.parked(traveled.state), Some(PhaseMenu.Menu.Act))

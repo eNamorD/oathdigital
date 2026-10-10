@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
@@ -68,7 +69,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
               WalkerPowerCatalog.default(catalog))))))
         played += actor
       position = accepted(service.handle("powered-playability",
-        position.nextSequence, GameCommand.BeginRest(actor)))
+        position.nextSequence, MenuPlay.starting(actor, PhaseTransitionRef.BeginRest)))
       service = new GameApplicationService(catalog, repository,
         warExhaustionRandomPort = WarExhaustionChoices.firstCandidate)
       val reopened = loaded(service.load("powered-playability"))
@@ -110,16 +111,17 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // Chronicle design, slice 2): `GameStarted` plus a `WalkerParked`/
     // `WalkerStepRecorded`/`WalkerCompleted` fact per player decision and
     // delta, not one event per legacy setup command. The first Wake has
-    // nothing to decide, so its End Wake step and completion follow: 1
-    // GameStarted, 9 parks (3 decisions per seat), 17 steps and 2
-    // completions (Setup's and the first Wake's) make 29. Each of the 9
-    // answers opens its command batch with a `CommandAccepted`, so 38.
-    assertEquals(reloaded.nextSequence, 38L)
+    // nothing to decide, so its End Wake step and completion follow, then
+    // the Act menu parks: 1 GameStarted, 10 parks (3 decisions per seat and
+    // the Act menu), 17 steps and 2 completions (Setup's and the first
+    // Wake's) make 30. Each of the 9 answers opens its command batch with a
+    // `CommandAccepted`, so 39.
+    assertEquals(reloaded.nextSequence, 39L)
     val records = loaded(repository.load("game-v2")).records
-    assertEquals(records.size, 38)
+    assertEquals(records.size, 39)
     val eventType = (record: String) => ujson.read(record)("eventType").str
     assertEquals(records.groupMapReduce(eventType)(_ => 1)(_ + _),
-      Map("setup.game-started" -> 1, "walker.parked" -> 9,
+      Map("setup.game-started" -> 1, "walker.parked" -> 10,
         "walker.step-recorded" -> 17, "walker.completed" -> 2,
         "undo.command-accepted" -> 9))
     assert(records.forall(record =>
@@ -138,17 +140,18 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     val siteId = CatalogNames.site("Broken Peaks")
 
     val wealth = accepted(service.handle("game-wake", 0L,
-      GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(active, Vector(DecisionOptionRef.Button("secret"))))))
+      MenuPlay.starting(active, ActionRef.TakeWealth, Vector(DecisionOptionRef.Button("secret")))))
     // Take Wealth is one atomic walker command (batch-1 Task 7): the resource
     // move, the use record and the completion. It was Wake's only option, so
     // Wake ends in the same command: the action boundary's marker, then its
-    // phase-change step and completion follow. With the batch's opening
-    // `CommandAccepted`, the stream holds seven events.
-    assertEquals(wealth.nextSequence, 7L)
+    // phase-change step and completion follow, and the Act menu parks. The
+    // Wake menu's pick adds its recorded answer, its queue step, its
+    // completion and the dequeue. With the batch's opening `CommandAccepted`,
+    // the stream holds twelve events.
+    assertEquals(wealth.nextSequence, 12L)
     assertEquals(
-      service.handle("game-wake", 0L, GameCommand.StartWalker(
-        PhaseTransitionRef.EndWake, StartPayload(active))),
-      Left(GameApplicationError.StaleClientPosition(0L, 7L)))
+      service.handle("game-wake", 0L, MenuPlay.starting(active, PhaseTransitionRef.EndWake)),
+      Left(GameApplicationError.StaleClientPosition(0L, 12L)))
     val reloaded = loaded(replayingSecond(service, repository)
       .load("game-wake"))
     val after = Outcomes.ready(reloaded.state)
@@ -160,16 +163,20 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       "the replayed journal must restore the use limit it recorded")
     val records = loaded(repository.load("game-wake")).records
     assertEquals(records.map(record =>
-      ujson.read(record)("formatVersion").num.toInt), Vector.fill(7)(1))
-    // Ending Wake is a walker procedure too (batch-1 Task 7), so the Wake
-    // phase journals nothing of its own: the last two records are its
-    // phase-change step and its completion, not a `gameplay.wake-ended`.
+      ujson.read(record)("formatVersion").num.toInt), Vector.fill(12)(1))
+    // The Wake menu's pick is journaled first (its answer, the queued
+    // procedure, its completion and the dequeue). Ending Wake is a walker
+    // procedure too (batch-1 Task 7), so the Wake phase journals nothing of
+    // its own: the records before the Act menu's park are its phase-change
+    // step and its completion, not a `gameplay.wake-ended`.
     assertEquals(records.map(record =>
       ujson.read(record)("eventType").str),
       Vector("undo.command-accepted", "walker.step-recorded",
         "walker.step-recorded", "walker.completed",
+        "walker.procedure-dequeued", "walker.step-recorded",
+        "walker.step-recorded", "walker.completed",
         "walker.action-boundary-ran", "walker.step-recorded",
-        "walker.completed"))
+        "walker.completed", "walker.parked"))
 
   test("stale expected position rejects a command legal on current state"):
     // Replays Begin and a placement: the stale position is a journal length.
@@ -244,8 +251,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       new GameApplicationService(catalog, repository).handle(
         "game-replay-corrupt",
         2L,
-        GameCommand.StartWalker(PhaseTransitionRef.EndWake,
-          StartPayload(firstPlayer))
+        MenuPlay.starting(firstPlayer, PhaseTransitionRef.EndWake)
       ),
       Left(GameApplicationError.ReplayFailure(
         1L,
@@ -288,8 +294,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         new GameApplicationService(catalog, repository).handle(
           "game-a",
           1L,
-          GameCommand.StartWalker(PhaseTransitionRef.EndWake,
-            StartPayload(firstPlayer))
+          MenuPlay.starting(firstPlayer, PhaseTransitionRef.EndWake)
         ),
         Left(GameApplicationError.StreamIdentityMismatch(
           "game-a",

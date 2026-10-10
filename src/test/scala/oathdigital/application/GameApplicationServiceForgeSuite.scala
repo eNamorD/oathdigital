@@ -1,8 +1,10 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.protocol.projection.{DecisionQueryProjection,
   DecisionSectionProjection, GameProjection}
 import oathdigital.model._
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted,
   WalkerParked}
@@ -46,7 +48,7 @@ class GameApplicationServiceForgeSuite extends munit.FunSuite:
       : ParkedForgeRun =
     val (service, repository) = forgeService(mixedForgeCostCatalog)
     val started = service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.Forge, StartPayload(p1)))
+      MenuPlay.starting(p1, ActionRef.Forge))
       .fold(error => fail(s"walker Forge start rejected: $error"), identity)
     ParkedForgeRun(service, repository, started)
 
@@ -172,7 +174,7 @@ class GameApplicationServiceForgeSuite extends munit.FunSuite:
       GameCommand.ResolveWalker(actor, TreeDecision(
         ForgeProcedure.assignmentDecisionId, PartitionAnswer(
           placements.map(_.copy(sectionKey = ForgeProcedure.secretSectionKey))))),
-      GameCommand.BeginRest(actor)
+      MenuPlay.starting(actor, PhaseTransitionRef.BeginRest)
     ).foreach(command => assert(run.service.handle(gameId,
       run.started.nextSequence, command).isLeft,
       s"$command must be rejected while Forge is parked"))
@@ -203,8 +205,8 @@ class GameApplicationServiceForgeSuite extends munit.FunSuite:
     assertEquals(after.game.current.commonCards.relicDeck,
       beforeStart.game.current.commonCards.relicDeck.drop(1))
     assertEquals(Look(after).supply(actor), actorBefore.board.supply.supply - 1)
-    assert(after.game.current.walkerPending.isEmpty)
-    assert(after.game.current.walkerProcedure.isEmpty)
+    assert(MenuPlay.pendingBeyondMenu(after).isEmpty)
+    assert(MenuPlay.procedureBeyondMenu(after).isEmpty)
 
     // The actor funded the whole printed cost out of their own play area,
     // and no suit bank moved at all. This reverses the pre-walker behaviour
@@ -250,20 +252,23 @@ class GameApplicationServiceForgeSuite extends munit.FunSuite:
     val banksBefore = beforeStart.banks.favor
 
     val finished = service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.Forge, StartPayload(actor)))
+      MenuPlay.starting(actor, ActionRef.Forge))
       .fold(error => fail(s"walker Forge start rejected: $error"), identity)
 
     // One command: the action completes, nothing parks, and the client is
     // never asked to confirm a split it could not have got wrong.
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
-    assert(!finished.events.exists(_.isInstanceOf[WalkerParked]))
+    // Only the Act menu parks, once the Forge is done.
+    assertEquals(finished.events.collect {
+      case parked: WalkerParked => parked.procedure
+    }, Vector[ProcedureRef](TriggeredProcedureRef.ActMenu))
     parkedAssertions.assertResumed(finished.state, Phase.Act, actor)
     val after = Outcomes.ready(finished.state)
-    assert(after.game.current.walkerPending.isEmpty)
-    assert(after.game.current.walkerProcedure.isEmpty)
+    assert(MenuPlay.pendingBeyondMenu(after).isEmpty)
+    assert(MenuPlay.procedureBeyondMenu(after).isEmpty)
     assertEquals(new GameProjector(catalog).project(gameId,
       LoadedGame(finished.state, finished.nextSequence), actor)
-      .walkerDecision, None)
+      .walkerDecision.map(_.decisionId), Some(PhaseMenu.decisionId))
 
     // And the determined split really was applied, out of the actor's own
     // play area.

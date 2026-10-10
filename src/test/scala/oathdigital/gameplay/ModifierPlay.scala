@@ -5,7 +5,7 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
-import oathdigital.testkit.{Answers, ParkedNode}
+import oathdigital.testkit.{Answers, MenuPlay, ParkedNode}
 
 /** A start that picks its modifiers through the walk's modifier decision,
   * as a player does (modifier walker design). */
@@ -33,7 +33,7 @@ object ModifierPlay:
       powers: WalkerPowers = production,
       startArgs: Vector[DecisionOptionRef] = Vector.empty)
       : Either[OathViolation, OathTransition] =
-    rules.startWalker(state, procedure, actor, startArgs = startArgs)
+    MenuPlay.started(rules, state, actor, procedure, startArgs)
       .flatMap(picking(rules, _, actor, window, modifiers, powers))
 
   /** The same, for a walk `begun` some other way: a taken follow-up offer,

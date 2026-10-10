@@ -1,7 +1,6 @@
 package oathdigital.gameplay.actions.campaign
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
   WalkerRollFeedback, WalkerSimulation}
 import oathdigital.model._
@@ -65,7 +64,6 @@ object CampaignProcedure:
   /** The Campaign itself, behind the start's gates. */
   private def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] = for
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- Either.cond(CampaignSetup.legalKinds(state, actor).nonEmpty, (),
       OathViolation.CampaignUnavailable(NothingToAttack))
   yield battle(catalog, state, actor)

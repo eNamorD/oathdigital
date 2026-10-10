@@ -3,7 +3,7 @@ package oathdigital.testkit
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.operations.OperationRestrictions
-import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.PhasePowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -50,7 +50,8 @@ object PhasePowerHarness:
 
   def use(ready: ReadyGame, power: PhasePower, source: DecisionOptionRef)
       : Either[OathViolation, OathTransition] = rules.startWalker(
-    OathState.Ready(ready), ActionRef.UsePower(power.id), actor, Vector(source))
+    OathState.Ready(MenuPlay.withoutMenu(ready)), ActionRef.UsePower(power.id),
+    actor, Vector(source))
 
   def answer(from: OathTransition, by: PlayerId, decision: String,
       answered: DecisionAnswer): Either[OathViolation, OathTransition] =
@@ -69,7 +70,8 @@ object PhasePowerHarness:
   /** The walk parked at no decision and the actor is acting again. */
   def backToActing(transition: OathTransition)(using munit.Location): Boolean =
     val turn = after(transition).game.current.turn
-    parked.parkedDecision(transition.state).isEmpty &&
+    parked.parkedDecision(transition.state).forall(facts =>
+      facts.procedure == PhaseMenu.Menu.Act.procedure) &&
       turn.phase == Phase.Act && turn.activePlayer == actor
 
   def pick(ref: DecisionOptionRef): DecisionAnswer =

@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.travel.TravelFixture.destinationNotOffered
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
@@ -234,7 +235,7 @@ class TravelProcedureSuite extends munit.FunSuite:
       TravelProcedure.destinationDecisionId, TravelPlay.destination(coast)))
     val after = Outcomes.ready(done.state)
     assertEquals(Look(after).pawn(actor), coast)
-    assertEquals(after.game.current.walkerProcedure, None)
+    assertEquals(MenuPlay.procedureBeyondMenu(after), None)
     assertEquals(after.game.current.walkerStartFacts, Vector.empty)
 
   test("the destination offers every in-play site but the pawn's"):

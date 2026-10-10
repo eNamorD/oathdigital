@@ -8,7 +8,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   WalkerStepRecorded}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
-import oathdigital.testkit.{Outcomes, PowerStubs, Table, WalkerStubs}
+import oathdigital.testkit.{MenuPlay, Outcomes, PowerStubs, Table, WalkerStubs}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -351,8 +351,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     val answered = ownedRules(owner).resolveWalker(started.state, owner,
       RecoverProcedure.choiceDecisionId, continue)
     // The owner's answer is accepted and finishes the one-decision tree.
-    assertEquals(Outcomes.ready(accepted(answered).state).game.current
-      .walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(
+      Outcomes.ready(accepted(answered).state)), None)
 
   test("a walker parks and resumes outside the Act phase"):
     val wake = Table.start.turn(p1, Phase.Wake).ready
