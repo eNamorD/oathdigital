@@ -75,7 +75,6 @@ final case class GreatMarket private (catalog: ExecutableCatalog)
 
   protected def build(ready: ReadyGame, at: SiteId)
       : Either[OathViolation, Vector[CoreOperation]] = for
-    suit <- catalog.suitOf(edifice).toRight(OathViolation.UnknownEdifice(edifice))
     region <- ready.game.current.map.regionOf(at).toRight(
       OathViolation.InvalidEventOrder(s"${at.value} is not in play"))
   yield
@@ -84,7 +83,7 @@ final case class GreatMarket private (catalog: ExecutableCatalog)
       .flatMap(s => current.map.sites(s).denizens).size
     if count == 0 then Vector.empty
     else Vector(Move(Piece.Favor(count),
-      PositionedLocation(Location.FavorBank(suit)), PositionedLocation(Location.Site(at))))
+      PositionedLocation(Location.SharedBank), PositionedLocation(Location.Site(at))))
 object GreatMarket:
   val id: PowerId = GreatMarketCard.intact.power.id
   /** "Placed {3 favor} on {site}." */
@@ -102,15 +101,15 @@ final case class BanditMarket private (catalog: ExecutableCatalog)
   override def noteKeys: Vector[NoteKey] =
     Vector(BanditMarket.placedAndBurned, BanditMarket.placed, BanditMarket.burned)
 
-  /** Each bandit site took one favor; the banks lost that and the burn. */
+  /** Each bandit site took one favor from the shared supply; the banks lost
+    * only the burn. */
   protected def note(at: SiteId): Note = Note(id, states =>
     states.previous.flatMap { case (before, after) =>
       val placed = after.game.current.map.sites.keysIterator.map(site =>
         MarketRule.siteFavor(after, site) - MarketRule.siteFavor(before, site))
         .filter(_ > 0).sum
-      val drained = Suit.all.map(suit => before.banks.favor.getOrElse(suit, 0) -
+      val burned = Suit.all.map(suit => before.banks.favor.getOrElse(suit, 0) -
         after.banks.favor.getOrElse(suit, 0)).sum
-      val burned = drained - placed
       val card = PowerSourceRef.Card(edifice)
       if placed > 0 && burned > 0 then Some(BanditMarket.placedAndBurned(card,
         MarketRule.favor(placed), MarketRule.favor(burned)))
@@ -121,16 +120,14 @@ final case class BanditMarket private (catalog: ExecutableCatalog)
 
   protected def build(ready: ReadyGame, at: SiteId)
       : Either[OathViolation, Vector[CoreOperation]] =
-    catalog.suitOf(edifice).toRight(OathViolation.UnknownEdifice(edifice)).map { suit =>
-      val current = ready.game.current
-      val bandited = current.map.inPlay.filter(s => SiteRule.ruler(
-        current.map.sites(s).forces, current.players).contains(SiteRuler.Bandits))
-      val placed: Vector[CoreOperation] = bandited.map(s => Move(Piece.Favor(1),
-        PositionedLocation(Location.FavorBank(suit)), PositionedLocation(Location.Site(s))))
-      val burned: Vector[CoreOperation] = Suit.all.map(bank =>
-        Burn.favor(1, PositionedLocation(Location.FavorBank(bank))))
-      placed ++ burned
-    }
+    val current = ready.game.current
+    val bandited = current.map.inPlay.filter(s => SiteRule.ruler(
+      current.map.sites(s).forces, current.players).contains(SiteRuler.Bandits))
+    val placed: Vector[CoreOperation] = bandited.map(s => Move(Piece.Favor(1),
+      PositionedLocation(Location.SharedBank), PositionedLocation(Location.Site(s))))
+    val burned: Vector[CoreOperation] = Suit.all.map(bank =>
+      Burn.favor(1, PositionedLocation(Location.FavorBank(bank))))
+    Right(placed ++ burned)
 object BanditMarket:
   val id: PowerId = GreatMarketCard.ruined.power.id
   /** "Placed {2 favor} on the bandit sites and burned {6 favor} from the

@@ -80,6 +80,15 @@ class OperationMutationSuite extends munit.FunSuite:
         Left("invalid-turn-phase"), phase.key)
     }
 
+  test("favor moves from the shared bank to a site without touching any suit bank"):
+    val result = new OperationExecutor().executeAll(ready, Vector(
+      Move(Piece.Favor(3), PositionedLocation(Location.SharedBank),
+        PositionedLocation(Location.Site(sites.head)))))
+    val moved = accepted(result)
+    assertEquals(Look(moved).siteTokens(sites.head).favor,
+      Look(ready).siteTokens(sites.head).favor + 3)
+    assertEquals(moved.banks, ready.banks)
+
   test("a pawn may move from the player area to a site once, with no prior site"):
     // No Table step takes a pawn off the map.
     val unplaced = ready.updateCurrent(_.copy(players = ready.game.current.players.map {

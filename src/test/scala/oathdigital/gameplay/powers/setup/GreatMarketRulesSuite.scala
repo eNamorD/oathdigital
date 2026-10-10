@@ -14,7 +14,6 @@ class GreatMarketRulesSuite extends munit.FunSuite:
     Vector.empty)
   private val site = CatalogNames.site("Ancient City")
   private val banditSite = CatalogNames.site("Broken Peaks")
-  private val marketSuit = catalog.suitOf(edifice).get
 
   // The Setup walk is the subject (the edifice's effect runs when the walk
   // reaches it), so these tests start from the fresh Setup, not a Table.
@@ -53,6 +52,8 @@ class GreatMarketRulesSuite extends munit.FunSuite:
       .size
     val finished = finish(staged)
     assertEquals(finished.game.current.map.sites(site).tokens.favor, expectedCount)
+    // The favor comes from the shared supply, so no suit bank pays for it.
+    assertEquals(finished.banks, staged.banks)
 
   test("Bandit Market favors every bandit-ruled site and burns every bank"):
     // One bandit site keeps the arithmetic below unambiguous.
@@ -60,9 +61,9 @@ class GreatMarketRulesSuite extends munit.FunSuite:
     val startingBank = withBandits.banks.favor
     val finished = finish(withBandits)
     assertEquals(finished.game.current.map.sites(banditSite).tokens.favor, 1)
-    // Every bank burns 1; the market's own bank also paid the bandit site's 1.
+    // The site's favor comes from the shared supply; every bank burns just 1.
     Suit.all.foreach(suit => assertEquals(finished.banks.favor(suit),
-      startingBank(suit) - (if suit == marketSuit then 2 else 1)))
+      startingBank(suit) - 1))
 
   // ---- Lines ----
 
@@ -89,12 +90,11 @@ class GreatMarketRulesSuite extends munit.FunSuite:
       Vector(NoteText.Said("burned",
         s"Burned ${Suit.all.size} favor from the banks.", covers = false)))
 
-  test("Bandit Market that places the last favor in the banks writes only the placing"):
+  test("Bandit Market places favor from the shared supply when the banks are empty"):
     val staged = banditsOnlyAt(stagedAt(EdificeSide.Ruined), banditSite)
-    // One favor in the market's own bank and none elsewhere: the site takes
-    // it, and the burn finds nothing left.
-    val lean = Suit.all.foldLeft(Table.from(staged))((table, suit) =>
-      table.bankFavor(suit, if suit == marketSuit then 1 else 0)).unchecked
-    assertEquals(NoteText.said(bandit.id, bandit.noteKeys, events(lean)),
+    val empty = Suit.all.foldLeft(Table.from(staged))((table, suit) =>
+      table.bankFavor(suit, 0)).unchecked
+    assertEquals(finish(empty).game.current.map.sites(banditSite).tokens.favor, 1)
+    assertEquals(NoteText.said(bandit.id, bandit.noteKeys, events(empty)),
       Vector(NoteText.Said("placed", "Placed 1 favor on the bandit site.",
         covers = false)))

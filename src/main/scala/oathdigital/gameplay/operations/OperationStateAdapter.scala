@@ -46,7 +46,9 @@ object OperationStateAdapter:
       at: Location
   ): Either[OperationError, AvailableQuantity] = piece match
     case Piece.Card(id) => card(ready, id, at).map(_ => Finite(1))
-    case Piece.Favor(_) => favor(ready, at).map(Finite.apply)
+    case Piece.Favor(_) => at match
+      case Location.SharedBank => Right(Unbounded)
+      case _ => favor(ready, at).map(Finite.apply)
     case Piece.Secrets(_) => at match
       case Location.SharedBank => Right(Unbounded)
       case _ => secrets(ready, at).map(value => Finite(value.faceUp + value.faceDown))

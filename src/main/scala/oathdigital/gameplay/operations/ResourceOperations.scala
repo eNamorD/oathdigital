@@ -218,7 +218,7 @@ private[operations] object ResourceOperations:
         ready.banks.favor.getOrElse(suit, 0) + delta
       ))
     ))
-    case Location.SharedBank if delta > 0 => Right(ready)
+    case Location.SharedBank => Right(ready)
     case _ => Left(IncompatibleLocation(Piece.Favor(math.max(1, math.abs(delta))), at))
 
   private def adjustSecrets(
