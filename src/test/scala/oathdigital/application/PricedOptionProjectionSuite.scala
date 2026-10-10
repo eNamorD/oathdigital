@@ -40,3 +40,7 @@ class PricedOptionProjectionSuite extends munit.FunSuite:
     assertEquals(PriceDetails.of(OptionPrice()), Vector.empty[String])
     assertEquals(PriceDetails.of(OptionPrice(secretsBurnt = 2, warbands = 3)),
       Vector("Cost: 2 secrets burnt", "Cost: sacrifice 3 warbands"))
+
+  test("an amount's price words X secrets"):
+    assertEquals(PriceDetails.of(OptionPrice(secretsX = true)),
+      Vector("Cost: X secrets"))

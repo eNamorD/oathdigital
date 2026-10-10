@@ -21,8 +21,9 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * Doctor (the defeat's losses cancelled), Cursed Cauldron (warbands for the
   * enemy's dead), Salt the Earth (a targeted site's cards buried), Sealing Ward
   * (defense dice for targeted relics), Unstable Summon (an amount asked when
-  * applied) and Herald (a favor after another player's Campaign). Each names
-  * its card, so all are always present.
+  * applied), Arcane Armor (defense dice set before the roll) and Herald (a
+  * favor after another player's Campaign). Each names its card, so all are
+  * always present.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -50,6 +51,7 @@ object PlanRules:
       Vector(Rangers) ++
       Vector(MasterAtArms.forCatalog(catalog)) ++
       Vector(UnstableSummon) ++
+      Vector(ArcaneArmor) ++
       Vector(MountedPatrol.forCatalog(catalog)) ++
       Vector(ShieldWall) ++
       Vector(BillowingFog) ++

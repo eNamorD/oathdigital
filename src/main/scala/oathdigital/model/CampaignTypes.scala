@@ -96,12 +96,13 @@ object CampaignPlanSource:
   * batch 7, slice 3). The plan's application asks `query` after the plan's
   * fixed costs, its sacrifice and its fixed effects, so a dry run of the
   * plan still pays what is fixed and stops at the question. `amountOf`
-  * reads the amount from the answer, and `effects` are what that amount
-  * does. A bandit defender is asked nothing, so its plan does nothing more.
+  * reads the amount from the answer, `secretsEach` is what each unit costs,
+  * placed on the plan's card, and `effects` are what that amount does. A
+  * bandit defender is asked nothing, so its plan does nothing more.
   */
 final case class PlanAmount(decisionId: String, query: DecisionQuery,
     amountOf: DecisionAnswer => Option[Int],
-    effects: Int => Vector[CampaignPlanEffect])
+    effects: Int => Vector[CampaignPlanEffect], secretsEach: Int = 0)
 
 /** One battle plan a power offers now: where it comes from, what it costs and
   * what it does. `label` is the words of the option when the source has no card

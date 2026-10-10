@@ -24,8 +24,8 @@ import oathdigital.model._
   *    one warband. It comes before every effect, so a plan that cannot pay is
   *    refused before it does anything.
   *  - A plan with an amount asks it of its user last, so a dry run pays
-  *    what is fixed and stops at the question, then applies what the answer
-  *    does.
+  *    what is fixed and stops at the question, then pays what each unit
+  *    costs onto the plan's card and applies what the answer does.
   */
 final class CampaignPlanApplication(catalog: ExecutableCatalog,
     val setup: CampaignSetup, val side: CampaignPlanSide,
@@ -43,6 +43,7 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
     Branch((ready, _) => sacrifice(ready))) ++
     offered.offer.effects.map(effect) ++ Vector[Operation](
       Branch((_, _) => ask),
+      Branch((_, pending) => payAmount(pending)),
       Branch((_, pending) => chosenEffects(pending)),
       Branch((_, _) => marker))
 
@@ -52,6 +53,22 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
     case (Some(amount), Some(player)) =>
       Vector(Decide(amount.decisionId, player, amount.query))
     case _ => Vector.empty
+
+  /** What the answered amount costs, placed onto the plan's card. */
+  private def payAmount(pending: PendingTree): Vector[Operation] =
+    val owed = for
+      amount <- offered.offer.amount
+      if amount.secretsEach > 0
+      player <- user
+      chosen <- PlanAmounts.chosen(pending, amount)
+    yield player -> Cost(secret = chosen * amount.secretsEach)
+    owed.toVector.map { case (player, cost) =>
+      CampaignPlans.cardOf(source) match
+        case Some(card) => payment(Costs.onCard(player, card, cost,
+          catalog, intoOccupied = true))
+        case None =>
+          refuse("the title has no card to place a plan's cost on")
+    }
 
   /** What the answered amount does. */
   private def chosenEffects(pending: PendingTree): Vector[Operation] =
