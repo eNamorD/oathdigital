@@ -83,14 +83,6 @@ object AutumnWindCard extends Denizen(DenizenId("213"), "Autumn Wind", Suit.Beas
       "possible. You decide ties.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object SignalTreesCard extends Denizen(DenizenId("217"), "Signal Trees", Suit.Beast):
-  val power = PrintedPower(PowerId("denizen.signal-trees"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "Reveal the top three cards of your region's discard pile. " +
-      "±2 [attack-die] per revealed [suit-beast]. Discard all of " +
-      "the revealed cards.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object ForestWardenCard extends Denizen(DenizenId("218"), "Forest Warden", Suit.Beast):
   val power = PrintedPower(PowerId("denizen.forest-warden"),
     persistent = false, cost = Cost.free,
