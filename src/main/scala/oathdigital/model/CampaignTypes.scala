@@ -92,6 +92,17 @@ object CampaignPlanSource:
     def stableKey: String = s"title:${playerId.value}"
     def ref: DecisionOptionRef = DecisionOptionRef.Button("title")
 
+/** The amount a battle plan asks its user for as it is applied (catalog
+  * batch 7, slice 3). The plan's application asks `query` after the plan's
+  * fixed costs, its sacrifice and its fixed effects, so a dry run of the
+  * plan still pays what is fixed and stops at the question. `amountOf`
+  * reads the amount from the answer, and `effects` are what that amount
+  * does. A bandit defender is asked nothing, so its plan does nothing more.
+  */
+final case class PlanAmount(decisionId: String, query: DecisionQuery,
+    amountOf: DecisionAnswer => Option[Int],
+    effects: Int => Vector[CampaignPlanEffect])
+
 /** One battle plan a power offers now: where it comes from, what it costs and
   * what it does. `label` is the words of the option when the source has no card
   * to name (the title). An offer says only that the plan is usable, never
@@ -116,11 +127,17 @@ object CampaignPlanSource:
   * player's window withholds the rest through the power's own restrictions.
   * A bandit defender, which chooses nothing, applies such a plan and no
   * other when it would apply it (FAQ).
+  *
+  * `amount` is the question the plan asks before what depends on its
+  * answer (Unstable Summon's X). An offer is rebuilt when a walk resumes at
+  * the question, so an amount's bounds may read the user's resources only
+  * when the plan pays nothing before asking.
   */
 final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
     costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect],
     sides: Set[CampaignPlanSide] = Set.empty,
-    withheld: Option[OptionReason] = None, alone: Boolean = false)
+    withheld: Option[OptionReason] = None, alone: Boolean = false,
+    amount: Option[PlanAmount] = None)
 
 /** An offer with the power that made it. */
 final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)

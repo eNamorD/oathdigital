@@ -41,13 +41,6 @@ object FriendlyFamiliarCard extends Denizen(DenizenId("224"), "Friendly Familiar
       "modifiers at the site._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object UnstableSummonCard extends Denizen(DenizenId("225"), "Unstable Summon", Suit.Discord):
-  val power = PrintedPower(PowerId("denizen.unstable-summon"),
-    persistent = false, cost = Cost.free,
-    text = "If you hold the Darkest Secret, burn X [secret] from it to " +
-      "collect X [attack-die].")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object FalseProphetCard extends Denizen(DenizenId("85"), "False Prophet", Suit.Discord) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.false-prophet"),
     persistent = false, cost = Cost.free,

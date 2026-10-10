@@ -10,8 +10,8 @@ import oathdigital.model._
   * `PlacementTree`), and a dry run of it answers whether the user can pay.
   *
   * The children have a fixed shape, a slot each for revealing the source,
-  * paying, sacrificing, and then one per effect, and every slot that depends on
-  * state is a `Branch`. A walk that parks on a decision inside a plan resumes
+  * paying, sacrificing, then one per effect, then the amount question and what
+  * its answer does, and every slot that depends on state is a `Branch`. A walk that parks on a decision inside a plan resumes
   * against the state the earlier slots changed, so a slot must still select the
   * same children then, and a slot that has nothing to do selects none.
   *
@@ -23,6 +23,9 @@ import oathdigital.model._
   *  - A warband sacrifice asks which force pays when several could, then kills
   *    one warband. It comes before every effect, so a plan that cannot pay is
   *    refused before it does anything.
+  *  - A plan with an amount asks it of its user last, so a dry run pays
+  *    what is fixed and stops at the question, then applies what the answer
+  *    does.
   */
 final class CampaignPlanApplication(catalog: ExecutableCatalog,
     val setup: CampaignSetup, val side: CampaignPlanSide,
@@ -37,8 +40,24 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
   override val children: Vector[Operation] = Vector[Operation](
     Branch((ready, _) => reveal(ready)),
     Branch((_, _) => pay),
-    Branch((ready, _) => sacrifice(ready))) ++ offered.offer.effects.map(effect) :+
-    Branch((_, _) => marker)
+    Branch((ready, _) => sacrifice(ready))) ++
+    offered.offer.effects.map(effect) ++ Vector[Operation](
+      Branch((_, _) => ask),
+      Branch((_, pending) => chosenEffects(pending)),
+      Branch((_, _) => marker))
+
+  /** The plan's amount question, asked of its user. A bandit defender is
+    * asked nothing. */
+  private def ask: Vector[Operation] = (offered.offer.amount, user) match
+    case (Some(amount), Some(player)) =>
+      Vector(Decide(amount.decisionId, player, amount.query))
+    case _ => Vector.empty
+
+  /** What the answered amount does. */
+  private def chosenEffects(pending: PendingTree): Vector[Operation] =
+    offered.offer.amount.toVector.flatMap(amount =>
+      PlanAmounts.chosen(pending, amount).toVector.flatMap(chosen =>
+        amount.effects(chosen).map(effect)))
 
   /** A bandit defender chooses nothing, so a later window learns it applied the
     * plan from this record.
