@@ -21,13 +21,22 @@ final case class DicePoolState(count: Int)
   * `ModifyRollOutcome`). Lives in state next to the pool counts so later
   * resolution consumes it without re-rolling (engine never calls random
   * ports; replay uses the recorded faces).
+  *
+  * `throws` counts the pool's rolls, this outcome's included; a throw's
+  * number is this count. `rerolled` holds the indices of the faces
+  * rerolled since the pool last rolled, in index order. A roll starts a new
+  * throw and leaves it empty; a `Reroll` adds its dice. A throw is the faces
+  * its roll added plus these (catalog batch 7, slice 2: Silver Charm
+  * rerolls earlier dice with a roll).
   */
 final case class RollOutcome(
     pool: PoolKey,
     count: Int,
     faces: Vector[DieFace],
     skulls: Int,
-    score: Int
+    score: Int,
+    throws: Int = 1,
+    rerolled: Vector[Int] = Vector.empty
 )
 
 object RollOutcome:

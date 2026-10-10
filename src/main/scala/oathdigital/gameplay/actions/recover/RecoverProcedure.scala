@@ -2,7 +2,8 @@ package oathdigital.gameplay.actions.recover
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
-import oathdigital.gameplay.actions.dice.{RerollChoice, RollStep}
+import oathdigital.gameplay.actions.dice.RollStep
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerRollFeedback}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
@@ -18,7 +19,8 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   *     Repeat(guard = not succeeded && lastChoice != Stop,
   *       Sequence(
   *         SpendSupply(actor, 1),            // window = RecoverCost
-  *         Roll("recover", Defense, Automatic), // rolls in the same command
+  *         Roll("recover", Defense, Automatic), // window = RecoverRoll;
+  *                                              // rolls in the same command
   *         Branch(choice when not yet success) // -> Decide("recover.choice") or nothing
   *       )),
   *     Branch(if success ->
@@ -31,6 +33,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   * `RecoverActionEligibility` - At the start of the Recover itself, after the modifier decision
   * `RecoverBeforeFirstRoll` - Before the very first roll
   * `RecoverAfterRelic` - After the relic is chosen
+  * `RecoverRoll` - Each roll, before its reroll choice
   *
   * Semantics:
   *  - Each roll = 2 defense dice (pool count fixed to 2 by the head
@@ -71,16 +74,21 @@ object RecoverProcedure:
     */
   val rollDecisionId: String = "walker.recover.roll"
 
+  /** Every Recover decision's id starts here, and so does the id of a
+    * question a Recover modifier asks (Silver Charm's). */
+  val decisionPrefix: String = "recover."
+
   private val supplyCost: Int = 1
 
-  /** Every park of a Recover shows the same thing: the pool rolled so far and
-    * the site's difficulty, which is worth showing before the first roll too.
-    */
+  /** Every park of a Recover but its modifier decision shows the same
+    * thing: the pool rolled so far and the site's difficulty, which is worth
+    * showing before the first roll too. A question a Recover modifier asks
+    * shows it as well, since its id starts with [[decisionPrefix]]. */
   def rollFeedback(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, decisionId: String): Option[WalkerRollFeedback] =
     Option.when(decisionId == rollDecisionId ||
-        decisionId == relicDecisionId || decisionId == choiceDecisionId ||
-        RerollChoice.poolOf(decisionId).contains(recoverPool))(
+        (decisionId.startsWith(decisionPrefix) &&
+          !ModifierPicks.isDecision(decisionId)))(
       WalkerRollFeedback(recoverPool, target = actorSite(ready, actor)
         .flatMap(RecoverRules.difficulty(catalog, _)))).filter(_.target.nonEmpty)
 
@@ -195,7 +203,8 @@ object RecoverProcedure:
     val body = Sequence(
       Sequence(Vector(SpendSupply(actor, supplyCost)),
         Some(PowerWindow.RecoverCost)),
-      RollStep(recoverPool, DiceSpec(DiceKind.Defense), Some(actor)),
+      RollStep(recoverPool, DiceSpec(DiceKind.Defense), Some(actor),
+        Some(PowerWindow.RecoverRoll)),
       Branch((ready, _) =>
         if succeeded(ready) then Vector.empty else Vector(choiceDecide)))
 

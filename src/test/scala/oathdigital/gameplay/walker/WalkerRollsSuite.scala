@@ -75,4 +75,30 @@ class WalkerRollsSuite extends munit.FunSuite:
     assertEquals(two.game.current.rollOutcomes(attackPool), RollOutcome(
       attackPool, 4, first ++ second, skulls = 1,
       score = AttackDieFace.score((first ++ second).collect {
-        case face: AttackDieFace => face })))
+        case face: AttackDieFace => face }), throws = 2))
+
+  test("a new roll of a pool forgets the dice rerolled before it"):
+    val faces: Vector[DieFace] = Vector(AttackDieFace.HollowSword,
+      AttackDieFace.OneSword)
+    val one = WalkerRolls.write(withPools(attackPool -> 2), RollOutcome(
+      attackPool, 2, faces, skulls = 0, score = 1))
+    val rerolled = one.updateCurrent(current => current.copy(rollOutcomes =
+      current.rollOutcomes.updated(attackPool,
+        current.rollOutcomes(attackPool).copy(rerolled = Vector(0)))))
+    val two = WalkerRolls.write(rerolled, RollOutcome(attackPool, 2, faces,
+      skulls = 0, score = 1))
+    assertEquals(two.game.current.rollOutcomes(attackPool).rerolled,
+      Vector.empty[Int])
+
+  test("each roll of a pool counts a throw, whatever its dice"):
+    // Two dice, then three: dividing five faces by three dice would number
+    // the second throw 1, like the first.
+    val first: Vector[DieFace] = Vector(AttackDieFace.HollowSword,
+      AttackDieFace.OneSword)
+    val second: Vector[DieFace] = Vector.fill(3)(AttackDieFace.OneSword)
+    val one = WalkerRolls.write(withPools(attackPool -> 2), RollOutcome(
+      attackPool, 2, first, skulls = 0, score = 1))
+    assertEquals(one.game.current.rollOutcomes(attackPool).throws, 1)
+    val two = WalkerRolls.write(one, RollOutcome(attackPool, 3, second,
+      skulls = 0, score = 3))
+    assertEquals(two.game.current.rollOutcomes(attackPool).throws, 2)

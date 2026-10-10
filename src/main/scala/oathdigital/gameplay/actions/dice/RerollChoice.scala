@@ -30,8 +30,7 @@ final class RerollChoice(val pool: PoolKey, val die: DiceKind,
   def throwAt(ready: ReadyGame): Option[DiceThrow] =
     val indices = DiceThrow.lastIndices(ready, pool)
     ready.game.current.rollOutcomes.get(pool).filter(_ => indices.nonEmpty)
-      .map(outcome => DiceThrow(pool, die, roller,
-        outcome.faces.size / DiceThrow.count(ready, pool), indices,
+      .map(outcome => DiceThrow(pool, die, roller, outcome.throws, indices,
         indices.map(outcome.faces)))
 
   def expand(offers: Vector[OfferedReroll], pass: OfferHost.Pass)
@@ -91,13 +90,27 @@ object RerollChoice:
   def decisionId(pool: PoolKey, number: Int): String =
     s"${pool.value}$Infix$number"
 
-  /** The pool a reroll decision is about; `None` for any other decision. */
+  /** `{pool}.reroll.{n}.{name}`: a question a reroll power asks while it
+    * rerolls the `n`th throw of `pool`, such as Master at Arms' "how
+    * many". It names its throw, so its panel shows that pool's dice, as the
+    * reroll decision's does. */
+  def followUpId(pool: PoolKey, number: Int, name: String): String =
+    s"${decisionId(pool, number)}.$name"
+
+  /** The pool a reroll decision, or a question under one, is about; `None`
+    * for any other decision. */
   def poolOf(decisionId: String): Option[PoolKey] =
     decisionId.lastIndexOf(Infix) match
       case -1 => None
-      case at => Option.when(decisionId.drop(at + Infix.length).toIntOption
-        .exists(_ > 0))(PoolKey(decisionId.take(at)))
+      case at =>
+        val rest = decisionId.drop(at + Infix.length)
+        val number = rest.takeWhile(_.isDigit)
+        val name = rest.drop(number.length)
+        Option.when(number.toIntOption.exists(_ > 0) &&
+          (name.isEmpty || (name.startsWith(".") && name.length > 1)))(
+          PoolKey(decisionId.take(at)))
 
+  /** A reroll decision, or a question a reroll power asks under one. */
   def isDecision(decisionId: String): Boolean = poolOf(decisionId).nonEmpty
 
   /** "Reroll the attack dice, or keep the roll". */

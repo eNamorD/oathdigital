@@ -49,7 +49,7 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
                 val accumulatedFaces = previous.faces ++ outcome.faces
                 RollOutcome(pool, previous.count + outcome.count,
                   accumulatedFaces, previous.skulls + outcome.skulls,
-                  derive(accumulatedFaces)._2)
+                  derive(accumulatedFaces)._2, throws = previous.throws + 1)
           current.updateCurrent(_.copy(rollOutcomes =
               current.game.current.rollOutcomes.updated(pool, accumulated)))
         case _ if step.ops.isEmpty => current

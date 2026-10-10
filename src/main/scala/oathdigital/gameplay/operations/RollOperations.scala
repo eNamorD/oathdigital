@@ -37,7 +37,8 @@ private[gameplay] object RollOperations:
           Right(ready.updateCurrent(current => current.copy(
             rollOutcomes = current.rollOutcomes.updated(pool,
               outcome.copy(faces = replaced, skulls = skulls,
-                score = RollOutcome.derive(replaced)._2)))))
+                score = RollOutcome.derive(replaced)._2,
+                rerolled = (outcome.rerolled ++ indices).distinct.sorted)))))
 
   private def sameFamily(faces: Vector[DieFace]): Boolean =
     faces.forall(_.isInstanceOf[AttackDieFace]) ||

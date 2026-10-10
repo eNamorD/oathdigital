@@ -57,7 +57,8 @@ private[walker] object WalkerRolls:
   /** Merges `outcome` into the pool's accumulated entry: repeated rolls of one
     * pool accumulate faces, count and skulls, and the score is re-derived from
     * every accumulated face because each Doubler multiplies shields from every
-    * roll, not only its own.
+    * roll, not only its own. Each roll counts a throw. A new roll starts a
+    * new throw, so the dice rerolled before it are forgotten.
     */
   def write(ready: ReadyGame, outcome: RollOutcome): ReadyGame =
     val current = ready.game.current
@@ -65,6 +66,7 @@ private[walker] object WalkerRolls:
       previous =>
         val faces = previous.faces ++ outcome.faces
         RollOutcome(outcome.pool, previous.count + outcome.count, faces,
-          previous.skulls + outcome.skulls, RollOutcome.derive(faces)._2)
+          previous.skulls + outcome.skulls, RollOutcome.derive(faces)._2,
+          throws = previous.throws + 1)
     ready.copy(game = ready.game.copy(current = current.copy(rollOutcomes =
       current.rollOutcomes.updated(outcome.pool, accumulated))))
