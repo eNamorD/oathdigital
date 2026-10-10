@@ -104,8 +104,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
         CurrentSiteResourcesProjection(siteId.value, state.tokens.favor,
           state.tokens.secrets))),
       actionSelectionOpen = current.result.isEmpty &&
-        current.turn.phase == Phase.Act && current.walkerPending.isEmpty &&
-        current.queue.isEmpty,
+        current.turn.phase == Phase.Act && current.walkerPending.isEmpty,
       worldDeckCount = current.commonCards.worldDeck.size,
       worldDeckTopCardKind = current.commonCards.worldDeck.headOption
         .map(presentation.cardKind),
@@ -119,7 +118,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
         current.result.map(_.kind.key))),
       banners = presentation.banners(context.ready).filter(_.holderPlayerId.isEmpty),
       minorActions = legal.minorActions,
-      followUp = legal.followUp,
       favorBanks = Suit.all.map(suit => FavorBankProjection(suit.key,
         context.ready.banks.favor.getOrElse(suit, 0))),
       tracks = Some(GameTracksProjection(current.tracks.round,
