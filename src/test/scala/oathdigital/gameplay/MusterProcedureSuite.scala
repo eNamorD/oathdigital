@@ -163,11 +163,6 @@ class MusterProcedureSuite extends munit.FunSuite:
     assertEquals(MusterSource.matching(catalog,
       atAlchemist.adviser(p1, "Marriage").ready, p1, Suit.Hearth), 2)
 
-  test("Muster cannot start outside the Act phase"):
-    val ready = atAlchemist.turn(p1, Phase.Wake).ready
-    assertEquals(MusterProcedure.build(catalog, ready, p1).left.toOption,
-      Some(OathViolation.WrongPhase(Phase.Act, Phase.Wake)))
-
   test("a power that adds the actor's adviser to the source decision has " +
       "it accepted, and the favor is placed on the adviser"):
     val ready = atAlchemist.adviser(p1, magiciansCode).ready

@@ -32,8 +32,6 @@ object FinishRestProcedure:
     if current.result.nonEmpty then Left(GameEnded)
     else if current.turn.activePlayer != player then
       Left(WrongPlayer(current.turn.activePlayer, player))
-    else if current.turn.phase != Phase.Rest then
-      Left(WrongPhase(Phase.Rest, current.turn.phase))
     else BeginRestProcedure.validateSupportedState(catalog, ready)
       .map(_ => ready)
 

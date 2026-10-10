@@ -1,7 +1,6 @@
 package oathdigital.gameplay.actions.challenge
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
   WalkerSimulation}
@@ -46,7 +45,6 @@ object ChallengeProcedure:
   /** The Challenge itself, behind the start's gates. */
   private def afterModifiers(state: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Operation] = for
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- supportedFaces(state)
     _ <- Either.cond(legalBanners(state, actor).nonEmpty, (),
       OathViolation.NoPlayableOption(ActionRef.Challenge.key))

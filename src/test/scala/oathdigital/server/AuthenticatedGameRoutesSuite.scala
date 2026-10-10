@@ -166,18 +166,18 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
           "expectedNextSequence" -> ujson.Num(afterBegin.toDouble),
           "intent" -> intent)), Some(p2User.value))
       // Forge is a walker action (batch-1 Task 3), so the three guarantees
-      // this block always made are asserted on `startWalker`/`resolveWalker`
+      // this block always made are asserted on `rollWalker`/`resolveWalker`
       // instead of the deleted `beginForge`/`completeForge` intents: the
       // actor is derived from the session and never carried on the wire, a
       // spoofed one is rejected outright, and no unknown field rides an
       // assignment payload. 422: the game is in Setup, so the derived actor
       // may not Forge yet. 400: the wire refuses a playerId field
       // and an unknown payload field.
-      val actorDerivedForge = command(ujson.Obj("type" -> "startWalker",
-        "action" -> "forge"))
+      val actorDerivedForge = command(ujson.Obj("type" -> "rollWalker",
+        "pool" -> "forge"))
       assertEquals(actorDerivedForge.statusCode(), 422, actorDerivedForge.body())
-      val spoofedForgeActor = command(ujson.Obj("type" -> "startWalker",
-        "action" -> "forge", "playerId" -> "p3"))
+      val spoofedForgeActor = command(ujson.Obj("type" -> "rollWalker",
+        "pool" -> "forge", "playerId" -> "p3"))
       assertEquals(spoofedForgeActor.statusCode(), 400)
       val spoofedRelic = command(ujson.Obj("type" -> "resolveWalker",
         "decisionId" -> "forge.assignment",

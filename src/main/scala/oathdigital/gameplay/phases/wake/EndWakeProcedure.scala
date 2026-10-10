@@ -1,7 +1,6 @@
 package oathdigital.gameplay.phases.wake
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 
 /** Declared End Wake procedure tree for the walker (batch 1, Task 7).
@@ -21,10 +20,9 @@ import oathdigital.model._
   *
   * **What follows Wake is stated here, once.** [[oathdigital.model.EnterPhase]] takes any
   * phase and the walker asks nothing about phases, so the turn's order lives
-  * in the procedure that performs the change. `OathLifecycle.validateReady`
-  * is the same gate the deleted `Wake` object ran -- active player, live
-  * game, Wake phase -- so a second End Wake in the same turn still fails as
-  * `WrongPhase(Wake, Act)`.
+  * in the procedure that performs the change. The Wake menu offers End Wake
+  * only in Wake (walker-driven game loop design, ruling 9), so a second End
+  * Wake in the same turn is never offered.
   *
   * **No window.** A `Sequence` with no window gathers no contributions, which
   * is the honest statement for a tree nothing can modify. `PowerWindow
@@ -41,7 +39,6 @@ object EndWakeProcedure:
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
-    _ <- OathLifecycle.validateReady(OathState.Ready(state), activePlayer)
     _ <- Either.cond(args.isEmpty, (), OathViolation.InvalidEventOrder(
       "ending Wake selects nothing, got " +
         args.map(ref => s"${ref.kind}/${ref.wireId}").mkString(", ")))

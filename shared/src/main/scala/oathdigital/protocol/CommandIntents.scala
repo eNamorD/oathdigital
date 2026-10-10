@@ -6,25 +6,10 @@ package oathdigital.protocol
 sealed trait GameIntent extends Product with Serializable
 
 object GameIntent:
-  case object BeginRest extends GameIntent
   /** Takes back the sender's latest step (undo design). */
   case object Undo extends GameIntent
   /** Restores the sender's latest taken-back step (undo design, "Redo"). */
   case object Redo extends GameIntent
-  final case class UsePower(powerId: String, source: WalkerStartArgWire)
-      extends GameIntent
-  /** Starts a walker procedure. `action` is the engine's persisted
-    * `StartableRef` wire key (e.g. `"recover"`). An action asks for its
-    * modifiers inside the walk, as its first decision, so a start names none
-    * (modifier walker design).
-    *
-    * `startArgs` is what the player selected before the action started, for
-    * an action whose tree needs it: Trade's resource, Take Wealth's pile and
-    * the source of a used power. The engine rejects a selection an action did
-    * not ask for.
-    */
-  final case class StartWalker(action: String,
-      startArgs: Vector[WalkerStartArgWire] = Vector.empty) extends GameIntent
   /** Answers the currently parked Roll node for `pool`. Carries no die
     * faces: those are generated application-side once the parked pool is
     * validated against this command.

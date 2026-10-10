@@ -51,11 +51,8 @@ final case class ProjectionAuthorization(
 final case class AuthorizedPlayer private[application] (
     access: GameAccessContext.Player
 ):
-  def beginRest: GameCommand = GameCommand.BeginRest(access.playerId)
   def undo: GameCommand = GameCommand.Undo(access.playerId)
   def redo: GameCommand = GameCommand.Redo(access.playerId)
-  def usePower(power: PowerId, source: DecisionOptionRef): GameCommand =
-    GameCommand.UsePower(access.playerId, power, source)
   def rollWalker(pool: PoolKey): GameCommand =
     GameCommand.RollWalker(access.playerId, pool)
 

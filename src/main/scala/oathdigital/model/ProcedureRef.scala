@@ -13,9 +13,9 @@ sealed trait ProcedureRef extends Product with Serializable:
   def key: String
   def family: String
 
-/** A procedure a command can name to start. Both members below extend this;
-  * a [[TriggeredProcedureRef]] does not, so `StartWalker` -- typed to take a
-  * `StartableRef` -- cannot express starting one from a client.
+/** A procedure a phase menu can queue to start. Both members below extend
+  * this; a [[TriggeredProcedureRef]] does not, so no menu option can queue
+  * one: the engine starts those itself.
   */
 sealed trait StartableRef extends ProcedureRef
 

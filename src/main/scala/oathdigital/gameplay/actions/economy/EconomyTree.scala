@@ -1,7 +1,6 @@
 package oathdigital.gameplay.actions.economy
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.walker.{ModifierChoice, PricedOptions,
   WalkerPowers, WalkerSimulation}
 import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
@@ -69,7 +68,6 @@ private[economy] object EconomyTree:
 
   private def gated(state: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Unit] = for
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
       .toRight(OathViolation.PawnSiteMissing(actor))
     _ <- siteRulers(state)

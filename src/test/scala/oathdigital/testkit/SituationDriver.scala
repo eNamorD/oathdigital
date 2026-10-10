@@ -185,8 +185,6 @@ object SituationDriver:
         : Either[OathViolation, OathTransition] = command match
       case GameCommand.Begin(chronicle, orders) =>
         rules.beginGame(state, chronicle, orders)
-      case GameCommand.StartWalker(procedure, start) =>
-        rules.startWalker(state, procedure, start.actor, start.startArgs)
       case GameCommand.ResolveWalker(actor, decision) =>
         rules.resolveWalker(state, actor, decision.decisionId,
           decision.answer)
@@ -197,11 +195,6 @@ object SituationDriver:
               s"requested $count dice but the defense dice port only rolls " +
               s"${defenseDice.diceCount}"))
         }
-      case GameCommand.BeginRest(player) =>
-        rules.startWalker(state, PhaseTransitionRef.BeginRest, player)
-      case GameCommand.UsePower(player, power, source) =>
-        rules.startWalker(state, ActionRef.UsePower(power), player,
-          Vector(source))
       case _: GameCommand.ConsentCommand =>
         Left(OathViolation.InvalidEventOrder(
           "consent commands need a journal; use a journaled situation"))

@@ -411,9 +411,6 @@ final class GameApplicationService(
     command match
       case GameCommand.Begin(chronicle, orders) =>
         rules.beginGame(state, chronicle, orders)
-      case GameCommand.StartWalker(procedure, start) =>
-        rules.startWalker(state, procedure, start.actor,
-          start.startArgs)
       // The source answer is where a Search draws, so the prepared draw is
       // checked there, against the pile the answer names.
       case GameCommand.ResolveWalker(actor,
@@ -444,11 +441,6 @@ final class GameApplicationService(
               s"walker roll pool ${pool.value} requested $count dice but " +
                 s"the defense dice port only rolls ${defenseDicePort.diceCount}"))
         }
-      case GameCommand.UsePower(playerId, power, source) =>
-        rules.startWalker(state, ActionRef.UsePower(power), playerId,
-          Vector(source))
-      case GameCommand.BeginRest(playerId) =>
-        rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
       // `routed` sends Undo and Redo to the fold on every stream; these arms
       // only keep the match exhaustive.
       case GameCommand.Undo(_) => Left(OathViolation.NothingToUndo)

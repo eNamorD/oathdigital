@@ -2,7 +2,6 @@ package oathdigital.gameplay.actions.recover
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
   WalkerRollFeedback, WalkerSimulation}
 import oathdigital.model._
@@ -51,7 +50,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   *  - A successful roll parks a relic decision only when a facedown relic is
   *    available. Otherwise Recover finishes as a legal wasted action.
   *
-  * `build` validates Act phase and the action-specific necessity: the actor's
+  * `build` validates the action-specific necessity: the actor's
   * current site has a Recover difficulty. Generic supply feasibility belongs
   * to `OperationPipeline`; role, foundation state, and relic availability do
   * not gate Recover.
@@ -112,8 +111,6 @@ object RecoverProcedure:
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId)
       : Either[OathViolation, Operation] = for
-    _ <- OathLifecycle.validateAct(oathdigital.model.OathState.Ready(state),
-      activePlayer)
     built <- rebuild(catalog, state, activePlayer)
   yield built
 
@@ -121,8 +118,6 @@ object RecoverProcedure:
     * gates. */
   def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId): Either[OathViolation, Operation] = for
-    _ <- OathLifecycle.validateAct(oathdigital.model.OathState.Ready(state),
-      activePlayer)
     rest <- recoveryAt(catalog, state, activePlayer)
   yield rest
 

@@ -5,7 +5,6 @@ import oathdigital.gameplay.powers.banner.{WanderingFlameMove,
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
-import oathdigital.protocol.{GameIntent, WalkerStartArgWire}
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2}
 
@@ -71,11 +70,3 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
       .siteTokens("Broken Peaks", secrets = 1).ready
     assertEquals(projector.project("flame", LoadedGame(Ready(festival), 30L),
       p1).phasePowers, Vector.empty)
-
-  test("the client's banner source binds to the engine's banner source"):
-    assertEquals(GameIntentMapper.bind(p1, GameIntent.UsePower(move,
-      WalkerStartArgWire("banner", "darkest-secret"))),
-      Right(GameCommand.UsePower(p1, WanderingFlameMove.id,
-        DecisionOptionRef.Banner(Banner.DarkestSecret))))
-    assert(GameIntentMapper.bind(p1, GameIntent.UsePower(move,
-      WalkerStartArgWire("banner", "no-such-banner"))).isLeft)

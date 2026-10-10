@@ -9,8 +9,6 @@ import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import ParkedServiceFixture.loaded
-import oathdigital.gameplay.powers.rest.SilverTongue
-import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Unwrap.{accepted, present, rejected}
 
 /** The application half of the pending-walker invariant (spec, Testing).
@@ -30,13 +28,9 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
   /** One instance of every `GameCommand` constructor, bound to `actor`. */
   private def everyCommand(actor: PlayerId): Vector[GameCommand] = Vector(
     GameCommand.Begin(chronicle, orders),
-    GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)),
     GameCommand.ResolveWalker(actor, TreeDecision("not-parked",
       ChooseOneAnswer(DecisionOptionRef.Button("go")))),
     GameCommand.RollWalker(actor, PoolKey("not-parked")),
-    GameCommand.BeginRest(actor),
-    GameCommand.UsePower(actor, SilverTongue.id,
-      DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))),
     GameCommand.Undo(actor), GameCommand.Redo(actor),
     GameCommand.SetConsentPreference(actor,
       oathdigital.gameplay.powers.travel.MinesSite.mountain,

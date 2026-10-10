@@ -143,11 +143,6 @@ class FollowUpRulesSuite extends munit.FunSuite:
     assertEquals(current(accepted(FollowUpPlay.taken(rules, resting, p1))
       .state).walkerProcedure, Some(ActionRef.Campaign))
 
-  test("without an entry, a Campaign still needs the Act phase"):
-    assertEquals(rules.startWalker(table().turn(p1, Phase.Rest).state,
-      ActionRef.Campaign, p1),
-      Left(OathViolation.WrongPhase(Phase.Act, Phase.Rest)))
-
   test("only the entry's actor answers the offer"):
     val start = table().offering(offer(ActionRef.Campaign)).state
     assertEquals(FollowUpPlay.skipped(rules, start, p2),

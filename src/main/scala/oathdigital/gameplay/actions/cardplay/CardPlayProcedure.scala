@@ -1,7 +1,6 @@
 package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, CardPlayRules}
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.ModifierChoice
@@ -53,7 +52,6 @@ object CardPlayProcedure:
   def buildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for
-    _ <- OathLifecycle.validateAct(OathState.Ready(ready), actor)
     _ <- Either.cond(args.isEmpty, (), OathViolation.InvalidEventOrder(
       "facedown-adviser play takes no start selection"))
     _ <- Either.cond(facedownAdvisers(ready, actor).nonEmpty, (),

@@ -1,47 +1,21 @@
 package oathdigital.server
 
-import oathdigital.application.{GameCommand, GameIntentMapper, StartPayload,
-  TreeDecision}
+import oathdigital.application.{GameCommand, GameIntentMapper, TreeDecision}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}
 import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire,
   DistributeAmountWire, GameIntent}
-import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Unwrap.rejected
 
 class GameHttpWireSuite extends munit.FunSuite:
-  test("the usePower intent binds to a UsePower command for the requester"):
-    val silverTongue = CatalogNames.denizen("Silver Tongue")
-    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
-      oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
-        oathdigital.protocol.WalkerStartArgWire(
-          "denizen", silverTongue.value))),
-      Right(GameCommand.UsePower(PlayerId("actor-1"),
-        PowerId("denizen.silver-tongue"),
-        DecisionOptionRef.Denizen(silverTongue))))
-
-  test("usePower refuses an invalid power id and a non-denizen target"):
-    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
-      oathdigital.protocol.GameIntent.UsePower("Not A Power",
-        oathdigital.protocol.WalkerStartArgWire("denizen", "92"))).left.toOption
-      .map(_.path), Some("$.intent.powerId"))
-    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
-      oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
-        oathdigital.protocol.WalkerStartArgWire("warband", "w1"))),
-      Left(oathdigital.application.GameIntentMappingFailure("$.intent.source",
-        "unknown decision option 'warband/w1'")))
-
   test("domain conversion rejects unknown protocol identifiers without throwing"):
     val failure = rejected(GameIntentMapper.bind(PlayerId("trusted"),
-      GameIntent.StartWalker("search", Vector(oathdigital.protocol.WalkerStartArgWire("teleport", "x")))))
-    assertEquals(failure.path, "$.intent.startArgs[0]")
+      GameIntent.RequestConsent("travel.destination",
+        oathdigital.protocol.WalkerStartArgWire("teleport", "x"))))
+    assertEquals(failure.path, "$.intent.target")
 
-  test("walker intents bind to StartWalker, RollWalker and ResolveWalker " +
+  test("walker intents bind to RollWalker and ResolveWalker " +
       "commands for the requester"):
-    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
-      GameIntent.StartWalker("recover")),
-      Right(GameCommand.StartWalker(ActionRef.Recover,
-        StartPayload(PlayerId("actor-1")))))
     // RollWalker takes only a pool key -- there is no field on the wire
     // intent, the codec, or GameCommand.RollWalker for a client to place
     // die faces into. It DOES carry the transport-bound actor (C1): the
@@ -83,12 +57,6 @@ class GameHttpWireSuite extends munit.FunSuite:
           DistributeAmount(DecisionOptionRef.FavorBank(Suit.Arcane), 0),
           DistributeAmount(DecisionOptionRef.FavorBank(Suit.Nomad), 3)))))))
 
-  test("an unknown walker action string is rejected without throwing"):
-    val failure = rejected(GameIntentMapper.bind(PlayerId("trusted"),
-      GameIntent.StartWalker("teleport")))
-    assertEquals(failure.path, "$.intent.action")
-    assert(failure.message.contains("unknown action"))
-
   test("an unknown option kind is rejected without throwing"):
     val failure = rejected(GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.ResolveWalker("recover.choice",
@@ -111,7 +79,7 @@ class GameHttpWireSuite extends munit.FunSuite:
 
   test("malformed actorless requests retain typed paths"):
     assertEquals(rejected(GameHttpWire.decodeCommand("{")).path, "$")
-    val missing = """{"expectedNextSequence":8,"intent":{"type":"startWalker",""" +
-      """"action":"travel","startArgs":[{"optionKind":"site"}]}}"""
+    val missing = """{"expectedNextSequence":8,"intent":{"type":"requestConsent",""" +
+      """"decisionId":"travel.destination","target":{"optionKind":"site"}}}"""
     assertEquals(rejected(GameHttpWire.decodeCommand(missing)).path,
-      "$.intent.startArgs[0].optionId")
+      "$.intent.target[0].optionId")

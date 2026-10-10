@@ -111,7 +111,7 @@ object WalkerProcedureRegistry:
     * from state.
     *
     * `requiresPlayableOption` opts a procedure in to the preview gate:
-    * `StartWalker` rejects a start whose first decision has no option the
+    * `OathRules.startWalker` rejects a start whose first decision has no option the
     * procedure's own answer would accept, and the parked decision is shown
     * with only such options, each annotated with what answering it records.
     * Procedures that do not opt in are untouched.

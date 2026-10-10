@@ -2,7 +2,6 @@ package oathdigital.gameplay.phases.wake
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 
 /** Declared Take Wealth procedure tree for the walker (batch 1, Task 7).
@@ -40,15 +39,12 @@ object TakeWealthProcedure:
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
-    // Wake phase, the active player, a live game -- the same gate the legacy
-    // Wake command ran, under the name it already had.
-    ready <- OathLifecycle.validateReady(OathState.Ready(state), activePlayer)
     resource <- resourceOf(args)
-    site <- ready.game.current.players.find(_.player == activePlayer)
+    site <- state.game.current.players.find(_.player == activePlayer)
       .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(activePlayer))
-    tokens <- ready.game.current.map.sites.get(site).map(_.tokens)
+    tokens <- state.game.current.map.sites.get(site).map(_.tokens)
       .toRight(OathViolation.SiteNotInPlay(site))
-    _ <- noEnemyPawn(ready, activePlayer, site)
+    _ <- noEnemyPawn(state, activePlayer, site)
     _ <- Either.cond(available(tokens, resource), (),
       OathViolation.ResourceUnavailable(site, resource))
   yield tree(activePlayer, site, resource)

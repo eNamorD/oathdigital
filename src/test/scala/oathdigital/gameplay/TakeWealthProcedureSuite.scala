@@ -118,12 +118,6 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     assertEquals(take(once).left.toOption,
       Some(PowerAlreadyUsed(TakeWealthLimit.useRef(home))))
 
-  test("a take outside the Wake phase is rejected"):
-    val ready = wake(favor = 1, secrets = 1)
-    val inAct = Table.from(ready).turn(actor, Phase.Act).unchecked
-    assertEquals(rejected(take(inAct)),
-      WrongPhase(Phase.Wake, Phase.Act): OathViolation)
-
   test("an enemy pawn at the site blocks the take"):
     assertEquals(take(wake(favor = 1, secrets = 1, sharedEnemy = true))
       .left.toOption, Some(EnemyPawnBlocksTakeWealth(home, Vector(p2, p3))))

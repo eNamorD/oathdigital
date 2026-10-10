@@ -81,7 +81,7 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
   private def ending(menu: PhaseMenu.Menu, player: PlayerId)(
       using munit.Location): Situation =
     if ready.game.current.turn.phase != menu.phase then this
-    else after(MenuPlay.ending(state, menu, player))
+    else after(MenuPlay.ending(menu, player))
 
   /** Issues each step and answers every parked decision it causes, the last
     * step's included: the result is not parked, though it may sit at a phase

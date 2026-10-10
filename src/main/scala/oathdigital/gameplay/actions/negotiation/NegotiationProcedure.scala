@@ -1,7 +1,6 @@
 package oathdigital.gameplay.actions.negotiation
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.model._
 
@@ -24,7 +23,6 @@ object NegotiationProcedure:
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- Either.cond(NegotiationDeal.eligible(state, actor).nonEmpty, (),
       OathViolation.NegotiationUnavailable(
         "no other player has a pawn at your site"))

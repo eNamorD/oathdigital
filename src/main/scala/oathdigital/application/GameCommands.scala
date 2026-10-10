@@ -6,8 +6,6 @@ sealed trait GameCommand extends Product with Serializable
 object GameCommand:
   final case class Begin(chronicle: Chronicle, orders: SetupOrders)
       extends GameCommand
-  final case class StartWalker(procedure: StartableRef, start: StartPayload)
-      extends GameCommand
   final case class ResolveWalker(actor: PlayerId, treeDecision: TreeDecision)
       extends GameCommand
   /** Requests an authoritative app-layer roll for the currently parked pool.
@@ -20,9 +18,6 @@ object GameCommand:
     * player in the game could resume another player's parked walker.
     */
   final case class RollWalker(actor: PlayerId, pool: PoolKey) extends GameCommand
-  final case class BeginRest(playerId: PlayerId) extends GameCommand
-  final case class UsePower(playerId: PlayerId, power: PowerId,
-      source: DecisionOptionRef) extends GameCommand
   /** Takes back the latest live command batch, which `actor` must have
     * issued (undo design, "Rulings"). */
   final case class Undo(actor: PlayerId) extends GameCommand
@@ -50,27 +45,11 @@ object GameCommand:
     * marker alone. */
   def issuer(command: GameCommand): Option[PlayerId] = command match
     case Begin(_, _) => None
-    case StartWalker(_, start) => Some(start.actor)
     case ResolveWalker(actor, _) => Some(actor)
     case RollWalker(actor, _) => Some(actor)
-    case BeginRest(player) => Some(player)
-    case UsePower(player, _, _) => Some(player)
     case Undo(_) => None
     case Redo(_) => None
     case _: ConsentCommand => None
-
-/** Generic action-start data: who starts, and what they selected before
-  * the action started.
-  *
-  * `startArgs` (batch-1 Task 5) is that selection, for an action whose tree
-  * needs it. They are the same `DecisionOptionRef`s a decision option names,
-  * and the command layer does not interpret them: `OathRules.startWalker`
-  * hands them to the registered action's own builder, which rejects a shape
-  * it did not ask for. A start names no modifiers: the action asks for them
-  * inside the walk (modifier walker design).
-  */
-final case class StartPayload(actor: PlayerId,
-    startArgs: Vector[DecisionOptionRef] = Vector.empty)
 
 /** One answer to the currently parked generic walker decision. */
 final case class TreeDecision(decisionId: String, answer: DecisionAnswer)

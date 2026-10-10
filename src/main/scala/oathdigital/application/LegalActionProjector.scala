@@ -1,7 +1,6 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
@@ -115,7 +114,7 @@ private[application] final class LegalActionProjector(
     else current.turn.phase match
         case Phase.Act => Vector(
           Option.when(searchStartable(context))("beginSearch"),
-          Option.when(BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
+          Option.when(BeginRestProcedure.validateSupportedState(catalog, context.ready).isRight)(
             "beginRest"),
           Option.when(active.pawnSite.exists(_ =>
             recoverEligible(context, active)))("beginRecover"),
@@ -155,7 +154,7 @@ private[application] final class LegalActionProjector(
       RecoverProcedure.startable(catalog, context.ready, active.player, powers))
 
   /** While a generic-walker procedure is parked, no other Act control is legal
-    * (`GameApplicationService`/`OathLifecycle` reject every other command
+    * (`GameApplicationService` rejects every other command
     * for exactly this reason — see Task 6 command-exclusivity ruling); the
     * only legal controls are answering the parked position itself, visible
     * only to the player the parked position awaits.

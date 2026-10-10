@@ -1,6 +1,6 @@
 package oathdigital.testkit
 
-import oathdigital.application.{GameCommand, StartPayload, TreeDecision}
+import oathdigital.application.{GameCommand, TreeDecision}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhaseMenu
@@ -85,13 +85,9 @@ object MenuPlay:
       ready.game.current.walkerProcedure.flatMap(PhaseMenu.asking)
     case _ => None
 
-  /** The command that ends `menu`'s phase for `player`: the ending's pick
-    * when the menu is parked, or else a start of the ending, as on a table
-    * no driver has run on. */
-  def ending(state: OathState, menu: PhaseMenu.Menu, player: PlayerId)
-      : GameCommand =
-    if parked(state).contains(menu) then picking(player, menu.endingOption)
-    else GameCommand.StartWalker(menu.ending, StartPayload(player))
+  /** The step that ends `menu`'s phase for `player`: see `Step.Start`. */
+  def ending(menu: PhaseMenu.Menu, player: PlayerId): Step =
+    Step.Start(player, menu.ending)
 
   /** The parked menu's options, as the walker shows them. */
   def options(state: OathState, catalog: ExecutableCatalog,
