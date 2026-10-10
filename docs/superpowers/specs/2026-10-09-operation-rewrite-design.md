@@ -1,8 +1,6 @@
 # Operation Rewrite
 
-**Status:** designed 2026-10-09. Slice 1 is done. Slice 2 waits until catalog
-batch 6 slice 4 and consent slice 4 have merged, because their plans edit
-code that slice 2 rewrites.
+**Status:** designed 2026-10-09. Both slices are done.
 
 ## Goal
 
