@@ -58,7 +58,7 @@ Task 1 writes these into the spec.
    - what the walk spends up to its first decision past the modifiers;
    - plus, for a procedure that previews that decision (the playable-option gate: Search, Travel, Muster and Trade), the cheapest answer to it.
 
-   When the answers cost different amounts, the badge starts with "from". Favor placed on a card (a modifier's payment, Muster's favor) is not counted, as the priced options already do not count it. A free option has no badge. Examples: "1 Supply", "2 Supply · 1 favor", "from 1 Supply".
+   When another answer costs more Supply, the Supply amount gets a "+"; when another costs more favor, so does the favor amount, if the cheapest way spends favor at all. Favor placed on a card (a modifier's payment, Muster's favor) is not counted, as the priced options already do not count it. A free option has no badge. Examples: "1 Supply", "2 Supply · 1 favor", "1+ Supply", "2+ Supply · 1+ favor".
 3. **An unavailable option says why,** using the first of these that applies:
    - "Needs N Supply; you have M", or "Needs N favor; you have M", when the start would open with the actor's Supply raised to the track's maximum (and then also their favor raised);
    - the reason "Start" shows, when no way through the modifier decision opens;
@@ -168,7 +168,8 @@ A start is searched through its modifier decision and priced. Nothing shows pric
 - Produces, in `oathdigital.gameplay.walker.QueuedStart`:
 
   ```scala
-  final case class StartCost(supply: Int, favor: Int, varies: Boolean):
+  final case class StartCost(supply: Int, favor: Int,
+      moreSupply: Boolean = false, moreFavor: Boolean = false):
     def words: Option[String]
   def priced(catalog: ExecutableCatalog, ready: ReadyGame,
       entry: QueuedProcedure, powers: WalkerPowers,
@@ -347,8 +348,7 @@ class QueuedStartSuite extends munit.FunSuite:
 
   test("Search costs its one source's Supply"):
     // Every discard pile is empty, so the world deck is the only source.
-    assertEquals(priced(ActionRef.Search), Right(StartCost(2, 0,
-      varies = false)))
+    assertEquals(priced(ActionRef.Search), Right(StartCost(2, 0)))
     assertEquals(priced(ActionRef.Search).map(_.words), Right(Some(
       "2 Supply")))
 
@@ -358,7 +358,7 @@ class QueuedStartSuite extends munit.FunSuite:
 
   test("Travel's cost depends on the destination"):
     val words = priced(ActionRef.Travel).toOption.flatMap(_.words)
-    assert(words.exists(_.startsWith("from ")), words)
+    assert(words.exists(_.matches("\\d+\\+ Supply")), words)
 
   test("a free start has no words"):
     assertEquals(priced(ActionRef.PeekSiteRelics).map(_.words), Right(None))
@@ -524,15 +524,19 @@ Replace the body of `QueuedStart` (keep the package line and imports; add what i
   * player.
   */
 object QueuedStart:
-  /** What a start costs its actor, by its cheapest way, and whether another
-    * way costs more. */
-  final case class StartCost(supply: Int, favor: Int, varies: Boolean):
-    /** "1 Supply", "2 Supply · 1 favor", "from 1 Supply"; `None` when the
-      * start is free. */
+  /** What a start costs its actor by its cheapest way, and whether another
+    * way costs more Supply or more favor. */
+  final case class StartCost(supply: Int, favor: Int,
+      moreSupply: Boolean = false, moreFavor: Boolean = false):
+    /** "1 Supply", "2 Supply · 1 favor", "1+ Supply", "2+ Supply · 1+
+      * favor": a "+" marks an amount another way spends more of. `None`
+      * when the start is free. */
     def words: Option[String] =
-      Option.when(supply > 0 || favor > 0)((if varies then "from " else "") +
-        Vector(Option.when(supply > 0)(s"$supply Supply"),
-          Option.when(favor > 0)(s"$favor favor")).flatten.mkString(" · "))
+      def part(amount: Int, more: Boolean, unit: String) =
+        Option.when(amount > 0)(s"$amount${if more then "+" else ""} $unit")
+      Option.when(supply > 0 || favor > 0)(Vector(
+        part(supply, moreSupply, "Supply"), part(favor, moreFavor, "favor"))
+        .flatten.mkString(" · "))
 
   def refusal(catalog: ExecutableCatalog, ready: ReadyGame,
       entry: QueuedProcedure, powers: WalkerPowers,
@@ -603,9 +607,11 @@ object QueuedStart:
             Left(OathViolation.NoPlayableOption(entry.procedure.key))
           else
             val (least, leastFavor) = ways.min
-            Right(StartCost(least, leastFavor, varies = ways.size > 1))
+            Right(StartCost(least, leastFavor,
+              moreSupply = ways.exists(_._1 > least),
+              moreFavor = ways.exists(_._2 > leastFavor)))
         }
-      case _ => Right(StartCost(supply, favor, varies = false))
+      case _ => Right(StartCost(supply, favor))
 ```
 
 Delete the old private `unplayable`. Remove the imports it leaves unused (`ProcedureWalker`, `WalkerOutcome` and `WalkerDice` if nothing else uses them).
@@ -782,7 +788,7 @@ In `gameplay/PhaseMenuSuite.scala`, add `oathdigital.gameplay.phases.ActOffers` 
       "2 Supply"))
     shown(state, act(ActionRef.Travel)) match
       case DecisionOption.Badged(_, badge) =>
-        assert(badge.startsWith("from "), badge)
+        assert(badge.matches("\\d+\\+ Supply"), badge)
       case other => fail(s"Travel is not priced: $other")
 
   test("an Act option that cannot start says why"):
