@@ -78,7 +78,7 @@ class RecoverProcedureSuite extends munit.FunSuite
         number -> altered
       }))
 
-    assertEquals(accepted(RecoverProcedure.build(catalog, ready, actor)).window,
+    assertEquals(accepted(RecoverProcedure.afterModifiers(catalog, ready, actor)).window,
       Some(PowerWindow.RecoverActionEligibility))
 
   /** A walk parked at `at`: where it parked and what it recorded. */
@@ -92,7 +92,7 @@ class RecoverProcedureSuite extends munit.FunSuite
       "relic into the play area for one supply"):
     val ready = recoverBoard.ready
     val pool = RecoverProcedure.recoverPool
-    val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
+    val tree = accepted(RecoverProcedure.afterModifiers(catalog, ready, actor))
 
     // 1. Fresh walk: the pool, the supply that pays for it, and the roll
     //    that supply buys, with nothing asked along the way. A two-shield
@@ -166,7 +166,7 @@ class RecoverProcedureSuite extends munit.FunSuite
       "again and the cumulative score reaches the difficulty"):
     val ready = recoverBoard.ready
     val pool = RecoverProcedure.recoverPool
-    val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
+    val tree = accepted(RecoverProcedure.afterModifiers(catalog, ready, actor))
 
     // First roll fails (score 0 < difficulty): parks the choice decision.
     // The supply is spent before the dice leave the hand, so a park in front
@@ -216,7 +216,7 @@ class RecoverProcedureSuite extends munit.FunSuite
   test("stop after a failed roll ends the walk with no relic and one supply " +
       "spent"):
     val ready = recoverBoard.ready
-    val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
+    val tree = accepted(RecoverProcedure.afterModifiers(catalog, ready, actor))
 
     val choiceWalk = expectParked(
       ProcedureWalker.advance(ready, tree, None, noPowers,
@@ -251,7 +251,7 @@ class RecoverProcedureSuite extends munit.FunSuite
   test("an unaffordable Continue is not offered, and the pipeline rejects " +
       "it when probing is off"):
     val poor = recoverBoard.supply(actor, 1).ready
-    val tree = accepted(RecoverProcedure.build(catalog, poor, actor))
+    val tree = accepted(RecoverProcedure.afterModifiers(catalog, poor, actor))
 
     val choiceWalk = expectParked(
       ProcedureWalker.advance(poor, tree, None, noPowers,
@@ -291,7 +291,7 @@ class RecoverProcedureSuite extends munit.FunSuite
   test("resolving the relic decision with a relic the site does not hold is " +
       "rejected"):
     val ready = recoverBoard.ready
-    val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
+    val tree = accepted(RecoverProcedure.afterModifiers(catalog, ready, actor))
 
     val relicWalk = expectParked(
       ProcedureWalker.advance(ready, tree, None, noPowers,
@@ -318,7 +318,7 @@ class RecoverProcedureSuite extends munit.FunSuite
       "relic decision"):
     val relicless = Table.start.pawn(actor, at = recoverSite).ready
 
-    val tree = accepted(RecoverProcedure.build(catalog, relicless, actor))
+    val tree = accepted(RecoverProcedure.afterModifiers(catalog, relicless, actor))
     val finished = Outcomes.finished(ProcedureWalker.advance(relicless, tree,
       None, noPowers, scripted(highRoll)))
     val finalState = finished.treeless
@@ -355,7 +355,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
   test("the continue/stop decision declares exactly two labelled buttons"):
     val ready = recoverBoard.ready
-    val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
+    val tree = accepted(RecoverProcedure.afterModifiers(catalog, ready, actor))
 
     val choiceWalk = expectParked(
       ProcedureWalker.advance(ready, tree, None, noPowers,
@@ -381,7 +381,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     val ready = recoverBoard.relicAt(second, at = recoverSite)
       .relicAt(faceUp, at = recoverSite, facedown = false).ready
 
-    val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
+    val tree = accepted(RecoverProcedure.afterModifiers(catalog, ready, actor))
     val relicWalk = expectParked(
       ProcedureWalker.advance(ready, tree, None, noPowers,
         scripted(highRoll)),
@@ -418,7 +418,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     // so a stale answer finds no matching `Decide` to resume at and is
     // rejected before any query is consulted.
     val ready = recoverBoard.ready
-    val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
+    val tree = accepted(RecoverProcedure.afterModifiers(catalog, ready, actor))
 
     // The roll succeeds, so the walk parks at the RELIC decision instead.
     val relicWalk = expectParked(
@@ -447,7 +447,7 @@ class RecoverProcedureSuite extends munit.FunSuite
   test("the tree windows exactly its root, its pool-opening node, and its " +
       "relic-moving node; every other node carries none"):
     val ready = recoverBoard.ready
-    val tree = accepted(RecoverProcedure.build(catalog, ready, actor))
+    val tree = accepted(RecoverProcedure.afterModifiers(catalog, ready, actor))
     val pool = RecoverProcedure.recoverPool
 
     // `ready` (fresh, no rolls yet) reaches the choice Branch's Decide but
@@ -471,7 +471,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(windowed.size, 3,
       s"expected exactly 3 windowed nodes, found ${windowed.size}: $windowed")
     assert(windowed.contains(tree),
-      "the tree root must carry RecoverActionEligibility")
+      "the Recover's root must carry RecoverActionEligibility")
     assertEquals(windowed.collect { case node: ModifyDicePool => node.window },
       Vector(Some(PowerWindow.RecoverBeforeFirstRoll)),
       "the head ModifyDicePool must carry RecoverBeforeFirstRoll")

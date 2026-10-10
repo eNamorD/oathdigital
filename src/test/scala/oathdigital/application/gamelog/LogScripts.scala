@@ -14,6 +14,7 @@ import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
 import oathdigital.gameplay.powers.cardplay.WildCry
 import oathdigital.gameplay.powers.economy.GolemLegions
+import oathdigital.gameplay.powers.recover.RelicWorship
 import oathdigital.gameplay.powers.search.{Augury, NewsFromAfar}
 import oathdigital.gameplay.powers.travel.Tents
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
@@ -380,6 +381,18 @@ object LogScripts:
         s"$actor should hold only the recovered relic, holds $held")
     recovered.after(GameCommand.RevealOwnedRelic(actor, relic))
     Script("reveal-relic", service, actor)
+
+  /** p1 recovers at Broken Peaks with Relic Worship, their adviser, and one
+    * faceup secret. Relic Worship is the only modifier, so its pick starts
+    * the Recover by itself. */
+  def recoverWorship(using munit.Location): Script =
+    val (service, act) = atTable("recover-worship",
+      ParkedServiceFixture.recoverTable.adviser(p1, "Relic Worship")
+        .secrets(p1, faceUp = 1).banditsRefilled, Dice.steady)
+    act.withAnswers(ModifierPlay.answers(
+      PowerWindow.RecoverModifierSelection, Vector(RelicWorship.id)))
+      .after(GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
+    Script("recover-worship", service, p1)
 
   /** The Forge fixture's table, then the Forge itself, which never parks at
     * a single-resource site. */

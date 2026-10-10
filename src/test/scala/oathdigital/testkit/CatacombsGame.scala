@@ -1,6 +1,8 @@
 package oathdigital.testkit
 
 import oathdigital.gameplay.actions.RecoverRules
+import oathdigital.gameplay.powerresolver.ModifierPicks
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -57,3 +59,23 @@ object CatacombsGame:
   private def game(table: Table, site: SiteId)(using munit.Location): Game =
     val ready = table.ready
     Game(ready, Table.p1, site, ready.game.current.commonCards.relicDeck.head)
+
+  /** "recover.modifiers". */
+  val modifierDecisionId: String =
+    ModifierPicks.decisionId(PowerWindow.RecoverModifierSelection)
+
+  /** The option naming `card` in the modifier decision `state` is parked
+    * on, rebuilt with the production powers. */
+  def modifierOption(state: OathState, card: DenizenId)(
+      using munit.Location): DecisionOption =
+    ParkedNode.of(state, catalog, WalkerPowerCatalog.default(catalog)) match
+      case Right(Some(ParkedNode.Decision(_, decide, _)))
+          if decide.decisionId == modifierDecisionId =>
+        decide.query match
+          case DecisionQuery.ChooseOne(options, _) =>
+            options.find(_.ref == DecisionOptionRef.Denizen(card))
+              .getOrElse(munit.Assertions.fail(s"$card is not listed"))
+          case other =>
+            munit.Assertions.fail(s"expected a choose-one, got $other")
+      case other =>
+        munit.Assertions.fail(s"expected the modifier decision, got $other")

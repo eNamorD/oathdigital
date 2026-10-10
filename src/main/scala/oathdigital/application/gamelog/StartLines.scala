@@ -2,6 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{ChoicePayload, FollowUpStarted,
   WalkerCompleted, WalkerParked, WalkerStepRecorded}
@@ -57,7 +58,8 @@ private[gamelog] final class StartLines(words: LogWords,
 
   /** The tag's name and what its line says beyond the modifiers, but only at
     * the tag's anchor: the run's first event, except Muster and Trade (their
-    * cost step, after the source decision), Travel (its first step after the
+    * cost step, after the source decision), Recover (the step that opens its
+    * dice pool, after its modifier decision), Travel (its first step after the
     * destination decision), Search (its first step once no more modifiers
     * can be picked), the facedown-adviser play (its adviser's pick) and
     * Campaign (the first event by which kind and defender are both
@@ -71,6 +73,12 @@ private[gamelog] final class StartLines(words: LogWords,
       case ActionRef.Muster | ActionRef.Trade =>
         name(run.procedure).filter(_ =>
           paysCost(journal, run, at) || completing)
+          .map(named => (named, Vector.empty))
+      // The step that opens Recover's dice pool: the first of the Recover
+      // itself, after its modifier decision.
+      case ActionRef.Recover =>
+        name(run.procedure).filter(_ =>
+          opensDicePool(journal, at) || completing)
           .map(named => (named, Vector.empty))
       // The first step that does anything after the source or destination
       // is picked: a toll, a modifier's payment, the Supply, the draw or the
@@ -120,6 +128,13 @@ private[gamelog] final class StartLines(words: LogWords,
           PositionedLocation(Location.PlayArea(player), _),
           PositionedLocation(Location.OnCard(_), _), _), _, _) =>
         player == run.actor
+      case _ => false
+    }
+
+  private def opensDicePool(journal: LogJournal, at: Int): Boolean =
+    journal.ops(at).exists {
+      case OpStep(pool: ModifyDicePool, _, _) =>
+        pool.pool == RecoverProcedure.recoverPool
       case _ => false
     }
 

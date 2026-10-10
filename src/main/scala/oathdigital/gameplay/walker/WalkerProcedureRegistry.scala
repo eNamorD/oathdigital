@@ -192,7 +192,8 @@ object WalkerProcedureRegistry:
         args).flatMap(_ => RecoverProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Recover,
         args).flatMap(_ => RecoverProcedure.rebuild(catalog, state, activePlayer)),
-      rollFeedback = RecoverProcedure.rollFeedback),
+      rollFeedback = RecoverProcedure.rollFeedback,
+      choosesModifiers = true),
 
     /** Batch-1 Task 3. Forge has no `Roll` node, so `rollDecisionId` is
       * `None` (R18).

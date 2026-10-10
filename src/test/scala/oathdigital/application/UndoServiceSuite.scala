@@ -2,6 +2,7 @@ package oathdigital.application
 
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.powers.economy.GolemLegions
+import oathdigital.gameplay.powers.recover.RelicWorship
 import oathdigital.gameplay.powers.travel.Tents
 import oathdigital.model._
 import oathdigital.model.OathEvent.StepTakenBack
@@ -142,3 +143,21 @@ class UndoServiceSuite extends munit.FunSuite:
     val undone = accepted(service.handle("g", unpicked.nextSequence,
       GameCommand.Undo(p1)))
     assertEquals(undone.state, withGolem.state)
+
+  test("Undo takes back a Recover modifier pick, and then the start"):
+    // Catacombs and Relic Worship can both be picked, so picking one asks
+    // again instead of rolling.
+    val withBoth = table.pawn(p1, "Fair Isle").secrets(p1, faceUp = 2)
+      .denizen("Catacombs", at = "Fair Isle").adviser(p1, "Relic Worship")
+    val (service, _) = withBoth.service()
+    val started = accepted(service.handle("g", 0L,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1))))
+    val picked = accepted(service.handle("g", started.nextSequence,
+      GameCommand.ResolveWalker(p1, TreeDecision("recover.modifiers",
+        ModifierPlay.pick(RelicWorship.id)))))
+    val unpicked = accepted(service.handle("g", picked.nextSequence,
+      GameCommand.Undo(p1)))
+    assertEquals(unpicked.state, started.state)
+    val undone = accepted(service.handle("g", unpicked.nextSequence,
+      GameCommand.Undo(p1)))
+    assertEquals(undone.state, withBoth.state)

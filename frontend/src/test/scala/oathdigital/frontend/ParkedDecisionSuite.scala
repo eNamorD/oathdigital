@@ -160,6 +160,13 @@ class ParkedDecisionSuite extends munit.FunSuite:
     assertEquals(routeOf(negotiation, observer).surface,
       Some(Surface.Negotiate(deal, None)))
 
+  test("a Recover modifier decision goes to the board, as any action's does"):
+    val modifiers = parked("recover",
+      ParkedDecision.recoverModifiersDecisionId, one)
+      .copy(presentation = "board")
+    assertEquals(routeOf(modifiers).surface,
+      Some(Surface.BoardDecision(modifiers, one)))
+
   test("an observer of a parked deal sees its summary beside the notice"):
     val waiting = WalkerWaitingState("blue", Some("Negotiation"),
       Vector("red"), Some(deal))

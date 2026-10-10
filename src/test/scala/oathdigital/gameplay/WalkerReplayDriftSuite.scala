@@ -118,20 +118,14 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     */
   private val walkerPowers: WalkerPowers = WalkerPowers.empty
 
-  /** Task 10 step 3: the same production selection `OathRules.startWalker`
-    * performs (`WalkerPowers.selected` over the real `WalkerPowerCatalog`),
-    * pinned to Catacombs being player-selected for this walk. Both tracks in
-    * `assertNoDrift` receive this SAME value (never re-selected per track),
-    * matching the invariant the suite-level doc states: "the powered walk
-    * must gather the same contributions on both tracks, or you are testing
-    * your test harness rather than the engine."
+  /** The production catalog with nothing picked: the modifier decision's
+    * answer picks Catacombs, and both tracks read that answer. Both tracks
+    * receive this SAME value, matching the invariant the suite-level doc
+    * states: "the powered walk must gather the same contributions on both
+    * tracks, or you are testing your test harness rather than the engine."
     */
   private val catacombsPowers: WalkerPowers =
-    val selected = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
-      Vector(CatacombsContribution.id))
-    assert(selected.powers.nonEmpty,
-      "fixture catalog must declare the Catacombs card for this drift case")
-    selected
+    WalkerPowers.selected(WalkerPowerCatalog.default(catalog), Vector.empty)
 
   /** Fair Isle, the easiest Recover on the table (difficulty 3). */
   private val recoverSite = CatalogNames.site("Fair Isle")
@@ -302,7 +296,10 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       "-- the first corpus entry where a power changed the tree"):
     val fixture = CatacombsGame.reliclessSite(secrets = 2)
     val finished = assertNoDrift(fixture.ready,
-      Vector(StartWalk(Vector(highRoll)),
+      Vector(StartWalk(),
+        AnswerResume(Answered(CatacombsGame.modifierDecisionId,
+          ModifierPlay.pick(CatacombsContribution.id), fixture.actor),
+          Vector(highRoll)),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
           ChooseOneAnswer(DecisionOptionRef.Relic(fixture.topRelic)),
           fixture.actor))), catacombsPowers)

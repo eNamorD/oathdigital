@@ -1,14 +1,14 @@
 package oathdigital.gameplay.powers.recover
 
-import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
+import oathdigital.gameplay.{ModifierPlay, OathRules, WalkerDiceFixture}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Refusals, Table}
+import oathdigital.testkit.{ActPowerHarness, CatacombsGame, CatalogNames, Look,
+  Outcomes, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
@@ -47,8 +47,8 @@ class RelicWorshipSuite extends munit.FunSuite:
   /** A whole Recover that succeeds and takes the site's relic. */
   private def recover(ready: ReadyGame, selected: Vector[PowerId])
       : Recovered =
-    val started = accepted(
-      rules.startWalker(Ready(ready), ActionRef.Recover, p1, selected))
+    val started = accepted(ModifierPlay.started(rules, Ready(ready),
+      ActionRef.Recover, p1, PowerWindow.RecoverModifierSelection, selected))
     val relic = RecoverProcedure.actorFacedownRelics(
       Outcomes.ready(started.state), p1).head.id
     val done = accepted(
@@ -85,9 +85,9 @@ class RelicWorshipSuite extends munit.FunSuite:
   test("a Recover that ends without a relic has still paid the secret, and " +
       "gains nothing"):
     val ready = relicWorshipAtFairIsle()
-    val started = accepted(
-      failing.startWalker(Ready(ready), ActionRef.Recover, p1, modifiers))
-    // The secret is paid at the start, before the roll that fails.
+    val started = accepted(ModifierPlay.started(failing, Ready(ready),
+      ActionRef.Recover, p1, PowerWindow.RecoverModifierSelection, modifiers))
+    // The secret is paid at the pick, before the roll that fails.
     val paid = Outcomes.ready(started.state)
     assertEquals(me(paid).board.faceUpSecrets, 1)
     assertEquals(Look(paid).tokensOn(worship), Tokens(0, 1))
@@ -99,31 +99,41 @@ class RelicWorshipSuite extends munit.FunSuite:
     assertEquals(me(result).board.faceUpSecrets, 1)
     assertEquals(me(result).board.supply.supply, 4 - 1)
 
-  test("Catacombs and Relic Worship with one faceup secret are refused at " +
-      "selection, and accepted with two"):
-    val catacombs = PowerId("denizen.catacombs")
-    def attempt(secrets: Int) =
-      val ready = relicWorshipAtFairIsleTable(secrets, relicAtSite = false)
-        .ready
-      rules.startWalker(Ready(ready), ActionRef.Recover, p1,
-        Vector(catacombs, RelicWorship.id))
-    val refused = attempt(1)
-    assert(refused.left.toOption.exists(_.toString.contains(
-      "cannot all be paid together")), refused.toString)
-    val started = accepted(attempt(2))
+  test("with one faceup secret, picking Catacombs leaves Relic Worship " +
+      "unpayable; with two, both are picked and paid"):
+    def table(secrets: Int) =
+      relicWorshipAtFairIsleTable(secrets, relicAtSite = false).ready
+    val begun = accepted(rules.startWalker(Ready(table(1)),
+      ActionRef.Recover, p1))
+    val afterCatacombs = accepted(rules.resolveWalker(begun.state, p1,
+      CatacombsGame.modifierDecisionId,
+      ModifierPlay.pick(CatacombsContribution.id)))
+    assertEquals(CatacombsGame.modifierOption(afterCatacombs.state, worship),
+      DecisionOption.Unavailable(
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(worship)),
+        OptionReason.Written("Needs 1 secret; you have 0")))
+    val both = accepted(ModifierPlay.started(rules, Ready(table(2)),
+      ActionRef.Recover, p1, PowerWindow.RecoverModifierSelection,
+      Vector(CatacombsContribution.id, RelicWorship.id)))
     // Catacombs and Relic Worship each pay one of the two secrets.
-    assertEquals(me(Outcomes.ready(started.state)).board.faceUpSecrets, 0)
+    assertEquals(me(Outcomes.ready(both.state)).board.faceUpSecrets, 0)
 
-  test("it cannot be selected without a faceup secret, or onto an occupied card"):
-    val broke = relicWorshipAtFairIsle(secrets = 0)
-    assertEquals(rules.startWalker(Ready(broke), ActionRef.Recover,
-      p1, modifiers).left.toOption,
-      Some(Refusals.notApplicable(RelicWorship.id, "recover")))
-    val occupied = relicWorshipAtFairIsleTable().tokens(worship, secrets = 1)
-      .ready
-    assertEquals(rules.startWalker(Ready(occupied), ActionRef.Recover,
-      p1, modifiers).left.toOption,
-      Some(Refusals.notApplicable(RelicWorship.id, "recover")))
+  test("without a faceup secret nothing is asked; onto an occupied card it " +
+      "is listed unpayable"):
+    // Neither modifier can be paid for, so the Recover rolls at once.
+    val broke = accepted(rules.startWalker(
+      Ready(relicWorshipAtFairIsle(secrets = 0)), ActionRef.Recover, p1))
+    assertEquals(me(Outcomes.ready(broke.state)).board.supply.supply, 4 - 1)
+    // Catacombs can be picked at a relic-less Fair Isle, so the decision
+    // asks, and lists Relic Worship unpayable.
+    val occupied = relicWorshipAtFairIsleTable(relicAtSite = false)
+      .tokens(worship, secrets = 1).ready
+    val begun = accepted(rules.startWalker(Ready(occupied),
+      ActionRef.Recover, p1))
+    assertEquals(CatacombsGame.modifierOption(begun.state, worship),
+      DecisionOption.Unavailable(
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(worship)),
+        OptionReason.Written("Cannot be paid for now")))
 
   test("a Recover that selects no power records no ignored-rule diagnostic"):
     val events = recover(relicWorshipAtFairIsle(), Vector.empty).events

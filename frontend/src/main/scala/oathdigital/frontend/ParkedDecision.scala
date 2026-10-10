@@ -31,6 +31,7 @@ private[frontend] object ParkedDecision:
     */
   private[frontend] val recoverChoiceDecisionId = "recover.choice"
   private[frontend] val recoverRelicDecisionId = "recover.relic"
+  private[frontend] val recoverModifiersDecisionId = "recover.modifiers"
 
   /** The two forms the selection panel answers: toggles for a choose-many,
     * a dropdown for a choose-amount. The query IS the form now, so the
@@ -174,6 +175,12 @@ private[frontend] object ParkedDecision:
         chooseOneQuery(decision).map(RecoverStep.Relic.apply)
       case _ => None
 
+  /** A Recover park only Recover's panel may answer: every one but its
+    * modifier decision, which the board draws as any action's is. */
+  private def recoverPanelOnly(decision: WalkerDecisionState): Boolean =
+    decision.action == "recover" &&
+      decision.decisionId != recoverModifiersDecisionId
+
   private def chooseOneQuery(decision: WalkerDecisionState)
       : Option[DecisionQueryState.ChooseOne] =
     decision.query.collect { case one: DecisionQueryState.ChooseOne => one }
@@ -185,7 +192,7 @@ private[frontend] object ParkedDecision:
       // On the table: the decision says it is answered there, and the table
       // draws at least one of its options.
       case one: DecisionQueryState.ChooseOne if decision.kind == "decide" &&
-          decision.action != "recover" && onTable(decision, one.options, value) =>
+          !recoverPanelOnly(decision) && onTable(decision, one.options, value) =>
         Some(Surface.BoardDecision(decision, one))
       case many: DecisionQueryState.ChooseMany
           if onTable(decision, many.options, value) =>
@@ -194,7 +201,7 @@ private[frontend] object ParkedDecision:
       // know is not handed to the generic panel either: there is no
       // answer this client could safely build for it.
       case _: DecisionQueryState.ChooseOne
-          if decision.action == "recover" || decision.kind != "decide" =>
+          if recoverPanelOnly(decision) || decision.kind != "decide" =>
         None
       case one: DecisionQueryState.ChooseOne =>
         Some(Surface.ChooseOne(decision, one))

@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.model._
-import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
+import oathdigital.gameplay.{ModifierPlay, OathRules, WalkerDiceFixture}
 import oathdigital.testkit.CatacombsGame
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
@@ -322,10 +322,9 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     val rules = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
       walkerDice = WalkerDiceFixture.blanks)
-    val started = rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
-        p1, Vector(CatacombsGame.catacombsId)) match
-      case Right(transition) => transition
-      case other => fail(s"expected the Catacombs start to run, got $other")
+    val started = accepted(ModifierPlay.started(rules, Ready(fixture.ready),
+      ActionRef.Recover, p1, PowerWindow.RecoverModifierSelection,
+      Vector(CatacombsGame.catacombsId)))
     val ready = Outcomes.ready(started.state)
     val context = ScopedProjectionContext(ready, Some(p1))
 

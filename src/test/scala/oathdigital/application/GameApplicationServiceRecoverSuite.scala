@@ -5,8 +5,7 @@ import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
   WalkerStepRecorded}
-import oathdigital.gameplay.WalkerDiceFixture
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   RelicAcquired, SupplySpent}
@@ -352,24 +351,28 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     val siteId = beforePlayer.pawnSite.get
     val topRelic = dowsingSticks
 
-    val started = service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor,
-        Vector(catacombsPower)))) match
+    val begun = accepted(service.handle(gameId, 0L,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))))
+    // Catacombs is the one modifier p1 can pick, so the start asks for it,
+    // and picking it starts the Recover.
+    val started = service.handle(gameId, begun.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision("recover.modifiers",
+        ModifierPlay.pick(catacombsPower)))) match
       case Right(accepted) => accepted
       case Left(error) =>
-        fail(s"StartWalker with Catacombs must persist, got $error")
+        fail(s"picking Catacombs must persist, got $error")
 
-    // Catacombs' own batch, verbatim, survived encoding: the relic move off
-    // the top of the relic deck and the 1-secret payment onto the card.
+    // The pick's payment onto the card, then Catacombs' relic move off the
+    // top of the relic deck, verbatim, survived encoding.
     assertEquals(started.events.collect {
       case step: WalkerStepRecorded => step
     }.flatMap(_.ops).take(2), Vector[CoreOperation](
+      PayCost(actor, Location.OnCard(catacombs), Cost(secret = 1),
+        matchingBank = catalog.suitOf(catacombs)),
       Move(Piece.Card(topRelic),
         PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
         PositionedLocation(Location.Site(siteId)),
-        resultingOrientation = Some(Orientation.FaceDown)),
-      PayCost(actor, Location.OnCard(catacombs), Cost(secret = 1),
-        matchingBank = catalog.suitOf(catacombs))))
+        resultingOrientation = Some(Orientation.FaceDown))))
     assert(started.events.collect { case step: WalkerStepRecorded =>
       step.contributions }.contains(Vector(catacombsPower)),
       "the recorded step must name the contribution that produced it")
@@ -404,8 +407,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     assertEquals(loaded(replayingSecond(service, repository).load(gameId)
       ).state, finished.state)
 
-  test("preview offers the walker Catacombs contribution, and " +
-      "OathRules.startWalker accepts exactly the offered id (Task 9a)"):
+  test("preview offers the walker Catacombs contribution (Task 9a)"):
     val (service, _) = catacombsTable
       .service(campaignDice = new Dice.CountingDefense(meetingTheDifficulty))
     val gameId = "catacombs-walker-preview"
@@ -425,25 +427,6 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     assertEquals(modifier.modifies, Some("recover"))
     // Its printed cost travels with it, so the panel can show it.
     assertEquals(modifier.cost, Some("1 secret"))
-
-    // The property that matters: the id the preview just offered is exactly
-    // the id `OathRules.startWalker` will accept -- not merely "some id
-    // that happens to work". A defect here (offered-but-rejected, or
-    // accepted-but-never-offered) is precisely what Task 9a exists to
-    // prevent. Asserted directly against `OathRules` because that is the
-    // layer owning `validateModifiers`, the accepting predicate; the
-    // persisted path the preview actually feeds is covered separately by
-    // "StartWalker drives Catacombs through the full persisted path" above.
-    // (That test exists because this rules-only assertion once hid a real
-    // defect: `WalkerEventCodec` could not encode the `Location.Deck` in
-    // Catacombs' relic move, so `StartWalker` passed here and failed at
-    // append. The codec is now total over `Location`.)
-    val rules = new OathRules(catalog,
-      walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-      walkerDice = WalkerDiceFixture.blanks)
-    val started = rules.startWalker(catacombsTable.state, ActionRef.Recover,
-      actor, offeredIds)
-    accepted(started)
 
   test("a Travel preview does not offer Catacombs"):
     // A legacy action's preview is untouched: still resolved through
