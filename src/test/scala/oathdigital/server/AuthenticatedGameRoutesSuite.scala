@@ -72,9 +72,10 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
         Some(user.value))
       def answer(decision: String, payload: ujson.Obj) = ujson.Obj(
         "type" -> "resolveWalker", "decisionId" -> decision, "payload" -> payload)
-      val begin = send(actorUser, ujson.Obj("type" -> "startWalker",
-        "action" -> "negotiation",
-        "startArgs" -> ujson.Arr()))
+      // The Act menu is parked: Negotiation is picked from it.
+      val begin = send(actorUser, answer("phase.menu", ujson.Obj(
+        "kind" -> "choose-one", "optionKind" -> "button",
+        "optionId" -> "negotiation")))
       assertEquals(begin.statusCode(), 200, begin.body()); sequence = sequenceOf(begin)
       // p1 is the only other player at Buried Giant, so there are no
       // negotiators to choose: the walk parks on the deal.

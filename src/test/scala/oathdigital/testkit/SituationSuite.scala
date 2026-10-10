@@ -1,7 +1,7 @@
 package oathdigital.testkit
 
 import oathdigital.application.{GameApplicationService, GameCommand,
-  InMemoryEventStreamRepository, ParkedServiceFixture, StartPayload}
+  InMemoryEventStreamRepository, ParkedServiceFixture}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
@@ -24,9 +24,9 @@ class SituationSuite extends munit.FunSuite:
     val (service, repository) = journaledService()
     (Situation.journaled(service, catalog, repository, gameId), repository)
 
-  /** `ready` once its Wake has ended. */
+  /** `ready` once its Wake has ended, at the Act menu. */
   private def inAct(ready: ReadyGame): ReadyGame =
-    Table.from(ready).backInPhase(Phase.Act).unchecked
+    Table.from(ready).backInPhase(Phase.Act).phaseMenuParked.unchecked
 
   private def recordCount(repository: InMemoryEventStreamRepository,
       gameId: String): Int =
@@ -65,7 +65,7 @@ class SituationSuite extends munit.FunSuite:
       None)
     val steps = Vector[GameCommand | Step](
       Step.Arrange(Vector(SetOathkeeper(Some(other)))),
-      GameCommand.StartWalker(ActionRef.Search, StartPayload(actor)))
+      MenuPlay.starting(actor, ActionRef.Search))
     val byRules = Situation.wake(
       Situation.productionRules(catalog, Dice.blanks))
       .after(steps*)
@@ -77,10 +77,9 @@ class SituationSuite extends munit.FunSuite:
       byJournal.nextSequence)
 
   test("the rules and journaled adapters agree from a table"):
-    val table = Table.start
+    val table = Table.start.phaseMenuParked
     val (service, repository) = table.service(campaignDice = Dice.blanks)
-    val steps = Vector[GameCommand | Step](GameCommand.StartWalker(
-      ActionRef.Search, StartPayload(p1)))
+    val steps = Vector[GameCommand | Step](MenuPlay.starting(p1, ActionRef.Search))
     val byRules = table.situation(
       Situation.productionRules(catalog, Dice.blanks))
       .after(steps*)
@@ -157,7 +156,7 @@ class SituationSuite extends munit.FunSuite:
     // service builds and dice that fail every Recover roll.
     val parked = ParkedServiceFixture.recoverTable
       .situation(Situation.productionRules(catalog, Dice.blanks))
-      .parkedAfter(GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
+      .parkedAfter(MenuPlay.start(p1, ActionRef.Recover))
     new ParkedDecisionAssertions(catalog, WalkerPowerCatalog.default(catalog),
       PhasePowerCatalog.default(catalog)).assertParked(parked.state,
         ActionRef.Recover, RecoverProcedure.choiceDecisionId, p1)

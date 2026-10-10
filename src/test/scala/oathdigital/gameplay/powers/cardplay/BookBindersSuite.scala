@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
@@ -133,7 +134,7 @@ class BookBindersSuite extends munit.FunSuite:
         DecisionOptionRef.RelicSlot(holder, 0)))
     assert(done.isRight, done)
     val after = SearchFixture.after(accepted(done))
-    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
     assertEquals(after.banks.favor(Suit.Arcane), 0)
     assertEquals(after.banks.favor(Suit.Order), 5)
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
@@ -161,7 +162,7 @@ class BookBindersSuite extends munit.FunSuite:
         DecisionOptionRef.RelicSlot(holder, 0)))
     assert(done.isRight, done)
     val after = SearchFixture.after(accepted(done))
-    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
     assertEquals(after.banks.favor(Suit.Hearth), 0)
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
     assert(Look(after).player(actor).relics.exists(_.id == targetRelic))

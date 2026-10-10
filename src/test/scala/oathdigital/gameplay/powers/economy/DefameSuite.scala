@@ -92,6 +92,6 @@ class DefameSuite extends munit.FunSuite:
       defameTable.favor(p1, 2).favor(p2, 0).favor(p3, 0).ready, p1, modifiers,
       "secret", DecisionOptionRef.Denizen(mercenaries))
     Vector(otherSuit, nobodyHolds).foreach { done =>
-      assertEquals(parked.parkedDecision(Ready(done.result)), None)
+      parked.assertNotParked(Ready(done.result))
       assertEquals(said(done.journal.events), Vector.empty)
     }

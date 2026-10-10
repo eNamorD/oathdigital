@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.travel
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.powerresolver.{FoldPhase, Transform}
 import oathdigital.gameplay.powers.{NoteText, PayOrAsk, PowerFixture,
   RulerToll}
@@ -50,7 +51,7 @@ class WayStationSuite extends munit.FunSuite:
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).pawn(actor), coast)
     assertEquals(Look(result).supply(actor), 7)
-    assertEquals(result.game.current.walkerProcedure, None)
+    assertEquals(MenuPlay.procedureBeyondMenu(result), None)
 
   test("a non-ruler with favor is asked, and the favor goes to the ruler"):
     val ready = rivalRules()

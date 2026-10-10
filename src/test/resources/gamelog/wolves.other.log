@@ -1,4 +1,4 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-6.0 action 1 use-power:denizen.wolves@1 | [card:39|Wolves]: Killed 1 [player:p2|p2] warband.
+10.0 action 1 use-power:denizen.wolves@4 | [card:39|Wolves]: Killed 1 [player:p2|p2] warband.

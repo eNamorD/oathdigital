@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.model._
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
@@ -8,6 +9,7 @@ import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
+  OperationApplied,
   RelicAcquired, SupplySpent}
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -75,7 +77,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     // this site's difficulty, so the command that begins Recover is also the
     // one that parks on the relic it won.
     val started = accepted(walkerService.handle("walker-recover", 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))))
+      MenuPlay.starting(actor, ActionRef.Recover)))
     val atRelic = Outcomes.ready(started.state)
     assert(started.events.last.isInstanceOf[WalkerParked])
     assertEquals(walkerDice.calls, 1)
@@ -84,7 +86,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       RecoverProcedure.relicDecisionId, actor)
 
     walkerService.handle("walker-recover", started.nextSequence,
-      GameCommand.BeginRest(actor)) match
+      MenuPlay.starting(actor, PhaseTransitionRef.BeginRest)) match
       case Left(GameApplicationError.CommandRejected(
           _: oathdigital.model.OathViolation.InvalidEventOrder)) => ()
       case other => fail(s"a start command should be blocked by walker park: $other")
@@ -106,8 +108,8 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     val afterWalker = Outcomes.ready(finished.state)
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
     parkedAssertions.assertResumed(finished.state, Phase.Act, actor)
-    assert(afterWalker.game.current.walkerPending.isEmpty)
-    assert(afterWalker.game.current.walkerProcedure.isEmpty)
+    assert(MenuPlay.pendingBeyondMenu(afterWalker).isEmpty)
+    assert(MenuPlay.procedureBeyondMenu(afterWalker).isEmpty)
     assertEquals(afterWalker.game.current.rollPools,
       Map.empty[PoolKey, DicePoolState])
     assertEquals(afterWalker.game.current.rollOutcomes,
@@ -127,8 +129,10 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     assertEquals(replayed.state, finished.state)
     assertEquals(replayed.nextSequence, finished.nextSequence)
 
+    // The menu's pick queued the Recover; the Recover's own steps follow.
     val recordedOps = (started.events ++ finished.events)
       .collect { case step: WalkerStepRecorded => step.ops }.flatten
+      .filterNot(_.isInstanceOf[QueueProcedure])
     assertEquals(recordedOps, Vector[CoreOperation](
       ModifyDicePool(RecoverProcedure.recoverPool, 2,
         window = Some(PowerWindow.RecoverBeforeFirstRoll)),
@@ -138,7 +142,8 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
         PositionedLocation(Location.PlayArea(actor)),
         resultingOrientation = Some(Orientation.FaceDown))))
     assertEquals((started.events ++ finished.events).collect {
-      case WalkerStepRecorded(_, DeltaRecorded(semantic), _, _) => semantic
+      case WalkerStepRecorded(_, DeltaRecorded(semantic), _, _)
+          if !semantic.isInstanceOf[OperationApplied] => semantic
     }, Vector(
       DicePoolModified(RecoverProcedure.recoverPool, 2),
       SupplySpent(actor, 1),
@@ -153,7 +158,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     // Both dice come up blank, so the start's own roll fails and parks the
     // Continue/Stop Decide.
     val failed = accepted(service.handle("walker-continue", 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))))
+      MenuPlay.starting(actor, ActionRef.Recover)))
     assertEquals(dice.calls, 1)
     parkedAssertions.assertParked(failed.state, ActionRef.Recover,
       RecoverProcedure.choiceDecisionId, actor)
@@ -228,7 +233,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       "walker-cross-roll-doubler", walkerSetup, actor)
     val walkerFirst = accepted(walkerService.handle("walker-cross-roll-doubler",
       walkerAct.nextSequence,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))))
+      MenuPlay.starting(actor, ActionRef.Recover)))
     val walkerAfterFirst = Outcomes.ready(walkerFirst.state)
     assertEquals(walkerAfterFirst.game.current.rollOutcomes(
       RecoverProcedure.recoverPool).score, 1)
@@ -292,7 +297,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       .service(campaignDice = dice)
     val actor = p1
     val started = accepted(service.handle("walker-pool-mismatch", 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))))
+      MenuPlay.starting(actor, ActionRef.Recover)))
 
     // The start rolled once on its way to the park; a roll command naming
     // a pool the walker is not parked on must add nothing to that count.
@@ -324,7 +329,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     val topRelic = dowsingSticks
 
     val begun = accepted(service.handle(gameId, 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))))
+      MenuPlay.starting(actor, ActionRef.Recover)))
     // Catacombs is the one modifier p1 can pick, so the start asks for it,
     // and picking it starts the Recover.
     val started = service.handle(gameId, begun.nextSequence,

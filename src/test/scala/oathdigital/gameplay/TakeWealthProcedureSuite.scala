@@ -81,8 +81,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     assertEquals(transition.events.collect {
       case oathdigital.gameplay.walker.WalkerCompleted(procedure) => procedure
     }, Vector(ActionRef.TakeWealth, PhaseTransitionRef.EndWake))
-    assertEquals(state.game.current.walkerPending, None)
-    assertEquals(state.game.current.walkerProcedure, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(state), None)
+    assertEquals(MenuPlay.procedureBeyondMenu(state), None)
 
   test("a take moves a face-up secret"):
     val ready = wake(favor = 1, secrets = 1)

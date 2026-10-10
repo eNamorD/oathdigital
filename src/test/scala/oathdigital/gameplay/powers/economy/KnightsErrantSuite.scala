@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.{FollowUpPlay, ModifierPlay, OathRules,
   WalkerDiceFixture}
 import oathdigital.gameplay.actions.economy.MusterProcedure
@@ -72,7 +73,7 @@ class KnightsErrantSuite extends munit.FunSuite:
   test("without the selection the Muster offers nothing"):
     val mustered = musterFrom(staged(supply = 1).ready, Vector.empty)
     assertEquals(offered(mustered), None)
-    assertEquals(ready(mustered).game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(ready(mustered)), None)
 
   test("the offer is unconditional: nothing to campaign against still " +
       "offers it"):
@@ -112,5 +113,5 @@ class KnightsErrantSuite extends munit.FunSuite:
       case DecisionOption.Unavailable(_, OptionReason.Written(text)) => text
     }, Some("Vow of Peace prevents its ruler from campaigning"))
     val skipped = accepted(FollowUpPlay.skipped(rules, mustered.state, p1))
-    assertEquals(ready(skipped).game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(ready(skipped)), None)
     assertEquals(ready(skipped).game.current.queue, Vector.empty)

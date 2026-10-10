@@ -9,6 +9,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, ParkedDecisionAssertions,
   WalkerCompleted, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.testkit.MenuPlay
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Outcomes,
   TakeWealthFixture, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
@@ -51,12 +52,12 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
         step.ops == Vector(SetOathkeeper(Some(leader)))
       case _ => false
     })
-    assertEquals(traveled.events.last,
-      WalkerCompleted(TriggeredProcedureRef.Oathkeeper): OathEvent)
+    assert(traveled.events.contains(
+      WalkerCompleted(TriggeredProcedureRef.Oathkeeper)), traveled.events)
     val after = Outcomes.ready(traveled.state)
     assertEquals(after.game.current.title,
       OathkeeperState(Some(leader), TitleSide.Oathkeeper))
-    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(after), None)
     replays(ready, traveled.events, traveled.state)
 
   test("a tie parks for the holder, who may be off-turn, and only the holder " +

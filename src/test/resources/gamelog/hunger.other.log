@@ -1,8 +1,8 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-1.0 phase 0 | Rest
-3.0 turn 0 | [player:p2|p2]'s turn
-3.1 phase 0 | Wake
-9.0 trigger 1 | [card:216|Hunger]: [player:p2|p2] buried a Denizen from [player:p2|p2]'s advisers.
-11.0 phase 0 | Act
+5.0 phase 0 | Rest
+7.0 turn 0 | [player:p2|p2]'s turn
+7.1 phase 0 | Wake
+13.0 trigger 1 | [card:216|Hunger]: [player:p2|p2] buried a Denizen from [player:p2|p2]'s advisers.
+15.0 phase 0 | Act

@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted}
@@ -63,7 +64,7 @@ class EconomyWalkerSuite extends munit.FunSuite:
     assertEquals(after.favor(p1), 4 - 1)
     assertEquals(after.supply(p1), 7 - 1)
     assertEquals(after.boardWarbands(p1), 3 + 2)
-    assertEquals(current(answered.state).walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(current(answered.state)), None)
     parked.assertResumed(answered.state, Phase.Act, p1)
     assert(answered.events.exists {
       case WalkerCompleted(ActionRef.Muster) => true
@@ -76,8 +77,8 @@ class EconomyWalkerSuite extends munit.FunSuite:
     val started = accepted(start(atAlchemist.warbandsAt("Dunes", p2, 1).ready))
     val answered = accepted(
       answer(started.state, p1, MusterProcedure.decisionId, card))
-    assertEquals(answered.events.last,
-      WalkerCompleted(TriggeredProcedureRef.Oathkeeper): OathEvent)
+    assert(answered.events.contains(
+      WalkerCompleted(TriggeredProcedureRef.Oathkeeper)), answered.events)
     assertEquals(current(answered.state).title,
       OathkeeperState(Some(p2), TitleSide.Oathkeeper))
 
@@ -90,7 +91,7 @@ class EconomyWalkerSuite extends munit.FunSuite:
         TradeProcedure.decisionId, p1)
       val answered = answer(started.state, p1, TradeProcedure.decisionId, card)
         .getOrElse(fail(s"Trade for $name must complete"))
-      assertEquals(current(answered.state).walkerPending, None)
+      assertEquals(MenuPlay.pendingBeyondMenu(current(answered.state)), None)
     }
 
   test("a start with nothing playable is rejected before anything is persisted"):
@@ -132,7 +133,7 @@ class EconomyWalkerSuite extends munit.FunSuite:
         "decision muster.source does not offer the selected option")))
     val mustered = accepted(answer(started.state, p1,
       MusterProcedure.decisionId, card))
-    assertEquals(current(mustered.state).walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(current(mustered.state)), None)
 
   test("an unimplemented optional Economy power does not block a base Trade"):
     val board = Table.start.pawn(p1, at = "Ancient City")
@@ -143,4 +144,4 @@ class EconomyWalkerSuite extends munit.FunSuite:
     val finished = answer(started.state, p1, TradeProcedure.decisionId,
       DecisionOptionRef.Edifice(CatalogNames.edifice("Hallowed Spring")))
     // The base Trade runs to its end: nothing is left pending.
-    assertEquals(current(accepted(finished).state).walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(current(accepted(finished).state)), None)

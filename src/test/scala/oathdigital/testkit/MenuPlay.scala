@@ -50,6 +50,35 @@ object MenuPlay:
     PhaseMenu.optionFor(procedure, args).getOrElse(munit.Assertions.fail(
       s"no menu lists ${procedure.key}"))
 
+  /** The walk pending in `ready`, apart from a phase menu: the driver parks
+    * the phase's menu whenever nothing is queued, so a walk that has ended
+    * in Act leaves the Act menu pending. */
+  def pendingBeyondMenu(ready: ReadyGame): Option[PendingTree] =
+    pendingBeyondMenu(ready.game.current)
+
+  def pendingBeyondMenu(current: CurrentGameState): Option[PendingTree] =
+    current.walkerPending.filter(_ => procedureBeyondMenu(current).nonEmpty)
+
+  /** The procedure being walked, apart from a phase menu. */
+  def procedureBeyondMenu(ready: ReadyGame): Option[ProcedureRef] =
+    procedureBeyondMenu(ready.game.current)
+
+  def procedureBeyondMenu(current: CurrentGameState): Option[ProcedureRef] =
+    current.walkerProcedure.filter(PhaseMenu.asking(_).isEmpty)
+
+  /** `ready` with no phase menu parked, as a hand-built table holds it: for
+    * a rules-level suite that starts a procedure directly, to test the
+    * procedure's own refusals rather than the menu's. */
+  def withoutMenu(state: OathState): OathState = state match
+    case Ready(ready) => Ready(withoutMenu(ready))
+    case other => other
+
+  def withoutMenu(ready: ReadyGame): ReadyGame =
+    if ready.game.current.walkerProcedure.exists(PhaseMenu.asking(_).nonEmpty)
+    then ready.updateCurrent(_.copy(walkerProcedure = None,
+      walkerPending = None))
+    else ready
+
   /** The menu parked in `state`, when one is. */
   def parked(state: OathState): Option[PhaseMenu.Menu] = state match
     case Ready(ready) =>

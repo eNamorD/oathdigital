@@ -1,8 +1,8 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-1.0 section 1 recover@1 | Recover[cost:1 Supply]
-3.0 roll 1 recover@1 | Rolled [dice:defense blank blank|blank, blank]
-7.0 action 1 recover@1 | Continued[cost:1 Supply]
-8.0 roll 1 recover@1 | Rolled [dice:defense blank blank|blank, blank]
-12.0 action 1 recover@1 | Failed to recover at [site:site:broken-peaks|Broken Peaks]
+5.0 section 1 recover@4 | Recover[cost:1 Supply]
+7.0 roll 1 recover@4 | Rolled [dice:defense blank blank|blank, blank]
+11.0 action 1 recover@4 | Continued[cost:1 Supply]
+12.0 roll 1 recover@4 | Rolled [dice:defense blank blank|blank, blank]
+16.0 action 1 recover@4 | Failed to recover at [site:site:broken-peaks|Broken Peaks]

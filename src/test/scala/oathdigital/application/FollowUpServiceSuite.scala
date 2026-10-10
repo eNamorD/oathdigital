@@ -1,6 +1,5 @@
 package oathdigital.application
 
-import oathdigital.application.GameApplicationError.CommandRejected
 import oathdigital.gameplay.FollowUpPlay
 import oathdigital.gameplay.walker.{FollowUpOffer, FollowUpSkipped}
 import oathdigital.model._
@@ -29,13 +28,6 @@ class FollowUpServiceSuite extends munit.FunSuite:
   private def answer(chosen: DecisionAnswer, by: PlayerId = p1) =
     GameCommand.ResolveWalker(by, TreeDecision(FollowUpOffer.decisionId,
       chosen))
-
-  test("other commands wait for the offer"):
-    assertEquals(offered._1.handle("game", 0L, GameCommand.StartWalker(
-      ActionRef.Travel, StartPayload(p1))).left.toOption.collect {
-        case CommandRejected(violation) => violation
-      }, Some(OathViolation.InvalidEventOrder("a walker procedure is " +
-        "pending; only walker resume commands are legal")))
 
   test("Skip is an answer, and writes FollowUpSkipped"):
     val skipped = offered._1.handle("game", 0L, answer(FollowUpPlay.skip))

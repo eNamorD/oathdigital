@@ -49,7 +49,7 @@ class HeraldSuite extends munit.FunSuite:
       "without being asked"):
     val b = conquestWithHerald(_.rival, Orientation.FaceUp, Suit.Order -> 2)
     val done = commit(rules(winningDice), b, 4).finishPlanWindows
-    assertEquals(parked.parkedDecision(done.state), None)
+    parked.assertNotParked(done.state)
     assertEquals(Look(done.state).favor(b.rival),
       Look(b.ready).favor(b.rival) + 1)
     assertEquals(lines(done), Vector(gained(b.rival, Suit.Order)))
@@ -77,5 +77,5 @@ class HeraldSuite extends munit.FunSuite:
       .finishPlanWindows), Vector.empty)
     val empty = conquestWithHerald(_.bystander, Orientation.FaceUp)
     val done = commit(rules(winningDice), empty, 4).finishPlanWindows
-    assertEquals(parked.parkedDecision(done.state), None)
+    parked.assertNotParked(done.state)
     assertEquals(lines(done), Vector.empty)

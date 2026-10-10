@@ -27,7 +27,8 @@ class PhasePowerSuite extends munit.FunSuite:
   private def walkerParked(power: PhasePower) = new ParkedDecisionAssertions(
     catalog, phasePowerCatalog = PhasePowers(Vector(power)))
   private def use(power: PhasePower, state: OathState, by: PlayerId = p1) =
-    rules(power).startWalker(state, ActionRef.UsePower(power.id), by,
+    rules(power).startWalker(MenuPlay.withoutMenu(state),
+      ActionRef.UsePower(power.id), by,
       Vector(source))
   /** `state`'s turn put back in Wake, its uses kept: a once-per-turn power
     * that was Wake's last option ended Wake. */

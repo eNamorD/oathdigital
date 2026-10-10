@@ -157,15 +157,12 @@ private[gameplay] trait OathDriver:
   /** Step 3: the phase's menu (walker-driven game loop design, "The
     * menus"). When its ending is the only option available, the ending
     * starts without asking (ruling 3; slice 1, plan-time ruling 2). Act
-    * parks nothing until its menu exists (slice 4). */
+    * always asks. */
   private def phaseEnd(transition: OathTransition)
       : Either[OathViolation, OathTransition] = transition.state match
     case Ready(ready) if ready.game.current.result.isEmpty =>
       val player = ready.game.current.turn.activePlayer
       PhaseMenu.of(ready.game.current.turn.phase) match
-        // Task 3 of slice 4 parks the Act menu; until then Act parks
-        // nothing.
-        case Some(PhaseMenu.Menu.Act) => Right(transition)
         case Some(menu) if PhaseMenu.onlyEnding(menu, PhaseMenu.offers(menu,
             catalog, ready, player, phasePowerCatalog, walkerPowers)) =>
           joined(transition, startWalker(transition.state, menu.ending,

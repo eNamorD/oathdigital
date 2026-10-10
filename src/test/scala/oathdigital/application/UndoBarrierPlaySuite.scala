@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{Situation, Table}
@@ -25,8 +26,7 @@ class UndoBarrierPlaySuite extends munit.FunSuite:
     val (service, repository) = table.service()
     val act = table.situation(Situation.journaled(service, catalog,
       repository, "peek"))
-    val peeked = act.after(GameCommand.StartWalker(ActionRef.PeekSiteRelics,
-      StartPayload(p1)))
+    val peeked = act.after(MenuPlay.start(p1, ActionRef.PeekSiteRelics))
     nothingToUndo(service, "peek", peeked.nextSequence, p1)
 
   test("finishing Rest hands the turn over, so neither player can undo"):
@@ -34,7 +34,7 @@ class UndoBarrierPlaySuite extends munit.FunSuite:
     val (service, repository) = table.service()
     val act = table.situation(Situation.journaled(service, catalog,
       repository, "rest"))
-    val passed = act.after(GameCommand.BeginRest(p1))
+    val passed = act.after(MenuPlay.start(p1, PhaseTransitionRef.BeginRest))
     // Rest asks p1 nothing here, so Begin Rest runs on into Finish Rest.
     assertEquals(passed.ready.game.current.turn.activePlayer, p2)
     nothingToUndo(service, "rest", passed.nextSequence, p1)

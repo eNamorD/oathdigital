@@ -209,4 +209,4 @@ object Situation:
       chronicle: Chronicle = FirstGameSetupFixture.chronicle,
       orders: SetupOrders = FirstGameSetupFixture.orders)(
       using munit.Location): Situation =
-    act(driver, actor, chronicle, orders).after(GameCommand.BeginRest(actor))
+    act(driver, actor, chronicle, orders).after(MenuPlay.start(actor, PhaseTransitionRef.BeginRest))

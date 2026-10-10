@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -99,7 +100,7 @@ class FollowUpRulesSuite extends munit.FunSuite:
     val skipped = accepted(FollowUpPlay.skipped(rules, start, p1))
     assert(skipped.events.contains(
       FollowUpSkipped(offer(ActionRef.Campaign))), skipped.events)
-    assertEquals(current(skipped.state).walkerProcedure, None)
+    assertEquals(MenuPlay.procedureBeyondMenu(current(skipped.state)), None)
     assertEquals(replayed(start, skipped.events), skipped.state)
 
   test("skipping one entry offers the next"):

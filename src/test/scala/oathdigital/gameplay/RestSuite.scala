@@ -28,8 +28,8 @@ class RestSuite extends munit.FunSuite:
   private def act: ReadyGame = restBoard.adviser(p1, "Wrestlers").ready
 
   private def rest(state: OathState, player: PlayerId,
-      using: OathRules = rules) =
-    using.startWalker(state, PhaseTransitionRef.BeginRest, player)
+      under: OathRules = rules) =
+    MenuPlay.started(under, state, player, PhaseTransitionRef.BeginRest)
 
   private def inRest(ready: ReadyGame) =
     Table.from(ready).turn(p1, Phase.Rest).unchecked

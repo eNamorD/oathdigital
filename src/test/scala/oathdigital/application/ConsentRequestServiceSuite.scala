@@ -8,7 +8,7 @@ import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathEvent.{CommandAccepted, ConsentAnswered,
   ConsentPreferenceSet, ConsentRequestWithdrawn, ConsentRequested}
-import oathdigital.testkit.{Look, Outcomes, PlacementPicks}
+import oathdigital.testkit.{Look, MenuPlay, Outcomes, PlacementPicks}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -41,7 +41,7 @@ class ConsentRequestServiceSuite extends munit.FunSuite:
     Look(Outcomes.ready(at.state)).player(p1).pawnSite
 
   private def parked(at: GameAccepted)(using munit.Location): Boolean =
-    Outcomes.ready(at.state).game.current.walkerPending.nonEmpty
+    MenuPlay.pendingBeyondMenu(Outcomes.ready(at.state)).nonEmpty
 
   private def dunesOffered(at: GameAccepted)(using munit.Location)
       : DecisionOption =

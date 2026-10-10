@@ -1,14 +1,14 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-4.0 section 1 campaign@1 | Campaign[cost:2 Supply]
-4.1 action 1 campaign@1 | Raid against [player:p2|p2]
-7.0 decision 1 campaign@1 | Targets: [player:p2|p2]'s pawn
-7.1 delta 1 campaign@1 | Attack Pool: 3, Defense Pool: 2
-9.0 roll 1 campaign@1 | Rolled [dice:attack one-sword one-sword one-sword|sword, sword, sword] for the attack
-10.0 roll 1 campaign@1 | Attack: 3
-13.0 decision 1 campaign@1 | Sacrificed 3 warbands for an attack of 6
-14.0 roll 1 campaign@1 | Rolled [dice:defense blank blank|blank, blank] for the defense
-15.0 roll 1 campaign@1 | Defense: 3
-16.0 action 1 campaign@1 | [player:p1|p1] wins!
-23.0 delta 1 campaign@1 | [player:p2|p2] lost 1 warband, discarded [card:176|Birdsong] and was sent to [site:site:broken-peaks|Broken Peaks]
+8.0 section 1 campaign@4 | Campaign[cost:2 Supply]
+8.1 action 1 campaign@4 | Raid against [player:p2|p2]
+11.0 decision 1 campaign@4 | Targets: [player:p2|p2]'s pawn
+11.1 delta 1 campaign@4 | Attack Pool: 3, Defense Pool: 2
+13.0 roll 1 campaign@4 | Rolled [dice:attack one-sword one-sword one-sword|sword, sword, sword] for the attack
+14.0 roll 1 campaign@4 | Attack: 3
+17.0 decision 1 campaign@4 | Sacrificed 3 warbands for an attack of 6
+18.0 roll 1 campaign@4 | Rolled [dice:defense blank blank|blank, blank] for the defense
+19.0 roll 1 campaign@4 | Defense: 3
+20.0 action 1 campaign@4 | [player:p1|p1] wins!
+27.0 delta 1 campaign@4 | [player:p2|p2] lost 1 warband, discarded [card:176|Birdsong] and was sent to [site:site:broken-peaks|Broken Peaks]

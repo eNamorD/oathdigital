@@ -1,7 +1,8 @@
 package oathdigital.application.gamelog
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.application.{GameAccepted, GameApplicationService,
-  GameCommand, ParkedServiceFixture, StartPayload, TreeDecision}
+  GameCommand, ParkedServiceFixture, TreeDecision}
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, DeclineDeal,
@@ -105,8 +106,7 @@ class GameLogTakenBackSuite extends munit.FunSuite:
         deal(p1, AcceptDeal)))
     def proposed(gameId: String) =
       val (service, _) = table.service()
-      val started = accepted(service.handle(gameId, 0L, GameCommand.StartWalker(
-        ActionRef.Negotiation, StartPayload(p1))))
+      val started = accepted(service.handle(gameId, 0L, MenuPlay.starting(p1, ActionRef.Negotiation)))
       (service, accepted(service.handle(gameId, started.nextSequence,
         deal(p1, ProposeTerms(NegotiationTerms(Vector(
           NegotiationTransfer(p2, 1, Vector.empty))))))))
@@ -131,12 +131,11 @@ class GameLogTakenBackSuite extends munit.FunSuite:
       .pawn(p3, "Buried Giant").siteTokens("Broken Peaks", secrets = 2)
       .banditsRefilled
     val (service, _) = table.service()
-    val taken = accepted(service.handle("g", 0L, GameCommand.StartWalker(
-      ActionRef.TakeWealth, StartPayload(p2, Vector(DecisionOptionRef.Button("secret"))))))
+    val taken = accepted(service.handle("g", 0L, MenuPlay.starting(p2, ActionRef.TakeWealth, Vector(DecisionOptionRef.Button("secret")))))
     val undone = accepted(service.handle("g", taken.nextSequence,
       GameCommand.Undo(p2)))
     accepted(service.handle("g", undone.nextSequence,
-      GameCommand.StartWalker(PhaseTransitionRef.EndWake, StartPayload(p2))))
+      MenuPlay.starting(p2, PhaseTransitionRef.EndWake)))
     val live = log(service, "g", p2).filter(_.sequence >= undone.nextSequence)
       .map(LogScripts.text)
     assertEquals(live.takeRight(2), Vector("Nothing happened in Wake", "Act"))

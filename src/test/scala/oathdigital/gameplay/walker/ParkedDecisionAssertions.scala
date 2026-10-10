@@ -61,14 +61,16 @@ final class ParkedDecisionAssertions(
       awaiting: PlayerId)(using munit.Location): Unit =
     assertParked(state, menu.procedure, PhaseMenu.decisionId, awaiting)
 
-  /** Nothing is parked at all -- strictly stronger than "not parked on THIS
-    * kind of decision", which is what the assertions this replaces said.
-    */
+  /** Nothing is parked, apart from a phase menu: the driver parks the phase's
+    * menu whenever nothing is queued, so a finished action in Act ends at
+    * the Act menu. */
   def assertNotParked(state: OathState)(using munit.Location): Unit =
-    assertEquals(parkedDecision(state), None)
+    assertEquals(parkedDecision(state).filter(facts =>
+      PhaseMenu.asking(facts.procedure).isEmpty), None)
 
-  /** Nothing is parked and the turn is where it should be: the whole content
-    * of the three continuations that named a phase rather than a decision.
+  /** Nothing is parked but a phase menu, and the turn is where it should be:
+    * the whole content of the three continuations that named a phase rather
+    * than a decision.
     */
   def assertResumed(state: OathState, phase: Phase, active: PlayerId)(
       using munit.Location): Unit =

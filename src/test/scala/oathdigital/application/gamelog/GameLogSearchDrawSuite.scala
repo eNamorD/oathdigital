@@ -1,6 +1,6 @@
 package oathdigital.application.gamelog
 
-import oathdigital.application.{GameCommand, StartPayload}
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.search.{Mushrooms, PaintedTrumpet,
@@ -26,7 +26,7 @@ class GameLogSearchDrawSuite extends munit.FunSuite:
     }
     act.withAnswers(pile.orElse(ModifierPlay.answers(
       PowerWindow.SearchModifierSelection, modifiers)))
-      .after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1)))
+      .after(MenuPlay.start(p1, ActionRef.Search))
     texts(format(Script(name, service, p1), Some(p1)).filter(_.depth == 1))
 
   test("Wine of Welcome: drew from the bottom of the World Deck"):

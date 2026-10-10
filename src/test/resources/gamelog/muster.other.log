@@ -1,5 +1,5 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-4.0 section 1 muster@1 | Muster[cost:1 Supply]
-6.0 action 1 muster@1 | Mustered 1 warband with [card:E26|Hiding Place]
+8.0 section 1 muster@4 | Muster[cost:1 Supply]
+10.0 action 1 muster@4 | Mustered 1 warband with [card:E26|Hiding Place]

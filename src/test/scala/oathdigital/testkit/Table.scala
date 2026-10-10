@@ -417,7 +417,18 @@ final case class Table private (private val game: ReadyGame,
     val repository = new InMemoryEventStreamRepository
     (new GameApplicationService(catalog, repository,
       defenseDicePort = defenseDice, campaignDicePort = campaignDice,
-      warExhaustionRandomPort = warExhaustion, genesis = state), repository)
+      warExhaustionRandomPort = warExhaustion, genesis = served.state),
+      repository)
+
+  /** This table as a live game holds it: the menu of the turn's phase
+    * parked, when the phase has one and nothing else is pending. Commands
+    * reach a service through that menu only (walker-driven game loop
+    * design, slice 4). */
+  private def served(using munit.Location): Table =
+    val current = game.game.current
+    if current.walkerPending.nonEmpty || current.result.nonEmpty ||
+        PhaseMenu.of(current.turn.phase).isEmpty then this
+    else phaseMenuParked
 
   /** A situation at this table, with no events and the sequence at 0. A
     * rules adapter starts here directly. A journaled adapter must drive a
@@ -426,9 +437,11 @@ final case class Table private (private val game: ReadyGame,
   def situation(driver: SituationDriver)(using munit.Location): Situation =
     driver match
       case journaled: SituationDriver.Journaled
-          if journaled.service.genesis != state => munit.Assertions.fail(
+          if journaled.service.genesis != served.state => munit.Assertions.fail(
         "a journaled situation at a Table drives a service begun at that " +
           "table; build it with table.service")
+      case journaled: SituationDriver.Journaled =>
+        Situation(served.state, Vector.empty, 0L, journaled, Vector.empty)
       case driver => Situation(state, Vector.empty, 0L, driver, Vector.empty)
 
   private def moving(card: CardId): Table =

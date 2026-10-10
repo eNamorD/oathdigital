@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
@@ -114,7 +115,7 @@ class CampaignRaidSuite extends munit.FunSuite:
       CampaignIds.relocation, moved))
     assertEquals(Look(done.state).player(b.rival).pawnSite, Some(destination))
     parked.assertResumed(done.state, Phase.Act, b.actor)
-    assertEquals(ready(done.state).game.current.walkerPending, None)
+    assertEquals(MenuPlay.pendingBeyondMenu(ready(done.state)), None)
 
   test("the pawn cannot be relocated to its own site"):
     val RaidBoard(b, relic) = raidBoard()

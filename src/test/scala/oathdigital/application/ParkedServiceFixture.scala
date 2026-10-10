@@ -34,8 +34,7 @@ object ParkedServiceFixture:
 
   /** `actor` starts playing a facedown adviser; the walk parks on the pick. */
   def playFacedownAdviser(actor: PlayerId): GameCommand =
-    GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-      StartPayload(actor))
+    MenuPlay.starting(actor, ActionRef.PlayFacedownAdviser)
 
   /** `actor` answers the facedown-adviser pick with their adviser `card`. */
   def pickFacedownAdviser(actor: PlayerId, card: WorldCardId): GameCommand =
@@ -46,8 +45,7 @@ object ParkedServiceFixture:
   /** `actor` starts a Travel; the walk parks on the modifier decision, or
     * on the destination when no modifier can be picked. */
   def startTravel(actor: PlayerId): GameCommand =
-    GameCommand.StartWalker(ActionRef.Travel,
-      StartPayload(actor))
+    MenuPlay.starting(actor, ActionRef.Travel)
 
   /** `actor` answers the destination decision with `site`. */
   def pickTravelDestination(actor: PlayerId, site: SiteId): GameCommand =
@@ -56,8 +54,7 @@ object ParkedServiceFixture:
 
   /** `actor` starts a Search; the walk parks on the source. */
   def startSearch(actor: PlayerId): GameCommand =
-    GameCommand.StartWalker(ActionRef.Search,
-      StartPayload(actor))
+    MenuPlay.starting(actor, ActionRef.Search)
 
   /** `actor` answers the source decision with `pile`. */
   def pickSearchSource(actor: PlayerId, pile: SearchSource): GameCommand =
@@ -225,7 +222,7 @@ object ParkedServiceFixture:
       .pawn(p3, "Buried Giant")
       .siteTokens("Broken Peaks", secrets = 2)
     val (service, repository, act) = journaled(table, gameId)
-    val parked = act.parkedAfter(GameCommand.BeginRest(p1))
+    val parked = act.parkedAfter(MenuPlay.start(p1, PhaseTransitionRef.BeginRest))
     parkedAssertions.assertParked(parked.state, PhaseTransitionRef.FinishRest,
       LeagueTreatyContribution.destinationDecisionId(table.ready, p1,
         CatalogNames.site("Ancient City"), treatyCard), p2)
@@ -251,7 +248,7 @@ object ParkedServiceFixture:
       using munit.Location): RecoverChoicePark =
     val (service, repository, act) = journaled(recoverTable, gameId, dice)
     val parked = act.parkedAfter(
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
+      MenuPlay.start(p1, ActionRef.Recover))
     parkedAssertions.assertParked(parked.state, ActionRef.Recover,
       RecoverProcedure.choiceDecisionId, p1)
     RecoverChoicePark(
@@ -311,7 +308,7 @@ object ParkedServiceFixture:
       .adviser(p2, "Birdsong", facedown = true)
       .banditsRefilled
     val (service, repository, act) = journaled(table, gameId, dice)
-    val resting = act.after(GameCommand.BeginRest(p1))
+    val resting = act.after(MenuPlay.start(p1, PhaseTransitionRef.BeginRest))
     parkedAssertions.assertMenuParked(resting.state, PhaseMenu.Menu.Rest, p1)
     val parked = resting.parkedAfter(MenuPlay.picking(p1,
       DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))))

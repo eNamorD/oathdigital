@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.testkit.MenuPlay
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.economy.MusterProcedure
@@ -96,7 +97,7 @@ class PressgangsSuite extends munit.FunSuite:
       Vector(GolemLegions.id), DecisionOptionRef.Denizen(golem))
     // Golem Legions now holds favor, so with it picked alone the Muster
     // cannot start: Start waits for Pressgangs.
-    val again = accepted(rules.startWalker(Ready(first.result),
+    val again = accepted(rules.startWalker(Ready(MenuPlay.withoutMenu(first.result)),
       ActionRef.Muster, p1))
     val golemPicked = accepted(rules.resolveWalker(again.state, p1,
       musterModifiers, ModifierPlay.pick(GolemLegions.id)))

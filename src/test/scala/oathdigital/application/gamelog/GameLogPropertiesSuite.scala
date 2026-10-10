@@ -120,9 +120,7 @@ class GameLogPropertiesSuite extends munit.FunSuite:
     val keys = scripts.flatMap(_.history.steps.map(_.event.event).collect {
       case completed: WalkerCompleted => completed.procedure.key
     }).toSet
-    // Task 3 of slice 4 parks the Act menu; until then no script ends at it.
-    val expected = ProcedureRef.all.map(_.key).toSet -
-      TriggeredProcedureRef.ActMenu.key
+    val expected = ProcedureRef.all.map(_.key).toSet
     assertEquals(expected -- keys, Set.empty[String])
     assert(keys.exists(_.startsWith("use-power:")), keys)
 
