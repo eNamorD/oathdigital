@@ -4,7 +4,8 @@ import org.scalajs.dom
 
 /** The Action panel of a board decision (board decisions design, "Action
   * panel"). Top to bottom: the prompt, the summary line, a row per locked
-  * and picked option with its tally values, the tally totals, the options
+  * and picked option with its tally values (a choose-one's pick only when
+  * it carries details the summary does not), the tally totals, the options
   * with no place on the table, the open home's toggle, the Decide buttons under an unlabelled rule,
   * then a rule labelled "Decision" over Clear and the confirm button. The table draws
   * the options themselves, through `BoardOptions`.
@@ -35,21 +36,31 @@ private[frontend] object BoardDecisionPanel:
 
     WalkerPanelSupport.rollFeedback(decision, panel)
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
-    panel.appendChild(text("p", "board-decision-summary", query match
+    // The summary reads the answer so far. With nothing picked it is only
+    // the instruction, set as a helper line so it does not compete with the
+    // prompt above it.
+    val summary = query match
       case many: DecisionQueryState.ChooseMany =>
         val count = picks.size + many.options.count(_.state == "locked")
-        many.summary.fold(s"$count chosen")(_.of(count))
+        Some(many.summary.fold(s"$count chosen")(_.of(count)))
       case _ => draft.flatMap(open => open.picked.headOption.map(label)
         .orElse(Option.when(open.home.nonEmpty)(
           BoardOptionViews.variantPrompt(open.homeOptions))))
-        .getOrElse("Choose on the board.")))
+    panel.appendChild(summary.fold(text("p",
+      "board-decision-summary board-decision-summary-empty",
+      "Choose on the board."))(text("p", "board-decision-summary", _)))
 
     // Decided already: a choose-many's locked options, a choose-one's answers
     // so far. Then what this draft holds.
     val locked = (query match
       case _: DecisionQueryState.ChooseOne => decision.answeredOptions
       case _ => Vector.empty) ++ shown.filter(_.state == "locked")
+    // A choose-one's summary already names its pick, so the pick's row
+    // shows only when it carries more than the name.
     val chosen = draft.fold(Vector.empty[DecisionOptionState])(_.picked)
+      .filter(option => query match
+        case _: DecisionQueryState.ChooseOne => option.details.nonEmpty
+        case _ => true)
     if locked.nonEmpty || chosen.nonEmpty then
       val rows = element("ul", "board-decision-rows")
       locked.foreach(option => rows.appendChild(row(query, option,
