@@ -258,7 +258,9 @@ object CardPlayProcedure:
       Decide(discardDecisionId(card), actor,
         DecisionQuery.ChooseMany(0, offer.most, offer.options,
           heading = Some("Discard more cards from the site"),
-          locked = Vector(offer.locked))))
+          locked = Vector(offer.locked),
+          confirm = Some(CountedConfirm("Discard", "more card", "more cards",
+            Some("Discard no more"))))))
     // A Branch is selected when the walk reaches it, which for this one is
     // after the follow-up's answer, so the play sees the cards chosen there.
     // The lines come after the last answer and before the play, joining the

@@ -77,13 +77,14 @@ private[projection] object ActionProjectionCodec:
         "options" -> encoded(options)(encodeOptionRow),
         "heading" -> stringOption(heading))
       case DecisionQueryProjection.ChooseMany(options, minOptions, maxOptions,
-          heading, tallies, summary) => ujson.Obj(
+          heading, tallies, summary, confirm) => ujson.Obj(
         "form" -> "choose-many",
         "options" -> encoded(options)(encodeOptionRow),
         "minOptions" -> minOptions, "maxOptions" -> maxOptions,
         "heading" -> stringOption(heading),
         "tallies" -> encoded(tallies)(encodeTally),
-        "summary" -> option(summary)(encodeSummary))
+        "summary" -> option(summary)(encodeSummary),
+        "confirm" -> option(confirm)(encodeConfirm))
       case DecisionQueryProjection.ChooseAmount(minAmount, maxAmount,
           suggested, confirmLabel, heading) => ujson.Obj(
         "form" -> "choose-amount",
@@ -147,7 +148,7 @@ private[projection] object ActionProjectionCodec:
   private def decodeChooseMany(value: ujson.Obj, path: String)
       : Result[DecisionQueryProjection] = for
     _ <- exact(value, Set("form", "options", "minOptions", "maxOptions",
-      "heading", "tallies", "summary"), path)
+      "heading", "tallies", "summary", "confirm"), path)
     options <- optionRows(value, path)
     minOptions <- int(value, "minOptions", path)
     maxOptions <- int(value, "maxOptions", path)
@@ -156,8 +157,9 @@ private[projection] object ActionProjectionCodec:
       Vector.empty[DecisionTallyProjection])((raw, child) =>
         array(raw, child).flatMap(traverse(_, child)(decodeTally)))
     summary <- optionalAbsent(value, "summary", path)(decodeSummary)
+    confirm <- optionalAbsent(value, "confirm", path)(decodeConfirm)
   yield DecisionQueryProjection.ChooseMany(options, minOptions, maxOptions,
-    heading, tallies, summary)
+    heading, tallies, summary, confirm)
 
   private def encodeTally(tally: DecisionTallyProjection): ujson.Value =
     ujson.Obj("label" -> tally.label, "unit" -> tally.unit,
@@ -194,6 +196,22 @@ private[projection] object ActionProjectionCodec:
     one <- string(value, "one", path)
     many <- string(value, "many", path)
   yield DecisionSummaryProjection(verb, one, many)
+
+  private def encodeConfirm(confirm: CountedConfirmProjection): ujson.Value =
+    ujson.Obj("verb" -> confirm.verb, "one" -> confirm.one,
+      "many" -> confirm.many, "none" -> stringOption(confirm.none),
+      "countsLocked" -> confirm.countsLocked)
+
+  private def decodeConfirm(raw: ujson.Value, path: String)
+      : Result[CountedConfirmProjection] = for
+    value <- obj(raw, path)
+    _ <- exact(value, Set("verb", "one", "many", "none", "countsLocked"), path)
+    verb <- string(value, "verb", path)
+    one <- string(value, "one", path)
+    many <- string(value, "many", path)
+    none <- optionalAbsent(value, "none", path)(string)
+    countsLocked <- boolOr(value, "countsLocked", path, false)
+  yield CountedConfirmProjection(verb, one, many, none, countsLocked)
 
   private def decodeChooseAmount(value: ujson.Obj, path: String)
       : Result[DecisionQueryProjection] = for

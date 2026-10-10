@@ -53,15 +53,31 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     assertEquals(one(panel, """[data-option-id="site:a"]""")
       .getAttribute("aria-pressed"), "true")
     val confirm = button(panel, ".walker-many-confirm")
-    // A choose-many declares no confirm label, so the panel names the control
-    // itself. Asserted rather than reasoned about: the string became a literal
-    // when the query stopped carrying an optional label.
+    // A choose-many that declares no counted label gets the generic one.
     assertEquals(confirm.textContent, "Confirm")
     assert(!confirm.disabled)
     confirm.click()
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker("challenge.ribbon-site",
       DecisionAnswerWire.ChooseManyWire(Vector(DecisionOptionWire("site", "a"),
         DecisionOptionWire("site", "c"))))))
+
+  /** Setup's Reveal Cards: the button says what pressing it does, counted
+    * off the selection, and its own words at zero.
+    */
+  test("choose-many confirm counts the selection: none, one, then many"):
+    val reveal = many.copy(minOptions = 0, maxOptions = 3,
+      confirm = Some(CountedConfirmState("Reveal", "card", "cards",
+        Some("Reveal nothing"))))
+    val ui = new RecordingControls()
+    def confirmText(draft: Option[WalkerSelectionDraft]) = one(render(ui,
+      draft, "setup.reveal", reveal), ".walker-many-confirm").textContent
+    assertEquals(confirmText(opened("setup.reveal", reveal)), "Reveal nothing")
+    button(render(ui, opened("setup.reveal", reveal), "setup.reveal", reveal),
+      """[data-option-id="site:a"]""").click()
+    assertEquals(confirmText(ui.drafts.selection), "Reveal 1 card")
+    button(render(ui, ui.drafts.selection, "setup.reveal", reveal),
+      """[data-option-id="site:b"]""").click()
+    assertEquals(confirmText(ui.drafts.selection), "Reveal 2 cards")
 
   test("choose-many instruction names its count without a zero lower bound"):
     def instruction(min: Int, max: Int): String =

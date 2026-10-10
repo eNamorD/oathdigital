@@ -6,7 +6,7 @@ import org.scalajs.dom
   * panel"). Top to bottom: the prompt, the summary line, a row per locked
   * and picked option with its tally values, the tally totals, the options
   * with no place on the table, the open home's toggle, the Decide buttons under an unlabelled rule,
-  * then a rule labelled "Decision" over Clear and Confirm. The table draws
+  * then a rule labelled "Decision" over Clear and the confirm button. The table draws
   * the options themselves, through `BoardOptions`.
   */
 private[frontend] object BoardDecisionPanel:
@@ -143,7 +143,10 @@ private[frontend] object BoardDecisionPanel:
       clear.disabled = !canControl
       clear.onclick = _ => controls.stage(Draft.Board(draft.map(_.cleared)))
       panel.appendChild(clear)
-    val confirm = button("Confirm", "board-decision-confirm")
+    val confirm = button(query match
+      case many: DecisionQueryState.ChooseMany =>
+        WalkerPanelSupport.chooseManyConfirmLabel(many, picks.size)
+      case _ => "Confirm", "board-decision-confirm")
     confirm.disabled = !canControl || blocked.nonEmpty || current.isEmpty
     confirm.onclick = _ =>
       current.flatMap(_.command).foreach(controls.submitCommand)

@@ -11,8 +11,8 @@ import scala.scalajs.js
 /** Task 5, at the DOM. `PartitionDecisionStateSuite` proves the interaction
   * state; this drives the controls the panel actually builds, so renderer
   * wiring cannot break while a state-level test stays green: the zones and
-  * options are read out of the rendered tree, the moves go through the
-  * accessible button and through a real drop event, the confirm button's
+  * options are read out of the rendered tree, the moves go through a real
+  * drop event, the confirm button's
   * disabled state is read off the element, and the submitted command is
   * whatever a click on it produced.
   *
@@ -76,7 +76,8 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     val panel = render(controls(), forgeDraft())
     assertEquals(one(panel, "h2").textContent, "Forge a relic")
     assertEquals(one(panel, ".partition-instruction").textContent,
-      "Assign every option: Pay Favor (2), Pay Secret (1).")
+      "Drag and drop the cards. Assign every option: Pay Favor (2), " +
+        "Pay Secret (1).")
     val zones = all(panel, ".partition-zone")
     assertEquals(zones.map(_.getAttribute("data-section-key")),
       Vector("pay-favor", "pay-secret"))
@@ -143,7 +144,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
   test("a keep-one partition says keep one, discard the rest, without minimum lines"):
     val panel = pickPanel(keepOneDraft())
     assertEquals(one(panel, ".partition-instruction").textContent,
-      "Keep one; discard the rest.")
+      "Drag and drop the cards. Keep one; discard the rest.")
     assertEquals(all(panel, ".decision-zone-helper"), Vector.empty)
 
   test("a partition that must meet a minimum in each zone is not keep-one"):
@@ -167,7 +168,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     val panel = render(controls(), keepUpToTwoDraft(),
       decision = keepUpToTwoDecision)
     assertEquals(one(panel, ".partition-instruction").textContent,
-      "Keep one or two; discard the rest.")
+      "Drag and drop the cards. Keep one or two; discard the rest.")
     assertEquals(all(panel, ".decision-zone-helper"), Vector.empty)
 
   test("a keep zone holding two says they are played in that order"):
@@ -180,32 +181,21 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     assertEquals(all(keepZone(keepingOne), ".decision-zone-order"),
       Vector.empty)
 
-  test("with the keep zone full, the move into it is disabled and says " +
-      "why; with room it is enabled"):
-    def moveToKeep(draft: Option[WalkerPartitionDraft]) = as[dom.html.Button](
-      one(optionNode(render(controls(), draft,
-        decision = keepUpToTwoDecision), 3), ".move-option"))
-    val full = moveToKeep(keepUpToTwoDraft())
-    assert(full.disabled)
-    assertEquals(full.getAttribute("title"),
-      "Keep is full: move a card out of it first")
-    val withRoom = moveToKeep(
-      keepUpToTwoDraft().map(_.move(optionKey(2), "discard")))
-    assert(!withRoom.disabled)
-
-  /** Pressing Keep on a discard card swaps it with the kept one, so the kept
-    * card's own Discard button would only say the same thing backwards.
-    */
-  test("the kept card has no mover; the discard cards keep theirs"):
-    val panel = pickPanel(keepOneDraft())
-    assertEquals(all(optionNode(panel, 1), ".move-option"), Vector.empty)
-    assertEquals(one(optionNode(panel, 2), ".move-option").textContent,
-      "Keep")
-
-  test("pressing Keep on a discard swaps it with the kept card"):
+  test("a drop on a full keep zone is refused; with room it lands"):
     val ui = controls()
-    val panel = pickPanel(ui, keepOneDraft())
-    click(one(optionNode(panel, 2), ".move-option"))
+    drop(one(render(ui, keepUpToTwoDraft(), decision = keepUpToTwoDecision),
+      """[data-section-key="keep"]"""), optionKey(3))
+    assertEquals(ui.drafts.partition, None)
+    val withRoom = keepUpToTwoDraft().map(_.move(optionKey(2), "discard"))
+    drop(one(render(ui, withRoom, decision = keepUpToTwoDecision),
+      """[data-section-key="keep"]"""), optionKey(3))
+    assertEquals(optionLabelsIn(render(ui, ui.drafts.partition,
+      decision = keepUpToTwoDecision), "keep"), Vector("Denizen 1", "Denizen 3"))
+
+  test("dropping a discard on the keep zone swaps it with the kept card"):
+    val ui = controls()
+    drop(one(pickPanel(ui, keepOneDraft()), """[data-section-key="keep"]"""),
+      optionKey(2))
     val swapped = pickPanel(ui, ui.drafts.partition)
     assertEquals(optionLabelsIn(swapped, "keep"), Vector("Denizen 2"))
     assertEquals(optionLabelsIn(swapped, "discard"),
@@ -247,67 +237,17 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     assertEquals(confirm(render(controls(), forgeDraft())).textContent,
       "Complete Forge")
 
-  test("the accessible move button moves one option to the other zone"):
-    val ui = controls()
-    val draft = forgeDraft()
-    val panel = render(ui, draft)
-    val move = one(optionNode(panel, 1),
-      """[aria-label="Move Denizen 1 to Pay Secret"]""")
-    assertEquals(move.textContent, "Pay Secret")
-    click(move)
-    // The draft the panel will be re-rendered from has actually moved.
-    val moved = render(ui, ui.drafts.partition)
-    assertEquals(optionLabelsIn(moved, "pay-favor"), Vector("Denizen 2"))
-    assertEquals(optionLabelsIn(moved, "pay-secret"),
-      Vector("Denizen 3", "Denizen 1"))
-
-  /** Order inside a leftover zone is an answer, not a display detail: the
-    * engine stacks the discards in the order they are left in, so the last
-    * one is the pile's top. The one control is the one position a player
-    * acts on; any full order is a few of them pressed in turn.
+  /** Drag is the only way to move an option, so an option holds its card
+    * and no controls, in every zone and on every shape.
     */
-  test("put on top moves a discard to the end of its zone"):
-    val ui = controls()
-    val top = one(optionNode(pickPanel(ui, keepOneDraft()), 2),
-      ".put-on-top")
-    assertEquals(top.textContent, "Put on top")
-    assertEquals(top.getAttribute("aria-label"),
-      "Discard Denizen 2 last, so it lands on top of the pile")
-    click(top)
-    assertEquals(optionLabelsIn(pickPanel(ui, ui.drafts.partition), "discard"),
-      Vector("Denizen 3", "Denizen 2"))
-    // And back, by pressing the other one.
-    click(one(optionNode(pickPanel(ui, ui.drafts.partition), 3),
-      ".put-on-top"))
-    assertEquals(optionLabelsIn(pickPanel(ui, ui.drafts.partition), "discard"),
-      Vector("Denizen 2", "Denizen 3"))
-
-  /** A pill of the button's height rather than nothing, so working the row
-    * never reflows it out from under the pointer. Nothing about order is
-    * drawn where order is not an answer: the capped zone and every Forge
-    * zone.
-    */
-  test("the card already on top wears the Top pill, not a button"):
-    val panel = pickPanel(keepOneDraft())
-    val last = optionNode(panel, 3)
-    assertEquals(one(last, ".option-top").textContent, "Top")
-    assertEquals(all(last, ".put-on-top"), Vector.empty)
-    val kept = optionNode(panel, 1)
-    assertEquals(all(kept, ".option-top, .put-on-top"), Vector.empty)
-    assertEquals(all(render(controls(), forgeDraft()),
-      ".option-top, .put-on-top"), Vector.empty)
-
-  /** The card is the last thing in its option, so every card in a row sits
-    * on the row's floor: a kept card with no controls and a discard with
-    * two of them line up, and the controls stand above the card they act
-    * on. A card that sat under its controls sat higher than its neighbour
-    * in the next zone.
-    */
-  test("an option's controls stand above its card"):
-    val panel = pickPanel(keepOneDraft())
-    val discard = optionNode(panel, 2)
-    assertEquals(all(discard, ":scope > *").map(_.getAttribute("class")),
-      Vector("move-option", "put-on-top", "option-summary"))
+  test("an option holds only its card, with no move or order controls"):
+    for panel <- Vector(pickPanel(keepOneDraft()), render(controls(),
+        forgeDraft()))
+    do
+      assertEquals(all(panel, ".decision-option button"), Vector.empty)
+      assertEquals(all(panel, ".decision-option").map(option =>
+        all(option, ":scope > *").map(_.getAttribute("class"))),
+        Vector.fill(3)(Vector("option-summary")))
 
   test("the confirm button sits in its own footer strip"):
     val panel = pickPanel(keepOneDraft())
@@ -433,16 +373,12 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     event.updateDynamic("dataTransfer")(transfer)
     event.asInstanceOf[dom.Event]
 
-  test("a decision option is not a focus stop; the move buttons are the keyboard path"):
-    val panel = render(controls(), forgeDraft())
-    val options = all(panel, ".decision-option")
+  test("a decision option is not a focus stop"):
+    val options = all(render(controls(), forgeDraft()), ".decision-option")
+    assertEquals(options.size, 3)
     assertEquals(options.map(_.getAttribute("tabindex")),
       Vector.fill(options.size)(null),
       "a decision-option has no keydown handler, so a tab stop here is dead")
-    assertEquals(options.size, 3)
-    assertEquals(all(panel, ".move-option").map(_.getAttribute("aria-label")),
-      Vector("Move Denizen 1 to Pay Secret", "Move Denizen 2 to Pay Secret",
-        "Move Denizen 3 to Pay Favor"))
 
   test("a drag on an option swallows the click that follows; a plain press does not"):
     val node = as[dom.html.Element](dom.document.createElement("div"))

@@ -547,8 +547,8 @@ controls are 30px.
 - **Action** (load game, adviser, and every act, decision and confirm
   button in the Actions pane): `#282117` fill, white text, `#bca780`
   border, `8px 12px` padding. Hover: Pressed fill, Bright Cream border. The
-  small movers and steppers beside an option (card pickers, Put on top,
-  distribute `−`/`+`) wear the Control face at their
+  small movers and steppers beside an option (card pickers, distribute
+  `−`/`+`) wear the Control face at their
   own sizes. Decision buttons keep their 5px margins. The partition confirm
   sits in a footer strip pinned to the pane's bottom edge (Pane fill,
   Line-pane top border, 12px padding), full width, so the answer stays in
@@ -563,17 +563,14 @@ controls are 30px.
 - **Focus:** 2px Cream Focus outline, -3px offset, inside the table; 3px white
   outline, 3px offset, on the host page.
 - **Disabled:** opacity 0.5, `cursor: not-allowed` or default.
-- **Partition surface:** a keep-one partition (Search, the starting adviser)
-  reads "Keep one; discard the rest." with no minimum lines; the kept card
-  has no mover, because Keep on another card swaps them; each discard card
-  that is not last carries one Control-face "Put on top" button, and the
-  last carries a "Top" pill of the same height (Line-mid border, Ink Dim
-  text, 999px radius). The movers and the pill stand above the card at the
-  30px Control height, and the card is the last thing in its option, so the
-  cards in a row sit on one floor whether the option above them holds two
-  controls or none. The order note reads "The last one lands on top of the
-  pile." Forge's payment partition keeps its minimum lines and movers and
-  has no order controls.
+- **Partition surface:** options move only by drag and drop: a drop on a
+  zone moves the card there, and a drop on a card places it before that
+  one. An option holds nothing but its card. The instruction line opens
+  with "Drag and drop the cards." A keep-one partition (Search, the
+  starting adviser) then reads "Keep one; discard the rest." with no
+  minimum lines, and a drop on the keep zone swaps the cards. The order
+  note reads "The last one lands on top of the pile." Forge's payment
+  partition keeps its minimum lines.
 
 ### Chips and Pills
 - **Site card count**: pill, 1px Line border, Cream 700 text, `2px 6px`

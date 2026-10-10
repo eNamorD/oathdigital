@@ -12,8 +12,8 @@ import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
-import oathdigital.protocol.projection.{DecisionQueryProjection,
-  DecisionSummaryProjection, DecisionTallyProjection,
+import oathdigital.protocol.projection.{CountedConfirmProjection,
+  DecisionQueryProjection, DecisionSummaryProjection, DecisionTallyProjection,
   DecisionTallyValueProjection, WalkerDecisionProjection,
   WalkerWaitingProjection}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
@@ -680,7 +680,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       ("available", None),
       ("unavailable", Some("Not ruled by the defender"))))
 
-  test("a choose-many projects its locked options, tallies and summary"):
+  test("a choose-many projects its locked options, tallies, summary and " +
+      "confirm label"):
     val context = parked(ActionRef.Recover)
     val origin = siteRef("Dunes")
     val extra = siteRef("Broken Peaks")
@@ -689,7 +690,9 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       locked = Vector(DecisionOption.Site(origin)),
       tallies = Vector(DecisionTally("Defending force", "warbands",
         Map(origin -> 2, extra -> 1))),
-      summary = Some(DecisionSummary("Target", "site", "sites")))))
+      summary = Some(DecisionSummary("Target", "site", "sites")),
+      confirm = Some(CountedConfirm("Conquer", "target", "targets",
+        Some("Never shown"), countsLocked = true)))))
     projectorFor(tree).project(context).flatMap(_.query) match
       case Some(many: DecisionQueryProjection.ChooseMany) =>
         assertEquals(many.options.map(o => (o.id, o.state)), Vector(
@@ -701,6 +704,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
             .sortBy(v => (v.kind, v.id)))))
         assertEquals(many.summary,
           Some(DecisionSummaryProjection("Target", "site", "sites")))
+        assertEquals(many.confirm, Some(CountedConfirmProjection("Conquer",
+          "target", "targets", Some("Never shown"), countsLocked = true)))
       case other => fail(s"expected a choose-many, got $other")
 
   test("a decide park projects where it is answered"):

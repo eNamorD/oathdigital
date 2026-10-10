@@ -79,6 +79,22 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
       Intent.ResolveWalker("campaign.targets",
         DecisionAnswerWire.ChooseManyWire(Vector.empty))))
 
+  /** A Campaign's mandatory target is locked and counted, so the button
+    * reads "Conquer 1 target" before any pick. A query with no counted
+    * label keeps the generic "Confirm".
+    */
+  test("the confirm button counts the locked target with the picks"):
+    val conquer = targets.copy(confirm = Some(CountedConfirmState("Conquer",
+      "target", "targets", countsLocked = true)))
+    def label(draft: Option[BoardSelectionDraft]) = one(pane(
+      new RecordingControls(), conquer, decision, draft),
+      ".board-decision-confirm").textContent
+    assertEquals(label(None), "Conquer 1 target")
+    assertEquals(label(Some(BoardSelectionDraft(context, "campaign.targets",
+      conquer, Vector("site:hills")))), "Conquer 2 targets")
+    assertEquals(one(pane(new RecordingControls(), targets, decision),
+      ".board-decision-confirm").textContent, "Confirm")
+
   test("Confirm is disabled below the minimum and says why"):
     val needsOne = targets.copy(minOptions = 1)
     val panel = pane(new RecordingControls(), needsOne, decision)

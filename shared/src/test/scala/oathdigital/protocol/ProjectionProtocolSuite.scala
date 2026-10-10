@@ -251,7 +251,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       assertRoundTrips(carrying)
     }
 
-  test("a board decision's states, reasons, tallies, summary and " +
+  test("a board decision's states, reasons, tallies, summary, confirm and " +
       "presentation round-trip"):
     val origin = DecisionOptionProjection("site", "plains", "Plains",
       state = "locked")
@@ -262,7 +262,9 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       Vector(origin, longbows, wolves), 0, 1, Some("Targets"),
       tallies = Vector(DecisionTallyProjection("Defending force", "warbands",
         Vector(DecisionTallyValueProjection("site", "plains", 2)), Some(4))),
-      summary = Some(DecisionSummaryProjection("Target", "site", "sites")))
+      summary = Some(DecisionSummaryProjection("Target", "site", "sites")),
+      confirm = Some(CountedConfirmProjection("Conquer", "target", "targets",
+        countsLocked = true)))
     assertRoundTrips(projection.copy(walkerDecision =
       projection.walkerDecision.map(_.copy(query = Some(many),
         presentation = "board"))))
@@ -278,10 +280,28 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     decision.obj.remove("presentation")
     decision("query").obj.remove("tallies")
     decision("query").obj.remove("summary")
+    decision("query").obj.remove("confirm")
     decision("query")("options").arr.foreach { row =>
       row.obj.remove("state"); row.obj.remove("reason") }
     assertEquals(GameProjectionCodec.decode(ujson.write(json)),
       Right(carrying))
+
+  test("a counted confirm label round-trips its zero form, and decodes " +
+      "without one"):
+    val reveal = DecisionQueryProjection.ChooseMany(
+      Vector(DecisionOptionProjection("relic", "r1", "Relic")), 0, 1,
+      confirm = Some(CountedConfirmProjection("Reveal", "card", "cards",
+        Some("Reveal nothing"))))
+    val carrying = projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(reveal))))
+    assertRoundTrips(carrying)
+    val json = ujson.read(GameProjectionCodec.encode(carrying))
+    json("walkerDecision")("query")("confirm").obj.remove("none")
+    json("walkerDecision")("query")("confirm").obj.remove("countsLocked")
+    assertEquals(GameProjectionCodec.decode(ujson.write(json)),
+      Right(projection.copy(walkerDecision = projection.walkerDecision.map(
+        _.copy(query = Some(reveal.copy(confirm = Some(
+          CountedConfirmProjection("Reveal", "card", "cards")))))))))
 
   test("a distribute query round-trips its slots, suggestions and total"):
     def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)

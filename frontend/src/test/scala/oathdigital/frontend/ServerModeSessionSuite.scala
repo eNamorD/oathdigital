@@ -183,7 +183,8 @@ class ServerModeSessionSuite extends FunSuite:
           "Development-only active-player view: blue"), browser.text)
         assertEquals(browser.byClass("partition-instruction")
           .map(_.textContent),
-          Vector("Assign every option: Pay Favor (2), Pay Secret (1)."))
+          Vector("Drag and drop the cards. Assign every option: " +
+            "Pay Favor (2), Pay Secret (1)."))
       }
 
   /** An Act menu button posts its pick at once: the action asks for its

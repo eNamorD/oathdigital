@@ -60,9 +60,8 @@ private[frontend] object WalkerSelectionPanels:
         case _ => WalkerPanelSupport.withholds(toggle, option, rows)
     }
     panel.appendChild(rows)
-    // A choose-many declares no confirm label, so the old
-    // `confirmLabel.getOrElse("Confirm")` was always this literal.
-    val confirm = button("Confirm", "walker-many-confirm")
+    val confirm = button(WalkerPanelSupport.chooseManyConfirmLabel(query,
+      draft.selected.size), "walker-many-confirm")
     confirm.disabled = !canControl || !draft.canConfirm
     confirm.onclick = _ => draft.command.foreach(controls.submitCommand)
     panel.appendChild(confirm)

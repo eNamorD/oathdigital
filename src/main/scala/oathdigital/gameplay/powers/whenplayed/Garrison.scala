@@ -47,7 +47,8 @@ case object Garrison extends WhenPlayedPower:
     if held == 0 || held >= sites.size then Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseMany(held, held,
       sites.map(site => DecisionOption.Site(DecisionOptionRef.Site(site))),
-      heading = Some("Garrison: choose the sites that each receive a warband"))))
+      heading = Some("Garrison: choose the sites that each receive a warband"),
+      confirm = Some(CountedConfirm("Place warbands at", "site", "sites")))))
 
   private def place(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =

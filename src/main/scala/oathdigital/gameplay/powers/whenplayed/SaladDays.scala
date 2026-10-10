@@ -69,6 +69,8 @@ case object SaladDays extends WhenPlayedPower:
           banks.map(suit => DecisionOption.FavorBank(
             DecisionOptionRef.FavorBank(suit))),
           heading = Some("Salad Days: choose three banks to gain 1 favor " +
-            "from each"))),
+            "from each"),
+          confirm = Some(CountedConfirm("Gain favor from", "bank",
+            "banks")))),
         BuildOps((ready, pending) => chosen(ready, pending)
           .map(gains(actor, _))))))

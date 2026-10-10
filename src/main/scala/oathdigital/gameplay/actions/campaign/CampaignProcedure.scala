@@ -192,7 +192,8 @@ object CampaignProcedure:
           }), locked = locked,
           tallies = CampaignTargets.tallies(catalog, ready,
             (locked ++ options).map(_.ref)),
-          summary = Some(CampaignTargets.summary(kind))),
+          summary = Some(CampaignTargets.summary(kind)),
+          confirm = Some(CampaignTargets.confirm(kind))),
         window = Some(PowerWindow.CampaignTargetSelection))))
       .getOrElse(Vector.empty))
 

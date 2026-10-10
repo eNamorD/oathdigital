@@ -58,12 +58,14 @@ object DecisionQueryProjection:
     * `available`. The bounds count OPTIONS; `ChooseAmount`'s bound a value,
     * which is why they are no longer one `minimum`/`maximum` pair serving
     * both. Options whose `state` is `locked` are decided already and are
-    * never part of the answer. `tallies` and `summary` are display only.
+    * never part of the answer. `tallies`, `summary` and `confirm` are
+    * display only.
     */
   final case class ChooseMany(options: Vector[DecisionOptionProjection],
       minOptions: Int, maxOptions: Int, heading: Option[String] = None,
       tallies: Vector[DecisionTallyProjection] = Vector.empty,
-      summary: Option[DecisionSummaryProjection] = None)
+      summary: Option[DecisionSummaryProjection] = None,
+      confirm: Option[CountedConfirmProjection] = None)
       extends DecisionQueryProjection:
     def offeredOptions: Vector[DecisionOptionProjection] = options
 
@@ -184,6 +186,17 @@ final case class DecisionSummaryProjection(verb: String, one: String,
     many: String):
   def of(count: Int): String =
     s"$verb $count ${if count == 1 then one else many}"
+
+/** "Reveal 2 cards": what a choose-many's confirm button says for a
+  * selection of `count`, with `none` standing in at zero when declared.
+  * `countsLocked` says whether the caller adds the locked options to the
+  * count it passes.
+  */
+final case class CountedConfirmProjection(verb: String, one: String,
+    many: String, none: Option[String] = None, countsLocked: Boolean = false):
+  def of(count: Int): String =
+    none.filter(_ => count == 0).getOrElse(
+      s"$verb $count ${if count == 1 then one else many}")
 
 /** Wire projection of a parked generic-walker decision (Task 6:
   * `CurrentGameState.walkerPending`/`walkerProcedure`).

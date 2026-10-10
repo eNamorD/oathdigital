@@ -66,7 +66,8 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     assertEquals(decide.owner, p1)
     assertEquals(decide.query, DecisionQuery.ChooseMany(1, 1, sites.map(site =>
       DecisionOption.Site(DecisionOptionRef.Site(site))),
-      decide.query.heading))
+      decide.query.heading,
+      confirm = Some(CountedConfirm("Place warbands at", "site", "sites"))))
 
     val done = Outcomes.finished(resume(atChoice, power, played, first.tree,
       Garrison.decisionId, chooseSites(brokenPeaks)))

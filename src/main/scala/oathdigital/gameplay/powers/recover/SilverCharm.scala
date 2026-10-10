@@ -53,7 +53,9 @@ final case class SilverCharm private (catalog: ExecutableCatalog)
         DecisionOption.Button(SilverCharm.die(index),
           SilverCharm.label(index, face))),
         heading = Some(SilverCharm.heading),
-        summary = Some(SilverCharm.summary)))))
+        summary = Some(SilverCharm.summary),
+        confirm = Some(CountedConfirm("Reroll", "die", "dice",
+          Some("Keep the roll")))))))
 
   /** The chosen dice, rerolled after the roll, and the line naming them.
     * The `Reroll` is a leaf, never inside a `BuildOps`, so the walker
