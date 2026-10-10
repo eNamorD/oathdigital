@@ -56,7 +56,7 @@ Task 1 amends the first two with the plan-time rulings, so read them again after
   - Then symlink the main checkout's `.tooling` into the worktree before the first `./sbtw`.
 - **Commit trailer:** the committing model's own `Co-Authored-By` line.
 - **Texts, exactly:**
-  - Spinning Bee's line: "Spinning Bee: Drawing from Cradle discard until Hearth card is drawn". No full stop.
+  - Spinning Bee's line: "Spinning Bee: Drawing from the Cradle discard until Hearth card is drawn". No full stop.
   - The Search line with nothing kept: "Drew {cards} from the Cradle discard and kept none".
   - Spinning Bee is unavailable once another modifier is picked: "Cannot be used with other Search modifiers".
   - Every other modifier is unavailable once Spinning Bee is picked: "Spinning Bee: You cannot use other Search modifiers."
@@ -78,7 +78,7 @@ Task 1 amends the first two with the plan-time rulings, so read them again after
 The product owner settled rulings 1 to 4 on 2026-10-09. Task 1 writes all of them into the spec.
 
 1. **The skipped source decision.** Spinning Bee's Transform at `SearchSourceSelection` replaces `search.source` with "Declare a suit". A Search past that point with no source answer draws from the actor's own region's discard pile (`SearchProcedure.sourcePicked`).
-2. **Spinning Bee's Game Log.** Its own line, "Spinning Bee: Drawing from Cradle discard until Hearth card is drawn", comes before the Search line. With no match, the Search line reads "Drew {cards} from the Cradle discard and kept none".
+2. **Spinning Bee's Game Log.** Its own line, "Spinning Bee: Drawing from the Cradle discard until Hearth card is drawn", comes before the Search line. With no match, the Search line reads "Drew {cards} from the Cradle discard and kept none".
 3. **Land Warden's seam.** The product owner asked for the design that holds up longest. The plan uses a card-play rule, not an `OptionRestriction` on the placement decision, because:
    - `CardPlayRules` is already the one place a power changes where a card may go. Card play reads nothing else and never names a power.
    - "When no site has room" depends on every slot the card has. Only `CardSlots`, which builds them all, can see that. A restriction judges one option at a time, so it would have to rebuild the slots.
@@ -190,7 +190,7 @@ its plan-time rulings are under "Slice 4". The per-card rulings are in
   discarded in draw order, where a Search discards the cards it does not
   keep. A Vision has no suit and never matches.
 - **The Game Log.** Spinning Bee's line, "Spinning Bee: Drawing from
-  Cradle discard until Hearth card is drawn", comes before the Search
+  the Cradle discard until Hearth card is drawn", comes before the Search
   line. With no match, the Search line ends "and kept none".
 - **Land Warden's seam is card play.** `CardPlayRules` is already where a
   power changes where a card may go, and only `CardSlots` sees every slot,
@@ -225,7 +225,7 @@ In the rulings appendix, under "## Slice 4: Search draws":
 2. Append to the Spinning Bee entry, after its last sub-bullet:
 
 ```markdown
-  - Its line, "Spinning Bee: Drawing from Cradle discard until Hearth
+  - Its line, "Spinning Bee: Drawing from the Cradle discard until Hearth
     card is drawn", comes before the Search line. With no match, the
     Search line reads "Drew {cards} from the Cradle discard and kept
     none".
@@ -592,7 +592,7 @@ object SpinningBeeCard extends Denizen(DenizenId("232"), "Spinning Bee", Suit.He
   *    discarded in draw order, where a Search discards the cards it does
   *    not keep. Nothing is kept.
   *
-  * Its line, "Drawing from Cradle discard until Hearth card is drawn",
+  * Its line, "Drawing from the Cradle discard until Hearth card is drawn",
   * comes before the draw.
   */
 final case class SpinningBee private (catalog: ExecutableCatalog)
@@ -684,7 +684,7 @@ final case class SpinningBee private (catalog: ExecutableCatalog)
         case _ => Right(Vector.empty)
     })
 
-  /** "Drawing from Cradle discard until Hearth card is drawn". */
+  /** "Drawing from the Cradle discard until Hearth card is drawn". */
   private def line(actor: PlayerId): Note = Note(id, states => for
     suit <- SpinningBee.declared(states.answered)
     region <- SearchProcedure.actorRegion(states.now, actor).toOption
@@ -702,9 +702,9 @@ object SpinningBee:
     * is unavailable once Spinning Bee is picked. */
   val alone: NoteKey = NoteKey("alone", Vector(
     NotePart.Text("You cannot use other Search modifiers.")))
-  /** "Drawing from {region} discard until {suit} card is drawn". */
+  /** "Drawing from the {region} discard until {suit} card is drawn". */
   val drawing: NoteKey = NoteKey("drawing", Vector(
-    NotePart.Text("Drawing from "), NotePart.Arg(0),
+    NotePart.Text("Drawing from the "), NotePart.Arg(0),
     NotePart.Text(" discard until "), NotePart.Arg(1),
     NotePart.Text(" card is drawn")))
 
@@ -1268,7 +1268,7 @@ class GameLogSearchKeepSuite extends munit.FunSuite:
     val lines = searchLines("spinning-bee", besideBee,
       Vector(SpinningBee.id), declaring(Suit.Order))
     val bee = lines.indexOf(
-      "Spinning Bee: Drawing from Cradle discard until Order card is drawn")
+      "Spinning Bee: Drawing from the Cradle discard until Order card is drawn")
     val drew = lines.indexWhere(_.startsWith("Drew "))
     assert(bee >= 0 && drew > bee, lines)
     assert(lines(drew).contains(" from the Cradle discard and kept "),
