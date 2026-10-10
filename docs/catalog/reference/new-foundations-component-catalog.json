@@ -4243,7 +4243,7 @@
       "defense": 2,
       "powers": [
         {
-          "id": "relic.keeping-banner",
+          "id": "relic.weeping-banner",
           "persistent": false,
           "rulesText": "[secret] The attacker **must** resolve another [skull] for each [skull] rolled."
         }

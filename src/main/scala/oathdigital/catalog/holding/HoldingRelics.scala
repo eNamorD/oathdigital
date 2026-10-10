@@ -88,13 +88,6 @@ object SpitefulMirrorCard extends Relic(RelicId("R41"), "Spiteful Mirror", value
       "muster are [suit-discord] cards.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object WeepingBannerCard extends Relic(RelicId("R42"), "Weeping Banner", value = 63, defense = 2):
-  val power = PrintedPower(PowerId("relic.keeping-banner"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "The attacker **must** resolve another [skull] for each " +
-      "[skull] rolled.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SigilOfTheEyeCard extends Relic(RelicId("R43"), "Sigil of the Eye", value = 66, defense = 1):
   val power = PrintedPower(PowerId("relic.sigil-of-the-eye"),
     persistent = false, cost = Cost.free,
