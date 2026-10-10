@@ -1,7 +1,8 @@
 # Catalog Batch 7: Campaign Dice
 
-**Status:** designed 2026-10-09. Slices 1, 2 and 3 are done; each slice's
-plan-time rulings are under it. The per-card rulings are in
+**Status:** designed 2026-10-09. Slices 1 to 4 are done; each slice's
+plan-time rulings are under it. The per-card
+rulings are in
 [the rulings appendix](2026-10-09-catalog-batch-7-rulings.md).
 
 **Builds on** [Catalog batch 4](2026-10-05-catalog-batch-4-design.md),
@@ -71,14 +72,22 @@ The approved changes outside `gameplay/powers/`:
   each unit costs and what the amount does, as Sticky Fire and Wild Mounts
   ask a `ChooseOne` after. An amount that costs secrets is priced "Cost: X
   secrets".
-- **Attack scoring fields** (slice 4). `AttackRules` gains the warbands a
-  skull kills (Weeping Banner) and the worth of a sacrificed warband
-  (Zealots). `CampaignBattle.result` reads the sacrifice's worth from the
-  chosen plans.
-- **A reordered battle** (slice 4). Careful Plans moves the defense roll and
-  its result ahead of the attack roll through an `OperationRewrite`.
+- **Attack scoring and the sacrifice's worth** (slice 4). `AttackRules`
+  gains the warbands a skull kills (Weeping Banner). A plan records what
+  each sacrificed warband adds in the Campaign pool
+  `campaign.sacrifice-worth` when it is applied (Zealots). The sacrifice
+  question, `CampaignBattle.result` and the Game Log read the pool, and
+  `CampaignResult` records the worth, which its attack total counts.
+- **A reordered battle** (slice 4). Careful Plans' rewrite at
+  `CampaignActionEligibility` puts the battle's five steps in one `Branch`,
+  chosen or not. When the plan was chosen, the branch walks the defense
+  roll and its result first.
+- **A warning on a battle plan** (slice 4). `CampaignPlanOffer.warning` is
+  shown beside an option its user can pay for, which stays choosable
+  (Zealots).
 
-The serialization codec gains `Reroll` and `SetDieFaces`. Its existing
+The serialization codec gains `Reroll`, `SetDieFaces` and the sacrifice's
+worth in a recorded `CampaignResult`. Its existing
 omission of `Roll`'s mode and window is left alone.
 
 ### Catalog corrections
@@ -276,6 +285,35 @@ possible.
 - **Hearts and Minds** is a defender plan that reuses `VictoriousNow`. At
   the end of the Campaign it is discarded unless its user holds the People's
   Favor then.
+
+### Plan-time rulings
+
+- **Careful Plans reshapes every Campaign.** A plan's rewrite gives the
+  root the same shape on every fold, so the battle's five steps always sit
+  in one `Branch`, found by the windows of the attack and defense results.
+  If the root's shape differs, the rewrite leaves it alone and Careful
+  Plans' suite fails; the fallback order hook then needs the product owner.
+  A game parked in a battle when the server updates may not resume.
+- **The sacrifice's worth is recorded.** `AttackRules` is a pure function
+  of the chosen plans, and Zealots' condition is fixed when it is chosen,
+  so Zealots records a worth of three in `campaign.sacrifice-worth` when it
+  is applied. `CampaignResult.sacrificeWorth` (1 by default) records it,
+  and `attackTotal` counts it. A stored result without it reads 1.
+- **A plan may carry a warning**, shown beside an option its user can pay
+  for. Zealots' reads "Zealots: Has no effect unless defending force is
+  larger than yours".
+- **The attack line counts losses.** "Attack: 3 with 3 skulls" counts the
+  warbands the skulls kill, so with Weeping Banner it can exceed the skulls
+  rolled. The words stay as they are.
+- **Bear Traps kills outside the force.** The committed force stays on
+  the board until the losses, so Bear Traps kills a warband beyond it. With
+  every warband committed, nothing dies.
+- **Signal Trees writes one line** covering the reveal and the discard,
+  and names no player. Each card is revealed on the next region's pile
+  after it moves there, since a card entering a pile is forgotten.
+- **Where they register.** Careful Plans and Hearts and Minds join
+  `PlanRewrites`, Weeping Banner `PlanRules`, and Zealots, Bear Traps and
+  Signal Trees `SimplePlans`. `VictoriousNow` gains a silent form.
 
 ## Seams used for the first time
 

@@ -11,7 +11,7 @@ specs.
 
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. **Phase - Catalog batch 7 -
-Campaign dice** is in progress: slice 1 has landed and slice 2 is planned.
+Campaign dice** has landed: all four of its slices are done.
 
 ## Next
 
@@ -118,7 +118,7 @@ and battle rewrites
 - [x] Slice 2: Recover rerolls (Silver Charm).
 - [x] Slice 3: amounts and fixed faces (Arcane Armor, Unstable Summon,
   Mountain Giant).
-- [ ] Slice 4: battle rewrites (Careful Plans, Weeping Banner, Zealots, Bear
+- [x] Slice 4: battle rewrites (Careful Plans, Weeping Banner, Zealots, Bear
   Traps, Signal Trees, Hearts and Minds).
 
 ### Phase - Catalog batch - engine-blocked

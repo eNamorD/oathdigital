@@ -21,10 +21,14 @@ enum HollowWorth:
   *    its swords (Outriders, The Great Levy, Kindred Warriors, Rangers).
   *  - `skullFacesScoreNothing`: War Tortoise used by the defender. Payable
   *    skulls still kill.
+  *  - `skullKills`: the warbands each skull kills, 2 with the defender's
+  *    Weeping Banner. The kills are capped by the force, and a skull face
+  *    scores only when all of its kills are paid.
   */
 final case class AttackRules(hollow: HollowWorth = HollowWorth.Half,
     skullSwords: Int = 2, doubled: Boolean = false,
-    skullsIgnored: Boolean = false, skullFacesScoreNothing: Boolean = false)
+    skullsIgnored: Boolean = false, skullFacesScoreNothing: Boolean = false,
+    skullKills: Int = 1)
 
 /** One plan's change to how the attack is scored: the plan's source as its
   * decision names it, the side that must have chosen it, and the change. */
@@ -47,8 +51,12 @@ object AttackScore:
     def count(face: AttackDieFace): Int = faces.count(_ == face) * times
     val hollow = count(AttackDieFace.HollowSword)
     val skulls = count(AttackDieFace.TwoSwordsSkull)
-    val lost = if rules.skullsIgnored then 0 else math.min(skulls, force)
-    val scoring = if rules.skullsIgnored then skulls else lost
+    val lost =
+      if rules.skullsIgnored then 0
+      else math.min(skulls * rules.skullKills, force)
+    val scoring =
+      if rules.skullsIgnored then skulls
+      else math.min(skulls, force / rules.skullKills)
     val hollowScore = rules.hollow match
       case HollowWorth.Half => hollow / 2
       case HollowWorth.Whole => hollow
@@ -79,7 +87,9 @@ object AttackScore:
     AttackChange(DecisionOptionRef.Denizen(KindredWarriorsCard.id),
       CampaignPlanSide.Attacker, ignored),
     AttackChange(DecisionOptionRef.Denizen(RangersCard.id),
-      CampaignPlanSide.Attacker, ignored))
+      CampaignPlanSide.Attacker, ignored),
+    AttackChange(DecisionOptionRef.Relic(WeepingBannerCard.id),
+      CampaignPlanSide.Defender, _.copy(skullKills = 2)))
 
   /** The rules of the plans chosen in `actor`'s Campaign. */
   def rules(ready: ReadyGame, pending: PendingTree, actor: PlayerId)

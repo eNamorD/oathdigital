@@ -105,7 +105,8 @@ class PlanOfferRestrictionSuite extends munit.FunSuite:
     val b = withSiteCard(base, base.origin, longbows)
     val applied = ModifyDicePool(CampaignPlans.appliedMarker(longbowsRef), 1)
     def ops(powers: Vector[ContributingPower]): Vector[CoreOperation] =
-      commit(rulesWith(powers, winningDice), b, 3).finishPlanWindows.ops
+      commit(rulesWith(powers, winningDice), b, 3,
+        powers = WalkerPowers(powers)).finishPlanWindows.ops
     assert(ops(Vector(Longbows)).contains(applied))
     assert(!ops(plansWith(ForbidsDefenderPlan(longbowsRef, noted = true)))
       .contains(applied))

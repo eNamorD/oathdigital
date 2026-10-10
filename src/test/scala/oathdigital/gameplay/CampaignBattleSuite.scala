@@ -46,3 +46,5 @@ class CampaignBattleSuite extends munit.FunSuite:
       "Sacrifice up to 1 warband for one attack each")
     assertEquals(CampaignBattle.sacrificeHeading(2),
       "Sacrifice up to 2 warbands for one attack each")
+    assertEquals(CampaignBattle.sacrificeHeading(2, worth = 3),
+      "Sacrifice up to 2 warbands for three attack each")

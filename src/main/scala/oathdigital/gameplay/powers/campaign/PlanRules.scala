@@ -15,7 +15,8 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * burnt at the end), Rusting Ray and Fae Battalion (the attack scored again),
   * War Tortoise (the attack or the defense scored again), Lancers (the attack
   * scored again and a discard at the end), Fearsome General (the attack scored
-  * again), Kindred Warriors and Rangers (the attack scored again), Mounted
+  * again), Weeping Banner (the attack scored again, two warbands lost per
+  * skull), Kindred Warriors and Rangers (the attack scored again), Mounted
   * Patrol (the attack pool halved before the roll and a discard at the end),
   * Shield Wall (the defender's whole force killed), Billowing Fog and Traveling
   * Doctor (the defeat's losses cancelled), Cursed Cauldron (warbands for the
@@ -47,6 +48,7 @@ object PlanRules:
       Vector(FaeBattalion) ++
       Vector(WarTortoise) ++
       Vector(Lancers.forCatalog(catalog)) ++
+      Vector(WeepingBanner) ++
       Vector(FearsomeGeneral) ++
       Vector(KindredWarriors.forCatalog(catalog)) ++
       Vector(Rangers) ++

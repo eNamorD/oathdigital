@@ -58,14 +58,6 @@ object VowOfDivisionCard extends Denizen(DenizenId("86"), "Vow of Division", Sui
       "burned by a raid targeting you.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object ZealotsCard extends Denizen(DenizenId("87"), "Zealots", Suit.Discord):
-  val power = PrintedPower(PowerId("denizen.zealots"),
-    persistent = false, cost = Cost(favor = 1),
-    text = "If the defending force is larger than your force, each " +
-      "warband you sacrifice will add three _(not one)_ to your " +
-      "attack.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object RoyalAmbitionsCard extends Denizen(DenizenId("88"), "Royal Ambitions", Suit.Discord) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.royal-ambitions"),
     persistent = false, cost = Cost.free,

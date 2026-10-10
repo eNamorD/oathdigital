@@ -14,7 +14,8 @@ import oathdigital.model._
   *  - A player asks a decision listing the plans still unchosen: those the
   *    user can pay for (a dry run of each says so, with every power's changes
   *    to its cost, and prices the option from what it recorded), the rest
-  *    shown unavailable with why, then "Finish". Nothing usable means nothing
+  *    shown unavailable with why, then "Finish". A plan its user can pay for
+  *    shows its offer's warning. Nothing usable means nothing
   *    is asked, the pass does nothing, and the `Repeat` ends.
   *  - The chosen plan is applied as a [[CampaignPlanApplication]].
   *  - A bandit defender applies every cost-free plan it is offered and can
@@ -46,6 +47,11 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
       : CampaignPlanApplication =
     new CampaignPlanApplication(catalog, setup, side, offered)
 
+  /** The option, with the offer's warning when it has one. */
+  private def warned(offered: OfferedPlan, option: DecisionOption)
+      : DecisionOption =
+    offered.offer.warning.fold(option)(DecisionOption.Warned(option, _))
+
   /** Bandits pay nothing, so a plan that costs is never applied, and neither is
     * one a power makes unpayable for them (a surcharge in secrets, which bandits
     * do not hold). A plan used alone (Code of Honor) is applied with no other
@@ -73,8 +79,8 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
       .map(offered => offered.offer.withheld match
         case Some(reason) => unavailable(offered, reason)
         case None => pass.applies(applicationOf(setup, offered)) match
-          case Right(operations) => PlanPrice.priced(
-            CampaignPlans.optionOf(offered), offered.offer, operations)
+          case Right(operations) => warned(offered, PlanPrice.priced(
+            CampaignPlans.optionOf(offered), offered.offer, operations))
           case Left(violation) =>
             unavailable(offered, OptionReason.Written(PlanPrice.shortfall(
               pass.state, user, offered.offer, violation))))

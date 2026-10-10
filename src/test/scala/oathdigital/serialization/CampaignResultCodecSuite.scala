@@ -40,3 +40,15 @@ class CampaignResultCodecSuite extends munit.FunSuite:
     assertEquals(GameEventWire.decode(json), Left(WireError.InvalidValue(
       "$.payload.ops[0].result.attackFaces[0]",
       "unknown attack die face 'not-a-face'")))
+
+  test("the sacrifice's worth round trips, and a record without it reads " +
+      "one"):
+    encodedStreamThatRoundTrips("campaign-result-worth", Vector(
+      recordedOperation("campaign",
+        RecordCampaignResult(conquest.copy(sacrificeWorth = 3)))))
+    def encoded = ujson.read(accepted(GameEventWire.encodeEvent(
+      "campaign-result", 0,
+      recordedOperation("campaign", RecordCampaignResult(conquest)))))
+    val older = encoded
+    older("payload")("ops")(0)("result").obj.remove("sacrificeWorth")
+    assertEquals(GameEventWire.decode(older), GameEventWire.decode(encoded))

@@ -116,12 +116,24 @@ object CampaignBattle:
     setup.force - ready.game.current.rollOutcomes.get(CampaignIds.attackPool)
       .fold(0)(_.skulls)
 
+  /** What each sacrificed warband adds to the attack: one, or what a plan
+    * recorded when it was applied (Zealots). */
+  def sacrificeWorth(ready: ReadyGame): Int =
+    ready.game.current.rollPools.get(CampaignIds.sacrificeWorth)
+      .fold(1)(_.count)
+
   /** The question alone. The dice, the attack total and the skull loss are
     * projected as a roll outcome and drawn as glyphs beside this, so writing
     * them here again would print the same facts twice, once as words.
     */
-  def sacrificeHeading(max: Int): String =
-    s"Sacrifice up to $max warband${if max == 1 then "" else "s"} for one attack each"
+  def sacrificeHeading(max: Int, worth: Int = 1): String =
+    s"Sacrifice up to $max warband${if max == 1 then "" else "s"} for " +
+      s"${worthWord(worth)} attack each"
+
+  private def worthWord(worth: Int): String = worth match
+    case 1 => "one"
+    case 3 => "three"
+    case other => other.toString
 
   /** The durable record of this battle, built from the recorded outcomes and
     * the answers, before any warband dies.
@@ -132,13 +144,14 @@ object CampaignBattle:
     val attack = outcomes.get(CampaignIds.attackPool)
     val defense = outcomes.get(CampaignIds.defensePool)
     val sacrificed = CampaignAnswers.sacrificed(pending)
+    val worth = sacrificeWorth(ready)
     val attackScore = attack.fold(0)(_.score)
     val defenseScore = defense.fold(0)(_.score)
     CampaignResult(setup.actor, setup.kind, setup.defender, setup.targetSites,
       setup.raidTargets, setup.force, attackFacesOf(ready), attackScore,
       attack.fold(0)(_.skulls), sacrificed,
       defense.toVector.flatMap(_.faces.collect { case face: DefenseDieFace => face }),
-      defenseScore, attackScore + sacrificed > defenseScore)
+      defenseScore, attackScore + sacrificed * worth > defenseScore, worth)
 
   /** Step 8: kill the defeated warbands. Attacker deaths are the skull and
     * sacrifice losses, plus half the survivors on a defeat; on a victory every

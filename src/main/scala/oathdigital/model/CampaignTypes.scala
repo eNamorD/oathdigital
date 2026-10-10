@@ -140,12 +140,16 @@ final case class PlanAmount(decisionId: String,
   * answer (Unstable Summon's X). The question's bounds are read when it is
   * asked, after the plan's fixed costs and any surcharge are paid (see
   * `PlanAmount`).
+  *
+  * `warning` is why a plan its user can pay for deserves a second look
+  * (Zealots, whose condition fails). The option shows it and stays
+  * choosable.
   */
 final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
     costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect],
     sides: Set[CampaignPlanSide] = Set.empty,
     withheld: Option[OptionReason] = None, alone: Boolean = false,
-    amount: Option[PlanAmount] = None)
+    amount: Option[PlanAmount] = None, warning: Option[OptionReason] = None)
 
 /** An offer with the power that made it. */
 final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)
@@ -160,6 +164,8 @@ final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)
   * board force. The attacker prevails when `attackTotal > defenseScore`, and
   * `attackerWins` records that fact: it is true for an attacker victory and
   * false for a defender victory, whichever side a battle plan's user is on.
+  * `sacrificeWorth` is what each sacrificed warband adds to the attack, three
+  * with Zealots.
   * A plan that decides the battle (Peace Envoy) sets it whatever the
   * scores, with nothing rolled.
   */
@@ -176,6 +182,7 @@ final case class CampaignResult(
     sacrificed: Int,
     defenseFaces: Vector[DefenseDieFace],
     defenseScore: Int,
-    attackerWins: Boolean
+    attackerWins: Boolean,
+    sacrificeWorth: Int = 1
 ):
-  def attackTotal: Int = attackScore + sacrificed
+  def attackTotal: Int = attackScore + sacrificed * sacrificeWorth

@@ -18,6 +18,10 @@ class AttackScoreSuite extends munit.FunSuite:
     Plan(CampaignPlanSide.Defender,
       DecisionOptionRef.Denizen(CatalogNames.denizen(name)))
 
+  private def relicDefender(name: String)(using munit.Location): Plan =
+    Plan(CampaignPlanSide.Defender,
+      DecisionOptionRef.Relic(CatalogNames.relic(name)))
+
   /** The rules once `plans` are chosen, folded from `AttackScore.changes` as
     * a Campaign folds them; fails if the scorer does not know a plan. */
   private def chosen(plans: Plan*)(using munit.Location): AttackRules =
@@ -85,3 +89,15 @@ class AttackScoreSuite extends munit.FunSuite:
     assertScores(Vector(TwoSwordsSkull, OneSword), 2,
       chosen(defender("War Tortoise"), attacker("Outriders")))(score = 1,
       lost = 0)
+
+  test("with the defender's Weeping Banner each skull kills two, capped by " +
+      "the force, and scores only when both are paid"):
+    val faces = Vector(TwoSwordsSkull, TwoSwordsSkull, OneSword)
+    val banner = relicDefender("Weeping Banner")
+    assertScores(faces, 4, chosen(banner))(score = 1 + 4, lost = 4)
+    // An odd force: the last warband dies and its skull scores nothing.
+    assertScores(faces, 3, chosen(banner))(score = 1 + 2, lost = 3)
+    assertScores(faces, 3, chosen(banner, attacker("Fearsome General")))(
+      score = 1 + 4, lost = 3)
+    assertScores(faces, 3, chosen(banner, attacker("Outriders")))(
+      score = 1 + 4, lost = 0)

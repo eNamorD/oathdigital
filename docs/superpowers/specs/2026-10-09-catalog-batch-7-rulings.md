@@ -102,19 +102,25 @@
   - when the attacker's skulls are ignored (Outriders and the like), nothing
     dies and every face scores as usual.
 
+  The Game Log's attack line counts the warbands the skulls kill, so
+  "Attack: 3 with 3 skulls" may follow two skulls rolled (plan-time ruling).
   It writes no line of its own.
 - **87 Zealots.** An attacker battle plan costing one favor. Its condition,
   the defending force larger than its user's force, is checked when the plan
   is chosen, comparing the committed force with the defending warbands then
-  (FAQ: later skull losses do not trigger it). While it holds, each
-  sacrificed warband adds three to the attack, and the sacrifice heading
-  says so. When the condition fails, the plan may still be chosen and does
-  nothing; it carries the warning "Zealots: Has no effect unless defending
-  force is larger than yours". It writes no line of its own.
+  (FAQ: later skull losses do not trigger it). While it holds, the
+  plan records a worth of three when it is applied, so each sacrificed
+  warband adds three to the attack, and the sacrifice heading says so:
+  "Sacrifice up to 2 warbands for three attack each". When the condition
+  fails, the plan may still be chosen and does nothing; its option carries
+  the warning "Zealots: Has no effect unless defending force is larger than
+  yours", and stays choosable. It writes no line of its own.
 - **3 Bear Traps.** A free defender battle plan. It removes one attack die
   and kills one warband on the attacker's board, not in the committed force.
-  With an empty board, nothing dies. A bandit defender applies it at a site
-  it rules. Line: "Bear Traps: Killed 1 warband on Blue's board."
+  The committed force stays on the board until the losses, so with no
+  warband beyond it, nothing dies and no line is written. A bandit
+  defender applies it at a site it rules. Line: "Bear Traps: Killed 1
+  warband on Blue's board."
 - **217 Signal Trees.** A battle plan for either side, costing one secret.
   - Its offer shows no dice change, since the cards it reads are hidden. The
     preview reads "±2 [attack-die] per revealed Beast".
@@ -126,8 +132,11 @@
   - The revealed cards are then discarded to the next region's discard
     pile, as every discard is.
 
-  Line: "Signal Trees: Revealed Wolves, Tavern Songs and Sacred Ground; 4
-  attack dice.", then the discard line.
+  Line (plan-time ruling, one line for the reveal and the discard):
+  "Signal Trees: Revealed and discarded Wolves, Tavern Songs and Sacred
+  Ground; added 4 attack dice." ("removed" for a defender), "Signal Trees:
+  Revealed and discarded …." with no Beast, and "Signal Trees: Nothing was
+  revealed." for an empty pile.
 - **138 Hearts and Minds.** A defender battle plan costing three favor. Its user is victorious now: nothing is rolled or
   sacrificed and the defender wins, through `VictoriousNow`. The defeated
   attacker's losses follow the printed rules: half the surviving force. At

@@ -26,6 +26,12 @@ object CampaignIds:
 
   val attackPool: PoolKey = PoolKey("campaign.attack")
   val defensePool: PoolKey = PoolKey("campaign.defense")
+
+  /** What each sacrificed warband adds, recorded by a plan when it is
+    * applied (Zealots); one while the pool is absent. It is never rolled,
+    * and it is cleared with the others when the Campaign ends. */
+  val sacrificeWorth: PoolKey = PoolKey("campaign.sacrifice-worth")
+
   val SupplyCost = 2
 
   /** The option that ends a plan window. */
