@@ -2,13 +2,16 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.actions.forge.ForgeProcedure
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ChoicePayload, DecisionQueries,
   ProcedureWalker, WalkerOutcome, WalkerPowers, WalkerStepPayload,
   WalkerStepRecorded}
 import oathdigital.model.DecisionAnswer.PartitionAnswer
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table, TestCards}
+import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{CatalogNames, EmptyWindowModifier, Look, Outcomes,
+  Table, TestCards}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
@@ -114,7 +117,8 @@ class ForgeProcedureSuite extends munit.FunSuite
       ProcedureWalker.advance(state, tree, None, noPowers))
     // The decision sits inside a `Branch` (its options are the eligible
     // targets, read live), so the park addresses the branch's selected child.
-    assertEquals(parked.tree.at, Vector("1", "0"))
+    // The Forge is the root's second child, after the modifier decision.
+    assertEquals(parked.tree.at, Vector("1", "1", "0"))
     AssignmentPark(parked.tree,
       foldRecordedOps(state, parked.events, "Forge supply payment"),
       parked.events.map(as[WalkerStepRecorded](_)))
@@ -218,14 +222,15 @@ class ForgeProcedureSuite extends munit.FunSuite
   // Tree shape and park.
   // ---------------------------------------------------------------------
 
-  test("a successful build roots at ForgeActionEligibility and pays one " +
-      "supply at a ForgeCost-windowed first leaf"):
+  test("a successful build's Forge sits at ForgeActionEligibility and pays " +
+      "one supply at a ForgeCost-windowed first leaf"):
     val f = forgeable
     val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
-
-    assertEquals(tree.window,
+    // The modifier decision comes first; the Forge is the second child.
+    val forge = tree.children(1)
+    assertEquals(forge.window,
       Some(PowerWindow.ForgeActionEligibility): Option[PowerWindow])
-    val first = tree.children.head
+    val first = forge.children.head
     assertEquals(first.window, Some(PowerWindow.ForgeCost): Option[PowerWindow])
     assertEquals(as[BuildOps](first).build(f.ready,
       PendingTree(Vector.empty, Vector.empty)),
@@ -234,12 +239,12 @@ class ForgeProcedureSuite extends munit.FunSuite
 
     // The walk records exactly that one leaf before parking. A windowed leaf
     // walks its own folded vector, so its node id sits one level deeper than
-    // an unwindowed sibling's would ("0.0", not "0") -- the same shape
+    // an unwindowed sibling's would ("1.0.0", not "1.0") -- the same shape
     // Recover's windowed head leaf records.
     val park = parkAtAssignment(f.ready, tree)
     val atPark = park.state
     val steps = park.steps
-    assertEquals(steps.map(_.nodeId), Vector("0.0"))
+    assertEquals(steps.map(_.nodeId), Vector("1.0.0"))
     assertEquals(steps.head.ops,
       Vector[CoreOperation](SpendSupply(actor, 1)))
     assertEquals(Look(atPark).supply(actor), SupplyTrack.Maximum - 1)
@@ -292,9 +297,10 @@ class ForgeProcedureSuite extends munit.FunSuite
         ForgeProcedure.build(altered, f.ready, actor))
       // The decision lives inside a `Branch`, so its absence shows as the
       // branch's absence from the root's children.
-      assertEquals(tree.children.collect { case branch: Branch => branch },
-        Vector.empty, s"a ${f.cost} Forge must declare no decision branch")
-      assertEquals(tree.children.size, 2)
+      assertEquals(tree.children(1).children.collect {
+        case branch: Branch => branch }, Vector.empty,
+        s"a ${f.cost} Forge must declare no decision branch")
+      assertEquals(tree.children(1).children.size, 2)
 
       // One command: no park, no answer, and the determined split applied.
       val finished = expectFinished(
@@ -304,7 +310,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       val section =
         if f.cost.favor > 0 then ForgeProcedure.favorSectionKey
         else ForgeProcedure.secretSectionKey
-      assertEquals(steps.map(_.nodeId), Vector("0.0", "1"))
+      assertEquals(steps.map(_.nodeId), Vector("1.0.0", "1.1"))
       assertEquals(steps(1).ops, f.targets.map(target =>
         expectedPayment(actor, target.denizenId, section)) :+
         Play(f.relic,
@@ -431,7 +437,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
       Location.PlayArea(actor), Orientation.FaceDown)
 
-    assertEquals(steps.map(_.nodeId), Vector("1.0", "2"))
+    assertEquals(steps.map(_.nodeId), Vector("1.1.0", "1.2"))
     assertEquals(steps.head.payload,
       ChoicePayload(ForgeProcedure.assignmentDecisionId,
         PartitionAnswer(legal), actor): WalkerStepPayload)
@@ -508,7 +514,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       resumed, pending, legalPlacements(f)))
     val finalState = finished.state
     val steps = finished.steps
-    assertEquals(steps.map(_.nodeId), Vector("1.0", "2"))
+    assertEquals(steps.map(_.nodeId), Vector("1.1.0", "1.2"))
     assertEquals(Look(finalState).supply(actor), 0)
     assertEquals(Look(finalState).player(actor).relics.last,
       RelicState(f.relic, Orientation.FaceDown, Tokens.empty))
@@ -566,22 +572,34 @@ class ForgeProcedureSuite extends munit.FunSuite
     case _: PrimitiveOperation => Vector(node)
     case _ => node +: node.children.flatMap(allNodes)
 
-  test("the tree windows exactly its root and its supply payment; every " +
-      "other node carries none"):
+  test("the tree windows exactly its modifier decision, the Forge and its " +
+      "supply payment; every other node carries none"):
     val f = forgeable
     val tree = accepted(ForgeProcedure.build(catalog, f.ready, actor))
     val windowed = allNodes(tree).filter(_.window.isDefined)
 
-    assertEquals(windowed.size, 2,
-      s"expected exactly 2 windowed nodes, found ${windowed.size}: $windowed")
+    assertEquals(windowed.size, 3,
+      s"expected exactly 3 windowed nodes, found ${windowed.size}: $windowed")
     assertEquals(windowed.map(_.window).toSet, Set[Option[PowerWindow]](
+      Some(PowerWindow.ForgeModifierSelection),
       Some(PowerWindow.ForgeActionEligibility), Some(PowerWindow.ForgeCost)))
-    assert(windowed.contains(tree),
-      "the tree root must carry ForgeActionEligibility")
+    assert(windowed.contains(tree.children(1)),
+      "the Forge, after the modifier decision, must carry " +
+        "ForgeActionEligibility")
     assertEquals(windowed.collect { case node: BuildOps => node.window },
       Vector(Some(PowerWindow.ForgeCost)),
       "exactly the supply-paying BuildOps carries ForgeCost -- the " +
         "completion BuildOps stays unwindowed")
+
+  test("a modifier for the Forge is asked about first, beside Start Forge"):
+    val powers = EmptyWindowModifier.powersFor(MajorActionType.Forge)
+    val board = forgeBoard().adviser(actor, "Tents").ready
+    val started = accepted(new OathRules(catalog, walkerPowerCatalog = powers)
+      .startWalker(Ready(board), ActionRef.Forge, actor))
+    assertEquals(
+      EmptyWindowModifier.parkedWithFirstOption(started.state, powers),
+      ("forge.modifiers", Some(DecisionOption.Button(ModifierPicks.start,
+        "Start Forge"))))
 
 object ForgeProcedureSuite:
   /** The board every test starts from, plus the facts a legal answer is

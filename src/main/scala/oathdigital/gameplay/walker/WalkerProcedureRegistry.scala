@@ -204,7 +204,8 @@ object WalkerProcedureRegistry:
       build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
         args).flatMap(_ => ForgeProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
-        args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, activePlayer))),
+        args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, activePlayer)),
+      choosesModifiers = true),
 
     /** Travel asks for its modifiers, then parks on its destination (travel
       * destination design; modifier walker design). Nothing runs before
@@ -249,8 +250,8 @@ object WalkerProcedureRegistry:
       requiresPlayableOption = true,
       choosesModifiers = true),
 
-    /** Challenge. Its first step spends the Supply, so a start runs an
-      * operation before its first decision and cannot use the playable-option
+    /** Challenge. Its first step after the modifier decision spends the
+      * Supply, so a start runs an operation before its first decision and cannot use the playable-option
       * preview gate; the banner decision's own option filter is the gate.
       */
     ActionRef.Challenge -> Entry(
@@ -258,7 +259,8 @@ object WalkerProcedureRegistry:
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.ChallengeModifierSelection),
       build = ChallengeProcedure.build,
-      rebuild = ChallengeProcedure.rebuild),
+      rebuild = ChallengeProcedure.rebuild,
+      choosesModifiers = true),
 
     /** Place Banner Resource is not a major action: it has no fallback kind
       * and, like Take Wealth, no modifier window.
@@ -292,7 +294,8 @@ object WalkerProcedureRegistry:
       modifierWindow = Some(PowerWindow.CampaignModifierSelection),
       build = CampaignProcedure.build,
       rebuild = CampaignProcedure.rebuild,
-      rollFeedback = CampaignProcedure.rollFeedback),
+      rollFeedback = CampaignProcedure.rollFeedback,
+      choosesModifiers = true),
 
     /** Batch-1 Task 7, and the first entry for an action outside the Act
       * phase. Nothing here says so: the phase is a gate inside

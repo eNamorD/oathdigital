@@ -3,6 +3,7 @@ package oathdigital.gameplay.actions.forge
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.OathLifecycle
+import oathdigital.gameplay.walker.ModifierChoice
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.PartitionAnswer
 
@@ -12,21 +13,24 @@ import oathdigital.model.DecisionAnswer.PartitionAnswer
   * generic walker:
   *
   * {{{
-  * Sequence(                                  // window = ForgeActionEligibility
-  *   BuildOps(SpendSupply(actor, 1)),        // window = ForgeCost
-  *   Branch(-> Decide("forge.assignment")),   // mixed printed cost only
-  *   BuildOps(one PayCost per placed resource,
-  *            Play(relic-deck top -> play area, FaceDown)))
+  * Sequence(
+  *   Repeat(ModifierChoice),                    // the modifiers, one per
+  *                                              // pass, then "Start Forge"
+  *   Sequence(                                  // window = ForgeActionEligibility
+  *     BuildOps(SpendSupply(actor, 1)),        // window = ForgeCost
+  *     Branch(-> Decide("forge.assignment")),   // mixed printed cost only
+  *     BuildOps(one PayCost per placed resource,
+  *              Play(relic-deck top -> play area, FaceDown))))
   * }}}
   *
-  * Windows: the root carries `ForgeActionEligibility` (eligibility-shaped
+  * Windows: the Forge itself, the root's second child, carries
+  * `ForgeActionEligibility` (eligibility-shaped
   * restrictions/relaxations gather there) and the supply payment carries
   * `ForgeCost`. `SpendSupply` is a bare `PrimitiveOperation` with no window
   * field of its own, so the payment is stated as a `BuildOps` whose window
   * hooks the node -- the same shape Recover's relic move uses at
-  * `RecoverAfterRelic`. `ForgeModifierSelection` is not a tree node: it is the
-  * window a player-selected power is offered at, answered by `StartWalker`'s
-  * `modifiers`. No other node carries a window.
+  * `RecoverAfterRelic`. The modifier decision carries
+  * `ForgeModifierSelection`. No other node carries a window.
   *
   * Start gates are `ForgeRules.validate` unchanged -- the
   * actor ruling their pawn site, a printed Forge cost totalling three
@@ -167,13 +171,24 @@ object ForgeProcedure:
     */
   def parks(cost: Tokens): Boolean = cost.favor > 0 && cost.secrets > 0
 
+  /** "Start Forge": the modifier decision's button. */
+  val startLabel: String = "Start Forge"
+
+  /** The modifier decision, then the Forge. No power selects at
+    * `ForgeModifierSelection` yet, so the decision asks nothing; a power
+    * that does needs no change here. */
+  private def tree(actor: PlayerId, cost: Tokens): Operation =
+    val rest = forging(actor, cost)
+    Sequence(Vector(ModifierChoice.loop(actor,
+      PowerWindow.ForgeModifierSelection, rest, startLabel), rest))
+
   /** The tree closes only over command-stable data (the actor and the printed
     * cost), so the walker re-derives an identical tree every command (spec
     * decision S1). Everything state-dependent -- which denizens are eligible,
     * which relic is on top of the deck -- is read off `ready` when the node
     * it belongs to runs.
     */
-  private def tree(actor: PlayerId, cost: Tokens): Operation =
+  private def forging(actor: PlayerId, cost: Tokens): Operation =
     val total = cost.favor + cost.secrets
 
     val sections = Vector(

@@ -5,6 +5,7 @@ import oathdigital.gameplay.CampaignFixture.{Board, actorRules, board, on,
   withRelic, withRelicFor, withSecrets, withSiteCard}
 import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds,
   CampaignProcedure, CampaignSetup}
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
@@ -12,8 +13,8 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  PhasePowerHarness, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, EmptyWindowModifier,
+  Look, Outcomes, PhasePowerHarness, Table}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** Campaign through the rules, as a client drives it. */
@@ -586,3 +587,15 @@ class CampaignProcedureSuite extends munit.FunSuite:
       DecisionOptionRef.Banner(Banner.PeoplesFavor) ->
         "Not held by the defender",
       DecisionOptionRef.Banner(Banner.DarkestSecret) -> "You hold this banner"))
+
+  test("a modifier for the Campaign is asked about first, beside Start " +
+      "Campaign"):
+    val powers = EmptyWindowModifier.powersFor(MajorActionType.Campaign)
+    val b = board(warbands = 5, supply = 7)
+    val withTents = on(b)(_.adviser(b.actor, "Tents"))
+    val started = accepted(new OathRules(catalog, walkerPowerCatalog = powers)
+      .startWalker(Ready(withTents.ready), ActionRef.Campaign, b.actor))
+    assertEquals(
+      EmptyWindowModifier.parkedWithFirstOption(started.state, powers),
+      ("campaign.modifiers", Some(DecisionOption.Button(ModifierPicks.start,
+        "Start Campaign"))))
