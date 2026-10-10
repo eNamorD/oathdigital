@@ -4,8 +4,6 @@ import oathdigital.model._
 
 sealed trait GameCommand extends Product with Serializable
 object GameCommand:
-  final case class WithModifiers(command: GameCommand,
-      ordered: Vector[OrderedRuleInvocation]) extends GameCommand
   final case class Begin(chronicle: Chronicle, orders: SetupOrders)
       extends GameCommand
   final case class StartWalker(procedure: StartableRef, start: StartPayload)
@@ -61,7 +59,6 @@ object GameCommand:
     * journal still begins with `GameStarted`; an Undo or a Redo appends its
     * marker alone. */
   def issuer(command: GameCommand): Option[PlayerId] = command match
-    case WithModifiers(inner, _) => issuer(inner)
     case Begin(_, _) => None
     case StartWalker(_, start) => Some(start.actor)
     case ResolveWalker(actor, _) => Some(actor)
@@ -78,25 +75,17 @@ object GameCommand:
     case Redo(_) => None
     case _: ConsentCommand => None
 
-/** Generic action-start data. Action-specific starts may widen this family
-  * when another walker procedure needs more than its actor.
+/** Generic action-start data: who starts, and what they selected before
+  * the action started.
   *
-  * `modifiers` (Task 4) is the ordered list of player-selected power ids the
-  * client chose before starting the action -- e.g. answering Recover's
-  * `RecoverModifierSelection` window. An empty vector means "no modifiers",
-  * which is every walker Recover today; `OathRules.startWalker` validates
-  * every id against the audited catalog before walking.
-  */
-/** `startArgs` (batch-1 Task 5) is what the player selected before the
-  * action started, for an action whose tree needs it -- Travel's destination
-  * is the only one today. They are the same `DecisionOptionRef`s a decision
-  * option names, and the command layer does not interpret them:
-  * `OathRules.startWalker` hands them to the registered action's own builder,
-  * which rejects a shape it did not ask for. Empty is every Recover and every
-  * Forge.
+  * `startArgs` (batch-1 Task 5) is that selection, for an action whose tree
+  * needs it. They are the same `DecisionOptionRef`s a decision option names,
+  * and the command layer does not interpret them: `OathRules.startWalker`
+  * hands them to the registered action's own builder, which rejects a shape
+  * it did not ask for. A start names no modifiers: the action asks for them
+  * inside the walk (modifier walker design).
   */
 final case class StartPayload(actor: PlayerId,
-    modifiers: Vector[PowerId] = Vector.empty,
     startArgs: Vector[DecisionOptionRef] = Vector.empty)
 
 /** One answer to the currently parked generic walker decision. */

@@ -23,7 +23,7 @@ class CampaignConsentServiceSuite extends munit.FunSuite:
   private val request = ConsentRequest(p1, CampaignIds.targets, deepWoodsRef,
     Vector(ConsentAsk(p2, Vector(pass))))
   private val startCampaign = GameCommand.StartWalker(ActionRef.Campaign,
-    StartPayload(p1, Vector.empty, Vector.empty))
+    StartPayload(p1))
   private val requestWoods = GameCommand.RequestConsent(p1,
     CampaignIds.targets, deepWoodsRef)
   private val projector = new GameProjector(catalog)

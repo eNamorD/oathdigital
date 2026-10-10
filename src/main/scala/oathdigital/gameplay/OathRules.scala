@@ -158,13 +158,13 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean =
     PhasePowerProcedure.usable(catalog, ready, player, phasePowerCatalog,
-      walkerPowers(ready, player, Vector.empty)).nonEmpty
+      walkerPowers).nonEmpty
 
   protected def wakeOptionOpen(ready: ReadyGame, player: PlayerId): Boolean =
     PhasePowerProcedure.usable(catalog, ready, player, phasePowerCatalog,
-      walkerPowers(ready, player, Vector.empty))
+      walkerPowers)
       .nonEmpty || TakeWealthProcedure.candidates(catalog, ready, player,
-        walkerPowers(ready, player, Vector.empty)).nonEmpty
+        walkerPowers).nonEmpty
 
   /** The boundary decides only WHETHER the title changes; the triggered
     * procedure performs the change, so every title change is one walker step.

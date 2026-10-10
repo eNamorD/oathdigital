@@ -61,9 +61,8 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
 
   /** Batch-1 Task 1: the modifier-selection window is per-action registry
     * data, alongside `fallbackKind`/`rollDecisionId`. Recover declares the
-    * window both `OathRules.offerableWalkerPowers` and
-    * `validateModifiers` used to name as a literal, so its behaviour is
-    * unchanged by construction.
+    * window `OathRules.offerableWalkerPowers` used to name as a literal, so
+    * its behaviour is unchanged by construction.
     */
   test("modifierWindow reads the registered entry, and an unregistered " +
       "action is a typed Left"):

@@ -44,35 +44,6 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     assertEquals(after.game.current.turn.phase, Phase.Wake)
     assertNotEquals(after.game.current.turn.activePlayer, active)
 
-  test("major-action preview is stateless stale-safe and rejects unavailable modifiers"):
-    // p1 holds a facedown adviser and starts in Wake, so ending Wake gives
-    // the stream a record to be stale against.
-    val table = Table.start.turn(p1, Phase.Wake)
-      .adviser(p1, "Wizard's Conclave", facedown = true)
-    val (service, repository) = table.service()
-    val actor = p1
-    val act = accepted(
-      service.handle("game-preview", 0L, GameCommand.EndWake(actor)))
-    val before = loaded(repository.load("game-preview")).records
-    val preview = accepted(service.preview("game-preview", act.nextSequence,
-      actor, oathdigital.model.ActionKind.Travel, Vector.empty))
-    assertEquals(preview.loaded.nextSequence, act.nextSequence)
-    assertEquals(loaded(repository.load("game-preview")).records, before)
-    assert(service.preview("game-preview", act.nextSequence - 1, actor,
-      oathdigital.model.ActionKind.Travel, Vector.empty).left.toOption
-      .exists(_.isInstanceOf[GameApplicationError.StaleClientPosition]))
-    val forged = oathdigital.model.OrderedRuleInvocation(
-      oathdigital.model.RuleSourceRef.GameRule("forged"), "unknown")
-    assert(service.preview("game-preview", act.nextSequence, actor,
-      oathdigital.model.ActionKind.Travel, Vector(forged)).isLeft)
-    assert(service.handle("game-preview", act.nextSequence,
-      GameCommand.WithModifiers(playFacedownAdviser(actor),
-        Vector(forged))).isLeft)
-    val challenge = accepted(service.preview("game-preview", act.nextSequence,
-      actor, oathdigital.model.ActionKind.Challenge, Vector.empty))
-    assertEquals(challenge.options, Vector.empty)
-    assertEquals(challenge.ignored, Vector.empty)
-
   test("minor adviser action persists and reloads through authoritative replay"):
     val table = Table.start.adviser(p1, "Wizard's Conclave", facedown = true)
     val (service, repository) = table.service()

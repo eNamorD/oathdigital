@@ -361,8 +361,7 @@ private[frontend] object ServerUiSupport:
     banner
 
   private def takeWealth(resource: String): GameCommand =
-    GameCommand.StartWalker("take-wealth", Vector.empty,
-      Vector(WalkerStartArgWire("button", resource)))
+    GameCommand.StartWalker("take-wealth", Vector(WalkerStartArgWire("button", resource)))
 
   private[frontend] def takeWealthActions(
       value: GameProjection,

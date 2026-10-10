@@ -92,15 +92,11 @@ final case class WalkerStepRecorded(
   * resume commands can rebuild the correct tree after reload -- one of the
   * three [[oathdigital.model.ProcedureRef]] families (Task 4), tagged with its family on the
   * wire so a decoder rejects a reference read back under the wrong one.
-  * `modifiers` (fix-round ruling I) is the player-selected power ids chosen
-  * when the walker procedure started, carried on every park of this
-  * procedure so replay restores `CurrentGameState.walkerModifiers` from this
-  * fact alone, without re-running the walker or re-deriving anything.
-  * `startArgs` (batch-1 Task 5) is carried on every park for exactly the
-  * same reason: a procedure whose tree needs what the player selected at the
-  * start cannot rebuild that tree without it, and a selection -- unlike the
-  * actor's pawn site -- is a choice, not a state read. Empty for the
-  * procedures that select nothing, which is every one that parks today.
+  * `startArgs` (batch-1 Task 5) is carried on every park because a procedure
+  * whose tree needs what the player selected at the start cannot rebuild
+  * that tree without it, and a selection -- unlike the actor's pawn site --
+  * is a choice, not a state read. Empty for the procedures that select
+  * nothing, which is every one that parks today.
   * `startFacts` is what the engine derived at the start, carried for the same
   * reason: a fact the walk itself changes (Travel's source site) cannot be
   * read back from state on a resume.
@@ -109,7 +105,6 @@ final case class WalkerParked(
     procedure: ProcedureRef,
     at: Vector[String],
     answered: Vector[Answered],
-    modifiers: Vector[PowerId],
     startArgs: Vector[DecisionOptionRef],
     startFacts: Vector[DecisionOptionRef] = Vector.empty
 ) extends WalkerEvent

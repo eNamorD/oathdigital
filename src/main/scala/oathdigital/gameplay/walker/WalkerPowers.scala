@@ -17,7 +17,7 @@ import oathdigital.model.{Answered, OperationRestriction, PowerId,
   * it off for a dry run inside a search, so that run never searches in turn.
   *
   * `restrictionSet` is the catalog's global operation restrictions and
-  * `modifiers` the powers selected for this command. Together with the
+  * `modifiers` the modifiers picked so far. Together with the
   * offered powers' own restrictions they make `operationRestrictions`, which
   * every walker step runs with (global operation restrictions design).
   * `pool` is the full catalog a selection was made from, so the modifiers a
@@ -74,12 +74,12 @@ object WalkerPowers:
 
   /** Powers offered to one command out of a full catalog: an `Automatic`
     * power fires unconditionally; a `PlayerSelected` power fires only when
-    * its id appears in `modifiers`. Shared by `OathRules.walkerPowers`
-    * (command time) and `WalkerDecisionProjector` (park-time projection) so
-    * both always fold a shared window identically (Task 5 projector seam).
-    * The modifiers are kept, so the active-modifier restriction sees them
-    * from the action's first walk. The engine's follow-up waiver is always
-    * offered; it applies only to a run started from the queue.
+    * its id appears in `modifiers`, the picks. Shared by
+    * `OathRules.walkerPowers` (command time) and `WalkerDecisionProjector`
+    * (park-time projection) so both fold a shared window identically. The
+    * modifiers are kept, so the active-modifier restriction sees them. The
+    * engine's follow-up waiver is always offered; it applies only to a run
+    * started from the queue.
     */
   def selected(catalog: WalkerPowers, modifiers: Vector[PowerId]): WalkerPowers =
     catalog.copy(powers = catalog.powers.filter(power =>

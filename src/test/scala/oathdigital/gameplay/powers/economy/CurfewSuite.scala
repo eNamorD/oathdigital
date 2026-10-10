@@ -60,7 +60,7 @@ class CurfewSuite extends munit.FunSuite:
   private def tradedToStep(ready: ReadyGame)(using munit.Location)
       : OathTransition =
     val started = accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1,
-      Vector.empty, Vector(DecisionOptionRef.Button("favor"))))
+      Vector(DecisionOptionRef.Button("favor"))))
     val picked = accepted(rules.resolveWalker(started.state, p1,
       TradeProcedure.decisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(wrestlers))))
@@ -140,7 +140,7 @@ class CurfewSuite extends munit.FunSuite:
     // A Trade for secrets takes 2 favor before Curfew's toll.
     val ready = rivalRulesBoth.favor(p1, 2).ready
     val started = accepted(rules.startWalker(Ready(ready), ActionRef.Trade, p1,
-      Vector.empty, Vector(DecisionOptionRef.Button("secret"))))
+      Vector(DecisionOptionRef.Button("secret"))))
     val picked = accepted(rules.resolveWalker(started.state, p1,
       TradeProcedure.decisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(wrestlers))))

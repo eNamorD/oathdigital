@@ -8,15 +8,12 @@ class CommandProtocolSuite extends munit.FunSuite:
   private val examples: Vector[GameIntent] = Vector(
     EndWake, BeginRest, FinishRest, SkipFollowUp, Undo, Redo,
     UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92")),
-    StartWalker("search", Vector.empty,
-      Vector(WalkerStartArgWire("button", "search:world"))),
-    StartWalker("play-facedown-adviser", Vector.empty,
-      Vector(WalkerStartArgWire("denizen", "d1"))),
+    StartWalker("search", Vector(WalkerStartArgWire("button", "search:world"))),
+    StartWalker("play-facedown-adviser", Vector(WalkerStartArgWire("denizen", "d1"))),
     PeekSiteRelics,
     RevealOwnedRelic("r1"), MoveWarbands(toSite = true, 2),
-    StartWalker("campaign", Vector.empty),
-    StartWalker("recover", Vector.empty),
-    StartWalker("recover", Vector("denizen.catacombs")),
+    StartWalker("campaign"),
+    StartWalker("recover"),
     RollWalker("recover.pool"),
     ResolveWalker("recover.choice",
       DecisionAnswerWire.ChooseOneWire("button", "continue")),
@@ -24,7 +21,7 @@ class CommandProtocolSuite extends munit.FunSuite:
       DecisionAnswerWire.ChooseOneWire("button", "stop")),
     ResolveWalker("recover.relic",
       DecisionAnswerWire.ChooseOneWire("relic", "relic-1")),
-    StartWalker("forge", Vector.empty),
+    StartWalker("forge"),
     ResolveWalker("forge.assignment", DecisionAnswerWire.PartitionWire(
       Vector(DecisionPlacementWire("denizen", "d1", "pay-favor"),
         DecisionPlacementWire("denizen", "d2", "pay-favor"),
@@ -105,25 +102,12 @@ class CommandProtocolSuite extends munit.FunSuite:
     // (batch-1 Task 5), so the path a malformed one reports moved with it --
     // still exact, and now indexed because a selection is a list.
     val missing = """{"expectedNextSequence":8,"intent":{"type":"startWalker",""" +
-      """"action":"travel","modifiers":[],"startArgs":[{"optionKind":"site"}]}}"""
+      """"action":"travel","startArgs":[{"optionKind":"site"}]}}"""
     assertEquals(rejected(ActorlessCommandCodec.decode(missing)).path,
       "$.intent.startArgs[0].optionId")
     val duplicate = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker","decisionId":"negotiation.deal","payload":{"kind":"propose-terms","terms":{"transfers":[{"recipientPlayerId":"p2","favor":1,"relicIds":[]},{"recipientPlayerId":"p2","favor":2,"relicIds":[]}],"disclosures":[]}}}}"""
     assertEquals(rejected(ActorlessCommandCodec.decode(duplicate)).path,
       "$.intent.payload.terms.transfers")
-
-  test("ordered modifier transport preserves click order and rejects duplicates"):
-    val modifiers = Vector(
-      ModifierInvocation("adviser", "d2", None, "denizen.second"),
-      ModifierInvocation("site-card", "d1", Some("s1"), "denizen.first"))
-    val request = ActorlessCommandRequest(9, StartWalker("travel",
-      Vector.empty, Vector(WalkerStartArgWire("site", "s2"))), modifiers)
-    assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(request)),
-      Right(request))
-    val duplicate = request.copy(orderedModifiers = Vector(modifiers.head,
-      modifiers.head))
-    assertEquals(rejected(ActorlessCommandCodec.decode(
-      ActorlessCommandCodec.encode(duplicate))).path, "$.orderedModifiers")
 
   test("an unknown decision-payload kind decodes to a typed error, not an exception"):
     val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
@@ -163,39 +147,14 @@ class CommandProtocolSuite extends munit.FunSuite:
     assertEquals(rejected(ActorlessCommandCodec.decode(json)).path,
       "$.intent.payload.amounts")
 
+  test("a start no longer carries modifiers: the key is an unexpected field"):
+    val json = """{"expectedNextSequence":0,"intent":{"type":"startWalker",""" +
+      """"action":"recover","modifiers":[]}}"""
+    assertEquals(rejected(ActorlessCommandCodec.decode(json)),
+      ProtocolDecodeFailure.UnexpectedField("$.intent.modifiers"))
+
   test("an unknown walker intent type is rejected without throwing"):
     val json = """{"expectedNextSequence":0,"intent":{"type":"teleportWalker"}}"""
     val failure = rejected(ActorlessCommandCodec.decode(json))
     assertEquals(failure.path, "$.intent.type")
     assert(failure.message.contains("unknown intent type"))
-
-  test("a major-action preview request and response round trip"):
-    val request = MajorActionPreviewRequest(7, "trade",
-      Map("resource" -> "favor"), Vector(
-        ModifierInvocation("adviser", "d2", None, "denizen.second")))
-    assertEquals(MajorActionPreviewCodec.decode(
-      MajorActionPreviewCodec.encodeRequest(request)), Right(request))
-    val response = MajorActionPreviewResponse(7, "trade",
-      Vector(PreviewModifier("adviser:p1:d2", "denizen.second", "Second")),
-      Vector(PreviewIgnoredRule("site-card:s1:d1", "denizen.first", "start",
-        "not implemented")))
-    assertEquals(MajorActionPreviewCodec.decodeResponse(
-      MajorActionPreviewCodec.encode(response)), Right(response))
-
-  test("a preview modifier round-trips its printed cost"):
-    val response = MajorActionPreviewResponse(4L, "recover",
-      Vector(PreviewModifier("site-card:s1:d201", "denizen.catacombs",
-        "Catacombs", cost = Some("1 secret"))), Vector.empty)
-    assertEquals(MajorActionPreviewCodec.decodeResponse(
-      MajorActionPreviewCodec.encode(response)), Right(response))
-
-  test("a preview modifier round-trips its card and the action it modifies"):
-    val card = oathdigital.protocol.projection.CardDetailsProjection(
-      "denizen:vow-of-peace", "denizen", "Vow of Peace",
-      suit = Some("order"), orientation = Some("face-up"))
-    val response = MajorActionPreviewResponse(4L, "travel",
-      Vector(PreviewModifier("adviser:p1:denizen:vow-of-peace",
-        "denizen.vow-of-peace", "Vow of Peace", Some(card), Some("travel"))),
-      Vector.empty)
-    val json = MajorActionPreviewCodec.encode(response)
-    assertEquals(MajorActionPreviewCodec.decodeResponse(json), Right(response))

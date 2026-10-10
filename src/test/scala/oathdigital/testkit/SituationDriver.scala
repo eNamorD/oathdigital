@@ -118,8 +118,7 @@ object SituationDriver:
     * `GameApplicationService.applyCommand` accepts and dispatching them the
     * same way; a rejection's wording may differ. Search needs no draw port
     * here: the service only checks its port against `SearchRules.draw`.
-    * `WithModifiers` is not supported, since checking its modifiers is the
-    * service's. An `Arrange` is applied through `OathRules.evolve`, the
+    * An `Arrange` is applied through `OathRules.evolve`, the
     * replay path.
     */
   final case class Rules(catalog: ExecutableCatalog, walkerPowers: WalkerPowers,
@@ -141,9 +140,6 @@ object SituationDriver:
 
     protected def apply(from: Situation, step: Step)
         : Either[String, Situation] = step match
-      case Step.Command(_: GameCommand.WithModifiers) => Left(
-        "the rules adapter does not check ordered modifiers; issue " +
-          "WithModifiers through the journaled adapter")
       case Step.Command(command) => transition(from.state, command)
         .left.map(_.toString).map(result => advanced(from, result.state,
           result.events, opening(command)))
@@ -162,13 +158,10 @@ object SituationDriver:
 
     private def transition(state: OathState, command: GameCommand)
         : Either[OathViolation, OathTransition] = command match
-      case command: GameCommand.WithModifiers => Left(
-        OathViolation.InvalidModifierInvocation(s"unsupported: $command"))
       case GameCommand.Begin(chronicle, orders) =>
         rules.beginGame(state, chronicle, orders)
       case GameCommand.StartWalker(procedure, start) =>
-        rules.startWalker(state, procedure, start.actor, start.modifiers,
-          start.startArgs)
+        rules.startWalker(state, procedure, start.actor, start.startArgs)
       case GameCommand.ResolveWalker(actor, decision) =>
         rules.resolveWalker(state, actor, decision.decisionId,
           decision.answer)
@@ -188,7 +181,7 @@ object SituationDriver:
       case GameCommand.SkipFollowUp(player) => rules.skipFollowUp(state, player)
       case GameCommand.UsePower(player, power, source) =>
         rules.startWalker(state, ActionRef.UsePower(power), player,
-          Vector.empty, Vector(source))
+          Vector(source))
       case GameCommand.PeekSiteRelics(player) =>
         rules.handle(state, MinorActionCommand.PeekSiteRelics(player))
       case GameCommand.RevealOwnedRelic(player, relic) =>

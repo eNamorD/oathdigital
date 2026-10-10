@@ -30,16 +30,13 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
         "step" -> encodeStepPayload(payload),
         "ops" -> ujson.Arr.from(ops.map(encodeOperation)),
         "contributions" -> stringArray(contributions.map(_.value)))
-    case WalkerParked(procedure, at, answered, modifiers, startArgs,
-        startFacts) =>
+    case WalkerParked(procedure, at, answered, startArgs, startFacts) =>
       ujson.Obj(
         "procedure" -> encodeProcedure(procedure),
         "at" -> stringArray(at),
         "answered" -> ujson.Arr.from(answered.map(encodeAnswered)),
-        "modifiers" -> stringArray(modifiers.map(_.value)),
-        // Always written, empty for an action that selects nothing, exactly
-        // as `modifiers` is. A park written before batch-1 Task 5 has no such
-        // key at all, and `decodeParked` reads a missing key as empty.
+        // Always written, empty for an action that selects nothing. A park
+        // written before batch-1 Task 5 has no such key at all, and `decodeParked` reads a missing key as empty.
         "startArgs" -> ujson.Arr.from(startArgs.map(
           DecisionAnswerCodec.encodeRef)),
         // Read the same way: a park written before start facts has none.
@@ -255,12 +252,10 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     answered <- traverse(value("answered").arr.zipWithIndex.toVector):
       case (answer, index) => decodeAnswered(answer,
         s"$path.answered[$index]")
-    modifiers = value("modifiers").arr.toVector.map(id => PowerId(id.str))
     startArgs <- decodeRefs(value, "startArgs", s"$path.startArgs")
     startFacts <- decodeRefs(value, "startFacts", s"$path.startFacts")
   yield WalkerParked(procedure,
-    value("at").arr.toVector.map(_.str), answered, modifiers, startArgs,
-    startFacts)
+    value("at").arr.toVector.map(_.str), answered, startArgs, startFacts)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker park"))) }
 

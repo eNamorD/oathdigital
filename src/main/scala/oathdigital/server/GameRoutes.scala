@@ -19,8 +19,6 @@ import oathdigital.application.{
   GameCommand,
   GameIntentMapper
 }
-import oathdigital.protocol.{MajorActionPreviewRequest, MajorActionPreviewResponse,
-  PreviewIgnoredRule}
 import oathdigital.protocol.projection.{GameProjection, LogPageCodec,
   LogPageWire}
 import oathdigital.model.PlayerId
@@ -35,7 +33,6 @@ private[server] object CommandRejectionMessage:
         s"required Supply $required exceeds available $available"
       case oathdigital.model.OathViolation.InsufficientSecrets(required, available) =>
         s"required secrets $required exceed available $available"
-      case oathdigital.model.OathViolation.InvalidModifierInvocation(message) => message
       case oathdigital.model.OathViolation.FollowUpPending(followUp) =>
         s"Start or skip the queued ${followUp.action.key} first"
       case oathdigital.model.OathViolation.ConsentPending =>
@@ -47,25 +44,6 @@ final class GameServerGateway(
     service: oathdigital.application.GameApplicationService,
     projector: oathdigital.application.GameProjector
 ):
-  def preview(gameId: String, requestingPlayer: PlayerId,
-      request: MajorActionPreviewRequest)
-      : Either[GameApplicationError, MajorActionPreviewResponse] = for
-    action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(
-      GameApplicationError.BootstrapFailure("unknown major action"))
-    selected <- GameIntentMapper.bindModifiers(requestingPlayer,
-      request.orderedModifiers).left.map(error =>
-        GameApplicationError.BootstrapFailure(s"${error.path}: ${error.message}"))
-    accepted <- service.preview(gameId, request.expectedNextSequence,
-      requestingPlayer, action, selected)
-    projection = projector.project(gameId, accepted.loaded, requestingPlayer)
-    _ <- Either.cond(projection.activeParticipantId.contains(requestingPlayer.value) &&
-      projection.actionSelectionOpen, (), GameApplicationError.CommandRejected(
-      oathdigital.model.OathViolation.InvalidModifierInvocation(
-        "major-action preview is unavailable for this actor or phase")))
-    _ <- MajorActionPreviewGuard.validate(projection, request)
-  yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
-    accepted.modifiers, accepted.ignored.map(v => PreviewIgnoredRule(
-      v.source.stableKey, v.handlerId, v.timing.key, v.reason)))
   def rawEventHistory(gameId: String, limit: Int)
       : Either[GameApplicationError, Vector[String]] =
     service.rawEventHistory(gameId, limit)
@@ -97,20 +75,6 @@ final class GameServerGateway(
       case Some(history) =>
         Right(projector.logPage(gameId, history, after, requestingPlayer))
       case None => Left(GameApplicationError.StreamNotFound(gameId))
-
-private[server] object MajorActionPreviewGuard:
-  def validate(projection: GameProjection, request: MajorActionPreviewRequest)
-      : Either[GameApplicationError, Unit] =
-    request.baseParameters.get("procedure") match
-      case Some("facedown-adviser") if request.action == "search" =>
-        Either.cond(projection.minorActions.exists(_.advisers.nonEmpty), (),
-          GameApplicationError.CommandRejected(
-          oathdigital.model.OathViolation.InvalidModifierInvocation(
-            "no facedown adviser can legally be resolved")))
-      case Some(_) => Left(GameApplicationError.CommandRejected(
-        oathdigital.model.OathViolation.InvalidModifierInvocation(
-          "unknown major-action procedure")))
-      case None => Right(())
 
 final class GameRoutes(
     gateway: GameServerGateway,
@@ -151,16 +115,6 @@ final class GameRoutes(
                     case Some(after) => completeLog(gateway.log(validGameId,
                       PlayerId(validPlayerId), after))
               } ~
-              path("preview") {
-                post:
-                  entity(as[String]) { body =>
-                    oathdigital.protocol.MajorActionPreviewCodec.decode(body) match
-                      case Left(error) => complete(jsonResponse(StatusCodes.BadRequest,
-                        "malformed-request", s"${error.path}: ${error.message}"))
-                      case Right(request) => completePreview(gateway.preview(validGameId,
-                        PlayerId(validPlayerId), request))
-                  }
-              } ~
               path("commands"):
                 post:
                   entity(as[String]) { body =>
@@ -172,8 +126,7 @@ final class GameRoutes(
                           s"${error.path}: ${error.message}"
                         ))
                       case Right(request) =>
-                        GameIntentMapper.bind(PlayerId(validPlayerId), request.intent,
-                          request.orderedModifiers) match
+                        GameIntentMapper.bind(PlayerId(validPlayerId), request.intent) match
                           case Left(error) => complete(jsonResponse(StatusCodes.BadRequest,
                             "malformed-request", s"${error.path}: ${error.message}"))
                           case Right(command) => completeAsync(gateway.submit(
@@ -182,20 +135,6 @@ final class GameRoutes(
                   }
       }
     }
-
-  private def completePreview(operation: => Either[GameApplicationError,
-      MajorActionPreviewResponse]): Route =
-    onComplete(Future(operation)(using blockingExecutionContext)):
-      case Success(Right(value)) => complete(HttpResponse(StatusCodes.OK,
-        entity = HttpEntity(ContentTypes.`application/json`,
-          oathdigital.protocol.MajorActionPreviewCodec.encode(value))))
-      case Success(Left(error)) =>
-        val (status, code, message, _) = publicError(error)
-        complete(jsonResponse(status, code, message))
-      case Failure(error) =>
-        logger.error("Unhandled major-action preview failure", error)
-        complete(jsonResponse(StatusCodes.InternalServerError, "internal-error",
-          "the server could not complete the request"))
 
   private def completeLog(
       operation: => Either[GameApplicationError, Option[LogPageWire]]

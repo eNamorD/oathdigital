@@ -34,16 +34,15 @@ private[protocol] object CommandIntentDecoders:
       yield MoveWarbands(toSite, amount)
     case "startWalker" =>
       for
-        _ <- exact(value, Set("type", "action", "modifiers", "startArgs"), path)
+        _ <- exact(value, Set("type", "action", "startArgs"), path)
         action <- string(value, "action", path)
-        modifiers <- field(value, "modifiers", path).flatMap(strings(_, s"$path.modifiers"))
-        // Optional and empty by default: every walker procedure but Travel
-        // selects nothing before it starts.
+        // Optional and empty by default: most procedures select nothing
+        // before they start.
         startArgs <- value.value.get("startArgs") match
           case None => Right(Vector.empty[WalkerStartArgWire])
           case Some(args) => CommandNestedCodecs.decodeStartArgsWire(args,
             s"$path.startArgs")
-      yield StartWalker(action, modifiers, startArgs)
+      yield StartWalker(action, startArgs)
     case "rollWalker" => one(value, path, "pool")(RollWalker.apply)
     case "resolveWalker" =>
       for

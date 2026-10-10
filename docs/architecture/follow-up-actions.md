@@ -103,8 +103,8 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
 - The frontend's `FollowUpControls` draws the start button, which is
   disabled with its reason on hover when the action cannot start, then Skip
   and a "Then: …" line.
-- The start goes through the modifier flow, and the modifier order replaces
-  the panel while it is open (a queued Travel with Special Envoy, say).
+- The start asks for the action's modifiers inside the walk, as a normal
+  start does (a queued Travel with Special Envoy, say).
 - A waiting viewer's status reads "{player} may campaign (Knights Errant)".
 
 ## Game Log

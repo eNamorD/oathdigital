@@ -13,5 +13,5 @@ private[frontend] object CampaignControls:
     if value.legalControls.contains("beginCampaign") then
       val node = button("Campaign (2 Supply)", "act-action campaign-action")
       node.disabled = !canControl
-      node.onclick = _ => submit(GameCommand.StartWalker("campaign", Vector.empty))
+      node.onclick = _ => submit(GameCommand.StartWalker("campaign"))
       groups.appendKind("campaign", node)

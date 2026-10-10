@@ -12,7 +12,7 @@ class WalkerStartFactsReplaySuite extends munit.FunSuite:
 
   private def park(at: String, facts: Vector[DecisionOptionRef]): WalkerParked =
     WalkerParked(ActionRef.Travel, Vector(at), Vector.empty, Vector.empty,
-      Vector.empty, facts)
+      facts)
 
   private def facts(state: OathState): Vector[DecisionOptionRef] = state match
     case OathState.Ready(ready) => ready.game.current.walkerStartFacts

@@ -28,12 +28,11 @@ object GameIntentMapper:
       case Intent.PeekSiteRelics => Right(actor.peekSiteRelics)
       case Intent.RevealOwnedRelic(id) => Right(actor.revealOwnedRelic(RelicId(id)))
       case Intent.MoveWarbands(toSite, amount) => Right(actor.moveWarbands(toSite, amount))
-      case Intent.StartWalker(value, modifiers, startArgs) =>
+      case Intent.StartWalker(value, startArgs) =>
         for
           ref <- actionRef(value)
-          ids <- traverse(modifiers.zipWithIndex)(powerId.tupled)
           args <- traverse(startArgs.zipWithIndex)(walkerStartArg.tupled)
-        yield GameCommand.StartWalker(ref, StartPayload(actorId, ids, args))
+        yield GameCommand.StartWalker(ref, StartPayload(actorId, args))
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
@@ -51,41 +50,6 @@ object GameIntentMapper:
             GameIntentMappingFailure("$.intent.setting",
               s"invalid consent setting '$setting'"))
         yield actor.setConsentPreference(power, PlayerId(requester), chosen)
-
-  def bind(actorId: PlayerId, intent: Intent,
-      modifiers: Vector[ModifierInvocation]): Result[GameCommand] =
-    for
-      command <- bind(actorId, intent)
-      ordered <- traverse(modifiers)(modifier(actorId, _))
-    yield if ordered.isEmpty then command else GameCommand.WithModifiers(command, ordered)
-
-  def bindModifiers(actorId: PlayerId, modifiers: Vector[ModifierInvocation])
-      : Result[Vector[OrderedRuleInvocation]] = traverse(modifiers)(modifier(actorId, _))
-
-  private def modifier(actor: PlayerId, value: ModifierInvocation)
-      : Result[OrderedRuleInvocation] =
-    val source = value.sourceKind match
-      case "site" => Right(RuleSourceRef.Site(SiteId(value.sourceId)))
-      case "site-card" => value.contextId.toRight(GameIntentMappingFailure(
-        "$.orderedModifiers.contextId", "site-card requires site context"))
-        .map(site => RuleSourceRef.SiteCard(SiteId(site), DenizenId(value.sourceId)))
-      case "adviser" => Right(RuleSourceRef.Adviser(actor, DenizenId(value.sourceId)))
-      case "relic" => Right(RuleSourceRef.Relic(actor, RelicId(value.sourceId)))
-      case "edifice" => value.contextId.toRight(GameIntentMappingFailure(
-        "$.orderedModifiers.contextId", "edifice requires site context"))
-        .map(site => RuleSourceRef.Edifice(SiteId(site), EdificeId(value.sourceId)))
-      case "banner" => Right(RuleSourceRef.Banner(value.sourceId))
-      case "game" => Right(RuleSourceRef.GameRule(value.sourceId))
-      case "foundation" => scala.util.Try(value.sourceId.toInt).toOption
-        .flatMap(n => FoundationNumber.all.find(_.value == n))
-        .map(n => RuleSourceRef.Foundation(n): RuleSourceRef).toRight(
-          GameIntentMappingFailure("$.orderedModifiers.sourceId", "unknown foundation"))
-      case "legacy" => value.contextId.toRight(GameIntentMappingFailure(
-        "$.orderedModifiers.contextId", "legacy requires lineage context"))
-        .map(lineage => RuleSourceRef.Legacy(LineageId(lineage), LegacyId(value.sourceId)))
-      case other => Left(GameIntentMappingFailure("$.orderedModifiers.sourceKind",
-        s"unknown modifier source '$other'"))
-    source.map(OrderedRuleInvocation(_, value.handlerId))
 
   private def invalid(path: String, value: String, kind: String) = Left(GameIntentMappingFailure(path, s"unknown $kind '$value'"))
   private def world(value: WorldCard, path: String): Result[WorldCardId] = value.kind match { case "denizen" => Right(DenizenId(value.id)); case "vision" => Right(VisionId(value.id)); case v => invalid(s"$path.kind", v, "world card kind") }
@@ -107,9 +71,6 @@ object GameIntentMapper:
   private def actionRef(value: String): Result[StartableRef] =
     StartableRef.fromKey(value).toRight(GameIntentMappingFailure(
       "$.intent.action", s"unknown action '$value'"))
-  private def powerId(value: String, index: Int): Result[PowerId] =
-    PowerId.fromValue(value).toRight(GameIntentMappingFailure(
-      s"$$.intent.modifiers[$index]", s"invalid power id '$value'"))
   /** The kind/id pair back to the engine's option reference. Total over the
     * seven declared variants, and deliberately not a table written here:
     * `DecisionOptionRef.fromWire` is the same function the journal codec

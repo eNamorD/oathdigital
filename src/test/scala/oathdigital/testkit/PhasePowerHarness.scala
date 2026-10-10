@@ -50,8 +50,7 @@ object PhasePowerHarness:
 
   def use(ready: ReadyGame, power: PhasePower, source: DecisionOptionRef)
       : Either[OathViolation, OathTransition] = rules.startWalker(
-    OathState.Ready(ready), ActionRef.UsePower(power.id), actor, Vector.empty,
-    Vector(source))
+    OathState.Ready(ready), ActionRef.UsePower(power.id), actor, Vector(source))
 
   def answer(from: OathTransition, by: PlayerId, decision: String,
       answered: DecisionAnswer): Either[OathViolation, OathTransition] =

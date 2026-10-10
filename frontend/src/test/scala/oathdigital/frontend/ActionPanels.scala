@@ -20,4 +20,4 @@ private[frontend] object ActionPanels:
       drafts: SessionDrafts = SessionDrafts.empty): dom.Element =
     ActionDecisionRenderer.actionsPanel(projection, actingViewer("red"),
       ParkedDecision.Routed(None, None), canControl = true, drafts,
-      new RecordingControls()).element
+      new RecordingControls())

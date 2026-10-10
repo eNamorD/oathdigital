@@ -44,7 +44,7 @@ class FacedownAdviserPickSuite extends munit.FunSuite:
     val ui = new RecordingControls()
     val pane = ActionDecisionRenderer.actionsPanel(table(None, oak, bandits),
       ActionPanels.actingViewer("red"), ParkedDecision.Routed(None, None),
-      canControl = true, SessionDrafts.empty, ui).element
+      canControl = true, SessionDrafts.empty, ui)
     as[dom.html.Button](one(pane, ".minor-adviser-launch")).click()
     assertEquals(ui.submitted, Vector(Intent.StartWalker(
       "play-facedown-adviser", Vector.empty)))

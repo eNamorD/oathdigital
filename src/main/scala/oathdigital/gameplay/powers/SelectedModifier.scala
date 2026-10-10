@@ -4,36 +4,25 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  ModifierPicks, PowerCtx, Transform}
+  ModifierPicks, PowerCtx}
 import oathdigital.model._
 
-/** A power the player selects for a major action, and that then applies to
-  * that action for free unless it names a cost. A Search or Travel modifier
-  * is picked in the walk's modifier decision; every other action's is
-  * selected in its start command's `modifiers`.
+/** A power the player picks for a major action in the walk's modifier
+  * decision (modifier walker design), and that then applies to that action
+  * for free unless it names a cost.
   *
-  * A modifier that names a `cost` pays it whatever the modifier then does. The
-  * player owns the choice to select it, so the payment is made whether or not
-  * the modifier then has an effect. The payment is `selectionPayments`:
+  * A modifier that names a `cost` pays it when it is picked, onto its card
+  * (`selectionPayments`), whatever the modifier then does: the player owns
+  * the choice to pick it, and the next pass of the decision sees what it
+  * paid.
   *
-  *  - A Search, Travel, Muster or Trade modifier is paid when it is picked in
-  *    the walk's modifier decision (`paidAtPick`).
-  *  - Every other action's modifier is paid at the very start of its action,
-  *    until that action's slice moves it: the kit prepends the payment to the
-  *    root of the action's tree (the action's eligibility window). A command
-  *    that selects several modifiers dry-runs all of their payments together
-  *    and refuses a combination the player cannot pay, before anything
-  *    happens.
-  *
-  * `applicable` answers three questions, told apart by the window:
+  * `applicable` answers two questions, told apart by the window:
   *
   *  - At a `*ModifierSelection` window it asks "may the player select this
   *    now?": the power belongs to that action, its card is one the player may
   *    use (`PowerAccess`), and its `cost` is payable on its own, including the
   *    empty-card rule. A power already picked in `ctx.answered` always
   *    applies there.
-  *  - At the action's eligibility window (the root, where a payment not
-  *    made at the pick goes) a selected modifier always applies.
   *  - At every other window it asks `appliesAt`, which reads only the node the
   *    power is hooked on. It must not read state the action itself changes,
   *    because the walker folds every window again on each resume and a fold
@@ -42,8 +31,7 @@ import oathdigital.model._
   * The selection window is checked by action, so a Travel modifier is never
   * offered for a Search, whichever window a later power hooks.
   *
-  * A power states what it does inside the walk as `effects`, by window, and the
-  * kit adds the payment to them unless the action is in `paidAtPick`. Its
+  * A power states what it does inside the walk as `effects`, by window. Its
   * resolution is read from the catalog (`persistent: false` is selected).
   */
 trait SelectedModifier extends ContributingPower:
@@ -61,16 +49,8 @@ trait SelectedModifier extends ContributingPower:
   final override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  final override lazy val contributions: Map[PowerWindow, Vector[Contribution]] =
-    val payments: Map[PowerWindow, Vector[Contribution]] =
-      if cost == Cost.free then Map.empty
-      else actions.filterNot(SelectedModifier.paidAtPick)
-        .map(action => SelectedModifier.eligibility(action) ->
-          Vector[Contribution](Transform((ctx, operations) =>
-            payment(ctx.activePlayer) +: operations))).toMap
-    (payments.keySet ++ effects.keySet).map(window => window ->
-      (payments.getOrElse(window, Vector.empty) ++
-        effects.getOrElse(window, Vector.empty))).toMap
+  final override lazy val contributions
+      : Map[PowerWindow, Vector[Contribution]] = effects
 
   /** Whether the power applies at the node it is hooked on. */
   def appliesAt(ctx: PowerCtx): Boolean = true
@@ -87,8 +67,7 @@ trait SelectedModifier extends ContributingPower:
       case Some(action) => actions(action) &&
         (ModifierPicks.isPicked(ctx.answered, ctx.window, cardId) ||
           selectable(ctx.state, ctx.activePlayer))
-      case None => SelectedModifier.isEligibility(ctx.window) ||
-        appliesAt(ctx)
+      case None => appliesAt(ctx)
 
   /** The player may use the card, and can pay for it. */
   def selectable(ready: ReadyGame, actor: PlayerId): Boolean =
@@ -114,16 +93,6 @@ object SelectedModifier:
     PowerWindow.RecoverModifierSelection -> MajorActionType.Recover,
     PowerWindow.ChallengeModifierSelection -> MajorActionType.Challenge)
 
-  private val eligibilityWindows: Map[MajorActionType, PowerWindow] = Map(
-    MajorActionType.Search -> PowerWindow.SearchActionEligibility,
-    MajorActionType.Travel -> PowerWindow.TravelActionEligibility,
-    MajorActionType.Campaign -> PowerWindow.CampaignActionEligibility,
-    MajorActionType.Muster -> PowerWindow.MusterActionEligibility,
-    MajorActionType.Trade -> PowerWindow.TradeActionEligibility,
-    MajorActionType.Forge -> PowerWindow.ForgeActionEligibility,
-    MajorActionType.Recover -> PowerWindow.RecoverActionEligibility,
-    MajorActionType.Challenge -> PowerWindow.ChallengeActionEligibility)
-
   /** The action a modifier-selection window belongs to, or `None` for any
     * other window.
     */
@@ -135,18 +104,3 @@ object SelectedModifier:
 
   /** The modifier-selection window of `action`. */
   def selectionWindow(action: MajorActionType): PowerWindow = windowOf(action)
-
-  /** The actions whose modifier decision pays each pick (modifier walker
-    * design): their modifiers prepend no payment at the eligibility window.
-    * It grows slice by slice, with `WalkerProcedureRegistry`'s
-    * `choosesModifiers`, until slice 4 deletes the payment Transform. */
-  val paidAtPick: Set[MajorActionType] =
-    Set(MajorActionType.Search, MajorActionType.Travel, MajorActionType.Muster,
-      MajorActionType.Trade)
-
-  /** The window at the root of `action`'s tree, where a payment goes. */
-  def eligibility(action: MajorActionType): PowerWindow =
-    eligibilityWindows(action)
-
-  def isEligibility(window: PowerWindow): Boolean =
-    eligibilityWindows.valuesIterator.contains(window)

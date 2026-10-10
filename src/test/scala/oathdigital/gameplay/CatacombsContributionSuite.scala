@@ -1,9 +1,11 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
   Restriction}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerStepRecorded}
 import oathdigital.model.OathState.Ready
@@ -19,9 +21,9 @@ import oathdigital.testkit.Unwrap.accepted
   * wiring.
   *
   * Catacombs' legacy behaviour (`powers/RecoverPowers.scala`): it makes a
-  * relic-less site eligible for Recover, and on use places the relic deck's
-  * top card facedown at the site for a printed 1-secret cost placed on the
-  * Catacombs card itself.
+  * relic-less site eligible for Recover; when picked, it pays a printed 1-secret
+  * cost onto the Catacombs card, and the Recover then places the relic deck's
+  * top card facedown at the site.
   */
 class CatacombsContributionSuite extends munit.FunSuite:
   import CatacombsGame._
@@ -39,27 +41,31 @@ class CatacombsContributionSuite extends munit.FunSuite:
 
   private def started(fixture: Game, modifiers: Vector[PowerId])
       : OathTransition =
-    accepted(rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
-      fixture.actor, modifiers))
+    accepted(ModifierPlay.started(rules, Ready(fixture.ready),
+      ActionRef.Recover, fixture.actor, PowerWindow.RecoverModifierSelection,
+      modifiers))
 
-  test("Catacombs makes a relic-less site recoverable, placing the relic and " +
-      "paying its secret in one recorded step attributed to the power"):
+  test("Catacombs makes a relic-less site recoverable: the pick pays its " +
+      "secret, and the Recover places the relic in a step attributed to " +
+      "the power"):
     val fixture = reliclessSite(secrets = 2)
     val transition = started(fixture, Vector(catacombsId))
+    val acting = steps(transition.events).filter(_.ops.nonEmpty)
 
-    // The transform prepended ONE node to the root sequence's children, so
-    // the power's whole effect is one step, at child index 0, carrying both
-    // operations and naming Catacombs as its contributor.
-    val first = steps(transition.events).head
-    assertEquals(first.nodeId, "0")
-    assertEquals(first.contributions, Vector(catacombsId))
-    assertEquals(first.ops, Vector[CoreOperation](
+    // The pick's payment, onto the card.
+    assertEquals(acting.head.ops, Vector[CoreOperation](
+      PayCost(fixture.actor, Location.OnCard(catacombsCard),
+        Cost(secret = 1), matchingBank = catalog.suitOf(catacombsCard))))
+    // The transform prepended ONE node to the Recover's children, so the
+    // placement is the Recover's first step, naming Catacombs.
+    val placed = acting(1)
+    assertEquals(placed.nodeId, "1.0")
+    assertEquals(placed.contributions, Vector(catacombsId))
+    assertEquals(placed.ops, Vector[CoreOperation](
       Move(Piece.Card(fixture.topRelic),
         PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
         PositionedLocation(Location.Site(fixture.site)),
-        resultingOrientation = Some(Orientation.FaceDown)),
-      PayCost(fixture.actor, Location.OnCard(catacombsCard),
-        Cost(secret = 1), matchingBank = catalog.suitOf(catacombsCard))))
+        resultingOrientation = Some(Orientation.FaceDown))))
 
     val after = Outcomes.ready(transition.state)
     val site = after.game.current.map.sites(fixture.site)
@@ -71,13 +77,13 @@ class CatacombsContributionSuite extends munit.FunSuite:
     assertEquals(after.game.current.commonCards.relicDeck,
       fixture.ready.game.current.commonCards.relicDeck.tail)
 
-    // The inserted node shifts every later index by one: the choice the
+    // The Recover is the root's second child, after the modifier decision,
+    // and the inserted node shifts each later index by one: the choice the
     // failed first roll parks on (the Repeat, its first round, the round's
-    // choice Branch, its Decide) sits under "2" instead of the bare tree's
-    // "1".
+    // choice Branch, its Decide) sits under "2" instead of the bare
+    // Recover's "1".
     assertEquals(after.game.current.walkerPending.map(_.at),
-      Some(Vector("2", "0", "2", "0")))
-    assertEquals(after.game.current.walkerModifiers, Vector(catacombsId))
+      Some(Vector("1", "2", "0", "2", "0")))
 
   private def offered(ready: ReadyGame, action: ActionRef): Vector[PowerId] =
     accepted(rules.offerableWalkerPowers(ready, Table.p1, action)).map(_.id)
@@ -99,10 +105,11 @@ class CatacombsContributionSuite extends munit.FunSuite:
     val fixture = reliclessSite(secrets = 2)
     val transition = started(fixture, Vector.empty)
     val after = Outcomes.ready(transition.state)
-    // The bare tree parks the failed first roll's choice at the Repeat (1),
-    // its first round (0), the round's choice Branch (2) and its Decide (0).
+    // The Recover, after the modifier decision (1), parks the failed first
+    // roll's choice at the Repeat (1), its first round (0), the round's
+    // choice Branch (2) and its Decide (0).
     assertEquals(after.game.current.walkerPending.map(_.at),
-      Some(Vector("1", "0", "2", "0")))
+      Some(Vector("1", "1", "0", "2", "0")))
     assertEquals(after.game.current.map.sites(fixture.site).relics,
       Vector.empty)
 
@@ -113,7 +120,7 @@ class CatacombsContributionSuite extends munit.FunSuite:
     val recorded = steps(transition.events)
 
     // The dice-pool bonus, then the first round's Supply spend and its roll.
-    assertEquals(recorded.map(_.nodeId), Vector("0.0", "1.0.0", "1.0.1"))
+    assertEquals(recorded.map(_.nodeId), Vector("1.0.0", "1.1.0.0", "1.1.0.1"))
     assertEquals(recorded.flatMap(_.contributions), Vector.empty[PowerId])
     // The roll itself records no operations: a Roll leaf writes its outcome
     // as state (`ProcedureWalker.recordRoll`), not as an ops batch.
@@ -126,7 +133,7 @@ class CatacombsContributionSuite extends munit.FunSuite:
     assertEquals(after.game.current.commonCards.relicDeck,
       fixture.ready.game.current.commonCards.relicDeck)
     assertEquals(after.game.current.walkerPending.map(_.at),
-      Some(Vector("1", "0", "2", "0")))
+      Some(Vector("1", "1", "0", "2", "0")))
 
   test("the Catacombs fold survives its own effect: a resume after the last " +
       "secret is spent still addresses the leaf the walk parked at"):
@@ -139,7 +146,7 @@ class CatacombsContributionSuite extends munit.FunSuite:
     val parked = Outcomes.ready(transition.state)
     assertEquals(Look(parked).player(fixture.actor).board.faceUpSecrets, 0)
     val parkedAt = parked.game.current.walkerPending.map(_.at)
-    assertEquals(parkedAt, Some(Vector("2", "0", "2", "0")))
+    assertEquals(parkedAt, Some(Vector("1", "2", "0", "2", "0")))
 
     val resumed = accepted(rules.resolveWalker(transition.state, fixture.actor,
       RecoverProcedure.choiceDecisionId,
@@ -172,19 +179,27 @@ class CatacombsContributionSuite extends munit.FunSuite:
       unrestricted.startWalker(Ready(fixture.ready), ActionRef.Recover,
         fixture.actor).map(_.state))
 
-  test("Catacombs is rejected when the site's relic slots are full"):
-    val fixture = fullRelicSite()
-    rules.startWalker(Ready(fixture.ready), ActionRef.Recover, fixture.actor,
-        Vector(catacombsId)) match
-      case Left(violation: OathViolation.RecoverUnavailable) =>
-        assert(violation.detail.contains("no empty relic slot"),
-          s"violation detail '${violation.detail}' should mention the " +
-            "full relic slot")
-      case other =>
-        fail(s"expected the capacity-full start to be rejected, got $other")
-    // A `Left` carries no transition at all: nothing is appended and the
-    // fixture's own state (never mutated -- it is immutable data) is the
-    // only state that exists for this command.
+  test("Catacombs is listed unavailable at a full relic site and with an " +
+      "empty relic deck"):
+    // Relic Worship can be picked, so the decision asks and lists Catacombs.
+    def withWorship(game: Game): ReadyGame =
+      Table.from(game.ready).adviser(Table.p1, "Relic Worship").ready
+    def catacombsOption(ready: ReadyGame)(using munit.Location)
+        : DecisionOption =
+      val begun = accepted(rules.startWalker(Ready(ready), ActionRef.Recover,
+        Table.p1))
+      modifierOption(begun.state, catacombsCard)
+    def unavailable(reason: String): DecisionOption =
+      DecisionOption.Unavailable(
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(catacombsCard)),
+        OptionReason.Written(reason))
+    assertEquals(catacombsOption(withWorship(fullRelicSite())),
+      unavailable(CatacombsContribution.noEmptySlot))
+    val noRelics = withWorship(reliclessSite(secrets = 2)).updateCurrent(
+      current => current.copy(commonCards =
+        current.commonCards.copy(relicDeck = Vector.empty)))
+    assertEquals(catacombsOption(noRelics),
+      unavailable(CatacombsContribution.emptyRelicDeck))
 
   test("Catacombs at a site the actor rules places the relic at its own site"):
     val fixture = ruledElsewhere()
@@ -195,10 +210,20 @@ class CatacombsContributionSuite extends munit.FunSuite:
     assertEquals(there.denizens.head.tokens.secrets, 1)
 
   test("Catacombs at a site the actor neither rules nor stands on is not " +
-      "applicable"):
+      "listed"):
     val fixture = ruledElsewhere(ruled = false)
-    rules.startWalker(Ready(fixture.ready), ActionRef.Recover, fixture.actor,
-      Vector(catacombsId)) match
-      case Left(OathViolation.InvalidEventOrder(detail)) =>
-        assert(detail.contains("not applicable"), detail)
-      case other => fail(s"expected the modifier to be refused, got $other")
+    val begun = accepted(rules.startWalker(Ready(fixture.ready),
+      ActionRef.Recover, fixture.actor))
+    val after = Outcomes.ready(begun.state)
+    // Nothing to pick, so nothing is asked: the Recover rolls at once.
+    assertEquals(after.game.current.walkerPending.map(_.at),
+      Some(Vector("1", "1", "0", "2", "0")))
+    assertEquals(after.game.current.map.sites(fixture.site).relics,
+      fixture.ready.game.current.map.sites(fixture.site).relics)
+
+  test("Catacombs pays its secret onto its card, as its selection payment"):
+    val fixture = reliclessSite(secrets = 1)
+    val power = CatacombsContribution.forCatalog(catalog)
+    assertEquals(power.selectionPayments(fixture.ready, fixture.actor),
+      Vector(Costs.onCard(fixture.actor, power.cardId, Cost(secret = 1),
+        catalog)))

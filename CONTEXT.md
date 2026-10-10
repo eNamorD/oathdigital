@@ -124,24 +124,15 @@ _Avoid_: button, action button, command
 
 **Draft set**:
 Everything a viewer has staged at the table and not yet sent: the board
-draft, the partition, distribute and selection drafts, and the modifier
-order. A viewer has exactly one, bound to one
-game, seat and position; it empties when any of those change.
+draft and the partition, distribute and selection drafts. A viewer has
+exactly one, bound to one game, seat and position; it empties when any of
+those change.
 _Avoid_: session state, UI state, pending selections, the drafts
-
-**Modifier flow**:
-The steps a viewer walks between choosing a major action and sending it:
-previewing the action and ordering the modifiers it offers. A viewer is in at most one at a time, and leaves it by sending,
-cancelling, backing out, or a failed preview. A flow step keeps the viewer
-in the flow; a flow exit takes them out of it. Search, facedown-adviser
-play, Travel, Muster and Trade have no flow: they ask for their modifiers
-inside the walk, in the modifier decision.
-_Avoid_: preview flow, targeting flow, modifier stage (a stage is one step of
-the flow)
 
 **Modifier decision**:
 A major action's first walker decision, `{action}.modifiers`. It is asked
 one modifier at a time, and each pick is paid at once. "Start" ends it.
+Every major action has one; an action with nothing to pick is asked nothing.
 _Avoid_: modifier stage, modifier step
 
 **Table session**:

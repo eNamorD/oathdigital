@@ -16,13 +16,11 @@ private[frontend] object EconomyControls:
   // under.
   private val controls = Vector(
     Control("beginMuster", "muster", "Muster (1 Supply)",
-      GameCommand.StartWalker("muster", Vector.empty)),
+      GameCommand.StartWalker("muster")),
     Control("beginTradeFavor", "trade-favor", "Trade for favor (1 Supply)",
-      GameCommand.StartWalker("trade", Vector.empty,
-        Vector(WalkerStartArgWire("button", "favor")))),
+      GameCommand.StartWalker("trade", Vector(WalkerStartArgWire("button", "favor")))),
     Control("beginTradeSecret", "trade-secret", "Trade for secrets (1 Supply)",
-      GameCommand.StartWalker("trade", Vector.empty,
-        Vector(WalkerStartArgWire("button", "secret")))))
+      GameCommand.StartWalker("trade", Vector(WalkerStartArgWire("button", "secret")))))
 
   def render(value: GameProjection, canControl: Boolean,
       groups: ActionSections, submit: GameCommand => Unit): Unit =

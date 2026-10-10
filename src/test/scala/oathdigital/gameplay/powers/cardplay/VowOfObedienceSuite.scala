@@ -51,8 +51,7 @@ class VowOfObedienceSuite extends munit.FunSuite:
       (table, suit) => table.bankFavor(suit, stocked.getOrElse(suit, 0))).ready
 
   private def rest(ready: ReadyGame): OathTransition = accepted(
-    restRules.startWalker(Ready(ready), use, actor, Vector.empty,
-      Vector(source)))
+    restRules.startWalker(Ready(ready), use, actor, Vector(source)))
 
   test("a faceup holder's Search does not offer a Vision faceup, and " +
       "refuses it"):

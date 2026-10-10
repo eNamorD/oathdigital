@@ -21,19 +21,17 @@ object GameIntent:
   case object PeekSiteRelics extends GameIntent
   final case class RevealOwnedRelic(relicId: String) extends GameIntent
   final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent
-  /** Starts a walker procedure. `action` is the engine's persisted `StartableRef`
-    * wire key (e.g. `"recover"`); `modifiers` is the ordered list of opaque
-    * player-selected power ids chosen before the walk begins -- validated
-    * engine-side against the audited catalog, never interpreted here.
+  /** Starts a walker procedure. `action` is the engine's persisted
+    * `StartableRef` wire key (e.g. `"recover"`). An action asks for its
+    * modifiers inside the walk, as its first decision, so a start names none
+    * (modifier walker design).
     *
     * `startArgs` is what the player selected before the action started, for
-    * an action whose tree needs it. Empty for every action that derives its
-    * whole tree from the actor's pawn site, which is Recover and Forge;
-    * Travel carries its destination here, which is why there is no longer a
-    * `Travel` intent of its own. The engine rejects a selection an action did
+    * an action whose tree needs it: Trade's resource, Take Wealth's pile and
+    * the source of a used power. The engine rejects a selection an action did
     * not ask for.
     */
-  final case class StartWalker(action: String, modifiers: Vector[String],
+  final case class StartWalker(action: String,
       startArgs: Vector[WalkerStartArgWire] = Vector.empty) extends GameIntent
   /** Answers the currently parked Roll node for `pool`. Carries no die
     * faces: those are generated application-side once the parked pool is

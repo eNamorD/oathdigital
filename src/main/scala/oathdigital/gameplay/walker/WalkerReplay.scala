@@ -96,8 +96,7 @@ private[walker] object WalkerReplay:
           updated <- executeRecorded(ready, ops)
         yield updated
 
-      case WalkerParked(procedure, at, answered, modifiers, startArgs,
-          startFacts) =>
+      case WalkerParked(procedure, at, answered, startArgs, startFacts) =>
         for
           _ <- Either.cond(at.nonEmpty && at.forall(segment =>
             segment.nonEmpty && segment.forall(_.isDigit)), (),
@@ -109,10 +108,6 @@ private[walker] object WalkerReplay:
                   OathViolation.InvalidEventOrder(
                     s"walker procedure ${procedure.key} does not match " +
                       existing.key))
-                _ <- Either.cond(ready.game.current.walkerModifiers == modifiers, (),
-                  OathViolation.InvalidEventOrder(
-                    "durable walker park modifiers do not match the recorded " +
-                      "selection"))
                 _ <- Either.cond(
                   ready.game.current.walkerStartArgs == startArgs, (),
                   OathViolation.InvalidEventOrder(
@@ -136,7 +131,6 @@ private[walker] object WalkerReplay:
           ready.game.current.copy(
             walkerPending = Some(PendingTree(at, answered)),
             walkerProcedure = Some(procedure),
-            walkerModifiers = modifiers,
             walkerStartArgs = startArgs,
             walkerStartFacts = startFacts)))
 
@@ -157,7 +151,6 @@ private[walker] object WalkerReplay:
           ready.game.current.copy(
             walkerPending = None,
             walkerProcedure = None,
-            walkerModifiers = Vector.empty,
             walkerStartArgs = Vector.empty,
             walkerStartFacts = Vector.empty,
             walkerFollowUp = None,

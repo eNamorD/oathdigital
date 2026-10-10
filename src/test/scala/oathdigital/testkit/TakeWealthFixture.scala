@@ -32,4 +32,4 @@ object TakeWealthFixture:
       args: Vector[DecisionOptionRef] = favorArg)
       : Either[OathViolation, OathTransition] =
     rules.startWalker(Ready(ready), ActionRef.TakeWealth,
-      ready.game.current.turn.activePlayer, Vector.empty, args)
+      ready.game.current.turn.activePlayer, args)

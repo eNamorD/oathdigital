@@ -24,10 +24,8 @@ class ViewerPresentationSuite extends FunSuite:
     assertEquals(
       actions.map(_.command),
       Vector(
-        oathdigital.protocol.GameIntent.StartWalker("take-wealth", Vector.empty,
-          Vector(oathdigital.protocol.WalkerStartArgWire("button", "favor"))),
-        oathdigital.protocol.GameIntent.StartWalker("take-wealth", Vector.empty,
-          Vector(oathdigital.protocol.WalkerStartArgWire("button", "secret")))
+        oathdigital.protocol.GameIntent.StartWalker("take-wealth", Vector(oathdigital.protocol.WalkerStartArgWire("button", "favor"))),
+        oathdigital.protocol.GameIntent.StartWalker("take-wealth", Vector(oathdigital.protocol.WalkerStartArgWire("button", "secret")))
       )
     )
 

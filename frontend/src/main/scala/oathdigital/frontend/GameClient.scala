@@ -5,8 +5,7 @@ import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 import scala.util.control.NonFatal
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  MajorActionPreviewCodec, MajorActionPreviewRequest, MajorActionPreviewResponse,
-  ModifierInvocation, ProtocolDecodeFailure, GameIntent => GameCommand}
+  ProtocolDecodeFailure, GameIntent => GameCommand}
 import oathdigital.protocol.projection.{GameProjection, GameProjectionCodec,
   LogPageCodec, LogPageWire}
 
@@ -109,12 +108,8 @@ trait GameClient:
       gameId: String,
       selectedPlayerId: String,
       expectedNextSequence: Long,
-      command: GameCommand,
-      orderedModifiers: Vector[ModifierInvocation] = Vector.empty
+      command: GameCommand
   ): Future[Either[GameClientFailure, GameProjection]]
-  def preview(gameId: String, selectedPlayerId: String,
-      request: MajorActionPreviewRequest)
-      : Future[Either[GameClientFailure, MajorActionPreviewResponse]]
   /** Every log entry at or after `after`, formatted for this seat. */
   def loadLog(gameId: String, selectedPlayerId: String, after: Long)
       : Future[Either[GameClientFailure, LogPageWire]]
@@ -133,25 +128,14 @@ final class HttpGameClient(transport: JsonTransport)
       gameId: String,
       selectedPlayerId: String,
       expectedNextSequence: Long,
-      command: GameCommand,
-      orderedModifiers: Vector[ModifierInvocation]
+      command: GameCommand
   ) =
     send(
       "POST",
       s"/api/dev/first-games/${encode(gameId)}/commands?playerId=" +
         encode(selectedPlayerId),
-      Some(GameJson.encodeCommand(expectedNextSequence, command, orderedModifiers))
+      Some(GameJson.encodeCommand(expectedNextSequence, command))
     )
-
-  override def preview(gameId: String, selectedPlayerId: String,
-      request: MajorActionPreviewRequest) =
-    transport.request("POST", s"/api/dev/first-games/${encode(gameId)}/preview?playerId=" +
-      encode(selectedPlayerId), Some(MajorActionPreviewCodec.encodeRequest(request))).map({ result =>
-      result.flatMap(response => if response.status >= 200 && response.status < 300 then
-        MajorActionPreviewCodec.decodeResponse(response.body).left.map(error =>
-          GameClientFailure.DecodeFailure(error.path, error.message))
-      else Left(GameClientFailure.HttpFailure(response.status, "preview", response.body)))
-    })(using scala.scalajs.concurrent.JSExecutionContext.queue)
 
   override def loadLog(gameId: String, selectedPlayerId: String, after: Long) =
     transport.request("GET", s"/api/dev/first-games/${encode(gameId)}/log/$after" +
@@ -197,25 +181,14 @@ final class TrustedHttpGameClient(transport: JsonTransport) extends GameClient:
     send("GET", api(gameId), None)
 
   override def submit(gameId: String, selectedPlayerId: String,
-      expectedNextSequence: Long, command: GameCommand,
-      orderedModifiers: Vector[ModifierInvocation]) =
+      expectedNextSequence: Long, command: GameCommand) =
     send("POST", api(gameId) + "/commands",
-      Some(GameJson.encodeCommand(expectedNextSequence, command, orderedModifiers)))
+      Some(GameJson.encodeCommand(expectedNextSequence, command)))
 
   override def loadLog(gameId: String, selectedPlayerId: String, after: Long) =
     transport.request("GET", api(gameId) + s"/log/$after", None)
       .map(_.flatMap(GameJson.logResponse))(
         using scala.scalajs.concurrent.JSExecutionContext.queue)
-
-  override def preview(gameId: String, selectedPlayerId: String,
-      request: MajorActionPreviewRequest) =
-    transport.request("POST", api(gameId) + "/preview",
-      Some(MajorActionPreviewCodec.encodeRequest(request))).map(_.flatMap { response =>
-        if response.status >= 200 && response.status < 300 then
-          MajorActionPreviewCodec.decodeResponse(response.body).left.map(error =>
-            GameClientFailure.DecodeFailure(error.path, error.message))
-        else Left(GameJson.responseFailure(response))
-      })(using scala.scalajs.concurrent.JSExecutionContext.queue)
 
   private def send(method: String, url: String, body: Option[String]) =
     transport.request(method, url, body).map(_.flatMap(GameJson.projectionResponse))(
@@ -243,9 +216,8 @@ object GameJson:
         else GameClientFailure.HttpFailure(response.status, error._1, error._2)
     )
 
-  def encodeCommand(sequence: Long, command: GameCommand,
-      modifiers: Vector[ModifierInvocation] = Vector.empty): String =
-    ActorlessCommandCodec.encode(ActorlessCommandRequest(sequence, command, modifiers))
+  def encodeCommand(sequence: Long, command: GameCommand): String =
+    ActorlessCommandCodec.encode(ActorlessCommandRequest(sequence, command))
 
   def decodeProjection(json: String): Either[GameClientFailure, GameProjection] =
     GameProjectionCodec.decode(json).left.map:

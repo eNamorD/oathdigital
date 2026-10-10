@@ -22,15 +22,14 @@ class SearchLaunchSuite extends munit.FunSuite:
   private def actions(value: GameProjection, ui: RecordingControls)
       : dom.Element = ActionDecisionRenderer.actionsPanel(value,
     ActionPanels.actingViewer("red"), ParkedDecision.Routed(None, None),
-    canControl = true, SessionDrafts.empty, ui).element
+    canControl = true, SessionDrafts.empty, ui)
 
   test("the Search control starts the walker and names no source"):
     val ui = new RecordingControls()
     val search = as[dom.html.Button](one(actions(table, ui), ".search-action"))
     assertEquals(search.textContent, "Search")
     search.click()
-    assertEquals(ui.submitted, Vector(Intent.StartWalker("search",
-      Vector.empty)))
+    assertEquals(ui.submitted, Vector(Intent.StartWalker("search")))
 
   test("no Search control is drawn without beginSearch"):
     val pane = actions(table.copy(legalControls = Vector.empty),

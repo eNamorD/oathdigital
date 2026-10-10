@@ -31,14 +31,12 @@ import oathdigital.protocol.projection.{CardDetailsProjection,
   * `RecoverProcedure`'s tree shape ever changes.
   *
   * `walkerPowerCatalog` (Task 5) is the same full catalog `OathRules`
-  * offers a live command; `context.current.walkerModifiers` -- the durable
-  * fact persisted from the `StartWalker` that parked here -- narrows it down
-  * through `WalkerPowers.selected`, the SAME projection `OathRules
-  * .walkerPowers` applies at command time. Without this, a power that
-  * inserts operations at a shared window (Catacombs at
-  * `RecoverActionEligibility`) would make this projector re-fold the tree
-  * differently from the walker that actually parked it, misreporting the
-  * parked node.
+  * offers a live command, with the modifiers the walk's answers pick added
+  * (`WalkerPowers.withAnswers`), the SAME powers `OathRules.walkerPowers`
+  * walks with at command time. Without this, a power that inserts
+  * operations at a shared window (Catacombs at `RecoverActionEligibility`)
+  * would make this projector re-fold the tree differently from the walker
+  * that actually parked it, misreporting the parked node.
   */
 private[application] final class WalkerDecisionProjector(
     catalog: ExecutableCatalog, presentation: GamePresentationProjector,
@@ -65,8 +63,8 @@ private[application] final class WalkerDecisionProjector(
         context.current.turn.activePlayer,
         context.current.walkerStartArgs).toOption
       // The modifiers picked in the walk join, so their warnings show.
-      powers = WalkerPowers.selected(walkerPowerCatalog,
-        context.current.walkerModifiers).withAnswers(pending.answered)
+      powers = WalkerPowers.selected(walkerPowerCatalog, Vector.empty)
+        .withAnswers(pending.answered)
       awaited <- ProcedureWalker.awaitedPlayer(context.ready, tree, pending,
         powers)
       owners = ProcedureWalker.awaitedPlayers(context.ready, tree, pending,
@@ -87,7 +85,7 @@ private[application] final class WalkerDecisionProjector(
       tree <- rebuild(ready, procedure, current.turn.activePlayer,
         current.walkerStartArgs).toOption
       decide <- ProcedureWalker.parkedDecide(ready, tree, pending,
-        WalkerPowers.selected(walkerPowerCatalog, current.walkerModifiers),
+        WalkerPowers.selected(walkerPowerCatalog, Vector.empty),
         probing = false)
     yield decide
 

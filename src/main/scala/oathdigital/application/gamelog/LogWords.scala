@@ -1,7 +1,6 @@
 package oathdigital.application.gamelog
 
-import oathdigital.application.{GamePresentationProjector,
-  PreviewModifierDescriptions}
+import oathdigital.application.GamePresentationProjector
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.model._
@@ -16,8 +15,7 @@ private[gamelog] enum CardWord:
   */
 private[gamelog] final class LogWords(catalog: ExecutableCatalog,
     presentation: GamePresentationProjector):
-  private val descriptions = new PreviewModifierDescriptions(catalog,
-    presentation)
+  private val printed = new PrintedCards(catalog)
 
   /** "Verb " when `player` is the run's actor, else "Blue verb ". */
   def subject(player: PlayerId, actor: PlayerId, verb: String)
@@ -111,12 +109,12 @@ private[gamelog] final class LogWords(catalog: ExecutableCatalog,
       case _: RelicId => "relic"
       case other => presentation.cardKind(other))
 
-  /** A power named by the card it is printed on, as the modifier picker
+  /** A power named by the card it is printed on, as the modifier decision
     * names it; the card follows the visibility rule on `ready`. A banner's
     * power, printed on no card, is named by its banner. */
   def power(ready: ReadyGame, actor: PlayerId, id: PowerId,
       viewer: Option[PlayerId]): Vector[LogSpan] =
-    descriptions.printedOn(ready, actor, id.value).fold(
+    printed.printedOn(ready, actor, id.value).fold(
       Vector[LogSpan](LogWords.bannerOf(id).fold[LogSpan](
         LogSpan.Text(presentation.safeLabel(id.value)))(banner)))(card =>
       one(this.card(card, ready, ready, viewer)))

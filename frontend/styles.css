@@ -723,20 +723,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   background: linear-gradient(90deg, var(--suit-discord), var(--suit-order));
   color: #fff; }
 .player-board { margin-top: 12px; padding: 12px; border: 1px solid #40382c; border-radius: 9px; }
-.modifier-option { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
-.modifier-toggle { min-height: 44px; text-align: left; }
-/* A modifier option is the card it is printed on, with the action it
-   modifies under it. */
-.modifier-toggle .card-face { pointer-events: none; }
-.modifier-modifies, .modifier-cost {
-  display: block;
-  font-size: 0.8em;
-  opacity: 0.85; }
-.modifier-ordinal { display: inline-grid; width: 1.8rem; height: 1.8rem;
-  place-items: center; border-radius: 50%; background: #d2a85e; color: #17140f;
-  font-weight: 700; }
-.modifier-earlier, .modifier-later, .modifier-confirm, .modifier-back,
-.modifier-cancel { min-height: 44px; }
 .available-action-group { margin: 12px 0; padding: 10px; border: 1px solid #40382c;
   border-radius: 8px; }
 .action-group-heading { margin: 0 0 8px; color: #c9bfa9; font-size: 0.9rem; }
@@ -1005,9 +991,8 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   padding: 8px 12px; border: 1px solid #bca780; border-radius: 7px;
   background: #282117; color: #fff; }
 .pane-actions :where(.move-option, .put-on-top,
-    .distribute-decrement, .distribute-increment, .modifier-earlier,
-    .modifier-later) { border-color: #7c694b; border-radius: 4px;
-  background: #302a20; color: #e8d9bb; }
+    .distribute-decrement, .distribute-increment) { border-color: #7c694b;
+  border-radius: 4px; background: #302a20; color: #e8d9bb; }
 .pane-actions :where(button:not(.card-face)):hover:not(:disabled) {
   border-color: #fff2d6; background: #3b3123; }
 .pane-actions :where(button:not(.card-face)):disabled { opacity: 0.5;
@@ -1021,7 +1006,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 :where(.pane-actions h3) { font-size: .95rem; }
 /* Helper lines under a heading or prompt, in the same ink as a partition's
    instruction: what the form allows, not the question itself. */
-.selection-cardinality, .board-draft, .modifier-instruction,
+.selection-cardinality, .board-draft,
 .walker-many-instruction, .walker-amount-instruction, .informational,
 .walker-waiting, .seat-identity,
 .walker-choice-details, .decision-instruction, .empty-state {

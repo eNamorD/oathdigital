@@ -14,6 +14,7 @@ import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
 import oathdigital.gameplay.powers.cardplay.WildCry
 import oathdigital.gameplay.powers.economy.GolemLegions
+import oathdigital.gameplay.powers.recover.RelicWorship
 import oathdigital.gameplay.powers.search.{Augury, NewsFromAfar}
 import oathdigital.gameplay.powers.travel.Tents
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
@@ -224,7 +225,7 @@ object LogScripts:
   private def start(situation: Situation, action: StartableRef,
       args: DecisionOptionRef*)(using munit.Location): Situation =
     situation.after(GameCommand.StartWalker(action,
-      StartPayload(Look(situation.ready).active, Vector.empty, args.toVector)))
+      StartPayload(Look(situation.ready).active, args.toVector)))
 
   /** Arranges `ops` at the end of the first player's turn, just before
     * their Begin Rest, and plays on to the second player's Wake, returning
@@ -314,7 +315,7 @@ object LogScripts:
     act.withAnswers(ModifierPlay.answers(PowerWindow.MusterModifierSelection,
       Vector(GolemLegions.id)))
       .after(GameCommand.StartWalker(ActionRef.Muster,
-        StartPayload(p1, Vector.empty)))
+        StartPayload(p1)))
     Script("golem-muster", service, p1)
 
   /** Trade for secrets, on the second player's turn, at the site with the
@@ -380,6 +381,18 @@ object LogScripts:
         s"$actor should hold only the recovered relic, holds $held")
     recovered.after(GameCommand.RevealOwnedRelic(actor, relic))
     Script("reveal-relic", service, actor)
+
+  /** p1 recovers at Broken Peaks with Relic Worship, their adviser, and one
+    * faceup secret. Relic Worship is the only modifier, so its pick starts
+    * the Recover by itself. */
+  def recoverWorship(using munit.Location): Script =
+    val (service, act) = atTable("recover-worship",
+      ParkedServiceFixture.recoverTable.adviser(p1, "Relic Worship")
+        .secrets(p1, faceUp = 1).banditsRefilled, Dice.steady)
+    act.withAnswers(ModifierPlay.answers(
+      PowerWindow.RecoverModifierSelection, Vector(RelicWorship.id)))
+      .after(GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
+    Script("recover-worship", service, p1)
 
   /** The Forge fixture's table, then the Forge itself, which never parks at
     * a single-resource site. */
@@ -517,7 +530,7 @@ object LogScripts:
       .favor(p1, 2).banditsRefilled)
     act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
       Vector(NewsFromAfar.id, Augury.id))).after(GameCommand.StartWalker(
-      ActionRef.Search, StartPayload(p1, Vector.empty, Vector.empty)))
+      ActionRef.Search, StartPayload(p1)))
     Script("two-picks", service, p1)
 
   /** Wild Cry at p1's site and a facedown adviser: the play picks Wild Cry,
@@ -529,8 +542,7 @@ object LogScripts:
       .adviser(p1, conclave, facedown = true).banditsRefilled)
     act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
       Vector(WildCry.id))).after(GameCommand.StartWalker(
-      ActionRef.PlayFacedownAdviser, StartPayload(p1, Vector.empty,
-        Vector.empty)))
+      ActionRef.PlayFacedownAdviser, StartPayload(p1)))
     Script("facedown-cry", service, p1)
 
   /** Tents as p1's adviser, with 1 favor to pay for it. The Travel picks
@@ -652,7 +664,7 @@ object LogScripts:
       case park if park.decisionId == FamilyHeirloom.decisionId =>
         ChooseOneAnswer(choice)
     }.after(GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-      StartPayload(p1, Vector.empty, Vector.empty)))
+      StartPayload(p1)))
     Script(name, service, p1)
 
   def heirloomKept(using munit.Location): Script =

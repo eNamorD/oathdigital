@@ -11,10 +11,6 @@ class CommandRejectionMessageSuite extends FunSuite:
       "a promised disclosure is not currently inspectable by its author")
     assertEquals(CommandRejectionMessage.text(OathViolation.InsufficientFavor(3, 2)),
       "required favor 3 exceeds available 2")
-    assertEquals(CommandRejectionMessage.text(
-      OathViolation.InvalidModifierInvocation(
-        "no facedown adviser can legally be resolved")),
-      "no facedown adviser can legally be resolved")
     assertEquals(CommandRejectionMessage.text(OathViolation.FollowUpPending(
       oathdigital.model.FollowUp(oathdigital.model.PlayerId("p1"),
         oathdigital.model.ActionRef.Campaign,

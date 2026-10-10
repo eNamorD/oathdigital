@@ -6,9 +6,10 @@ import oathdigital.model.{OathViolation, PlayerId, PowerResolution,
   ProcedureRef, ReadyGame, Sequence}
 
 /** The modifiers a player may select for a procedure, read from one walker
-  * power catalog. `OathRules` validates a start's selection against
-  * `offerable`, and a start control asks `selections` whether some selection
-  * the player could make lets the procedure start, so the two cannot drift.
+  * power catalog. An Act panel start control asks `selections` whether some
+  * selection the player could make lets the procedure start (modifier walker
+  * design, ruling 9). The modifier decision itself judges each option
+  * exactly, inside the walk.
   */
 object ModifierOffers:
 
@@ -35,8 +36,9 @@ object ModifierOffers:
       procedure: ProcedureRef): Either[OathViolation, Vector[ContributingPower]] =
     offerable(catalog, ready, actor, procedure, WalkerProcedureRegistry.entries)
 
-  /** Dry-runs the selection payments of `powers` together against `ready`. */
-  def paying(catalog: WalkerPowers, ready: ReadyGame, actor: PlayerId,
+  /** Dry-runs the selection payments of `powers` together against `ready`:
+    * whether the player could pick them all. */
+  private def paying(catalog: WalkerPowers, ready: ReadyGame, actor: PlayerId,
       powers: Vector[ContributingPower]): Either[OathViolation, Unit] =
     val payments = powers.flatMap(_.selectionPayments(ready, actor))
     if payments.isEmpty then Right(())

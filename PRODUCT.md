@@ -56,7 +56,7 @@ is heavily inspired by the HRF (haunt-roll-fail) implementation of Arcs.
   sees it on one surface: a panel in the action pane, or clickable sites on the
   world board. `CONTEXT.md` defines the product terms (parked decision, form,
   surface, subject card, roll feedback, act-action control, draft set, modifier
-  flow). Future UI copy and design must use those terms.
+  decision). Future UI copy and design must use those terms.
 - Rulebook terms (site, adviser, denizen, relic, Chronicle, campaign, recover)
   come from `docs/rules/glossary.yaml`.
 - Current scope is the all-Exile alpha. Empire and campaign-continuity rules

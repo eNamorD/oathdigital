@@ -7,28 +7,23 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  DecisionAnswerWire, GameIntent, MajorActionPreviewRequest}
+  DecisionAnswerWire, GameIntent}
 
 class HttpGameClientSuite extends FunSuite:
   test("trusted client uses canonical cookie APIs and actorless bodies"):
     val transport = transportAnsweringInOrder(Vector(
       Right(TransportResponse(200, projectionJson(7))),
-      Right(TransportResponse(200, """{"nextSequence":7,"action":"trade","modifiers":[],"ignoredRules":[]}""")),
       Right(TransportResponse(200, projectionJson(8)))))
     val client = new TrustedHttpGameClient(transport)
     client.load("game /?", "seat-must-not-travel").flatMap { loaded =>
       assertEquals(accepted(loaded).nextSequence, 7L)
-      client.preview("game /?", "seat-must-not-travel",
-        MajorActionPreviewRequest(7, "trade", Map("resource" -> "favor")))
-    }.flatMap { preview =>
-      assertEquals(accepted(preview).nextSequence, 7L)
-      client.submit("game /?", "seat-must-not-travel", 7, GameIntent.RevealOwnedRelic("relic:a"))
+      client.submit("game /?", "seat-must-not-travel", 7,
+        GameIntent.RevealOwnedRelic("relic:a"))
     }.map { submitted =>
       assertEquals(accepted(submitted).nextSequence, 8L)
       assertEquals(transport.requests.map(r => r.method -> r.url).toVector,
         Vector(
           "GET" -> "/games/game%20%2F%3F/api",
-          "POST" -> "/games/game%20%2F%3F/api/preview",
           "POST" -> "/games/game%20%2F%3F/api/commands"))
       assertEquals(transport.requests.head.body, None)
       assertEquals(ActorlessCommandCodec.decode(

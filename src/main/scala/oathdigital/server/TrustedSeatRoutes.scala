@@ -94,15 +94,7 @@ final class TrustedSeatRoutes(
                     .fold(publicError, page => json(StatusCodes.OK,
                       oathdigital.protocol.projection.LogPageCodec.encode(page))))
               } }
-            } ~ path("preview"):
-              post { sameOrigin {
-                entity(as[String]) { body => async {
-                  authenticate(request, gameId).fold(publicError, seat =>
-                    decodePreview(body).fold(_ => malformed, preview =>
-                      gateway.preview(gameId, seat, preview).fold(publicError,
-                        value => json(StatusCodes.OK, MajorActionPreviewCodec.encode(value)))))
-                } }
-              } }
+            }
         }
     }
 
@@ -145,13 +137,6 @@ final class TrustedSeatRoutes(
     case Seq(raw) => SeatCode.parse(raw).left.map(_ => TrustedSeatFailure.Forbidden)
       .flatMap(resolve).flatMap(seat => Either.cond(seat.gameId == gameId, seat, TrustedSeatFailure.Forbidden))
     case _ => Left(TrustedSeatFailure.Forbidden)
-
-  // The shared preview decoder is permissive about envelope fields. This boundary
-  // rejects actor fields without changing the existing development/authenticated APIs.
-  private def decodePreview(body: String): Either[Unit, MajorActionPreviewRequest] =
-    Try(ujson.read(body)).toOption.collect { case obj: ujson.Obj => obj }
-      .filter(_.value.keys.forall(Set("expectedNextSequence", "action", "baseParameters", "orderedModifiers")))
-      .toRight(()).flatMap(_ => MajorActionPreviewCodec.decode(body).left.map(_ => ()))
 
   private def async(operation: => HttpResponse): Route =
     onComplete(Future(operation)(using blockingExecutionContext)):

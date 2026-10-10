@@ -21,7 +21,7 @@ class ElderSuite extends munit.FunSuite:
     .pawn(actor, "Ancient City").denizen(elders, at = "Ancient City")
     .favor(actor, favor).ready
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
-    ActionRef.UsePower(Elders.id), actor, Vector.empty, Vector(source))
+    ActionRef.UsePower(Elders.id), actor, Vector(source))
   private def secrets(ready: ReadyGame) =
     Look(ready).player(actor).board.faceUpSecrets + Look(ready).player(actor)
       .board.faceDownSecrets

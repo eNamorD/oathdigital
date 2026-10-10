@@ -3,12 +3,15 @@ package oathdigital.gameplay.actions.challenge
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.BannerRules
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
+  WalkerSimulation}
 import oathdigital.model._
 
 /** Challenge on the walker: spend one Supply, choose a banner, choose how many
   * resources replace it, return the banner's resources (the ribbon), then pay
-  * the replacement and take the banner. Takes no start selection.
+  * the replacement and take the banner. Takes no start selection. It opens
+  * with the modifier decision, which asks nothing while no power selects at
+  * its window.
   *
   * The Supply is spent first so no decision reads it. The banner and the
   * amount are decided before any resource moves, so both read the board as
@@ -18,26 +21,43 @@ object ChallengeProcedure:
   val bannerDecisionId: String = "challenge.banner"
   val amountDecisionId: String = "challenge.amount"
 
+  /** "Start Challenge": the modifier decision's button. */
+  val startLabel: String = "Start Challenge"
+
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
-    _ <- supportedFaces(state)
-    _ <- Either.cond(legalBanners(state, actor).nonEmpty, (),
-      OathViolation.NoPlayableOption(ActionRef.Challenge.key))
+    _ <- afterModifiers(state, actor)
   yield tree(actor)
 
   /** Whether Challenge could start now: the gates pass and the first walk
-    * (the Supply cost, up to the banner decision) is accepted.
+    * after the modifier decision (the Supply cost, up to the banner
+    * decision) is accepted.
     */
   def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       powers: WalkerPowers): Boolean =
-    build(catalog, state, actor, Vector.empty)
+    afterModifiers(state, actor)
       .exists(WalkerSimulation.starts(_, state, powers))
 
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
     noStartArgs(args).map(_ => tree(actor))
+
+  /** The Challenge itself, behind the start's gates. */
+  private def afterModifiers(state: ReadyGame, actor: PlayerId)
+      : Either[OathViolation, Operation] = for
+    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
+    _ <- supportedFaces(state)
+    _ <- Either.cond(legalBanners(state, actor).nonEmpty, (),
+      OathViolation.NoPlayableOption(ActionRef.Challenge.key))
+  yield challenge(actor)
+
+  /** The modifier decision, then the Challenge. No power selects at
+    * `ChallengeModifierSelection` yet, so the decision asks nothing. */
+  private def tree(actor: PlayerId): Operation =
+    val rest = challenge(actor)
+    Sequence(Vector(ModifierChoice.loop(actor,
+      PowerWindow.ChallengeModifierSelection, rest, startLabel), rest))
 
   /** The banners the actor could challenge now, in the banners' declared
     * order: not already held by the actor, the holder (if any) at the actor's
@@ -72,7 +92,7 @@ object ChallengeProcedure:
       banners.darkestSecret.active == DarkestSecretFace.WanderingFlame, (),
       OathViolation.UnsupportedBannerState("unsupported active banner face"))
 
-  private def tree(actor: PlayerId): Operation = Sequence(Vector[Operation](
+  private def challenge(actor: PlayerId): Operation = Sequence(Vector[Operation](
     Sequence(Vector[Operation](SpendSupply(actor, 1)),
       Some(PowerWindow.ChallengeCost)),
     Branch((ready, _) => Vector(Decide(bannerDecisionId, actor,

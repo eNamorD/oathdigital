@@ -138,8 +138,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     val siteId = CatalogNames.site("Broken Peaks")
 
     val wealth = accepted(service.handle("game-wake", 0L,
-      GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(active,
-        Vector.empty, Vector(DecisionOptionRef.Button("secret"))))))
+      GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(active, Vector(DecisionOptionRef.Button("secret"))))))
     // Take Wealth is one atomic walker command (batch-1 Task 7): the resource
     // move, the use record and the completion. It was Wake's only option, so
     // Wake ends in the same command: its phase-change step and completion

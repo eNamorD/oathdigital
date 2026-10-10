@@ -53,17 +53,15 @@ class InsomniaSuite extends munit.FunSuite:
   test("REST: its holder gains 1 secret, once per turn"):
     val ready = resting()
     val used = accepted(
-      rules.startWalker(Ready(ready), use, p1, Vector.empty, Vector(source)))
+      rules.startWalker(Ready(ready), use, p1, Vector(source)))
     assertEquals(secrets(Outcomes.ready(used.state)), secrets(ready) + 1)
     val ref = PowerUseRef(PowerTiming.Rest, PowerSourceRef.Card(insomnia),
       Insomnia.id)
-    assertEquals(rules.startWalker(used.state, use, p1, Vector.empty,
-      Vector(source)).left.toOption, Some(OathViolation.PowerAlreadyUsed(ref)))
+    assertEquals(rules.startWalker(used.state, use, p1, Vector(source)).left.toOption, Some(OathViolation.PowerAlreadyUsed(ref)))
 
   test("its line restates the gain, covering the generic one"):
     val used = accepted(
-      rules.startWalker(Ready(resting()), use, p1, Vector.empty,
-      Vector(source)))
+      rules.startWalker(Ready(resting()), use, p1, Vector(source)))
     assertEquals(NoteText.said(Insomnia, used.events),
       Vector(NoteText.Said(NoteKey.Used, s"${p1.value} gained 1 secret.",
         covers = true)))

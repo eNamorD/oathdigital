@@ -47,8 +47,7 @@ class PendingWalkerRulesSuite extends munit.FunSuite:
       Vector("Golem Legions", "Rain Boots"), Set(Suit.Arcane, Suit.Nomad))
     val actor = Table.p1
     val parked = accepted(rules.startWalker(Ready(ready),
-      ActionRef.UsePower(SilverTongue.id), actor, Vector.empty,
-      Vector(DecisionOptionRef.Denizen(SilverTongueFixture.tongue))))
+      ActionRef.UsePower(SilverTongue.id), actor, Vector(DecisionOptionRef.Denizen(SilverTongueFixture.tongue))))
     walkerParked.assertParked(parked.state, ActionRef.UsePower(SilverTongue.id),
       SilverTongue.choiceDecisionId(ready, actor), actor)
     parked.state

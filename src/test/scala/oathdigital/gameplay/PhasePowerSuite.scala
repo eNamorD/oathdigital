@@ -27,7 +27,7 @@ class PhasePowerSuite extends munit.FunSuite:
     catalog, phasePowerCatalog = PhasePowers(Vector(power)))
   private def use(power: PhasePower, state: OathState, by: PlayerId = p1) =
     rules(power).startWalker(state, ActionRef.UsePower(power.id), by,
-      Vector.empty, Vector(source))
+      Vector(source))
   /** `state`'s turn put back in Wake, its uses kept: a once-per-turn power
     * that was Wake's last option ended Wake. */
   private def rewoken(state: OathState): OathState =
@@ -104,8 +104,7 @@ class PhasePowerSuite extends munit.FunSuite:
     assertEquals(use(power, Ready(holding(Phase.Wake))).left.toOption, Some(OathViolation.InvalidEventOrder(
       "denizen.magicians-code is a Act power and cannot be used in the Wake phase")))
     assertEquals(rules(power).startWalker(Ready(holding(Phase.Act)),
-      ActionRef.UsePower(powerId), p1, Vector.empty,
-      Vector(DecisionOptionRef.Denizen(DenizenId("no-such-card")))).left.toOption,
+      ActionRef.UsePower(powerId), p1, Vector(DecisionOptionRef.Denizen(DenizenId("no-such-card")))).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "denizen/no-such-card is not an accessible source of denizen.magicians-code")))
 
@@ -245,6 +244,5 @@ class PhasePowerSuite extends munit.FunSuite:
     assertEquals(PhasePowerProcedure.usable(catalog, holdingRelic(facedown = true),
       p1, powers, WalkerPowers.empty), Vector.empty)
     assertEquals(rules(relicPower).startWalker(Ready(holdingRelic(facedown = true)),
-      ActionRef.UsePower(relicPower.id), p1, Vector.empty,
-      Vector(DecisionOptionRef.Relic(relic))).left.toOption, Some(OathViolation.InvalidEventOrder(
+      ActionRef.UsePower(relicPower.id), p1, Vector(DecisionOptionRef.Relic(relic))).left.toOption, Some(OathViolation.InvalidEventOrder(
         s"relic/${relic.value} is not an accessible source of relic.brass-horse")))

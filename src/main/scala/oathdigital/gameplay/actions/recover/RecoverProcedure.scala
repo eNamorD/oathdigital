@@ -3,30 +3,33 @@ package oathdigital.gameplay.actions.recover
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.OathLifecycle
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerRollFeedback,
-  WalkerSimulation}
+import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
+  WalkerRollFeedback, WalkerSimulation}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 
 /** Declared Recover procedure tree for the [[oathdigital.gameplay.walker.ProcedureWalker]]}.
   *
   * {{{
-  * Sequence(                                // window = RecoverActionEligibility
-  *   ModifyDicePool("recover", +2),         // window = RecoverBeforeFirstRoll
-  *   Repeat(guard = not succeeded && lastChoice != Stop,
-  *     Sequence(
-  *       SpendSupply(actor, 1),            // validated by OperationPipeline
-  *       Roll("recover", Defense, Automatic), // rolls in the same command
-  *       Branch(choice when not yet success) // -> Decide("recover.choice") or nothing
-  *     )),
-  *   Branch(if success ->
-  *     Vector(Decide("recover.relic"),
-  *       BuildOps(move chosen relic facedown)), // window = RecoverAfterRelic
-  *     else Vector.empty))                  // stopped: ends with no relic
+  * Sequence(
+  *   Repeat(ModifierChoice),                  // the modifiers, one per
+  *                                            // pass, then "Start Recover"
+  *   Sequence(                                // window = RecoverActionEligibility
+  *     ModifyDicePool("recover", +2),         // window = RecoverBeforeFirstRoll
+  *     Repeat(guard = not succeeded && lastChoice != Stop,
+  *       Sequence(
+  *         SpendSupply(actor, 1),            // validated by OperationPipeline
+  *         Roll("recover", Defense, Automatic), // rolls in the same command
+  *         Branch(choice when not yet success) // -> Decide("recover.choice") or nothing
+  *       )),
+  *     Branch(if success ->
+  *       Vector(Decide("recover.relic"),
+  *         BuildOps(move chosen relic facedown)), // window = RecoverAfterRelic
+  *       else Vector.empty)))                 // stopped: ends with no relic
   * }}}
   *
   * Descriptions of PowerWindows:
-  * `RecoverActionEligibility` - At the start of the action, for checking prerequisites
+  * `RecoverActionEligibility` - At the start of the Recover itself, after the modifier decision
   * `RecoverBeforeFirstRoll` - Before the very first roll
   * `RecoverAfterRelic` - After the relic is chosen
   *
@@ -103,37 +106,55 @@ object RecoverProcedure:
       Vector.empty[RelicState])(_.relics.filter(
       _.orientation == Orientation.FaceDown))
 
+  /** "Start Recover": the modifier decision's button. */
+  val startLabel: String = "Start Recover"
+
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId)
       : Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(oathdigital.model.OathState.Ready(state),
       activePlayer)
-    siteId <- actorSite(state, activePlayer).toRight(
-      OathViolation.PawnSiteMissing(activePlayer))
-    difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
-      OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
-  yield tree(activePlayer, siteId, difficulty)
+    built <- rebuild(catalog, state, activePlayer)
+  yield built
 
-  /** Whether Recover could start now: the gates pass and the first walk (the
-    * Supply cost, up to the first roll) is accepted, so a player without the
-    * Supply is not offered it.
+  /** The Recover itself, after its modifier decision, behind the start's
+    * gates. */
+  def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
+      activePlayer: PlayerId): Either[OathViolation, Operation] = for
+    _ <- OathLifecycle.validateAct(oathdigital.model.OathState.Ready(state),
+      activePlayer)
+    rest <- recoveryAt(catalog, state, activePlayer)
+  yield rest
+
+  /** Whether Recover could start now: the gates pass and the first walk
+    * after the modifier decision (the Supply cost, up to the first roll) is
+    * accepted, so a player without the Supply is not offered it.
     */
   def startable(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId, powers: WalkerPowers): Boolean =
-    build(catalog, state, activePlayer)
+    afterModifiers(catalog, state, activePlayer)
       .exists(WalkerSimulation.starts(_, state, powers))
 
-  /** Rebuilds the same command-local tree for an already-started Recover. */
+  /** Rebuilds the same command-local tree for an already-started Recover:
+    * the modifier decision, then the Recover. */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId): Either[OathViolation, Operation] = for
-    siteId <- actorSite(state, activePlayer).toRight(
-      OathViolation.PawnSiteMissing(activePlayer))
+      activePlayer: PlayerId): Either[OathViolation, Operation] =
+    recoveryAt(catalog, state, activePlayer).map(rest =>
+      Sequence(Vector(ModifierChoice.loop(activePlayer,
+        PowerWindow.RecoverModifierSelection, rest, startLabel), rest)))
+
+  /** The Recover at the actor's site, which must have a Recover
+    * difficulty. */
+  private def recoveryAt(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId): Either[OathViolation, Operation] = for
+    siteId <- actorSite(state, actor).toRight(
+      OathViolation.PawnSiteMissing(actor))
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
-  yield tree(activePlayer, siteId, difficulty)
+  yield recovery(actor, siteId, difficulty)
 
   /** Tree closes only over command-stable actor, site, and difficulty. */
-  private def tree(actor: PlayerId, siteId: SiteId,
+  private def recovery(actor: PlayerId, siteId: SiteId,
       difficulty: Int): Operation =
     def scoreOf(ready: ReadyGame): Int =
       ready.game.current.rollOutcomes.get(recoverPool).fold(0)(_.score)

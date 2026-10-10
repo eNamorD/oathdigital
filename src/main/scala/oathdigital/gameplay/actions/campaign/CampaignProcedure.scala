@@ -2,8 +2,8 @@ package oathdigital.gameplay.actions.campaign
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerRollFeedback,
-  WalkerSimulation}
+import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
+  WalkerRollFeedback, WalkerSimulation}
 import oathdigital.model._
 
 /** Campaign on the walker, in the rulebook's order: choose the kind and the
@@ -24,12 +24,13 @@ object CampaignProcedure:
     */
   val decisionPrefix: String = "campaign."
 
+  /** "Start Campaign": the modifier decision's button. */
+  val startLabel: String = "Start Campaign"
+
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
-    _ <- Either.cond(CampaignSetup.legalKinds(state, actor).nonEmpty, (),
-      OathViolation.CampaignUnavailable(NothingToAttack))
+    _ <- afterModifiers(catalog, state, actor)
   yield tree(catalog, state, actor)
 
   /** Why a Campaign cannot start with no site to conquer and no pawn to
@@ -38,13 +39,13 @@ object CampaignProcedure:
     "Conquest or a co-located enemy pawn to Raid"
 
 
-  /** Whether Campaign could start now: the gates pass and the first walk (the
-    * Supply cost, up to the first decision) is accepted, restrictions
-    * included.
+  /** Whether Campaign could start now: the gates pass and the first walk
+    * after the modifier decision (the Supply cost, up to the first
+    * decision) is accepted, restrictions included.
     */
   def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       powers: WalkerPowers): Boolean =
-    build(catalog, state, actor, Vector.empty)
+    afterModifiers(catalog, state, actor)
       .exists(WalkerSimulation.starts(_, state, powers))
 
   /** Why a Campaign could not start now, or `None` when it could (follow-up
@@ -53,13 +54,30 @@ object CampaignProcedure:
     * the gates; then the first walk. */
   def refusal(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       powers: WalkerPowers): Option[OathViolation] =
-    WalkerSimulation.restriction(tree(catalog, state, actor), state, powers)
-      .orElse(build(catalog, state, actor, Vector.empty)
+    WalkerSimulation.restriction(battle(catalog, state, actor), state, powers)
+      .orElse(afterModifiers(catalog, state, actor)
         .fold(Some(_), WalkerSimulation.refusal(_, state, powers)))
 
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
     noStartArgs(args).map(_ => tree(catalog, state, actor))
+
+  /** The Campaign itself, behind the start's gates. */
+  private def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId): Either[OathViolation, Operation] = for
+    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
+    _ <- Either.cond(CampaignSetup.legalKinds(state, actor).nonEmpty, (),
+      OathViolation.CampaignUnavailable(NothingToAttack))
+  yield battle(catalog, state, actor)
+
+  /** The modifier decision, then the Campaign. No power selects at
+    * `CampaignModifierSelection` yet, so the decision asks nothing. Battle
+    * plans are not modifiers: the Campaign asks for them itself. */
+  private def tree(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId): Operation =
+    val rest = battle(catalog, state, actor)
+    Sequence(Vector(ModifierChoice.loop(actor,
+      PowerWindow.CampaignModifierSelection, rest, startLabel), rest))
 
   private def noStartArgs(args: Vector[DecisionOptionRef])
       : Either[OathViolation, Unit] = Either.cond(args.isEmpty, (),
@@ -67,7 +85,7 @@ object CampaignProcedure:
       s"walker procedure ${ActionRef.Campaign.key} takes no start selection, " +
         s"got ${args.map(_.kind).mkString(", ")}"))
 
-  private def tree(catalog: ExecutableCatalog, state: ReadyGame,
+  private def battle(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Operation = Sequence(Vector[Operation](
     Sequence(Vector[Operation](SpendSupply(actor, CampaignIds.SupplyCost)),
       Some(PowerWindow.CampaignCost)),

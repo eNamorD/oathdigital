@@ -14,13 +14,13 @@ object RelicWorshipCard extends Denizen(DenizenId("173"), "Relic Worship", Suit.
 /** Relic Worship (card 173), a selected Recover modifier. Cost: 1 secret placed
   * on the card. After recovering a relic, gain 2 Supply.
   *
-  * The secret is paid at the start of the Recover, like every modifier's cost
+  * The secret is paid when it is picked in the walk's modifier decision
   * (the kit does it), and the gain follows the move that takes the relic, at
   * `RecoverAfterRelic`. A Recover that ends without a relic has still paid the
-  * secret and gains nothing: the player owns the choice to select it. Selecting
-  * needs a faceup secret and an empty card, and every selected modifier's payment
-  * is checked together at selection, so Catacombs and Relic Worship with one
-  * faceup secret are refused at the start instead of stranding the Recover.
+  * secret and gains nothing: the player owns the choice to pick it. Picking
+  * needs a faceup secret and an empty card. Once one pick spends the last
+  * faceup secret, the decision lists the other modifiers unavailable with the
+  * shortfall.
   */
 final case class RelicWorship private (catalog: ExecutableCatalog)
     extends SelectedModifier:

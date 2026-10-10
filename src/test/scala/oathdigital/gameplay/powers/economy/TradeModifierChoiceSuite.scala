@@ -9,7 +9,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, EconomyActions, Look, Outcomes,
   Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.{accepted, rejected}
+import oathdigital.testkit.Unwrap.accepted
 
 /** Trade asks for its modifiers inside the walk, after its resource
   * (modifier walker design, slice 3). */
@@ -77,10 +77,3 @@ class TradeModifierChoiceSuite extends munit.FunSuite:
     // Trade for favor pays one secret onto the card.
     assertEquals(Look(Outcomes.ready(done.state)).tokensOn(errandBoy),
       Tokens(0, 1))
-
-  test("a start may no longer carry modifiers for a Trade"):
-    assertEquals(rejected(rules.startWalker(Ready(besideErrandBoy(7)),
-      ActionRef.Trade, p1, Vector(Birdsong.id),
-      Vector(DecisionOptionRef.Button("favor")))),
-      OathViolation.InvalidEventOrder(
-        "trade chooses its modifiers inside the walk"))

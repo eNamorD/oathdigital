@@ -230,7 +230,7 @@ suit, token, die and player colors of the physical board.
 
 ### Primary
 - **Brass** (`brass`): the one accent. Eyebrows, `h2` section titles, the
-  current round segment, the modifier ordinal disc, board-option borders, the
+  current round segment, board-option borders, the
   pile card frame, and the Add Player control. Used for emphasis and
   legality, never as a fill for large areas.
 - **Bright Brass** (`brass-bright`): brass raised for small readouts: the
@@ -520,8 +520,7 @@ tightest controls at 4px. Cards use `0.35em` and dice `0.25em` so their
 corners scale with their font-size handle. Countable things are pills: site
 card counts, target-detail badges, the player title, the vision slot, the
 black player and black forces, and the plan-side badge at `1em`. The
-modifier ordinal is a full circle, as is the color swatch and the knowable
-pip.
+color swatch and the knowable pip are full circles.
 
 Borders are 1px solid in the Line ramp. Dashed means "not real yet": a blank
 die face, an empty card slot, the debug toolbar, the active player board's
@@ -545,11 +544,11 @@ controls are 30px.
   text, Brass Line border, `4px 9px` padding, 0.78rem. Hover: Pressed fill,
   Bright Cream border, the Action face's own answer. The two player pills
   (title, Vision) take the Raised fill on hover.
-- **Action** (load game, adviser, and every act, decision, confirm and
-  modifier button in the Actions pane): `#282117` fill, white text, `#bca780`
+- **Action** (load game, adviser, and every act, decision and confirm
+  button in the Actions pane): `#282117` fill, white text, `#bca780`
   border, `8px 12px` padding. Hover: Pressed fill, Bright Cream border. The
   small movers and steppers beside an option (card pickers, Put on top,
-  distribute `−`/`+`, modifier Earlier/Later) wear the Control face at their
+  distribute `−`/`+`) wear the Control face at their
   own sizes. Decision buttons keep their 5px margins. The partition confirm
   sits in a footer strip pinned to the pane's bottom edge (Pane fill,
   Line-pane top border, 12px padding), full width, so the answer stays in
@@ -586,7 +585,6 @@ controls are 30px.
 - **Vision slot**: pill, `currentColor` border, 0.85em, no fill.
 - **Plan side**: 1em pill, `0 0.6em` padding, 0.75em; Discord fill for attack,
   Order fill for defense, a Discord-to-Order gradient for both; white text.
-- **Modifier ordinal**: 1.8rem brass disc, Base text, 700.
 - **Unimplemented badge**: a band across the card's foot, out to its dashed
   border, in the Unimplemented fill: Cream mixed case at `max(0.62em,
   0.7rem)`, centered. The card keeps the band's height free at its foot, so

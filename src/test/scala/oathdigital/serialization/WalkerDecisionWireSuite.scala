@@ -75,8 +75,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       WalkerStepRecorded("3",
         ChoicePayload("league-treaty.distribute", distribute, player),
         Vector.empty, Vector.empty),
-      WalkerParked(ActionRef.Forge, Vector("2"), answered,
-        Vector.empty, Vector.empty))
+      WalkerParked(ActionRef.Forge, Vector("2"), answered, Vector.empty))
     assertStreamRoundTrips("forge", events)
 
   test("a parked Travel round trips its start selection"):
@@ -91,7 +90,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
   test("a park round trips its start facts, and a park without them reads " +
       "as having none"):
     val park = WalkerParked(ActionRef.Travel, Vector("0"), Vector.empty,
-      Vector.empty, Vector.empty)
+      Vector.empty)
     assert(encodedStreamThatRoundTrips("facts", Vector[OathEvent](
       park.copy(startFacts = Vector(DecisionOptionRef.Site(
         SiteId("site:source")))))).contains("\"startFacts\""))
@@ -110,13 +109,13 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       "under the wrong family or an unknown family is rejected"):
     val events = Vector[OathEvent](
       WalkerParked(PhaseTransitionRef.EndWake, Vector("0"), Vector.empty,
-        Vector.empty, Vector.empty),
+        Vector.empty),
       WalkerCompleted(ActionRef.Travel),
       // The triggered family (item 10 of the final fix brief): no
       // production journal exercised it here before, so this is the only
       // place the Oathkeeper procedure's wire spelling is pinned.
       WalkerParked(TriggeredProcedureRef.Oathkeeper, Vector("0"),
-        Vector.empty, Vector.empty, Vector.empty),
+        Vector.empty, Vector.empty),
       WalkerCompleted(TriggeredProcedureRef.Oathkeeper),
       WalkerCompleted(ActionRef.UsePower(PowerId("denizen.silver-tongue"))))
     val encoded = encodedStreamThatRoundTrips("families", events)
@@ -182,6 +181,26 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
         ChoicePayload("d", ChooseOneAnswer(ref), player), Vector.empty,
         Vector.empty): OathEvent }
     assertStreamRoundTrips("refs", events)
+
+  test("a park written with the modifiers its start selected still decodes, " +
+      "and the modifiers are ignored"):
+    val park = WalkerParked(ActionRef.Recover,
+      Vector("1", "1", "0", "2", "0"), Vector.empty, Vector.empty)
+    // Before the modifier walker, every park carried its start's modifiers.
+    def withOldModifiers(value: ujson.Value): ujson.Value = value match
+      case ujson.Obj(fields) =>
+        val rebuilt = ujson.Obj.from(fields.toSeq.map((key, inner) =>
+          key -> withOldModifiers(inner)))
+        if fields.contains("startFacts") then
+          rebuilt("modifiers") = ujson.Arr(ujson.Str("denizen.catacombs"))
+        rebuilt
+      case ujson.Arr(items) => ujson.Arr.from(items.map(withOldModifiers))
+      case other => other
+    val old = ujson.write(withOldModifiers(ujson.read(
+      encodedStream("old-park", Vector[OathEvent](park)))))
+    assert(old.contains("\"modifiers\":[\"denizen.catacombs\"]"), old)
+    assertEquals(accepted(GameEventWire.decodeStream(old)).map(_.event),
+      Vector[OathEvent](park))
 
   test("a journalled answer carrying a deleted legacy tag is rejected with a " +
       "typed decode failure"):

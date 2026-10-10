@@ -2,9 +2,10 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{ChoicePayload, FollowUpStarted,
-  WalkerCompleted, WalkerParked, WalkerStepRecorded}
+  WalkerCompleted, WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
 
@@ -57,7 +58,8 @@ private[gamelog] final class StartLines(words: LogWords,
 
   /** The tag's name and what its line says beyond the modifiers, but only at
     * the tag's anchor: the run's first event, except Muster and Trade (their
-    * cost step, after the source decision), Travel (its first step after the
+    * cost step, after the source decision), Recover (the step that opens its
+    * dice pool, after its modifier decision), Travel (its first step after the
     * destination decision), Search (its first step once no more modifiers
     * can be picked), the facedown-adviser play (its adviser's pick) and
     * Campaign (the first event by which kind and defender are both
@@ -71,6 +73,12 @@ private[gamelog] final class StartLines(words: LogWords,
       case ActionRef.Muster | ActionRef.Trade =>
         name(run.procedure).filter(_ =>
           paysCost(journal, run, at) || completing)
+          .map(named => (named, Vector.empty))
+      // The step that opens Recover's dice pool: the first of the Recover
+      // itself, after its modifier decision.
+      case ActionRef.Recover =>
+        name(run.procedure).filter(_ =>
+          opensDicePool(journal, at) || completing)
           .map(named => (named, Vector.empty))
       // The first step that does anything after the source or destination
       // is picked: a toll, a modifier's payment, the Supply, the draw or the
@@ -123,6 +131,13 @@ private[gamelog] final class StartLines(words: LogWords,
       case _ => false
     }
 
+  private def opensDicePool(journal: LogJournal, at: Int): Boolean =
+    journal.ops(at).exists {
+      case OpStep(pool: ModifyDicePool, _, _) =>
+        pool.pool == RecoverProcedure.recoverPool
+      case _ => false
+    }
+
   /** Kind and defender from the answers so far and the state after `at`,
     * read exactly as the procedure reads them; failing that, from the
     * recorded result. */
@@ -148,21 +163,13 @@ private[gamelog] final class StartLines(words: LogWords,
       case CampaignDefender.Player(player) =>
         Vector(Text(s"$named against "), words.player(player))
 
-  /** The player's selection as a parked run records it, and the picks its
-    * answers make; or, for a run that never parked, the powers its steps
-    * record as contributing. Automatic powers are left out either way. */
+  /** The modifiers the run's answers pick, in pick order. Automatic powers
+    * are left out. */
   private def modifiers(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[LogSpan] =
-    val through = (run.first to journal.segmentEnd(at)).toVector
-    val chosen = through.reverseIterator.map(journal.event).collectFirst {
-      case parked: WalkerParked => parked.modifiers
-    }.getOrElse(through.map(journal.event).flatMap {
-      case step: WalkerStepRecorded => step.contributions
-      case _ => Vector.empty
-    }.distinct)
-    val picked = picks(journal.answers(run, journal.segmentEnd(at)))
-    val shown = (chosen ++ picked).distinct.filterNot(id =>
-      resolutions.get(id).contains(PowerResolution.Automatic))
+    val shown = picks(journal.answers(run, journal.segmentEnd(at)))
+      .filterNot(id =>
+        resolutions.get(id).contains(PowerResolution.Automatic))
     journal.readyBefore(run.first).filter(_ => shown.nonEmpty)
       .fold(Vector.empty[LogSpan])(ready => LogWords.join(
         shown.map(id => words.power(ready, run.actor, id, viewer))))

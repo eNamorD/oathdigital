@@ -39,27 +39,8 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
   def submit(gameId: String, seat: TrustedSeat, request: ActorlessCommandRequest)
       : Either[TrustedSeatFailure, GameProjection] = for
     player <- actor(gameId, seat)
-    command <- GameIntentMapper.bind(player, request.intent, request.orderedModifiers)
+    command <- GameIntentMapper.bind(player, request.intent)
       .left.map(_ => InvalidIntent)
     accepted <- service.handle(gameId, request.expectedNextSequence, command).left.map(Application.apply)
   yield projector.project(gameId, accepted.loaded, player)
     .copy(viewerPlayerId = Some(player.value))
-
-  def preview(gameId: String, seat: TrustedSeat, request: MajorActionPreviewRequest)
-      : Either[TrustedSeatFailure, MajorActionPreviewResponse] = for
-    player <- actor(gameId, seat)
-    action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(InvalidIntent)
-    selected <- GameIntentMapper.bindModifiers(player, request.orderedModifiers)
-      .left.map(_ => InvalidIntent)
-    accepted <- service.preview(gameId, request.expectedNextSequence, player, action, selected)
-      .left.map(Application.apply)
-    projection = projector.project(gameId, accepted.loaded, player)
-    _ <- Either.cond(projection.activeParticipantId.contains(player.value) &&
-      projection.actionSelectionOpen, (), Application(GameApplicationError.CommandRejected(
-        oathdigital.model.OathViolation.InvalidModifierInvocation(
-          "major-action preview is unavailable for this actor or phase"))))
-    _ <- MajorActionPreviewGuard.validate(projection, request).left.map(Application.apply)
-  yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
-    accepted.modifiers,
-    accepted.ignored.map(v => PreviewIgnoredRule(
-      v.source.stableKey, v.handlerId, v.timing.key, v.reason)))

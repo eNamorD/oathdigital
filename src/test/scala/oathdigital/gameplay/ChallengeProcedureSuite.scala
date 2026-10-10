@@ -3,13 +3,15 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.actions.challenge.ChallengeProcedure
-import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
+  ModifierPicks, Transform}
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation.NoPlayableOption
-import oathdigital.testkit.{CatalogNames, Journal, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, EmptyWindowModifier, Journal, Look,
+  Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
@@ -286,7 +288,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     assertEquals(Outcomes.ready(setupState).game.current.turn.activePlayer,
       activeId)
     val wealth = accepted(rules.startWalker(setupState, ActionRef.TakeWealth,
-      activeId, Vector.empty, Vector(DecisionOptionRef.Button("favor"))))
+      activeId, Vector(DecisionOptionRef.Button("favor"))))
     val act = accepted(rules.startWalker(wealth.state,
       PhaseTransitionRef.EndWake, activeId))
     val prior = BannerRules.resources(Outcomes.ready(act.state).game.current,
@@ -302,3 +304,17 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       banner.events ++ done.events
     val replayed = Journal.replayed(rules, events)
     assertEquals(replayed, done.state)
+
+  test("a modifier for the Challenge is asked about first, beside Start " +
+      "Challenge"):
+    val powers = EmptyWindowModifier.powersFor(MajorActionType.Challenge)
+    val board = challenger.peoplesFavor(None, favor = 2).adviser(p1, "Tents")
+      .ready
+    val started = accepted(new OathRules(catalog, walkerPowerCatalog = powers)
+      .startWalker(Ready(board), ActionRef.Challenge, p1))
+    assertEquals(
+      EmptyWindowModifier.parkedWithFirstOption(started.state, powers),
+      ("challenge.modifiers", Some(DecisionOption.Button(ModifierPicks.start,
+        "Start Challenge"))))
+    // Nothing is spent until the Challenge starts.
+    assertEquals(Look(started.state).supply(p1), 7)

@@ -1,6 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.protocol.{GameIntent, MajorActionPreviewResponse}
+import oathdigital.protocol.GameIntent
 import oathdigital.protocol.projection.FollowUpProjection
 import org.scalajs.dom
 
@@ -31,7 +31,7 @@ class FollowUpControlsSuite extends munit.FunSuite:
       Vector("Campaign for no Supply · Knights Errant", "Skip"))
     buttons(panel).foreach(_.click())
     assertEquals(sent.toVector, Vector[GameIntent](
-      GameIntent.StartWalker("campaign", Vector.empty),
+      GameIntent.StartWalker("campaign"),
       GameIntent.SkipFollowUp))
 
   test("an unstartable entry is disabled and says why on hover, and Skip " +
@@ -52,19 +52,3 @@ class FollowUpControlsSuite extends munit.FunSuite:
   test("another player sees no buttons"):
     val (panel, _) = rendered(owed, controls = Vector.empty)
     assertEquals(buttons(panel), Vector.empty)
-
-  test("a queued start that offers modifiers shows their order in place of " +
-      "the panel"):
-    val value = ServerModeFixtures.twoSeatProjection(
-      Set("beginFollowUp", "skipFollowUp"), phase = "follow-up-pending")
-      .copy(followUp = Some(owed))
-    val draft = ModifierFlowDrafts.orderingDraft(1L).copy(
-      preview = MajorActionPreviewResponse(nextSequence = 1L,
-        action = "campaign", modifiers = Vector.empty,
-        ignoredRules = Vector.empty))
-    val pane = ActionDecisionRenderer.actionsPanel(value,
-      ServerUiSupport.viewerPresentation(value, "red-exile"),
-      ParkedDecision.Routed(None, None), canControl = true,
-      SessionDrafts.empty.copy(modifiers = Some(draft)), new RecordingControls())
-    assertEquals(pane.prompt, "Confirm modifier order")
-    assert(Option(pane.element.querySelector(".follow-up-action")).isEmpty)

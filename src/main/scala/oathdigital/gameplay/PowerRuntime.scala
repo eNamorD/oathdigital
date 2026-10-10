@@ -4,18 +4,13 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.ReviewedPowerCatalog
 import oathdigital.model.PlayerId
-import oathdigital.model.{IgnoredRuleDiagnostic, ActionKind, OathViolation, OrderedRuleInvocation, PowerWindow, ReadyGame, RuleSourceRef, RuleTiming}
+import oathdigital.model.{IgnoredRuleDiagnostic, ActionKind, OathViolation, PowerWindow, ReadyGame, RuleSourceRef, RuleTiming}
 
 /** Compatibility projection from precise power windows into the current
   * command/event protocol. Matching and applicability are owned exclusively by
   * PowerResolver; these methods only translate established public shapes.
   */
 object PowerRuntime:
-  def options(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      action: ActionKind): Either[OathViolation, Vector[OrderedRuleInvocation]] =
-    resolve(catalog, ready, actor, window(action)).map(_.offered.map(invocation =>
-      OrderedRuleInvocation(invocation.source, invocation.powerId.value)))
-
   def ignored(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       action: ActionKind): Either[OathViolation, Vector[IgnoredRuleDiagnostic]] =
     resolve(catalog, ready, actor, window(action)).map(_.diagnostics.map(value =>

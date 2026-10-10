@@ -8,9 +8,9 @@ import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
 /** The node a Ready game's walker is parked on, rebuilt from durable state
-  * the way the projector rebuilds it: the procedure, the start selection and
-  * the selected modifiers all come from the state, never from a test's own
-  * memory of what it started.
+  * the way the projector rebuilds it: the procedure and the start selection
+  * come from the state, and the picked modifiers from its answers, never from
+  * a test's own memory of what it started.
   *
   * It is shared by `ParkedDecisionAssertions`, which asserts a park, and the
   * [[SituationDriver]], which answers one, so the rebuild has one owner.
@@ -63,8 +63,7 @@ object ParkedNode:
                   phasePowers).left.map(violation =>
                 s"could not rebuild $procedure's tree to read the park at " +
                   s"'$at': $violation")
-              powers = WalkerPowers.selected(walkerPowers,
-                current.walkerModifiers)
+              powers = WalkerPowers.selected(walkerPowers, Vector.empty)
               awaiting = ProcedureWalker.awaitedPlayer(ready, tree, pending,
                 powers)
               node <- ProcedureWalker.parkedDecide(ready, tree, pending,

@@ -41,6 +41,15 @@ class GameLogStartLineSuite extends munit.FunSuite:
       "With Golem Legions")
     assert(!texts(entries).exists(_.startsWith("Chose")), texts(entries))
 
+  test("a Recover with a pick names it on its own line, with no Chose line"):
+    val entries = format(recoverWorship, None)
+    val tag = entryStarting(entries, "Recover")
+    assertEquals(tag.kind, LogKind.Section)
+    assertEquals(text(tag), "Recover −1 Supply")
+    assertEquals(text(entries(entries.indexOf(tag) + 1)),
+      "With Relic Worship")
+    assert(!texts(entries).exists(_.startsWith("Chose")), texts(entries))
+
   test("the first player's Finish Rest reports the supply it restored"):
     val script = round
     val restored = lines(format(script, None))

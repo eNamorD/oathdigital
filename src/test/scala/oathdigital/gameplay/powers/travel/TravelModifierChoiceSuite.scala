@@ -7,7 +7,7 @@ import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Outcomes}
-import oathdigital.testkit.Unwrap.{accepted, rejected}
+import oathdigital.testkit.Unwrap.accepted
 
 /** Travel asks for its modifiers inside the walk (modifier walker design,
   * slice 2). */
@@ -57,12 +57,6 @@ class TravelModifierChoiceSuite extends munit.FunSuite:
     assertEquals(Look(after).tokensOn(tents), Tokens(1, 0))
     assertEquals(parkedDecision(picked.state).decisionId,
       TravelProcedure.destinationDecisionId)
-
-  test("a start may no longer carry modifiers for a Travel"):
-    assertEquals(rejected(rules.startWalker(Ready(withTents(7, 1)),
-      ActionRef.Travel, actor, Vector(Tents.id))),
-      OathViolation.InvalidEventOrder(
-        "travel chooses its modifiers inside the walk"))
 
   test("a picked modifier pays once, at the pick"):
     val done = Outcomes.ready(accepted(travel(

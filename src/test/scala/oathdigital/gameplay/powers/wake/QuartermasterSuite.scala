@@ -29,7 +29,7 @@ class QuartermasterSuite extends munit.FunSuite:
     (if ruled then table.warbandsAt(far, p1, 1) else table).ready
 
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
-    ActionRef.UsePower(Quartermaster.id), p1, Vector.empty, Vector(source))
+    ActionRef.UsePower(Quartermaster.id), p1, Vector(source))
 
   private def offered(ready: ReadyGame): Boolean = PhasePowerProcedure.usable(
     catalog, ready, p1, PhasePowerCatalog.default(catalog), WalkerPowers.empty)

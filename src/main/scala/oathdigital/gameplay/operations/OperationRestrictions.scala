@@ -12,7 +12,7 @@ import oathdigital.model._
   * [[RestrictionIcons]], holding every adviser-only and site-only denizen,
   * and the [[HallOfMinisters]] and the [[GrandScepter]], which their cards
   * declare.
-  * `active` adds the [[ActiveModifier]] rule for the modifiers selected for
+  * `active` adds the [[ActiveModifier]] rule for the modifiers picked for
   * the running action, and the restrictions the offered powers register.
   * Every one refuses as `Impossible`: an optional operation is skipped, a
   * required one rejects.
@@ -57,10 +57,11 @@ object OperationRestrictions:
     Vector(LockedCards(locked), RestrictionIcons(adviserOnly, siteOnly),
       HallOfMinisters, GrandScepter)
 
-/** A card that prints a power selected for the running action cannot be
-  * discarded while the action runs: a modifier a player selected at the start
-  * of an action stays in play until the action ends. A card picked in the
-  * modifier decision counts as one a selected modifier prints. */
+/** A card that prints a modifier picked for the running action cannot be
+  * discarded while the action runs: a modifier the player picked in the
+  * action's modifier decision stays in play until the action ends.
+  * `modifiers` are the picked powers, as the walker holds them; `picked` are
+  * their cards, for a check made outside the walk. */
 final case class ActiveModifier(catalog: ExecutableCatalog,
     modifiers: Vector[PowerId], picked: Vector[CardId] = Vector.empty)
     extends OperationRestriction:

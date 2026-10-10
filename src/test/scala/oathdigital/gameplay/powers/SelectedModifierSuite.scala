@@ -72,60 +72,24 @@ class SelectedModifierSuite extends munit.FunSuite:
     val broke = Table.start.favor(p1, 0).ready
     assert(priced.applicable(ctx(broke, priced, PowerWindow.TravelCost)))
 
-  test("a cost not paid at the pick is paid at the root of the action's " +
-      "tree, and only for a costed modifier"):
-    val recover: Set[MajorActionType] = Set(MajorActionType.Recover)
-    val priced = Probe(card, Cost(favor = 1), recover)
-    assertEquals(priced.contributions.keySet,
-      Set[PowerWindow](PowerWindow.RecoverActionEligibility))
-    assertEquals(Probe(card, Cost.free, recover).contributions,
+  test("a modifier contributes only its effects: its cost is paid at the " +
+      "pick"):
+    val priced = Probe(card, Cost(favor = 1), MajorActionType.values.toSet)
+    assertEquals(priced.contributions,
       Map.empty[PowerWindow, Vector[Contribution]])
-    // Search, Travel, Muster and Trade pay at the pick, in the modifier
-    // decision.
-    val picked = Probe(card, Cost(favor = 1), Set(MajorActionType.Search,
-      MajorActionType.Travel, MajorActionType.Muster, MajorActionType.Trade))
-    assertEquals(picked.contributions,
-      Map.empty[PowerWindow, Vector[Contribution]])
-
-  test("at the action's eligibility window a selected modifier always applies"):
-    // A probe that applies at no node still applies at the eligibility
-    // window, where its payment is made, and nowhere else.
-    val priced = Probe(card, Cost(favor = 1), travel, applies = false)
-    assert(priced.applicable(ctx(quietTable, priced,
+    // Outside its selection windows it asks only `appliesAt`, at the
+    // action's eligibility window too.
+    val idle = Probe(card, Cost(favor = 1), travel, applies = false)
+    assert(!idle.applicable(ctx(quietTable, idle,
       PowerWindow.TravelActionEligibility)))
-    assert(!priced.applicable(ctx(quietTable, priced, PowerWindow.TravelCost)))
 
-  test("the payment is what selecting it pays, for the combined check"):
+  test("the payment is what picking it pays"):
     val priced = Probe(card, Cost(favor = 1), travel)
     val ready = tentsAtAncientCity(1).ready
     assertEquals(priced.selectionPayments(ready, actor), Vector(
       oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
         catalog)))
     assertEquals(free.selectionPayments(ready, actor), Vector.empty)
-
-  test("a payment and an effect at the same window keep the payment first"):
-    // Stub of SelectedModifier: the Tents id on a Recover modifier, whose
-    // payment is not made at a pick, a cost of one favor and one Transform
-    // that changes nothing.
-    val both = new SelectedModifier:
-      def catalog = oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-      def cardId: CardId = card
-      def id: PowerId = PowerId("denizen.tents")
-      def actions: Set[MajorActionType] = Set(MajorActionType.Recover)
-      override def cost: Cost = Cost(favor = 1)
-      def effects: Map[PowerWindow, Vector[Contribution]] = Map(
-        PowerWindow.RecoverActionEligibility ->
-          Vector(oathdigital.gameplay.powerresolver.Transform((_, ops) => ops)))
-    val transforms = both.contributions(
-      PowerWindow.RecoverActionEligibility).collect {
-        case oathdigital.gameplay.powerresolver.Transform(fn) => fn }
-    assertEquals(transforms.size, 2)
-    val (first, second) = (transforms(0), transforms(1))
-    val at = ctx(quietTable, both, PowerWindow.RecoverActionEligibility)
-    assertEquals(first(at, Vector.empty), Vector[Operation](
-      oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
-        catalog)))
-    assertEquals(second(at, Vector.empty), Vector.empty[Operation])
 
   test("its option names its card, at its actions' selection windows"):
     val both = Probe(card, Cost.free,

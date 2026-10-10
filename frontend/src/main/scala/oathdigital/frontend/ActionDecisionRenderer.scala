@@ -2,14 +2,6 @@ package oathdigital.frontend
 import oathdigital.protocol.GameIntent => GameCommand; import org.scalajs.dom
 import ServerUiSupport._
 private[frontend] object ActionDecisionRenderer:
- /** The pane and the one line `ServerModeUi` keys the panel's focus reset
-   * on: the first selection instruction or modifier confirm appended, or
-   * "". The old `querySelector` had four selectors; two of them
-   * (`#card-decision-title`, `.resolution-choice`) matched nothing, and the
-   * prompt reproduces what the two live ones returned.
-   */
- final case class ActionPane(element: dom.Element, prompt: String)
-
  def status(value: GameProjection, presentation: ViewerPresentation): dom.Element =
    val node = element("div", "status")
    presentation.procedureStatus match
@@ -58,10 +50,8 @@ private[frontend] object ActionDecisionRenderer:
    node
  def actionsPanel(value: GameProjection, presentation: ViewerPresentation,
      routed: ParkedDecision.Routed, canControl: Boolean,
-     drafts: SessionDrafts, controls: ActionControls): ActionPane =
+     drafts: SessionDrafts, controls: TableControls): dom.Element =
    import controls._
-   var prompt = ""
-   def promptOnce(line: String): Unit = if prompt.isEmpty then prompt = line
    val panel = element("section", "panel wake-actions")
    panel.appendChild(text("h2", "", "Available actions"))
    panel.appendChild(status(value, presentation))
@@ -102,153 +92,88 @@ private[frontend] object ActionDecisionRenderer:
        !value.legalControls.contains("endWake")
      end.onclick = _ => submitCommand(GameCommand.EndWake)
      panel.appendChild(end)
-   // A queued action's start opens the modifier flow as any start does, so
-   // its ordering replaces the panel until it is confirmed or cancelled.
    val followUpPending = value.phase == "follow-up-pending" &&
      presentation.showGameplayControls
-   if followUpPending && drafts.modifiers.isEmpty then
+   if followUpPending then
      FollowUpControls.render(value, canControl, panel, submitCommand)
-   if showActActionControls(value, presentation) ||
-       (followUpPending && drafts.modifiers.nonEmpty) then
-     if drafts.modifiers.nonEmpty then
-       val draft = drafts.modifiers.get
-       panel.appendChild(text("h2", "", s"Order ${actionLabel(draft.preview.action)} modifiers"))
-       panel.appendChild(text("p", "modifier-instruction", "Choose optional modifiers in " +
-         "resolution order. Numbered badges show that order."))
-       draft.selection.candidates.foreach { modifier =>
-         val row = element("div", "modifier-option")
-         val ordinal = draft.selection.ordinal(modifier)
-         val choose = button(ordinal.fold(modifier.description)(n =>
-           s"$n. ${modifier.description}"), "modifier-toggle")
-         choose.setAttribute("aria-pressed", ordinal.nonEmpty.toString); choose
-           .setAttribute("data-source-key", modifier.sourceKey)
-         // The card, then what it modifies. The description stays as the
-         // control's accessible name so a reader who cannot see the face
-         // still hears which power this is.
-         modifier.card.foreach { card =>
-           choose.setAttribute("aria-label", ordinal.fold(modifier.description)(
-             n => s"$n. ${modifier.description}"))
-           choose.textContent = ""
-           ordinal.foreach(n => choose.appendChild(
-             text("span", "modifier-ordinal-prefix", s"$n.")))
-           // The toggle is the control; the face inside it is only what it
-           // shows, so it takes no focus of its own (CSS already stops its
-           // clicks).
-           val face = CardFace.render(card)
-           face.tabIndex = -1
-           choose.appendChild(face)
-           choose.appendChild(text("span", "modifier-modifies",
-             s"${actionLabel(modifier.modifies.getOrElse(draft.preview.action))} Modifier"))
-         }
-         modifier.cost.foreach { cost =>
-           choose.appendChild(text("span", "modifier-cost", s"Cost: $cost"))
-           Option(choose.getAttribute("aria-label")).foreach(name =>
-             choose.setAttribute("aria-label", s"$name, cost: $cost"))
-         }
-         choose.onclick = _ => toggleModifier(modifier)
-         choose.onkeydown = event => event.key match
-           case "Enter" | " " => event.preventDefault(); toggleModifier(modifier)
-           case "ArrowUp" => event.preventDefault(); moveModifier(modifier, -1)
-           case "ArrowDown" => event.preventDefault(); moveModifier(modifier, 1)
-           case _ => ()
-         row.appendChild(choose)
-         ordinal.foreach { number =>
-           val badge = text("span", "modifier-ordinal", number.toString); badge
-             .setAttribute("aria-label", s"Resolution order $number"); row.appendChild(badge)
-           val earlier = button("Earlier", "modifier-earlier")
-           earlier.disabled = number == 1; earlier.onclick = _ =>
-             moveModifier(modifier, -1); row.appendChild(earlier)
-           val later = button("Later", "modifier-later")
-           later.disabled = number == draft.selection.selected.size
-           later.onclick = _ => moveModifier(modifier, 1); row.appendChild(later)
-         }
-         panel.appendChild(row)
+   if showActActionControls(value, presentation) then
+     val groups = new ActionSections
+     if value.legalControls.contains("beginSearch") then
+       val search = button("Search", "act-action search-action")
+       search.disabled = !canControl || !presentation.showGameplayControls
+       search.onclick = _ => submitCommand(
+         GameCommand.StartWalker("search"))
+       groups.appendKind("search", search)
+     if value.legalControls.contains("beginRecover") then
+       val recover = button("Recover (1 Supply)", "act-action recover-action")
+       recover.disabled = !canControl
+       recover.onclick = _ => submitCommand(GameCommand.StartWalker("recover"))
+       groups.appendKind("recover", recover)
+     if value.legalControls.contains("beginForge") then
+       val forge = button("Forge (1 Supply)", "act-action forge-action")
+       forge.disabled = !canControl
+       forge.onclick = _ => submitCommand(
+         GameCommand.StartWalker("forge"))
+       groups.appendKind("forge", forge)
+     if value.legalControls.contains("beginTravel") then
+       val travel = button("Travel", "act-action travel-action")
+       travel.disabled = !canControl
+       travel.onclick = _ => submitCommand(
+         GameCommand.StartWalker("travel"))
+       groups.appendKind("travel", travel)
+     EconomyControls.render(value, canControl, groups, submitCommand)
+     BannerControls.render(value, canControl, groups, submitCommand)
+     NegotiationControls.render(value, canControl, groups, submitCommand)
+     CampaignControls.render(value, canControl, groups, submitCommand)
+     value.minorActions.foreach { minor =>
+       if facedownAdviserLaunchCount(minor) == 1 then
+         val play = button("Play facedown adviser", "minor-adviser-launch")
+         play.disabled = !canControl
+         play.onclick = _ => submitCommand(
+           GameCommand.StartWalker("play-facedown-adviser"))
+         groups.appendKind("facedown-adviser", play)
+       if minor.canPeekSiteRelics then
+         val peek = button("Peek at relics at your site", "minor-peek-relics")
+         peek.disabled = !canControl
+         peek.onclick = _ => submitCommand(GameCommand.PeekSiteRelics)
+         groups.appendKind("peek-site-relics", peek)
+       minor.facedownRelics.foreach { relic =>
+         val reveal = button(s"Reveal ${relic.name}", "minor-reveal-relic")
+         reveal.disabled = !canControl
+         reveal.onclick = _ => submitCommand(GameCommand.RevealOwnedRelic(relic.cardId))
+         groups.appendKind("reveal-owned-relic", reveal)
        }
-       promptOnce("Confirm modifier order")
-       val confirm = button("Confirm modifier order", "modifier-confirm")
-       confirm.disabled = !canControl; confirm.onclick = _ => confirmModifiers(); panel.appendChild(confirm)
-       val back = button("Back", "modifier-back"); back.onclick = _ => backFromModifiers()
-       panel.appendChild(back)
-       val cancel = button("Cancel action", "modifier-cancel"); cancel.onclick = _ =>
-         cancelModifiers(); panel.appendChild(cancel)
-     else
-       val groups = new ActionSections
-       if value.legalControls.contains("beginSearch") then
-         val search = button("Search", "act-action search-action")
-         search.disabled = !canControl || !presentation.showGameplayControls
-         search.onclick = _ => submitCommand(
-           GameCommand.StartWalker("search", Vector.empty))
-         groups.appendKind("search", search)
-       if value.legalControls.contains("beginRecover") then
-         val recover = button("Recover (1 Supply)", "act-action recover-action")
-         recover.disabled = !canControl
-         recover.onclick = _ => submitCommand(GameCommand.StartWalker("recover", Vector.empty))
-         groups.appendKind("recover", recover)
-       if value.legalControls.contains("beginForge") then
-         val forge = button("Forge (1 Supply)", "act-action forge-action")
-         forge.disabled = !canControl
-         forge.onclick = _ => submitCommand(
-           GameCommand.StartWalker("forge", Vector.empty))
-         groups.appendKind("forge", forge)
-       if value.legalControls.contains("beginTravel") then
-         val travel = button("Travel", "act-action travel-action")
-         travel.disabled = !canControl
-         travel.onclick = _ => submitCommand(
-           GameCommand.StartWalker("travel", Vector.empty))
-         groups.appendKind("travel", travel)
-       EconomyControls.render(value, canControl, groups, submitCommand)
-       BannerControls.render(value, canControl, groups, submitCommand)
-       NegotiationControls.render(value, canControl, groups, submitCommand)
-       CampaignControls.render(value, canControl, groups, submitCommand)
-       value.minorActions.foreach { minor =>
-         if facedownAdviserLaunchCount(minor) == 1 then
-           val play = button("Play facedown adviser", "minor-adviser-launch")
-           play.disabled = !canControl
-           play.onclick = _ => submitCommand(
-             GameCommand.StartWalker("play-facedown-adviser", Vector.empty))
-           groups.appendKind("facedown-adviser", play)
-         if minor.canPeekSiteRelics then
-           val peek = button("Peek at relics at your site", "minor-peek-relics")
-           peek.disabled = !canControl
-           peek.onclick = _ => submitCommand(GameCommand.PeekSiteRelics)
-           groups.appendKind("peek-site-relics", peek)
-         minor.facedownRelics.foreach { relic =>
-           val reveal = button(s"Reveal ${relic.name}", "minor-reveal-relic")
-           reveal.disabled = !canControl
-           reveal.onclick = _ => submitCommand(GameCommand.RevealOwnedRelic(relic.cardId))
-           groups.appendKind("reveal-owned-relic", reveal)
+       Vector(true -> minor.maxBoardToSite, false -> minor.maxSiteToBoard)
+         .filter(_._2 > 0).foreach { case (toSite, maximum) =>
+           val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
+           label.textContent = if toSite then "Warbands board to site "
+             else "Warbands site to board "
+           val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
+           amount.`type` = "number"; amount.min = "1"; amount.max = maximum.toString
+           amount.value = "1"; amount.setAttribute("aria-label", label.textContent)
+           label.appendChild(amount)
+           val move = button("Move warbands", "minor-move-warband")
+           move.disabled = !canControl
+           move.onclick = _ => submitCommand(GameCommand.MoveWarbands(
+             toSite, amount.value.toInt))
+           // The count and its button are one option, so they share a row.
+           val option = dom.document.createElement("span")
+           option.appendChild(label); option.appendChild(move)
+           groups.appendKind("move-warbands", option)
          }
-         Vector(true -> minor.maxBoardToSite, false -> minor.maxSiteToBoard)
-           .filter(_._2 > 0).foreach { case (toSite, maximum) =>
-             val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
-             label.textContent = if toSite then "Warbands board to site "
-               else "Warbands site to board "
-             val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
-             amount.`type` = "number"; amount.min = "1"; amount.max = maximum.toString
-             amount.value = "1"; amount.setAttribute("aria-label", label.textContent)
-             label.appendChild(amount)
-             val move = button("Move warbands", "minor-move-warband")
-             move.disabled = !canControl
-             move.onclick = _ => submitCommand(GameCommand.MoveWarbands(
-               toSite, amount.value.toInt))
-             // The count and its button are one option, so they share a row.
-             val option = dom.document.createElement("span")
-             option.appendChild(label); option.appendChild(move)
-             groups.appendKind("move-warbands", option)
-           }
-       }
-       PhasePowerButtons.appendTo(value, canControl, groups, submitCommand)
-       groups.appendTo(panel)
-       if value.legalControls.contains("beginRest") then
-         // What Rest returns before the track's ceiling takes its cut, so
-         // the number doubles as the Supply this Act may still spend for
-         // free. A band that returns nothing says nothing.
-         val regained = value.restSupplyGain.filter(_ > 0)
-           .fold("")(gain => s" (+$gain Supply)")
-         val rest = button(s"End Act and Rest$regained", "rest-action")
-         rest.disabled = !canControl
-         rest.onclick = _ => submitCommand(GameCommand.BeginRest)
-         panel.appendChild(rest)
+     }
+     PhasePowerButtons.appendTo(value, canControl, groups, submitCommand)
+     groups.appendTo(panel)
+     if value.legalControls.contains("beginRest") then
+       // What Rest returns before the track's ceiling takes its cut, so
+       // the number doubles as the Supply this Act may still spend for
+       // free. A band that returns nothing says nothing.
+       val regained = value.restSupplyGain.filter(_ > 0)
+         .fold("")(gain => s" (+$gain Supply)")
+       val rest = button(s"End Act and Rest$regained", "rest-action")
+       rest.disabled = !canControl
+       rest.onclick = _ => submitCommand(GameCommand.BeginRest)
+       panel.appendChild(rest)
    ParkedDecision.render(value, presentation, routed, canControl, panel, drafts,
      controls)
    if value.phase == "rest" && presentation.showGameplayControls then
@@ -261,4 +186,4 @@ private[frontend] object ActionDecisionRenderer:
        finish.disabled = !canControl
        finish.onclick = _ => submitCommand(GameCommand.FinishRest)
        panel.appendChild(finish)
-   ActionPane(panel, prompt)
+   panel

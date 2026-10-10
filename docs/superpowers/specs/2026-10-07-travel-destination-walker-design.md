@@ -54,12 +54,10 @@ slice 3).
 
 ## Rulings
 
-1. **Modifiers stay before the start.** The modifier flow is unchanged:
-   a player selects modifiers, then the walker starts. Selected modifiers'
-   costs are paid inside the walk, after the destination is picked.
-   [Modifier selection on the walker](2026-10-09-modifier-walker-design.md)
-   moved Travel's modifiers into the walk in its slice 2; this ruling is
-   rewritten in its slice 4.
+1. **Modifiers are the walk's first decision.** The walk asks for the
+   Travel's modifiers first, each paid when it is picked, then for the
+   destination
+   ([modifier walker design](2026-10-09-modifier-walker-design.md)).
 2. **The destination is a board decision.** `StartWalker("travel")` carries
    no start selection. The walk's first node is a board choose-one,
    `travel.destination`, headed "Choose a Travel destination", over every
@@ -111,7 +109,8 @@ slice 3).
 8. **Undo replaces the destination panel's way back.** The pre-walker
    destination pick, its "Cancel" and its "Back to modifiers" retire. Undo
    takes back the start, as it does for the facedown-adviser pick (undo
-   design, slice 4). The ordering stage's "Back" and "Cancel action" stay.
+   design, slice 4). Undo takes back each modifier pick too; the client's
+   ordering stage is gone (modifier walker design).
 9. **Game Log.**
    - Every `travel.` decision is narrated: the destination pick posts no
      "Chose" line, since "Travelled to X" names the site, and Way Station's
