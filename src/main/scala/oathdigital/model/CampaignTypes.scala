@@ -92,6 +92,25 @@ object CampaignPlanSource:
     def stableKey: String = s"title:${playerId.value}"
     def ref: DecisionOptionRef = DecisionOptionRef.Button("title")
 
+/** The amount a battle plan asks its user for as it is applied (catalog
+  * batch 7, slice 3). The plan's application asks `query` after the plan's
+  * fixed costs, its sacrifice and its fixed effects, so a dry run of the
+  * plan still pays what is fixed and stops at the question. `amountOf`
+  * reads the amount from the answer, `secretsEach` is what each unit costs,
+  * placed on the plan's card, and `effects` are what that amount does. A
+  * bandit defender is asked nothing, so its plan does nothing more.
+  *
+  * `query` is built when the question is asked, from the state after what
+  * the plan and any surcharge have paid already, so its bounds never
+  * promise more than the user can still pay. It is a violation when no
+  * amount is left to ask for, and the plan is then refused, as a plan that
+  * cannot pay is.
+  */
+final case class PlanAmount(decisionId: String,
+    query: (ReadyGame, PlayerId) => Either[OathViolation, DecisionQuery],
+    amountOf: DecisionAnswer => Option[Int],
+    effects: Int => Vector[CampaignPlanEffect], secretsEach: Int = 0)
+
 /** One battle plan a power offers now: where it comes from, what it costs and
   * what it does. `label` is the words of the option when the source has no card
   * to name (the title). An offer says only that the plan is usable, never
@@ -116,11 +135,17 @@ object CampaignPlanSource:
   * player's window withholds the rest through the power's own restrictions.
   * A bandit defender, which chooses nothing, applies such a plan and no
   * other when it would apply it (FAQ).
+  *
+  * `amount` is the question the plan asks before what depends on its
+  * answer (Unstable Summon's X). The question's bounds are read when it is
+  * asked, after the plan's fixed costs and any surcharge are paid (see
+  * `PlanAmount`).
   */
 final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
     costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect],
     sides: Set[CampaignPlanSide] = Set.empty,
-    withheld: Option[OptionReason] = None, alone: Boolean = false)
+    withheld: Option[OptionReason] = None, alone: Boolean = false,
+    amount: Option[PlanAmount] = None)
 
 /** An offer with the power that made it. */
 final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)

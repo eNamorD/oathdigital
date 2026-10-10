@@ -1,7 +1,7 @@
 # Catalog Batch 7: Campaign Dice
 
-**Status:** designed 2026-10-09. Slices 1 and 2 are done;
-each slice's plan-time rulings are under it. The per-card rulings are in
+**Status:** designed 2026-10-09. Slices 1, 2 and 3 are done; each slice's
+plan-time rulings are under it. The per-card rulings are in
 [the rulings appendix](2026-10-09-catalog-batch-7-rulings.md).
 
 **Builds on** [Catalog batch 4](2026-10-05-catalog-batch-4-design.md),
@@ -63,10 +63,14 @@ The approved changes outside `gameplay/powers/`:
   the choose-amount panel does.
 - **A fixed-faces operation** (slice 3). `SetDieFaces(pool, faces)` appends
   `faces` to the pool's outcome and lowers the pool's count by as many, so
-  the roll that follows rolls only the rest.
-- **Amounts and choices inside a battle plan** (slice 3). A plan's
-  application may ask a `ChooseAmount` or a `ChooseOne` of its user before it
-  pays, as Sticky Fire and Wild Mounts ask a `ChooseOne` after.
+  the roll that follows rolls only the rest. A new outcome starts with no
+  throw counted, so the set dice are no part of the roll's throw.
+- **Amounts and choices inside a battle plan** (slice 3). A plan's offer
+  may carry a `PlanAmount`: a `ChooseAmount` or a `ChooseOne` its
+  application asks its user after the plan's fixed costs, then the secrets
+  each unit costs and what the amount does, as Sticky Fire and Wild Mounts
+  ask a `ChooseOne` after. An amount that costs secrets is priced "Cost: X
+  secrets".
 - **Attack scoring fields** (slice 4). `AttackRules` gains the warbands a
   skull kills (Weeping Banner) and the worth of a sacrificed warband
   (Zealots). `CampaignBattle.result` reads the sacrifice's worth from the
@@ -82,6 +86,9 @@ omission of `Roll`'s mode and window is left alone.
 - **Silver Charm** is a Recover modifier, and its printed `[attack-die]` is
   a misprint for `[defense-die]` (product owner, 2026-10-09). Slice 2
   corrects the text in the holding catalog.
+- **Mountain Giant**'s printed "±3" has no icon after it; it is
+  `[attack-die]` (product owner, 2026-10-09). Slice 3 corrects the text in
+  the holding catalog.
 - **Weeping Banner**'s power id is `relic.keeping-banner` in the holding
   catalog and the reference JSON. Slice 4 renames it to
   `relic.weeping-banner`.
@@ -217,6 +224,35 @@ reads where the payment and the roll sit from there.
 The plan window's dry run prices an offer before its amount is known, so an
 X plan's price is shown as X secrets, and it is withheld only when no X is
 possible.
+
+### Plan-time rulings
+
+- **Where the question sits.** A plan asks its amount after its fixed
+  costs, its sacrifice and its fixed effects, then pays for and applies the
+  amount. The plan window's dry run stops at the question, so a fixed cost
+  after it could be neither priced nor refused. Mountain Giant pays its
+  secret, then asks one or three.
+- **Each plan asks its own decision**: `campaign.unstable-summon`,
+  `campaign.arcane-armor` and `campaign.mountain-giant`, asked of the
+  plan's user. The Game Log is silent on the answer, and the plan writes
+  its own line.
+- **An X price.** An amount that costs secrets shows "Cost: X secrets".
+  Arcane Armor's X counts faceup secrets. With none it is shown
+  unavailable, "Needs 1 secret; you have 0"; with an empty defense pool,
+  "No defense dice to set". The range is read when the question is asked,
+  after any surcharge has taken its secret (Gleaming Armor), and a plan
+  with no X left is shown unavailable.
+- **Set dice are no part of a throw.** The defense roll after
+  `SetDieFaces` is throw 1, and its throw is only the rolled dice, so
+  Jinx rerolls those and not the set ones. When every die is set, nothing
+  is rolled and no reroll is asked. Arcane Armor's line comes at the roll,
+  before the roll line, which names only the rolled dice.
+- **Unstable Summon is shown unavailable, not hidden,** without the
+  Darkest Secret or with no secret on it: "Needs the Darkest Secret with a
+  secret on it".
+- **Mountain Giant's line.** No plan writes a dice line of its own, and
+  its question is silent, so Mountain Giant writes "Added 3 attack dice."
+  ("Removed 3 attack dice." for a defender).
 
 ## Slice 4: Battle rewrites
 

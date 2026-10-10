@@ -10,6 +10,7 @@ private[application] object PriceDetails:
   def of(price: OptionPrice): Vector[String] = Vector(
     line(price.favor, "favor", "favor", ""),
     line(price.secrets, "secret", "secrets", ""),
+    if price.secretsX then "Cost: X secrets" else "",
     line(price.favorBurnt, "favor", "favor", " burnt"),
     line(price.secretsBurnt, "secret", "secrets", " burnt"),
     if price.warbands == 0 then ""

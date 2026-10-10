@@ -68,18 +68,22 @@
   defense pool then. At the defense roll, X dice are set to their double
   shield face and the rest are rolled. If the pool holds fewer than X dice
   by then, only as many as it holds are set, and the secrets stay spent.
-  Line: "Arcane Armor: Set 2 defense dice to double shields."
-- **225 Unstable Summon.** A free attacker battle plan, offered only while
-  its user holds the Darkest Secret with at least one secret on it. Its user
-  chooses X, from one to the secrets on the banner, burns X of them from the
-  banner, and adds X attack dice. Line: "Unstable Summon: Burned 3 secrets
-  from the Darkest Secret for 3 attack dice."
+  Its user counts only faceup secrets. The set dice are not part of the
+  roll's throw, so no reroll changes them. Line: "Arcane Armor: Set 2
+  defense dice to double shields."
+- **225 Unstable Summon.** A free attacker battle plan, usable only while
+  its user holds the Darkest Secret with at least one secret on it, and
+  shown unavailable otherwise ("Needs the Darkest Secret with a secret on
+  it"). Its user chooses X, from one to the secrets on the banner, burns X
+  of them from the banner, and adds X attack dice. Line: "Unstable Summon:
+  Burned 3 secrets from the Darkest Secret for 3 attack dice."
 - **155 Mountain Giant.** A battle plan for either side, costing one
   secret. Its user chooses one or three (the card's missing icon after "±3"
   is `[attack-die]`, product owner). An attacker adds that many attack dice;
   a defender removes that many. It is discarded at the end of the Campaign
-  only when three was chosen (FAQ). It writes the usual plan dice line, and
-  the discard line only on three.
+  only when three was chosen (FAQ). It pays its secret, then asks one or
+  three. Line: "Mountain Giant: Added 3 attack dice." ("Removed 3 attack dice." for
+  a defender), and the discard line only on three.
 
 ## Slice 4: Battle rewrites
 

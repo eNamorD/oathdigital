@@ -201,6 +201,8 @@ private[gameplay] object OperationApplication:
         result.map(TurnStateOperations.modifyRollOutcome(_, pool, skulls, score))
       case (result, Reroll(pool, indices, faces)) =>
         result.flatMap(RollOperations.reroll(_, pool, indices, faces))
+      case (result, SetDieFaces(pool, faces)) =>
+        result.flatMap(RollOperations.setFaces(_, pool, faces))
       case (result, RecordPowerUse(power)) =>
         result.map(TurnStateOperations.recordPowerUse(_, power))
       case (result, Defer(key, ops)) =>

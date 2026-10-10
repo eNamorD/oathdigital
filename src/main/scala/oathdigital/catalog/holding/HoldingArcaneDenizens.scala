@@ -28,13 +28,6 @@ object VowOfWisdomCard extends Denizen(DenizenId("203"), "Vow of Wisdom", Suit.A
       "to a site.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object ArcaneArmorCard extends Denizen(DenizenId("206"), "Arcane Armor", Suit.Arcane):
-  val power = PrintedPower(PowerId("denizen.arcane-armor"),
-    persistent = false, cost = Cost.free,
-    text = "X [secret] Set X [defense-die] you have collected to their " +
-      "[shield][shield] face instead of rolling them.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object GlamorCard extends Denizen(DenizenId("207"), "Glamor", Suit.Arcane):
   val power = PrintedPower(PowerId("denizen.glamor"),
     persistent = false, cost = Cost.free,

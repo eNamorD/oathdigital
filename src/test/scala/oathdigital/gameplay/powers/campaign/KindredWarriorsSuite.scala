@@ -31,7 +31,7 @@ class KindredWarriorsSuite extends munit.FunSuite:
 
   test("an attacker ruling a Nomad and an Order card adds two dice, places " +
       "a secret and ignores every skull"):
-    val b = attacker(planless("Mountain Giant", "Baron"))
+    val b = attacker(planless("Search Party", "Baron"))
     val run = commit(rules(skullThenSwords), b, 2)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assertEquals(attackDice(picked.since(run)), Vector(2))
@@ -61,7 +61,7 @@ class KindredWarriorsSuite extends munit.FunSuite:
     val bare = commit(rules(winningDice), base, 4)
     assert(awaits(bare, base.rival, CampaignIds.defenderPlan))
     assert(!bare.offered(base.actor).contains(ref))
-    val b = withAdviserFor(base, base.rival, planlessCard("Mountain Giant"),
+    val b = withAdviserFor(base, base.rival, planlessCard("Search Party"),
       Orientation.FaceUp)
     val run = commit(rules(winningDice), b, 4)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)

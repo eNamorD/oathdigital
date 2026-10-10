@@ -10,10 +10,11 @@ import oathdigital.model._
   * `PlacementTree`), and a dry run of it answers whether the user can pay.
   *
   * The children have a fixed shape, a slot each for revealing the source,
-  * paying, sacrificing, and then one per effect, and every slot that depends on
-  * state is a `Branch`. A walk that parks on a decision inside a plan resumes
-  * against the state the earlier slots changed, so a slot must still select the
-  * same children then, and a slot that has nothing to do selects none.
+  * paying, sacrificing, then one per effect, then the amount question and what
+  * its answer does, and every slot that depends on state is a `Branch`. A walk
+  * that parks on a decision inside a plan resumes against the state the earlier
+  * slots changed, so a slot must still select the same children then, and a
+  * slot that has nothing to do selects none.
   *
   *  - A facedown adviser is revealed when it is used.
   *  - Costs are paid onto the source card, which may already hold resources. A
@@ -23,6 +24,9 @@ import oathdigital.model._
   *  - A warband sacrifice asks which force pays when several could, then kills
   *    one warband. It comes before every effect, so a plan that cannot pay is
   *    refused before it does anything.
+  *  - A plan with an amount asks it of its user last, so a dry run pays
+  *    what is fixed and stops at the question, then pays what each unit
+  *    costs onto the plan's card and applies what the answer does.
   */
 final class CampaignPlanApplication(catalog: ExecutableCatalog,
     val setup: CampaignSetup, val side: CampaignPlanSide,
@@ -37,8 +41,46 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
   override val children: Vector[Operation] = Vector[Operation](
     Branch((ready, _) => reveal(ready)),
     Branch((_, _) => pay),
-    Branch((ready, _) => sacrifice(ready))) ++ offered.offer.effects.map(effect) :+
-    Branch((_, _) => marker)
+    Branch((ready, _) => sacrifice(ready))) ++
+    offered.offer.effects.map(effect) ++ Vector[Operation](
+      Branch((ready, _) => ask(ready)),
+      Branch((_, pending) => payAmount(pending)),
+      Branch((_, pending) => chosenEffects(pending)),
+      Branch((_, _) => marker))
+
+  /** The plan's amount question, asked of its user, with its bounds read
+    * from the state after what the plan and any surcharge have paid. When
+    * no amount is left to ask for, the plan is refused. A bandit defender is
+    * asked nothing. */
+  private def ask(ready: ReadyGame): Vector[Operation] =
+    (offered.offer.amount, user) match
+      case (Some(amount), Some(player)) => Vector(
+        amount.query(ready, player).fold(
+          violation => BuildOps((_, _) => Left(violation)),
+          query => Decide(amount.decisionId, player, query)))
+      case _ => Vector.empty
+
+  /** What the answered amount costs, placed onto the plan's card. */
+  private def payAmount(pending: PendingTree): Vector[Operation] =
+    val owed = for
+      amount <- offered.offer.amount
+      if amount.secretsEach > 0
+      player <- user
+      chosen <- PlanAmounts.chosen(pending, amount)
+    yield player -> Cost(secret = chosen * amount.secretsEach)
+    owed.toVector.map { case (player, cost) =>
+      CampaignPlans.cardOf(source) match
+        case Some(card) => payment(Costs.onCard(player, card, cost,
+          catalog, intoOccupied = true))
+        case None =>
+          refuse("the title has no card to place a plan's cost on")
+    }
+
+  /** What the answered amount does. */
+  private def chosenEffects(pending: PendingTree): Vector[Operation] =
+    offered.offer.amount.toVector.flatMap(amount =>
+      PlanAmounts.chosen(pending, amount).toVector.flatMap(chosen =>
+        amount.effects(chosen).map(effect)))
 
   /** A bandit defender chooses nothing, so a later window learns it applied the
     * plan from this record.

@@ -16,12 +16,6 @@ object VowOfKinshipCard extends Denizen(DenizenId("152"), "Vow of Kinship", Suit
       "your board.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object MountainGiantCard extends Denizen(DenizenId("155"), "Mountain Giant", Suit.Nomad):
-  val power = PrintedPower(PowerId("denizen.mountain-giant"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "±1 [attack-die] or ±3 At end, discard.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object PilgrimageCard extends Denizen(DenizenId("161"), "Pilgrimage", Suit.Nomad) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.pilgrimage"),
     persistent = false, cost = Cost.free,

@@ -8,6 +8,20 @@ import oathdigital.testkit.Table
 class RollOperationsSuite extends munit.FunSuite:
   private val pool = PoolKey("campaign.attack")
   import AttackDieFace.{HollowSword, OneSword, TwoSwordsSkull}
+  import DefenseDieFace.{Blank, Doubler, TwoShields}
+  private val defense = PoolKey("campaign.defense")
+
+  /** The quiet table with the defense pool holding `dice` dice, and
+    * `faces` recorded for it, if any. */
+  private def defensePool(dice: Int, faces: Vector[DieFace] = Vector.empty)
+      : ReadyGame =
+    val (skulls, score) = RollOutcome.derive(faces)
+    Table.start.ready.updateCurrent(current => current.copy(
+      rollPools = Map(defense -> DicePoolState(dice)),
+      rollOutcomes =
+        if faces.isEmpty then Map.empty
+        else Map(defense ->
+          RollOutcome(defense, faces.size, faces, skulls, score))))
 
   /** The quiet table with `faces` recorded for the attack pool, which
     * holds as many dice. */
@@ -66,3 +80,31 @@ class RollOperationsSuite extends munit.FunSuite:
       Some(Vector(OneSword, OneSword))).isLeft)
     assert(RollOperations.reroll(before, pool, Vector(0),
       Some(Vector(DefenseDieFace.Blank))).isLeft)
+
+  test("set faces start an outcome with no throw, and the pool holds " +
+      "fewer dice"):
+    val after = RollOperations.setFaces(defensePool(3), defense,
+      Vector(TwoShields, TwoShields)).toOption.get
+    assertEquals(after.game.current.rollPools(defense), DicePoolState(1))
+    assertEquals(after.game.current.rollOutcomes(defense), RollOutcome(
+      defense, 2, Vector(TwoShields, TwoShields), 0, 4, throws = 0))
+
+  test("set faces join an outcome already recorded and rescore it"):
+    // The Doubler rolled before doubles the set shields too.
+    val after = RollOperations.setFaces(defensePool(1, Vector(Doubler)),
+      defense, Vector(TwoShields)).toOption.get
+    val outcome = after.game.current.rollOutcomes(defense)
+    assertEquals(outcome.faces, Vector[DieFace](Doubler, TwoShields))
+    assertEquals(outcome.score, 4)
+    assertEquals(outcome.count, 2)
+    assertEquals(outcome.throws, 1)
+    assertEquals(after.game.current.rollPools(defense), DicePoolState(0))
+
+  test("setting no dice, more than the pool holds, or faces of the other " +
+      "kind fails"):
+    assert(RollOperations.setFaces(defensePool(1), defense,
+      Vector.empty).isLeft)
+    assert(RollOperations.setFaces(defensePool(1), defense,
+      Vector(TwoShields, TwoShields)).isLeft)
+    assert(RollOperations.setFaces(defensePool(1, Vector(Blank)), defense,
+      Vector(OneSword)).isLeft)

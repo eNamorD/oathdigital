@@ -600,6 +600,18 @@ final case class Reroll(pool: PoolKey, indices: Vector[Int],
     faces: Option[Vector[DieFace]] = None) extends PrimitiveOperation:
   override val required: Boolean = true
 
+/** Sets dice of `pool` to `faces` instead of rolling them (catalog batch 7,
+  * slice 3: Arcane Armor). The faces join the pool's recorded outcome,
+  * which starts with no throw counted when the pool has not rolled, and the
+  * pool holds as many dice fewer, so the roll that follows rolls only the
+  * rest. The set dice are no part of that roll's throw, so no reroll
+  * changes them. Setting no dice, more dice than the pool holds, or faces
+  * of another kind than the outcome's is an error.
+  */
+final case class SetDieFaces(pool: PoolKey, faces: Vector[DieFace])
+    extends PrimitiveOperation:
+  override val required: Boolean = true
+
 /** The name [[Defer]] holds ops under, until a later step of the same
   * action takes them (operation rewrite design, "Deferral"). Named after
   * the power that owns it. */

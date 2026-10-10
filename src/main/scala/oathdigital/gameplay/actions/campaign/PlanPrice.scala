@@ -11,7 +11,8 @@ import oathdigital.model._
   *
   * A warband sacrifice is read from the offer. The dry run stops at the decision
   * that asks which force pays, before the warband is killed, so it may not have
-  * recorded the kill yet.
+  * recorded the kill yet. An amount's secrets are paid after the question the
+  * dry run stops at, so they are read from the offer and priced as X.
   */
 private[campaign] object PlanPrice:
   def of(offer: CampaignPlanOffer, operations: Vector[CoreOperation])
@@ -27,9 +28,13 @@ private[campaign] object PlanPrice:
       case (price, Give(Piece.Favor(count), _, _, _, _)) =>
         price.copy(favor = price.favor + count)
       case (price, _) => price
-    if offer.costs.contains(CampaignPlanCost.SacrificeWarband) then
-      paid.copy(warbands = 1)
-    else paid
+    val sacrificed =
+      if offer.costs.contains(CampaignPlanCost.SacrificeWarband) then
+        paid.copy(warbands = 1)
+      else paid
+    if offer.amount.exists(_.secretsEach > 0) then
+      sacrificed.copy(secretsX = true)
+    else sacrificed
 
   /** The option, carrying its price when it has one. */
   def priced(option: DecisionOption, offer: CampaignPlanOffer,

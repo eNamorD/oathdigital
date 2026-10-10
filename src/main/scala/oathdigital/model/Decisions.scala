@@ -319,9 +319,12 @@ object DecisionOption:
 /** What choosing an option costs the chooser, as a dry run of the choice found
   * it: favor and secrets paid (placed, or burnt to the shared bank) and
   * warbands sacrificed. Everything is a count of what leaves the chooser.
+  * `secretsX` marks a price in secrets that the player chooses when the
+  * option is applied (Arcane Armor's X).
   */
 final case class OptionPrice(favor: Int = 0, secrets: Int = 0,
-    favorBurnt: Int = 0, secretsBurnt: Int = 0, warbands: Int = 0):
+    favorBurnt: Int = 0, secretsBurnt: Int = 0, warbands: Int = 0,
+    secretsX: Boolean = false):
   require(favor >= 0 && secrets >= 0 && favorBurnt >= 0 && secretsBurnt >= 0 &&
     warbands >= 0, "an option price is never negative")
   def isFree: Boolean = this == OptionPrice()

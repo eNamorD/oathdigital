@@ -116,7 +116,7 @@ and battle rewrites
 
 - [x] Slice 1: rerolls (Jinx, Master at Arms).
 - [x] Slice 2: Recover rerolls (Silver Charm).
-- [ ] Slice 3: amounts and fixed faces (Arcane Armor, Unstable Summon,
+- [x] Slice 3: amounts and fixed faces (Arcane Armor, Unstable Summon,
   Mountain Giant).
 - [ ] Slice 4: battle rewrites (Careful Plans, Weeping Banner, Zealots, Bear
   Traps, Signal Trees, Hearts and Minds).

@@ -46,7 +46,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
   private type ResourceOperation = SpendSupply | GainSupply | FlipSecrets | Gain
   private type TurnOperation = AdvanceVisionsDrawn.type | BeginTurn | EnterPhase |
     SetOathkeeper | RecordPowerUse | RecordCampaignResult | ModifyDicePool | Roll |
-    ModifyRollOutcome | Reroll | QueueProcedure | Defer | TakeDeferred
+    ModifyRollOutcome | Reroll | SetDieFaces | QueueProcedure | Defer |
+    TakeDeferred
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match
@@ -256,6 +257,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         faces.foreach(rolled =>
           rerolled("faces") = ujson.Arr.from(rolled.map(encodeDieFace)))
         rerolled
+      case SetDieFaces(pool, faces) => ujson.Obj(
+        "kind" -> "set-die-faces", "pool" -> pool.value,
+        "faces" -> ujson.Arr.from(faces.map(encodeDieFace)))
       // A held op is spelled as a recorded one: it is held canonically.
       case Defer(key, ops) => ujson.Obj("kind" -> "defer",
         "key" -> key.value, "ops" -> ujson.Arr.from(ops.map(encodeOperation)))
@@ -536,6 +540,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         case (index, at) => decodeSignedInt(index, s"$path.indices[$at]") })
       faces <- decodeRerolledFaces(value, path)
     yield Reroll(PoolKey(value("pool").str), indices, faces)
+    case "set-die-faces" => traverse(value("faces").arr.toVector)(face =>
+      decodeDieFace(face.str, s"$path.faces")).map(faces =>
+      SetDieFaces(PoolKey(value("pool").str), faces))
     case "defer" =>
       traverse(value("ops").arr.zipWithIndex.toVector)({
         case (operation, index) =>
