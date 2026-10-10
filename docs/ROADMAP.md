@@ -97,11 +97,6 @@ Left behind by
   questions of Arcane Armor, Unstable Summon and Mountain Giant, the
   defense rolling first under Careful Plans, Zealots' warning on its option
   and Signal Trees' revealed cards are covered by server tests only.
-- [ ] **Pin two slice 4 rulings in tests.** Nothing tests Hearts and Minds
-  kept by a People's Favor won in the same Campaign: both suites set the
-  banner before it starts. Signal Trees' test that no player knows the
-  cards before the plan applies inspects only the parked decision, so it
-  would pass even if the plan window's dry run revealed them.
 
 ### Phase - Board decision follow-ups
 

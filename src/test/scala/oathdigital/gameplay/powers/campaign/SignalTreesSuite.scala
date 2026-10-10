@@ -55,15 +55,24 @@ class SignalTreesSuite extends munit.FunSuite:
       s"Revealed and discarded ${wolves.value}, ${songs.value}, " +
         s"${swarm.value}; added 4 attack dice.")))
 
-  test("until it is applied, no player knows the cards"):
+  // A dry run records no event and leaves no state, so no test can see a
+  // reveal in one. A reveal wired outside the chosen plan, as a rewrite or
+  // a window hook, would run unchosen; this test catches that.
+  test("unchosen, it reveals and moves nothing up to the Campaign's end"):
     val b = attacker(oracle, swarm, songs, wolves)
+    def untouched(state: OathState): Unit =
+      val now = Look(state)
+      for hidden <- Vector(wolves, songs, swarm); viewer <- everyone(b) do
+        assert(!now.knowsAdviser(viewer, hidden), s"$viewer knows $hidden")
+      assertEquals(now.discardPile(Region.Cradle),
+        Vector(oracle, swarm, songs, wolves))
     val run = commit(rules(winningDice), b, 2)
-    assert(awaits(run, b.actor, CampaignIds.attackerPlan))
-    val now = Look(run.state)
-    for hidden <- Vector(wolves, songs, swarm); viewer <- everyone(b) do
-      assert(!now.knowsAdviser(viewer, hidden), s"$viewer knows $hidden")
-    assertEquals(now.discardPile(Region.Cradle),
-      Vector(oracle, swarm, songs, wolves))
+    assert(run.offers(b.actor, b.actor, CampaignIds.attackerPlan, ref))
+    untouched(run.state)
+    val done = run.finishPlanWindows
+    assert(done.winner.nonEmpty)
+    untouched(done.state)
+    assertEquals(said(power, done.events), Vector.empty)
 
   test("a short pile reveals what it has"):
     val b = attacker(songs, wolves)
