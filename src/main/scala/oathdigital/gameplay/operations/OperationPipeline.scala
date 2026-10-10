@@ -21,6 +21,7 @@ object OperationRun:
     case value: Replace => value.copy(required = false)
     case value: Give => value.copy(required = false)
     case value: PayCost => value.copy(offTurn = false)
+    case value: Defer => value.copy(ops = value.ops.map(canonical))
     case other => other
 
   /** The cards this run took out of the game: every card whose executed move

@@ -108,6 +108,20 @@ private[operations] object TurnStateOperations:
     ready.updateCurrent(current => current.copy(turn = current.turn.copy(
       usedPowers = current.turn.usedPowers + power)))
 
+  /** Appends `ops` under `key`, as the journal records them, so a game
+    * reloaded from its events holds the same ops as the live one. */
+  def defer(ready: ReadyGame, key: DeferralKey,
+      ops: Vector[CoreOperation]): ReadyGame =
+    val held = ready.game.current.walkerDeferred
+    ready.updateCurrent(current => current.copy(walkerDeferred = held.updated(
+      key, held.getOrElse(key, Vector.empty) ++
+        ops.map(OperationRun.canonical))))
+
+  /** Drops what `key` holds; a key that holds nothing changes nothing. */
+  def takeDeferred(ready: ReadyGame, key: DeferralKey): ReadyGame =
+    ready.updateCurrent(current =>
+      current.copy(walkerDeferred = current.walkerDeferred - key))
+
   /** A write, not an advance: which phase may follow which belongs to the
     * procedure that declared the operation, and is deliberately not restated
     * here. The one thing this does reject is a transition to the phase the

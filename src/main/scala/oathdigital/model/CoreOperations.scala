@@ -584,6 +584,25 @@ final case class Roll(pool: PoolKey, dice: DiceSpec,
 final case class ModifyRollOutcome(pool: PoolKey, skulls: Option[Int],
     score: Option[Int]) extends PrimitiveOperation
 
+/** The name [[Defer]] holds ops under, until a later step of the same
+  * action takes them (operation rewrite design, "Deferral"). Named after
+  * the power that owns it. */
+final case class DeferralKey(value: String)
+
+/** Holds `ops` under `key` in `CurrentGameState.walkerDeferred`, after any
+  * held there already, without running them. A later step of the same
+  * action runs them, replaces them or drops them, and takes them with
+  * [[TakeDeferred]]; the walker drops whatever is left when the action
+  * ends. They are held as the journal records them, so a game reloaded from
+  * its events holds the same ops. It writes no Game Log line.
+  */
+final case class Defer(key: DeferralKey, ops: Vector[CoreOperation])
+    extends PrimitiveOperation
+
+/** Drops what [[Defer]] holds under `key`. Taking a key that holds nothing
+  * changes nothing. It writes no Game Log line. */
+final case class TakeDeferred(key: DeferralKey) extends PrimitiveOperation
+
 /** Parks a walker until `owner` resolves the decision `query` states.
   *
   * `query` is the single source of both halves of the contract: the walker

@@ -265,7 +265,8 @@ object ProcedureWalker:
   private def finish(ctx: WalkCtx): ReadyGame =
     ctx.state.copy(game = ctx.state.game.copy(current =
       ctx.state.game.current.copy(walkerPending = None,
-        rollPools = Map.empty, walkerProcedure = None)))
+        rollPools = Map.empty, walkerDeferred = Map.empty,
+        walkerProcedure = None)))
 
   private def contractViolation(message: String): Left[OathViolation, Nothing] =
     Left(OathViolation.InvalidEventOrder(s"walker contract violation: $message"))

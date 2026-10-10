@@ -419,3 +419,17 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         case Right(value) => fail(s"expected a typed WireError for $node, " +
           s"got $value")
     }
+
+  test("a deferral and its take round trip, with the held ops"):
+    val key = DeferralKey("test.held")
+    val held = Vector[CoreOperation](ModifyDicePool(PoolKey("test.pool"), 2),
+      Gain.Secrets(Table.p1, 1))
+    Vector[CoreOperation](Defer(key, held), TakeDeferred(key)).foreach { op =>
+      val event = recordedOperation("held", op)
+      val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
+      assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    }
+    val deferral = accepted(GameEventWire.encodeEvent("walker", 0,
+      recordedOperation("held", Defer(key, held))))
+    assertEquals(ujson.read(deferral)("payload")("ops")(0)("kind").str,
+      "defer")

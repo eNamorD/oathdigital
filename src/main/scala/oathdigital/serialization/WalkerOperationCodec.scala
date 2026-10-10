@@ -46,7 +46,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
   private type ResourceOperation = SpendSupply | GainSupply | FlipSecrets | Gain
   private type TurnOperation = AdvanceVisionsDrawn.type | BeginTurn | EnterPhase |
     SetOathkeeper | RecordPowerUse | RecordCampaignResult | ModifyDicePool | Roll |
-    ModifyRollOutcome | QueueFollowUp
+    ModifyRollOutcome | QueueFollowUp | Defer | TakeDeferred
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match
@@ -249,6 +249,11 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "kind" -> "modify-roll-outcome", "pool" -> pool.value,
         "skulls" -> skulls.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
         "score" -> score.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
+      // A held op is spelled as a recorded one: it is held canonically.
+      case Defer(key, ops) => ujson.Obj("kind" -> "defer",
+        "key" -> key.value, "ops" -> ujson.Arr.from(ops.map(encodeOperation)))
+      case TakeDeferred(key) => ujson.Obj("kind" -> "take-deferred",
+        "key" -> key.value)
 
   private def encodePowerTiming(timing: PowerTiming): String = timing match
     case PowerTiming.Wake => "wake"
@@ -512,6 +517,13 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       skulls <- decodeOptionalSignedInt(value("skulls"), s"$path.skulls")
       score <- decodeOptionalSignedInt(value("score"), s"$path.score")
     yield ModifyRollOutcome(PoolKey(value("pool").str), skulls, score)
+    case "defer" =>
+      traverse(value("ops").arr.zipWithIndex.toVector)({
+        case (operation, index) =>
+          decodeOperation(operation, s"$path.ops[$index]") })
+        .map(Defer(DeferralKey(value("key").str), _))
+    case "take-deferred" =>
+      Right(TakeDeferred(DeferralKey(value("key").str)))
 
   private def encodeGive(give: Give, kind: String): ujson.Value = ujson.Obj(
     "kind" -> kind, "piece" -> encodePiece(give.piece),

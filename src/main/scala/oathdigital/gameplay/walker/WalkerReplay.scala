@@ -155,6 +155,7 @@ private[walker] object WalkerReplay:
             walkerStartFacts = Vector.empty,
             walkerFollowUp = None,
             rollPools = Map.empty,
+            walkerDeferred = Map.empty,
             rollOutcomes = Map.empty)))
 
       case FollowUpStarted(followUp) =>

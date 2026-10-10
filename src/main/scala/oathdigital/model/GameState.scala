@@ -189,7 +189,12 @@ final case class CurrentGameState(
     // The entry the current run was started from. Walker scratch: replay
     // sets it from `FollowUpStarted` and `WalkerCompleted` clears it, so the
     // cost waiver and the Act-phase exemption hold on every resume.
-    walkerFollowUp: Option[FollowUp] = None
+    walkerFollowUp: Option[FollowUp] = None,
+    // Ops a step of the current action holds for a later step of it
+    // (operation rewrite design, "Deferral"). Walker scratch: replay
+    // rebuilds it from the recorded `Defer`s, and the walker and
+    // `WalkerCompleted` clear it with the dice pools. Never projected.
+    walkerDeferred: Map[DeferralKey, Vector[CoreOperation]] = Map.empty
 )
 
 final case class OathGame(

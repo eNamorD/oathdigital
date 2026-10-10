@@ -201,6 +201,10 @@ private[gameplay] object OperationApplication:
         result.map(TurnStateOperations.modifyRollOutcome(_, pool, skulls, score))
       case (result, RecordPowerUse(power)) =>
         result.map(TurnStateOperations.recordPowerUse(_, power))
+      case (result, Defer(key, ops)) =>
+        result.map(TurnStateOperations.defer(_, key, ops))
+      case (result, TakeDeferred(key)) =>
+        result.map(TurnStateOperations.takeDeferred(_, key))
       case (result, EnterPhase(phase)) =>
         result.flatMap(TurnStateOperations.enterPhase(_, phase))
       case (result, SetOathkeeper(holder)) =>
