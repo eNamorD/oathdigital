@@ -19,7 +19,6 @@ import oathdigital.testkit.Unwrap.{accepted, present, rejected}
   * the parked walker's own resume is then accepted.
   */
 class PendingWalkerInvariantSuite extends munit.FunSuite:
-  private val relic = relics.head
 
   /** The parked decision, as this suite rebuilds it: the same catalog and
     * power catalogs `GameApplicationService` builds its rules with
@@ -35,9 +34,6 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     GameCommand.ResolveWalker(actor, TreeDecision("not-parked",
       ChooseOneAnswer(DecisionOptionRef.Button("go")))),
     GameCommand.RollWalker(actor, PoolKey("not-parked")),
-    GameCommand.PeekSiteRelics(actor),
-    GameCommand.RevealOwnedRelic(actor, relic),
-    GameCommand.MoveWarbands(actor, toSite = true, 1),
     GameCommand.BeginRest(actor),
     GameCommand.UsePower(actor, SilverTongue.id,
       DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))),

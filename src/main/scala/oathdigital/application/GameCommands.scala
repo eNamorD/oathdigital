@@ -20,11 +20,6 @@ object GameCommand:
     * player in the game could resume another player's parked walker.
     */
   final case class RollWalker(actor: PlayerId, pool: PoolKey) extends GameCommand
-  final case class PeekSiteRelics(playerId: PlayerId) extends GameCommand
-  final case class RevealOwnedRelic(playerId: PlayerId, relic: RelicId)
-      extends GameCommand
-  final case class MoveWarbands(playerId: PlayerId, toSite: Boolean, amount: Int)
-      extends GameCommand
   final case class BeginRest(playerId: PlayerId) extends GameCommand
   final case class UsePower(playerId: PlayerId, power: PowerId,
       source: DecisionOptionRef) extends GameCommand
@@ -58,9 +53,6 @@ object GameCommand:
     case StartWalker(_, start) => Some(start.actor)
     case ResolveWalker(actor, _) => Some(actor)
     case RollWalker(actor, _) => Some(actor)
-    case PeekSiteRelics(player) => Some(player)
-    case RevealOwnedRelic(player, _) => Some(player)
-    case MoveWarbands(player, _, _) => Some(player)
     case BeginRest(player) => Some(player)
     case UsePower(player, _, _) => Some(player)
     case Undo(_) => None

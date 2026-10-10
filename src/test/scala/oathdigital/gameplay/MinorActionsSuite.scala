@@ -1,8 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay.actions.{MinorActionCommand,
-  MinorActionOperationPolicy, MinorActions}
 import oathdigital.gameplay.actions.minor.MinorActionProcedures
 import oathdigital.gameplay.actions.minor.MinorActionProcedures.{toBoard,
   toSite}
@@ -90,147 +88,6 @@ class MinorActionsSuite extends munit.FunSuite:
       Some(Region.Cradle))
     assert(after.game.current.commonCards.discard(Region.Provinces)
       .contains(magiciansCode))
-
-  test("site relic peek uses core operations and preserves knowledge"):
-    val command = MinorActionCommand.PeekSiteRelics(p1)
-    val peeked = accepted(MinorActions.handle(catalog, Ready(base), command,
-      Vector.empty))
-    val peekReady = Outcomes.ready(peeked.state)
-    assert(peekReady.knowledge.siteRelics(p1)(brokenPeaks).contains(stickyFire))
-    val event = present(peeked.events.collectFirst {
-      case value: SiteRelicsPeeked => value }, "the peek event")
-    val expected = base.copy(knowledge = base.knowledge.copy(siteRelics =
-      base.knowledge.siteRelics.updated(p1,
-        base.knowledge.siteRelics.getOrElse(p1, Map.empty)
-          .updated(brokenPeaks, event.relics))))
-    assertEquals(peeked.state, Ready(expected))
-    assertEquals(peeked.events, Vector(event))
-    parked.assertResumed(peeked.state, Phase.Act, p1)
-    assertEquals(rules.evolve(Ready(base), event), Right(Ready(expected)))
-
-    // p1 remembers Dowsing Sticks at Broken Peaks from a peek made before
-    // Dowsing Sticks left the site; the new peek adds to that memory. A peek
-    // replays only against the relics the site holds now, and
-    // `Table.knowsRelicAt` records only a relic still there, so the memory is
-    // a narrow patch.
-    val dowsingSticks = CatalogNames.relic("Dowsing Sticks")
-    val withPriorKnowledge = base.copy(knowledge = base.knowledge.copy(
-      siteRelics = Map(p1 -> Map(brokenPeaks -> Vector(dowsingSticks)))))
-    val expectedMerged = withPriorKnowledge.copy(knowledge =
-      withPriorKnowledge.knowledge.copy(siteRelics = Map(p1 -> Map(
-        brokenPeaks -> (Vector(dowsingSticks) ++ event.relics)))))
-    assertEquals(MinorActions.evolve(catalog, Ready(withPriorKnowledge), event,
-      Vector.empty), Right(Ready(expectedMerged)))
-    val changedSite = minorBoard.relicAt(dowsingSticks, at = brokenPeaks).ready
-    assertEquals(MinorActions.evolve(catalog, Ready(changedSite), event,
-      Vector.empty).left.toOption,
-      Some(OathViolation.MinorActionOutcomeMismatch(
-        "recorded site relic peek does not match the pawn's site")))
-
-  test("owned relic reveal uses core operation and preserves replay"):
-    val revealCommand = MinorActionCommand.RevealOwnedRelic(p1, cursedCauldron)
-    val revealed = accepted(MinorActions.handle(catalog, Ready(base),
-      revealCommand, Vector.empty))
-    val completed = accepted(rules.handle(Ready(base), revealCommand))
-    val revealedReady = Outcomes.ready(revealed.state)
-    assertEquals(Look(revealedReady).player(p1).relics.head.orientation,
-      Orientation.FaceUp)
-
-    val revealEvent = present(revealed.events.collectFirst {
-      case event: OwnedRelicRevealed => event }, "the reveal event")
-    val expected = minorBoard.relic(p1, cursedCauldron, facedown = false).ready
-    assertEquals(revealedReady, expected)
-    assertEquals(revealed.events, Vector(revealEvent))
-    parked.assertResumed(revealed.state, Phase.Act, p1)
-    assertEquals(rules.evolve(Ready(base), revealEvent), Right(Ready(expected)))
-    val replayed = completed.events.foldLeft[
-      Either[OathViolation, OathState]](Right(Ready(base))):
-      case (Right(state), event) => rules.evolve(state, event)
-      case (failure @ Left(_), _) => failure
-    assertEquals(replayed, Right(completed.state))
-
-  test("owned relic reveal rejects unheld and already-faceup relics"):
-    val revealEvent = OwnedRelicRevealed(p1, cursedCauldron)
-    assertEquals(MinorActions.evolve(catalog, Ready(base),
-      OwnedRelicRevealed(p1, stickyFire), Vector.empty).left.toOption,
-      Some(OathViolation.MinorActionUnavailable(
-        "relic is not held by the actor")))
-    val alreadyFaceUp = minorBoard.relic(p1, cursedCauldron, facedown = false)
-      .ready
-    assertEquals(MinorActions.evolve(catalog, Ready(alreadyFaceUp),
-      revealEvent, Vector.empty).left.toOption,
-      Some(OathViolation.MinorActionOutcomeMismatch(
-        "recorded relic was not facedown")))
-
-  test("minor-action operation policy permits roots only in validated context"):
-    val reveal = oathdigital.model.Reveal(cursedCauldron,
-      oathdigital.model.Location.PlayArea(p1))
-    val directFlip = oathdigital.model.Flip(cursedCauldron,
-      oathdigital.model.Location.PlayArea(p1),
-      Orientation.FaceUp)
-
-    assertEquals(MinorActionOperationPolicy.validate(base, reveal), Right(()))
-    assertEquals(MinorActionOperationPolicy.validate(base, directFlip)
-      .left.toOption, Some(OperationError.RestrictedOperation(
-        "minor-action semantic root is not permitted")))
-
-  test("warband moves use core operations in both directions and replay"):
-    val lineage = Look(base).player(p1).lineage
-    val toSite = accepted(MinorActions.handle(catalog, Ready(base),
-      MinorActionCommand.MoveWarbands(p1, toSite = true, 2), Vector.empty))
-    val toSiteEvent = present(toSite.events.collectFirst {
-      case value: WarbandsMoved => value }, "the move event")
-    val atSite = Outcomes.ready(toSite.state)
-    // Two move to the site: 4 - 2 on the board, 3 + 2 at the site.
-    val expectedAtSite = minorBoard.boardWarbands(p1, 2)
-      .warbandsAt(brokenPeaks, p1, 5).ready
-    assertEquals(atSite, expectedAtSite)
-    assertEquals(toSite.events, Vector(toSiteEvent))
-    parked.assertResumed(toSite.state, Phase.Act, p1)
-    assertEquals(rules.evolve(Ready(base), toSiteEvent), Right(Ready(atSite)))
-    assertEquals(Look(atSite).boardWarbands(p1), 2)
-    assertEquals(atSite.game.current.map.sites(brokenPeaks).forces,
-      SiteForces.Occupied(ForceKind.Exile(lineage), 5))
-
-    assertEquals(rules.handle(Ready(base), MinorActionCommand.MoveWarbands(
-      p1, toSite = false, 3)), Left(OathViolation.MinorActionUnavailable(
-        "at least one warband must remain at the site")))
-    val toBoard = accepted(MinorActions.handle(catalog, Ready(base),
-      MinorActionCommand.MoveWarbands(p1, toSite = false, 2), Vector.empty))
-    val toBoardEvent = present(toBoard.events.collectFirst {
-      case value: WarbandsMoved => value }, "the move event")
-    val onBoard = Outcomes.ready(toBoard.state)
-    // Two move back: 4 + 2 on the board, 3 - 2 at the site.
-    val expectedOnBoard = minorBoard.boardWarbands(p1, 6)
-      .warbandsAt(brokenPeaks, p1, 1).ready
-    assertEquals(onBoard, expectedOnBoard)
-    assertEquals(rules.evolve(Ready(base), toBoardEvent), Right(Ready(onBoard)))
-    assertEquals(Look(onBoard).boardWarbands(p1), 6)
-    assertEquals(onBoard.game.current.map.sites(brokenPeaks).forces,
-      SiteForces.Occupied(ForceKind.Exile(lineage), 1))
-
-  test("minor actions run under the global restrictions"):
-    // Stub of OperationRestriction: refuses every operation.
-    val refuseAllStub = new OperationRestriction:
-      override def reason(state: ReadyGame, operation: CoreOperation)
-          : Option[OperationReason] = Some(OperationReason("refused",
-        "every operation is refused", OperationReasonKind.Impossible))
-    assertEquals(MinorActions.handle(catalog, Ready(base),
-      MinorActionCommand.MoveWarbands(p1, toSite = true, 2),
-      Vector(refuseAllStub)), Left(OathViolation.MinorActionUnavailable(
-        "every operation is refused")))
-
-  test("Vow of Wandering refuses a move to the site with its reason, and " +
-      "allows one back to the board"):
-    val holding = minorBoard.adviser(p1,
-      CatalogNames.denizen("Vow of Wandering")).ready
-    val withPowers = PowerRules.withWalkerPowers
-    assertEquals(withPowers.handle(Ready(holding),
-      MinorActionCommand.MoveWarbands(p1, toSite = true, 1)),
-      Left(OathViolation.MinorActionUnavailable(
-        "Vow of Wandering forbids placing warbands on sites")))
-    assert(withPowers.handle(Ready(holding),
-      MinorActionCommand.MoveWarbands(p1, toSite = false, 2)).isRight)
 
   test("Peek Site Relics peeks at every relic at the pawn's site, runs the " +
       "boundary and replays"):
@@ -363,6 +220,40 @@ class MinorActionsSuite extends munit.FunSuite:
     assertEquals(refusing.startWalker(Ready(base), ActionRef.PeekSiteRelics,
       p1).left.toOption, Some(OathViolation.CoreOperationRejected("refused",
         "every operation is refused")))
+
+  test("a minor action refuses an off-turn actor, a wrong phase and a " +
+      "start selection"):
+    assertEquals(rules.startWalker(Ready(base), ActionRef.PeekSiteRelics, p2)
+      .left.toOption, Some(OathViolation.WrongPlayer(p1, p2)))
+    val waking = minorBoard.turn(p1, Phase.Wake).state
+    assertEquals(rules.startWalker(waking, ActionRef.MoveWarbands, p1)
+      .left.toOption, Some(OathViolation.WrongPhase(Phase.Act, Phase.Wake)))
+    val selected = rules.startWalker(Ready(base), ActionRef.RevealOwnedRelic,
+      p1, Vector(DecisionOptionRef.Relic(cursedCauldron)))
+    assert(selected.isLeft, selected)
+
+  test("Reveal Owned Relic and Move Warbands refuse what a global " +
+      "restriction refuses"):
+    val refuseAllStub = new OperationRestriction:
+      override def reason(state: ReadyGame, operation: CoreOperation)
+          : Option[OperationReason] = Some(OperationReason("refused",
+        "every operation is refused", OperationReasonKind.Impossible))
+    val refusing = new OathRules(catalog, walkerPowerCatalog = WalkerPowers(
+      Vector(PowerStubs.OperationRestrictionStub(PowerId("test.refuse-all"),
+        refuseAllStub))))
+    val refused = Some(OathViolation.CoreOperationRejected("refused",
+      "every operation is refused"))
+    // Reveal asks first, and its step is refused once the relic is chosen.
+    val asked = accepted(refusing.startWalker(Ready(base),
+      ActionRef.RevealOwnedRelic, p1))
+    assertEquals(refusing.resolveWalker(asked.state, p1,
+      MinorActionProcedures.relicDecisionId,
+      ChooseOneAnswer(DecisionOptionRef.Relic(cursedCauldron))).left.toOption,
+      refused)
+    // Move Warbands looks ahead at its direction question and is refused at
+    // the start.
+    assertEquals(refusing.startWalker(Ready(base), ActionRef.MoveWarbands, p1)
+      .left.toOption, refused)
 
   test("source-scoped fallback and replay use the recorded off-turn actor"):
     // p2, not the active player, holds Bewitch faceup.

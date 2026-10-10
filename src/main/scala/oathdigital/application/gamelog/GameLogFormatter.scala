@@ -180,12 +180,6 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
       case _: OathEvent.CommandAccepted | _: OathEvent.StepTakenBack |
           _: OathEvent.StepRestored =>
         (Vector.empty, run)
-      // A minor action, outside any walker run, is a section of its own.
-      case _: OathEvent.SiteRelicsPeeked | _: OathEvent.OwnedRelicRevealed |
-          _: OathEvent.WarbandsMoved =>
-        val section = LogSection(journal.sequence(at), LogSections.Minor)
-        (events.lines(journal, at, viewer).map(_.copy(section = Some(section))),
-          run)
       // State-based changes, outside any section.
       case _: OathEvent.BanditsRefilled | _: OathEvent.UsurperFlipped =>
         (events.lines(journal, at, viewer), run)

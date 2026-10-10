@@ -72,8 +72,6 @@ object OathViolation:
       extends OathViolation
   final case class MinorActionUnavailable(detail: String)
       extends OathViolation
-  final case class MinorActionOutcomeMismatch(detail: String)
-      extends OathViolation
   final case class ConspiracyUnavailable(detail: String) extends OathViolation
   final case class NegotiationUnavailable(detail: String) extends OathViolation
   final case class SearchCostMismatch(expected: Int, actual: Int)

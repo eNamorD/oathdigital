@@ -34,14 +34,6 @@ object OathEvent:
     */
   final case class GameStarted(chronicle: Chronicle, orders: SetupOrders)
       extends OathEvent
-  final case class SiteRelicsPeeked(
-      playerId: PlayerId, siteId: SiteId, relics: Vector[RelicId])
-      extends OathEvent
-  final case class OwnedRelicRevealed(playerId: PlayerId, relicId: RelicId)
-      extends OathEvent
-  final case class WarbandsMoved(
-      playerId: PlayerId, siteId: SiteId, toSite: Boolean, amount: Int,
-      priorBoardWarbands: Int, priorSiteWarbands: Int) extends OathEvent
   final case class BanditsRefilled(sites: Vector[(SiteId, Int)]) extends OathEvent
   final case class RoundEnded(completedRound: Int, nextRound: Option[Int])
       extends OathEvent

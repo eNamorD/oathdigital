@@ -21,14 +21,6 @@ private[protocol] object CommandIntentDecoders:
             case _ => Left(InvalidValue(s"$path.source",
               "expected one power source"))
       yield UsePower(power, source)
-    case "peekSiteRelics" => empty(value, path, PeekSiteRelics)
-    case "revealOwnedRelic" => one(value, path, "relicId")(RevealOwnedRelic.apply)
-    case "moveWarbands" =>
-      for
-        _ <- exact(value, Set("type", "toSite", "amount"), path)
-        toSite <- field(value, "toSite", path).flatMap(boolean(_, s"$path.toSite"))
-        amount <- field(value, "amount", path).flatMap(integer(_, s"$path.amount"))
-      yield MoveWarbands(toSite, amount)
     case "startWalker" =>
       for
         _ <- exact(value, Set("type", "action", "startArgs"), path)

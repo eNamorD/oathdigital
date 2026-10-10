@@ -56,11 +56,6 @@ final case class AuthorizedPlayer private[application] (
   def redo: GameCommand = GameCommand.Redo(access.playerId)
   def usePower(power: PowerId, source: DecisionOptionRef): GameCommand =
     GameCommand.UsePower(access.playerId, power, source)
-  def peekSiteRelics: GameCommand = GameCommand.PeekSiteRelics(access.playerId)
-  def revealOwnedRelic(relic: RelicId): GameCommand =
-    GameCommand.RevealOwnedRelic(access.playerId, relic)
-  def moveWarbands(toSite: Boolean, amount: Int): GameCommand =
-    GameCommand.MoveWarbands(access.playerId, toSite, amount)
   def rollWalker(pool: PoolKey): GameCommand =
     GameCommand.RollWalker(access.playerId, pool)
 

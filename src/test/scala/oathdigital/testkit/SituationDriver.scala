@@ -4,7 +4,6 @@ import oathdigital.application.{DefenseDicePort, EventStreamRepository,
   ExpectedStream, GameCommand, GameApplicationService, TreeDecision}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.powerresolver.PhasePowers
@@ -189,13 +188,6 @@ object SituationDriver:
       case GameCommand.UsePower(player, power, source) =>
         rules.startWalker(state, ActionRef.UsePower(power), player,
           Vector(source))
-      case GameCommand.PeekSiteRelics(player) =>
-        rules.handle(state, MinorActionCommand.PeekSiteRelics(player))
-      case GameCommand.RevealOwnedRelic(player, relic) =>
-        rules.handle(state, MinorActionCommand.RevealOwnedRelic(player, relic))
-      case GameCommand.MoveWarbands(player, toSite, amount) =>
-        rules.handle(state, MinorActionCommand.MoveWarbands(player, toSite,
-          amount))
       case _: GameCommand.ConsentCommand =>
         Left(OathViolation.InvalidEventOrder(
           "consent commands need a journal; use a journaled situation"))

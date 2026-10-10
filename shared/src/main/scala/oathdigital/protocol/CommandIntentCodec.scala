@@ -10,9 +10,6 @@ private[protocol] object CommandIntentCodec:
     case Redo => tagged("redo")
     case UsePower(power, source) => tagged("usePower", "powerId" -> power,
       "source" -> CommandNestedCodecs.encodeStartArgWire(source))
-    case PeekSiteRelics => tagged("peekSiteRelics")
-    case RevealOwnedRelic(id) => tagged("revealOwnedRelic", "relicId" -> id)
-    case MoveWarbands(toSite, amount) => tagged("moveWarbands", "toSite" -> toSite, "amount" -> amount)
     case StartWalker(action, startArgs) =>
       tagged("startWalker", "action" -> action,
         "startArgs" -> ujson.Arr.from(startArgs.map(

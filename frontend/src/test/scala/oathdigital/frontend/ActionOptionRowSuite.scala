@@ -1,12 +1,12 @@
 package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
+import oathdigital.protocol.GameIntent
 import TestProjections.actingProjection
 import org.scalajs.dom
 
 /** Action Selection lists each option on its own line: a row of buttons
-  * run together is hard to read. A warband move is one option, so its count
-  * and its button share a row.
+  * run together is hard to read.
   *
   * A power offering an action is a minor action, so it is listed with the
   * others rather than loose above End Act.
@@ -19,12 +19,13 @@ class ActionOptionRowSuite extends munit.FunSuite:
     "Silver Tongue", "Take a favor.")
 
   /** The Act pane for Red. Unless `legalControls` says otherwise she may
-    * only Recover (the one major row). She stands at a site with relics to
-    * peek at and up to 2 warbands to move onto the site and 1 off it (the
-    * minor rows: Peek, then two warband moves).
+    * Recover (the one major row), peek at the relics at her site and move
+    * warbands (the minor rows).
     */
   private def panel(powers: Vector[PhasePowerState] = Vector.empty,
-      legalControls: Vector[String] = Vector("beginRecover")): dom.Element =
+      legalControls: Vector[String] = Vector("beginRecover",
+        "peekSiteRelics", "moveWarbands"),
+      controls: RecordingControls = new RecordingControls()): dom.Element =
     ActionDecisionRenderer.actionsPanel(
       actingProjection(
         players = Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
@@ -37,7 +38,7 @@ class ActionOptionRowSuite extends munit.FunSuite:
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
         None, playerId = "red"),
       ParkedDecision.Routed(None, None), canControl = true, SessionDrafts.empty,
-      new RecordingControls())
+      controls)
 
   private def rows(group: String,
       of: dom.Element = panel()): Vector[dom.Element] = of
@@ -47,9 +48,7 @@ class ActionOptionRowSuite extends munit.FunSuite:
   test("each action option sits on its own row"):
     assertEquals(rows("major").map(_.textContent), Vector("Recover (1 Supply)"))
     assertEquals(rows("minor").map(_.textContent), Vector(
-      "Peek at relics at your site",
-      "Warbands board to site Move warbands",
-      "Warbands site to board Move warbands"))
+      "Peek at relics at your site", "Move warbands"))
 
   test("a power's action is listed as a minor action, not beside End Act"):
     val acting = panel(Vector(silverTongue),
@@ -62,11 +61,10 @@ class ActionOptionRowSuite extends munit.FunSuite:
     assertEquals(acting.querySelectorAll(".phase-power").length, 1)
     assert(rows("minor", acting).map(_.textContent).contains("Silver Tongue"))
 
-  test("a warband move keeps its count and its button on one row"):
-    // Skip the Peek row; the other two minor rows are the warband moves.
-    val moves = rows("minor").drop(1)
-    assertEquals(moves.length, 2)
-    moves.foreach { row =>
-      assertEquals(row.querySelectorAll("input[type=number]").length, 1)
-      assertEquals(row.querySelectorAll(".minor-move-warband").length, 1)
-    }
+  test("a minor action's button starts its procedure, which asks the rest"):
+    val controls = new RecordingControls()
+    val acting = panel(controls = controls)
+    acting.querySelector(".minor-move-warband")
+      .asInstanceOf[dom.html.Button].click()
+    assertEquals(controls.submitted,
+      Vector(GameIntent.StartWalker("move-warbands")))

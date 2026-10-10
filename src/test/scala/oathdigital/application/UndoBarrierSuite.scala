@@ -4,7 +4,6 @@ import oathdigital.gameplay.walker.{DeltaMeaning, RollPayload,
   WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.model._
-import oathdigital.model.OathEvent.{OwnedRelicRevealed, SiteRelicsPeeked}
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
@@ -14,7 +13,6 @@ class UndoBarrierSuite extends munit.FunSuite:
   private val table = Table.start.turn(p1, Phase.Act)
   private val before = table.state
   private val relicCard: CardId = CatalogNames.card("Sticky Fire")
-  private val relic: RelicId = CatalogNames.relic("Sticky Fire")
   private val peaks: SiteId = CatalogNames.site("Broken Peaks")
 
   private def step(payload: WalkerStepPayload, ops: CoreOperation*)
@@ -42,10 +40,6 @@ class UndoBarrierSuite extends munit.FunSuite:
     assert(blocks(deltaStep(Reveal(relicCard, Location.PlayArea(p1)))))
     assert(blocks(deltaStep(Flip(relicCard, Location.PlayArea(p1),
       Orientation.FaceUp))))
-
-  test("a legacy peek or reveal is a barrier"):
-    assert(blocks(SiteRelicsPeeked(p1, peaks, Vector(relic))))
-    assert(blocks(OwnedRelicRevealed(p1, relic)))
 
   test("a batch that hands the turn over is a barrier"):
     assert(UndoBarrier.blocks(Vector.empty, before,

@@ -17,7 +17,7 @@ final case class GameEventEnvelope(
  * Explicit current game-event vocabulary, including first-game setup.
  */
 object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
-    with ActionEventCodec with EndingEventCodec
+    with EndingEventCodec
     with WalkerEventCodec with UndoEventCodec with ConsentEventCodec:
   import WireError._
 
@@ -26,9 +26,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val MaxSafeSequence: Long = 9007199254740991L
   val GameStartedType = "setup.game-started"
   val IgnoredRulesRecordedType = "diagnostic.ignored-rules-recorded"
-  val SiteRelicsPeekedType = "gameplay.site-relics-peeked"
-  val OwnedRelicRevealedType = "gameplay.owned-relic-revealed"
-  val WarbandsMovedType = "gameplay.warbands-moved"
   val BanditsRefilledType = "gameplay.bandits-refilled"
   val UsurperFlippedType = "gameplay.usurper-flipped"
   val UsurperVictoryType = "gameplay.usurper-victory"
@@ -250,11 +247,10 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     yield ()
 
   private val discriminatorDispatch = lifecycleDiscriminator
-    .orElse(actionDiscriminator)
     .orElse(endingDiscriminator).orElse(walkerDiscriminator)
     .orElse(undoDiscriminator).orElse(consentDiscriminator)
 
-  private val encoderDispatch = lifecycleEncoder.orElse(actionEncoder)
+  private val encoderDispatch = lifecycleEncoder
     .orElse(endingEncoder).orElse(walkerEncoder).orElse(undoEncoder)
     .orElse(consentEncoder)
 
@@ -271,7 +267,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   ): Either[WireError, OathEvent] =
     try
       lifecycleDecode(eventType, payload, path)
-        .orElse(actionDecode(eventType, payload, path))
         .orElse(endingDecode(eventType, payload, path))
         .orElse(walkerDecode(eventType, payload, path))
         .orElse(undoDecode(eventType, payload, path))

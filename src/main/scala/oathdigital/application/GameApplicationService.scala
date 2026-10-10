@@ -6,7 +6,6 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{ConsentPowers, PhasePowerCatalog,
   WalkerPowerCatalog}
-import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
 
@@ -448,12 +447,6 @@ final class GameApplicationService(
       case GameCommand.UsePower(playerId, power, source) =>
         rules.startWalker(state, ActionRef.UsePower(power), playerId,
           Vector(source))
-      case GameCommand.PeekSiteRelics(playerId) =>
-        rules.handle(state, MinorActionCommand.PeekSiteRelics(playerId))
-      case GameCommand.RevealOwnedRelic(playerId, relic) =>
-        rules.handle(state, MinorActionCommand.RevealOwnedRelic(playerId, relic))
-      case GameCommand.MoveWarbands(playerId, toSite, amount) =>
-        rules.handle(state, MinorActionCommand.MoveWarbands(playerId, toSite, amount))
       case GameCommand.BeginRest(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
       // `routed` sends Undo and Redo to the fold on every stream; these arms

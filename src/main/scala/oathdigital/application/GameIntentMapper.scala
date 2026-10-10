@@ -22,9 +22,6 @@ object GameIntentMapper:
             "$.intent.powerId", s"invalid power id '$value'"))
           ref <- optionRef(source.optionKind, source.optionId, "$.intent.source")
         yield actor.usePower(power, ref)
-      case Intent.PeekSiteRelics => Right(actor.peekSiteRelics)
-      case Intent.RevealOwnedRelic(id) => Right(actor.revealOwnedRelic(RelicId(id)))
-      case Intent.MoveWarbands(toSite, amount) => Right(actor.moveWarbands(toSite, amount))
       case Intent.StartWalker(value, startArgs) =>
         for
           ref <- actionRef(value)

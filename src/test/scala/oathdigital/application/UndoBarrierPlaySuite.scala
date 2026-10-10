@@ -25,7 +25,8 @@ class UndoBarrierPlaySuite extends munit.FunSuite:
     val (service, repository) = table.service()
     val act = table.situation(Situation.journaled(service, catalog,
       repository, "peek"))
-    val peeked = act.after(GameCommand.PeekSiteRelics(p1))
+    val peeked = act.after(GameCommand.StartWalker(ActionRef.PeekSiteRelics,
+      StartPayload(p1)))
     nothingToUndo(service, "peek", peeked.nextSequence, p1)
 
   test("finishing Rest hands the turn over, so neither player can undo"):

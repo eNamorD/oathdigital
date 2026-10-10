@@ -4,7 +4,7 @@ import java.nio.file.Files
 
 import oathdigital.application.AuthorizationFailure._
 import oathdigital.application.ProjectionScope._
-import oathdigital.model.{PlayerId, RelicId}
+import oathdigital.model.PlayerId
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.testkit.IdentityRepositoryStub
 import oathdigital.testkit.Unwrap.{accepted, rejected}
@@ -73,10 +73,6 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
       assertEquals(
         actor.beginRest,
         GameCommand.BeginRest(PlayerId("p1"))
-      )
-      assertEquals(
-        actor.revealOwnedRelic(RelicId("r1")),
-        GameCommand.RevealOwnedRelic(PlayerId("p1"), RelicId("r1"))
       )
       assertEquals(
         service.authorizeCommand("game-1", AuthenticatedUser(ownerUser)),

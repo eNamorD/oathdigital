@@ -101,36 +101,24 @@ private[frontend] object ActionDecisionRenderer:
          play.onclick = _ => submitCommand(
            GameCommand.StartWalker("play-facedown-adviser"))
          groups.appendKind("facedown-adviser", play)
-       if minor.canPeekSiteRelics then
-         val peek = button("Peek at relics at your site", "minor-peek-relics")
-         peek.disabled = !canControl
-         peek.onclick = _ => submitCommand(GameCommand.PeekSiteRelics)
-         groups.appendKind("peek-site-relics", peek)
-       minor.facedownRelics.foreach { relic =>
-         val reveal = button(s"Reveal ${relic.name}", "minor-reveal-relic")
-         reveal.disabled = !canControl
-         reveal.onclick = _ => submitCommand(GameCommand.RevealOwnedRelic(relic.cardId))
-         groups.appendKind("reveal-owned-relic", reveal)
-       }
-       Vector(true -> minor.maxBoardToSite, false -> minor.maxSiteToBoard)
-         .filter(_._2 > 0).foreach { case (toSite, maximum) =>
-           val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
-           label.textContent = if toSite then "Warbands board to site "
-             else "Warbands site to board "
-           val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
-           amount.`type` = "number"; amount.min = "1"; amount.max = maximum.toString
-           amount.value = "1"; amount.setAttribute("aria-label", label.textContent)
-           label.appendChild(amount)
-           val move = button("Move warbands", "minor-move-warband")
-           move.disabled = !canControl
-           move.onclick = _ => submitCommand(GameCommand.MoveWarbands(
-             toSite, amount.value.toInt))
-           // The count and its button are one option, so they share a row.
-           val option = dom.document.createElement("span")
-           option.appendChild(label); option.appendChild(move)
-           groups.appendKind("move-warbands", option)
-         }
      }
+     // The legacy minor actions are walker procedures (walker-driven game
+     // loop design, slice 3): a button starts one, and the walk asks the
+     // rest. Slice 4's Act menu replaces these buttons.
+     Vector(
+       ("peekSiteRelics", "Peek at relics at your site", "minor-peek-relics",
+         "peek-site-relics"),
+       ("revealOwnedRelic", "Reveal a relic", "minor-reveal-relic",
+         "reveal-owned-relic"),
+       ("moveWarbands", "Move warbands", "minor-move-warband",
+         "move-warbands"))
+       .filter((control, _, _, _) => value.legalControls.contains(control))
+       .foreach { (_, label, style, action) =>
+         val start = button(label, style)
+         start.disabled = !canControl
+         start.onclick = _ => submitCommand(GameCommand.StartWalker(action))
+         groups.appendKind(action, start)
+       }
      PhasePowerButtons.appendTo(value, canControl, groups, submitCommand)
      groups.appendTo(panel)
      if value.legalControls.contains("beginRest") then

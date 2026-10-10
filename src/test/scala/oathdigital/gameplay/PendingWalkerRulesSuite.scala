@@ -1,7 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution,
   LeagueTreatyFixture, SilverTongue, SilverTongueFixture}
@@ -55,17 +54,11 @@ class PendingWalkerRulesSuite extends munit.FunSuite:
   Vector("off-turn League Treaty" -> (() => leagueTreatyPark),
     "Silver Tongue choice" -> (() => silverTonguePark)).foreach:
     case (name, park) =>
-      test(s"no walker start and no legacy handle runs over a parked $name"):
+      test(s"no walker start runs over a parked $name"):
         val state = park()
         val ready = Outcomes.ready(state)
         val actor = ready.game.current.turn.activePlayer
         (StartableRef.all :+ ActionRef.UsePower(SilverTongue.id)).foreach { ref =>
           assertEquals(rules.startWalker(state, ref, actor).left.toOption,
             Some(pending), ref.key)
-        }
-        Vector(
-          "minor action" -> rules.handle(state,
-            MinorActionCommand.PeekSiteRelics(actor))
-        ).foreach { case (family, result) =>
-          assertEquals(result.left.toOption, Some(pending), family)
         }

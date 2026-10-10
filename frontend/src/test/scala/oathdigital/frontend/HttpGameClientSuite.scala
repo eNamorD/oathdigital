@@ -18,7 +18,7 @@ class HttpGameClientSuite extends FunSuite:
     client.load("game /?", "seat-must-not-travel").flatMap { loaded =>
       assertEquals(accepted(loaded).nextSequence, 7L)
       client.submit("game /?", "seat-must-not-travel", 7,
-        GameIntent.RevealOwnedRelic("relic:a"))
+        GameIntent.StartWalker("reveal-owned-relic"))
     }.map { submitted =>
       assertEquals(accepted(submitted).nextSequence, 8L)
       assertEquals(transport.requests.map(r => r.method -> r.url).toVector,
@@ -28,7 +28,7 @@ class HttpGameClientSuite extends FunSuite:
       assertEquals(transport.requests.head.body, None)
       assertEquals(ActorlessCommandCodec.decode(
         present(transport.requests.last.body, "the submitted command body")),
-        Right(ActorlessCommandRequest(7, GameIntent.RevealOwnedRelic("relic:a"))))
+        Right(ActorlessCommandRequest(7, GameIntent.StartWalker("reveal-owned-relic"))))
       assert(!transport.requests.toString.contains("seat-must-not-travel"))
     }
 
@@ -36,7 +36,7 @@ class HttpGameClientSuite extends FunSuite:
     val transport = transportAnsweringInOrder(Vector(
       Right(TransportResponse(409, """{"error":"stale-client-position","message":"position changed"}"""))))
     val client = new TrustedHttpGameClient(transport)
-    client.submit("game-1", "red-exile", 7, GameIntent.RevealOwnedRelic("relic:a"))
+    client.submit("game-1", "red-exile", 7, GameIntent.StartWalker("reveal-owned-relic"))
       .map { result =>
         assertEquals(result, Left(GameClientFailure.StalePosition("position changed")))
         assertEquals(transport.requests.map(_.method).toVector, Vector("POST"))

@@ -51,8 +51,8 @@ case object VowOfWanderingMuster extends ContributingPower:
   *    The refusal is `Impossible`: an optional placement is skipped, and no
   *    walk fails because of it.
   *  - **The powers that place warbands** read [[holds]] themselves, to write
-  *    [[forbidden]] or to offer only what is legal. The minor action refuses
-  *    with the restriction's reason.
+  *    [[forbidden]] or to offer only what is legal. Move Warbands shows its
+  *    way to the site unavailable with the restriction's reason.
   *  - **Conquest.** After a victory, the placement question is replaced by a
   *    line, and the survivors stay on the board: "Kept {n} surviving
   *    warbands on the board."
@@ -62,7 +62,7 @@ case object VowOfWandering extends ContributingPower:
   val id: PowerId = VowOfWanderingCard.power.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
-  /** The restriction's detail, which the minor action shows. */
+  /** The restriction's detail, which Move Warbands shows. */
   val Reason: String = "Vow of Wandering forbids placing warbands on sites"
   /** "Vow of Wandering forbids placing warbands on sites.", the line a power
     * writes under its own name when the Vow stops its placement. */

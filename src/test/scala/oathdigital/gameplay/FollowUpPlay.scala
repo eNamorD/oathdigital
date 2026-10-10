@@ -30,5 +30,4 @@ object FollowUpPlay:
     * queued it ends: it dequeues the head. */
   def dequeued(rules: OathRules, state: OathState)
       : Either[OathViolation, OathTransition] =
-    rules.next(OathTransition(state, Vector.empty),
-      Ended.Walk(ActionRef.Travel))
+    rules.next(OathTransition(state, Vector.empty), ActionRef.Travel)

@@ -1,6 +1,5 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
@@ -86,8 +85,8 @@ class OathDriverSuite extends munit.FunSuite:
 
   test("a minor action runs the boundary"):
     val start = table.relicAt("Brass Horse", at = ancientCity).state
-    val peeked = accepted(rules.handle(start,
-      MinorActionCommand.PeekSiteRelics(p1)))
+    val peeked = accepted(rules.startWalker(start, ActionRef.PeekSiteRelics,
+      p1))
     assertEquals(boundaries(peeked.events), 1)
 
   test("the title walk hands back to the driver: Wake ends once the holder " +
@@ -115,21 +114,21 @@ class OathDriverSuite extends munit.FunSuite:
   private def usurperWakes: OathState = Table.start.turn(p1, Phase.Wake)
     .oathkeeper(Some(p1), TitleSide.Usurper).state
 
-  private def driven(ended: Ended): Vector[OathEvent] =
-    accepted(rules.next(OathTransition(usurperWakes, Vector.empty), ended))
+  private def driven(finished: ProcedureRef): Vector[OathEvent] =
+    accepted(rules.next(OathTransition(usurperWakes, Vector.empty), finished))
       .events
 
   test("the turn-start hooks run after Setup and after Finish Rest"):
-    assertEquals(driven(Ended.Walk(TriggeredProcedureRef.Setup)),
+    assertEquals(driven(TriggeredProcedureRef.Setup),
       Vector[OathEvent](OathEvent.UsurperVictory(p1)))
-    assertEquals(driven(Ended.Walk(PhaseTransitionRef.FinishRest)),
+    assertEquals(driven(PhaseTransitionRef.FinishRest),
       Vector[OathEvent](OathEvent.UsurperVictory(p1)))
 
   test("no other walk starts a turn"):
     // The Wake check belongs to a turn's start, not to every finished walk.
     Vector(TriggeredProcedureRef.Oathkeeper, PhaseTransitionRef.EndWake,
       ActionRef.Travel).foreach: walk =>
-      assert(!driven(Ended.Walk(walk)).contains(OathEvent.UsurperVictory(p1)),
+      assert(!driven(walk).contains(OathEvent.UsurperVictory(p1)),
         walk)
 
   test("Setup's end replays: the first Wake begins in the same command"):

@@ -3,7 +3,6 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.consent.ConsentEvolution
-import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.gameplay.powerresolver.{PhasePowers}
@@ -40,28 +39,9 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   /** The global operation restrictions outside a walker action: the catalog's
     * printed ones and the automatic powers', with no modifiers, since no
-    * action is running. Minor actions and state-based effects run under
-    * them. */
+    * action is running. State-based effects run under them. */
   protected lazy val outsideActions: Vector[OperationRestriction] =
     WalkerPowers.selected(walkerPowerCatalog, Vector.empty).operationRestrictions
-
-  /** Walker-ownership invariant: while a walker procedure is parked, only
-    * its resume commands run. `GameApplicationService.applyCommand` refuses
-    * other commands first; this keeps the rules boundary honest for every
-    * other caller.
-    */
-  private def unlessWalkerPending(state: OathState)(
-      handled: => Either[OathViolation, OathTransition])
-      : Either[OathViolation, OathTransition] = state match
-    case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
-        ready.game.current.walkerProcedure.nonEmpty =>
-      Left(InvalidEventOrder("a walker procedure is already pending"))
-    case _ => handled
-
-  def handle(state: OathState, command: MinorActionCommand)
-      : Either[OathViolation, OathTransition] = unlessWalkerPending(state):
-    MinorActions.handle(catalog, state, command, outsideActions)
-      .flatMap(next(_, Ended.MinorAction))
 
   override def evolve(
       state: OathState,
@@ -95,9 +75,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       // rejects here instead of escaping as a `MatchError`.
       case other: WalkerEvent =>
         Left(InvalidEventOrder(s"unsupported walker event: ${other.productPrefix}"))
-      case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event, outsideActions)
-      case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event, outsideActions)
-      case event: WarbandsMoved => MinorActions.evolve(catalog, state, event, outsideActions)
       case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
       case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
       case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event, outsideActions)

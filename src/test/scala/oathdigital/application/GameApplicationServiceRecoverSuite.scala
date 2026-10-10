@@ -84,10 +84,10 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       RecoverProcedure.relicDecisionId, actor)
 
     walkerService.handle("walker-recover", started.nextSequence,
-      GameCommand.PeekSiteRelics(actor)) match
+      GameCommand.BeginRest(actor)) match
       case Left(GameApplicationError.CommandRejected(
           _: oathdigital.model.OathViolation.InvalidEventOrder)) => ()
-      case other => fail(s"legacy command should be blocked by walker park: $other")
+      case other => fail(s"a start command should be blocked by walker park: $other")
     assertEquals(loaded(walkerService.load("walker-recover"))
       .nextSequence, started.nextSequence)
 

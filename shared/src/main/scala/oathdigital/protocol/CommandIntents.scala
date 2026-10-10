@@ -13,9 +13,6 @@ object GameIntent:
   case object Redo extends GameIntent
   final case class UsePower(powerId: String, source: WalkerStartArgWire)
       extends GameIntent
-  case object PeekSiteRelics extends GameIntent
-  final case class RevealOwnedRelic(relicId: String) extends GameIntent
-  final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent
   /** Starts a walker procedure. `action` is the engine's persisted
     * `StartableRef` wire key (e.g. `"recover"`). An action asks for its
     * modifiers inside the walk, as its first decision, so a start names none

@@ -7,8 +7,8 @@ import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
   encodedStreamThatRoundTrips}
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
-/** Single game facts on the wire: ignored rules, round end, victory, minor
-  * actions and the GameStarted Chronicle. */
+/** Single game facts on the wire: ignored rules, round end, victory, state-based
+  * events and the GameStarted Chronicle. */
 class GameEventFactsWireSuite extends munit.FunSuite:
   test("ignored-rule diagnostics round trip durable source timing and reason"):
     val event = OathEvent.IgnoredRulesRecorded(PlayerId("red"),
@@ -37,15 +37,11 @@ class GameEventFactsWireSuite extends munit.FunSuite:
       VisionId("vision:vision-of-faith")))
     assertStreamRoundTrips("visions", events)
 
-  test("minor actions preserve private identities and prior force facts, " +
-      "written at format version 1"):
+  test("state-based events are written at format version 1"):
     val events = Vector[OathEvent](
-      OathEvent.SiteRelicsPeeked(PlayerId("red"), SiteId("site:a"),
-        Vector(RelicId("R1"), RelicId("R2"))),
-      OathEvent.OwnedRelicRevealed(PlayerId("red"), RelicId("R3")),
-      OathEvent.WarbandsMoved(PlayerId("red"), SiteId("site:a"),
-        toSite = false, 2, 3, 4))
-    val encoded = encodedStreamThatRoundTrips("minor", events)
+      OathEvent.BanditsRefilled(Vector(SiteId("site:a") -> 1)),
+      OathEvent.UsurperFlipped(PlayerId("red")))
+    val encoded = encodedStreamThatRoundTrips("state-based", events)
     // Every event is written at format version 1, the one version the codec
     // supports.
     assertEquals(

@@ -34,8 +34,8 @@ private[gameplay] trait OathRulesWalker:
       operation: => Either[OathViolation, OathTransition])
       : Either[OathViolation, OathTransition]
   /** Runs what follows a finished walk (`OathDriver`). */
-  private[gameplay] def next(transition: OathTransition, ended: Ended)
-      : Either[OathViolation, OathTransition]
+  private[gameplay] def next(transition: OathTransition,
+      finished: ProcedureRef): Either[OathViolation, OathTransition]
 
   /** Starts one action on the generic procedure walker. An action asks for
     * its modifiers inside the walk, as its first decision (modifier walker
@@ -377,7 +377,7 @@ private[gameplay] trait OathRulesWalker:
       GameplayTransition(state, steps ++ offerSkipped(state, procedure,
           steps) :+ WalkerCompleted(procedure))(evolve)
         .flatMap(recordCardPlayFallback(_, procedure, steps))
-        .flatMap(next(_, Ended.Walk(procedure)))
+        .flatMap(next(_, procedure))
 
   /** The Skip line's anchor when a follow-up offer ends on Skip
     * (walker-driven game loop design, plan-time ruling 5). */

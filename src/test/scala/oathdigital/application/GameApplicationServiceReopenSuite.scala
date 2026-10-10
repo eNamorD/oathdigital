@@ -59,7 +59,8 @@ class GameApplicationServiceReopenSuite extends munit.FunSuite:
     val service = new GameApplicationService(catalog, first,
       genesis = table.state)
     val peeked = try
-      accepted(service.handle(gameId, 0L, GameCommand.PeekSiteRelics(p2)))
+      accepted(service.handle(gameId, 0L,
+        GameCommand.StartWalker(ActionRef.PeekSiteRelics, StartPayload(p2))))
     finally first.close()
 
     val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(

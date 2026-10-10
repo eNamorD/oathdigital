@@ -49,15 +49,9 @@ class GameLogSectionSuite extends munit.FunSuite:
     val recovered = entryStarting(entries, "Recovered ")
     assertEquals(recovered.section.map(_.action), Some("recover"))
 
-  test("moved warbands are a minor section; refilled bandits and a new " +
-      "Usurper are in none"):
+  test("refilled bandits and a new Usurper are in no section"):
     val script = recordedEventsBoard
     val site = CatalogNames.site("Ancient City")
-    val moved = formatAppended(script, Vector(OathEvent.WarbandsMoved(
-      script.actor, site, toSite = true, amount = 2, priorBoardWarbands = 3,
-      priorSiteWarbands = 1))).last
-    assertEquals(moved.section, Some(LogSection(
-      script.history.steps.size.toLong, LogSections.Minor)))
     assertEquals(formatAppended(script, Vector(OathEvent.BanditsRefilled(
       Vector(site -> 1)))).last.section, None)
     assertEquals(formatAppended(script, Vector(OathEvent.UsurperFlipped(

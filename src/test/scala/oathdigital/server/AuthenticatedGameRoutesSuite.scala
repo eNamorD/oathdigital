@@ -170,7 +170,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
       // actor is derived from the session and never carried on the wire, a
       // spoofed one is rejected outright, and no unknown field rides an
       // assignment payload. 422: the game is in Setup, so the derived actor
-      // may not Forge or peek yet. 400: the wire refuses a playerId field
+      // may not Forge yet. 400: the wire refuses a playerId field
       // and an unknown payload field.
       val actorDerivedForge = command(ujson.Obj("type" -> "startWalker",
         "action" -> "forge"))
@@ -184,11 +184,6 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
           "placements" -> ujson.Arr(),
           "relicId" -> "relic:spoofed")))
       assertEquals(spoofedRelic.statusCode(), 400, spoofedRelic.body())
-      val actorDerivedMinor = command(ujson.Obj("type" -> "peekSiteRelics"))
-      assertEquals(actorDerivedMinor.statusCode(), 422, actorDerivedMinor.body())
-      val spoofedMinorActor = command(ujson.Obj("type" -> "peekSiteRelics",
-        "playerId" -> "p3"))
-      assertEquals(spoofedMinorActor.statusCode(), 400)
 
   begunAuthGame.test("p2 walks Setup through the authenticated routes, " +
       "nobody else sees or answers its decisions, and a stale position " +
