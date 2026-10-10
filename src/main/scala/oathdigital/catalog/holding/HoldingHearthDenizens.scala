@@ -1,18 +1,10 @@
 package oathdigital.catalog.holding
 
-import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower,
-  SiteOnly}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.model.{Cost, DenizenId, PowerId, Suit}
 
 // Generated from the retired runtime JSON (card classes slice 1).
 // Hand-edited from here on; a card moves out when it is implemented.
-
-object HeartsAndMindsCard extends Denizen(DenizenId("138"), "Hearts and Minds", Suit.Hearth) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.hearts-and-minds"),
-    persistent = false, cost = Cost(favor = 3),
-    text = "As defender, you're victorious now. At end, discard Hearts " +
-      "and Minds unless you hold the People's Favor.")
-  val powers: Vector[PrintedPower] = Vector(power)
 
 object DeedWriterCard extends Denizen(DenizenId("146"), "Deed Writer", Suit.Hearth):
   val power = PrintedPower(PowerId("denizen.deed-writer"),
