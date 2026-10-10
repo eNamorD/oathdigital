@@ -105,9 +105,10 @@ class RecoverProcedureSuite extends munit.FunSuite
     // The head ModifyDicePool carries `RecoverBeforeFirstRoll`: a
     // windowed leaf's folded vector is walked as its own children (ruling G),
     // so an unchanged fold still records the leaf one level deeper than an
-    // unwindowed leaf would sit -- "0.0", not "0".
+    // unwindowed leaf would sit -- "0.0", not "0". The payment sits in its
+    // own `RecoverCost` window, one level deeper again.
     assertEquals(recordedSteps(relicWalk.events).map(_.nodeId),
-      Vector("0.0", "1.0.0", "1.0.1"))
+      Vector("0.0", "1.0.0.0", "1.0.1"))
     val stateAtRelic = applyRecorded(ready, relicWalk.events)
     assertEquals(Look(stateAtRelic).supply(actor), SupplyTrack.Maximum - 1)
 
@@ -136,11 +137,12 @@ class RecoverProcedureSuite extends munit.FunSuite
     // leaves (the head ModifyDicePool at RecoverBeforeFirstRoll, the relic
     // BuildOps at RecoverAfterRelic) each record one level deeper than their
     // unwindowed siblings ("0.0" and "2.1.0", not "0"/"2.1") for the same
-    // reason as the park assertion above; nothing else in the tree shifts.
+    // reason as the park assertion above, and so does the payment in its
+    // `RecoverCost` window ("1.0.0.0"); nothing else in the tree shifts.
     val steps = recordedSteps(relicWalk.events ++ resolved.events)
     assertEquals(steps.size, 5)
     assertEquals(steps.map(_.nodeId),
-      Vector("0.0", "1.0.0", "1.0.1", "2.0", "2.1.0"))
+      Vector("0.0", "1.0.0.0", "1.0.1", "2.0", "2.1.0"))
     assertEquals(steps(0).ops,
       Vector[CoreOperation](ModifyDicePool(pool, 2,
         window = Some(PowerWindow.RecoverBeforeFirstRoll))))
@@ -444,8 +446,8 @@ class RecoverProcedureSuite extends munit.FunSuite
         "violation: resume path segment '0' out of range for a node with 0 " +
         "children")))
 
-  test("the tree windows exactly its root, its pool-opening node, and its " +
-      "relic-moving node; every other node carries none"):
+  test("the tree windows exactly its root, its pool-opening node, its " +
+      "payment, and its relic-moving node; every other node carries none"):
     val ready = recoverBoard.ready
     val tree = accepted(RecoverProcedure.afterModifiers(catalog, ready, actor))
     val pool = RecoverProcedure.recoverPool
@@ -467,9 +469,10 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(windowed.map(_.window).toSet, Set[Option[PowerWindow]](
       Some(PowerWindow.RecoverActionEligibility),
       Some(PowerWindow.RecoverBeforeFirstRoll),
+      Some(PowerWindow.RecoverCost),
       Some(PowerWindow.RecoverAfterRelic)))
-    assertEquals(windowed.size, 3,
-      s"expected exactly 3 windowed nodes, found ${windowed.size}: $windowed")
+    assertEquals(windowed.size, 4,
+      s"expected exactly 4 windowed nodes, found ${windowed.size}: $windowed")
     assert(windowed.contains(tree),
       "the Recover's root must carry RecoverActionEligibility")
     assertEquals(windowed.collect { case node: ModifyDicePool => node.window },

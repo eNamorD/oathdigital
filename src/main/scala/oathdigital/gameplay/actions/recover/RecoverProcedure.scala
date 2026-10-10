@@ -18,7 +18,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   *     ModifyDicePool("recover", +2),         // window = RecoverBeforeFirstRoll
   *     Repeat(guard = not succeeded && lastChoice != Stop,
   *       Sequence(
-  *         SpendSupply(actor, 1),            // validated by OperationPipeline
+  *         SpendSupply(actor, 1),            // window = RecoverCost
   *         Roll("recover", Defense, Automatic), // rolls in the same command
   *         Branch(choice when not yet success) // -> Decide("recover.choice") or nothing
   *       )),
@@ -206,7 +206,8 @@ object RecoverProcedure:
     // Payment precedes Roll so OperationPipeline rejects insufficient supply
     // before randomness is requested.
     val body = Sequence(
-      SpendSupply(actor, supplyCost),
+      Sequence(Vector(SpendSupply(actor, supplyCost)),
+        Some(PowerWindow.RecoverCost)),
       Roll(recoverPool, DiceSpec(DiceKind.Defense), RollMode.Automatic),
       Branch((ready, _) =>
         if succeeded(ready) then Vector.empty else Vector(choiceDecide)))

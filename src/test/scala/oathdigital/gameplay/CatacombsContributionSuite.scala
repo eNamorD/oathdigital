@@ -120,7 +120,7 @@ class CatacombsContributionSuite extends munit.FunSuite:
     val recorded = steps(transition.events)
 
     // The dice-pool bonus, then the first round's Supply spend and its roll.
-    assertEquals(recorded.map(_.nodeId), Vector("1.0.0", "1.1.0.0", "1.1.0.1"))
+    assertEquals(recorded.map(_.nodeId), Vector("1.0.0", "1.1.0.0.0", "1.1.0.1"))
     assertEquals(recorded.flatMap(_.contributions), Vector.empty[PowerId])
     // The roll itself records no operations: a Roll leaf writes its outcome
     // as state (`ProcedureWalker.recordRoll`), not as an ops batch.
