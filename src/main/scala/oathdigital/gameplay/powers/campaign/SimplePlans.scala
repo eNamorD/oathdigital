@@ -9,7 +9,8 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * Talkers, Nature Worship, Cracked Sage, Village Constable, Banner Breakers,
   * Cracking Ground, Walled Garden, Bandit Standard, Extra Provisions,
   * Encirclement, Disgraced Captain, Battle Axes, Field Promotion, Tribute
-  * Spoils, Military Parade and Scouts, registered together. Each names its
+  * Spoils, Military Parade, Scouts, Zealots (the sacrifice's worth recorded
+  * when applied) and Second Wind, registered together. Each names its
   * card, so all are always present.
   */
 object SimplePlans:
@@ -38,4 +39,5 @@ object SimplePlans:
       Vector(TributeSpoils.forCatalog(catalog)) ++
       Vector(MilitaryParade.forCatalog(catalog)) ++
       Vector(Scouts) ++
-      Vector(SecondWind)
+      Vector(SecondWind) ++
+      Vector(Zealots)

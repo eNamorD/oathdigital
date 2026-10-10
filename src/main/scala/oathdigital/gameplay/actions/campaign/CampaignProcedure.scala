@@ -131,7 +131,8 @@ object CampaignProcedure:
         val max = CampaignBattle.sacrificeMax(ready, setup)
         Vector[Operation](Decide(CampaignIds.sacrifice, actor,
           DecisionQuery.ChooseAmount(0, max,
-            Some(CampaignBattle.sacrificeHeading(max)), "Sacrifice"),
+            Some(CampaignBattle.sacrificeHeading(max,
+              CampaignBattle.sacrificeWorth(ready))), "Sacrifice"),
           window = Some(PowerWindow.CampaignSacrificeSelection)))
       }.getOrElse(Vector.empty))
 

@@ -4,7 +4,7 @@ import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
   WalkerCompleted, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Table.p2
 import LogScripts._
@@ -103,3 +103,29 @@ class GameLogCampaignSuite extends munit.FunSuite:
     val attacks = texts(entries.filter(_.sequence >= steps.size))
       .filter(_.startsWith("Attack: "))
     assertEquals(attacks, Vector("Attack: 8"))
+
+  test("a sacrifice line counts what each warband adds"):
+    val script = recordedEventsBoard
+    val steps = script.history.steps
+    /** The state the sacrifice starts from, with `worth` recorded by a
+      * plan, as Zealots records it. */
+    def worthRecorded(worth: Option[Int])(state: OathState): OathState =
+      (worth, state) match
+        case (Some(count), OathState.Ready(ready)) => OathState.Ready(
+          ready.updateCurrent(current => current.copy(rollPools =
+            current.rollPools.updated(CampaignIds.sacrificeWorth,
+              DicePoolState(count)))))
+        case _ => state
+    def sacrificeLine(worth: Option[Int]): String =
+      val tail = Vector[OathEvent](
+        WalkerStepRecorded("sacrifice", ChoicePayload(CampaignIds.sacrifice,
+          ChooseAmountAnswer(2), script.actor), Vector.empty, Vector.empty),
+        WalkerCompleted(ActionRef.Campaign))
+      texts(formatAppended(script, tail, stateBefore = worthRecorded(worth))
+        .filter(_.sequence >= steps.size)).find(_.startsWith("Sacrificed ")).get
+    def attackOf(line: String): Int = line.split(' ').last.toInt
+    val plain = sacrificeLine(None)
+    val zealous = sacrificeLine(Some(3))
+    assert(plain.startsWith("Sacrificed 2 warbands for an attack of "), plain)
+    // Each of the two warbands adds three, not one.
+    assertEquals(attackOf(zealous) - attackOf(plain), 4)
