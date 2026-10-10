@@ -485,6 +485,23 @@ object LogScripts:
     raidAnswers(act).after(MenuPlay.start(p1, ActionRef.Campaign))
     Script("raid", service, p1)
 
+  /** The `raid` table with Careful Plans faceup as p1's adviser and one
+    * favor to pay for it. p1 chooses it, so p2's defense dice roll before
+    * p1's attack dice. Everything else is answered as in `raid`. */
+  def raidUnderCarefulPlans(using munit.Location): Script =
+    val careful = CatalogNames.denizen("Careful Plans")
+    val (service, act) = atTable("careful-raid", tableWithOnePawnPerSite
+      .pawn(p2, "Ancient City")
+      .adviser(p2, "Birdsong", facedown = true)
+      .adviser(p1, careful).favor(p1, 1).banditsRefilled, Dice.raid)
+    // Chosen once: the favor it places marks it used.
+    raidAnswers(act, {
+      case park if park.decisionId == CampaignIds.attackerPlan &&
+          Look(park.ready).adviserTokens(p1, careful) == Tokens(0, 0) =>
+        ChooseOneAnswer(DecisionOptionRef.Denizen(careful))
+    }).after(MenuPlay.start(p1, ActionRef.Campaign))
+    Script("careful-raid", service, p1)
+
   /** The `raid` table with a Campaign offered to p1 by Knights Errant, which
     * p1 holds faceup: p1 takes the offer and the Raid runs as that queued
     * Campaign. */
@@ -524,9 +541,11 @@ object LogScripts:
       .offering(knightsOffer)
       .banditsRefilled, Dice.raid)
 
-  /** A Raid's answers: all force committed and sacrificed, no battle plans. */
-  private def raidAnswers(act: Situation): Situation =
-    act.withAnswers {
+  /** A Raid's answers: all force committed and sacrificed, and Finish at
+    * every battle plan window unless `plans` answers it first. */
+  private def raidAnswers(act: Situation,
+      plans: Answers = PartialFunction.empty): Situation =
+    act.withAnswers(plans.orElse {
       case park if park.decisionId == CampaignIds.kind =>
         ChooseOneAnswer(DecisionOptionRef.Button("raid"))
       case Park(Decide(CampaignIds.force, _,
@@ -538,7 +557,7 @@ object LogScripts:
       case park if park.decisionId == CampaignIds.attackerPlan ||
           park.decisionId == CampaignIds.defenderPlan =>
         ChooseOneAnswer(CampaignIds.finish)
-    }
+    })
 
   /** p1 and p2 share Ancient City, so p1 can negotiate with exactly one
     * other: the negotiators decision is not asked. `extra` adds to the

@@ -6,7 +6,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look}
+import oathdigital.testkit.{CatalogNames, Look, Table}
 
 /** Hearts and Minds: three favor placed; the defender wins without a roll,
   * and the card is discarded after the Campaign unless its user holds the
@@ -24,6 +24,12 @@ class HeartsAndMindsSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     on(withSiteCard(base, base.origin, card))(_.favor(base.rival, favor)
       .peoplesFavor(Option.when(favored)(base.rival), favor = 1))
+
+  /** `run` with its parked state changed by Table steps, as if something
+    * earlier in the Campaign had changed the board. */
+  private def runWithTableChanged(run: Run)(steps: Table => Table): Run =
+    run.copy(transition = run.transition.copy(state =
+      OathState.Ready(steps(Table.from(ready(run.state))).unchecked)))
 
   test("the defender wins without a roll, the attacker loses half the " +
       "force, and the People's Favor keeps the card"):
@@ -52,3 +58,29 @@ class HeartsAndMindsSuite extends munit.FunSuite:
     val run = commit(rules(winningDice), b, 4)
     assertEquals(run.withheld(b.actor, ref),
       Some(OptionReason.Written("Needs 3 favor; you have 2")))
+
+  // No rule yet gives a defender the People's Favor while it wins with
+  // Hearts and Minds, so these tests move the banner in the parked state,
+  // after the pick and before the end of the Campaign.
+  test("a People's Favor won during the Campaign keeps the card"):
+    val b = defender(favor = 3, favored = false)
+    val picked = commit(rules(winningDice), b, 4)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
+    assert(awaits(picked, b.rival, CampaignIds.defenderPlan))
+    val done = runWithTableChanged(picked)(
+      _.peoplesFavor(Some(b.rival), favor = 1)).finishPlanWindows
+    assertEquals(done.winner, Some(false))
+    assert(Look(done.state).cardsAt(b.origin).contains(card))
+    assertEquals(said(power, done.events), Vector.empty)
+
+  test("a People's Favor lost during the Campaign discards the card"):
+    val b = defender(favor = 3, favored = true)
+    val picked = commit(rules(winningDice), b, 4)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
+    assert(awaits(picked, b.rival, CampaignIds.defenderPlan))
+    val done = runWithTableChanged(picked)(
+      _.peoplesFavor(None, favor = 1)).finishPlanWindows
+    assertEquals(done.winner, Some(false))
+    assert(Look(done.state).inRegionalDiscard(card))
+    assertEquals(said(power, done.events), Vector(NoteText.Said("discarded",
+      "Discarded after the Campaign.", covers = false)))

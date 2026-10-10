@@ -138,12 +138,12 @@ Expected: PASS, 6 tests.
 
 - [ ] **Step 5: Mutation check**
 
-In `raidUnderCarefulPlans`, delete `.favor(p1, 1)`. Careful Plans can no longer be paid for, so it is not chosen and the dice roll in the printed order.
+In `raidUnderCarefulPlans`, change `Tokens(0, 0)` in the answer's guard to `Tokens(9, 9)`. The guard never matches, so Careful Plans is not chosen and the dice roll in the printed order. (Deleting `.favor(p1, 1)` is not a mutation: the table already gives p1 favor.)
 
 Run: `./sbtw "testOnly oathdigital.application.gamelog.GameLogCampaignSuite"`
 Expected: FAIL in the new test. The assertion `from >= 0` fails, because no line reads "Activated Careful Plans".
 
-Restore `.favor(p1, 1)` and run the suite again. Expected: PASS.
+Restore `Tokens(0, 0)` and run the suite again. Expected: PASS.
 
 - [ ] **Step 6: Remove the roadmap item**
 
