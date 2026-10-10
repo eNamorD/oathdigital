@@ -11,9 +11,10 @@ import oathdigital.model._
   *
   * The children have a fixed shape, a slot each for revealing the source,
   * paying, sacrificing, then one per effect, then the amount question and what
-  * its answer does, and every slot that depends on state is a `Branch`. A walk that parks on a decision inside a plan resumes
-  * against the state the earlier slots changed, so a slot must still select the
-  * same children then, and a slot that has nothing to do selects none.
+  * its answer does, and every slot that depends on state is a `Branch`. A walk
+  * that parks on a decision inside a plan resumes against the state the earlier
+  * slots changed, so a slot must still select the same children then, and a
+  * slot that has nothing to do selects none.
   *
   *  - A facedown adviser is revealed when it is used.
   *  - Costs are paid onto the source card, which may already hold resources. A
