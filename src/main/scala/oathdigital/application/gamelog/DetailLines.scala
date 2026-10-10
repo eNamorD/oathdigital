@@ -4,6 +4,7 @@ import oathdigital.application.GamePresentationProjector
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
+import oathdigital.gameplay.actions.dice.{DiceThrow, RerollChoice}
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
@@ -34,9 +35,19 @@ private[gamelog] final class DetailLines(words: LogWords,
   private def roll(journal: LogJournal, at: Int): Vector[Posted] =
     journal.event(at) match
       case WalkerStepRecorded(_, RollPayload(pool, faces, _), _, _) =>
-        LogWords.dice(faces).toVector.map(dice => Posted.line(LogKind.Roll,
-          Vector(LogSpan.Text("Rolled "), dice) ++ DetailLines.forPool(pool)))
+        rolled(pool, faces)
+      case _: WalkerStepRecorded => journal.ops(at).collectFirst {
+        case OpStep(Reroll(pool, _, Some(_)), _, after) =>
+          rolled(pool, after.game.current.rollOutcomes.get(pool).fold(
+            Vector.empty[DieFace])(outcome => DiceThrow.lastIndices(after,
+              pool).flatMap(outcome.faces.lift)))
+      }.getOrElse(Vector.empty)
       case _ => Vector.empty
+
+  /** "Rolled {faces}", then the pool's words. */
+  private def rolled(pool: PoolKey, faces: Vector[DieFace]): Vector[Posted] =
+    LogWords.dice(faces).toVector.map(dice => Posted.line(LogKind.Roll,
+      Vector(LogSpan.Text("Rolled "), dice) ++ DetailLines.forPool(pool)))
 
   private def decision(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] = journal.event(at) match
@@ -191,7 +202,8 @@ private[gamelog] object DetailLines:
     * Campaign and Negotiation line, each action line that names its
     * choice, the modifier decision, which the start line names, and the
     * follow-up offer, which the queued action's tag or the Skip line tells,
-    * and the phase menus, whose pick starts a walk that tells it. */
+    * and the phase menus, whose pick starts a walk that tells it, and the
+    * reroll decisions, which the reroll's own lines tell. */
   private val NarratedPrefixes = Vector("setup.", ActionLines.PlacePrefix,
     "cardplay.discard.", "campaign.", "negotiation.", "travel.")
   private val NarratedIds = Set(FollowUpOffer.decisionId,
@@ -215,4 +227,5 @@ private[gamelog] object DetailLines:
 
   def narrated(decisionId: String): Boolean =
     NarratedIds(decisionId) || ModifierPicks.isDecision(decisionId) ||
+      RerollChoice.isDecision(decisionId) ||
       NarratedPrefixes.exists(decisionId.startsWith)

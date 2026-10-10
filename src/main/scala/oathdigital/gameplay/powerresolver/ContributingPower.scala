@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Answered, CampaignPlanOffer, CardId, CoreOperation, Decide, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, Operation, OperationRestriction, OptionReason, PlayerId, PowerId, PowerNote, PowerResolution, PowerSourceRef, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
+import oathdigital.model.{Answered, CampaignPlanOffer, CardId, CoreOperation, Decide, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, OfferedReroll, Operation, OperationRestriction, OptionReason, PlayerId, PowerId, PowerNote, PowerResolution, PowerSourceRef, PowerWindow, ProcedureRef, ReadyGame, RerollOffer, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -121,6 +121,15 @@ final case class Offer(
     plan: PowerCtx => Option[CampaignPlanOffer]
 ) extends Contribution
 
+/** Offers one reroll to the node its window hooks, when that node is a
+  * [[RerollHost]] (a roll step's reroll choice). Like [[Offer]], it is asked
+  * again at every fold, so it must be a pure function of state. Whether the
+  * roller can pay is not its business: the host dry-runs the payment.
+  */
+final case class OfferReroll(
+    offer: PowerCtx => Option[RerollOffer]
+) extends Contribution
+
 /** A modifier's own verdict on its option in the modifier decision, given
   * the picks so far (modifier walker design, ruling 5): unavailable with a
   * reason, or available with a warning. */
@@ -151,6 +160,14 @@ object OfferHost:
   final case class Pass(state: ReadyGame, answered: Vector[Answered],
       resuming: Boolean,
       applies: Operation => Either[OathViolation, Vector[CoreOperation]])
+
+/** A windowed node that turns the rerolls the powers offer into the
+  * children it walks: the reroll counterpart of [[OfferHost]], with the same
+  * contract for `expand`.
+  */
+trait RerollHost extends Operation:
+  def expand(offers: Vector[OfferedReroll], pass: OfferHost.Pass)
+      : Vector[Operation]
 
 /** One object per power (spec decision 8). No engine code lives in a power --
   * only the windows it hooks and the contributions it offers there.

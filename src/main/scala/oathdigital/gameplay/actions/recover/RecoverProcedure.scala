@@ -2,6 +2,7 @@ package oathdigital.gameplay.actions.recover
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
+import oathdigital.gameplay.actions.dice.{RerollChoice, RollStep}
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
   WalkerRollFeedback, WalkerSimulation}
 import oathdigital.model._
@@ -79,7 +80,8 @@ object RecoverProcedure:
   def rollFeedback(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, decisionId: String): Option[WalkerRollFeedback] =
     Option.when(decisionId == rollDecisionId ||
-        decisionId == relicDecisionId || decisionId == choiceDecisionId)(
+        decisionId == relicDecisionId || decisionId == choiceDecisionId ||
+        RerollChoice.poolOf(decisionId).contains(recoverPool))(
       WalkerRollFeedback(recoverPool, target = actorSite(ready, actor)
         .flatMap(RecoverRules.difficulty(catalog, _)))).filter(_.target.nonEmpty)
 
@@ -203,7 +205,7 @@ object RecoverProcedure:
     val body = Sequence(
       Sequence(Vector(SpendSupply(actor, supplyCost)),
         Some(PowerWindow.RecoverCost)),
-      Roll(recoverPool, DiceSpec(DiceKind.Defense), RollMode.Automatic),
+      RollStep(recoverPool, DiceSpec(DiceKind.Defense), Some(actor)),
       Branch((ready, _) =>
         if succeeded(ready) then Vector.empty else Vector(choiceDecide)))
 

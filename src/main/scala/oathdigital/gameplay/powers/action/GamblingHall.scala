@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
+import oathdigital.gameplay.actions.dice.RollStep
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
@@ -40,7 +41,7 @@ case object GamblingHall extends PaidAction(GamblingHallCard.power):
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector(
     ModifyDicePool(pool, Dice),
-    Roll(pool, DiceSpec(DiceKind.Defense), RollMode.Automatic),
+    RollStep(pool, DiceSpec(DiceKind.Defense), Some(player)),
     Note(id, RollResults.rollNote(source, player, pool), covers = true),
     Branch((state, _) => {
       val total = RollResults.score(state, pool)

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, Branch, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -614,6 +614,9 @@ object ProcedureWalker:
             WalkerSteps.runAutomaticRoll(roll, ctx, path, contributions).map(Done(_))
           case shuffle: Shuffle if shuffle.order.isEmpty =>
             WalkerShuffles.ordered(shuffle, ctx.state, ctx.dice).flatMap(
+              WalkerSteps.record(_, ctx, path, contributions, strict)).map(Done(_))
+          case reroll: Reroll if reroll.faces.isEmpty =>
+            WalkerRerolls.filled(reroll, ctx.state, ctx.dice).flatMap(
               WalkerSteps.record(_, ctx, path, contributions, strict)).map(Done(_))
           case _: Decide | _: Roll => Right(Park(path, ctx))
           case build: BuildOps => WalkerSteps.runBuildOps(build, ctx, path, contributions)

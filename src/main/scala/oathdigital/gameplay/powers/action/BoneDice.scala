@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{PrintedPower, Relic}
+import oathdigital.gameplay.actions.dice.RollStep
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
 
@@ -35,7 +36,7 @@ case object BoneDice extends PaidAction(BoneDiceCard.power):
       : Either[OathViolation, Operation] = source match
     case DecisionOptionRef.Relic(relic) => Right(Sequence(Vector(
       ModifyDicePool(pool, Dice),
-      Roll(pool, DiceSpec(DiceKind.Attack), RollMode.Automatic),
+      RollStep(pool, DiceSpec(DiceKind.Attack), Some(player)),
       Note(id, RollResults.rollNote(source, player, pool), covers = true),
       BuildOps((state, _) => settle(state, player, relic)),
       Note(id, NoteSupport.gainNote(gained, source, player, NoteUnit.Supply,

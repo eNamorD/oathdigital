@@ -33,6 +33,8 @@ import oathdigital.model._
   *    the children's shape the same on every fold and learns at walk time
   *    whether the plan was used, which also sees a bandit's use (Wild
   *    Mounts).
+  *  - `otherContributions` are what the plan's power contributes at a
+  *    window no other member covers, such as a reroll offer.
   */
 trait BattlePlan extends ContributingPower:
   /** How the plan's source is named in the plan decision. */
@@ -55,6 +57,10 @@ trait BattlePlan extends ContributingPower:
   def restrictions: Map[PowerWindow, Vector[OptionRestriction]] = Map.empty
   /** What the plan's power does to a window's children, chosen or not. */
   def rewrites: Map[PowerWindow, Transform] = Map.empty
+  /** What the plan's power contributes at windows outside the Campaign's
+    * own vocabulary, chosen or not: Master at Arms offers a reroll at
+    * `PowerWindow.Reroll` and reads there whether it was chosen. */
+  def otherContributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
 
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   final override def resolution: PowerResolution = PowerResolution.Automatic
@@ -77,12 +83,13 @@ trait BattlePlan extends ContributingPower:
           BattlePlan.outcomeKnown(window)).fold(children)(
             wrap(ctx, _, children))))
     (offers.keySet ++ afterwards.keySet ++ around.keySet ++ rewrites.keySet ++
-      restrictions.keySet).map(window =>
+      restrictions.keySet ++ otherContributions.keySet).map(window =>
       window -> (offers.getOrElse(window, Vector.empty) ++
         afterwards.getOrElse(window, Vector.empty) ++
         around.getOrElse(window, Vector.empty) ++
         rewrites.get(window).toVector.map(_.copy(phase = FoldPhase.Late)) ++
-        restrictions.getOrElse(window, Vector.empty))).toMap
+        restrictions.getOrElse(window, Vector.empty) ++
+        otherContributions.getOrElse(window, Vector.empty))).toMap
 
 object BattlePlan:
   /** A plan's `wrapping` of a window: the fold's context, the plan's use and

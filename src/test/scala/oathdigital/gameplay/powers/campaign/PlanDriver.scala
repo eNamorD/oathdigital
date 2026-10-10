@@ -63,13 +63,21 @@ object PlanDriver:
 
   /** Whether the run is parked on `id`, awaiting `who`. */
   def awaits(run: Run, who: PlayerId, id: String): Boolean =
-    parked.parkedDecision(run.state).exists(facts =>
+    run.parkedHere.parkedDecision(run.state).exists(facts =>
       facts.decision == id && facts.awaiting == who)
 
-  /** A Campaign in progress: the transition it reached and every event so far. */
+  /** A Campaign in progress: the transition it reached and every event so far.
+    * `powers` are the walker powers `game` was built with, which the parked
+    * decision is rebuilt with: the production catalog unless a suite runs its
+    * own. */
   final case class Run(game: OathRules, transition: OathTransition,
-      events: Vector[OathEvent]):
+      events: Vector[OathEvent],
+      powers: WalkerPowers = WalkerPowerCatalog.default(catalog)):
     def state: OathState = transition.state
+
+    /** The parked decision, rebuilt with the run's own powers. */
+    def parkedHere: ParkedDecisionAssertions =
+      new ParkedDecisionAssertions(catalog, powers)
 
     /** The Campaign's recorded result; fails before the Campaign ends. */
     def result(using munit.Location): CampaignResult =
@@ -89,7 +97,7 @@ object PlanDriver:
     def answer(who: PlayerId, id: String, answer: DecisionAnswer): Run =
       game.resolveWalker(state, who, id, answer).fold(
         error => throw new IllegalStateException(s"$id was refused: $error"),
-        next => Run(game, next, events ++ next.events))
+        next => copy(transition = next, events = events ++ next.events))
 
     def pick(who: PlayerId, id: String, ref: DecisionOptionRef): Run =
       answer(who, id, ChooseOneAnswer(ref))
@@ -159,7 +167,7 @@ object PlanDriver:
     /** Finishes every plan window, sacrifices nothing and places nothing, until
       * the Campaign ends or asks something else.
       */
-    def finishPlanWindows: Run = parked.parkedDecision(state) match
+    def finishPlanWindows: Run = parkedHere.parkedDecision(state) match
       case Some(facts) => facts.decision match
         case CampaignIds.attackerPlan | CampaignIds.defenderPlan =>
           answer(facts.awaiting, facts.decision,
@@ -175,18 +183,20 @@ object PlanDriver:
     */
   def commit(game: OathRules, b: Board, force: Int,
       targets: Vector[DecisionOptionRef] = Vector.empty,
-      raid: Boolean = false): Run =
+      raid: Boolean = false,
+      powers: WalkerPowers = WalkerPowerCatalog.default(catalog)): Run =
     val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
       .fold(error => throw new IllegalStateException(s"no start: $error"),
         identity)
-    committed(game, started, b, force, targets, raid)
+    committed(game, started, b, force, targets, raid, powers)
 
   /** The same, for a Campaign `started` some other way: a taken follow-up
     * offer, say. */
   def committed(game: OathRules, started: OathTransition, b: Board,
       force: Int, targets: Vector[DecisionOptionRef] = Vector.empty,
-      raid: Boolean = false): Run =
-    val run = Run(game, started, started.events)
+      raid: Boolean = false,
+      powers: WalkerPowers = WalkerPowerCatalog.default(catalog)): Run =
+    val run = Run(game, started, started.events, powers)
     val kind =
       if awaits(run, b.actor, CampaignIds.kind) then run.pick(b.actor,
         CampaignIds.kind, DecisionOptionRef.Button(if raid then "raid" else "conquest"))

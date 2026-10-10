@@ -46,7 +46,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
   private type ResourceOperation = SpendSupply | GainSupply | FlipSecrets | Gain
   private type TurnOperation = AdvanceVisionsDrawn.type | BeginTurn | EnterPhase |
     SetOathkeeper | RecordPowerUse | RecordCampaignResult | ModifyDicePool | Roll |
-    ModifyRollOutcome | QueueProcedure | Defer | TakeDeferred
+    ModifyRollOutcome | Reroll | QueueProcedure | Defer | TakeDeferred
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match
@@ -250,6 +250,12 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "kind" -> "modify-roll-outcome", "pool" -> pool.value,
         "skulls" -> skulls.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
         "score" -> score.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
+      case Reroll(pool, indices, faces) =>
+        val rerolled = ujson.Obj("kind" -> "reroll", "pool" -> pool.value,
+          "indices" -> ujson.Arr.from(indices.map(ujson.Num(_))))
+        faces.foreach(rolled =>
+          rerolled("faces") = ujson.Arr.from(rolled.map(encodeDieFace)))
+        rerolled
       // A held op is spelled as a recorded one: it is held canonically.
       case Defer(key, ops) => ujson.Obj("kind" -> "defer",
         "key" -> key.value, "ops" -> ujson.Arr.from(ops.map(encodeOperation)))
@@ -382,6 +388,13 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       Right(None))(cards => traverse(cards.arr.zipWithIndex.toVector)({
         case (card, index) => decodeWorldCardId(card, s"$path.order[$index]")
       }).map(Some(_)))
+
+  /** A recorded reroll carries its faces; a declared one has none. */
+  private def decodeRerolledFaces(value: ujson.Value, path: String)
+      : Either[WireError, Option[Vector[DieFace]]] =
+    value.obj.get("faces").fold[Either[WireError, Option[Vector[DieFace]]]](
+      Right(None))(faces => traverse(faces.arr.toVector)(face =>
+        decodeDieFace(face.str, s"$path.faces")).map(Some(_)))
 
   private def decodePieceOperation(value: ujson.Value,
       path: String): DecodedOperation =
@@ -518,6 +531,11 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       skulls <- decodeOptionalSignedInt(value("skulls"), s"$path.skulls")
       score <- decodeOptionalSignedInt(value("score"), s"$path.score")
     yield ModifyRollOutcome(PoolKey(value("pool").str), skulls, score)
+    case "reroll" => for
+      indices <- traverse(value("indices").arr.zipWithIndex.toVector)({
+        case (index, at) => decodeSignedInt(index, s"$path.indices[$at]") })
+      faces <- decodeRerolledFaces(value, path)
+    yield Reroll(PoolKey(value("pool").str), indices, faces)
     case "defer" =>
       traverse(value("ops").arr.zipWithIndex.toVector)({
         case (operation, index) =>
@@ -747,6 +765,18 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     case "face-up" => Right(Orientation.FaceUp)
     case "face-down" => Right(Orientation.FaceDown)
     case other => Left(InvalidValue(path, s"unknown orientation '$other'"))
+
+  protected final def encodeDieFace(face: DieFace): ujson.Value = face match
+    case face: DefenseDieFace => ujson.Str(encodeDefenseFace(face))
+    case face: AttackDieFace => ujson.Str(encodeAttackFace(face))
+    case other => throw new IllegalArgumentException(
+      s"unsupported walker die face $other")
+
+  protected final def decodeDieFace(value: String, path: String)
+      : Either[WireError, DieFace] = value match
+    case "hollow-sword" | "one-sword" | "two-swords-skull" =>
+      decodeAttackFace(value, path)
+    case _ => decodeDefenseFace(value, path)
 
   protected final def decodeSignedInt(value: ujson.Value,
       path: String): Either[WireError, Int] = value match

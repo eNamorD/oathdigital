@@ -34,8 +34,9 @@ import oathdigital.gameplay.powers.campaign.{BagOfSiegeworksCard,
   FearsomeShieldCard, FieldPromotionCard, FireTalkersCard, GarrisonArmoryCard,
   GleamingArmorCard, GreatCrusadeCard, HeraldCard, HorseArchersCard,
   HospitalCard, InsectSwarmCard, KindredWarriorsCard, LancersCard, LongbowsCard,
-  MercenariesCard, MilitaryParadeCard, MountedPatrolCard, NatureWorshipCard,
-  OutridersCard, PledgeOfDefenseCard, RainBootsCard, RangersCard, RivalKhanCard,
+  MasterAtArmsCard, MercenariesCard, MilitaryParadeCard, MountedPatrolCard,
+  NatureWorshipCard, OutridersCard, PledgeOfDefenseCard, RainBootsCard,
+  RangersCard, RivalKhanCard,
   RustingRayCard, SaltTheEarthCard, ScoutsCard, SealingWardCard, ShieldWallCard,
   StickyFireCard, StormCallerCard, TheGreatLevyCard, ToweringRampartCard,
   TravelingDoctorCard, TributeSpoilsCard, VillageConstableCard, VowOfPeaceCard,
@@ -54,6 +55,7 @@ import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard,
   OldSongsCard, PressgangsCard, RowdyPubCard, SkilledMerchantsCard,
   TheOldOakCard, VillageIdiotCard, VowOfBeastkinCard, VowOfPovertyCard,
   VowOfWanderingCard}
+import oathdigital.gameplay.powers.dice.JinxCard
 import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}

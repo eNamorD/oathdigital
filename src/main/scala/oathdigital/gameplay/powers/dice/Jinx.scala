@@ -1,0 +1,76 @@
+package oathdigital.gameplay.powers.dice
+
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.actions.dice.{DiceThrow, RerollChoice}
+import oathdigital.gameplay.operations.Costs
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
+  OfferReroll, PowerCtx}
+import oathdigital.model._
+
+object JinxCard extends Denizen(DenizenId("68"), "Jinx", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.jinx"),
+    persistent = true, cost = Cost(secret = 1),
+    text = "If you rule Jinx, after you roll [attack-die] or " +
+      "[defense-die] for any reason, you may use this power to " +
+      "reroll all those dice once. _(This is not a battle plan!)_")
+  val powers: Vector[PrintedPower] = Vector(power)
+
+/** Jinx (card 68): "If you rule Jinx, after you roll [attack-die] or
+  * [defense-die] for any reason, you may use this power to reroll all those
+  * dice once." It costs one secret, paid onto the card when used.
+  *
+  * It offers itself at every roll step whose roller rules it: a faceup
+  * adviser of the roller, or a card faceup at a site the roller rules. A
+  * facedown adviser has no power. The roll step stops offering it once it
+  * is used on a throw, which is the "once".
+  *
+  * It writes "Rerolled the attack dice." ("the defense dice"), before the
+  * reroll's own roll line.
+  */
+final case class Jinx private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  def id: PowerId = Jinx.id
+  def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+  override def noteKeys: Vector[NoteKey] =
+    Vector(Jinx.rerolledAttack, Jinx.rerolledDefense)
+
+  def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
+    PowerWindow.Reroll -> Vector(OfferReroll(offer)))
+
+  private def offer(ctx: PowerCtx): Option[RerollOffer] =
+    RerollChoice.throwOf(ctx).filter(rolled =>
+      Jinx.rules(ctx.state, rolled.roller)).map(rolled => RerollOffer(
+      JinxCard.id,
+      Some(Costs.onCard(rolled.roller, JinxCard.id, JinxCard.power.cost,
+        catalog, intoOccupied = true)),
+      Vector(Note(id, _ => Some(Jinx.line(rolled)(
+        PowerSourceRef.Card(JinxCard.id)))),
+        Reroll(rolled.pool, rolled.indices))))
+
+object Jinx:
+  val id: PowerId = JinxCard.power.id
+  private val card: DenizenId = JinxCard.id
+
+  /** "Rerolled the attack dice." */
+  val rerolledAttack: NoteKey = NoteKey("rerolled-attack",
+    Vector(NotePart.Text("Rerolled the attack dice.")))
+  /** "Rerolled the defense dice." */
+  val rerolledDefense: NoteKey = NoteKey("rerolled-defense",
+    Vector(NotePart.Text("Rerolled the defense dice.")))
+
+  private def line(rolled: DiceThrow): NoteKey = rolled.die match
+    case DiceKind.Attack => rerolledAttack
+    case DiceKind.Defense => rerolledDefense
+
+  /** Whether `player` rules Jinx: a faceup adviser of theirs, or faceup at a
+    * site they rule. */
+  def rules(ready: ReadyGame, player: PlayerId): Boolean =
+    ready.game.current.players.find(_.player == player).exists(_.advisers
+      .exists {
+        case DenizenState(`card`, Orientation.FaceUp, _) => true
+        case _ => false
+      }) || SiteRulers.rulerOfCard(ready, card)
+      .contains(SiteRuler.Player(player))
+
+  def forCatalog(catalog: ExecutableCatalog): Jinx = new Jinx(catalog)

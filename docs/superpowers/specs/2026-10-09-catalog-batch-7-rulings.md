@@ -26,8 +26,9 @@
   defender plans, only Bear Traps is free.
 - **A reason or warning reads as the Game Log words it:** the card's name, a
   colon, then the sentence.
-- **Log lines omit the actor.** A roll's own line shows its faces after any
-  reroll.
+- **Log lines omit the actor.** A roll's own line shows the faces as
+  rolled, since the roller sees them before deciding. Each reroll writes its
+  power's line, then a roll line restating the throw as it now stands.
 
 ## Slice 1: Rerolls
 
@@ -41,8 +42,10 @@
   Line: "Jinx: Rerolled the attack dice." ("the defense dice" for a defense
   roll).
 - **249 Master at Arms.** A free attacker battle plan. Once chosen, after
-  the attack roll its user may reroll any number of the dice showing a
-  hollow sword, once. Line: "Master at Arms: Rerolled 2 hollow swords."
+  the attack roll its user may reroll any number of the dice showing
+  a hollow sword, once. It asks how many, since the dice show the same face,
+  and asks nothing when only one shows a hollow sword. Line: "Master at
+  Arms: Rerolled 2 hollow swords."
 
 ## Slice 2: Recover rerolls
 

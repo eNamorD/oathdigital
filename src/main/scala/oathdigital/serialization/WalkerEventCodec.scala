@@ -118,12 +118,6 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown walker step payload '$other'"))
 
-  private def encodeDieFace(face: DieFace): ujson.Value = face match
-    case face: DefenseDieFace => ujson.Str(encodeDefenseFace(face))
-    case face: AttackDieFace => ujson.Str(encodeAttackFace(face))
-    case other => throw new IllegalArgumentException(
-      s"unsupported walker die face $other")
-
   private def encodeNote(note: PowerNote): ujson.Value = ujson.Obj(
     "source" -> encodePowerSource(note.source), "key" -> note.key,
     "args" -> ujson.Arr.from(note.args.map(encodeNoteArg)))
@@ -198,12 +192,6 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
   private def decodeCount(value: ujson.Value, path: String)
       : Either[WireError, Int] = decodeSignedInt(value, path).flatMap(count =>
     Either.cond(count >= 0, count, InvalidValue(path, "must not be negative")))
-
-  private def decodeDieFace(value: String, path: String)
-      : Either[WireError, DieFace] = value match
-    case "hollow-sword" | "one-sword" | "two-swords-skull" =>
-      decodeAttackFace(value, path)
-    case _ => decodeDefenseFace(value, path)
 
   private def encodeDeltaMeaning(meaning: DeltaMeaning): ujson.Value =
     meaning match

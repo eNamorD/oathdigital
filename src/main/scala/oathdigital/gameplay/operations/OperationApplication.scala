@@ -199,6 +199,8 @@ private[gameplay] object OperationApplication:
         result.flatMap(TurnStateOperations.adjustDicePool(_, pool, delta))
       case (result, ModifyRollOutcome(pool, skulls, score)) =>
         result.map(TurnStateOperations.modifyRollOutcome(_, pool, skulls, score))
+      case (result, Reroll(pool, indices, faces)) =>
+        result.flatMap(RollOperations.reroll(_, pool, indices, faces))
       case (result, RecordPowerUse(power)) =>
         result.map(TurnStateOperations.recordPowerUse(_, power))
       case (result, Defer(key, ops)) =>

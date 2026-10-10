@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
 import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.actions.dice.RollStep
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.gameplay.powers.targeting.LostTongue
 import oathdigital.model._
@@ -83,7 +84,7 @@ final case class RelicThief private (catalog: ExecutableCatalog)
       : Vector[Operation] = chosen(ready, actor, pending)
     .map(target => defense(target.relic)).filter(_ > 0).toVector
     .flatMap(dice => Vector[Operation](ModifyDicePool(pool, dice),
-      Roll(pool, DiceSpec(DiceKind.Defense), RollMode.Automatic)))
+      RollStep(pool, DiceSpec(DiceKind.Defense), Some(actor))))
 
   /** The take, when the relic rolled nothing or the roll shows no shield. */
   private def steal(ready: ReadyGame, actor: PlayerId, pending: PendingTree)

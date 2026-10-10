@@ -73,14 +73,6 @@ object BewitchCard extends Denizen(DenizenId("67"), "Bewitch", Suit.Arcane):
       "in the rules and end your Act Phase._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object JinxCard extends Denizen(DenizenId("68"), "Jinx", Suit.Arcane):
-  val power = PrintedPower(PowerId("denizen.jinx"),
-    persistent = true, cost = Cost(secret = 1),
-    text = "If you rule Jinx, after you roll [attack-die] or " +
-      "[defense-die] for any reason, you may use this power to " +
-      "reroll all those dice once. _(This is not a battle plan!)_")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object VowOfSilenceCard extends Denizen(DenizenId("74"), "Vow of Silence", Suit.Arcane) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.vow-of-silence"),
     persistent = true, cost = Cost.free,
