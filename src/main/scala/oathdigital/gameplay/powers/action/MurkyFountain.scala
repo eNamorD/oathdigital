@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.actions.dice.RollStep
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powers.wake.MarbleFountainsCard
 import oathdigital.model._
@@ -37,7 +38,7 @@ case object MurkyFountain extends PaidAction(MarbleFountainsCard.ruined.power):
           NoteArg.Player(player)))))))
       else Right(Sequence(Vector(
         ModifyDicePool(pool, Dice),
-        Roll(pool, DiceSpec(DiceKind.Defense), RollMode.Automatic),
+        RollStep(pool, DiceSpec(DiceKind.Defense), Some(player)),
         Note(id, RollResults.rollNote(source, player, pool), covers = true),
         BuildOps((state, _) => Right(outcome(state, player))),
         Note(id, NoteSupport.gainNote(gained, source, player, NoteUnit.Supply,

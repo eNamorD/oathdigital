@@ -189,4 +189,8 @@ object PowerWindow:
     * hooks it. */
   case object PayOrAsk extends OtherWindow { val key = "consent.pay-or-ask" }
 
+  /** After a roll, its roller may reroll dice with the powers that allow it
+    * (catalog batch 7, slice 1). Every roll site's `RollStep` asks here. */
+  case object Reroll extends OtherWindow { val key = "dice.reroll" }
+
 enum PowerResolution { case PlayerSelected, Automatic }

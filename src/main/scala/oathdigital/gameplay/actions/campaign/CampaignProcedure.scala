@@ -2,6 +2,7 @@ package oathdigital.gameplay.actions.campaign
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
+import oathdigital.gameplay.actions.dice.RollStep
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
   WalkerRollFeedback, WalkerSimulation}
 import oathdigital.model._
@@ -98,15 +99,17 @@ object CampaignProcedure:
       Some(PowerWindow.CampaignGatherPools)),
     CampaignPlanSteps.attacker(catalog, actor),
     CampaignPlanSteps.defender(catalog, actor),
-    Roll(CampaignIds.attackPool, DiceSpec(DiceKind.Attack), RollMode.Automatic,
+    RollStep(CampaignIds.attackPool, DiceSpec(DiceKind.Attack), Some(actor),
       Some(PowerWindow.CampaignAttackRoll)),
     Sequence(Vector[Operation](BuildOps((ready, pending) =>
       withSetup(ready, actor, pending)(setup =>
         CampaignBattle.attackResultOps(ready, setup)))),
       Some(PowerWindow.CampaignAttackResult)),
     sacrificeStep(actor),
-    Roll(CampaignIds.defensePool, DiceSpec(DiceKind.Defense), RollMode.Automatic,
-      Some(PowerWindow.CampaignDefenseRoll)),
+    Branch((ready, pending) => Vector(RollStep(CampaignIds.defensePool,
+      DiceSpec(DiceKind.Defense), CampaignSetup.setup(ready, actor, pending)
+        .map(_.defender).collect { case CampaignDefender.Player(player) =>
+          player }, Some(PowerWindow.CampaignDefenseRoll)))),
     Sequence(Vector[Operation](BuildOps((ready, pending) =>
       withSetup(ready, actor, pending)(setup =>
         CampaignBattle.defenseResultOps(ready, setup)))),

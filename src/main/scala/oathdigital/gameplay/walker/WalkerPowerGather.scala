@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, Restriction, Waiver}
-import oathdigital.model.{Answered, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
+import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, RerollHost, Restriction, Waiver}
+import oathdigital.model.{Answered, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, OfferedReroll, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -76,6 +76,13 @@ private[walker] object WalkerPowerGather:
               gathered.offers.flatMap { case (powerId, offer) =>
                 offer.plan(ctxFor(byId(powerId))).map(OfferedPlan(powerId, _))
               }, gathered.optionRestrictions, ctxFor, byId)
+            (folded ++ host.expand(offered, OfferHost.Pass(state, answered,
+              resuming, WalkerSimulation.applies(_, state, powers))),
+              gathered.order)
+          case host: RerollHost =>
+            val offered = gathered.rerolls.flatMap { case (powerId, reroll) =>
+              reroll.offer(ctxFor(byId(powerId))).map(OfferedReroll(powerId, _))
+            }
             (folded ++ host.expand(offered, OfferHost.Pass(state, answered,
               resuming, WalkerSimulation.applies(_, state, powers))),
               gathered.order)

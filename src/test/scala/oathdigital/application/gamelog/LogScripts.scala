@@ -214,18 +214,19 @@ object LogScripts:
     }
 
   /** `script`'s log for `viewer` with `events` journaled after its last
-    * step. Each appended step starts from the script's last state and ends
-    * in `lastStateAfter` of it: unchanged unless a test gives the change the
-    * event stands for. */
+    * step. Each appended step starts from `stateBefore` of the script's last
+    * state and ends in `lastStateAfter` of it: both unchanged unless a test
+    * gives the state an event needs or the change it stands for. */
   def formatAppended(script: Script, events: Vector[OathEvent],
       viewer: Option[PlayerId] = None,
-      lastStateAfter: OathState => OathState = identity)(
+      lastStateAfter: OathState => OathState = identity,
+      stateBefore: OathState => OathState = identity)(
       using munit.Location): Vector[LogEntry] =
     val steps = script.history.steps
     val last = steps.last.after
     formatter.format(steps ++ events.zipWithIndex.map { case (event, index) =>
-      ReplayStep(RecordedEvent(steps.size.toLong + index, event), last,
-        lastStateAfter(last))
+      ReplayStep(RecordedEvent(steps.size.toLong + index, event),
+        stateBefore(last), lastStateAfter(last))
     }, viewer)
 
   /** `format` over `withoutNotes`: the log of the script as a power that

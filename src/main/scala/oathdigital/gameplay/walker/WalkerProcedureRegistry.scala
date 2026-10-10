@@ -10,6 +10,7 @@ import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.{SearchOptions, SearchProcedure}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.actions.travel.{TravelOptions, TravelProcedure}
 import oathdigital.gameplay.phases.wake.{EndWakeProcedure, ForcedWakeProcedure,
   TakeWealthProcedure}
@@ -523,8 +524,9 @@ object WalkerProcedureRegistry:
       OathViolation.InvalidEventOrder(
         s"walker procedure ${procedure.key} declares no roll decision id")))
 
-  /** The roll `procedure` declares for its parked `decisionId`, or `None`
-    * when it declares none or is not registered -- see `Entry`'s doc.
+  /** The roll `procedure` declares for its parked `decisionId`, or, for a
+    * reroll decision any procedure asks, its pool; `None` when it declares
+    * none or is not registered -- see `Entry`'s doc.
     * `WalkerDecisionProjector` reads this instead of naming a procedure.
     */
   def rollFeedback(procedure: ProcedureRef, catalog: ExecutableCatalog,
@@ -532,7 +534,8 @@ object WalkerProcedureRegistry:
       registrations: Map[ProcedureRef, Entry] = entries)
       : Option[WalkerRollFeedback] =
     registrations.get(procedure).flatMap(_.rollFeedback(catalog, ready, actor,
-      decisionId))
+      decisionId)).orElse(RerollChoice.poolOf(decisionId)
+        .map(WalkerRollFeedback(_)))
 
   /** `procedure`'s modifier-selection [[oathdigital.model.PowerWindow]], or `None` when it
     * offers no player-selected powers at all -- see `Entry`'s doc.
