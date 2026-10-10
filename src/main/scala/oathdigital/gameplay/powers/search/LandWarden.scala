@@ -5,7 +5,8 @@ import oathdigital.gameplay.actions.PlacementLimit
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.search.SearchProcedure
-import oathdigital.gameplay.powerresolver.{Contribution, Transform}
+import oathdigital.gameplay.powerresolver.{Contribution, OperationRewrite,
+  Transform}
 import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
@@ -36,13 +37,12 @@ final case class LandWarden private (catalog: ExecutableCatalog)
   override def cost: Cost = Cost(favor = LandWarden.Favor)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
-    PowerWindow.SearchKeep -> Vector(Transform((_, operations) =>
-      operations.map {
+    PowerWindow.SearchKeep -> Vector(Transform((ctx, operations) =>
+      OperationRewrite.nodes(ctx, operations)((_, _) => {
         case decide: Decide
             if decide.decisionId == SearchProcedure.cardDecisionId =>
-          LandWarden.widened(decide)
-        case other => other
-      })),
+          Vector(LandWarden.widened(decide))
+      }))),
     PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
       ctx.operation match
         case tree: CardPlayProcedure.PlacementTree

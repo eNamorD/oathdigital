@@ -27,8 +27,8 @@ final case class Observatory private (catalog: ExecutableCatalog)
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
-    PowerWindow.SearchSourceSelection -> Vector(Transform((_, operations) =>
-      SearchSources.withPiles(operations, Region.all))))
+    PowerWindow.SearchSourceSelection -> Vector(Transform((ctx, operations) =>
+      SearchSources.withPiles(ctx, operations, Region.all))))
 
 object Observatory:
   val id: PowerId = ObservatoryCard.power.id

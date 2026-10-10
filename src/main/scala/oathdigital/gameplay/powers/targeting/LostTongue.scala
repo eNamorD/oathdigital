@@ -54,7 +54,8 @@ final case class LostTongue private (catalog: ExecutableCatalog)
         LostTongue.shielded(PowerSourceRef.Card(cardId),
           NoteArg.Player(owner))))),
     PowerWindow.ConspiracyTargetSelection -> Vector(Transform((ctx, operations) =>
-      ConspiracyTargets.narrowed(id, operations, bannerShielded(ctx, _), None))))
+      ConspiracyTargets.narrowed(ctx, id, operations,
+        bannerShielded(ctx, _), None))))
 
   override def operationRestrictions: Vector[OperationRestriction] =
     Vector(takes)

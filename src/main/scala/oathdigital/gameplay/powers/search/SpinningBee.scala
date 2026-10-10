@@ -4,7 +4,7 @@ import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.{CardPlay, SearchRules}
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ModifierPicks,
-  OfferReason, OptionRestriction, PowerCtx, Transform}
+  OfferReason, OperationRewrite, OptionRestriction, PowerCtx, Transform}
 import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
@@ -55,12 +55,11 @@ final case class SpinningBee private (catalog: ExecutableCatalog)
       (ctx, ref) => Option.when(excludes(ctx, ref))(
         SpinningBee.alone(PowerSourceRef.Card(cardId))))),
     PowerWindow.SearchSourceSelection -> Vector(Transform((ctx, operations) =>
-      operations.map {
+      OperationRewrite.nodes(ctx, operations)((_, _) => {
         case decide: Decide
             if decide.decisionId == SearchProcedure.sourceDecisionId =>
-          SpinningBee.declaration(ctx.activePlayer)
-        case other => other
-      })),
+          Vector(SpinningBee.declaration(ctx.activePlayer))
+      }))),
     PowerWindow.SearchBeforeDraw -> Vector(Transform((ctx, operations) =>
       operations.flatMap {
         case node: BuildOps

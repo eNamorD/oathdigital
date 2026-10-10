@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.search
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.search.SearchProcedure
-import oathdigital.gameplay.powerresolver.{Contribution, Transform}
+import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
@@ -34,16 +34,16 @@ final case class ErrandBoy private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchSourceSelection -> Vector(Transform((ctx, operations) =>
       SearchProcedure.actorRegion(ctx.state, ctx.activePlayer)
-        .fold(_ => operations, offered(operations, _)))))
+        .fold(_ => operations, offered(ctx, operations, _)))))
 
   /** The other regions' piles added, and the sources it leaves alone
     * warned. */
-  private def offered(operations: Vector[Operation], own: Region)
-      : Vector[Operation] =
+  private def offered(ctx: PowerCtx, operations: Vector[Operation],
+      own: Region): Vector[Operation] =
     val idle: Set[DecisionOptionRef] = Set[SearchSource](
       SearchSource.WorldDeck, SearchSource.RegionalDiscard(own))
       .map(SearchSource.ref)
-    SearchSources.warned(SearchSources.withPiles(operations,
+    SearchSources.warned(ctx, SearchSources.withPiles(ctx, operations,
       Region.all.filterNot(_ == own)), idle, ErrandBoy.idle)
 
 object ErrandBoy:

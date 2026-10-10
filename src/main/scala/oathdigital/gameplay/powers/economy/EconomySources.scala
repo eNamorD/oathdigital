@@ -18,9 +18,9 @@ private[economy] object EconomySources:
     * again, and one that holds favor or secrets arrives unavailable, as it
     * would at the pawn site.
     */
-  def widened(operations: Vector[Operation],
+  def widened(ctx: PowerCtx, operations: Vector[Operation],
       cards: Vector[SiteDenizenState]): Vector[Operation] =
-    withOptions(operations) { options =>
+    withOptions(ctx, operations) { options =>
       val offered = options.map(_.ref).toSet
       options ++ cards.map(MusterSource.offered)
         .filterNot(option => offered(option.ref))
@@ -43,9 +43,9 @@ private[economy] object EconomySources:
 
   /** `operations` with every source the token-free rule withheld made
     * available, when `admits` accepts its card. */
-  def exempted(operations: Vector[Operation],
+  def exempted(ctx: PowerCtx, operations: Vector[Operation],
       admits: DecisionOptionRef => Boolean): Vector[Operation] =
-    withOptions(operations)(_.map {
+    withOptions(ctx, operations)(_.map {
       case DecisionOption.Unavailable(option, MusterSource.Occupied)
           if admits(option.ref) => option
       case other => other
@@ -74,13 +74,13 @@ private[economy] object EconomySources:
 
   /** `operations` with `change` applied to the options of each choose-one
     * decision. */
-  private def withOptions(operations: Vector[Operation])(
+  private def withOptions(ctx: PowerCtx, operations: Vector[Operation])(
       change: Vector[DecisionOption] => Vector[DecisionOption])
-      : Vector[Operation] = operations.map {
-    case decide: Decide => decide.query match {
-      case one: DecisionQuery.ChooseOne =>
-        decide.copy(query = one.copy(options = change(one.options)))
-      case _ => decide
-    }
-    case other => other
-  }
+      : Vector[Operation] =
+    OperationRewrite.nodes(ctx, operations)((_, _) => {
+      case decide: Decide => Vector(decide.query match {
+        case one: DecisionQuery.ChooseOne =>
+          decide.copy(query = one.copy(options = change(one.options)))
+        case _ => decide
+      })
+    })
