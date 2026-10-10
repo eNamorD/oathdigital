@@ -394,6 +394,99 @@ By the last slice:
 8. **The driver is handed the finished procedure.** With the legacy minor
    action gone, `OathDriver.next` takes the procedure whose walk ended.
 
+## Plan-time rulings (slice 4)
+
+1. **An option is available when some way through its modifier decision
+   starts it.** The dry run walks the start as the driver would. When the
+   walk parks on the modifier decision, it answers "Start" with no pick if
+   "Start" is available. Otherwise it tries each available pick in turn,
+   depth first, and never tries the same set of picks twice. Once every
+   modifier is picked, the walk goes past the decision without "Start". Such
+   a walk counts only when its next decision has an answer the walk can go
+   on from. When no way starts, the option shows the reason "Start" shows
+   before any pick. This check replaces the playable-option gate in
+   `QueuedStart`, so the Wake and Rest menus and the follow-up offer use it
+   too.
+2. **The price is the cheapest way's.** An available option carries a badge
+   with the Supply and favor its start spends:
+   - what the walk spends up to its first decision past the modifiers;
+   - plus, for a procedure that previews that decision (the playable-option
+     gate: Search, Travel, Muster and Trade), the cheapest answer to it.
+
+   When another answer costs more Supply, the Supply amount gets a "+"; when
+   another costs more favor, so does the favor amount, if the cheapest way
+   spends favor at all. Favor placed on a card (a modifier's payment,
+   Muster's favor) is not counted, as the priced options already do not
+   count it. A free option has no badge. Examples: "1 Supply", "2 Supply · 1
+   favor", "1+ Supply", "2+ Supply · 1+ favor".
+3. **An unavailable option says why,** using the first of these that
+   applies:
+   - "Needs N Supply; you have M", or "Needs N favor; you have M", when the
+     start would open with the actor's Supply raised to the track's maximum
+     (and then also their favor raised);
+   - the reason "Start" shows, when no way through the modifier decision
+     opens;
+   - the procedure's own words for its refusal (the table in
+     `ActOffers.reason` and `PhaseMenu.reason`);
+   - a fallback per procedure.
+4. **The Act menu's options,** in this order:
+   - the major actions: Search, Travel, Campaign, Muster, Trade for favor,
+     Trade for secrets, Forge, Recover, Challenge;
+   - the minor actions: Place favor or secrets on a banner, Negotiate, Play
+     facedown adviser, Peek at relics at your site, Reveal a relic, Move
+     warbands;
+   - each Act phase power's source;
+   - End Act and Rest, labelled "End Act and Rest (+N Supply)" when Rest
+     would return N Supply, as the old button was.
+
+   Each action's option is a button keyed by its procedure's key; Trade's
+   are `trade.favor` and `trade.secret`, and End Act and Rest's is
+   `end-act`. The menu's heading is "Act: take an action, use a power or
+   rest".
+5. **Act always asks.** The driver parks the Act menu even when End Act and
+   Rest is the only available option (spec ruling 3).
+6. **One panel for every menu.** The frontend draws a parked menu as grouped
+   buttons:
+   - any button that is neither an action nor the ending, without a heading
+     (Take Wealth);
+   - "Major actions";
+   - "Minor actions";
+   - "Powers": every option that is not a button;
+   - the phase's ending, last and alone.
+
+   A button reads "Label (badge)" when its option has a badge. An
+   unavailable option is disabled, with its reason on hover and printed
+   below.
+7. **The start commands go in slice 4.** Every phase now has a menu parked
+   while the game is live, so nothing can send `StartWalker`, `UsePower` or
+   `BeginRest`. They go with their intents, codecs, mapper arms and
+   authorization helpers. `OathRules.startWalker` stays: the driver and the
+   tests start procedures through it.
+8. **Spec ruling 9 lands.** `OathLifecycle.validateAct` and `validateReady`
+   go, with the follow-up exemption, and Finish Rest's own phase check goes.
+   The menus check the phase. Use Power keeps its timing check, because a
+   power's timing is its own rule and the menu reads it to list the power.
+9. **The projection's Act leftovers wait for slice 5.** These stay until
+   slice 5, unread by the frontend:
+   - `LegalActionProjector`'s Act controls, `MinorActionsProjection` and
+     `PhasePowerProjector`;
+   - `GameProjection.actionSelectionOpen` and `restSupplyGain`;
+   - the procedures' `startable` and `startOptions` functions, and
+     `ModifierOffers.selections`.
+
+   This replaces slice 3's note that `MinorActionsProjection` would go with
+   the panel.
+10. **The budget is a benchmark run by hand,** as the Campaign budget is.
+    `ActMenuBudget` measures the Act menu's park and its read on a full
+    board; each must take under 50 ms. If either is over budget, stop and
+    report: sharing the search memo (spec ruling 8) is a design step of its
+    own.
+11. **Tests start actions from the menu.** A situation step
+    `Step.Start(player, procedure, args)` picks the procedure's option from
+    the parked menu. On a table where no menu is parked, it starts the
+    procedure directly through the rules. `MenuPlay.starting` is the service
+    command that picks it.
+
 ## Testing
 
 - **Driver:**
