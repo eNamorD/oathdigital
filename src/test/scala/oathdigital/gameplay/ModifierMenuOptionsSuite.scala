@@ -160,8 +160,8 @@ class ModifierMenuOptionsSuite extends munit.FunSuite:
     (if news then table.adviser(p1, CatalogNames.denizen("News from Afar"))
       else table).ready
 
-  test("Search is available when News from Afar would make it free; the start " +
-      "asks for the modifier, and picking it reaches the source"):
+  test("Search is available when News from Afar would make it free; the " +
+      "start asks for the modifier, and picking it reaches the source"):
     val ready = brokeSearcher(news = true, favor = 2)
     assert(MenuPlay.availableInMenu(catalog, ready, ActionRef.Search))
     val started = accepted(rules.startWalker(OathState.Ready(ready),

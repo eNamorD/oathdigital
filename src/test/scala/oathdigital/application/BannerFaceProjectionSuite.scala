@@ -9,8 +9,8 @@ import oathdigital.testkit.{MenuPlay, Table}
 import oathdigital.testkit.Table.p1
 
 /** The banner faces' phase powers reach the player: the Act menu lists each
-  * by its own button, available for the holder only, and the menu's source (a
-  * banner) binds back to the engine's source.
+  * by its own button, and the menu's source (a banner) binds back to the
+  * engine's source.
   */
 class BannerFaceProjectionSuite extends munit.FunSuite:
   private val move = WanderingFlameMove.id
@@ -76,3 +76,5 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
       .darkestSecret(Some(p1), 1, face = DarkestSecretFace.Festival)
       .siteTokens("Broken Peaks", secrets = 1).ready
     assertEquals(powerButtons(festival), Vector.empty)
+    assert(!MenuPlay.options(Table.from(festival).phaseMenuParked.state,
+      catalog).exists(_.ref == banner))
