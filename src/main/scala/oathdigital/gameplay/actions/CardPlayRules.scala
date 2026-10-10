@@ -58,8 +58,9 @@ final case class PlacementLimit(reason: OptionReason,
   *    played is discarded.
   *
   * Every change lowers or lifts a limit, exempts a face, or adds a
-  * permission, a note or a placement limit, so contributions compose in any order. Only the
-  * notes keep their order, and no two powers note the same play.
+  * permission, a note or a placement limit, so contributions compose in any
+  * order. Only the notes keep their order, and no two powers note the same
+  * play.
   */
 final case class CardPlayRules(
     adviserLimit: Int = CardPlayRules.DefaultAdviserLimit,

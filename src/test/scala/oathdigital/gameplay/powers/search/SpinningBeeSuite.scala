@@ -50,8 +50,8 @@ class SpinningBeeSuite extends munit.FunSuite:
       p1, PowerWindow.SearchModifierSelection, modifiers))
 
   /** p1 starts a Search with Spinning Bee picked, and declares `suit`. */
-  private def searchDeclaringSuit(table: Table, suit: Suit)(using munit.Location)
-      : OathTransition =
+  private def searchDeclaringSuit(table: Table, suit: Suit)(
+      using munit.Location): OathTransition =
     accepted(rules.resolveWalker(searchWithBeePicked(table).state, p1,
       SpinningBee.suitDecisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(suit))))

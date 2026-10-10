@@ -180,6 +180,19 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     assertEquals(all(keepZone(keepingOne), ".decision-zone-order"),
       Vector.empty)
 
+  test("with the keep zone full, the move into it is disabled and says " +
+      "why; with room it is enabled"):
+    def moveToKeep(draft: Option[WalkerPartitionDraft]) = as[dom.html.Button](
+      one(optionNode(render(controls(), draft,
+        decision = keepUpToTwoDecision), 3), ".move-option"))
+    val full = moveToKeep(keepUpToTwoDraft())
+    assert(full.disabled)
+    assertEquals(full.getAttribute("title"),
+      "Keep is full: move a card out of it first")
+    val withRoom = moveToKeep(
+      keepUpToTwoDraft().map(_.move(optionKey(2), "discard")))
+    assert(!withRoom.disabled)
+
   /** Pressing Keep on a discard card swaps it with the kept one, so the kept
     * card's own Discard button would only say the same thing backwards.
     */

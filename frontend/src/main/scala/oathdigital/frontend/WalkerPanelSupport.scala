@@ -475,7 +475,15 @@ private[frontend] object WalkerPanelSupport:
         val label = s"Move ${option.label} to ${destination.label}"
         val move = button(destination.label, "move-option")
         move.setAttribute("aria-label", label)
-        move.setAttribute("title", label)
+        // A full section that does not swap refuses the move: say so,
+        // rather than leave a button that does nothing.
+        val refused = destination.maxAllowed.exists(most =>
+          most > 1 && draft.optionsIn(destination.key).size >= most)
+        move.disabled = refused
+        move.setAttribute("title",
+          if refused then s"${destination.label} is full: move a card " +
+            "out of it first"
+          else label)
         move.onclick = _ => moveOption(draft, item, destination.key, controls)
         node.appendChild(move)
       }

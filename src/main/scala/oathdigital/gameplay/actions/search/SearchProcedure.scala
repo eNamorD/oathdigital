@@ -21,8 +21,9 @@ import oathdigital.model._
   *                                      // (Spinning Bee replaces it, and
   *                                      // the actor's own pile is searched)
   *   Branch { after the answer:
-  *     Sequence(cost, draw, query, placement) })  // window = SearchActionEligibility;
-  *                                                // query's window = SearchKeep
+  *     Sequence(cost, draw, query, placement) })
+  *                                    // window = SearchActionEligibility;
+  *                                    // query's window = SearchKeep
   * }}}
   *
   * **The modifiers come first.** Each pick pays at once, so the source
