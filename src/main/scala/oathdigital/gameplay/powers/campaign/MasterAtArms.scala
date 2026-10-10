@@ -65,8 +65,8 @@ final case class MasterAtArms private (catalog: ExecutableCatalog)
       Decide(MasterAtArms.decisionId(rolled.number), rolled.roller,
         DecisionQuery.ChooseAmount(1, hollow.size,
           Some(MasterAtArms.heading), "Reroll")),
-      Branch((_, pending) => MasterAtArms.amount(pending, rolled.number).toVector
-        .flatMap(amount => Vector(note(amount),
+      Branch((_, pending) => MasterAtArms.amount(pending, rolled.number)
+        .toVector.flatMap(amount => Vector(note(amount),
           Reroll(rolled.pool, hollow.take(amount))))))
 
 object MasterAtArms:

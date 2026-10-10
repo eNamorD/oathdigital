@@ -29,8 +29,8 @@ private[frontend] object WalkerSelectionPanels:
   private def renderMany(decision: WalkerDecisionState,
       query: DecisionQueryState.ChooseMany, draft: WalkerChooseManyDraft,
       canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
-    // The roll first, as the choose-amount panel draws it: Silver Charm's
-    // question is about the dice already rolled.
+    // The roll first, as the choose-amount panel draws it: a reroll or
+    // modifier question is about the dice already rolled.
     WalkerPanelSupport.rollFeedback(decision, panel)
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
     panel.appendChild(text("p", "walker-many-instruction",
