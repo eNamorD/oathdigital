@@ -311,9 +311,8 @@ private[frontend] object WalkerPanelSupport:
     * both ask it. The pair is (the capped section, the leftover section).
     *
     * Read off the bounds, like [[ordered]], never off the word "Keep". On
-    * this shape the capped section swaps on arrival, so the card it holds
-    * needs no mover of its own, and the minimums say nothing a player has
-    * to be told.
+    * this shape the capped section swaps on arrival, and the minimums say
+    * nothing a player has to be told.
     */
   private[frontend] def keepOne(query: DecisionQueryState.Partition)
       : Option[(DecisionSectionState, DecisionSectionState)] =
@@ -357,18 +356,17 @@ private[frontend] object WalkerPanelSupport:
     */
   private[frontend] def partitionInstruction(
       query: DecisionQueryState.Partition): String =
-    keepOne(query).orElse(keepSome(query)) match
+    "Drag and drop the cards. " + (keepOne(query).orElse(keepSome(query)) match
       case Some((capped, leftover)) =>
         s"${capped.label} ${upTo(capped)}; " +
           s"${leftover.label.toLowerCase} the rest."
       case None =>
         s"Assign every option: ${query.sections.map(section =>
-          s"${section.label} (${section.minRequired})").mkString(", ")}."
+          s"${section.label} (${section.minRequired})").mkString(", ")}.")
 
   /** Renders a parked partition decision as the shared two-zone
     * interaction: one zone per projected section, holding the options the
-    * player has put there, each movable by drag or by an accessible button
-    * naming the section it would move to.
+    * player has put there, each movable by drag.
     *
     * Every label and every minimum comes from the query, and confirmation
     * is `PartitionDecisionState.canConfirm` -- so nothing here knows Forge's
@@ -431,7 +429,7 @@ private[frontend] object WalkerPanelSupport:
     // wide as all of them laid end to end, whatever it can wrap to.
     val options = element("div", "partition-options")
     draft.optionsIn(section.key).foreach(option =>
-      options.appendChild(partitionOption(option, section, query, draft, controls)))
+      options.appendChild(partitionOption(option, draft, controls)))
     zone.appendChild(options)
     zone.addEventListener("dragover",
       (event: dom.Event) => event.preventDefault())
@@ -443,17 +441,15 @@ private[frontend] object WalkerPanelSupport:
     zone
 
   private def partitionOption(option: DecisionOptionState,
-      section: DecisionSectionState, query: DecisionQueryState.Partition,
       draft: WalkerPartitionDraft, controls: TableControls): dom.Element =
     val item = WalkerPartitionDraft.itemId(option)
     val node = element("article", "decision-option")
     node.setAttribute("draggable", "true")
     node.setAttribute("data-option-id", item)
     node.setAttribute("aria-label", option.label)
-    // The article has no keydown handler and never did: the keyboard path for
-    // moving an option is the move-option buttons below. The tab stop was a
-    // duplicate announcement, and in front of a modal trigger it is a dead
-    // stop the user has to pass through to reach the card.
+    // The article has no keydown handler and never did, so it takes no tab
+    // stop: in front of a modal trigger it would be a dead stop the user has
+    // to pass through to reach the card.
     DragClickGuard.attach(node.asInstanceOf[dom.html.Element])
     node.addEventListener("dragstart", (event: dom.Event) =>
       event.asInstanceOf[dom.DragEvent].dataTransfer
@@ -469,51 +465,9 @@ private[frontend] object WalkerPanelSupport:
       update(draft.moveBefore(event.asInstanceOf[dom.DragEvent].dataTransfer
         .getData("text/plain"), item), draft, controls)
     })
-    // The keyboard-reachable counterpart to the drag: one button per other
-    // section, naming where it would move the option to. The one card in a
-    // keep-one slot has none: pressing Keep on another card swaps them, so
-    // a Discard button on it would only say the same thing backwards.
-    val swapsOut = keepOne(query).exists(_._1.key == section.key)
-    if !swapsOut then
-      query.sections.filterNot(_.key == section.key).foreach { destination =>
-        val label = s"Move ${option.label} to ${destination.label}"
-        val move = button(destination.label, "move-option")
-        move.setAttribute("aria-label", label)
-        // A full section that does not swap refuses the move: say so,
-        // rather than leave a button that does nothing.
-        val refused = destination.maxAllowed.exists(most =>
-          most > 1 && draft.optionsIn(destination.key).size >= most)
-        move.disabled = refused
-        move.setAttribute("title",
-          if refused then s"${destination.label} is full: move a card " +
-            "out of it first"
-          else label)
-        move.onclick = _ => moveOption(draft, item, destination.key, controls)
-        node.appendChild(move)
-      }
-    // Order within a leftover section is part of the answer, and the one
-    // position a player acts on is the top of the pile: one button puts a
-    // card there, and any full order is a few of them pressed in turn. The
-    // card already on top wears a pill of the same height instead, so
-    // working the row never reflows it. Drag-before remains the pointer
-    // path for the rest.
-    val (index, size) = draft.positionOf(item).getOrElse((0, 1))
-    if ordered(section, size) then
-      if index >= size - 1 then
-        val top = text("span", "option-top", "Top")
-        top.setAttribute("title", s"${option.label} lands on top of the pile")
-        node.appendChild(top)
-      else
-        val label = s"${section.label} ${option.label} last, so it lands on top of the pile"
-        val control = button("Put on top", "put-on-top")
-        control.setAttribute("aria-label", label)
-        control.setAttribute("title", label)
-        control.onclick = _ => update(draft.putLast(item), draft, controls)
-        node.appendChild(control)
-    // The face comes last, under the controls: every option ends in its
-    // card, so the cards in a row sit on the row's floor whether the option
-    // above them holds two controls or none, and the kept card lines up
-    // with the discards beside it.
+    // Drag is the only way to move an option, as the instruction line says:
+    // a drop on a zone moves it there, and a drop on an option sets its
+    // place in the order. The option holds nothing but its card.
     node.appendChild(option.card.fold[dom.Element](
       text("span", "option-summary", option.label))(CardFace.render))
     node

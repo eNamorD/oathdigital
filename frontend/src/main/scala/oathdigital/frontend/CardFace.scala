@@ -112,7 +112,7 @@ private[frontend] object CardFace:
       summary(card).foreach(node.appendChild)
 
     // A click means inspect, in every context. Decision panels select by
-    // drag, by the move-option buttons, or by the plus/minus steppers, never
+    // drag, by option buttons, or by the plus/minus steppers, never
     // by clicking a card. The one clickable ancestor a card sits in, a site
     // box on the board, ignores events that came from a card
     // (`WorldBoardRenderer.onCard`); the card itself does not stop them, so
