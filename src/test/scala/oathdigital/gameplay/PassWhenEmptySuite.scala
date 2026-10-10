@@ -55,7 +55,7 @@ class PassWhenEmptySuite extends munit.FunSuite:
 
   test("with no option left the decision is passed and the action still runs"):
     val tree = passable("discard")
-    assert(WalkerSimulation.starts(tree, ready, powers))
+    assertEquals(WalkerSimulation.refusal(tree, ready, powers), None)
     ProcedureWalker.advance(ready, tree, None, powers) match
       case Right(WalkerOutcome.Finished(_, events)) =>
         assertEquals(events.collect {

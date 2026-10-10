@@ -79,15 +79,9 @@ object WalkerSimulation:
         case WalkerOutcome.Parked(_, events) => recordedOperations(events)
       })
 
-  /** Whether `tree` would start now: the restrictions and first walk a start
-    * performs, with nothing persisted. A tree that parks and one that
-    * finishes both start; a rejected cost or restriction does not.
-    */
-  def starts(tree: Operation, state: ReadyGame, powers: WalkerPowers): Boolean =
-    refusal(tree, state, powers).isEmpty
-
   /** Why `tree` would not start now, or `None` when it would: a restriction,
-    * then the first walk up to its first park. */
+    * then the first walk up to its first park, with nothing persisted. A tree
+    * that parks and one that finishes both start. */
   def refusal(tree: Operation, state: ReadyGame, powers: WalkerPowers)
       : Option[OathViolation] =
     guarded {

@@ -74,10 +74,11 @@ class LazyPruningSuite extends munit.FunSuite:
 
   test("an action with no legal path does not start"):
     val tree = asking(Vector("discard"), _ => Vector(discardLocked(true)))
-    assert(!WalkerSimulation.starts(tree, ready, powers))
+    val locked = OathViolation.CoreOperationRejected("locked",
+      s"${lockedCard.value} is locked")
+    assertEquals(WalkerSimulation.refusal(tree, ready, powers), Some(locked))
     assertEquals(ProcedureWalker.advance(ready, tree, None, powers),
-      Left(OathViolation.CoreOperationRejected("locked",
-        s"${lockedCard.value} is locked")))
+      Left(locked))
 
   test("the search stops at a roll: a refusal after it stays offered"):
     val roll = Roll(PoolKey("test.roll"), DiceSpec(DiceKind.Attack),

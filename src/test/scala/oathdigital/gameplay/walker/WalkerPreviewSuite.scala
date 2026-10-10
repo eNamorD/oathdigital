@@ -121,12 +121,16 @@ class WalkerPreviewSuite extends munit.FunSuite:
     assertEquals(WalkerSimulation.previewParked(ready, action, parked.tree,
       WalkerPowers.empty).map(_.map(_.option.ref)), Right(Vector(cheap)))
 
-  test("starts is true for a tree a start would walk and false for one it rejects"):
+  test("refusal is empty for a tree a start would walk and names the " +
+      "rejected cost otherwise"):
     val ready = withSupply(2)
     val spend = Sequence(Vector[Operation](SpendSupply(p1, 1)))
-    assert(WalkerSimulation.starts(spend, ready, WalkerPowers.empty))
+    assertEquals(WalkerSimulation.refusal(spend, ready, WalkerPowers.empty),
+      None)
     val unaffordable = Sequence(Vector[Operation](SpendSupply(p1, 3)))
-    assert(!WalkerSimulation.starts(unaffordable, ready, WalkerPowers.empty))
+    assertEquals(WalkerSimulation.refusal(unaffordable, ready,
+      WalkerPowers.empty), Some(OathViolation.CoreOperationRejected(
+        "insufficient-supply", "a supply spend of 3 exceeds the 2 available")))
 
   /** Two plain decisions, then a step in `stepWindow`, then 2 Supply. */
   private def chain(stepWindow: Option[PowerWindow]): Operation =
