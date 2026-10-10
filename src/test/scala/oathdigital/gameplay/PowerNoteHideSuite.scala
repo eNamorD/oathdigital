@@ -27,7 +27,7 @@ class PowerNoteHideSuite extends munit.FunSuite:
       powers: WalkerPowers): Vector[DecisionOption] =
     ProcedureWalker.parkedDecide(ready, tree, pending, powers)
       .map(_.query).collect {
-        case DecisionQuery.ChooseOne(options, _) => options
+        case DecisionQuery.ChooseOne(options, _, _) => options
       }.getOrElse(Vector.empty)
 
   test("each option a power hides keeps its note as its reason, journaled " +

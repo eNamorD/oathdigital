@@ -102,7 +102,7 @@ object TravelProcedure:
     val pick = Decide(destinationDecisionId, actor, DecisionQuery.ChooseOne(
       state.game.current.map.inPlay.filter(_ != source).map(site =>
         DecisionOption.Site(DecisionOptionRef.Site(site))),
-      heading = Some(heading)))
+      heading = Some(heading), confirmVerb = Some("Travel to")))
     val route = Branch((current, pending) =>
       pending.answered.collectFirst {
         case Answered(`destinationDecisionId`,

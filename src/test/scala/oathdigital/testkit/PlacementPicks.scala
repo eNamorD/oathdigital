@@ -49,7 +49,7 @@ object PlacementPicks:
         phasePowers) match
       case Left(reason) => munit.Assertions.fail(reason.toString)
       case Right(Some(ParkedNode.Decision(_, decide, _))) => decide.query match
-        case DecisionQuery.ChooseOne(options, _) => options
+        case DecisionQuery.ChooseOne(options, _, _) => options
         case _ => Vector.empty
       case Right(_) => Vector.empty
 
@@ -79,7 +79,7 @@ object PlacementPicks:
 
   private def chooseOne(decide: Decide)(using munit.Location)
       : Vector[DecisionOption] = decide.query match
-    case DecisionQuery.ChooseOne(options, _) => options
+    case DecisionQuery.ChooseOne(options, _, _) => options
     case other => munit.Assertions.fail(s"not a choose-one: $other")
 
   /** The site slot references among `refs`, in order. */

@@ -154,10 +154,16 @@ private[frontend] object BoardDecisionPanel:
       clear.disabled = !canControl
       clear.onclick = _ => controls.stage(Draft.Board(draft.map(_.cleared)))
       panel.appendChild(clear)
+    // The button says what pressing it does: a choose-many counts its
+    // selection, a choose-one names its pick after the query's verb,
+    // "Travel to Deep Woods", or after "Confirm" where it declares none.
     val confirm = button(query match
       case many: DecisionQueryState.ChooseMany =>
         WalkerPanelSupport.chooseManyConfirmLabel(many, picks.size)
-      case _ => "Confirm", "board-decision-confirm")
+      case one: DecisionQueryState.ChooseOne =>
+        val verb = one.confirmVerb.getOrElse("Confirm")
+        draft.flatMap(_.picked.headOption).fold("Confirm")(option =>
+          s"$verb ${label(option)}"), "board-decision-confirm")
     confirm.disabled = !canControl || blocked.nonEmpty || current.isEmpty
     confirm.onclick = _ =>
       current.flatMap(_.command).foreach(controls.submitCommand)

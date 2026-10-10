@@ -16,7 +16,8 @@ private[campaign] object CampaignRaid:
         Decide(CampaignIds.relocation, actor, DecisionQuery.ChooseOne(
           relocationSites(ready, defender).map(site =>
             DecisionOption.Site(DecisionOptionRef.Site(site))),
-          heading = Some("Move the defeated pawn to another site"))),
+          heading = Some("Move the defeated pawn to another site"),
+          confirmVerb = Some("Move pawn to"))),
         BuildOps((state, pending) => relocate(state, defender, pending))),
         Some(PowerWindow.CampaignRaidRelocation)))
     case CampaignDefender.Bandits => Vector.empty

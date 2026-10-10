@@ -275,9 +275,9 @@ private[application] final class WalkerDecisionProjector(
     // anything. A query that declares none projects none, and the client
     // supplies its own generic fallback.
     query match
-      case DecisionQuery.ChooseOne(options, heading) =>
+      case DecisionQuery.ChooseOne(options, heading, confirmVerb) =>
         described(options).map(projected =>
-          DecisionQueryProjection.ChooseOne(projected, heading))
+          DecisionQueryProjection.ChooseOne(projected, heading, confirmVerb))
       case many: DecisionQuery.ChooseMany =>
         for
           offered <- described(many.options)

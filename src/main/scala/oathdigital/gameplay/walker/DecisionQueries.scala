@@ -64,7 +64,7 @@ object DecisionQueries:
     */
   def wellFormed(decisionId: String,
       query: DecisionQuery): Either[OathViolation, Unit] = query match
-    case DecisionQuery.ChooseOne(options, _) =>
+    case DecisionQuery.ChooseOne(options, _, confirmVerb) =>
       val refs = options.map(_.ref)
       for
         _ <- require(refs.nonEmpty, decisionId, "declares no options")
@@ -72,6 +72,8 @@ object DecisionQueries:
           "declares duplicate options")
         _ <- require(options.exists(_.available), decisionId,
           "declares no option that may be chosen")
+        _ <- require(confirmVerb.forall(_.trim.nonEmpty), decisionId,
+          "declares a blank confirm verb")
       yield ()
 
     case DecisionQuery.Inspect(cards, heading, doneLabel) =>
@@ -237,7 +239,7 @@ object DecisionQueries:
   def accepts(decisionId: String, query: DecisionQuery,
       answer: DecisionAnswer, by: PlayerId)
       : Either[OathViolation, Unit] = query match
-    case DecisionQuery.ChooseOne(options, _) => answer match
+    case DecisionQuery.ChooseOne(options, _, _) => answer match
       case DecisionAnswer.ChooseOneAnswer(selected) =>
         require(options.filter(_.available).map(_.ref).contains(selected),
           decisionId, "does not offer the selected option")

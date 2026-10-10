@@ -52,7 +52,8 @@ class SearchProcedureSuite extends munit.FunSuite:
     // The modifier decision comes first; the source opens what follows it.
     val offered = tree.children(1).children.head match
       case Decide(SearchProcedure.sourceDecisionId, `actor`,
-          DecisionQuery.ChooseOne(options, Some("Choose a Search source")),
+          DecisionQuery.ChooseOne(options, Some("Choose a Search source"),
+            Some("Search")),
           _, _, _, _) => options.map(_.ref)
       case other => fail(s"not the source decision: $other")
     assertEquals(offered, Vector[DecisionOptionRef](

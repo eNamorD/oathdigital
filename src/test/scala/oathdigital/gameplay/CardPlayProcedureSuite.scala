@@ -113,7 +113,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     // The slot is offered, shown unavailable, and an answer naming it is
     // refused as one the decision does not offer.
     val offered = placementDecision(build(full, actor, card)).query match
-      case DecisionQuery.ChooseOne(options, _) => options
+      case DecisionQuery.ChooseOne(options, _, _) => options
       case other => fail(s"expected a choose-one, got $other")
     assert(offered.exists(option => !option.available &&
       option.ref == DecisionOptionRef.AdviserPlay(actor, 0, faceup = true)))

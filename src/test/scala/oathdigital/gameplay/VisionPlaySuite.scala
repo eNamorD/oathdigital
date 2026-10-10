@@ -156,7 +156,7 @@ class VisionPlaySuite extends munit.FunSuite:
       "spot and a facedown adviser slot, never a site"):
     val decision = parkedPlacement(visionInTemporaryHand())
     val offered = decision.query match
-      case DecisionQuery.ChooseOne(options, _) => options.map(_.ref)
+      case DecisionQuery.ChooseOne(options, _, _) => options.map(_.ref)
       case other => fail(s"expected a choose-one, got $other")
     assertEquals(offered, Vector[DecisionOptionRef](
       DecisionOptionRef.DiscardPile(Region.Provinces),

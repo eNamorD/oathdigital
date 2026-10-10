@@ -113,7 +113,8 @@ object SearchProcedure:
       origin: Region): Operation =
     val pick = Decide(sourceDecisionId, actor, DecisionQuery.ChooseOne(
       Vector(SearchSource.WorldDeck, SearchSource.RegionalDiscard(origin))
-        .map(SearchSource.option), heading = Some(heading)),
+        .map(SearchSource.option), heading = Some(heading),
+        confirmVerb = Some("Search")),
       window = Some(PowerWindow.SearchSourceSelection))
     // The walk reaches this after the source answer, or after the
     // decision a power put in its place.

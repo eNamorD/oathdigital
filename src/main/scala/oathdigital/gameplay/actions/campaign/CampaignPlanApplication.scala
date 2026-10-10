@@ -159,7 +159,8 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
             Decide(CampaignIds.planSacrifice, player, DecisionQuery.ChooseOne(
               several.collect { case Location.Site(site) =>
                 DecisionOption.Site(DecisionOptionRef.Site(site)): DecisionOption },
-              heading = Some("Choose the site to sacrifice a warband from"))),
+              heading = Some("Choose the site to sacrifice a warband from"),
+              confirmVerb = Some("Sacrifice from"))),
             BuildOps((state, pending) => PlanAnswers.site(pending)
               .toRight(OathViolation.InvalidEventOrder(
                 "no site is chosen for the plan's sacrifice"))

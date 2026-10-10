@@ -27,7 +27,7 @@ class TravelModifierChoiceSuite extends munit.FunSuite:
 
   private def options(state: OathState)(using munit.Location)
       : Vector[DecisionOption] = parkedDecision(state).query match
-    case DecisionQuery.ChooseOne(listed, _) => listed
+    case DecisionQuery.ChooseOne(listed, _, _) => listed
     case other => fail(s"expected a choose-one, got $other")
 
   private val startTravel: DecisionOption =

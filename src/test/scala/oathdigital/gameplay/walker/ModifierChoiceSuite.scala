@@ -97,7 +97,7 @@ class ModifierChoiceSuite extends munit.FunSuite:
   private def options(at: At, on: Operation, walking: WalkerPowers)
       (using munit.Location): Vector[DecisionOption] =
     decide(at, on, walking).query match
-      case DecisionQuery.ChooseOne(listed, _) => listed
+      case DecisionQuery.ChooseOne(listed, _, _) => listed
       case other => fail(s"expected a choose-one, got $other")
 
   private def card(id: DenizenId): DecisionOption =

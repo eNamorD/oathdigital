@@ -303,6 +303,19 @@ class ProjectionProtocolSuite extends munit.FunSuite:
         _.copy(query = Some(reveal.copy(confirm = Some(
           CountedConfirmProjection("Reveal", "card", "cards")))))))))
 
+  test("a choose-one's confirm verb round-trips, and decodes without one"):
+    val travel = DecisionQueryProjection.ChooseOne(
+      Vector(DecisionOptionProjection("site", "woods", "Deep Woods")),
+      Some("Choose a Travel destination"), Some("Travel to"))
+    val carrying = projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(travel))))
+    assertRoundTrips(carrying)
+    val json = ujson.read(GameProjectionCodec.encode(carrying))
+    json("walkerDecision")("query").obj.remove("confirmVerb")
+    assertEquals(GameProjectionCodec.decode(ujson.write(json)),
+      Right(projection.copy(walkerDecision = projection.walkerDecision.map(
+        _.copy(query = Some(travel.copy(confirmVerb = None)))))))
+
   test("a distribute query round-trips its slots, suggestions and total"):
     def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
     val distribute = DecisionQueryProjection.Distribute(

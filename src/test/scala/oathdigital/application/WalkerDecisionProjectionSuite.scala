@@ -220,7 +220,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
         presentation.relicLabel(relic),
         Some(presentation.cardDetails(relic, Some(Orientation.FaceDown),
           hidden = false)))),
-    heading = Some("Take a relic"))
+    heading = Some("Take a relic"), confirmVerb = Some("Take"))
 
   /** TwoShields + Doubler = 4 shields, meeting the difficulty (I5): the relic
     * park's feedback shows the successful roll that got here. */

@@ -42,7 +42,7 @@ class MusterModifierChoiceSuite extends munit.FunSuite:
 
   private def options(state: OathState)(using munit.Location)
       : Vector[DecisionOption] = parkedDecision(state).query match
-    case DecisionQuery.ChooseOne(listed, _) => listed
+    case DecisionQuery.ChooseOne(listed, _, _) => listed
     case other => fail(s"expected a choose-one, got $other")
 
   test("a Muster starts on the modifier decision when a modifier can be " +
