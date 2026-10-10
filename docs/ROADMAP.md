@@ -127,7 +127,7 @@ commands, `LegalActionProjector`'s controls and the glue in `OathRules` go
 - [x] Slice 1: the queue and the driver, with every empty-queue hook.
 - [x] Slice 2: the Wake and Rest menus.
 - [x] Slice 3: the three legacy minor actions on the walker.
-- [ ] Slice 4: the Act menu and its frontend panel.
+- [x] Slice 4: the Act menu and its frontend panel.
 - [ ] Slice 5: the cleanup.
 
 ### Phase - Catalog batch 7 - Campaign dice
@@ -366,13 +366,6 @@ one.
   `WalkerDecisionProjector.waiting` reads only a parked decision's heading and
   Negotiation query, which the look-ahead never narrows, so its second
   `parkedDecide` could skip the look-ahead like the other identity-only callers.
-- [ ] **Start controls and modifier combinations.** A start control is
-  offered when the action could start with no modifier, with any one
-  selectable modifier, or with all of them together
-  (`ModifierOffers.selections`). A start that needs two modifiers but not a
-  third is not found. The Act menu of the
-  [walker-driven game loop](superpowers/specs/2026-10-09-walker-game-loop-design.md)
-  replaces the heuristic with an exact dry run (its slice 4).
 - [ ] **The Grand Council and Festival banner faces.** They are listed
   as synthetic ids in the reviewed catalog and have no behaviour.
 - [ ] **Mercenaries' player-chosen sign.** Mercenaries adds attack dice
