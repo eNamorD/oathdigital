@@ -2,7 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent}
-import Dom.{click, one, press}
+import Dom.{all, click, one, press}
 import ParkedDecision.{Routed, Surface}
 import TestProjections.actingProjection
 import TestSites.*
@@ -123,4 +123,17 @@ class BoardSurfaceSuite extends munit.FunSuite:
     assertEquals(confirm.textContent, "Confirm")
     confirm.click()
     assertEquals(ui.submitted, Vector(placeAtWoods))
+
+  /** With nothing picked the summary is only the instruction, so it is set
+    * as a helper line; once a site is picked the summary names it, and no
+    * row repeats the name under it.
+    */
+  test("the empty summary is a helper line, and the pick is named once"):
+    val ui = new RecordingControls()
+    assert(one(pane(ui), ".board-decision-summary").classList
+      .contains("board-decision-summary-empty"))
+    val drafted = pane(ui, Some(woodsDraft))
+    assert(!one(drafted, ".board-decision-summary").classList
+      .contains("board-decision-summary-empty"))
+    assertEquals(all(drafted, ".board-decision-row"), Vector.empty)
 
