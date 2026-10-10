@@ -279,7 +279,7 @@ object ParkedServiceFixture:
     val parked = act.parkedAfter(startTravel(p1))
       .parkedAfter(pickTravelDestination(p1, CatalogNames.site("Buried Giant")))
     assert(parked.events.last match {
-      case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _, _) => true
+      case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _) => true
       case _ => false
     }, s"expected a triggered Oathkeeper park, got ${parked.events.last}")
     parkedAssertions.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,

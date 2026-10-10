@@ -121,8 +121,7 @@ object PlanDriver:
       // The run's own powers: a selected modifier folds only when chosen.
       ProcedureWalker.openDecisions(current, tree,
         current.game.current.walkerPending.get,
-        WalkerPowers.selected(catalogPowers,
-          current.game.current.walkerModifiers)).head.query
+        WalkerPowers.selected(catalogPowers, Vector.empty)).head.query
 
     /** The options the parked choice shows. */
     def options(actor: PlayerId,

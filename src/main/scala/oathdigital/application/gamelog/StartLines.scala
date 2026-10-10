@@ -5,7 +5,7 @@ import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{ChoicePayload, FollowUpStarted,
-  WalkerCompleted, WalkerParked, WalkerStepRecorded}
+  WalkerCompleted, WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
 
@@ -163,21 +163,13 @@ private[gamelog] final class StartLines(words: LogWords,
       case CampaignDefender.Player(player) =>
         Vector(Text(s"$named against "), words.player(player))
 
-  /** The player's selection as a parked run records it, and the picks its
-    * answers make; or, for a run that never parked, the powers its steps
-    * record as contributing. Automatic powers are left out either way. */
+  /** The modifiers the run's answers pick, in pick order. Automatic powers
+    * are left out. */
   private def modifiers(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[LogSpan] =
-    val through = (run.first to journal.segmentEnd(at)).toVector
-    val chosen = through.reverseIterator.map(journal.event).collectFirst {
-      case parked: WalkerParked => parked.modifiers
-    }.getOrElse(through.map(journal.event).flatMap {
-      case step: WalkerStepRecorded => step.contributions
-      case _ => Vector.empty
-    }.distinct)
-    val picked = picks(journal.answers(run, journal.segmentEnd(at)))
-    val shown = (chosen ++ picked).distinct.filterNot(id =>
-      resolutions.get(id).contains(PowerResolution.Automatic))
+    val shown = picks(journal.answers(run, journal.segmentEnd(at)))
+      .filterNot(id =>
+        resolutions.get(id).contains(PowerResolution.Automatic))
     journal.readyBefore(run.first).filter(_ => shown.nonEmpty)
       .fold(Vector.empty[LogSpan])(ready => LogWords.join(
         shown.map(id => words.power(ready, run.actor, id, viewer))))

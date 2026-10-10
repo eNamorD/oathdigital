@@ -105,9 +105,9 @@ object WalkerProcedureRegistry:
     * and the walker migration existed to end.
     *
     * `rebuild` receives the selections `startWalker` was given, read back from
-    * the durable `CurrentGameState.walkerStartArgs`, for the same reason
-    * `walkerModifiers` is carried: a resumed command must rebuild the tree the
-    * start built, and a selection is not re-derivable from state.
+    * the durable `CurrentGameState.walkerStartArgs`: a resumed command must
+    * rebuild the tree the start built, and a selection is not re-derivable
+    * from state.
     *
     * `requiresPlayableOption` opts a procedure in to the preview gate:
     * `StartWalker` rejects a start whose first decision has no option the

@@ -94,8 +94,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
       case Right(transition) => transition
       case other => fail(s"expected the unrestricted command to run, got $other")
     assertEquals(started.events, Vector[OathEvent](WalkerParked(
-      ActionRef.Recover, Vector("0", "0"), Vector.empty, Vector.empty,
-      Vector.empty)))
+      ActionRef.Recover, Vector("0", "0"), Vector.empty, Vector.empty)))
 
     // A restriction gathered at the tree's window rejects the whole command.
     // A `Left` carries no transition at all: nothing is appended and the
@@ -301,8 +300,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     assertEquals(ProcedureWalker.awaitedPlayer(startedReady, rollTree, pending,
       WalkerPowers.empty), Some(p1))
     assertEquals(started.events, Vector[OathEvent](WalkerParked(
-      ActionRef.Recover, Vector("0"), Vector.empty, Vector.empty,
-      Vector.empty)))
+      ActionRef.Recover, Vector("0"), Vector.empty, Vector.empty)))
 
     // Forge declares none: the rejection is carried through as the command's
     // own `Left`, so no `WalkerParked` is appended and the client is never
@@ -361,8 +359,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     val started = accepted(rules(p1, WalkerPowers.empty)
       .startWalker(Ready(wake), ActionRef.Recover, p1))
     assertEquals(started.events, Vector[OathEvent](WalkerParked(
-      ActionRef.Recover, Vector("0", "0"), Vector.empty, Vector.empty,
-      Vector.empty)))
+      ActionRef.Recover, Vector("0", "0"), Vector.empty, Vector.empty)))
     val resumed = rules(p1, WalkerPowers.empty).resolveWalker(started.state,
       p1, RecoverProcedure.choiceDecisionId, continue)
     // A Wake resume is not phase-gated: it is accepted and stays in Wake.

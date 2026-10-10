@@ -160,12 +160,6 @@ final case class CurrentGameState(
     // Stored beside, not inside, pointer-only PendingTree. Rebuilds the
     // command-local operation tree after reload.
     walkerProcedure: Option[ProcedureRef] = None,
-    // The player-selected power ids chosen when the walker procedure started
-    // (fix-round ruling I). Stored beside, not inside, pointer-only
-    // PendingTree for the same reason as `walkerProcedure`: replay restores
-    // it from the durable `WalkerParked` fact rather than re-deriving it, and
-    // `WalkerCompleted` clears it alongside `walkerPending`/`walkerProcedure`.
-    walkerModifiers: Vector[PowerId] = Vector.empty,
     // What the player selected when the walker procedure started, for an action
     // whose tree cannot be built without it (batch-1 Task 5) -- Search's
     // source is one. They are `DecisionOptionRef`s, the
@@ -174,11 +168,10 @@ final case class CurrentGameState(
     // action declares none", and the action itself rejects a shape it did not
     // ask for.
     //
-    // Durable for exactly the reason `walkerModifiers` is: a resumed command
-    // rebuilds the tree the start built, and a selection -- unlike a pawn
-    // site -- cannot be re-derived from state. Restored by replay from the
-    // `WalkerParked` fact and cleared by `WalkerCompleted` alongside the other
-    // walker-owned scratch fields.
+    // Durable because a resumed command rebuilds the tree the start built,
+    // and a selection -- unlike a pawn site -- cannot be re-derived from
+    // state. Restored by replay from the `WalkerParked` fact and cleared by
+    // `WalkerCompleted` alongside the other walker-owned scratch fields.
     walkerStartArgs: Vector[DecisionOptionRef] = Vector.empty,
     // What the engine derived when the walker procedure started and cannot
     // read back once the walk changes it (travel destination design, ruling

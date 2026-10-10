@@ -62,7 +62,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       catalog, current, b.actor, Vector.empty))
     ProcedureWalker.openDecisions(current, tree, pending,
       WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
-        current.game.current.walkerModifiers)).head
+        Vector.empty)).head
 
   test("with one legal kind, no extra target and force to commit, the start " +
       "parks on the force"):

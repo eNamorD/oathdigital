@@ -41,7 +41,7 @@ object TargetingFixture:
     val tree = accepted(WalkerProcedureRegistry.rebuild(procedure, catalog,
       state, current.turn.activePlayer, current.walkerStartArgs))
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
-      current.walkerModifiers)
+      Vector.empty)
     val pending = present(current.walkerPending, "a parked walker decision")
     present(ProcedureWalker.parkedDecide(state, tree, pending, powers),
       "the parked decision").query match

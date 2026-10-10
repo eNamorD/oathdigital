@@ -135,7 +135,7 @@ object CardSlots:
     if !option.available then Some(option)
     else planned.toOption.flatMap { operations =>
       val restrictions = OperationRestrictions.forCatalog(catalog)
-        .active(Vector.empty, ready.game.current.walkerModifiers, picked)
+        .active(Vector.empty, Vector.empty, picked)
       val refusals = OperationConsent.refusals(ready, operations,
         restrictions)
       // A refusal no consent can lift names the blocker, whatever order

@@ -75,7 +75,7 @@ private[gameplay] trait OathRulesWalker:
     def run =
       for
         _ <- requireActivePlayer(ready, requester)
-        powers = walkerPowers(ready, activePlayer, Vector.empty)
+        powers = walkerPowers
         tree <- buildWalker(procedure, ready, activePlayer, startArgs,
           starting = true)
         _ <- checkRestrictions(tree, powers, ready, activePlayer)
@@ -83,7 +83,7 @@ private[gameplay] trait OathRulesWalker:
           powers, walkerDice))
         _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
         transition <- walkerTransition(state, procedure, tree,
-          outcome, powers, Vector.empty, startArgs,
+          outcome, powers, startArgs,
           WalkerProcedureRegistry.startFacts(procedure, catalog, ready,
             activePlayer))
       yield transition
@@ -149,7 +149,7 @@ private[gameplay] trait OathRulesWalker:
           "procedure is already pending"))
       case Ready(ready) =>
         val activePlayer = ready.game.current.turn.activePlayer
-        val powers = walkerPowers(ready, activePlayer, Vector.empty)
+        val powers = walkerPowers
         for
           tree <- buildWalker(procedure, ready, activePlayer, Vector.empty,
             starting = true)
@@ -157,23 +157,18 @@ private[gameplay] trait OathRulesWalker:
           outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None, powers,
             walkerDice))
           started <- walkerTransition(transition.state, procedure, tree,
-            outcome, powers, Vector.empty, Vector.empty, Vector.empty)
+            outcome, powers, Vector.empty, Vector.empty)
         yield started.copy(events = transition.events ++ started.events)
       case _ => Right(transition)
 
-  /** The single place (Task 4) that turns `walkerPowerCatalog` plus the
-    * `modifiers` for THIS command into the vector the walker actually sees.
-    * An automatic power (`PowerResolution.Automatic`, the trait default) is
-    * offered unconditionally; a player-selected power is offered only when
-    * its id appears in `modifiers`. A start passes none (an action's
-    * modifiers are picked inside its walk, and `WalkerPowers.withAnswers`
-    * adds them from the answers), and a resumed command
-    * (`resolveWalker`/`rollWalkerPrepared`) passes the durable
-    * `CurrentGameState.walkerModifiers`.
+  /** The powers a command walks with: every automatic power of
+    * `walkerPowerCatalog`, and none of its player-selected ones. The walker
+    * adds the modifiers the walk's answers pick (`WalkerPowers.withAnswers`),
+    * on every command alike, so a resume folds every window as the start
+    * did.
     */
-  def walkerPowers(ready: ReadyGame, actor: PlayerId,
-      modifiers: Vector[PowerId]): WalkerPowers =
-    WalkerPowers.selected(walkerPowerCatalog, modifiers)
+  def walkerPowers: WalkerPowers =
+    WalkerPowers.selected(walkerPowerCatalog, Vector.empty)
 
   /** The `ContributingPower`s a player could pick for `actor` on `procedure`
     * right now: `PlayerSelected` powers in `walkerPowerCatalog` that are
@@ -219,14 +214,14 @@ private[gameplay] trait OathRulesWalker:
       decisionId: String, answer: DecisionAnswer)
       : Either[OathViolation, OathTransition] =
     resumeWalker(state):
-      case (ready, procedure, tree, pending, powers, modifiers, startArgs) =>
+      case (ready, procedure, tree, pending, powers, startArgs) =>
         val recorded = Answered(decisionId, answer, by = requester)
         walkerCall(ProcedureWalker.resolve(ready, tree, pending, recorded,
           powers, walkerDice)).flatMap(outcome => checkRestrictions(tree,
           powers, ready, ready.game.current.turn.activePlayer,
           pending.answered :+ recorded).map(_ => outcome))
           .flatMap(walkerTransition(state, procedure, tree, _, powers,
-            modifiers, startArgs, ready.game.current.walkerStartFacts))
+            startArgs, ready.game.current.walkerStartFacts))
 
   /** The ask a consent request for `target` sends (consent design,
     * "Commands"). `target` must be an askable option of the parked
@@ -236,7 +231,7 @@ private[gameplay] trait OathRulesWalker:
       target: DecisionOptionRef)
       : Either[OathViolation, OptionReason.Askable] =
     walkerResumeContext(state).flatMap:
-      case (ready, _, tree, pending, powers, _, _) =>
+      case (ready, _, tree, pending, powers, _) =>
         walkerCall(Right(ProcedureWalker.parkedDecide(ready, tree, pending,
           powers))).flatMap(decide => decide
           .filter(found => found.decisionId == decisionId &&
@@ -260,7 +255,7 @@ private[gameplay] trait OathRulesWalker:
   def grantAnswers(state: OathState, requester: PlayerId, decisionId: String)
       : Boolean =
     val parked = walkerResumeContext(state).flatMap {
-      case (ready, _, tree, pending, powers, _, _) =>
+      case (ready, _, tree, pending, powers, _) =>
         walkerCall(Right(ProcedureWalker.parkedDecide(ready, tree, pending,
           powers)))
     }
@@ -289,7 +284,7 @@ private[gameplay] trait OathRulesWalker:
       case Ready(ready) => requireActivePlayer(ready, requester)
       case _ => Right(())
     }).flatMap(_ => resumeWalker(state) {
-      case (ready, procedure, tree, pending, powers, modifiers, startArgs) =>
+      case (ready, procedure, tree, pending, powers, startArgs) =>
       for
         parked <- walkerCall(ProcedureWalker.parkedRoll(ready, tree, pending,
           powers).toRight(InvalidEventOrder(
@@ -300,7 +295,7 @@ private[gameplay] trait OathRulesWalker:
         outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces,
           powers, walkerDice))
         transition <- walkerTransition(state, procedure, tree, outcome,
-          powers, modifiers, startArgs, ready.game.current.walkerStartFacts)
+          powers, startArgs, ready.game.current.walkerStartFacts)
       yield transition
     })
 
@@ -315,24 +310,17 @@ private[gameplay] trait OathRulesWalker:
       WrongPlayer(activePlayer, requester))
 
   private def resumeWalker(state: OathState)(run: (ReadyGame,
-      ProcedureRef, Operation, PendingTree, WalkerPowers, Vector[PowerId],
+      ProcedureRef, Operation, PendingTree, WalkerPowers,
       Vector[DecisionOptionRef]) => Either[OathViolation, OathTransition])
       : Either[OathViolation, OathTransition] =
     walkerResumeContext(state).flatMap:
-      case (ready, procedure, tree, pending, powers, modifiers, startArgs) =>
-        run(ready, procedure, tree, pending, powers, modifiers, startArgs)
+      case (ready, procedure, tree, pending, powers, startArgs) =>
+        run(ready, procedure, tree, pending, powers, startArgs)
 
-  /** `modifiers` (fix-round ruling I) is read from the durable
-    * `CurrentGameState.walkerModifiers` -- restored by replay from the
-    * `WalkerParked` fact `startWalker` wrote, never re-derived -- so a
-    * resumed command offers the SAME player-selected powers `startWalker`
-    * validated, keeping every shared window's fold identical across the
-    * whole action.
-    */
   private def walkerResumeContext(state: OathState)
       : Either[OathViolation,
       (ReadyGame, ProcedureRef, Operation, PendingTree, WalkerPowers,
-        Vector[PowerId], Vector[DecisionOptionRef])] =
+        Vector[DecisionOptionRef])] =
     state match
     case Ready(ready) =>
       for
@@ -347,11 +335,10 @@ private[gameplay] trait OathRulesWalker:
         startArgs = ready.game.current.walkerStartArgs
         tree <- buildWalker(procedure, ready, activePlayer, startArgs,
           starting = false)
-        modifiers = ready.game.current.walkerModifiers
-        powers = walkerPowers(ready, activePlayer, modifiers)
+        powers = walkerPowers
         _ <- checkRestrictions(tree, powers, ready, activePlayer,
           pending.answered)
-      yield (ready, procedure, tree, pending, powers, modifiers, startArgs)
+      yield (ready, procedure, tree, pending, powers, startArgs)
     case _ => Left(GameNotStarted)
 
   private def buildWalker(procedure: ProcedureRef, ready: ReadyGame,
@@ -398,13 +385,12 @@ private[gameplay] trait OathRulesWalker:
 
   private def walkerTransition(state: OathState,
       procedure: ProcedureRef, tree: Operation, outcome: WalkerOutcome,
-      powers: WalkerPowers, modifiers: Vector[PowerId],
-      startArgs: Vector[DecisionOptionRef],
+      powers: WalkerPowers, startArgs: Vector[DecisionOptionRef],
       startFacts: Vector[DecisionOptionRef])
       : Either[OathViolation, OathTransition] = outcome match
     case WalkerOutcome.Parked(pending, steps) =>
       val fact = WalkerParked(procedure, pending.at,
-        pending.answered, modifiers, startArgs, startFacts)
+        pending.answered, startArgs, startFacts)
       // Which node the walker is parked on can depend on a Branch selecting
       // its children by *live* state (Recover's success-only relic decision
       // checks the just-written roll outcome), so the answerability check

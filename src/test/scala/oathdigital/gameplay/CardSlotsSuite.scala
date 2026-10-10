@@ -5,7 +5,6 @@ import oathdigital.gameplay.actions.{AdviserFace, AdviserPlayNote, CardPlay,
 import oathdigital.gameplay.actions.cardplay.{CardSlot, CardSlots,
   MoreDiscards}
 import oathdigital.gameplay.operations.HallOfMinisters
-import oathdigital.gameplay.powers.search.CropRotation
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, PlacementPicks, Table, TestCards}
@@ -172,14 +171,6 @@ class CardSlotsSuite extends munit.FunSuite:
       Vector(replacing(adviserPlay(0, faceup = true), rainBoots),
         replacing(adviserPlay(1, faceup = true), binding),
         replacing(adviserPlay(2, faceup = true), sealingWard)))
-
-  test("a card in use as a modifier shows why it stays"):
-    val crop = CatalogNames.denizen("Crop Rotation")
-    // No Table step states a modifier selected for the action in progress.
-    val ready = atHome(crop).hand(p1, card).update(_.updateCurrent(
-      _.copy(walkerModifiers = Vector(CropRotation.id)))).ready
-    assertEquals(atSite(slotsOf(ready, rules = permitted)), Vector(siteSlot(1),
-      refused(replacing(siteSlot(0), crop), "In use as a modifier this action")))
 
   test("a card picked as a modifier this action is refused as a Replace " +
       "slot"):
