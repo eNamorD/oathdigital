@@ -21,6 +21,13 @@ A question the procedure walker has stopped on and is waiting for one player
 to answer. At most one is parked per game at a time.
 _Avoid_: pending decision, walker decision, park
 
+**Phase menu**:
+The parked decision over everything the active player may do now in Wake or
+Rest: each option starts one procedure, and the phase's ending is always the
+last. It is asked only when more than the ending is available; otherwise the
+phase ends by itself.
+_Avoid_: action list, phase controls, wake actions
+
 **Form**:
 The kind of answer a parked decision asks for: choose one, choose many, choose
 an amount, partition, distribute, or negotiate. A parked decision has exactly
@@ -152,11 +159,12 @@ _Avoid_: setup fixture, setup data, bootstrap
 **Situation**:
 A game reached by real play from a first-game input: every command issued and
 every parked decision answered along the way, in order. Named situations are
-Wake (Setup complete: the first player's turn, already in Act when that Wake
-had nothing to decide), Act (a player's Wake ended) and Rest (a player's Act
+Wake (Setup complete: the first player's Wake menu, or their Act when that
+Wake had nothing to decide), Act (a player's Wake ended) and Rest (a player's Act
 ended); any other is described by the steps that reach it. A situation may
 also start at a Table: the rules adapter directly, the journaled adapter
-through a service begun at that Table.
+through a service begun at that Table. A situation settles at a phase menu:
+it stops there, unanswered, because the menu asks what the player does next.
 _Avoid_: position (a journal sequence number), fixture, snapshot, initial
 game, setup state
 

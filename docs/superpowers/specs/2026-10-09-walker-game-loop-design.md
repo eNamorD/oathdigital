@@ -1,7 +1,7 @@
 # Walker-Driven Game Loop
 
-**Status:** designed 2026-10-09. Slice 1 landed: the queue, the driver and follow-up
-offers. Slice 2 is ready to plan.
+**Status:** designed 2026-10-09. Slices 1 and 2 have landed; slice 3 is
+ready to plan.
 
 **Amends**, in the slices that change the behavior:
 
