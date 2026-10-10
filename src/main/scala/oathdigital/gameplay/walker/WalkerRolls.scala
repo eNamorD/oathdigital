@@ -13,18 +13,6 @@ private[walker] object WalkerRolls:
   def poolCount(state: ReadyGame, pool: PoolKey): Int =
     state.game.current.rollPools.get(pool).fold(0)(_.count)
 
-  /** Skulls and score of `faces`, all of one family: attack faces score
-    * swords and count skulls, defense faces score shields (a Doubler applies
-    * across every accumulated roll).
-    */
-  private def derive(faces: Vector[DieFace]): (Int, Int) =
-    val attack = faces.collect { case face: AttackDieFace => face }
-    if attack.nonEmpty then
-      (AttackDieFace.skulls(attack), AttackDieFace.score(attack))
-    else (0, DefenseDieFace.score(faces.collect {
-      case face: DefenseDieFace => face
-    }))
-
   private def invalid(detail: String) =
     OathViolation.InvalidEventOrder(detail)
 
@@ -46,7 +34,7 @@ private[walker] object WalkerRolls:
           faces.forall(_.isInstanceOf[AttackDieFace]), (), invalid(
             s"attack roll for pool $pool received a non-attack die face"))
     yield
-      val (skulls, score) = derive(faces)
+      val (skulls, score) = RollOutcome.derive(faces)
       RollOutcome(pool, count, faces, skulls, score)
 
   /** The outcome a recorded roll claims. Replay has no tree, so it cannot know
@@ -63,7 +51,7 @@ private[walker] object WalkerRolls:
       faces.forall(_.isInstanceOf[AttackDieFace]), (), invalid(
       "recorded roll mixes attack and defense faces"))
   yield
-    val (skulls, score) = derive(faces)
+    val (skulls, score) = RollOutcome.derive(faces)
     RollOutcome(pool, count, faces, skulls, score)
 
   /** Merges `outcome` into the pool's accumulated entry: repeated rolls of one
@@ -77,6 +65,6 @@ private[walker] object WalkerRolls:
       previous =>
         val faces = previous.faces ++ outcome.faces
         RollOutcome(outcome.pool, previous.count + outcome.count, faces,
-          previous.skulls + outcome.skulls, derive(faces)._2)
+          previous.skulls + outcome.skulls, RollOutcome.derive(faces)._2)
     ready.copy(game = ready.game.copy(current = current.copy(rollOutcomes =
       current.rollOutcomes.updated(outcome.pool, accumulated))))

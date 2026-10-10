@@ -586,6 +586,20 @@ final case class Roll(pool: PoolKey, dice: DiceSpec,
 final case class ModifyRollOutcome(pool: PoolKey, skulls: Option[Int],
     score: Option[Int]) extends PrimitiveOperation
 
+/** Rerolls the dice at `indices` of `pool`'s recorded outcome: the faces
+  * at those indices are replaced by `faces`, in order, and the skulls and
+  * the score are worked out again (catalog batch 7, slice 1).
+  *
+  * A tree declares it with no faces. The walker fills them from its dice
+  * source before running it, so the journal records them and replay applies
+  * them as they ran, as it applies a `Shuffle`'s order. A `BuildOps` batch
+  * is run as it is built, so a reroll inside one is never filled. Applying
+  * a reroll with no faces is an error.
+  */
+final case class Reroll(pool: PoolKey, indices: Vector[Int],
+    faces: Option[Vector[DieFace]] = None) extends PrimitiveOperation:
+  override val required: Boolean = true
+
 /** The name [[Defer]] holds ops under, until a later step of the same
   * action takes them (operation rewrite design, "Deferral"). Named after
   * the power that owns it. */

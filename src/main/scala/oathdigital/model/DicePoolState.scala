@@ -29,3 +29,15 @@ final case class RollOutcome(
     skulls: Int,
     score: Int
 )
+
+object RollOutcome:
+  /** Skulls and score of `faces`, all of one family: attack faces score
+    * swords and count skulls, defense faces score shields, a Doubler
+    * applying across every face. */
+  def derive(faces: Vector[DieFace]): (Int, Int) =
+    val attack = faces.collect { case face: AttackDieFace => face }
+    if attack.nonEmpty then
+      (AttackDieFace.skulls(attack), AttackDieFace.score(attack))
+    else (0, DefenseDieFace.score(faces.collect {
+      case face: DefenseDieFace => face
+    }))
