@@ -130,6 +130,20 @@ commands, `LegalActionProjector`'s controls and the glue in `OathRules` go
 - [ ] Slice 4: the Act menu and its frontend panel.
 - [ ] Slice 5: the cleanup.
 
+### Phase - Catalog batch 7 - Campaign dice
+
+Rerolls after any roll, fixed die faces, amounts chosen inside battle plans,
+and battle rewrites
+([design](superpowers/specs/2026-10-09-catalog-batch-7-design.md),
+[rulings](superpowers/specs/2026-10-09-catalog-batch-7-rulings.md)).
+
+- [ ] Slice 1: rerolls (Jinx, Master at Arms).
+- [ ] Slice 2: Recover rerolls (Silver Charm).
+- [ ] Slice 3: amounts and fixed faces (Arcane Armor, Unstable Summon,
+  Mountain Giant).
+- [ ] Slice 4: battle rewrites (Careful Plans, Weeping Banner, Zealots, Bear
+  Traps, Signal Trees, Hearts and Minds).
+
 ### Phase - Catalog batch - engine-blocked
 
 Cards that need an engine change first, grouped by the missing mechanism.
@@ -158,8 +172,6 @@ Cards that need an engine change first, grouped by the missing mechanism.
 
 Found by the survey of 2026-09-29:
 
-- **A reroll operation:** Jinx, Master at Arms, Silver Charm, Unstable Summon
-  (which also needs a variable X).
 - **A choice of discard or placement destination:** Bracken, Cracked Horn,
   Ring of Devotion, Baron, New Growth, Forest Warden, Vow of Wisdom.
 - **Acting as if elsewhere, or overriding a suit:** Small Friends, Friendly
@@ -167,11 +179,8 @@ Found by the survey of 2026-09-29:
   Mirror, Yew Staff.
 - **A nested Campaign or Travel, or an overridden actor site:** Wild Allies,
   Captains, Palanquin.
-- **Overriding scoring or the victor:** Hearts and Minds (which can reuse
-  Peace Envoy's victory rewrite from Catalog batch 6), Careful Plans,
-  Weeping Banner, Zealots.
-- **A variable X or dice set to a face:** Ward of Silence, Arcane Armor,
-  Mountain Giant.
+- **A variable X:** Ward of Silence, an ACTION power that waits for the Act
+  menu of the walker-driven game loop.
 - **New target kinds:** Relic Hunter, Glamor.
 - **Restricting other cards' powers or placements:** Spell Breaker, Forest
   Council, City Wall, Giant Python, Ancient Bloodline.
@@ -181,13 +190,11 @@ Found by the survey of 2026-09-29:
   the Eye, Sigil of the Heart, Favored Son, Magician's Code (its 2 secrets
   count toward placing more than the banner holds, but the start gate runs
   before any modifier).
-- **Lowering the attacker's force after it is answered:** Bear Traps.
 - **A Travel that can pause on a decision:** **Hospitality** is unblocked:
   start facts keep Travel's source across a resume
   ([travel destination design](superpowers/specs/2026-10-07-travel-destination-walker-design.md)).
 - **Other:** Pilgrimage (shuffling the Dispossessed), Autumn Wind (a combined
-  shuffle and deal), Signal Trees (a plan effect that depends on state it
-  changes), Tracker (memory across turns), Keep (replacing a Raid's defeat),
+  shuffle and deal), Tracker (memory across turns), Keep (replacing a Raid's defeat),
   Obsidian Cage (a new warband store), Secret Signal (no generic gain window),
   and False Prophet, True Oath and The Red Seer (the Oathkeeper goal is not modelled).
   False Prophet is also the only card that plays a card outside the active
