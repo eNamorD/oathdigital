@@ -452,7 +452,15 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .decision-zone-heading h3 { margin-bottom: 0; }
 .decision-zone-helper { margin: 0.25rem 0 0.65rem; color: #a99f8c;
   font-size: 0.82rem; font-style: italic; font-weight: 400; }
-/* The card a decision is about, above the answers. */
+/* The temporary hand: context for the decision, not part of it, so it sits
+   in its own well, apart from the answers below. Its label is set in the
+   "Decision" rule's voice and sits on the well's top edge like a legend,
+   so the well costs no extra line over the old heading. */
+.temporary-hand-preview { margin: 16px 0 14px; padding: 0 8px 8px;
+  border: 1px solid #40382c; border-radius: 9px; }
+.temporary-hand-preview > h3 { width: fit-content; margin: -0.65em 0 2px;
+  padding: 0 6px; background: #211f1b; color: #d5bd8f; font-size: 12px;
+  line-height: 1.3; letter-spacing: 0.06em; text-transform: uppercase; }
 /* What the battle has already applied, above what is still on offer. */
 .plans-played { margin-bottom: 0.4em; font-size: 0.85em; }
 .plans-played ul { margin: 0; padding-left: 1.2em; }
@@ -597,6 +605,8 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   background: #3b3123; color: #fff2d6; font-weight: 700; }
 .walker-many-option[aria-pressed="true"]::before { content: "✓ "; }
 .board-decision-summary { margin: 0 0 8px; color: #fff2d6; font-weight: 700; }
+.board-decision-summary-empty { color: #a99f8c; font-size: .82rem;
+  font-weight: 400; }
 .board-decision-rows { margin: 0 0 6px; padding: 0; list-style: none; }
 .board-decision-row, .board-decision-total { display: flex;
   justify-content: space-between; gap: 8px; margin: 0; padding: 3px 0;
