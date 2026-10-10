@@ -3,6 +3,7 @@ package oathdigital.testkit
 import oathdigital.application.{CampaignDicePort, DefenseDicePort,
   GameApplicationService, InMemoryEventStreamRepository}
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, GameStartRules}
 import oathdigital.model._
@@ -342,6 +343,14 @@ final case class Table private (private val game: ReadyGame,
   def offering(entry: QueuedProcedure): Table =
     update(_.updateCurrent(_.copy(walkerEntry = Some(entry))))
       .parkedWalker(TriggeredProcedureRef.FollowUpOffer)
+
+  /** The menu of the turn's phase parked, as the driver leaves it when the
+    * queue is empty and more than the phase's ending is available
+    * (walker-driven game loop design, "The menus"). */
+  def phaseMenuParked(using munit.Location): Table =
+    val phase = game.game.current.turn.phase
+    PhaseMenu.of(phase).fold(munit.Assertions.fail(
+      s"the $phase phase has no menu"))(menu => parkedWalker(menu.procedure))
 
   /** The Visions Drawn track at `n`. */
   def visionsDrawn(n: Int): Table =

@@ -11,6 +11,7 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{ChoicePayload, FollowUpOffer, RollPayload,
   WalkerStepRecorded}
@@ -186,10 +187,12 @@ private[gamelog] object DetailLines:
     * facedown-adviser pick, which the played adviser's line names, every
     * Campaign and Negotiation line, each action line that names its
     * choice, the modifier decision, which the start line names, and the
-    * follow-up offer, which the queued action's tag or the Skip line tells. */
+    * follow-up offer, which the queued action's tag or the Skip line tells,
+    * and the phase menus, whose pick starts a walk that tells it. */
   private val NarratedPrefixes = Vector("setup.", ActionLines.PlacePrefix,
     "cardplay.discard.", "campaign.", "negotiation.", "travel.")
   private val NarratedIds = Set(FollowUpOffer.decisionId,
+    PhaseMenu.decisionId,
     SearchProcedure.sourceDecisionId,
     SearchProcedure.cardDecisionId,
     CardPlayProcedure.facedownAdviserDecisionId,

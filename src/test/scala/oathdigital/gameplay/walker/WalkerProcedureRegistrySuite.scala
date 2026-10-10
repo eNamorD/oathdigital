@@ -54,14 +54,17 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
     */
   test("the production entries register every procedure reference"):
     // The forced Wake step is built from the phase powers, as `UsePower` is,
-    // and the follow-up offer from the walk's powers, so neither has a fixed
-    // entry.
+    // and the follow-up offer and the phase menus from the walk's powers, so
+    // none of them has a fixed entry.
     assertEquals(WalkerProcedureRegistry.entries.keySet,
       ProcedureRef.all.toSet - TriggeredProcedureRef.ForcedWake -
-        TriggeredProcedureRef.FollowUpOffer)
+        TriggeredProcedureRef.FollowUpOffer - TriggeredProcedureRef.WakeMenu -
+        TriggeredProcedureRef.RestMenu)
     assert(WalkerProcedureRegistry.isRegistered(TriggeredProcedureRef.ForcedWake))
     assert(WalkerProcedureRegistry.isRegistered(
       TriggeredProcedureRef.FollowUpOffer))
+    assert(WalkerProcedureRegistry.isRegistered(TriggeredProcedureRef.WakeMenu))
+    assert(WalkerProcedureRegistry.isRegistered(TriggeredProcedureRef.RestMenu))
 
   /** Batch-1 Task 1: the modifier-selection window is per-action registry
     * data, alongside `fallbackKind`/`rollDecisionId`. Recover declares the

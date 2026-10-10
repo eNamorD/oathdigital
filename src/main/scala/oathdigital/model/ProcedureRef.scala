@@ -63,6 +63,12 @@ enum TriggeredProcedureRef(val key: String) extends ProcedureRef:
     * game loop design, ruling 6). The driver starts it when it dequeues an
     * `Offer` entry. */
   case FollowUpOffer extends TriggeredProcedureRef("follow-up-offer")
+  /** The Wake phase's menu (walker-driven game loop design, "The menus").
+    * The driver starts it when the queue is empty in Wake and more than End
+    * Wake is available. */
+  case WakeMenu extends TriggeredProcedureRef("wake-menu")
+  /** The Rest phase's menu, as the Wake menu is Wake's. */
+  case RestMenu extends TriggeredProcedureRef("rest-menu")
 
 object ActionRef:
   case object Search extends ActionRef { val key = "search" }
@@ -118,7 +124,7 @@ object PhaseTransitionRef:
 
 object TriggeredProcedureRef:
   val all: Vector[TriggeredProcedureRef] = Vector(Oathkeeper, Setup,
-    ForcedWake, FollowUpOffer)
+    ForcedWake, FollowUpOffer, WakeMenu, RestMenu)
 
 object StartableRef:
   /** Finite references are listed in `all`; parameterized use-power keys

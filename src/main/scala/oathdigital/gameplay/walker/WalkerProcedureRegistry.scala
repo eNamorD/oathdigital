@@ -13,7 +13,7 @@ import oathdigital.gameplay.actions.travel.{TravelOptions, TravelProcedure}
 import oathdigital.gameplay.phases.wake.{EndWakeProcedure, ForcedWakeProcedure,
   TakeWealthProcedure}
 import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}
-import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.model.{ActionRef, Decide, DecisionOption, DecisionOptionRef, ActionKind, OathViolation, Operation, PendingTree, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
@@ -435,6 +435,17 @@ object WalkerProcedureRegistry:
     build = FollowUpOffer.build(phasePowers, powers),
     rebuild = FollowUpOffer.build(phasePowers, powers))
 
+  /** A phase menu lists the phase powers and checks each option's start,
+    * which needs the walk's powers. The driver starts it, so it has no
+    * fallback kind, no modifier window and no start selection. */
+  private def menuEntry(menu: PhaseMenu.Menu, phasePowers: PhasePowers,
+      powers: WalkerPowers): Entry = Entry(
+    fallbackKind = None,
+    rollDecisionId = None,
+    modifierWindow = None,
+    build = PhaseMenu.build(menu, phasePowers, powers),
+    rebuild = PhaseMenu.build(menu, phasePowers, powers))
+
   private def lookup(procedure: ProcedureRef,
       registrations: Map[ProcedureRef, Entry],
       powers: PhasePowers = PhasePowers.empty,
@@ -445,6 +456,10 @@ object WalkerProcedureRegistry:
       case TriggeredProcedureRef.ForcedWake => Right(forcedWakeEntry(powers))
       case TriggeredProcedureRef.FollowUpOffer =>
         Right(followUpOfferEntry(powers, walkerPowers))
+      case TriggeredProcedureRef.WakeMenu =>
+        Right(menuEntry(PhaseMenu.Menu.Wake, powers, walkerPowers))
+      case TriggeredProcedureRef.RestMenu =>
+        Right(menuEntry(PhaseMenu.Menu.Rest, powers, walkerPowers))
       case _ => registrations.get(procedure).toRight(OathViolation
         .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
 
@@ -512,6 +527,7 @@ object WalkerProcedureRegistry:
     procedure.isInstanceOf[ActionRef.UsePower] ||
       procedure == TriggeredProcedureRef.ForcedWake ||
       procedure == TriggeredProcedureRef.FollowUpOffer ||
+      PhaseMenu.asking(procedure).nonEmpty ||
       entries.contains(procedure)
 
   /** Whether `procedure` opts in to the playable-option gate (see `Entry`). */

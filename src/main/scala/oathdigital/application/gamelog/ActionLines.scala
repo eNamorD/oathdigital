@@ -50,10 +50,13 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       // The phase changes show in the lines around them.
       case PhaseTransitionRef.EndWake | PhaseTransitionRef.BeginRest =>
         Vector.empty
-      // Each forced power writes its own lines. The follow-up offer writes
-      // none; its Skip is a line of its own (`FollowUpSkipped`).
+      // Each forced power writes its own lines. The follow-up offer and the
+      // phase menus write none: a pick starts its own walk, which writes
+      // them, and a Skip is a line of its own (`FollowUpSkipped`).
       case TriggeredProcedureRef.ForcedWake |
-          TriggeredProcedureRef.FollowUpOffer => Vector.empty
+          TriggeredProcedureRef.FollowUpOffer |
+          TriggeredProcedureRef.WakeMenu |
+          TriggeredProcedureRef.RestMenu => Vector.empty
       case TriggeredProcedureRef.Setup => setup.lines(journal, at, viewer)
       case ActionRef.Search =>
         search(journal, run, at, viewer) ++

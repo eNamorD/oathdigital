@@ -98,7 +98,8 @@ Log makes one section per walk. A queue of walks keeps all of that true.
    action, plus "Skip". An action that cannot start is shown unavailable
    with its reason, and Skip stays available.
 7. **Phase powers join their menu.** Each menu is an `OfferHost`. A phase
-   power adds an `Offer` contribution at its phase's menu window.
+   power adds an `Offer` contribution at its phase's menu window. (Its
+   mechanism is replaced by plan-time ruling 1 of slice 2.)
 8. **Exact pricing.** Each offer is priced by a dry run of its own procedure,
    which searches through that procedure's modifier decision. A budget test
    holds the menu's park to 50 ms. If it fails, the projection and the
@@ -226,10 +227,11 @@ phase's menu window: `WakeMenu`, `ActMenu` or `RestMenu`. Like
     Resource, Negotiation, the facedown-adviser play, the three minor
     actions, End Act and Rest;
   - Rest: Finish Rest;
-- **phase powers' offers**: each `PhasePower` contributes an `Offer` at its
-  timing's window. Its once-per-turn limit, its source's accessibility and
-  its `usable` stay its own. Hunger and any other forced power are started
-  by Forced Wake and offer nothing.
+- **phase powers' offers**: one for each accessible source of each
+  `PhasePower` of the phase's timing that is not forced (plan-time ruling 1
+  of slice 2). Its once-per-turn limit, its source's accessibility and its
+  `usable` stay its own. Hunger and any other forced power are started by
+  Forced Wake and offer nothing.
 
 Each offer is a `QueuedProcedure` with `kind = Run` and no `source`. It is
 priced by `WalkerSimulation` over its procedure's tree from the live state,
@@ -335,6 +337,34 @@ By the last slice:
 9. **The follow-up client surface goes in slice 1.** The offer is a walker
    decision, so the follow-up projection, controls, panel and Skip command
    are deleted here, not in slice 5.
+
+## Plan-time rulings (slice 2)
+
+1. **The engine lists the phase powers.** A menu reads the phase power
+   catalog, as Use Power and Forced Wake do: one option for each accessible
+   source of each power its player may choose in the phase. No menu window
+   and no `Offer` contribution are built. A `PhasePower` is not a
+   `ContributingPower`, and its sources come from the rule-source index, not
+   from one power instance per source. This replaces ruling 7's mechanism. A
+   window is added when a power needs to restrict a menu option.
+2. **One procedure per menu.** `WakeMenu` and `RestMenu` are triggered
+   procedures, both built by `PhaseMenu`. Slice 4 adds `ActMenu`.
+3. **A menu lists every option of its phase.** Wake: Take Wealth for a
+   favor, Take Wealth for a secret, each WAKE power's source, then End Wake.
+   Rest: each REST power's source, then Finish Rest. An option that cannot
+   start is shown unavailable with its reason. A phase power's option is its
+   source.
+4. **Availability is the start's own check**, `QueuedStart.refusal`. No
+   Wake or Rest option costs anything today, so none shows a price; the
+   dry-run price arrives with the Act menu.
+5. **The menus draw as a panel**, in the generic choose-one panel. Hovering
+   over a card option shows its rules text. The grouped Act layout is slice
+   4's.
+6. **The phase checks stay in Take Wealth, End Wake and Finish Rest** while
+   `StartWalker` can still start them. Ruling 9's removal moves to slice 4.
+7. **The End Wake and Finish Rest commands go in slice 2.** In Wake and Rest
+   a menu is parked or the phase has ended by itself, so nothing can send
+   them. `UsePower` and `BeginRest` stay until the Act menu.
 
 ## Testing
 

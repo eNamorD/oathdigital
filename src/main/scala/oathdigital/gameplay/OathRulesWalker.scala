@@ -308,11 +308,14 @@ private[gameplay] trait OathRulesWalker:
       : Either[OathViolation, Operation] =
     procedure match
       case _: ActionRef.UsePower | TriggeredProcedureRef.ForcedWake |
-          TriggeredProcedureRef.FollowUpOffer if starting =>
+          TriggeredProcedureRef.FollowUpOffer |
+          TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu
+          if starting =>
         WalkerProcedureRegistry.build(procedure, catalog, ready, actor,
           startArgs, phasePowerCatalog, walkerPowers = walkerPowers)
       case _: ActionRef.UsePower | TriggeredProcedureRef.ForcedWake |
-          TriggeredProcedureRef.FollowUpOffer =>
+          TriggeredProcedureRef.FollowUpOffer |
+          TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu =>
         WalkerProcedureRegistry.rebuild(procedure, catalog, ready, actor,
           startArgs, phasePowerCatalog, walkerPowers = walkerPowers)
       case _ => walkerTree(catalog, procedure, ready, actor, startArgs, starting)

@@ -1,0 +1,8 @@
+0.0 round 0 | Round 1
+0.1 turn 0 | [player:p1|p1]'s turn
+0.2 phase 0 | Rest
+6.0 action 1 use-power:denizen.insomnia@4 | [card:97|Insomnia]: [player:p1|p1] gained [amount:1 secret].
+10.0 turn 0 | [player:p2|p2]'s turn
+10.1 phase 0 | Wake
+12.0 action 1 | Nothing happened in Wake
+12.1 phase 0 | Act
