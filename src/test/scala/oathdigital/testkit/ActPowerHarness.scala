@@ -4,7 +4,8 @@ import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{WalkerDice, WalkerPowers}
+import oathdigital.gameplay.walker.{WalkerCompleted, WalkerDice,
+  WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
@@ -70,6 +71,12 @@ object ActPowerHarness:
       Right(Ready(from)))((state, event) =>
       state.flatMap(rules.evolve(_, event)))
     Outcomes.ready(Unwrap.accepted(replay))
+
+  /** The events up to the first walk's end, before the driver goes on: a
+    * power that ends the Act phase leaves the player in Rest here, where the
+    * driver then finishes Rest when no REST power is usable. */
+  def untilWalkEnds(events: Vector[OathEvent]): Vector[OathEvent] =
+    events.take(events.indexWhere(_.isInstanceOf[WalkerCompleted]) + 1)
 
   /** The actor's secrets, faceup and facedown together. */
   def allSecrets(state: ReadyGame): Int =

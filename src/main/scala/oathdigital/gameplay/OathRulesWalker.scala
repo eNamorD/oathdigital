@@ -33,18 +33,9 @@ private[gameplay] trait OathRulesWalker:
       action: ActionKind)(
       operation: => Either[OathViolation, OathTransition])
       : Either[OathViolation, OathTransition]
-  protected def completeAction(transition: OathTransition)
+  /** Runs what follows a finished walk (`OathDriver`). */
+  private[gameplay] def next(transition: OathTransition, ended: Ended)
       : Either[OathViolation, OathTransition]
-  protected def turnBoundary(transition: OathTransition)
-      : Either[OathViolation, OathTransition]
-  /** Starts the forced Wake step when one is due (catalog batch 2, N8). */
-  protected def forcedWake(transition: OathTransition)
-      : Either[OathViolation, OathTransition]
-  /** Whether `player` could use a REST power now. */
-  protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean
-  /** Whether `player` has a Wake option open now: wealth to take or a WAKE
-    * power to use. */
-  protected def wakeOptionOpen(ready: ReadyGame, player: PlayerId): Boolean
 
   /** Starts one action on the generic procedure walker. An action asks for
     * its modifiers inside the walk, as its first decision (modifier walker
@@ -130,6 +121,7 @@ private[gameplay] trait OathRulesWalker:
         Left(WrongPlayer(head.actor, requester))
       case Some(head) =>
         GameplayTransition(state, Vector(FollowUpSkipped(head)))(evolve)
+          .flatMap(next(_, Ended.Skip))
     case _ => Left(GameNotStarted)
 
   /** Starts a procedure the engine triggers, with no client command
@@ -137,8 +129,8 @@ private[gameplay] trait OathRulesWalker:
     *
     * Strictly sequential: a walker or legacy procedure already pending is a
     * typed rejection rather than a nested start. The procedure's events are
-    * appended to `transition`, so the action that triggered it and the
-    * procedure journal as one command.
+    * appended to `transition`, so whatever handed it on and the procedure
+    * journal as one command.
     */
   private[gameplay] def startTriggered(transition: OathTransition,
       procedure: TriggeredProcedureRef): Either[OathViolation, OathTransition] =
@@ -410,20 +402,7 @@ private[gameplay] trait OathRulesWalker:
     case WalkerOutcome.Finished(_, steps) =>
       GameplayTransition(state, steps :+ WalkerCompleted(procedure))(evolve)
         .flatMap(recordCardPlayFallback(_, procedure, steps))
-        .flatMap(transition =>
-          if runsActionBoundary(procedure) then completeAction(transition)
-          else if runsTurnBoundary(procedure) then turnBoundary(transition)
-          // Setup's tree begins the first Wake, which no turn boundary
-          // enters, so its forced step starts here.
-          else if procedure == TriggeredProcedureRef.Setup then
-            forcedWake(transition)
-          else Right(transition))
-        .flatMap(transition =>
-          if procedure == PhaseTransitionRef.BeginRest then autoFinishRest(transition)
-          else Right(transition))
-        .flatMap(transition =>
-          if procedure == PhaseTransitionRef.EndWake then Right(transition)
-          else autoEndWake(transition))
+        .flatMap(next(_, Ended.Walk(procedure)))
 
   /** Diagnostics for unimplemented WHEN PLAYED handlers follow the recorded
     * faceup placement, not the pre-play Search state. Implemented walker
@@ -459,58 +438,6 @@ private[gameplay] trait OathRulesWalker:
               diagnostics))
         }
       case _ => Right(transition)
-
-  /** Whether the action boundary follows a completed procedure. Only an
-    * action runs it, in whatever phase it ran: Take Wealth does, End Wake (a
-    * phase transition) and a triggered procedure do not. Carried by the
-    * reference's family, never by a registry flag and never by the phase --
-    * Take Wealth and End Wake both start in Wake.
-    */
-  private def runsActionBoundary(procedure: ProcedureRef): Boolean =
-    procedure match
-      case _: ActionRef => true
-      case _: PhaseTransitionRef | _: TriggeredProcedureRef => false
-
-  /** Whether the turn boundary (round end, then Wake evaluation) follows a
-    * completed procedure. Only Finish Rest hands the turn over.
-    */
-  private def runsTurnBoundary(procedure: ProcedureRef): Boolean =
-    procedure == PhaseTransitionRef.FinishRest
-
-  /** Only after Begin Rest: a player with no usable REST power finishes Rest
-    * in the same command. After a REST power is used the player always
-    * finishes Rest deliberately, so nothing else calls this. A queued action
-    * waits for its player first (follow-up actions design, ruling 2).
-    */
-  private def autoFinishRest(transition: OathTransition)
-      : Either[OathViolation, OathTransition] = transition.state match
-    case Ready(ready) if ready.game.current.queue.isEmpty &&
-        !restPowerUsable(ready,
-        ready.game.current.turn.activePlayer) =>
-      startWalker(transition.state, PhaseTransitionRef.FinishRest,
-        ready.game.current.turn.activePlayer).map(finished =>
-        finished.copy(events = transition.events ++ finished.events))
-    case _ => Right(transition)
-
-  /** After any procedure that leaves the active player in Wake with no
-    * procedure pending: a player with no Wake option left ends Wake in the
-    * same command. That skips a Wake with nothing to decide, and ends one
-    * once its last option is used. A Finish Rest started by
-    * `autoFinishRest` reaches this through its own completion. A queued
-    * action waits for its player first.
-    */
-  private def autoEndWake(transition: OathTransition)
-      : Either[OathViolation, OathTransition] = transition.state match
-    case Ready(ready) if ready.game.current.result.isEmpty &&
-        ready.game.current.queue.isEmpty &&
-        ready.game.current.turn.phase == Phase.Wake &&
-        ready.game.current.walkerPending.isEmpty &&
-        ready.game.current.walkerProcedure.isEmpty &&
-        !wakeOptionOpen(ready, ready.game.current.turn.activePlayer) =>
-      startWalker(transition.state, PhaseTransitionRef.EndWake,
-        ready.game.current.turn.activePlayer).map(ended =>
-        ended.copy(events = transition.events ++ ended.events))
-    case _ => Right(transition)
 
   /** Folds `evolve` over `events` in order, threading state — the same
     * left-fold [[GameplayTransition]] performs internally, exposed here so

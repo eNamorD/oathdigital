@@ -1,7 +1,8 @@
 package oathdigital.serialization
 
 import oathdigital.model._
-import oathdigital.gameplay.walker.{ChoicePayload, FollowUpSkipped,
+import oathdigital.gameplay.walker.{ActionBoundaryRan, ChoicePayload,
+  FollowUpSkipped,
   ProcedureDequeued, WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
   PartitionAnswer}
@@ -143,6 +144,11 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       ProcedureDequeued(entry), FollowUpSkipped(entry)))
     assert(encoded.contains("\"walker.procedure-dequeued\""), encoded)
     assert(encoded.contains("\"walker.follow-up-skipped\""), encoded)
+
+  test("the action boundary marker round trips with an empty payload"):
+    val encoded = encodedStreamThatRoundTrips("boundary",
+      Vector[OathEvent](ActionBoundaryRan))
+    assert(encoded.contains("\"walker.action-boundary-ran\""), encoded)
 
   test("a queued entry naming a procedure no client starts is refused"):
     val entry = QueuedProcedure(PlayerId("p1"), ActionRef.Travel, Vector.empty,

@@ -2,8 +2,8 @@ package oathdigital.serialization
 
 import scala.util.control.NonFatal
 
-import oathdigital.gameplay.walker.{ChoicePayload, FollowUpSkipped,
-  PowerNoted, ProcedureDequeued, RollPayload, WalkerCompleted, DeltaMeaning,
+import oathdigital.gameplay.walker.{ActionBoundaryRan, ChoicePayload,
+  FollowUpSkipped, PowerNoted, ProcedureDequeued, RollPayload, WalkerCompleted, DeltaMeaning,
   WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
@@ -22,6 +22,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case _: PowerNoted => PowerNotedType
     case _: ProcedureDequeued => ProcedureDequeuedType
     case _: FollowUpSkipped => FollowUpSkippedType
+    case ActionBoundaryRan => ActionBoundaryRanType
 
   protected final val walkerEncoder: PartialFunction[OathEvent, ujson.Value] =
     case WalkerStepRecorded(nodeId, payload, ops, contributions) =>
@@ -51,6 +52,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       ujson.Obj("entry" -> encodeQueued(entry))
     case FollowUpSkipped(entry) =>
       ujson.Obj("entry" -> encodeQueued(entry))
+    case ActionBoundaryRan => ujson.Obj()
 
   protected final def walkerDecode(eventType: String, payload: ujson.Value,
       path: String)
@@ -69,6 +71,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       case FollowUpSkippedType =>
         decodeQueued(payload("entry"), s"$path.entry")
           .map(FollowUpSkipped(_))
+      case ActionBoundaryRanType => Right(ActionBoundaryRan)
     decoder.lift(eventType)
 
   private def encodeAnswered(answered: Answered): ujson.Value = ujson.Obj(

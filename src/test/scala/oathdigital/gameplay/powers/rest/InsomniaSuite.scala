@@ -7,7 +7,7 @@ import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{AdviserLimit, NoteText, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.walker.{WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks,
@@ -57,7 +57,14 @@ class InsomniaSuite extends munit.FunSuite:
     assertEquals(secrets(Outcomes.ready(used.state)), secrets(ready) + 1)
     val ref = PowerUseRef(PowerTiming.Rest, PowerSourceRef.Card(insomnia),
       Insomnia.id)
-    assertEquals(rules.startWalker(used.state, use, p1, Vector(source)).left.toOption, Some(OathViolation.PowerAlreadyUsed(ref)))
+    // Finishing Rest cleared the turn's uses, so the limit is checked on a
+    // turn that holds the recorded use.
+    assert(used.events.collect { case step: WalkerStepRecorded => step.ops }
+      .flatten.contains(RecordPowerUse(ref)), used.events)
+    val spent = Table.from(ready).update(_.updateCurrent(current =>
+      current.copy(turn = current.turn.copy(usedPowers = Set(ref))))).ready
+    assertEquals(rules.startWalker(Ready(spent), use, p1, Vector(source))
+      .left.toOption, Some(OathViolation.PowerAlreadyUsed(ref)))
 
   test("its line restates the gain, covering the generic one"):
     val used = accepted(

@@ -121,17 +121,14 @@ class PhasePowerSuite extends munit.FunSuite:
     assertEquals(PhasePowerProcedure.usable(catalog,
       atDunes.bandits("Dunes", 1).ready, p1, powers, WalkerPowers.empty), Vector.empty)
 
-  test("a usable REST power stops the Rest auto-skip, and using it still " +
-      "leaves Finish Rest to the player"):
+  test("a usable REST power stops the Rest auto-skip, and using the last " +
+      "one finishes Rest"):
     val power = TestPower(powerId, PowerTiming.Rest)
     val rested = accepted(rules(power).startWalker(Ready(holding(Phase.Act)),
       PhaseTransitionRef.BeginRest, p1))
     walkerParked(power).assertResumed(rested.state, Phase.Rest, p1)
     val used = accepted(use(power, rested.state))
-    walkerParked(power).assertResumed(used.state, Phase.Rest, p1)
-    val finished = accepted(rules(power).startWalker(used.state,
-      PhaseTransitionRef.FinishRest, p1))
-    val next = Outcomes.ready(finished.state).game.current.turn
+    val next = Outcomes.ready(used.state).game.current.turn
     assertNotEquals(next.activePlayer, p1)
     assertEquals(next.usedPowers, Set.empty[PowerUseRef])
 

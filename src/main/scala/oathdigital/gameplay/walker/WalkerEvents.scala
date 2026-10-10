@@ -125,6 +125,11 @@ final case class ProcedureDequeued(entry: QueuedProcedure) extends WalkerEvent
 /** The entry's actor declined it, and the Game Log writes the Skip line. */
 final case class FollowUpSkipped(entry: QueuedProcedure) extends WalkerEvent
 
+/** The action boundary ran: replay clears `boundaryDue` (walker-driven game
+  * loop design, plan-time ruling 3). The boundary may write nothing else.
+  * No Game Log line. */
+case object ActionBoundaryRan extends WalkerEvent
+
 /** Audit fact: a power's effect happened here and says so in the Game Log
   * (power log lines design). Replay applies nothing for it, as it never
   * reads `WalkerStepRecorded.contributions`. `covers` tells the log to drop

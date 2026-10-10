@@ -131,20 +131,21 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     assertEquals(after.game.current.turn.phase, Phase.Act)
     // The start parks on the destination: its batch holds `CommandAccepted`
     // and the park. The pick's batch holds the recorded answer, the pay node,
-    // the pawn move and the completion boundary, behind its own
-    // `CommandAccepted`.
+    // the pawn move, the completion and the action boundary's marker, behind
+    // its own `CommandAccepted`.
     assertEquals(parked.events.map(_.productPrefix), Vector("WalkerParked"))
-    assertEquals(stored.nextSequence, 7L)
+    assertEquals(stored.nextSequence, 8L)
     assertEquals(traveled.events.map(_.productPrefix), Vector(
       "WalkerStepRecorded", "WalkerStepRecorded", "WalkerStepRecorded",
-      "WalkerCompleted"))
+      "WalkerCompleted", "ActionBoundaryRan"))
     // Nothing is left parked once the destination is picked.
     assertEquals(after.game.current.walkerPending, None)
     assertEquals(after.game.current.walkerProcedure, None)
     val types = loaded(repository.load("game-travel")).records
-      .takeRight(4).map(ujson.read(_)("eventType").str)
+      .takeRight(5).map(ujson.read(_)("eventType").str)
     assertEquals(types, Vector("walker.step-recorded", "walker.step-recorded",
-      "walker.step-recorded", "walker.completed"))
+      "walker.step-recorded", "walker.completed",
+      "walker.action-boundary-ran"))
 
   /** An off-turn Oathkeeper tie, reached and resolved entirely through
     * `GameApplicationService`, survives reload on both sides of the park.

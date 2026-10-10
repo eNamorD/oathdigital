@@ -196,6 +196,11 @@ final case class CurrentGameState(
     // sets it from `ProcedureDequeued` and `WalkerCompleted` clears it, so
     // the cost waiver and the phase exemption hold on every resume.
     walkerEntry: Option[QueuedProcedure] = None,
+    // Whether an action's walk has finished since the last action boundary
+    // (walker-driven game loop design, ruling 5). Not walker scratch:
+    // `WalkerCompleted` of an action sets it, and only `ActionBoundaryRan`
+    // clears it, once the queue is empty.
+    boundaryDue: Boolean = false,
     // Ops a step of the current action holds for a later step of it
     // (operation rewrite design, "Deferral"). Walker scratch: replay
     // rebuilds it from the recorded `Defer`s, and the walker and

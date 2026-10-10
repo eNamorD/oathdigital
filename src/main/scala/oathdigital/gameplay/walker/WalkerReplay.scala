@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationExecutor, PayCostSettlement}
-import oathdigital.model.{Answered, CoreOperation, OathState, OathViolation, PendingTree, ReadyGame, WalkerEvent}
+import oathdigital.model.{ActionRef, Answered, CoreOperation, OathState, OathViolation, PendingTree, ReadyGame, WalkerEvent}
 
 /** Replay half of the walker: applies durable walker facts to state without
   * ever deriving or walking an action tree (batch-1 Task 5).
@@ -154,9 +154,15 @@ private[walker] object WalkerReplay:
             walkerStartArgs = Vector.empty,
             walkerStartFacts = Vector.empty,
             walkerEntry = None,
+            boundaryDue = procedure match
+              case _: ActionRef => true
+              case _ => ready.game.current.boundaryDue,
             rollPools = Map.empty,
             walkerDeferred = Map.empty,
             rollOutcomes = Map.empty)))
+
+      case ActionBoundaryRan =>
+        Right(ready.updateCurrent(_.copy(boundaryDue = false)))
 
       case ProcedureDequeued(entry) =>
         val current = ready.game.current

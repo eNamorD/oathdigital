@@ -65,11 +65,15 @@ class GameLogSectionSuite extends munit.FunSuite:
       script.otherSeat))).last.section, None)
 
   test("a power used as an action is one section named by its power"):
-    val lines = format(silverTongue, None).filter(_.depth == 1)
+    val all = format(silverTongue, None).filter(_.depth == 1)
+    // The power was the last REST power, so Rest finishes and the next
+    // player's Wake follows it, in no section.
+    val lines = all.takeWhile(_.section.nonEmpty)
     assert(lines.nonEmpty)
     assert(lines.forall(_.section.exists(_.action.startsWith("use-power:"))),
       lines)
     assertEquals(lines.map(_.section).distinct.size, 1, lines)
+    assert(all.drop(lines.size).forall(_.section.isEmpty), all)
 
   test("playing a facedown adviser is its own section"):
     val lines = format(facedownAdviser, None).filter(_.depth == 1)

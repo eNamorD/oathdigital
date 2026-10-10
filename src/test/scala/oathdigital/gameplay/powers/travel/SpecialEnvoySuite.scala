@@ -32,7 +32,11 @@ class SpecialEnvoySuite extends munit.FunSuite:
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).player(actor).pawnSite, Some(coast))
     assertEquals(Look(result).supply(actor), 7)
-    assertEquals(Look(result).phase, Phase.Rest)
+    // The Act Phase ended, and with no REST power usable the driver
+    // finished Rest, so the turn has passed.
+    assertEquals(Look(ActPowerHarness.replayed(rules, ready,
+      ActPowerHarness.untilWalkEnds(done.events))).phase, Phase.Rest)
+    assertNotEquals(Look(result).active, actor)
     assertEquals(said(done.events), Vector(NoteText.Said("ended",
       "The Act Phase ended.", covers = false)))
     assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)

@@ -5,7 +5,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
-  WalkerPowers}
+  WalkerPowers, WalkerStepRecorded}
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
@@ -47,7 +47,10 @@ class SilverTongueSuite extends munit.FunSuite:
       Set(Suit.Arcane))
     val used = accepted(
       rules.startWalker(Ready(ready), use, actor, Vector(source)))
-    walkerParked.assertResumed(used.state, Phase.Rest, actor)
+    // No REST power is left, so Rest finishes and the next Wake begins.
+    val next = Outcomes.ready(used.state).game.current.turn.activePlayer
+    assertNotEquals(next, actor)
+    walkerParked.assertResumed(used.state, Phase.Wake, next)
     // Each stocked bank holds 3; taking one leaves 2.
     assertEquals(favor(used.state)(Suit.Arcane), 2)
     // The boundary refilled the quiet table's empty Ancient City to its
@@ -56,7 +59,14 @@ class SilverTongueSuite extends munit.FunSuite:
       SiteForces.Occupied(ForceKind.Bandit, 3))
     val ref = PowerUseRef(PowerTiming.Rest, PowerSourceRef.Card(tongue),
       SilverTongue.id)
-    assertEquals(rules.startWalker(used.state, use, actor, Vector(source)).left.toOption, Some(OathViolation.PowerAlreadyUsed(ref)))
+    // Finishing Rest cleared the turn's uses, so the limit is checked on a
+    // turn that holds the recorded use.
+    assert(used.events.collect { case step: WalkerStepRecorded => step.ops }
+      .flatten.contains(RecordPowerUse(ref)), used.events)
+    val spent = Table.from(ready).update(_.updateCurrent(current =>
+      current.copy(turn = current.turn.copy(usedPowers = Set(ref))))).ready
+    assertEquals(rules.startWalker(Ready(spent), use, actor, Vector(source))
+      .left.toOption, Some(OathViolation.PowerAlreadyUsed(ref)))
 
   test("several matching banks with favor ask the player to choose one of them"):
     val ready = silverTongueRest(Vector("Golem Legions", "Rain Boots"),
@@ -73,7 +83,9 @@ class SilverTongueSuite extends munit.FunSuite:
     // Each stocked bank holds 3: Nomad gave one, Arcane none.
     assertEquals(favor(taken.state)(Suit.Nomad), 2)
     assertEquals(favor(taken.state)(Suit.Arcane), 3)
-    walkerParked.assertResumed(taken.state, Phase.Rest, actor)
+    val next = Outcomes.ready(taken.state).game.current.turn.activePlayer
+    assertNotEquals(next, actor)
+    walkerParked.assertResumed(taken.state, Phase.Wake, next)
 
   test("without matching favor Silver Tongue is not usable and Rest skips ahead"):
     val ready = silverTongueRest(Vector("Golem Legions"), Set(Suit.Nomad))

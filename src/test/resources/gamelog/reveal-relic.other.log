@@ -4,4 +4,4 @@
 1.0 section 1 recover@1 | Recover[cost:1 Supply]
 3.0 roll 1 recover@1 | Rolled [dice:defense two-shields two-shields|two shields, two shields]
 7.0 action 1 recover@1 | Recovered a Relic at [site:site:broken-peaks|Broken Peaks]
-10.0 delta 1 minor@10 | Revealed [card:R01|Sticky Fire]
+11.0 delta 1 minor@11 | Revealed [card:R01|Sticky Fire]
