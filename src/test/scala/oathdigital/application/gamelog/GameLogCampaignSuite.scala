@@ -129,3 +129,21 @@ class GameLogCampaignSuite extends munit.FunSuite:
     assert(plain.startsWith("Sacrificed 2 warbands for an attack of "), plain)
     // Each of the two warbands adds three, not one.
     assertEquals(attackOf(zealous) - attackOf(plain), 4)
+
+  test("under Careful Plans the defense is rolled and told before the " +
+      "attack"):
+    val script = raidUnderCarefulPlans
+    val all = lines(script)
+    val from = all.indexOf("Activated Careful Plans")
+    assert(from >= 0, all)
+    // Dice.raid rolls a sword on every attack die and a blank on every
+    // defense die. The three warbands sacrificed are added to the attack
+    // after it is rolled, as in the printed order.
+    assertEquals(all.slice(from, from + 7), Vector(
+      "Activated Careful Plans",
+      "Rolled blank, blank for the defense",
+      "Defense: 3",
+      "Rolled sword, sword, sword for the attack",
+      "Attack: 3",
+      "Sacrificed 3 warbands for an attack of 6",
+      s"${playerLabel(script.actor)} wins!"))

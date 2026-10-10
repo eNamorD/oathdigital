@@ -97,10 +97,6 @@ Left behind by
   questions of Arcane Armor, Unstable Summon and Mountain Giant, the
   defense rolling first under Careful Plans, Zealots' warning on its option
   and Signal Trees' revealed cards are covered by server tests only.
-- [ ] **Cover the Game Log under Careful Plans.** With Careful Plans
-  chosen, the defense roll and its result are logged before the attack
-  roll. No test reads the log in that order, and the attack and defense
-  segments in `CampaignLines` were written for the printed order.
 - [ ] **Pin two slice 4 rulings in tests.** Nothing tests Hearts and Minds
   kept by a People's Favor won in the same Campaign: both suites set the
   banner before it starts. Signal Trees' test that no player knows the
