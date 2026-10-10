@@ -70,6 +70,10 @@ object PowerWindow:
     * makes one unavailable (catalog batch 6, slice 3). */
   case object SearchSourceSelection extends SearchWindow:
     val key = "search.source-selection"
+  /** The `search.cards` decision, which keeps one card: a power lets it
+    * keep more (Land Warden, catalog batch 6, slice 4). */
+  case object SearchKeep extends SearchWindow:
+    val key = "search.keep"
   case object TravelCost extends TravelWindow { val key = "travel.cost" }
   case object CampaignBeforeTargets extends CampaignWindow:
     val key = "campaign.before-targets"

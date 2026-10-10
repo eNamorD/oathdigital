@@ -48,6 +48,10 @@ final case class MoreDiscards(locked: DecisionOption,
   * refuses is shown unavailable with its reason, and an option the planner
   * or another restriction refuses is left out. Powers' own restrictions (Vow
   * of Obedience) are the walker look-ahead's to apply.
+  *
+  * Last, the rules' placement limits (`CardPlayRules.placementLimits`)
+  * show each play they refuse unavailable with their reason. When they
+  * leave no play open, the discard pile stays open.
   */
 object CardSlots:
   /** The answer that plays a faceup Conspiracy, which takes no slot. */
@@ -68,12 +72,27 @@ object CardSlots:
           siteSlots(catalog, ready, player, card, rules) ++
           faceup(player, card, origin, rules) ++
           facedown(player, card, origin, rules)
-        candidates.flatMap { (option, placement) =>
+        limited(candidates.flatMap { (option, placement) =>
           judge(catalog, ready, actor, option, CardPlay.operations(catalog,
             ready, actor, card, placement, origin), picked)
             .map(CardSlot(_, placement))
-        }
+        }, rules)
     }
+
+  /** `slots` under the placement limits of `rules`: a play a limit
+    * refuses is shown unavailable with that limit's reason. When the
+    * limits leave no play open, the discard pile stays as it was, since
+    * a card that cannot be played is discarded. */
+  private def limited(slots: Vector[CardSlot], rules: CardPlayRules)
+      : Vector[CardSlot] =
+    val marked = slots.map(slot => rules.refusal(slot.placement)
+      .filter(_ => slot.option.available).fold(slot)(reason =>
+        slot.copy(option = DecisionOption.Unavailable(slot.option,
+          reason))))
+    if marked.exists(_.option.available) then marked
+    else marked.zip(slots).map((after, before) =>
+      if before.placement == SearchPlacement.Discard then before
+      else after)
 
   /** The site discard permissions of `actor`'s play of `card`: the Homeland
     * rule's first, when the actor's site is the Homeland of the card's suit,

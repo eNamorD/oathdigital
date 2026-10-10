@@ -24,6 +24,12 @@ object AdviserFace:
 final case class AdviserPlayNote(reason: OptionReason,
     applies: (Vector[AdviserFace], AdviserFace) => Boolean)
 
+/** A limit on where a card may be played: the placements it `allows`,
+  * and the `reason` every other play is refused (Land Warden's "one card
+  * must go to a site"). */
+final case class PlacementLimit(reason: OptionReason,
+    allows: SearchPlacement => Boolean)
+
 /** The rules a card play is planned under. A power changes them through the
   * `SearchPlayAdviser` window, and card play reads nothing else, so the play
   * never names a power.
@@ -46,9 +52,13 @@ final case class AdviserPlayNote(reason: OptionReason,
   *    suit (`homeland`).
   *  - `adviserNotes` are the notes an adviser play may carry. The first
   *    that applies to the advisers after the play wins.
+  *  - `placementLimits` are limits on where the card may go. A play one
+  *    refuses is shown unavailable with its reason. When the limits
+  *    leave no play, the discard pile stays open: a card that cannot be
+  *    played is discarded.
   *
   * Every change lowers or lifts a limit, exempts a face, or adds a
-  * permission or a note, so contributions compose in any order. Only the
+  * permission, a note or a placement limit, so contributions compose in any order. Only the
   * notes keep their order, and no two powers note the same play.
   */
 final case class CardPlayRules(
@@ -57,7 +67,8 @@ final case class CardPlayRules(
     uncounted: Set[AdviserFace] = Set.empty,
     siteDiscards: Vector[DiscardPermission] = Vector.empty,
     lifts: Set[CardId] = Set.empty,
-    adviserNotes: Vector[AdviserPlayNote] = Vector.empty):
+    adviserNotes: Vector[AdviserPlayNote] = Vector.empty,
+    placementLimits: Vector[PlacementLimit] = Vector.empty):
 
   /** The limit over `advisers`, the advisers after a play: `adviserLimit`,
     * or none while a card that lifts it is faceup, lowered by each faceup
@@ -107,6 +118,14 @@ final case class CardPlayRules(
   /** Adds one site discard. */
   def permitSiteDiscard(permission: DiscardPermission): CardPlayRules =
     copy(siteDiscards = siteDiscards :+ permission)
+
+  /** Adds a limit on where the card may be played. */
+  def limitPlacements(limit: PlacementLimit): CardPlayRules =
+    copy(placementLimits = placementLimits :+ limit)
+
+  /** The reason of the first limit that refuses `placement`. */
+  def refusal(placement: SearchPlacement): Option[OptionReason] =
+    placementLimits.find(!_.allows(placement)).map(_.reason)
 
 object CardPlayRules:
   val DefaultAdviserLimit: Int = 3
