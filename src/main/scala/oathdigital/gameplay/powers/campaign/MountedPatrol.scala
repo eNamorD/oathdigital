@@ -37,9 +37,8 @@ final case class MountedPatrol private (catalog: ExecutableCatalog)
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Mounted Patrol: halve the attack pool", Vector.empty, Vector.empty))
 
-  override def wrapping
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignAttackRoll -> ((_, children) => Vector(
+  override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
+    PowerWindow.CampaignAttackRoll -> ((_, _, children) => Vector(
       MountedPatrol.halve,
       Note(id, states => Some(MountedPatrol.halved(PowerSourceRef.Card(cardId),
         NoteArg.Number(MountedPatrol.pool(states.now)))))) ++ children))

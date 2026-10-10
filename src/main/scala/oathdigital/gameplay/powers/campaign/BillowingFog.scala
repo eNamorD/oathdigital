@@ -36,10 +36,9 @@ case object BillowingFog extends BattlePlan:
       "Billowing Fog: if defeated, kill no warbands in your force",
       Vector(CampaignPlanCost.Secret(BillowingFog.Secret)), Vector.empty))
 
-  override def wrapping
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignLosses -> ((use, losses) =>
-      SparedForce.spare(id, cardId, use, losses)))
+  override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
+    PowerWindow.CampaignLosses -> ((ctx, use, losses) =>
+      SparedForce.spare(ctx, id, cardId, use, losses)))
 
   override def ignores(ctx: PowerCtx, other: ContributingPower): Boolean =
     SparedForce.ignores(ctx, this, other)

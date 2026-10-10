@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
@@ -78,8 +79,7 @@ case object Hospital extends BattlePlan:
         "Hospital: save your warbands that would be killed", Vector.empty,
         Vector.empty))
 
-  override def wrapping
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
+  override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
     PowerWindow.CampaignPlanApplication -> counted(returns = false),
     PowerWindow.CampaignLosses -> counted(returns = true))
 
@@ -92,11 +92,11 @@ case object Hospital extends BattlePlan:
   /** A window's children, with each kill of the user's warbands counted.
     * `returns` says whether the window can hand back a Conquest defender's
     * half, which only the losses do. */
-  private def counted(returns: Boolean)(use: PlanUse,
+  private def counted(returns: Boolean)(ctx: PowerCtx, use: PlanUse,
       children: Vector[Operation]): Vector[Operation] = (for
     user <- use.user
     kind <- PlayerFacts.forceKind(use.ready, user).toOption
-  yield LossRewrite.counted(Hospital.Saved, kind, Some(user), returns)(
+  yield LossRewrite.counted(Hospital.Saved, kind, Some(user), returns)(ctx,
     children)).getOrElse(children)
 
   /** How many saved warbands the placement moves to Hospital's site: none

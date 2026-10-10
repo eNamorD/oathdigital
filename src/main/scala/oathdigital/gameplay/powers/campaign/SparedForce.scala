@@ -47,7 +47,7 @@ private[campaign] object SparedForce:
 
   /** The losses without the defeat's toll on the user's force, then the
     * line. Read when the losses window is folded, before the losses run. */
-  def spare(power: PowerId, card: DenizenId, use: PlanUse,
+  def spare(ctx: PowerCtx, power: PowerId, card: DenizenId, use: PlanUse,
       losses: Vector[Operation]): Vector[Operation] = (for
     user <- defeated(use)
     result <- use.result
@@ -62,7 +62,8 @@ private[campaign] object SparedForce:
         case CampaignKind.Raid => board(use.ready, user) / 2
     val line = Note(power, _ => Option.when(cancelled > 0)(
       SparedForce.spared(PowerSourceRef.Card(card), NoteArg.Player(user))))
-    LossRewrite(losses)(kept(use.side, user, kind, result, atTargets)) :+ line
+    LossRewrite(ctx, losses)(kept(use.side, user, kind, result,
+      atTargets)) :+ line
   ).getOrElse(losses)
 
   /** The plan's user, when they are a player and were defeated. */

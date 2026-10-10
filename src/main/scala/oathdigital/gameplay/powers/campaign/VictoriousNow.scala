@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
+import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
 
 /** "You're victorious now" (Peace Envoy; Hearts and Minds can reuse it):
@@ -14,22 +15,21 @@ import oathdigital.model._
   * function of its answers. The plan's losses are its own.
   */
 private[campaign] object VictoriousNow:
-  def wrapping(line: PlanUse => Note)
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] =
+  def wrapping(line: PlanUse => Note): Map[PowerWindow, BattlePlan.Wrap] =
     Map(
       PowerWindow.CampaignAttackRoll -> unrolled,
       PowerWindow.CampaignSacrificeSelection -> unrolled,
       PowerWindow.CampaignDefenseRoll -> unrolled,
-      PowerWindow.CampaignAfterOutcome -> ((use, children) =>
-        recorded(use.side, children) :+ line(use)))
+      PowerWindow.CampaignAfterOutcome -> ((ctx, use, children) =>
+        recorded(ctx, use.side, children) :+ line(use)))
 
-  private val unrolled: (PlanUse, Vector[Operation]) => Vector[Operation] =
-    (_, _) => Vector.empty
+  private val unrolled: BattlePlan.Wrap = (_, _, _) => Vector.empty
 
   /** `children`, with the recorded result won by `winner`'s side. */
-  private def recorded(winner: CampaignPlanSide, children: Vector[Operation])
-      : Vector[Operation] = LossRewrite(children) {
-    case RecordCampaignResult(result) => Vector(RecordCampaignResult(
-      result.copy(attackerWins = winner == CampaignPlanSide.Attacker)))
-    case other => Vector(other)
-  }
+  private def recorded(ctx: PowerCtx, winner: CampaignPlanSide,
+      children: Vector[Operation]): Vector[Operation] =
+    LossRewrite(ctx, children) {
+      case RecordCampaignResult(result) => Vector(RecordCampaignResult(
+        result.copy(attackerWins = winner == CampaignPlanSide.Attacker)))
+      case other => Vector(other)
+    }

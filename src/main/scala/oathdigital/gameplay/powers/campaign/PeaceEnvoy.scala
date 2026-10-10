@@ -101,10 +101,10 @@ case object PeaceEnvoy extends BattlePlan:
     val window = PowerWindow.CampaignDefenderBattlePlans
     sole.updated(window, sole.getOrElse(window, Vector.empty) :+ settled)
 
-  override def wrapping
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] =
+  override def wrapping: Map[PowerWindow, BattlePlan.Wrap] =
     VictoriousNow.wrapping(victory).updated(PowerWindow.CampaignLosses,
-      (use: PlanUse, losses: Vector[Operation]) => spared(use, losses))
+      (ctx: PowerCtx, use: PlanUse, losses: Vector[Operation]) =>
+        spared(ctx, use, losses))
 
   /** The victory's line. A defender is named. */
   private def victory(use: PlanUse): Note = Note(id, _ => {
@@ -120,12 +120,12 @@ case object PeaceEnvoy extends BattlePlan:
     * them, so the victor can place warbands, but all of them return to the
     * defender's board, not half. Read when the losses window is folded,
     * before the losses run. */
-  private def spared(use: PlanUse, losses: Vector[Operation])
-      : Vector[Operation] =
+  private def spared(ctx: PowerCtx, use: PlanUse,
+      losses: Vector[Operation]): Vector[Operation] =
     val atTargets = use.result.fold(0)(result => result.targetSites
       .flatMap(use.ready.game.current.map.sites.get).map(_.forces).collect {
         case SiteForces.Occupied(_, count) => count }.sum)
-    LossRewrite(losses) {
+    LossRewrite(ctx, losses) {
       case Kill(Piece.Warbands(_, _),
           PositionedLocation(Location.PlayArea(_), _)) => Vector.empty
       case move @ Move(Piece.Warbands(kind, _),

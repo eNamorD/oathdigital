@@ -1,11 +1,12 @@
 package oathdigital.gameplay.powers.campaign
 
+import oathdigital.gameplay.powerresolver.{OperationRewrite, PowerCtx}
 import oathdigital.model._
 
 /** The core operations a Campaign window's children produce, rewritten one
-  * at a time (R3, from Hospital's private tally). It reaches through
-  * `BuildOps`, `Sequence` and `Branch`, the only nodes the plan application
-  * and losses windows hold, and leaves every other node as it is.
+  * at a time (R3, from Hospital's private tally) through
+  * `OperationRewrite.ops`, which reaches inside the closures that build
+  * them and leaves alone any node with a window of its own.
   *
   * Billowing Fog, Traveling Doctor and Peace Envoy rewrite the losses with
   * it, and `VictoriousNow` the recorded result. `counted` is the shared loss
@@ -13,9 +14,10 @@ import oathdigital.model._
   * enemy's.
   */
 private[campaign] object LossRewrite:
-  def apply(children: Vector[Operation])(
+  def apply(ctx: PowerCtx, children: Vector[Operation])(
       f: CoreOperation => Vector[CoreOperation]): Vector[Operation] =
-    children.map(rewrite(_, f))
+    OperationRewrite.ops(ctx, children)((_, _) => { case operation =>
+      f(operation) })
 
   /** `children`, with each kill of `owner`'s warbands of force `kind` counted
     * in `pool`, a pool that is never rolled or shown and that the walker
@@ -28,8 +30,9 @@ private[campaign] object LossRewrite:
     * kills always execute in full because they read the board they kill
     * from. */
   def counted(pool: PoolKey, kind: ForceKind, owner: Option[PlayerId],
-      returns: Boolean)(children: Vector[Operation]): Vector[Operation] =
-    apply(children) {
+      returns: Boolean)(ctx: PowerCtx, children: Vector[Operation])
+      : Vector[Operation] =
+    apply(ctx, children) {
       case kill @ Kill(Piece.Warbands(`kind`, count), _) =>
         Vector(kill, ModifyDicePool(pool, count))
       case sacrifice @ Sacrifice(player, Piece.Warbands(`kind`, count), _)
@@ -42,16 +45,3 @@ private[campaign] object LossRewrite:
         Vector(move, ModifyDicePool(pool, -count))
       case other => Vector(other)
     }
-
-  private def rewrite(operation: Operation,
-      f: CoreOperation => Vector[CoreOperation]): Operation = operation match
-    case ops: BuildOps => ops.copy(build = (ready, pending) =>
-      ops.build(ready, pending).map(_.flatMap(f)))
-    case sequence: Sequence =>
-      sequence.copy(children = sequence.children.map(rewrite(_, f)))
-    case branch: Branch => Branch((ready, pending) =>
-      branch.select(ready, pending).map(rewrite(_, f)))
-    case core: CoreOperation => f(core) match
-      case Vector(same) => same
-      case several => Sequence(several)
-    case other => other

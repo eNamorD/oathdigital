@@ -45,9 +45,8 @@ case object ShieldWall extends BattlePlan:
       Vector(CampaignPlanCost.Favor(ShieldWall.Favor)),
       Vector(CampaignPlanEffect.AddDefenseDice(ShieldWall.Dice))))
 
-  override def wrapping
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignLosses -> ((use, losses) => (for
+  override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
+    PowerWindow.CampaignLosses -> ((_, use, losses) => (for
       user <- use.user
       result <- use.result
       if use.won.contains(false)

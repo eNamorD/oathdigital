@@ -39,10 +39,9 @@ final case class TravelingDoctor private (catalog: ExecutableCatalog)
       "Traveling Doctor: if defeated, kill no warbands in your force, then " +
         "discard it", Vector.empty, Vector.empty))
 
-  override def wrapping
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignLosses -> ((use, losses) =>
-      SparedForce.spare(id, cardId, use, losses)))
+  override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
+    PowerWindow.CampaignLosses -> ((ctx, use, losses) =>
+      SparedForce.spare(ctx, id, cardId, use, losses)))
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>

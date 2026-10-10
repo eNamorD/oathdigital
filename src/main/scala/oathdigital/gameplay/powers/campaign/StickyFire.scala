@@ -68,9 +68,8 @@ case object StickyFire extends BattlePlan:
       "Sticky Fire: kill the enemy's force if victorious", Vector.empty,
       Vector.empty))
 
-  override def wrapping
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignLosses -> ((use, losses) => (for
+  override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
+    PowerWindow.CampaignLosses -> ((_, use, losses) => (for
       user <- use.user
       result <- use.result
       if use.won.contains(true)

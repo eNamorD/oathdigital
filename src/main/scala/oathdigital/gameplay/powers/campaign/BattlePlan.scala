@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  FoldPhase, Offer, OptionRestriction, Transform}
+  FoldPhase, Offer, OptionRestriction, PowerCtx, Transform}
 import oathdigital.model._
 
 /** A power that offers a Campaign battle plan. It is chosen at the plan step,
@@ -44,11 +44,12 @@ trait BattlePlan extends ContributingPower:
   /** What a used plan adds at a later window. */
   def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map.empty
   /** What a used plan does to a later window's children, as the window is
-    * folded: it may add before them as well as after. It reads the state and
-    * answers the fold is made with, which are the same on every resume of the
-    * window, so it must not read what the window's own children change.
+    * folded, given the fold's context: it may add before them as well as
+    * after. It reads the state and answers the fold is made with, which are
+    * the same on every resume of the window, so it must not read what the
+    * window's own children change.
     */
-  def wrapping: Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] =
+  def wrapping: Map[PowerWindow, BattlePlan.Wrap] =
     Map.empty
   /** The options this plan's power forbids at a window. */
   def restrictions: Map[PowerWindow, Vector[OptionRestriction]] = Map.empty
@@ -73,7 +74,8 @@ trait BattlePlan extends ContributingPower:
       case (window, wrap) => window -> Vector[Contribution](Transform(
         (ctx, children) => PlanUse.chosen(ctx.state, PendingTree(ctx.nodePath,
           ctx.answered), ctx.activePlayer, cardRef, sides,
-          BattlePlan.outcomeKnown(window)).fold(children)(wrap(_, children))))
+          BattlePlan.outcomeKnown(window)).fold(children)(
+            wrap(ctx, _, children))))
     (offers.keySet ++ afterwards.keySet ++ around.keySet ++ rewrites.keySet ++
       restrictions.keySet).map(window =>
       window -> (offers.getOrElse(window, Vector.empty) ++
@@ -83,6 +85,10 @@ trait BattlePlan extends ContributingPower:
         restrictions.getOrElse(window, Vector.empty))).toMap
 
 object BattlePlan:
+  /** A plan's `wrapping` of a window: the fold's context, the plan's use and
+    * the window's children. */
+  type Wrap = (PowerCtx, PlanUse, Vector[Operation]) => Vector[Operation]
+
   def windowOf(side: CampaignPlanSide): PowerWindow = side match
     case CampaignPlanSide.Attacker => PowerWindow.CampaignAttackerBattlePlans
     case CampaignPlanSide.Defender => PowerWindow.CampaignDefenderBattlePlans

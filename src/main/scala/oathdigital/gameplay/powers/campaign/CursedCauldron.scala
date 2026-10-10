@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{PrintedPower, Relic}
+import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
 
@@ -57,14 +58,14 @@ case object CursedCauldron extends BattlePlan:
       "Cursed Cauldron: gain a warband per enemy warband killed if victorious",
       Vector.empty, Vector.empty))
 
-  override def wrapping
-      : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignPlanApplication -> ((use, children) =>
-      counted(use, children, returns = false)),
-    PowerWindow.CampaignLosses -> ((use, losses) => (for
+  override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
+    PowerWindow.CampaignPlanApplication -> ((ctx, use, children) =>
+      counted(ctx, use, children, returns = false)),
+    PowerWindow.CampaignLosses -> ((ctx, use, losses) => (for
       user <- use.user
       if use.won.contains(true)
-    yield counted(use, losses, returns = true) ++ Vector(gain(use, user),
+    yield counted(ctx, use, losses, returns = true) ++ Vector(
+      gain(use, user),
       Note(id, NoteSupport.gainNote(CursedCauldron.gained, cardRef, user,
         NoteUnit.Warband, NoteSupport.warbands)))).getOrElse(losses)))
 
@@ -84,12 +85,13 @@ case object CursedCauldron extends BattlePlan:
       PlayerFacts.forceKind(ready, player).toOption
     case CampaignDefender.Bandits => Some(ForceKind.Bandit)
 
-  private def counted(use: PlanUse, children: Vector[Operation],
-      returns: Boolean): Vector[Operation] = (for
-    foe <- enemy(use)
-    kind <- forceOf(use.ready, foe)
-  yield LossRewrite.counted(CursedCauldron.Died, kind, playerOf(foe),
-    returns)(children)).getOrElse(children)
+  private def counted(ctx: PowerCtx, use: PlanUse,
+      children: Vector[Operation], returns: Boolean): Vector[Operation] =
+    (for
+      foe <- enemy(use)
+      kind <- forceOf(use.ready, foe)
+    yield LossRewrite.counted(CursedCauldron.Died, kind, playerOf(foe),
+      returns)(ctx, children)).getOrElse(children)
 
   /** The count, less what the enemy's Hospital will place, as warbands for
     * `user`. */
