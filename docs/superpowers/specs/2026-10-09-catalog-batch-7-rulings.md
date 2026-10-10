@@ -119,7 +119,8 @@
   and kills one warband on the attacker's board, not in the committed force.
   The committed force stays on the board until the losses, so with no
   warband beyond it, nothing dies and no line is written. A bandit
-  defender applies it at a site it rules. Line: "Bear Traps: Killed 1 warband on Blue's board."
+  defender applies it at a site it rules. Line: "Bear Traps: Killed 1
+  warband on Blue's board."
 - **217 Signal Trees.** A battle plan for either side, costing one secret.
   - Its offer shows no dice change, since the cards it reads are hidden. The
     preview reads "±2 [attack-die] per revealed Beast".
