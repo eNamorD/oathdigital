@@ -31,7 +31,7 @@ final case class SpecialEnvoy private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      SupplyStrip(ctx.activePlayer, operations) ++ Vector(
+      SupplyStrip(ctx, ctx.activePlayer, operations) ++ Vector(
         EnterPhase(Phase.Rest),
         Note(id, _ => Some(SpecialEnvoy.ended(
           PowerSourceRef.Card(cardId))))))))

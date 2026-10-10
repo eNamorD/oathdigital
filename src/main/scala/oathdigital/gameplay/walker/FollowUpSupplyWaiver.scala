@@ -38,7 +38,8 @@ object FollowUpSupplyWaiver extends ContributingPower:
   lazy val contributions: Map[PowerWindow, Vector[Contribution]] =
     windows.map(window => window -> Vector[Contribution](Transform(
       (ctx, operations) => ctx.state.game.current.walkerFollowUp
-        .fold(operations)(entry => SupplyStrip(entry.player, operations)))))
+        .fold(operations)(entry =>
+          SupplyStrip(ctx, entry.player, operations)))))
       .toMap
 
   override def applicable(ctx: PowerCtx): Boolean =

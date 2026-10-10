@@ -48,7 +48,7 @@ final case class WayStation private (catalog: ExecutableCatalog)
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
       arriving(ctx).fold(operations)((traveller, ruler) =>
-        rewrite(ctx.state, traveller, ruler, operations)))))
+        rewrite(ctx, traveller, ruler, operations)))))
 
   override def applicable(ctx: PowerCtx): Boolean = arriving(ctx).nonEmpty
 
@@ -60,16 +60,16 @@ final case class WayStation private (catalog: ExecutableCatalog)
     ruler <- SiteRulers.rulerOfCard(ctx.state, cardId)
   yield (route.player, ruler)
 
-  private def rewrite(ready: ReadyGame, traveller: PlayerId, ruler: SiteRuler,
+  private def rewrite(ctx: PowerCtx, traveller: PlayerId, ruler: SiteRuler,
       operations: Vector[Operation]): Vector[Operation] =
     val payment = operations.collect {
       case spend @ SpendSupply(player, _, _) if player == traveller => spend }
     val supply = payment.map(_.amount).sum
-    val board = ready.game.current.players.find(_.player == traveller)
+    val board = ctx.state.game.current.players.find(_.player == traveller)
       .map(_.board)
+    val stripped = SupplyStrip(ctx, traveller, operations)
     if supply == 0 then operations
-    else if ruler == SiteRuler.Player(traveller) then
-      SupplyStrip(traveller, operations)
+    else if ruler == SiteRuler.Player(traveller) then stripped
     else if !board.exists(_.favor >= WayStation.favorOwed(operations, traveller) +
         WayStation.Favor) then operations
     else
@@ -84,7 +84,7 @@ final case class WayStation private (catalog: ExecutableCatalog)
         Decide(WayStation.decisionId, traveller, DecisionQuery.ChooseOne(
           options, heading = Some("Way Station: spend no Supply?")),
           presentation = DecisionPresentation.Panel)) ++
-        TravelRoute.beforeMove(SupplyStrip(traveller, operations), Vector(
+        TravelRoute.beforeMove(stripped, Vector(
           Branch((_, pending) =>
             PowerAnswers.one(pending, WayStation.decisionId) match
               case Some(WayStation.favorOption) => Vector(

@@ -1,21 +1,19 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.model.{BuildOps, Operation, PlayerId, SpendSupply}
+import oathdigital.gameplay.powerresolver.{OperationRewrite, PowerCtx}
+import oathdigital.model.{Operation, PlayerId, SpendSupply}
 
-/** Removes `actor`'s Supply payments from a cost window's children, whether
-  * they are listed (a Campaign's, a Travel's) or built when the node runs (a
-  * Search's `BuildOps`, re-wrapped to filter what it builds). Everything else
-  * stays: a Travel's cost window also holds its pawn move. `SpendSupply`
-  * cannot be zero, so a waived payment is removed, not set to nothing.
+/** Removes `actor`'s Supply payments from a cost window's children, wherever
+  * the window holds them (operation rewrite design): listed (a Campaign's, a
+  * Travel's), selected by a `Branch`, or built when a node runs (a Search's
+  * `BuildOps`, or a waiver's). Everything else stays: a Travel's cost window
+  * also holds its pawn move. `SpendSupply` cannot be zero, so a waived
+  * payment is removed, not set to nothing; in the tree an empty `Sequence`
+  * keeps its place.
   */
 object SupplyStrip:
-  def apply(actor: PlayerId, operations: Vector[Operation]): Vector[Operation] =
-    operations.flatMap {
+  def apply(ctx: PowerCtx, actor: PlayerId, operations: Vector[Operation])
+      : Vector[Operation] =
+    OperationRewrite.ops(ctx, operations)((_, _) => {
       case SpendSupply(player, _, _) if player == actor => Vector.empty
-      case payment: BuildOps => Vector(payment.copy(build = (ready, pending) =>
-        payment.build(ready, pending).map(_.filterNot {
-          case SpendSupply(player, _, _) => player == actor
-          case _ => false
-        })))
-      case other => Vector(other)
-    }
+    })

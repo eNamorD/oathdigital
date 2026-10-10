@@ -33,7 +33,7 @@ final case class AFastSteed private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
       if fewWarbands(ctx.state, ctx.activePlayer) then
-        SupplyStrip(ctx.activePlayer, operations)
+        SupplyStrip(ctx, ctx.activePlayer, operations)
       else operations)))
 
   override def appliesAt(ctx: PowerCtx): Boolean =
