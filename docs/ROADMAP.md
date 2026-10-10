@@ -126,6 +126,21 @@ Mounts moves onto it and `PlanDiscard.Marked` goes
 - [ ] Slice 2: the hand-written matchers move onto it, and the priority
   review. Starts after catalog batch 6 slice 4 and consent slice 4.
 
+### Phase - Walker-driven game loop
+
+The walker keeps a queue of procedures, each run as its own walk. When the
+queue is empty, it runs the action boundary and the phase hooks, then starts
+the phase's menu, a decision over everything the player may do now. Phase
+powers join their menu, follow-ups become queued offers, and the start
+commands, `LegalActionProjector`'s controls and the glue in `OathRules` go
+([design](superpowers/specs/2026-10-09-walker-game-loop-design.md)).
+
+- [ ] Slice 1: the queue and the driver, with every empty-queue hook.
+- [ ] Slice 2: the Wake and Rest menus.
+- [ ] Slice 3: the three legacy minor actions on the walker.
+- [ ] Slice 4: the Act menu and its frontend panel.
+- [ ] Slice 5: the cleanup.
+
 ### Phase - Catalog batch - engine-blocked
 
 Cards that need an engine change first, grouped by the missing mechanism.
@@ -359,7 +374,9 @@ one.
   offered when the action could start with no modifier, with any one
   selectable modifier, or with all of them together
   (`ModifierOffers.selections`). A start that needs two modifiers but not a
-  third is not found.
+  third is not found. The Act menu of the
+  [walker-driven game loop](superpowers/specs/2026-10-09-walker-game-loop-design.md)
+  replaces the heuristic with an exact dry run (its slice 4).
 - [ ] **The Grand Council and Festival banner faces.** They are listed
   as synthetic ids in the reviewed catalog and have no behaviour.
 - [ ] **Mercenaries' player-chosen sign.** Mercenaries adds attack dice
