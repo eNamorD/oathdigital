@@ -1,7 +1,8 @@
 # Catalog Batch 7: Campaign Dice
 
-**Status:** designed 2026-10-09. No slice is planned yet. The per-card
-rulings are in [the rulings appendix](2026-10-09-catalog-batch-7-rulings.md).
+**Status:** designed 2026-10-09. Slice 1 is planned; its plan-time rulings
+are under "Slice 1". The per-card rulings are in
+[the rulings appendix](2026-10-09-catalog-batch-7-rulings.md).
 
 **Builds on** [Catalog batch 4](2026-10-05-catalog-batch-4-design.md),
 [Catalog batch 5](2026-10-08-catalog-batch-5-design.md) and
@@ -37,14 +38,18 @@ Slice 2 needs slice 1. Slices 3 and 4 need neither and may run beside them.
 The approved changes outside `gameplay/powers/`:
 
 - **A roll step with rerolls** (slice 1). `RollStep` builds a `Roll`
-  followed by a `RerollChoice`, an `OfferHost` at a new
-  `PowerWindow.Reroll`. All six roll sites use it: the Campaign's attack and
-  defense rolls, Recover, Gambling Hall, Relic Thief, Bone Dice and Murky
-  Fountain.
-- **A reroll operation** (slice 1). `Reroll(pool, indices)` replaces the
-  faces at `indices` in the pool's `RollOutcome` with faces from the dice
-  source, re-deriving the skulls and the score. The journal records the new
-  faces, and replay applies them, as it does an automatic roll's.
+  followed by a `Repeat` of `RerollChoice` passes. A `RerollChoice` is a
+  `RerollHost` at a new `PowerWindow.Reroll`: the reroll counterpart of the
+  battle-plan `OfferHost`, fed by the powers' `OfferReroll` contributions
+  and reading the same `OfferHost.Pass`. All six roll sites use it: the
+  Campaign's attack and defense rolls, Recover, Gambling Hall, Relic Thief,
+  Bone Dice and Murky Fountain.
+- **A reroll operation** (slice 1). `Reroll(pool, indices, faces)`
+  replaces the faces at `indices` in the pool's `RollOutcome`, re-deriving
+  the skulls and the score. A tree declares it without faces; the walker
+  fills them from its dice source, as it fills a `Shuffle`'s order, so the
+  journal records them and replay applies them. It is a hidden outcome: the
+  legality search stops at it, and undo does not take it back.
 - **A fixed-faces operation** (slice 3). `SetDieFaces(pool, faces)` appends
   `faces` to the pool's outcome and lowers the pool's count by as many, so
   the roll that follows rolls only the rest.
@@ -118,6 +123,28 @@ pool and the roll, so Recover's repeated rolls each get their own.
   hollow sword to reroll.
 
 The two may both reroll one roll, in either order.
+
+### Plan-time rulings
+
+- **The throw.** A throw is the last faces of the pool's outcome, as many
+  as the pool holds dice. The reroll decision's id is `{pool}.reroll.{n}`,
+  where `n` counts the pool's throws so far (`campaign.attack.reroll.1`,
+  `recover.reroll.3`). Its heading reads "Reroll the attack dice, or keep
+  the roll" ("the defense dice" for a defense roll), and its button "Keep
+  the roll". A parked reroll decision shows its pool's dice.
+- **What is asked.** The roller is asked only when some offer is usable.
+  An unusable offer, such as Jinx without a secret ("Needs 1 secret; you
+  have 0"), is shown unavailable when the decision is asked for another.
+- **Master at Arms asks how many.** Every hollow sword is the same face,
+  so it asks "Reroll how many hollow swords?", from one to all of them, and
+  rerolls the first that many. With one hollow sword it asks nothing. On a
+  throw with none it is shown unavailable: "No die shows a hollow sword".
+- **Jinx needs a faceup card**: a faceup adviser of the roller, or a card
+  faceup at a site the roller rules.
+- **The Game Log.** The roll's own line is shown before the roller decides.
+  Each reroll writes its power's line, then a roll line restating the whole
+  throw: "Rolled {faces} for the attack". The reroll decisions write no
+  line.
 
 ## Slice 2: Recover rerolls
 
