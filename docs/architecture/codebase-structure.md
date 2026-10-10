@@ -122,6 +122,6 @@ in `PendingProjector`. Keep one scope/redaction decision in
 
 Add the domain event in `model` (`GameEventProtocol.scala`), evolution in its owning module, and
 one explicit discriminator/payload case in the appropriate split event codec
-(`LifecycleEventCodec`, `ActionEventCodec`, or
-`EndingEventCodec`). `GameEventWire` owns the single current envelope.
+(`LifecycleEventCodec`, `EndingEventCodec`, or
+another split codec). `GameEventWire` owns the single current envelope.
 Update replay and malformed-wire tests; do not serialize Scala class names.

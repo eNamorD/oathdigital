@@ -35,7 +35,7 @@ oathdigital/gameplay/
     campaign/              (CampaignProcedure, CampaignSetup, CampaignPlans,
                             CampaignPlanSteps, CampaignBattle, CampaignConquest,
                             CampaignRaid, CampaignOutcome)
-    MinorActions.scala
+    minor/                 (MinorActionProcedures)
     negotiation/           (NegotiationDeal, NegotiationProcedure)
     Visions.scala
   operations/

@@ -27,7 +27,6 @@ atomic expected-position append.
 for setup and gameplay. It delegates explicit payload cases to cohesive codecs:
 
 - `LifecycleEventCodec` for setup, Wake, Rest, and lifecycle facts;
-- `ActionEventCodec` for ordinary actions and pending decisions;
 - `EndingEventCodec` for title, Vision, round, and victory facts.
 
 Readers reject unknown discriminators, malformed values,

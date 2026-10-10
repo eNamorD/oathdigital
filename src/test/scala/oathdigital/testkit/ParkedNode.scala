@@ -34,7 +34,7 @@ enum ParkedNode:
 object ParkedNode:
   /** `None` exactly when nothing is parked: the state is not `Ready`, or it
     * is and `walkerPending` is empty -- the same fact `WalkerCompleted`
-    * clears alongside `walkerProcedure` and `OathRules.unlessWalkerPending`
+    * clears alongside `walkerProcedure` and `startWalker`
     * reads to mean "no walker is pending". Anything else that keeps this
     * from explaining the park -- a rebuild failure, a position resolving to
     * neither a `Decide` nor a `Roll`, a Roll park whose procedure declares

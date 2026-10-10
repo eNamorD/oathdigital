@@ -126,7 +126,7 @@ commands, `LegalActionProjector`'s controls and the glue in `OathRules` go
 
 - [x] Slice 1: the queue and the driver, with every empty-queue hook.
 - [x] Slice 2: the Wake and Rest menus.
-- [ ] Slice 3: the three legacy minor actions on the walker.
+- [x] Slice 3: the three legacy minor actions on the walker.
 - [ ] Slice 4: the Act menu and its frontend panel.
 - [ ] Slice 5: the cleanup.
 

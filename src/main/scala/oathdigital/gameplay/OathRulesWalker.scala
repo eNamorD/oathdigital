@@ -16,9 +16,8 @@ import oathdigital.model.OathViolation._
   * This is the whole of what a client can do to a walker procedure --
   * `startWalker`, `resolveWalker`, `rollWalkerPrepared` and the power and
   * park plumbing they share -- held in one file so `OathRules` can keep
-  * carrying the legacy per-action `handle` methods and the turn/phase
-  * plumbing without either half crowding the other out. Every method below
-  * moved here unchanged; the abstract members are exactly what that block
+  * carrying the turn/phase plumbing without either half crowding the other
+  * out. Every method below moved here unchanged; the abstract members are exactly what that block
   * reaches for on the class it is mixed into.
   */
 private[gameplay] trait OathRulesWalker:
@@ -96,7 +95,7 @@ private[gameplay] trait OathRulesWalker:
   /** Starts a procedure the engine triggers, with no client command
     * (walker-ownership spec, Triggered procedures).
     *
-    * Strictly sequential: a walker or legacy procedure already pending is a
+    * Strictly sequential: a walker procedure already pending is a
     * typed rejection rather than a nested start. The procedure's events are
     * appended to `transition`, so whatever handed it on and the procedure
     * journal as one command.
