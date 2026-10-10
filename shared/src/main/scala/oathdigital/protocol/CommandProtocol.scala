@@ -93,4 +93,3 @@ object ActorlessCommandCodec:
       : Either[ProtocolDecodeFailure, Unit] =
     obj.value.keys.find(key => !expected.contains(key))
       .map(key => Left(UnexpectedField(s"$path.$key"))).getOrElse(Right(()))
-

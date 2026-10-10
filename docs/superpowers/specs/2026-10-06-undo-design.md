@@ -119,8 +119,10 @@ Consequences the playtest should expect:
    Battle Cry". A batch with no line of its own falls back to "Undo your last
    step" ("Redo your last step").
 4. There is no keyboard shortcut.
-5. The client-side modifier flow's Back and Cancel stay as they are. They
-   discard drafts that were never sent and are not undo.
+5. The client-side modifier flow, with its Back and Cancel, is gone. An
+   action asks for its modifiers inside the walk, so Undo takes back a
+   modifier pick like any other answer
+   ([modifier walker design](2026-10-09-modifier-walker-design.md)).
 
 ## Architecture
 

@@ -57,9 +57,8 @@ unknown vocabulary remains an error.
 | When Played | Existing placement restrictions and favor movement | Reviewed triggers record diagnostics instead of blocking play |
 
 `gameplay/powers`, `PowerRegistry`, `PowerResolver`, `PowerRuntime`, application
-preview/command mapping, lifecycle event codec, server routes, and
-`frontend/ModifierSelectionState.scala` are the
-implementation evidence. Focused gameplay, wire, application replay,
+command mapping, lifecycle event codec, server routes and the walker's modifier
+decision (`ModifierChoice`) are the implementation evidence. Focused gameplay, wire, application replay,
 authenticated/development route, and Scala.js suites cover classification,
 ordering, stale revalidation, redaction, draft clearing, and replay tampering.
 `GameApplicationServiceStreamSuite` additionally completes an all-Exile powered game

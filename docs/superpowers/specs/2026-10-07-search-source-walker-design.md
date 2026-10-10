@@ -47,12 +47,11 @@ selection.
 
 ## Rulings
 
-1. **Modifiers stay before the start.** `StartWalker("search")` carries no
-   start selection; a start that names one is refused. Selected modifiers'
-   costs are paid inside the walk, after the source is picked.
-   [Modifier selection on the walker](2026-10-09-modifier-walker-design.md)
-   moved Search's modifiers into the walk in its slice 1; this ruling is
-   rewritten in its slice 4.
+1. **Modifiers are the walk's first decision.** `StartWalker("search")`
+   carries no start selection and no modifiers; a start that names a
+   selection is refused. The walk asks for its modifiers first, each paid
+   when it is picked, then for the source
+   ([modifier walker design](2026-10-09-modifier-walker-design.md)).
 2. **The source is a board decision.** The walk's first node is a board
    choose-one, `search.source`, headed "Choose a Search source". Its options
    are the world deck (`DecisionOptionRef.Deck(CardDeck.World)`, option kind
@@ -81,8 +80,9 @@ selection.
    The engine refuses a start with none (`requiresPlayableOption`). The
    control and the parked decision read the same preview.
 6. **Undo is the way back.** Undo takes back the start, as it does for
-   Travel. The ordering stage's "Back" and "Cancel action" stay. Nothing new
-   is added.
+   Travel. Undo takes back each modifier pick too. The client's ordering
+   stage, with its "Back" and "Cancel action", is gone (modifier walker
+   design).
 7. **Game Log.** The "Search" start line waits for the first step that
    records anything (a toll, a modifier's payment, the Supply or the draw),
    as Travel's does. The source pick posts no "Chose" line, since "Drew …

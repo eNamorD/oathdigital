@@ -2292,7 +2292,7 @@ If `git status --short` shows unrelated changes under `src/`, stage this task's 
 
 In `docs/superpowers/specs/2026-10-09-modifier-walker-design.md`:
 
-- The status line becomes "**Status:** designed and implemented 2026-10-09, in four slices. It is a prerequisite of slices 3 and 4 of [Catalog batch 6](2026-10-09-catalog-batch-6-design.md)."
+- The status line becomes "**Status:** designed and implemented 2026-10-09, in four slices. It is a prerequisite of slices 3 and 4 of [Catalog batch 6](../specs/2026-10-09-catalog-batch-6-design.md)."
 - After "Plan-time rulings", add:
 
 ```markdown

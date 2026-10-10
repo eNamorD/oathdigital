@@ -1,6 +1,7 @@
 # Modifier Selection on the Walker
 
-**Status:** designed 2026-10-09. It is a prerequisite of slices 3 and 4 of
+**Status:** designed and implemented 2026-10-09, in four slices. It is a
+prerequisite of slices 3 and 4 of
 [Catalog batch 6](2026-10-09-catalog-batch-6-design.md).
 
 **Amends** ruling 1 of the
@@ -137,7 +138,8 @@ By the last slice:
 - `StartWalker.modifiers`, `StartPayload.modifiers` and the dead
   `orderedModifiers` channel (`ModifierInvocation`, `WithModifiers`).
 - `OathRulesWalker.validateModifiers` and `requirePayable`, and
-  `ModifierOffers.paying`.
+  `ModifierOffers.paying` (`paying` stays as a private helper; plan-time
+  ruling 16).
 - `SelectedModifier`'s eligibility-window payment Transform. Its
   `selectionPayments` stays as the pick's payment (plan-time ruling 5).
 - `WalkerParked.modifiers` and `CurrentGameState.walkerModifiers`.
@@ -201,6 +203,29 @@ Settled while planning slice 1:
    adviser's pick.
 10. **Labels.** Search's button reads "Start Search", and the facedown-adviser
     play's reads "Play facedown adviser".
+
+Settled while planning slice 4:
+
+11. **Catacombs says why it cannot be picked.** At a site with no empty
+    relic slot it reads "This site has no empty relic slot"; with an empty
+    relic deck, "The relic deck is empty" (`offerReason`). Its eligibility
+    Transform still places the relic, and no longer pays: the pick does.
+12. **Recover's "Start" is never unavailable.** Recover prices no option,
+    and a Recover that cannot roll (no Supply) is refused at the start, as
+    before, so the decision is never asked about it. Ruling 4's generic
+    "Cannot start now" would apply if a future modifier made it ask.
+13. **The Recover tag waits for the dice.** It anchors at the step that
+    opens Recover's dice pool, the first of the Recover itself.
+14. **Old journals.** The journal stores events, not commands, so every old
+    game still loads. A park's `modifiers` key is ignored. A game finished
+    before slice 4, with modifiers chosen at its start, loses the "With …"
+    part of that start line.
+15. **The wire.** `StartWalker` has no `modifiers` key, and its decoder
+    rejects one. A stale browser gets one rejection; a reload fixes it.
+16. **What stays.** `ModifierOffers.paying` stays, private: the Act panel's
+    start controls still dry-run payments (ruling 9). The Game Log's card
+    lookup moved from `PreviewModifierDescriptions` to the log's own
+    `PrintedCards`.
 
 ## Slices
 
