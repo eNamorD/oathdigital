@@ -11,9 +11,8 @@ class SearchLaunchSuite extends munit.FunSuite:
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
   private val woods = quietSite("woods", "Deep Woods")
   private val table = TestProjections.actingProjection(players = Vector(red),
-    world = Vector(GameRegion("cradle", Vector(woods))),
-    legalControls = Vector("beginSearch"))
-    .copy(actionSelectionOpen = true, worldDeckCount = 20)
+    world = Vector(GameRegion("cradle", Vector(woods)))).copy(
+    worldDeckCount = 20)
 
   test("a pile's badge is drawn on the pile"):
     val deck = OptionView(DecisionOptionState("deck", "world", "World deck",

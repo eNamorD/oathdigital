@@ -4,31 +4,6 @@ import ProjectionCodecSupport._
 import WorldProjectionCodec.{decodeCard, encodeCard}
 
 private[projection] object ActionProjectionCodec:
-  def encodeMinor(value: MinorActionsProjection): ujson.Value = ujson.Obj(
-    "advisers" -> encoded(value.advisers)(entry => ujson.Obj(
-      "card" -> encodeCard(entry.card))),
-    "canPeekSiteRelics" -> value.canPeekSiteRelics,
-    "facedownRelics" -> encoded(value.facedownRelics)(encodeCard),
-    "siteId" -> stringOption(value.siteId), "maxBoardToSite" -> value.maxBoardToSite,
-    "maxSiteToBoard" -> value.maxSiteToBoard)
-  def decodeMinor(raw: ujson.Value, path: String): Result[MinorActionsProjection] = for
-    value <- obj(raw, path)
-    _ <- exact(value, Set("advisers", "canPeekSiteRelics", "facedownRelics",
-      "siteId", "maxBoardToSite", "maxSiteToBoard"), path)
-    adviserRaws <- array(value, "advisers", path)
-    advisers <- traverse(adviserRaws, s"$path.advisers") { (raw, child) => for
-      // A projection from before card slots also wrote each adviser's
-      // placements; they are read past, so its payload still decodes.
-      row <- obj(raw, child); _ <- exact(row, Set("card", "placements"), child)
-      cardRaw <- field(row, "card", child); card <- decodeCard(cardRaw, s"$child.card")
-    yield MinorAdviserProjection(card) }
-    peek <- bool(value, "canPeekSiteRelics", path)
-    relicRaws <- array(value, "facedownRelics", path)
-    relics <- traverse(relicRaws, s"$path.facedownRelics")(decodeCard)
-    site <- optionalString(value, "siteId", path); toSite <- int(value, "maxBoardToSite", path)
-    toBoard <- int(value, "maxSiteToBoard", path)
-  yield MinorActionsProjection(advisers, peek, relics, site, toSite, toBoard)
-
   def encodeRollOutcome(value: WalkerRollOutcomeProjection): ujson.Value = ujson.Obj(
     "pool" -> value.pool, "faces" -> encoded(value.faces)(ujson.Str(_)),
     "score" -> value.score, "target" -> intOption(value.target),
@@ -338,21 +313,6 @@ private[projection] object ActionProjectionCodec:
       ConsentProjectionCodec.decodeAsk)
   yield DecisionOptionProjection(kind, id, label, card, details, badge, state,
     reason, replaces, variant, consent)
-
-  def encodePhasePower(value: PhasePowerProjection): ujson.Value = ujson.Obj(
-    "powerId" -> value.powerId, "source" -> encodeOptionRow(value.source),
-    "name" -> value.name, "rulesText" -> value.rulesText)
-
-  def decodePhasePower(raw: ujson.Value, path: String)
-      : Result[PhasePowerProjection] = for
-    value <- obj(raw, path)
-    _ <- exact(value, Set("powerId", "source", "name", "rulesText"), path)
-    powerId <- string(value, "powerId", path)
-    source <- field(value, "source", path).flatMap(
-      decodeOptionRow(_, s"$path.source"))
-    name <- string(value, "name", path)
-    rulesText <- string(value, "rulesText", path)
-  yield PhasePowerProjection(powerId, source, name, rulesText)
 
   private def encodeTransfer(row: NegotiationTransferProjection): ujson.Value =
     ujson.Obj("authorPlayerId" -> row.authorPlayerId,

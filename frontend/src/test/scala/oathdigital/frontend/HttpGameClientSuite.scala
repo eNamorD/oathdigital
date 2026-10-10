@@ -207,7 +207,7 @@ class HttpGameClientSuite extends FunSuite:
 
   private def projectionJson(
       sequence: Long,
-      phase: String = "act-action-selection",
+      phase: String = "act",
       siteId: String = "site:001",
       ready: Boolean = false,
       completed: Boolean = false
@@ -228,7 +228,6 @@ class HttpGameClientSuite extends FunSuite:
        |{"regionId":"hinterland","sites":[${siteJson("site:006", "Sixth")},${siteJson("site:007", "Seventh")},${siteJson("site:008", "Eighth")}]}
        |],
        |"pawnLocations":[],
-       |"legalControls":[],
        |"ready":$ready,
        |"completed":$completed
        |}""".stripMargin

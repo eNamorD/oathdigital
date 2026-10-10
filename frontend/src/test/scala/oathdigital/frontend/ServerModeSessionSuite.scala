@@ -23,17 +23,15 @@ class ServerModeSessionSuite extends FunSuite:
   /** The game "my game" as the server sends it: red and blue are exiles,
     * `active` is to act at `phase`, and `viewer` is the seat the response
     * names as the one looking (none for a development session, which is
-    * named by no viewer). Nothing is legal unless `legalControls` says so.
+    * named by no viewer).
     */
   private def encodedGame(viewer: Option[String] = Some("blue"),
       active: String = "red", phase: String = "awaiting-pawn",
-      legalControls: Vector[String] = Vector.empty, ready: Boolean = false,
-      nextSequence: Long = 1L): String =
+      ready: Boolean = false, nextSequence: Long = 1L): String =
     GameProjectionCodec.encode(TestProjections.actingProjection(
       gameId = "my game", nextSequence = nextSequence, phase = phase,
       activePlayer = Some(active), players = redAndBlueExiles,
-      legalControls = legalControls, ready = ready)
-      .copy(viewerPlayerId = viewer))
+      ready = ready).copy(viewerPlayerId = viewer))
 
   /** Blue's Act menu parked, with End Act and Rest on screen, as `viewer`
     * sees it.
@@ -42,7 +40,7 @@ class ServerModeSessionSuite extends FunSuite:
       nextSequence: Long = 1L): String =
     GameProjectionCodec.encode(TestProjections.actingProjection(
       gameId = "my game", nextSequence = nextSequence,
-      phase = "act-action-selection", activePlayer = Some("blue"),
+      phase = "act", activePlayer = Some("blue"),
       players = redAndBlueExiles, ready = true).copy(viewerPlayerId = viewer,
       walkerDecision = Some(actMenu(DecisionOptionState("button", "end-act",
         "End Act and Rest")))))

@@ -19,10 +19,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
   private val walkerDecisions = new WalkerDecisionProjector(catalog,
     presentation, WalkerPowerCatalog.default(catalog),
     WalkerDecisionProjector.declaredTree, phasePowers)
-  private val phasePowerProjector = new PhasePowerProjector(catalog,
-    walkerDecisions, phasePowers)
-  private val legalActions = new LegalActionProjector(catalog, presentation,
-    walkerDecisions, phasePowerProjector)
   private val pendingProjector = new PendingProjector(catalog,
     presentation, walkerDecisions)
   private val consent = new ConsentProjector(presentation, walkerDecisions,
@@ -46,7 +42,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
   private def projectFor(gameId: String, loaded: LoadedGame,
       requestingPlayer: Option[PlayerId]): GameProjection = loaded.state match
     case NoGame => GameProjection(gameId, loaded.nextSequence, "not-started", None,
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty,
+      Vector.empty, Vector.empty, Vector.empty,
       ready = false, completed = false)
     case Ready(ready) =>
       val context = ScopedProjectionContext(ready, requestingPlayer)
@@ -78,11 +74,8 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
       context: ScopedProjectionContext): GameProjection =
     val current = context.current
     val active = context.active
-    val projectedPhasePowers = phasePowerProjector.project(context)
-    val legal = legalActions.project(context, projectedPhasePowers)
     val pending = pendingProjector.project(context)
     val site = context.activeSite
-    val controls = if current.result.nonEmpty then Vector.empty else legal.controls
 
     GameProjection(
       gameId, sequence, pending.phase, Some(current.turn.activePlayer.value),
@@ -90,7 +83,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
       presentation.readyWorld(context.ready, context.viewer),
       current.players.flatMap(player => player.pawnSite.map(site =>
         PawnLocationProjection(player.player.value, site.value))),
-      controls,
       ready = true, completed = true,
       activePlayerResources = Some({
         val secrets = PlayerSecretSummary.derive(context.ready, active.player)
@@ -103,8 +95,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
       currentSiteResources = active.pawnSite.flatMap(siteId => site.map(state =>
         CurrentSiteResourcesProjection(siteId.value, state.tokens.favor,
           state.tokens.secrets))),
-      actionSelectionOpen = current.result.isEmpty &&
-        current.turn.phase == Phase.Act && current.walkerPending.isEmpty,
       worldDeckCount = current.commonCards.worldDeck.size,
       worldDeckTopCardKind = current.commonCards.worldDeck.headOption
         .map(presentation.cardKind),
@@ -117,7 +107,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
         }, current.tracks.usurperLimited, current.result.map(_.winner.value),
         current.result.map(_.kind.key))),
       banners = presentation.banners(context.ready).filter(_.holderPlayerId.isEmpty),
-      minorActions = legal.minorActions,
       favorBanks = Suit.all.map(suit => FavorBankProjection(suit.key,
         context.ready.banks.favor.getOrElse(suit, 0))),
       tracks = Some(GameTracksProjection(current.tracks.round,
@@ -126,14 +115,8 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
       relicDeckCount = current.commonCards.relicDeck.size)
       .copy(walkerDecision = pending.walkerDecision,
         walkerWaiting = pending.walkerWaiting,
-        phasePowers = projectedPhasePowers,
         temporaryHandPreview = handPreview(context, pending.walkerDecision),
         supplyMaximum = SupplyTrack.Maximum,
-        // Only the player who can end the Act is promised a return, and the
-        // promise is dropped rather than guessed at when Rest cannot price it.
-        restSupplyGain = Option.when(controls.contains("beginRest"))(
-          FinishRestProcedure.supplyGainAtRest(context.ready, active.player)
-            .toOption).flatten,
         supplyBands = FinishRestProcedure.ExileSupply.refreshBands.map(band =>
           SupplyBandProjection(band.warbandsInBank.minimum,
             Option.when(band.warbandsInBank.maximum != Int.MaxValue)(

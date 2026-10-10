@@ -1,10 +1,5 @@
 package oathdigital.protocol.projection
 
-/** A phase power the viewer can use now: its id, the card it is used from,
-  * and the card's printed power name and rules text.
-  */
-final case class PhasePowerProjection(powerId: String,
-    source: DecisionOptionProjection, name: String, rulesText: String)
 /** The parked `Decide`'s declared question, described rather than derived.
   *
   * This is the whole of Task 4: the projector no longer discovers what to
@@ -310,12 +305,6 @@ final case class PlayerBoardProjection(
       * or Insomnia. The board draws that many adviser slots. */
     adviserLimit: Int = 3
 )
-/** A facedown adviser the player may play. Where it can go is the placement
-  * decision's to say once the play starts; discarding it is always legal. */
-final case class MinorAdviserProjection(card: CardDetailsProjection)
-final case class MinorActionsProjection(advisers: Vector[MinorAdviserProjection],
-    canPeekSiteRelics: Boolean, facedownRelics: Vector[CardDetailsProjection],
-    siteId: Option[String], maxBoardToSite: Int, maxSiteToBoard: Int)
 final case class NegotiationTransferProjection(authorPlayerId: String,
     recipientPlayerId: String, favor: Int, relicCount: Int,
     relics: Vector[CardDetailsProjection])

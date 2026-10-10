@@ -11,7 +11,6 @@ class ViewerPresentationSuite extends FunSuite:
 
   test("inactive Wake viewer waits and receives no gameplay controls"):
     val value = twoSeatProjection(
-      Set.empty,
       phase = "wake",
       activeParticipantId = "red-exile"
     )
@@ -29,7 +28,7 @@ class ViewerPresentationSuite extends FunSuite:
     * each waiting on the other.
     */
   test("an off-turn owner of a parked walker decision keeps gameplay controls"):
-    val value = twoSeatProjection(Set.empty, activeParticipantId = "red-exile")
+    val value = twoSeatProjection(activeParticipantId = "red-exile")
       .copy(walkerDecision = Some(ForgeFixture.parked))
     val owner = ServerUiSupport.viewerPresentation(value, "blue-exile")
     assert(owner.showGameplayControls)
@@ -37,7 +36,7 @@ class ViewerPresentationSuite extends FunSuite:
     assertEquals(owner.waitingForDisplayName, None)
 
   test("the active participant waits for the walker decision's off-turn owner"):
-    val value = twoSeatProjection(Set.empty, activeParticipantId = "red-exile")
+    val value = twoSeatProjection(activeParticipantId = "red-exile")
       .copy(walkerWaiting = Some(WalkerWaitingState("blue-exile",
         Some("Choose the Oathkeeper"))))
     val active = ServerUiSupport.viewerPresentation(value, "red-exile")
@@ -46,9 +45,7 @@ class ViewerPresentationSuite extends FunSuite:
     assertEquals(active.waitingForDisplayName, Some("Blue Exile"))
 
   test("an inactive Act viewer waits for the active player"):
-    val value = twoSeatProjection(Set("beginRest"),
-      phase = "act-action-selection")
-      .copy(actionSelectionOpen = true)
+    val value = twoSeatProjection(phase = "act")
     val inactive = ServerUiSupport.viewerPresentation(value, "blue-exile")
     val active = ServerUiSupport.viewerPresentation(value, "red-exile")
 
@@ -70,7 +67,6 @@ class ViewerPresentationSuite extends FunSuite:
     val pawnDecision = WalkerDecisionState("setup", "setup.pawn-placement.blue-exile",
       "decide", query = Some(pawnQuery))
     val value = twoSeatProjection(
-      Set.empty,
       phase = "setup-walker-decision",
       activeParticipantId = "red-exile",
       ready = false
@@ -87,7 +83,6 @@ class ViewerPresentationSuite extends FunSuite:
     val decision = WalkerDecisionState("setup", "setup.some-decision.blue-exile",
       "decide", query = Some(query))
     val value = twoSeatProjection(
-      Set.empty,
       phase = "setup-walker-decision",
       activeParticipantId = "red-exile",
       ready = false
@@ -102,7 +97,7 @@ class ViewerPresentationSuite extends FunSuite:
     val query = DecisionQueryState.ChooseOne(
       Vector(DecisionOptionState("button", "end-act", "End Act and Rest")),
       heading = Some("Act: take an action, use a power or rest"))
-    val value = twoSeatProjection(Set.empty,
+    val value = twoSeatProjection(
       phase = "act-menu-walker-decision").copy(walkerDecision = Some(
       WalkerDecisionState("act-menu", "phase.menu", "decide",
         query = Some(query))))

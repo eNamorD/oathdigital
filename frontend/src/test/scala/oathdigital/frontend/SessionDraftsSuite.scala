@@ -8,16 +8,12 @@ import oathdigital.testkit.Unwrap.present
   */
 class SessionDraftsSuite extends munit.FunSuite:
   private val context = ForgeFixture.context
-  private val advisers = Vector("a1", "a2").map(id => MinorAdviser(
-    CardDetails(id, "denizen", s"Old Oak $id", orientation = Some("face-down"))))
-  private val minor = MinorActionsState(advisers, canPeekSiteRelics = false,
-    Vector.empty, None, 0, 0)
   private def projection(
       parked: Option[WalkerDecisionState] = Some(ForgeFixture.parked))
       : GameProjection =
     TestProjections.actingProjection(nextSequence = 9L, players = Vector(
       GamePlayer("red", "Red", "Exile", PlayerColor.Red)))
-      .copy(walkerDecision = parked, minorActions = Some(minor))
+      .copy(walkerDecision = parked)
 
   /** Every slot the projection fills, all bound to `context`. */
   private def full: SessionDrafts =

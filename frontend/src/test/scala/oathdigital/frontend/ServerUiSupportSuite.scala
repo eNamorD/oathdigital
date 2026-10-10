@@ -70,9 +70,9 @@ class ServerUiSupportSuite extends FunSuite:
 
   test("winner banner class resolves the winner's stable color token"):
     assertEquals(ServerUiSupport.winnerColorClass(
-      twoSeatProjection(Set.empty), "red-exile"), "player-red")
+      twoSeatProjection(), "red-exile"), "player-red")
     assertEquals(ServerUiSupport.winnerColorClass(
-      twoSeatProjection(Set.empty), "missing"), "player-neutral")
+      twoSeatProjection(), "missing"), "player-neutral")
 
   test("peeked site relics replace opaque slots only for the scoped viewer"):
     val known = CardDetails("R1", "relic", "Ancient Crown", rulesText = Some("Rule"))

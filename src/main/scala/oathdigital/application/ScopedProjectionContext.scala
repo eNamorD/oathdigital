@@ -11,12 +11,6 @@ private[application] final case class ScopedProjectionContext(
   val active: PlayerState = current.players.find(
     _.player == current.turn.activePlayer).get
   val activeSite: Option[SiteState] = active.pawnSite.flatMap(current.map.sites.get)
-  val viewerIsActive: Boolean = viewer.contains(active.player)
-
-private[application] final case class LegalProjection(
-    controls: Vector[String],
-    minorActions: Option[MinorActionsProjection]
-)
 
 private[application] final case class PendingProjection(
     phase: String,
