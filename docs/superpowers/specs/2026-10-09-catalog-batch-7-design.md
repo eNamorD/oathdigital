@@ -1,7 +1,7 @@
 # Catalog Batch 7: Campaign Dice
 
-**Status:** designed 2026-10-09. Slice 1 is done; its plan-time rulings
-are under "Slice 1". The per-card rulings are in
+**Status:** designed 2026-10-09. Slice 1 is done and slice 2 is planned;
+each slice's plan-time rulings are under it. The per-card rulings are in
 [the rulings appendix](2026-10-09-catalog-batch-7-rulings.md).
 
 **Builds on** [Catalog batch 4](2026-10-05-catalog-batch-4-design.md),
@@ -50,6 +50,17 @@ The approved changes outside `gameplay/powers/`:
   fills them from its dice source, as it fills a `Shuffle`'s order, so the
   journal records them and replay applies them. It is a hidden outcome: the
   legality search stops at it, and undo does not take it back.
+- **A Recover roll window and a throw's rerolled dice** (slice 2).
+  Recover's roll step passes `PowerWindow.RecoverRoll` as its roll's
+  window, so a power may put steps on either side of the roll, before the
+  reroll choice. `RollOutcome` counts its pool's rolls and records the
+  faces rerolled since the last one; a throw is the faces its roll added
+  plus those, numbered by the count.
+- **Dice beside a reroll power's question** (slice 2). A question a power
+  asks while rerolling a throw has an id under that throw's reroll id, so
+  its panel shows the pool's dice. Every Recover decision but the modifier
+  decision shows the Recover dice, and the choose-many panel draws them as
+  the choose-amount panel does.
 - **A fixed-faces operation** (slice 3). `SetDieFaces(pool, faces)` appends
   `faces` to the pool's outcome and lowers the pool's count by as many, so
   the roll that follows rolls only the rest.
@@ -126,12 +137,16 @@ The two may both reroll one roll, in either order.
 
 ### Plan-time rulings
 
-- **The throw.** A throw is the last faces of the pool's outcome, as many
-  as the pool holds dice. The reroll decision's id is `{pool}.reroll.{n}`,
-  where `n` counts the pool's throws so far (`campaign.attack.reroll.1`,
-  `recover.reroll.3`). Its heading reads "Reroll the attack dice, or keep
-  the roll" ("the defense dice" for a defense roll), and its button "Keep
-  the roll". A parked reroll decision shows its pool's dice.
+- **The throw.** A throw is the faces the pool's last roll added, as many
+  as the pool holds dice, and every face rerolled since that roll (slice
+  2). The reroll decision's id is `{pool}.reroll.{n}`, where `n` counts the
+  pool's rolls so far, as `RollOutcome.throws` records them (slice 2)
+  (`campaign.attack.reroll.1`, `recover.reroll.3`). Its heading reads
+  "Reroll the attack dice, or keep the roll" ("the defense dice" for a
+  defense roll), and its button "Keep the roll". A parked reroll decision
+  shows its pool's dice. A question a reroll power asks while rerolling a
+  throw has the id `{pool}.reroll.{n}.{name}` and shows the same dice
+  (slice 2): Master at Arms asks `campaign.attack.reroll.{n}.master-at-arms`.
 - **What is asked.** The roller is asked only when some offer is usable.
   An unusable offer, such as Jinx without a secret ("Needs 1 secret; you
   have 0"), is shown unavailable when the decision is asked for another.
@@ -156,6 +171,32 @@ them. It is skipped on the first payment, which has no earlier faces.
 
 Recover's cost now sits in its own window (game loop slice 1). The plan
 reads where the payment and the roll sit from there.
+
+### Plan-time rulings
+
+- **Where it asks.** Recover's roll step passes `PowerWindow.RecoverRoll`
+  as its roll's window, and Silver Charm hooks it. The Supply is spent,
+  then Silver Charm asks, then the two new dice are rolled, and the chosen
+  dice are rerolled right after them in the same command. The player never
+  sees the new dice before choosing.
+- **The throw holds the rerolled dice.** `RollOutcome.rerolled` holds the
+  indices of the faces rerolled since the pool last rolled. A throw is the
+  faces its roll added plus those, so Jinx after Silver Charm rerolls them
+  all, and the next roll starts a new throw.
+- **One decision.** Silver Charm asks `recover.silver-charm` on every
+  payment, "Reroll earlier dice with this roll", with one option per
+  earlier die, labelled "Die 1: shield". Choosing none rerolls nothing.
+  Its reroll reads the answer just given. The panel shows the Recover dice
+  and the difficulty above the options: every Recover decision but the
+  modifier decision shows them.
+- **Throws are counted.** `RollOutcome.throws` counts the rolls of its
+  pool, and a throw's number is that count, so two throws never share a
+  reroll decision id even if the pool's dice change between them.
+- **The Game Log.** Silver Charm's line takes the place of the roll's
+  line, then the throw is restated with every die in it: "Silver Charm:
+  Rerolled blank, shield." and "Rolled two shields, two shields, blank".
+  The decision writes no line. Choosing no die leaves the roll's line as
+  it was.
 
 ## Slice 3: Amounts and fixed faces
 

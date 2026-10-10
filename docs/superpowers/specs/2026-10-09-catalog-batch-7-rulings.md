@@ -55,9 +55,11 @@
   any number of earlier Recover dice to reroll with the two new dice. The
   rerolled faces replace the old ones. There is no once-limit: a die may be
   rerolled on every payment. Jinx's reroll after such a payment rerolls
-  every die thrown in it, the new two and the rerolled earlier ones. Line:
-  "Silver Charm: Rerolled shield, blank and double shield.", naming the
-  faces of the chosen dice before the reroll.
+  every die thrown in it, the new two and the rerolled earlier ones.
+  It is asked after the payment and before the roll. Line: "Silver Charm:
+  Rerolled shield, blank, two shields.", naming the faces of the chosen
+  dice before the reroll as a roll line names dice. It takes the place of
+  the roll's own line, and the throw restated after it shows every die.
 
 ## Slice 3: Amounts and fixed faces
 
