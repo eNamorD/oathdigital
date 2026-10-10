@@ -183,3 +183,26 @@ class ArcaneArmorSuite extends munit.FunSuite:
       state.flatMap(silent.evolve(_, event)))
     assertEquals(replay.map(ready(_).game.current.lastCampaignResult),
       Right(ready(done.state).game.current.lastCampaignResult))
+
+  /** `secrets` for the defender, and the attacker holds Gleaming Armor, which
+    * makes every plan the defender chooses cost a secret more. */
+  private def defenderTaxedByGleamingArmor(secrets: Int): Board =
+    withAdviser(defenderWithArcaneArmor(secrets), "Gleaming Armor",
+      Orientation.FaceUp)
+
+  test("a surcharge takes its secret first, so X counts what is left"):
+    // Two secrets and two dice would allow X = 2 without the surcharge.
+    val b = defenderTaxedByGleamingArmor(secrets = 2)
+    val asked = chosen(b, rolling(Blank))
+    assertEquals(asked.query(b.actor), DecisionQuery.ChooseAmount(1, 1,
+      Some(ArcaneArmor.heading), ArcaneArmor.confirm))
+    val done = asked.answer(b.rival, ArcaneArmor.decisionId,
+      ChooseAmountAnswer(1)).finishPlanWindows
+    assertEquals(Look(done.state).faceUpSecrets(b.rival), 0)
+    assertEquals(Look(done.state).faceDownSecrets(b.rival), 2)
+    assertEquals(done.result.defenseFaces, Vector(TwoShields, Blank))
+
+  test("when the surcharge takes the last secret, it is shown unavailable"):
+    val b = defenderTaxedByGleamingArmor(secrets = 1)
+    assertEquals(commit(rolling(), b, 4).withheld(b.actor, ref),
+      Some(OptionReason.Written("Needs 1 secret; you have 0")))

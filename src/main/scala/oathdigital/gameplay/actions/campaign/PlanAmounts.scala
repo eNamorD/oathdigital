@@ -10,8 +10,19 @@ object PlanAmounts:
   def range(decisionId: String, min: Int, max: Int, heading: String,
       confirm: String, secretsEach: Int = 0)(
       effects: Int => Vector[CampaignPlanEffect]): PlanAmount =
-    PlanAmount(decisionId,
-      DecisionQuery.ChooseAmount(min, max, Some(heading), confirm), {
+    rangeBy(decisionId, (_, _) => Right(min -> max), heading, confirm,
+      secretsEach)(effects)
+
+  /** An amount whose bounds `bounds` reads from the state when the question
+    * is asked: after the plan's fixed costs and any surcharge are paid, for
+    * the plan's user. It is a violation when no amount is left. */
+  def rangeBy(decisionId: String,
+      bounds: (ReadyGame, PlayerId) => Either[OathViolation, (Int, Int)],
+      heading: String, confirm: String, secretsEach: Int = 0)(
+      effects: Int => Vector[CampaignPlanEffect]): PlanAmount =
+    PlanAmount(decisionId, (ready, user) => bounds(ready, user).map(
+      (min, max) => DecisionQuery.ChooseAmount(min, max, Some(heading),
+        confirm)), {
         case DecisionAnswer.ChooseAmountAnswer(amount) => Some(amount)
         case _ => None
       }, effects, secretsEach)
@@ -21,9 +32,10 @@ object PlanAmounts:
   def oneOf(decisionId: String, heading: String,
       choices: Vector[(Int, String)])(
       effects: Int => Vector[CampaignPlanEffect]): PlanAmount =
-    PlanAmount(decisionId, DecisionQuery.ChooseOne(choices.map {
-      case (amount, words) => DecisionOption.Button(button(amount), words)
-    }, heading = Some(heading)), {
+    PlanAmount(decisionId, (_, _) => Right(DecisionQuery.ChooseOne(
+      choices.map { case (amount, words) =>
+        DecisionOption.Button(button(amount), words) },
+      heading = Some(heading))), {
       case DecisionAnswer.ChooseOneAnswer(ref) => choices.collectFirst {
         case (amount, _) if button(amount) == ref => amount }
       case _ => None

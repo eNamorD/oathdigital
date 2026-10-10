@@ -99,8 +99,15 @@ object CampaignPlanSource:
   * reads the amount from the answer, `secretsEach` is what each unit costs,
   * placed on the plan's card, and `effects` are what that amount does. A
   * bandit defender is asked nothing, so its plan does nothing more.
+  *
+  * `query` is built when the question is asked, from the state after what
+  * the plan and any surcharge have paid already, so its bounds never
+  * promise more than the user can still pay. It is a violation when no
+  * amount is left to ask for, and the plan is then refused, as a plan that
+  * cannot pay is.
   */
-final case class PlanAmount(decisionId: String, query: DecisionQuery,
+final case class PlanAmount(decisionId: String,
+    query: (ReadyGame, PlayerId) => Either[OathViolation, DecisionQuery],
     amountOf: DecisionAnswer => Option[Int],
     effects: Int => Vector[CampaignPlanEffect], secretsEach: Int = 0)
 
@@ -130,9 +137,9 @@ final case class PlanAmount(decisionId: String, query: DecisionQuery,
   * other when it would apply it (FAQ).
   *
   * `amount` is the question the plan asks before what depends on its
-  * answer (Unstable Summon's X). An offer is rebuilt when a walk resumes at
-  * the question, so an amount's bounds may read the user's resources only
-  * when the plan pays nothing before asking.
+  * answer (Unstable Summon's X). The question's bounds are read when it is
+  * asked, after the plan's fixed costs and any surcharge are paid (see
+  * `PlanAmount`).
   */
 final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
     costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect],

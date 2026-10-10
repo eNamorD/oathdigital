@@ -19,7 +19,8 @@ object ArcaneArmorCard extends Denizen(DenizenId("206"), "Arcane Armor",
   * of rolling them."
   *
   * Its user chooses X, from one to the smaller of their faceup secrets and
-  * the dice in the defense pool, and pays X secrets onto the card, which
+  * the dice in the defense pool, counted when the question is asked, after
+  * any surcharge has taken its secret, and pays X secrets onto the card, which
   * settle at once because a defender pays off turn. With no X possible it
   * is shown unavailable. A bandit defender has no secrets, so it never
   * applies the plan.
@@ -53,9 +54,7 @@ case object ArcaneArmor extends BattlePlan:
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map { source =>
-      val secrets = context.user.flatMap(player => context.ready.game
-        .current.players.find(_.player == player))
-        .fold(0)(_.board.faceUpSecrets)
+      val secrets = context.user.fold(0)(faceUpSecrets(context.ready, _))
       val dice = pool(context.ready)
       val offer = CampaignPlanOffer(source,
         "Arcane Armor: set defense dice to double shields", Vector.empty,
@@ -64,10 +63,22 @@ case object ArcaneArmor extends BattlePlan:
         offer.copy(withheld = Some(OptionReason.Written(noSecret)))
       else if dice < 1 then
         offer.copy(withheld = Some(OptionReason.Written(noDefenseDice)))
-      else offer.copy(amount = Some(PlanAmounts.range(decisionId, 1,
-        math.min(secrets, dice), heading, confirm, secretsEach = 1)(
-        _ => Vector.empty)))
+      else offer.copy(amount = Some(PlanAmounts.rangeBy(decisionId, bounds,
+        heading, confirm, secretsEach = 1)(_ => Vector.empty)))
     }
+
+  /** X runs from one to the smaller of the secrets left to pay with and the
+    * dice in the pool, when the question is asked: a surcharge on the plan
+    * (Gleaming Armor) has taken its secret by then. */
+  private def bounds(ready: ReadyGame, user: PlayerId)
+      : Either[OathViolation, (Int, Int)] =
+    val secrets = faceUpSecrets(ready, user)
+    if secrets < 1 then Left(OathViolation.InsufficientSecrets(1, secrets))
+    else Right(1 -> math.min(secrets, pool(ready)))
+
+  private def faceUpSecrets(ready: ReadyGame, user: PlayerId): Int =
+    ready.game.current.players.find(_.player == user)
+      .fold(0)(_.board.faceUpSecrets)
 
   override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
     PowerWindow.CampaignDefenseRoll -> ((_, _, children) =>

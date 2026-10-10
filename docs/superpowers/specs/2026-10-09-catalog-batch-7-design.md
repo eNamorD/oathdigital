@@ -239,7 +239,9 @@ possible.
 - **An X price.** An amount that costs secrets shows "Cost: X secrets".
   Arcane Armor's X counts faceup secrets. With none it is shown
   unavailable, "Needs 1 secret; you have 0"; with an empty defense pool,
-  "No defense dice to set".
+  "No defense dice to set". The range is read when the question is asked,
+  after any surcharge has taken its secret (Gleaming Armor), and a plan
+  with no X left is shown unavailable.
 - **Set dice are no part of a throw.** The defense roll after
   `SetDieFaces` is throw 1, and its throw is only the rolled dice, so
   Jinx rerolls those and not the set ones. When every die is set, nothing

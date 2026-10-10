@@ -43,17 +43,22 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
     Branch((_, _) => pay),
     Branch((ready, _) => sacrifice(ready))) ++
     offered.offer.effects.map(effect) ++ Vector[Operation](
-      Branch((_, _) => ask),
+      Branch((ready, _) => ask(ready)),
       Branch((_, pending) => payAmount(pending)),
       Branch((_, pending) => chosenEffects(pending)),
       Branch((_, _) => marker))
 
-  /** The plan's amount question, asked of its user. A bandit defender is
+  /** The plan's amount question, asked of its user, with its bounds read
+    * from the state after what the plan and any surcharge have paid. When
+    * no amount is left to ask for, the plan is refused. A bandit defender is
     * asked nothing. */
-  private def ask: Vector[Operation] = (offered.offer.amount, user) match
-    case (Some(amount), Some(player)) =>
-      Vector(Decide(amount.decisionId, player, amount.query))
-    case _ => Vector.empty
+  private def ask(ready: ReadyGame): Vector[Operation] =
+    (offered.offer.amount, user) match
+      case (Some(amount), Some(player)) => Vector(
+        amount.query(ready, player).fold(
+          violation => BuildOps((_, _) => Left(violation)),
+          query => Decide(amount.decisionId, player, query)))
+      case _ => Vector.empty
 
   /** What the answered amount costs, placed onto the plan's card. */
   private def payAmount(pending: PendingTree): Vector[Operation] =
