@@ -21,11 +21,11 @@ private[frontend] object ServerModeFixtures:
             """{"gameId":"quiet","after":0,"nextSequence":0,"entries":[]}""")))
         else inner.request(method, url, body)
 
-  /** The fixed two-seat game "game-1" at sequence 8, at `phase`. Its seats are "red-exile" (shown as "Red Exile",
-    * Red) and "blue-exile" (shown as "Blue Exile", Blue);
-    * `activeParticipantId` says whose turn it is, red-exile unless a test
-    * names another. A test that depends on the phase passes it, because the
-    * default, "wake", is only a default.
+  /** The fixed two-seat game "game-1" at sequence 8, at `phase`. Its seats
+    * are "red-exile" (shown as "Red Exile", Red) and "blue-exile" (shown as
+    * "Blue Exile", Blue); `activeParticipantId` says whose turn it is,
+    * red-exile unless a test names another. A test that depends on the phase
+    * passes it, because the default, "wake", is only a default.
     */
   def twoSeatProjection(
       phase: String = "wake",
