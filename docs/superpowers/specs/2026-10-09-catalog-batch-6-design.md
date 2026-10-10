@@ -1,6 +1,6 @@
 # Catalog Batch 6: Battle Plan Restrictions and Search Sources
 
-**Status:** designed 2026-10-09. Slices 1 to 3 are done. Slice 4 is
+**Status:** designed 2026-10-09. All four slices are done. Slice 4 was
 planned against [modifier selection on the walker](2026-10-09-modifier-walker-design.md);
 its plan-time rulings are under "Slice 4". The per-card rulings are in
 [the rulings appendix](2026-10-09-catalog-batch-6-rulings.md).

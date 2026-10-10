@@ -11,8 +11,7 @@ specs.
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest. **Phase - Catalog batch 6** is in progress: slices 1
-to 3 are done.
+2026-10-01 playtest.
 
 ## Next
 
@@ -97,15 +96,6 @@ did":
   totals and the winner. It is not always visible.
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
-
-### Phase - Catalog batch 6
-
-Battle plan restrictions and Search sources
-([design](superpowers/specs/2026-10-09-catalog-batch-6-design.md),
-[rulings](superpowers/specs/2026-10-09-catalog-batch-6-rulings.md)).
-
-- [ ] Slice 4, Search draws: Spinning Bee, Land Warden. Its modifiers are
-  on the walker since modifier walker slice 1.
 
 ### Phase - Modifier selection on the walker
 
