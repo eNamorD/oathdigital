@@ -64,24 +64,6 @@ class WalkerDecisionDraftSuite extends FunSuite:
     assertEquals(WalkerPartitionDraft.reconcile(None, context,
       Some(ForgeFixture.parked.copy(query = None))), None)
 
-  private val adviser = CardDetails("D1", "denizen", "The Adviser")
-  private val otherAdviser = CardDetails("D2", "denizen", "The Other Adviser")
-
-  private def minor(advisers: Vector[MinorAdviser]) = MinorActionsState(
-    advisers, canPeekSiteRelics = false, Vector.empty, Some("site:a"), 0, 0)
-
-  /** The minor actions of a player holding both advisers facedown. */
-  private def twoAdvisersFacedown = minor(Vector(
-    MinorAdviser(adviser), MinorAdviser(otherAdviser)))
-
-  test("Play facedown adviser is offered while any adviser lies facedown"):
-    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
-      minor(Vector.empty)), 0)
-    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
-      minor(Vector(MinorAdviser(adviser)))), 1)
-    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
-      twoAdvisersFacedown), 1)
-
   test("a choose-one decision outside Recover is answered from its projected options"):
     val query = DecisionQueryState.ChooseOne(Vector(
       DecisionOptionState("player", "blue", "blue"),

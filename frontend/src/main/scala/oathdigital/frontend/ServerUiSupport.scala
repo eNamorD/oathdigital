@@ -287,11 +287,6 @@ private[frontend] object ServerUiSupport:
         playerId = playerId
       )
 
-  private[frontend] def showActActionControls(
-      value: GameProjection,
-      presentation: ViewerPresentation
-  ): Boolean = value.actionSelectionOpen && presentation.showGameplayControls
-
   private[frontend] def actionLabel(kind: String): String = kind match
     case "travel" => "Travel"
     case "challenge" => "Challenge"
@@ -304,44 +299,6 @@ private[frontend] object ServerUiSupport:
     case "forge" => "Forge"
     case "recover" => "Recover"
     case other => other
-
-  private[frontend] def actionCategory(kind: String): String = kind match
-    case "search" | "travel" |
-        "muster" | "trade-favor" | "trade-secret" | "recover" | "forge" |
-        "challenge" | "campaign" => "major"
-    // Using a power's "Action:" is a minor action like any other, so an
-    // unrecognised kind lands there rather than in a section of its own.
-    case _ => "minor"
-
-  private[frontend] val majorFamilyOrder: Vector[String] = Vector(
-    "search", "travel", "campaign", "muster", "trade", "forge", "recover", "challenge")
-
-  private[frontend] def actionFamily(kind: String): String = kind match
-    case "trade-favor" | "trade-secret" => "trade"
-    case other => other
-
-  private[frontend] val actionCategoryOrder: Vector[(String, String)] =
-    Vector("major" -> "Major actions", "minor" -> "Minor actions")
-
-  private[frontend] final class ActionSections:
-    private val contents = scala.collection.mutable.Map.empty[String,
-      scala.collection.mutable.ArrayBuffer[(String, dom.Node)]]
-    def appendKind(kind: String, node: dom.Node): Unit = contents
-      .getOrElseUpdate(actionCategory(kind), scala.collection.mutable.ArrayBuffer.empty)
-      .append(actionFamily(kind) -> node)
-    def appendTo(panel: dom.Element): Unit = actionCategoryOrder.foreach { case (key, heading) =>
-      contents.get(key).filter(_.nonEmpty).foreach { nodes =>
-        val section = element("section", s"available-action-group action-group-$key")
-        section.appendChild(text("h3", "action-group-heading", heading))
-        val order = if key == "major" then majorFamilyOrder else nodes.map(_._1).distinct.toVector
-        // One option per row: a run of buttons side by side reads as one blur.
-        order.foreach(family => nodes.filter(_._1 == family).foreach { entry =>
-          val row = element("div", "action-option")
-          row.appendChild(entry._2); section.appendChild(row)
-        })
-        panel.appendChild(section)
-      }
-    }
 
   private[frontend] def winnerColorClass(value: GameProjection,
       playerId: String): String =
@@ -367,9 +324,6 @@ private[frontend] object ServerUiSupport:
     )
     node.setAttribute("data-player-id", playerId)
     node
-
-  private[frontend] def facedownAdviserLaunchCount(minor: MinorActionsState): Int =
-    if minor.advisers.nonEmpty then 1 else 0
 
   private[frontend] def protocolNegotiationTerms(value: NegotiationTermsInput): NegotiationTerms =
     NegotiationTerms(

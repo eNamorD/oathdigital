@@ -35,16 +35,23 @@ class ServerModeSessionSuite extends FunSuite:
       legalControls = legalControls, ready = ready)
       .copy(viewerPlayerId = viewer))
 
-  /** Blue's Act with Rest legal and so a rest-action button on screen, as
-    * `viewer` sees it.
+  /** Blue's Act menu parked, with End Act and Rest on screen, as `viewer`
+    * sees it.
     */
   private def encodedBlueAct(viewer: Option[String] = Some("blue"),
       nextSequence: Long = 1L): String =
     GameProjectionCodec.encode(TestProjections.actingProjection(
       gameId = "my game", nextSequence = nextSequence,
       phase = "act-action-selection", activePlayer = Some("blue"),
-      players = redAndBlueExiles, legalControls = Vector("beginRest"),
-      ready = true).copy(viewerPlayerId = viewer, actionSelectionOpen = true))
+      players = redAndBlueExiles, ready = true).copy(viewerPlayerId = viewer,
+      walkerDecision = Some(actMenu(DecisionOptionState("button", "end-act",
+        "End Act and Rest")))))
+
+  /** The Act menu as the server parks it, over `options`. */
+  private def actMenu(options: DecisionOptionState*): WalkerDecisionState =
+    WalkerDecisionState("act-menu", "phase.menu", "decide", query = Some(
+      DecisionQueryState.ChooseOne(options.toVector,
+        heading = Some("Act: take an action, use a power or rest"))))
 
   test("trusted player renders its fixed seat and never bootstraps " +
       "switches or loads raw events"):
@@ -181,16 +188,17 @@ class ServerModeSessionSuite extends FunSuite:
           Vector("Assign every option: Pay Favor (2), Pay Secret (1)."))
       }
 
-  /** An Act button posts its start at once: the action asks for its
+  /** An Act menu button posts its pick at once: the action asks for its
     * modifiers inside the walk, so nothing is previewed first. */
-  test("an Act button posts its start directly"):
+  test("an Act menu button posts its pick directly"):
     TestBrowser.use("?gameId=g&playerId=red"): browser =>
       val projection = GameProjectionCodec.encode(
         TestProjections.actingProjection(gameId = "g",
-          phase = "act-action-selection",
-          players = Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-          legalControls = Vector("beginRecover"))
-          .copy(actionSelectionOpen = true))
+          phase = "act-menu-walker-decision",
+          players = Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)))
+          .copy(walkerDecision = Some(actMenu(
+            DecisionOptionState("button", "recover", "Recover",
+              badge = Some("1 Supply"))))))
       val transport = ScriptedTransport((_, url, _) =>
         val json = if url.contains("/events") then """{"events":[]}"""
           else projection
@@ -199,14 +207,15 @@ class ServerModeSessionSuite extends FunSuite:
       Main.start(browser.mount, "/", trustedAlpha = false,
         withEmptyLogPage(transport))
       browser.settle.flatMap { _ =>
-        browser.click("recover-action")
+        browser.click("menu-option")
         browser.settle
       }.map { _ =>
         val posts = requests.filter(_.method == "POST").toVector
         assertEquals(posts.map(_.url), Vector(
           "/api/dev/first-games/g/commands?playerId=red"))
         val command = present(posts.head.body, "the posted command body")
-        assert(command.contains("\"action\":\"recover\""), command)
+        assert(command.contains("\"decisionId\":\"phase.menu\""), command)
+        assert(command.contains("\"optionId\":\"recover\""), command)
       }
 
   test("development new game button returns to the start page"):
@@ -236,7 +245,7 @@ class ServerModeSessionSuite extends FunSuite:
       Main.start(browser.mount, "/games/my%20game", trustedAlpha = true,
         withEmptyLogPage(transport))
       browser.settle.flatMap { _ =>
-        browser.click("rest-action")
+        browser.click("menu-ending")
         browser.settle
       }.map { _ =>
         assertEquals(transport.requests.map(r => r.method -> r.url).toVector,
@@ -286,13 +295,13 @@ class ServerModeSessionSuite extends FunSuite:
         browser.settle.flatMap { _ =>
           // The control on screen before the poll: once the viewer is
           // rejected its handler must submit nothing.
-          val oldControl = browser.byClass("rest-action").head
+          val oldControl = browser.byClass("menu-ending").head
             .asInstanceOf[js.Dynamic]
           browser.tick()
           browser.settle.map { _ =>
             assert(browser.text.contains("assigned seat link"))
             assertEquals(browser.byClass("wake-actions"), Vector.empty)
-            assertEquals(browser.byClass("rest-action"), Vector.empty)
+            assertEquals(browser.byClass("menu-ending"), Vector.empty)
             oldControl.onclick(js.Dynamic.literal())
             browser.tick()
             assertEquals(requests.map(r => r.method -> r.url).toVector, Vector(
@@ -322,7 +331,7 @@ class ServerModeSessionSuite extends FunSuite:
         Main.start(browser.mount, "/games/my%20game", trustedAlpha = true,
           withEmptyLogPage(transport))
         browser.settle.flatMap { _ =>
-          browser.click("rest-action")
+          browser.click("menu-ending")
           browser.tick()
           browser.settle
         }.flatMap { _ =>
@@ -331,7 +340,7 @@ class ServerModeSessionSuite extends FunSuite:
           browser.settle
         }.map { _ =>
           assert(browser.text.contains("assigned seat link"))
-          assertEquals(browser.byClass("rest-action"), Vector.empty)
+          assertEquals(browser.byClass("menu-ending"), Vector.empty)
           browser.tick()
           assertEquals(loads, 2)
           assertEquals(commands, 1)

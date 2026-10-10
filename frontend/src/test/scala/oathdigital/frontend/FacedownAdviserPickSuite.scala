@@ -4,8 +4,6 @@ import oathdigital.frontend.Dom.{all, click, one}
 import oathdigital.frontend.TestBoards.*
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent}
-import oathdigital.testkit.Unwrap.as
-import org.scalajs.dom
 
 /** "Play facedown adviser" starts the walker with no card. The walk's first
   * decision is the pick, answered on the player's board like any board
@@ -39,15 +37,6 @@ class FacedownAdviserPickSuite extends munit.FunSuite:
         canPeekSiteRelics = false, facedownRelics = Vector.empty,
         siteId = None, maxBoardToSite = 0, maxSiteToBoard = 0)),
       walkerDecision = parked)
-
-  test("Play facedown adviser starts the walker and names no card"):
-    val ui = new RecordingControls()
-    val pane = ActionDecisionRenderer.actionsPanel(table(None, oak, bandits),
-      ActionPanels.actingViewer("red"), ParkedDecision.Routed(None, None),
-      canControl = true, SessionDrafts.empty, ui)
-    as[dom.html.Button](one(pane, ".minor-adviser-launch")).click()
-    assertEquals(ui.submitted, Vector(Intent.StartWalker(
-      "play-facedown-adviser", Vector.empty)))
 
   test("the parked pick lights the facedown advisers, and a click stages one"):
     val ui = new RecordingControls()
