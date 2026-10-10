@@ -20,14 +20,12 @@ object GameCommand:
     * player in the game could resume another player's parked walker.
     */
   final case class RollWalker(actor: PlayerId, pool: PoolKey) extends GameCommand
-  final case class EndWake(playerId: PlayerId) extends GameCommand
   final case class PeekSiteRelics(playerId: PlayerId) extends GameCommand
   final case class RevealOwnedRelic(playerId: PlayerId, relic: RelicId)
       extends GameCommand
   final case class MoveWarbands(playerId: PlayerId, toSite: Boolean, amount: Int)
       extends GameCommand
   final case class BeginRest(playerId: PlayerId) extends GameCommand
-  final case class FinishRest(playerId: PlayerId) extends GameCommand
   final case class UsePower(playerId: PlayerId, power: PowerId,
       source: DecisionOptionRef) extends GameCommand
   /** Takes back the latest live command batch, which `actor` must have
@@ -60,12 +58,10 @@ object GameCommand:
     case StartWalker(_, start) => Some(start.actor)
     case ResolveWalker(actor, _) => Some(actor)
     case RollWalker(actor, _) => Some(actor)
-    case EndWake(player) => Some(player)
     case PeekSiteRelics(player) => Some(player)
     case RevealOwnedRelic(player, _) => Some(player)
     case MoveWarbands(player, _, _) => Some(player)
     case BeginRest(player) => Some(player)
-    case FinishRest(player) => Some(player)
     case UsePower(player, _, _) => Some(player)
     case Undo(_) => None
     case Redo(_) => None

@@ -3,7 +3,8 @@ package oathdigital.frontend
 import oathdigital.protocol.{GameIntent => GameCommand, WalkerStartArgWire}
 import org.scalajs.dom
 
-/** One button per legal phase power, in Act, Wake and Rest alike. */
+/** One button per legal phase power in the Act panel. Wake and Rest powers
+  * are options of their phase's menu. */
 private[frontend] object PhasePowerButtons:
   /** Each projected power whose `usePower` control is legal, with the
     * command its button submits.
@@ -13,9 +14,6 @@ private[frontend] object PhasePowerButtons:
       s"usePower:${power.powerId}:${power.source.id}")).map(power =>
       power -> GameCommand.UsePower(power.powerId,
         WalkerStartArgWire(power.source.kind, power.source.id)))
-
-  def showsFinishRest(value: GameProjection): Boolean =
-    value.phase == "rest" && value.legalControls.contains("finishRest")
 
   /** The kind every power button is filed under. `ServerUiSupport`
     * categorises it as a minor action, which is what using a power's
@@ -37,13 +35,7 @@ private[frontend] object PhasePowerButtons:
       control
     }
 
-  def render(value: GameProjection, canControl: Boolean, panel: dom.Element,
-      submit: GameCommand => Unit): Unit =
-    buttons(value, canControl, submit).foreach(panel.appendChild)
-
-  /** The Act panel's route: the buttons join the listed actions instead of
-    * standing loose next to the one that ends the Act.
-    */
+  /** The Act panel's route: the buttons join the listed actions. */
   def appendTo(value: GameProjection, canControl: Boolean,
       groups: ServerUiSupport.ActionSections,
       submit: GameCommand => Unit): Unit =

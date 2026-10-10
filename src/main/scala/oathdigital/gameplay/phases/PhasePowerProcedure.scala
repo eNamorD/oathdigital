@@ -16,8 +16,8 @@ import oathdigital.model._
   *   RecordPowerUse(timing, source, id))         // Wake and Rest only
   * }}}
   *
-  * `usable` is the single usability function: the start gate, legal
-  * controls, the `phasePowers` projection and the Rest auto-skip all ask it.
+  * `usable` lists the powers the Act panel offers. Wake and Rest powers are
+  * offered by their phase's menu, which runs each start's own check.
   * A power is usable when its source is accessible, its once-per-turn limit
   * (Wake and Rest) is unspent, its cost is payable (including the empty-card
   * rule) and its own `usable` agrees.

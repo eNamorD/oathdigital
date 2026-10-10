@@ -5,9 +5,7 @@ private[protocol] object CommandIntentCodec:
   import CommandJsonSupport._
 
   def encode(intent: GameIntent): ujson.Obj = intent match
-    case EndWake => tagged("endWake")
     case BeginRest => tagged("beginRest")
-    case FinishRest => tagged("finishRest")
     case Undo => tagged("undo")
     case Redo => tagged("redo")
     case UsePower(power, source) => tagged("usePower", "powerId" -> power,

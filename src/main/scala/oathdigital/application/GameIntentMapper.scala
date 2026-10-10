@@ -13,9 +13,7 @@ object GameIntentMapper:
   def bind(actorId: PlayerId, intent: Intent): Result[GameCommand] =
     val actor = AuthorizedPlayer.forPlayer(actorId)
     intent match
-      case Intent.EndWake => Right(actor.endWake)
       case Intent.BeginRest => Right(actor.beginRest)
-      case Intent.FinishRest => Right(actor.finishRest)
       case Intent.Undo => Right(actor.undo)
       case Intent.Redo => Right(actor.redo)
       case Intent.UsePower(value, source) =>

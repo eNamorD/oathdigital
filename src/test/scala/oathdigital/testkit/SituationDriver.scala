@@ -184,12 +184,8 @@ object SituationDriver:
               s"requested $count dice but the defense dice port only rolls " +
               s"${defenseDice.diceCount}"))
         }
-      case GameCommand.EndWake(player) =>
-        rules.startWalker(state, PhaseTransitionRef.EndWake, player)
       case GameCommand.BeginRest(player) =>
         rules.startWalker(state, PhaseTransitionRef.BeginRest, player)
-      case GameCommand.FinishRest(player) =>
-        rules.startWalker(state, PhaseTransitionRef.FinishRest, player)
       case GameCommand.UsePower(player, power, source) =>
         rules.startWalker(state, ActionRef.UsePower(power), player,
           Vector(source))

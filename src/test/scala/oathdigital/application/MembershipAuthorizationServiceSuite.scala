@@ -71,8 +71,8 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
       val actor = accepted(service.authorizeCommand(
         "game-1", AuthenticatedUser(playerUser)))
       assertEquals(
-        actor.endWake,
-        GameCommand.EndWake(PlayerId("p1"))
+        actor.beginRest,
+        GameCommand.BeginRest(PlayerId("p1"))
       )
       assertEquals(
         actor.revealOwnedRelic(RelicId("r1")),

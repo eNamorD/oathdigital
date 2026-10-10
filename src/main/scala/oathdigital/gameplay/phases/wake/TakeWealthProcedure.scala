@@ -2,7 +2,6 @@ package oathdigital.gameplay.phases.wake
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 
@@ -53,33 +52,6 @@ object TakeWealthProcedure:
     _ <- Either.cond(available(tokens, resource), (),
       OathViolation.ResourceUnavailable(site, resource))
   yield tree(activePlayer, site, resource)
-
-  /** Every resource the actor could take right now -- the single definition
-    * the legal-action projection reads, and the Take Wealth twin of
-    * `TravelProcedure.candidates`.
-    *
-    * Each candidate is the SAME declared tree `StartWalker` walks, dry-run
-    * through [[oathdigital.gameplay.walker.WalkerSimulation]] against immutable state: its restrictions
-    * run, its transforms fold, its operations validate, and nothing is
-    * persisted. A resource absent from this vector is absent because the
-    * simulation of taking it failed for the reason the command would have
-    * failed, so an offer is not a second calculation that happens to agree
-    * with the command -- it is the command, run without a journal.
-    *
-    * Assembling the tree is deliberately this procedure's job rather than the
-    * projector's. The once-per-turn limit is a `Restriction` rather than a
-    * build gate, so a caller that only built the tree would keep offering a
-    * site already taken from this turn; and a caller that spelled the start
-    * selection itself would hold a second copy of what `resourceOf` reads.
-    *
-    * `powers` is the vector the caller's own command would use, for the same
-    * reason Travel's candidates take one.
-    */
-  def candidates(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
-      powers: WalkerPowers): Vector[WakeResource] =
-    WakeResource.all.filter(resource =>
-      build(catalog, state, activePlayer, selection(resource))
-        .flatMap(WalkerSimulation.run(_, state, powers)).isRight)
 
   /** The start selection naming `resource`, and the inverse of `resourceOf`.
     *

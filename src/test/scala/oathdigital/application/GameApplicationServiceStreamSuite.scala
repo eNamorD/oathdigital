@@ -146,8 +146,8 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // `CommandAccepted`, the stream holds seven events.
     assertEquals(wealth.nextSequence, 7L)
     assertEquals(
-      service.handle("game-wake", 0L, GameCommand.StartWalker(PhaseTransitionRef.EndWake,
-        StartPayload(active))),
+      service.handle("game-wake", 0L, GameCommand.StartWalker(
+        PhaseTransitionRef.EndWake, StartPayload(active))),
       Left(GameApplicationError.StaleClientPosition(0L, 7L)))
     val reloaded = loaded(replayingSecond(service, repository)
       .load("game-wake"))

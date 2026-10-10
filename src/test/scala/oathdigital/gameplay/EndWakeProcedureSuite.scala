@@ -4,12 +4,13 @@ import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, Table}
+import oathdigital.testkit.{Look, MenuPlay, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
@@ -89,21 +90,15 @@ class EndWakeProcedureSuite extends munit.FunSuite:
       Some(OathViolation.InvalidEventOrder(
         "ending Wake selects nothing, got button/favor")))
 
-  test("what the projection offers is what the command accepts"):
-    // The projector offers `endWake` unconditionally inside the Wake phase,
-    // and the procedure gates on nothing the projector has not already
-    // scoped. That is only true while both stay that way, which is what this
-    // pins: a gate added to one side and not the other shows up here.
-    val inWake = p1Wake.state
-    val inWakeWithEnemies =
-      p1Wake.pawn(p2, "Ancient City").pawn(p3, "Ancient City").state
-    val inAct = p1Wake.backInPhase(Phase.Act).state
-    Vector(inWake, inWakeWithEnemies, inAct).foreach { state =>
-      val projection = new oathdigital.application.GameProjector(catalog)
-        .project("end-wake", oathdigital.application.LoadedGame(state, 9), p1)
-      assertEquals(projection.legalControls.contains("endWake"),
-        endWake(state, p1).isRight, "endWake")
-    }
+  test("the Wake menu offers End Wake exactly when the command accepts it"):
+    // End Wake reads nothing about the board, so enemy pawns at the site do
+    // not close the option.
+    Vector(p1Wake, p1Wake.pawn(p2, "Ancient City").pawn(p3, "Ancient City"))
+      .foreach { table =>
+        val offered = MenuPlay.options(table.phaseMenuParked.state, catalog)
+        assertEquals(offered.find(_.ref == PhaseMenu.Menu.Wake.endingOption)
+          .map(_.available), Some(endWake(table.state, p1).isRight))
+      }
 
   test("replaying End Wake's events reproduces its state"):
     val initial = p1Wake.state

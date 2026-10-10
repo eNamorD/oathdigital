@@ -10,7 +10,9 @@ import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks, Table}
+import oathdigital.gameplay.phases.PhaseMenu
+import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes,
+  PlacementPicks, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
 import ParkedServiceFixture.firstPlayer
@@ -32,15 +34,16 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       .siteTokens("Broken Peaks", favor = 0, secrets = 2)
       .relicAt("Sticky Fire", "Broken Peaks")
       .bandits("Broken Peaks", 1)
-      .adviser(p2, "Birdsong", facedown = true)
+      .adviser(p2, "Birdsong", facedown = true).phaseMenuParked
     val (service, _) = table.service()
     val active = p2
     val stored = LoadedGame(table.state, 0L)
 
     val own = projector.project("game-projection-wake", stored, active)
     val public = projector.projectPublic("game-projection-wake", stored)
-    assertEquals(own.phase, "wake")
-    assert(own.legalControls.contains("endWake"))
+    // Wake is answered at its menu, a parked decision.
+    assertEquals(own.phase, "wake-menu-walker-decision")
+    assert(own.legalControls.contains("resolveWalkerDecision"))
     assertEquals(public.legalControls, Vector.empty)
     assertEquals(own.activePlayerResources,
       Some(ActivePlayerResourcesProjection(favor = 1, faceUpSecrets = 1,
@@ -52,8 +55,7 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     val ended = accepted(service.handle(
       "game-projection-wake",
       0L,
-      GameCommand.StartWalker(PhaseTransitionRef.EndWake,
-        StartPayload(active))))
+      MenuPlay.ending(table.state, PhaseMenu.Menu.Wake, active)))
     val act = projector.project(
       "game-projection-wake",
       LoadedGame(ended.state, ended.nextSequence),
