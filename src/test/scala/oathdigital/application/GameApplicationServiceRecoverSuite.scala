@@ -406,33 +406,3 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
     assertEquals(loaded(replayingSecond(service, repository).load(gameId)
       ).state, finished.state)
-
-  test("preview offers the walker Catacombs contribution (Task 9a)"):
-    val (service, _) = catacombsTable
-      .service(campaignDice = new Dice.CountingDefense(meetingTheDifficulty))
-    val gameId = "catacombs-walker-preview"
-    val actor = p1
-    val preview = accepted(service.preview(gameId, 0L, actor,
-      ActionKind.Recover, Vector.empty))
-    val offeredIds = preview.options.map(v => PowerId(v.handlerId))
-    assertEquals(offeredIds, Vector(catacombsPower))
-
-    // Each offered modifier travels as the card it is printed on and the
-    // action it modifies, not as its handler id.
-    val modifier = preview.modifiers.head
-    assertEquals(modifier.card.map(_.cardKind), Some("denizen"))
-    assertEquals(modifier.card.map(_.hidden), Some(false))
-    assertEquals(modifier.card.map(_.name), Some(modifier.description))
-    assertNotEquals(modifier.description, catacombsPower.value)
-    assertEquals(modifier.modifies, Some("recover"))
-    // Its printed cost travels with it, so the panel can show it.
-    assertEquals(modifier.cost, Some("1 secret"))
-
-  test("a Travel preview does not offer Catacombs"):
-    // A legacy action's preview is untouched: still resolved through
-    // `PowerRuntime`, not the walker catalog.
-    val (service, _) = catacombsTable
-      .service(campaignDice = new Dice.CountingDefense(meetingTheDifficulty))
-    val travelPreview = service.preview("catacombs-travel-preview", 0L, p1,
-      ActionKind.Travel, Vector.empty)
-    assertEquals(accepted(travelPreview).options, Vector.empty)

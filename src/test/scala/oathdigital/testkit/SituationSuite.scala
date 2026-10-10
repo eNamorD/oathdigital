@@ -169,13 +169,3 @@ class SituationSuite extends munit.FunSuite:
       .parkedAfter(GameCommand.Begin(chronicle, orders))
     val woken = parked.withAnswers(Situation.pawnsAt(sites)).after()
     assertEquals(woken.ready, inAct(FirstGameSetupFixture.initialReady))
-
-  test("the rules adapter refuses ordered modifiers rather than skip their " +
-      "check"):
-    // Starts from the replayed first game: the rules adapter's refusal of a
-    // step it cannot journal is the subject.
-    val failure = intercept[AssertionError](
-      FirstGameSetupFixture.initialSituation().after(GameCommand.WithModifiers(
-        GameCommand.EndWake(orders.firstPlayer), Vector.empty)))
-    assert(failure.getMessage.contains("journaled adapter"),
-      failure.getMessage)

@@ -46,11 +46,6 @@ class FollowUpServiceSuite extends munit.FunSuite:
       case skip: FollowUpSkipped => skip }),
       Right(Vector(FollowUpSkipped(campaign))))
 
-  test("the head's start passes the gate with modifiers too"):
-    assert(refused(GameCommand.WithModifiers(GameCommand.StartWalker(
-      ActionRef.Campaign, StartPayload(p1)), Vector.empty)) !=
-      Some(OathViolation.FollowUpPending(campaign)))
-
   test("a Skip intent binds to its sender"):
     assertEquals(GameIntentMapper.bind(p2,
       oathdigital.protocol.GameIntent.SkipFollowUp),

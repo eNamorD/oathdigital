@@ -507,13 +507,7 @@ object WalkerProcedureRegistry:
       : Either[OathViolation, Option[PowerWindow]] =
     lookup(procedure, registrations).map(_.modifierWindow)
 
-  /** Whether `procedure` runs on the generic walker at all (Task 9a). The
-    * pre-start modifier preview asks this to decide whether to offer
-    * `ContributingPower`s from the walker catalog or fall back to the legacy
-    * `PowerRuntime` machinery -- this registry stays the single place that
-    * knows which procedures are walker-driven, so that decision needs no
-    * second `ProcedureRef` match at the preview call site.
-    */
+  /** Whether `procedure` runs on the generic walker at all. */
   def isRegistered(procedure: ProcedureRef): Boolean =
     procedure.isInstanceOf[ActionRef.UsePower] ||
       procedure == TriggeredProcedureRef.ForcedWake || entries.contains(procedure)

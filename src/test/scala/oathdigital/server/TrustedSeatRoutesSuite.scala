@@ -12,7 +12,7 @@ import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.protocol._
 import oathdigital.testkit.{CatalogNames, HttpTestServer}
 import oathdigital.testkit.ChronicleShuffles.reversing
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Table.p2
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 class TrustedSeatRoutesSuite extends munit.FunSuite:
@@ -103,30 +103,6 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     assertEquals(gateway.submit("trusted", trustedP2Seat, command),
       Left(TrustedSeatFailure.Application(GameApplicationError.StaleClientPosition(
         afterBegin, placed.nextSequence))))
-
-  test("trusted preview binds resolved actor and rejects a different game"):
-    val repository = new InMemoryEventStreamRepository
-    // initialSituation's first player is p2; p1 is another seat.
-    val act = initialSituation().endingWake(p2)
-    act.seedInto(repository, "preview")
-    val service = new GameApplicationService(catalog, repository)
-    val gateway = new TrustedGameGateway(service, new GameProjector(catalog))
-    val sequence = act.nextSequence
-    val request = MajorActionPreviewRequest(sequence, "travel")
-    val previewP2Seat = TrustedSeat("preview", p2.value)
-    accepted(gateway.preview("preview", previewP2Seat, request))
-    assertEquals(
-      gateway.preview("preview", TrustedSeat("preview", p1.value), request)
-        .left.toOption,
-      Some(TrustedSeatFailure.Application(GameApplicationError.CommandRejected(
-        oathdigital.model.OathViolation.InvalidModifierInvocation(
-          "major-action preview is unavailable for this actor or phase")))))
-    assertEquals(gateway.preview("other", previewP2Seat, request),
-      Left(TrustedSeatFailure.Forbidden))
-    assertEquals(
-      present(accepted(service.load("preview")), "the preview game")
-        .nextSequence,
-      sequence)
 
   test("creation returns ordered public links"):
     withServer() { (server, _) =>
@@ -293,11 +269,10 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     }
 
   /** "origin-game", created from the configured HTTPS origin, with p2's
-    * seat cookie, an endWake command expecting sequence 0 and a travel
-    * preview expecting 1. The game is at 2 (GameStarted and WalkerParked),
-    * so both are stale. */
+    * seat cookie and an endWake command expecting sequence 0. The game is
+    * at 2 (GameStarted and WalkerParked), so the command is stale. */
   private final case class OriginGame(code: String, cookie: Option[String],
-      command: String, preview: String)
+      command: String)
 
   private def originGame(server: HttpTestServer): OriginGame =
     val created = send(server, "/games", Some(creationBody("origin-game")),
@@ -306,8 +281,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val code = codeOf(
       accepted(TrustedGameCreateResponseCodec.decode(created.body())), "p2")
     OriginGame(code, Some(s"oath_seat=$code"),
-      """{"expectedNextSequence":0,"intent":{"type":"endWake"}}""",
-      """{"expectedNextSequence":1,"action":"travel"}""")
+      """{"expectedNextSequence":0,"intent":{"type":"endWake"}}""")
 
   test("trusted endpoints reject queries and cross-origin mutations"):
     withServer(Some("https://games.example.test")) { (server, _) =>
@@ -315,41 +289,31 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
         assertEquals(send(server, "/games", Some(requestBody),
           origin = Some(origin)).statusCode(), 403)
       }
-      val OriginGame(code, cookie, command, preview) = originGame(server)
+      val OriginGame(code, cookie, command) = originGame(server)
       Vector("/games", s"/s/$code", "/games/origin-game", "/games/origin-game/api",
-        "/games/origin-game/api/commands", "/games/origin-game/api/preview").foreach { path =>
+        "/games/origin-game/api/commands").foreach { path =>
         val payload =
           if path == "/games" then Some(requestBody)
           else if path.endsWith("commands") then Some(command)
-          else if path.endsWith("preview") then Some(preview)
           else None
         val result = send(server, path + "?playerId=p1", payload, cookie)
         assertEquals(result.statusCode(), 400, result.body())
         assert(!result.body().contains(code))
       }
-      Vector("commands" -> command, "preview" -> preview).foreach { case (endpoint, payload) =>
-        assertEquals(send(server, s"/games/origin-game/api/$endpoint",
-          Some(payload), cookie,
-          Some("https://evil.example.test")).statusCode(), 403)
-      }
+      assertEquals(send(server, "/games/origin-game/api/commands",
+        Some(command), cookie,
+        Some("https://evil.example.test")).statusCode(), 403)
     }
 
-  test("stale commands and previews are refused with 409 under the " +
-      "configured Origin or none"):
+  test("stale commands are refused with 409 under the configured Origin or " +
+      "none"):
     withServer(Some("https://games.example.test")) { (server, _) =>
-      val OriginGame(_, cookie, command, preview) = originGame(server)
+      val OriginGame(_, cookie, command) = originGame(server)
       assertEquals(send(server, "/games/origin-game/api/commands",
         Some(command), cookie,
         Some("https://games.example.test")).statusCode(), 409)
-      assertEquals(send(server, "/games/origin-game/api/preview",
-        Some(preview.replace(":1,", ":0,")), cookie).statusCode(), 409)
-    }
-
-  test("a preview body with a playerId is refused"):
-    withServer(Some("https://games.example.test")) { (server, _) =>
-      val OriginGame(_, cookie, _, preview) = originGame(server)
-      assertEquals(send(server, "/games/origin-game/api/preview",
-        Some(preview.dropRight(1) + ",\"playerId\":\"p1\"}"), cookie).statusCode(), 400)
+      assertEquals(send(server, "/games/origin-game/api/commands",
+        Some(command), cookie).statusCode(), 409)
     }
 
   test("colon game IDs use the same encoded cookie redirect and API paths"):

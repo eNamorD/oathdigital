@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.{PowerRuntime, RuleSourceFace, RuleSourceIndex}
+import oathdigital.gameplay.{RuleSourceFace, RuleSourceIndex}
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -25,12 +25,3 @@ class BannerFaceSourcesSuite extends munit.FunSuite:
       DarkestSecretFace.Festival).ready
     val festival = darkest(onFestival).head
     assertEquals(festival.handlerIds, Vector("banner.darkest-secret.festival"))
-
-  test("Travel offers no option, whether the Banner of the Darkest Secret " +
-      "is unheld or held on Wandering Flame"):
-    assertEquals(PowerRuntime.options(catalog, quietTable, PowerFixture.actor,
-      ActionKind.Travel), Right(Vector.empty))
-    assertEquals(
-      PowerRuntime.options(catalog,
-      Table.start.darkestSecret(Some(p1), 1)
-        .ready, PowerFixture.actor, ActionKind.Travel), Right(Vector.empty))

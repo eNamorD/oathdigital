@@ -2,15 +2,13 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{RecordedEvent, ReplayStep}
-import oathdigital.gameplay.{PowerRuntime, OathRules}
+import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{ConsentPowers, PhasePowerCatalog,
   WalkerPowerCatalog}
-import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
-import oathdigital.protocol.PreviewModifier
 
 
 /** `events` are the events the command produced: the batch's opening
@@ -55,11 +53,6 @@ final case class PreparedGameBootstrap(
     state: OathState,
     events: Vector[OathEvent]
 )
-final case class MajorActionPreviewAccepted(loaded: LoadedGame,
-    options: Vector[OrderedRuleInvocation],
-    ignored: Vector[IgnoredRuleDiagnostic],
-    modifiers: Vector[PreviewModifier] = Vector.empty)
-
 sealed trait GameApplicationError extends Product with Serializable
 object GameApplicationError:
   final case class StreamNotFound(gameId: String)
@@ -114,7 +107,6 @@ final class GameApplicationService(
     phasePowerCatalog = PhasePowerCatalog.default(catalog),
     walkerDice = CampaignDicePort.walkerDice(campaignDicePort))
   private val presentation = new GamePresentationProjector(catalog)
-  private val descriptions = new PreviewModifierDescriptions(catalog, presentation)
   private val journalFold = new JournalFold(rules.evolve)
   private val consent = new ConsentDesk(rules, ConsentPowers.default(catalog))
   private val log = new gamelog.GameLogFormatter(catalog, presentation)
@@ -164,68 +156,6 @@ final class GameApplicationService(
       case Some(stream) =>
         reconstruct(gameId, stream).map(journal =>
           Some(GameHistory(journal.steps, stream.nextSequence)))
-
-  def preview(gameId: String, expectedNextSequence: Long, actor: PlayerId,
-      action: ActionKind, selected: Vector[OrderedRuleInvocation])
-      : Either[GameApplicationError, MajorActionPreviewAccepted] =
-    load(gameId).flatMap:
-      case None => Left(GameApplicationError.StreamNotFound(gameId))
-      case Some(loaded) if loaded.nextSequence != expectedNextSequence =>
-        Left(StaleClientPosition(expectedNextSequence, loaded.nextSequence))
-      case Some(loaded @ LoadedGame(OathState.Ready(ready), _, _, _, _)) =>
-        walkerAction(action) match
-          // The `ActionRef` this match already resolved is bound rather than
-          // discarded (batch-1 Task 1): `offerableWalkerPowers` reads the
-          // action's own modifier-selection window from the registry, so the
-          // preview offers what THIS action offers instead of what Recover
-          // does. It is the same ref, not a second derivation.
-          case Some(actionRef) =>
-            for
-              offerable <- rules.offerableWalkerPowers(ready, actor, actionRef)
-                .left.map(CommandRejected.apply)
-              options = offerable.map(power =>
-                OrderedRuleInvocation(power.source, power.id.value))
-              accepted <- acceptPreview(loaded, options, selected, Vector.empty)
-            yield accepted.copy(modifiers = descriptions.describe(ready,
-              actor, action, offerable, accepted.options))
-          case None =>
-            for
-              options <- PowerRuntime.options(catalog, ready, actor, action)
-                .left.map(CommandRejected.apply)
-              ignored <- PowerRuntime.ignored(catalog, ready, actor, action)
-                .left.map(CommandRejected.apply)
-              accepted <- acceptPreview(loaded, options, selected, ignored)
-            yield accepted.copy(modifiers = descriptions.describe(ready,
-              actor, action, Vector.empty, accepted.options))
-      case Some(_) => Left(CommandRejected(OathViolation.GameNotStarted))
-
-  /** `action` runs on the generic walker (Task 9a) exactly when its wire key
-    * names a registered [[oathdigital.model.ActionRef]] --
-    * `WalkerProcedureRegistry` stays the single place that knows which
-    * procedures are walker-driven, so this needs no per-action
-    * `ActionKind` match of its own. `ActionKind` and `ActionRef`
-    * share their key strings by convention (see `GameIntentMapper.actionRef`,
-    * which bridges the same way from the wire intent), so a legacy-only kind
-    * like `Campaign` simply has no matching `ActionRef` and falls through to
-    * the `None` branch.
-    */
-  private def walkerAction(action: ActionKind): Option[ActionRef] =
-    ActionRef.fromKey(action.key).filter(WalkerProcedureRegistry.isRegistered)
-
-  /** Shared acceptance gate for both preview branches: `selected` must be
-    * duplicate-free and a subset of `options`, whichever machinery produced
-    * `options`.
-    */
-  private def acceptPreview(loaded: LoadedGame,
-      options: Vector[OrderedRuleInvocation],
-      selected: Vector[OrderedRuleInvocation],
-      ignored: Vector[IgnoredRuleDiagnostic])
-      : Either[GameApplicationError, MajorActionPreviewAccepted] =
-    Either.cond(selected.distinct.size == selected.size &&
-      selected.forall(options.contains),
-      MajorActionPreviewAccepted(loaded, options, ignored),
-      CommandRejected(OathViolation.InvalidModifierInvocation(
-        "preview contains a duplicate or unavailable modifier")))
 
   def handle(
       gameId: String,
@@ -487,22 +417,6 @@ final class GameApplicationService(
       nextSequence: Long
   ): Either[OathViolation, OathTransition] =
     command match
-      case GameCommand.WithModifiers(inner, ordered) => state match
-        case OathState.Ready(ready) => majorAction(inner).toRight(
-          OathViolation.InvalidModifierInvocation(
-            "ordered modifiers are only valid on a major-action start"))
-          .flatMap { case (actor, action) =>
-            PowerRuntime.options(catalog, ready, actor, action).flatMap { options =>
-              val duplicate = ordered.distinct.size != ordered.size
-              val unavailable = ordered.find(value => !options.contains(value))
-              if duplicate then Left(OathViolation.InvalidModifierInvocation(
-                "a modifier may be invoked only once"))
-              else unavailable.map(value => Left(OathViolation.InvalidModifierInvocation(
-                s"modifier ${value.handlerId} is unavailable from ${value.source.stableKey}")))
-                .getOrElse(applyCommand(state, inner, nextSequence))
-            }
-          }
-        case _ => Left(OathViolation.GameNotStarted)
       case GameCommand.Begin(chronicle, orders) =>
         rules.beginGame(state, chronicle, orders)
       case GameCommand.StartWalker(procedure, start) =>
@@ -573,15 +487,10 @@ final class GameApplicationService(
   /** Whether `command` starts or skips `head`, as its player. */
   private def answersFollowUp(head: FollowUp, command: GameCommand): Boolean =
     command match
-      case GameCommand.WithModifiers(inner, _) => answersFollowUp(head, inner)
       case GameCommand.StartWalker(procedure, start) =>
         procedure == head.action && start.actor == head.player
       case GameCommand.SkipFollowUp(player) => player == head.player
       case _ => false
-
-  private def majorAction(command: GameCommand): Option[(PlayerId, ActionKind)] =
-    command match
-      case _ => None
 
   private def encode(
       gameId: String,

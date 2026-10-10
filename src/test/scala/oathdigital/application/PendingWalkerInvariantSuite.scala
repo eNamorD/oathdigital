@@ -30,7 +30,6 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
 
   /** One instance of every `GameCommand` constructor, bound to `actor`. */
   private def everyCommand(actor: PlayerId): Vector[GameCommand] = Vector(
-    GameCommand.WithModifiers(GameCommand.EndWake(actor), Vector.empty),
     GameCommand.Begin(chronicle, orders),
     GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)),
     GameCommand.ResolveWalker(actor, TreeDecision("not-parked",

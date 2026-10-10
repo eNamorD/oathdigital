@@ -4,8 +4,6 @@ import oathdigital.model._
 
 sealed trait GameCommand extends Product with Serializable
 object GameCommand:
-  final case class WithModifiers(command: GameCommand,
-      ordered: Vector[OrderedRuleInvocation]) extends GameCommand
   final case class Begin(chronicle: Chronicle, orders: SetupOrders)
       extends GameCommand
   final case class StartWalker(procedure: StartableRef, start: StartPayload)
@@ -61,7 +59,6 @@ object GameCommand:
     * journal still begins with `GameStarted`; an Undo or a Redo appends its
     * marker alone. */
   def issuer(command: GameCommand): Option[PlayerId] = command match
-    case WithModifiers(inner, _) => issuer(inner)
     case Begin(_, _) => None
     case StartWalker(_, start) => Some(start.actor)
     case ResolveWalker(actor, _) => Some(actor)

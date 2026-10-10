@@ -112,19 +112,6 @@ class CommandProtocolSuite extends munit.FunSuite:
     assertEquals(rejected(ActorlessCommandCodec.decode(duplicate)).path,
       "$.intent.payload.terms.transfers")
 
-  test("ordered modifier transport preserves click order and rejects duplicates"):
-    val modifiers = Vector(
-      ModifierInvocation("adviser", "d2", None, "denizen.second"),
-      ModifierInvocation("site-card", "d1", Some("s1"), "denizen.first"))
-    val request = ActorlessCommandRequest(9, StartWalker("travel",
-      Vector.empty, Vector(WalkerStartArgWire("site", "s2"))), modifiers)
-    assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(request)),
-      Right(request))
-    val duplicate = request.copy(orderedModifiers = Vector(modifiers.head,
-      modifiers.head))
-    assertEquals(rejected(ActorlessCommandCodec.decode(
-      ActorlessCommandCodec.encode(duplicate))).path, "$.orderedModifiers")
-
   test("an unknown decision-payload kind decodes to a typed error, not an exception"):
     val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
       """"decisionId":"recover.choice","payload":{"kind":"recover-teleport"}}}"""
@@ -168,34 +155,3 @@ class CommandProtocolSuite extends munit.FunSuite:
     val failure = rejected(ActorlessCommandCodec.decode(json))
     assertEquals(failure.path, "$.intent.type")
     assert(failure.message.contains("unknown intent type"))
-
-  test("a major-action preview request and response round trip"):
-    val request = MajorActionPreviewRequest(7, "trade",
-      Map("resource" -> "favor"), Vector(
-        ModifierInvocation("adviser", "d2", None, "denizen.second")))
-    assertEquals(MajorActionPreviewCodec.decode(
-      MajorActionPreviewCodec.encodeRequest(request)), Right(request))
-    val response = MajorActionPreviewResponse(7, "trade",
-      Vector(PreviewModifier("adviser:p1:d2", "denizen.second", "Second")),
-      Vector(PreviewIgnoredRule("site-card:s1:d1", "denizen.first", "start",
-        "not implemented")))
-    assertEquals(MajorActionPreviewCodec.decodeResponse(
-      MajorActionPreviewCodec.encode(response)), Right(response))
-
-  test("a preview modifier round-trips its printed cost"):
-    val response = MajorActionPreviewResponse(4L, "recover",
-      Vector(PreviewModifier("site-card:s1:d201", "denizen.catacombs",
-        "Catacombs", cost = Some("1 secret"))), Vector.empty)
-    assertEquals(MajorActionPreviewCodec.decodeResponse(
-      MajorActionPreviewCodec.encode(response)), Right(response))
-
-  test("a preview modifier round-trips its card and the action it modifies"):
-    val card = oathdigital.protocol.projection.CardDetailsProjection(
-      "denizen:vow-of-peace", "denizen", "Vow of Peace",
-      suit = Some("order"), orientation = Some("face-up"))
-    val response = MajorActionPreviewResponse(4L, "travel",
-      Vector(PreviewModifier("adviser:p1:denizen:vow-of-peace",
-        "denizen.vow-of-peace", "Vow of Peace", Some(card), Some("travel"))),
-      Vector.empty)
-    val json = MajorActionPreviewCodec.encode(response)
-    assertEquals(MajorActionPreviewCodec.decodeResponse(json), Right(response))

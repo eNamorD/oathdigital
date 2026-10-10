@@ -15,8 +15,7 @@ import akka.http.scaladsl.server.Route
 import org.slf4j.LoggerFactory
 
 import oathdigital.application._
-import oathdigital.protocol.{ActorlessCommandRequest, FirstGameBootstrapRequest,
-  MajorActionPreviewRequest, MajorActionPreviewResponse}
+import oathdigital.protocol.{ActorlessCommandRequest, FirstGameBootstrapRequest}
 import oathdigital.protocol.projection.GameProjection
 
 sealed trait AuthenticatedGameFailure extends Product with Serializable
@@ -67,8 +66,7 @@ final class AuthenticatedGameGateway(
     authorization.authorizeCommand(gameId, principal)
       .left.map(Authorization.apply)
       .flatMap { actor =>
-        GameIntentMapper.bind(actor.access.playerId, request.intent,
-          request.orderedModifiers)
+        GameIntentMapper.bind(actor.access.playerId, request.intent)
           .left.map(InvalidIntent.apply)
           .flatMap(command => service.handle(gameId,
             request.expectedNextSequence, command).left.map(Application.apply))
@@ -78,26 +76,6 @@ final class AuthenticatedGameGateway(
             actor.access.playerId
           ))
       }
-
-  def preview(gameId: String, principal: AuthenticatedPrincipal,
-      request: MajorActionPreviewRequest)
-      : Either[AuthenticatedGameFailure, MajorActionPreviewResponse] =
-    authorization.authorizeCommand(gameId, principal).left.map(Authorization.apply)
-      .flatMap { actor => for
-        action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(
-          InvalidIntent(GameIntentMappingFailure("$.action", "unknown major action")))
-        selected <- GameIntentMapper.bindModifiers(actor.access.playerId,
-          request.orderedModifiers).left.map(InvalidIntent.apply)
-        accepted <- service.preview(gameId, request.expectedNextSequence,
-          actor.access.playerId, action, selected).left.map(Application.apply)
-        projection = projector.project(gameId, accepted.loaded, actor.access.playerId)
-        _ <- Either.cond(projection.actionSelectionOpen, (), Application(
-          GameApplicationError.CommandRejected(
-            oathdigital.model.OathViolation.InvalidModifierInvocation(
-              "major-action preview is unavailable in this phase"))))
-        _ <- MajorActionPreviewGuard.validate(projection, request).left.map(Application.apply)
-      yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
-        request.action, accepted.modifiers, Vector.empty) }
 
   def bootstrap(
       gameId: String,
@@ -218,17 +196,6 @@ final class AuthenticatedGameRoutes(
                             gateway.submit(validGameId, principal, command)
                           )
                       }
-                  } ~ path("preview") {
-                    post:
-                      if !csrfProtection.validate(request, session) then
-                        complete(csrfFailure)
-                      else entity(as[String]) { body =>
-                        oathdigital.protocol.MajorActionPreviewCodec.decode(body) match
-                          case Left(error) => complete(response(StatusCodes.BadRequest,
-                            "malformed-request", s"${error.path}: ${error.message}"))
-                          case Right(preview) => completePreview(
-                            gateway.preview(validGameId, principal, preview))
-                      }
                   } ~ path("bootstrap"):
                     post:
                       if !csrfProtection.validate(request, session) then
@@ -247,21 +214,6 @@ final class AuthenticatedGameRoutes(
             }
       }
     }
-
-  private def completePreview(operation: => Either[AuthenticatedGameFailure,
-      MajorActionPreviewResponse]): Route =
-    onComplete(Future(operation)(using blockingExecutionContext)):
-      case Success(Right(value)) => complete(HttpResponse(StatusCodes.OK,
-        entity = HttpEntity(ContentTypes.`application/json`,
-          oathdigital.protocol.MajorActionPreviewCodec.encode(value))))
-      case Success(Left(error)) =>
-        val (status, code, message, internal) = publicError(error)
-        if internal then logger.error("Authenticated preview failure: {}", error)
-        complete(response(status, code, message))
-      case Failure(error) =>
-        logger.error("Unhandled authenticated preview failure", error)
-        complete(response(StatusCodes.InternalServerError, "internal-error",
-          "the server could not complete the request"))
 
   private def csrfFailure: HttpResponse = response(
     StatusCodes.Forbidden,

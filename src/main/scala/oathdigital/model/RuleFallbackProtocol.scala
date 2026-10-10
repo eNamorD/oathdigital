@@ -29,6 +29,5 @@ enum RuleTiming(val key: String):
   case BattlePlan extends RuleTiming("battle-plan")
   case Inherent extends RuleTiming("inherent")
 
-final case class OrderedRuleInvocation(source: RuleSourceRef, handlerId: String)
 final case class IgnoredRuleDiagnostic(source: RuleSourceRef, handlerId: String,
     action: ActionKind, timing: RuleTiming, reason: String)

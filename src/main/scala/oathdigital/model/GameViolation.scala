@@ -8,7 +8,6 @@ object OathViolation:
       extends OathViolation
   final case class UnsupportedRuleCatalog(expected: String, actual: String)
       extends OathViolation
-  final case class InvalidModifierInvocation(message: String) extends OathViolation
   case object GameAlreadyExists extends OathViolation
   case object GameNotStarted extends OathViolation
   case object GameEnded extends OathViolation
