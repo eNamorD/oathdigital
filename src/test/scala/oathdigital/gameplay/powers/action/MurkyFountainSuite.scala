@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.gameplay.WalkerDiceFixture.scripted
+import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
@@ -118,3 +120,22 @@ class MurkyFountainSuite extends munit.FunSuite:
     assertEquals(NoteText.said(MurkyFountain, done.events), Vector(
       NoteText.Said("used.away", s"${actor.value} was not at its site.",
         covers = false)))
+
+  test("Jinx rerolls the Murky Fountain's roll"):
+    val jinx = CatalogNames.denizen("Jinx")
+    val ready0 = Table.start.turn(actor, Phase.Act)
+      .pawn(actor, "Ancient City").supply(actor, 1)
+      .secrets(actor, faceUp = 2).adviser(actor, jinx)
+      .edifice(fountain, EdificeSide.Ruined, at = "Ancient City").ready
+    val rules0 = rulesWithPrintedRestrictions(scripted(
+      Vector.fill(MurkyFountain.Dice)(DefenseDieFace.Blank),
+      Vector.fill(MurkyFountain.Dice)(DefenseDieFace.OneShield)))
+    val reroll = RerollChoice.decisionId(MurkyFountain.pool, 1)
+    val started = accepted(use(rules0, ready0, MurkyFountain.id, source))
+    parkedWithWalkerPowers.assertParked(started.state,
+      ActionRef.UsePower(MurkyFountain.id), reroll, actor)
+    val rerolled = accepted(answer(rules0, started.state, reroll,
+      DecisionOptionRef.Denizen(jinx)))
+    // 1 Supply and one shield per rerolled die.
+    assertEquals(Look(ready(rerolled.state)).player(actor).board.supply,
+      SupplyTrack(1 + MurkyFountain.Dice))

@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.gameplay.WalkerDiceFixture.scripted
+import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
@@ -147,3 +149,21 @@ class GamblingHallSuite extends munit.FunSuite:
     val done = accepted(answer(rules(total4), parked.state,
       GamblingHall.decisionId, bank(Suit.Discord)))
     assertEquals(notes(done.events), Vector.empty)
+
+  test("Jinx rerolls the four dice before the bank is chosen"):
+    val jinx = CatalogNames.denizen("Jinx")
+    val ready0 = stagedTable().adviser(actor, jinx)
+      .secrets(actor, faceUp = 1).ready
+    val rules0 = rulesWithPrintedRestrictions(scripted(
+      Vector.fill(4)(DefenseDieFace.Blank),
+      Vector.fill(4)(DefenseDieFace.OneShield)))
+    val reroll = RerollChoice.decisionId(GamblingHall.pool, 1)
+    val parked = accepted(use(rules0, ready0, GamblingHall.id, source))
+    parkedWithWalkerPowers.assertParked(parked.state,
+      ActionRef.UsePower(GamblingHall.id), reroll, actor)
+    val rerolled = accepted(answer(rules0, parked.state, reroll,
+      DecisionOptionRef.Denizen(jinx)))
+    parkedWithWalkerPowers.assertParked(rerolled.state,
+      ActionRef.UsePower(GamblingHall.id), GamblingHall.decisionId, actor)
+    assertEquals(ready(rerolled.state).game.current
+      .rollOutcomes(GamblingHall.pool).score, 4)

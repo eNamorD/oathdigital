@@ -54,6 +54,7 @@ import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard,
   OldSongsCard, PressgangsCard, RowdyPubCard, SkilledMerchantsCard,
   TheOldOakCard, VillageIdiotCard, VowOfBeastkinCard, VowOfPovertyCard,
   VowOfWanderingCard}
+import oathdigital.gameplay.powers.dice.JinxCard
 import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard}
 import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
   SilverTongueCard}

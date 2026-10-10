@@ -6,6 +6,7 @@ import oathdigital.gameplay.powers.action.{Assassin, PiedPiper}
 import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRestrictions,
   PlanRewrites, PlanRules, SimplePlans, VowOfPeaceContribution}
+import oathdigital.gameplay.powers.dice.Jinx
 import oathdigital.gameplay.powers.economy.{KnightsErrant, Marriage}
 import oathdigital.gameplay.powers.cardplay.{CardPlayTriggers, FamilyWagon,
   LostTapestry}
@@ -47,6 +48,7 @@ import oathdigital.gameplay.walker.WalkerPowers
   * The battle plans are inert until a Campaign folds its plan windows: each
   * offers itself there, and the title's defense, which no card prints, is always
   * present.
+  * Jinx is inert until a roll step asks for rerolls.
   * `restrictionSet` gives every walker step the catalog's global operation
   * restrictions.
   */
@@ -75,6 +77,7 @@ object WalkerPowerCatalog:
       TargetProtections.forCatalog(catalog) ++
       Vector(KnightsErrant.forCatalog(catalog)) ++
       Vector(Marriage) ++
+      Vector(Jinx.forCatalog(catalog)) ++
       BattlePlans.forCatalog(catalog) ++
       PlanRules.forCatalog(catalog) ++
       SimplePlans.forCatalog(catalog) ++

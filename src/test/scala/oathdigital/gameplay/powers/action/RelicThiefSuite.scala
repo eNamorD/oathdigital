@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.gameplay.WalkerDiceFixture.scripted
+import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerDice
@@ -101,3 +103,21 @@ class RelicThiefSuite extends munit.FunSuite:
     walkerParked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
       "used.none", "No faceup relic could be taken.", covers = false)))
+
+  test("Jinx rerolls the Relic Thief's roll"):
+    val jinx = CatalogNames.denizen("Jinx")
+    val dice = catalog.relic(whistle).get.defense
+    val before = staged.adviser(p1, jinx).secrets(p1, faceUp = 2).ready
+    val rules0 = rulesWithPrintedRestrictions(scripted(
+      Vector.fill(dice)(DefenseDieFace.TwoShields),
+      Vector.fill(dice)(DefenseDieFace.Blank)))
+    val reroll = RerollChoice.decisionId(RelicThief.pool, 1)
+    val started = accepted(use(rules0, before, RelicThief.id, source))
+    val parked = accepted(answer(rules0, started.state,
+      RelicThief.decisionId, DecisionOptionRef.Relic(whistle)))
+    parkedWithWalkerPowers.assertParked(parked.state,
+      ActionRef.UsePower(RelicThief.id), reroll, p1)
+    val rerolled = accepted(answer(rules0, parked.state, reroll,
+      DecisionOptionRef.Denizen(jinx)))
+    // The rerolled dice show no shield, so the relic is taken.
+    assertEquals(Look(ready(rerolled.state)).relics(p1), Vector(whistle))

@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.gameplay.WalkerDiceFixture.scripted
+import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
@@ -89,3 +91,20 @@ class BoneDiceSuite extends munit.FunSuite:
         covers = true),
       NoteText.Said("gained", s"${actor.value} gained 3 Supply.", covers = false),
       NoteText.Said("buried", "Buried after a skull.", covers = true)))
+
+  test("Jinx rerolls the Bone Dice's roll"):
+    val jinx = CatalogNames.denizen("Jinx")
+    val ready0 = Table.start.turn(actor, Phase.Act).relic(actor, bones)
+      .supply(actor, 2).adviser(actor, jinx).secrets(actor, faceUp = 2).ready
+    val rules0 = rulesWithPrintedRestrictions(scripted(
+      Vector(AttackDieFace.HollowSword, AttackDieFace.HollowSword),
+      Vector(AttackDieFace.OneSword, AttackDieFace.OneSword)))
+    val reroll = RerollChoice.decisionId(BoneDice.pool, 1)
+    val started = accepted(use(rules0, ready0, BoneDice.id, source))
+    parkedWithWalkerPowers.assertParked(started.state,
+      ActionRef.UsePower(BoneDice.id), reroll, actor)
+    val rerolled = accepted(answer(rules0, started.state, reroll,
+      DecisionOptionRef.Denizen(jinx)))
+    // 2 Supply and the rerolled 2 swords make 4.
+    assertEquals(Look(ready(rerolled.state)).player(actor).board.supply,
+      SupplyTrack(4))
