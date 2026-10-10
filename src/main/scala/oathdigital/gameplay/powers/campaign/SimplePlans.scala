@@ -10,7 +10,7 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * Cracking Ground, Walled Garden, Bandit Standard, Extra Provisions,
   * Encirclement, Disgraced Captain, Battle Axes, Field Promotion, Tribute
   * Spoils, Military Parade, Scouts, Zealots (the sacrifice's worth recorded
-  * when applied) and Second Wind, registered together. Each names its
+  * when applied), Bear Traps and Second Wind, registered together. Each names its
   * card, so all are always present.
   */
 object SimplePlans:
@@ -40,4 +40,5 @@ object SimplePlans:
       Vector(MilitaryParade.forCatalog(catalog)) ++
       Vector(Scouts) ++
       Vector(SecondWind) ++
-      Vector(Zealots)
+      Vector(Zealots) ++
+      Vector(BearTraps)

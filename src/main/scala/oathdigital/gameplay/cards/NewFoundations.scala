@@ -27,7 +27,7 @@ import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,
   WitchsBargainCard,
   WizardSchoolCard, WolvesCard}
 import oathdigital.gameplay.powers.campaign.{ArcaneArmorCard,
-  BagOfSiegeworksCard, BanditStandardCard, BannerBreakersCard, BattleAxesCard,
+  BagOfSiegeworksCard, BanditStandardCard, BearTrapsCard, BannerBreakersCard, BattleAxesCard,
   BattleHonorsCard,
   BillowingFogCard, BlackSwordCard, BookBurningCard, BrassArmyCard,
   CarefulPlansCard, CrackedSageCard, CrackingGroundCard, CursedCauldronCard, DisgracedCaptainCard,

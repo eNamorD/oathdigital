@@ -61,12 +61,6 @@ object CityWallCard extends Denizen(DenizenId("252"), "City Wall", Suit.Order) w
       "powers.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object BearTrapsCard extends Denizen(DenizenId("3"), "Bear Traps", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.bear-traps"),
-    persistent = false, cost = Cost.free,
-    text = "- [attack-die] Kill one warband on the attacker's board.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object KeepCard extends Denizen(DenizenId("5"), "Keep", Suit.Order) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.keep"),
     persistent = false, cost = Cost.free,
