@@ -14,16 +14,17 @@ class FollowUpProjectionSuite extends munit.FunSuite:
   private val knightsCard = CatalogNames.denizen("Knights Errant")
   private val knights = PowerSourceRef.Card(knightsCard)
 
-  private def owed(action: ActionRef): FollowUp = FollowUp(p1, action, knights)
+  private def owed(action: ActionRef): QueuedProcedure = QueuedProcedure(p1,
+      action, Vector.empty, Some(knights), QueueKind.Offer)
 
   /** p1 at Ancient City, which two bandits rule, holding Knights Errant
     * faceup; p2 at Broken Peaks and p3 at Buried Giant. `queue` is owed to p1.
     */
-  private def table(queue: FollowUp*): Table = Table.start
+  private def table(queue: QueuedProcedure*): Table = Table.start
     .pawn(p1, at = ancientCity).pawn(p2, at = "Broken Peaks")
     .pawn(p3, at = "Buried Giant").adviser(p1, knightsCard)
     .bandits(ancientCity, 2)
-    .update(_.updateCurrent(_.copy(followUps = queue.toVector)))
+    .update(_.updateCurrent(_.copy(queue = queue.toVector)))
 
   private def project(board: Table, viewer: PlayerId): GameProjection =
     new GameProjector(catalog).project("follow-up",
@@ -94,10 +95,11 @@ class FollowUpProjectionSuite extends munit.FunSuite:
 
   test("a site or a banner names the source too"):
     val site = CatalogNames.site("Ancient City")
-    val bySite = FollowUp(p1, ActionRef.Campaign, PowerSourceRef.Site(site))
+    val bySite = QueuedProcedure(p1, ActionRef.Campaign, Vector.empty,
+        Some(PowerSourceRef.Site(site)), QueueKind.Offer)
     assertEquals(project(table(bySite), p1).followUp.map(_.source),
       Some("Ancient City"))
-    val byBanner = FollowUp(p1, ActionRef.Campaign,
-      PowerSourceRef.Banner(Banner.PeoplesFavor))
+    val byBanner = QueuedProcedure(p1, ActionRef.Campaign, Vector.empty,
+        Some(PowerSourceRef.Banner(Banner.PeoplesFavor)), QueueKind.Offer)
     assertEquals(project(table(byBanner), p1).followUp.map(_.source),
       Some("People's Favor"))

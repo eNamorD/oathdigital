@@ -31,9 +31,9 @@ private[gameplay] object OathLifecycle:
       else if current.turn.activePlayer != playerId then
         Left(WrongPlayer(current.turn.activePlayer, playerId))
       // A queued action may run after the Act phase has ended (follow-up
-      // actions design, ruling 6); its start has set `walkerFollowUp`.
+      // actions design, ruling 6); its start has set `walkerEntry`.
       else if current.turn.phase != Phase.Act &&
-          current.walkerFollowUp.isEmpty then
+          current.walkerEntry.isEmpty then
         Left(WrongPhase(Phase.Act, current.turn.phase))
       else if current.walkerPending.nonEmpty then
         Left(InvalidEventOrder(

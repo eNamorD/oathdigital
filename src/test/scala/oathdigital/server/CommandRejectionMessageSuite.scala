@@ -1,7 +1,9 @@
 package oathdigital.server
 
 import munit.FunSuite
-import oathdigital.model.OathViolation
+import oathdigital.model.{ActionRef, OathViolation, PlayerId,
+  PowerSourceRef, QueueKind, QueuedProcedure}
+import oathdigital.testkit.CatalogNames
 
 class CommandRejectionMessageSuite extends FunSuite:
   test("rejections surface their authoritative detail"):
@@ -12,10 +14,9 @@ class CommandRejectionMessageSuite extends FunSuite:
     assertEquals(CommandRejectionMessage.text(OathViolation.InsufficientFavor(3, 2)),
       "required favor 3 exceeds available 2")
     assertEquals(CommandRejectionMessage.text(OathViolation.FollowUpPending(
-      oathdigital.model.FollowUp(oathdigital.model.PlayerId("p1"),
-        oathdigital.model.ActionRef.Campaign,
-        oathdigital.model.PowerSourceRef.Card(
-          oathdigital.testkit.CatalogNames.denizen("Knights Errant"))))),
+      QueuedProcedure(PlayerId("p1"), ActionRef.Campaign, Vector.empty,
+        Some(PowerSourceRef.Card(CatalogNames.denizen("Knights Errant"))),
+        QueueKind.Offer))),
       "Start or skip the queued campaign first")
     assertEquals(CommandRejectionMessage.text(OathViolation.ConsentPending),
       "Waiting for an answer to a consent request")

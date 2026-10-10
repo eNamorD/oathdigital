@@ -3,7 +3,7 @@ package oathdigital.serialization
 import scala.util.control.NonFatal
 
 import oathdigital.gameplay.walker.{ChoicePayload, FollowUpSkipped,
-  FollowUpStarted, PowerNoted, RollPayload, WalkerCompleted, DeltaMeaning,
+  PowerNoted, ProcedureDequeued, RollPayload, WalkerCompleted, DeltaMeaning,
   WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
@@ -20,7 +20,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case _: WalkerParked => WalkerParkedType
     case _: WalkerCompleted => WalkerCompletedType
     case _: PowerNoted => PowerNotedType
-    case _: FollowUpStarted => FollowUpStartedType
+    case _: ProcedureDequeued => ProcedureDequeuedType
     case _: FollowUpSkipped => FollowUpSkippedType
 
   protected final val walkerEncoder: PartialFunction[OathEvent, ujson.Value] =
@@ -47,10 +47,10 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case PowerNoted(power, note, covers) => ujson.Obj(
       "powerId" -> power.value, "covers" -> ujson.Bool(covers),
       "note" -> encodeNote(note))
-    case FollowUpStarted(followUp) =>
-      ujson.Obj("followUp" -> encodeFollowUp(followUp))
-    case FollowUpSkipped(followUp) =>
-      ujson.Obj("followUp" -> encodeFollowUp(followUp))
+    case ProcedureDequeued(entry) =>
+      ujson.Obj("entry" -> encodeQueued(entry))
+    case FollowUpSkipped(entry) =>
+      ujson.Obj("entry" -> encodeQueued(entry))
 
   protected final def walkerDecode(eventType: String, payload: ujson.Value,
       path: String)
@@ -63,11 +63,11 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
           s"$path.procedure")
       yield WalkerCompleted(procedure)
       case PowerNotedType => decodePowerNoted(payload, path)
-      case FollowUpStartedType =>
-        decodeFollowUp(payload("followUp"), s"$path.followUp")
-          .map(FollowUpStarted(_))
+      case ProcedureDequeuedType =>
+        decodeQueued(payload("entry"), s"$path.entry")
+          .map(ProcedureDequeued(_))
       case FollowUpSkippedType =>
-        decodeFollowUp(payload("followUp"), s"$path.followUp")
+        decodeQueued(payload("entry"), s"$path.entry")
           .map(FollowUpSkipped(_))
     decoder.lift(eventType)
 

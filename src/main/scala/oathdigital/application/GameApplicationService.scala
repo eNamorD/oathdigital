@@ -406,9 +406,9 @@ final class GameApplicationService(
       // are legal (follow-up actions design, ruling 3). Undo and Redo never
       // reach here, so a player can still take the origin back.
       case OathState.Ready(ready) if ready.game.current.result.isEmpty &&
-          ready.game.current.followUps.headOption.exists(head =>
+          ready.game.current.queue.headOption.exists(head =>
             !answersFollowUp(head, command)) =>
-        Left(OathViolation.FollowUpPending(ready.game.current.followUps.head))
+        Left(OathViolation.FollowUpPending(ready.game.current.queue.head))
       case _ => applyUnblockedCommand(state, command, nextSequence)
 
   private def applyUnblockedCommand(
@@ -485,11 +485,12 @@ final class GameApplicationService(
     case _ => false
 
   /** Whether `command` starts or skips `head`, as its player. */
-  private def answersFollowUp(head: FollowUp, command: GameCommand): Boolean =
+  private def answersFollowUp(head: QueuedProcedure,
+      command: GameCommand): Boolean =
     command match
       case GameCommand.StartWalker(procedure, start) =>
-        procedure == head.action && start.actor == head.player
-      case GameCommand.SkipFollowUp(player) => player == head.player
+        procedure == head.procedure && start.actor == head.actor
+      case GameCommand.SkipFollowUp(player) => player == head.actor
       case _ => false
 
   private def encode(

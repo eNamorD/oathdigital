@@ -108,7 +108,7 @@ object OathViolation:
       extends OathViolation
   /** A queued action waits for its player to start or skip it, and nothing
     * else may happen first (follow-up actions design, ruling 3). */
-  final case class FollowUpPending(followUp: FollowUp) extends OathViolation
+  final case class FollowUpPending(entry: QueuedProcedure) extends OathViolation
   /** A consent request waits on its granters: only their answers, the
     * requester's withdrawal and preference changes run (consent design,
     * "Commands"). */

@@ -18,8 +18,8 @@ import oathdigital.testkit.Table.p1
 class HuntingPartySuite extends munit.FunSuite:
   private val hunting = CatalogNames.denizen("Hunting Party")
   private val modifiers = Vector(HuntingParty.id)
-  private val owed = FollowUp(p1, ActionRef.Campaign,
-    PowerSourceRef.Card(hunting))
+  private val owed = QueuedProcedure(p1, ActionRef.Campaign, Vector.empty,
+      Some(PowerSourceRef.Card(hunting)), QueueKind.Offer)
   private val region = Region.Cradle // Ancient City's region
   /** Plain denizens for the world deck and the Cradle discard. */
   private val deckTop = Vector("Wrestlers", "Errand Boy", "Mercenaries")
@@ -37,7 +37,7 @@ class HuntingPartySuite extends munit.FunSuite:
   /** The queue after a whole Search of `pile` with `selected`, every later
     * decision answered by default. */
   private def queuedAfter(pile: SearchSource, selected: Vector[PowerId])
-      : Vector[FollowUp] =
+      : Vector[QueuedProcedure] =
     val source: oathdigital.testkit.Answers = {
       case park if park.decisionId == SearchProcedure.sourceDecisionId =>
         ChooseOneAnswer(SearchSource.ref(pile))
@@ -46,7 +46,7 @@ class HuntingPartySuite extends munit.FunSuite:
       source.orElse(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
         selected)))
       .after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1)))
-      .ready.game.current.followUps
+      .ready.game.current.queue
 
   test("a Search of the world deck queues a Campaign"):
     assertEquals(queuedAfter(SearchSource.WorldDeck, modifiers), Vector(owed))

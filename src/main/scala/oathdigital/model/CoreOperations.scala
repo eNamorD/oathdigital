@@ -531,9 +531,11 @@ final case class SetOathkeeper(holder: Option[PlayerId]) extends PrimitiveOperat
 final case class RecordCampaignResult(result: CampaignResult)
     extends PrimitiveOperation
 
-/** Appends `followUp` to the back of the queue (follow-up actions design).
-  * A source power emits it inside the origin action's tree. */
-final case class QueueFollowUp(followUp: FollowUp) extends PrimitiveOperation
+/** Puts `entry` on the queue (walker-driven game loop design, "The
+  * queue"): at the back, or in front when `atFront`. A source power emits
+  * it inside the origin action's tree. */
+final case class QueueProcedure(entry: QueuedProcedure,
+    atFront: Boolean = false) extends PrimitiveOperation
 
 /** Hands the turn to `player` in `phase`, clearing every power use recorded
   * against the turn that ended.

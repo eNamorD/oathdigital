@@ -4,10 +4,10 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.model._
 import oathdigital.gameplay.powerresolver.{ContributingPower, PhasePowers}
-import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
-  ModifierOffers, ProcedureWalker, WalkerCompleted, WalkerDice,
-  WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
-  WalkerSimulation, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{FollowUpSkipped,
+  ModifierOffers, ProcedureDequeued, ProcedureWalker, WalkerCompleted,
+  WalkerDice, WalkerOutcome, WalkerParked, WalkerPowers,
+  WalkerProcedureRegistry, WalkerSimulation, WalkerStepRecorded}
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
 
@@ -60,7 +60,7 @@ private[gameplay] trait OathRulesWalker:
           ready.game.current.walkerProcedure.nonEmpty =>
         Left(InvalidEventOrder("a walker procedure is already pending"))
       case Ready(ready) if ready.game.current.result.nonEmpty => Left(GameEnded)
-      case Ready(ready) => ready.game.current.followUps.headOption match
+      case Ready(ready) => ready.game.current.queue.headOption match
         case Some(head) => startFollowUp(state, head, procedure, requester,
           startArgs)
         case None => startNow(state, ready, procedure, requester, startArgs)
@@ -94,20 +94,20 @@ private[gameplay] trait OathRulesWalker:
   /** Starts the queue's head (follow-up actions design, "Start and skip").
     * The requester is compared with the entry's player here and nowhere
     * else, so an off-turn actor (Sneak Attack) changes only this comparison.
-    * `FollowUpStarted` is evolved before the normal start runs on the state
+    * `ProcedureDequeued` is evolved before the normal start runs on the state
     * it leaves, so the build skips the Act-phase check (`OathLifecycle`) and
     * the cost waiver sees the entry. A start that fails refuses the whole
     * command, so the queue is unchanged.
     */
-  private def startFollowUp(state: OathState, head: FollowUp,
+  private def startFollowUp(state: OathState, head: QueuedProcedure,
       procedure: StartableRef, requester: PlayerId,
       startArgs: Vector[DecisionOptionRef])
       : Either[OathViolation, OathTransition] =
-    val started = FollowUpStarted(head)
+    val started = ProcedureDequeued(head)
     for
-      _ <- Either.cond(requester == head.player, (),
-        WrongPlayer(head.player, requester))
-      _ <- Either.cond(procedure == head.action, (), FollowUpPending(head))
+      _ <- Either.cond(requester == head.actor, (),
+        WrongPlayer(head.actor, requester))
+      _ <- Either.cond(procedure == head.procedure, (), FollowUpPending(head))
       afterStart <- evolve(state, started)
       ready <- afterStart match
         case Ready(live) => Right(live)
@@ -124,10 +124,10 @@ private[gameplay] trait OathRulesWalker:
     case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
         ready.game.current.walkerProcedure.nonEmpty =>
       Left(InvalidEventOrder("a walker procedure is pending"))
-    case Ready(ready) => ready.game.current.followUps.headOption match
+    case Ready(ready) => ready.game.current.queue.headOption match
       case None => Left(InvalidEventOrder("no follow-up action is queued"))
-      case Some(head) if head.player != requester =>
-        Left(WrongPlayer(head.player, requester))
+      case Some(head) if head.actor != requester =>
+        Left(WrongPlayer(head.actor, requester))
       case Some(head) =>
         GameplayTransition(state, Vector(FollowUpSkipped(head)))(evolve)
     case _ => Left(GameNotStarted)
@@ -484,7 +484,7 @@ private[gameplay] trait OathRulesWalker:
     */
   private def autoFinishRest(transition: OathTransition)
       : Either[OathViolation, OathTransition] = transition.state match
-    case Ready(ready) if ready.game.current.followUps.isEmpty &&
+    case Ready(ready) if ready.game.current.queue.isEmpty &&
         !restPowerUsable(ready,
         ready.game.current.turn.activePlayer) =>
       startWalker(transition.state, PhaseTransitionRef.FinishRest,
@@ -502,7 +502,7 @@ private[gameplay] trait OathRulesWalker:
   private def autoEndWake(transition: OathTransition)
       : Either[OathViolation, OathTransition] = transition.state match
     case Ready(ready) if ready.game.current.result.isEmpty &&
-        ready.game.current.followUps.isEmpty &&
+        ready.game.current.queue.isEmpty &&
         ready.game.current.turn.phase == Phase.Wake &&
         ready.game.current.walkerPending.isEmpty &&
         ready.game.current.walkerProcedure.isEmpty &&

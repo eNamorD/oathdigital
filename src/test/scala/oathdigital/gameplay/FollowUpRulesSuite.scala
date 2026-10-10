@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
+import oathdigital.gameplay.walker.{FollowUpSkipped, ProcedureDequeued,
   WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
@@ -23,15 +23,16 @@ class FollowUpRulesSuite extends munit.FunSuite:
   private val knights =
     PowerSourceRef.Card(CatalogNames.denizen("Knights Errant"))
 
-  private def owed(action: ActionRef): FollowUp = FollowUp(p1, action, knights)
+  private def owed(action: ActionRef): QueuedProcedure = QueuedProcedure(p1,
+      action, Vector.empty, Some(knights), QueueKind.Offer)
 
   /** p1 at Ancient City, which two bandits rule, so a Conquest is legal; p2 at
     * Broken Peaks and p3 at Buried Giant. `queue` is owed to p1. */
-  private def table(queue: FollowUp*): Table = Table.start
+  private def table(queue: QueuedProcedure*): Table = Table.start
     .pawn(p1, at = ancientCity).pawn(p2, at = brokenPeaks)
     .pawn(p3, at = "Buried Giant")
     .bandits(ancientCity, 2)
-    .update(_.updateCurrent(_.copy(followUps = queue.toVector)))
+    .update(_.updateCurrent(_.copy(queue = queue.toVector)))
 
   private def current(state: OathState): CurrentGameState =
     Outcomes.ready(state).game.current
@@ -42,13 +43,13 @@ class FollowUpRulesSuite extends munit.FunSuite:
     accepted(events.foldLeft[Either[OathViolation, OathState]](Right(from))(
       (state, event) => state.flatMap(rules.evolve(_, event))))
 
-  test("the queued start takes the head and opens with FollowUpStarted"):
+  test("the queued start takes the head and opens with ProcedureDequeued"):
     val start = table(owed(ActionRef.Campaign)).state
     val started = accepted(rules.startWalker(start, ActionRef.Campaign, p1))
     assertEquals(started.events.head,
-      FollowUpStarted(owed(ActionRef.Campaign)): OathEvent)
-    assertEquals(current(started.state).followUps, Vector.empty)
-    assertEquals(current(started.state).walkerFollowUp,
+      ProcedureDequeued(owed(ActionRef.Campaign)): OathEvent)
+    assertEquals(current(started.state).queue, Vector.empty)
+    assertEquals(current(started.state).walkerEntry,
       Some(owed(ActionRef.Campaign)))
     assertEquals(replayed(start, started.events), started.state)
 
@@ -72,7 +73,7 @@ class FollowUpRulesSuite extends munit.FunSuite:
     val skipped = accepted(rules.skipFollowUp(start, p1))
     assertEquals(skipped.events,
       Vector[OathEvent](FollowUpSkipped(owed(ActionRef.Travel))))
-    assertEquals(current(skipped.state).followUps,
+    assertEquals(current(skipped.state).queue,
       Vector(owed(ActionRef.Campaign)))
     assertEquals(replayed(start, skipped.events), skipped.state)
 
@@ -91,8 +92,8 @@ class FollowUpRulesSuite extends munit.FunSuite:
       ChooseOneAnswer(DecisionOptionRef.Site(brokenPeaks))))
     assert(done.events.contains(WalkerCompleted(ActionRef.Travel)),
       done.events)
-    assertEquals(current(done.state).walkerFollowUp, None)
-    assertEquals(current(done.state).followUps,
+    assertEquals(current(done.state).walkerEntry, None)
+    assertEquals(current(done.state).queue,
       Vector(owed(ActionRef.Campaign)))
     assertEquals(replayed(start, started.events ++ done.events), done.state)
 

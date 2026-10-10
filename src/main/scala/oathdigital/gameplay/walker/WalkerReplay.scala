@@ -153,27 +153,27 @@ private[walker] object WalkerReplay:
             walkerProcedure = None,
             walkerStartArgs = Vector.empty,
             walkerStartFacts = Vector.empty,
-            walkerFollowUp = None,
+            walkerEntry = None,
             rollPools = Map.empty,
             walkerDeferred = Map.empty,
             rollOutcomes = Map.empty)))
 
-      case FollowUpStarted(followUp) =>
+      case ProcedureDequeued(entry) =>
         val current = ready.game.current
         for
-          _ <- Either.cond(current.followUps.headOption.contains(followUp), (),
+          _ <- Either.cond(current.queue.headOption.contains(entry), (),
             OathViolation.InvalidEventOrder(
-              "follow-up start does not match the queue head"))
+              "dequeued entry does not match the queue head"))
           _ <- Either.cond(current.walkerProcedure.isEmpty &&
-            current.walkerFollowUp.isEmpty, (), OathViolation.InvalidEventOrder(
-            "a follow-up started while another run is open"))
-        yield ready.updateCurrent(_.copy(followUps = current.followUps.tail,
-          walkerFollowUp = Some(followUp)))
+            current.walkerEntry.isEmpty, (), OathViolation.InvalidEventOrder(
+            "an entry was dequeued while another walk is open"))
+        yield ready.updateCurrent(_.copy(queue = current.queue.tail,
+          walkerEntry = Some(entry)))
 
-      case FollowUpSkipped(followUp) =>
+      case FollowUpSkipped(entry) =>
         val current = ready.game.current
-        Either.cond(current.followUps.headOption.contains(followUp),
-          ready.updateCurrent(_.copy(followUps = current.followUps.tail)),
+        Either.cond(current.queue.headOption.contains(entry),
+          ready.updateCurrent(_.copy(queue = current.queue.tail)),
           OathViolation.InvalidEventOrder(
             "follow-up skip does not match the queue head"))
 

@@ -12,14 +12,15 @@ class FollowUpServiceSuite extends munit.FunSuite:
   private val ancientCity = CatalogNames.site("Ancient City")
   private val knights =
     PowerSourceRef.Card(CatalogNames.denizen("Knights Errant"))
-  private val campaign = FollowUp(p1, ActionRef.Campaign, knights)
+  private val campaign = QueuedProcedure(p1, ActionRef.Campaign, Vector.empty,
+      Some(knights), QueueKind.Offer)
 
   /** A fresh service at p1's Act with a Campaign owed to p1: two bandits rule
     * Ancient City, so it can start. */
   private def queued(using munit.Location): GameApplicationService =
     Table.start.pawn(p1, at = ancientCity).pawn(p2, at = "Broken Peaks")
       .pawn(p3, at = "Buried Giant").bandits(ancientCity, 2)
-      .update(_.updateCurrent(_.copy(followUps = Vector(campaign))))
+      .update(_.updateCurrent(_.copy(queue = Vector(campaign))))
       .service()._1
 
   private def refused(command: GameCommand)(using munit.Location)

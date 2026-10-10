@@ -36,7 +36,7 @@ private[application] final class PendingProjector(
           case None => s"${procedure.key}-walker-waiting"
       }
     // A queued action waits for its player, in whatever phase it was queued.
-    else if context.current.followUps.nonEmpty then "follow-up-pending"
+    else if context.current.queue.nonEmpty then "follow-up-pending"
     else context.current.turn.phase match
       case Phase.Setup => "setup"
       case Phase.Wake => "wake"

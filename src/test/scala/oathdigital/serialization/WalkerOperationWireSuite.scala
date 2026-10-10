@@ -325,8 +325,13 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Shuffle(SearchSource.RegionalDiscard(Region.Hinterland)),
       SetOathkeeper(Some(PlayerId("red"))),
       SetOathkeeper(None),
-      QueueFollowUp(FollowUp(PlayerId("p1"), ActionRef.Campaign,
-        PowerSourceRef.Card(CatalogNames.denizen("Knights Errant")))))
+      QueueProcedure(QueuedProcedure(PlayerId("p1"), ActionRef.Campaign,
+          Vector.empty,
+          Some(PowerSourceRef.Card(CatalogNames.denizen("Knights Errant"))),
+          QueueKind.Offer)),
+      QueueProcedure(QueuedProcedure(PlayerId("p1"), ActionRef.Trade,
+        Vector(DecisionOptionRef.Button("favor")), None, QueueKind.Run),
+        atFront = true))
 
     val events = operations.map(operation =>
       recordedOperation("op", operation))

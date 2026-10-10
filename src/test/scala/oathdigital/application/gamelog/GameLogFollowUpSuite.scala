@@ -29,7 +29,8 @@ class GameLogFollowUpSuite extends munit.FunSuite:
   test("Skip writes its line in the latest section"):
     val script = queuedRaid
     val entries = formatAppended(script, Vector(FollowUpSkipped(
-      FollowUp(p1, ActionRef.Campaign, knights))))
+      QueuedProcedure(p1, ActionRef.Campaign, Vector.empty, Some(knights),
+      QueueKind.Offer))))
     val skip = entries.last
     assertEquals(text(skip), "Knights Errant: Campaign skipped.")
     assertEquals(skip.section, entryStarting(entries, "Campaign").section)

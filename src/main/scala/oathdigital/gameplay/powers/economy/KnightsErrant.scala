@@ -27,8 +27,9 @@ final case class KnightsErrant private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterActionEligibility -> Vector(Transform((ctx, children) =>
-      children :+ QueueFollowUp(FollowUp(ctx.activePlayer, ActionRef.Campaign,
-        PowerSourceRef.Card(cardId))))))
+      children :+ QueueProcedure(QueuedProcedure(ctx.activePlayer,
+        ActionRef.Campaign, Vector.empty, Some(PowerSourceRef.Card(cardId)),
+        QueueKind.Offer)))))
 
 object KnightsErrant:
   val id: PowerId = KnightsErrantCard.power.id

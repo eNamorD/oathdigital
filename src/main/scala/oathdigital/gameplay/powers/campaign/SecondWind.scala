@@ -43,5 +43,5 @@ case object SecondWind extends BattlePlan:
       if !use.won.contains(true) then Vector.empty
       else use.user.toVector.flatMap(user =>
         Vector(ActionRef.Travel, ActionRef.Campaign).map(action =>
-          QueueFollowUp(FollowUp(user, action,
-            PowerSourceRef.Card(cardId)))))))
+          QueueProcedure(QueuedProcedure(user, action, Vector.empty,
+            Some(PowerSourceRef.Card(cardId)), QueueKind.Offer))))))

@@ -23,11 +23,12 @@ class SecondWindSuite extends munit.FunSuite:
     on(withAdviserFor(base, base.actor, card, Orientation.FaceUp))(
       _.secrets(base.actor, faceUp = payments).favor(base.actor, payments))
 
-  private def owed(b: Board, action: ActionRef): FollowUp =
-    FollowUp(b.actor, action, PowerSourceRef.Card(card))
+  private def owed(b: Board, action: ActionRef): QueuedProcedure =
+    QueuedProcedure(b.actor, action, Vector.empty,
+        Some(PowerSourceRef.Card(card)), QueueKind.Offer)
 
-  private def followUps(run: Run): Vector[FollowUp] =
-    ready(run.state).game.current.followUps
+  private def followUps(run: Run): Vector[QueuedProcedure] =
+    ready(run.state).game.current.queue
 
   /** A Campaign with Second Wind chosen as the attacker's plan. */
   private def withSecondWind(run: Run, b: Board): Run =
@@ -72,7 +73,7 @@ class SecondWindSuite extends munit.FunSuite:
     val game = rules(winningDice)
     val won = withSecondWind(commit(game, b, 4), b)
     val skipped = accepted(game.skipFollowUp(won.state, b.actor))
-    assertEquals(ready(skipped.state).game.current.followUps,
+    assertEquals(ready(skipped.state).game.current.queue,
       Vector(owed(b, ActionRef.Campaign)))
 
   test("the queued Campaign offers it again, with the secret still on the " +

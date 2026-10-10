@@ -436,8 +436,9 @@ object LogScripts:
       .pawn(p2, "Ancient City")
       .adviser(p2, "Birdsong", facedown = true)
       .adviser(p1, knights)
-      .update(_.updateCurrent(_.copy(followUps = Vector(FollowUp(p1,
-        ActionRef.Campaign, PowerSourceRef.Card(knights))))))
+      .update(_.updateCurrent(_.copy(queue = Vector(QueuedProcedure(p1,
+          ActionRef.Campaign, Vector.empty, Some(PowerSourceRef.Card(knights)),
+          QueueKind.Offer)))))
       .banditsRefilled, Dice.raid)
     raidAnswers(act).after(GameCommand.StartWalker(ActionRef.Campaign,
       StartPayload(p1)))

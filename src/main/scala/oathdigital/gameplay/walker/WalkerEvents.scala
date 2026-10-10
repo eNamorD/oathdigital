@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, FollowUp, Location, ModifyDicePool, Move, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerNote, ProcedureRef, RelicId, SiteId, SpendSupply, WalkerEvent}
+import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, Location, ModifyDicePool, Move, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerNote, ProcedureRef, QueuedProcedure, RelicId, SiteId, SpendSupply, WalkerEvent}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -115,16 +115,15 @@ final case class WalkerParked(
 final case class WalkerCompleted(procedure: ProcedureRef)
     extends WalkerEvent
 
-/** The first event of a run started from the queue's head: replay takes the
-  * head and holds it as `walkerFollowUp` until `WalkerCompleted`. An event,
-  * not a `WalkerParked` field, because a run can finish in its starting
+/** The first event of a walk started from the queue's head: replay takes
+  * the head and holds it as `walkerEntry` until `WalkerCompleted`. An event,
+  * not a `WalkerParked` field, because a walk can finish in its starting
   * command without parking, and the cost waiver and the Game Log tag still
-  * need the entry (follow-up actions design). */
-final case class FollowUpStarted(followUp: FollowUp) extends WalkerEvent
+  * need the entry (walker-driven game loop design, "The queue"). */
+final case class ProcedureDequeued(entry: QueuedProcedure) extends WalkerEvent
 
-/** The head's player declined it: replay takes the head, and the Game Log
-  * writes the Skip line. */
-final case class FollowUpSkipped(followUp: FollowUp) extends WalkerEvent
+/** The entry's actor declined it, and the Game Log writes the Skip line. */
+final case class FollowUpSkipped(entry: QueuedProcedure) extends WalkerEvent
 
 /** Audit fact: a power's effect happened here and says so in the Game Log
   * (power log lines design). Replay applies nothing for it, as it never

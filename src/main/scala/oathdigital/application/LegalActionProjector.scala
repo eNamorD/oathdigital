@@ -14,7 +14,7 @@ import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.actions.BannerRules
-import oathdigital.gameplay.walker.{FollowUpStarted, ModifierOffers,
+import oathdigital.gameplay.walker.{ModifierOffers, ProcedureDequeued,
   ProcedureWalker, WalkerPowers}
 import oathdigital.gameplay.phases.rest.BeginRestProcedure
 import oathdigital.model._
@@ -126,7 +126,7 @@ private[application] final class LegalActionProjector(
     val minor = Option.when(context.viewerIsActive &&
       context.current.turn.phase == Phase.Act &&
       context.current.walkerPending.isEmpty &&
-      context.current.followUps.isEmpty)(minorActionsProjection(context))
+      context.current.queue.isEmpty)(minorActionsProjection(context))
     val followUp = followUpProjection(context)
     LegalProjection(controls(context, minor, projectedPhasePowers, followUp),
       minor, followUp)
@@ -141,8 +141,8 @@ private[application] final class LegalActionProjector(
     else if current.walkerPending.nonEmpty then walkerControls(context)
     // Branches on the queue itself: should the head's projection fail, its
     // player can still skip it, and no control the service refuses is shown.
-    else if current.followUps.nonEmpty then
-      if context.viewer.contains(current.followUps.head.player) then
+    else if current.queue.nonEmpty then
+      if context.viewer.contains(current.queue.head.actor) then
         followUp.fold(Vector("skipFollowUp"))(_ =>
           Vector("beginFollowUp", "skipFollowUp"))
       else Vector.empty
@@ -189,24 +189,25 @@ private[application] final class LegalActionProjector(
       : Option[FollowUpProjection] =
     val current = context.current
     for
-      head <- current.followUps.headOption
+      head <- current.queue.headOption
       if current.walkerPending.isEmpty && current.result.isEmpty
       started <- ProcedureWalker.applyRecorded(Ready(context.ready),
-        FollowUpStarted(head)).toOption.collect { case Ready(ready) => ready }
-      startable = followUpStartable(context.copy(ready = started), head.action)
-    yield FollowUpProjection(head.player.value, head.action.key,
-      actionLabel(head.action), sourceLabel(context.ready, head.source),
-      startable,
+        ProcedureDequeued(head)).toOption.collect { case Ready(ready) => ready }
+      startable = followUpStartable(context.copy(ready = started),
+        head.procedure)
+    yield FollowUpProjection(head.actor.value, head.procedure.key,
+      actionLabel(head.procedure),
+      head.source.fold("")(sourceLabel(context.ready, _)), startable,
       Option.when(!startable)(LegalActionProjector.followUpReason(
-        head.action, Option.when(head.action == ActionRef.Campaign)(
-          CampaignProcedure.refusal(catalog, started, head.player,
+        head.procedure, Option.when(head.procedure == ActionRef.Campaign)(
+          CampaignProcedure.refusal(catalog, started, head.actor,
             WalkerPowers.selected(walkerPowerCatalog, Vector.empty))).flatten)),
-      current.followUps.tail.map(entry => actionLabel(entry.action)))
+      current.queue.tail.map(entry => actionLabel(entry.procedure)))
 
   /** Whether the queued `action` could start, by the same dry run as its
     * own start control. */
   private def followUpStartable(context: ScopedProjectionContext,
-      action: ActionRef): Boolean = action match
+      action: StartableRef): Boolean = action match
     case ActionRef.Campaign => campaignStartable(context)
     case ActionRef.Travel => travelStartable(context)
     case ActionRef.Search => searchStartable(context)
@@ -216,7 +217,7 @@ private[application] final class LegalActionProjector(
     case _ => false
 
   /** "Campaign", "Travel": an action as a button and the Game Log name it. */
-  private def actionLabel(action: ActionRef): String = action.key.capitalize
+  private def actionLabel(action: StartableRef): String = action.key.capitalize
 
   private def sourceLabel(ready: ReadyGame, source: PowerSourceRef): String =
     source match
@@ -267,7 +268,7 @@ object LegalActionProjector:
   /** Why a queued action cannot start (follow-up actions design): each
     * action declares its own. A Campaign shows its refusal's text, or names
     * the missing target. */
-  private[application] def followUpReason(action: ActionRef,
+  private[application] def followUpReason(action: StartableRef,
       campaignRefusal: Option[OathViolation]): String = action match
     case ActionRef.Campaign => campaignRefusal match
       case Some(OathViolation.CampaignUnavailable(detail))

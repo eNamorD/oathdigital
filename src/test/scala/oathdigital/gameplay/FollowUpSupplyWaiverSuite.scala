@@ -22,15 +22,16 @@ class FollowUpSupplyWaiverSuite extends munit.FunSuite:
   private val knights =
     PowerSourceRef.Card(CatalogNames.denizen("Knights Errant"))
 
-  private def owed(action: ActionRef): FollowUp = FollowUp(p1, action, knights)
+  private def owed(action: ActionRef): QueuedProcedure = QueuedProcedure(p1,
+      action, Vector.empty, Some(knights), QueueKind.Offer)
 
   /** p1 at Ancient City, which two bandits rule, with `supply` Supply; p2 at
     * Broken Peaks and p3 at Buried Giant. `queue` is owed to p1. */
-  private def table(supply: Int, queue: FollowUp*): Table = Table.start
+  private def table(supply: Int, queue: QueuedProcedure*): Table = Table.start
     .pawn(p1, at = ancientCity).pawn(p2, at = brokenPeaks)
     .pawn(p3, at = "Buried Giant")
     .bandits(ancientCity, 2).supply(p1, supply)
-    .update(_.updateCurrent(_.copy(followUps = queue.toVector)))
+    .update(_.updateCurrent(_.copy(queue = queue.toVector)))
 
   private def spent(events: Vector[OathEvent]): Vector[SpendSupply] =
     events.collect { case step: WalkerStepRecorded => step.ops }.flatten
@@ -71,7 +72,7 @@ class FollowUpSupplyWaiverSuite extends munit.FunSuite:
       TravelProcedure.destinationDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Site(brokenPeaks))))
     assertEquals(Look(Outcomes.ready(travelled.state)).phase, Phase.Rest)
-    assertEquals(Outcomes.ready(travelled.state).game.current.followUps,
+    assertEquals(Outcomes.ready(travelled.state).game.current.queue,
       Vector(owed(ActionRef.Campaign)))
     // p2 stands at Broken Peaks, so a Raid is legal there.
     assert(rules.startWalker(travelled.state, ActionRef.Campaign, p1).isRight)

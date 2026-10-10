@@ -33,8 +33,8 @@ private[server] object CommandRejectionMessage:
         s"required Supply $required exceeds available $available"
       case oathdigital.model.OathViolation.InsufficientSecrets(required, available) =>
         s"required secrets $required exceed available $available"
-      case oathdigital.model.OathViolation.FollowUpPending(followUp) =>
-        s"Start or skip the queued ${followUp.action.key} first"
+      case oathdigital.model.OathViolation.FollowUpPending(entry) =>
+        s"Start or skip the queued ${entry.procedure.key} first"
       case oathdigital.model.OathViolation.ConsentPending =>
         "Waiting for an answer to a consent request"
       case oathdigital.model.OathViolation.ConsentUnavailable(reason) => reason

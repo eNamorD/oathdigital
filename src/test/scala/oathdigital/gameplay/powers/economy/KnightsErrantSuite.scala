@@ -56,11 +56,11 @@ class KnightsErrantSuite extends munit.FunSuite:
     val plain = musterFrom(staged(supply = 1).ready, Vector.empty)
     Look(ready(plain)).boardWarbands(p1)
 
-  private val owed = FollowUp(p1, ActionRef.Campaign,
-    PowerSourceRef.Card(knights))
+  private val owed = QueuedProcedure(p1, ActionRef.Campaign, Vector.empty,
+      Some(PowerSourceRef.Card(knights)), QueueKind.Offer)
 
-  private def followUps(transition: OathTransition): Vector[FollowUp] =
-    ready(transition).game.current.followUps
+  private def followUps(transition: OathTransition): Vector[QueuedProcedure] =
+    ready(transition).game.current.queue
 
   test("the Muster queues a Campaign owed to its player"):
     val mustered = musterFrom(staged(supply = 1).ready, modifiers)

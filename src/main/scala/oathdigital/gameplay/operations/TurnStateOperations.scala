@@ -58,9 +58,10 @@ private[operations] object TurnStateOperations:
   def recordCampaignResult(ready: ReadyGame, fact: CampaignResult): ReadyGame =
     ready.updateCurrent(_.copy(lastCampaignResult = Some(fact)))
 
-  def queueFollowUp(ready: ReadyGame, followUp: FollowUp): ReadyGame =
-    ready.updateCurrent(current =>
-      current.copy(followUps = current.followUps :+ followUp))
+  def queueProcedure(ready: ReadyGame, entry: QueuedProcedure,
+      atFront: Boolean): ReadyGame =
+    ready.updateCurrent(current => current.copy(queue =
+      if atFront then entry +: current.queue else current.queue :+ entry))
 
   def adjustSupply(ready: ReadyGame, player: PlayerId,
       amount: Int): Either[OperationError, ReadyGame] =

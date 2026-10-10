@@ -161,8 +161,9 @@ enum QueueKind:
   `walkerFollowUp` becomes `walkerEntry: Option[QueuedProcedure]`, the entry
   the current walk was started from. It is walker scratch, cleared by
   `WalkerCompleted` as today.
-- The op `QueueFollowUp` becomes `QueueProcedure(entry)`. It appends, so
-  follow-up ruling 11 (new entries go to the back) holds.
+- The op `QueueFollowUp` becomes `QueueProcedure(entry, atFront)`. It
+  appends unless `atFront` is set, so follow-up ruling 11 (new entries go
+  to the back) holds; only an offer's pick goes in front.
 - `FollowUpStarted` becomes `ProcedureDequeued(entry)`. `FollowUpSkipped`
   keeps its meaning under its old name.
 - `actor` keeps the hook the follow-up design left for Sneak Attack. Until
@@ -306,6 +307,35 @@ By the last slice:
    frontend panel.
 5. **The cleanup.** Everything under "What goes away" that is still there,
    and modifier walker ruling 9 rewritten.
+
+## Plan-time rulings (slice 1)
+
+1. **An offer's pick goes to the front.** `QueueProcedure(entry, atFront)`
+   appends by default. The follow-up offer's pick puts its `Run` entry in
+   front, or Second Wind's Travel would wait behind its own queued Campaign
+   offer.
+2. **The driver starts a phase-ending procedure directly.** When End Wake or
+   Finish Rest is the only option left (ruling 3), the driver starts it
+   without queueing it.
+3. **`ActionBoundaryRan` clears `boundaryDue`.** The boundary may write
+   nothing else, so a marker event keeps replay exact. It writes no Game Log
+   line.
+4. **The offer's option runs the start's own checks.** `QueuedStart.refusal`
+   builds the entry's tree on the state its start would see, then runs the
+   restriction check, the first walk and the playable-option gate, as a
+   start does. The look-ahead through the modifier decision stays slice 4's.
+5. **Skip is an answer.** The offer's Skip ends its walk, and
+   `FollowUpSkipped(entry)` is written before `WalkerCompleted` for the Game
+   Log line. Replay checks that it names `walkerEntry` and changes nothing.
+6. **Recover gets a cost window**, `RecoverCost`, around the Supply it pays
+   on each roll, so the follow-up waiver reaches it.
+7. **The automatic Finish Rest follows any walk.** Rest also ends after the
+   last REST power is used, and after a queued action that ran in Rest.
+8. **The turn-start hooks are keyed on the finished walk**: Finish Rest and
+   Setup. Neither queues an entry or leaves the boundary due.
+9. **The follow-up client surface goes in slice 1.** The offer is a walker
+   decision, so the follow-up projection, controls, panel and Skip command
+   are deleted here, not in slice 5.
 
 ## Testing
 
