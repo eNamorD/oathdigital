@@ -63,7 +63,8 @@ typed power contributions instead of typed-rule outcomes.
 
 ## Commands, projection, and replay
 
-Commands and `LegalActionProjector` call the same gameplay legality APIs.
+A phase menu prices and judges each option with the same dry run its start
+performs, so what the projection offers is what a command accepts.
 Events record the fully resolved durable facts. Replay resolves the same
 sources/handlers again and rejects changed source, order, cost, decision, or
 resource result. The frontend receives only shared projection DTOs and never

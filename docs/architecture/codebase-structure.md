@@ -113,10 +113,10 @@ gameplay.
 ### Projection
 
 Add shared DTO/codec fields only when the wire contract truly changes. Assemble
-world/board/card presentation in `GamePresentationProjector`, legal targets in
-`LegalActionProjector`, and the walker decision, its waiting notice and the phase
-in `PendingProjector`. Keep one scope/redaction decision in
-`GameProjector`. Update JVM and Scala.js round-trip tests together.
+world/board/card presentation in `GamePresentationProjector`, and the walker
+decision, its waiting notice and the phase in `PendingProjector`. What a player
+may do is always a parked walker decision, the phase's menu included. Keep one
+scope/redaction decision in `GameProjector`. Update JVM and Scala.js round-trip tests together.
 
 ### Event
 

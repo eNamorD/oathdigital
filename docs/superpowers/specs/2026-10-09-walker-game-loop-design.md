@@ -1,7 +1,7 @@
 # Walker-Driven Game Loop
 
-**Status:** designed 2026-10-09. Slices 1 to 4 have landed; slice 5 is
-ready to plan.
+**Status:** designed 2026-10-09; implemented in five slices, the last landed
+2026-10-10.
 
 **Amends**, in the slices that change the behavior:
 

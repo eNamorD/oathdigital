@@ -194,7 +194,7 @@ private[frontend] object WalkerPanelSupport:
         choose.setAttribute("aria-label", s"$label, $badge")
       }
       choose.disabled = !canControl
-      // A card option reads its rules text on hover, as the Act panel's
+      // A card option reads its rules text on hover, as the menu panel's
       // power buttons do; `withholds` below puts a reason in its place.
       option.card.filter(_ => option.badge.isEmpty).flatMap(_.rulesText)
         .foreach(choose.setAttribute("title", _))

@@ -68,8 +68,7 @@ object WalkerProcedureRegistry:
     *
     * `modifierWindow` is the [[oathdigital.model.PowerWindow]] at which the
     * procedure's modifier decision (`ModifierChoice`) offers player-selected
-    * `ContributingPower`s, and at which `ModifierOffers.offerable` looks for
-    * the Act panel's start controls.
+    * `ContributingPower`s, and at which `ModifierOffers.offerable` looks.
     *
     * It is `Option` because not every procedure has such a window:
     * `PowerWindow` carries a `*ModifierSelection` case for each of the eight

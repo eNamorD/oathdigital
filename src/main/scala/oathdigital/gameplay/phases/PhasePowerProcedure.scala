@@ -15,11 +15,10 @@ import oathdigital.model._
   *   RecordPowerUse(timing, source, id))         // Wake and Rest only
   * }}}
   *
-  * `usable` lists the powers the Act panel offers. Wake and Rest powers are
-  * offered by their phase's menu, which runs each start's own check.
-  * A power is usable when its source is accessible, its once-per-turn limit
-  * (Wake and Rest) is unspent, its cost is payable (including the empty-card
-  * rule) and its own `usable` agrees.
+  * The phase menus offer these powers, and each menu runs the start's own
+  * check. A power is usable when its source is accessible, its once-per-turn
+  * limit (Wake and Rest) is unspent, its cost is payable (including the
+  * empty-card rule) and its own `usable` agrees.
   *
   * Act powers have no once-each limit. A costed one is limited only because
   * its card holds the cost afterwards.

@@ -82,8 +82,7 @@ object TravelProcedure:
       "a resumed Travel needs its source site as its one start fact"))
 
   /** The destination decision and the Travel to it: what a fresh start runs
-    * after its modifier decision. The Act panel's [[startable]] previews it,
-    * and so do the Travel suites. */
+    * after its modifier decision. The Travel suites preview it. */
   def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] = for
     source <- actorSite(state, actor).toRight(

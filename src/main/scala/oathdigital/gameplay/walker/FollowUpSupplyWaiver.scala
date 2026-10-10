@@ -12,7 +12,7 @@ import oathdigital.model.{ActionRef, PowerId, PowerWindow, RuleSourceRef,
   * with a source is a follow-up.
   *
   * `WalkerPowers.selected` offers it to every command, so every walker path
-  * (start, every resume, the payment dry run, a start control's dry run, a
+  * (start, every resume, the payment dry run, a menu option's dry run, a
   * preview) folds it the same way. It applies only while the run was started
   * from the queue, which `applicable` reads from state; a command with no
   * entry folds nothing.
