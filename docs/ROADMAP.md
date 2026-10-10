@@ -137,7 +137,7 @@ and battle rewrites
 ([design](superpowers/specs/2026-10-09-catalog-batch-7-design.md),
 [rulings](superpowers/specs/2026-10-09-catalog-batch-7-rulings.md)).
 
-- [ ] Slice 1: rerolls (Jinx, Master at Arms).
+- [x] Slice 1: rerolls (Jinx, Master at Arms).
 - [ ] Slice 2: Recover rerolls (Silver Charm).
 - [ ] Slice 3: amounts and fixed faces (Arcane Armor, Unstable Summon,
   Mountain Giant).
