@@ -61,13 +61,6 @@ object CityWallCard extends Denizen(DenizenId("252"), "City Wall", Suit.Order) w
       "powers.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object CarefulPlansCard extends Denizen(DenizenId("254"), "Careful Plans", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.careful-plans"),
-    persistent = false, cost = Cost(favor = 1),
-    text = "The defender **must** roll their [defense-die] before the " +
-      "attacker rolls their [attack-die].")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object BearTrapsCard extends Denizen(DenizenId("3"), "Bear Traps", Suit.Order):
   val power = PrintedPower(PowerId("denizen.bear-traps"),
     persistent = false, cost = Cost.free,

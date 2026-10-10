@@ -6,8 +6,7 @@ import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
-  WalkerPowers}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
@@ -107,7 +106,8 @@ class CampaignRaidSuite extends munit.FunSuite:
     val tree = accepted(CampaignProcedure.rebuild(catalog, after, b.actor,
       Vector.empty))
     val asked = present(ProcedureWalker.openDecisions(after, tree, pending,
-      WalkerPowers.empty).headOption, "the relocation decision")
+      WalkerPowerCatalog.default(catalog)).headOption,
+      "the relocation decision")
     assertEquals(asked.query, DecisionQuery.ChooseOne(options,
       Some("Move the defeated pawn to another site")))
     val moved = ChooseOneAnswer(DecisionOptionRef.Site(destination))

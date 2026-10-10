@@ -4,10 +4,11 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.ContributingPower
 
 /** The battle plans that rewrite the Campaign around them (catalog batch
-  * 6, slice 2), registered together: Peace Envoy decides the battle, and
-  * Wild Mounts replaces the discard of Nomad plans. Each names its card, so
-  * all are always present.
+  * 6, slice 2), registered together: Peace Envoy decides the battle,
+  * Wild Mounts replaces the discard of Nomad plans, and Careful Plans
+  * reorders the battle's steps. Each names its card, so all are always
+  * present.
   */
 object PlanRewrites:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
-    Vector(PeaceEnvoy, WildMounts.forCatalog(catalog))
+    Vector(PeaceEnvoy, WildMounts.forCatalog(catalog), CarefulPlans)
