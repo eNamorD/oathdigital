@@ -26,7 +26,7 @@ object WarningSignalsCard extends Denizen(DenizenId("25"), "Warning Signals", Su
   * Messenger). Nothing is asked when there is nowhere to move to: no ruled
   * site, or no warband beyond the one each site keeps. The card is discarded
   * when the Campaign has resolved, whether or not the defender won, by
-  * `PlanDiscard.afterCampaign`, so Wild Mounts can replace it.
+  * `PlanDiscard.afterCampaign`.
   *
   * Once the defender has answered it writes "{Blue} redistributed their
   * warbands."; the line follows the decision, so a game parked on it resumes

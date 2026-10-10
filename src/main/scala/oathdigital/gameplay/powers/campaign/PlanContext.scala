@@ -169,3 +169,14 @@ object PlanUse:
       Option.when(afterOutcome)(ready.game.current.lastCampaignResult)
         .flatten.filter(_.attacker == actor), ready,
       CampaignSetup.setup(ready, actor, pending).map(_.defender)))
+
+  /** The plans used on `side` in this Campaign: those a player picked, and
+    * for the defender those bandits applied, which the application recorded
+    * (`CampaignPlans.appliedMarker`). */
+  def plans(ready: ReadyGame, pending: PendingTree, side: CampaignPlanSide)
+      : Vector[DecisionOptionRef] =
+    val applied =
+      if side != CampaignPlanSide.Defender then Vector.empty
+      else ready.game.current.rollPools.keys.toVector
+        .flatMap(CampaignPlans.markedRef)
+    CampaignAnswers.picks(pending, CampaignIds.planDecision(side)) ++ applied

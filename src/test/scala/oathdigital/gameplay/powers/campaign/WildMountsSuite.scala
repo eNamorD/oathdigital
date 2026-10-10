@@ -1,9 +1,10 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
+import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powerresolver.{FoldPhase, Transform}
-import oathdigital.gameplay.powers.NoteText
+import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -41,7 +42,12 @@ class WildMountsSuite extends munit.FunSuite:
   /** The actor chooses Wild Mounts, then `plans`, and every window is
     * finished: a won Conquest, nothing placed. */
   private def attackerChoosesMountsThen(b: Board, plans: DenizenId*): Run =
-    plans.foldLeft(commit(rules(winningDice), b, 4)
+    attackerChoosesMountsUnder(rules(winningDice), b, plans*)
+
+  /** As `attackerChoosesMountsThen`, under `game`'s rules. */
+  private def attackerChoosesMountsUnder(game: OathRules, b: Board,
+      plans: DenizenId*): Run =
+    plans.foldLeft(commit(game, b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref))((run, plan) =>
       run.pick(b.actor, CampaignIds.attackerPlan,
         DecisionOptionRef.Denizen(plan))).finishPlanWindows
@@ -163,3 +169,31 @@ class WildMountsSuite extends munit.FunSuite:
       PowerWindow.CampaignActionEligibility).collect {
         case transform: Transform => transform.phase }
     assertEquals(phases, Vector(FoldPhase.Late))
+
+  test("a Nomad plan whose discard is a bare PlanDiscard.denizen is " +
+      "replaced too"):
+    val powers = WalkerPowerCatalog.default(catalog).powers
+      .filterNot(_.id == HorseArchersCard.power.id) :+
+      BareDiscardNomadPlan(catalog)
+    val b = mountsBeastAndPlansHeldByActor(horseArchers)
+    val done = attackerChoosesMountsUnder(rulesWith(powers, winningDice), b,
+      horseArchers).pick(b.actor, WildMounts.decisionId,
+      DecisionOptionRef.Denizen(smallFriends))
+    assert(Look(done.state).advisers(b.actor).contains(horseArchers))
+    assert(Look(done.state).inRegionalDiscard(smallFriends))
+
+/** Horse Archers' card as a free attacker plan whose discard at the end of
+  * the Campaign is a bare `PlanDiscard.denizen`, with no helper and no
+  * line, as a plan that forgets `afterCampaign` would build it. */
+private final case class BareDiscardNomadPlan(
+    catalog: oathdigital.catalog.ExecutableCatalog) extends BattlePlan:
+  val cardId: DenizenId = HorseArchersCard.id
+  def id: PowerId = PowerId("test.bare-discard-nomad-plan")
+  def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
+  def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
+  def plan(context: PlanContext): Option[CampaignPlanOffer] =
+    context.denizen(cardId).map(source => CampaignPlanOffer(source,
+      "Bare discard", Vector.empty, Vector.empty))
+  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
+    PowerWindow.CampaignActionEligibility -> (use =>
+      use.user.toVector.map(PlanDiscard.denizen(catalog, _, cardId))))
