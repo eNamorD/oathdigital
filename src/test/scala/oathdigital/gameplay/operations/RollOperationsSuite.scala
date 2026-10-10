@@ -39,6 +39,10 @@ class RollOperationsSuite extends munit.FunSuite:
     val after = RollOperations.reroll(lowered, pool, Vector(1),
       Some(Vector(TwoSwordsSkull))).toOption.get
     assertEquals(after.game.current.rollOutcomes(pool).skulls, 1)
+    // Rerolling the skull itself away leaves none, not fewer.
+    val cleared = RollOperations.reroll(lowered, pool, Vector(0),
+      Some(Vector(OneSword))).toOption.get
+    assertEquals(cleared.game.current.rollOutcomes(pool).skulls, 0)
 
   test("a reroll without faces, of a missing pool, or out of range fails"):
     val before = rolled(Vector(HollowSword, OneSword))

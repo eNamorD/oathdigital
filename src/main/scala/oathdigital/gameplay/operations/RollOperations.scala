@@ -8,8 +8,9 @@ private[gameplay] object RollOperations:
 
   /** The skulls of the replaced faces come off what the outcome records and
     * the skulls of the new faces go on, so a power's earlier change to the
-    * skulls stands. The score is worked out again from every face, since a
-    * Doubler multiplies across the whole pool, as `WalkerRolls.write` does.
+    * skulls stands, never below none. The score is worked out again from
+    * every face, since a Doubler multiplies across the whole pool, as
+    * `WalkerRolls.write` does.
     */
   def reroll(ready: ReadyGame, pool: PoolKey, indices: Vector[Int],
       faces: Option[Vector[DieFace]]): Either[OperationError, ReadyGame] =
@@ -30,9 +31,9 @@ private[gameplay] object RollOperations:
         case Some(rolled) =>
           val replaced = indices.zip(rolled).foldLeft(outcome.faces) {
             case (all, (index, face)) => all.updated(index, face) }
-          val skulls = outcome.skulls -
+          val skulls = math.max(0, outcome.skulls -
             RollOutcome.derive(indices.map(outcome.faces))._1 +
-            RollOutcome.derive(rolled)._1
+            RollOutcome.derive(rolled)._1)
           Right(ready.updateCurrent(current => current.copy(
             rollOutcomes = current.rollOutcomes.updated(pool,
               outcome.copy(faces = replaced, skulls = skulls,
