@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.rest
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
@@ -50,7 +50,7 @@ class SilverTongueSuite extends munit.FunSuite:
     // No REST power is left, so Rest finishes and the next Wake begins.
     val next = Outcomes.ready(used.state).game.current.turn.activePlayer
     assertNotEquals(next, actor)
-    walkerParked.assertResumed(used.state, Phase.Wake, next)
+    walkerParked.assertMenuParked(used.state, PhaseMenu.Menu.Wake, next)
     // Each stocked bank holds 3; taking one leaves 2.
     assertEquals(favor(used.state)(Suit.Arcane), 2)
     // The boundary refilled the quiet table's empty Ancient City to its
@@ -85,7 +85,7 @@ class SilverTongueSuite extends munit.FunSuite:
     assertEquals(favor(taken.state)(Suit.Arcane), 3)
     val next = Outcomes.ready(taken.state).game.current.turn.activePlayer
     assertNotEquals(next, actor)
-    walkerParked.assertResumed(taken.state, Phase.Wake, next)
+    walkerParked.assertMenuParked(taken.state, PhaseMenu.Menu.Wake, next)
 
   test("without matching favor Silver Tongue is not usable and Rest skips ahead"):
     val ready = silverTongueRest(Vector("Golem Legions"), Set(Suit.Nomad))
@@ -97,7 +97,7 @@ class SilverTongueSuite extends munit.FunSuite:
     val restedReady = Outcomes.ready(rested.state)
     val next = restedReady.game.current.turn.activePlayer
     assertNotEquals(next, actor)
-    walkerParked.assertResumed(rested.state, Phase.Wake, next)
+    walkerParked.assertMenuParked(rested.state, PhaseMenu.Menu.Wake, next)
 
   test("Silver Tongue requires replacement when a third adviser is played"):
     // Two unrestricted denizens: the facedown second adviser and the card

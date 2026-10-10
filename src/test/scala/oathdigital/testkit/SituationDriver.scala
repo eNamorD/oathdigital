@@ -5,6 +5,7 @@ import oathdigital.application.{DefenseDicePort, EventStreamRepository,
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.MinorActionCommand
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
@@ -40,7 +41,8 @@ sealed trait SituationDriver:
 
   /** Issues `steps` in order. After each step, every park it caused is
     * answered -- a Roll park by rolling the parked pool with the adapter's
-    * dice, a decision by [[answers]] -- until nothing is parked; except that
+    * dice, a decision by [[answers]] -- until nothing is parked but a phase
+    * menu, which the test answers itself; except that
     * with `settle = false` the last step's parks are left in place. With no
     * steps and `settle = true`, the park `from` already holds is answered.
     * Anything that cannot go on fails the test, at the caller's location,
@@ -71,6 +73,7 @@ sealed trait SituationDriver:
     var situation = from
     var answered = 0
     var parked = parkedNode(situation.state).fold(failed, identity)
+      .filterNot(settled)
     while parked.nonEmpty do
       if answered >= SituationDriver.parkLimit then failed(
         s"still parked after ${SituationDriver.parkLimit} answers, on " +
@@ -97,7 +100,16 @@ sealed trait SituationDriver:
         identity)
       answered += 1
       parked = parkedNode(situation.state).fold(failed, identity)
+        .filterNot(settled)
     situation
+
+  /** A phase menu is where a situation rests: it asks what the player does
+    * next, which the test states itself (walker-driven game loop design,
+    * slice 2 plan-time ruling 8). */
+  private def settled(node: ParkedNode): Boolean = node match
+    case ParkedNode.Decision(procedure, _, _) =>
+      PhaseMenu.asking(procedure).nonEmpty
+    case _ => false
 
 object SituationDriver:
   /** More parks than any real step causes: a walk still parked after this

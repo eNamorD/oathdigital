@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.rest
 
 import oathdigital.model.OathState.Ready
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
@@ -39,7 +40,7 @@ class LeagueTreatySuite extends munit.FunSuite:
     val ready = Outcomes.ready(state)
     val next = ready.game.current.turn.activePlayer
     assertNotEquals(next, resting)
-    walkerParked.assertResumed(state, Phase.Wake, next)
+    walkerParked.assertMenuParked(state, PhaseMenu.Menu.Wake, next)
 
   private val power = LeagueTreatyContribution.forCatalog(catalog)
 

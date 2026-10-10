@@ -1,6 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -54,6 +55,11 @@ final class ParkedDecisionAssertions(
     assertEquals(parkedDecision(state).map(facts =>
       (facts.procedure, facts.decision, facts.awaiting)),
       Some((procedure, decision, awaiting)))
+
+  /** The game is parked on `menu`, asking `awaiting` what to do next. */
+  def assertMenuParked(state: OathState, menu: PhaseMenu.Menu,
+      awaiting: PlayerId)(using munit.Location): Unit =
+    assertParked(state, menu.procedure, PhaseMenu.decisionId, awaiting)
 
   /** Nothing is parked at all -- strictly stronger than "not parked on THIS
     * kind of decision", which is what the assertions this replaces said.

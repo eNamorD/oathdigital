@@ -8,7 +8,8 @@ import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureDequeued, WalkerCompleted}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, MenuPlay, PowerRules, Table}
+import oathdigital.testkit.{CatalogNames, MenuPlay, PowerRules, Refusals,
+  Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -72,6 +73,7 @@ class PhaseMenuSuite extends munit.FunSuite:
       TakeWealthProcedure.selection(WakeResource.Favor), None, QueueKind.Run)
     val completed = taken.events.indexOf(
       WalkerCompleted(TriggeredProcedureRef.WakeMenu))
+    assert(completed >= 0, taken.events)
     assertEquals(taken.events.lift(completed + 1),
       Some(ProcedureDequeued(entry): OathEvent))
     assert(taken.events.contains(WalkerCompleted(ActionRef.TakeWealth)),
@@ -79,8 +81,8 @@ class PhaseMenuSuite extends munit.FunSuite:
     assertEquals(replayed(start, taken.events), taken.state)
 
   test("an option shown unavailable is refused"):
-    assert(MenuPlay.picked(rules, waking.phaseMenuParked.state, p1, secret)
-      .isLeft)
+    assertEquals(MenuPlay.picked(rules, waking.phaseMenuParked.state, p1,
+      secret).left.toOption, Some(Refusals.notOffered(PhaseMenu.decisionId)))
 
   test("Take Wealth already used at this site says so"):
     val used = spent(waking, TakeWealthLimit.useRef(ancientCity))

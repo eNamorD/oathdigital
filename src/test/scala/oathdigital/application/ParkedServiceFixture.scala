@@ -6,13 +6,14 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerParked}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Dice, Look, Outcomes, PlacementPicks,
-  Situation, SituationDriver, Table, Unwrap}
+import oathdigital.testkit.{CatalogNames, Dice, Look, MenuPlay, Outcomes,
+  PlacementPicks, Situation, SituationDriver, Table, Unwrap}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** Real games parked on a walker through the application service.
@@ -311,9 +312,8 @@ object ParkedServiceFixture:
       .banditsRefilled
     val (service, repository, act) = journaled(table, gameId, dice)
     val resting = act.after(GameCommand.BeginRest(p1))
-    parkedAssertions.assertResumed(resting.state, Phase.Rest, p1)
-    val parked = resting.parkedAfter(GameCommand.UsePower(p1,
-      SilverTongue.id,
+    parkedAssertions.assertMenuParked(resting.state, PhaseMenu.Menu.Rest, p1)
+    val parked = resting.parkedAfter(MenuPlay.picking(p1,
       DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))))
     parkedAssertions.assertParked(parked.state, ActionRef.UsePower(SilverTongue.id),
       SilverTongue.choiceDecisionId(resting.ready, p1), p1)

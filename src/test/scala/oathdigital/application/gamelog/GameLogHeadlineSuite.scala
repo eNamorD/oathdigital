@@ -35,7 +35,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val table = Table.start.turn(p1, Phase.Wake)
     val (service, repository) = table.service()
     table.situation(Situation.journaled(service, catalog, repository, "t"))
-      .after(GameCommand.EndWake(p1))
+      .endingWake(p1)
     val entries = formatter.format(historyOf(service, "t"), Some(p1))
     // No River is in play, so p1's Wake has nothing to decide.
     assertEquals(texts(entries).take(5), Vector("Round 1",

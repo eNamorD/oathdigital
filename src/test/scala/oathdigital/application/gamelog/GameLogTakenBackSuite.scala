@@ -135,7 +135,8 @@ class GameLogTakenBackSuite extends munit.FunSuite:
       ActionRef.TakeWealth, StartPayload(p2, Vector(DecisionOptionRef.Button("secret"))))))
     val undone = accepted(service.handle("g", taken.nextSequence,
       GameCommand.Undo(p2)))
-    accepted(service.handle("g", undone.nextSequence, GameCommand.EndWake(p2)))
+    accepted(service.handle("g", undone.nextSequence,
+      GameCommand.StartWalker(PhaseTransitionRef.EndWake, StartPayload(p2))))
     val live = log(service, "g", p2).filter(_.sequence >= undone.nextSequence)
       .map(LogScripts.text)
     assertEquals(live.takeRight(2), Vector("Nothing happened in Wake", "Act"))

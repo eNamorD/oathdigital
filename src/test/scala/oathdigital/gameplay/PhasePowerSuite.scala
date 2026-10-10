@@ -2,12 +2,13 @@ package oathdigital.gameplay
 
 import oathdigital.model.OathState.Ready
 import oathdigital.catalog.PrintedPower
-import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table, TestCards}
+import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes, Table,
+  TestCards}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -126,8 +127,9 @@ class PhasePowerSuite extends munit.FunSuite:
     val power = TestPower(powerId, PowerTiming.Rest)
     val rested = accepted(rules(power).startWalker(Ready(holding(Phase.Act)),
       PhaseTransitionRef.BeginRest, p1))
-    walkerParked(power).assertResumed(rested.state, Phase.Rest, p1)
-    val used = accepted(use(power, rested.state))
+    walkerParked(power).assertMenuParked(rested.state, PhaseMenu.Menu.Rest, p1)
+    val used = accepted(MenuPlay.picked(rules(power), rested.state, p1,
+      source))
     val next = Outcomes.ready(used.state).game.current.turn
     assertNotEquals(next.activePlayer, p1)
     assertEquals(next.usedPowers, Set.empty[PowerUseRef])

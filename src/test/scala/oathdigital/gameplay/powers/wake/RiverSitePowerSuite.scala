@@ -85,11 +85,14 @@ class RiverSitePowerSuite extends munit.FunSuite:
     val used = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Site(ancientCity),
       river.id)
     assert(after(done).game.current.turn.usedPowers.contains(used))
-    val back = Table.from(after(done)).pawn(actor, ancientCity).unchecked
+    // The driver has parked the Wake menu, which is not the subject here.
+    val unparked = Table.from(after(done)).update(_.updateCurrent(_.copy(
+      walkerPending = None, walkerProcedure = None)))
+    val back = unparked.pawn(actor, ancientCity).unchecked
     assertEquals(use(back).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(used)))
     // Riverbank's River is another source, so it is still usable.
-    assertEquals(rivers(after(done)).map(_._2),
+    assertEquals(rivers(unparked.unchecked).map(_._2),
       Vector(DecisionOptionRef.Site(riverbank)))
 
   test("it writes where it placed the pawn"):

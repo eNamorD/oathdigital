@@ -74,7 +74,7 @@ object LogScripts:
       .adviser(p2, "Birdsong", facedown = true)
       .adviser(p3, "Wizard's Conclave", facedown = true)
       .banditsRefilled)
-    waking.after(GameCommand.EndWake(p1))
+    waking.endingWake(p1)
     Script("board", service, p1)
 
   /** p1's Wake with one favor at Ancient City and nothing else to take. */
@@ -155,7 +155,7 @@ object LogScripts:
       // Begin Rest runs on into Finish Rest when Rest asks nothing.
       val resting = awake.after(GameCommand.BeginRest(player))
       if Look(resting.ready).active == player then
-        resting.after(GameCommand.FinishRest(player))
+        resting.finishingRest(player)
       else resting
     }
     Script("round", service, first)
@@ -274,7 +274,7 @@ object LogScripts:
     val resting = acting.after(Step.Arrange(ops(acting, next)),
       GameCommand.BeginRest(first))
     val rested = if Look(resting.ready).active == first then
-      resting.after(GameCommand.FinishRest(first)) else resting
+      resting.finishingRest(first) else resting
     (rested, next)
 
   /** Search of the world deck, every decision answered by default. */

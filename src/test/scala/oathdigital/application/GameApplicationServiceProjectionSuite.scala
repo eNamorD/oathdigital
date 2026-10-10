@@ -52,7 +52,8 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     val ended = accepted(service.handle(
       "game-projection-wake",
       0L,
-      GameCommand.EndWake(active)))
+      GameCommand.StartWalker(PhaseTransitionRef.EndWake,
+        StartPayload(active))))
     val act = projector.project(
       "game-projection-wake",
       LoadedGame(ended.state, ended.nextSequence),

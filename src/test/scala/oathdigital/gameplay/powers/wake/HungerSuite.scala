@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.wake
 
 import oathdigital.application.{GameCommand, ParkedServiceFixture}
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -118,7 +118,7 @@ class HungerSuite extends munit.FunSuite:
       .siteTokens("Broken Peaks", secrets = 2)
       .ready
     val t = rested(alone)
-    parked.assertResumed(t.state, Phase.Wake, next)
+    parked.assertMenuParked(t.state, PhaseMenu.Menu.Wake, next)
     assertEquals(NoteText.said(hunger, t.events), Vector(NoteText.Said(
       "none", "No adviser could be buried.", covers = true)))
 
