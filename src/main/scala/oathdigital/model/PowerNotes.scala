@@ -28,6 +28,10 @@ object NoteArg:
   /** "world deck" or "Cradle discard pile". The template supplies the
     * article. */
   final case class Pile(pile: SearchSource) extends NoteArg
+  /** A region by its name, "Cradle". */
+  final case class RegionName(region: Region) extends NoteArg
+  /** A suit by its name, "Hearth" (Spinning Bee's declared suit). */
+  final case class SuitName(suit: Suit) extends NoteArg
 
 /** `key` is the wire spelling. */
 enum NoteUnit(val key: String, val one: String, val many: String):

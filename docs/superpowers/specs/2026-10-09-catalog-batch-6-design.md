@@ -1,9 +1,8 @@
 # Catalog Batch 6: Battle Plan Restrictions and Search Sources
 
-**Status:** designed 2026-10-09. Slices 1 and 2 are done. Slice 3 is
-planned against [modifier selection on the walker](2026-10-09-modifier-walker-design.md),
-whose slice 1 moved Search's modifiers into the walk. Slice 4 is re-read
-against that design before it is planned. The per-card rulings are in
+**Status:** designed 2026-10-09. All four slices are done. Slice 4 was
+planned against [modifier selection on the walker](2026-10-09-modifier-walker-design.md);
+its plan-time rulings are under "Slice 4". The per-card rulings are in
 [the rulings appendix](2026-10-09-catalog-batch-6-rulings.md).
 
 **Builds on** [Catalog batch 4](2026-10-05-catalog-batch-4-design.md),
@@ -56,6 +55,25 @@ approved changes outside `gameplay/powers/`:
   Which piles a Search may pick is the source decision's business.
   `Draw` gains `position`, and `SearchDrawPort.prepare` no longer takes
   the actor's region.
+- **A source decision a power removes** (slice 4, approved at plan
+  time). With no source answer, a Search draws from the actor's own
+  region's discard pile (`SearchProcedure.sourcePicked`). Only Spinning
+  Bee removes the decision.
+- **A keep window, and kept cards played in order** (slice 4).
+  `PowerWindow.SearchKeep` on the `search.cards` decision. The placement
+  plays each kept card in the order kept, a later one planned from the
+  state the earlier plays left. A Search that holds no drawn card plays
+  nothing.
+- **Placement limits** (slice 4, approved at plan time).
+  `CardPlayRules.placementLimits`: a play a limit refuses is shown
+  unavailable with the limit's reason. When the limits leave no play, the
+  discard pile stays open, since a card that cannot be played is
+  discarded.
+- **Two note arguments** (slice 4). `NoteArg.RegionName` ("Cradle") and
+  `NoteArg.SuitName` ("Hearth"), for Spinning Bee's line.
+- **The keep panel** (slice 4, approved at plan time). A Keep section
+  that holds one or two cards reads "Keep one or two; discard the rest."
+  and, while it holds two, "They are played in this order."
 - **Modifiers that restrict or warn about other modifiers** (slices 3 and
   4) use the modifier walker's `offerReason` (modifier walker design,
   ruling 5).
@@ -251,8 +269,6 @@ warn each other.
 
 ## Slice 4: Search draws
 
-Re-read against the modifier walker design before planning.
-
 - **Spinning Bee** excludes every other Search modifier. It skips the source
   decision and draws from the actor's region's discard pile. A decision,
   "Declare a suit", offers the six suits as `FavorBank` refs. Cards are drawn
@@ -264,8 +280,32 @@ Re-read against the modifier walker design before planning.
   the second may only go to a site, and when no site has room, it is
   discarded.
 
-Skipping the source decision and widening the Keep section need a hook in
-`SearchProcedure`. The modifier walker design decides where it sits.
+### Plan-time rulings
+
+- **The skipped source decision.** Spinning Bee's Transform at
+  `SearchSourceSelection` replaces `search.source` with "Declare a suit"
+  (`search.suit`), a choose-one of the six favor banks in suit order. With
+  no source answer, the Search draws from the actor's own region's
+  discard pile. A Spinning Bee Search therefore has no source answer, and
+  its draw is not checked against the draw port.
+- **The exclusion.** Once Spinning Bee is picked, every other Search
+  modifier is unavailable through its `OptionRestriction`, with the note
+  "Spinning Bee: You cannot use other Search modifiers.". Spinning Bee
+  itself is unavailable once another modifier is picked ("Cannot be used
+  with other Search modifiers"), and while the actor's own pile is empty
+  ("The Cradle discard pile is empty").
+- **No match.** The whole pile is drawn, then every drawn card is
+  discarded in draw order, where a Search discards the cards it does not
+  keep. A Vision has no suit and never matches.
+- **The Game Log.** Spinning Bee's line, "Spinning Bee: Drawing from
+  the Cradle discard until Hearth card is drawn", comes before the Search
+  line. With no match, the Search line ends "and kept none".
+- **Land Warden's seam is card play.** `CardPlayRules` is already where a
+  power changes where a card may go, and only `CardSlots` sees every slot,
+  which "no site has room" needs. Land Warden sets a `PlacementLimit` on
+  the second card's play through `SearchPlayAdviser`. Its keep decision's
+  heading reads "Choose one or two cards to keep".
+- **The order kept** is the order of the Keep section in the answer.
 
 ## Seams used for the first time
 
@@ -284,6 +324,9 @@ product owner.
 - A Transform at the Search source window that adds and marks options
   (Observatory, Errand Boy, Mushrooms).
 - A draw from the bottom of a pile (Mushrooms, Wine of Welcome).
+- A Transform that replaces the source decision (Spinning Bee).
+- A placement limit, and a keep decision that holds two cards (Land
+  Warden).
 
 ## Testing
 

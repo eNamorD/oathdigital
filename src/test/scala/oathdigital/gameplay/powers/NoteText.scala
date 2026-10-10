@@ -45,3 +45,5 @@ object NoteText:
     case NoteArg.Cards(ids) => ids.map(_.value).mkString(", ")
     case NoteArg.Banner(banner) => BannerRules.displayName(banner)
     case NoteArg.Pile(pile) => SearchSource.name(pile)
+    case NoteArg.RegionName(region) => region.toString
+    case NoteArg.SuitName(suit) => suit.toString

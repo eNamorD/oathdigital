@@ -18,8 +18,12 @@ import oathdigital.model._
   *   Decide(search.source),             // a board choose-one: the world deck
   *                                      // and the actor's region's discard;
   *                                      // window = SearchSourceSelection
+  *                                      // (Spinning Bee replaces it, and
+  *                                      // the actor's own pile is searched)
   *   Branch { after the answer:
-  *     Sequence(cost, draw, query, placement) })  // window = SearchActionEligibility
+  *     Sequence(cost, draw, query, placement) })
+  *                                    // window = SearchActionEligibility;
+  *                                    // query's window = SearchKeep
   * }}}
   *
   * **The modifiers come first.** Each pick pays at once, so the source
@@ -82,6 +86,24 @@ object SearchProcedure:
       case _ => None).toRight(OathViolation.InvalidEventOrder(
       "a Search source is the world deck or a discard pile"))
 
+  /** The pile the walk searches: the source answer's, or, when a power
+    * removed the source decision (Spinning Bee), the actor's own
+    * region's discard pile (catalog batch 6, slice 4). */
+  def sourcePicked(pending: PendingTree, origin: Region)
+      : Either[OathViolation, SearchSource] =
+    pending.answered.collectFirst {
+      case Answered(`sourceDecisionId`, answer, _) => sourceOf(answer)
+    }.getOrElse(Right(SearchSource.RegionalDiscard(origin)))
+
+  /** The cards the keep answer in `answered` keeps, in the order kept;
+    * empty before that answer. */
+  def kept(answered: Vector[Answered]): Vector[WorldCardId] =
+    answered.collectFirst {
+      case Answered(`cardDecisionId`,
+          DecisionAnswer.PartitionAnswer(placements), _) => placements
+    }.toVector.flatten.filter(_.sectionKey == keepKey)
+      .flatMap(value => card(value.option))
+
   def actorRegion(ready: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Region] =
     ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
@@ -106,10 +128,10 @@ object SearchProcedure:
       Vector(SearchSource.WorldDeck, SearchSource.RegionalDiscard(origin))
         .map(SearchSource.option), heading = Some(heading)),
       window = Some(PowerWindow.SearchSourceSelection))
-    val search = Branch((_, pending) => pending.answered.collectFirst {
-      case Answered(`sourceDecisionId`, answer, _) => answer
-    }.toVector.map(answer =>
-      sourceOf(answer).fold(fail, body(catalog, actor, _))))
+    // The walk reaches this after the source answer, or after the
+    // decision a power put in its place.
+    val search = Branch((_, pending) => Vector(
+      sourcePicked(pending, origin).fold(fail, body(catalog, actor, _))))
     Sequence(Vector(pick, search))
 
   /** The Search from `source`, once it is picked. */
@@ -143,7 +165,8 @@ object SearchProcedure:
         Vector(DecisionSection(keepKey, "Keep", 1, Some(1)),
           DecisionSection(discardKey, "Discard", 0)),
         cards.map(option), heading = Some("Choose a card to keep"),
-        confirmLabel = Some("Continue Search"))))
+        confirmLabel = Some("Continue Search")),
+        window = Some(PowerWindow.SearchKeep)))
     })
 
     val placement = Branch((ready, pending) => {
@@ -161,10 +184,20 @@ object SearchProcedure:
                   CardPlay.Origin.TemporaryHand)
               yield previous ++ operations
             })
-          val cardTree = CardPlayProcedure.unchecked(catalog, ready, actor, kept,
-            CardPlayProcedure.Origin.TemporaryHand,
-            ModifierPicks.cards(pending.answered))
-          Vector(removeOthers, cardTree)
+          kept match
+            case first +: later =>
+              val cardTree = CardPlayProcedure.unchecked(catalog, ready,
+                actor, first, CardPlayProcedure.Origin.TemporaryHand,
+                ModifierPicks.cards(pending.answered))
+              // A later kept card (Land Warden) is planned when the walk
+              // reaches it, from the state the plays before it left.
+              val laterTrees = later.map(card =>
+                Branch((current, reached) => Vector(
+                  CardPlayProcedure.unchecked(catalog, current, actor,
+                    card, CardPlayProcedure.Origin.TemporaryHand,
+                    ModifierPicks.cards(reached.answered)))))
+              Vector(removeOthers, cardTree) ++ laterTrees
+            case _ => Vector.empty
       }
     })
 
@@ -199,21 +232,21 @@ object SearchProcedure:
       else CardPlayProcedure.placedCard(pending).toVector
     }(_.flatMap(value => card(value.option)))
 
+  /** The cards kept, in the order kept, and the cards discarded. One card
+    * drawn is kept without a question. No card held keeps nothing:
+    * Spinning Bee drew no match and discarded every card. */
   private def selected(ready: ReadyGame, pending: PendingTree,
       actor: PlayerId): Either[OathViolation,
-        (WorldCardId, Vector[WorldCardId])] =
+        (Vector[WorldCardId], Vector[WorldCardId])] =
     val cards = selectedCards(ready, pending, actor)
-    if cards.size == 1 then Right(cards.head -> Vector.empty)
+    if cards.size < 2 then Right(cards -> Vector.empty)
     else answered(pending).toRight(OathViolation.SearchChoiceMismatch(
       "Search card selection is missing")).flatMap { placements =>
-      val kept = placements.filter(_.sectionKey == keepKey)
-        .flatMap(value => card(value.option))
+      val keeps = kept(pending.answered)
       val discarded = placements.filter(_.sectionKey == discardKey)
         .flatMap(value => card(value.option))
-      kept match
-        case Vector(value) => Right(value -> discarded)
-        case _ => Left(OathViolation.SearchChoiceMismatch(
-          "Search must keep exactly one card"))
+      Either.cond(keeps.nonEmpty, keeps -> discarded,
+        OathViolation.SearchChoiceMismatch("Search must keep a card"))
     }
 
   private def fail(error: OathViolation): Operation =

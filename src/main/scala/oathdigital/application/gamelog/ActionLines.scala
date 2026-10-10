@@ -182,7 +182,8 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       Vector(Text(s" for $bought")))
 
   /** "Drew {cards} from the {source} and kept {cards}", at the keep/discard
-    * answer, or at completion when only one card was drawn. Each card is
+    * answer, or at completion when only one card was drawn or none was
+    * kept ("kept none"). Each card is
     * judged where its draw took it from and put it. Painted Trumpet draws
     * with one `Draw` per pile, read together ([[drawnFrom]]). */
   private def search(journal: LogJournal, run: Run, at: Int,
@@ -206,6 +207,14 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
           case WalkerStepRecorded(_, ChoicePayload(id, _, _), _, _)
               if drawn.size == 1 && id.startsWith(PlacePrefix) =>
             Some(drawn.map(_._1))
+          // Nothing kept: every drawn card went to a discard pile, and
+          // nothing was asked (Spinning Bee drew no match).
+          case _: WalkerCompleted if !journal.answers(run, at).exists(
+              answer => answer.decisionId == SearchProcedure.cardDecisionId ||
+                answer.decisionId.startsWith(PlacePrefix)) &&
+              journal.readyAfter(at).exists(after => drawn.forall(
+                (card, _) => inDiscardPile(after, card))) =>
+            Some(Vector.empty)
           case _: WalkerCompleted if drawn.size == 1 && !journal.answers(run,
               at).exists(_.decisionId.startsWith(PlacePrefix)) =>
             Some(drawn.map(_._1))
@@ -213,7 +222,9 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
         kept.toVector.map(ids => action(Vector(Text("Drew ")) ++
           words.cards(drawn.map(_._2)) ++
           Vector(Text(s" from $from and kept ")) ++
-          words.cards(ids.flatMap(id => drawn.find(_._1 == id).map(_._2)))))
+          (if ids.isEmpty then Vector(Text("none"))
+          else words.cards(ids.flatMap(id =>
+            drawn.find(_._1 == id).map(_._2))))))
       }
 
   /** Where a Search drew from: "the World Deck", "the bottom of the Cradle
@@ -224,6 +235,11 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       s"the bottom of ${sourceName(draw.source)}"
     case Vector(draw) => sourceName(draw.source)
     case _ => "each discard pile"
+
+  /** Whether `card` lies in a regional discard pile in `ready`. */
+  private def inDiscardPile(ready: ReadyGame, card: CardId): Boolean =
+    Region.all.exists(region =>
+      ready.game.current.commonCards.discard(region).contains(card))
 
   /** Where the played card went, at the first batch after the placement
     * answer. */

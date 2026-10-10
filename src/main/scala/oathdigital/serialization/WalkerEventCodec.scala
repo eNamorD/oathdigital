@@ -141,6 +141,10 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       "bannerKey" -> banner.key)
     case NoteArg.Pile(pile) => ujson.Obj("kind" -> "pile",
       "pile" -> encodeSearchSource(pile))
+    case NoteArg.RegionName(region) => ujson.Obj("kind" -> "region",
+      "region" -> region.key)
+    case NoteArg.SuitName(suit) => ujson.Obj("kind" -> "suit",
+      "suit" -> suit.key)
     case NoteArg.Dice(faces) => ujson.Obj("kind" -> "dice",
       "faces" -> ujson.Arr.from(faces.map(encodeDieFace)))
 
@@ -183,6 +187,10 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       .map(NoteArg.Banner.apply)
     case "pile" => decodeSearchSource(value("pile"), s"$path.pile")
       .map(NoteArg.Pile.apply)
+    case "region" => decodeRegion(value("region").str, s"$path.region")
+      .map(NoteArg.RegionName.apply)
+    case "suit" => decodeSuit(value("suit").str, s"$path.suit")
+      .map(NoteArg.SuitName.apply)
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown note argument '$other'"))
 

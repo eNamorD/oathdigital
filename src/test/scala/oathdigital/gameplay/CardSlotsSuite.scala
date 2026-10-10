@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{AdviserFace, AdviserPlayNote, CardPlay,
-  CardPlayRules, RuleNotes, VisionRules}
+  CardPlayRules, PlacementLimit, RuleNotes, VisionRules}
 import oathdigital.gameplay.actions.cardplay.{CardSlot, CardSlots,
   MoreDiscards}
 import oathdigital.gameplay.operations.HallOfMinisters
@@ -476,3 +476,23 @@ class CardSlotsSuite extends munit.FunSuite:
     assert(more.options.contains(DecisionOption.Denizen(
       DecisionOptionRef.Denizen(secondChance))), more.options.toString)
     assertEquals(more.most, 1)
+
+  /** A limit that leaves only plays to a site open. */
+  private val siteOnly = CardPlayRules.default.limitPlacements(
+    PlacementLimit(OptionReason.Written("Test: site only"), {
+      case SearchPlacement.Site(_) => true
+      case _ => false
+    }))
+
+  test("a placement limit shows each play it refuses unavailable, with its " +
+      "reason"):
+    assertEquals(options(slotsOf(atHome().hand(p1, card).ready,
+      rules = siteOnly)), Vector(refused(pile, "Test: site only"),
+      siteSlot(0), refused(adviserPlay(0, faceup = true), "Test: site only"),
+      refused(adviserPlay(0, faceup = false), "Test: site only")))
+
+  test("when the limits leave no play open, the discard pile stays open"):
+    val full = atHome(rainBoots, binding, wrestlers).hand(p1, card).ready
+    assertEquals(options(slotsOf(full, rules = siteOnly)), Vector(pile,
+      refused(adviserPlay(0, faceup = true), "Test: site only"),
+      refused(adviserPlay(0, faceup = false), "Test: site only")))

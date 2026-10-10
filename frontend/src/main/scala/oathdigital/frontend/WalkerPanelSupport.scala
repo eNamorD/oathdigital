@@ -313,10 +313,25 @@ private[frontend] object WalkerPanelSupport:
     */
   private[frontend] def keepOne(query: DecisionQueryState.Partition)
       : Option[(DecisionSectionState, DecisionSectionState)] =
+    cappedAndLeftover(query)(_.maxAllowed.contains(1))
+
+  /** The keep-some shape: as [[keepOne]], but the capped section holds
+    * one to more than one (Land Warden's Search keeps one or two). The
+    * order of the cards it holds is the order they are played in. */
+  private[frontend] def keepSome(query: DecisionQueryState.Partition)
+      : Option[(DecisionSectionState, DecisionSectionState)] =
+    cappedAndLeftover(query)(_.maxAllowed.exists(_ > 1))
+
+  /** Exactly two sections, in either order: one with a minimum of one
+    * whose cap `cap` accepts, and one that takes whatever is left. The
+    * pair is (the capped section, the leftover section). */
+  private def cappedAndLeftover(query: DecisionQueryState.Partition)(
+      cap: DecisionSectionState => Boolean)
+      : Option[(DecisionSectionState, DecisionSectionState)] =
     query.sections match
       case Vector(first, second) =>
         def capped(section: DecisionSectionState) =
-          section.minRequired == 1 && section.maxAllowed.contains(1)
+          section.minRequired == 1 && cap(section)
         def leftover(section: DecisionSectionState) =
           section.minRequired == 0 && section.maxAllowed.isEmpty
         if capped(first) && leftover(second) then Some(first -> second)
@@ -324,15 +339,24 @@ private[frontend] object WalkerPanelSupport:
         else None
       case _ => None
 
+  /** "one", "one or two", or "one to {most}" for a capped section. */
+  private def upTo(section: DecisionSectionState): String =
+    section.maxAllowed.filter(_ > 1).fold("one") {
+      case 2 => "one or two"
+      case most => s"one to $most"
+    }
+
   /** The instruction line, assembled from the query's own sections. The
-    * keep-one shape reads like the rulebook's own sentence; every other
+    * keep-one and keep-some shapes read like the rulebook's own sentence;
+    * every other
     * shape lists each section with its minimum.
     */
   private[frontend] def partitionInstruction(
       query: DecisionQueryState.Partition): String =
-    keepOne(query) match
+    keepOne(query).orElse(keepSome(query)) match
       case Some((capped, leftover)) =>
-        s"${capped.label} one; ${leftover.label.toLowerCase} the rest."
+        s"${capped.label} ${upTo(capped)}; " +
+          s"${leftover.label.toLowerCase} the rest."
       case None =>
         s"Assign every option: ${query.sections.map(section =>
           s"${section.label} (${section.minRequired})").mkString(", ")}."
@@ -384,7 +408,7 @@ private[frontend] object WalkerPanelSupport:
     zone.appendChild(text("h3", "", section.label))
     // A minimum is worth a line where the player has to meet one. On the
     // keep-one shape the slot always holds its one and the rest has none.
-    if keepOne(query).isEmpty then
+    if keepOne(query).isEmpty && keepSome(query).isEmpty then
       zone.appendChild(text("p", "decision-zone-helper",
         s"At least ${section.minRequired}."))
     val held = draft.optionsIn(section.key)
@@ -394,6 +418,11 @@ private[frontend] object WalkerPanelSupport:
     if ordered(section, held.size) then
       zone.appendChild(text("p", "decision-zone-order",
         "The last one lands on top of the pile."))
+    // On the keep-some shape the kept cards are played in order.
+    val playedInOrder = keepSome(query).exists(_._1.key == section.key)
+    if playedInOrder && held.size > 1 then
+      zone.appendChild(text("p", "decision-zone-order",
+        "They are played in this order."))
     // Own row: a zone that holds heading and options together measures as
     // wide as all of them laid end to end, whatever it can wrap to.
     val options = element("div", "partition-options")
@@ -446,7 +475,15 @@ private[frontend] object WalkerPanelSupport:
         val label = s"Move ${option.label} to ${destination.label}"
         val move = button(destination.label, "move-option")
         move.setAttribute("aria-label", label)
-        move.setAttribute("title", label)
+        // A full section that does not swap refuses the move: say so,
+        // rather than leave a button that does nothing.
+        val refused = destination.maxAllowed.exists(most =>
+          most > 1 && draft.optionsIn(destination.key).size >= most)
+        move.disabled = refused
+        move.setAttribute("title",
+          if refused then s"${destination.label} is full: move a card " +
+            "out of it first"
+          else label)
         move.onclick = _ => moveOption(draft, item, destination.key, controls)
         node.appendChild(move)
       }

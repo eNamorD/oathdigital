@@ -34,7 +34,8 @@ class PowerNoteWireSuite extends munit.FunSuite:
       NoteArg.Cards(Vector(DenizenId("other-denizen"), RelicId("r1"))),
       NoteArg.Cards(Vector.empty), NoteArg.Banner(Banner.PeoplesFavor),
       NoteArg.Pile(SearchSource.WorldDeck),
-      NoteArg.Pile(SearchSource.RegionalDiscard(Region.Provinces)))
+      NoteArg.Pile(SearchSource.RegionalDiscard(Region.Provinces)),
+      NoteArg.RegionName(Region.Hinterland), NoteArg.SuitName(Suit.Nomad))
     val encoded = accepted(GameEventWire.encodeEvent("notes", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
 

@@ -18,6 +18,14 @@ object SearchRules:
   /** How many cards a Search draws before any power changes it. */
   val DrawSize: Int = 3
 
+  /** Every card of `source`, top first: the world deck head-as-top, a
+    * discard pile last-as-top. */
+  def pile(ready: ReadyGame, source: SearchSource): Vector[WorldCardId] =
+    source match
+      case SearchSource.WorldDeck => ready.game.current.commonCards.worldDeck
+      case SearchSource.RegionalDiscard(region) =>
+        ready.game.current.commonCards.discard(region).reverse
+
   /** The cards a Search of `source` draws, in the order drawn: from the
     * top, or from the bottom when `position` says so. World decks use
     * head-as-top; discard piles use last-as-top. A world deck draw stops
@@ -27,10 +35,7 @@ object SearchRules:
     */
   def draw(ready: ReadyGame, source: SearchSource, extra: Int = 0,
       position: StackPosition = StackPosition.Top): Vector[WorldCardId] =
-    val topFirst = source match
-      case SearchSource.WorldDeck => ready.game.current.commonCards.worldDeck
-      case SearchSource.RegionalDiscard(region) =>
-        ready.game.current.commonCards.discard(region).reverse
+    val topFirst = pile(ready, source)
     val ordered =
       if position == StackPosition.Bottom then topFirst.reverse else topFirst
     val drawn = ordered.take(DrawSize + extra)
