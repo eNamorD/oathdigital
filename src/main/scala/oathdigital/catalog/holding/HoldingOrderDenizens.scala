@@ -46,13 +46,6 @@ object RelicHunterCard extends Denizen(DenizenId("126"), "Relic Hunter", Suit.Or
       "the bottom of the relic deck.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object MasterAtArmsCard extends Denizen(DenizenId("249"), "Master at Arms", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.master-at-arms"),
-    persistent = false, cost = Cost.free,
-    text = "You may reroll any number of dice that show hollow swords " +
-      "[hollow-sword] once.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object BaronCard extends Denizen(DenizenId("250"), "Baron", Suit.Order):
   val power = PrintedPower(PowerId("denizen.baron"),
     persistent = false, cost = Cost.free,

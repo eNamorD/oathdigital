@@ -47,6 +47,7 @@ object PlanRules:
       Vector(FearsomeGeneral) ++
       Vector(KindredWarriors.forCatalog(catalog)) ++
       Vector(Rangers) ++
+      Vector(MasterAtArms.forCatalog(catalog)) ++
       Vector(MountedPatrol.forCatalog(catalog)) ++
       Vector(ShieldWall) ++
       Vector(BillowingFog) ++
