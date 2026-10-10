@@ -83,14 +83,15 @@
   stays after the attack roll, so it is decided with both rolls known. It
   writes no line of its own.
 - **R42 Weeping Banner.** A defender battle plan costing one secret. Each
-  skull face counts as two swords and two skulls:
-  - each skull face kills two warbands, capped by the force;
-  - a face scores its swords only when both of its warbands are paid, so
-    with an odd force the last warband dies and scores nothing;
-  - with Fearsome General, a fully paid face is worth six swords, since each
-    of its two skulls adds two;
-  - when the attacker's skulls are ignored (Outriders and the like), the
-    extra skull is ignored too, every face scores and nothing dies.
+  skull the attacker rolls kills two warbands instead of one (product owner,
+  revised 2026-10-09):
+  - the kills are capped by the force;
+  - a skull face scores its swords only when both of its warbands are paid,
+    so with an odd force the last warband dies and scores nothing;
+  - it adds no swords: with Fearsome General, a paid skull face is worth
+    four swords, as it is without Weeping Banner;
+  - when the attacker's skulls are ignored (Outriders and the like), nothing
+    dies and every face scores as usual.
 
   It writes no line of its own.
 - **87 Zealots.** An attacker battle plan costing one favor. Its condition,

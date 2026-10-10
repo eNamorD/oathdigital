@@ -51,8 +51,8 @@ The approved changes outside `gameplay/powers/`:
 - **Amounts and choices inside a battle plan** (slice 3). A plan's
   application may ask a `ChooseAmount` or a `ChooseOne` of its user before it
   pays, as Sticky Fire and Wild Mounts ask a `ChooseOne` after.
-- **Attack scoring fields** (slice 4). `AttackRules` gains the skulls on a
-  skull face (Weeping Banner) and the worth of a sacrificed warband
+- **Attack scoring fields** (slice 4). `AttackRules` gains the warbands a
+  skull kills (Weeping Banner) and the worth of a sacrificed warband
   (Zealots). `CampaignBattle.result` reads the sacrifice's worth from the
   chosen plans.
 - **A reordered battle** (slice 4). Careful Plans moves the defense roll and
@@ -158,9 +158,9 @@ possible.
   sees both rolls. The defense result adds the defender's force in either
   order. If the rewrite cannot move the block cleanly, the fallback is an
   order hook on the Campaign tree that reads the chosen plans.
-- **Weeping Banner** is a defender plan. Each skull face carries two skulls:
-  `AttackRules` counts two losses per face, capped by the force, and a face
-  scores its swords only when both are paid.
+- **Weeping Banner** is a defender plan. Each skull kills two warbands:
+  `AttackRules` counts two losses per skull, capped by the force, and a
+  skull face scores its swords only when both are paid. It adds no swords.
 - **Zealots** is an attacker plan. Its condition is checked when it is
   chosen, and the outcome is recorded then, so later skull losses do not
   change it. While it holds, each sacrificed warband adds three.
