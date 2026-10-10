@@ -7,6 +7,8 @@ import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.{WalkerProcedureRegistry,
+  WalkerRollFeedback}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseAmountAnswer
 import oathdigital.testkit.CatalogNames
@@ -43,13 +45,23 @@ class MasterAtArmsSuite extends munit.FunSuite:
       Vector(TwoSwordsSkull), Vector(Blank, Blank))
     assert(awaits(asked, b.actor, reroll))
     val amount = asked.pick(b.actor, reroll, ref)
-    assert(awaits(amount, b.actor, MasterAtArms.decisionId))
-    val done = amount.answer(b.actor, MasterAtArms.decisionId,
+    assert(awaits(amount, b.actor, MasterAtArms.decisionId(1)))
+    val done = amount.answer(b.actor, MasterAtArms.decisionId(1),
       ChooseAmountAnswer(1)).finishPlanWindows
     assertEquals(done.result.attackFaces,
       Vector[AttackDieFace](TwoSwordsSkull, OneSword, HollowSword))
     assertEquals(said(MasterAtArms.forCatalog(catalog), done.events),
       Vector(rerolled("1 hollow sword")))
+
+  test("the how-many question shows the attack dice"):
+    val b = attacker
+    val amount = chosen(b, Vector(HollowSword, OneSword, HollowSword),
+      Vector(TwoSwordsSkull), Vector(Blank, Blank))
+      .pick(b.actor, reroll, ref)
+    assert(awaits(amount, b.actor, MasterAtArms.decisionId(1)))
+    assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Campaign,
+      catalog, ready(amount.state), b.actor, MasterAtArms.decisionId(1)),
+      Some(WalkerRollFeedback(CampaignIds.attackPool)))
 
   test("with one hollow sword it rerolls it without asking"):
     val b = attacker

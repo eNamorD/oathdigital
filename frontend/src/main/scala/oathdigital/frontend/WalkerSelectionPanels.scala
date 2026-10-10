@@ -19,15 +19,19 @@ private[frontend] object WalkerSelectionPanels:
     surface.query match
       case many: DecisionQueryState.ChooseMany => draft
         .collect { case value: WalkerChooseManyDraft => value }
-        .foreach(renderMany(many, _, canControl, panel, controls))
+        .foreach(renderMany(surface.decision, many, _, canControl, panel,
+          controls))
       case amount: DecisionQueryState.ChooseAmount => draft
         .collect { case value: WalkerAmountDraft => value }
         .foreach(renderAmount(surface.decision, amount, _, canControl,
           panel, controls))
 
-  private def renderMany(query: DecisionQueryState.ChooseMany,
-      draft: WalkerChooseManyDraft,
+  private def renderMany(decision: WalkerDecisionState,
+      query: DecisionQueryState.ChooseMany, draft: WalkerChooseManyDraft,
       canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
+    // The roll first, as the choose-amount panel draws it: Silver Charm's
+    // question is about the dice already rolled.
+    WalkerPanelSupport.rollFeedback(decision, panel)
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
     panel.appendChild(text("p", "walker-many-instruction",
       if query.minOptions == query.maxOptions then s"Choose ${query.minOptions}."

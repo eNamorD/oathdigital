@@ -104,3 +104,14 @@ class RerollChoiceSuite extends munit.FunSuite:
       Some(CampaignIds.attackPool))
     assertEquals(RerollChoice.poolOf("campaign.sacrifice"), None)
     assert(RerollChoice.isDecision(attackReroll))
+
+  test("a reroll power's question names its throw, so it is about that " +
+      "pool"):
+    val asked = RerollChoice.followUpId(CampaignIds.attackPool, 1,
+      "master-at-arms")
+    assertEquals(asked, "campaign.attack.reroll.1.master-at-arms")
+    assertEquals(RerollChoice.poolOf(asked), Some(CampaignIds.attackPool))
+    assert(RerollChoice.isDecision(asked))
+    assertEquals(RerollChoice.poolOf("campaign.attack.reroll.1."), None)
+    assertEquals(RerollChoice.poolOf("campaign.attack.reroll.x.master"),
+      None)

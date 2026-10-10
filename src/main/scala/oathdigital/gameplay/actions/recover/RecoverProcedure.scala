@@ -2,7 +2,8 @@ package oathdigital.gameplay.actions.recover
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
-import oathdigital.gameplay.actions.dice.{RerollChoice, RollStep}
+import oathdigital.gameplay.actions.dice.RollStep
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
   WalkerRollFeedback, WalkerSimulation}
 import oathdigital.model._
@@ -74,16 +75,21 @@ object RecoverProcedure:
     */
   val rollDecisionId: String = "walker.recover.roll"
 
+  /** Every Recover decision's id starts here, and so does the id of a
+    * question a Recover modifier asks (Silver Charm's). */
+  val decisionPrefix: String = "recover."
+
   private val supplyCost: Int = 1
 
-  /** Every park of a Recover shows the same thing: the pool rolled so far and
-    * the site's difficulty, which is worth showing before the first roll too.
-    */
+  /** Every park of a Recover but its modifier decision shows the same
+    * thing: the pool rolled so far and the site's difficulty, which is worth
+    * showing before the first roll too. A question a Recover modifier asks
+    * shows it as well, since its id starts with [[decisionPrefix]]. */
   def rollFeedback(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, decisionId: String): Option[WalkerRollFeedback] =
     Option.when(decisionId == rollDecisionId ||
-        decisionId == relicDecisionId || decisionId == choiceDecisionId ||
-        RerollChoice.poolOf(decisionId).contains(recoverPool))(
+        (decisionId.startsWith(decisionPrefix) &&
+          !ModifierPicks.isDecision(decisionId)))(
       WalkerRollFeedback(recoverPool, target = actorSite(ready, actor)
         .flatMap(RecoverRules.difficulty(catalog, _)))).filter(_.target.nonEmpty)
 

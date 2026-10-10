@@ -196,6 +196,26 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
       Vector("walker-roll-faces", "walker-roll-totals", ""))
     assertEquals(panel.textContent.contains("two swords and a skull"), false)
 
+  test("a choose-many beside a roll draws dice, then totals, then the " +
+      "heading"):
+    val outcome = WalkerRollOutcomeState("recover",
+      Vector("one-shield", "blank"), 1, Some(3), Vector.empty)
+    val earlier = DecisionQueryState.ChooseMany(Vector(
+      DecisionOptionState("button", "die-0", "Die 1: shield"),
+      DecisionOptionState("button", "die-1", "Die 2: blank")),
+      minOptions = 0, maxOptions = 2,
+      heading = Some("Reroll earlier dice with this roll"))
+    val panel = render(new RecordingControls(),
+      opened("recover.silver-charm", earlier), "recover.silver-charm",
+      earlier, rollOutcome = Some(outcome))
+    one(panel, ".walker-roll-faces .die-faces")
+    assertEquals(one(panel, ".walker-roll-totals").textContent,
+      "Shields 1 · need 3")
+    val order = panel.children.toVector.map(child =>
+      Option(child.getAttribute("class")).getOrElse(""))
+    assertEquals(order.take(3),
+      Vector("walker-roll-faces", "walker-roll-totals", ""))
+
   test("a choose-amount no roll belongs beside draws no roll"):
     val panel = render(new RecordingControls(),
       opened("challenge.amount", amount), "challenge.amount", amount)

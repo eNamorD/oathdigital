@@ -75,7 +75,7 @@ object SilverCharm:
   val id: PowerId = SilverCharmCard.power.id
   /** Asked on every payment after the first. Each answer is read back by
     * the walk that gives it, as Recover's continue-or-stop decision is. */
-  val decisionId: String = "recover.silver-charm"
+  val decisionId: String = RecoverProcedure.decisionPrefix + "silver-charm"
   val heading: String = "Reroll earlier dice with this roll"
   /** "Reroll 2 dice". */
   val summary: DecisionSummary = DecisionSummary("Reroll", "die", "dice")

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
+import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.dice.{DiceThrow, RerollChoice}
 import oathdigital.gameplay.powerresolver.{Contribution, OfferReroll,
   PowerCtx}
@@ -62,17 +62,18 @@ final case class MasterAtArms private (catalog: ExecutableCatalog)
     if hollow.size == 1 then
       Vector(note(1), Reroll(rolled.pool, hollow))
     else Vector(
-      Decide(MasterAtArms.decisionId, rolled.roller,
+      Decide(MasterAtArms.decisionId(rolled.number), rolled.roller,
         DecisionQuery.ChooseAmount(1, hollow.size,
           Some(MasterAtArms.heading), "Reroll")),
-      Branch((_, pending) => MasterAtArms.amount(pending).toVector
+      Branch((_, pending) => MasterAtArms.amount(pending, rolled.number).toVector
         .flatMap(amount => Vector(note(amount),
           Reroll(rolled.pool, hollow.take(amount))))))
 
 object MasterAtArms:
   val id: PowerId = MasterAtArmsCard.power.id
-  val decisionId: String = CampaignProcedure.decisionPrefix +
-    "master-at-arms"
+  /** Its "how many" question on the `number`th attack throw. */
+  def decisionId(number: Int): String =
+    RerollChoice.followUpId(CampaignIds.attackPool, number, "master-at-arms")
   val label: String = "Master at Arms: reroll hollow swords"
   val heading: String = "Reroll how many hollow swords?"
   val noHollowSword: String = "No die shows a hollow sword"
@@ -86,11 +87,11 @@ object MasterAtArms:
     rolled.indices.zip(rolled.faces).collect {
       case (index, AttackDieFace.HollowSword) => index }
 
-  /** How many hollow swords the user chose to reroll. */
-  private def amount(pending: PendingTree): Option[Int] =
+  /** How many hollow swords the user chose to reroll on throw `number`. */
+  private def amount(pending: PendingTree, number: Int): Option[Int] =
     pending.answered.reverse.collectFirst {
-      case Answered(`decisionId`, DecisionAnswer.ChooseAmountAnswer(n), _) =>
-        n
+      case Answered(id, DecisionAnswer.ChooseAmountAnswer(n), _)
+          if id == decisionId(number) => n
     }
 
   def forCatalog(catalog: ExecutableCatalog): MasterAtArms =

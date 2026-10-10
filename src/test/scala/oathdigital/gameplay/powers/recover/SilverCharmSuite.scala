@@ -6,8 +6,9 @@ import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{PowerNoted, WalkerDice,
-  WalkerStepRecorded}
+  WalkerProcedureRegistry, WalkerRollFeedback, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
@@ -93,6 +94,18 @@ class SilverCharmSuite extends munit.FunSuite:
     assertEquals(Look(Outcomes.ready(asked.state)).player(p1).board.supply
       .supply, 4 - 2)
     assertEquals(recoverOutcome(asked).faces.size, 2)
+
+  test("its question shows the Recover dice and the difficulty"):
+    val rules = rulesRolling(scripted(Vector(OneShield, Blank)))
+    val asked = resolved(rules, recoverStarted(rules, silverCharmAtFairIsle),
+      RecoverProcedure.choiceDecisionId, continueRecovering)
+    assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Recover,
+      catalog, Outcomes.ready(asked.state), p1, SilverCharm.decisionId),
+      Some(WalkerRollFeedback(pool, target = Some(3))))
+    // The modifier decision still shows none.
+    assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Recover,
+      catalog, silverCharmAtFairIsle.ready, p1,
+      ModifierPicks.decisionId(PowerWindow.RecoverModifierSelection)), None)
 
   test("the chosen earlier dice are rerolled with the two new dice, and " +
       "its line names them as they showed"):
