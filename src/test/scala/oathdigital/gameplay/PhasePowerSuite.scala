@@ -11,6 +11,7 @@ import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes, Table,
   TestCards}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
+import oathdigital.testkit.PhasePowerHarness
 
 /** Synthetic WAKE, ACTION and REST powers on a faceup adviser, injected
   * through `OathRules`, drive the generic phase power path end to end.
@@ -50,11 +51,11 @@ class PhasePowerSuite extends munit.FunSuite:
       "action boundary"):
     val power = TestPower(powerId, PowerTiming.Wake)
     val powers = PhasePowers(Vector(power))
-    assertEquals(PhasePowerProcedure.usable(catalog, holding(Phase.Wake), p1,
-      powers, WalkerPowers.empty), Vector(PhasePowerProcedure.PowerSource(power, PowerSourceRef.Card(card),
-        source)))
-    assertEquals(PhasePowerProcedure.usable(catalog, holding(Phase.Act), p1,
-      powers, WalkerPowers.empty), Vector.empty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog, holding(Phase.Wake), p1,
+        powers, WalkerPowers.empty),
+      Vector(PhasePowerHarness.MenuPower(power, source)))
+    assertEquals(PhasePowerHarness.menuPowers(catalog, holding(Phase.Act), p1,
+        powers, WalkerPowers.empty), Vector.empty)
 
     val used = accepted(use(power, Ready(holding(Phase.Wake))))
     val ref = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card), powerId)
@@ -66,8 +67,8 @@ class PhasePowerSuite extends munit.FunSuite:
     val again = rewoken(used.state)
     assertEquals(use(power, again).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(ref)))
-    assertEquals(PhasePowerProcedure.usable(catalog, Outcomes.ready(again), p1,
-      powers, WalkerPowers.empty), Vector.empty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog, Outcomes.ready(again),
+        p1, powers, WalkerPowers.empty), Vector.empty)
 
   test("a use is scoped to its source card: the same power stays usable " +
       "from a second card"):
@@ -90,8 +91,9 @@ class PhasePowerSuite extends munit.FunSuite:
       Left(OathViolation.PowerAlreadyUsed(usedFromFirst)))
     assertEquals(PhasePowerProcedure.check(twice, state, p1, power,
       secondSource), Right(PowerSourceRef.Card(second)))
-    assertEquals(PhasePowerProcedure.usable(twice, state, p1,
-      PhasePowers(Vector(power)), WalkerPowers.empty).map(_.ref), Vector(secondSource))
+    assertEquals(PhasePowerHarness.menuPowers(twice, state, p1,
+      PhasePowers(Vector(power)), WalkerPowers.empty).map(_.ref),
+      Vector(secondSource))
 
   test("an ACTION power returns its player to action selection"):
     val power = TestPower(powerId, PowerTiming.Act)
@@ -117,11 +119,13 @@ class PhasePowerSuite extends munit.FunSuite:
     val atDunes = Table.start.pawn(p1, at = "Ancient City")
       .denizen(card, at = "Dunes")
     val powers = PhasePowers(Vector(power))
-    assertEquals(PhasePowerProcedure.usable(catalog,
-      atDunes.warbandsAt("Dunes", p1, 1).ready, p1, powers, WalkerPowers.empty).map(_.ref),
+    assertEquals(PhasePowerHarness.menuPowers(catalog,
+        atDunes.warbandsAt("Dunes", p1, 1).ready, p1, powers,
+        WalkerPowers.empty).map(_.ref),
       Vector(source))
-    assertEquals(PhasePowerProcedure.usable(catalog,
-      atDunes.bandits("Dunes", 1).ready, p1, powers, WalkerPowers.empty), Vector.empty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog,
+      atDunes.bandits("Dunes", 1).ready, p1, powers, WalkerPowers.empty),
+      Vector.empty)
 
   test("a usable REST power stops the Rest auto-skip, and using the last " +
       "one finishes Rest"):
@@ -162,14 +166,16 @@ class PhasePowerSuite extends munit.FunSuite:
     val power = TestPower(powerId, PowerTiming.Act, cost = Cost(secret = 1))
     val powers = PhasePowers(Vector(power))
     val funded = withSecrets(Phase.Act, 2)
-    assertEquals(PhasePowerProcedure.usable(catalog, funded, p1, powers, WalkerPowers.empty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog, funded, p1, powers,
+        WalkerPowers.empty)
       .map(_.ref), Vector(source))
 
     val used = accepted(use(power, Ready(funded)))
     val after = Outcomes.ready(used.state)
     assertEquals(Look(after).tokensOn(card), Tokens(0, 1))
     assertEquals(after.game.current.turn.usedPowers, Set.empty[PowerUseRef])
-    assertEquals(PhasePowerProcedure.usable(catalog, after, p1, powers, WalkerPowers.empty),
+    assertEquals(PhasePowerHarness.menuPowers(catalog, after, p1, powers,
+        WalkerPowers.empty),
       Vector.empty)
     assertEquals(use(power, used.state).left.toOption,
       Some(OathViolation.EconomyCardNotEmpty(card)))
@@ -177,8 +183,8 @@ class PhasePowerSuite extends munit.FunSuite:
   test("an unaffordable cost makes the power unusable"):
     val power = TestPower(powerId, PowerTiming.Act, cost = Cost(secret = 1))
     val broke = withSecrets(Phase.Act, 0)
-    assertEquals(PhasePowerProcedure.usable(catalog, broke, p1,
-      PhasePowers(Vector(power)), WalkerPowers.empty), Vector.empty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog, broke, p1,
+        PhasePowers(Vector(power)), WalkerPowers.empty), Vector.empty)
     assertEquals(use(power, Ready(broke)).left.toOption, Some(OathViolation.InsufficientSecrets(1, 0)))
 
   test("a free ACTION power is unlimited and records no use"):
@@ -210,9 +216,9 @@ class PhasePowerSuite extends munit.FunSuite:
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
       val state = Table.start.pawn(p1, at = "Ancient City")
         .edifice(id, side, at = "Ancient City").ready
-      assertEquals(PhasePowerProcedure.usable(powered, state, p1,
-        PhasePowers(Vector(power)), WalkerPowers.empty).map(p => p.source -> p.ref),
-        Vector(PowerSourceRef.Card(id) -> DecisionOptionRef.Edifice(id)),
+      assertEquals(PhasePowerHarness.menuPowers(powered, state, p1,
+          PhasePowers(Vector(power)), WalkerPowers.empty).map(_.ref),
+        Vector(DecisionOptionRef.Edifice(id)),
         side.toString)
     }
 
@@ -224,11 +230,11 @@ class PhasePowerSuite extends munit.FunSuite:
       .peoplesFavor(holder, favor = 1, face = PeoplesFavorFace.GrandCouncil)
       .unchecked
     val powers = PhasePowers(Vector(power))
-    assertEquals(PhasePowerProcedure.usable(catalog, state(Some(p1)), p1,
-      powers, WalkerPowers.empty).map(p => p.source -> p.ref), Vector(
-      PowerSourceRef.Banner(Banner.PeoplesFavor) ->
-        DecisionOptionRef.Banner(Banner.PeoplesFavor)))
-    assertEquals(PhasePowerProcedure.usable(catalog, state(None), p1, powers, WalkerPowers.empty),
+    assertEquals(PhasePowerHarness.menuPowers(catalog, state(Some(p1)), p1,
+        powers, WalkerPowers.empty).map(_.ref),
+      Vector(DecisionOptionRef.Banner(Banner.PeoplesFavor)))
+    assertEquals(PhasePowerHarness.menuPowers(catalog, state(None), p1, powers,
+        WalkerPowers.empty),
       Vector.empty)
 
   test("a held relic's power is usable only while the relic is faceup"):
@@ -239,10 +245,11 @@ class PhasePowerSuite extends munit.FunSuite:
     def holdingRelic(facedown: Boolean) = Table.start
       .relic(p1, relic, facedown = facedown).turn(p1, Phase.Act).ready
     val powers = PhasePowers(Vector(relicPower))
-    assert(PhasePowerProcedure.usable(catalog, holdingRelic(facedown = false), p1,
-      powers, WalkerPowers.empty).nonEmpty)
-    assertEquals(PhasePowerProcedure.usable(catalog, holdingRelic(facedown = true),
-      p1, powers, WalkerPowers.empty), Vector.empty)
+    assert(PhasePowerHarness.menuPowers(catalog, holdingRelic(facedown = false),
+      p1, powers, WalkerPowers.empty).nonEmpty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog,
+      holdingRelic(facedown = true), p1, powers, WalkerPowers.empty),
+      Vector.empty)
     assertEquals(rules(relicPower).startWalker(Ready(holdingRelic(facedown = true)),
       ActionRef.UsePower(relicPower.id), p1, Vector(DecisionOptionRef.Relic(relic))).left.toOption, Some(OathViolation.InvalidEventOrder(
         s"relic/${relic.value} is not an accessible source of relic.brass-horse")))

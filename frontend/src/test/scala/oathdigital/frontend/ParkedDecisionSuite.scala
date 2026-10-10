@@ -19,7 +19,7 @@ class ParkedDecisionSuite extends munit.FunSuite:
   private def projection(decision: Option[WalkerDecisionState] = None,
       waiting: Option[WalkerWaitingState] = None): GameProjection =
     GameProjection("game", 9L, "act", Some("red"), Vector(red, blue),
-      Vector.empty, Vector.empty, Vector.empty, ready = true,
+      Vector.empty, Vector.empty, ready = true,
       completed = false, walkerDecision = decision, walkerWaiting = waiting)
 
   private def routeOf(decision: WalkerDecisionState,

@@ -135,8 +135,7 @@ private[gameplay] trait OathRulesWalker:
     * right now: `PlayerSelected` powers in `walkerPowerCatalog` that are
     * `applicable` at that procedure's modifier-selection window and whose
     * selection payment `actor` can make (`ModifierOffers.offerable`). The
-    * Act panel's start controls try selections of these (spec ruling 9); the
-    * modifier decision itself judges each option exactly.
+    * modifier decision lists these and judges each option exactly.
     *
     * An entry declaring `modifierWindow = None` offers nothing; a procedure
     * absent from `registrations` is a `Left`, since "registers no window" and

@@ -4,8 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.{CardPlay, SearchRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
-import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
-  WalkerSimulation}
+import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers}
 import oathdigital.model._
 
 /** Search on the walker (search source design; modifier walker design).
@@ -45,16 +44,6 @@ object SearchProcedure:
   val discardKey: String = "discard"
   private val heading = "Choose a Search source"
   private val startLabel = "Start Search"
-
-  /** Whether a Search could start now under `powers`: some source survives
-    * the preview of what follows the modifier decision. The Act panel asks
-    * it of each selection `ModifierOffers.selections` tries. */
-  def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): Boolean =
-    gated(state, actor, Vector.empty)
-      .map(afterModifiers(catalog, actor, _))
-      .flatMap(WalkerSimulation.preview(_, state, powers))
-      .exists(_.exists(_.outcome.isRight))
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =

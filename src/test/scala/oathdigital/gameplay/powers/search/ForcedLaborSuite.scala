@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{NoteText, PayOrAsk, SearchFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -11,6 +10,7 @@ import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
+import oathdigital.testkit.StartPreview
 
 /** Forced Labor's ruler toll on a Search. The toll itself, including the
   * favor burnt when bandits rule, is shared with Curfew (`RulerToll`) and
@@ -74,7 +74,7 @@ class ForcedLaborSuite extends munit.FunSuite:
   test("a searcher who cannot pay may start the Search only to ask its " +
       "ruler; under bandits, not at all"):
     val startable = (ready: ReadyGame) =>
-      SearchProcedure.startable(catalog, ready, p1, automatic)
+      StartPreview.opens(catalog, ready, p1, ActionRef.Search, automatic)
     assert(startable(rivalRulesBoth.favor(p1, 0).ready))
     val banditBroke = laborTable.bandits(peaks, 1).bandits(home, 1)
       .favor(p1, 0).ready

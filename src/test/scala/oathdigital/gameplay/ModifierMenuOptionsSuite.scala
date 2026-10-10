@@ -1,6 +1,5 @@
-package oathdigital.application
+package oathdigital.gameplay
 
-import oathdigital.gameplay.{ModifierPlay, OathRules}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
@@ -11,23 +10,16 @@ import oathdigital.gameplay.powers.search.NewsFromAfar
 import oathdigital.gameplay.powers.travel.{Tents, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, ParkedNode, Table}
+import oathdigital.testkit.{CatalogNames, MenuPlay, ParkedNode, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
-/** A start control counts the modifiers its player
-  * could select: an action that only a modifier makes affordable is still
-  * offered, and a modifier the player cannot pay for unlocks nothing. */
-class ModifierStartControlsSuite extends munit.FunSuite:
-  private val presentation = new GamePresentationProjector(catalog)
-  private val legal = new LegalActionProjector(catalog, presentation,
-    new WalkerDecisionProjector(catalog, presentation))
-
+/** A menu option counts the modifiers its player could select: an action
+  * that only a modifier makes affordable is still available, and a modifier
+  * the player cannot pay for unlocks nothing. */
+class ModifierMenuOptionsSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
-
-  private def controls(ready: ReadyGame, viewer: PlayerId): Vector[String] =
-    legal.project(ScopedProjectionContext(ready, Some(viewer))).controls
 
   /** Why `viewer` may not start `action` at `ready`; fails the test if the
     * start is accepted. */
@@ -51,10 +43,10 @@ class ModifierStartControlsSuite extends munit.FunSuite:
     (if tents then table.adviser(actor, CatalogNames.denizen("Tents"))
       else table).unchecked
 
-  test("Travel is offered at 0 Supply when Tents would make it free; the " +
+  test("Travel is available at 0 Supply when Tents would make it free; the " +
       "start asks for the modifier, and picking it reaches the destination"):
     val ready = broke(favor = 1, tents = true)
-    assert(controls(ready, actor).contains("beginTravel"))
+    assert(MenuPlay.availableInMenu(catalog, ready, ActionRef.Travel))
     val started = accepted(rules.startWalker(OathState.Ready(ready),
       ActionRef.Travel, actor))
     val modifiers = parked(started.state)
@@ -76,13 +68,14 @@ class ModifierStartControlsSuite extends munit.FunSuite:
   private val travelModifiers =
     ModifierPicks.decisionId(PowerWindow.TravelModifierSelection)
 
-  test("without a modifier that waives it, Travel at 0 Supply is not offered"):
-    assert(!controls(broke(favor = 1, tents = false), actor)
-      .contains("beginTravel"))
+  test("without a modifier that waives it, Travel at 0 Supply is not " +
+      "available"):
+    assert(!MenuPlay.availableInMenu(catalog,
+      broke(favor = 1, tents = false), ActionRef.Travel))
 
-  test("Tents with no favor to place on it offers no Travel at 0 Supply"):
-    assert(!controls(broke(favor = 0, tents = true), actor)
-      .contains("beginTravel"))
+  test("Tents with no favor to place on it leaves no Travel at 0 Supply"):
+    assert(!MenuPlay.availableInMenu(catalog,
+      broke(favor = 0, tents = true), ActionRef.Travel))
 
   // ---- Muster ----
 
@@ -95,10 +88,10 @@ class ModifierStartControlsSuite extends munit.FunSuite:
     (if playmates then table.adviser(p1,
       CatalogNames.denizen("Animal Playmates")) else table).ready
 
-  test("Muster is offered at 0 Supply when Animal Playmates waives it; the " +
+  test("Muster is available at 0 Supply when Animal Playmates waives it; the " +
       "start asks for the modifier, and picking it reaches the source"):
     val ready = beastMuster(playmates = true)
-    assert(controls(ready, p1).contains("beginMuster"))
+    assert(MenuPlay.availableInMenu(catalog, ready, ActionRef.Muster))
     val started = accepted(rules.startWalker(OathState.Ready(ready),
       ActionRef.Muster, p1))
     val modifiers = parked(started.state)
@@ -116,9 +109,9 @@ class ModifierStartControlsSuite extends munit.FunSuite:
   private val musterModifiers =
     ModifierPicks.decisionId(PowerWindow.MusterModifierSelection)
 
-  test("without the waiver, Muster at 0 Supply is not offered"):
-    assert(!controls(beastMuster(playmates = false), p1)
-      .contains("beginMuster"))
+  test("without the waiver, Muster at 0 Supply is not available"):
+    assert(!MenuPlay.availableInMenu(catalog, beastMuster(playmates = false),
+      ActionRef.Muster))
 
   // ---- Trade ----
 
@@ -131,10 +124,11 @@ class ModifierStartControlsSuite extends munit.FunSuite:
     (if birdsong then table.adviser(p1, CatalogNames.denizen("Birdsong"))
       else table).ready
 
-  test("Trade is offered at 0 Supply when Birdsong waives it; the start " +
+  test("Trade is available at 0 Supply when Birdsong waives it; the start " +
       "asks for the modifier, and picking it reaches the source"):
     val ready = beastTrade(birdsong = true)
-    assert(controls(ready, p1).contains("beginTradeFavor"))
+    assert(MenuPlay.availableInMenu(catalog, ready, ActionRef.Trade,
+      TradeProcedure.selection(TradeResource.Favor)))
     val started = accepted(rules.startWalker(OathState.Ready(ready),
       ActionRef.Trade, p1, startArgs = Vector(DecisionOptionRef.Button(
         "favor"))))
@@ -153,9 +147,9 @@ class ModifierStartControlsSuite extends munit.FunSuite:
   private val tradeModifiers =
     ModifierPicks.decisionId(PowerWindow.TradeModifierSelection)
 
-  test("without the waiver, Trade at 0 Supply is not offered"):
-    assert(!controls(beastTrade(birdsong = false), p1)
-      .contains("beginTradeFavor"))
+  test("without the waiver, Trade at 0 Supply is not available"):
+    assert(!MenuPlay.availableInMenu(catalog, beastTrade(birdsong = false),
+      ActionRef.Trade, TradeProcedure.selection(TradeResource.Favor)))
 
   // ---- Search ----
 
@@ -166,10 +160,10 @@ class ModifierStartControlsSuite extends munit.FunSuite:
     (if news then table.adviser(p1, CatalogNames.denizen("News from Afar"))
       else table).ready
 
-  test("Search is offered when News from Afar would make it free; the start " +
-      "asks for the modifier, and picking it reaches the source"):
+  test("Search is available when News from Afar would make it free; the " +
+      "start asks for the modifier, and picking it reaches the source"):
     val ready = brokeSearcher(news = true, favor = 2)
-    assert(controls(ready, p1).contains("beginSearch"))
+    assert(MenuPlay.availableInMenu(catalog, ready, ActionRef.Search))
     val started = accepted(rules.startWalker(OathState.Ready(ready),
       ActionRef.Search, p1))
     val modifiers = parked(started.state)
@@ -194,8 +188,9 @@ class ModifierStartControlsSuite extends munit.FunSuite:
       case Right(Some(ParkedNode.Decision(_, decide, _))) => decide
       case other => fail(s"expected a parked decision, got $other")
 
-  test("News from Afar with too little favor to pay offers no Search"):
-    assert(!controls(brokeSearcher(news = true, favor = 1), p1)
-      .contains("beginSearch"))
-    assert(!controls(brokeSearcher(news = false, favor = 2), p1)
-      .contains("beginSearch"))
+  test("News from Afar with too little favor to pay leaves no Search " +
+      "available"):
+    assert(!MenuPlay.availableInMenu(catalog,
+      brokeSearcher(news = true, favor = 1), ActionRef.Search))
+    assert(!MenuPlay.availableInMenu(catalog,
+      brokeSearcher(news = false, favor = 2), ActionRef.Search))

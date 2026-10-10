@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.wake
 
 import oathdigital.testkit.MenuPlay
-import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -11,6 +10,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
   Refusals, Table}
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.PhasePowerHarness
 
 class MarbleFountainsSuite extends munit.FunSuite:
   import PowerFixture._
@@ -56,15 +56,15 @@ class MarbleFountainsSuite extends munit.FunSuite:
     val away = staged(pawnAtEdifice = false)
     assert(PowerAccess.locate(away, actor, fountains).isDefined,
       "the edifice must be reachable, or this test proves nothing")
-    assertEquals(PhasePowerProcedure.usable(catalog, away, actor,
-      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog, away, actor,
+        PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
     assertEquals(use(away).left.toOption,
       Some(Refusals.nothingToDo(MarbleFountains.id, source)))
 
   test("a ruined Marble Fountains offers nothing"):
     val ruined = staged(EdificeSide.Ruined)
-    assertEquals(PhasePowerProcedure.usable(catalog, ruined, actor,
-      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
+    assertEquals(PhasePowerHarness.menuPowers(catalog, ruined, actor,
+        PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
 
   test("it writes the Supply it refreshed to"):
     val done = accepted(use(staged()))

@@ -84,8 +84,8 @@ candidates.
 
 Application projection is split by responsibility: `GameProjector` chooses one
 player/public scope and assembles the DTO; `GamePresentationProjector` owns
-world, site, card, and player-board presentation; `LegalActionProjector` maps
-gameplay legality and targets; and `PendingProjector` maps forced decisions. Scala.js composes `ActionDecisionRenderer`, `WorldBoardRenderer`,
+world, site, card, and player-board presentation; and `PendingProjector` maps the
+parked decision, a phase menu included. Scala.js composes `ActionDecisionRenderer`, `WorldBoardRenderer`,
 and `DevelopmentRenderer` through the small `ServerModeUi` controller. These
 outer groups consume shared actorless intent and projection DTOs; none owns
 rules.

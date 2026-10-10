@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.testkit.MenuPlay
-import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
@@ -27,7 +26,6 @@ class PressgangsSuite extends munit.FunSuite:
   /** A plain Beast denizen. */
   private val errandBoy = CatalogNames.denizen("Errand Boy")
   private val rules = PowerRules.withWalkerPowers
-  private val projector = new GameProjector(catalog)
 
   /** p1 at Ancient City holding Pressgangs faceup, with 2 favor and 7
     * Supply, beside Alchemist, which holds 1 favor and 1 secret. */
@@ -47,10 +45,6 @@ class PressgangsSuite extends munit.FunSuite:
       : Option[Vector[(String, String)]] =
     PhasePowerHarness.queryOf(started, p1).map(_.offeredOptions
       .map(option => (option.id, option.state)))
-
-  private def controls(ready: ReadyGame): Vector[String] =
-    projector.project("pressgangs", LoadedGame(Ready(ready), 4), p1)
-      .legalControls
 
   private def modifiers(ready: ReadyGame, action: ActionRef)
       : Vector[PowerId] =
@@ -74,7 +68,7 @@ class PressgangsSuite extends munit.FunSuite:
     assertEquals(states(accepted(rules.startWalker(Ready(ready),
       ActionRef.Muster, p1))), Some(Vector("start" -> "unavailable",
       pressgangs.value -> "available")))
-    assert(controls(ready).contains("beginMuster"), controls(ready))
+    assert(MenuPlay.availableInMenu(catalog, ready, ActionRef.Muster))
     assertEquals(states(musterStarted(ready, selected)),
       Some(Vector(alchemist.value -> "available")))
 

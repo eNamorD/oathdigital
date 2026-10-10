@@ -5,14 +5,14 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.protocol.projection.{GameProjection, SupplyBandProjection}
-import oathdigital.testkit.{Look, Outcomes, Table}
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.{Look, MenuPlay, Outcomes, Table}
+import oathdigital.testkit.Table.p1
 
 /** What the Supply track promises the client.
   *
   * The maximum lets the client print "5/7" without knowing the rules, and
-  * the Rest preview lets the Act button say what ending the Act returns.
-  * The preview is the return BEFORE the track's ceiling takes its cut, so a
+  * the Act menu's ending says what ending the Act returns. The preview is
+  * the return BEFORE the track's ceiling takes its cut, so a
   * player pricing this Act's spending can read it as the Supply they may
   * still spend for free; it is checked here against what Rest pays once the
   * ceiling has applied.
@@ -32,16 +32,23 @@ class SupplyProjectionSuite extends munit.FunSuite:
     val after = Outcomes.ready(completed.state)
     Look(after).supply(actor)
 
+  /** What the Act menu's ending says Rest returns. */
   private def preview(board: ReadyGame, actor: PlayerId): Int =
-    project(board, actor).restSupplyGain
-      .getOrElse(fail("an Act that can Rest must preview the return"))
+    val label = MenuPlay.menuOptionFor(catalog, board,
+      PhaseTransitionRef.BeginRest) match
+      case DecisionOption.Button(_, label) => label
+      case DecisionOption.Priced(DecisionOption.Button(_, label), _) => label
+      case DecisionOption.Badged(DecisionOption.Button(_, label), _) => label
+      case other => fail(s"the ending is not a plain button: $other")
+    """\(\+(\d+) Supply\)""".r.findFirstMatchIn(label)
+      .map(_.group(1).toInt)
+      .getOrElse(fail(s"an Act that can Rest must preview the return: $label"))
 
   test("the preview is the Supply Rest returns, capped by the track"):
     val board = Table.start.supply(p1, 1).ready
     val projected = project(board, p1)
     assertEquals(projected.supplyMaximum, 7)
-    val gain = projected.restSupplyGain
-      .getOrElse(fail("an Act that can Rest must preview the return"))
+    val gain = preview(board, p1)
     assertEquals(rested(board, p1), math.min(7, 1 + gain))
 
   test("a full track is still promised its whole band"):
@@ -55,10 +62,6 @@ class SupplyProjectionSuite extends munit.FunSuite:
     assertEquals(gain, preview(empty, p1))
     assertEquals(rested(full, p1), 7)
 
-  test("a player who cannot Rest is shown no preview"):
-    // It is p1's Act, so p2 cannot Rest.
-    assertEquals(project(Table.start.ready, p2).restSupplyGain, None)
-
   test("a board carries its bag and the band the bag falls in"):
     val board = Table.start.boardWarbands(p1, 3).ready
     val projected = project(board, p1)
@@ -67,8 +70,8 @@ class SupplyProjectionSuite extends munit.FunSuite:
     assertEquals(mine.printedWarbands, MaterialBankState.ExileWarbandsPerLineage)
     assertEquals(mine.bankedWarbands,
       mine.printedWarbands - mine.warbands - mine.siteWarbands)
-    // The same number the Act button promises, read from the same bag.
-    assertEquals(Some(mine.restSupplyBase), projected.restSupplyGain)
+    // The same number the Act menu's ending promises, read from the same bag.
+    assertEquals(mine.restSupplyBase, preview(board, p1))
 
   test("the band table is the engine's, in the engine's order"):
     // 9 or more banked warbands return 6 Supply, 4 to 8 return 5, and 0 to 3

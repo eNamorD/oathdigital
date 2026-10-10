@@ -10,8 +10,7 @@ private[frontend] object TestProjections:
       phase: String = "act", activePlayer: Option[String] = Some("red"),
       players: Vector[GamePlayer] = Vector.empty,
       world: Vector[GameRegion] = Vector.empty,
-      legalControls: Vector[String] = Vector.empty,
       ready: Boolean = true): GameProjection =
     GameProjection(gameId, nextSequence, phase, activePlayer,
       players = players, world = world, pawnLocations = Vector.empty,
-      legalControls = legalControls, ready = ready, completed = false)
+      ready = ready, completed = false)

@@ -11,14 +11,14 @@ import ActionProjectionCodec._
 object GameProjectionCodec:
   private val Fields = Set(
     "gameId", "nextSequence", "phase", "activeParticipantId", "players", "world",
-    "pawnLocations", "legalControls", "ready", "completed", "activePlayerResources",
-    "currentSiteResources", "actionSelectionOpen",
+    "pawnLocations", "ready", "completed", "activePlayerResources",
+    "currentSiteResources",
     "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
-    "oathkeeper", "banners", "minorActions",
+    "oathkeeper", "banners",
     "favorBanks", "tracks",
     "relicDeckCount", "temporaryHandPreview",
-    "walkerDecision", "walkerWaiting", "phasePowers", "viewerPlayerId",
-    "supplyMaximum", "restSupplyGain", "supplyBands", "undo", "redo", "logRevision",
+    "walkerDecision", "walkerWaiting", "viewerPlayerId",
+    "supplyMaximum", "supplyBands", "undo", "redo", "logRevision",
     "consentWaiting", "consentPrompt", "consentPreferences")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
@@ -34,7 +34,6 @@ object GameProjectionCodec:
     "world" -> encoded(value.world)(encodeRegion),
     "pawnLocations" -> encoded(value.pawnLocations)(p => ujson.Obj(
       "playerId" -> p.playerId, "siteId" -> p.siteId)),
-    "legalControls" -> encoded(value.legalControls)(ujson.Str(_)),
     "ready" -> value.ready, "completed" -> value.completed,
     "activePlayerResources" -> option(value.activePlayerResources)(r => ujson.Obj(
       "favor" -> r.favor, "faceUpSecrets" -> r.faceUpSecrets,
@@ -43,7 +42,6 @@ object GameProjectionCodec:
       "totalSecrets" -> r.totalSecrets, "supply" -> r.supply)),
     "currentSiteResources" -> option(value.currentSiteResources)(r => ujson.Obj(
       "siteId" -> r.siteId, "favor" -> r.favor, "secrets" -> r.secrets)),
-    "actionSelectionOpen" -> value.actionSelectionOpen,
     "worldDeckCount" -> value.worldDeckCount,
     "worldDeckTopCardKind" -> stringOption(value.worldDeckTopCardKind),
     "playerBoards" -> encoded(value.playerBoards)(encodeBoard),
@@ -55,7 +53,6 @@ object GameProjectionCodec:
     "banners" -> encoded(value.banners)(b => ujson.Obj(
       "banner" -> b.key, "face" -> b.face,
       "holderPlayerId" -> stringOption(b.holderPlayerId), "resources" -> b.resources)),
-    "minorActions" -> option(value.minorActions)(encodeMinor),
     "favorBanks" -> encoded(value.favorBanks)(b => ujson.Obj(
       "suit" -> b.suit, "count" -> b.count)),
     "tracks" -> option(value.tracks)(t => ujson.Obj(
@@ -66,9 +63,7 @@ object GameProjectionCodec:
     "temporaryHandPreview" -> encoded(value.temporaryHandPreview)(encodeCard),
     "walkerDecision" -> option(value.walkerDecision)(encodeWalkerDecision),
     "walkerWaiting" -> option(value.walkerWaiting)(encodeWalkerWaiting),
-    "phasePowers" -> encoded(value.phasePowers)(encodePhasePower),
     "supplyMaximum" -> value.supplyMaximum,
-    "restSupplyGain" -> intOption(value.restSupplyGain),
     "supplyBands" -> encoded(value.supplyBands)(b => ujson.Obj(
       "from" -> b.from, "to" -> intOption(b.to), "supply" -> b.supply)),
     "undo" -> option(value.undo)(offer => ujson.Obj("note" -> offer.note)),
@@ -95,11 +90,10 @@ object GameProjectionCodec:
       row <- obj(raw, child); _ <- exact(row, Set("playerId", "siteId"), child)
       player <- string(row, "playerId", child); site <- string(row, "siteId", child)
     yield PawnLocationProjection(player, site) }
-    controls <- strings(value, "legalControls", path); ready <- bool(value, "ready", path)
+    ready <- bool(value, "ready", path)
     completed <- bool(value, "completed", path)
     resources <- optionalAbsent(value, "activePlayerResources", path)(decodeResources)
     siteResources <- optionalAbsent(value, "currentSiteResources", path)(decodeSiteResources)
-    actionOpen <- boolOr(value, "actionSelectionOpen", path, false)
     deckCount <- intOr(value, "worldDeckCount", path, 0)
     deckTop <- optionalAbsent(value, "worldDeckTopCardKind", path)(string)
     boardRaws <- default(value, "playerBoards", path, Vector.empty[ujson.Value])(array)
@@ -107,7 +101,6 @@ object GameProjectionCodec:
     oathkeeper <- optionalAbsent(value, "oathkeeper", path)(decodeOathkeeper)
     bannerRaws <- default(value, "banners", path, Vector.empty[ujson.Value])(array)
     banners <- traverse(bannerRaws, s"$path.banners")(decodeBanner)
-    minor <- optionalAbsent(value, "minorActions", path)(decodeMinor)
     bankRaws <- default(value, "favorBanks", path, Vector.empty[ujson.Value])(array)
     banks <- traverse(bankRaws, s"$path.favorBanks") { (raw, child) => for
       row <- obj(raw, child); _ <- exact(row, Set("suit", "count"), child)
@@ -126,12 +119,8 @@ object GameProjectionCodec:
     preview <- traverse(previewRaws, s"$path.temporaryHandPreview")(decodeCard)
     walkerDecision <- optionalAbsent(value, "walkerDecision", path)(decodeWalkerDecision)
     walkerWaiting <- optionalAbsent(value, "walkerWaiting", path)(decodeWalkerWaiting)
-    powerRaws <- default(value, "phasePowers", path, Vector.empty[ujson.Value])(array)
-    phasePowers <- traverse(powerRaws, s"$path.phasePowers") { (raw, child) =>
-      decodePhasePower(raw, child) }
     viewer <- optionalAbsent(value, "viewerPlayerId", path)(string)
     supplyMaximum <- intOr(value, "supplyMaximum", path, 0)
-    restGain <- optionalAbsent(value, "restSupplyGain", path)(int)
     bandRaws <- default(value, "supplyBands", path, Vector.empty[ujson.Value])(array)
     bands <- traverse(bandRaws, s"$path.supplyBands") { (raw, child) => for
       row <- obj(raw, child); _ <- exact(row, Set("from", "to", "supply"), child)
@@ -151,12 +140,12 @@ object GameProjectionCodec:
       Vector.empty[ujson.Value])(array)
     consentPreferences <- traverse(preferenceRaws,
       s"$path.consentPreferences")(ConsentProjectionCodec.decodePreferences)
-  yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
-    ready, completed, resources, siteResources, actionOpen,
-    deckCount, deckTop, boards, oathkeeper, banners, minor,
+  yield GameProjection(game, sequence, phase, active, players, world, pawns,
+    ready, completed, resources, siteResources,
+    deckCount, deckTop, boards, oathkeeper, banners,
     banks, tracks, relicDeck, preview,
-    walkerDecision, walkerWaiting, phasePowers, viewer,
-    supplyMaximum, restGain, bands, undo, redo, logRevision,
+    walkerDecision, walkerWaiting, viewer,
+    supplyMaximum, bands, undo, redo, logRevision,
     consentWaiting, consentPrompt, consentPreferences)
 
   private def decodeStepOffer(raw: ujson.Value, path: String)

@@ -13,9 +13,9 @@ sealed trait ProcedureRef extends Product with Serializable:
   def key: String
   def family: String
 
-/** A procedure a phase menu can queue to start. Both members below extend
-  * this; a [[TriggeredProcedureRef]] does not, so no menu option can queue
-  * one: the engine starts those itself.
+/** A procedure a queue entry can start: an action or a phase transition.
+  * Both members below extend this; a [[TriggeredProcedureRef]] does not,
+  * so no queue entry, and no menu option, can name one.
   */
 sealed trait StartableRef extends ProcedureRef
 
@@ -104,20 +104,14 @@ object ActionRef:
     val key: String = s"${UsePower.Prefix}${power.value}"
   object UsePower { private[model] val Prefix = "use-power:" }
 
-  /** A key here that also names a [[oathdigital.model.ActionKind]]
-    * bridges to it on the string alone -- `GameApplicationService
-    * .walkerAction` and `GameIntentMapper.actionRef` both do that, and the
-    * major actions above rely on it.
+  /** Every finite action reference.
     *
-    * `TakeWealth` deliberately does not: it is one of the two things a
-    * player does in the Wake phase (the other, End Wake, is a
-    * [[PhaseTransitionRef]] and never named here at all), so it cannot
-    * honestly own the phase's name. `ActionKind.Wake` names the
-    * phase's power timing, and Take Wealth points at it through
-    * `fallbackKind` instead -- which is also what preserves the fallback
-    * diagnostics the legacy `Wake` command ran under that same kind. The
-    * consequence is that a preview asked for the Wake kind keeps taking its
-    * existing path rather than being answered as Take Wealth.
+    * `TakeWealth` names the Wake phase's action, not `ActionKind.Wake`,
+    * which names the phase's power timing. Take Wealth's registry entry
+    * points at that kind through `fallbackKind`, which keeps the fallback
+    * diagnostics the legacy `Wake` command ran under. A preview asked for
+    * the Wake kind takes its existing path rather than being answered as
+    * Take Wealth.
     */
   val all: Vector[ActionRef] = Vector(Search, PlayFacedownAdviser,
     Recover, Forge, Travel, TakeWealth, Muster, Trade, Challenge,
@@ -139,13 +133,10 @@ object TriggeredProcedureRef:
     ForcedWake, FollowUpOffer, WakeMenu, RestMenu, ActMenu)
 
 object StartableRef:
-  /** Finite references are listed in `all`; parameterized use-power keys
-    * parse directly.
+  /** The finite references. The parameterized use-power reference is not
+    * listed.
     */
   val all: Vector[StartableRef] = ActionRef.all ++ PhaseTransitionRef.all
-
-  def fromKey(key: String): Option[StartableRef] =
-    all.find(_.key == key).orElse(ActionRef.usePower(key))
 
 object ProcedureRef:
   val all: Vector[ProcedureRef] = StartableRef.all ++ TriggeredProcedureRef.all

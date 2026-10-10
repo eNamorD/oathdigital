@@ -31,10 +31,9 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       forces = Some(SiteForcesProjection.Exile(2, "red", PlayerColor.Red,
         "Red warbands")))), 1, Some("denizen"))),
     pawnLocations = Vector(PawnLocationProjection("red", "site:a")),
-    legalControls = Vector("campaign"), ready = true, completed = false,
+    ready = true, completed = false,
     activePlayerResources = Some(ActivePlayerResourcesProjection(2, 1, 1, 2, 4, 4)),
     currentSiteResources = Some(CurrentSiteResourcesProjection("site:a", 1, 2)),
-    actionSelectionOpen = true,
     worldDeckCount = 5,
     worldDeckTopCardKind = Some("denizen"),
     playerBoards = Vector(PlayerBoardProjection("red", 3, 2, 1, 1, 2, 4, 4,
@@ -45,13 +44,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       false, Some("red"), Some("oathkeeper"))),
     banners = Vector(BannerProjection("peoples-favor", "mob", Some("red"), 2),
       BannerProjection("darkest-secret", "wandering-flame", None, 0)),
-    minorActions = Some(MinorActionsProjection(
-      Vector(MinorAdviserProjection(known)),
-      true, Vector(hidden), Some("site:a"), 1, 1)),
     favorBanks = Vector(FavorBankProjection("beast", 4)),
-    phasePowers = Vector(PhasePowerProjection("denizen.silver-tongue",
-      DecisionOptionProjection("denizen", "92", "Silver Tongue"),
-      "Silver Tongue", "Take a favor.")),
     tracks = Some(GameTracksProjection(round = 4, 3, false, 4, "red")),
     relicDeckCount = 21,
     temporaryHandPreview = Vector(known),
@@ -71,7 +64,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       rollOutcome = Some(WalkerRollOutcomeProjection("campaign.attack",
         Vector("two-swords-skull"), 2, None, Vector("1 skull loss"))))),
     walkerWaiting = Some(WalkerWaitingProjection("blue", Some("Choose the Oathkeeper"))),
-    supplyMaximum = 7, restSupplyGain = Some(3))
+    supplyMaximum = 7)
 
   test("a fully populated projection round-trips exactly"):
     assertRoundTrips(projection)
@@ -82,13 +75,6 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     assertEquals(projection.playerBoards.head.advisers.head.name, "Unknown")
     assertEquals(projection.tracks.map(_.round), Some(4))
     assertEquals(projection.temporaryHandPreview.map(_.cardId), Vector("known"))
-
-  /** The Rest preview is offered only to the player who can end the Act, so
-    * its absence is the common case and has to survive the trip too.
-    */
-  test("a projection with no Rest preview round-trips as absent"):
-    val without = projection.copy(restSupplyGain = None)
-    assertRoundTrips(without)
 
   test("the undo offer and the log revision round-trip"):
     assertRoundTrips(projection.copy(
@@ -436,12 +422,6 @@ class ProjectionProtocolSuite extends munit.FunSuite:
   test("a board's adviser limit round-trips"):
     assertRoundTrips(projection.copy(playerBoards =
       projection.playerBoards.map(_.copy(adviserLimit = 2))))
-
-  test("a minor adviser written with its old placements still decodes"):
-    val json = ujson.read(GameProjectionCodec.encode(projection))
-    json("minorActions")("advisers")(0)("placements") = ujson.Arr()
-    assertEquals(GameProjectionCodec.decode(ujson.write(json)),
-      Right(projection))
 
   test("a payload without an adviser limit or a replaced card decodes to the " +
       "defaults"):

@@ -26,7 +26,7 @@ class CardChoicePanelSuite extends munit.FunSuite:
     query = Some(relicQuery)), RecoverStep.Relic(relicQuery))
 
   private val table = GameProjection("game", 1L, "act", Some("red"),
-    Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
+    Vector.empty, Vector.empty, Vector.empty, ready = true,
     completed = false)
 
   private def recoverRelics(ui: RecordingControls = new RecordingControls())

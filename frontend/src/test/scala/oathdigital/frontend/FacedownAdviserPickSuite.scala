@@ -31,11 +31,7 @@ class FacedownAdviserPickSuite extends munit.FunSuite:
   private def table(parked: Option[WalkerDecisionState],
       cards: CardDetails*): GameProjection =
     TestProjections.actingProjection(players = Vector(red)).copy(
-      actionSelectionOpen = parked.isEmpty,
       playerBoards = Vector(quietBoard("red").withAdvisers(cards*)),
-      minorActions = Some(MinorActionsState(cards.toVector.map(MinorAdviser(_)),
-        canPeekSiteRelics = false, facedownRelics = Vector.empty,
-        siteId = None, maxBoardToSite = 0, maxSiteToBoard = 0)),
       walkerDecision = parked)
 
   test("the parked pick lights the facedown advisers, and a click stages one"):

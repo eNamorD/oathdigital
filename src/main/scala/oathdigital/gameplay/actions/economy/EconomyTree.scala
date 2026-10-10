@@ -2,8 +2,7 @@ package oathdigital.gameplay.actions.economy
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.walker.{ModifierChoice, PricedOptions,
-  WalkerPowers, WalkerSimulation}
-import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
+  WalkerPowers}
 import oathdigital.model._
 
 /** The tree Muster and Trade share (modifier walker design for its first
@@ -54,17 +53,6 @@ private[economy] object EconomyTree:
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       kind: Kind): Either[OathViolation, Operation] =
     gated(state, actor).map(_ => tree(catalog, state, actor, kind))
-
-  /** Every source the actor could draw on now under `powers`, each previewed
-    * through what follows the modifier decision. Empty when the action cannot
-    * start at all. The start control and the parked decision read it.
-    */
-  def startOptions(catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId, kind: Kind, powers: WalkerPowers)
-      : Vector[PreviewedOption] =
-    gated(state, actor).map(_ => afterModifiers(catalog, state, actor, kind))
-      .flatMap(WalkerSimulation.preview(_, state, powers))
-      .getOrElse(Vector.empty)
 
   private def gated(state: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Unit] = for

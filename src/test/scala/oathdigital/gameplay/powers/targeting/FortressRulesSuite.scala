@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.targeting
 
 import oathdigital.gameplay.CampaignFixture
-import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
+import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powerresolver.{PowerCtx, Restriction}
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -11,6 +11,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as}
+import oathdigital.testkit.StartPreview
 
 class FortressRulesSuite extends munit.FunSuite:
   import CampaignFixture.{Board, board, on, withEnemyAtOrigin}
@@ -98,7 +99,8 @@ class FortressRulesSuite extends munit.FunSuite:
 
   test("a Raid whose only defenders stand at a Rotting Fortress cannot start"):
     val b = fortified(EdificeSide.Ruined, ruled = false)
-    assertEquals(CampaignProcedure.startable(catalog, b.ready, b.actor, powers),
+    assertEquals(StartPreview.opens(catalog, b.ready, b.actor,
+        ActionRef.Campaign, powers),
       false)
     assertEquals(startOf(b).left.toOption, Some(protectedRaid))
 
@@ -107,7 +109,8 @@ class FortressRulesSuite extends munit.FunSuite:
     val b = fortified(EdificeSide.Ruined, ruled = false)
     val armed = on(b)(_.adviser(b.actor, "Errand Boy"))  // Beast
     val startable =
-      CampaignProcedure.startable(catalog, armed.ready, armed.actor, powers)
+      StartPreview.opens(catalog, armed.ready, armed.actor, ActionRef.Campaign,
+          powers)
     assert(startable)
     assertEquals(parkedOn(accepted(startOf(armed))), Some(CampaignIds.force))
     val hearth = on(b)(_.adviser(b.actor, "Homesteaders"))  // Hearth

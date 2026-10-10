@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -8,7 +7,7 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
-  Look, PhasePowerHarness, PowerRules, Refusals, Table}
+  Look, MenuPlay, PhasePowerHarness, PowerRules, Refusals, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
@@ -25,15 +24,11 @@ class GolemLegionsSuite extends munit.FunSuite:
   private val wrestlers = CatalogNames.denizen("Wrestlers")
   private val vowOfBeastkin = CatalogNames.denizen("Vow of Beastkin")
   private val rules = PowerRules.withWalkerPowers
-  private val projector = new GameProjector(catalog)
 
   /** p1 at Ancient City, where no card stands, holding Golem Legions faceup,
     * with the start's 1 favor, 7 Supply and 3 warbands on the board. */
   private def holdingGolem: Table = Table.start.pawn(p1, at = home)
     .adviser(p1, golem)
-
-  private def controls(ready: ReadyGame): Vector[String] =
-    projector.project("golem", LoadedGame(Ready(ready), 4), p1).legalControls
 
   private def musterStarted(ready: ReadyGame): OathTransition =
     accepted(ModifierPlay.started(rules, Ready(ready), ActionRef.Muster, p1,
@@ -50,7 +45,7 @@ class GolemLegionsSuite extends munit.FunSuite:
     assertEquals(EconomyActions.optionStatesAtStart(rules, ready, p1,
       ActionRef.Muster), Some(Vector("start" -> "unavailable",
       golem.value -> "available")))
-    assert(controls(ready).contains("beginMuster"), controls(ready))
+    assert(MenuPlay.availableInMenu(catalog, ready, ActionRef.Muster))
     assertEquals(PhasePowerHarness.offered(musterStarted(ready), p1),
       Some(Vector("denizen" -> golem.value)))
 

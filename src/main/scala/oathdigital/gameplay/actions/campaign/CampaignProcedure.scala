@@ -2,8 +2,7 @@ package oathdigital.gameplay.actions.campaign
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.dice.RollStep
-import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
-  WalkerRollFeedback, WalkerSimulation}
+import oathdigital.gameplay.walker.{ModifierChoice, WalkerRollFeedback}
 import oathdigital.model._
 
 /** Campaign on the walker, in the rulebook's order: choose the kind and the
@@ -38,25 +37,6 @@ object CampaignProcedure:
   val NothingToAttack: String = "Campaign needs a ruled pawn site to " +
     "Conquest or a co-located enemy pawn to Raid"
 
-
-  /** Whether Campaign could start now: the gates pass and the first walk
-    * after the modifier decision (the Supply cost, up to the first
-    * decision) is accepted, restrictions included.
-    */
-  def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): Boolean =
-    afterModifiers(catalog, state, actor)
-      .exists(WalkerSimulation.starts(_, state, powers))
-
-  /** Why a Campaign could not start now, or `None` when it could (follow-up
-    * actions design, "Projection and UI"). A restriction answers first, so
-    * Vow of Peace is the reason even when nothing could be attacked; then
-    * the gates; then the first walk. */
-  def refusal(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): Option[OathViolation] =
-    WalkerSimulation.restriction(battle(catalog, state, actor), state, powers)
-      .orElse(afterModifiers(catalog, state, actor)
-        .fold(Some(_), WalkerSimulation.refusal(_, state, powers)))
 
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =

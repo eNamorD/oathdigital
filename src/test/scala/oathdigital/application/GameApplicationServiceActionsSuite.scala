@@ -90,10 +90,9 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     val other = pendingReady.game.current.players.find(
       _.player != actor).get.player
     val projector = new GameProjector(catalog)
-    assertEquals(projector.project(gameId, reloaded, actor).legalControls,
-      Vector("resolveWalkerDecision"))
-    assertEquals(projector.project(gameId, reloaded, other).legalControls,
-      Vector.empty)
+    assert(projector.project(gameId, reloaded, actor).walkerDecision.nonEmpty)
+    assertEquals(projector.project(gameId, reloaded, other).walkerDecision,
+      None)
     val completed = accepted(replayingSecond(service, repository).handle(gameId,
       reloaded.nextSequence, GameCommand.ResolveWalker(actor, TreeDecision(
         "challenge.amount", ChooseAmountAnswer(2)))))

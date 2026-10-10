@@ -12,8 +12,7 @@ class TravelLaunchSuite extends munit.FunSuite:
   private def site(id: String, name: String) = quietSite(id, name)
   private val table = TestProjections.actingProjection(players = Vector(red),
     world = Vector(GameRegion("cradle", Vector(site("woods", "Deep Woods"),
-      site("shore", "Desolate Shore")))),
-    legalControls = Vector("beginTravel")).copy(actionSelectionOpen = true)
+      site("shore", "Desolate Shore")))))
 
   test("a destination's badge is drawn on its site box"):
     val badged = OptionView(DecisionOptionState("site", "woods", "Deep Woods",

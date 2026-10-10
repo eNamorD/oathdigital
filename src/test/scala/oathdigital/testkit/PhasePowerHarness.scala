@@ -3,8 +3,9 @@ package oathdigital.testkit
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.operations.OperationRestrictions
-import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
-import oathdigital.gameplay.powerresolver.PhasePower
+import oathdigital.gameplay.phases.PhaseMenu
+import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.gameplay.powers.PhasePowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions,
@@ -89,11 +90,32 @@ object PhasePowerHarness:
   def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
     events.collect { case step: WalkerStepRecorded => step.ops }.flatten
 
-  /** The phase powers the actor can use now, under the printed operation
-    * restrictions. */
-  def usableNow(ready: ReadyGame) = PhasePowerProcedure.usable(catalog, ready,
-    actor, PhasePowerCatalog.default(catalog), WalkerPowers(Vector.empty,
-      restrictionSet = OperationRestrictions.forCatalog(catalog)))
+  /** A phase power the actor's phase menu offers available, and the source
+    * its option names. */
+  final case class MenuPower(power: PhasePower, ref: DecisionOptionRef)
+
+  /** The phase powers the actor's phase menu offers available now, under
+    * the printed operation restrictions. */
+  def usableNow(ready: ReadyGame): Vector[MenuPower] =
+    menuPowers(catalog, ready, actor, PhasePowerCatalog.default(catalog),
+      WalkerPowers(Vector.empty,
+        restrictionSet = OperationRestrictions.forCatalog(catalog)))
+
+  /** The phase powers `player`'s phase menu offers available on `ready`
+    * under `phasePowers` and `powers`, in menu order. */
+  def menuPowers(catalog: ExecutableCatalog, ready: ReadyGame,
+      player: PlayerId, phasePowers: PhasePowers, powers: WalkerPowers)
+      : Vector[MenuPower] =
+    PhaseMenu.of(ready.game.current.turn.phase).toVector.flatMap(menu =>
+      PhaseMenu.offers(menu, catalog, ready, player, phasePowers, powers)
+        .filter(_.option.available)
+        .flatMap(offered => offered.entry.procedure match
+          case ActionRef.UsePower(id) =>
+            for
+              power <- phasePowers.find(id).toVector
+              ref <- offered.entry.startArgs.headOption.toVector
+            yield MenuPower(power, ref)
+          case _ => Vector.empty))
 
   /** The parked decision as `viewer` is offered it. */
   def queryOf(transition: OathTransition, viewer: PlayerId)

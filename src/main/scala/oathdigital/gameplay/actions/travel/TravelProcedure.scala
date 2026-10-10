@@ -2,8 +2,7 @@ package oathdigital.gameplay.actions.travel
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.TravelRules
-import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
-  WalkerSimulation}
+import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers}
 import oathdigital.model._
 
 /** Travel on the walker (travel destination design; modifier walker design).
@@ -83,8 +82,7 @@ object TravelProcedure:
       "a resumed Travel needs its source site as its one start fact"))
 
   /** The destination decision and the Travel to it: what a fresh start runs
-    * after its modifier decision. The Act panel's [[startable]] previews it,
-    * and so do the Travel suites. */
+    * after its modifier decision. The Travel suites preview it. */
   def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] = for
     source <- actorSite(state, actor).toRight(
@@ -127,12 +125,3 @@ object TravelProcedure:
           PositionedLocation(Location.Site(destination)))),
         Some(PowerWindow.TravelCost))),
       Some(PowerWindow.TravelActionEligibility))
-
-  /** Whether a Travel could start now under `powers`: some destination
-    * survives the preview of what follows the modifier decision. The Act
-    * panel asks it of each selection `ModifierOffers.selections` tries. */
-  def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): Boolean =
-    afterModifiers(catalog, state, actor)
-      .flatMap(WalkerSimulation.preview(_, state, powers))
-      .exists(_.exists(_.outcome.isRight))

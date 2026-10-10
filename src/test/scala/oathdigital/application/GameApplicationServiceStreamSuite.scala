@@ -87,8 +87,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         LoadedGame(position.state, position.nextSequence),
         player.player)
       assertEquals(view.phase, "game-over")
-      assertEquals(view.legalControls, Vector.empty)
-      assert(!view.actionSelectionOpen)
+      assertEquals(view.walkerDecision, None)
       assertEquals(view.oathkeeper.flatMap(_.winnerPlayerId),
         finished.game.current.result.map(_.winner.value))
       assertEquals(view.world.flatMap(_.sites).map(_.siteId).toSet,

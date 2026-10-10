@@ -7,6 +7,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.StartPreview
 
 class TradeProcedureSuite extends munit.FunSuite:
   private val favor = Vector[DecisionOptionRef](DecisionOptionRef.Button("favor"))
@@ -59,13 +60,14 @@ class TradeProcedureSuite extends munit.FunSuite:
     assertEquals(after.favor(p1), 2)
     assertEquals(after.faceUpSecrets(p1), 2)
 
-  test("a Trade the actor cannot pay for is not offered at all"):
-    assertEquals(TradeProcedure.startOptions(catalog,
-      atAlchemist.favor(p1, 1).ready, p1, TradeResource.Secret,
-      WalkerPowers.empty), Vector.empty)
-    assertEquals(TradeProcedure.startOptions(catalog,
-      atAlchemist.secrets(p1, faceUp = 0).ready, p1, TradeResource.Favor,
-      WalkerPowers.empty), Vector.empty)
+  test("a Trade the actor cannot pay for offers no source"):
+    assertEquals(StartPreview.firstDecisionOptions(catalog,
+      atAlchemist.favor(p1, 1).ready, p1, ActionRef.Trade, WalkerPowers.empty,
+      TradeProcedure.selection(TradeResource.Secret)), Vector.empty)
+    assertEquals(StartPreview.firstDecisionOptions(catalog,
+      atAlchemist.secrets(p1, faceUp = 0).ready, p1, ActionRef.Trade,
+      WalkerPowers.empty, TradeProcedure.selection(TradeResource.Favor)),
+      Vector.empty)
 
   test("the start selection must be exactly one resource button"):
     val ready = atAlchemist.ready
@@ -92,8 +94,9 @@ class TradeProcedureSuite extends munit.FunSuite:
     val ready = Table.start.pawn(p1, at = "Ancient City")
       .favor(p1, 4).secrets(p1, faceUp = 2)
       .edifice("Hallowed Spring", EdificeSide.Intact, at = "Ancient City").ready
-    val options = TradeProcedure.startOptions(catalog, ready, p1,
-      TradeResource.Secret, WalkerPowers.empty)
+    val options = StartPreview.firstDecisionOptions(catalog, ready, p1,
+        ActionRef.Trade, WalkerPowers.empty,
+        TradeProcedure.selection(TradeResource.Secret))
     assertEquals(options.map(_.option.ref), Vector(DecisionOptionRef.Edifice(
       CatalogNames.edifice("Hallowed Spring"))))
     accepted(options.head.outcome)

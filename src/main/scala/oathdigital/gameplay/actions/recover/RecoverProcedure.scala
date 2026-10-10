@@ -3,8 +3,7 @@ package oathdigital.gameplay.actions.recover
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.dice.{RerollChoice, RollStep}
-import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers,
-  WalkerRollFeedback, WalkerSimulation}
+import oathdigital.gameplay.walker.{ModifierChoice, WalkerRollFeedback}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 
@@ -122,15 +121,6 @@ object RecoverProcedure:
       activePlayer: PlayerId): Either[OathViolation, Operation] = for
     rest <- recoveryAt(catalog, state, activePlayer)
   yield rest
-
-  /** Whether Recover could start now: the gates pass and the first walk
-    * after the modifier decision (the Supply cost, up to the first roll) is
-    * accepted, so a player without the Supply is not offered it.
-    */
-  def startable(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId, powers: WalkerPowers): Boolean =
-    afterModifiers(catalog, state, activePlayer)
-      .exists(WalkerSimulation.starts(_, state, powers))
 
   /** Rebuilds the same command-local tree for an already-started Recover:
     * the modifier decision, then the Recover. */

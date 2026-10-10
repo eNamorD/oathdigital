@@ -1,8 +1,6 @@
 package oathdigital.gameplay.actions.economy
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.walker.WalkerPowers
-import oathdigital.gameplay.walker.WalkerSimulation.PreviewedOption
 import oathdigital.model._
 
 /** Muster on the walker: pay one favor on a card at the pawn site and one
@@ -27,12 +25,3 @@ object MusterProcedure:
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] =
     Right(EconomyTree.tree(catalog, state, actor, kind))
-
-  /** Every source the actor could Muster from now, each previewed through
-    * what follows the modifier decision. Empty when the action cannot start
-    * at all. This is the single definition the start control and the parked
-    * decision read.
-    */
-  def startOptions(catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId, powers: WalkerPowers): Vector[PreviewedOption] =
-    EconomyTree.startOptions(catalog, state, actor, kind, powers)

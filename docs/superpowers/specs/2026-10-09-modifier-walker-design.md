@@ -84,9 +84,12 @@ any of these: it fetches the candidates once and toggles them locally.
    start line lists the modifiers in that order, as it does today.
 8. **Undo replaces Back and Cancel.** The start and each pick are commands,
    so Undo takes a pick back, and takes back the start before any pick.
-9. **Start buttons keep their heuristic.** The Act panel's buttons still ask
-   `ModifierOffers.selections` (no modifier, each alone, all together)
-   whether a start is possible. The decision itself is exact.
+9. **Start options are exact.** The phase menu dry-runs each start
+   through its own modifier decision, trying no pick first and then each
+   pick, so an option is available exactly when some selection the player
+   could make starts it. (Rewritten by slice 5 of the
+   [walker-driven game loop](2026-10-09-walker-game-loop-design.md); it
+   first kept the Act panel's `ModifierOffers.selections` heuristic.)
 10. **No compatibility for parked saves.** A game saved while parked mid-walk
     with modifiers selected fails to resume after the change.
 11. **Empty windows stay.** Forge, Challenge and Campaign keep their
@@ -222,9 +225,9 @@ Settled while planning slice 4:
     part of that start line.
 15. **The wire.** `StartWalker` has no `modifiers` key, and its decoder
     rejects one. A stale browser gets one rejection; a reload fixes it.
-16. **What stays.** `ModifierOffers.paying` stays, private: the Act panel's
-    start controls still dry-run payments (ruling 9). The Game Log's card
-    lookup moved from `PreviewModifierDescriptions` to the log's own
+16. **What stays.** `ModifierOffers.paying` stays, private: `offerable`
+    dry-runs each modifier's selection payment through it. The Game Log's
+    card lookup moved from `PreviewModifierDescriptions` to the log's own
     `PrintedCards`.
 
 ## Slices

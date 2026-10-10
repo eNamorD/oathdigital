@@ -102,3 +102,26 @@ object MenuPlay:
   def options(state: OathState, catalog: ExecutableCatalog)
       : Vector[DecisionOption] = options(state, catalog,
     WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
+
+  /** The option the phase menu shows for starting `procedure` with `args`,
+    * on `ready` with its phase's menu parked for the active player, as the
+    * driver parks it. A power whose source carries two powers of the phase
+    * is found by its own button (slice 4, plan-time ruling 12). */
+  def menuOptionFor(catalog: ExecutableCatalog, ready: ReadyGame,
+      procedure: StartableRef, args: Vector[DecisionOptionRef] = Vector.empty)(
+      using munit.Location): DecisionOption =
+    val ref = optionOf(procedure, args)
+    val listed = options(Ready(Table.from(ready).phaseMenuParked.ready),
+      catalog)
+    val button = procedure match
+      case ActionRef.UsePower(id) => Some(PhaseMenu.powerButton(id))
+      case _ => None
+    listed.find(_.ref == ref)
+      .orElse(button.flatMap(power => listed.find(_.ref == power)))
+      .getOrElse(munit.Assertions.fail(s"the menu does not list $ref"))
+
+  /** Whether the phase menu on `ready` offers `procedure` available. */
+  def availableInMenu(catalog: ExecutableCatalog, ready: ReadyGame,
+      procedure: StartableRef, args: Vector[DecisionOptionRef] = Vector.empty)(
+      using munit.Location): Boolean =
+    menuOptionFor(catalog, ready, procedure, args).available

@@ -12,6 +12,7 @@ import oathdigital.testkit.{CatalogNames, EconomyActions, Look, Outcomes,
   Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.StartPreview
 
 /** Muster asks for its modifiers inside the walk (modifier walker design,
   * slice 3). */
@@ -71,10 +72,10 @@ class MusterModifierChoiceSuite extends munit.FunSuite:
     assertEquals(Look(Outcomes.ready(done.state)).tokensOn(errandBoy),
       Tokens(1, 0))
 
-  test("the start control previews the sources, not the modifier " +
-      "decision"):
+  test("the start previews the sources past the modifier decision"):
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       Vector.empty)
-    assertEquals(MusterProcedure.startOptions(catalog,
-      besideErrandBoy(supply = 7), p1, powers).map(_.option.ref),
+    assertEquals(StartPreview.firstDecisionOptions(catalog,
+      besideErrandBoy(supply = 7), p1, ActionRef.Muster, powers)
+      .map(_.option.ref),
       Vector[DecisionOptionRef](DecisionOptionRef.Denizen(errandBoy)))

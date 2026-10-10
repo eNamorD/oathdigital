@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.testkit.MenuPlay
-import oathdigital.gameplay.actions.negotiation.{NegotiationDeal, NegotiationProcedure}
+import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
@@ -11,6 +11,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Journal, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
+import oathdigital.testkit.StartPreview
 
 /** Negotiation through the rules, as a client drives it: start, choose the
   * negotiators, then answer the deal in any order until it closes.
@@ -68,10 +69,10 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val alone = gathered.pawn(p2, at = "Dunes").pawn(p3, at = "Dunes").ready
     assert(start(alone).left.toOption.exists(
       _.isInstanceOf[OathViolation.NegotiationUnavailable]))
-    assert(!NegotiationProcedure.startable(catalog, alone, p1,
-      WalkerPowers.empty))
-    assert(NegotiationProcedure.startable(catalog, gathered.ready, p1,
-      WalkerPowers.empty))
+    assert(!StartPreview.opens(catalog, alone, p1, ActionRef.Negotiation,
+        WalkerPowers.empty))
+    assert(StartPreview.opens(catalog, gathered.ready, p1,
+        ActionRef.Negotiation, WalkerPowers.empty))
 
   test("no first-game gate: an Imperial player or an altered Foundation still negotiates"):
     // No Table step reaches lineage roles or foundations.

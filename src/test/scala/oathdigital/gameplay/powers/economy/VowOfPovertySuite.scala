@@ -2,7 +2,6 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.economy.TradeProcedure
-import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -14,6 +13,8 @@ import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions, Look,
   Outcomes, PowerRules, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.PhasePowerHarness
+import oathdigital.testkit.StartPreview
 
 class VowOfPovertySuite extends munit.FunSuite:
   private val vow = CatalogNames.denizen("Vow of Poverty")
@@ -30,8 +31,9 @@ class VowOfPovertySuite extends munit.FunSuite:
   /** The cards p1 could Trade with for `resource` now, by the preview a
     * start runs. */
   private def tradeableCards(ready: ReadyGame, resource: TradeResource)
-      : Vector[DecisionOptionRef] = TradeProcedure.startOptions(catalog, ready,
-    p1, resource, automatic).filter(_.outcome.isRight).map(_.option.ref)
+      : Vector[DecisionOptionRef] = StartPreview.firstDecisionOptions(catalog,
+      ready, p1, ActionRef.Trade, automatic, TradeProcedure.selection(resource))
+      .filter(_.outcome.isRight).map(_.option.ref)
 
   private val use = ActionRef.UsePower(VowOfPoverty.id)
 
@@ -46,9 +48,10 @@ class VowOfPovertySuite extends munit.FunSuite:
   private def usedRest(ready: ReadyGame): OathTransition = accepted(
     rules.startWalker(Ready(ready), use, p1, Vector(source)))
 
-  private def usable(ready: ReadyGame): Boolean = PhasePowerProcedure.usable(
-    catalog, ready, p1, PhasePowerCatalog.default(catalog), WalkerPowers.empty)
-    .exists(_.power.id == VowOfPoverty.id)
+  private def usable(ready: ReadyGame): Boolean =
+    PhasePowerHarness.menuPowers(catalog, ready, p1,
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty)
+      .exists(_.power.id == VowOfPoverty.id)
 
   test("its holder is not offered Trade for favor, and may still Trade for " +
       "secrets"):

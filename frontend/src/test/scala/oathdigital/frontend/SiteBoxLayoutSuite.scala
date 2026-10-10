@@ -16,7 +16,7 @@ class SiteBoxLayoutSuite extends munit.FunSuite:
   private def projection(pawns: Vector[GamePawn] = Vector.empty): GameProjection =
     GameProjection("game", 1L, "act", Some("red"),
       Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-      Vector(GameRegion("cradle", Vector(site))), pawns, Vector.empty,
+      Vector(GameRegion("cradle", Vector(site))), pawns,
       ready = true, completed = false)
 
   private def world(value: GameProjection,

@@ -79,20 +79,12 @@ object WalkerSimulation:
         case WalkerOutcome.Parked(_, events) => recordedOperations(events)
       })
 
-  /** Whether a freshly built tree could start now: the same restriction check
-    * and first walk a start performs, with nothing persisted. A tree that
-    * parks and one that finishes both start; a rejected cost or restriction
-    * does not. This is how a start control learns Supply affordability without
-    * a second rule beside `SpendSupply`.
+  /** Whether `tree` would start now: the restrictions and first walk a start
+    * performs, with nothing persisted. A tree that parks and one that
+    * finishes both start; a rejected cost or restriction does not.
     */
   def starts(tree: Operation, state: ReadyGame, powers: WalkerPowers): Boolean =
     refusal(tree, state, powers).isEmpty
-
-  /** The first restriction that rejects `tree` now, if any. */
-  def restriction(tree: Operation, state: ReadyGame, powers: WalkerPowers)
-      : Option[OathViolation] =
-    guarded(Right(ProcedureWalker.restrictionViolations(tree, powers, state,
-      state.game.current.turn.activePlayer).headOption)).toOption.flatten
 
   /** Why `tree` would not start now, or `None` when it would: a restriction,
     * then the first walk up to its first park. */

@@ -8,28 +8,23 @@ final case class GameProjection(
     players: Vector[SetupPlayerProjection],
     world: Vector[SetupRegionProjection],
     pawnLocations: Vector[PawnLocationProjection],
-    legalControls: Vector[String],
     ready: Boolean,
     completed: Boolean,
     activePlayerResources: Option[ActivePlayerResourcesProjection] = None,
     currentSiteResources: Option[CurrentSiteResourcesProjection] = None,
-    actionSelectionOpen: Boolean = false,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty,
     oathkeeper: Option[OathkeeperProjection] = None
     ,banners: Vector[BannerProjection] = Vector.empty
-    ,minorActions: Option[MinorActionsProjection] = None
     ,favorBanks: Vector[FavorBankProjection] = Vector.empty
     ,tracks: Option[GameTracksProjection] = None
     ,relicDeckCount: Int = 0
     ,temporaryHandPreview: Vector[CardDetailsProjection] = Vector.empty
     ,walkerDecision: Option[WalkerDecisionProjection] = None
     ,walkerWaiting: Option[WalkerWaitingProjection] = None
-    ,phasePowers: Vector[PhasePowerProjection] = Vector.empty
     ,viewerPlayerId: Option[String] = None
     ,supplyMaximum: Int = 0
-    ,restSupplyGain: Option[Int] = None
     ,supplyBands: Vector[SupplyBandProjection] = Vector.empty
     ,undo: Option[StepOfferProjection] = None
     ,redo: Option[StepOfferProjection] = None

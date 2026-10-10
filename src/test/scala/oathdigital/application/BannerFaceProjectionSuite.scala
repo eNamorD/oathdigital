@@ -1,72 +1,80 @@
 package oathdigital.application
 
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.powers.banner.{WanderingFlameMove,
   WanderingFlamePlace}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.model.OathState.Ready
 import oathdigital.model._
-import oathdigital.testkit.Table
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.{MenuPlay, Table}
+import oathdigital.testkit.Table.p1
 
-/** The banner faces' phase powers reach the client: they are projected with a
-  * name and a text, their `usePower` control is legal for the holder only,
-  * and the client's source (a banner) binds back to the engine's source.
+/** The banner faces' phase powers reach the player: the Act menu lists each
+  * by its own button, and the menu's source (a banner) binds back to the
+  * engine's source.
   */
 class BannerFaceProjectionSuite extends munit.FunSuite:
-  private val projector = new GameProjector(catalog)
-  private val move = WanderingFlameMove.id.value
-  private val place = WanderingFlamePlace.id.value
+  private val move = WanderingFlameMove.id
+  private val place = WanderingFlamePlace.id
+  private val banner = DecisionOptionRef.Banner(Banner.DarkestSecret)
 
-  test("the holder is shown both Wandering Flame powers, named, with a text"):
+  private def labelOf(option: DecisionOption): Option[String] = option match
+    case DecisionOption.Button(_, label) => Some(label)
+    case DecisionOption.Priced(inner, _) => labelOf(inner)
+    case DecisionOption.Badged(inner, _) => labelOf(inner)
+    case DecisionOption.Warned(inner, _) => labelOf(inner)
+    case DecisionOption.Unavailable(inner, _) => labelOf(inner)
+    case _ => None
+
+  /** The power buttons of the Act menu on `ready`, with their labels. */
+  private def powerButtons(ready: ReadyGame)
+      : Vector[(DecisionOptionRef, String)] =
+    MenuPlay.options(Table.from(ready).phaseMenuParked.state, catalog)
+      .collect:
+        case option if option.ref.isInstanceOf[DecisionOptionRef.Button] &&
+            option.ref.asInstanceOf[DecisionOptionRef.Button].key
+              .startsWith("use-power:") =>
+          option.ref -> labelOf(option).getOrElse("")
+
+  test("the holder is offered both Wandering Flame powers, each by name"):
     // p1 stands at Ancient City and holds the Wandering Flame and a faceup
     // secret; Broken Peaks holds a secret.
     val holding = Table.start.pawn(p1, "Ancient City")
       .darkestSecret(Some(p1), 1, face = DarkestSecretFace.WanderingFlame)
       .siteTokens("Broken Peaks", secrets = 1).secrets(p1, faceUp = 1).ready
-    val projected = projector.project("flame", LoadedGame(Ready(holding), 30L),
-      p1)
-    assertEquals(projected.phasePowers.map(p =>
-      (p.powerId, p.source.kind, p.source.id, p.name)), Vector(
-      (move, "banner", "darkest-secret", "Wandering Flame: move"),
-      (place, "banner", "darkest-secret", "Wandering Flame: place a secret on your site")))
-    assertEquals(projected.phasePowers.map(_.rulesText), Vector(
-      "ACTION: Place your pawn at a site with a secret on it. You may do " +
-        "this multiple times per turn.",
-      "ACTION: Place a secret on the banner or on your site."))
-    assert(projected.legalControls.contains(s"usePower:$move:darkest-secret"))
-    assert(projected.legalControls.contains(s"usePower:$place:darkest-secret"))
+    assertEquals(powerButtons(holding), Vector[(DecisionOptionRef, String)](
+      PhaseMenu.powerButton(move) -> "Wandering Flame: move",
+      PhaseMenu.powerButton(place) ->
+        "Wandering Flame: place a secret on your site"))
+    assert(MenuPlay.availableInMenu(catalog, holding,
+      ActionRef.UsePower(move), Vector(banner)))
+    assert(MenuPlay.availableInMenu(catalog, holding,
+      ActionRef.UsePower(place), Vector(banner)))
 
-  test("a power with nothing to do is not projected: Move needs a secret-" +
+  test("a power with nothing to do is unavailable: Move needs a secret-" +
       "bearing site, and the place power needs a faceup secret"):
-    def shown(ready: ReadyGame) = projector.project("flame",
-      LoadedGame(Ready(ready), 30L), p1)
+    def availability(ready: ReadyGame) = Vector(move, place).map(power =>
+      MenuPlay.availableInMenu(catalog, ready, ActionRef.UsePower(power),
+        Vector(banner)))
     // p1 stands at Ancient City throughout. The quiet table has no site
     // secrets, so Move has no target.
     val noSite = Table.start.pawn(p1, "Ancient City")
       .darkestSecret(Some(p1), 1, face = DarkestSecretFace.WanderingFlame)
       .secrets(p1, faceUp = 1).ready
-    assertEquals(shown(noSite).phasePowers.map(_.powerId), Vector(place))
+    assertEquals(availability(noSite), Vector(false, true))
     val noSecret = Table.start.pawn(p1, "Ancient City")
       .darkestSecret(Some(p1), 1, face = DarkestSecretFace.WanderingFlame)
       .siteTokens("Broken Peaks", secrets = 1)
       .secrets(p1, faceUp = 0, faceDown = 2).ready
-    assertEquals(shown(noSecret).phasePowers.map(_.powerId), Vector(move))
+    assertEquals(availability(noSecret), Vector(true, false))
     val neither = Table.start.pawn(p1, "Ancient City")
       .darkestSecret(Some(p1), 1, face = DarkestSecretFace.WanderingFlame)
       .secrets(p1, faceUp = 0, faceDown = 2).ready
-    assertEquals(shown(neither).phasePowers, Vector.empty)
-    assert(!shown(neither).legalControls.exists(_.startsWith("usePower:")))
+    assertEquals(availability(neither), Vector(false, false))
 
-  test("another player, and the Festival face, are shown neither"):
-    val holding = Table.start
-      .darkestSecret(Some(p1), 1, face = DarkestSecretFace.WanderingFlame)
-      .siteTokens("Broken Peaks", secrets = 1).secrets(p1, faceUp = 1).ready
-    val theirs = projector.project("flame", LoadedGame(Ready(holding), 30L),
-      p2)
-    assertEquals(theirs.phasePowers, Vector.empty)
-    assert(!theirs.legalControls.exists(_.startsWith("usePower:")))
+  test("the Festival face is offered no power"):
     val festival = Table.start
       .darkestSecret(Some(p1), 1, face = DarkestSecretFace.Festival)
       .siteTokens("Broken Peaks", secrets = 1).ready
-    assertEquals(projector.project("flame", LoadedGame(Ready(festival), 30L),
-      p1).phasePowers, Vector.empty)
+    assertEquals(powerButtons(festival), Vector.empty)
+    assert(!MenuPlay.options(Table.from(festival).phaseMenuParked.state,
+      catalog).exists(_.ref == banner))

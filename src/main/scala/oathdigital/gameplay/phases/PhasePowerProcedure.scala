@@ -5,7 +5,6 @@ import oathdigital.gameplay.{IndexedRuleSource, PowerAccess, RuleSourceIndex}
 import oathdigital.gameplay.operations.Costs
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.model._
 
 /** Use Power (rest-walker spec, Phase powers).
@@ -16,19 +15,15 @@ import oathdigital.model._
   *   RecordPowerUse(timing, source, id))         // Wake and Rest only
   * }}}
   *
-  * `usable` lists the powers the Act panel offers. Wake and Rest powers are
-  * offered by their phase's menu, which runs each start's own check.
-  * A power is usable when its source is accessible, its once-per-turn limit
-  * (Wake and Rest) is unspent, its cost is payable (including the empty-card
-  * rule) and its own `usable` agrees.
+  * The phase menus offer these powers, and each menu runs the start's own
+  * check. A power is usable when its source is accessible, its once-per-turn
+  * limit (Wake and Rest) is unspent, its cost is payable (including the
+  * empty-card rule) and its own `usable` agrees.
   *
   * Act powers have no once-each limit. A costed one is limited only because
   * its card holds the cost afterwards.
   */
 object PhasePowerProcedure:
-  final case class PowerSource(power: PhasePower, source: PowerSourceRef,
-      ref: DecisionOptionRef)
-
   def timingOf(phase: Phase): Option[PowerTiming] = phase match
     case Phase.Wake => Some(PowerTiming.Wake)
     case Phase.Act => Some(PowerTiming.Act)
@@ -92,38 +87,6 @@ object PhasePowerProcedure:
         InvalidEventOrder(s"${power.id.value} has nothing to do from " +
           s"${source.kind}/${source.wireId}"))
     yield found
-
-  def usable(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,
-      powers: PhasePowers, walkerPowers: WalkerPowers): Vector[PowerSource] =
-    val current = ready.game.current
-    val available = current.result.isEmpty &&
-      player == current.turn.activePlayer &&
-      current.walkerPending.isEmpty && current.walkerProcedure.isEmpty
-    if !available then Vector.empty
-    else
-      val index = RuleSourceIndex.enumerate(catalog, ready)
-      powers.powers.flatMap { power =>
-        if power.forced || !timingOf(current.turn.phase).contains(power.timing)
-        then Vector.empty
-        else sourcesFrom(index, ready, player, power).collect:
-          case (found, ref)
-              if (!limited(power) ||
-                !current.turn.usedPowers.contains(useRef(power, found))) &&
-                payable(ready, player, power, found).isRight &&
-                power.usable(ready, player, ref) &&
-                starts(catalog, ready, player, power, found, ref,
-                  walkerPowers) =>
-            PowerSource(power, found, ref)
-      }
-
-  /** Whether the use could start now: its tree, cost included, passes the
-    * same first walk a start runs, so a use with no legal path is not
-    * offered (global operation restrictions design, "Lazy pruning"). */
-  private def starts(catalog: ExecutableCatalog, ready: ReadyGame,
-      player: PlayerId, power: PhasePower, found: PowerSourceRef,
-      ref: DecisionOptionRef, walkerPowers: WalkerPowers): Boolean =
-    power.build(ready, player, ref).exists(tree => WalkerSimulation.starts(
-      assemble(catalog, power, player, found, tree), ready, walkerPowers))
 
   def build(id: PowerId, powers: PhasePowers)(catalog: ExecutableCatalog,
       ready: ReadyGame, player: PlayerId, args: Vector[DecisionOptionRef])
