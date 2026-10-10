@@ -10,7 +10,7 @@ import oathdigital.gameplay.powers.economy.{AnimalPlaymates, AwaitedReturn,
 import oathdigital.gameplay.powers.recover.RelicWorship
 import oathdigital.gameplay.powers.search.{Augury, CropRotation, Disciples,
   ErrandBoy, ForcedLabor, HuntingParty, Mushrooms, NewsFromAfar, Observatory,
-  PaintedTrumpet, TruthfulHarp, WineOfWelcome}
+  PaintedTrumpet, SpinningBee, TruthfulHarp, WineOfWelcome}
 
 /** The Search, Trade, Muster and Recover modifiers, registered together with
   * the rules that change those actions: Initiation Rite's Muster cost, the
@@ -31,6 +31,7 @@ object ActionModifiers:
       Vector(Mushrooms.forCatalog(catalog)) ++
       Vector(WineOfWelcome.forCatalog(catalog)) ++
       Vector(PaintedTrumpet.forCatalog(catalog)) ++
+      Vector(SpinningBee.forCatalog(catalog)) ++
       Vector(CupOfPlenty.forCatalog(catalog)) ++
       Vector(AnimalPlaymates.forCatalog(catalog)) ++
       Vector(Birdsong.forCatalog(catalog)) ++

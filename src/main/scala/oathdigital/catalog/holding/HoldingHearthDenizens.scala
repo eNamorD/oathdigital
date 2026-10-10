@@ -29,14 +29,6 @@ object DeedWriterCard extends Denizen(DenizenId("146"), "Deed Writer", Suit.Hear
       "and new ruler moves warbands to site from their board.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object SpinningBeeCard extends Denizen(DenizenId("232"), "Spinning Bee", Suit.Hearth):
-  val power = PrintedPower(PowerId("denizen.spinning-bee"),
-    persistent = false, cost = Cost.free,
-    text = "Declare a suit. Draw from your discard pile until you draw " +
-      "a matching card. If you draw none, discard them all. You " +
-      "**cannot** use other Search modifiers.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object FavoredSonCard extends Denizen(DenizenId("235"), "Favored Son", Suit.Hearth) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.favored-son"),
     persistent = false, cost = Cost.free,

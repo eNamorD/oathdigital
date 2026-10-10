@@ -47,3 +47,14 @@ class SearchSuite extends munit.FunSuite:
       bottom).ready
     assertEquals(SearchRules.draw(state, SearchSource.WorldDeck,
       position = StackPosition.Bottom), Vector(bottom, VisionRules.Faith))
+
+  test("a pile lists its cards top first"):
+    val state = Table.start
+      .worldDeckTop("Threatening Roar", "Fae Merchant")
+      .discarded(Region.Hinterland, "Defame", "Scryer").ready
+    assertEquals(SearchRules.pile(state, SearchSource.WorldDeck).take(2),
+      Vector("Threatening Roar", "Fae Merchant")
+        .map(CatalogNames.denizen(_)))
+    assertEquals(SearchRules.pile(state,
+      SearchSource.RegionalDiscard(Region.Hinterland)).take(2),
+      Vector("Scryer", "Defame").map(CatalogNames.denizen(_)))
