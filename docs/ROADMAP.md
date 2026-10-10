@@ -10,8 +10,8 @@ specs.
 ## Now
 
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
-small UI fixes from the 2026-10-01 playtest. **Phase - Catalog batch 7 -
-Campaign dice** has landed: all four of its slices are done.
+small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
+dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
 
 ## Next
 
@@ -89,6 +89,24 @@ Left behind by the
   Narrow Pass, Secret Police, Hall of Ministers or toll card needs the journaled
   arranged start.
 
+Left behind by
+[catalog batch 7](superpowers/specs/2026-10-09-catalog-batch-7-design.md):
+
+- [ ] **Play-test the Campaign dice in a browser.** The reroll decision
+  after each roll, Silver Charm's choice of earlier dice, the amount
+  questions of Arcane Armor, Unstable Summon and Mountain Giant, the
+  defense rolling first under Careful Plans, Zealots' warning on its option
+  and Signal Trees' revealed cards are covered by server tests only.
+- [ ] **Cover the Game Log under Careful Plans.** With Careful Plans
+  chosen, the defense roll and its result are logged before the attack
+  roll. No test reads the log in that order, and the attack and defense
+  segments in `CampaignLines` were written for the printed order.
+- [ ] **Pin two slice 4 rulings in tests.** Nothing tests Hearts and Minds
+  kept by a People's Favor won in the same Campaign: both suites set the
+  banner before it starts. Signal Trees' test that no player knows the
+  cards before the plan applies inspects only the parked decision, so it
+  would pass even if the plan window's dry run revealed them.
+
 ### Phase - Board decision follow-ups
 
 - Add reasons to the remaining option builders as playtests find options
@@ -106,20 +124,6 @@ did":
   totals and the winner. It is not always visible.
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
-
-### Phase - Catalog batch 7 - Campaign dice
-
-Rerolls after any roll, fixed die faces, amounts chosen inside battle plans,
-and battle rewrites
-([design](superpowers/specs/2026-10-09-catalog-batch-7-design.md),
-[rulings](superpowers/specs/2026-10-09-catalog-batch-7-rulings.md)).
-
-- [x] Slice 1: rerolls (Jinx, Master at Arms).
-- [x] Slice 2: Recover rerolls (Silver Charm).
-- [x] Slice 3: amounts and fixed faces (Arcane Armor, Unstable Summon,
-  Mountain Giant).
-- [x] Slice 4: battle rewrites (Careful Plans, Weeping Banner, Zealots, Bear
-  Traps, Signal Trees, Hearts and Minds).
 
 ### Phase - Catalog batch - engine-blocked
 

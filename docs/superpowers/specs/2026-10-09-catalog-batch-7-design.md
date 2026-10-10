@@ -94,12 +94,12 @@ omission of `Roll`'s mode and window is left alone.
 
 - **Silver Charm** is a Recover modifier, and its printed `[attack-die]` is
   a misprint for `[defense-die]` (product owner, 2026-10-09). Slice 2
-  corrects the text in the holding catalog.
+  corrected the text in the holding catalog.
 - **Mountain Giant**'s printed "±3" has no icon after it; it is
-  `[attack-die]` (product owner, 2026-10-09). Slice 3 corrects the text in
-  the holding catalog.
-- **Weeping Banner**'s power id is `relic.keeping-banner` in the holding
-  catalog and the reference JSON. Slice 4 renames it to
+  `[attack-die]` (product owner, 2026-10-09). Slice 3 corrected the text
+  in the holding catalog.
+- **Weeping Banner**'s power id was `relic.keeping-banner` in the holding
+  catalog and the reference JSON. Slice 4 renamed it to
   `relic.weeping-banner`.
 
 ### Out of scope

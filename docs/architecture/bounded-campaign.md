@@ -37,6 +37,12 @@ Sequence(
     victory: Conquest placement, or Raid transfer and relocation)
 ```
 
+Careful Plans' rewrite at `CampaignActionEligibility` puts the five steps from
+the attack roll to the defense result in one `Branch`, whether or not the plan
+is in play, so the root keeps one shape on every fold. When the attacker chose
+it, the branch walks the defense roll and its result first; the sacrifice still
+follows the attack roll.
+
 - **Start.** A start is refused unless the actor is in Act
   and at least one kind is legal. Conquest is legal when the actor's pawn
   site is ruled by Bandits or by another player. Raid is legal when another
@@ -72,15 +78,21 @@ Sequence(
   it is used. The plans are `BattlePlan` powers registered through `BattlePlans`: `TitleDefensePlan`
   (one defense die for an Oathkeeper, two for a Usurper), `Outriders` (ignore all skulls),
   `BrassArmy` (a secret for four attack dice) and `Watchdog` (one defense die at a Cradle target).
+  A plan its user can pay for may carry a warning (`CampaignPlanOffer.warning`), shown in the
+  option's warning state while it stays choosable (Zealots, whose condition fails).
 - **Attack.** The roll is automatic. A skull removes one force warband and its two
-  swords count only when that loss can be paid. Skulls beyond the force add
+  swords count only when that loss can be paid. Under the defender's Weeping Banner
+  each skull removes two (`AttackRules.skullKills`), capped by the force, and its
+  swords count only when both are paid. Skulls beyond the force add
   nothing. Hollow swords score one per pair. Outriders, once chosen, scores the attack
   again without the cap.
   The capped result is written over the rolled outcome. Brass Army's dice do not
   raise the physical force or any loss, sacrifice or placement limit.
-- **Sacrifice.** `ChooseAmount(0, force - skulls)` warbands for one attack each.
-  Its heading states the attack faces, the attack after plans and skulls, and the
-  surviving force.
+- **Sacrifice.** `ChooseAmount(0, force - skulls)` warbands. Each adds its worth to
+  the attack: one, or what a plan recorded in the pool `campaign.sacrifice-worth` when
+  it was applied (three for Zealots). The pool is cleared with the others when the
+  Campaign ends. The heading is the prompt alone, naming the worth; the dice, the
+  attack and the skull loss are drawn beside it as a roll outcome.
 - **Defense and the victor.** The defense roll is automatic. The recorded defense
   is the dice score plus the defender's force (the warbands at every target, or a
   Raid defender's board), written before any warband dies, so the victor is read
@@ -89,7 +101,9 @@ Sequence(
 - **Result.** `RecordCampaignResult` writes the public `CampaignResult`. It is the
   only thing the steps after the losses read, because the losses change the board.
   `attackerWins` is true when the attacker prevailed and false when the defender
-  did, whichever side a battle plan's user is on.
+  did, whichever side a battle plan's user is on. `sacrificeWorth` records what each
+  sacrificed warband added, and `attackTotal` counts it; a stored result without it
+  reads one.
 
 ## Losses and resolution
 
@@ -143,9 +157,10 @@ receives the durable recipient decision before normal Act controls resume.
 
 ## Unsupported Campaign rules
 
-Unsupported handlers are ignored, not blocking: Bag of Siegeworks, Weeping Banner,
-Peace Envoy, the Mountain and Plains Campaign effects, and the unsupported Raid and
-player-defender powers no longer stop a Campaign. The start records what the
+Unsupported handlers are ignored, not blocking: the Mountain and Plains Campaign
+effects and the unsupported Raid and player-defender powers do not stop a Campaign.
+Bag of Siegeworks, Weeping Banner and Peace Envoy, once listed here, are battle
+plans now. The start records what the
 reviewed power catalog lists at the Campaign modifier window through
 `IgnoredRulesRecorded` under `ActionKind.Campaign`. Today that list is empty:
 Bag of Siegeworks is a player-selected plan at the battle-plan window, and the
