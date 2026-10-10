@@ -219,7 +219,7 @@ class RestSuite extends munit.FunSuite:
       s"foundation:${number.value}")
 
   test("last player of round eight finishes the game by War Exhaustion, and " +
-      "the projection still offers beginRest"):
+      "the Act menu still offers Rest"):
     // The quiet table's turn order is p1, p2, p3, so p3 rests last.
     val last = p3
     // No Table step sets the round.
@@ -241,10 +241,8 @@ class RestSuite extends munit.FunSuite:
     assertEquals(result.winner, result.randomCandidates.last)
     assertEquals(rejected(rest(finished.state, last, deterministic)),
       OathViolation.GameEnded)
-    val projection = new oathdigital.application.GameProjector(catalog).project(
-      "round-eight", oathdigital.application.LoadedGame(
-        Ready(roundEight), 30L), last)
-    assert(projection.legalControls.contains("beginRest"))
+    assert(MenuPlay.availableInMenu(catalog, roundEight,
+      PhaseTransitionRef.BeginRest))
 
   test("Finish Rest belongs to the active player"):
     val act = this.act

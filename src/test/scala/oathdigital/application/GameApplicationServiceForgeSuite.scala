@@ -144,7 +144,7 @@ class GameApplicationServiceForgeSuite extends munit.FunSuite:
     // The mixed cost: 2 favor and 1 secret.
     assertEquals(printed.favor + printed.secrets, 3)
     assertEquals(owner.phase, "forge-walker-decision")
-    assertEquals(owner.legalControls, Vector("resolveWalkerDecision"))
+    assert(owner.walkerDecision.nonEmpty)
     // Forge has no dice, and its parked decision says so. (This is a
     // client-facing fact, not R18's proof: no site in the catalog carries
     // both a printed Forge cost and a Recover difficulty, so `rollOutcome`

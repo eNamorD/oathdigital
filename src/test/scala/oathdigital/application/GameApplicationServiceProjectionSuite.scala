@@ -43,8 +43,8 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     val public = projector.projectPublic("game-projection-wake", stored)
     // Wake is answered at its menu, a parked decision.
     assertEquals(own.phase, "wake-menu-walker-decision")
-    assert(own.legalControls.contains("resolveWalkerDecision"))
-    assertEquals(public.legalControls, Vector.empty)
+    assert(own.walkerDecision.nonEmpty)
+    assertEquals(public.walkerDecision, None)
     assertEquals(own.activePlayerResources,
       Some(ActivePlayerResourcesProjection(favor = 1, faceUpSecrets = 1,
         faceDownSecrets = 0, committedSecrets = 0, totalSecrets = 1,
@@ -62,11 +62,9 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       active)
     // Act is played at its menu, which the active player answers.
     assertEquals(act.phase, "act-menu-walker-decision")
-    assert(!act.actionSelectionOpen)
-    assertEquals(act.legalControls, Vector("resolveWalkerDecision"))
+    assert(act.walkerDecision.nonEmpty)
     assertEquals(projector.projectPublic("game-projection-wake",
-      LoadedGame(ended.state, ended.nextSequence)).legalControls,
-      Vector.empty)
+      LoadedGame(ended.state, ended.nextSequence)).walkerDecision, None)
 
   private val ancientCity = CatalogNames.site("Ancient City")
   private val brokenPeaks = CatalogNames.site("Broken Peaks")

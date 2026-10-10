@@ -491,6 +491,43 @@ By the last slice:
     the power's name. A source with only one such power keeps its card
     option. The menu panel puts these buttons under "Powers".
 
+## Plan-time rulings (slice 5)
+
+1. **The projection keeps only what the frontend reads.** After slice 4,
+   nothing in the frontend reads `legalControls`, `actionSelectionOpen`,
+   `minorActions`, `phasePowers` or `restSupplyGain`. These fields leave
+   `GameProjection`. `LegalActionProjector`, `LegalProjection`,
+   `PhasePowerProjector`, `MinorActionsProjection`,
+   `MinorAdviserProjection` and `PhasePowerProjection` go with them, and so
+   do their codecs.
+2. **The walker controls go too.** `legalControls` carried
+   "resolveWalkerDecision" and "rollWalker" for a parked walk. The frontend
+   reads who may answer from `walkerDecision`, which only the awaited player
+   receives. Tests read the same.
+3. **An Act with nothing parked is "act".** The projection's phase for an
+   unparked Act was "act-action-selection", which named the deleted action
+   selection. It becomes "act", like "wake" and "rest". A live game always
+   has a menu parked in Act, so only a test table shows it.
+4. **The start checks are the menu's.** These go:
+   - the nine `startable` and `startOptions` functions of Search, Travel,
+     Recover, Challenge, Place Banner Resource, Campaign, Negotiation,
+     Muster and Trade;
+   - `EconomyTree.startOptions`, `CampaignProcedure.refusal`,
+     `WalkerSimulation.restriction` and `ModifierOffers.selections`;
+   - `PhasePowerProcedure.usable` and `PhasePowerProcedure.PowerSource`,
+     which only the projector used.
+
+   Tests ask the menu's exact check (`QueuedStart.priced`) through the
+   testkit helper `StartPreview`. They ask the menu itself through
+   `MenuPlay.menuOptionFor` and `MenuPlay.availableInMenu`.
+5. **Modifier walker ruling 9 is rewritten.** Start options are exact: the
+   menu dry-runs each start through its own modifier decision (this design,
+   ruling 8). `ModifierOffers.paying` stays private, because `offerable`
+   uses it.
+6. **Docs that name deleted code are rewritten.** A comment or doc that
+   describes deleted code as current is rewritten to describe the menu. A
+   comment that says how the code used to work may stay.
+
 ## Testing
 
 - **Driver:**

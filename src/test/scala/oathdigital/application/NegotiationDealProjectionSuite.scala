@@ -7,7 +7,7 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseManyAnswer, ProposeTerms}
 import oathdigital.protocol.projection.{DecisionQueryProjection,
   GameProjection, NegotiationDealProjection}
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, MenuPlay, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** What each viewer of a parked deal is shown. */
@@ -65,7 +65,7 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
       val editing = deal(projection).editing.getOrElse(fail("editing"))
       assertEquals(editing.editableFavor, 5)
       assert(!editing.canAccept)
-      assert(projection.legalControls.contains("resolveWalkerDecision"))
+      assert(projection.walkerDecision.nonEmpty)
     }
 
   test("a player outside the deal and the public view see it read-only"):
@@ -78,7 +78,6 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
     assertEquals(deal(outsider).participantPlayerIds,
       Vector(p1.value, p2.value))
     assertEquals(deal(outsider).editing, None)
-    assert(!outsider.legalControls.contains("resolveWalkerDecision"))
     val public = projector.projectPublic("negotiation", LoadedGame(state, 30))
     assertEquals(deal(public).editing, None)
     assertEquals(public.walkerDecision, None)
@@ -117,12 +116,12 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
     assert(!deal(view(accepted, p2)).editing.exists(_.canAccept))
     assert(deal(view(accepted, p1)).editing.exists(_.canAccept))
 
-  test("the start control is offered while a candidate exists and not once parked"):
-    assert(view(gathered.state, p1).legalControls.contains("beginNegotiation"))
+  test("the Negotiation option is available while a candidate exists"):
+    assert(MenuPlay.availableInMenu(catalog, gathered.ready,
+      ActionRef.Negotiation))
     val alone = gathered.pawn(p2, at = "Dunes").pawn(p3, at = "Dunes")
-    assert(!view(alone.state, p1).legalControls.contains("beginNegotiation"))
-    assert(!view(parkedDeal(gathered, who = Vector(p2, p3)), p1).legalControls
-      .contains("beginNegotiation"))
+    assert(!MenuPlay.availableInMenu(catalog, alone.ready,
+      ActionRef.Negotiation))
 
   test("a faceup relic in a transfer is shown to every viewer, public included"):
     val faceUp = gathered.relic(p1, p1Relic).tokens(p1Relic, secrets = 1)

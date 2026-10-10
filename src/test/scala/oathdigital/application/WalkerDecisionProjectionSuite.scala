@@ -23,8 +23,7 @@ import oathdigital.testkit.Outcomes
 
 /** Task 7 (Recover slice, controller ruling (b)) established the
   * application-projector surface: [[WalkerDecisionProjector]] plus the
-  * `phase`/`legalControls` effects on
-  * [[PendingProjector]]/[[LegalActionProjector]]. Task 7a promotes
+  * `phase` effect on [[PendingProjector]]. Task 7a promotes
   * [[WalkerDecisionProjection]] itself onto the wire -- it is now the same
   * type `GameProjection.walkerDecision` carries (`shared/.../
   * ActionProjectionDtos.scala`).
@@ -127,7 +126,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     assertEquals(projector.project(ScopedProjectionContext(ready, Some(p2))),
       None)
 
-  test("a parked Roll names the roll phase and blocks ordinary Act controls"):
+  test("a parked Roll names the roll phase"):
     val ready = parkedOnRoll
     val projector = new WalkerDecisionProjector(catalog, presentation,
       parkingRollPowers)
@@ -137,9 +136,6 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       projector)
     assertEquals(pendingProjector.project(owner).phase, "recover-walker-roll")
     assertEquals(pendingProjector.project(viewer).phase, "recover-walker-waiting")
-    val legal = new LegalActionProjector(catalog, presentation, projector)
-    assertEquals(legal.project(owner).controls, Vector("rollWalker"))
-    assertEquals(legal.project(viewer).controls, Vector.empty)
 
   /** Both dice come up Blank: score 0, still short of the difficulty, so the
     * walk parks on the continue/stop choice. */
@@ -164,7 +160,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     assertEquals(walkerDecisions.project(ScopedProjectionContext(ready,
       Some(p2))), None)
 
-  test("a parked continue/stop choice names the decision phase and controls"):
+  test("a parked continue/stop choice names the decision phase"):
     val ready = Outcomes.ready(
       recoverFailingItsRoll("walker-projection-choice-phase")
         .started.state)
@@ -174,9 +170,6 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       walkerDecisions)
     assertEquals(pendingProjector.project(owner).phase, "recover-walker-decision")
     assertEquals(pendingProjector.project(viewer).phase, "recover-walker-waiting")
-    val legal = new LegalActionProjector(catalog, presentation, walkerDecisions)
-    assertEquals(legal.project(owner).controls, Vector("resolveWalkerDecision"))
-    assertEquals(legal.project(viewer).controls, Vector.empty)
 
   test("the wire carries the continue/stop choice to its owner only"):
     val gameId = "walker-projection-choice-wire"
@@ -265,7 +258,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     assertEquals(walkerDecisions.project(ScopedProjectionContext(ready,
       Some(p2))), None)
 
-  test("a parked relic choice names the decision phase and controls"):
+  test("a parked relic choice names the decision phase"):
     val ready = Outcomes.ready(
       recoverMeetingItsDifficulty("walker-projection-relic-phase")
         .started.state)
@@ -275,9 +268,6 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       walkerDecisions)
     assertEquals(pendingProjector.project(owner).phase, "recover-walker-decision")
     assertEquals(pendingProjector.project(viewer).phase, "recover-walker-waiting")
-    val legal = new LegalActionProjector(catalog, presentation, walkerDecisions)
-    assertEquals(legal.project(owner).controls, Vector("resolveWalkerDecision"))
-    assertEquals(legal.project(viewer).controls, Vector.empty)
 
   test("the relic choice reaches the wire for its owner only and round-trips " +
       "through the codec"):

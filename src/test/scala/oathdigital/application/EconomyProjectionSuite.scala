@@ -1,13 +1,14 @@
 package oathdigital.application
 
 import oathdigital.gameplay.{EconomyFixture, OathRules}
+import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.protocol.projection.DecisionOptionProjection
-import oathdigital.testkit.{CatalogNames, Outcomes, Table}
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.{CatalogNames, MenuPlay, Outcomes, Table}
+import oathdigital.testkit.Table.p1
 
 class EconomyProjectionSuite extends munit.FunSuite:
   import EconomyFixture.AddSource
@@ -32,9 +33,6 @@ class EconomyProjectionSuite extends munit.FunSuite:
   /** Magician's Code is Arcane, like Alchemist. */
   private def withMatchingAdviser: Table = atAlchemist.adviser(p1, magiciansCode)
 
-  private def controls(ready: ReadyGame, viewer: PlayerId): Vector[String] =
-    projector.project("economy", LoadedGame(Ready(ready), 4), viewer).legalControls
-
   private def parkedOptions(ready: ReadyGame, action: StartableRef,
       args: Vector[DecisionOptionRef]): Vector[DecisionOptionProjection] =
     val started = rules.startWalker(Ready(ready), action, p1, startArgs = args)
@@ -43,26 +41,34 @@ class EconomyProjectionSuite extends munit.FunSuite:
       .walkerDecision.flatMap(_.query).map(_.offeredOptions)
       .getOrElse(fail("the parked decision must project a query"))
 
-  test("the active player is offered Muster and both Trades, and nobody else"):
-    val board = atAlchemist.ready
-    assert(Vector("beginMuster", "beginTradeFavor", "beginTradeSecret")
-      .forall(controls(board, p1).contains))
-    assert(!controls(board, p2).exists(_.startsWith("beginTrade")))
-    assert(!controls(board, p2).contains("beginMuster"))
+  private def trade(resource: TradeResource): Vector[DecisionOptionRef] =
+    TradeProcedure.selection(resource)
 
-  test("a control is offered only while a source survives the preview"):
+  private def available(ready: ReadyGame, procedure: StartableRef,
+      args: Vector[DecisionOptionRef] = Vector.empty): Boolean =
+    MenuPlay.availableInMenu(catalog, ready, procedure, args)
+
+  test("the active player is offered Muster and both Trades"):
+    val board = atAlchemist.ready
+    assert(available(board, ActionRef.Muster))
+    assert(available(board, ActionRef.Trade, trade(TradeResource.Favor)))
+    assert(available(board, ActionRef.Trade, trade(TradeResource.Secret)))
+
+  test("an option is available only while a source survives the preview"):
     val oneFavor = atAlchemist.favor(p1, 1).ready
     // Muster pays 1 favor and Trade for favor 1 secret, but Trade for
     // secrets pays 2 favor, one of them burnt.
-    assert(controls(oneFavor, p1).contains("beginMuster"))
-    assert(controls(oneFavor, p1).contains("beginTradeFavor"))
-    assert(!controls(oneFavor, p1).contains("beginTradeSecret"))
+    assert(available(oneFavor, ActionRef.Muster))
+    assert(available(oneFavor, ActionRef.Trade, trade(TradeResource.Favor)))
+    assert(!available(oneFavor, ActionRef.Trade, trade(TradeResource.Secret)))
     // Every action spends 1 Supply.
-    assert(!controls(atAlchemist.supply(p1, 0).ready, p1).exists(control =>
-      control == "beginMuster" || control.startsWith("beginTrade")))
+    val broke = atAlchemist.supply(p1, 0).ready
+    assert(!available(broke, ActionRef.Muster))
+    assert(!available(broke, ActionRef.Trade, trade(TradeResource.Favor)))
+    assert(!available(broke, ActionRef.Trade, trade(TradeResource.Secret)))
     // Trade for favor pays a faceup secret.
-    assert(!controls(atAlchemist.secrets(p1, faceUp = 0).ready, p1)
-      .contains("beginTradeFavor"))
+    assert(!available(atAlchemist.secrets(p1, faceUp = 0).ready,
+      ActionRef.Trade, trade(TradeResource.Favor)))
 
   test("a parked Muster shows its source with what answering costs and yields"):
     val options = parkedOptions(withMatchingAdviser.ready,
