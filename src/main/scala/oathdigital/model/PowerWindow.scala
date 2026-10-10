@@ -159,6 +159,12 @@ object PowerWindow:
     * plan-time ruling 6): the follow-up waiver strips it here. */
   case object RecoverCost extends RecoverWindow:
     val key = "recover.cost"
+  /** Each Recover roll, before its reroll choice (catalog batch 7, slice
+    * 2). The roll step passes it as its roll's window, so a power may put
+    * steps on either side of the roll: Silver Charm asks before it and
+    * rerolls after it. */
+  case object RecoverRoll extends RecoverWindow:
+    val key = "recover.roll"
   case object RestStart extends OtherWindow { val key = "rest.start" }
   case object RestReturnFavor extends OtherWindow { val key = "rest.return-favor" }
   case object RestReturnSecrets extends OtherWindow { val key = "rest.return-secrets" }

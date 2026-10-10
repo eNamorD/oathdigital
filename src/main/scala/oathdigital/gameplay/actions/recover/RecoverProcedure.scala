@@ -19,7 +19,8 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   *     Repeat(guard = not succeeded && lastChoice != Stop,
   *       Sequence(
   *         SpendSupply(actor, 1),            // window = RecoverCost
-  *         Roll("recover", Defense, Automatic), // rolls in the same command
+  *         Roll("recover", Defense, Automatic), // window = RecoverRoll;
+  *                                              // rolls in the same command
   *         Branch(choice when not yet success) // -> Decide("recover.choice") or nothing
   *       )),
   *     Branch(if success ->
@@ -32,6 +33,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   * `RecoverActionEligibility` - At the start of the Recover itself, after the modifier decision
   * `RecoverBeforeFirstRoll` - Before the very first roll
   * `RecoverAfterRelic` - After the relic is chosen
+  * `RecoverRoll` - Each roll, before its reroll choice
   *
   * Semantics:
   *  - Each roll = 2 defense dice (pool count fixed to 2 by the head
@@ -205,7 +207,8 @@ object RecoverProcedure:
     val body = Sequence(
       Sequence(Vector(SpendSupply(actor, supplyCost)),
         Some(PowerWindow.RecoverCost)),
-      RollStep(recoverPool, DiceSpec(DiceKind.Defense), Some(actor)),
+      RollStep(recoverPool, DiceSpec(DiceKind.Defense), Some(actor),
+        Some(PowerWindow.RecoverRoll)),
       Branch((ready, _) =>
         if succeeded(ready) then Vector.empty else Vector(choiceDecide)))
 

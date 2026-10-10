@@ -7,7 +7,7 @@ import oathdigital.gameplay.powers.economy.{AnimalPlaymates, AwaitedReturn,
   InitiationRite, MapLibrary, MountedLibrary, MovingMarket, OldSongs,
   Pressgangs, RowdyPub, SkilledMerchants, TheOldOak, VillageIdiot,
   VowOfBeastkin, VowOfPoverty, VowOfWandering, VowOfWanderingMuster}
-import oathdigital.gameplay.powers.recover.RelicWorship
+import oathdigital.gameplay.powers.recover.{RelicWorship, SilverCharm}
 import oathdigital.gameplay.powers.search.{Augury, CropRotation, Disciples,
   ErrandBoy, ForcedLabor, HuntingParty, LandWarden, Mushrooms, NewsFromAfar,
   Observatory, PaintedTrumpet, SpinningBee, TruthfulHarp, WineOfWelcome}
@@ -55,4 +55,5 @@ object ActionModifiers:
       Vector(VowOfBeastkin.forCatalog(catalog)) ++
       Vector(VowOfWanderingMuster, VowOfWandering) ++
       Vector(VowOfPoverty) ++
-      Vector(RelicWorship.forCatalog(catalog))
+      Vector(RelicWorship.forCatalog(catalog)) ++
+      Vector(SilverCharm.forCatalog(catalog))
