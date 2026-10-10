@@ -2,8 +2,10 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.powerresolver.{FoldPhase, Transform}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look}
 
@@ -155,3 +157,9 @@ class WildMountsSuite extends munit.FunSuite:
     assert(Look(done.state).inRegionalDiscard(mountedPatrol))
     assert(!Look(done.state).inRegionalDiscard(python))
     assertEquals(lines(done), Vector.empty)
+
+  test("its rewrite folds Late, after every plan's own steps at the root"):
+    val phases = WildMounts.forCatalog(catalog).contributions(
+      PowerWindow.CampaignActionEligibility).collect {
+        case transform: Transform => transform.phase }
+    assertEquals(phases, Vector(FoldPhase.Late))

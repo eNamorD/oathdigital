@@ -155,14 +155,22 @@ Each child is rewritten as follows:
   is.
 - A `nodes` match on a `BuildOps` or a `Branch` replaces it whole, without
   entering it.
-- A wrapped `BuildOps` keeps its `window` and `required`. A wrapped
-  `Branch` and `Repeat` keep their `window`.
+- A wrapped `BuildOps` keeps its `window` and `required`, and a
+  `Sequence` keeps its `window`. `Branch` and `Repeat` carry no window.
+- The node being folded is `ctx.operation`. When it is a leaf, a leaf
+  below it with the same window counts as it too, since the walker does
+  not fold that window again on the branch (`WalkerHooks.gathered`).
+- Several replacements, or none, go in a `Sequence` in the op's place,
+  in the tree and in what a `Branch` selects. What a `BuildOps` builds
+  is a flat batch, so there they are spliced in.
 - A single replacement for a single op keeps the tree's indices. Several
   replacements for one tree-level op go in a `Sequence` in its place, as
   `LossRewrite` does now.
 
 `LossRewrite.apply` becomes a thin call to `ops`, and its private `rewrite`
-is deleted.
+is deleted. `ops` needs the fold's context, and every `LossRewrite` user
+calls it from a `wrapping`, so `BattlePlan.wrapping` is handed the
+`PowerCtx` too (`BattlePlan.Wrap`).
 
 ### Deferral
 
@@ -171,7 +179,9 @@ Vector[CoreOperation]]`, empty by default. The walker clears it when an
 action ends, where it clears `rollPools` (`ProcedureWalker.finish`,
 `WalkerReplay`). It is rebuilt by replay and never projected to clients.
 `DeferralKey(value: String)` lives in `model`, named after the power that
-owns it.
+owns it. `Defer` stores ops as the journal records them
+(`OperationRun.canonical`), so a game reloaded from its events holds the same
+ops: a held `Discard.Denizen` is not `required`.
 
 **Ops.** Two `PrimitiveOperation`s in `CoreOperations.scala`:
 
@@ -210,6 +220,8 @@ A power uses it in one of two ways:
 case Normal, Late }`. `ContributionCollector.gather` orders transforms by
 phase, then by `ContributingPower.sortKey`. The gather order recorded on a
 step lists them in that fold order.
+Each power's place in that order is set by the earliest phase of its
+transforms at the window, then by its sort key.
 
 `BattlePlan.contributions` builds each `rewrites` entry as a `Late`
 transform. `BattlePlan`'s doc says so.
@@ -238,8 +250,9 @@ transform. `BattlePlan`'s doc says so.
   - **Otherwise** it runs the held discards.
 
   Each held discard that runs writes "Discarded after the Campaign." with
-  the plan's card as its source. Wild Mounts' `noteKeys` gain
-  `PlanDiscard.discarded`.
+  the plan's card as its source, under the plan's own power: the card's
+  printed power, which declares `PlanDiscard.discarded`. Wild Mounts
+  writes only its swap lines.
 - **What goes:** `Priority = 10`, the stripping of root `Branch`es and the
   second selection.
 - **What changes:**
@@ -255,7 +268,7 @@ Each rewrite helper below moves onto `ops` or `nodes`. Its behavior and its
 tests stay the same.
 
 - `ops`:
-  - `LossRewrite` (its 5 users are untouched) and Disciples;
+  - Disciples (`LossRewrite` moved in slice 1);
   - `SupplyStrip`, `DrawExtension`, `TravelRoute.adjustSupply`;
   - Initiation Rite, `SuitSupplyWaiver`, `ExtraWarbands`;
   - `EconomySources.intoOccupied`.

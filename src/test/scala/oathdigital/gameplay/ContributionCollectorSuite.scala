@@ -99,3 +99,22 @@ class ContributionCollectorSuite extends munit.FunSuite:
     assertEquals(gathered.transforms, Vector(PowerId("power.both") -> transform))
     assertEquals(gathered.restrictions, Vector(PowerId("power.both") -> restriction))
     assertEquals(gathered.order, Vector(PowerId("power.both")))
+
+  test("a Late transform folds after a Normal one of higher priority, and " +
+      "priority orders within a phase"):
+    val powers = Vector(
+      fixturePower("power.late-high", "a", Set(window),
+        Vector(Transform((_, ops) => ops, FoldPhase.Late)),
+        priorityValue = 5),
+      fixturePower("power.late-low", "b", Set(window),
+        Vector(Transform((_, ops) => ops, FoldPhase.Late))),
+      fixturePower("power.normal-high", "c", Set(window),
+        Vector(Transform((_, ops) => ops)), priorityValue = 9))
+
+    val gathered = ContributionCollector.gather(
+      window, PowerWindowIndex.of(powers), ctxFor(_, window))
+
+    val folded = Vector("power.normal-high", "power.late-low",
+      "power.late-high").map(PowerId(_))
+    assertEquals(gathered.transforms.map(_._1), folded)
+    assertEquals(gathered.order, folded)

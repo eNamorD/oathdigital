@@ -49,9 +49,11 @@ object ContributionCollector:
     val survivors = applicable.filterNot(hooked =>
       ignored.contains(hooked.power.id))
 
-    // Step 4: deterministic order.
+    // Step 4: deterministic order: by the earliest fold phase of each
+    // power's transforms here, then by sort key. Without a `Late`
+    // transform this is the sort key alone.
     val ordered = survivors.sortBy(hooked =>
-      ContributingPower.sortKey(hooked.power))
+      (earliestPhase(hooked), ContributingPower.sortKey(hooked.power)))
 
     // Step 5: split each survivor's contributions at this window into
     // transforms, restrictions and option restrictions, tagged with the owning power id, and
@@ -71,9 +73,17 @@ object ContributionCollector:
     }
 
     GatheredContributions(
-      transforms = transforms.result(),
+      // Stable, so priority still orders the transforms within a phase.
+      transforms = transforms.result().sortBy(_._2.phase.ordinal),
       restrictions = restrictions.result(),
       order = ordered.map(_.power.id),
       optionRestrictions = optionRestrictions.result(),
       offers = offers.result()
     )
+
+  /** The earliest phase of `hooked`'s transforms at the window, as its
+    * ordinal; `Normal` when it has none. */
+  private def earliestPhase(hooked: HookedPower): Int =
+    hooked.contributions.collect { case transform: Transform =>
+      transform.phase.ordinal }.minOption
+      .getOrElse(FoldPhase.Normal.ordinal)

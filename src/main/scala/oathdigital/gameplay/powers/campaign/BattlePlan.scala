@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  Offer, OptionRestriction, Transform}
+  FoldPhase, Offer, OptionRestriction, Transform}
 import oathdigital.model._
 
 /** A power that offers a Campaign battle plan. It is chosen at the plan step,
@@ -28,9 +28,11 @@ import oathdigital.model._
   *    whether or not the plan was chosen. A restriction that holds only once
   *    the plan is used reads the answered plan picks (Specialist).
   *  - `rewrites` change a window's children whether or not the plan was
-  *    chosen. Such a rewrite keeps the children's shape the same on every
-  *    fold and learns inside a `Branch`, at walk time, whether the plan was
-  *    used, which also sees a bandit's use (Wild Mounts).
+  *    chosen. They fold `Late`, after every other transform at the window,
+  *    so they see what the other plans added there. Such a rewrite keeps
+  *    the children's shape the same on every fold and learns at walk time
+  *    whether the plan was used, which also sees a bandit's use (Wild
+  *    Mounts).
   */
 trait BattlePlan extends ContributingPower:
   /** How the plan's source is named in the plan decision. */
@@ -77,7 +79,7 @@ trait BattlePlan extends ContributingPower:
       window -> (offers.getOrElse(window, Vector.empty) ++
         afterwards.getOrElse(window, Vector.empty) ++
         around.getOrElse(window, Vector.empty) ++
-        rewrites.get(window).toVector ++
+        rewrites.get(window).toVector.map(_.copy(phase = FoldPhase.Late)) ++
         restrictions.getOrElse(window, Vector.empty))).toMap
 
 object BattlePlan:

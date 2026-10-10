@@ -53,10 +53,21 @@ object Contribution:
   * differed between two commands would make a recorded park position address
   * a different node on resume. This is the same invariant `Branch.select`
   * already carries.
+  *
+  * `phase` says when it folds among the window's transforms.
   */
 final case class Transform(
-    fn: (PowerCtx, Vector[Operation]) => Vector[Operation]
+    fn: (PowerCtx, Vector[Operation]) => Vector[Operation],
+    phase: FoldPhase = FoldPhase.Normal
 ) extends Contribution
+
+/** When a transform folds at its window (operation rewrite design, ruling
+  * 9). Every `Late` transform folds after every `Normal` one, and power
+  * priority orders the transforms within a phase. A transform that must see
+  * what the window's other transforms added folds `Late`.
+  */
+enum FoldPhase:
+  case Normal, Late
 
 /** Validates the whole action tree root, returning a violation to reject the
   * action wholesale. Covers cannot-effects. `note` is the hover reason of an
