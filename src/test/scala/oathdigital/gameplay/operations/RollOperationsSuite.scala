@@ -29,6 +29,15 @@ class RollOperationsSuite extends munit.FunSuite:
     assertEquals(outcome.score, 4)
     assertEquals(outcome.count, 3)
 
+  test("a reroll records which dice it rerolled"):
+    val before = rolled(Vector(HollowSword, OneSword, HollowSword))
+    val once = RollOperations.reroll(before, pool, Vector(2),
+      Some(Vector(OneSword))).toOption.get
+    val twice = RollOperations.reroll(once, pool, Vector(0, 2),
+      Some(Vector(OneSword, OneSword))).toOption.get
+    assertEquals(twice.game.current.rollOutcomes(pool).rerolled,
+      Vector(0, 2))
+
   test("a reroll keeps skulls another step already changed"):
     // A power lowered the skulls to 0 after the roll; rerolling a sword
     // into a skull adds one to what stands.

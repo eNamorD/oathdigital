@@ -30,8 +30,7 @@ final class RerollChoice(val pool: PoolKey, val die: DiceKind,
   def throwAt(ready: ReadyGame): Option[DiceThrow] =
     val indices = DiceThrow.lastIndices(ready, pool)
     ready.game.current.rollOutcomes.get(pool).filter(_ => indices.nonEmpty)
-      .map(outcome => DiceThrow(pool, die, roller,
-        outcome.faces.size / DiceThrow.count(ready, pool), indices,
+      .map(outcome => DiceThrow(pool, die, roller, outcome.throws, indices,
         indices.map(outcome.faces)))
 
   def expand(offers: Vector[OfferedReroll], pass: OfferHost.Pass)
