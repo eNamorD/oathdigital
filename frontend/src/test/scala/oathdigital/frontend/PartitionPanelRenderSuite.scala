@@ -149,6 +149,37 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
   test("a partition that must meet a minimum in each zone is not keep-one"):
     assertEquals(WalkerPanelSupport.keepOne(query), None)
 
+  /** Land Warden's Search keeps one or two: the capped zone holds up to
+    * two, and the order of its cards is the order they are played in. */
+  private val keepUpToTwo = keepDiscard.copy(sections = Vector(
+    DecisionSectionState("keep", "Keep", 1, Some(2)),
+    DecisionSectionState("discard", "Discard", 0)))
+
+  private val keepUpToTwoDecision = WalkerDecisionState("setup", "setup-1",
+    "decide", query = Some(keepUpToTwo))
+
+  /** The draft opened on `keepUpToTwo`: Denizens 1 and 2 kept. */
+  private def keepUpToTwoDraft(): Option[WalkerPartitionDraft] =
+    WalkerPartitionDraft.reconcile(None, ForgeFixture.context,
+      Some(keepUpToTwoDecision))
+
+  test("a keep-one-or-two partition says so, without minimum lines"):
+    val panel = render(controls(), keepUpToTwoDraft(),
+      decision = keepUpToTwoDecision)
+    assertEquals(one(panel, ".partition-instruction").textContent,
+      "Keep one or two; discard the rest.")
+    assertEquals(all(panel, ".decision-zone-helper"), Vector.empty)
+
+  test("a keep zone holding two says they are played in that order"):
+    def keepZone(draft: Option[WalkerPartitionDraft]) = one(render(
+      controls(), draft, decision = keepUpToTwoDecision),
+      """[data-section-key="keep"]""")
+    assertEquals(one(keepZone(keepUpToTwoDraft()),
+      ".decision-zone-order").textContent, "They are played in this order.")
+    val keepingOne = keepUpToTwoDraft().map(_.move(optionKey(2), "discard"))
+    assertEquals(all(keepZone(keepingOne), ".decision-zone-order"),
+      Vector.empty)
+
   /** Pressing Keep on a discard card swaps it with the kept one, so the kept
     * card's own Discard button would only say the same thing backwards.
     */
