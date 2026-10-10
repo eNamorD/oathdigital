@@ -63,9 +63,12 @@ class MurkyFountainSuite extends munit.FunSuite:
     val ready0 = staged(supply = 1)
     val done = accepted(use(rules0, ready0, MurkyFountain.id, source))
     val end = ready(done.state)
-    walkerParked.assertResumed(done.state, Phase.Rest, actor)
-    assertEquals(Look(end).player(actor).board.supply, SupplyTrack(1))
-    assertEquals(Look(end).tokensOn(fountain), Tokens(0, 1))
+    // The power ends the Act phase, and the driver finishes Rest after it.
+    val atRest = replayed(rules0, ready0, untilWalkEnds(done.events))
+    assertEquals(Look(atRest).phase, Phase.Rest)
+    assertNotEquals(Look(end).active, actor)
+    assertEquals(Look(atRest).player(actor).board.supply, SupplyTrack(1))
+    assertEquals(Look(atRest).tokensOn(fountain), Tokens(0, 1))
     assertEquals(replayed(rules0, ready0, done.events), end)
     assertWireRoundTrips(done.events)
 

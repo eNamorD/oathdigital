@@ -44,8 +44,8 @@ object HuntingParty:
     Branch((_, pending) =>
       if PowerAnswers.one(pending, SearchProcedure.sourceDecisionId)
           .flatMap(SearchSource.fromRef).contains(SearchSource.WorldDeck)
-      then Vector(QueueFollowUp(FollowUp(actor, ActionRef.Campaign,
-        PowerSourceRef.Card(card))))
+      then Vector(QueueProcedure(QueuedProcedure(actor, ActionRef.Campaign,
+        Vector.empty, Some(PowerSourceRef.Card(card)), QueueKind.Offer)))
       else Vector.empty)
 
   def forCatalog(catalog: ExecutableCatalog): HuntingParty =

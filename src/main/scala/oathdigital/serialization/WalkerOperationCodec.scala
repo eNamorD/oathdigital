@@ -46,7 +46,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
   private type ResourceOperation = SpendSupply | GainSupply | FlipSecrets | Gain
   private type TurnOperation = AdvanceVisionsDrawn.type | BeginTurn | EnterPhase |
     SetOathkeeper | RecordPowerUse | RecordCampaignResult | ModifyDicePool | Roll |
-    ModifyRollOutcome | QueueFollowUp | Defer | TakeDeferred
+    ModifyRollOutcome | QueueProcedure | Defer | TakeDeferred
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match
@@ -237,9 +237,10 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       case RecordCampaignResult(result) => ujson.Obj(
         "kind" -> "record-campaign-result",
         "result" -> encodeCampaignResult(result))
-      case QueueFollowUp(followUp) => ujson.Obj(
-        "kind" -> "queue-follow-up",
-        "followUp" -> encodeFollowUp(followUp))
+      case QueueProcedure(entry, atFront) => ujson.Obj(
+        "kind" -> "queue-procedure",
+        "entry" -> encodeQueued(entry),
+        "atFront" -> ujson.Bool(atFront))
       case ModifyDicePool(pool, delta, _) => ujson.Obj(
         "kind" -> "modify-dice-pool", "pool" -> pool.value,
         "delta" -> delta)
@@ -505,9 +506,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     case "record-campaign-result" =>
       decodeCampaignResult(value("result"), s"$path.result")
         .map(RecordCampaignResult(_))
-    case "queue-follow-up" =>
-      decodeFollowUp(value("followUp"), s"$path.followUp")
-        .map(QueueFollowUp(_))
+    case "queue-procedure" =>
+      decodeQueued(value("entry"), s"$path.entry")
+        .map(QueueProcedure(_, value("atFront").bool))
     case "modify-dice-pool" =>
       decodeSignedInt(value("delta"), s"$path.delta")
         .map(delta => ModifyDicePool(PoolKey(value("pool").str), delta))

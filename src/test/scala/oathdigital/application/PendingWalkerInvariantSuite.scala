@@ -41,7 +41,6 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     GameCommand.MoveWarbands(actor, toSite = true, 1),
     GameCommand.BeginRest(actor),
     GameCommand.FinishRest(actor),
-    GameCommand.SkipFollowUp(actor),
     GameCommand.UsePower(actor, SilverTongue.id,
       DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue"))),
     GameCommand.Undo(actor), GameCommand.Redo(actor),

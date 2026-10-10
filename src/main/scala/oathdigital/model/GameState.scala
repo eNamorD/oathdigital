@@ -108,13 +108,19 @@ object PowerSourceRef:
     case DecisionOptionRef.Banner(banner) => Some(Banner(banner))
     case _ => None
 
-/** An action owed to `player` once the current one ends (follow-up actions
-  * design): a full action of its own, started or skipped by its player
-  * before anything else happens, spending no Supply. `source` is the power
-  * that queued it, which the Game Log credits. `player` is the one place an
-  * off-turn actor (Sneak Attack) will differ from the active player. */
-final case class FollowUp(player: PlayerId, action: ActionRef,
-    source: PowerSourceRef)
+/** A procedure the walker runs as its own walk once the current one ends
+  * (walker-driven game loop design, "The queue"). `actor` owns the walk: the
+  * one place an off-turn actor (Sneak Attack) will differ from the active
+  * player. `startArgs` are what a start would carry. `source` is the power
+  * that queued it, which the Game Log credits; an entry with a source is a
+  * follow-up, whose walk spends no Supply. A `Run` starts at once; an
+  * `Offer` asks its actor first, with Skip. */
+final case class QueuedProcedure(actor: PlayerId, procedure: StartableRef,
+    startArgs: Vector[DecisionOptionRef], source: Option[PowerSourceRef],
+    kind: QueueKind)
+
+enum QueueKind:
+  case Run, Offer
 
 /** A stable identity for one use-limited power instance this turn. */
 final case class PowerUseRef(
@@ -182,14 +188,19 @@ final case class CurrentGameState(
     // The public result of the last Campaign fought. Not walker scratch:
     // `WalkerCompleted` leaves it, and the next Campaign replaces it.
     lastCampaignResult: Option[CampaignResult] = None,
-    // Actions owed once the current one ends, oldest first (follow-up
-    // actions design). Not walker scratch: it outlives runs and phases, and
-    // only `FollowUpStarted` and `FollowUpSkipped` take from it.
-    followUps: Vector[FollowUp] = Vector.empty,
-    // The entry the current run was started from. Walker scratch: replay
-    // sets it from `FollowUpStarted` and `WalkerCompleted` clears it, so the
-    // cost waiver and the Act-phase exemption hold on every resume.
-    walkerFollowUp: Option[FollowUp] = None,
+    // Procedures to run once the current walk ends, in order (walker-driven
+    // game loop design, "The queue"). Not walker scratch: it outlives walks
+    // and phases, and only `ProcedureDequeued` takes from it.
+    queue: Vector[QueuedProcedure] = Vector.empty,
+    // The entry the current walk was started from. Walker scratch: replay
+    // sets it from `ProcedureDequeued` and `WalkerCompleted` clears it, so
+    // the cost waiver and the phase exemption hold on every resume.
+    walkerEntry: Option[QueuedProcedure] = None,
+    // Whether an action's walk has finished since the last action boundary
+    // (walker-driven game loop design, ruling 5). Not walker scratch:
+    // `WalkerCompleted` of an action sets it, and only `ActionBoundaryRan`
+    // clears it, once the queue is empty.
+    boundaryDue: Boolean = false,
     // Ops a step of the current action holds for a later step of it
     // (operation rewrite design, "Deferral"). Walker scratch: replay
     // rebuilds it from the recorded `Defer`s, and the walker and

@@ -141,13 +141,13 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(active, Vector(DecisionOptionRef.Button("secret"))))))
     // Take Wealth is one atomic walker command (batch-1 Task 7): the resource
     // move, the use record and the completion. It was Wake's only option, so
-    // Wake ends in the same command: its phase-change step and completion
-    // follow. With the batch's opening `CommandAccepted`, the stream holds
-    // six events.
-    assertEquals(wealth.nextSequence, 6L)
+    // Wake ends in the same command: the action boundary's marker, then its
+    // phase-change step and completion follow. With the batch's opening
+    // `CommandAccepted`, the stream holds seven events.
+    assertEquals(wealth.nextSequence, 7L)
     assertEquals(
       service.handle("game-wake", 0L, GameCommand.EndWake(active)),
-      Left(GameApplicationError.StaleClientPosition(0L, 6L)))
+      Left(GameApplicationError.StaleClientPosition(0L, 7L)))
     val reloaded = loaded(replayingSecond(service, repository)
       .load("game-wake"))
     val after = Outcomes.ready(reloaded.state)
@@ -159,15 +159,16 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       "the replayed journal must restore the use limit it recorded")
     val records = loaded(repository.load("game-wake")).records
     assertEquals(records.map(record =>
-      ujson.read(record)("formatVersion").num.toInt), Vector.fill(6)(1))
+      ujson.read(record)("formatVersion").num.toInt), Vector.fill(7)(1))
     // Ending Wake is a walker procedure too (batch-1 Task 7), so the Wake
     // phase journals nothing of its own: the last two records are its
     // phase-change step and its completion, not a `gameplay.wake-ended`.
     assertEquals(records.map(record =>
       ujson.read(record)("eventType").str),
       Vector("undo.command-accepted", "walker.step-recorded",
-        "walker.step-recorded",
-        "walker.completed", "walker.step-recorded", "walker.completed"))
+        "walker.step-recorded", "walker.completed",
+        "walker.action-boundary-ran", "walker.step-recorded",
+        "walker.completed"))
 
   test("stale expected position rejects a command legal on current state"):
     // Replays Begin and a placement: the stale position is a journal length.

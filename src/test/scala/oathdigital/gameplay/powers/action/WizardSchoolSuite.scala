@@ -2,16 +2,13 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
-  PhasePowerHarness, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 import oathdigital.testkit.Unwrap.accepted
 
 class WizardSchoolSuite extends munit.FunSuite:
   import ActPowerHarness._
   import PowerFixture._
-
-  private val walkerParked = PhasePowerHarness.parked
 
   private val school = CatalogNames.denizen("Wizard School")
   private val source = DecisionOptionRef.Denizen(school)
@@ -27,10 +24,14 @@ class WizardSchoolSuite extends munit.FunSuite:
     val ready0 = staged(favor = 2)
     val done = accepted(use(rules(), ready0, WizardSchool.id, source))
     val end = ready(done.state)
-    assertEquals(Look(end).tokensOn(school), Tokens(1, 0))
-    assertEquals(Look(end).player(actor).board.favor, 1)
-    assertEquals(allSecrets(end), allSecrets(ready0) + 1)
-    walkerParked.assertResumed(done.state, Phase.Rest, actor)
+    // The power ends the Act phase. No REST power is usable, so the driver
+    // finishes Rest and the turn passes, which returns the favor placed.
+    val atRest = replayed(rules(), ready0, untilWalkEnds(done.events))
+    assertEquals(Look(atRest).tokensOn(school), Tokens(1, 0))
+    assertEquals(Look(atRest).player(actor).board.favor, 1)
+    assertEquals(allSecrets(atRest), allSecrets(ready0) + 1)
+    assertEquals(Look(atRest).phase, Phase.Rest)
+    assertNotEquals(Look(end).active, actor)
     assertEquals(replayed(rules(), ready0, done.events), end)
     assertWireRoundTrips(done.events)
 

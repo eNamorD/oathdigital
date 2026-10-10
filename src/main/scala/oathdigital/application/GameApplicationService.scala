@@ -402,13 +402,6 @@ final class GameApplicationService(
             !isWalkerResume(command) =>
         Left(OathViolation.InvalidEventOrder(
           "a walker procedure is pending; only walker resume commands are legal"))
-      // A queued action waits for its player: only its start and its skip
-      // are legal (follow-up actions design, ruling 3). Undo and Redo never
-      // reach here, so a player can still take the origin back.
-      case OathState.Ready(ready) if ready.game.current.result.isEmpty &&
-          ready.game.current.followUps.headOption.exists(head =>
-            !answersFollowUp(head, command)) =>
-        Left(OathViolation.FollowUpPending(ready.game.current.followUps.head))
       case _ => applyUnblockedCommand(state, command, nextSequence)
 
   private def applyUnblockedCommand(
@@ -470,8 +463,6 @@ final class GameApplicationService(
         rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
       case GameCommand.FinishRest(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
-      case GameCommand.SkipFollowUp(playerId) =>
-        rules.skipFollowUp(state, playerId)
       // `routed` sends Undo and Redo to the fold on every stream; these arms
       // only keep the match exhaustive.
       case GameCommand.Undo(_) => Left(OathViolation.NothingToUndo)
@@ -483,14 +474,6 @@ final class GameApplicationService(
   private def isWalkerResume(command: GameCommand): Boolean = command match
     case _: GameCommand.ResolveWalker | _: GameCommand.RollWalker => true
     case _ => false
-
-  /** Whether `command` starts or skips `head`, as its player. */
-  private def answersFollowUp(head: FollowUp, command: GameCommand): Boolean =
-    command match
-      case GameCommand.StartWalker(procedure, start) =>
-        procedure == head.action && start.actor == head.player
-      case GameCommand.SkipFollowUp(player) => player == head.player
-      case _ => false
 
   private def encode(
       gameId: String,

@@ -60,7 +60,9 @@ object ParkedNode:
                   "recorded")
               tree <- WalkerProcedureRegistry.rebuild(procedure, catalog,
                   ready, current.turn.activePlayer, current.walkerStartArgs,
-                  phasePowers).left.map(violation =>
+                  phasePowers, walkerPowers =
+                    WalkerPowers.selected(walkerPowers, Vector.empty))
+                .left.map(violation =>
                 s"could not rebuild $procedure's tree to read the park at " +
                   s"'$at': $violation")
               powers = WalkerPowers.selected(walkerPowers, Vector.empty)

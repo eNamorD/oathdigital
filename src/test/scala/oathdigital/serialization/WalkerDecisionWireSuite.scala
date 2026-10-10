@@ -1,8 +1,9 @@
 package oathdigital.serialization
 
 import oathdigital.model._
-import oathdigital.gameplay.walker.{ChoicePayload, FollowUpSkipped,
-  FollowUpStarted, WalkerCompleted, WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ActionBoundaryRan, ChoicePayload,
+  FollowUpSkipped,
+  ProcedureDequeued, WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
   PartitionAnswer}
 import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
@@ -136,24 +137,31 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
     }
 
   test("a follow-up's start and skip round trip with their entry"):
-    val entry = FollowUp(PlayerId("p1"), ActionRef.Travel,
-      PowerSourceRef.Card(CatalogNames.denizen("Second Wind")))
+    val entry = QueuedProcedure(PlayerId("p1"), ActionRef.Travel, Vector.empty,
+        Some(PowerSourceRef.Card(CatalogNames.denizen("Second Wind"))),
+        QueueKind.Offer)
     val encoded = encodedStreamThatRoundTrips("follow-ups", Vector[OathEvent](
-      FollowUpStarted(entry), FollowUpSkipped(entry)))
-    assert(encoded.contains("\"walker.follow-up-started\""), encoded)
+      ProcedureDequeued(entry), FollowUpSkipped(entry)))
+    assert(encoded.contains("\"walker.procedure-dequeued\""), encoded)
     assert(encoded.contains("\"walker.follow-up-skipped\""), encoded)
 
-  test("a follow-up naming something other than an action is refused"):
-    val entry = FollowUp(PlayerId("p1"), ActionRef.Travel,
-      PowerSourceRef.Card(CatalogNames.denizen("Second Wind")))
-    val encoded = encodedStreamThatRoundTrips("follow-up-family",
-      Vector[OathEvent](FollowUpStarted(entry)))
+  test("the action boundary marker round trips with an empty payload"):
+    val encoded = encodedStreamThatRoundTrips("boundary",
+      Vector[OathEvent](ActionBoundaryRan))
+    assert(encoded.contains("\"walker.action-boundary-ran\""), encoded)
+
+  test("a queued entry naming a procedure no client starts is refused"):
+    val entry = QueuedProcedure(PlayerId("p1"), ActionRef.Travel, Vector.empty,
+      Some(PowerSourceRef.Card(CatalogNames.denizen("Second Wind"))),
+      QueueKind.Offer)
+    val encoded = encodedStreamThatRoundTrips("queued-family",
+      Vector[OathEvent](ProcedureDequeued(entry)))
     val tampered = encoded.replace("\"family\": \"action\"",
-      "\"family\": \"phase-transition\"").replace("\"key\": \"travel\"",
-      "\"key\": \"end-wake\"")
+      "\"family\": \"triggered\"").replace("\"key\": \"travel\"",
+      "\"key\": \"oathkeeper\"")
     assertEquals(GameEventWire.decodeStream(tampered).left.toOption,
-      Some(WireError.InvalidValue("$[0].payload.followUp.action",
-        "a follow-up is an action, not end-wake")))
+      Some(WireError.InvalidValue("$[0].payload.entry.procedure",
+        "a queued procedure is startable, not oathkeeper")))
 
   test("every option reference kind round trips through a recorded answer"):
     val player = PlayerId("red")

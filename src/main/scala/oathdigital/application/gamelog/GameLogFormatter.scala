@@ -6,9 +6,9 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.ReplayStep
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.{ConsentPowers, WalkerPowerCatalog}
-import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
-  FollowUpSupplyWaiver, PowerNoted, WalkerCompleted, WalkerParked,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{FollowUpSkipped,
+  FollowUpSupplyWaiver, PowerNoted, ProcedureDequeued, WalkerCompleted,
+  WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
 
@@ -190,14 +190,15 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
       case _: OathEvent.BanditsRefilled | _: OathEvent.UsurperFlipped =>
         (events.lines(journal, at, viewer), run)
       case _: WalkerStepRecorded | _: WalkerParked | _: WalkerCompleted |
-          _: PowerNoted | _: FollowUpStarted =>
+          _: PowerNoted | _: ProcedureDequeued =>
         walker(journal, run, at, viewer)
       // Outside any run; `formatLive` files it in the latest section.
-      case FollowUpSkipped(followUp) =>
+      case FollowUpSkipped(entry) =>
         (Vector(Posted.line(LogKind.Action,
-          words.source(followUp.source, journal.readyBefore(at).toVector,
-            viewer) ++ Vector(Text(s": ${starts.name(followUp.action)
-              .getOrElse(followUp.action.key)} skipped.")))), run)
+          entry.source.toVector.flatMap(words.source(_,
+            journal.readyBefore(at).toVector, viewer)) ++
+            Vector(Text(s": ${starts.name(entry.procedure)
+              .getOrElse(entry.procedure.key)} skipped.")))), run)
       case _: WalkerEvent => (Vector.empty, run)
 
   /** Lines for one event of a walker run. A run begins at the first walker

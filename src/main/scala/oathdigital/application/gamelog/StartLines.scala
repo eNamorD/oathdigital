@@ -4,7 +4,7 @@ import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
-import oathdigital.gameplay.walker.{ChoicePayload, FollowUpStarted,
+import oathdigital.gameplay.walker.{ChoicePayload, ProcedureDequeued,
   WalkerCompleted, WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
@@ -38,13 +38,14 @@ private[gamelog] final class StartLines(words: LogWords,
     }
 
   /** " · Knights Errant" when the run was started from the queue: its
-    * `FollowUpStarted` is in the run's first segment. */
+    * `ProcedureDequeued` is in the run's first segment. */
   private def queuedBy(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[LogSpan] =
     (run.first to journal.segmentEnd(at)).iterator.map(journal.event)
-      .collectFirst { case FollowUpStarted(followUp) => followUp }
-      .toVector.flatMap(followUp => Text(" · ") +: words.source(
-        followUp.source, journal.readyBefore(run.first).toVector, viewer))
+      .collectFirst { case ProcedureDequeued(entry) => entry }
+      .toVector.flatMap(entry => entry.source.toVector.flatMap(source =>
+        Text(" · ") +: words.source(source,
+          journal.readyBefore(run.first).toVector, viewer)))
 
   /** Recover spends Supply again each time the player continues rolling. */
   def continued(journal: LogJournal, run: Run, at: Int): Option[Posted] =

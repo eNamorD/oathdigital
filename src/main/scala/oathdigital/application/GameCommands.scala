@@ -28,9 +28,6 @@ object GameCommand:
       extends GameCommand
   final case class BeginRest(playerId: PlayerId) extends GameCommand
   final case class FinishRest(playerId: PlayerId) extends GameCommand
-  /** Declines the queued action at the head of the queue (follow-up
-    * actions design). */
-  final case class SkipFollowUp(playerId: PlayerId) extends GameCommand
   final case class UsePower(playerId: PlayerId, power: PowerId,
       source: DecisionOptionRef) extends GameCommand
   /** Takes back the latest live command batch, which `actor` must have
@@ -69,7 +66,6 @@ object GameCommand:
     case MoveWarbands(player, _, _) => Some(player)
     case BeginRest(player) => Some(player)
     case FinishRest(player) => Some(player)
-    case SkipFollowUp(player) => Some(player)
     case UsePower(player, _, _) => Some(player)
     case Undo(_) => None
     case Redo(_) => None

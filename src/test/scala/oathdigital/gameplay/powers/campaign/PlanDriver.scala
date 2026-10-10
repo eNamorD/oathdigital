@@ -179,6 +179,13 @@ object PlanDriver:
     val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
       .fold(error => throw new IllegalStateException(s"no start: $error"),
         identity)
+    committed(game, started, b, force, targets, raid)
+
+  /** The same, for a Campaign `started` some other way: a taken follow-up
+    * offer, say. */
+  def committed(game: OathRules, started: OathTransition, b: Board,
+      force: Int, targets: Vector[DecisionOptionRef] = Vector.empty,
+      raid: Boolean = false): Run =
     val run = Run(game, started, started.events)
     val kind =
       if awaits(run, b.actor, CampaignIds.kind) then run.pick(b.actor,

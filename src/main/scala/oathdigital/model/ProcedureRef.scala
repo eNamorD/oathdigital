@@ -59,6 +59,10 @@ enum TriggeredProcedureRef(val key: String) extends ProcedureRef:
     * N8). The turn boundary or the end of Setup starts it; nothing else may
     * run until it ends. */
   case ForcedWake extends TriggeredProcedureRef("forced-wake")
+  /** Asks a follow-up entry's actor: the action, or Skip (walker-driven
+    * game loop design, ruling 6). The driver starts it when it dequeues an
+    * `Offer` entry. */
+  case FollowUpOffer extends TriggeredProcedureRef("follow-up-offer")
 
 object ActionRef:
   case object Search extends ActionRef { val key = "search" }
@@ -114,7 +118,7 @@ object PhaseTransitionRef:
 
 object TriggeredProcedureRef:
   val all: Vector[TriggeredProcedureRef] = Vector(Oathkeeper, Setup,
-    ForcedWake)
+    ForcedWake, FollowUpOffer)
 
 object StartableRef:
   /** Finite references are listed in `all`; parameterized use-power keys

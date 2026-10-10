@@ -4,16 +4,12 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.consent.ConsentEvolution
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
-import oathdigital.gameplay.phases.rest.{TurnBoundary,
-  WarExhaustionRandomPort}
+import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
-import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
-import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.phases.wake.{ForcedWakeProcedure,
-  TakeWealthProcedure}
 import oathdigital.gameplay.powerresolver.{PhasePowers}
-import oathdigital.gameplay.walker.{FollowUpSkipped, FollowUpStarted,
-  PowerNoted, ProcedureWalker, WalkerCompleted, WalkerDice, WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ActionBoundaryRan, FollowUpSkipped,
+  PowerNoted, ProcedureDequeued, ProcedureWalker, WalkerCompleted, WalkerDice,
+  WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
 import oathdigital.gameplay._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
@@ -39,14 +35,14 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     protected val phasePowerCatalog: PhasePowers = PhasePowers.empty,
     protected val walkerDice: WalkerDice = WalkerDice.unavailable)
     extends EventEvolution[OathState, OathEvent, OathViolation]
-    with OathRulesWalker:
+    with OathRulesWalker with OathDriver:
   override val initialState: OathState = NoGame
 
   /** The global operation restrictions outside a walker action: the catalog's
     * printed ones and the automatic powers', with no modifiers, since no
     * action is running. Minor actions and state-based effects run under
     * them. */
-  private lazy val outsideActions: Vector[OperationRestriction] =
+  protected lazy val outsideActions: Vector[OperationRestriction] =
     WalkerPowers.selected(walkerPowerCatalog, Vector.empty).operationRestrictions
 
   /** Walker-ownership invariant: while a walker procedure is parked, only
@@ -64,7 +60,8 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: MinorActionCommand)
       : Either[OathViolation, OathTransition] = unlessWalkerPending(state):
-    MinorActions.handle(catalog, state, command, outsideActions).flatMap(completeAction)
+    MinorActions.handle(catalog, state, command, outsideActions)
+      .flatMap(next(_, Ended.MinorAction))
 
   override def evolve(
       state: OathState,
@@ -89,7 +86,10 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
       case event: PowerNoted => ProcedureWalker.applyRecorded(state, event)
-      case event: FollowUpStarted => ProcedureWalker.applyRecorded(state, event)
+      case event: ProcedureDequeued =>
+        ProcedureWalker.applyRecorded(state, event)
+      case ActionBoundaryRan =>
+        ProcedureWalker.applyRecorded(state, ActionBoundaryRan)
       case event: FollowUpSkipped => ProcedureWalker.applyRecorded(state, event)
       // `WalkerEvent` is open, so an event type this match does not know
       // rejects here instead of escaping as a `MatchError`.
@@ -138,58 +138,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       yield withSetup
     case _ => Left(GameAlreadyExists)
 
-  protected def completeAction(transition: OathTransition)
-      : Either[OathViolation, OathTransition] =
-    recordBoundaryFallback(transition)
-      .flatMap(appendEvaluation(_, StateBasedEvaluation.banditRefill(catalog, _)))
-      .flatMap(oathkeeperStep)
-
-  protected def turnBoundary(transition: OathTransition)
-      : Either[OathViolation, OathTransition] =
-    val rounded = transition.state match
-      case Ready(ready) if ready.game.current.turn.phase == Phase.RoundEnd =>
-        TurnBoundary.finishRound(catalog, transition, warExhaustionRandomPort,
-          outsideActions)
-      case _ => Right(transition)
-    rounded.flatMap(next => next.state match {
-      case Ready(ready) if ready.game.current.result.nonEmpty => Right(next)
-      case _ => enterWake(next)
-    })
-
-  protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean =
-    PhasePowerProcedure.usable(catalog, ready, player, phasePowerCatalog,
-      walkerPowers).nonEmpty
-
-  protected def wakeOptionOpen(ready: ReadyGame, player: PlayerId): Boolean =
-    PhasePowerProcedure.usable(catalog, ready, player, phasePowerCatalog,
-      walkerPowers)
-      .nonEmpty || TakeWealthProcedure.candidates(catalog, ready, player,
-        walkerPowers).nonEmpty
-
-  /** The boundary decides only WHETHER the title changes; the triggered
-    * procedure performs the change, so every title change is one walker step.
-    */
-  private def oathkeeperStep(transition: OathTransition)
-      : Either[OathViolation, OathTransition] = transition.state match
-    case Ready(ready) => StateBasedEvaluation.supported(transition.state)
-      .flatMap(_ => OathkeeperRules.outcome(ready) match {
-        case OathkeeperOutcome.NoChange => Right(transition)
-        case _ => startTriggered(transition, TriggeredProcedureRef.Oathkeeper)
-      })
-    case _ => Right(transition)
-
-  private def recordBoundaryFallback(transition: OathTransition) =
-    transition.state match
-      case Ready(ready) =>
-        val actor = ready.game.current.turn.activePlayer
-        PowerRuntime.ignored(catalog, ready, actor,
-          ActionKind.ActionBoundary).map { diagnostics =>
-          if diagnostics.isEmpty then transition else transition.copy(events =
-            transition.events :+ IgnoredRulesRecorded(actor,
-              ActionKind.ActionBoundary, diagnostics))
-        }
-      case _ => Right(transition)
-
   protected def withFallback(state: OathState, actor: PlayerId,
       action: ActionKind)(
       operation: => Either[OathViolation, OathTransition])
@@ -202,54 +150,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
             diagnostics) +: transition.events)
         }}
       case _ => operation
-
-  private def enterWake(transition: OathTransition): Either[OathViolation, OathTransition] =
-    def append(current: OathTransition, event: OathEvent) =
-      evolve(current.state, event).map(next => current.copy(state = next,
-        events = current.events :+ event))
-    val prepared = transition.state match
-      case Ready(ready) => PowerRuntime.ignored(catalog, ready,
-        ready.game.current.turn.activePlayer, ActionKind.Wake).map { diagnostics =>
-        if diagnostics.isEmpty then transition else transition.copy(events =
-          transition.events :+ IgnoredRulesRecorded(
-            ready.game.current.turn.activePlayer, ActionKind.Wake, diagnostics))
-      }
-      case _ => Right(transition)
-    prepared.flatMap(current => StateBasedEvaluation.atWake(current.state).flatMap {
-      case Some(win: UsurperVictory) => append(current, win)
-      case Some(flip: UsurperFlipped) => append(current, flip).flatMap { after =>
-        StateBasedEvaluation.visionAtWake(after.state).flatMap {
-          case Some(vision) => append(after, vision)
-          case None => Right(after)
-        }
-      }
-      case None => StateBasedEvaluation.visionAtWake(current.state).flatMap {
-        case Some(vision) => append(current, vision)
-        case None => Right(current)
-      }
-      case Some(other) => Left(InvalidEventOrder(
-        s"unexpected Wake evaluation event: $other"))
-    }).flatMap(forcedWake)
-
-  /** The forced Wake powers of the player whose Wake begins (catalog batch
-    * 2, N8): after the Usurper and Vision checks at a turn boundary, and
-    * when Setup ends, since Setup's tree begins the first Wake itself. Only
-    * while the game goes on. */
-  protected def forcedWake(transition: OathTransition)
-      : Either[OathViolation, OathTransition] = transition.state match
-    case Ready(ready) if ready.game.current.result.isEmpty &&
-        ready.game.current.turn.phase == Phase.Wake &&
-        ForcedWakeProcedure.due(catalog, ready,
-          ready.game.current.turn.activePlayer, phasePowerCatalog).nonEmpty =>
-      startTriggered(transition, TriggeredProcedureRef.ForcedWake)
-    case _ => Right(transition)
-
-  private def appendEvaluation(transition: OathTransition,
-      evaluate: OathState => Either[OathViolation, Option[OathEvent]]) =
-    evaluate(transition.state).flatMap:
-      case None => Right(transition)
-      case Some(event) => evolve(transition.state, event).map(next =>
-        transition.copy(state = next, events = transition.events :+ event))
 
 object OathRules:
   /** How a walker command derives its procedure tree. `starting`

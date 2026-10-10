@@ -12,7 +12,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
-import oathdigital.gameplay.walker.{ChoicePayload, RollPayload,
+import oathdigital.gameplay.walker.{ChoicePayload, FollowUpOffer, RollPayload,
   WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer}
@@ -185,10 +185,12 @@ private[gamelog] object DetailLines:
     * line and the follow-up discard of a Replace site slot, the
     * facedown-adviser pick, which the played adviser's line names, every
     * Campaign and Negotiation line, each action line that names its
-    * choice, and the modifier decision, which the start line names. */
+    * choice, the modifier decision, which the start line names, and the
+    * follow-up offer, which the queued action's tag or the Skip line tells. */
   private val NarratedPrefixes = Vector("setup.", ActionLines.PlacePrefix,
     "cardplay.discard.", "campaign.", "negotiation.", "travel.")
-  private val NarratedIds = Set(SearchProcedure.sourceDecisionId,
+  private val NarratedIds = Set(FollowUpOffer.decisionId,
+    SearchProcedure.sourceDecisionId,
     SearchProcedure.cardDecisionId,
     CardPlayProcedure.facedownAdviserDecisionId,
     RecoverProcedure.choiceDecisionId, RecoverProcedure.relicDecisionId,

@@ -1,0 +1,11 @@
+0.0 round 0 | Round 1
+0.1 turn 0 | [player:p1|p1]'s turn
+0.2 phase 0 | Act
+7.0 section 1 campaign@4 | Campaign · [card:120|Knights Errant]
+7.1 action 1 campaign@4 | Conquest against the bandits
+13.0 decision 1 campaign@4 | Targets: [site:site:ancient-city|Ancient City]
+13.1 delta 1 campaign@4 | Attack Pool: 0, Defense Pool: 2
+15.0 roll 1 campaign@4 | Rolled [dice:defense blank blank|blank, blank] for the defense
+16.0 roll 1 campaign@4 | Defense: 3
+17.0 action 1 campaign@4 | The bandits win!
+23.0 action 1 campaign@4 | [card:120|Knights Errant]: Campaign skipped.

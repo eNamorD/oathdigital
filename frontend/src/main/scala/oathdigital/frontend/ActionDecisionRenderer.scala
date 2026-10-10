@@ -6,15 +6,6 @@ private[frontend] object ActionDecisionRenderer:
    val node = element("div", "status")
    presentation.procedureStatus match
      case Some(message) => node.textContent = message
-     // A waiting viewer reads who may act and why; the entry's own player
-     // reads nothing, because the follow-up panel says it.
-     case None if value.followUp.nonEmpty =>
-       value.followUp.filterNot(_.playerId == presentation.playerId)
-         .foreach { followUp =>
-           node.appendChild(playerReference(value, followUp.playerId))
-           node.appendChild(dom.document.createTextNode(
-             s" may ${followUp.action} (${followUp.source})"))
-         }
      case None => presentation.waitingForPlayerId match
      case Some(playerId) =>
        node.appendChild(dom.document.createTextNode("Waiting for "))
@@ -92,10 +83,6 @@ private[frontend] object ActionDecisionRenderer:
        !value.legalControls.contains("endWake")
      end.onclick = _ => submitCommand(GameCommand.EndWake)
      panel.appendChild(end)
-   val followUpPending = value.phase == "follow-up-pending" &&
-     presentation.showGameplayControls
-   if followUpPending then
-     FollowUpControls.render(value, canControl, panel, submitCommand)
    if showActActionControls(value, presentation) then
      val groups = new ActionSections
      if value.legalControls.contains("beginSearch") then

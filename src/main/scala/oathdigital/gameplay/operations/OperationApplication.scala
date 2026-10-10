@@ -211,8 +211,8 @@ private[gameplay] object OperationApplication:
         result.flatMap(TurnStateOperations.setOathkeeper(_, holder))
       case (result, RecordCampaignResult(fact)) =>
         result.map(TurnStateOperations.recordCampaignResult(_, fact))
-      case (result, QueueFollowUp(followUp)) =>
-        result.map(TurnStateOperations.queueFollowUp(_, followUp))
+      case (result, QueueProcedure(entry, atFront)) =>
+        result.map(TurnStateOperations.queueProcedure(_, entry, atFront))
       case (result, BeginTurn(player, phase)) =>
         result.flatMap(TurnStateOperations.beginTurn(_, player, phase))
       case (result, _) => result

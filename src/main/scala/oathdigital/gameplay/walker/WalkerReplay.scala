@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationExecutor, PayCostSettlement}
-import oathdigital.model.{Answered, CoreOperation, OathState, OathViolation, PendingTree, ReadyGame, WalkerEvent}
+import oathdigital.model.{ActionRef, Answered, CoreOperation, OathState, OathViolation, PendingTree, ReadyGame, WalkerEvent}
 
 /** Replay half of the walker: applies durable walker facts to state without
   * ever deriving or walking an action tree (batch-1 Task 5).
@@ -153,29 +153,35 @@ private[walker] object WalkerReplay:
             walkerProcedure = None,
             walkerStartArgs = Vector.empty,
             walkerStartFacts = Vector.empty,
-            walkerFollowUp = None,
+            walkerEntry = None,
+            boundaryDue = procedure match
+              case _: ActionRef => true
+              case _ => ready.game.current.boundaryDue,
             rollPools = Map.empty,
             walkerDeferred = Map.empty,
             rollOutcomes = Map.empty)))
 
-      case FollowUpStarted(followUp) =>
+      case ActionBoundaryRan =>
+        Right(ready.updateCurrent(_.copy(boundaryDue = false)))
+
+      case ProcedureDequeued(entry) =>
         val current = ready.game.current
         for
-          _ <- Either.cond(current.followUps.headOption.contains(followUp), (),
+          _ <- Either.cond(current.queue.headOption.contains(entry), (),
             OathViolation.InvalidEventOrder(
-              "follow-up start does not match the queue head"))
+              "dequeued entry does not match the queue head"))
           _ <- Either.cond(current.walkerProcedure.isEmpty &&
-            current.walkerFollowUp.isEmpty, (), OathViolation.InvalidEventOrder(
-            "a follow-up started while another run is open"))
-        yield ready.updateCurrent(_.copy(followUps = current.followUps.tail,
-          walkerFollowUp = Some(followUp)))
+            current.walkerEntry.isEmpty, (), OathViolation.InvalidEventOrder(
+            "an entry was dequeued while another walk is open"))
+        yield ready.updateCurrent(_.copy(queue = current.queue.tail,
+          walkerEntry = Some(entry)))
 
-      case FollowUpSkipped(followUp) =>
-        val current = ready.game.current
-        Either.cond(current.followUps.headOption.contains(followUp),
-          ready.updateCurrent(_.copy(followUps = current.followUps.tail)),
+      // The offer's walk already took the entry; Skip only anchors the
+      // Game Log line.
+      case FollowUpSkipped(entry) =>
+        Either.cond(ready.game.current.walkerEntry.contains(entry), ready,
           OathViolation.InvalidEventOrder(
-            "follow-up skip does not match the queue head"))
+            "a skip does not name the offered entry"))
 
       // An audit fact for the Game Log; replay has nothing to apply.
       case _: PowerNoted => Right(ready)

@@ -10,7 +10,6 @@ private[protocol] object CommandIntentDecoders:
     case "endWake" => empty(value, path, EndWake)
     case "beginRest" => empty(value, path, BeginRest)
     case "finishRest" => empty(value, path, FinishRest)
-    case "skipFollowUp" => empty(value, path, SkipFollowUp)
     case "undo" => empty(value, path, Undo)
     case "redo" => empty(value, path, Redo)
     case "usePower" =>

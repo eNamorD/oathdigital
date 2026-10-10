@@ -154,6 +154,11 @@ object PowerWindow:
   case object RecoverBeforeFirstRoll extends RecoverWindow:
     val key = "recover.before-first-roll"
   case object RecoverAfterRelic extends RecoverWindow { val key = "recover.after-relic" }
+
+  /** The Supply each Recover roll costs (walker-driven game loop design,
+    * plan-time ruling 6): the follow-up waiver strips it here. */
+  case object RecoverCost extends RecoverWindow:
+    val key = "recover.cost"
   case object RestStart extends OtherWindow { val key = "rest.start" }
   case object RestReturnFavor extends OtherWindow { val key = "rest.return-favor" }
   case object RestReturnSecrets extends OtherWindow { val key = "rest.return-secrets" }

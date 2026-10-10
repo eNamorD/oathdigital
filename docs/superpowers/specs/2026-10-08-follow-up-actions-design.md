@@ -4,6 +4,22 @@
 actions**, without Search Party (its own spec) and without Sneak Attack (needs
 an off-turn actor).
 
+**Amended 2026-10-09** by the
+[walker-driven game loop](2026-10-09-walker-game-loop-design.md), slice 1:
+a follow-up is a queued offer the walker asks. Rulings 2, 3 and 6 and the
+sections "Start and skip", "Cost waiver" and "Projection and UI" below are
+rewritten to match, and ruling 5 holds with the offer's option disabled and
+Skip always available. In "Sneak Attack hooks" and "Testing", the service
+gate, `SkipFollowUp`, `FollowUpProjection`, the controls and the
+`follow-up-pending` label no longer exist, and `FollowUpSkipped` changes no
+state: it anchors the Skip line inside the offer's walk. The rest stands,
+under the new names: `FollowUp` is
+`QueuedProcedure`, `followUps` is `queue`, `walkerFollowUp` is `walkerEntry`,
+`QueueFollowUp` is `QueueProcedure`, and `FollowUpStarted` is
+`ProcedureDequeued`. The
+[architecture note](../../architecture/follow-up-actions.md) holds the
+current wiring.
+
 ## Goal
 
 A power can queue an action to run after the current one. The queued action
@@ -38,13 +54,13 @@ nested in it. The queued Campaign is a full action and may take modifiers."
    queuing, and get their own spec. Sneak Attack needs an off-turn actor and
    stays engine-blocked; this design keeps hooks for it (see Sneak Attack
    hooks).
-2. **Opt-in after the origin ends.** The origin action completes. The player
-   then sees only the queued action's button and Skip. The button runs the
-   normal start flow, modifier selection included. No yes/no question is asked
-   inside the origin action.
-3. **Nothing in between.** While an entry is queued, the player can take no
-   other major action, no minor action, no ACTION power and no Take Wealth.
-   "After X, you may Y" means Y right away.
+2. **Opt-in after the origin ends.** The origin action completes. The walker
+   then asks the player: the queued action, for no Supply, or Skip. Taking
+   it starts the action at once, with its own modifier decision. No question
+   is asked inside the origin action.
+3. **Nothing in between.** The offer is a parked walker decision, so no
+   other command runs until it is answered. "After X, you may Y" means Y
+   right away.
 4. **The engine waives Supply.** Every queued action spends no Supply. The
    source power takes no part in the queued run.
 5. **An unstartable entry stays.** When the queued action cannot start, its
@@ -53,8 +69,7 @@ nested in it. The queued Campaign is a full action and may take modifiers."
 6. **The Act phase ending leaves the queue.** Nothing in the rules stops a
    Campaign after the Act phase (Sneak Attack campaigns off turn). When a run
    enters Rest (Special Envoy on a queued Travel, for example), the queue
-   drains before any Rest control is offered, and a queued action's
-   start skips the Act-phase check.
+   drains first, and a queued action's start skips the phase check.
 7. **No journal compatibility.** Stored games whose journals contain a nested
    Knights Errant Campaign stop replaying. The journal version marker is
    not bumped (2026-10-08): readers accept only the exact version, so a bump
@@ -109,46 +124,31 @@ anchors the Skip line.
 
 ### Start and skip
 
-While `followUps` is not empty and no walker is pending,
-`GameApplicationService` accepts only two commands, both from
-`followUps.head.player`: `StartWalker` for `head.action`, and the new
-`SkipFollowUp`. Every other command is refused with a new
-`OathViolation.FollowUpPending`, mirroring the parked-walk gate.
+When a walk ends, the driver (`OathDriver.next`) takes the queue's head with
+`ProcedureDequeued(entry)`, which holds it in `walkerEntry`, and starts the
+follow-up offer (`FollowUpOffer`). The offer asks the entry's actor: the
+action, or Skip.
 
-`startWalker`, when `followUps` is not empty:
+- The action's option is priced by `QueuedStart.refusal`: the checks the
+  start runs, on the state it would see. When it would be refused, the
+  option is unavailable with its reason, and Skip stays available.
+- Taking it puts the entry, as a `Run`, in front of the queue. The driver
+  dequeues it and starts the action in the same command.
+- Skip ends the offer's walk. `FollowUpSkipped(entry)` anchors its Game Log
+  line.
 
-- requires the requester to be `head.player` (the one comparison point for
-  Sneak Attack later; today `head.player` is always the active player);
-- requires the procedure to be `head.action`;
-- skips the Act-phase check;
-- emits `FollowUpStarted(head)` first, then runs the normal flow: modifier
-  validation, tree build, restriction check, advance.
+A queued run completes like any action. The action boundary runs once the
+queue is empty, so a chain gets one boundary, after its last action.
 
-A failed start refuses the whole command and leaves the queue unchanged. The
-disabled button keeps a player from reaching that refusal.
-
-A queued run completes like any action: `WalkerCompleted`, then the action
-boundary (bandit refill, the Oathkeeper step). The next head is then offered.
-`autoEndWake` cannot fire, because a queued action never runs in Wake, and
-`autoFinishRest` follows only `BeginRest`, so a queue that survives a Special
-Envoy is never skipped past.
-
-`SkipFollowUp` is accepted whether or not the head can start. It emits
-`FollowUpSkipped(head)`. The next head is offered, or the normal controls
-return when the queue is empty.
-
-When an action ends the game (`result` is set), a leftover queue is ignored:
-no gate, no controls.
+When an action ends the game (`result` is set), a leftover queue is ignored.
 
 ### Cost waiver
 
-`WalkerPowers.selected` reads `walkerFollowUp`. When it is set, it appends a
-built-in contribution, `FollowUpCostWaiver`, with an engine `PowerId`
-(`engine.follow-up-supply`). Its `Transform` at the action's cost window
-removes every `SpendSupply` by the actor. Every walker path builds its powers
+`FollowUpSupplyWaiver` is always offered and reads `walkerEntry`. When the
+entry has a source, its `Transform` at the action's cost window removes every
+`SpendSupply` by the entry's actor. Every walker path builds its powers
 through `WalkerPowers`, so the waiver reaches the walk on start and on every
-resume, the `ModifierOffers` payment dry-run, `startableWithModifiers` and
-preview.
+resume, the offer's dry run and any preview. Recover pays at `RecoverCost`.
 
 The action-to-cost-window map is total over the seven actions:
 `Campaign → CampaignCost`, `Travel → TravelCost`, `Search → SearchCost`,
@@ -165,38 +165,9 @@ queued run filters again, harmlessly.
 
 ### Projection and UI
 
-`LegalProjection` gains `followUp: Option[FollowUpProjection]`, set when
-`followUps` is not empty, no walker is pending and the game is not over:
-
-```scala
-final case class FollowUpProjection(player: PlayerId, action: ActionRef,
-  source: PowerSourceRef, startable: Boolean, reason: Option[String],
-  queuedAfter: Int)
-```
-
-- `startable` is `startableWithModifiers(head.action)`, under the waiver.
-- `reason` is set only when `startable` is false. Each action declares its
-  reason. Campaign checks restrictions first ("Forbidden by Vow of Peace"),
-  then legal kinds ("No site to conquer and no enemy pawn to raid"). Travel:
-  "No site to travel to". Any other action: "Cannot start now".
-- `queuedAfter` counts the entries behind the head, so the UI can show
-  "then: Campaign" for Second Wind.
-
-While the queue is not empty, `controls` returns only `beginFollowUp` and
-`skipFollowUp`, and only to `head.player`. The `minor` projection also
-requires `followUps.isEmpty`. `PendingProjector` labels the phase
-`follow-up-pending`, so a waiting player reads "Red may campaign
-(Knights Errant)".
-
-The frontend draws a follow-up panel in place of the action buttons:
-
-- "Campaign for no Supply · Knights Errant", disabled with `reason` as its
-  hover text when `startable` is false. A click runs
-  `ModifierFlow.submit(StartWalker(head.action))`, so modifiers are offered as
-  usual.
-- "Skip", which sends `SkipFollowUp`.
-
-The hard-coded "Campaign (2 Supply)" label stays for normal starts.
+The offer is a parked walker decision: the frontend draws it as any
+choose-one, with the reason on the unavailable option's hover. There is no
+follow-up projection, control or panel.
 
 ### Game Log and roll feedback
 

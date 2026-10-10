@@ -3,8 +3,8 @@ package oathdigital.serialization
 import oathdigital.model._
 
 /** Wire spellings shared by the walker's operations and events: a power's
-  * source, a procedure reference, and a queued follow-up entry, which holds
-  * both (follow-up actions design). */
+  * source, a procedure reference, and a queued entry, which holds both
+  * (walker-driven game loop design, "The queue"). */
 private[serialization] trait FollowUpWire:
   this: GameEventJsonSupport =>
   import WireError._
@@ -44,18 +44,36 @@ private[serialization] trait FollowUpWire:
     ProcedureRef.fromFamilyKey(family, key).toRight(InvalidValue(path,
       s"unknown walker procedure '$family/$key'"))
 
-  protected final def encodeFollowUp(followUp: FollowUp): ujson.Value =
-    ujson.Obj(
-      "playerId" -> followUp.player.value,
-      "action" -> encodeProcedure(followUp.action),
-      "source" -> encodePowerSource(followUp.source))
+  protected final def encodeQueued(entry: QueuedProcedure): ujson.Value =
+    val fields = Vector[(String, ujson.Value)](
+      "actorId" -> entry.actor.value,
+      "procedure" -> encodeProcedure(entry.procedure),
+      "startArgs" -> ujson.Arr.from(entry.startArgs.map(
+        DecisionAnswerCodec.encodeRef)),
+      "kind" -> (entry.kind match
+        case QueueKind.Run => "run"
+        case QueueKind.Offer => "offer")) ++
+      entry.source.map(source => "source" -> encodePowerSource(source))
+    ujson.Obj.from(fields)
 
-  protected final def decodeFollowUp(value: ujson.Value,
-      path: String): Either[WireError, FollowUp] = for
-    procedure <- decodeProcedure(value("action"), s"$path.action")
-    action <- procedure match
-      case action: ActionRef => Right(action)
-      case other => Left(InvalidValue(s"$path.action",
-        s"a follow-up is an action, not ${other.key}"))
-    source <- decodePowerSource(value("source"), s"$path.source")
-  yield FollowUp(PlayerId(value("playerId").str), action, source)
+  protected final def decodeQueued(value: ujson.Value,
+      path: String): Either[WireError, QueuedProcedure] = for
+    procedure <- decodeProcedure(value("procedure"), s"$path.procedure")
+    startable <- procedure match
+      case startable: StartableRef => Right(startable)
+      case other => Left(InvalidValue(s"$path.procedure",
+        s"a queued procedure is startable, not ${other.key}"))
+    startArgs <- traverse(value("startArgs").arr.zipWithIndex.toVector):
+      case (ref, index) =>
+        DecisionAnswerCodec.decodeRef(ref, s"$path.startArgs[$index]")
+    source <- value.obj.get("source") match
+      case None => Right(None)
+      case Some(source) =>
+        decodePowerSource(source, s"$path.source").map(Some(_))
+    kind <- value("kind").str match
+      case "run" => Right(QueueKind.Run)
+      case "offer" => Right(QueueKind.Offer)
+      case other => Left(InvalidValue(s"$path.kind",
+        s"unknown queue kind '$other'"))
+  yield QueuedProcedure(PlayerId(value("actorId").str), startable,
+    startArgs, source, kind)

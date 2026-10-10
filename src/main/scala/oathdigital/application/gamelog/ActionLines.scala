@@ -50,8 +50,10 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       // The phase changes show in the lines around them.
       case PhaseTransitionRef.EndWake | PhaseTransitionRef.BeginRest =>
         Vector.empty
-      // Each forced power writes its own lines.
-      case TriggeredProcedureRef.ForcedWake => Vector.empty
+      // Each forced power writes its own lines. The follow-up offer writes
+      // none; its Skip is a line of its own (`FollowUpSkipped`).
+      case TriggeredProcedureRef.ForcedWake |
+          TriggeredProcedureRef.FollowUpOffer => Vector.empty
       case TriggeredProcedureRef.Setup => setup.lines(journal, at, viewer)
       case ActionRef.Search =>
         search(journal, run, at, viewer) ++
@@ -320,7 +322,7 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       case WalkerStepRecorded(_, _: WalkerStepPayload.DeltaRecorded, ops, _) =>
         !ops.forall {
           case RecordPowerUse(_) => true
-          case QueueFollowUp(_) => true
+          case QueueProcedure(_, _) => true
           case Move(Piece.Favor(_) | Piece.Secrets(_),
               PositionedLocation(Location.PlayArea(payer), _),
               PositionedLocation(Location.OnCard(_) | Location.SharedBank, _),
