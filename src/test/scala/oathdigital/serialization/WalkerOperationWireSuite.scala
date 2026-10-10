@@ -317,6 +317,8 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Reroll(PoolKey("recover"), Vector(0, 2),
         Some(Vector(DefenseDieFace.TwoShields, DefenseDieFace.Blank))),
       Reroll(PoolKey("campaign.attack"), Vector(1)),
+      SetDieFaces(PoolKey("campaign.defense"),
+        Vector(DefenseDieFace.TwoShields, DefenseDieFace.TwoShields)),
       RecordCampaignResult(CampaignResult(player, CampaignKind.Conquest,
         CampaignDefender.Bandits, Vector(site), Vector.empty, force = 2,
         attackFaces = Vector(AttackDieFace.OneSword), attackScore = 1,

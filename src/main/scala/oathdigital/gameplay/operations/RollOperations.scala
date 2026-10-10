@@ -2,7 +2,8 @@ package oathdigital.gameplay.operations
 
 import oathdigital.model._
 
-/** The `Reroll` write: rerolled faces replace recorded ones in place. */
+/** The `Reroll` and `SetDieFaces` writes: rerolled faces replace recorded
+  * ones in place, and set faces join them. */
 private[gameplay] object RollOperations:
   import OperationError.InvalidDescription
 
@@ -39,6 +40,34 @@ private[gameplay] object RollOperations:
               outcome.copy(faces = replaced, skulls = skulls,
                 score = RollOutcome.derive(replaced)._2,
                 rerolled = (outcome.rerolled ++ indices).distinct.sorted)))))
+
+  /** Set faces join the pool's outcome; a pool that has not rolled starts
+    * one with no throw counted, so the roll after it is the first throw.
+    * The skulls of the set faces are added to what the outcome records, and
+    * the score is worked out again from every face, as `reroll` does. The
+    * pool holds as many dice fewer.
+    */
+  def setFaces(ready: ReadyGame, pool: PoolKey, faces: Vector[DieFace])
+      : Either[OperationError, ReadyGame] =
+    val current = ready.game.current
+    val held = current.rollPools.get(pool).fold(0)(_.count)
+    val before = current.rollOutcomes.get(pool)
+    val all = before.fold(Vector.empty[DieFace])(_.faces) ++ faces
+    val (skulls, _) = RollOutcome.derive(faces)
+    if faces.isEmpty || faces.size > held then Left(InvalidDescription(
+      s"setting ${faces.size} dice of ${pool.value}, which holds $held"))
+    else if !sameFamily(all) then Left(InvalidDescription(
+      s"setting dice of ${pool.value} mixes attack and defense faces"))
+    else
+      val score = RollOutcome.derive(all)._2
+      val outcome = before.fold(RollOutcome(pool, faces.size, faces, skulls,
+        score, throws = 0))(previous => previous.copy(
+          count = previous.count + faces.size, faces = all,
+          skulls = previous.skulls + skulls, score = score))
+      Right(ready.updateCurrent(state => state.copy(
+        rollPools = state.rollPools.updated(pool,
+          DicePoolState(held - faces.size)),
+        rollOutcomes = state.rollOutcomes.updated(pool, outcome))))
 
   private def sameFamily(faces: Vector[DieFace]): Boolean =
     faces.forall(_.isInstanceOf[AttackDieFace]) ||
