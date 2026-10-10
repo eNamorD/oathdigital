@@ -137,7 +137,8 @@ private[application] final class WalkerDecisionProjector(
       args: Vector[DecisionOptionRef]) = procedure match
     case _: ActionRef.UsePower | TriggeredProcedureRef.ForcedWake |
         TriggeredProcedureRef.FollowUpOffer |
-        TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu =>
+        TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu |
+        TriggeredProcedureRef.ActMenu =>
       WalkerProcedureRegistry.rebuild(procedure, catalog, ready, actor, args,
         phasePowers, walkerPowers = WalkerPowers.selected(walkerPowerCatalog,
           Vector.empty))

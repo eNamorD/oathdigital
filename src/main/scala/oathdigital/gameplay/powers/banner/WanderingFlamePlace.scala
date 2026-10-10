@@ -20,6 +20,8 @@ case object WanderingFlamePlace extends PaidAction(
     NotePart.Text(" placed a secret at "), NotePart.Arg(1),
     NotePart.Text(".")))
   override def noteKeys: Vector[NoteKey] = Vector(placed)
+  override def buttonName: Option[String] =
+    BannerFacePowers.printed(id).map(_._1)
 
   override def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = faceUpSecrets(ready, player) > 0

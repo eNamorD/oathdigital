@@ -486,6 +486,10 @@ By the last slice:
     the parked menu. On a table where no menu is parked, it starts the
     procedure directly through the rules. `MenuPlay.starting` is the service
     command that picks it.
+12. **A source with two powers of one phase lists each power as a
+    button.** The button is keyed `use-power:<power id>` and labelled with
+    the power's name. A source with only one such power keeps its card
+    option. The menu panel puts these buttons under "Powers".
 
 ## Testing
 

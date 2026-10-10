@@ -120,6 +120,13 @@ object SituationDriver:
   private def opening(command: GameCommand): Vector[OathEvent] =
     GameCommand.issuer(command).map(OathEvent.CommandAccepted(_)).toVector
 
+  /** The command that picks `procedure`'s option from the parked menu. */
+  private def picking(player: PlayerId, procedure: StartableRef,
+      args: Vector[DecisionOptionRef]): Either[String, GameCommand] =
+    PhaseMenu.optionFor(procedure, args)
+      .toRight(s"no menu lists ${procedure.key}")
+      .map(MenuPlay.picking(player, _))
+
   private def arranging(ops: Vector[CoreOperation], label: String)
       : WalkerStepRecorded =
     WalkerStepRecorded("0", DeltaRecorded(OperationApplied(label)), ops,
@@ -158,6 +165,13 @@ object SituationDriver:
         val event = arranging(ops, label)
         rules.evolve(from.state, event).left.map(_.toString)
           .map(advanced(from, _, Vector(event), Vector.empty))
+      case Step.Start(player, procedure, args) =>
+        if MenuPlay.parked(from.state).nonEmpty then
+          picking(player, procedure, args).flatMap(command =>
+            apply(from, Step.Command(command)))
+        else rules.startWalker(from.state, procedure, player, args)
+          .left.map(_.toString).map(result => advanced(from, result.state,
+            result.events, Vector(OathEvent.CommandAccepted(player))))
 
     /** `events` journaled after `opened`, the command batch's opening, which
       * `events` leaves out and `nextSequence` counts, as the service does. */
@@ -221,6 +235,12 @@ object SituationDriver:
           .map(accepted => Situation(accepted.state,
             from.events ++ accepted.events, accepted.nextSequence, this,
             from.journal ++ opening(command) ++ accepted.events))
+      case Step.Start(player, procedure, args) =>
+        if MenuPlay.parked(from.state).isEmpty then Left("no phase menu " +
+          "is parked: park one with Table.phaseMenuParked to start " +
+          procedure.key)
+        else picking(player, procedure, args).flatMap(command =>
+          apply(from, Step.Command(command)))
       case Step.Arrange(ops, label) =>
         val event = arranging(ops, label)
         // A situation begun at a Table has no stream until its first record.

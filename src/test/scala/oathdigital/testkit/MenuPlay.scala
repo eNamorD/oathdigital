@@ -24,6 +24,32 @@ object MenuPlay:
     rules.resolveWalker(state, player, PhaseMenu.decisionId,
       DecisionAnswer.ChooseOneAnswer(option))
 
+  /** The step that starts `procedure` as `player`: see `Step.Start`. */
+  def start(player: PlayerId, procedure: StartableRef,
+      args: Vector[DecisionOptionRef] = Vector.empty): Step =
+    Step.Start(player, procedure, args)
+
+  /** The command that picks `procedure`'s option from the parked menu. */
+  def starting(player: PlayerId, procedure: StartableRef,
+      args: Vector[DecisionOptionRef] = Vector.empty)(
+      using munit.Location): GameCommand =
+    picking(player, optionOf(procedure, args))
+
+  /** Starts `procedure` through the rules: its pick when a menu is parked,
+    * a start on a table where none is. */
+  def started(rules: OathRules, state: OathState, player: PlayerId,
+      procedure: StartableRef, args: Vector[DecisionOptionRef] = Vector.empty)(
+      using munit.Location): Either[OathViolation, OathTransition] =
+    if parked(state).nonEmpty then
+      picked(rules, state, player, optionOf(procedure, args))
+    else rules.startWalker(state, procedure, player, args)
+
+  private def optionOf(procedure: StartableRef,
+      args: Vector[DecisionOptionRef])(using munit.Location)
+      : DecisionOptionRef =
+    PhaseMenu.optionFor(procedure, args).getOrElse(munit.Assertions.fail(
+      s"no menu lists ${procedure.key}"))
+
   /** The menu parked in `state`, when one is. */
   def parked(state: OathState): Option[PhaseMenu.Menu] = state match
     case Ready(ready) =>

@@ -1,13 +1,14 @@
 package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.walker.{QueuedStart, WalkerPowers}
 import oathdigital.model._
 
 /** A phase's menu (walker-driven game loop design, "The menus"): one
-  * decision over everything the active player may do now in Wake or Rest.
+  * decision over everything the active player may do now in its phase.
   * Each option is the procedure its pick queues.
   *
   * {{{
@@ -29,6 +30,9 @@ import oathdigital.model._
   * Phase powers come from the phase power catalog, as Use Power and Forced
   * Wake read them (plan-time ruling 1 of slice 2): one option for each
   * accessible source of each power the player may choose in this phase.
+  *
+  * Each available option carries what its start costs, and each unavailable
+  * one why it cannot start (slice 4, plan-time rulings 2 and 3).
   */
 object PhaseMenu:
   val decisionId: String = "phase.menu"
@@ -45,8 +49,11 @@ object PhaseMenu:
     case Rest extends Menu(Phase.Rest, TriggeredProcedureRef.RestMenu,
       PhaseTransitionRef.FinishRest, DecisionOptionRef.Button("finish-rest"),
       "Finish Rest", "Rest: use a power or finish Rest")
+    case Act extends Menu(Phase.Act, TriggeredProcedureRef.ActMenu,
+      PhaseTransitionRef.BeginRest, DecisionOptionRef.Button("end-act"),
+      "End Act and Rest", "Act: take an action, use a power or rest")
 
-  /** The menu `phase` asks, when it has one. Act's comes in slice 4. */
+  /** The menu `phase` asks, when it has one. */
   def of(phase: Phase): Option[Menu] = Menu.values.find(_.phase == phase)
 
   /** The menu `procedure` asks, when it is a menu. */
@@ -57,45 +64,86 @@ object PhaseMenu:
   def takeWealth(resource: WakeResource): DecisionOptionRef.Button =
     DecisionOptionRef.Button(s"take-wealth.${resource.key}")
 
+  /** The button of one of the two powers a source offers in one phase. */
+  def powerButton(power: PowerId): DecisionOptionRef.Button =
+    DecisionOptionRef.Button(s"use-power:${power.value}")
+
+  /** The option that starts `procedure` with `args` in its phase's menu,
+    * when a menu lists one: a phase power's option is its source, or, for a
+    * source with two powers of the phase, `powerButton(id)`. */
+  def optionFor(procedure: StartableRef, args: Vector[DecisionOptionRef])
+      : Option[DecisionOptionRef] = procedure match
+    case _: ActionRef.UsePower => args.headOption
+    case ActionRef.TakeWealth => WakeResource.all.find(resource =>
+      TakeWealthProcedure.selection(resource) == args).map(takeWealth)
+    case _ => Menu.values.find(_.ending == procedure).map(_.endingOption)
+      .orElse(ActOffers.all.find(offer => offer.procedure == procedure &&
+        offer.args == args).map(_.ref))
+
   /** One option of a menu: the entry its pick queues, as the player sees
     * it. */
   final case class Offered(entry: QueuedProcedure, option: DecisionOption)
 
-  /** The menu's options, in order: Take Wealth's two resources in Wake, each
-    * phase power's source, then the ending. A source that offers two powers
-    * of one phase is listed once, for the first. */
+  /** The menu's options, in order: Take Wealth's two resources in Wake, the
+    * Act actions in Act, each phase power's source, then the ending. A
+    * source that offers two powers of one phase lists a button for each,
+    * named for its power. */
   def offers(menu: Menu, catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, phasePowers: PhasePowers, powers: WalkerPowers)
       : Vector[Offered] =
     def offered(procedure: StartableRef, args: Vector[DecisionOptionRef],
         shown: DecisionOption): Offered =
       val entry = QueuedProcedure(actor, procedure, args, None, QueueKind.Run)
-      Offered(entry, QueuedStart.refusal(catalog, ready, entry, powers,
-          phasePowers)
-        .fold(shown)(violation => DecisionOption.Unavailable(shown,
-          OptionReason.Written(reason(procedure, violation)))))
+      Offered(entry, QueuedStart.priced(catalog, ready, entry, powers,
+          phasePowers) match
+        case Right(cost) =>
+          cost.words.fold(shown)(DecisionOption.Badged(shown, _))
+        case Left(violation) => DecisionOption.Unavailable(shown,
+          OptionReason.Written(QueuedStart.needs(catalog, ready, entry,
+            powers, phasePowers).getOrElse(reason(procedure, violation)))))
     val wealth: Vector[Offered] =
       if menu != Menu.Wake then Vector.empty
       else WakeResource.all.map(resource => offered(ActionRef.TakeWealth,
         TakeWealthProcedure.selection(resource),
         DecisionOption.Button(takeWealth(resource),
           s"Take Wealth: 1 ${resource.key}")))
-    val used: Vector[Offered] = for
+    val acting: Vector[Offered] =
+      if menu != Menu.Act then Vector.empty
+      else ActOffers.all.map(offer => offered(offer.procedure, offer.args,
+        DecisionOption.Button(offer.ref, offer.label)))
+    val sourced = for
       power <- phasePowers.powers
       if !power.forced &&
         PhasePowerProcedure.timingOf(menu.phase).contains(power.timing)
       ref <- PhasePowerProcedure.sources(catalog, ready, actor, power)
         .map(_._2)
-      shown <- DecisionOption.forRef(ref).toVector
-    yield offered(ActionRef.UsePower(power.id), Vector(ref), shown)
-    (wealth ++ used).distinctBy(_.option.ref) :+ offered(menu.ending,
-      Vector.empty, DecisionOption.Button(menu.endingOption,
-        menu.endingLabel))
+    yield (power, ref)
+    val used: Vector[Offered] = sourced.flatMap((power, ref) =>
+      val shown =
+        if sourced.count(_._2 == ref) > 1 then
+          Some(DecisionOption.Button(powerButton(power.id),
+            power.buttonName.getOrElse(power.id.value)))
+        else DecisionOption.forRef(ref)
+      shown.toVector.map(offered(ActionRef.UsePower(power.id), Vector(ref),
+        _)))
+    (wealth ++ acting ++ used).distinctBy(_.option.ref) :+ offered(
+      menu.ending, Vector.empty, DecisionOption.Button(menu.endingOption,
+        endingLabel(menu, ready, actor)))
+
+  /** "End Act and Rest (+5 Supply)": what Rest would return, as the old
+    * button said. Any other ending, or a Rest that cannot price it, is
+    * its plain label. */
+  private def endingLabel(menu: Menu, ready: ReadyGame, actor: PlayerId)
+      : String =
+    if menu != Menu.Act then menu.endingLabel
+    else FinishRestProcedure.supplyGainAtRest(ready, actor).toOption
+      .filter(_ > 0)
+      .fold(menu.endingLabel)(gain => s"${menu.endingLabel} (+$gain Supply)")
 
   /** Whether the menu has nothing to ask: its ending is the only option
-    * available (ruling 3). */
+    * available. Act always asks (ruling 3). */
   def onlyEnding(menu: Menu, offers: Vector[Offered]): Boolean =
-    offers.forall(offered => !offered.option.available ||
+    menu != Menu.Act && offers.forall(offered => !offered.option.available ||
       offered.entry.procedure == menu.ending)
 
   def build(menu: Menu, phasePowers: PhasePowers, powers: WalkerPowers)(
@@ -136,4 +184,6 @@ object PhaseMenu:
     case (_: ActionRef.UsePower, _: OathViolation.PowerAlreadyUsed) =>
       "Already used this turn"
     case (_: ActionRef.UsePower, _) => "Nothing to do now"
+    case (action: ActionRef, _) => ActOffers.reason(action, violation)
+    case (PhaseTransitionRef.BeginRest, _) => "Cannot rest now"
     case _ => "Cannot end the phase now"

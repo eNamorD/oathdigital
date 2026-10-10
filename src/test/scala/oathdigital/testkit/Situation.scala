@@ -23,6 +23,12 @@ enum Step:
     * for a rule under test.
     */
   case Arrange(ops: Vector[CoreOperation], label: String = "arrange")
+  /** Starts `procedure` as `player`: picks its option from the parked phase
+    * menu, or, on a table where no menu is parked, starts it through the
+    * rules (walker-driven game loop design, slice 4, plan-time ruling 11).
+    */
+  case Start(player: PlayerId, procedure: StartableRef,
+      args: Vector[DecisionOptionRef] = Vector.empty)
 
 object Step:
   /** A command is a step as it stands; tests list either. */

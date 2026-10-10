@@ -59,12 +59,14 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
     assertEquals(WalkerProcedureRegistry.entries.keySet,
       ProcedureRef.all.toSet - TriggeredProcedureRef.ForcedWake -
         TriggeredProcedureRef.FollowUpOffer - TriggeredProcedureRef.WakeMenu -
-        TriggeredProcedureRef.RestMenu)
+        TriggeredProcedureRef.RestMenu -
+        TriggeredProcedureRef.ActMenu)
     assert(WalkerProcedureRegistry.isRegistered(TriggeredProcedureRef.ForcedWake))
     assert(WalkerProcedureRegistry.isRegistered(
       TriggeredProcedureRef.FollowUpOffer))
     assert(WalkerProcedureRegistry.isRegistered(TriggeredProcedureRef.WakeMenu))
     assert(WalkerProcedureRegistry.isRegistered(TriggeredProcedureRef.RestMenu))
+    assert(WalkerProcedureRegistry.isRegistered(TriggeredProcedureRef.ActMenu))
 
   /** Batch-1 Task 1: the modifier-selection window is per-action registry
     * data, alongside `fallbackKind`/`rollDecisionId`. Recover declares the

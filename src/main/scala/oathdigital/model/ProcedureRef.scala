@@ -69,6 +69,9 @@ enum TriggeredProcedureRef(val key: String) extends ProcedureRef:
   case WakeMenu extends TriggeredProcedureRef("wake-menu")
   /** The Rest phase's menu, as the Wake menu is Wake's. */
   case RestMenu extends TriggeredProcedureRef("rest-menu")
+  /** The Act phase's menu, as the Wake menu is Wake's. The driver starts it
+    * whenever the queue is empty in Act; it always asks. */
+  case ActMenu extends TriggeredProcedureRef("act-menu")
 
 object ActionRef:
   case object Search extends ActionRef { val key = "search" }
@@ -133,7 +136,7 @@ object PhaseTransitionRef:
 
 object TriggeredProcedureRef:
   val all: Vector[TriggeredProcedureRef] = Vector(Oathkeeper, Setup,
-    ForcedWake, FollowUpOffer, WakeMenu, RestMenu)
+    ForcedWake, FollowUpOffer, WakeMenu, RestMenu, ActMenu)
 
 object StartableRef:
   /** Finite references are listed in `all`; parameterized use-power keys

@@ -40,6 +40,13 @@ object TradeProcedure:
         s"selection, got ${other.map(ref => s"${ref.kind}/${ref.wireId}")
           .mkString(", ")}"))
 
+  /** The start selection that trades for `resource`, as `resourceOf` reads
+    * it. */
+  def selection(resource: TradeResource): Vector[DecisionOptionRef] =
+    resource match
+      case TradeResource.Favor => Vector(DecisionOptionRef.Button("favor"))
+      case TradeResource.Secret => Vector(DecisionOptionRef.Button("secret"))
+
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
     resourceOf(args).flatMap(resource =>

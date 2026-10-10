@@ -15,6 +15,9 @@ trait PhasePower extends NotingPower:
     * at the start of its phase and is never offered or accepted as an
     * optional use. Only WAKE powers are forced today. */
   def forced: Boolean = false
+  /** The power's own name, for a menu button when its source carries two
+    * powers of one phase. */
+  def buttonName: Option[String] = None
   /** Power-specific preconditions beyond access and once-per-turn. */
   def usable(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef): Boolean
   /** What using the power costs, placed onto its source card. The engine

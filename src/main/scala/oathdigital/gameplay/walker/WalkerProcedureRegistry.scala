@@ -484,6 +484,8 @@ object WalkerProcedureRegistry:
         Right(menuEntry(PhaseMenu.Menu.Wake, powers, walkerPowers))
       case TriggeredProcedureRef.RestMenu =>
         Right(menuEntry(PhaseMenu.Menu.Rest, powers, walkerPowers))
+      case TriggeredProcedureRef.ActMenu =>
+        Right(menuEntry(PhaseMenu.Menu.Act, powers, walkerPowers))
       case _ => registrations.get(procedure).toRight(OathViolation
         .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
 
