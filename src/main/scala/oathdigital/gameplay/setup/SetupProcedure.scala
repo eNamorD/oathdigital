@@ -105,7 +105,8 @@ object SetupProcedure:
     Sequence(Vector(
       Decide(pawnId, participant.playerId,
         DecisionQuery.ChooseOne(siteOptions,
-          heading = Some("Choose your starting site"))),
+          heading = Some("Choose your starting site"),
+          confirmVerb = Some("Start at"))),
       BuildOps(placePawn(participant.playerId, pawnId),
         window = Some(PowerWindow.SetupPawnPlaced)),
       Decide(adviserId, participant.playerId,

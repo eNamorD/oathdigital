@@ -231,7 +231,7 @@ object WalkerSimulation:
           "the walker is not parked on a decision"))
         .flatMap { decide =>
           decide.query match
-            case DecisionQuery.ChooseOne(options, _) =>
+            case DecisionQuery.ChooseOne(options, _, _) =>
               Right(options.filter(_.available).map(option =>
                 PreviewedOption(option,
                   answer(state, tree, pending, powers, decide, option,

@@ -43,7 +43,7 @@ class PassWhenEmptySuite extends munit.FunSuite:
       case Right(WalkerOutcome.Parked(pending, _)) =>
         ProcedureWalker.openDecisions(ready, tree, pending, powers).head
           .query match
-          case DecisionQuery.ChooseOne(options, _) => options.map(_.ref)
+          case DecisionQuery.ChooseOne(options, _, _) => options.map(_.ref)
           case other => fail(s"expected a choose-one, got $other")
       case other => fail(s"expected a park, got $other")
 

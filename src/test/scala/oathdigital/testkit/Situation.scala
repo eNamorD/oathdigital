@@ -119,7 +119,7 @@ object Situation:
     * answered by default and fails the walk naming the decision.
     */
   val defaultAnswer: Answers =
-    case Park(Decide(_, _, DecisionQuery.ChooseOne(options, _), _, _, _, _),
+    case Park(Decide(_, _, DecisionQuery.ChooseOne(options, _, _), _, _, _, _),
         _, _, _) if options.exists(_.available) =>
       DecisionAnswer.ChooseOneAnswer(options.filter(_.available).head.ref)
     case Park(Decide(_, _, DecisionQuery.Partition(sections, options, _, _),

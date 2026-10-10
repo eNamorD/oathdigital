@@ -86,7 +86,8 @@ object ChallengeProcedure:
     Branch((ready, _) => Vector(Decide(bannerDecisionId, actor,
       DecisionQuery.ChooseOne(legalBanners(ready, actor).map(banner =>
         DecisionOption.Banner(DecisionOptionRef.Banner(banner))),
-        heading = Some("Choose a banner to Challenge")),
+        heading = Some("Choose a banner to Challenge"),
+        confirmVerb = Some("Challenge")),
       window = Some(PowerWindow.ChallengeBannerSelection)))),
     Branch((ready, pending) => bannerOf(pending).toVector.map(banner =>
       amountDecision(ready, actor, banner))),

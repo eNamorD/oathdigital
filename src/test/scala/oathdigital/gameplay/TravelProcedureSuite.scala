@@ -245,7 +245,8 @@ class TravelProcedureSuite extends munit.FunSuite:
     // The modifier decision comes first; the destination opens what follows.
     val offered = tree.children(1).children.head match
       case Decide(TravelProcedure.destinationDecisionId, `actor`,
-          DecisionQuery.ChooseOne(options, Some("Choose a Travel destination")),
+          DecisionQuery.ChooseOne(options, Some("Choose a Travel destination"),
+            Some("Travel to")),
           _, _, _, _) => options.map(_.ref)
       case other => fail(s"not the destination decision: $other")
     assertEquals(offered, ready.game.current.map.inPlay

@@ -109,7 +109,7 @@ class CampaignRaidSuite extends munit.FunSuite:
       WalkerPowerCatalog.default(catalog)).headOption,
       "the relocation decision")
     assertEquals(asked.query, DecisionQuery.ChooseOne(options,
-      Some("Move the defeated pawn to another site")))
+      Some("Move the defeated pawn to another site"), Some("Move pawn to")))
     val moved = ChooseOneAnswer(DecisionOptionRef.Site(destination))
     val done = accepted(walked.game.resolveWalker(sacrificed.state, b.actor,
       CampaignIds.relocation, moved))

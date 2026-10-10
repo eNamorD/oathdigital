@@ -25,7 +25,8 @@ class BoardSurfaceSuite extends munit.FunSuite:
   private val woodsOption = DecisionOptionState("site", "site:woods", "Deep Woods")
   private val cityOption = DecisionOptionState("site", "site:city", "Ancient City")
   private val query = DecisionQueryState.ChooseOne(
-    Vector(woodsOption, cityOption), Some("Choose your starting site"))
+    Vector(woodsOption, cityOption), Some("Choose your starting site"),
+    confirmVerb = Some("Start at"))
   private val decision = WalkerDecisionState("setup", "setup.pawn-placement.red",
     "decide", query = Some(query), presentation = "board")
   private val context = BoardSelectionContext("game", "red", 1L)
@@ -107,20 +108,22 @@ class BoardSurfaceSuite extends munit.FunSuite:
     assertEquals(site(root, "Ancient City").getAttribute("aria-pressed"),
       "false")
 
-  test("the pane's Confirm waits for a pick, then submits it"):
+  test("the pane's confirm waits for a pick, names it, then submits it"):
     val ui = new RecordingControls()
     val empty = pane(ui)
     assertEquals(one(empty, "h2").textContent, "Choose your starting site")
     assertEquals(one(empty, ".board-decision-summary").textContent,
       "Choose on the board.")
-    assert(one(empty, ".board-decision-confirm")
-      .asInstanceOf[dom.html.Button].disabled)
+    val waiting = one(empty, ".board-decision-confirm")
+      .asInstanceOf[dom.html.Button]
+    assert(waiting.disabled)
+    assertEquals(waiting.textContent, "Confirm")
     val drafted = pane(ui, Some(woodsDraft))
     assertEquals(one(drafted, ".board-decision-summary").textContent,
       "Deep Woods")
     val confirm = one(drafted, ".board-decision-confirm")
       .asInstanceOf[dom.html.Button]
-    assertEquals(confirm.textContent, "Confirm")
+    assertEquals(confirm.textContent, "Start at Deep Woods")
     confirm.click()
     assertEquals(ui.submitted, Vector(placeAtWoods))
 

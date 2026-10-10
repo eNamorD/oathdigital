@@ -229,7 +229,7 @@ object RecoverProcedure:
           owner = actor,
           query = DecisionQuery.ChooseOne(relics.map(relic =>
             DecisionOption.Relic(DecisionOptionRef.Relic(relic.id))),
-            heading = Some("Take a relic"))),
+            heading = Some("Take a relic"), confirmVerb = Some("Take"))),
           moveRelic)
       else Vector.empty
     })

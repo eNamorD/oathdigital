@@ -163,7 +163,8 @@ object CampaignProcedure:
       val defenders = CampaignSetup.defenderOptions(ready, actor)
       if defenders.size < 2 then Vector.empty
       else Vector(Decide(CampaignIds.defender, actor, DecisionQuery.ChooseOne(
-        defenders, heading = Some("Choose whom to Raid")),
+        defenders, heading = Some("Choose whom to Raid"),
+        confirmVerb = Some("Raid")),
         window = Some(PowerWindow.CampaignDefenderSelection)))
     })
 

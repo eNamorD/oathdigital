@@ -666,3 +666,9 @@ class DecisionQuerySuite extends munit.FunSuite:
       assertEquals(asking(confirm),
         invalid(s"decision $decisionId declares a blank confirm label"),
         confirm))
+
+  test("a choose-one's confirm verb must have words"):
+    assertEquals(wellFormed(chooseOne.copy(confirmVerb = Some("Travel to"))),
+      Right(()))
+    assertEquals(wellFormed(chooseOne.copy(confirmVerb = Some(" "))),
+      invalid(s"decision $decisionId declares a blank confirm verb"))

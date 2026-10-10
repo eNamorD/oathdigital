@@ -72,10 +72,12 @@ private[projection] object ActionProjectionCodec:
     */
   def encodeDecisionQuery(value: DecisionQueryProjection): ujson.Value =
     value match
-      case DecisionQueryProjection.ChooseOne(options, heading) => ujson.Obj(
+      case DecisionQueryProjection.ChooseOne(options, heading,
+          confirmVerb) => ujson.Obj(
         "form" -> "choose-one",
         "options" -> encoded(options)(encodeOptionRow),
-        "heading" -> stringOption(heading))
+        "heading" -> stringOption(heading),
+        "confirmVerb" -> stringOption(confirmVerb))
       case DecisionQueryProjection.ChooseMany(options, minOptions, maxOptions,
           heading, tallies, summary, confirm) => ujson.Obj(
         "form" -> "choose-many",
@@ -140,10 +142,11 @@ private[projection] object ActionProjectionCodec:
 
   private def decodeChooseOne(value: ujson.Obj, path: String)
       : Result[DecisionQueryProjection] = for
-    _ <- exact(value, Set("form", "options", "heading"), path)
+    _ <- exact(value, Set("form", "options", "heading", "confirmVerb"), path)
     options <- optionRows(value, path)
     heading <- optionalString(value, "heading", path)
-  yield DecisionQueryProjection.ChooseOne(options, heading)
+    confirmVerb <- optionalAbsent(value, "confirmVerb", path)(string)
+  yield DecisionQueryProjection.ChooseOne(options, heading, confirmVerb)
 
   private def decodeChooseMany(value: ujson.Obj, path: String)
       : Result[DecisionQueryProjection] = for

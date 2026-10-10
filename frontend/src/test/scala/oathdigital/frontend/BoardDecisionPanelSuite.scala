@@ -95,6 +95,17 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     assertEquals(one(pane(new RecordingControls(), targets, decision),
       ".board-decision-confirm").textContent, "Confirm")
 
+  /** A choose-one whose query declares no verb still names its pick. */
+  test("a choose-one's confirm names the pick after Confirm without a verb"):
+    val choose = DecisionQueryState.ChooseOne(Vector(option("hills"),
+      option("marsh")), Some("Choose a site"))
+    val parked = decision.copy(decisionId = "power.site")
+    val panel = pane(new RecordingControls(), choose, parked,
+      Some(BoardSelectionDraft(context, "power.site", choose,
+        Vector("site:hills"))))
+    assertEquals(one(panel, ".board-decision-confirm").textContent,
+      "Confirm Site hills")
+
   test("Confirm is disabled below the minimum and says why"):
     val needsOne = targets.copy(minOptions = 1)
     val panel = pane(new RecordingControls(), needsOne, decision)

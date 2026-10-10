@@ -51,7 +51,8 @@ object DecisionQueryProjection:
     * click, so there is no confirm step to name.
     */
   final case class ChooseOne(options: Vector[DecisionOptionProjection],
-      heading: Option[String] = None) extends DecisionQueryProjection:
+      heading: Option[String] = None, confirmVerb: Option[String] = None)
+      extends DecisionQueryProjection:
     def offeredOptions: Vector[DecisionOptionProjection] = options
 
   /** Pick between `minOptions` and `maxOptions` of the options that are

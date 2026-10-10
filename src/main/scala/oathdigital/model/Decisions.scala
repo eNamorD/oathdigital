@@ -439,9 +439,16 @@ sealed trait DecisionQuery extends Product with Serializable:
     */
   def heading: Option[String]
 object DecisionQuery:
-  /** Pick exactly one of `options`. */
+  /** Pick exactly one of `options`.
+    *
+    * `confirmVerb` is display only, like `heading`: where the pick is made
+    * on the board and then confirmed, the button reads the verb and the
+    * picked option, "Travel to Deep Woods". Without one it reads "Confirm
+    * Deep Woods".
+    */
   final case class ChooseOne(options: Vector[DecisionOption],
-      heading: Option[String] = None) extends DecisionQuery
+      heading: Option[String] = None,
+      confirmVerb: Option[String] = None) extends DecisionQuery
 
   /** Pick between `min` and `max` distinct available options, inclusive.
     * Well-formed only when `0 <= min <= max <= n`, `max >= 1`, and not the

@@ -399,7 +399,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(decide.query, DecisionQuery.ChooseOne(Vector(relic,
       second).map(id =>
       DecisionOption.Relic(DecisionOptionRef.Relic(id))),
-      heading = Some("Take a relic")))
+      heading = Some("Take a relic"), confirmVerb = Some("Take")))
 
     // And the walker accepts exactly those two, the faceup relic included in
     // neither direction.

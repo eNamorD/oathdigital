@@ -82,6 +82,18 @@ class SetupProcedureSuite extends munit.FunSuite:
     assertEquals(asked.map(_.confirm).distinct, Vector(Some(CountedConfirm(
       "Reveal", "card", "cards", Some("Reveal nothing")))))
 
+  test("the starting site's confirm reads Start at"):
+    var asked = Vector.empty[DecisionQuery.ChooseOne]
+    val recording: Answers =
+      case park if park.decisionId ==
+          SetupProcedure.pawnDecisionId(park.awaiting) &&
+          asked.isEmpty =>
+        val query = as[DecisionQuery.ChooseOne](park.decide.query)
+        asked :+= query
+        DecisionAnswer.ChooseOneAnswer(query.options.head.ref)
+    Situation.wake(Situation.rules(catalog).withAnswers(recording))
+    assertEquals(asked.map(_.confirmVerb), Vector(Some("Start at")))
+
   test("Reveal Cards offers facedown advisers except site-only ones, then " +
       "facedown relics"):
     // Walks the real setup to p1's dealt hand, then replaces it below; the
