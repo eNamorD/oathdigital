@@ -10,7 +10,10 @@ import oathdigital.model._
   * follow-up offer shows available is a start the driver accepts.
   *
   * It builds through the production registry, so a suite that injects its
-  * own tree source into `OathRules` does not reach it.
+  * own tree source into `OathRules` does not reach it. It does not check that
+  * the entry's actor is the active player, which the start does: until an
+  * off-turn actor exists (Sneak Attack), every entry's actor is the active
+  * player.
   */
 object QueuedStart:
   def refusal(catalog: ExecutableCatalog, ready: ReadyGame,

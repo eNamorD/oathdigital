@@ -8,7 +8,12 @@ an off-turn actor).
 [walker-driven game loop](2026-10-09-walker-game-loop-design.md), slice 1:
 a follow-up is a queued offer the walker asks. Rulings 2, 3 and 6 and the
 sections "Start and skip", "Cost waiver" and "Projection and UI" below are
-rewritten to match. The rest stands, under the new names: `FollowUp` is
+rewritten to match, and ruling 5 holds with the offer's option disabled and
+Skip always available. In "Sneak Attack hooks" and "Testing", the service
+gate, `SkipFollowUp`, `FollowUpProjection`, the controls and the
+`follow-up-pending` label no longer exist, and `FollowUpSkipped` changes no
+state: it anchors the Skip line inside the offer's walk. The rest stands,
+under the new names: `FollowUp` is
 `QueuedProcedure`, `followUps` is `queue`, `walkerFollowUp` is `walkerEntry`,
 `QueueFollowUp` is `QueueProcedure`, and `FollowUpStarted` is
 `ProcedureDequeued`. The

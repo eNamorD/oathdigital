@@ -1,6 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.CampaignProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.model._
@@ -84,4 +85,6 @@ object FollowUpOffer:
     case PowerSourceRef.Card(id: DenizenId) => catalog.denizen(id).map(_.name)
     case PowerSourceRef.Card(id: RelicId) => catalog.relic(id).map(_.name)
     case PowerSourceRef.Site(id) => catalog.site(id).map(_.name)
+    case PowerSourceRef.Banner(banner) =>
+      Some(BannerRules.displayName(banner))
     case _ => None

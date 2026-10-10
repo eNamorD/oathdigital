@@ -76,7 +76,8 @@ class SecondWindSuite extends munit.FunSuite:
     val b = holding()
     val game = rules(winningDice)
     val won = withSecondWind(commit(game, b, 4), b)
-    assertEquals(FollowUpPlay.offered(won.state), Some(owed(b, ActionRef.Travel)))
+    assertEquals(FollowUpPlay.offered(won.state),
+      Some(owed(b, ActionRef.Travel)))
     val skipped = accepted(FollowUpPlay.skipped(game, won.state, b.actor))
     assertEquals(FollowUpPlay.offered(skipped.state),
       Some(owed(b, ActionRef.Campaign)))

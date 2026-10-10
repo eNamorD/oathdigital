@@ -1,10 +1,12 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{FollowUpOffer, FollowUpSkipped,
   ProcedureDequeued, WalkerCompleted}
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.{CatalogNames, Outcomes, ParkedNode, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
@@ -117,6 +119,22 @@ class FollowUpRulesSuite extends munit.FunSuite:
       Some(ActionRef.Travel))
     assertEquals(current(started.state).queue,
       Vector(offer(ActionRef.Campaign)))
+
+  test("a taken action's completion offers the next entry in the same " +
+      "command, and the chain replays"):
+    val start = table(offer(ActionRef.Travel), offer(ActionRef.Campaign))
+      .state
+    val offering = accepted(FollowUpPlay.dequeued(rules, start))
+    val taken = accepted(FollowUpPlay.taken(rules, offering.state, p1))
+    val done = accepted(rules.resolveWalker(taken.state, p1,
+      TravelProcedure.destinationDecisionId,
+      ChooseOneAnswer(DecisionOptionRef.Site(brokenPeaks))))
+    assert(done.events.contains(WalkerCompleted(ActionRef.Travel)),
+      done.events)
+    assertEquals(FollowUpPlay.offered(done.state),
+      Some(offer(ActionRef.Campaign)))
+    assertEquals(replayed(start,
+      offering.events ++ taken.events ++ done.events), done.state)
 
   test("a queued action starts outside the Act phase"):
     val resting = table().turn(p1, Phase.Rest)

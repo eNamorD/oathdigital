@@ -126,9 +126,9 @@ final case class ProcedureDequeued(entry: QueuedProcedure) extends WalkerEvent
 final case class FollowUpSkipped(entry: QueuedProcedure) extends WalkerEvent
 
 /** The action boundary ran: replay clears `boundaryDue` (walker-driven game
-  * loop design, plan-time ruling 3). The boundary can write nothing else (no bandits to
-  * refill, no title change), so this marker keeps replay exact. No Game Log
-  * line. */
+  * loop design, plan-time ruling 3). The boundary can write nothing else
+  * (no bandits to refill, no title change), so this marker keeps replay
+  * exact. No Game Log line. */
 case object ActionBoundaryRan extends WalkerEvent
 
 /** Audit fact: a power's effect happened here and says so in the Game Log

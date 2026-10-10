@@ -55,7 +55,8 @@ private[gameplay] trait OathRulesWalker:
         startNow(state, ready, procedure, requester, startArgs)
       case _ => Left(GameNotStarted)
 
-  /** The normal start: what `startWalker` did before the follow-up queue. */
+  /** The start itself, for a client command and for the driver's dequeued
+    * `Run` entries alike. */
   private def startNow(state: OathState, ready: ReadyGame,
       procedure: StartableRef, requester: PlayerId,
       startArgs: Vector[DecisionOptionRef])
