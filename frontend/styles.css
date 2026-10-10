@@ -408,7 +408,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   cursor: pointer;
 }
 .adviser { margin: 0 8px 8px 0; }
-.wake-action { min-height: 44px; }
 /* Undo and Redo (undo design, "Controls"): the Action face like every
    Actions-pane button, side by side under the status line, set apart from
    the controls below them. */

@@ -78,8 +78,8 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
     else after(MenuPlay.ending(state, menu, player))
 
   /** Issues each step and answers every parked decision it causes, the last
-    * step's included: the result is not parked, but at a phase menu. With no steps, answers the
-    * park this situation holds. */
+    * step's included: the result is not parked, though it may sit at a phase
+    * menu. With no steps, answers the park this situation holds. */
   def after(steps: (GameCommand | Step)*)(using munit.Location): Situation =
     driver.run(this, steps.map(Step.of), settle = true)
 
