@@ -14,7 +14,7 @@ class SaltTheEarthSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Salt the Earth")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val baron = planlessCard("Baron")
-  private val giant = planlessCard("Mountain Giant")
+  private val searchParty = planlessCard("Search Party")
   /** An edifice whose powers are not built, so it changes no Campaign. It is
     * locked, which a burial ignores. */
   private val clock = CatalogNames.edifice("Great Clock")
@@ -56,7 +56,7 @@ class SaltTheEarthSuite extends munit.FunSuite:
     val base = board(extras = 1, warbands = 5, supply = 7)
     val extra = base.extras.head
     val b = on(withAdviser(base, card, Orientation.FaceUp))(_
-      .denizen(baron, at = base.origin).denizen(giant, at = extra))
+      .denizen(baron, at = base.origin).denizen(searchParty, at = extra))
     val asked = commit(rules(winningDice), b, 3,
         targets = Vector(DecisionOptionRef.Site(extra)))
       .pick(b.actor, CampaignIds.attackerPlan, ref)
@@ -72,7 +72,7 @@ class SaltTheEarthSuite extends munit.FunSuite:
     assertEquals(cardsAndRelicsAt(done.state, extra), Vector.empty)
     assertEquals(cardsAndRelicsAt(done.state, b.origin), Vector[CardId](baron))
     assertEquals(lines(done), Vector(NoteText.Said("buried",
-      s"Buried ${giant.value} from ${extra.value}.", covers = true)))
+      s"Buried ${searchParty.value} from ${extra.value}.", covers = true)))
 
   test("it is offered in a Conquest, not in a Raid"):
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))

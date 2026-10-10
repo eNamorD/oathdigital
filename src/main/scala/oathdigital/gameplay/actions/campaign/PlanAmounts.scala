@@ -16,6 +16,23 @@ object PlanAmounts:
         case _ => None
       }, effects, secretsEach)
 
+  /** One of `choices`, each a button with its words, asked as a
+    * `ChooseOne`. */
+  def oneOf(decisionId: String, heading: String,
+      choices: Vector[(Int, String)])(
+      effects: Int => Vector[CampaignPlanEffect]): PlanAmount =
+    PlanAmount(decisionId, DecisionQuery.ChooseOne(choices.map {
+      case (amount, words) => DecisionOption.Button(button(amount), words)
+    }, heading = Some(heading)), {
+      case DecisionAnswer.ChooseOneAnswer(ref) => choices.collectFirst {
+        case (amount, _) if button(amount) == ref => amount }
+      case _ => None
+    }, effects)
+
+  /** The button that answers `amount` in a `oneOf` question. */
+  def button(amount: Int): DecisionOptionRef.Button =
+    DecisionOptionRef.Button(s"amount-$amount")
+
   /** The amount the plan's question was answered with in this walk. */
   def chosen(pending: PendingTree, amount: PlanAmount): Option[Int] =
     pending.answered.reverseIterator.collectFirst {
