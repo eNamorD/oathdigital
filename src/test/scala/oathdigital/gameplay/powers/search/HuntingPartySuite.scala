@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.search
 import oathdigital.application.{GameCommand, GameProjector, LoadedGame,
   StartPayload, TreeDecision}
 import oathdigital.gameplay.ModifierPlay
+import oathdigital.gameplay.walker.{FollowUpOffer, FollowUpSkipped}
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -34,30 +35,34 @@ class HuntingPartySuite extends munit.FunSuite:
     .worldDeckTop(deckTop*).discarded(region, discardPile*)
     .pawn(p1, "Ancient City").supply(p1, 5).adviser(p1, hunting)
 
-  /** The queue after a whole Search of `pile` with `selected`, every later
-    * decision answered by default. */
-  private def queuedAfter(pile: SearchSource, selected: Vector[PowerId])
-      : Vector[QueuedProcedure] =
+  /** The offer the driver makes after a whole Search of `pile` with
+    * `selected`, read from the Skip that answers it; every other later
+    * decision is answered by default. */
+  private def offeredAfter(pile: SearchSource, selected: Vector[PowerId])
+      : Option[QueuedProcedure] =
     val source: oathdigital.testkit.Answers = {
       case park if park.decisionId == SearchProcedure.sourceDecisionId =>
         ChooseOneAnswer(SearchSource.ref(pile))
     }
-    board.situation(Situation.productionRules(catalog)).withAnswers(
-      source.orElse(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
-        selected)))
+    val skipOffer: oathdigital.testkit.Answers = {
+      case park if park.decisionId == FollowUpOffer.decisionId =>
+        ChooseOneAnswer(FollowUpOffer.skip)
+    }
+    val after = board.situation(Situation.productionRules(catalog))
+      .withAnswers(source.orElse(skipOffer).orElse(ModifierPlay.answers(
+        PowerWindow.SearchModifierSelection, selected)))
       .after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1)))
-      .ready.game.current.queue
+    after.journal.collectFirst { case FollowUpSkipped(entry) => entry }
 
-  test("a Search of the world deck queues a Campaign"):
-    assertEquals(queuedAfter(SearchSource.WorldDeck, modifiers), Vector(owed))
+  test("a Search of the world deck offers a Campaign"):
+    assertEquals(offeredAfter(SearchSource.WorldDeck, modifiers), Some(owed))
 
-  test("a Search of a discard pile queues nothing"):
-    assertEquals(queuedAfter(SearchSource.RegionalDiscard(region), modifiers),
-      Vector.empty)
+  test("a Search of a discard pile offers nothing"):
+    assertEquals(offeredAfter(SearchSource.RegionalDiscard(region), modifiers),
+      None)
 
-  test("without the selection nothing is queued"):
-    assertEquals(queuedAfter(SearchSource.WorldDeck, Vector.empty),
-      Vector.empty)
+  test("without the selection nothing is offered"):
+    assertEquals(offeredAfter(SearchSource.WorldDeck, Vector.empty), None)
 
   test("while it is selected the discard pile warns and stays choosable"):
     val rules = Situation.productionRules(catalog)

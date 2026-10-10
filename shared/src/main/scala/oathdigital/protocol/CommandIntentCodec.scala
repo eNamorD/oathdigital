@@ -8,7 +8,6 @@ private[protocol] object CommandIntentCodec:
     case EndWake => tagged("endWake")
     case BeginRest => tagged("beginRest")
     case FinishRest => tagged("finishRest")
-    case SkipFollowUp => tagged("skipFollowUp")
     case Undo => tagged("undo")
     case Redo => tagged("redo")
     case UsePower(power, source) => tagged("usePower", "powerId" -> power,

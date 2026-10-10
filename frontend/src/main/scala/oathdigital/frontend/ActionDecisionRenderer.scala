@@ -92,10 +92,6 @@ private[frontend] object ActionDecisionRenderer:
        !value.legalControls.contains("endWake")
      end.onclick = _ => submitCommand(GameCommand.EndWake)
      panel.appendChild(end)
-   val followUpPending = value.phase == "follow-up-pending" &&
-     presentation.showGameplayControls
-   if followUpPending then
-     FollowUpControls.render(value, canControl, panel, submitCommand)
    if showActActionControls(value, presentation) then
      val groups = new ActionSections
      if value.legalControls.contains("beginSearch") then

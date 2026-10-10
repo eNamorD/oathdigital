@@ -1,13 +1,14 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.{ModifierPlay, OathRules, WalkerDiceFixture}
+import oathdigital.gameplay.{FollowUpPlay, ModifierPlay, OathRules,
+  WalkerDiceFixture}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, ParkedNode, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -59,31 +60,31 @@ class KnightsErrantSuite extends munit.FunSuite:
   private val owed = QueuedProcedure(p1, ActionRef.Campaign, Vector.empty,
       Some(PowerSourceRef.Card(knights)), QueueKind.Offer)
 
-  private def followUps(transition: OathTransition): Vector[QueuedProcedure] =
-    ready(transition).game.current.queue
+  /** The entry the Muster's offer asks about, if it parked one. */
+  private def offered(transition: OathTransition)
+      : Option[QueuedProcedure] = FollowUpPlay.offered(transition.state)
 
-  test("the Muster queues a Campaign owed to its player"):
+  test("the Muster offers a Campaign owed to its player"):
     val mustered = musterFrom(staged(supply = 1).ready, modifiers)
-    assertEquals(ready(mustered).game.current.walkerPending, None)
-    assertEquals(followUps(mustered), Vector(owed))
+    assertEquals(offered(mustered), Some(owed))
     assertEquals(Look(ready(mustered)).boardWarbands(p1), afterMuster)
 
-  test("without the selection the Muster queues nothing"):
-    assertEquals(followUps(musterFrom(staged(supply = 1).ready, Vector.empty)),
-      Vector.empty)
+  test("without the selection the Muster offers nothing"):
+    val mustered = musterFrom(staged(supply = 1).ready, Vector.empty)
+    assertEquals(offered(mustered), None)
+    assertEquals(ready(mustered).game.current.walkerPending, None)
 
-  test("the queue is unconditional: nothing to campaign against still " +
-      "queues"):
+  test("the offer is unconditional: nothing to campaign against still " +
+      "offers it"):
     val mustered = musterFrom(staged(supply = 1, campaignLegal = false).ready,
       modifiers)
-    assertEquals(followUps(mustered), Vector(owed))
+    assertEquals(offered(mustered), Some(owed))
 
-  test("the queued Campaign sees the warbands the Muster gained and spends " +
+  test("the taken Campaign sees the warbands the Muster gained and spends " +
       "no Supply"):
     // The Muster spends p1's only Supply; the Campaign's 2 is not spent.
     val mustered = musterFrom(staged(supply = 1).ready, modifiers)
-    val started = accepted(rules.startWalker(mustered.state,
-      ActionRef.Campaign, p1))
+    val started = accepted(FollowUpPlay.taken(rules, mustered.state, p1))
     assertEquals(Look(ready(started)).supply(p1), 0)
     assertEquals(ready(started).game.current.walkerProcedure,
       Some(ActionRef.Campaign))
@@ -97,11 +98,19 @@ class KnightsErrantSuite extends munit.FunSuite:
     assert(!offered(ActionRef.Campaign).contains(KnightsErrant.id))
     assert(!offered(ActionRef.Trade).contains(KnightsErrant.id))
 
-  test("Vow of Peace refuses the queued Campaign, and Skip clears it"):
+  test("Vow of Peace shows on the offer, and Skip clears it"):
     val vowed = staged(supply = 1).adviser(p1, "Vow of Peace").ready
     val mustered = musterFrom(vowed, modifiers)
-    assertEquals(rules.startWalker(mustered.state, ActionRef.Campaign, p1)
-      .left.toOption, Some(OathViolation.CampaignUnavailable(
-        "Vow of Peace prevents its ruler from campaigning")))
-    assertEquals(followUps(accepted(rules.skipFollowUp(mustered.state, p1))),
-      Vector.empty)
+    assert(FollowUpPlay.taken(rules, mustered.state, p1).isLeft)
+    val shown = ParkedNode.of(mustered.state, catalog,
+      WalkerPowerCatalog.default(catalog)).toOption.flatten.collect {
+        case ParkedNode.Decision(_, decide, _) => decide.query
+      }.collect { case one: DecisionQuery.ChooseOne => one.options }
+      .getOrElse(Vector.empty)
+    assertEquals(shown.headOption.map(_.available), Some(false))
+    assertEquals(shown.headOption.collect {
+      case DecisionOption.Unavailable(_, OptionReason.Written(text)) => text
+    }, Some("Vow of Peace prevents its ruler from campaigning"))
+    val skipped = accepted(FollowUpPlay.skipped(rules, mustered.state, p1))
+    assertEquals(ready(skipped).game.current.walkerPending, None)
+    assertEquals(ready(skipped).game.current.queue, Vector.empty)

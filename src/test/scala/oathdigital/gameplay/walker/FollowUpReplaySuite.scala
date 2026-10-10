@@ -6,9 +6,9 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
 
-/** The queue's replay (follow-up actions design, "State, ops and events"):
-  * queueing appends, a start takes the head and holds it until the run
-  * completes, and a skip takes the head alone. */
+/** The queue's replay (walker-driven game loop design, "The queue"):
+  * queueing appends or goes in front, a dequeue takes the head and holds it
+  * until the walk completes, and a skip changes nothing. */
 class FollowUpReplaySuite extends munit.FunSuite:
   private val knights =
     PowerSourceRef.Card(CatalogNames.denizen("Knights Errant"))
@@ -41,19 +41,18 @@ class FollowUpReplaySuite extends munit.FunSuite:
     assertEquals(completed.map(current(_).walkerEntry), Right(None))
     assertEquals(completed.map(current(_).queue), Right(Vector(travel)))
 
-  test("a skip takes the head and nothing else"):
-    val skipped = ProcedureWalker.applyRecorded(queued(travel, campaign),
-      FollowUpSkipped(travel))
-    assertEquals(skipped.map(current(_).queue), Right(Vector(campaign)))
-    assertEquals(skipped.map(current(_).walkerEntry), Right(None))
+  test("a skip names the offered entry and changes nothing"):
+    val offering = Table.start.offering(travel).state
+    assertEquals(ProcedureWalker.applyRecorded(offering,
+      FollowUpSkipped(travel)), Right(offering))
+    assertEquals(ProcedureWalker.applyRecorded(offering,
+      FollowUpSkipped(campaign)), Left(OathViolation.InvalidEventOrder(
+      "a skip does not name the offered entry")))
 
-  test("a start or a skip that names another entry than the head is refused"):
+  test("a dequeue that names another entry than the head is refused"):
     assertEquals(ProcedureWalker.applyRecorded(queued(campaign, travel),
       ProcedureDequeued(travel)), Left(OathViolation.InvalidEventOrder(
       "dequeued entry does not match the queue head")))
-    assertEquals(ProcedureWalker.applyRecorded(queued(campaign, travel),
-      FollowUpSkipped(travel)), Left(OathViolation.InvalidEventOrder(
-      "follow-up skip does not match the queue head")))
 
   test("a start while a run is open is refused"):
     val open = Table.start.parkedWalker(ActionRef.Muster)

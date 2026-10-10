@@ -381,9 +381,10 @@ object WalkerProcedureRegistry:
       state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef] = Vector.empty,
       phasePowers: PhasePowers = PhasePowers.empty,
-      registrations: Map[ProcedureRef, Entry] = entries)
+      registrations: Map[ProcedureRef, Entry] = entries,
+      walkerPowers: WalkerPowers = WalkerPowers.empty)
       : Either[OathViolation, Operation] =
-    lookup(procedure, registrations, phasePowers).flatMap(
+    lookup(procedure, registrations, phasePowers, walkerPowers).flatMap(
       _.build(catalog, state, activePlayer, args))
 
   /** Rebuilds `procedure`'s tree to resume an already-started walker
@@ -396,9 +397,10 @@ object WalkerProcedureRegistry:
       state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef] = Vector.empty,
       phasePowers: PhasePowers = PhasePowers.empty,
-      registrations: Map[ProcedureRef, Entry] = entries)
+      registrations: Map[ProcedureRef, Entry] = entries,
+      walkerPowers: WalkerPowers = WalkerPowers.empty)
       : Either[OathViolation, Operation] =
-    lookup(procedure, registrations, phasePowers).flatMap(
+    lookup(procedure, registrations, phasePowers, walkerPowers).flatMap(
       _.rebuild(catalog, state, activePlayer, args))
 
   /** Every `UsePower` shares one entry shape, built for its id. A parked
@@ -422,12 +424,27 @@ object WalkerProcedureRegistry:
     build = ForcedWakeProcedure.build(powers),
     rebuild = ForcedWakeProcedure.build(powers))
 
+  /** The follow-up offer prices its action by a dry run of the action's
+    * start, which needs the walk's powers. It is started by the driver, so
+    * it has no fallback kind, no modifier window and no start selection. */
+  private def followUpOfferEntry(phasePowers: PhasePowers,
+      powers: WalkerPowers): Entry = Entry(
+    fallbackKind = None,
+    rollDecisionId = None,
+    modifierWindow = None,
+    build = FollowUpOffer.build(phasePowers, powers),
+    rebuild = FollowUpOffer.build(phasePowers, powers))
+
   private def lookup(procedure: ProcedureRef,
       registrations: Map[ProcedureRef, Entry],
-      powers: PhasePowers = PhasePowers.empty): Either[OathViolation, Entry] =
+      powers: PhasePowers = PhasePowers.empty,
+      walkerPowers: WalkerPowers = WalkerPowers.empty)
+      : Either[OathViolation, Entry] =
     procedure match
       case ActionRef.UsePower(id) => Right(usePowerEntry(id, powers))
       case TriggeredProcedureRef.ForcedWake => Right(forcedWakeEntry(powers))
+      case TriggeredProcedureRef.FollowUpOffer =>
+        Right(followUpOfferEntry(powers, walkerPowers))
       case _ => registrations.get(procedure).toRight(OathViolation
         .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
 
@@ -493,7 +510,9 @@ object WalkerProcedureRegistry:
   /** Whether `procedure` runs on the generic walker at all. */
   def isRegistered(procedure: ProcedureRef): Boolean =
     procedure.isInstanceOf[ActionRef.UsePower] ||
-      procedure == TriggeredProcedureRef.ForcedWake || entries.contains(procedure)
+      procedure == TriggeredProcedureRef.ForcedWake ||
+      procedure == TriggeredProcedureRef.FollowUpOffer ||
+      entries.contains(procedure)
 
   /** Whether `procedure` opts in to the playable-option gate (see `Entry`). */
   def requiresPlayableOption(procedure: ProcedureRef): Boolean =

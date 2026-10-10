@@ -33,13 +33,20 @@ object ModifierPlay:
       powers: WalkerPowers = production,
       startArgs: Vector[DecisionOptionRef] = Vector.empty)
       : Either[OathViolation, OathTransition] =
+    rules.startWalker(state, procedure, actor, startArgs = startArgs)
+      .flatMap(picking(rules, _, actor, window, modifiers, powers))
+
+  /** The same, for a walk `begun` some other way: a taken follow-up offer,
+    * say. */
+  def picking(rules: OathRules, begun: OathTransition, actor: PlayerId,
+      window: PowerWindow, modifiers: Vector[PowerId],
+      powers: WalkerPowers = production)
+      : Either[OathViolation, OathTransition] =
     val decisionId = ModifierPicks.decisionId(window)
     def answer(from: OathTransition, chosen: DecisionAnswer) =
       rules.resolveWalker(from.state, actor, decisionId, chosen)
         .map(next => next.copy(events = from.events ++ next.events))
     for
-      begun <- rules.startWalker(state, procedure, actor,
-        startArgs = startArgs)
       picked <- modifiers.foldLeft[Either[OathViolation, OathTransition]](
         Right(begun))((done, power) => done.flatMap(answer(_,
           pick(power, powers))))

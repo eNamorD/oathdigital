@@ -178,7 +178,6 @@ object SituationDriver:
         rules.startWalker(state, PhaseTransitionRef.BeginRest, player)
       case GameCommand.FinishRest(player) =>
         rules.startWalker(state, PhaseTransitionRef.FinishRest, player)
-      case GameCommand.SkipFollowUp(player) => rules.skipFollowUp(state, player)
       case GameCommand.UsePower(player, power, source) =>
         rules.startWalker(state, ActionRef.UsePower(power), player,
           Vector(source))

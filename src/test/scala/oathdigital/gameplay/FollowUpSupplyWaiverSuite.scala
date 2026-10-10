@@ -26,21 +26,19 @@ class FollowUpSupplyWaiverSuite extends munit.FunSuite:
       action, Vector.empty, Some(knights), QueueKind.Offer)
 
   /** p1 at Ancient City, which two bandits rule, with `supply` Supply; p2 at
-    * Broken Peaks and p3 at Buried Giant. `queue` is owed to p1. */
-  private def table(supply: Int, queue: QueuedProcedure*): Table = Table.start
+    * Broken Peaks and p3 at Buried Giant. */
+  private def table(supply: Int): Table = Table.start
     .pawn(p1, at = ancientCity).pawn(p2, at = brokenPeaks)
     .pawn(p3, at = "Buried Giant")
     .bandits(ancientCity, 2).supply(p1, supply)
-    .update(_.updateCurrent(_.copy(queue = queue.toVector)))
 
   private def spent(events: Vector[OathEvent]): Vector[SpendSupply] =
     events.collect { case step: WalkerStepRecorded => step.ops }.flatten
       .collect { case spend: SpendSupply => spend }
 
   test("a queued Campaign spends no Supply, even with none to spend"):
-    val started = accepted(rules.startWalker(
-      table(supply = 0, owed(ActionRef.Campaign)).state,
-      ActionRef.Campaign, p1))
+    val started = accepted(FollowUpPlay.taken(rules,
+      table(supply = 0).offering(owed(ActionRef.Campaign)).state, p1))
     assertEquals(spent(started.events), Vector.empty)
     assertEquals(Look(Outcomes.ready(started.state)).supply(p1), 0)
 
@@ -53,8 +51,8 @@ class FollowUpSupplyWaiverSuite extends munit.FunSuite:
 
   test("the waiver holds on a resume: a queued Travel pays after its " +
       "destination is chosen"):
-    val started = accepted(rules.startWalker(
-      table(supply = 0, owed(ActionRef.Travel)).state, ActionRef.Travel, p1))
+    val started = accepted(FollowUpPlay.taken(rules,
+      table(supply = 0).offering(owed(ActionRef.Travel)).state, p1))
     val done = accepted(rules.resolveWalker(started.state, p1,
       TravelProcedure.destinationDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Site(brokenPeaks))))
@@ -63,19 +61,20 @@ class FollowUpSupplyWaiverSuite extends munit.FunSuite:
 
   test("a queued Travel with Special Envoy enters Rest, and the queued " +
       "Campaign still starts there"):
-    val board = table(supply = 0, owed(ActionRef.Travel),
-      owed(ActionRef.Campaign)).adviser(p1, "Special Envoy").state
-    val started = accepted(ModifierPlay.started(rules, board,
-      ActionRef.Travel, p1, PowerWindow.TravelModifierSelection,
-      Vector(SpecialEnvoy.id)))
+    val board = table(supply = 0).offering(owed(ActionRef.Travel))
+      .update(_.updateCurrent(_.copy(queue = Vector(owed(ActionRef.Campaign)))))
+      .adviser(p1, "Special Envoy").state
+    val taken = accepted(FollowUpPlay.taken(rules, board, p1))
+    val started = accepted(ModifierPlay.picking(rules, taken, p1,
+      PowerWindow.TravelModifierSelection, Vector(SpecialEnvoy.id)))
     val travelled = accepted(rules.resolveWalker(started.state, p1,
       TravelProcedure.destinationDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Site(brokenPeaks))))
     assertEquals(Look(Outcomes.ready(travelled.state)).phase, Phase.Rest)
-    assertEquals(Outcomes.ready(travelled.state).game.current.queue,
-      Vector(owed(ActionRef.Campaign)))
     // p2 stands at Broken Peaks, so a Raid is legal there.
-    assert(rules.startWalker(travelled.state, ActionRef.Campaign, p1).isRight)
+    assertEquals(FollowUpPlay.offered(travelled.state),
+      Some(owed(ActionRef.Campaign)))
+    assert(FollowUpPlay.taken(rules, travelled.state, p1).isRight)
 
   test("each action pays at its own cost window"):
     import oathdigital.gameplay.walker.FollowUpSupplyWaiver.costWindow
@@ -94,9 +93,7 @@ class FollowUpSupplyWaiverSuite extends munit.FunSuite:
       .relicAt(CatalogNames.relic("Dowsing Sticks"), at = fairIsle)
       .supply(p1, 0)
     assert(rules.startWalker(base.state, ActionRef.Recover, p1).isLeft)
-    val queued = base.update(_.updateCurrent(_.copy(
-      queue = Vector(owed(ActionRef.Recover)))))
-    val started = accepted(rules.startWalker(queued.state, ActionRef.Recover,
-      p1))
+    val started = accepted(FollowUpPlay.taken(rules,
+      base.offering(owed(ActionRef.Recover)).state, p1))
     assertEquals(spent(started.events), Vector.empty)
     assertEquals(Look(Outcomes.ready(started.state)).supply(p1), 0)

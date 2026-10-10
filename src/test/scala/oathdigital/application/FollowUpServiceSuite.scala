@@ -1,53 +1,51 @@
 package oathdigital.application
 
 import oathdigital.application.GameApplicationError.CommandRejected
-import oathdigital.gameplay.walker.FollowUpSkipped
+import oathdigital.gameplay.FollowUpPlay
+import oathdigital.gameplay.walker.{FollowUpOffer, FollowUpSkipped}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
+import oathdigital.testkit.Unwrap.accepted
 
-/** While an action is queued, the service accepts only its start and its
-  * skip, from its player (follow-up actions design, ruling 3). */
+/** The follow-up offer is a parked walker decision, so the service holds
+  * every other command until its player answers (walker-driven game loop
+  * design, ruling 6). */
 class FollowUpServiceSuite extends munit.FunSuite:
   private val ancientCity = CatalogNames.site("Ancient City")
   private val knights =
     PowerSourceRef.Card(CatalogNames.denizen("Knights Errant"))
   private val campaign = QueuedProcedure(p1, ActionRef.Campaign, Vector.empty,
-      Some(knights), QueueKind.Offer)
+    Some(knights), QueueKind.Offer)
 
-  /** A fresh service at p1's Act with a Campaign owed to p1: two bandits rule
-    * Ancient City, so it can start. */
-  private def queued(using munit.Location): GameApplicationService =
+  /** A fresh service at p1's Act with a Campaign offer parked for p1: two
+    * bandits rule Ancient City, so it can start. */
+  private def offered(using munit.Location)
+      : (GameApplicationService, InMemoryEventStreamRepository) =
     Table.start.pawn(p1, at = ancientCity).pawn(p2, at = "Broken Peaks")
       .pawn(p3, at = "Buried Giant").bandits(ancientCity, 2)
-      .update(_.updateCurrent(_.copy(queue = Vector(campaign))))
-      .service()._1
+      .offering(campaign).service()
 
-  private def refused(command: GameCommand)(using munit.Location)
-      : Option[OathViolation] =
-    queued.handle("game", 0L, command) match
-      case Left(CommandRejected(violation)) => Some(violation)
-      case _ => None
+  private def answer(chosen: DecisionAnswer, by: PlayerId = p1) =
+    GameCommand.ResolveWalker(by, TreeDecision(FollowUpOffer.decisionId,
+      chosen))
 
-  test("other actions, minor actions and other players are refused"):
-    val pending = Some(OathViolation.FollowUpPending(campaign))
-    assertEquals(refused(GameCommand.StartWalker(ActionRef.Travel,
-      StartPayload(p1))), pending)
-    assertEquals(refused(GameCommand.PeekSiteRelics(p1)), pending)
-    assertEquals(refused(GameCommand.BeginRest(p1)), pending)
-    assertEquals(refused(GameCommand.StartWalker(ActionRef.Campaign,
-      StartPayload(p2))), pending)
-    assertEquals(refused(GameCommand.SkipFollowUp(p2)), pending)
+  test("other commands wait for the offer"):
+    assertEquals(offered._1.handle("game", 0L, GameCommand.StartWalker(
+      ActionRef.Travel, StartPayload(p1))).left.toOption.collect {
+        case CommandRejected(violation) => violation
+      }, Some(OathViolation.InvalidEventOrder("a walker procedure is " +
+        "pending; only walker resume commands are legal")))
 
-  test("the head's start and its skip are accepted"):
-    assert(queued.handle("game", 0L, GameCommand.StartWalker(
-      ActionRef.Campaign, StartPayload(p1))).isRight)
-    val skipped = queued.handle("game", 0L, GameCommand.SkipFollowUp(p1))
+  test("Skip is an answer, and writes FollowUpSkipped"):
+    val skipped = offered._1.handle("game", 0L, answer(FollowUpPlay.skip))
     assertEquals(skipped.map(_.events.collect {
       case skip: FollowUpSkipped => skip }),
       Right(Vector(FollowUpSkipped(campaign))))
 
-  test("a Skip intent binds to its sender"):
-    assertEquals(GameIntentMapper.bind(p2,
-      oathdigital.protocol.GameIntent.SkipFollowUp),
-      Right(GameCommand.SkipFollowUp(p2)))
+  test("Undo after taking the offer returns to the offer"):
+    val (service, _) = offered
+    val taken = accepted(service.handle("game", 0L, answer(FollowUpPlay.take)))
+    val undone = accepted(service.handle("game", taken.nextSequence,
+      GameCommand.Undo(p1)))
+    assertEquals(FollowUpPlay.offered(undone.state), Some(campaign))

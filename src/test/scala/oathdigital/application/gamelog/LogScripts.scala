@@ -20,7 +20,7 @@ import oathdigital.gameplay.powers.travel.Tents
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.PowerNoted
+import oathdigital.gameplay.walker.{FollowUpOffer, PowerNoted}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
@@ -428,21 +428,44 @@ object LogScripts:
       StartPayload(p1)))
     Script("raid", service, p1)
 
-  /** The `raid` table with a Campaign owed to p1 by Knights Errant, which p1
-    * holds faceup, and the Raid run as that queued Campaign. */
+  /** The `raid` table with a Campaign offered to p1 by Knights Errant, which
+    * p1 holds faceup: p1 takes the offer and the Raid runs as that queued
+    * Campaign. */
   def queuedRaid(using munit.Location): Script =
-    val knights = CatalogNames.denizen("Knights Errant")
-    val (service, act) = atTable("queued-raid", tableWithOnePawnPerSite
+    val (service, act) = offeredRaidTable("queued-raid", Vector.empty)
+    raidAnswers(act).after(takeOffer)
+    Script("queued-raid", service, p1)
+
+  /** The same with a second Campaign behind the first: p1 takes the first,
+    * which runs, and skips the second. */
+  def queuedRaidThenSkip(using munit.Location): Script =
+    val (service, act) = offeredRaidTable("queued-raid-skip",
+      Vector(knightsOffer))
+    raidAnswers(act).withAnswers {
+      case park if park.decisionId == FollowUpOffer.decisionId =>
+        ChooseOneAnswer(FollowUpOffer.skip)
+    }.after(takeOffer)
+    Script("queued-raid-skip", service, p1)
+
+  private def knightsOffer: QueuedProcedure = QueuedProcedure(p1,
+    ActionRef.Campaign, Vector.empty,
+    Some(PowerSourceRef.Card(CatalogNames.denizen("Knights Errant"))),
+    QueueKind.Offer)
+
+  private def takeOffer: GameCommand = GameCommand.ResolveWalker(p1,
+    TreeDecision(FollowUpOffer.decisionId, ChooseOneAnswer(FollowUpOffer.take)))
+
+  /** The `raid` table with Knights Errant held by p1, a Campaign offer
+    * parked for p1 and `behind` queued after it. */
+  private def offeredRaidTable(name: String, behind: Vector[QueuedProcedure])(
+      using munit.Location): (GameApplicationService, Situation) =
+    atTable(name, tableWithOnePawnPerSite
       .pawn(p2, "Ancient City")
       .adviser(p2, "Birdsong", facedown = true)
-      .adviser(p1, knights)
-      .update(_.updateCurrent(_.copy(queue = Vector(QueuedProcedure(p1,
-          ActionRef.Campaign, Vector.empty, Some(PowerSourceRef.Card(knights)),
-          QueueKind.Offer)))))
+      .adviser(p1, CatalogNames.denizen("Knights Errant"))
+      .update(_.updateCurrent(_.copy(queue = behind)))
+      .offering(knightsOffer)
       .banditsRefilled, Dice.raid)
-    raidAnswers(act).after(GameCommand.StartWalker(ActionRef.Campaign,
-      StartPayload(p1)))
-    Script("queued-raid", service, p1)
 
   /** A Raid's answers: all force committed and sacrificed, no battle plans. */
   private def raidAnswers(act: Situation): Situation =
@@ -693,6 +716,7 @@ object LogScripts:
     "gambling-hall" -> (() => gamblingHall), "wolves" -> (() => wolves),
     "oracle" -> (() => oracle), "barbed-net" -> (() => barbedNet),
     "hunger" -> (() => hunger),
+    "queued-raid-skip" -> (() => queuedRaidThenSkip),
     "heirloom-kept" -> (() => heirloomKept),
     "heirloom-returned" -> (() => heirloomReturned))
 

@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
+import oathdigital.gameplay.FollowUpPlay
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
@@ -27,8 +28,11 @@ class SecondWindSuite extends munit.FunSuite:
     QueuedProcedure(b.actor, action, Vector.empty,
         Some(PowerSourceRef.Card(card)), QueueKind.Offer)
 
+  /** What is owed once the Campaign ends, in order: the entry the driver has
+    * offered, then the ones behind it. */
   private def followUps(run: Run): Vector[QueuedProcedure] =
-    ready(run.state).game.current.queue
+    FollowUpPlay.offered(run.state).toVector ++
+      ready(run.state).game.current.queue
 
   /** A Campaign with Second Wind chosen as the attacker's plan. */
   private def withSecondWind(run: Run, b: Board): Run =
@@ -72,19 +76,22 @@ class SecondWindSuite extends munit.FunSuite:
     val b = holding()
     val game = rules(winningDice)
     val won = withSecondWind(commit(game, b, 4), b)
-    val skipped = accepted(game.skipFollowUp(won.state, b.actor))
-    assertEquals(ready(skipped.state).game.current.queue,
-      Vector(owed(b, ActionRef.Campaign)))
+    assertEquals(FollowUpPlay.offered(won.state), Some(owed(b, ActionRef.Travel)))
+    val skipped = accepted(FollowUpPlay.skipped(game, won.state, b.actor))
+    assertEquals(FollowUpPlay.offered(skipped.state),
+      Some(owed(b, ActionRef.Campaign)))
+    assertEquals(ready(skipped.state).game.current.queue, Vector.empty)
 
   test("the queued Campaign offers it again, with the secret still on the " +
       "card, and a second win queues again"):
     val b = holding(payments = 2)
     val game = rules(winningDice)
     val won = withSecondWind(commit(game, b, 4), b)
-    val skipped = accepted(game.skipFollowUp(won.state, b.actor))
-    // p1 now rules the origin, so the queued Campaign raids the rival there.
+    val skipped = accepted(FollowUpPlay.skipped(game, won.state, b.actor))
+    // p1 now rules the origin, so the taken Campaign raids the rival there.
     val after = ready(skipped.state)
-    val again = commit(game, b.copy(ready = after),
+    val taken = accepted(FollowUpPlay.taken(game, skipped.state, b.actor))
+    val again = committed(game, taken, b.copy(ready = after),
       Look(after).boardWarbands(b.actor), raid = true)
     assert(awaits(again, b.actor, CampaignIds.attackerPlan))
     assert(again.offered(b.actor).contains(ref))

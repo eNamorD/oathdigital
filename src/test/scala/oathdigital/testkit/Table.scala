@@ -337,6 +337,12 @@ final case class Table private (private val game: ReadyGame,
     update(_.updateCurrent(_.copy(walkerProcedure = Some(action),
       walkerPending = Some(PendingTree(Vector(path), answered)))))
 
+  /** A follow-up offer of `entry` parked, as the driver leaves it once it
+    * dequeues the entry (walker-driven game loop design, "The driver"). */
+  def offering(entry: QueuedProcedure): Table =
+    update(_.updateCurrent(_.copy(walkerEntry = Some(entry))))
+      .parkedWalker(TriggeredProcedureRef.FollowUpOffer)
+
   /** The Visions Drawn track at `n`. */
   def visionsDrawn(n: Int): Table =
     update(_.updateCurrent(c => c.copy(tracks =

@@ -9,7 +9,7 @@ import oathdigital.gameplay.phases.rest.{TurnBoundary,
 import oathdigital.gameplay.phases.wake.{ForcedWakeProcedure,
   TakeWealthProcedure}
 import oathdigital.gameplay.powerresolver.PhasePowers
-import oathdigital.gameplay.walker.ActionBoundaryRan
+import oathdigital.gameplay.walker.{ActionBoundaryRan, ProcedureDequeued}
 import oathdigital.model._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
@@ -21,14 +21,11 @@ private[gameplay] enum Ended:
   case Walk(procedure: ProcedureRef)
   /** A legacy minor action finished. Slice 3 moves them onto the walker. */
   case MinorAction
-  /** The queue's head was skipped. Task 4 makes Skip an answer of the
-    * offer's walk. */
-  case Skip
 
 /** What runs between walks (walker-driven game loop design, "The driver").
   * Every finished walk is handed to [[next]], which starts nothing while a
-  * result is set and leaves a queued head waiting. With an empty queue it
-  * runs, in order:
+  * result is set, and otherwise starts the queue's head. With an empty queue
+  * it runs, in order:
   *
   *  1. the action boundary, when an action has finished since the last one
   *     (`boundaryDue`, ruling 5): the ignored-rule diagnostics, the bandit
@@ -57,13 +54,21 @@ private[gameplay] trait OathDriver:
       : Either[OathViolation, OathTransition] = transition.state match
     case Ready(ready) if ready.game.current.result.nonEmpty =>
       Right(transition)
-    // The head waits for its player's start or Skip.
     case Ready(ready) if ready.game.current.queue.nonEmpty =>
-      Right(transition)
+      dequeue(transition, ready.game.current.queue.head)
     case Ready(ready) if ready.game.current.boundaryDue ||
         ended == Ended.MinorAction => boundary(transition, ended)
     case Ready(_) => turnStart(transition, ended)
     case _ => Right(transition)
+
+  /** A queued head starts at once: a `Run` as its procedure, an `Offer` as
+    * the question whose answer may queue it as a `Run`. */
+  private def dequeue(transition: OathTransition, entry: QueuedProcedure) =
+    append(transition, ProcedureDequeued(entry)).flatMap(taken =>
+      entry.kind match
+        case QueueKind.Run => startQueued(taken, entry)
+        case QueueKind.Offer => startTriggered(taken,
+          TriggeredProcedureRef.FollowUpOffer))
 
   /** Step 1. Its order is the old `completeAction`'s, after the marker. */
   private def boundary(transition: OathTransition, ended: Ended) =

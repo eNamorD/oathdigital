@@ -1,13 +1,11 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.MinorActionCommand
-import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ActionBoundaryRan, FollowUpSkipped,
-  WalkerCompleted}
+import oathdigital.gameplay.walker.{ActionBoundaryRan, WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.{CatalogNames, Outcomes, TakeWealthFixture, Table}
@@ -64,19 +62,25 @@ class OathDriverSuite extends munit.FunSuite:
       WalkerCompleted(PhaseTransitionRef.FinishRest)), rested.events)
     assertEquals(boundaries(rested.events), 0)
 
-  test("a walk that leaves an entry queued holds the boundary until Skip"):
-    val start = table.update(_.updateCurrent(_.copy(queue =
-      Vector(offer(ActionRef.Travel), offer(ActionRef.Campaign))))).state
-    val started = accepted(rules.startWalker(start, ActionRef.Travel, p1))
-    val traveled = accepted(rules.resolveWalker(started.state, p1,
-      TravelProcedure.destinationDecisionId,
-      ChooseOneAnswer(DecisionOptionRef.Site(brokenPeaks))))
-    assertEquals(boundaries(traveled.events), 0)
-    assertEquals(current(traveled.state).boundaryDue, true)
-    val skipped = accepted(rules.skipFollowUp(traveled.state, p1))
-    assertEquals(skipped.events.take(2), Vector[OathEvent](
-      FollowUpSkipped(offer(ActionRef.Campaign)), ActionBoundaryRan))
-    assertEquals(current(skipped.state).boundaryDue, false)
+  test("a queued chain gets one boundary, after its last action"):
+    val start = table.update(_.updateCurrent(_.copy(boundaryDue = true,
+      queue = Vector(offer(ActionRef.Campaign))))).state
+    val parked = accepted(FollowUpPlay.dequeued(rules, start))
+    assertEquals(boundaries(parked.events), 0)
+    val skipped = accepted(FollowUpPlay.skipped(rules, parked.state, p1))
+    assertEquals(boundaries(skipped.events), 1)
+
+  test("a Skip with no action before it runs no boundary"):
+    val start = table.offering(offer(ActionRef.Campaign)).state
+    val skipped = accepted(FollowUpPlay.skipped(rules, start, p1))
+    assertEquals(boundaries(skipped.events), 0)
+
+  test("a result stops the driver"):
+    val over = table.update(_.updateCurrent(_.copy(
+      result = Some(GameResult(p2)),
+      queue = Vector(offer(ActionRef.Campaign))))).state
+    assertEquals(accepted(FollowUpPlay.dequeued(rules, over)).events,
+      Vector.empty)
 
   test("a minor action runs the boundary"):
     val start = table.relicAt("Brass Horse", at = ancientCity).state

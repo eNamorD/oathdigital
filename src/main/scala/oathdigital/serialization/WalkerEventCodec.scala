@@ -3,8 +3,8 @@ package oathdigital.serialization
 import scala.util.control.NonFatal
 
 import oathdigital.gameplay.walker.{ActionBoundaryRan, ChoicePayload,
-  FollowUpSkipped, PowerNoted, ProcedureDequeued, RollPayload, WalkerCompleted, DeltaMeaning,
-  WalkerParked, WalkerStepPayload, WalkerStepRecorded}
+  FollowUpSkipped, PowerNoted, ProcedureDequeued, RollPayload,
+  WalkerCompleted, DeltaMeaning, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
 import oathdigital.model._

@@ -25,7 +25,8 @@ class ProcedureRefSuite extends munit.FunSuite:
       ProcedureRef.all.size)
     assertEquals(TriggeredProcedureRef.all,
       Vector(TriggeredProcedureRef.Oathkeeper, TriggeredProcedureRef.Setup,
-        TriggeredProcedureRef.ForcedWake))
+        TriggeredProcedureRef.ForcedWake,
+        TriggeredProcedureRef.FollowUpOffer))
 
   test("a key resolves only under its own family"):
     // end-wake is a phase transition and recover an action: end-wake

@@ -16,7 +16,6 @@ object GameIntentMapper:
       case Intent.EndWake => Right(actor.endWake)
       case Intent.BeginRest => Right(actor.beginRest)
       case Intent.FinishRest => Right(actor.finishRest)
-      case Intent.SkipFollowUp => Right(actor.skipFollowUp)
       case Intent.Undo => Right(actor.undo)
       case Intent.Redo => Right(actor.redo)
       case Intent.UsePower(value, source) =>

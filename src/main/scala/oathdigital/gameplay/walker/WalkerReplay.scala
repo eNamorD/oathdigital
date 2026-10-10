@@ -176,12 +176,12 @@ private[walker] object WalkerReplay:
         yield ready.updateCurrent(_.copy(queue = current.queue.tail,
           walkerEntry = Some(entry)))
 
+      // The offer's walk already took the entry; Skip only anchors the
+      // Game Log line.
       case FollowUpSkipped(entry) =>
-        val current = ready.game.current
-        Either.cond(current.queue.headOption.contains(entry),
-          ready.updateCurrent(_.copy(queue = current.queue.tail)),
+        Either.cond(ready.game.current.walkerEntry.contains(entry), ready,
           OathViolation.InvalidEventOrder(
-            "follow-up skip does not match the queue head"))
+            "a skip does not name the offered entry"))
 
       // An audit fact for the Game Log; replay has nothing to apply.
       case _: PowerNoted => Right(ready)
