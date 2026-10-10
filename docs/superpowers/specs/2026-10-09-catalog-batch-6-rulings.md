@@ -139,13 +139,21 @@
 ## Slice 4: Search draws
 
 - **232 Spinning Bee.** A selected Search modifier.
-  - It excludes every other Search modifier, both ways.
+  - It excludes every other Search modifier, both ways. Picked, it makes
+    every other one unavailable with "Spinning Bee: You cannot use other
+    Search modifiers.". It is unavailable once another is picked ("Cannot
+    be used with other Search modifiers"), and while the actor's own pile
+    is empty ("The Cradle discard pile is empty").
   - The source decision is skipped: the Search draws from the actor's
     region's discard pile at the usual 2 Supply.
   - A decision, "Declare a suit", offers the six suits as favor bank refs.
   - Cards are drawn from the top until one matches the suit, the match
     included. The normal keep-one choice then runs over every drawn card.
     When none match, every drawn card is discarded and nothing is kept.
+  - Its line, "Spinning Bee: Drawing from the Cradle discard until Hearth
+    card is drawn", comes before the Search line. With no match, the
+    Search line reads "Drew {cards} from the Cradle discard and kept
+    none".
 - **130 Land Warden.** A selected Search modifier, costing one favor.
   - The Keep section allows one or two cards.
   - The kept cards are played in the order kept. When the first did not go
