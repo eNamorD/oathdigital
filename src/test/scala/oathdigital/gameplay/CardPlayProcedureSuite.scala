@@ -133,7 +133,9 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     assertEquals(more.query, DecisionQuery.ChooseMany(0, 1,
       others.tail.map(option),
       heading = Some("Discard more cards from the site"),
-      locked = Vector(option(others.head))))
+      locked = Vector(option(others.head)),
+      confirm = Some(CountedConfirm("Discard", "more card", "more cards",
+        Some("Discard no more")))))
 
   test("the follow-up's discards go before the play, and choosing none " +
       "discards only the replaced card"):

@@ -9,7 +9,7 @@ import oathdigital.gameplay.walker.{OptionWarnings, ProcedureWalker,
   WalkerPowers, WalkerProcedureRegistry, WalkerSimulation}
 import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
-  ConsentAskProjection, DecisionOptionProjection, DecisionQueryProjection,
+  ConsentAskProjection, CountedConfirmProjection, DecisionOptionProjection, DecisionQueryProjection,
   DecisionSectionProjection, DecisionSlotProjection, DecisionSummaryProjection,
   DecisionTallyProjection, DecisionTallyValueProjection,
   WalkerDecisionProjection, WalkerRollOutcomeProjection,
@@ -290,7 +290,9 @@ private[application] final class WalkerDecisionProjector(
               DecisionTallyValueProjection(ref.kind, ref.wireId, value))
               .sortBy(value => (value.kind, value.id)), tally.limit)),
           many.summary.map(summary => DecisionSummaryProjection(summary.verb,
-            summary.one, summary.many)))
+            summary.one, summary.many)),
+          many.confirm.map(confirm => CountedConfirmProjection(confirm.verb,
+            confirm.one, confirm.many, confirm.none, confirm.countsLocked)))
       case negotiate: DecisionQuery.Negotiate =>
         Some(DecisionQueryProjection.Negotiate(
           deals.project(ready, viewer, negotiate), negotiate.heading))

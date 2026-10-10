@@ -70,6 +70,18 @@ class SetupProcedureSuite extends munit.FunSuite:
       case v: VisionState => v.orientation == Orientation.FaceDown
     }, advisers(woken))
 
+  test("Reveal Cards names its button by what it reveals"):
+    var asked = Vector.empty[DecisionQuery.ChooseMany]
+    val recording: Answers =
+      case park if park.decisionId ==
+          SetupProcedure.revealDecisionId(park.awaiting) =>
+        asked :+= as[DecisionQuery.ChooseMany](park.decide.query)
+        DecisionAnswer.ChooseManyAnswer(Vector.empty)
+    Situation.wake(Situation.rules(catalog).withAnswers(recording))
+    assert(asked.nonEmpty)
+    assertEquals(asked.map(_.confirm).distinct, Vector(Some(CountedConfirm(
+      "Reveal", "card", "cards", Some("Reveal nothing")))))
+
   test("Reveal Cards offers facedown advisers except site-only ones, then " +
       "facedown relics"):
     // Walks the real setup to p1's dealt hand, then replaces it below; the

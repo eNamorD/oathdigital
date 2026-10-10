@@ -125,7 +125,9 @@ object SetupProcedure:
       if options.isEmpty then Vector.empty
       else Vector(
         Decide(decisionId, player, DecisionQuery.ChooseMany(0, options.size,
-          options, heading = Some("Reveal cards"))),
+          options, heading = Some("Reveal cards"),
+          confirm = Some(CountedConfirm("Reveal", "card", "cards",
+            Some("Reveal nothing"))))),
         BuildOps(reveal(player, decisionId))))
 
   private def reveal(player: PlayerId, decisionId: String)

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.powers.travel.NarrowPassSitePower
-import oathdigital.model.{ConsentAsk, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DecisionTally, DenizenId, DistributeAmount, DistributeSlot, NegotiationBounds, NegotiationDisclosure, NegotiationDisclosureRef, NegotiationTerms, NegotiationTransfer, OathViolation, OptionReason, PlayerId, PowerId, PowerSourceRef, RelicId, SiteId, Suit}
+import oathdigital.model.{ConsentAsk, CountedConfirm, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DecisionTally, DenizenId, DistributeAmount, DistributeSlot, NegotiationBounds, NegotiationDisclosure, NegotiationDisclosureRef, NegotiationTerms, NegotiationTransfer, OathViolation, OptionReason, PlayerId, PowerId, PowerSourceRef, RelicId, SiteId, Suit}
 
 /** Task 2: the generic decision contract, exercised with hand-built queries
   * and no game state at all.
@@ -653,3 +653,16 @@ class DecisionQuerySuite extends munit.FunSuite:
     assertEquals(wellFormed(query), Right(()))
     assertEquals(accepts(query, DecisionAnswer.ChooseManyAnswer(
       Vector(continueRef, stopRef))), Right(()))
+
+  test("a counted confirm label must have words in every part"):
+    def asking(confirm: CountedConfirm) = wellFormed(DecisionQuery.ChooseMany(
+      0, 1, Vector(continueOption, stopOption), confirm = Some(confirm)))
+    assertEquals(asking(CountedConfirm("Reveal", "card", "cards",
+      Some("Reveal nothing"))), Right(()))
+    Vector(CountedConfirm(" ", "card", "cards"),
+      CountedConfirm("Reveal", "", "cards"),
+      CountedConfirm("Reveal", "card", " "),
+      CountedConfirm("Reveal", "card", "cards", Some(""))).foreach(confirm =>
+      assertEquals(asking(confirm),
+        invalid(s"decision $decisionId declares a blank confirm label"),
+        confirm))

@@ -390,6 +390,19 @@ final case class DecisionSummary(verb: String, one: String, many: String):
   def of(count: Int): String =
     s"$verb $count ${if count == 1 then one else many}"
 
+/** What a choose-many's confirm button says, counted off the selection:
+  * "Reveal 2 cards" is verb "Reveal", one "card", many "cards".
+  *
+  * @param none what the button says with nothing selected, when the
+  *   counted form would read badly ("Reveal nothing", not "Reveal 0
+  *   cards"). Without it the counted form stands at zero too.
+  * @param countsLocked whether the locked options count toward the
+  *   number: a Campaign's mandatory target is one of the targets it
+  *   attacks, so "Raid 1 target" before any pick.
+  */
+final case class CountedConfirm(verb: String, one: String, many: String,
+    none: Option[String] = None, countsLocked: Boolean = false)
+
 /** Where a decision is answered. `Board` puts every option with a place on
   * the table there; `Panel` keeps the whole decision in the Action panel.
   */
@@ -437,14 +450,16 @@ object DecisionQuery:
     * answer. An exact count is `min == max`.
     *
     * `locked` options are decided already, such as a Campaign's origin: a
-    * client shows them chosen, and no answer names them. `tallies` and
-    * `summary` are display only, like `heading`.
+    * client shows them chosen, and no answer names them. `tallies`,
+    * `summary` and `confirm` are display only, like `heading`; a query with
+    * no `confirm` gets the client's generic "Confirm".
     */
   final case class ChooseMany(min: Int, max: Int,
       options: Vector[DecisionOption], heading: Option[String] = None,
       locked: Vector[DecisionOption] = Vector.empty,
       tallies: Vector[DecisionTally] = Vector.empty,
-      summary: Option[DecisionSummary] = None) extends DecisionQuery
+      summary: Option[DecisionSummary] = None,
+      confirm: Option[CountedConfirm] = None) extends DecisionQuery
 
   /** Pick an integer from `min` to `max` inclusive. Both labels are required,
     * as on [[Distribute]]: the panel has a confirm step, and a range with no

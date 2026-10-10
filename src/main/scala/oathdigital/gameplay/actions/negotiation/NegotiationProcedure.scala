@@ -44,7 +44,9 @@ object NegotiationProcedure:
       else Vector(Decide(NegotiationDeal.negotiatorsDecisionId, actor,
         DecisionQuery.ChooseMany(1, candidates.size, candidates.map(id =>
           DecisionOption.Player(DecisionOptionRef.Player(id))),
-          heading = Some("Choose who to negotiate with")),
+          heading = Some("Choose who to negotiate with"),
+          confirm = Some(CountedConfirm("Negotiate with", "player",
+            "players"))),
         window = Some(PowerWindow.NegotiationEligibility)))
     Sequence(choose ++ Vector[Operation](
       Repeat((ready, pending) =>

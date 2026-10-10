@@ -89,7 +89,9 @@ class SilverCharmSuite extends munit.FunSuite:
       DecisionOption.Button(SilverCharm.die(0), "Die 1: shield"),
       DecisionOption.Button(SilverCharm.die(1), "Die 2: blank")),
       heading = Some("Reroll earlier dice with this roll"),
-      summary = Some(DecisionSummary("Reroll", "die", "dice"))))
+      summary = Some(DecisionSummary("Reroll", "die", "dice")),
+      confirm = Some(CountedConfirm("Reroll", "die", "dice",
+        Some("Keep the roll")))))
     // Both payments are made, and the second roll waits for the answer.
     assertEquals(Look(Outcomes.ready(asked.state)).player(p1).board.supply
       .supply, 4 - 2)

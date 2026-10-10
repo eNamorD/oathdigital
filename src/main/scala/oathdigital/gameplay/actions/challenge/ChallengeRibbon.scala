@@ -60,7 +60,8 @@ private[challenge] object ChallengeRibbon:
       // already gathered it, and a second gather would apply a power twice.
       Decide(siteDecisionId, actor, DecisionQuery.ChooseMany(remaining, remaining,
         tied.map(id => DecisionOption.Site(DecisionOptionRef.Site(id))),
-        Some(s"Place $remaining secrets on tied least-stocked sites"))),
+        Some(s"Place $remaining secrets on tied least-stocked sites"),
+        confirm = Some(CountedConfirm("Place secrets on", "site", "sites")))),
       BuildOps((_, pending) => chosen(pending).map(_.map(place))))
 
   private def place(site: SiteId): CoreOperation = Move(Piece.Secrets(1),

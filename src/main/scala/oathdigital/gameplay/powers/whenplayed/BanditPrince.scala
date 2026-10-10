@@ -113,7 +113,9 @@ case object BanditPrince extends WhenPlayedPower:
             fits.map(site => ref(site) -> bandits(live, site)).toMap,
             Some(banked))),
           summary = Some(DecisionSummary("Replace bandits at", "site",
-            "sites")))),
+            "sites")),
+          confirm = Some(CountedConfirm("Replace bandits at", "site", "sites",
+            Some("Replace none"))))),
         BuildOps((ready, pending) => replace(ready, actor, pending)),
         Branch((_, pending) => chosen(pending).map(site =>
           Note(id, replacedNote(_, actor, site), covers = true))))))

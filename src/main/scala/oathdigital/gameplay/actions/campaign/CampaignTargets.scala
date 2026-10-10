@@ -37,6 +37,15 @@ private[campaign] object CampaignTargets:
     case CampaignKind.Conquest => DecisionSummary("Target", "site", "sites")
     case CampaignKind.Raid => DecisionSummary("Raid", "target", "targets")
 
+  /** The confirm button counts the mandatory target with the additions, so
+    * it reads "Raid 1 target" before any pick.
+    */
+  def confirm(kind: CampaignKind): CountedConfirm =
+    CountedConfirm(kind match
+      case CampaignKind.Conquest => "Conquer"
+      case CampaignKind.Raid => "Raid", "target", "targets",
+      countsLocked = true)
+
   /** The targets the Campaign may not add, each with why: in a Conquest,
     * every other site in play; in a Raid, the banners the defender does not
     * hold and other players' faceup relics.

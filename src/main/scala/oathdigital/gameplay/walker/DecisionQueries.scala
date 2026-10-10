@@ -126,6 +126,10 @@ object DecisionQueries:
           "declares a tally over an option it does not offer")
         _ <- require(many.tallies.forall(_.limit.forall(_ >= 0)), decisionId,
           "declares a negative tally limit")
+        _ <- require(many.confirm.forall(confirm =>
+          Vector(confirm.verb, confirm.one, confirm.many).forall(_.trim.nonEmpty)
+            && confirm.none.forall(_.trim.nonEmpty)), decisionId,
+          "declares a blank confirm label")
       yield ()
 
     case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel,

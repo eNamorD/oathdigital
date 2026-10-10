@@ -276,6 +276,17 @@ private[frontend] object WalkerPanelSupport:
       query: DecisionQueryState.Partition): String =
     query.confirmLabel.getOrElse("Confirm")
 
+  /** What a choose-many's confirm button says with `picked` options chosen:
+    * the query's counted label, "Reveal 2 cards", with the locked options
+    * added to the count where the query says they count. A query that
+    * declares none gets the generic "Confirm".
+    */
+  private[frontend] def chooseManyConfirmLabel(
+      query: DecisionQueryState.ChooseMany, picked: Int): String =
+    query.confirm.fold("Confirm")(confirm => confirm.of(picked +
+      (if confirm.countsLocked then query.options.count(_.state == "locked")
+       else 0)))
+
   /** A query that keeps exactly one thing says which one on its button.
     *
     * Read off the section's cap rather than its name: a section bounded at

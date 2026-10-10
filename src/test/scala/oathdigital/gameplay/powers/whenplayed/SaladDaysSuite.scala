@@ -33,7 +33,8 @@ class SaladDaysSuite extends munit.FunSuite:
     assertEquals(decide.decisionId, SaladDays.decisionId)
     assertEquals(decide.query, DecisionQuery.ChooseMany(3, 3,
       four.map((suit, _) => DecisionOption.FavorBank(
-        DecisionOptionRef.FavorBank(suit))), decide.query.heading))
+        DecisionOptionRef.FavorBank(suit))), decide.query.heading,
+      confirm = Some(CountedConfirm("Gain favor from", "bank", "banks"))))
     val done = Outcomes.finished(resume(ready, power, played, first.tree,
       SaladDays.decisionId, choose(Suit.Discord, Suit.Hearth, Suit.Beast)))
     // p1's 1 favor and 1 from each of the three banks chosen.

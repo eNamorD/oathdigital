@@ -533,6 +533,9 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(query.locked, Vector(DecisionOption.Site(origin)))
     assertEquals(query.summary, Some(DecisionSummary("Target", "site",
       "sites")))
+    // The button counts the locked origin: "Conquer 1 target" before a pick.
+    assertEquals(query.confirm, Some(CountedConfirm("Conquer", "target",
+      "targets", countsLocked = true)))
     // Two bandits stand at each ruled site.
     assertEquals(query.tallies, Vector(
       DecisionTally("Defense dice (before plans and powers)", "defense",
@@ -578,6 +581,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
       Vector(DecisionOption.Relic(relic)))
     assertEquals(query.summary, Some(DecisionSummary("Raid", "target",
       "targets")))
+    assertEquals(query.confirm, Some(CountedConfirm("Raid", "target",
+      "targets", countsLocked = true)))
     assertEquals(query.tallies.map(_.perOption), Vector(
       Map(pawn -> 2, relic -> catalog.relics.find(_.id.value == cauldron.value)
         .fold(0)(_.defense)),
