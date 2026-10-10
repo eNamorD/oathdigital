@@ -7,11 +7,16 @@
 **Architecture:**
 
 - **A throw keeps its rerolled dice.** `RollOutcome` records the faces rerolled since the pool last rolled (`rerolled`). A throw is the faces its roll added plus those. So when Silver Charm rerolls an earlier die with a roll, a reroll power that follows (Jinx) rerolls that die too. The next roll starts a new throw and clears the record.
+- **A throw is numbered by counting rolls.** Slice 1 numbers a throw as the pool's face count divided by its dice count. If the dice count changed between two rolls of one pool, two throws could share a number and so a reroll decision id. `RollOutcome` now counts its pool's rolls (`throws`), and the throw number reads that count.
 - **A window on Recover's roll.** Recover's roll step passes `PowerWindow.RecoverRoll` as its roll's window. A windowed leaf folds `Vector(roll)` through the transforms, so a power can put steps on either side of the roll and still come before the roll step's reroll choice.
 - **Silver Charm** is a selected Recover modifier. Its transform at `RecoverRoll` gives `Vector(choice, roll, reroll)`:
   - `choice` is a `Branch` that asks a `ChooseMany` over the earlier Recover faces. On the first payment there are none, so it asks nothing.
   - `reroll` is a `Branch` that reads the answer just given. It writes Silver Charm's line, which covers the roll's own line, and runs a `Reroll` leaf of the chosen dice.
 - **The Game Log** needs no new rule. The covering note drops the roll's line. Slice 1's restated line after the `Reroll` names the whole throw, since a throw now includes the rerolled earlier dice. The decision is silent through `narratedDecisions`.
+- **Dice beside a reroll power's question.** Slice 1 left Master at Arms' "Reroll how many hollow swords?" without the dice, and Silver Charm's question would have none either.
+  - A question a reroll power asks while rerolling a throw gets an id under that throw's reroll id: `campaign.attack.reroll.1.master-at-arms`. `RerollChoice.poolOf` reads the pool from it, so the roll panel shows that pool's dice, and no power is named outside `gameplay/powers`.
+  - Every Recover decision but the modifier decision shows the Recover dice and the difficulty. That covers Silver Charm's question, whose id starts `recover.`.
+  - The choose-many panel draws the roll the way the choose-amount panel already does.
 
 **Tech Stack:** Scala 3 on the JVM and Scala.js, munit, built through `./sbtw`.
 
@@ -50,6 +55,8 @@ Slice 1 was written from a plan, and its executor may have adapted names or line
   - Window: `PowerWindow.RecoverRoll`, key `"recover.roll"`.
   - Decision id: `"recover.silver-charm"`, the same on every payment.
   - Option refs: `DecisionOptionRef.Button("die-{index}")`, where `index` is the face's 0-based index in the Recover pool's outcome.
+  - A reroll power's question: `{pool}.reroll.{n}.{name}`, built by `RerollChoice.followUpId(pool, number, name)`. Master at Arms' is `campaign.attack.reroll.{n}.master-at-arms`.
+  - Recover's decision prefix: `RecoverProcedure.decisionPrefix`, `"recover."`.
 - **Texts, exactly:**
   - Silver Charm's printed text: "Each time you spend Supply to roll [defense-die], you may also reroll any number of previous [defense-die] at the same time."
   - The decision's heading: "Reroll earlier dice with this roll".
@@ -57,8 +64,12 @@ Slice 1 was written from a plan, and its executor may have adapted names or line
   - Each option's label: "Die {n}: {face}", where `n` counts from 1 and `{face}` is "blank", "shield", "two shields" or "doubler". Example: "Die 1: shield".
   - Silver Charm's line: "Silver Charm: Rerolled blank, shield." It names the chosen dice as they showed before the reroll, in die order, worded as a roll line words dice.
 - **Baseline.** Record the server and frontend test counts from your first full `./sbtw "test" "frontend/test"` run in the worktree, and compare them at the end.
-  - This plan adds 14 server tests and no frontend test.
-  - It changes one existing suite: `RecoverProcedureSuite` pins the Recover roll's node id and the tree's windowed nodes, and both move (Task 3, Step 6).
+  - This plan adds 19 server tests and 1 frontend test.
+  - It changes these existing tests:
+    - `WalkerRollsSuite`'s test "two attack rolls of one pool accumulate faces, skulls and a re-scored total" expects `throws = 2` (Task 2).
+    - The test helper `WalkerRecordedOpsReducer` counts throws as `WalkerRolls.write` does (Task 2).
+    - `RecoverProcedureSuite` pins the Recover roll's node id and the tree's windowed nodes, and both move (Task 3, Step 6).
+    - `MasterAtArmsSuite` names Master at Arms' question by its throw, `MasterAtArms.decisionId(1)` (Task 4).
 - **Gates**, in order, before the final commit:
   1. `./sbtw "test" "frontend/test"`
   2. `./sbtw frontend/fullOptJS`
@@ -72,17 +83,21 @@ The product owner reviews these with the plan. Task 1 writes all of them into th
 2. **When it asks.** After the payment and before the roll: the Supply is spent, then Silver Charm asks, then the two new dice are rolled. The chosen dice are rerolled right after the roll, in the same command. The player never sees the new dice before choosing, which is "at the same time".
 3. **The throw holds the rerolled dice.** `RollOutcome` gains `rerolled`, the indices of the faces rerolled since the pool last rolled. A throw is the faces its roll added plus those. This amends slice 1's ruling "A throw is the last faces of the pool's outcome, as many as the pool holds dice". It changes nothing for slice 1's powers, which reroll only faces of the throw.
 4. **One decision id.** Silver Charm asks `recover.silver-charm` on every payment. Its reroll reads the answer just given, as Recover's continue-or-stop decision is read.
-5. **The options.** One button per earlier die, labelled with its number and face ("Die 1: shield"). Choosing none is allowed, and nothing is rerolled. The options name the faces, so the choose-many panel needs no dice of its own.
+5. **The options and the panel.** One button per earlier die, labelled with its number and face ("Die 1: shield"). Choosing none is allowed, and nothing is rerolled. Above the options the panel shows the Recover dice and the difficulty, as Recover's other decisions do.
 6. **The Game Log.** Silver Charm's line takes the place of the roll's line: "Silver Charm: Rerolled blank, shield.", then the throw restated with every die in it, "Rolled two shields, two shields, blank". The dice read as every roll line reads them, so the ruling's "double shield" reads "two shields". The decision writes no line. Choosing no die leaves the roll's line as it was.
+7. **Throws are counted, not worked out.** `RollOutcome.throws` counts the rolls of its pool, and a throw's number is that count. Two throws of one pool never share a reroll decision id, even if the pool's dice change between them. No power in batch 7 changes a pool between rolls, so no behaviour changes today.
+8. **A reroll power's question names its throw.** A question a power asks while rerolling a throw has the id `{pool}.reroll.{n}.{name}`. Its panel shows that pool's dice like the reroll decision's, and the Game Log stays silent on it, since the power writes its own line. Master at Arms' "Reroll how many hollow swords?" becomes `campaign.attack.reroll.{n}.master-at-arms` and now shows the attack dice. This changes a slice 1 id.
+9. **Recover shows its dice on every decision but the modifier decision.** Any decision whose id starts `recover.` shows the Recover dice and the difficulty, so a Recover modifier's question gets them with no list to update. The modifier decision, `recover.modifiers`, still shows none.
 
 ## File map
 
 **The throw (Task 2):**
-- `src/main/scala/oathdigital/model/DicePoolState.scala`: `RollOutcome.rerolled`.
+- `src/main/scala/oathdigital/model/DicePoolState.scala`: `RollOutcome.throws` and `RollOutcome.rerolled`.
 - `src/main/scala/oathdigital/gameplay/operations/RollOperations.scala`: a reroll records its dice.
-- `src/main/scala/oathdigital/gameplay/walker/WalkerRolls.scala`: doc comment only.
+- `src/main/scala/oathdigital/gameplay/walker/WalkerRolls.scala`: `write` counts the throw.
 - `src/main/scala/oathdigital/gameplay/actions/dice/DiceThrow.scala`: `lastIndices` adds the rerolled dice.
-- Tests: `RollOperationsSuite` and `WalkerRollsSuite` gain one test each; new `DiceThrowSuite`.
+- `src/main/scala/oathdigital/gameplay/actions/dice/RerollChoice.scala`: `throwAt` numbers the throw by `throws`.
+- Tests: `RollOperationsSuite` gains one test and `WalkerRollsSuite` two; new `DiceThrowSuite`; `WalkerRollsSuite`'s accumulation test and the `WalkerRecordedOpsReducer` helper count throws.
 
 **Silver Charm (Task 3):**
 - `src/main/scala/oathdigital/model/PowerWindow.scala`: `RecoverRoll`.
@@ -91,7 +106,15 @@ The product owner reviews these with the plan. Task 1 writes all of them into th
 - Registration: `ActionModifiers.scala`, and the import in `NewFoundations.scala`.
 - Tests: new `SilverCharmSuite` and `GameLogSilverCharmSuite`; a new script in `LogScripts`; `RecoverProcedureSuite` updated.
 
-**Roadmap (Task 4):** `docs/ROADMAP.md`, and the design's status.
+**Dice beside a reroll power's question (Task 4):**
+- `src/main/scala/oathdigital/gameplay/actions/dice/RerollChoice.scala`: `followUpId`, and `poolOf` reads it.
+- `src/main/scala/oathdigital/gameplay/powers/campaign/MasterAtArms.scala`: its question's id names the throw.
+- `src/main/scala/oathdigital/gameplay/actions/recover/RecoverProcedure.scala`: `decisionPrefix`, and `rollFeedback` for every Recover decision but the modifier decision.
+- `src/main/scala/oathdigital/gameplay/powers/recover/SilverCharm.scala`: its id uses the prefix.
+- `frontend/src/main/scala/oathdigital/frontend/WalkerSelectionPanels.scala`: the choose-many panel draws the roll.
+- Tests: `RerollChoiceSuite`, `MasterAtArmsSuite` and `SilverCharmSuite` gain one test each; `WalkerSelectionPanelsSuite` gains one.
+
+**Roadmap (Task 5):** `docs/ROADMAP.md`, and the design's status.
 
 ---
 
@@ -117,18 +140,28 @@ each slice's plan-time rulings are under it. The per-card rulings are in
 - **A Recover roll window and a throw's rerolled dice** (slice 2).
   Recover's roll step passes `PowerWindow.RecoverRoll` as its roll's
   window, so a power may put steps on either side of the roll, before the
-  reroll choice. `RollOutcome` records the faces rerolled since the pool
-  last rolled, and a throw is the faces its roll added plus those.
+  reroll choice. `RollOutcome` counts its pool's rolls and records the
+  faces rerolled since the last one; a throw is the faces its roll added
+  plus those, numbered by the count.
+- **Dice beside a reroll power's question** (slice 2). A question a power
+  asks while rerolling a throw has an id under that throw's reroll id, so
+  its panel shows the pool's dice. Every Recover decision but the modifier
+  decision shows the Recover dice, and the choose-many panel draws them as
+  the choose-amount panel does.
 ```
 
-3. In "## Slice 1: Rerolls", under "### Plan-time rulings", in the bullet `- **The throw.**`, replace the sentence `A throw is the last faces of the pool's outcome, as many as the pool holds dice.` with:
+3. In "## Slice 1: Rerolls", under "### Plan-time rulings", in the bullet `- **The throw.**`:
+   - Replace the sentence `A throw is the last faces of the pool's outcome, as many as the pool holds dice.` with:
 
 ```markdown
 A throw is the faces the pool's last roll added, as many as the pool holds
 dice, and every face rerolled since that roll (slice 2).
 ```
 
-Re-wrap the bullet to 78 characters.
+   - Replace `where `n` counts the pool's throws so far` with `where `n` counts the pool's rolls so far, as `RollOutcome.throws` records them (slice 2)`.
+   - Append: `A question a reroll power asks while rerolling a throw has the id `{pool}.reroll.{n}.{name}` and shows the same dice (slice 2): Master at Arms asks `campaign.attack.reroll.{n}.master-at-arms`.`
+
+   Re-wrap the bullet to 78 characters.
 
 4. Append to "## Slice 2: Recover rerolls", after its last paragraph:
 
@@ -147,7 +180,12 @@ Re-wrap the bullet to 78 characters.
 - **One decision.** Silver Charm asks `recover.silver-charm` on every
   payment, "Reroll earlier dice with this roll", with one option per
   earlier die, labelled "Die 1: shield". Choosing none rerolls nothing.
-  Its reroll reads the answer just given.
+  Its reroll reads the answer just given. The panel shows the Recover dice
+  and the difficulty above the options: every Recover decision but the
+  modifier decision shows them.
+- **Throws are counted.** `RollOutcome.throws` counts the rolls of its
+  pool, and a throw's number is that count, so two throws never share a
+  reroll decision id even if the pool's dice change between them.
 - **The Game Log.** Silver Charm's line takes the place of the roll's
   line, then the throw is restated with every die in it: "Silver Charm:
   Rerolled blank, shield." and "Rolled two shields, two shields, blank".
@@ -180,18 +218,23 @@ git commit -m "docs(batch7): record slice 2 plan-time rulings"
 
 ---
 
-### Task 2: A throw keeps its rerolled dice
+### Task 2: A throw keeps its rerolled dice, and is numbered by counting rolls
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/model/DicePoolState.scala` (`RollOutcome`)
 - Modify: `src/main/scala/oathdigital/gameplay/operations/RollOperations.scala` (`reroll`)
-- Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerRolls.scala` (`write`'s doc comment)
-- Modify: `src/main/scala/oathdigital/gameplay/actions/dice/DiceThrow.scala` (`lastIndices`)
+- Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerRolls.scala` (`write`)
+- Modify: `src/main/scala/oathdigital/gameplay/actions/dice/DiceThrow.scala` (`lastIndices`, and the case class's doc comment)
+- Modify: `src/main/scala/oathdigital/gameplay/actions/dice/RerollChoice.scala` (`throwAt`)
+- Modify: `src/test/scala/oathdigital/gameplay/WalkerRecordedOpsReducer.scala` (its roll accumulation)
 - Test: `src/test/scala/oathdigital/gameplay/operations/RollOperationsSuite.scala`, `src/test/scala/oathdigital/gameplay/walker/WalkerRollsSuite.scala`, `src/test/scala/oathdigital/gameplay/actions/dice/DiceThrowSuite.scala` (new)
 
 **Interfaces:**
-- Consumes, from slice 1: `RollOutcome.derive`, `RollOperations.reroll`, `DiceThrow.lastIndices(ready, pool)` and `DiceThrow.count(ready, pool)`.
-- Produces: `RollOutcome.rerolled: Vector[Int]`, the last field, defaulting to `Vector.empty`. `DiceThrow.lastIndices` keeps its signature and now includes those indices.
+- Consumes, from slice 1: `RollOutcome.derive`, `RollOperations.reroll`, `DiceThrow.lastIndices(ready, pool)`, `DiceThrow.count(ready, pool)` and `RerollChoice.throwAt(ready)`.
+- Produces:
+  - `RollOutcome.throws: Int`, defaulting to `1`, and `RollOutcome.rerolled: Vector[Int]`, defaulting to `Vector.empty`, after `score` in that order.
+  - `DiceThrow.lastIndices` keeps its signature and now includes the rerolled indices.
+  - `RerollChoice.throwAt` numbers the throw by `throws`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -223,7 +266,22 @@ In `WalkerRollsSuite`, after the test "two attack rolls of one pool accumulate f
       skulls = 0, score = 1))
     assertEquals(two.game.current.rollOutcomes(attackPool).rerolled,
       Vector.empty[Int])
+
+  test("each roll of a pool counts a throw, whatever its dice"):
+    // Two dice, then three: dividing five faces by three dice would number
+    // the second throw 1, like the first.
+    val first: Vector[DieFace] = Vector(AttackDieFace.HollowSword,
+      AttackDieFace.OneSword)
+    val second: Vector[DieFace] = Vector.fill(3)(AttackDieFace.OneSword)
+    val one = WalkerRolls.write(withPools(attackPool -> 2), RollOutcome(
+      attackPool, 2, first, skulls = 0, score = 1))
+    assertEquals(one.game.current.rollOutcomes(attackPool).throws, 1)
+    val two = WalkerRolls.write(one, RollOutcome(attackPool, 3, second,
+      skulls = 0, score = 3))
+    assertEquals(two.game.current.rollOutcomes(attackPool).throws, 2)
 ```
+
+In the same suite, the test "two attack rolls of one pool accumulate faces, skulls and a re-scored total" compares the whole outcome. Add `throws = 2` to its expected `RollOutcome(...)`, after `score = ...`.
 
 Create `src/test/scala/oathdigital/gameplay/actions/dice/DiceThrowSuite.scala`:
 
@@ -233,8 +291,8 @@ package oathdigital.gameplay.actions.dice
 import oathdigital.model._
 import oathdigital.testkit.Table
 
-/** A throw: the faces its roll added, and every earlier face rerolled since
-  * (catalog batch 7, slice 2). */
+/** A throw: the faces its roll added, and every earlier face rerolled since,
+  * numbered by the rolls of its pool (catalog batch 7, slice 2). */
 class DiceThrowSuite extends munit.FunSuite:
   import DefenseDieFace.{Blank, OneShield, TwoShields}
 
@@ -248,7 +306,7 @@ class DiceThrowSuite extends munit.FunSuite:
     Table.start.ready.updateCurrent(current => current.copy(
       rollPools = Map(pool -> DicePoolState(2)),
       rollOutcomes = Map(pool -> RollOutcome(pool, faces.size, faces,
-        skulls, score, rerolled))))
+        skulls, score, throws = 2, rerolled = rerolled))))
 
   test("a throw is the faces the pool's last roll added"):
     val ready = afterTwoRecoverRolls(Vector(OneShield, Blank, Blank,
@@ -259,32 +317,47 @@ class DiceThrowSuite extends munit.FunSuite:
     val ready = afterTwoRecoverRolls(Vector(OneShield, Blank, Blank,
       TwoShields), rerolled = Vector(0, 3))
     assertEquals(DiceThrow.lastIndices(ready, pool), Vector(0, 2, 3))
+
+  test("a throw is numbered by the rolls of its pool, not by its dice"):
+    // Two rolls of two dice, after which the pool holds three: four faces
+    // divided by three dice would number this throw 1.
+    val ready = afterTwoRecoverRolls(Vector(OneShield, Blank, Blank,
+      TwoShields)).updateCurrent(current => current.copy(
+        rollPools = Map(pool -> DicePoolState(3))))
+    val choice = new RerollChoice(pool, DiceKind.Defense, Table.p1)
+    assertEquals(choice.throwAt(ready).map(_.number), Some(2))
 ```
+
+No game reaches the last test's table today, since nothing changes a pool between rolls. It isolates the numbering.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.operations.RollOperationsSuite oathdigital.gameplay.walker.WalkerRollsSuite oathdigital.gameplay.actions.dice.DiceThrowSuite"`
-Expected: compilation fails: `RollOutcome` has no member or parameter `rerolled`.
+Expected: compilation fails: `RollOutcome` has no member or parameter `throws` or `rerolled`.
 
 - [ ] **Step 3: Record the rerolled dice**
 
-In `DicePoolState.scala`, give `RollOutcome` a last field and say what it holds. Append to its doc comment:
+In `DicePoolState.scala`, give `RollOutcome` two last fields and say what they hold. Append to its doc comment:
 
 ```scala
   *
-  * `rerolled` holds the indices of the faces rerolled since the pool last
-  * rolled, in index order. A roll starts a new throw and leaves it empty; a
-  * `Reroll` adds its dice. A throw is the faces its roll added plus these
-  * (catalog batch 7, slice 2: Silver Charm rerolls earlier dice with a
-  * roll).
+  * `throws` counts the pool's rolls, this outcome's included; a throw's
+  * number is this count. `rerolled` holds the indices of the faces
+  * rerolled since the pool last rolled, in index order. A roll starts a new
+  * throw and leaves it empty; a `Reroll` adds its dice. A throw is the faces
+  * its roll added plus these (catalog batch 7, slice 2: Silver Charm
+  * rerolls earlier dice with a roll).
 ```
 
-and the field, after `score: Int`:
+and the fields, after `score: Int`:
 
 ```scala
     score: Int,
+    throws: Int = 1,
     rerolled: Vector[Int] = Vector.empty
 ```
+
+`throws` defaults to 1 because an outcome is made by a roll. `TurnStateOperations.modifyRollOutcome` makes one for a pool that has not rolled; it keeps the default, and a later roll of that pool is numbered 2. Numbers stay distinct, which is all a reroll decision id needs.
 
 In `RollOperations.reroll`, where the rerolled outcome is copied, add the dice to the record:
 
@@ -294,7 +367,27 @@ In `RollOperations.reroll`, where the rerolled outcome is copied, add the dice t
                 rerolled = (outcome.rerolled ++ indices).distinct.sorted)))))
 ```
 
-In `WalkerRolls.write`, the code already builds a fresh `RollOutcome` for each roll, so `rerolled` comes out empty. Add a sentence to its doc comment: "A new roll starts a new throw, so the dice rerolled before it are forgotten."
+In `WalkerRolls.write`, count the throw in the accumulated outcome:
+
+```scala
+        RollOutcome(outcome.pool, previous.count + outcome.count, faces,
+          previous.skulls + outcome.skulls, RollOutcome.derive(faces)._2,
+          throws = previous.throws + 1)
+```
+
+It builds a fresh `RollOutcome`, so `rerolled` comes out empty. Add to its doc comment: "Each roll counts a throw. A new roll starts a new throw, so the dice rerolled before it are forgotten."
+
+In the test helper `WalkerRecordedOpsReducer`, the `RollPayload` case accumulates outcomes the same way. Add `throws = previous.throws + 1` to its accumulated `RollOutcome(...)`, so the states it builds match the walker's.
+
+In `RerollChoice.throwAt`, number the throw by the count:
+
+```scala
+  def throwAt(ready: ReadyGame): Option[DiceThrow] =
+    val indices = DiceThrow.lastIndices(ready, pool)
+    ready.game.current.rollOutcomes.get(pool).filter(_ => indices.nonEmpty)
+      .map(outcome => DiceThrow(pool, die, roller, outcome.throws, indices,
+        indices.map(outcome.faces)))
+```
 
 In `DiceThrow.scala`, replace `lastIndices` and its doc comment:
 
@@ -315,19 +408,21 @@ In `DiceThrow.scala`, replace `lastIndices` and its doc comment:
       }
 ```
 
-Update the `DiceThrow` case class's doc comment the same way: `indices` are the throw's faces, which may include earlier faces rerolled with it.
+Update the `DiceThrow` case class's doc comment the same way: `indices` are the throw's faces, which may include earlier faces rerolled with it, and `number` is the pool's count of rolls.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.operations.* oathdigital.gameplay.walker.* oathdigital.gameplay.actions.dice.* oathdigital.gameplay.powers.dice.*"`
-Expected: PASS. Slice 1's suites are unchanged: their rerolls touch only faces of the throw.
+Run: `./sbtw "testOnly oathdigital.gameplay.* oathdigital.application.gamelog.*"`
+Expected: PASS. Slice 1's suites are unchanged: their rerolls touch only faces of the throw, and every pool they roll keeps its dice, so each throw keeps its number. A suite that compares a whole `RollOutcome` after one roll still passes, since `throws` defaults to 1. If one compares an outcome after two rolls, add `throws = 2` as in `WalkerRollsSuite`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/scala/oathdigital/model/DicePoolState.scala src/main/scala/oathdigital/gameplay/operations/RollOperations.scala src/main/scala/oathdigital/gameplay/walker/WalkerRolls.scala src/main/scala/oathdigital/gameplay/actions/dice/DiceThrow.scala src/test/scala/oathdigital/gameplay/operations/RollOperationsSuite.scala src/test/scala/oathdigital/gameplay/walker/WalkerRollsSuite.scala src/test/scala/oathdigital/gameplay/actions/dice/DiceThrowSuite.scala
-git commit -m "feat(dice): a throw keeps the earlier dice rerolled with it"
+git add src/main/scala/oathdigital/model/DicePoolState.scala src/main/scala/oathdigital/gameplay/operations/RollOperations.scala src/main/scala/oathdigital/gameplay/walker/WalkerRolls.scala src/main/scala/oathdigital/gameplay/actions/dice/DiceThrow.scala src/main/scala/oathdigital/gameplay/actions/dice/RerollChoice.scala src/test/scala/oathdigital/gameplay/WalkerRecordedOpsReducer.scala src/test/scala/oathdigital/gameplay/operations/RollOperationsSuite.scala src/test/scala/oathdigital/gameplay/walker/WalkerRollsSuite.scala src/test/scala/oathdigital/gameplay/actions/dice/DiceThrowSuite.scala
+git commit -m "feat(dice): a throw keeps its rerolled dice and counts its rolls"
 ```
+
+Stage any other suite Step 4 made you change by its path.
 
 ---
 
@@ -815,7 +910,233 @@ Stage any other suite Step 6 changed by its path.
 
 ---
 
-### Task 4: Gates and roadmap
+### Task 4: Dice beside a reroll power's question
+
+**Files:**
+- Modify: `src/main/scala/oathdigital/gameplay/actions/dice/RerollChoice.scala` (`followUpId`, `poolOf`, `isDecision`)
+- Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/MasterAtArms.scala` (`decisionId`, `amount`, `steps`)
+- Modify: `src/main/scala/oathdigital/gameplay/actions/recover/RecoverProcedure.scala` (`decisionPrefix`, `rollFeedback`)
+- Modify: `src/main/scala/oathdigital/gameplay/powers/recover/SilverCharm.scala` (`decisionId`)
+- Modify: `frontend/src/main/scala/oathdigital/frontend/WalkerSelectionPanels.scala` (`render`, `renderMany`)
+- Test: `src/test/scala/oathdigital/gameplay/actions/dice/RerollChoiceSuite.scala`, `src/test/scala/oathdigital/gameplay/powers/campaign/MasterAtArmsSuite.scala`, `src/test/scala/oathdigital/gameplay/powers/recover/SilverCharmSuite.scala`, `frontend/src/test/scala/oathdigital/frontend/WalkerSelectionPanelsSuite.scala`
+
+**Interfaces:**
+- Consumes:
+  - From slice 1: `RerollChoice.decisionId(pool, number)`, `WalkerProcedureRegistry.rollFeedback(procedure, catalog, ready, actor, decisionId)`, which falls back to `RerollChoice.poolOf`, and `WalkerPanelSupport.rollFeedback(decision, panel)`.
+  - From Task 3: `SilverCharm.decisionId`.
+- Produces:
+  - `RerollChoice.followUpId(pool: PoolKey, number: Int, name: String): String`.
+  - `MasterAtArms.decisionId(number: Int): String`, replacing the `val`.
+  - `RecoverProcedure.decisionPrefix: String`.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `RerollChoiceSuite`, after the test "each Recover roll is its own throw, with its own decision":
+
+```scala
+  test("a reroll power's question names its throw, so it is about that " +
+      "pool"):
+    val asked = RerollChoice.followUpId(CampaignIds.attackPool, 1,
+      "master-at-arms")
+    assertEquals(asked, "campaign.attack.reroll.1.master-at-arms")
+    assertEquals(RerollChoice.poolOf(asked), Some(CampaignIds.attackPool))
+    assert(RerollChoice.isDecision(asked))
+    assertEquals(RerollChoice.poolOf("campaign.attack.reroll.1."), None)
+    assertEquals(RerollChoice.poolOf("campaign.attack.reroll.x.master"),
+      None)
+```
+
+In `MasterAtArmsSuite`, replace both uses of `MasterAtArms.decisionId` in the test "its user rerolls as many hollow swords as they choose" with `MasterAtArms.decisionId(1)`. Then add after that test:
+
+```scala
+  test("the how-many question shows the attack dice"):
+    val b = attacker
+    val amount = chosen(b, Vector(HollowSword, OneSword, HollowSword),
+      Vector(TwoSwordsSkull), Vector(Blank, Blank))
+      .pick(b.actor, reroll, ref)
+    assert(awaits(amount, b.actor, MasterAtArms.decisionId(1)))
+    assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Campaign,
+      catalog, ready(amount.state), b.actor, MasterAtArms.decisionId(1)),
+      Some(WalkerRollFeedback(CampaignIds.attackPool)))
+```
+
+Add `import oathdigital.gameplay.walker.{WalkerProcedureRegistry, WalkerRollFeedback}`. `ready` comes from the suite's `CampaignFixture` and `PlanDriver` imports, as `JinxSuite` uses it.
+
+In `SilverCharmSuite`, after the test "a later payment asks which earlier dice to reroll, one option per die":
+
+```scala
+  test("its question shows the Recover dice and the difficulty"):
+    val rules = rulesRolling(scripted(Vector(OneShield, Blank)))
+    val asked = resolved(rules, recoverStarted(rules, silverCharmAtFairIsle),
+      RecoverProcedure.choiceDecisionId, continueRecovering)
+    assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Recover,
+      catalog, Outcomes.ready(asked.state), p1, SilverCharm.decisionId),
+      Some(WalkerRollFeedback(pool, target = Some(3))))
+    // The modifier decision still shows none.
+    assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Recover,
+      catalog, silverCharmAtFairIsle.ready, p1,
+      ModifierPicks.decisionId(PowerWindow.RecoverModifierSelection)), None)
+```
+
+Add `WalkerProcedureRegistry` and `WalkerRollFeedback` to the suite's `oathdigital.gameplay.walker` import, and `import oathdigital.gameplay.powerresolver.ModifierPicks`.
+
+In `WalkerSelectionPanelsSuite`, after the test "the sacrifice panel draws dice, then totals, then the prompt":
+
+```scala
+  test("a choose-many beside a roll draws dice, then totals, then the " +
+      "heading"):
+    val outcome = WalkerRollOutcomeState("recover",
+      Vector("one-shield", "blank"), 1, Some(3), Vector.empty)
+    val earlier = DecisionQueryState.ChooseMany(Vector(
+      DecisionOptionState("button", "die-0", "Die 1: shield"),
+      DecisionOptionState("button", "die-1", "Die 2: blank")),
+      minOptions = 0, maxOptions = 2,
+      heading = Some("Reroll earlier dice with this roll"))
+    val panel = render(new RecordingControls(),
+      opened("recover.silver-charm", earlier), "recover.silver-charm",
+      earlier, rollOutcome = Some(outcome))
+    one(panel, ".walker-roll-faces .die-faces")
+    assertEquals(one(panel, ".walker-roll-totals").textContent,
+      "Shields 1 · need 3")
+    val order = panel.children.toVector.map(child =>
+      Option(child.getAttribute("class")).getOrElse(""))
+    assertEquals(order.take(3),
+      Vector("walker-roll-faces", "walker-roll-totals", ""))
+```
+
+The other choose-many tests pass no roll, so they draw none.
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `./sbtw "testOnly oathdigital.gameplay.actions.dice.RerollChoiceSuite oathdigital.gameplay.powers.campaign.MasterAtArmsSuite oathdigital.gameplay.powers.recover.SilverCharmSuite" "frontend/testOnly oathdigital.frontend.WalkerSelectionPanelsSuite"`
+Expected: compilation fails: `RerollChoice.followUpId` is not defined, and `MasterAtArms.decisionId` takes no argument. Once those compile, the Silver Charm and frontend tests fail on the missing dice.
+
+- [ ] **Step 3: Questions under a throw's id**
+
+In `RerollChoice`, after `decisionId`:
+
+```scala
+  /** `{pool}.reroll.{n}.{name}`: a question a reroll power asks while it
+    * rerolls the `n`th throw of `pool`, such as Master at Arms' "how
+    * many". It names its throw, so its panel shows that pool's dice, as the
+    * reroll decision's does. */
+  def followUpId(pool: PoolKey, number: Int, name: String): String =
+    s"${decisionId(pool, number)}.$name"
+```
+
+Replace `poolOf` and its doc comment:
+
+```scala
+  /** The pool a reroll decision, or a question under one, is about; `None`
+    * for any other decision. */
+  def poolOf(decisionId: String): Option[PoolKey] =
+    decisionId.lastIndexOf(Infix) match
+      case -1 => None
+      case at =>
+        val rest = decisionId.drop(at + Infix.length)
+        val number = rest.takeWhile(_.isDigit)
+        val name = rest.drop(number.length)
+        Option.when(number.toIntOption.exists(_ > 0) &&
+          (name.isEmpty || (name.startsWith(".") && name.length > 1)))(
+          PoolKey(decisionId.take(at)))
+```
+
+Give `isDecision` the doc comment "A reroll decision, or a question a reroll power asks under one." `used`, `kept` and `picked` match the reroll decision's id exactly, so a question under it never counts as a pick.
+
+`DetailLines.narrated` already holds every id `isDecision` accepts, so a question under a throw writes no generic line. The power writes its own.
+
+In `MasterAtArms`, name the question by its throw. Replace the `val decisionId` with:
+
+```scala
+  /** Its "how many" question on the `number`th attack throw. */
+  def decisionId(number: Int): String =
+    RerollChoice.followUpId(CampaignIds.attackPool, number, "master-at-arms")
+```
+
+`amount` takes the id:
+
+```scala
+  /** How many hollow swords the user chose to reroll on throw `number`. */
+  private def amount(pending: PendingTree, number: Int): Option[Int] =
+    pending.answered.reverse.collectFirst {
+      case Answered(id, DecisionAnswer.ChooseAmountAnswer(n), _)
+          if id == decisionId(number) => n
+    }
+```
+
+In `steps`, ask `Decide(MasterAtArms.decisionId(rolled.number), ...)` and read `MasterAtArms.amount(pending, rolled.number)`. Change the `actions.campaign` import to `CampaignIds` alone; `CampaignProcedure` was used only for the old id's prefix.
+
+The new id still starts with `campaign.`, so the Game Log stays silent on it, as before.
+
+- [ ] **Step 4: Recover's dice on its decisions**
+
+In `RecoverProcedure`, after `rollDecisionId`:
+
+```scala
+  /** Every Recover decision's id starts here, and so does the id of a
+    * question a Recover modifier asks (Silver Charm's). */
+  val decisionPrefix: String = "recover."
+```
+
+Replace `rollFeedback`'s condition and doc comment:
+
+```scala
+  /** Every park of a Recover but its modifier decision shows the same
+    * thing: the pool rolled so far and the site's difficulty, which is worth
+    * showing before the first roll too. A question a Recover modifier asks
+    * shows it as well, since its id starts with [[decisionPrefix]]. */
+  def rollFeedback(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, decisionId: String): Option[WalkerRollFeedback] =
+    Option.when(decisionId == rollDecisionId ||
+        (decisionId.startsWith(decisionPrefix) &&
+          !ModifierPicks.isDecision(decisionId)))(
+      WalkerRollFeedback(recoverPool, target = actorSite(ready, actor)
+        .flatMap(RecoverRules.difficulty(catalog, _)))).filter(_.target.nonEmpty)
+```
+
+Import `oathdigital.gameplay.powerresolver.ModifierPicks`. The reroll decisions (`recover.reroll.{n}`) start with the prefix, so slice 1's `RerollChoice.poolOf` clause goes. Drop `RerollChoice` from the `actions.dice` import if nothing else in the file uses it.
+
+In `SilverCharm`, build its id from the prefix:
+
+```scala
+  val decisionId: String = RecoverProcedure.decisionPrefix + "silver-charm"
+```
+
+- [ ] **Step 5: The choose-many panel draws the roll**
+
+In `WalkerSelectionPanels.render`, hand the decision to `renderMany`:
+
+```scala
+      case many: DecisionQueryState.ChooseMany => draft
+        .collect { case value: WalkerChooseManyDraft => value }
+        .foreach(renderMany(surface.decision, many, _, canControl, panel,
+          controls))
+```
+
+In `renderMany`, take `decision: WalkerDecisionState` as its first parameter and draw the roll before the heading, as `renderAmount` does:
+
+```scala
+    // The roll first, as the choose-amount panel draws it: Silver Charm's
+    // question is about the dice already rolled.
+    WalkerPanelSupport.rollFeedback(decision, panel)
+    panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
+```
+
+- [ ] **Step 6: Run the tests to verify they pass**
+
+Run: `./sbtw "testOnly oathdigital.gameplay.* oathdigital.application.*" "frontend/test"`
+Expected: PASS.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/main/scala/oathdigital/gameplay/actions/dice/RerollChoice.scala src/main/scala/oathdigital/gameplay/powers/campaign/MasterAtArms.scala src/main/scala/oathdigital/gameplay/actions/recover/RecoverProcedure.scala src/main/scala/oathdigital/gameplay/powers/recover/SilverCharm.scala frontend/src/main/scala/oathdigital/frontend/WalkerSelectionPanels.scala src/test/scala/oathdigital/gameplay/actions/dice/RerollChoiceSuite.scala src/test/scala/oathdigital/gameplay/powers/campaign/MasterAtArmsSuite.scala src/test/scala/oathdigital/gameplay/powers/recover/SilverCharmSuite.scala frontend/src/test/scala/oathdigital/frontend/WalkerSelectionPanelsSuite.scala
+git commit -m "feat(dice): a reroll power's question shows its dice"
+```
+
+---
+
+### Task 5: Gates and roadmap
 
 **Files:**
 - Modify: `docs/ROADMAP.md`
@@ -829,7 +1150,7 @@ Run, in order:
 2. `./sbtw frontend/fullOptJS`
 3. `python3 scripts/check-architecture.py && python3 scripts/check-markdown-links.py`
 
-Expected: all pass. The server count is the baseline plus 14; the frontend count is unchanged. If a count differs, find out why before going on.
+Expected: all pass. The server count is the baseline plus 19; the frontend count is the baseline plus 1. If a count differs, find out why before going on.
 
 - [ ] **Step 2: Mark the slice done**
 
