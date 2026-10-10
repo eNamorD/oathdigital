@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.phases.{ActOffers, PhaseMenu, PhasePowerProcedure}
+import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.banner.{WanderingFlameMove,
@@ -200,13 +201,12 @@ class PhaseMenuSuite extends munit.FunSuite:
     assert(search.exists(_.option.available), search)
 
   test("End Act and Rest names the Supply Rest returns"):
-    val ending = shown(acting().phaseMenuParked.state,
-      PhaseMenu.Menu.Act.endingOption)
-    ending match
-      case DecisionOption.Button(_, label) =>
-        assert(label == "End Act and Rest" ||
-          label.matches("End Act and Rest \\(\\+\\d+ Supply\\)"), label)
-      case other => fail(s"End Act and Rest is not a plain button: $other")
+    val poor = acting(supply = 1).phaseMenuParked
+    val gain = accepted(FinishRestProcedure.supplyGainAtRest(poor.ready, p1))
+    assert(gain > 0, "the precondition: Rest returns some Supply")
+    assertEquals(shown(poor.state, PhaseMenu.Menu.Act.endingOption),
+      DecisionOption.Button(PhaseMenu.Menu.Act.endingOption,
+        s"End Act and Rest (+$gain Supply)"))
 
   test("the Act menu always asks"):
     val ending = PhaseMenu.Offered(QueuedProcedure(p1,

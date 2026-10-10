@@ -171,11 +171,20 @@ object WalkerSimulation:
           decide.owner), powers, WalkerDice.placeholder)
         .flatMap(reached(state, tree, Some(pending), before, powers,
           picked = option.ref != ModifierPicks.start, tried))
-    ways.iterator.map(answering).collectFirst { case Right(found) => found }
-      .toRight(OathViolation.StartUnavailable(start.collect {
-        case DecisionOption.Unavailable(_, OptionReason.Written(text)) =>
-          text
-      }.getOrElse(ModifierChoice.cannotStart)))
+    // "Start" available yet refused: its own violation says why, where the
+    // reason of a "Start" that is unavailable is all there is.
+    var startRefusal: Option[OathViolation] = None
+    ways.iterator.map(option => answering(option) match
+      case refused @ Left(violation) =>
+        if option.ref == ModifierPicks.start && startRefusal.isEmpty then
+          startRefusal = Some(violation)
+        refused
+      case found => found).collectFirst { case Right(found) => found }
+      .toRight(startRefusal.getOrElse(OathViolation.StartUnavailable(
+        start.collect {
+          case DecisionOption.Unavailable(_, OptionReason.Written(text)) =>
+            text
+        }.getOrElse(ModifierChoice.cannotStart))))
 
   /** The modifiers picked so far, as their options. */
   private def picks(pending: PendingTree): Set[DecisionOptionRef] =

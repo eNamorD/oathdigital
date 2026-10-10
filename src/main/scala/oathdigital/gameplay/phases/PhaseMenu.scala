@@ -174,6 +174,7 @@ object PhaseMenu:
   /** Why an option cannot start, in the player's words. */
   private def reason(procedure: StartableRef, violation: OathViolation)
       : String = (procedure, violation) match
+    case (_, OathViolation.StartUnavailable(text)) => text
     case (_, OathViolation.ResourceUnavailable(_, resource)) =>
       s"No ${resource.key} at your site"
     case (_, _: OathViolation.EnemyPawnBlocksTakeWealth) =>

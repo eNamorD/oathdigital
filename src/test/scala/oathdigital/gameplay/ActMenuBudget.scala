@@ -32,23 +32,29 @@ object ActMenuBudget:
     val walkerPowers = WalkerPowers.selected(
       WalkerPowerCatalog.default(catalog), Vector.empty)
     val phasePowers = PhasePowerCatalog.default(catalog)
-    val b = board(extras = 3, warbands = 5, supply = 7)
-    val menu = TriggeredProcedureRef.ActMenu
-    def tree: Operation = WalkerProcedureRegistry.build(menu, catalog,
-        b.ready, b.actor, Vector.empty, phasePowers,
-        walkerPowers = walkerPowers)
-      .fold(violation => sys.error(s"the Act menu must build: $violation"),
-        identity)
-    def parked: PendingTree = ProcedureWalker.advance(b.ready, tree, None,
-        walkerPowers) match
-      case Right(WalkerOutcome.Parked(pending, _)) => pending
-      case other => sys.error(s"the Act menu must park: $other")
-    val park = best(parked)
-    val pending = parked
-    val ready = b.ready.updateCurrent(_.copy(walkerPending = Some(pending),
-      walkerProcedure = Some(menu)))
-    val read = best(ProcedureWalker.openDecisions(ready, tree, pending,
-      walkerPowers))
-    println(s"Act menu park: $park ms; reading it: $read ms " +
-      s"(budget $budgetMillis ms each)")
-    if park >= budgetMillis || read >= budgetMillis then sys.exit(1)
+    // A rich board answers "Start" at once; a poor one cannot afford any
+    // start, so every option searches all its modifier picks to the end.
+    val measures = Vector(7, 0).map { supply =>
+      val b = board(extras = 3, warbands = 5, supply = supply)
+      val menu = TriggeredProcedureRef.ActMenu
+      def tree: Operation = WalkerProcedureRegistry.build(menu, catalog,
+          b.ready, b.actor, Vector.empty, phasePowers,
+          walkerPowers = walkerPowers)
+        .fold(violation => sys.error(s"the Act menu must build: $violation"),
+          identity)
+      def parked: PendingTree = ProcedureWalker.advance(b.ready, tree, None,
+          walkerPowers) match
+        case Right(WalkerOutcome.Parked(pending, _)) => pending
+        case other => sys.error(s"the Act menu must park: $other")
+      val park = best(parked)
+      val pending = parked
+      val ready = b.ready.updateCurrent(_.copy(
+        walkerPending = Some(pending), walkerProcedure = Some(menu)))
+      val read = best(ProcedureWalker.openDecisions(ready, tree, pending,
+        walkerPowers))
+      println(s"Act menu with $supply Supply: park $park ms; reading it " +
+        s"$read ms (budget $budgetMillis ms each)")
+      (park, read)
+    }
+    if measures.exists((park, read) =>
+        park >= budgetMillis || read >= budgetMillis) then sys.exit(1)
