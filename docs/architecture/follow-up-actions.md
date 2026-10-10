@@ -2,74 +2,78 @@
 
 A power can owe its player an action to take once the current one ends. The
 owed action is a full action of its own: its own walker run, its own Game Log
-section, modifiers chosen as for any start, and no Supply spent. Its player
-starts it or skips it before anything else happens. Knights Errant, Hunting
+section, modifiers chosen as for any start, and no Supply spent. Once the
+current walk ends, the walker asks the player: take the action, or Skip. Knights Errant, Hunting
 Party and Second Wind are built on it.
 
-Design: [follow-up actions design](../superpowers/specs/2026-10-08-follow-up-actions-design.md).
+Design: [follow-up actions design](../superpowers/specs/2026-10-08-follow-up-actions-design.md),
+amended by the [walker-driven game loop](../superpowers/specs/2026-10-09-walker-game-loop-design.md).
 Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions.md).
 
 ## The queue and its replay
 
-- `FollowUp(player, action, source)` (`model/GameState.scala`) is one owed
-  action. `source` is the power that queued it, which the Game Log credits.
-  `player` is the one place an off-turn actor will differ from the active
-  player.
-- `CurrentGameState.followUps` is the queue, oldest first. It outlives runs
-  and phases. `walkerFollowUp` is the entry the current run was started
-  from. It is walker scratch, which `WalkerCompleted` clears.
-- A power appends an entry with the primitive op `QueueFollowUp`
-  (`model/CoreOperations.scala`, applied by `TurnStateOperations`), inside
-  the origin action's tree.
-- Two walker events take the head (`gameplay/walker/WalkerEvents.scala`):
-  - `FollowUpStarted` is the first event of a queued run. Replay moves the
-    head into `walkerFollowUp`.
-  - `FollowUpSkipped` drops the head.
+- `QueuedProcedure(actor, procedure, startArgs, source, kind)`
+  (`model/GameState.scala`) is one queued entry. `kind` is `Run`, which the
+  driver starts at once, or `Offer`, which asks its actor first. `source` is
+  the power that queued it, which the Game Log credits. `actor` is the one
+  place an off-turn actor will differ from the active player.
+- `CurrentGameState.queue` is the queue, oldest first. It outlives walks and
+  phases. `walkerEntry` is the entry the current walk was started from. It
+  is walker scratch, which `WalkerCompleted` clears.
+- A power adds an entry with the primitive op `QueueProcedure(entry,
+  atFront)` (`model/CoreOperations.scala`, applied by `TurnStateOperations`),
+  inside the origin action's tree. It appends unless `atFront` is set.
+- Two walker events touch the queue (`gameplay/walker/WalkerEvents.scala`):
+  - `ProcedureDequeued` is the first event of a walk started from the queue.
+    Replay moves the head into `walkerEntry`.
+  - `FollowUpSkipped` names the offered entry and changes no state. It only
+    anchors the Game Log line.
 
-  `WalkerReplay` refuses either event when it does not name the head, and
-  refuses a start while another run is open. It is an event rather than a
-  `WalkerParked` field, because a run can finish in its starting command
+  `WalkerReplay` refuses a dequeue that does not name the head, or that
+  happens while another walk is open. It is an event rather than a
+  `WalkerParked` field, because a walk can finish in its starting command
   without parking.
-- Wire spellings: the op kind is `queue-follow-up`. The event types are
-  `walker.follow-up-started` and `walker.follow-up-skipped`. The entry's
+- Wire spellings: the op kind is `queue-procedure`. The event types are
+  `walker.procedure-dequeued` and `walker.follow-up-skipped`. The entry's
   codec is in `serialization/FollowUpWire.scala`, beside the power-source
   and procedure spellings it shares with the other walker events. The
   journal format version was not bumped. Readers accept only the exact
   version, so a bump would have stopped every stored game, not only the
   ones holding a nested Knights Errant Campaign.
 
-## Start, skip and the service gate
+## Start and skip
 
-- `OathRulesWalker.startWalker` dispatches on the queue:
-  - With an empty queue, `startNow` is the normal start.
-  - With a non-empty queue, `startFollowUp` accepts only the head's action
-    from the head's player (`WrongPlayer`, `FollowUpPending`). It evolves
-    `FollowUpStarted` first, then runs the normal start on that state, so
-    the build sees the entry. A start that fails refuses the whole command,
-    and the queue is unchanged.
-- `skipFollowUp` emits `FollowUpSkipped` whether or not the head could
-  start.
-- `OathLifecycle.validateAct` skips its Act-phase check while
-  `walkerFollowUp` is set. A Special Envoy Travel that enters Rest still
-  lets the next queued Campaign start.
-- Automatic Finish Rest and End Wake wait while anything is queued.
-- `GameApplicationService.applyCommand` refuses every other command with
-  `FollowUpPending` while an entry waits:
-  - It allows the head's start, `WithModifiers` included, and its skip
-    (`GameCommand.SkipFollowUp`, intent `skipFollowUp`).
-  - Undo and Redo never reach this gate.
-  - The rejection reads "Start or skip the queued {action} first".
+- When a walk ends, `OathDriver.next` dequeues the head. An `Offer` starts the
+  triggered procedure `FollowUpOffer` (`gameplay/walker/FollowUpOffer.scala`),
+  a walker decision for the entry's actor: the action "for no Supply", or
+  Skip.
+- The action's option is priced by `QueuedStart.refusal`: the restriction
+  check, the first walk and the playable-option gate, on the state its start
+  would see. When it would be refused, the option is unavailable with its
+  reason, and Skip stays available.
+- Taking it queues a `Run` entry in front (`atFront`), so Second Wind's
+  Travel does not wait behind its own queued Campaign offer. The driver
+  dequeues it and starts the action in the same command. A start that
+  fails refuses the whole command.
+- Skip is an answer. `walkerTransition` writes `FollowUpSkipped(entry)`
+  before `WalkerCompleted`. There is no Skip command and no service gate:
+  the parked offer already holds back every other command.
+- `OathLifecycle.validateAct` skips its Act-phase check while `walkerEntry`
+  is set. A Special Envoy Travel that enters Rest still lets the next queued
+  Campaign start.
+- The action boundary and the automatic End Wake and Finish Rest wait while
+  anything is queued.
 
 ## The Supply waiver
 
 - `FollowUpSupplyWaiver` (`gameplay/walker/FollowUpSupplyWaiver.scala`) is
   an automatic engine power, id `engine.follow-up-supply`.
 - `WalkerPowers.selected` always offers it. Most of its callers have no
-  state, so it gates itself in `applicable`: it applies only at the cost
-  window of the action `walkerFollowUp` names, on the start and on every
-  resume.
-- It waives Supply only. Recover pays inside its repeat with no cost
-  window, so a queued Recover would still pay. Nothing queues one.
+  state, so it gates itself in `applicable`: it applies only when
+  `walkerEntry` has a source, at the cost window of the action it names, on
+  the start and on every resume.
+- It waives Supply only. Recover pays at `RecoverCost`, a window around the
+  Supply each roll costs.
 - The waiver strips through `gameplay/operations/SupplyStrip.scala`. Every
   unconditional Supply strip now uses `SupplyStrip`: News from Afar,
   Awaited Return, and the free-Travel powers, which used
@@ -79,38 +83,26 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
   decides from the answered card at run time, so it stays separate as
   `SuitSupplyWaiver`.
 
-## Projection and the panel
+## The offer's display
 
-- `GameProjection.followUp` (`FollowUpProjection`) shows the head to every
-  viewer:
-  - its player, action and label;
-  - its source's label;
-  - whether it can start, and why not;
-  - the labels of the entries behind it (`queuedAfter`).
-- `LegalActionProjector.followUpProjection` asks whether the head can start
-  of the state `FollowUpStarted` would leave. The waiver and the Act-phase
-  exemption therefore apply as they would on a real start.
-- Each action declares its own reason (`followUpReason`):
+- There is no follow-up projection, control or panel. The offer is a parked
+  choose-one, drawn as any other.
+- Each action declares its own reason for an unavailable option
+  (`FollowUpOffer.reason`):
   - A Campaign shows its restriction's own text, such as Vow of Peace's.
     With nothing to attack, it reads "No site to conquer and no enemy pawn
-    to raid". `CampaignProcedure.refusal` asks the restriction first.
+    to raid".
   - A Travel reads "No site to travel to".
   - Any other action reads "Cannot start now".
-- While an entry waits:
-  - The head's player gets only `beginFollowUp` and `skipFollowUp`.
-  - The phase reads `follow-up-pending`.
-  - Minor actions and action selection are closed.
-- The frontend's `FollowUpControls` draws the start button, which is
-  disabled with its reason on hover when the action cannot start, then Skip
-  and a "Then: …" line.
 - The start asks for the action's modifiers inside the walk, as a normal
   start does (a queued Travel with Special Envoy, say).
-- A waiting viewer's status reads "{player} may campaign (Knights Errant)".
 
 ## Game Log
 
-- `FollowUpStarted` opens the queued run's segment. The start tag appends
+- `ProcedureDequeued` opens the queued run's segment. The start tag appends
   the source, as in "Campaign · Knights Errant" (`StartLines.queuedBy`).
+- The offer's own walk writes nothing: its decision is narrated by the tag
+  or by the Skip line.
 - `FollowUpSkipped` writes "{source}: {Action} skipped.", filed in the
   latest section (`GameLogFormatter.formatLive`).
 - A step that only queues posts no "Used {card}" line.
@@ -132,7 +124,7 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
 
 - **Knights Errant** (`powers/economy/KnightsErrant.scala`) queues a
   Campaign at `MusterActionEligibility`, unconditionally. A restriction such
-  as Vow of Peace shows on the queued Campaign's button.
+  as Vow of Peace shows on the offer's Campaign option.
 - **Hunting Party** (`powers/search/HuntingParty.scala`) queues a Campaign
   after a Search of the world deck. While it is selected, a discard pile
   warns "Hunting Party needs the world deck".
@@ -142,7 +134,7 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
   - The two entries are independent: skipping the Travel still offers the
     Campaign.
   - A plan's cost may be paid onto a card that already holds tokens, so the
-    queued Campaign offers it again. A chain ends only when its cost cannot
+    taken Campaign offers it again. A chain ends only when its cost cannot
     be paid.
   - A defender is not offered it: a winning defender would be owed actions
     off turn, which waits for the off-turn actor.
@@ -152,12 +144,8 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
 Only Campaign and Travel are queued today. A power that first queues
 another action must also:
 
-- add the action to `LegalActionProjector.followUpStartable`. A Trade or
-  Forge falls to "cannot start", and Recover skips the pawn-site check its
-  normal control makes;
-- give the start its arguments (a Trade's resource) in `FollowUpControls`;
-- give Recover a cost window, or the queued Recover pays Supply under a "for
-  no Supply" button;
+- give the entry its `startArgs` (a Trade's resource) where the power queues
+  it;
 - anchor the Muster and Trade log tag on their first step with ops. Under
   the waiver they pay nothing, so `StartLines.opening` would post the tag at
   completion.
@@ -165,11 +153,10 @@ another action must also:
 ## Sneak Attack hook
 
 Sneak Attack will queue a Campaign for a player who is not the active
-player. `FollowUp.player` and the requester comparison in `startFollowUp` are
-the hooks. Campaign powers still read `ctx.activePlayer` as the attacker, and
+player. `QueuedProcedure.actor` and the offer's owner are the hooks.
+Campaign powers still read `ctx.activePlayer` as the attacker, and
 modifiers are selected only on turn, so the off-turn actor is still to be
-built. The projection's `startable` reads the active player, and the panel
-follows `activeParticipantId`; both change with the requester check.
+built.
 
 ## Decisions beyond the design
 
@@ -177,9 +164,9 @@ follows `activeParticipantId`; both change with the requester check.
   an entry is set.
 - One unconditional `SupplyStrip`, and two consistently named waivers,
   `SuitSupplyWaiver` and `FollowUpSupplyWaiver`.
-- Recover has no cost window.
+- Recover pays at `RecoverCost`.
 - The Campaign reason is the restriction's own text.
-- `queuedAfter` holds labels, not a count.
+- The offer is a walker decision, not a panel (walker-driven game loop, slice 1).
 - Second Wind is an attacker-only battle plan, not a start modifier.
 - The warning hook is `Warned`, `ContributingPower.warning` and
   `OptionWarnings`.

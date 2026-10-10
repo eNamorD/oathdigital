@@ -124,7 +124,6 @@ powers join their menu, follow-ups become queued offers, and the start
 commands, `LegalActionProjector`'s controls and the glue in `OathRules` go
 ([design](superpowers/specs/2026-10-09-walker-game-loop-design.md)).
 
-- [ ] Slice 1: the queue and the driver, with every empty-queue hook.
 - [ ] Slice 2: the Wake and Rest menus.
 - [ ] Slice 3: the three legacy minor actions on the walker.
 - [ ] Slice 4: the Act menu and its frontend panel.

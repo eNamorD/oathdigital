@@ -313,6 +313,11 @@ tests stay the same. A helper that moves takes the fold's `PowerCtx`, which
   applies after every nested fold and to every batch. Registered at a
   procedure's root, it reaches across procedures. Wild Pastures, Ring of
   Devotion, Vow of Kinship, Vow of Silence and Vow of Division need it.
+- **Rewrites never reach a queued walk** (walker-driven game loop design,
+  ruling 17). A deferral is resolved within its action and never crosses
+  into a queued walk; walker-level reach covers nested subtrees only. A
+  power that changes a later action uses a persistent rule, or queues its
+  own entry.
 - **Op causes.** A cause on `Discard.Denizen` and the gain ops, for "from a
   power" (Wild Pastures).
 - **Ask per deferred op.** A `resolve` variant that asks once for each

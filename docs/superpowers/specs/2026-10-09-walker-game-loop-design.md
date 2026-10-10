@@ -1,8 +1,7 @@
 # Walker-Driven Game Loop
 
-**Status:** designed 2026-10-09. Slice 1 is ready to plan: slice 1 of the
-[operation rewrite](2026-10-09-operation-rewrite-design.md), which it
-builds on, has landed.
+**Status:** designed 2026-10-09. Slice 1 landed: the queue, the driver and follow-up
+offers. Slice 2 is ready to plan.
 
 **Amends**, in the slices that change the behavior:
 

@@ -250,6 +250,13 @@ consults it: its turn boundary owns the continuation.
 
 ## Completion and the action boundary
 
+**Amended 2026-10-09** by the
+[walker-driven game loop](2026-10-09-walker-game-loop-design.md): every
+finished walk is handed to `OathDriver.next`. The boundary runs only when the
+queue is empty, once an action has finished since the last one
+(`boundaryDue`), and `completeAction` is gone. The text below describes the
+boundary's steps, which are unchanged.
+
 When a walk finishes, `walkerTransition` applies `WalkerCompleted` and then
 makes two independent decisions:
 
@@ -283,6 +290,10 @@ are deleted. The guarantee they appeared to provide is `OathLifecycle`'s
 
 ## Triggered procedures
 
+**Amended 2026-10-09:** the driver, not the boundary, starts the Oathkeeper,
+Forced Wake and follow-up offer walks (walker-driven game loop design, "The
+driver").
+
 The boundary's Oathkeeper step calls `OathkeeperRules.outcome(current)`. On
 `NoChange` it returns the transition unchanged and journals nothing. Otherwise
 it calls `startTriggered(transition, TriggeredProcedureRef.Oathkeeper)`.
@@ -300,9 +311,13 @@ it calls `startTriggered(transition, TriggeredProcedureRef.Oathkeeper)`.
    minor actions, Vision reveal, Negotiation decline, Campaign place and raid
    relocation) rely on their own evolve having cleared it. Legacy `afterAction`
    overwrote `pending` unconditionally, so a violation there was already a
-   silent bug; the guard turns it into a typed rejection. Nothing nests; a
-   procedure that needs sub-steps changes its own operations mid-walk through
-   `Branch` and `BuildOps`.
+   silent bug; the guard turns it into a typed rejection. Nest or queue
+   (walker-driven game loop design, ruling 15): one procedure's steps are
+   built inside another's tree, through `Branch`, `BuildOps` or a shared
+   builder, when the enclosing procedure has steps after the inner part, or
+   when the text says "as if". A nested part has no modifier decision and no
+   boundary. An action is queued when the text says "after X, you may Y"; it
+   is a full action with its own walk.
 2. builds the tree through the registry with empty start selections, checks
    restrictions, and runs `ProcedureWalker.advance` with automatic powers only.
    It validates no modifiers and records no fallback diagnostics, which the
