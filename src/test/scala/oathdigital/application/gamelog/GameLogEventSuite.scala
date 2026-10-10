@@ -14,9 +14,8 @@ class GameLogEventSuite extends munit.FunSuite:
   test("a revealed relic is named for everyone"):
     val script = revealRelic
     Vector(Some(script.actor), None).foreach { viewer =>
-      val revealed = format(script, viewer).last
-      assertEquals(revealed.kind, LogKind.Delta)
-      assert(text(revealed).startsWith("Revealed "), text(revealed))
+      val revealed = entryStarting(format(script, viewer), "Revealed ")
+      assertEquals(revealed.kind, LogKind.Action)
       assert(revealed.spans.exists(_.isInstanceOf[LogSpan.Card]),
         revealed.spans)
     }
@@ -43,6 +42,30 @@ class GameLogEventSuite extends munit.FunSuite:
     assertEquals(text(theirs), "Peeked at " +
       (if relics.size == 1 then "a Relic" else s"${relics.size} Relics") +
       s" at ${presentation.siteLabel(site)}")
+
+  test("Peek Site Relics names the relics for the peeker only"):
+    val script = peekRelics
+    val site = CatalogNames.site("Broken Peaks")
+    val mine = entryStarting(format(script, Some(script.actor)), "Peeked at ")
+    assertEquals(mine.kind, LogKind.Action)
+    assert(mine.spans.exists(_.isInstanceOf[LogSpan.Card]), mine.spans)
+    assertEquals(mine.section.map(_.action), Some("peek-site-relics"))
+    // p3 stands at Buried Giant, so p3 reads only that a relic was peeked
+    // at. The peeker is the active player, so the subject is left out.
+    val theirs = entryStarting(format(script, Some(p3)), "Peeked at ")
+    assertEquals(text(theirs),
+      s"Peeked at a Relic at ${presentation.siteLabel(site)}")
+
+  test("each Move Warbands posts one line, in a section of its own"):
+    val peaks = presentation.siteLabel(CatalogNames.site("Broken Peaks"))
+    val moves = format(warbandsMoved, None)
+      .filter(entry => text(entry).startsWith("Moved "))
+    assertEquals(texts(moves), Vector(s"Moved 2 warbands to $peaks",
+      s"Moved 1 warband from $peaks"))
+    assert(moves.forall(_.kind == LogKind.Action), moves)
+    assertEquals(moves.map(_.section.map(_.action)),
+      Vector.fill(2)(Some("move-warbands")))
+    assertEquals(moves.map(_.section).distinct.size, 2)
 
   test("warbands moved, bandits returned and a new Usurper each post one line"):
     val script = recordedEventsBoard

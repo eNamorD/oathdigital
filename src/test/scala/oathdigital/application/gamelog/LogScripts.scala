@@ -6,6 +6,7 @@ import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.{ModifierPlay, TravelPlay}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.actions.minor.MinorActionProcedures
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
@@ -401,18 +402,45 @@ object LogScripts:
     start(act, ActionRef.Recover)
     Script("recover-succeeded", service, Look(act.ready).active)
 
-  /** A successful Recover, then the recovered relic revealed as a minor
-    * action. */
+  /** A successful Recover, then the recovered relic revealed with Reveal
+    * Owned Relic. The relic choice is answered by default. */
   def revealRelic(using munit.Location): Script =
     val (service, act) = recovering("reveal-relic", Dice.steady)
     val actor = Look(act.ready).active
-    val recovered = start(act, ActionRef.Recover)
-    val relic = Look(recovered.ready).relics(actor) match
-      case Vector(only) => only
-      case held => munit.Assertions.fail(
-        s"$actor should hold only the recovered relic, holds $held")
-    recovered.after(GameCommand.RevealOwnedRelic(actor, relic))
+    start(act, ActionRef.Recover).after(
+      GameCommand.StartWalker(ActionRef.RevealOwnedRelic, StartPayload(actor)))
     Script("reveal-relic", service, actor)
+
+  /** p1 peeks at Broken Peaks, where Sticky Fire lies. p2 and p3 stand
+    * elsewhere, so only p1 learns the relic. */
+  def peekRelics(using munit.Location): Script =
+    val (service, act) = atTable("peek-relics", Table.start
+      .pawn(p1, at = "Broken Peaks").pawn(p2, at = "Ancient City")
+      .pawn(p3, at = "Buried Giant").relicAt("Sticky Fire", "Broken Peaks")
+      .banditsRefilled)
+    act.after(GameCommand.StartWalker(ActionRef.PeekSiteRelics,
+      StartPayload(p1)))
+    Script("peek-relics", service, p1)
+
+  /** p1 rules Broken Peaks with 3 warbands and holds 4 more. Two minor
+    * actions: 2 warbands to the site, then 1 back to the board. */
+  def warbandsMoved(using munit.Location): Script =
+    val (service, act) = atTable("warbands-moved", Table.start
+      .pawn(p1, at = "Broken Peaks").boardWarbands(p1, 4)
+      .warbandsAt("Broken Peaks", p1, 3).banditsRefilled)
+    def answer(decisionId: String, value: DecisionAnswer) =
+      GameCommand.ResolveWalker(p1, TreeDecision(decisionId, value))
+    def moved(from: Situation, way: DecisionOptionRef.Button,
+        amount: Int): Situation =
+      from.parkedAfter(GameCommand.StartWalker(ActionRef.MoveWarbands,
+          StartPayload(p1)))
+        .parkedAfter(answer(MinorActionProcedures.directionDecisionId,
+          ChooseOneAnswer(way)))
+        .after(answer(MinorActionProcedures.amountDecisionId,
+          ChooseAmountAnswer(amount)))
+    moved(moved(act, MinorActionProcedures.toSite, 2),
+      MinorActionProcedures.toBoard, 1)
+    Script("warbands-moved", service, p1)
 
   /** p1 recovers at Broken Peaks with Relic Worship, their adviser, and one
     * faceup secret. Relic Worship is the only modifier, so its pick starts
@@ -739,7 +767,9 @@ object LogScripts:
     "take-wealth" -> (() => takeWealth),
     "recover-failed" -> (() => recoverFailed),
     "recover-succeeded" -> (() => recoverSucceeded),
-    "reveal-relic" -> (() => revealRelic), "forge" -> (() => forge),
+    "reveal-relic" -> (() => revealRelic),
+    "peek-relics" -> (() => peekRelics),
+    "warbands-moved" -> (() => warbandsMoved), "forge" -> (() => forge),
     "banners" -> (() => banners), "raid" -> (() => raid),
     "negotiation-declined" -> (() => negotiationDeclined),
     "negotiation-agreed" -> (() => negotiationAgreed),

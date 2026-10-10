@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.challenge.{ChallengeProcedure, PlaceBannerRe
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.campaign.CampaignProcedure
+import oathdigital.gameplay.actions.minor.MinorActionProcedures
 import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.{SearchOptions, SearchProcedure}
@@ -281,6 +282,29 @@ object WalkerProcedureRegistry:
       build = CampaignProcedure.build,
       rebuild = CampaignProcedure.rebuild,
       rollFeedback = CampaignProcedure.rollFeedback),
+
+    /** The legacy minor actions (walker-driven game loop design, slice 3).
+      * They are actions, so the boundary follows each, but like the legacy
+      * handler they take no modifiers and record no fallback diagnostics.
+      */
+    ActionRef.PeekSiteRelics -> Entry(
+      fallbackKind = None,
+      rollDecisionId = None,
+      modifierWindow = None,
+      build = MinorActionProcedures.buildPeek,
+      rebuild = MinorActionProcedures.rebuildPeek),
+    ActionRef.RevealOwnedRelic -> Entry(
+      fallbackKind = None,
+      rollDecisionId = None,
+      modifierWindow = None,
+      build = MinorActionProcedures.buildReveal,
+      rebuild = MinorActionProcedures.rebuildReveal),
+    ActionRef.MoveWarbands -> Entry(
+      fallbackKind = None,
+      rollDecisionId = None,
+      modifierWindow = None,
+      build = MinorActionProcedures.buildMove,
+      rebuild = MinorActionProcedures.rebuildMove),
 
     /** Batch-1 Task 7, and the first entry for an action outside the Act
       * phase. Nothing here says so: the phase is a gate inside

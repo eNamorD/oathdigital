@@ -303,7 +303,7 @@ By the last slice:
 2. **The Wake and Rest menus.** Take Wealth, the Wake and Rest phase powers,
    End Wake and Finish Rest move onto `PhaseMenu`, with the skip of ruling 3.
 3. **The minor actions.** The three legacy minor actions become walker
-   procedures.
+   procedures. Their commands, intents, events and codecs go with them.
 4. **The Act menu.** `ActMenu`, its offers, the budget test, and the
    frontend panel.
 5. **The cleanup.** Everything under "What goes away" that is still there,
@@ -365,6 +365,34 @@ By the last slice:
 7. **The End Wake and Finish Rest commands go in slice 2.** In Wake and Rest
    a menu is parked or the phase has ended by itself, so nothing can send
    them. `UsePower` and `BeginRest` stay until the Act menu.
+
+## Plan-time rulings (slice 3)
+
+1. **Each minor action is an action.** `ActionRef.PeekSiteRelics`,
+   `RevealOwnedRelic` and `MoveWarbands` are registered like any action.
+   The action boundary follows each one, as it followed the legacy handler.
+   They have no modifier window and record no fallback diagnostics.
+2. **The choices move into the walk.** No minor action takes a start
+   selection. Reveal Owned Relic asks which facedown relic. Move Warbands
+   asks which way, then how many. Peek Site Relics asks nothing: the peek is
+   recorded in the player's knowledge, and no `Inspect` decision is added.
+3. **Move Warbands shows both ways.** A way that cannot be taken is shown
+   unavailable with its reason, Vow of Wandering's included: the procedure
+   reads the Vow's holder itself, as the Vow's other placing powers do.
+   When neither way is open, the start is refused with both reasons.
+4. **Every operation is required.** An operation restriction that refuses
+   a peek, a reveal or a move refuses the action with its own reason.
+5. **The starts keep the legacy gates** until slice 4: the Act phase check
+   (ruling 9) and the first-game rules gate.
+6. **One action line each, in a section of its own,** in the legacy lines'
+   wording. The shared "minor" section goes, and the peek, reveal and move
+   detail lines are not repeated for these runs. A peek and a reveal stay
+   undo barriers through their walker step's hidden operations.
+7. **The commands go in slice 3.** The Act panel starts each procedure with
+   `StartWalker`, shown by today's legal controls until slice 4 replaces the
+   panel.
+8. **The driver is handed the finished procedure.** With the legacy minor
+   action gone, `OathDriver.next` takes the procedure whose walk ended.
 
 ## Testing
 

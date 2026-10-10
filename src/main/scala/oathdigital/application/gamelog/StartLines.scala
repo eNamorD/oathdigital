@@ -119,7 +119,9 @@ private[gamelog] final class StartLines(words: LogWords,
       case ActionRef.Campaign => Some("Campaign")
       // No modifier window, so no tag.
       case ActionRef.TakeWealth | ActionRef.PlaceBannerResource |
-          ActionRef.Negotiation | _: ActionRef.UsePower => None
+          ActionRef.Negotiation | ActionRef.PeekSiteRelics |
+          ActionRef.RevealOwnedRelic | ActionRef.MoveWarbands |
+          _: ActionRef.UsePower => None
       case _: PhaseTransitionRef | _: TriggeredProcedureRef => None
 
   private def paysCost(journal: LogJournal, run: Run, at: Int): Boolean =

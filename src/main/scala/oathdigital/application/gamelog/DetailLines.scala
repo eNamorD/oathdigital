@@ -108,7 +108,8 @@ private[gamelog] final class DetailLines(words: LogWords,
         gainedSecrets(player, amount)
       case Move(Piece.Warbands(kind, amount), _,
           PositionedLocation(Location.Site(site), _), _)
-          if run.procedure != ActionRef.Campaign =>
+          if run.procedure != ActionRef.Campaign &&
+              run.procedure != ActionRef.MoveWarbands =>
         line(LogSpan.Text(s"Moved $amount ") +:
           (whose(kind, amount, actor, before) ++
             Vector(LogSpan.Text(" to "), words.site(site))))
@@ -123,9 +124,11 @@ private[gamelog] final class DetailLines(words: LogWords,
           Vector(card(discard.card))))
       case Bury(buried, _, _) =>
         line(LogSpan.Text("Buried ") +: words.one(card(buried.id)))
-      case Peek(peeker, id, _) if run.procedure != ActionRef.Negotiation =>
+      case Peek(peeker, id, _) if run.procedure != ActionRef.Negotiation &&
+          run.procedure != ActionRef.PeekSiteRelics =>
         line(words.subject(peeker, actor, "peeked at") ++ words.one(card(id)))
-      case Reveal(id, _) => line(LogSpan.Text("Revealed ") +: words.one(card(id)))
+      case Reveal(id, _) if run.procedure != ActionRef.RevealOwnedRelic =>
+        line(LogSpan.Text("Revealed ") +: words.one(card(id)))
       case Move(Piece.Card(id), PositionedLocation(Location.PlayArea(owner), _),
           PositionedLocation(Location.PlayArea(same), _),
           Some(Orientation.FaceUp)) if owner == same && faceDown(before, id) &&

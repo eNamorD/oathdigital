@@ -44,9 +44,8 @@ class GameLogSectionSuite extends munit.FunSuite:
   test("a minor action is a section of its own, apart from the action " +
       "around it"):
     val entries = format(revealRelic, None)
-    val revealed = entries.last
-    assertEquals(revealed.section,
-      Some(LogSection(revealed.sequence, LogSections.Minor)))
+    val revealed = entryStarting(entries, "Revealed ")
+    assertEquals(revealed.section.map(_.action), Some("reveal-owned-relic"))
     val recovered = entryStarting(entries, "Recovered ")
     assertEquals(recovered.section.map(_.action), Some("recover"))
 

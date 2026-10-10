@@ -86,6 +86,14 @@ object ActionRef:
   case object Negotiation extends ActionRef { val key = "negotiation" }
   case object Campaign extends ActionRef { val key = "campaign" }
 
+  /** The three minor actions that were legacy commands (walker-driven game
+    * loop design, slice 3). */
+  case object PeekSiteRelics extends ActionRef:
+    val key = "peek-site-relics"
+  case object RevealOwnedRelic extends ActionRef:
+    val key = "reveal-owned-relic"
+  case object MoveWarbands extends ActionRef { val key = "move-warbands" }
+
   /** Uses one phase power. Parameterized, so `all` cannot list it; the key
     * parses directly.
     */
@@ -110,7 +118,8 @@ object ActionRef:
     */
   val all: Vector[ActionRef] = Vector(Search, PlayFacedownAdviser,
     Recover, Forge, Travel, TakeWealth, Muster, Trade, Challenge,
-    PlaceBannerResource, Negotiation, Campaign)
+    PlaceBannerResource, Negotiation, Campaign, PeekSiteRelics,
+    RevealOwnedRelic, MoveWarbands)
 
   def usePower(key: String): Option[UsePower] =
     Option.when(key.startsWith(UsePower.Prefix))(key.stripPrefix(UsePower.Prefix))

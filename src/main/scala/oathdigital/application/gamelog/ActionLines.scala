@@ -160,6 +160,34 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
           action(Vector(Text(s"Placed ${resource(piece)} on "),
             words.banner(banner)))
       }
+      // The minor actions post their legacy lines, now as action lines.
+      case ActionRef.PeekSiteRelics =>
+        val peeked = ops.collect {
+          case OpStep(Peek(_, relic, Location.Site(site)), before, after) =>
+            site -> words.card(relic, before, after, viewer)
+        }
+        peeked.headOption.toVector.map((site, _) => action(
+          Vector(Text("Peeked at ")) ++ words.cards(peeked.map(_._2)) ++
+            Vector(Text(" at "), words.site(site))))
+      case ActionRef.RevealOwnedRelic => ops.collect {
+        case OpStep(Reveal(relic, Location.PlayArea(owner)), before, after)
+            if owner == actor =>
+          action(Text("Revealed ") +:
+            words.one(words.card(relic, before, after, viewer)))
+      }
+      case ActionRef.MoveWarbands => ops.collect {
+        case OpStep(Move(Piece.Warbands(_, count),
+            PositionedLocation(Location.PlayArea(_), _),
+            PositionedLocation(Location.Site(site), _), _), _, _) =>
+          action(Vector(Text(s"Moved $count " +
+            s"${plural(count, "warband", "warbands")} to "), words.site(site)))
+        case OpStep(Move(Piece.Warbands(_, count),
+            PositionedLocation(Location.Site(site), _),
+            PositionedLocation(Location.PlayArea(_), _), _), _, _) =>
+          action(Vector(Text(s"Moved $count " +
+            s"${plural(count, "warband", "warbands")} from "),
+            words.site(site)))
+      }
       case ActionRef.Negotiation => negotiations.lines(journal, run, at, viewer)
       // A power that plays a card as if searched (Oracle) posts where the
       // card went, as a Search does. Only a run that answered a placement
