@@ -420,7 +420,7 @@ final class GameApplicationService(
       case GameCommand.Begin(chronicle, orders) =>
         rules.beginGame(state, chronicle, orders)
       case GameCommand.StartWalker(procedure, start) =>
-        rules.startWalker(state, procedure, start.actor, start.modifiers,
+        rules.startWalker(state, procedure, start.actor,
           start.startArgs)
       // The source answer is where a Search draws, so the prepared draw is
       // checked there, against the pile the answer names.
@@ -459,7 +459,7 @@ final class GameApplicationService(
         rules.startWalker(state, PhaseTransitionRef.EndWake, playerId)
       case GameCommand.UsePower(playerId, power, source) =>
         rules.startWalker(state, ActionRef.UsePower(power), playerId,
-          Vector.empty, Vector(source))
+          Vector(source))
       case GameCommand.PeekSiteRelics(playerId) =>
         rules.handle(state, MinorActionCommand.PeekSiteRelics(playerId))
       case GameCommand.RevealOwnedRelic(playerId, relic) =>

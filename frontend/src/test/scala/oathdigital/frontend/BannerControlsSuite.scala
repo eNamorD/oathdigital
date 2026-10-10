@@ -15,8 +15,8 @@ class BannerControlsSuite extends munit.FunSuite:
     assertEquals(rendered.buttons.map(_.textContent),
       Vector("Challenge (1 Supply)", "Place favor or secrets on a banner"))
     assertEquals(rendered.submitted, Vector[GameIntent](
-      GameIntent.StartWalker("challenge", Vector.empty),
-      GameIntent.StartWalker("place-banner-resource", Vector.empty)))
+      GameIntent.StartWalker("challenge"),
+      GameIntent.StartWalker("place-banner-resource")))
 
   test("nothing renders when nothing is offered, and controls disable without control"):
     assertEquals(renderAndClickEach(Vector.empty).buttons, Vector.empty)

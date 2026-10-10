@@ -144,34 +144,6 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       SupplySpent(actor, 1),
       RelicAcquired(actor, relic, recoverSite)))
 
-  test("StartWalker rejects an unknown power id in modifiers, appending no " +
-      "events, while empty modifiers still starts Recover exactly as today"):
-    val actor = p1
-    val (service, _) = ParkedServiceFixture.recoverTable.service(
-      campaignDice = Dice.defending(meetingTheDifficulty))
-
-    // No `ContributingPower` is registered yet (Task 5 ports the first one),
-    // so any non-empty `modifiers` names an id the catalog cannot recognize:
-    // rejected before the walk ever starts, with nothing appended.
-    service.handle("walker-unknown-modifier", 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor,
-        Vector(PowerId("power.does-not-exist"))))) match
-      case Left(GameApplicationError.CommandRejected(
-          _: oathdigital.model.OathViolation.InvalidEventOrder)) => ()
-      case other => fail(s"expected an InvalidEventOrder rejection, got $other")
-    assertEquals(loaded(service.load("walker-unknown-modifier"))
-      .nextSequence, 0L, "the rejected StartWalker must append no events")
-
-    // The exact same command with an empty `modifiers` (every walker Recover
-    // before this task) starts and parks exactly as the suite's other walker
-    // tests already pin.
-    val started = accepted(service.handle("walker-unknown-modifier", 0L,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))))
-    assert(started.events.nonEmpty)
-    assert(started.events.last.isInstanceOf[WalkerParked])
-    parkedAssertions.assertParked(started.state, ActionRef.Recover,
-      RecoverProcedure.relicDecisionId, actor)
-
   test("walker Continue answer and the roll it buys survive reload"):
     val dice = new Dice.CountingDefense(
       Vector(DefenseDieFace.Blank, DefenseDieFace.Blank))

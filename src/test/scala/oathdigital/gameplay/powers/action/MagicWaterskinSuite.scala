@@ -19,7 +19,7 @@ class MagicWaterskinSuite extends munit.FunSuite:
       .supply(actor, supply)
   private def staged(supply: Int = 1): ReadyGame = stagedTable(supply).ready
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
-    ActionRef.UsePower(MagicWaterskin.id), actor, Vector.empty, Vector(source))
+    ActionRef.UsePower(MagicWaterskin.id), actor, Vector(source))
 
   test("it buries itself at the bottom of the relic deck and gains 4 Supply"):
     // 1 Supply + 4 = 5.

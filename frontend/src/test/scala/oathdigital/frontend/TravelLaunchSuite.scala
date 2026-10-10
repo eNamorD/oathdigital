@@ -25,8 +25,7 @@ class TravelLaunchSuite extends munit.FunSuite:
       ActionPanels.actingViewer("red"), ParkedDecision.Routed(None, None),
       canControl = true, SessionDrafts.empty, ui)
     as[dom.html.Button](one(pane, ".travel-action")).click()
-    assertEquals(ui.submitted, Vector(Intent.StartWalker("travel",
-      Vector.empty)))
+    assertEquals(ui.submitted, Vector(Intent.StartWalker("travel")))
 
   test("a destination's badge is drawn on its site box"):
     val badged = OptionView(DecisionOptionState("site", "woods", "Deep Woods",

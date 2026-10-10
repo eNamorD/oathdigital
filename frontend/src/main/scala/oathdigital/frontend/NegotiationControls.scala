@@ -13,5 +13,5 @@ private[frontend] object NegotiationControls:
     if value.legalControls.contains("beginNegotiation") then
       val node = button("Negotiate", "act-action negotiation-action")
       node.disabled = !canControl
-      node.onclick = _ => submit(GameCommand.StartWalker("negotiation", Vector.empty))
+      node.onclick = _ => submit(GameCommand.StartWalker("negotiation"))
       groups.appendKind("negotiation", node)

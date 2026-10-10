@@ -288,7 +288,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     assertEquals(Outcomes.ready(setupState).game.current.turn.activePlayer,
       activeId)
     val wealth = accepted(rules.startWalker(setupState, ActionRef.TakeWealth,
-      activeId, Vector.empty, Vector(DecisionOptionRef.Button("favor"))))
+      activeId, Vector(DecisionOptionRef.Button("favor"))))
     val act = accepted(rules.startWalker(wealth.state,
       PhaseTransitionRef.EndWake, activeId))
     val prior = BannerRules.resources(Outcomes.ready(act.state).game.current,

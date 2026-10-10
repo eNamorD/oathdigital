@@ -132,8 +132,7 @@ class GameLogTakenBackSuite extends munit.FunSuite:
       .banditsRefilled
     val (service, _) = table.service()
     val taken = accepted(service.handle("g", 0L, GameCommand.StartWalker(
-      ActionRef.TakeWealth, StartPayload(p2, Vector.empty,
-        Vector(DecisionOptionRef.Button("secret"))))))
+      ActionRef.TakeWealth, StartPayload(p2, Vector(DecisionOptionRef.Button("secret"))))))
     val undone = accepted(service.handle("g", taken.nextSequence,
       GameCommand.Undo(p2)))
     accepted(service.handle("g", undone.nextSequence, GameCommand.EndWake(p2)))

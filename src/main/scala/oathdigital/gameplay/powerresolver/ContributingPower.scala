@@ -172,9 +172,7 @@ trait ContributingPower extends NotingPower:
     * default. */
   def discardsItself: Boolean = false
   /** What selecting this power pays: the operations the modifier decision
-    * runs when the player picks it, and, for an action not yet on that
-    * decision, the operations a start's selection is dry-run against
-    * (`OathRules.validateModifiers`). Free by default.
+    * runs when the player picks it. Free by default.
     */
   def selectionPayments(ready: ReadyGame, actor: PlayerId)
       : Vector[CoreOperation] = Vector.empty

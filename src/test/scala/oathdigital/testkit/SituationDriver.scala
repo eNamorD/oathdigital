@@ -161,8 +161,7 @@ object SituationDriver:
       case GameCommand.Begin(chronicle, orders) =>
         rules.beginGame(state, chronicle, orders)
       case GameCommand.StartWalker(procedure, start) =>
-        rules.startWalker(state, procedure, start.actor, start.modifiers,
-          start.startArgs)
+        rules.startWalker(state, procedure, start.actor, start.startArgs)
       case GameCommand.ResolveWalker(actor, decision) =>
         rules.resolveWalker(state, actor, decision.decisionId,
           decision.answer)
@@ -182,7 +181,7 @@ object SituationDriver:
       case GameCommand.SkipFollowUp(player) => rules.skipFollowUp(state, player)
       case GameCommand.UsePower(player, power, source) =>
         rules.startWalker(state, ActionRef.UsePower(power), player,
-          Vector.empty, Vector(source))
+          Vector(source))
       case GameCommand.PeekSiteRelics(player) =>
         rules.handle(state, MinorActionCommand.PeekSiteRelics(player))
       case GameCommand.RevealOwnedRelic(player, relic) =>

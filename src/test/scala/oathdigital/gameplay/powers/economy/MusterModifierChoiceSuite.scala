@@ -11,7 +11,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, EconomyActions, Look, Outcomes,
   Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.{accepted, rejected}
+import oathdigital.testkit.Unwrap.accepted
 
 /** Muster asks for its modifiers inside the walk (modifier walker design,
   * slice 3). */
@@ -70,12 +70,6 @@ class MusterModifierChoiceSuite extends munit.FunSuite:
         DecisionOptionRef.Denizen(errandBoy))))
     assertEquals(Look(Outcomes.ready(done.state)).tokensOn(errandBoy),
       Tokens(1, 0))
-
-  test("a start may no longer carry modifiers for a Muster"):
-    assertEquals(rejected(rules.startWalker(Ready(besideErrandBoy(7)),
-      ActionRef.Muster, p1, Vector(AnimalPlaymates.id))),
-      OathViolation.InvalidEventOrder(
-        "muster chooses its modifiers inside the walk"))
 
   test("the start control previews the sources, not the modifier " +
       "decision"):

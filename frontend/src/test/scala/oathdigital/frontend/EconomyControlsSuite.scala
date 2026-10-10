@@ -18,11 +18,9 @@ class EconomyControlsSuite extends munit.FunSuite:
     val rendered = renderAndClickEach(
       Vector("beginMuster", "beginTradeFavor", "beginTradeSecret"))
     assertEquals(rendered.submitted, Vector[GameIntent](
-      GameIntent.StartWalker("muster", Vector.empty),
-      GameIntent.StartWalker("trade", Vector.empty,
-        Vector(WalkerStartArgWire("button", "favor"))),
-      GameIntent.StartWalker("trade", Vector.empty,
-        Vector(WalkerStartArgWire("button", "secret")))))
+      GameIntent.StartWalker("muster"),
+      GameIntent.StartWalker("trade", Vector(WalkerStartArgWire("button", "favor"))),
+      GameIntent.StartWalker("trade", Vector(WalkerStartArgWire("button", "secret")))))
 
   test("no control renders when none is offered, and all are disabled without control"):
     assertEquals(renderAndClickEach(Vector.empty).buttons, Vector.empty)

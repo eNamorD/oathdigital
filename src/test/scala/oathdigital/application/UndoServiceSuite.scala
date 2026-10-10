@@ -133,7 +133,7 @@ class UndoServiceSuite extends munit.FunSuite:
     val (service, _) = withGolem.service()
     val started = accepted(service.handle("g", 0L,
       GameCommand.StartWalker(ActionRef.Muster,
-        StartPayload(p1, Vector.empty, Vector.empty))))
+        StartPayload(p1))))
     val picked = accepted(service.handle("g", started.nextSequence,
       GameCommand.ResolveWalker(p1, TreeDecision("muster.modifiers",
         ModifierPlay.pick(GolemLegions.id)))))

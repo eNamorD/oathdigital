@@ -23,7 +23,7 @@ class WaysideInnSuite extends munit.FunSuite:
       .denizen(inn, at = "Ancient City").favor(actor, favor)
       .supply(actor, supply).ready
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
-    ActionRef.UsePower(WaysideInn.id), actor, Vector.empty, Vector(source))
+    ActionRef.UsePower(WaysideInn.id), actor, Vector(source))
 
   test("it places 1 favor on its card and gains 2 Supply"):
     val used = ready(accepted(use(staged(favor = 3, supply = 2))).state)

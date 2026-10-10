@@ -363,7 +363,7 @@ class TableSessionSuite extends munit.FunSuite:
 
   test("a submitted command is sent as it is, at the displayed position"):
     displayed(2).map { fixture =>
-      val start = GameCommand.StartWalker("recover", Vector.empty)
+      val start = GameCommand.StartWalker("recover")
       fixture.session.submitCommand(start)
       assertEquals(fixture.client.submits, Vector(Submit(2L, start)))
     }

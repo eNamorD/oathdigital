@@ -16,9 +16,8 @@ private[protocol] object CommandIntentCodec:
     case PeekSiteRelics => tagged("peekSiteRelics")
     case RevealOwnedRelic(id) => tagged("revealOwnedRelic", "relicId" -> id)
     case MoveWarbands(toSite, amount) => tagged("moveWarbands", "toSite" -> toSite, "amount" -> amount)
-    case StartWalker(action, modifiers, startArgs) =>
+    case StartWalker(action, startArgs) =>
       tagged("startWalker", "action" -> action,
-        "modifiers" -> ujson.Arr.from(modifiers.map(ujson.Str(_))),
         "startArgs" -> ujson.Arr.from(startArgs.map(
           CommandNestedCodecs.encodeStartArgWire)))
     case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)

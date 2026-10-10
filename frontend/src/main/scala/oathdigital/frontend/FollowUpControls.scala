@@ -21,7 +21,7 @@ private[frontend] object FollowUpControls:
         start.disabled = !canControl || !followUp.startable
         followUp.reason.foreach(reason => start.setAttribute("title", reason))
         start.onclick = _ =>
-          submit(GameCommand.StartWalker(followUp.action, Vector.empty))
+          submit(GameCommand.StartWalker(followUp.action))
         panel.appendChild(start)
         followUp.reason.foreach(reason =>
           panel.appendChild(text("p", "walker-choice-reason", reason)))

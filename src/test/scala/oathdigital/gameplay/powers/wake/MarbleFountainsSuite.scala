@@ -33,7 +33,7 @@ class MarbleFountainsSuite extends munit.FunSuite:
     else waking.edifice(fountains, side, at = far).warbandsAt(far, actor, 1)
       .ready
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
-    ActionRef.UsePower(MarbleFountains.id), actor, Vector.empty, Vector(source))
+    ActionRef.UsePower(MarbleFountains.id), actor, Vector(source))
 
   test("it refreshes Supply to the maximum when the pawn is at the site"):
     val used = Outcomes.ready(accepted(use(staged())).state)

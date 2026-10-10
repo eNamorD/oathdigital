@@ -14,10 +14,10 @@ private[frontend] object BannerControls:
 
   private val controls = Vector(
     Control("beginChallenge", "challenge", "Challenge (1 Supply)",
-      GameCommand.StartWalker("challenge", Vector.empty)),
+      GameCommand.StartWalker("challenge")),
     Control("placeBannerResource", "place-banner-resource",
       "Place favor or secrets on a banner",
-      GameCommand.StartWalker("place-banner-resource", Vector.empty)))
+      GameCommand.StartWalker("place-banner-resource")))
 
   def render(value: GameProjection, canControl: Boolean, groups: ActionSections,
       submit: GameCommand => Unit): Unit =

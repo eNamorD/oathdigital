@@ -29,12 +29,11 @@ class ModifierStartControlsSuite extends munit.FunSuite:
   private def controls(ready: ReadyGame, viewer: PlayerId): Vector[String] =
     legal.project(ScopedProjectionContext(ready, Some(viewer))).controls
 
-  /** Why `viewer` may not start `action` at `ready` with `modifiers`; fails
-    * the test if the start is accepted. */
-  private def refusal(ready: ReadyGame, viewer: PlayerId, action: ActionRef,
-      modifiers: Vector[PowerId])(using munit.Location): OathViolation =
-    rejected(rules.startWalker(OathState.Ready(ready), action, viewer,
-      modifiers))
+  /** Why `viewer` may not start `action` at `ready`; fails the test if the
+    * start is accepted. */
+  private def refusal(ready: ReadyGame, viewer: PlayerId, action: ActionRef)(
+      using munit.Location): OathViolation =
+    rejected(rules.startWalker(OathState.Ready(ready), action, viewer))
 
   /** The refusal of a start that spends `cost` Supply from an empty track. */
   private def noSupplyFor(cost: Int): OathViolation =
@@ -72,7 +71,7 @@ class ModifierStartControlsSuite extends munit.FunSuite:
       TravelProcedure.destinationDecisionId)
     // Without Tents nothing can be picked, and the start is refused.
     assertEquals(refusal(broke(favor = 1, tents = false), actor,
-      ActionRef.Travel, Vector.empty), noSupplyFor(1))
+      ActionRef.Travel), noSupplyFor(1))
 
   private val travelModifiers =
     ModifierPicks.decisionId(PowerWindow.TravelModifierSelection)

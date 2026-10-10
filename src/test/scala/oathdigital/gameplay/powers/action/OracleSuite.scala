@@ -43,7 +43,7 @@ class OracleSuite extends munit.FunSuite:
 
   private def start(ready: ReadyGame): Either[OathViolation, OathTransition] =
     rules.startWalker(OathState.Ready(ready), ActionRef.UsePower(Oracle.id),
-      actor, Vector.empty, Vector(source))
+      actor, Vector(source))
   private def place(from: OathTransition, way: PlayedAs) =
     rules.resolveWalker(from.state, actor, placement,
       PlacementPicks.parkedAnswer(from.state, way,

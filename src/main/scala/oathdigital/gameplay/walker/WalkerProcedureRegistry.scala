@@ -65,13 +65,10 @@ object WalkerProcedureRegistry:
     * accessor below turns it into a typed rejection rather than handing a
     * sentinel onward.
     *
-    * `modifierWindow` (batch-1 Task 1) is the [[oathdigital.model.PowerWindow]] at which a
-    * player-selected `ContributingPower` is offered as a `StartWalker`
-    * modifier for this procedure -- previously a bare
-    * `PowerWindow.RecoverModifierSelection` literal at both
-    * `OathRules.offerableWalkerPowers` and `OathRules.validateModifiers`,
-    * which would have filtered every procedure's offers through Recover's
-    * window the moment a second one registered.
+    * `modifierWindow` is the [[oathdigital.model.PowerWindow]] at which the
+    * procedure's modifier decision (`ModifierChoice`) offers player-selected
+    * `ContributingPower`s, and at which `ModifierOffers.offerable` looks for
+    * the Act panel's start controls.
     *
     * It is `Option` because not every procedure has such a window:
     * `PowerWindow` carries a `*ModifierSelection` case for each of the eight
@@ -79,7 +76,7 @@ object WalkerProcedureRegistry:
     * is not one of them -- its only window is `WakeTakeWealth`, an
     * `OtherWindow` whose `associatedMajorAction` is `None`. `None` here means
     * the procedure offers no player-selected powers at all: `offerableWalkerPowers`
-    * returns empty and `validateModifiers` rejects every id. Inventing a
+    * returns empty. Inventing a
     * `WakeModifierSelection` case purely to keep this field total would put a
     * window in the audited vocabulary that no rulebook clause backs.
     *
@@ -127,10 +124,6 @@ object WalkerProcedureRegistry:
       rebuild: (ExecutableCatalog, ReadyGame, PlayerId,
         Vector[DecisionOptionRef]) => Either[OathViolation, Operation],
       requiresPlayableOption: Boolean = false,
-      /** Whether the tree asks for its modifiers itself, through the
-        * modifier decision (modifier walker design), so a start carries
-        * none. */
-      choosesModifiers: Boolean = false,
       /** What the engine derives at a fresh start and stores as
         * `walkerStartFacts` (travel destination design, ruling 6). A
         * procedure's `rebuild` reads them from the state it is handed. None
@@ -156,7 +149,7 @@ object WalkerProcedureRegistry:
     *
     * Widened from `private[walker]` at batch-1 Task 1: `OathRules`
     * (`oathdigital.gameplay`) now takes the same `registrations` parameter on
-    * `offerableWalkerPowers`/`validateModifiers`, for the same reason and by
+    * `offerableWalkerPowers`, for the same reason and by
     * the same precedent, so the `Entry` type has to be nameable one package
     * up. It stays out of reach of every other package.
     */
@@ -166,8 +159,7 @@ object WalkerProcedureRegistry:
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.SearchModifierSelection),
       build = CardPlayProcedure.buildFacedown,
-      rebuild = CardPlayProcedure.rebuildFacedown,
-      choosesModifiers = true),
+      rebuild = CardPlayProcedure.rebuildFacedown),
 
     /** Search asks for its modifiers, then parks on its source (search
       * source design; modifier walker design). Nothing runs before those
@@ -181,7 +173,6 @@ object WalkerProcedureRegistry:
       build = SearchProcedure.build,
       rebuild = SearchProcedure.rebuild,
       requiresPlayableOption = true,
-      choosesModifiers = true,
       optionPricing = Some(SearchOptions.priced)),
 
     ActionRef.Recover -> Entry(
@@ -192,8 +183,7 @@ object WalkerProcedureRegistry:
         args).flatMap(_ => RecoverProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Recover,
         args).flatMap(_ => RecoverProcedure.rebuild(catalog, state, activePlayer)),
-      rollFeedback = RecoverProcedure.rollFeedback,
-      choosesModifiers = true),
+      rollFeedback = RecoverProcedure.rollFeedback),
 
     /** Batch-1 Task 3. Forge has no `Roll` node, so `rollDecisionId` is
       * `None` (R18).
@@ -205,8 +195,7 @@ object WalkerProcedureRegistry:
       build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
         args).flatMap(_ => ForgeProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
-        args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, activePlayer)),
-      choosesModifiers = true),
+        args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, activePlayer))),
 
     /** Travel asks for its modifiers, then parks on its destination (travel
       * destination design; modifier walker design). Nothing runs before
@@ -221,7 +210,6 @@ object WalkerProcedureRegistry:
       build = TravelProcedure.build,
       rebuild = TravelProcedure.rebuild,
       requiresPlayableOption = true,
-      choosesModifiers = true,
       startFacts = TravelProcedure.startFacts,
       optionPricing = Some(TravelOptions.priced)),
 
@@ -239,8 +227,7 @@ object WalkerProcedureRegistry:
         args).flatMap(_ => MusterProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
         args).flatMap(_ => MusterProcedure.rebuild(catalog, state, activePlayer)),
-      requiresPlayableOption = true,
-      choosesModifiers = true),
+      requiresPlayableOption = true),
 
     ActionRef.Trade -> Entry(
       fallbackKind = Some(ActionKind.Trade),
@@ -248,8 +235,7 @@ object WalkerProcedureRegistry:
       modifierWindow = Some(PowerWindow.TradeModifierSelection),
       build = TradeProcedure.build,
       rebuild = TradeProcedure.rebuild,
-      requiresPlayableOption = true,
-      choosesModifiers = true),
+      requiresPlayableOption = true),
 
     /** Challenge. Its first step after the modifier decision spends the
       * Supply, so a start runs an operation before its first decision and cannot use the playable-option
@@ -260,8 +246,7 @@ object WalkerProcedureRegistry:
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.ChallengeModifierSelection),
       build = ChallengeProcedure.build,
-      rebuild = ChallengeProcedure.rebuild,
-      choosesModifiers = true),
+      rebuild = ChallengeProcedure.rebuild),
 
     /** Place Banner Resource is not a major action: it has no fallback kind
       * and, like Take Wealth, no modifier window.
@@ -295,8 +280,7 @@ object WalkerProcedureRegistry:
       modifierWindow = Some(PowerWindow.CampaignModifierSelection),
       build = CampaignProcedure.build,
       rebuild = CampaignProcedure.rebuild,
-      rollFeedback = CampaignProcedure.rollFeedback,
-      choosesModifiers = true),
+      rollFeedback = CampaignProcedure.rollFeedback),
 
     /** Batch-1 Task 7, and the first entry for an action outside the Act
       * phase. Nothing here says so: the phase is a gate inside
@@ -496,8 +480,7 @@ object WalkerProcedureRegistry:
 
   /** `procedure`'s modifier-selection [[oathdigital.model.PowerWindow]], or `None` when it
     * offers no player-selected powers at all -- see `Entry`'s doc.
-    * `OathRules.offerableWalkerPowers` and `OathRules.validateModifiers` read
-    * this instead of naming `PowerWindow.RecoverModifierSelection`.
+    * `ModifierOffers.offerable` reads this.
     *
     * `registrations` defaults to the production `entries` map -- see `build`'s
     * doc for why it is a parameter at all.
@@ -515,10 +498,6 @@ object WalkerProcedureRegistry:
   /** Whether `procedure` opts in to the playable-option gate (see `Entry`). */
   def requiresPlayableOption(procedure: ProcedureRef): Boolean =
     lookup(procedure, entries).exists(_.requiresPlayableOption)
-
-  /** Whether `procedure` asks for its modifiers inside the walk. */
-  def choosesModifiers(procedure: ProcedureRef): Boolean =
-    lookup(procedure, entries).exists(_.choosesModifiers)
 
   /** How `procedure` prices the options of a parked decision, if it does. */
   def optionPricing(procedure: ProcedureRef): Option[OptionPricing] =

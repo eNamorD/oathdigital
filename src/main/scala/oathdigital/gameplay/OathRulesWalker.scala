@@ -46,21 +46,13 @@ private[gameplay] trait OathRulesWalker:
     * power to use. */
   protected def wakeOptionOpen(ready: ReadyGame, player: PlayerId): Boolean
 
-  /** Starts one action on the generic procedure walker. Recover is the only
-    * registered action in this vertical slice.
-    *
-    * `modifiers` (Task 4) is the ordered list of player-selected power ids
-    * the client chose; every id is validated against `walkerPowerCatalog`
-    * before any node walks (`validateModifiers`), and only the ids that
-    * survive select which `ContributingPower`s `walkerPowers` offers to this
-    * command's collector -- automatic powers are always offered regardless.
-    * An empty `modifiers` behaves exactly like every Recover before this
-    * task: nothing to validate, and `walkerPowers` offers only the
-    * (currently empty) automatic set. With a queue, only the head may start
-    * (`startFollowUp`).
+  /** Starts one action on the generic procedure walker. An action asks for
+    * its modifiers inside the walk, as its first decision (modifier walker
+    * design), so a start carries only what the player selected before it
+    * (`startArgs`). With a queue, only the head may start (`startFollowUp`).
     */
   def startWalker(state: OathState, procedure: StartableRef,
-      requester: PlayerId, modifiers: Vector[PowerId] = Vector.empty,
+      requester: PlayerId,
       startArgs: Vector[DecisionOptionRef] = Vector.empty)
       : Either[OathViolation, OathTransition] =
     state match
@@ -70,26 +62,20 @@ private[gameplay] trait OathRulesWalker:
       case Ready(ready) if ready.game.current.result.nonEmpty => Left(GameEnded)
       case Ready(ready) => ready.game.current.followUps.headOption match
         case Some(head) => startFollowUp(state, head, procedure, requester,
-          modifiers, startArgs)
-        case None => startNow(state, ready, procedure, requester, modifiers,
           startArgs)
+        case None => startNow(state, ready, procedure, requester, startArgs)
       case _ => Left(GameNotStarted)
 
   /** The normal start: what `startWalker` did before the follow-up queue. */
   private def startNow(state: OathState, ready: ReadyGame,
-      procedure: StartableRef, requester: PlayerId, modifiers: Vector[PowerId],
+      procedure: StartableRef, requester: PlayerId,
       startArgs: Vector[DecisionOptionRef])
       : Either[OathViolation, OathTransition] =
     val activePlayer = ready.game.current.turn.activePlayer
     def run =
       for
         _ <- requireActivePlayer(ready, requester)
-        _ <- Either.cond(modifiers.isEmpty ||
-          !WalkerProcedureRegistry.choosesModifiers(procedure), (),
-          InvalidEventOrder(
-            s"${procedure.key} chooses its modifiers inside the walk"))
-        _ <- validateModifiers(ready, activePlayer, procedure, modifiers)
-        powers = walkerPowers(ready, activePlayer, modifiers)
+        powers = walkerPowers(ready, activePlayer, Vector.empty)
         tree <- buildWalker(procedure, ready, activePlayer, startArgs,
           starting = true)
         _ <- checkRestrictions(tree, powers, ready, activePlayer)
@@ -97,7 +83,7 @@ private[gameplay] trait OathRulesWalker:
           powers, walkerDice))
         _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
         transition <- walkerTransition(state, procedure, tree,
-          outcome, powers, modifiers, startArgs,
+          outcome, powers, Vector.empty, startArgs,
           WalkerProcedureRegistry.startFacts(procedure, catalog, ready,
             activePlayer))
       yield transition
@@ -114,7 +100,7 @@ private[gameplay] trait OathRulesWalker:
     * command, so the queue is unchanged.
     */
   private def startFollowUp(state: OathState, head: FollowUp,
-      procedure: StartableRef, requester: PlayerId, modifiers: Vector[PowerId],
+      procedure: StartableRef, requester: PlayerId,
       startArgs: Vector[DecisionOptionRef])
       : Either[OathViolation, OathTransition] =
     val started = FollowUpStarted(head)
@@ -127,7 +113,7 @@ private[gameplay] trait OathRulesWalker:
         case Ready(live) => Right(live)
         case _ => Left(GameNotStarted)
       transition <- startNow(afterStart, ready, procedure, requester,
-        modifiers, startArgs)
+        startArgs)
     yield transition.copy(events = started +: transition.events)
 
   /** Declines the queue's head; the next entry is owed next, or the normal
@@ -176,47 +162,32 @@ private[gameplay] trait OathRulesWalker:
       case _ => Right(transition)
 
   /** The single place (Task 4) that turns `walkerPowerCatalog` plus the
-    * `modifiers` chosen for THIS command into the vector the walker actually
-    * sees. An automatic power (`PowerResolution.Automatic`, the trait
-    * default) is offered unconditionally; a player-selected power is offered
-    * only when its id appears in `modifiers` -- already validated against
-    * the catalog by `validateModifiers` before this runs on `startWalker`'s
-    * path. A resumed command (`resolveWalker`/`rollWalkerPrepared`) carries
-    * no `modifiers` of its own: `walkerResumeContext` (fix-round ruling I)
-    * reads the durable `CurrentGameState.walkerModifiers` -- persisted from
-    * `startWalker`'s choice via the `WalkerParked` fact -- and passes THAT
-    * here, so a player-selected power chosen at start is still offered on
-    * every later resume, and the fold at a shared window (e.g. the tree
-    * root) stays identical across the whole action.
+    * `modifiers` for THIS command into the vector the walker actually sees.
+    * An automatic power (`PowerResolution.Automatic`, the trait default) is
+    * offered unconditionally; a player-selected power is offered only when
+    * its id appears in `modifiers`. A start passes none (an action's
+    * modifiers are picked inside its walk, and `WalkerPowers.withAnswers`
+    * adds them from the answers), and a resumed command
+    * (`resolveWalker`/`rollWalkerPrepared`) passes the durable
+    * `CurrentGameState.walkerModifiers`.
     */
   def walkerPowers(ready: ReadyGame, actor: PlayerId,
       modifiers: Vector[PowerId]): WalkerPowers =
     WalkerPowers.selected(walkerPowerCatalog, modifiers)
 
-  /** The exact `ContributingPower`s a player may choose as a `modifiers` id
-    * for `actor` on `action` right now: `PlayerSelected` powers in
-    * `walkerPowerCatalog` that are `applicable` at THAT ACTION'S
-    * modifier-selection window (not a tree node; see `RecoverProcedure`'s
-    * doc). `validateModifiers` (below) rejects any id outside this set on
-    * `startWalker`, and the pre-start preview
-    * (`GameApplicationService.preview`, Task 9a) offers exactly this set, so
-    * the two can never drift -- one predicate, not a copy on each side.
+  /** The `ContributingPower`s a player could pick for `actor` on `procedure`
+    * right now: `PlayerSelected` powers in `walkerPowerCatalog` that are
+    * `applicable` at that procedure's modifier-selection window and whose
+    * selection payment `actor` can make (`ModifierOffers.offerable`). The
+    * Act panel's start controls try selections of these (spec ruling 9); the
+    * modifier decision itself judges each option exactly.
     *
-    * Batch-1 Task 1: the window comes from
-    * `WalkerProcedureRegistry.modifierWindow(procedure)`, not the
-    * `PowerWindow.RecoverModifierSelection` literal this method used to name
-    * -- harmless with one registered action, but with two it would filter
-    * every action's offers through Recover's window. An entry declaring
-    * `modifierWindow = None` offers nothing; a procedure absent from
-    * `registrations` is a `Left`, since "registers no window" and "is not
-    * registered" are different facts and only the first is a rule.
-    *
+    * An entry declaring `modifierWindow = None` offers nothing; a procedure
+    * absent from `registrations` is a `Left`, since "registers no window" and
+    * "is not registered" are different facts and only the first is a rule.
     * `registrations` defaults to the production `WalkerProcedureRegistry
-    * .entries`, so production call sites pass nothing. It exists for the same
-    * reason `WalkerProcedureRegistry.build`/`rebuild` carry one (see
-    * `WalkerProcedureRegistrySuite`'s doc): behaviour differing BETWEEN
-    * procedures -- the whole point of this change -- would otherwise be
-    * unprovable while only one of a family is registered.
+    * .entries`; a suite passes its own to prove behaviour that differs
+    * between procedures.
     */
   def offerableWalkerPowers(ready: ReadyGame, actor: PlayerId,
       procedure: ProcedureRef,
@@ -225,52 +196,6 @@ private[gameplay] trait OathRulesWalker:
       : Either[OathViolation, Vector[ContributingPower]] =
     ModifierOffers.offerable(walkerPowerCatalog, ready, actor, procedure,
       registrations)
-
-  /** Rejects an unknown or inapplicable `modifiers` id with
-    * `InvalidEventOrder` before any node walks and before any event is
-    * appended (Task 4). A valid id names a `PlayerSelected` power in
-    * `walkerPowerCatalog` that is `applicable` at `procedure`'s own
-    * modifier-selection window -- exactly `offerableWalkerPowers`' set,
-    * queried above rather than recomputed here, so a procedure declaring
-    * `modifierWindow = None` rejects every id for free. An empty `modifiers`
-    * validates trivially, matching every Recover before this task.
-    * `private[gameplay]`, not `private`, so a suite can pass `registrations`
-    * (see `offerableWalkerPowers`): `startWalker` carries no such parameter
-    * of its own to thread one through. Production passes nothing.
-    */
-  private[gameplay] def validateModifiers(ready: ReadyGame, actor: PlayerId,
-      procedure: ProcedureRef, modifiers: Vector[PowerId],
-      registrations: Map[ProcedureRef, WalkerProcedureRegistry.Entry] =
-        WalkerProcedureRegistry.entries): Either[OathViolation, Unit] =
-    offerableWalkerPowers(ready, actor, procedure, registrations).flatMap:
-      offerable =>
-        val offered: Set[PowerId] = offerable.map(_.id).toSet
-        val selectable: Set[PowerId] = walkerPowerCatalog.powers
-          .filter(_.resolution == PowerResolution.PlayerSelected)
-          .map(_.id).toSet
-        modifiers.foldLeft[Either[OathViolation, Unit]](Right(())) {
-          case (Right(_), id) if offered(id) => Right(())
-          // Name the action, not "Recover" -- this string is user-visible
-          // and would be flatly wrong for every action the batch port adds.
-          case (Right(_), id) if selectable(id) => Left(InvalidEventOrder(
-            s"power ${id.value} is not applicable to this ${procedure.key}"))
-          case (Right(_), id) => Left(InvalidEventOrder(
-            s"unknown or non-selectable power id ${id.value}"))
-          case (left, _) => left
-        }.flatMap(_ => requirePayable(ready, actor, modifiers))
-
-  /** Every selected power pays at the start of the action, so the payments
-    * are dry-run together against the state before the command: one that the
-    * player cannot make once the others are made (two costs that need the
-    * only secret) refuses the selection, before anything is recorded.
-    */
-  private def requirePayable(ready: ReadyGame, actor: PlayerId,
-      modifiers: Vector[PowerId]): Either[OathViolation, Unit] =
-    ModifierOffers.paying(walkerPowerCatalog, ready, actor,
-      walkerPowerCatalog.powers.filter(power => modifiers.contains(power.id)))
-      .left.map(violation =>
-      InvalidEventOrder("the selected modifiers cannot all be paid together: " +
-        violation))
 
   /** Task 3 wiring rule: restrictions run once per command, at command entry,
     * before the walk -- collected across the whole derived `tree` via

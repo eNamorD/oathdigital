@@ -34,7 +34,7 @@ object ParkedServiceFixture:
   /** `actor` starts playing a facedown adviser; the walk parks on the pick. */
   def playFacedownAdviser(actor: PlayerId): GameCommand =
     GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-      StartPayload(actor, Vector.empty, Vector.empty))
+      StartPayload(actor))
 
   /** `actor` answers the facedown-adviser pick with their adviser `card`. */
   def pickFacedownAdviser(actor: PlayerId, card: WorldCardId): GameCommand =
@@ -46,7 +46,7 @@ object ParkedServiceFixture:
     * on the destination when no modifier can be picked. */
   def startTravel(actor: PlayerId): GameCommand =
     GameCommand.StartWalker(ActionRef.Travel,
-      StartPayload(actor, Vector.empty, Vector.empty))
+      StartPayload(actor))
 
   /** `actor` answers the destination decision with `site`. */
   def pickTravelDestination(actor: PlayerId, site: SiteId): GameCommand =
@@ -56,7 +56,7 @@ object ParkedServiceFixture:
   /** `actor` starts a Search; the walk parks on the source. */
   def startSearch(actor: PlayerId): GameCommand =
     GameCommand.StartWalker(ActionRef.Search,
-      StartPayload(actor, Vector.empty, Vector.empty))
+      StartPayload(actor))
 
   /** `actor` answers the source decision with `pile`. */
   def pickSearchSource(actor: PlayerId, pile: SearchSource): GameCommand =

@@ -30,8 +30,7 @@ object MovementFixture:
   /** The actor uses `power` of their relic `relic`. */
   def use(ready: ReadyGame, power: PowerId, relic: RelicId)
       : Either[OathViolation, OathTransition] = rules.startWalker(Ready(ready),
-    ActionRef.UsePower(power), actor, Vector.empty,
-    Vector(DecisionOptionRef.Relic(relic)))
+    ActionRef.UsePower(power), actor, Vector(DecisionOptionRef.Relic(relic)))
 
   def choose(state: OathState, decisionId: String, ref: DecisionOptionRef)
       : Either[OathViolation, OathTransition] = rules.resolveWalker(state,

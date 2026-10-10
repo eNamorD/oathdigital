@@ -73,7 +73,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
       def answer(decision: String, payload: ujson.Obj) = ujson.Obj(
         "type" -> "resolveWalker", "decisionId" -> decision, "payload" -> payload)
       val begin = send(actorUser, ujson.Obj("type" -> "startWalker",
-        "action" -> "negotiation", "modifiers" -> ujson.Arr(),
+        "action" -> "negotiation",
         "startArgs" -> ujson.Arr()))
       assertEquals(begin.statusCode(), 200, begin.body()); sequence = sequenceOf(begin)
       // p1 is the only other player at Buried Giant, so there are no
@@ -173,10 +173,10 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
       // may not Forge or peek yet. 400: the wire refuses a playerId field
       // and an unknown payload field.
       val actorDerivedForge = command(ujson.Obj("type" -> "startWalker",
-        "action" -> "forge", "modifiers" -> ujson.Arr()))
+        "action" -> "forge"))
       assertEquals(actorDerivedForge.statusCode(), 422, actorDerivedForge.body())
       val spoofedForgeActor = command(ujson.Obj("type" -> "startWalker",
-        "action" -> "forge", "modifiers" -> ujson.Arr(), "playerId" -> "p3"))
+        "action" -> "forge", "playerId" -> "p3"))
       assertEquals(spoofedForgeActor.statusCode(), 400)
       val spoofedRelic = command(ujson.Obj("type" -> "resolveWalker",
         "decisionId" -> "forge.assignment",

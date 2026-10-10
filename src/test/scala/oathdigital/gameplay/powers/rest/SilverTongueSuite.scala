@@ -46,7 +46,7 @@ class SilverTongueSuite extends munit.FunSuite:
     val ready = silverTongueRest(Vector("Golem Legions", "Rain Boots"),
       Set(Suit.Arcane))
     val used = accepted(
-      rules.startWalker(Ready(ready), use, actor, Vector.empty, Vector(source)))
+      rules.startWalker(Ready(ready), use, actor, Vector(source)))
     walkerParked.assertResumed(used.state, Phase.Rest, actor)
     // Each stocked bank holds 3; taking one leaves 2.
     assertEquals(favor(used.state)(Suit.Arcane), 2)
@@ -56,15 +56,14 @@ class SilverTongueSuite extends munit.FunSuite:
       SiteForces.Occupied(ForceKind.Bandit, 3))
     val ref = PowerUseRef(PowerTiming.Rest, PowerSourceRef.Card(tongue),
       SilverTongue.id)
-    assertEquals(rules.startWalker(used.state, use, actor, Vector.empty,
-      Vector(source)).left.toOption, Some(OathViolation.PowerAlreadyUsed(ref)))
+    assertEquals(rules.startWalker(used.state, use, actor, Vector(source)).left.toOption, Some(OathViolation.PowerAlreadyUsed(ref)))
 
   test("several matching banks with favor ask the player to choose one of them"):
     val ready = silverTongueRest(Vector("Golem Legions", "Rain Boots"),
       Set(Suit.Arcane, Suit.Nomad, Suit.Order))
     val choice = SilverTongue.choiceDecisionId(ready, actor)
     val parked = accepted(
-      rules.startWalker(Ready(ready), use, actor, Vector.empty, Vector(source)))
+      rules.startWalker(Ready(ready), use, actor, Vector(source)))
     walkerParked.assertParked(parked.state, use, choice, actor)
     assertEquals(rules.resolveWalker(parked.state, actor, choice,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(Suit.Order)))
@@ -117,7 +116,7 @@ class SilverTongueSuite extends munit.FunSuite:
     val ready = silverTongueRest(Vector("Golem Legions", "Rain Boots"),
       Set(Suit.Arcane))
     val used = accepted(
-      rules.startWalker(Ready(ready), use, actor, Vector.empty, Vector(source)))
+      rules.startWalker(Ready(ready), use, actor, Vector(source)))
     assertEquals(NoteText.said(SilverTongue.forCatalog(catalog), used.events),
       Vector(NoteText.Said(NoteKey.Used,
         s"${actor.value} took 1 favor from the Arcane bank.", covers = true)))

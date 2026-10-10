@@ -34,7 +34,7 @@ class FamilyWagonArrivalsSuite extends munit.FunSuite:
   private def started(ready: ReadyGame, id: PowerId,
       source: DecisionOptionRef): OathTransition =
     accepted(rules.startWalker(Ready(ready), ActionRef.UsePower(id), p1,
-      Vector.empty, Vector(source)))
+      Vector(source)))
 
   /** p1 answers `decision` with `ref`. */
   private def answered(from: OathTransition, decision: String,

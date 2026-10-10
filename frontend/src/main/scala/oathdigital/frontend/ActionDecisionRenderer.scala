@@ -102,24 +102,24 @@ private[frontend] object ActionDecisionRenderer:
        val search = button("Search", "act-action search-action")
        search.disabled = !canControl || !presentation.showGameplayControls
        search.onclick = _ => submitCommand(
-         GameCommand.StartWalker("search", Vector.empty))
+         GameCommand.StartWalker("search"))
        groups.appendKind("search", search)
      if value.legalControls.contains("beginRecover") then
        val recover = button("Recover (1 Supply)", "act-action recover-action")
        recover.disabled = !canControl
-       recover.onclick = _ => submitCommand(GameCommand.StartWalker("recover", Vector.empty))
+       recover.onclick = _ => submitCommand(GameCommand.StartWalker("recover"))
        groups.appendKind("recover", recover)
      if value.legalControls.contains("beginForge") then
        val forge = button("Forge (1 Supply)", "act-action forge-action")
        forge.disabled = !canControl
        forge.onclick = _ => submitCommand(
-         GameCommand.StartWalker("forge", Vector.empty))
+         GameCommand.StartWalker("forge"))
        groups.appendKind("forge", forge)
      if value.legalControls.contains("beginTravel") then
        val travel = button("Travel", "act-action travel-action")
        travel.disabled = !canControl
        travel.onclick = _ => submitCommand(
-         GameCommand.StartWalker("travel", Vector.empty))
+         GameCommand.StartWalker("travel"))
        groups.appendKind("travel", travel)
      EconomyControls.render(value, canControl, groups, submitCommand)
      BannerControls.render(value, canControl, groups, submitCommand)
@@ -130,7 +130,7 @@ private[frontend] object ActionDecisionRenderer:
          val play = button("Play facedown adviser", "minor-adviser-launch")
          play.disabled = !canControl
          play.onclick = _ => submitCommand(
-           GameCommand.StartWalker("play-facedown-adviser", Vector.empty))
+           GameCommand.StartWalker("play-facedown-adviser"))
          groups.appendKind("facedown-adviser", play)
        if minor.canPeekSiteRelics then
          val peek = button("Peek at relics at your site", "minor-peek-relics")

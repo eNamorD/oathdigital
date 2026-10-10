@@ -44,7 +44,7 @@ class VowOfPovertySuite extends munit.FunSuite:
       .banksHoldingOnly(stocked*)
 
   private def usedRest(ready: ReadyGame): OathTransition = accepted(
-    rules.startWalker(Ready(ready), use, p1, Vector.empty, Vector(source)))
+    rules.startWalker(Ready(ready), use, p1, Vector(source)))
 
   private def usable(ready: ReadyGame): Boolean = PhasePowerProcedure.usable(
     catalog, ready, p1, PhasePowerCatalog.default(catalog), WalkerPowers.empty)

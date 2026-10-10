@@ -13,7 +13,7 @@ class NegotiationControlsSuite extends munit.FunSuite:
     val rendered = renderAndClickEach(Vector("beginNegotiation"))
     assertEquals(rendered.buttons.map(_.textContent), Vector("Negotiate"))
     assertEquals(rendered.submitted, Vector[GameIntent](
-      GameIntent.StartWalker("negotiation", Vector.empty)))
+      GameIntent.StartWalker("negotiation")))
     assertEquals(renderAndClickEach(Vector.empty).buttons, Vector.empty)
 
   test("the control is disabled for a viewer who cannot control the game"):

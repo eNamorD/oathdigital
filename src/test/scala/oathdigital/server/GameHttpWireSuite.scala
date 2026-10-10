@@ -33,18 +33,13 @@ class GameHttpWireSuite extends munit.FunSuite:
 
   test("domain conversion rejects unknown protocol identifiers without throwing"):
     val failure = rejected(GameIntentMapper.bind(PlayerId("trusted"),
-      GameIntent.StartWalker("search", Vector.empty,
-        Vector(oathdigital.protocol.WalkerStartArgWire("teleport", "x")))))
+      GameIntent.StartWalker("search", Vector(oathdigital.protocol.WalkerStartArgWire("teleport", "x")))))
     assertEquals(failure.path, "$.intent.startArgs[0]")
 
   test("walker intents bind to StartWalker, RollWalker and ResolveWalker " +
       "commands for the requester"):
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
-      GameIntent.StartWalker("recover", Vector("denizen.catacombs"))),
-      Right(GameCommand.StartWalker(ActionRef.Recover,
-        StartPayload(PlayerId("actor-1"), Vector(PowerId("denizen.catacombs"))))))
-    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
-      GameIntent.StartWalker("recover", Vector.empty)),
+      GameIntent.StartWalker("recover")),
       Right(GameCommand.StartWalker(ActionRef.Recover,
         StartPayload(PlayerId("actor-1")))))
     // RollWalker takes only a pool key -- there is no field on the wire
@@ -90,18 +85,9 @@ class GameHttpWireSuite extends munit.FunSuite:
 
   test("an unknown walker action string is rejected without throwing"):
     val failure = rejected(GameIntentMapper.bind(PlayerId("trusted"),
-      GameIntent.StartWalker("teleport", Vector.empty)))
+      GameIntent.StartWalker("teleport")))
     assertEquals(failure.path, "$.intent.action")
     assert(failure.message.contains("unknown action"))
-
-  test("a malformed walker modifier id is rejected with a typed failure, " +
-      "not an exception"):
-    val result = GameIntentMapper.bind(PlayerId("trusted"),
-      GameIntent.StartWalker("recover", Vector("Recover")))
-    val failure = result match
-      case Left(f) => f
-      case Right(command) => fail(s"expected a typed rejection, got $command")
-    assertEquals(failure.path, "$.intent.modifiers[0]")
 
   test("an unknown option kind is rejected without throwing"):
     val failure = rejected(GameIntentMapper.bind(PlayerId("trusted"),
@@ -126,6 +112,6 @@ class GameHttpWireSuite extends munit.FunSuite:
   test("malformed actorless requests retain typed paths"):
     assertEquals(rejected(GameHttpWire.decodeCommand("{")).path, "$")
     val missing = """{"expectedNextSequence":8,"intent":{"type":"startWalker",""" +
-      """"action":"travel","modifiers":[],"startArgs":[{"optionKind":"site"}]}}"""
+      """"action":"travel","startArgs":[{"optionKind":"site"}]}}"""
     assertEquals(rejected(GameHttpWire.decodeCommand(missing)).path,
       "$.intent.startArgs[0].optionId")

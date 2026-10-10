@@ -8,7 +8,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatacombsGame, CatalogNames, Look, Outcomes,
   Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.{accepted, rejected}
+import oathdigital.testkit.Unwrap.accepted
 
 /** Recover asks for its modifiers inside the walk (modifier walker design,
   * slice 4). */
@@ -56,9 +56,3 @@ class RecoverModifierChoiceSuite extends munit.FunSuite:
     assertEquals(rules.startWalker(Ready(atFairIsle(supply = 0)),
       ActionRef.Recover, p1).left.map(_.getClass),
       Left(classOf[OathViolation.CoreOperationRejected]))
-
-  test("a start may no longer carry modifiers for a Recover"):
-    assertEquals(rejected(rules.startWalker(Ready(atFairIsle()),
-      ActionRef.Recover, p1, Vector(RelicWorship.id))),
-      OathViolation.InvalidEventOrder(
-        "recover chooses its modifiers inside the walk"))

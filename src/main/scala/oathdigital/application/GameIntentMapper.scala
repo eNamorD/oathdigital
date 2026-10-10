@@ -28,12 +28,11 @@ object GameIntentMapper:
       case Intent.PeekSiteRelics => Right(actor.peekSiteRelics)
       case Intent.RevealOwnedRelic(id) => Right(actor.revealOwnedRelic(RelicId(id)))
       case Intent.MoveWarbands(toSite, amount) => Right(actor.moveWarbands(toSite, amount))
-      case Intent.StartWalker(value, modifiers, startArgs) =>
+      case Intent.StartWalker(value, startArgs) =>
         for
           ref <- actionRef(value)
-          ids <- traverse(modifiers.zipWithIndex)(powerId.tupled)
           args <- traverse(startArgs.zipWithIndex)(walkerStartArg.tupled)
-        yield GameCommand.StartWalker(ref, StartPayload(actorId, ids, args))
+        yield GameCommand.StartWalker(ref, StartPayload(actorId, args))
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
@@ -72,9 +71,6 @@ object GameIntentMapper:
   private def actionRef(value: String): Result[StartableRef] =
     StartableRef.fromKey(value).toRight(GameIntentMappingFailure(
       "$.intent.action", s"unknown action '$value'"))
-  private def powerId(value: String, index: Int): Result[PowerId] =
-    PowerId.fromValue(value).toRight(GameIntentMappingFailure(
-      s"$$.intent.modifiers[$index]", s"invalid power id '$value'"))
   /** The kind/id pair back to the engine's option reference. Total over the
     * seven declared variants, and deliberately not a table written here:
     * `DecisionOptionRef.fromWire` is the same function the journal codec

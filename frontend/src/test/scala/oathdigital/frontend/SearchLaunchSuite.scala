@@ -29,8 +29,7 @@ class SearchLaunchSuite extends munit.FunSuite:
     val search = as[dom.html.Button](one(actions(table, ui), ".search-action"))
     assertEquals(search.textContent, "Search")
     search.click()
-    assertEquals(ui.submitted, Vector(Intent.StartWalker("search",
-      Vector.empty)))
+    assertEquals(ui.submitted, Vector(Intent.StartWalker("search")))
 
   test("no Search control is drawn without beginSearch"):
     val pane = actions(table.copy(legalControls = Vector.empty),

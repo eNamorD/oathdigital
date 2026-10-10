@@ -12,7 +12,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Outcomes, ParkedNode, PowerRules,
   Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.testkit.Unwrap.{accepted, rejected}
+import oathdigital.testkit.Unwrap.accepted
 
 /** Search and facedown-adviser play ask for their modifiers inside the walk
   * (modifier walker design, slice 1). */
@@ -71,12 +71,6 @@ class SearchModifierChoiceSuite extends munit.FunSuite:
       .find(_.player == p1).map(_.board.favor), Some(0))
     assertEquals(parked(picked.state).decisionId,
       SearchProcedure.sourceDecisionId)
-
-  test("a start may no longer carry modifiers for a Search"):
-    assertEquals(rejected(rules.startWalker(Ready(withNews(5, 2)),
-      ActionRef.Search, p1, Vector(NewsFromAfar.id))),
-      OathViolation.InvalidEventOrder(
-        "search chooses its modifiers inside the walk"))
 
   test("a picked modifier pays once, at the pick"):
     val ready = withNews(supply = 5, favor = 3)

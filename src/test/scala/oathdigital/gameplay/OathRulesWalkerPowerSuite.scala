@@ -197,7 +197,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
 
   /** A registry entry that differs from Recover's in nothing but its
     * `modifierWindow`. `build`/`rebuild` are never invoked on these paths --
-    * `offerableWalkerPowers`/`validateModifiers` read the window and stop.
+    * `offerableWalkerPowers` reads the window and stops.
     */
   private def entryWindowed(modifierWindow: Option[PowerWindow])
       : WalkerProcedureRegistry.Entry =
@@ -238,31 +238,15 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
         .map(_.map(_.id)),
       Right(Vector.empty[PowerId]))
 
-  test("an entry declaring no modifier window offers nothing and rejects a " +
-      "modifier id a windowed entry accepts"):
+  test("an entry declaring no modifier window offers nothing"):
     val ready = Table.start.ready
     val power = windowScoped(forgeWindowed,
       PowerWindow.ForgeModifierSelection)
     val rulesInstance = rules(p1, WalkerPowers(Vector(power)))
-    val windowed = registered(Some(PowerWindow.ForgeModifierSelection))
     val windowless = registered(None)
-
-    // Control: the windowed entry accepts this id.
-    assertEquals(rulesInstance.validateModifiers(ready, p1,
-      ActionRef.Recover, Vector(forgeWindowed), windowed), Right(()))
 
     assertEquals(rulesInstance.offerableWalkerPowers(ready, p1,
       ActionRef.Recover, windowless), Right(Vector.empty[ContributingPower]))
-    rulesInstance.validateModifiers(ready, p1, ActionRef.Recover,
-        Vector(forgeWindowed), windowless) match
-      case Left(rejection: OathViolation.InvalidEventOrder) =>
-        assert(rejection.detail.contains("is not applicable"),
-          s"violation detail '${rejection.detail}' should mention " +
-            "inapplicability")
-        // The message names the action, not "Recover".
-        assert(rejection.detail.contains(ActionRef.Recover.key),
-          s"violation detail '${rejection.detail}' should name the action")
-      case other => fail(s"expected an InvalidEventOrder rejection, got $other")
 
   test("Recover's own entry offers a power at its modifier window, and not " +
       "one at another action's"):

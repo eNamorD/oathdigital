@@ -31,7 +31,7 @@ class FollowUpControlsSuite extends munit.FunSuite:
       Vector("Campaign for no Supply · Knights Errant", "Skip"))
     buttons(panel).foreach(_.click())
     assertEquals(sent.toVector, Vector[GameIntent](
-      GameIntent.StartWalker("campaign", Vector.empty),
+      GameIntent.StartWalker("campaign"),
       GameIntent.SkipFollowUp))
 
   test("an unstartable entry is disabled and says why on hover, and Skip " +

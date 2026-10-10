@@ -225,7 +225,7 @@ object LogScripts:
   private def start(situation: Situation, action: StartableRef,
       args: DecisionOptionRef*)(using munit.Location): Situation =
     situation.after(GameCommand.StartWalker(action,
-      StartPayload(Look(situation.ready).active, Vector.empty, args.toVector)))
+      StartPayload(Look(situation.ready).active, args.toVector)))
 
   /** Arranges `ops` at the end of the first player's turn, just before
     * their Begin Rest, and plays on to the second player's Wake, returning
@@ -315,7 +315,7 @@ object LogScripts:
     act.withAnswers(ModifierPlay.answers(PowerWindow.MusterModifierSelection,
       Vector(GolemLegions.id)))
       .after(GameCommand.StartWalker(ActionRef.Muster,
-        StartPayload(p1, Vector.empty)))
+        StartPayload(p1)))
     Script("golem-muster", service, p1)
 
   /** Trade for secrets, on the second player's turn, at the site with the
@@ -530,7 +530,7 @@ object LogScripts:
       .favor(p1, 2).banditsRefilled)
     act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
       Vector(NewsFromAfar.id, Augury.id))).after(GameCommand.StartWalker(
-      ActionRef.Search, StartPayload(p1, Vector.empty, Vector.empty)))
+      ActionRef.Search, StartPayload(p1)))
     Script("two-picks", service, p1)
 
   /** Wild Cry at p1's site and a facedown adviser: the play picks Wild Cry,
@@ -542,8 +542,7 @@ object LogScripts:
       .adviser(p1, conclave, facedown = true).banditsRefilled)
     act.withAnswers(ModifierPlay.answers(PowerWindow.SearchModifierSelection,
       Vector(WildCry.id))).after(GameCommand.StartWalker(
-      ActionRef.PlayFacedownAdviser, StartPayload(p1, Vector.empty,
-        Vector.empty)))
+      ActionRef.PlayFacedownAdviser, StartPayload(p1)))
     Script("facedown-cry", service, p1)
 
   /** Tents as p1's adviser, with 1 favor to pay for it. The Travel picks
@@ -665,7 +664,7 @@ object LogScripts:
       case park if park.decisionId == FamilyHeirloom.decisionId =>
         ChooseOneAnswer(choice)
     }.after(GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-      StartPayload(p1, Vector.empty, Vector.empty)))
+      StartPayload(p1)))
     Script(name, service, p1)
 
   def heirloomKept(using munit.Location): Script =

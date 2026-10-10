@@ -85,7 +85,7 @@ class EndWakeProcedureSuite extends munit.FunSuite:
 
   test("ending Wake selects nothing"):
     assertEquals(rules.startWalker(p1Wake.state, PhaseTransitionRef.EndWake, p1,
-      Vector.empty, Vector(DecisionOptionRef.Button("favor"))).left.toOption,
+      Vector(DecisionOptionRef.Button("favor"))).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "ending Wake selects nothing, got button/favor")))
 
