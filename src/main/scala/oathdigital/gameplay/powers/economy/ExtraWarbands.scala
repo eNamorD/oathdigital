@@ -19,9 +19,9 @@ private[economy] object ExtraWarbands:
     NotePart.Arg(0), NotePart.Plural(0, " more warband.", " more warbands.")))
 
   /** `operations` with `extra` more warbands on the actor's gain, wherever
-    * the window holds it, and the line of `power`, from `card`, after it.
-    * Unchanged when they hold no such gain. A Muster's gain window holds one
-    * gain. */
+    * the tree holds it, and the line of `power`, from `card`, after it. A
+    * gain a `BuildOps` builds is not entered. Unchanged when they hold no
+    * such gain. A Muster's gain window holds one gain. */
   def added(ctx: PowerCtx, power: PowerId, card: DenizenId, extra: Int,
       operations: Vector[Operation]): Vector[Operation] =
     OperationRewrite.nodes(ctx, operations)((_, _) => {

@@ -68,7 +68,7 @@ final case class WayStation private (catalog: ExecutableCatalog)
     val supply = payment.map(_.amount).sum
     val board = ctx.state.game.current.players.find(_.player == traveller)
       .map(_.board)
-    val stripped = SupplyStrip(ctx, traveller, operations)
+    lazy val stripped = SupplyStrip(ctx, traveller, operations)
     if supply == 0 then operations
     else if ruler == SiteRuler.Player(traveller) then stripped
     else if !board.exists(_.favor >= WayStation.favorOwed(operations, traveller) +

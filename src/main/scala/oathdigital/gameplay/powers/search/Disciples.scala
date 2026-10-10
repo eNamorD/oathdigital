@@ -23,9 +23,10 @@ object DisciplesCard extends Denizen(DenizenId("205"), "Disciples", Suit.Arcane)
   * Secret.
   * The cost node does not name its source, but a regional discard always
   * costs 2, so only a world-deck Search costs more: lowering any higher cost
-  * to 2 is exactly the card. The holder is read when the cost is paid. It may
-  * be selected whatever the source, as the Cup of Plenty may. The start
-  * line's cost span shows what was paid, so it writes no line.
+  * to 2 is exactly the card. The holder is read when the cost is paid, since
+  * the Search builds its payment when it runs. It may be selected whatever
+  * the source, as the Cup of Plenty may. The start line's cost span shows
+  * what was paid, so it writes no line.
   */
 final case class Disciples private (catalog: ExecutableCatalog)
     extends SelectedModifier:
