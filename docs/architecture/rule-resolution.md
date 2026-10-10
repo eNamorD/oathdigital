@@ -95,7 +95,7 @@ answers so far do not already produce is not offered, in the walk, in
 `accepts`, in the projector and in `WalkerSimulation`. `ChooseOne` and
 `ChooseMany` are probed per option and `ChooseAmount` per value; a range with
 a gap is left whole. A required decision left with nothing rejects the action,
-so its start control is hidden. The probe's own traversal does not probe
+so its menu option is shown unavailable. The probe's own traversal does not probe
 (`WalkerPowers.probing`), and it runs only when some power contributes a
 `Restriction`. The answer-time check stays as a backstop. So a "cannot" card
 needs only a `Restriction`, even when the window it checks exists only after

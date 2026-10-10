@@ -9,9 +9,9 @@ specs.
 
 ## Now
 
-**Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
-Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest.
+**Phase - Cleanup tasks** holds what finished phases left behind, bugs and
+small UI fixes from the 2026-10-01 playtest. **Phase - Catalog batch 7 -
+Campaign dice** is in progress: slice 1 has landed and slice 2 is planned.
 
 ## Next
 
@@ -31,8 +31,10 @@ From the playtest of 2026-10-01:
   does not loop back. Have them reload with the cache disabled and open
   `/health/ready` in a private window, then check the port forward and the
   host firewall.
-- [ ] **Review the action buttons.** They feel unresponsive, and some appear
-  for things the player does not expect.
+- [ ] **Review the phase menu buttons.** The playtest found the old Act
+  buttons unresponsive, and some appeared for things the player did not
+  expect. The walker-driven game loop replaced them with one grouped menu
+  panel per phase; check it in the next playtest.
 
 Left behind by earlier phases:
 
@@ -70,6 +72,17 @@ Left behind by the
   by tests only.
 
 Left behind by the
+[walker-driven game loop](superpowers/specs/2026-10-09-walker-game-loop-design.md):
+
+- [ ] **Play-test the phase menus in a browser.** The Wake, Act and Rest
+  menus, their price badges and hover reasons, a source with two powers of
+  one phase, Undo back to a menu and the minor actions on the walker are
+  covered by tests only.
+- [ ] **Remove `WalkerSimulation.starts`.** It has no production caller since
+  the procedures' start checks went; only four suites use it. Move them onto
+  `WalkerSimulation.refusal` or the menu's check.
+
+Left behind by the
 [consent work](superpowers/specs/2026-10-08-consent-system-design.md):
 
 - [ ] **Play-test consent in a browser.** The amber destination, campaign
@@ -96,39 +109,6 @@ did":
   totals and the winner. It is not always visible.
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
-
-### Phase - Modifier selection on the walker
-
-Move modifier selection from the client's modifier flow onto the walker, as
-the walk's first decision, so that `OptionRestriction` and `Warned` cover
-modifiers as they cover battle plans. Catalog batch 6's slices 3 and 4 need
-it: Spinning Bee excludes other Search modifiers, Mushrooms and Painted
-Trumpet exclude each other, and Wine of Welcome is warned beside Mushrooms.
-It reverses ruling 1 of the
-[search source design](superpowers/specs/2026-10-07-search-source-walker-design.md)
-("Modifiers stay before the start")
-([design](superpowers/specs/2026-10-09-modifier-walker-design.md)).
-
-- [x] Slice 1: the modifier decision, then Search and facedown-adviser play.
-- [x] Slice 2: Travel.
-- [x] Slice 3: Muster and Trade.
-- [x] Slice 4: Recover, the empty windows, and deleting the client modifier
-  flow and the preview endpoint.
-
-### Phase - Walker-driven game loop
-
-The walker keeps a queue of procedures, each run as its own walk. When the
-queue is empty, it runs the action boundary and the phase hooks, then starts
-the phase's menu, a decision over everything the player may do now. Phase
-powers join their menu, follow-ups become queued offers, and the start
-commands, `LegalActionProjector`'s controls and the glue in `OathRules` go
-([design](superpowers/specs/2026-10-09-walker-game-loop-design.md)).
-
-- [x] Slice 1: the queue and the driver, with every empty-queue hook.
-- [x] Slice 2: the Wake and Rest menus.
-- [x] Slice 3: the three legacy minor actions on the walker.
-- [x] Slice 4: the Act menu and its frontend panel.
-- [x] Slice 5: the cleanup.
 
 ### Phase - Catalog batch 7 - Campaign dice
 
@@ -179,8 +159,8 @@ Found by the survey of 2026-09-29:
   Mirror, Yew Staff.
 - **A nested Campaign or Travel, or an overridden actor site:** Wild Allies,
   Captains, Palanquin.
-- **A variable X:** Ward of Silence, an ACTION power that waits for the Act
-  menu of the walker-driven game loop.
+- **A variable X:** Ward of Silence, an ACTION power. The Act menu it waited
+  for exists now.
 - **New target kinds:** Relic Hunter, Glamor.
 - **Restricting other cards' powers or placements:** Spell Breaker, Forest
   Council, City Wall, Giant Python, Ancient Bloodline.
@@ -205,23 +185,6 @@ Found by the survey of 2026-09-29:
   Book Binders, Secret Police and Conspiracy). So the play must either run
   as its own procedure for its holder, or give `PlacementTree` and
   `CardPlayedFaceup` the playing player and move those readers onto it.
-
-### Phase - Consent system
-
-A player blocked by an enemy's persistent power can ask its ruler for
-consent, and rulers can set private per-player standing answers
-([consent design](superpowers/specs/2026-10-08-consent-system-design.md)).
-
-- [x] 1. Machinery and the Pass on Travel
-  ([plan](superpowers/plans/2026-10-09-consent-slice1.md)).
-- [x] 2. The Pass on campaign targeting
-  ([plan](superpowers/plans/2026-10-09-consent-slice2.md)).
-- [x] 3. Hard-block cards: Secret Police and Hall of Ministers; Forgotten
-  Vault is never waivable
-  ([plan](superpowers/plans/2026-10-09-consent-slice3.md)).
-- [x] 4. Toll and penalty cards: Toll Roads, Forced Labor, Curfew and
-    Grasping Vines
-    ([plan](superpowers/plans/2026-10-09-consent-slice4.md)).
 
 ### Phase - All-Exile alpha readiness
 
@@ -324,14 +287,6 @@ one.
   filters and search, timestamps, a server-side read marker, failed victory
   checks and negotiation proposals. Replay navigation is **L4**. Recorded in
   the Game Log design of 2026-09-26.
-- [ ] **Explain a missing action control.** A start control the projection
-  withholds carries a hover note (or similar) saying which power or cost
-  stops it. Hidden options already explain themselves on hover and write no
-  Game Log line
-  ([travel destination design](superpowers/specs/2026-10-07-travel-destination-walker-design.md),
-  ruling 10); a Restriction's note is the natural source here too. Recorded
-  in the
-  [Power log lines design](superpowers/specs/2026-09-26-power-log-lines-design.md).
 - [ ] **Warn before a choice that has no effect.** The rules let a
   player pay for a power or pick an option that then does nothing: a
   modifier selected for an action it will not change (Cup of Plenty,
@@ -360,7 +315,7 @@ one.
   Add the remaining attacker, defender and bandit battle plan families,
   non-deterministic loss choices, and the additional Raid, victory, defeat and
   At End handlers that the Campaign timing windows already expose.
-  At an action's start command, window folds and the restriction look-ahead
+  At an action's start, window folds and the restriction look-ahead
   see no walker procedure (`PowerCtx.procedure` is `None`), while every later
   command sees it. Make them agree before a Restriction reads the procedure.
   `WalkerDecisionProjector.waiting` reads only a parked decision's heading and

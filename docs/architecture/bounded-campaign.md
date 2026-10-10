@@ -7,7 +7,7 @@
 
 Campaign implements the Combined Rulebook and New Foundations procedure for
 Conquest against bandits or a player, and Raid against a co-located player. It
-costs 2 Supply and is started by the active player with `StartWalker("campaign")`.
+costs 2 Supply and is started by the active player from the Act menu.
 Every later choice is a parked walker decision answered with `ResolveWalker`.
 
 ## Procedure
@@ -42,7 +42,7 @@ Sequence(
   site is ruled by Bandits or by another player. Raid is legal when another
   player's pawn stands at the actor's site. Supply is not a gate: `SpendSupply`
   owns it, so a start with too little Supply fails at the first step before
-  anything is persisted. The start control (`beginCampaign`) is offered exactly
+  anything is persisted. The Act menu's Campaign option is available exactly
   when a dry run of that first walk accepts.
 - **Targets.** Only the mandatory piece is fixed: the Conquest pawn site or the
   Raid enemy pawn. `campaign.targets` answers the optional additions: other sites
@@ -145,7 +145,7 @@ receives the durable recipient decision before normal Act controls resume.
 
 Unsupported handlers are ignored, not blocking: Bag of Siegeworks, Weeping Banner,
 Peace Envoy, the Mountain and Plains Campaign effects, and the unsupported Raid and
-player-defender powers no longer stop a Campaign. `StartWalker` records what the
+player-defender powers no longer stop a Campaign. The start records what the
 reviewed power catalog lists at the Campaign modifier window through
 `IgnoredRulesRecorded` under `ActionKind.Campaign`. Today that list is empty:
 Bag of Siegeworks is a player-selected plan at the battle-plan window, and the
