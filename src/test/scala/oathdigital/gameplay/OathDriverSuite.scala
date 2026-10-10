@@ -2,13 +2,15 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.phases.PhaseMenu
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ActionBoundaryRan, WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.{CatalogNames, Outcomes, TakeWealthFixture, Table}
+import oathdigital.testkit.{CatalogNames, MenuPlay, Outcomes, TakeWealthFixture,
+  Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -133,3 +135,49 @@ class OathDriverSuite extends munit.FunSuite:
   test("Setup's end replays: the first Wake begins in the same command"):
     val setup = FirstGameSetupFixture.initialSituation()
     assertEquals(replayed(OathState.NoGame, setup.events), setup.state)
+
+  test("a Wake with an option left parks the Wake menu"):
+    // A favor at p2's and p3's sites, so whoever wakes next is asked.
+    val start = table.siteTokens(brokenPeaks, favor = 1)
+      .siteTokens("Buried Giant", favor = 1).state
+    val rested = accepted(rules.startWalker(start,
+      PhaseTransitionRef.BeginRest, p1))
+    assertEquals(current(rested.state).turn.phase, Phase.Wake)
+    assertEquals(MenuPlay.parked(rested.state), Some(PhaseMenu.Menu.Wake))
+    assertEquals(replayed(start, rested.events), rested.state)
+
+  test("Wake ends by itself once End Wake is the only option left"):
+    // p1 takes Ancient City's only favor. Take Wealth is then spent at this
+    // site, and p1 has no WAKE power.
+    val start = table.turn(p1, Phase.Wake)
+      .siteTokens(ancientCity, favor = 1, secrets = 0).phaseMenuParked.state
+    val taken = accepted(MenuPlay.picked(rules, start, p1,
+      PhaseMenu.takeWealth(WakeResource.Favor)))
+    assert(taken.events.contains(
+      WalkerCompleted(PhaseTransitionRef.EndWake)), taken.events)
+    assertEquals(current(taken.state).turn.phase, Phase.Act)
+
+  test("Rest asks while a REST power is usable, and finishes by itself " +
+      "once it is used"):
+    val withPowers = new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
+      phasePowerCatalog = PhasePowerCatalog.default(catalog),
+      walkerDice = WalkerDiceFixture.blanks)
+    val start = table.adviser(p1, "Insomnia").state
+    val rested = accepted(withPowers.startWalker(start,
+      PhaseTransitionRef.BeginRest, p1))
+    assertEquals(MenuPlay.parked(rested.state), Some(PhaseMenu.Menu.Rest))
+    val insomnia = DecisionOptionRef.Denizen(
+      CatalogNames.denizen("Insomnia"))
+    val used = accepted(MenuPlay.picked(withPowers, rested.state, p1,
+      insomnia))
+    assert(used.events.contains(
+      WalkerCompleted(PhaseTransitionRef.FinishRest)), used.events)
+
+  test("a menu's walk leaves no boundary, and Act parks nothing yet"):
+    val start = table.turn(p1, Phase.Wake).phaseMenuParked.state
+    val ended = accepted(MenuPlay.picked(rules, start, p1,
+      PhaseMenu.Menu.Wake.endingOption))
+    assertEquals(boundaries(ended.events), 0)
+    assertEquals(current(ended.state).turn.phase, Phase.Act)
+    assertEquals(current(ended.state).walkerPending, None)

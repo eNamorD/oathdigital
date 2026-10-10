@@ -19,10 +19,8 @@ private[frontend] object ActionDecisionRenderer:
        node.textContent = value.walkerDecision.flatMap(_.query).flatMap(_.heading)
          .getOrElse("Your decision.")
      // The Game Log names the phase and the controls below say what can be
-     // done, so Wake and the Act phase print no instruction of their own.
-     case None if value.phase == "act-action-selection" || value.phase == "wake" => ()
-     case None if value.phase == "rest" =>
-       node.textContent = "Rest phase — finish Rest when ready."
+     // done, so the Act phase prints no instruction of its own.
+     case None if value.phase == "act-action-selection" => ()
      case None if value.phase == "game-over" =>
        node.textContent = value.oathkeeper.flatMap(_.winnerPlayerId)
          .fold("Game over.") { winner =>
@@ -67,22 +65,6 @@ private[frontend] object ActionDecisionRenderer:
        cards.appendChild(CardFace.render(card)))
      preview.appendChild(cards)
      panel.appendChild(preview)
-   // The oath and the usurper limit describe the table, so they are drawn
-   // with the board; the acting player's resources are on their own board
-   // already, and a site's loose wealth is drawn on the site.
-   if value.phase == "wake" && presentation.showGameplayControls then
-     takeWealthActions(value, presentation.playerId).foreach { action =>
-       val control = button(action.label, "wake-action")
-       control.disabled = !canControl
-       control.onclick = _ => submitCommand(action.command)
-       panel.appendChild(control)
-     }
-     PhasePowerButtons.render(value, canControl, panel, submitCommand)
-     val end = button("End Wake", "wake-action")
-     end.disabled = !canControl ||
-       !value.legalControls.contains("endWake")
-     end.onclick = _ => submitCommand(GameCommand.EndWake)
-     panel.appendChild(end)
    if showActActionControls(value, presentation) then
      val groups = new ActionSections
      if value.legalControls.contains("beginSearch") then
@@ -163,14 +145,4 @@ private[frontend] object ActionDecisionRenderer:
        panel.appendChild(rest)
    ParkedDecision.render(value, presentation, routed, canControl, panel, drafts,
      controls)
-   if value.phase == "rest" && presentation.showGameplayControls then
-     PhasePowerButtons.render(value, canControl, panel, submitCommand)
-     if PhasePowerButtons.showsFinishRest(value) then
-       panel.appendChild(text("p", "informational",
-         "Finish Rest to return card resources, reveal secrets, refresh " +
-           "Supply, and wake the next player."))
-       val finish = button("Finish Rest", "rest-action finish-rest")
-       finish.disabled = !canControl
-       finish.onclick = _ => submitCommand(GameCommand.FinishRest)
-       panel.appendChild(finish)
    panel

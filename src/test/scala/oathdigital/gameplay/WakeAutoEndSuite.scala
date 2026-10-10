@@ -1,12 +1,12 @@
 package oathdigital.gameplay
 
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
 import oathdigital.gameplay.powers.PhasePowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look, Outcomes, Table}
+import oathdigital.testkit.{ActPowerHarness, Look, MenuPlay, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -53,16 +53,16 @@ class WakeAutoEndSuite extends munit.FunSuite:
     assertEquals(completed(rested.events), Vector(PhaseTransitionRef.BeginRest,
       PhaseTransitionRef.FinishRest))
     assertEquals(Look(rested.state).phase, Phase.Wake)
+    assertEquals(MenuPlay.parked(rested.state), Some(PhaseMenu.Menu.Wake))
 
   test("taking the last wealth ends Wake"):
     val waking = accepted(rules.startWalker(Ready(withFavor(quiet)),
       PhaseTransitionRef.BeginRest, actor))
     val next = Look(waking.state).active
-    val took = accepted(
-      rules.startWalker(waking.state, ActionRef.TakeWealth, next,
-        startArgs = Vector(DecisionOptionRef.Button("favor"))))
-    assertEquals(completed(took.events), Vector(ActionRef.TakeWealth,
-      PhaseTransitionRef.EndWake))
+    val took = accepted(MenuPlay.picked(rules, waking.state, next,
+      PhaseMenu.takeWealth(WakeResource.Favor)))
+    assertEquals(completed(took.events), Vector(TriggeredProcedureRef.WakeMenu,
+      ActionRef.TakeWealth, PhaseTransitionRef.EndWake))
     assertEquals(Look(took.state).phase, Phase.Act)
     assertEquals(replayed(Outcomes.ready(waking.state), took.events),
       took.state)

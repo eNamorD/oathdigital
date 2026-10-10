@@ -4,60 +4,14 @@ import oathdigital.frontend.ServerModeFixtures.twoSeatProjection
 
 import munit.FunSuite
 
-/** What each viewer is shown for the projected phase: the Take Wealth
-  * actions, who waits for whom, and the status line.
+/** What each viewer is shown for the projected phase: who waits for whom,
+  * and the status line.
   */
 class ViewerPresentationSuite extends FunSuite:
 
-  test("Take Wealth actions use the active-player labels and commands"):
-    val actions = ServerUiSupport.takeWealthActions(
-      twoSeatProjection(Set("takeFavor", "takeSecret", "endWake"),
-        phase = "wake"),
-      "red-exile"
-    )
-
-    assertEquals(
-      actions.map(_.label),
-      Vector("Take Wealth: 1 favor", "Take Wealth: 1 secret")
-    )
-    assertEquals(
-      actions.map(_.command),
-      Vector(
-        oathdigital.protocol.GameIntent.StartWalker("take-wealth", Vector(oathdigital.protocol.WalkerStartArgWire("button", "favor"))),
-        oathdigital.protocol.GameIntent.StartWalker("take-wealth", Vector(oathdigital.protocol.WalkerStartArgWire("button", "secret")))
-      )
-    )
-
-  test("unavailable Take Wealth actions are absent"):
-    assertEquals(
-      ServerUiSupport.takeWealthActions(
-        twoSeatProjection(Set("endWake"), phase = "wake"),
-        "red-exile"
-      ),
-      Vector.empty
-    )
-
-  test("blocked Take Wealth resource is absent while the legal one remains"):
-    val actions = ServerUiSupport.takeWealthActions(
-      twoSeatProjection(Set("takeSecret", "endWake"), phase = "wake"),
-      "red-exile"
-    )
-
-    assertEquals(actions.map(_.label), Vector("Take Wealth: 1 secret"))
-
-  test("already-used Take Wealth actions are absent from a later phase"):
-    assertEquals(
-      ServerUiSupport.takeWealthActions(
-        twoSeatProjection(Set("takeFavor", "takeSecret"),
-          phase = "act-action-selection"),
-        "red-exile"
-      ),
-      Vector.empty
-    )
-
   test("inactive Wake viewer waits and receives no gameplay controls"):
     val value = twoSeatProjection(
-      Set("takeFavor", "takeSecret", "endWake"),
+      Set.empty,
       phase = "wake",
       activeParticipantId = "red-exile"
     )
@@ -66,10 +20,6 @@ class ViewerPresentationSuite extends FunSuite:
     assertEquals(presentation.showGameplayControls, false)
     assertEquals(presentation.waitingForPlayerId, Some("red-exile"))
     assertEquals(presentation.waitingForDisplayName, Some("Red Exile"))
-    assertEquals(
-      ServerUiSupport.takeWealthActions(value, "blue-exile"),
-      Vector.empty
-    )
 
   /** Fix round 1: a parked walker `Decide`'s owner is not always the active
     * participant (Task 5). `walkerDecision` is projected to the owner alone
@@ -148,13 +98,11 @@ class ViewerPresentationSuite extends FunSuite:
       ServerUiSupport.viewerPresentation(value, "blue-exile"))
     assertEquals(ownerStatus.textContent, "Your decision.")
 
-  test("Wake and the Act phase leave the active player's status empty"):
+  test("the Act phase leaves the active player's status empty"):
     // The Game Log names the phase, and the Act prompt went stale after the
-    // first action, so neither phase prints its own instruction.
-    Vector("wake", "act-action-selection").foreach { phase =>
-      val value = twoSeatProjection(Set.empty, phase = phase)
-      val status = ActionDecisionRenderer.status(value,
-        ServerUiSupport.viewerPresentation(value, "red-exile"))
-      assertEquals(status.textContent, "", phase)
-    }
+    // first action, so the phase prints no instruction of its own.
+    val value = twoSeatProjection(Set.empty, phase = "act-action-selection")
+    val status = ActionDecisionRenderer.status(value,
+      ServerUiSupport.viewerPresentation(value, "red-exile"))
+    assertEquals(status.textContent, "")
 

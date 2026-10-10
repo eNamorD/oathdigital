@@ -6,7 +6,7 @@ class CommandProtocolSuite extends munit.FunSuite:
   import GameIntent._
 
   private val examples: Vector[GameIntent] = Vector(
-    EndWake, BeginRest, FinishRest, Undo, Redo,
+    BeginRest, Undo, Redo,
     UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92")),
     StartWalker("search", Vector(WalkerStartArgWire("button", "search:world"))),
     StartWalker("play-facedown-adviser", Vector(WalkerStartArgWire("denizen", "d1"))),
@@ -69,7 +69,7 @@ class CommandProtocolSuite extends munit.FunSuite:
 
   test("actor injection is rejected at command identity fields"):
     Vector("playerId", "actor", "actorId", "actorPlayerId").foreach { field =>
-      val json = s"""{"expectedNextSequence":0,"intent":{"type":"endWake","$field":"spoof"}}"""
+      val json = s"""{"expectedNextSequence":0,"intent":{"type":"beginRest","$field":"spoof"}}"""
       assertEquals(rejected(ActorlessCommandCodec.decode(json)),
         ProtocolDecodeFailure.ActorInjection(s"$$.intent.$field"), field)
     }

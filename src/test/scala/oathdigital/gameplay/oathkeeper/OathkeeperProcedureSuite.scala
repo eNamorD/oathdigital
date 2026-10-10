@@ -3,6 +3,7 @@ package oathdigital.gameplay.oathkeeper
 import oathdigital.gameplay.{OathRules, StateBasedEvaluation, TravelPlay}
 import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ChoicePayload, ParkedDecisionAssertions,
   WalkerCompleted, WalkerStepRecorded}
@@ -114,7 +115,10 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     val chosen = accepted(rules.resolveWalker(parked.state, holder,
       OathkeeperProcedure.recipientDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Player(p1))))
-    walkerParked.assertResumed(chosen.state, Phase.Wake, active)
+    // Wake still has an option, so the driver asks the Wake menu.
+    walkerParked.assertMenuParked(chosen.state, PhaseMenu.Menu.Wake, active)
+    assertEquals(Outcomes.ready(chosen.state).game.current.turn.phase,
+      Phase.Wake)
 
   test("the engine refuses to start a triggered procedure over a pending one"):
     val parked = accepted(travel(tied.ready))

@@ -9,7 +9,9 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
+import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
 import oathdigital.gameplay.powers.cardplay.WildCry
@@ -24,7 +26,7 @@ import oathdigital.gameplay.walker.{FollowUpOffer, PowerNoted}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
-import oathdigital.testkit.{Answers, CatalogNames, Dice, Look, Park,
+import oathdigital.testkit.{Answers, CatalogNames, Dice, Look, MenuPlay, Park,
   PlacementPicks, Situation, Step, Table}
 import oathdigital.testkit.Unwrap.as
 import oathdigital.testkit.Table.{p1, p2, p3}
@@ -72,8 +74,38 @@ object LogScripts:
       .adviser(p2, "Birdsong", facedown = true)
       .adviser(p3, "Wizard's Conclave", facedown = true)
       .banditsRefilled)
-    waking.after(GameCommand.EndWake(p1))
+    waking.endingWake(p1)
     Script("board", service, p1)
+
+  /** p1's Wake with one favor at Ancient City and nothing else to take. */
+  private def wealthTable: Table = tableWithOnePawnPerSite
+    .turn(p1, Phase.Wake).siteTokens("Ancient City", favor = 1, secrets = 0)
+    .banditsRefilled
+
+  /** p1 takes the favor by picking it from the Wake menu. */
+  def wealthFromMenu(using munit.Location): Script =
+    val (service, waking) = atTable("menu-wealth",
+      wealthTable.phaseMenuParked)
+    waking.after(MenuPlay.picking(p1,
+      PhaseMenu.takeWealth(WakeResource.Favor)))
+    Script("menu-wealth", service, p1)
+
+  /** p1 rests holding Insomnia and uses it by picking it from the Rest menu,
+    * which ends the Rest. */
+  def restFromMenu(using munit.Location): Script =
+    val (service, resting) = atTable("menu-rest", tableWithOnePawnPerSite
+      .adviser(p1, "Insomnia").turn(p1, Phase.Rest).banditsRefilled
+      .phaseMenuParked)
+    resting.after(MenuPlay.picking(p1,
+      DecisionOptionRef.Denizen(CatalogNames.denizen("Insomnia"))))
+    Script("menu-rest", service, p1)
+
+  /** The same take, started directly, as before the menus. */
+  def wealthStarted(using munit.Location): Script =
+    val (service, waking) = atTable("started-wealth", wealthTable)
+    waking.after(GameCommand.StartWalker(ActionRef.TakeWealth,
+      StartPayload(p1, TakeWealthProcedure.selection(WakeResource.Favor))))
+    Script("started-wealth", service, p1)
 
   /** Setup to the first player's Wake, on the real start: the script that
     * replays Setup with every park answered by default, so its log carries
@@ -123,7 +155,7 @@ object LogScripts:
       // Begin Rest runs on into Finish Rest when Rest asks nothing.
       val resting = awake.after(GameCommand.BeginRest(player))
       if Look(resting.ready).active == player then
-        resting.after(GameCommand.FinishRest(player))
+        resting.finishingRest(player)
       else resting
     }
     Script("round", service, first)
@@ -242,7 +274,7 @@ object LogScripts:
     val resting = acting.after(Step.Arrange(ops(acting, next)),
       GameCommand.BeginRest(first))
     val rested = if Look(resting.ready).active == first then
-      resting.after(GameCommand.FinishRest(first)) else resting
+      resting.finishingRest(first) else resting
     (rested, next)
 
   /** Search of the world deck, every decision answered by default. */
@@ -716,6 +748,8 @@ object LogScripts:
     "gambling-hall" -> (() => gamblingHall), "wolves" -> (() => wolves),
     "oracle" -> (() => oracle), "barbed-net" -> (() => barbedNet),
     "hunger" -> (() => hunger),
+    "menu-wealth" -> (() => wealthFromMenu),
+    "menu-rest" -> (() => restFromMenu),
     "queued-raid-skip" -> (() => queuedRaidThenSkip),
     "heirloom-kept" -> (() => heirloomKept),
     "heirloom-returned" -> (() => heirloomReturned))

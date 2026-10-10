@@ -1,11 +1,13 @@
 package oathdigital.application
 
 import oathdigital.model.OathState.Ready
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.rest.{SilverTongue, SilverTongueFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Table, TestCards}
+import oathdigital.testkit.{CatalogNames, MenuPlay, Table, TestCards}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.present
 
@@ -13,7 +15,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
   private val projector = new GameProjector(catalog)
   private val silverTongueId = CatalogNames.denizen("Silver Tongue").value
 
-  test("a usable REST power is projected and legal for its active player only"):
+  test("a usable REST power is projected for its active player only, and " +
+      "the Rest menu offers it"):
     // Golem Legions (Arcane) shows at p1's site, and the Arcane bank holds 3
     // favor: Silver Tongue has a bank to take from.
     val ready = SilverTongueFixture.silverTongueRest(Vector("Golem Legions"),
@@ -25,15 +28,21 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     assertEquals(own.phasePowers.map(_.rulesText), Vector("You can only " +
       "have two advisers. **REST:** Take [favor] from a favor bank " +
       "matching a card at your site."))
-    assert(own.legalControls.contains(
-      s"usePower:denizen.silver-tongue:$silverTongueId"))
-    assert(own.legalControls.contains("finishRest"))
+    // Rest powers are options of the Rest menu, not legal controls.
+    val menu = MenuPlay.options(Table.from(ready).phaseMenuParked.state,
+      catalog)
+    assertEquals(menu.map(option => option.ref -> option.available),
+      Vector[(DecisionOptionRef, Boolean)](
+        DecisionOptionRef.Denizen(CatalogNames.denizen("Silver Tongue")) ->
+          true,
+        PhaseMenu.Menu.Rest.endingOption -> true))
     val theirs = projector.project("phase-powers", LoadedGame(Ready(ready), 30L),
       p2)
     assertEquals(theirs.phasePowers, Vector.empty)
     assert(!theirs.legalControls.exists(_.startsWith("usePower:")))
 
-  test("a synthetic WAKE or ACTION power is projected and legal only in its phase"):
+  test("a synthetic WAKE or ACTION power is projected only in its phase, " +
+      "and is a legal control only in Act"):
     import oathdigital.gameplay.PhasePowerFixture.{TestPower, card, holding,
       powerId}
     // TestPower stands in for the power Magician's Code prints, which p1
@@ -46,12 +55,13 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
         Vector(Phase.Wake, Phase.Act).foreach { shown =>
           val projected = synthetic.project("synthetic-powers",
             LoadedGame(Ready(holding(shown)), 30L), p1)
-          val legal = shown == phase
+          val inPhase = shown == phase
           assertEquals(projected.phasePowers.map(_.powerId),
-            if legal then Vector(powerId.value) else Vector.empty,
+            if inPhase then Vector(powerId.value) else Vector.empty,
             s"$timing power in $shown")
-          assertEquals(projected.legalControls.contains(control), legal,
-            s"$timing power in $shown")
+          // Wake powers are options of the Wake menu instead.
+          assertEquals(projected.legalControls.contains(control),
+            inPhase && shown == Phase.Act, s"$timing power in $shown")
         }
 
   test("a phase power used from a held relic is projected and legal with the " +
@@ -115,15 +125,18 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     assertEquals(own.phasePowers, Vector.empty)
     assert(!own.legalControls.exists(_.startsWith("usePower:")))
 
-  test("Rest still offers Finish Rest when catalog drift makes its gate fail"):
+  test("the Rest menu still offers Finish Rest when catalog drift removes " +
+      "the power"):
     val ready = SilverTongueFixture.silverTongueRest(Vector("Golem Legions"),
       Set(Suit.Arcane))
     val drifted = catalog.copy(denizens = catalog.denizens.filterNot(_.id.value ==
       silverTongueId))
-    val projected = new GameProjector(drifted).project("drifted-rest",
-      LoadedGame(Ready(ready), 30L), p1)
+    val menu = MenuPlay.options(Table.from(ready).phaseMenuParked.state,
+      drifted, WalkerPowers.empty, PhasePowers.empty)
 
-    assert(projected.legalControls.contains("finishRest"))
+    assertEquals(menu.map(option => option.ref -> option.available),
+      Vector[(DecisionOptionRef, Boolean)](
+        PhaseMenu.Menu.Rest.endingOption -> true))
 
   test("a League Treaty park shows the ruler the favor banks or decline and " +
       "makes the active player wait"):
@@ -170,5 +183,9 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
       (p.source.kind, p.source.id, p.name, p.rulesText)), Vector(("site",
       ancientCityId, "River",
       "WAKE: You may place your pawn at another River. This is not a Travel action.")))
-    assert(projected.legalControls.contains(
-      s"usePower:site.ancient-city.river:$ancientCityId"))
+    // In Wake the River is an option of the Wake menu.
+    val menu = MenuPlay.options(Table.from(ready).phaseMenuParked.state,
+      catalog)
+    assert(menu.exists(option => option.ref ==
+      DecisionOptionRef.Site(CatalogNames.site("Ancient City")) &&
+      option.available), menu)

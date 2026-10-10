@@ -3,14 +3,16 @@ package oathdigital.gameplay
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
+import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, TakeWealthFixture,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes,
+  TakeWealthFixture, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
@@ -158,35 +160,19 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
       assertEquals(WakeResource.fromKey(resource.key), Some(resource))
     }
 
-  test("the candidates are exactly the resources the command accepts"):
-    // `candidates` is the gameplay-owned answer the projector consumes, so
-    // it is proved against the command directly rather than only through the
-    // projection below.
-    val taken = after(took(wake(favor = 2, secrets = 1)))
+  test("what the Wake menu offers is what the command accepts"):
+    // A site already taken from this turn, back in Wake to try it again.
+    val taken = Table.from(after(took(wake(favor = 2, secrets = 1))))
+      .backInPhase(Phase.Wake).unchecked
     oneBoardPerTakeGate(taken).foreach { ready =>
-      assertEquals(TakeWealthProcedure.candidates(catalog, ready,
-        actor, powers),
-        WakeResource.all.filter(resource => take(ready,
-          TakeWealthProcedure.selection(resource)).isRight))
-    }
-
-  test("what the projection offers is what the command accepts"):
-    // Ported from `WakeSuite`, and extended with the case the legacy pair
-    // could not drift on but this one could: the offer is now the procedure's
-    // own `candidates`, so a site already taken from this turn disappears
-    // because its restriction rejects the simulation, not because a second
-    // copy of the rule says so. What this adds over the candidates test above
-    // is the projector's half -- that it consumes them and names them as the
-    // controls a client binds.
-    val taken = after(took(wake(favor = 2, secrets = 1)))
-    oneBoardPerTakeGate(taken).foreach { ready =>
-      val projection = new oathdigital.application.GameProjector(catalog)
-        .project("take-wealth", oathdigital.application.LoadedGame(
-          Ready(ready), 9), actor)
-      assertEquals(projection.legalControls.contains("takeFavor"),
-        take(ready).isRight, "takeFavor")
-      assertEquals(projection.legalControls.contains("takeSecret"),
-        take(ready, secretArg).isRight, "takeSecret")
+      val offered = MenuPlay.options(Table.from(ready).phaseMenuParked.state,
+        catalog, powers, PhasePowers.empty)
+      WakeResource.all.foreach { resource =>
+        assertEquals(offered.find(_.ref == PhaseMenu.takeWealth(resource))
+          .map(_.available),
+          Some(take(ready, TakeWealthProcedure.selection(resource)).isRight),
+          resource.key)
+      }
     }
 
   test("the declared tree is the take and its use record under one window"):

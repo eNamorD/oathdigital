@@ -51,11 +51,7 @@ final case class ProjectionAuthorization(
 final case class AuthorizedPlayer private[application] (
     access: GameAccessContext.Player
 ):
-  def endWake: GameCommand =
-    GameCommand.EndWake(access.playerId)
-
   def beginRest: GameCommand = GameCommand.BeginRest(access.playerId)
-  def finishRest: GameCommand = GameCommand.FinishRest(access.playerId)
   def undo: GameCommand = GameCommand.Undo(access.playerId)
   def redo: GameCommand = GameCommand.Redo(access.playerId)
   def usePower(power: PowerId, source: DecisionOptionRef): GameCommand =

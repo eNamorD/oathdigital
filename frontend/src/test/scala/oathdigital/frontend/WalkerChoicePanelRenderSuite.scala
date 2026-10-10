@@ -41,6 +41,19 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     assertEquals(all(panel, ".walker-choice-details").map(_.textContent),
       Vector("1 Supply · +2 warbands"))
 
+  test("a card option shows its rules text on hover, and a reason wins"):
+    val card = CardDetails("97", "denizen", "Insomnia",
+      rulesText = Some("**REST:** Gain [secret]."))
+    val power = DecisionOptionState("denizen", "97", "Insomnia", Some(card))
+    val used = power.copy(state = "unavailable",
+      reason = Some("Already used this turn"))
+    def titles(option: DecisionOptionState) =
+      all(draw(WalkerDecisionState("rest-menu", "phase.menu", "decide",
+        query = Some(DecisionQueryState.ChooseOne(Vector(option))))),
+        ".walker-choice").map(_.getAttribute("title"))
+    assertEquals(titles(power), Vector("**REST:** Gain [secret]."))
+    assertEquals(titles(used), Vector("Already used this turn"))
+
   test("choosing an option submits the generic answer for its kind and id"):
     val ui = new RecordingControls()
     val panel = draw(parked, ui)

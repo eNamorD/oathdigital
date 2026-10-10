@@ -445,11 +445,6 @@ final class GameApplicationService(
               s"walker roll pool ${pool.value} requested $count dice but " +
                 s"the defense dice port only rolls ${defenseDicePort.diceCount}"))
         }
-      // Ending Wake is a walker procedure (batch-1 Task 7); the command
-      // survives as the client's spelling for it, so no transport and no
-      // caller had to learn that the engine changed underneath.
-      case GameCommand.EndWake(playerId) =>
-        rules.startWalker(state, PhaseTransitionRef.EndWake, playerId)
       case GameCommand.UsePower(playerId, power, source) =>
         rules.startWalker(state, ActionRef.UsePower(power), playerId,
           Vector(source))
@@ -461,8 +456,6 @@ final class GameApplicationService(
         rules.handle(state, MinorActionCommand.MoveWarbands(playerId, toSite, amount))
       case GameCommand.BeginRest(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
-      case GameCommand.FinishRest(playerId) =>
-        rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
       // `routed` sends Undo and Redo to the fold on every stream; these arms
       // only keep the match exhaustive.
       case GameCommand.Undo(_) => Left(OathViolation.NothingToUndo)

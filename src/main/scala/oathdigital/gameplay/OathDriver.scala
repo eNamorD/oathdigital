@@ -3,11 +3,10 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
-import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.rest.{TurnBoundary,
   WarExhaustionRandomPort}
-import oathdigital.gameplay.phases.wake.{ForcedWakeProcedure,
-  TakeWealthProcedure}
+import oathdigital.gameplay.phases.wake.ForcedWakeProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.walker.{ActionBoundaryRan, ProcedureDequeued}
 import oathdigital.model._
@@ -34,9 +33,9 @@ private[gameplay] enum Ended:
   *  2. the turn's start, after a Finish Rest or Setup walk: the round's end
   *     when the last player has rested, then Wake's entry and the Forced
   *     Wake walk when one is due, which hands back here when it ends.
-  *  3. the phase's end, when its ending is the only option left (ruling 3):
-  *     End Wake in Wake, Finish Rest in Rest. Act parks nothing until its
-  *     menu exists (slice 4).
+  *  3. the phase's menu: in Wake and Rest, the menu, or the phase's ending
+  *     when it is the only option available (ruling 3). Act parks nothing
+  *     until its menu exists (slice 4).
   *
   * Each start runs on the state the steps before it left, so a turn that
   * changes inside one command gives the next walk the new active player.
@@ -161,33 +160,22 @@ private[gameplay] trait OathDriver:
         startTriggered(transition, TriggeredProcedureRef.ForcedWake)
       case _ => phaseEnd(transition)
 
-  /** Step 3, until the menus exist. */
+  /** Step 3: the phase's menu (walker-driven game loop design, "The
+    * menus"). When its ending is the only option available, the ending
+    * starts without asking (ruling 3; slice 1, plan-time ruling 2). Act
+    * parks nothing until its menu exists (slice 4). */
   private def phaseEnd(transition: OathTransition)
       : Either[OathViolation, OathTransition] = transition.state match
     case Ready(ready) if ready.game.current.result.isEmpty =>
       val player = ready.game.current.turn.activePlayer
-      ready.game.current.turn.phase match
-        case Phase.Wake if !wakeOptionOpen(ready, player) =>
-          joined(transition, startWalker(transition.state,
-            PhaseTransitionRef.EndWake, player))
-        case Phase.Rest if !phasePowerUsable(ready, player) =>
-          joined(transition, startWalker(transition.state,
-            PhaseTransitionRef.FinishRest, player))
-        case _ => Right(transition)
+      PhaseMenu.of(ready.game.current.turn.phase) match
+        case Some(menu) if PhaseMenu.onlyEnding(menu, PhaseMenu.offers(menu,
+            catalog, ready, player, phasePowerCatalog, walkerPowers)) =>
+          joined(transition, startWalker(transition.state, menu.ending,
+            player))
+        case Some(menu) => startTriggered(transition, menu.procedure)
+        case None => Right(transition)
     case _ => Right(transition)
-
-  /** Whether `player` could use a power of the phase they are in now: a
-    * WAKE power in Wake, a REST power in Rest. */
-  private def phasePowerUsable(ready: ReadyGame, player: PlayerId): Boolean =
-    PhasePowerProcedure.usable(catalog, ready, player, phasePowerCatalog,
-      walkerPowers).nonEmpty
-
-  /** Whether `player` has a Wake option open now: wealth to take or a WAKE
-    * power to use. */
-  private def wakeOptionOpen(ready: ReadyGame, player: PlayerId): Boolean =
-    phasePowerUsable(ready, player) ||
-      TakeWealthProcedure.candidates(catalog, ready, player,
-        walkerPowers).nonEmpty
 
   private def joined(before: OathTransition,
       started: Either[OathViolation, OathTransition]) =

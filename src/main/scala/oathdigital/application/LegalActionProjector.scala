@@ -11,7 +11,6 @@ import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
-import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.{ModifierOffers, WalkerPowers}
 import oathdigital.gameplay.phases.rest.BeginRestProcedure
@@ -57,19 +56,6 @@ private[application] final class LegalActionProjector(
       SearchProcedure.startable(catalog, context.ready, context.active.player,
         powers))
 
-  /** The resources the viewer could take right now -- asked of the procedure
-    * that owns Take Wealth, exactly as Travel's destinations are (batch-1
-    * Task 7). This projector assembles no gameplay procedure of its own: it
-    * neither builds a tree, nor spells a start selection, nor runs the
-    * simulation, because each of those would be a second copy of something
-    * the procedure already states.
-    */
-  private def takeableResources(context: ScopedProjectionContext)
-      : Vector[WakeResource] =
-    TakeWealthProcedure.candidates(catalog, context.ready,
-      context.active.player,
-      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
-
   /** Whether a Muster or Trade could start now: at least one source survives
     * the same preview a start runs. Asked of the procedures that own them.
     */
@@ -107,14 +93,6 @@ private[application] final class LegalActionProjector(
     startableWithModifiers(context, ActionRef.PlaceBannerResource)(powers =>
       PlaceBannerResourceProcedure.startable(catalog, context.ready,
         context.active.player, powers))
-
-  /** The control a resource is offered as. A name the client binds a button
-    * to is presentation, which is why this mapping is here and the question
-    * of whether the resource is takeable at all is not.
-    */
-  private def takeControl(resource: WakeResource): String = resource match
-    case WakeResource.Favor => "takeFavor"
-    case WakeResource.Secret => "takeSecret"
 
   def project(context: ScopedProjectionContext): LegalProjection =
     project(context, phasePowers.project(context))
@@ -161,11 +139,11 @@ private[application] final class LegalActionProjector(
             value.maxSiteToBoard > 0))("moveWarbands"),
           Option.when(negotiationStartable(context))("beginNegotiation")
         ).flatten ++ phasePowers.controls(projectedPhasePowers)
-        case Phase.Rest => phasePowers.controls(projectedPhasePowers) :+ "finishRest"
-        case Phase.Setup | Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
-        case Phase.Wake =>
-          takeableResources(context).map(takeControl) ++
-            phasePowers.controls(projectedPhasePowers) :+ "endWake"
+        // Wake and Rest are answered at their menus (walker-driven game loop
+        // design, "The menus"), so a live game there always has a decision
+        // parked.
+        case Phase.Wake | Phase.Rest | Phase.Setup | Phase.RoundEnd |
+            Phase.WarExhaustion => Vector.empty
 
   /** Whether `active` can start Recover at their current site, Supply cost
     * included. Relic availability is deliberately irrelevant: a successful

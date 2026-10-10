@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.BannerRules
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.actions.challenge.ChallengeProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
@@ -11,7 +12,7 @@ import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation.NoPlayableOption
 import oathdigital.testkit.{CatalogNames, EmptyWindowModifier, Journal, Look,
-  Outcomes, Table}
+  MenuPlay, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
@@ -287,10 +288,12 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     val activeId = firstPlayer
     assertEquals(Outcomes.ready(setupState).game.current.turn.activePlayer,
       activeId)
+    // The setup events stop at Setup's end, before the driver parks the
+    // menu, so the take starts directly; the Wake it leaves open is asked.
     val wealth = accepted(rules.startWalker(setupState, ActionRef.TakeWealth,
       activeId, Vector(DecisionOptionRef.Button("favor"))))
-    val act = accepted(rules.startWalker(wealth.state,
-      PhaseTransitionRef.EndWake, activeId))
+    val act = accepted(MenuPlay.picked(rules, wealth.state, activeId,
+      PhaseMenu.Menu.Wake.endingOption))
     val prior = BannerRules.resources(Outcomes.ready(act.state).game.current,
       Banner.PeoplesFavor)
     val started = rules.startWalker(act.state, ActionRef.Challenge, activeId)

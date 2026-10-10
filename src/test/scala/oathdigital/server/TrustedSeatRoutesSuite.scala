@@ -269,7 +269,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     }
 
   /** "origin-game", created from the configured HTTPS origin, with p2's
-    * seat cookie and an endWake command expecting sequence 0. The game is
+    * seat cookie and a beginRest command expecting sequence 0. The game is
     * at 2 (GameStarted and WalkerParked), so the command is stale. */
   private final case class OriginGame(code: String, cookie: Option[String],
       command: String)
@@ -281,7 +281,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val code = codeOf(
       accepted(TrustedGameCreateResponseCodec.decode(created.body())), "p2")
     OriginGame(code, Some(s"oath_seat=$code"),
-      """{"expectedNextSequence":0,"intent":{"type":"endWake"}}""")
+      """{"expectedNextSequence":0,"intent":{"type":"beginRest"}}""")
 
   test("trusted endpoints reject queries and cross-origin mutations"):
     withServer(Some("https://games.example.test")) { (server, _) =>

@@ -35,14 +35,16 @@ class ServerModeSessionSuite extends FunSuite:
       legalControls = legalControls, ready = ready)
       .copy(viewerPlayerId = viewer))
 
-  /** Blue's Wake, with endWake legal and so a wake-action button on screen,
-    * as `viewer` sees it.
+  /** Blue's Act with Rest legal and so a rest-action button on screen, as
+    * `viewer` sees it.
     */
-  private def encodedBlueWake(viewer: Option[String] = Some("blue"),
+  private def encodedBlueAct(viewer: Option[String] = Some("blue"),
       nextSequence: Long = 1L): String =
-    encodedGame(viewer, active = "blue", phase = "wake",
-      legalControls = Vector("endWake"), ready = true,
-      nextSequence = nextSequence)
+    GameProjectionCodec.encode(TestProjections.actingProjection(
+      gameId = "my game", nextSequence = nextSequence,
+      phase = "act-action-selection", activePlayer = Some("blue"),
+      players = redAndBlueExiles, legalControls = Vector("beginRest"),
+      ready = true).copy(viewerPlayerId = viewer, actionSelectionOpen = true))
 
   test("trusted player renders its fixed seat and never bootstraps " +
       "switches or loads raw events"):
@@ -225,7 +227,7 @@ class ServerModeSessionSuite extends FunSuite:
       "changing seat"):
     TestBrowser.use(): browser =>
       val responses = scala.collection.mutable.Queue(
-        TransportResponse(200, encodedBlueWake()),
+        TransportResponse(200, encodedBlueAct()),
         TransportResponse(409,
           """{"error":"stale-client-position","message":"position changed"}"""),
         TransportResponse(200, encodedGame(nextSequence = 2L)))
@@ -234,7 +236,7 @@ class ServerModeSessionSuite extends FunSuite:
       Main.start(browser.mount, "/games/my%20game", trustedAlpha = true,
         withEmptyLogPage(transport))
       browser.settle.flatMap { _ =>
-        browser.click("wake-action")
+        browser.click("rest-action")
         browser.settle
       }.map { _ =>
         assertEquals(transport.requests.map(r => r.method -> r.url).toVector,
@@ -276,21 +278,21 @@ class ServerModeSessionSuite extends FunSuite:
         val requests = ArrayBuffer.empty[RecordedRequest]
         val transport = ScriptedTransport(
           (_, _, _) => Future.successful(Right(TransportResponse(200,
-            if requests.size == 1 then encodedBlueWake()
-            else encodedBlueWake(viewer = viewer)))),
+            if requests.size == 1 then encodedBlueAct()
+            else encodedBlueAct(viewer = viewer)))),
           requests)
         Main.start(browser.mount, "/games/my%20game", trustedAlpha = true,
           withEmptyLogPage(transport))
         browser.settle.flatMap { _ =>
           // The control on screen before the poll: once the viewer is
           // rejected its handler must submit nothing.
-          val oldControl = browser.byClass("wake-action").head
+          val oldControl = browser.byClass("rest-action").head
             .asInstanceOf[js.Dynamic]
           browser.tick()
           browser.settle.map { _ =>
             assert(browser.text.contains("assigned seat link"))
             assertEquals(browser.byClass("wake-actions"), Vector.empty)
-            assertEquals(browser.byClass("wake-action"), Vector.empty)
+            assertEquals(browser.byClass("rest-action"), Vector.empty)
             oldControl.onclick(js.Dynamic.literal())
             browser.tick()
             assertEquals(requests.map(r => r.method -> r.url).toVector, Vector(
@@ -312,24 +314,24 @@ class ServerModeSessionSuite extends FunSuite:
           else
             loads += 1
             Future.successful(Right(
-              if loads == 1 then TransportResponse(200, encodedBlueWake())
+              if loads == 1 then TransportResponse(200, encodedBlueAct())
               else if status == 200 then TransportResponse(200,
-                encodedBlueWake(viewer = Some("red")))
+                encodedBlueAct(viewer = Some("red")))
               else TransportResponse(status,
                 """{"error":"forbidden","message":"denied"}"""))))
         Main.start(browser.mount, "/games/my%20game", trustedAlpha = true,
           withEmptyLogPage(transport))
         browser.settle.flatMap { _ =>
-          browser.click("wake-action")
+          browser.click("rest-action")
           browser.tick()
           browser.settle
         }.flatMap { _ =>
           pending.success(Right(TransportResponse(200,
-            encodedBlueWake(nextSequence = 2L))))
+            encodedBlueAct(nextSequence = 2L))))
           browser.settle
         }.map { _ =>
           assert(browser.text.contains("assigned seat link"))
-          assertEquals(browser.byClass("wake-action"), Vector.empty)
+          assertEquals(browser.byClass("rest-action"), Vector.empty)
           browser.tick()
           assertEquals(loads, 2)
           assertEquals(commands, 1)

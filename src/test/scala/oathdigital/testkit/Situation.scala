@@ -4,6 +4,7 @@ import oathdigital.application.{CampaignDicePort, DefenseDicePort,
   EventStreamRepository, GameCommand, GameApplicationService,
   InMemoryEventStreamRepository}
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
@@ -61,16 +62,24 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
     case Ready(ready) => ready
     case other => munit.Assertions.fail(s"expected a ready game, got $other")
 
-  /** Ends `player`'s Wake, unless it has already ended by itself for having
-    * nothing to decide. */
+  /** Ends `player`'s Wake: picks End Wake from the Wake menu, or starts it
+    * on a table where no menu is parked. Does nothing once Wake has ended
+    * by itself for having nothing to decide. */
   def endingWake(player: PlayerId)(using munit.Location): Situation =
-    if ready.game.current.turn.phase == Phase.Wake then
-      after(GameCommand.EndWake(player))
-    else this
+    ending(PhaseMenu.Menu.Wake, player)
+
+  /** Finishes `player`'s Rest, as `endingWake` ends Wake. */
+  def finishingRest(player: PlayerId)(using munit.Location): Situation =
+    ending(PhaseMenu.Menu.Rest, player)
+
+  private def ending(menu: PhaseMenu.Menu, player: PlayerId)(
+      using munit.Location): Situation =
+    if ready.game.current.turn.phase != menu.phase then this
+    else after(MenuPlay.ending(state, menu, player))
 
   /** Issues each step and answers every parked decision it causes, the last
-    * step's included: the result is not parked. With no steps, answers the
-    * park this situation holds. */
+    * step's included: the result is not parked, though it may sit at a phase
+    * menu. With no steps, answers the park this situation holds. */
   def after(steps: (GameCommand | Step)*)(using munit.Location): Situation =
     driver.run(this, steps.map(Step.of), settle = true)
 

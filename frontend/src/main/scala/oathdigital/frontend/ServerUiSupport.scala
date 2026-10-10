@@ -1,6 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.protocol.{GameIntent => GameCommand, _}
+import oathdigital.protocol._
 import org.scalajs.dom
 import scala.scalajs.js
 
@@ -238,11 +238,6 @@ private[frontend] object ServerUiSupport:
   private[frontend] def pileCardClasses(count: Int): String =
     if count == 0 then "pile-card pile-empty" else "pile-card pile-back"
 
-  private[frontend] final case class TakeWealthAction(
-      label: String,
-      command: GameCommand
-  )
-
   private[frontend] final case class ViewerPresentation(
       showGameplayControls: Boolean,
       waitingForPlayerId: Option[String],
@@ -359,29 +354,6 @@ private[frontend] object ServerUiSupport:
     banner.appendChild(playerReference(value, winner))
     banner.appendChild(dom.document.createTextNode(s" wins — $victory victory"))
     banner
-
-  private def takeWealth(resource: String): GameCommand =
-    GameCommand.StartWalker("take-wealth", Vector(WalkerStartArgWire("button", resource)))
-
-  private[frontend] def takeWealthActions(
-      value: GameProjection,
-      playerId: String
-  ): Vector[TakeWealthAction] =
-    if value.phase != "wake" ||
-        !viewerPresentation(value, playerId).showGameplayControls then Vector.empty
-    // Take Wealth moved onto the generic walker (batch-1 Task 7), so the
-    // resource the player picks rides `StartWalker`'s start selection as the
-    // button it is -- a choice with no game object behind it -- instead of a
-    // `TakeWealth` intent of its own. The legal-control keys are unchanged:
-    // the server still decides which of the two it offers.
-    else Vector(
-      "takeFavor" -> TakeWealthAction(
-        "Take Wealth: 1 favor", takeWealth("favor")),
-      "takeSecret" -> TakeWealthAction(
-        "Take Wealth: 1 secret", takeWealth("secret"))
-    ).collect:
-      case (legalControl, action)
-          if value.legalControls.contains(legalControl) => action
 
   private[frontend] def playerReference(
       value: GameProjection,

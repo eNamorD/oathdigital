@@ -136,7 +136,8 @@ private[application] final class WalkerDecisionProjector(
   private def tree(procedure: ProcedureRef, ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]) = procedure match
     case _: ActionRef.UsePower | TriggeredProcedureRef.ForcedWake |
-        TriggeredProcedureRef.FollowUpOffer =>
+        TriggeredProcedureRef.FollowUpOffer |
+        TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu =>
       WalkerProcedureRegistry.rebuild(procedure, catalog, ready, actor, args,
         phasePowers, walkerPowers = WalkerPowers.selected(walkerPowerCatalog,
           Vector.empty))

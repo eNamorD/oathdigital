@@ -146,7 +146,8 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // `CommandAccepted`, the stream holds seven events.
     assertEquals(wealth.nextSequence, 7L)
     assertEquals(
-      service.handle("game-wake", 0L, GameCommand.EndWake(active)),
+      service.handle("game-wake", 0L, GameCommand.StartWalker(
+        PhaseTransitionRef.EndWake, StartPayload(active))),
       Left(GameApplicationError.StaleClientPosition(0L, 7L)))
     val reloaded = loaded(replayingSecond(service, repository)
       .load("game-wake"))
@@ -243,7 +244,8 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       new GameApplicationService(catalog, repository).handle(
         "game-replay-corrupt",
         2L,
-        GameCommand.EndWake(firstPlayer)
+        GameCommand.StartWalker(PhaseTransitionRef.EndWake,
+          StartPayload(firstPlayer))
       ),
       Left(GameApplicationError.ReplayFailure(
         1L,
@@ -286,7 +288,8 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         new GameApplicationService(catalog, repository).handle(
           "game-a",
           1L,
-          GameCommand.EndWake(firstPlayer)
+          GameCommand.StartWalker(PhaseTransitionRef.EndWake,
+            StartPayload(firstPlayer))
         ),
         Left(GameApplicationError.StreamIdentityMismatch(
           "game-a",

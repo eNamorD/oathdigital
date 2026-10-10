@@ -1,9 +1,9 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.phases.RestCleanupPlan
+import oathdigital.gameplay.phases.{PhaseMenu, RestCleanupPlan}
 import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table,
+import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes, Table,
   WarExhaustionChoices}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -150,8 +150,8 @@ class RestSuite extends munit.FunSuite:
       // A Wake with nothing to decide has already ended by itself.
       val turn = Outcomes.ready(state).game.current.turn
       if player != order.last && turn.phase == Phase.Wake then
-        val woke = accepted(rules.startWalker(state, PhaseTransitionRef.EndWake,
-          turn.activePlayer))
+        val woke = accepted(MenuPlay.picked(rules, state, turn.activePlayer,
+          PhaseMenu.Menu.Wake.endingOption))
         events ++= woke.events
         state = woke.state
     }
