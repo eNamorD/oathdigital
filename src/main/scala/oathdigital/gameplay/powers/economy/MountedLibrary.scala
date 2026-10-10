@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.actions.economy.TradeProcedure
-import oathdigital.gameplay.powerresolver.{Contribution, Transform}
+import oathdigital.gameplay.powerresolver.{Contribution, Deferred,
+  FoldPhase, OperationRewrite, Transform}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers,
   SelectedModifier}
 import oathdigital.gameplay.powers.action.SiteCards
@@ -21,13 +22,14 @@ object MountedLibraryCard extends Denizen(DenizenId("248"), "Mounted Library", S
   * the secrets, and once selected, Mounted Library is discarded at the end of
   * the Trade, whatever the Trade was.
   *
-  * The doubling is a second secret gain after the Trade's own, added for
-  * every Trade and run only when Mounted Library was the source, as The Old
-  * Oak's is. Its line covers that second gain's generic line only, so the
-  * Trade's own "Gained" line stays and this one follows it.
+  * The doubling records the Trade's own secret gain as it runs, and adds a
+  * step after it for every Trade that gains as much again, run only when
+  * Mounted Library was the source, as The Old Oak's is. Its line covers
+  * that second gain's generic line only, so the Trade's own "Gained" line
+  * stays and this one follows it.
   *
-  * The discard is appended to the Trade's root and folds at priority 1, so
-  * it comes after every other modifier's root question. It is the standard
+  * Both rewrites fold `Late`. The discard is appended to the Trade's root,
+  * so it comes after every other modifier's root question. It is the standard
   * discard ([[SiteCards]]) from wherever the card stands: its favor returns
   * to the Nomad bank and its secrets to the trader facedown, so a Trade for
   * favor with it returns the secret paid onto it. Its line covers the
@@ -43,7 +45,6 @@ final case class MountedLibrary private (catalog: ExecutableCatalog)
   val cardId: DenizenId = MountedLibraryCard.id
   def id: PowerId = MountedLibrary.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
-  override def priority: Int = Priority
   override def discardsItself: Boolean = true
   override def noteKeys: Vector[NoteKey] = Vector(doubled, discarded)
 
@@ -51,24 +52,24 @@ final case class MountedLibrary private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeGain -> Vector(Transform((ctx, operations) =>
-      operations ++ Vector(double(ctx.activePlayer,
-        secretsGained(operations, ctx.activePlayer)),
-        Note(id, doubledNote(_, ctx.activePlayer), covers = true)))),
+      OperationRewrite.ops(ctx, operations)((_, _) => {
+        case gain @ Gain.Secrets(player, _) if player == ctx.activePlayer =>
+          Vector(gain, Defer(deferred, Vector(gain)))
+      }) :+ double(ctx.activePlayer), FoldPhase.Late)),
     PowerWindow.TradeActionEligibility -> Vector(Transform((ctx, children) =>
       children ++ Vector(discard(ctx.activePlayer),
-        Note(id, discardedNote, covers = true)))))
+        Note(id, discardedNote, covers = true)), FoldPhase.Late)))
 
-  /** The secrets the Trade's gain node gives `actor`. */
-  private def secretsGained(operations: Vector[Operation], actor: PlayerId)
-      : Int = operations.collect {
-    case Gain.Secrets(player, amount) if player == actor => amount
-  }.sum
-
-  private def double(actor: PlayerId, secrets: Int): Operation =
-    BuildOps((_, pending) => Right(
-      if secrets > 0 && tradedWith(pending) then
-        Vector[CoreOperation](Gain.Secrets(actor, secrets))
-      else Vector.empty))
+  /** As many secrets again as the Trade gained, then its line, which covers
+    * the gain's: run only when Mounted Library was the source. */
+  private def double(actor: PlayerId): Operation =
+    Deferred.resolve(deferred)((_, pending, held) => {
+      val secrets = held.collect { case Gain.Secrets(_, amount) => amount }.sum
+      if secrets > 0 && tradedWith(pending) then Vector(
+        Gain.Secrets(actor, secrets),
+        Note(id, doubledNote(_, actor), covers = true))
+      else Vector.empty
+    })
 
   private def tradedWith(pending: PendingTree): Boolean =
     PowerAnswers.one(pending, TradeProcedure.decisionId)
@@ -104,9 +105,8 @@ final case class MountedLibrary private (catalog: ExecutableCatalog)
 
 object MountedLibrary:
   val id: PowerId = MountedLibraryCard.power.id
-  /** Folds after the Trade modifiers at priority 0, so its discard ends the
-    * Trade. */
-  val Priority: Int = 1
+  /** The Trade's secret gain, recorded as it runs. */
+  val deferred: DeferralKey = DeferralKey("mounted-library")
   /** "Gained {n} more secrets." */
   val doubled: NoteKey = NoteKey("doubled", Vector(NotePart.Text("Gained "),
     NotePart.Arg(0), NotePart.Plural(0, " more secret.", " more secrets.")))
