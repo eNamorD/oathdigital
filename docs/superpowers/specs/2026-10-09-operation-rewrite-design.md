@@ -1,8 +1,6 @@
 # Operation Rewrite
 
-**Status:** designed 2026-10-09. Slice 1 is done. Slice 2 waits until catalog
-batch 6 slice 4 and consent slice 4 have merged, because their plans edit
-code that slice 2 rewrites.
+**Status:** designed 2026-10-09. Both slices are done.
 
 ## Goal
 
@@ -264,35 +262,50 @@ transform. `BattlePlan`'s doc says so.
 ### Migrations (slice 2)
 
 Each rewrite helper below moves onto `ops` or `nodes`. Its behavior and its
-tests stay the same.
+tests stay the same. A helper that moves takes the fold's `PowerCtx`, which
+`ops` and `nodes` need, and reads the actor from it.
 
 - `ops`:
   - Disciples (`LossRewrite` moved in slice 1);
-  - `SupplyStrip`, `DrawExtension`, `TravelRoute.adjustSupply`;
-  - Initiation Rite, `SuitSupplyWaiver`, `ExtraWarbands`;
-  - `EconomySources.intoOccupied`.
+  - `SupplyStrip` and `TravelRoute.adjustSupply`;
+  - Initiation Rite and `EconomySources.intoOccupied`.
 - `nodes`:
-  - `EconomySources.exempted` and `withOptions`, `ConspiracyTargets.narrowed`;
-  - Vow of Wandering's Decide-to-Note swap;
-  - `PlacementTree.adjust`.
+  - `SuitSupplyWaiver` and `ExtraWarbands`, whose replacements are not core
+    ops: a payment built when it runs, and a gain followed by its line;
+  - the decision rewrites: `EconomySources.withOptions`, `SearchSources`,
+    `ConspiracyTargets.narrowed`, Vow of Wandering's Decide-to-Note swap,
+    Land Warden's keep decision and Spinning Bee's source decision.
+- **Left as they are:**
+  - The draw rewrites: `DrawExtension`, `BottomDraw`, Painted Trumpet's
+    draw and Spinning Bee's draw. Each rewrites its own draw leaf's batch
+    as a whole and may refuse it with an error, which a matcher cannot
+    return. Each finds its leaf by its window.
+  - `PlacementTree.adjust`. Its first call replaces the default children
+    whole with a `PlacementBody`, which a node matcher cannot express, and
+    it already finds the body by its type.
 - **The Old Oak and Mounted Library** record the actor's `Gain.Secrets` at
   `TradeGain` (`ops`, record form). Their bonus step becomes a `resolve`
   that reads what was gained. The bonus stays a separate step after the
-  gain, so the lines stay as they are.
+  gain, so the lines stay as they are. Mounted Library's line is part of
+  its resolve, before the take, so it still follows and covers its gain.
 - **Way Station** keeps its fold-time read of `SpendSupply`. The consent
   design asks every question of a cost before any of it is paid
   ([consent design](2026-10-08-consent-system-design.md)), and a deferral
   would learn the Supply only after the spending closures ran. It moves
   from priority 3 to the `Late` phase. Its doc names the limit: it cannot
   see Supply spent inside a closure.
-- **Priority review.** Each remaining priority is checked: Bottom Draw,
-  Cursed Cauldron, `EconomySources.ExemptionPriority`, Hospital, Painted
-  Trumpet, Mounted Library, Royal Stables, `SparedForce` and Special Envoy.
+- **Priority review.** Each remaining priority was checked:
   - A priority that exists only so the power folds after others' appends
-    becomes `Late`.
-  - A priority that orders one rewrite after another stays, with its reason
-    in its doc. Hospital after `SparedForce` and Cursed Cauldron after
-    Hospital are such cases.
+    becomes `Late`: Mounted Library, whose discard ends the Trade.
+  - A priority that orders one rewrite after another stays, with its
+    reason in its doc: Bottom Draw before the draw extensions, Painted
+    Trumpet after them, `EconomySources.ExemptionPriority` after the powers
+    that add sources, Royal Stables after the terrain, Special Envoy after
+    Royal Stables, and on the Campaign's losses `SparedForce`, Hospital and
+    Cursed Cauldron, in that order.
+- **Shape.** When `SupplyStrip` removes a payment, or `ConspiracyTargets`
+  drops a decision left with no option, an empty `Sequence` keeps the
+  node's place. The child indices after it no longer shift.
 
 ### Extension points (not built)
 
@@ -336,4 +349,7 @@ tests stay the same.
 - **`WildMountsSuite`** keeps every test, and adds one: a Nomad plan whose
   discard is a raw `PlanDiscard.denizen`, with no helper and no mark, is
   still replaced.
-- **Slice 2:** the full suite, unchanged.
+- **Slice 2:** the full suite, unchanged, plus `SupplyStripSuite` (a
+  payment in the tree, in a `Branch` and in a `BuildOps`; another player's
+  and a nested window's left alone) and the fold phase of Way Station and
+  Mounted Library.

@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.economy.MusterSource
+import oathdigital.gameplay.powerresolver.{OperationRewrite, PowerCtx}
 import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
@@ -17,9 +18,9 @@ private[economy] object EconomySources:
     * again, and one that holds favor or secrets arrives unavailable, as it
     * would at the pawn site.
     */
-  def widened(operations: Vector[Operation],
+  def widened(ctx: PowerCtx, operations: Vector[Operation],
       cards: Vector[SiteDenizenState]): Vector[Operation] =
-    withOptions(operations) { options =>
+    withOptions(ctx, operations) { options =>
       val offered = options.map(_.ref).toSet
       options ++ cards.map(MusterSource.offered)
         .filterNot(option => offered(option.ref))
@@ -42,30 +43,29 @@ private[economy] object EconomySources:
 
   /** `operations` with every source the token-free rule withheld made
     * available, when `admits` accepts its card. */
-  def exempted(operations: Vector[Operation],
+  def exempted(ctx: PowerCtx, operations: Vector[Operation],
       admits: DecisionOptionRef => Boolean): Vector[Operation] =
-    withOptions(operations)(_.map {
+    withOptions(ctx, operations)(_.map {
       case DecisionOption.Unavailable(option, MusterSource.Occupied)
           if admits(option.ref) => option
       case other => other
     })
 
-  /** `operations` with `actor`'s payment onto the answered source marked
+  /** `operations` with the actor's payment onto the answered source marked
     * `intoOccupied`, which `PayCostRules` would refuse onto a card that holds
     * tokens. The source decision is the gate: an occupied card is answerable
     * only when an exemption made it available, so the mark changes nothing
     * for a token-free card. Every other payment keeps the check.
     */
-  def intoOccupied(operations: Vector[Operation], actor: PlayerId,
-      decisionId: String, answered: Vector[Answered]): Vector[Operation] =
-    PowerAnswers.last(answered, decisionId).flatMap(idOf) match
+  def intoOccupied(ctx: PowerCtx, operations: Vector[Operation],
+      decisionId: String): Vector[Operation] =
+    PowerAnswers.last(ctx.answered, decisionId).flatMap(idOf) match
       case None => operations
-      case Some(card) => operations.map {
-        case pay: PayCost if pay.player == actor &&
+      case Some(card) => OperationRewrite.ops(ctx, operations)((_, _) => {
+        case pay: PayCost if pay.player == ctx.activePlayer &&
             pay.placedAt == Location.OnCard(card) =>
-          pay.copy(intoOccupied = true)
-        case other => other
-      }
+          Vector(pay.copy(intoOccupied = true))
+      })
 
   private def idOf(ref: DecisionOptionRef): Option[CardId] = ref match
     case DecisionOptionRef.Denizen(id) => Some(id)
@@ -74,13 +74,13 @@ private[economy] object EconomySources:
 
   /** `operations` with `change` applied to the options of each choose-one
     * decision. */
-  private def withOptions(operations: Vector[Operation])(
+  private def withOptions(ctx: PowerCtx, operations: Vector[Operation])(
       change: Vector[DecisionOption] => Vector[DecisionOption])
-      : Vector[Operation] = operations.map {
-    case decide: Decide => decide.query match {
-      case one: DecisionQuery.ChooseOne =>
-        decide.copy(query = one.copy(options = change(one.options)))
-      case _ => decide
-    }
-    case other => other
-  }
+      : Vector[Operation] =
+    OperationRewrite.nodes(ctx, operations)((_, _) => {
+      case decide: Decide => Vector(decide.query match {
+        case one: DecisionQuery.ChooseOne =>
+          decide.copy(query = one.copy(options = change(one.options)))
+        case _ => decide
+      })
+    })

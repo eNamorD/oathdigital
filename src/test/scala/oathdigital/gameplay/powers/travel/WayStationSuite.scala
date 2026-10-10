@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.travel
 
+import oathdigital.gameplay.powerresolver.{FoldPhase, Transform}
 import oathdigital.gameplay.powers.{NoteText, PayOrAsk, PowerFixture,
   RulerToll}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -133,3 +134,9 @@ class WayStationSuite extends munit.FunSuite:
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).supply(actor), 7)
     assertEquals(Look(result).favor(actor), 0)
+
+  test("it folds Late, after every other Travel power, at no priority"):
+    val power = WayStation.forCatalog(catalog)
+    assertEquals(power.contributions(PowerWindow.TravelCost).collect {
+      case transform: Transform => transform.phase }, Vector(FoldPhase.Late))
+    assertEquals(power.priority, 0)

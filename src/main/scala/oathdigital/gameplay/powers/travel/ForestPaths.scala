@@ -43,7 +43,7 @@ final case class ForestPaths private (catalog: ExecutableCatalog)
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
       if beastAtDestination(ctx) then
         Note(id, _ => Some(ForestPaths.ignoring(PowerSourceRef.Card(cardId)))) +:
-          SupplyStrip(ctx.activePlayer, operations)
+          SupplyStrip(ctx, ctx.activePlayer, operations)
       else operations)),
     PowerWindow.TravelActionEligibility ->
       Vector(Transform((_, operations) => operations)))

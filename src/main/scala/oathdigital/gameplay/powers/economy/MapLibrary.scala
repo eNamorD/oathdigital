@@ -32,7 +32,7 @@ final case class MapLibrary private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeSourceSelection -> Vector(Transform((ctx, operations) =>
-      EconomySources.widened(operations,
+      EconomySources.widened(ctx, operations,
         EconomySources.inPawnRegion(catalog, ctx.state, ctx.activePlayer)))))
 
   /** The rulebook's access, and the pawn at Map Library's site: ruling the

@@ -41,8 +41,8 @@ final case class VowOfBeastkin private (catalog: ExecutableCatalog)
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterSourceSelection -> Vector(OptionRestriction(refused)),
     PowerWindow.MusterGain -> Vector(Transform((ctx, operations) =>
-      ExtraWarbands.added(id, cardId, VowOfBeastkin.Warbands,
-        ctx.activePlayer, operations))))
+      ExtraWarbands.added(ctx, id, cardId, VowOfBeastkin.Warbands,
+        operations))))
 
   override def applicable(ctx: PowerCtx): Boolean =
     holds(ctx.state, ctx.activePlayer)

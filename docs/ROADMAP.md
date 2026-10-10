@@ -115,17 +115,6 @@ It reverses ruling 1 of the
 - [x] Slice 4: Recover, the empty windows, and deleting the client modifier
   flow and the preview endpoint.
 
-### Phase - Operation rewrite
-
-A shared utility that lets a transform find and replace ops by what they
-are, inside closures too, with deferral for replacements that ask or
-batch, and a `Late` fold phase in place of fold-order priorities. Wild
-Mounts moves onto it and `PlanDiscard.Marked` goes
-([design](superpowers/specs/2026-10-09-operation-rewrite-design.md)).
-
-- [ ] Slice 2: the hand-written matchers move onto it, and the priority
-  review. Starts after catalog batch 6 slice 4 and consent slice 4.
-
 ### Phase - Walker-driven game loop
 
 The walker keeps a queue of procedures, each run as its own walk. When the

@@ -29,7 +29,7 @@ final case class RoyalStables private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      TravelRoute.adjustSupply(operations, ctx.activePlayer)(amount =>
+      TravelRoute.adjustSupply(ctx, operations)(amount =>
         (amount - RoyalStables.Reduction).max(RoyalStables.Minimum)))))
 
   override def appliesAt(ctx: PowerCtx): Boolean =

@@ -41,11 +41,11 @@ final case class Mushrooms private (catalog: ExecutableCatalog)
   override def priority: Int = BottomDraw.Priority
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
-    PowerWindow.SearchSourceSelection -> Vector(Transform((_, operations) =>
-      SearchSources.withheld(operations,
+    PowerWindow.SearchSourceSelection -> Vector(Transform((ctx, operations) =>
+      SearchSources.withheld(ctx, operations,
         _ == SearchSource.ref(SearchSource.WorldDeck), Mushrooms.worldDeck))),
     PowerWindow.SearchCost -> Vector(Transform((ctx, operations) =>
-      SupplyStrip(ctx.activePlayer, operations))),
+      SupplyStrip(ctx, ctx.activePlayer, operations))),
     PowerWindow.SearchBeforeDraw -> Vector(Transform((_, operations) =>
       BottomDraw.reshaped(operations, Mushrooms.Cards,
         _.isInstanceOf[SearchSource.RegionalDiscard]))))

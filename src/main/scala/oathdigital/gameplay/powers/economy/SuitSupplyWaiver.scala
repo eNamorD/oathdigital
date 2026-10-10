@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.powerresolver.{Contribution, Transform}
+import oathdigital.gameplay.powerresolver.{Contribution, OperationRewrite,
+  Transform}
 import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
@@ -15,17 +16,20 @@ import oathdigital.model._
   * The suit is read off the answered card, not resolved as a source: this node
   * runs after the payment that placed a token on the card, which a source must
   * not yet hold. A card whose suit cannot be read pays.
+  *
+  * The payment is replaced through `OperationRewrite.nodes`, because its
+  * replacement is a node, not a core op. A later `ops` rewrite, such as
+  * `SupplyStrip`, still finds the payment inside it.
   */
 private[economy] object SuitSupplyWaiver:
   def effects(window: PowerWindow, decisionId: String,
       catalog: ExecutableCatalog)(free: (ReadyGame, PlayerId, Suit) => Boolean)
       : Map[PowerWindow, Vector[Contribution]] = Map(
     window -> Vector(Transform((ctx, operations) =>
-      operations.map {
+      OperationRewrite.nodes(ctx, operations)((_, _) => {
         case pay @ SpendSupply(player, _, _) if player == ctx.activePlayer =>
-          unlessFree(pay, decisionId, catalog, free)
-        case other => other
-      })))
+          Vector(unlessFree(pay, decisionId, catalog, free))
+      }))))
 
   private def unlessFree(pay: SpendSupply, decisionId: String,
       catalog: ExecutableCatalog, free: (ReadyGame, PlayerId, Suit) => Boolean)

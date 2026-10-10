@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
-  PowerCtx, Transform}
+  OperationRewrite, PowerCtx, Transform}
 import oathdigital.model._
 
 object VowOfWanderingCard extends Denizen(DenizenId("247"), "Vow of Wandering", Suit.Nomad) with Locked with AdviserOnly:
@@ -33,8 +33,7 @@ case object VowOfWanderingMuster extends ContributingPower:
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterGain -> Vector(Transform((ctx, operations) =>
-      ExtraWarbands.added(id, cardId, Warbands, ctx.activePlayer,
-        operations))))
+      ExtraWarbands.added(ctx, id, cardId, Warbands, operations))))
 
   override def applicable(ctx: PowerCtx): Boolean =
     VowOfWandering.holds(ctx.state, ctx.activePlayer)
@@ -77,13 +76,12 @@ case object VowOfWandering extends ContributingPower:
   override def noteKeys: Vector[NoteKey] = Vector(kept)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
-    PowerWindow.CampaignPlacement -> Vector(Transform((_, operations) =>
-      operations.map {
+    PowerWindow.CampaignPlacement -> Vector(Transform((ctx, operations) =>
+      OperationRewrite.nodes(ctx, operations)((_, _) => {
         case decide: Decide if decide.decisionId == CampaignIds.placement =>
-          Note(id, _ => Some(kept(PowerSourceRef.Card(cardId),
-            NoteArg.Number(survivors(decide.query)))))
-        case other => other
-      })))
+          Vector(Note(id, _ => Some(kept(PowerSourceRef.Card(cardId),
+            NoteArg.Number(survivors(decide.query))))))
+      }))))
 
   override def applicable(ctx: PowerCtx): Boolean =
     holds(ctx.state, ctx.activePlayer)

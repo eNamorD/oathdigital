@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.gameplay.powerresolver.{FoldPhase, Transform}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -77,3 +78,11 @@ class MountedLibrarySuite extends munit.FunSuite:
       "favor", DecisionOptionRef.Denizen(wrestlers))
     assert(Look(unselected.result).cardsAt(home).contains(library))
     assertEquals(said(unselected.journal.events), Vector.empty)
+
+  test("both its rewrites fold Late, after every other Trade modifier"):
+    val phases = Vector(PowerWindow.TradeGain,
+      PowerWindow.TradeActionEligibility).flatMap(window =>
+      power.contributions(window).collect {
+        case transform: Transform => transform.phase })
+    assertEquals(phases, Vector(FoldPhase.Late, FoldPhase.Late))
+    assertEquals(power.priority, 0)

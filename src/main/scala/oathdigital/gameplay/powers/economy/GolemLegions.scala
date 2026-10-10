@@ -35,7 +35,8 @@ final case class GolemLegions private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterSourceSelection -> Vector(Transform((ctx, operations) =>
-      EconomySources.widened(operations, held(ctx.state, ctx.activePlayer)))))
+      EconomySources.widened(ctx, operations,
+        held(ctx.state, ctx.activePlayer)))))
 
   /** Golem Legions among `actor`'s advisers. */
   private def held(ready: ReadyGame, actor: PlayerId)

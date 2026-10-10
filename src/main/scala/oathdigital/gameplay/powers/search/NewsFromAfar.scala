@@ -29,7 +29,7 @@ final case class NewsFromAfar private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchCost -> Vector(Transform((ctx, operations) =>
-      SupplyStrip(ctx.activePlayer, operations))))
+      SupplyStrip(ctx, ctx.activePlayer, operations))))
 
 object NewsFromAfar:
   val id: PowerId = NewsFromAfarCard.power.id

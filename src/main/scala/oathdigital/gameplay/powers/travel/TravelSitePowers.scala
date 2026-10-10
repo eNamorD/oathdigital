@@ -111,12 +111,15 @@ private[travel] object TravelRoute:
       case _ => true
     cost ++ payments ++ move
 
-  def adjustSupply(operations: Vector[Operation], actor: PlayerId)
+  /** `operations` with `rewrite` applied to the amount of each of the
+    * traveller's Supply payments, wherever the cost window holds them. */
+  def adjustSupply(ctx: PowerCtx, operations: Vector[Operation])
       (rewrite: Int => Int): Vector[Operation] =
-    operations.map:
-      case payment @ SpendSupply(player, amount, _) if player == actor =>
-        payment.copy(amount = rewrite(amount))
-      case operation => operation
+    OperationRewrite.ops(ctx, operations)((_, _) => {
+      case payment @ SpendSupply(player, amount, _)
+          if player == ctx.activePlayer =>
+        Vector(payment.copy(amount = rewrite(amount)))
+    })
 
 final case class MountainSitePower(id: PowerId, site: SiteId)
     extends ContributingPower:
@@ -124,7 +127,7 @@ final case class MountainSitePower(id: PowerId, site: SiteId)
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map.empty.updated(PowerWindow.TravelCost,
       Vector(Transform((ctx, operations) =>
-        TravelRoute.adjustSupply(operations, ctx.activePlayer)(_ + 1))))
+        TravelRoute.adjustSupply(ctx, operations)(_ + 1))))
   override def applicable(ctx: PowerCtx): Boolean =
     TravelRoute.pawnMove(ctx.operation).exists(_.destination == site)
 
@@ -134,7 +137,7 @@ final case class IslandSitePower(id: PowerId, site: SiteId)
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map.empty.updated(PowerWindow.TravelCost,
       Vector(Transform((ctx, operations) =>
-        TravelRoute.adjustSupply(operations, ctx.activePlayer)(_ + 2))))
+        TravelRoute.adjustSupply(ctx, operations)(_ + 2))))
   override def applicable(ctx: PowerCtx): Boolean =
     TravelRoute.pawnMove(ctx.operation).exists(_.destination == site)
 
@@ -144,7 +147,7 @@ final case class CoastSitePower(id: PowerId, site: SiteId,
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map.empty.updated(PowerWindow.TravelCost,
       Vector(Transform((ctx, operations) =>
-        TravelRoute.adjustSupply(operations, ctx.activePlayer)(_ => 1))))
+        TravelRoute.adjustSupply(ctx, operations)(_ => 1))))
   override def applicable(ctx: PowerCtx): Boolean = TravelRoute
     .pawnMove(ctx.operation).exists(route => route.source == site &&
       coastOrIslandSites.contains(route.destination))

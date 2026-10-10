@@ -4,7 +4,7 @@ import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.operations.SupplyStrip
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
-  PowerCtx, Transform}
+  FoldPhase, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogResolution, PowerAnswers, RulerToll}
 import oathdigital.model._
 
@@ -21,16 +21,18 @@ object WayStationCard extends Denizen(DenizenId("169"), "Way Station", Suit.Noma
   * who chooses to give 1 favor to that ruler, or burn it when bandits rule.
   * Empire rulers are not supported.
   *
-  * It rewrites the Travel's cost node after every other Travel power (priority
-  * 3), so it sees the Supply they leave. Its ruler's payment is removed. A
-  * non-ruler with favor, on a Travel that still costs Supply, is asked in the
-  * Action panel; the Supply answer is offered only when affordable. The
-  * pawn's move stays outside the question, so later windows still see the
-  * route. The question parks before the move, and Travel's source is a start
-  * fact, so a resume rebuilds the same tree. Its payment runs after the rest
-  * of the cost and just before the move, so every question of the cost, a
-  * toll's step included, is asked before any of it is paid
-  * (`TravelRoute.beforeMove`).
+  * It rewrites the Travel's cost node `Late`, after every other Travel power,
+  * so it sees the Supply they leave. It reads the payments the node lists
+  * when it folds, since every question of a cost is asked before any of it
+  * is paid, so it cannot see Supply spent inside a closure. Its ruler's
+  * payment is removed. A non-ruler with favor, on a Travel that still costs
+  * Supply, is asked in the Action panel; the Supply answer is offered only
+  * when affordable. The pawn's move stays outside the question, so later
+  * windows still see the route. The question parks before the move, and
+  * Travel's source is a start fact, so a resume rebuilds the same tree. Its
+  * payment runs after the rest of the cost and just before the move, so
+  * every question of the cost, a toll's step included, is asked before any
+  * of it is paid (`TravelRoute.beforeMove`).
   *
   * The favor writes the toll lines Curfew and Forced Labor write: "Gave
   * {1 favor} to {Blue}." or "Burned {1 favor}."
@@ -40,7 +42,6 @@ final case class WayStation private (catalog: ExecutableCatalog)
   val cardId: DenizenId = WayStationCard.id
   def id: PowerId = WayStation.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def priority: Int = 3
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
   override def noteKeys: Vector[NoteKey] = RulerToll.keys
@@ -48,7 +49,7 @@ final case class WayStation private (catalog: ExecutableCatalog)
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
       arriving(ctx).fold(operations)((traveller, ruler) =>
-        rewrite(ctx.state, traveller, ruler, operations)))))
+        rewrite(ctx, traveller, ruler, operations)), FoldPhase.Late)))
 
   override def applicable(ctx: PowerCtx): Boolean = arriving(ctx).nonEmpty
 
@@ -60,16 +61,16 @@ final case class WayStation private (catalog: ExecutableCatalog)
     ruler <- SiteRulers.rulerOfCard(ctx.state, cardId)
   yield (route.player, ruler)
 
-  private def rewrite(ready: ReadyGame, traveller: PlayerId, ruler: SiteRuler,
+  private def rewrite(ctx: PowerCtx, traveller: PlayerId, ruler: SiteRuler,
       operations: Vector[Operation]): Vector[Operation] =
     val payment = operations.collect {
       case spend @ SpendSupply(player, _, _) if player == traveller => spend }
     val supply = payment.map(_.amount).sum
-    val board = ready.game.current.players.find(_.player == traveller)
+    val board = ctx.state.game.current.players.find(_.player == traveller)
       .map(_.board)
+    lazy val stripped = SupplyStrip(ctx, traveller, operations)
     if supply == 0 then operations
-    else if ruler == SiteRuler.Player(traveller) then
-      SupplyStrip(traveller, operations)
+    else if ruler == SiteRuler.Player(traveller) then stripped
     else if !board.exists(_.favor >= WayStation.favorOwed(operations, traveller) +
         WayStation.Favor) then operations
     else
@@ -84,7 +85,7 @@ final case class WayStation private (catalog: ExecutableCatalog)
         Decide(WayStation.decisionId, traveller, DecisionQuery.ChooseOne(
           options, heading = Some("Way Station: spend no Supply?")),
           presentation = DecisionPresentation.Panel)) ++
-        TravelRoute.beforeMove(SupplyStrip(traveller, operations), Vector(
+        TravelRoute.beforeMove(stripped, Vector(
           Branch((_, pending) =>
             PowerAnswers.one(pending, WayStation.decisionId) match
               case Some(WayStation.favorOption) => Vector(

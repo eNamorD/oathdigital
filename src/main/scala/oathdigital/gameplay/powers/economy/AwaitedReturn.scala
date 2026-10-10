@@ -35,7 +35,7 @@ final case class AwaitedReturn private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeCost -> Vector(Transform((ctx, operations) =>
-      SupplyStrip(ctx.activePlayer, operations) ++ Vector(
+      SupplyStrip(ctx, ctx.activePlayer, operations) ++ Vector(
         sacrifice(ctx.activePlayer),
         Note(id, sacrificedNote(_, ctx.activePlayer))))))
 
