@@ -33,8 +33,7 @@ case object VowOfWanderingMuster extends ContributingPower:
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterGain -> Vector(Transform((ctx, operations) =>
-      ExtraWarbands.added(id, cardId, Warbands, ctx.activePlayer,
-        operations))))
+      ExtraWarbands.added(ctx, id, cardId, Warbands, operations))))
 
   override def applicable(ctx: PowerCtx): Boolean =
     VowOfWandering.holds(ctx.state, ctx.activePlayer)

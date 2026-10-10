@@ -34,8 +34,8 @@ final case class Pressgangs private (catalog: ExecutableCatalog)
     PowerWindow.MusterSourceSelection -> Vector(Transform((_, operations) =>
       EconomySources.exempted(operations, _ => true))),
     PowerWindow.MusterCost -> Vector(Transform((ctx, operations) =>
-      EconomySources.intoOccupied(operations, ctx.activePlayer,
-        MusterProcedure.decisionId, ctx.answered))))
+      EconomySources.intoOccupied(ctx, operations,
+        MusterProcedure.decisionId))))
 
 object Pressgangs:
   val id: PowerId = PressgangsCard.power.id

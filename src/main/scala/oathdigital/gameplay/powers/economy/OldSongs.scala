@@ -37,8 +37,8 @@ final case class OldSongs private (catalog: ExecutableCatalog)
         MusterSource.cardOf(ctx.state, ctx.activePlayer, ref)
           .exists(_.tokens == OldSongs.OneSecret)))),
     PowerWindow.TradeCost -> Vector(Transform((ctx, operations) =>
-      EconomySources.intoOccupied(operations, ctx.activePlayer,
-        TradeProcedure.decisionId, ctx.answered))))
+      EconomySources.intoOccupied(ctx, operations,
+        TradeProcedure.decisionId))))
 
 object OldSongs:
   val id: PowerId = OldSongsCard.power.id

@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.economy.MusterSource
+import oathdigital.gameplay.powerresolver.{OperationRewrite, PowerCtx}
 import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
@@ -50,22 +51,21 @@ private[economy] object EconomySources:
       case other => other
     })
 
-  /** `operations` with `actor`'s payment onto the answered source marked
+  /** `operations` with the actor's payment onto the answered source marked
     * `intoOccupied`, which `PayCostRules` would refuse onto a card that holds
     * tokens. The source decision is the gate: an occupied card is answerable
     * only when an exemption made it available, so the mark changes nothing
     * for a token-free card. Every other payment keeps the check.
     */
-  def intoOccupied(operations: Vector[Operation], actor: PlayerId,
-      decisionId: String, answered: Vector[Answered]): Vector[Operation] =
-    PowerAnswers.last(answered, decisionId).flatMap(idOf) match
+  def intoOccupied(ctx: PowerCtx, operations: Vector[Operation],
+      decisionId: String): Vector[Operation] =
+    PowerAnswers.last(ctx.answered, decisionId).flatMap(idOf) match
       case None => operations
-      case Some(card) => operations.map {
-        case pay: PayCost if pay.player == actor &&
+      case Some(card) => OperationRewrite.ops(ctx, operations)((_, _) => {
+        case pay: PayCost if pay.player == ctx.activePlayer &&
             pay.placedAt == Location.OnCard(card) =>
-          pay.copy(intoOccupied = true)
-        case other => other
-      }
+          Vector(pay.copy(intoOccupied = true))
+      })
 
   private def idOf(ref: DecisionOptionRef): Option[CardId] = ref match
     case DecisionOptionRef.Denizen(id) => Some(id)

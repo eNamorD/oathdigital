@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
-  PowerCtx, Transform}
+  OperationRewrite, PowerCtx, Transform}
 import oathdigital.model._
 
 object InitiationRiteCard extends Denizen(DenizenId("73"), "Initiation Rite", Suit.Arcane) with Locked with AdviserOnly:
@@ -34,13 +34,12 @@ case object InitiationRite extends ContributingPower:
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterCost -> Vector(Transform((ctx, operations) =>
-      operations.map {
+      OperationRewrite.ops(ctx, operations)((_, _) => {
         case pay: PayCost if pay.player == ctx.activePlayer &&
             pay.cost.favor > 0 =>
-          pay.copy(cost = pay.cost.copy(favor = 0,
-            secret = pay.cost.secret + pay.cost.favor))
-        case other => other
-      })))
+          Vector(pay.copy(cost = pay.cost.copy(favor = 0,
+            secret = pay.cost.secret + pay.cost.favor)))
+      }))))
 
   /** The acting player holds this card as a faceup adviser. */
   override def applicable(ctx: PowerCtx): Boolean =

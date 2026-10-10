@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.gameplay.powerresolver.{OperationRewrite, PowerCtx}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
@@ -17,21 +18,17 @@ private[economy] object ExtraWarbands:
   val gained: NoteKey = NoteKey("gained", Vector(NotePart.Text("Gained "),
     NotePart.Arg(0), NotePart.Plural(0, " more warband.", " more warbands.")))
 
-  /** `operations` with `extra` more warbands on `actor`'s gain, and the line
-    * of `power`, from `card`, after it. Unchanged when they hold no such
+  /** `operations` with `extra` more warbands on the actor's gain, wherever
+    * the window holds it, and the line of `power`, from `card`, after it.
+    * Unchanged when they hold no such gain. A Muster's gain window holds one
     * gain. */
-  def added(power: PowerId, card: DenizenId, extra: Int, actor: PlayerId,
+  def added(ctx: PowerCtx, power: PowerId, card: DenizenId, extra: Int,
       operations: Vector[Operation]): Vector[Operation] =
-    val at = operations.indexWhere {
-      case Gain.Warbands(player, _, _) => player == actor
-      case _ => false
-    }
-    if at < 0 then operations
-    else operations(at) match
-      case gain: Gain.Warbands => operations.patch(at, Vector(
-        gain.copy(amount = gain.amount + extra),
-        Note(power, line(_, card, actor, gain.amount, extra))), 1)
-      case _ => operations
+    OperationRewrite.nodes(ctx, operations)((_, _) => {
+      case gain @ Gain.Warbands(player, _, _) if player == ctx.activePlayer =>
+        Vector(gain.copy(amount = gain.amount + extra),
+          Note(power, line(_, card, player, gain.amount, extra)))
+    })
 
   /** What the gain's step added beyond `before`, at most `extra`. */
   private def line(states: NoteStates, card: DenizenId, actor: PlayerId,
