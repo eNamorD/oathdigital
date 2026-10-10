@@ -22,10 +22,3 @@ class BannerControlsSuite extends munit.FunSuite:
     assertEquals(renderAndClickEach(Vector.empty).buttons, Vector.empty)
     assert(renderAndClickEach(Vector("beginChallenge"), canControl = false)
       .buttons.forall(_.disabled))
-
-  test("Challenge starts through the modifier flow and Place Banner Resource does not"):
-    assertEquals(ModifierFlowDraft.action(
-      GameIntent.StartWalker("challenge", Vector.empty)),
-      Some("challenge" -> Map.empty[String, String]))
-    assertEquals(ModifierFlowDraft.action(
-      GameIntent.StartWalker("place-banner-resource", Vector.empty)), None)

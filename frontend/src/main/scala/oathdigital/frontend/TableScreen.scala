@@ -5,8 +5,8 @@ import ServerUiSupport._
 /** What the table screen reads: the displayed position, the failure to
   * show, the draft set, and who is looking. Read-only. The names repeat
   * neither the session's private state nor `SessionControls`' or
-  * `FlowHost`'s members, so one class implements all three traits with no
-  * name answering two questions.
+  * `TableControls`' members, so one class implements all three traits with
+  * no name answering two questions.
   */
 private[frontend] trait TableView:
   def trusted: Boolean
@@ -29,7 +29,7 @@ private[frontend] trait TableView:
 private[frontend] final class TableScreen(
     shell: GameTableShell,
     view: TableView,
-    controls: ActionControls,
+    controls: TableControls,
     session: SessionControls):
   def render(): Unit =
     val projection = view.viewedProjection
@@ -92,12 +92,11 @@ private[frontend] final class TableScreen(
         val routed = ParkedDecision.route(value, presentation)
         val pane = ActionDecisionRenderer.actionsPanel(value, presentation,
           routed, view.controlsAvailable, drafts, controls)
-        actionContent.appendChild(pane.element)
+        actionContent.appendChild(pane)
         val decisionKey = Vector(selectedPlayer, value.phase,
           value.activeParticipantId.getOrElse(""),
-          value.walkerDecision.map(_.decisionId).getOrElse(""),
-          drafts.modifiers.map(_ => "ordering").getOrElse(""),
-          pane.prompt).mkString("|")
+          value.walkerDecision.map(_.decisionId).getOrElse(""))
+          .mkString("|")
         val options = routed.surface.collect {
           case board: ParkedDecision.Surface.BoardDecision => BoardOptions.of(
             board, drafts, view.controlsAvailable, controls, value)

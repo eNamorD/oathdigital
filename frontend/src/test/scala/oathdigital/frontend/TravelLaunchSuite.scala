@@ -23,7 +23,7 @@ class TravelLaunchSuite extends munit.FunSuite:
     val ui = new RecordingControls()
     val pane = ActionDecisionRenderer.actionsPanel(table,
       ActionPanels.actingViewer("red"), ParkedDecision.Routed(None, None),
-      canControl = true, SessionDrafts.empty, ui).element
+      canControl = true, SessionDrafts.empty, ui)
     as[dom.html.Button](one(pane, ".travel-action")).click()
     assertEquals(ui.submitted, Vector(Intent.StartWalker("travel",
       Vector.empty)))

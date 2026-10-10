@@ -8,8 +8,8 @@ import ServerUiSupport._
   * actions design, "Projection and UI"): a start button, disabled with why
   * on hover when the action cannot start, and Skip. Drawn in place of the
   * action buttons; only the entry's player is offered the controls. The
-  * start goes through the modifier flow, so modifiers are offered as for a
-  * normal start.
+  * start asks for the action's modifiers inside the walk, as a normal start
+  * does.
   */
 private[frontend] object FollowUpControls:
   def render(value: GameProjection, canControl: Boolean, panel: dom.Element,

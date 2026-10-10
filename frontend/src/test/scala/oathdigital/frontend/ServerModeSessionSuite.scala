@@ -179,13 +179,9 @@ class ServerModeSessionSuite extends FunSuite:
           Vector("Assign every option: Pay Favor (2), Pay Secret (1)."))
       }
 
-  /** Spec, verification: the only test that proves the FlowHost wiring. A
-    * Recover whose preview offers one modifier renders the ordering panel;
-    * toggling and confirming previews again with the invocation, then posts
-    * the StartWalker with the handler folded into its own modifiers.
-    */
-  test("a previewed major action orders its modifier and posts the ordered " +
-      "command"):
+  /** An Act button posts its start at once: the action asks for its
+    * modifiers inside the walk, so nothing is previewed first. */
+  test("an Act button posts its start directly"):
     TestBrowser.use("?gameId=g&playerId=red"): browser =>
       val projection = GameProjectionCodec.encode(
         TestProjections.actingProjection(gameId = "g",
@@ -193,12 +189,8 @@ class ServerModeSessionSuite extends FunSuite:
           players = Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
           legalControls = Vector("beginRecover"))
           .copy(actionSelectionOpen = true))
-      val preview = """{"nextSequence":1,"action":"recover","modifiers":""" +
-        """[{"sourceKey":"adviser:p:denizen:a","handlerId":"h.a",""" +
-        """"description":"Old Oak"}],"ignoredRules":[]}"""
       val transport = ScriptedTransport((_, url, _) =>
         val json = if url.contains("/events") then """{"events":[]}"""
-          else if url.contains("/preview") then preview
           else projection
         Future.successful(Right(TransportResponse(200, json))))
       val requests = transport.requests
@@ -207,27 +199,12 @@ class ServerModeSessionSuite extends FunSuite:
       browser.settle.flatMap { _ =>
         browser.click("recover-action")
         browser.settle
-      }.flatMap { _ =>
-        assertEquals(browser.byClass("modifier-confirm").size, 1, browser.text)
-        browser.click("modifier-toggle")
-        browser.settle
-      }.flatMap { _ =>
-        assertEquals(browser.byClass("modifier-ordinal").size, 1, browser.text)
-        browser.click("modifier-confirm")
-        browser.settle
       }.map { _ =>
         val posts = requests.filter(_.method == "POST").toVector
         assertEquals(posts.map(_.url), Vector(
-          "/api/dev/first-games/g/preview?playerId=red",
-          "/api/dev/first-games/g/preview?playerId=red",
           "/api/dev/first-games/g/commands?playerId=red"))
-        assert(posts(1).body.exists(_.contains("\"handlerId\":\"h.a\"")),
-          posts(1).body)
-        val command = present(posts(2).body, "the posted command body")
+        val command = present(posts.head.body, "the posted command body")
         assert(command.contains("\"action\":\"recover\""), command)
-        assert(command.contains("\"modifiers\":[\"h.a\"]"), command)
-        assert(!command.contains("orderedModifiers"), command)
-        assertEquals(browser.byClass("modifier-confirm"), Vector.empty, browser.text)
       }
 
   test("development new game button returns to the start page"):

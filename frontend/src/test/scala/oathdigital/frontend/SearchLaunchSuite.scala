@@ -22,7 +22,7 @@ class SearchLaunchSuite extends munit.FunSuite:
   private def actions(value: GameProjection, ui: RecordingControls)
       : dom.Element = ActionDecisionRenderer.actionsPanel(value,
     ActionPanels.actingViewer("red"), ParkedDecision.Routed(None, None),
-    canControl = true, SessionDrafts.empty, ui).element
+    canControl = true, SessionDrafts.empty, ui)
 
   test("the Search control starts the walker and names no source"):
     val ui = new RecordingControls()

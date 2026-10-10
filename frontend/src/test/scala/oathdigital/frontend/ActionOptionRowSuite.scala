@@ -37,7 +37,7 @@ class ActionOptionRowSuite extends munit.FunSuite:
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
         None, playerId = "red"),
       ParkedDecision.Routed(None, None), canControl = true, SessionDrafts.empty,
-      new RecordingControls()).element
+      new RecordingControls())
 
   private def rows(group: String,
       of: dom.Element = panel()): Vector[dom.Element] = of

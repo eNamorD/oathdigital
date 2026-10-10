@@ -17,8 +17,8 @@ object ServerModeUi:
     lazy val session: TableSession = new TableSession(client, trusted,
       initialGame, initialPlayer, new BrowserPollClock,
       new BrowserNavigation(startOver), () => screen.render())
-    lazy val flow: ActionControls = new ModifierFlow(session)
-    lazy val screen: TableScreen = new TableScreen(shell, session, flow, session)
+    lazy val screen: TableScreen = new TableScreen(shell, session, session,
+      session)
 
     dom.document.addEventListener(
       "visibilitychange",

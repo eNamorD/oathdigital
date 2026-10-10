@@ -1,8 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
-import oathdigital.protocol.{GameIntent => GameCommand, MajorActionPreviewRequest,
-  MajorActionPreviewResponse, ModifierInvocation}
+import oathdigital.protocol.GameIntent => GameCommand
 
 import oathdigital.protocol.projection.{LogPageWire, LogSpanWire,
   LogTakenBackWire}
@@ -25,10 +24,6 @@ class TableSessionSuite extends munit.FunSuite:
   private final case class Submit(expectedNextSequence: Long,
       command: GameCommand)
 
-  /** A `preview` the client received. */
-  private final case class Preview(gameId: String, selectedPlayerId: String,
-      request: MajorActionPreviewRequest)
-
   /** A `loadLog` the client received. */
   private final case class LogLoad(gameId: String, selectedPlayerId: String,
       after: Long)
@@ -36,33 +31,25 @@ class TableSessionSuite extends munit.FunSuite:
   /** A session the navigation was told to show. */
   private final case class Shown(gameId: String, playerId: String)
 
-  /** Spy of `GameClient`: records every load, submit, preview and log load.
+  /** Spy of `GameClient`: records every load, submit and log load.
     * It computes no answer: each call returns a promise that the test
     * completes through `answerLoad` and its siblings, oldest first.
     */
   private final class RecordingClient extends GameClient:
     var loads = Vector.empty[Load]
     var submits = Vector.empty[Submit]
-    var previews = Vector.empty[Preview]
     private var pendingLoads = Vector.empty[Promise[Answer[GameProjection]]]
     private var pendingSubmits = Vector.empty[Promise[Answer[GameProjection]]]
-    private var pendingPreviews = Vector.empty[Promise[Answer[MajorActionPreviewResponse]]]
     def load(gameId: String, selectedPlayerId: String) =
       loads :+= Load(gameId, selectedPlayerId)
       val promise = Promise[Answer[GameProjection]]()
       pendingLoads :+= promise
       promise.future
     def submit(gameId: String, selectedPlayerId: String, expectedNextSequence: Long,
-        command: GameCommand, orderedModifiers: Vector[ModifierInvocation]) =
+        command: GameCommand) =
       submits :+= Submit(expectedNextSequence, command)
       val promise = Promise[Answer[GameProjection]]()
       pendingSubmits :+= promise
-      promise.future
-    def preview(gameId: String, selectedPlayerId: String,
-        request: MajorActionPreviewRequest) =
-      previews :+= Preview(gameId, selectedPlayerId, request)
-      val promise = Promise[Answer[MajorActionPreviewResponse]]()
-      pendingPreviews :+= promise
       promise.future
     def answerLoad(result: Answer[GameProjection]): Unit =
       val promise = pendingLoads.head
@@ -71,10 +58,6 @@ class TableSessionSuite extends munit.FunSuite:
     def answerSubmit(result: Answer[GameProjection]): Unit =
       val promise = pendingSubmits.head
       pendingSubmits = pendingSubmits.tail
-      promise.success(result)
-    def answerPreview(result: Answer[MajorActionPreviewResponse]): Unit =
-      val promise = pendingPreviews.head
-      pendingPreviews = pendingPreviews.tail
       promise.success(result)
     var logs = Vector.empty[LogLoad]
     private var pendingLogs = Vector.empty[Promise[Answer[LogPageWire]]]
@@ -359,7 +342,7 @@ class TableSessionSuite extends munit.FunSuite:
 
   test("a stale-position submit empties the drafts, reloads, and keeps the notice"):
     displayed(2).flatMap { fixture =>
-      fixture.session.send(GameCommand.BeginRest, Vector.empty)
+      fixture.session.submitCommand(GameCommand.BeginRest)
       assertEquals(fixture.client.submits,
         Vector(Submit(2L, GameCommand.BeginRest)))
       val before = fixture.redraws
@@ -378,34 +361,25 @@ class TableSessionSuite extends munit.FunSuite:
       }
     }
 
-  /** Spec, Fix 2. */
-  test("a preview answered after the session changed never lands"):
-    displayed(2).flatMap { fixture =>
-      val answer = fixture.session.preview(MajorActionPreviewRequest(2L, "recover", Map.empty))
-      fixture.session.reconnectSession()
-      fixture.client.answerPreview(Right(MajorActionPreviewResponse(2L, "recover",
-        Vector.empty, Vector.empty)))
-      settle().map(_ => assert(!answer.isCompleted))
+  test("a submitted command is sent as it is, at the displayed position"):
+    displayed(2).map { fixture =>
+      val start = GameCommand.StartWalker("recover", Vector.empty)
+      fixture.session.submitCommand(start)
+      assertEquals(fixture.client.submits, Vector(Submit(2L, start)))
     }
 
-  test("a preview answered under the same session lands"):
-    displayed(2).flatMap { fixture =>
-      val answer = fixture.session.preview(MajorActionPreviewRequest(2L, "recover", Map.empty))
-      val response = MajorActionPreviewResponse(2L, "recover", Vector.empty,
-        Vector.empty)
-      fixture.client.answerPreview(Right(response))
-      answer.map(result => assertEquals(result, Right(response)))
-    }
+  test("with no position displayed, nothing is sent"):
+    val fixture = new Fixture(trusted = false)
+    fixture.session.submitCommand(GameCommand.BeginRest)
+    assertEquals(fixture.client.submits, Vector.empty)
 
-  test("fail shows the failure and redraws; replaceDrafts does not redraw"):
+  test("staging replaces one slot and redraws"):
     displayed(2).map { fixture =>
       val before = fixture.redraws
-      fixture.session.replaceDrafts(SessionDrafts.empty)
-      assertEquals(fixture.session.viewedDrafts, SessionDrafts.empty)
-      assertEquals(fixture.redraws, before)
-      val down = GameClientFailure.NetworkFailure("down")
-      fixture.session.fail(down)
-      assertEquals(fixture.session.shownFailure, Some(down))
+      val board = BoardSelectionDraft(ForgeFixture.context, "forge-9",
+        ForgeFixture.query, Vector("site:site:a"))
+      fixture.session.stage(Draft.Board(Some(board)))
+      assertEquals(fixture.session.viewedDrafts.board, Some(board))
       assertEquals(fixture.redraws, before + 1)
     }
 

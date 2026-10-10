@@ -27,7 +27,7 @@ class StepControlsSuite extends munit.FunSuite:
       controls: RecordingControls, canControl: Boolean = true): dom.Element =
     ActionDecisionRenderer.actionsPanel(value, presentation,
       ParkedDecision.Routed(None, None), canControl, SessionDrafts.empty,
-      controls).element
+      controls)
 
   private def buttonsMatching(panel: dom.Element, selector: String)
       : Vector[dom.html.Button] =

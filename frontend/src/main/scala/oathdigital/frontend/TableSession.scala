@@ -3,7 +3,6 @@ package oathdigital.frontend
 import oathdigital.protocol.{GameIntent => GameCommand, _}
 import oathdigital.protocol.projection.LogEntryWire
 
-import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** The session's two effects on the page's address. */
@@ -18,7 +17,7 @@ private[frontend] trait Navigation:
 /** The table session (CONTEXT.md): one viewer's live connection to one game
   * from one seat. It holds the displayed position, the failure on show and
   * the draft set; loads, polls and submits under the session identity; and
-  * is the modifier flow's host, the development toolbar's session and the
+  * is the table's controls, the development toolbar's session and the
   * screen's view. `repaint` draws the screen; the session calls it through
   * `redraw()` wherever `ServerModeUi` used to render.
   */
@@ -30,7 +29,7 @@ private[frontend] final class TableSession(
     clock: PollClock,
     navigation: Navigation,
     repaint: () => Unit
-) extends SessionControls, FlowHost, TableView:
+) extends SessionControls, TableControls, TableView:
   private var projection = Option.empty[GameProjection]
   private var failure = Option.empty[GameClientFailure]
   private var selectedPlayer = initialPlayerId
@@ -245,12 +244,11 @@ private[frontend] final class TableSession(
         val accepted = polling.complete(request, continuePolling = !transient)
         if accepted then accept(request, Left(error))
 
-  private def submitTransport(command: GameCommand,
-      modifiers: Vector[ModifierInvocation]): Unit =
+  private def submitTransport(command: GameCommand): Unit =
     projection.foreach { current =>
       val request = coordinator.capture
       client
-        .submit(gameId, selectedPlayer, current.nextSequence, command, modifiers)
+        .submit(gameId, selectedPlayer, current.nextSequence, command)
         .foreach:
           case Left(stale: GameClientFailure.StalePosition)
               if coordinator.accepts(request) =>
@@ -284,25 +282,15 @@ private[frontend] final class TableSession(
   def createGame(): Unit = newGame()
   def reloadClient(): Unit = navigation.reload()
 
-  // FlowHost (the modifier flow). The three identity members are above.
-  def currentDrafts: SessionDrafts = drafts
-  def replaceDrafts(value: SessionDrafts): Unit = drafts = value
-  def redraw(): Unit = repaint()
-  def fail(error: GameClientFailure): Unit =
-    failure = Some(error)
+  // TableControls (the panels and the board).
+  def stage(draft: Draft): Unit =
+    drafts = drafts.staged(draft)
     redraw()
-  /** Completes only if the session is the one that asked: a response that
-    * lands after a seat change, a reload or a reconnect writes nothing,
-    * fails nothing and redraws nothing, like every other late response.
-    */
-  def preview(request: MajorActionPreviewRequest)
-      : Future[Either[GameClientFailure, MajorActionPreviewResponse]] =
-    val identity = coordinator.capture
-    client.preview(gameId, selectedPlayer, request).flatMap: result =>
-      if coordinator.accepts(identity) then Future.successful(result)
-      else Future.never
-  def send(command: GameCommand, modifiers: Vector[ModifierInvocation]): Unit =
-    submitTransport(command, modifiers)
+  /** Sends under the session's identity, at the displayed position; with
+    * no position displayed, nothing is sent. */
+  def submitCommand(command: GameCommand): Unit = submitTransport(command)
+
+  private def redraw(): Unit = repaint()
 
   // TableView (the screen).
   def viewedGameId: String = gameId
