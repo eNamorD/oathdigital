@@ -77,6 +77,20 @@ class SignalTreesSuite extends munit.FunSuite:
       s"Revealed and discarded ${wolves.value}, ${songs.value}; added 2 " +
         "attack dice.")))
 
+  test("with no Beast revealed the cards are discarded and no dice change"):
+    assertEquals(Vector(oracle, songs).map(catalog.suitOf).flatten
+      .contains(Suit.Beast), false)
+    val b = attacker(oracle, songs)
+    val run = commit(rules(winningDice), b, 2)
+    val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
+    assert(!picked.since(run).exists {
+      case ModifyDicePool(pool, _, _) => pool == CampaignIds.attackPool
+      case _ => false })
+    assertEquals(Look(picked.state).discardPile(Region.Cradle), Vector.empty)
+    assertEquals(Look(picked.state).discardPile(next), Vector(songs, oracle))
+    assertEquals(said(power, picked.events), Vector(line("revealed",
+      s"Revealed and discarded ${songs.value}, ${oracle.value}.")))
+
   test("a defender removes two dice per Beast"):
     val base = withEnemyAtOrigin(rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7)))
