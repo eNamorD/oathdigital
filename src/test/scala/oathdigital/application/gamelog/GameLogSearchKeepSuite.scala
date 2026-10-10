@@ -47,6 +47,8 @@ class GameLogSearchKeepSuite extends munit.FunSuite:
     assert(bee >= 0 && drew > bee, lines)
     assert(lines(drew).contains(" from the Cradle discard and kept "),
       lines(drew))
+    // The suit is told by Bee's line, not as a favor bank pick.
+    assert(!lines.exists(_.contains(" bank")), lines)
 
   test("Spinning Bee with no match: drew the pile and kept none"):
     val lines = searchLines("spinning-bee-none", besideBee,

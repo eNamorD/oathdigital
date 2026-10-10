@@ -43,6 +43,9 @@ final case class SpinningBee private (catalog: ExecutableCatalog)
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
   override def noteKeys: Vector[NoteKey] =
     Vector(SpinningBee.alone, SpinningBee.drawing)
+  /** The declared suit is told by Spinning Bee's own line. */
+  override def narratedDecisions: Set[String] =
+    Set(SpinningBee.suitDecisionId)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchModifierSelection -> Vector(OptionRestriction(

@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.gameplay.ModifierPlay
+import oathdigital.gameplay.{ModifierPlay, PlacementFixture}
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.{SearchFixture, WalkerPowerCatalog}
@@ -44,14 +44,15 @@ class SpinningBeeSuite extends munit.FunSuite:
       case other => fail(s"expected a parked decision, got $other")
 
   /** p1 starts a Search with Spinning Bee picked. */
-  private def picked(table: Table)(using munit.Location): OathTransition =
+  private def searchWithBeePicked(table: Table)(using munit.Location)
+      : OathTransition =
     accepted(ModifierPlay.started(rules, Ready(table.ready), ActionRef.Search,
       p1, PowerWindow.SearchModifierSelection, modifiers))
 
   /** p1 starts a Search with Spinning Bee picked, and declares `suit`. */
-  private def declared(table: Table, suit: Suit)(using munit.Location)
+  private def searchDeclaringSuit(table: Table, suit: Suit)(using munit.Location)
       : OathTransition =
-    accepted(rules.resolveWalker(picked(table).state, p1,
+    accepted(rules.resolveWalker(searchWithBeePicked(table).state, p1,
       SpinningBee.suitDecisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(suit))))
 
@@ -70,7 +71,7 @@ class SpinningBeeSuite extends munit.FunSuite:
 
   test("picked, the source decision gives way to declaring one of the six " +
       "suits"):
-    val decide = parkedDecide(picked(holdingBee()).state)
+    val decide = parkedDecide(searchWithBeePicked(holdingBee()).state)
     assertEquals(decide.decisionId, SpinningBee.suitDecisionId)
     assertEquals(decide.query, DecisionQuery.ChooseOne(
       Suit.all.map(suit =>
@@ -79,7 +80,7 @@ class SpinningBeeSuite extends munit.FunSuite:
 
   test("it draws its own pile from the top through the first card of the " +
       "suit, for 2 Supply, and the keep choice follows"):
-    val searched = declared(holdingBee(), Suit.Order)
+    val searched = searchDeclaringSuit(holdingBee(), Suit.Order)
     val after = SearchFixture.after(searched)
     assertEquals(after.game.current.temporaryHands(p1),
       Vector(defame, wrestlers))
@@ -89,9 +90,19 @@ class SpinningBeeSuite extends munit.FunSuite:
     assertEquals(parkedDecide(searched.state).decisionId,
       SearchProcedure.cardDecisionId)
 
+  test("a card of the suit on top is the only card drawn, and goes " +
+      "straight to its placement"):
+    val searched = searchDeclaringSuit(holdingBee(), Suit.Discord)
+    val after = SearchFixture.after(searched)
+    assertEquals(after.game.current.temporaryHands(p1), Vector(defame))
+    assertEquals(Look(after).discardPile(Region.Cradle),
+      Vector(homesteaders, wrestlers))
+    assertEquals(parkedDecide(searched.state).decisionId,
+      PlacementFixture.cardPlayDecisionId(defame, "place"))
+
   test("with no card of the suit, every drawn card is discarded and " +
       "nothing is kept"):
-    val searched = declared(holdingBee(), Suit.Nomad)
+    val searched = searchDeclaringSuit(holdingBee(), Suit.Nomad)
     val after = SearchFixture.after(searched)
     assertEquals(after.game.current.temporaryHands.getOrElse(p1,
       Vector.empty), Vector.empty)
