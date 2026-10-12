@@ -13,7 +13,7 @@ class WalledGardenSuite extends munit.FunSuite:
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val beasts = planless("Bracken", "Small Friends")
   private val beast = beasts.head
-  private val arcane = planlessCard("Ward of Silence")
+  private val arcane = planlessCard("Glamor")
   // Beast, on either face: Hallowed Spring intact, Hiding Place ruined.
   private val beastEdifice = CatalogNames.edifice("Hallowed Spring")
 

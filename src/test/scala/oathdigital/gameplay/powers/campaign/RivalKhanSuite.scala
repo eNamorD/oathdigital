@@ -13,7 +13,7 @@ import oathdigital.testkit.{CatalogNames, Look}
 class RivalKhanSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Rival Khan")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val nomad = planlessCard("Hospitality")
+  private val nomad = planlessCard("Search Party")
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
 
@@ -49,7 +49,7 @@ class RivalKhanSuite extends munit.FunSuite:
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviser(base, card, Orientation.FaceUp),
-      base.rival, planlessCard("Ward of Silence"), Orientation.FaceUp)
+      base.rival, planlessCard("Glamor"), Orientation.FaceUp)
     assert(!commit(rules(losingDice), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
