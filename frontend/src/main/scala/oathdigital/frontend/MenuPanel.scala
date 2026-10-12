@@ -41,11 +41,11 @@ private[frontend] object MenuPanel:
       val choose = button(label, s"walker-choice menu-option $style".trim)
       choose.disabled = !canControl
       option.card.flatMap(_.rulesText)
-        .foreach(choose.setAttribute("title", _))
+        .foreach(HoverTip.set(choose, _))
       choose.onclick = _ => controls.submitCommand(
         WalkerPanelSupport.resolveChooseOneCommand(surface.decision, option))
       row.appendChild(choose)
-      WalkerPanelSupport.withholds(choose, option, row)
+      WalkerPanelSupport.withholds(choose, option)
       row
     def group(key: String, heading: Option[String],
         members: Vector[DecisionOptionState]): Unit =

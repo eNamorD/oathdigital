@@ -232,7 +232,6 @@ private[frontend] object GameLogPane:
     val classes = Vector("log-entry", depth, s"log-${entry.kind}") ++
       band(entry, start, end)
     val node = element("li", classes.mkString(" "))
-    node.setAttribute("title", s"${entry.sequence}.${entry.ordinal}")
     entry.spans.foreach(span => node.appendChild(spanNode(span, colors)))
     node
 

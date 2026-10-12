@@ -29,5 +29,5 @@ class SearchLaunchSuite extends munit.FunSuite:
       OptionState.Unavailable, Some(reason))
     val world = WorldBoardRenderer.world(table, recording(discard).options)
     val empty = one(world, """[data-option-ref="discard-pile:cradle"]""")
-    assertEquals(empty.getAttribute("title"), reason)
+    assertEquals(empty.getAttribute("data-tip"), reason)
     assertEquals(empty.getAttribute("aria-disabled"), "true")

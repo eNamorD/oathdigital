@@ -94,7 +94,7 @@ private[frontend] object CardFace:
       else if card.implemented then card.name
       else s"${card.name} (unimplemented)")
     // The whole name on hover, for the zoomed-out face that shows initials.
-    if !card.hidden then node.setAttribute("title", card.name)
+    if !card.hidden then HoverTip.set(node, card.name)
 
     if card.hidden then
       node.appendChild(text("span", "card-back-letter", backLetter(card.cardKind)))

@@ -52,7 +52,7 @@ class CardFaceSuite extends munit.FunSuite:
     assertEquals(short.map(_.textContent), Some("OO"))
     assertEquals(short.flatMap(s => Option(s.getAttribute("aria-hidden"))), Some("true"))
     assertEquals(node.getAttribute("aria-label"), "Old Oak")
-    assertEquals(node.getAttribute("title"), "Old Oak")
+    assertEquals(node.getAttribute("data-tip"), "Old Oak")
 
   test("initials take each word's first character as written, or a lone word's first two"):
     assertEquals(CardFace.initials("Rotting Fortress"), "RF")
@@ -106,7 +106,7 @@ class CardFaceSuite extends munit.FunSuite:
     assertEquals(all(node, ".card-name"), Vector.empty)
     assertEquals(all(node, ".card-header"), Vector.empty)
     assertEquals(node.textContent, "V")
-    assert(!node.hasAttribute("title"))
+    assert(!node.hasAttribute("data-tip"))
     assertEquals(firstMatch(node, ".card-name-short"), None)
 
   /** The suit word is gone: the glyph carries the suit, and it is coloured by

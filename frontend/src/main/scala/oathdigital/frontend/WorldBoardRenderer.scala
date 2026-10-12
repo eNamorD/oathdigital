@@ -61,7 +61,7 @@ private[frontend] object WorldBoardRenderer:
        s"Secrets ${board.faceUpSecrets}/${board.totalSecrets}. " +
          secretSummaryLabel(board.faceUpSecrets, board.totalSecrets,
            board.faceDownSecrets, board.committedSecrets))
-     secrets.setAttribute("title", secretSummaryLabel(board.faceUpSecrets,
+     HoverTip.set(secrets, secretSummaryLabel(board.faceUpSecrets,
        board.totalSecrets, board.faceDownSecrets, board.committedSecrets))
      resources.appendChild(secrets)
      // Supply is the one figure with a rule behind it: the bag sets the
@@ -84,7 +84,7 @@ private[frontend] object WorldBoardRenderer:
            .OathkeeperPresentation.byGoal.get(oath.goal)
          val pill = button(oath.side.capitalize, s"player-title title-${oath.side}")
          val title = presented.fold(oath.goal)(_.title)
-         pill.setAttribute("title", title)
+         HoverTip.set(pill, title)
          pill.onclick = _ => CardInspection.openText(title,
            presented.fold(Vector.empty[String])(_.lines), pill)
          slots.appendChild(pill)

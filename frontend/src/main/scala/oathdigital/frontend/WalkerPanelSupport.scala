@@ -112,7 +112,7 @@ private[frontend] object WalkerPanelSupport:
           control.onclick = _ => controls.submitCommand(
             resolveChooseOneCommand(decision, option))
           panel.appendChild(control)
-          withholds(control, option, panel)
+          withholds(control, option)
         }
       case ParkedDecision.RecoverStep.Relic(query) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
@@ -132,25 +132,22 @@ private[frontend] object WalkerPanelSupport:
             resolveChooseOneCommand(decision, option))
           choice.appendChild(choose)
           relics.appendChild(choice)
-          withholds(choose, option, choice)
+          withholds(choose, option)
         }
         panel.appendChild(relics)
 
-  /** An option shown with why it may not be chosen: its control is disabled,
-    * names the reason on hover, and the reason is printed under `after`'s
-    * last child so a touch screen can read it too. An option with a warning
-    * keeps its control as it is and shows its reason the same way. Any other
+  /** An option shown with why it may not be chosen: its control is
+    * withheld (`HoverTip.withhold`), so hover, focus or a tap names the
+    * reason. Without a reason it is simply disabled. An option with a warning
+    * keeps its control as it is and names its reason the same way. Any other
     * option is left as it is.
     */
   private[frontend] def withholds(control: dom.html.Button,
-      option: DecisionOptionState, after: dom.Element): Unit =
-    if option.state == "unavailable" || option.state == "warning" ||
-        option.state == "askable" then
-      if option.state == "unavailable" then control.disabled = true
-      option.reason.foreach { reason =>
-        control.setAttribute("title", reason)
-        after.appendChild(text("p", "walker-choice-reason", reason))
-      }
+      option: DecisionOptionState): Unit =
+    if option.state == "unavailable" then option.reason.fold(
+      control.disabled = true)(HoverTip.withhold(control, _))
+    else if option.state == "warning" || option.state == "askable" then
+      option.reason.foreach(HoverTip.set(control, _))
 
   private[frontend] def renderChooseOnePanel(
       surface: ParkedDecision.Surface.ChooseOne, value: GameProjection,
@@ -197,7 +194,7 @@ private[frontend] object WalkerPanelSupport:
       // A card option reads its rules text on hover, as the menu panel's
       // power buttons do; `withholds` below puts a reason in its place.
       option.card.filter(_ => option.badge.isEmpty).flatMap(_.rulesText)
-        .foreach(choose.setAttribute("title", _))
+        .foreach(HoverTip.set(choose, _))
       // An askable option asks its granters first (consent design,
       // "Frontend").
       val askable = option.state == "askable"
@@ -220,7 +217,7 @@ private[frontend] object WalkerPanelSupport:
           choice.appendChild(choose)
           panel.appendChild(choice)
         case None => panel.appendChild(choose)
-      withholds(choose, option, panel)
+      withholds(choose, option)
       if option.details.nonEmpty then panel.appendChild(text("p",
         "walker-choice-details", option.details.mkString(" · ")))
     }

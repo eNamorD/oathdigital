@@ -498,14 +498,16 @@ host page.
   hovered or focused board option. It is a ring, not a lift.
 - **Overlay lift** (`box-shadow: 0 12px 45px #000b`): the developer panel
   only, which floats above the table as a fixed aside.
+- **Note lift** (`box-shadow: 0 6px 18px #000b`): the hover note only, a
+  small slip floating over everything, the overlays included.
 - **Overlay scrim** (`background: #0b0a08e8`): the card inspection overlay
   and the log overlay darken the table instead of casting a shadow.
 
 ### Named Rules
 **The Flat Board Rule.** Board pieces never cast shadows. If something must
 read as above the table, it is a fixed overlay with a scrim or a lift, and
-there are three of those: the developer panel's lift, and the card and log
-overlays' scrim.
+there are four of those: the developer panel's lift, the hover note's lift,
+and the card and log overlays' scrim.
 
 **The No-Reflow Rule.** Every hover, focus and selection treatment fits in
 space reserved at rest: transparent borders, inset rings, negative-offset
@@ -563,6 +565,10 @@ controls are 30px.
 - **Focus:** 2px Cream Focus outline, -3px offset, inside the table; 3px white
   outline, 3px offset, on the host page.
 - **Disabled:** opacity 0.5, `cursor: not-allowed` or default.
+- **Withheld** (an unavailable option with a reason): the Disabled face, but
+  `aria-disabled="true"` instead of `disabled`, so it still takes focus and
+  a tap, and both show its reason in the hover note. The reason is never
+  printed beside it. Confirm's blocked line under the button stays printed.
 - **Partition surface:** options move only by drag and drop: a drop on a
   zone moves the card there, and a drop on a card places it before that
   one. An option holds nothing but its card. The instruction line opens
@@ -651,7 +657,7 @@ fixed 21.5rem height, `overflow: hidden`. The heading is a three-column grid
 so the name is centered on the box regardless of token counts; tokens sit
 left, defense right. Below the compact threshold the name owns the first row
 and the two corners flank the pawns on the second (Layout). Powers are two
-clipped lines of labels with hover titles, on the board at every zoom and
+clipped lines of labels with hover notes, on the board at every zoom and
 one line on the compact map. A site offered as a board option gets a brass
 border and inset ring; hover brightens the border to
 Bright Cream with the target halo; selected turns Selection blue on Selection
@@ -731,6 +737,24 @@ the clip pattern, never `display: none`.
 
 Text selection is brass on Base (`::selection`), so the one browser surface
 a player touches in every pane carries the palette.
+
+### Hover Note
+The table's tooltip, in place of the browser's `title`, which is slow and
+wears the system's chrome. An element asks for one with `HoverTip.set`
+(`data-tip`); never set `title`.
+- **Face:** Raised fill, 1px Brass Line border, 4px radius, `6px 10px`
+  padding, Cream 13px at 1.4 line height, at most 20rem wide, with the note
+  lift. A rotated-square arrow in the same fill and border points at the
+  middle of the element.
+- **Place:** centered 8px above the element, below it where the top of the
+  window leaves no room, always 8px inside the window. It never takes the
+  pointer.
+- **Timing:** a mouse resting 150ms; at once on keyboard focus, and at once
+  for a second note within 300ms of the last. It neither fades nor moves.
+- **Touch:** a tap on a Withheld control shows its note; a tap elsewhere
+  hides it. Touch passing over anything else shows nothing.
+- **Hides** on leaving, blur, a press elsewhere, scroll, Escape, or a render
+  that removes the element.
 
 ### Inputs / Fields
 - **Style:** Base fill, white text, Line-mid border, 6px radius, 8px padding,

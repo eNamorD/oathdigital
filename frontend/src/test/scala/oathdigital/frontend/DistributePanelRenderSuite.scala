@@ -42,9 +42,9 @@ class DistributePanelRenderSuite extends munit.FunSuite:
     assertEquals(one(panel, """[data-option-id="favor-bank:nomad"] .distribute-maximum""")
       .textContent, "max 4")
     assertEquals(one(panel, """[data-option-id="favor-bank:nomad"] .distribute-increment""")
-      .getAttribute("title"), "Shift+click: all")
+      .getAttribute("data-tip"), "Shift+click: all")
     assertEquals(one(panel, """[data-option-id="favor-bank:nomad"] .distribute-decrement""")
-      .getAttribute("title"), "Shift+click: all")
+      .getAttribute("data-tip"), "Shift+click: all")
 
   test("a plain click steps by one and a Shift+click drains or fills"):
     val ui = new RecordingControls()

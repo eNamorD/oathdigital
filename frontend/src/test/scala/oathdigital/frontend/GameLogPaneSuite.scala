@@ -59,15 +59,15 @@ class GameLogPaneSuite extends munit.FunSuite:
     assertEquals(list.getAttribute("role"), "log")
     assertEquals(list.getAttribute("aria-live"), "polite")
 
-  test("a line carries its cost and sequence"):
+  test("a line carries its cost and no hover note"):
     val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     new GameLogPane(content).show("g|red", Vector(setup, turn, travel),
       Map("red" -> "player-red"))
     val shown = items(content)
     assertEquals(shown(2).querySelector(".log-cost").textContent,
       "−2 Supply")
-    // The title is "<sequence>.<ordinal>": Travel's sequence 5, ordinal 0.
-    assertEquals(shown(2).getAttribute("title"), "5.0")
+    // The sequence number is the engine's, not the reader's.
+    assert(!shown(2).hasAttribute("data-tip"))
 
   test("a dice span draws the die-face chips, one per face"):
     val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)

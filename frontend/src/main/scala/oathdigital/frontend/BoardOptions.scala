@@ -76,7 +76,7 @@ private[frontend] final class BoardOptions(views: Map[String, OptionView],
     target.setAttribute("data-option-ref", key)
     found.reason.orElse(Option.when(found.option.details.nonEmpty)(
       found.option.details.mkString(" · ")))
-      .foreach(target.setAttribute("title", _))
+      .foreach(HoverTip.set(target, _))
     BoardOptions.hoverSync(target, key)
     val native = target.tagName == "BUTTON"
     if !native then

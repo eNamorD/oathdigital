@@ -105,7 +105,7 @@ private[frontend] object ServerUiSupport:
     site.powers.zipWithIndex.foreach { case (power, index) =>
       if index > 0 then powers.appendChild(dom.document.createTextNode(" · "))
       val item = button(power.label, "site-power")
-      item.setAttribute("title", power.description.fold(power.label)(
+      HoverTip.set(item, power.description.fold(power.label)(
         description => s"${power.label}: $description"))
       item.onclick = (event: dom.MouseEvent) =>
         event.stopPropagation()

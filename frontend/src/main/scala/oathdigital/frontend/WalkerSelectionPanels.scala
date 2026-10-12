@@ -57,7 +57,7 @@ private[frontend] object WalkerSelectionPanels:
         case "locked" =>
           toggle.setAttribute("aria-pressed", "true")
           toggle.disabled = true
-        case _ => WalkerPanelSupport.withholds(toggle, option, rows)
+        case _ => WalkerPanelSupport.withholds(toggle, option)
     }
     panel.appendChild(rows)
     val confirm = button(WalkerPanelSupport.chooseManyConfirmLabel(query,
