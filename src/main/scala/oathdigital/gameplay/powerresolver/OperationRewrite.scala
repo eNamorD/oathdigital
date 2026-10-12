@@ -1,14 +1,16 @@
 package oathdigital.gameplay.powerresolver
 
 import oathdigital.model.{Branch, BuildOps, CoreOperation, Operation,
-  PendingTree, PrimitiveOperation, ReadyGame, Repeat, Sequence}
+  PendingTree, PrimitiveOperation, ReadyGame, Repeat, RewritableComposite,
+  Sequence}
 
 /** Finds the operations a window's children hold by what they are, and
   * replaces them (operation rewrite design). A transform calls it on its
   * children; the walker knows nothing of it.
   *
-  * It descends through `Sequence`, `Repeat`, `Branch` and `BuildOps`, and
-  * leaves alone any node below that carries a window of its own: that
+  * It descends through `Sequence`, `Repeat`, `Branch`, `BuildOps` and a
+  * `RewritableComposite`, and leaves alone any node below that carries a
+  * window of its own: that
   * subtree belongs to its window's powers. The node being folded is entered
   * even when windowed, since a windowed leaf is handed to its own transforms
   * as its only child, and the walker does not fold that window again below
@@ -31,7 +33,8 @@ object OperationRewrite:
   /** `children` with each core operation `matcher` matches replaced,
     * including those a closure builds. A core composite such as
     * `Discard.Denizen` is matched whole; only the walker's own composites
-    * are descended. Any other node stays as it is. */
+    * and a `RewritableComposite` are descended. Any other node stays as it
+    * is. */
   def ops(ctx: PowerCtx, children: Vector[Operation])(
       matcher: Matcher[CoreOperation, CoreOperation]): Vector[Operation] =
     children.map(Ops(Scope(ctx), matcher).at(ctx.state, folding(ctx)))
@@ -39,7 +42,8 @@ object OperationRewrite:
   /** `children` with each node `matcher` matches replaced, in the tree only.
     * A `BuildOps` or a `Branch` it matches is replaced whole, and a
     * `BuildOps` it does not match is not entered. `Sequence` and `Repeat`
-    * are descended, never matched. */
+    * are descended, never matched. A `RewritableComposite` it does not
+    * match is entered. */
   def nodes(ctx: PowerCtx, children: Vector[Operation])(
       matcher: Matcher[Operation, Operation]): Vector[Operation] =
     children.map(Nodes(Scope(ctx), matcher).at(ctx.state, folding(ctx)))
@@ -86,6 +90,8 @@ object OperationRewrite:
         repeat.copy(body = at(ready, pending)(repeat.body))
       case core: CoreOperation =>
         matcher(ready, pending).lift(core).fold[Operation](core)(placed)
+      case composite: RewritableComposite =>
+        composite.rewritten(at(ready, pending))
       case other => other
 
   private final case class Nodes(scope: Scope,
@@ -101,5 +107,8 @@ object OperationRewrite:
         matcher(ready, pending).lift(branch).fold[Operation](
           Branch((now, answers) =>
             branch.select(now, answers).map(at(now, answers))))(placed)
+      case composite: RewritableComposite =>
+        matcher(ready, pending).lift(composite).fold[Operation](
+          composite.rewritten(at(ready, pending)))(placed)
       case other =>
         matcher(ready, pending).lift(other).fold[Operation](other)(placed)

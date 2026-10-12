@@ -66,8 +66,10 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val tree = build(ready, actor, card)
     PlacementPark(ready, tree, park(ready, tree, powers), powers)
 
+  /** The decision the play asks first, inside its one placement body. */
   private def placementDecision(tree: Operation): Decide =
-    as[Decide](present(tree.children.headOption, "the placement decision"))
+    as[Decide](present(tree.children.headOption.flatMap(_.children.headOption),
+      "the placement decision"))
 
   test("the placement decision offers the card's slots"):
     val ready = handState

@@ -117,22 +117,28 @@ object CardPlayProcedure:
     case _ => Left(OathViolation.InvalidEventOrder(
       "facedown-adviser play requires exactly one held card"))
 
-  /** The placement subtree planned under one set of [[CardPlayRules]]. */
+  /** The placement subtree planned under one set of [[CardPlayRules]]. A
+    * rewrite of its children joins the planning, so a later `adjust` keeps
+    * it. */
   final class PlacementBody private[cardplay](val rules: CardPlayRules,
-      childrenAt: CardPlayRules => Vector[Operation]) extends Operation:
+      childrenAt: CardPlayRules => Vector[Operation])
+      extends RewritableComposite:
     override val children: Vector[Operation] = childrenAt(rules)
     private[cardplay] def adjust(change: CardPlayRules => CardPlayRules)
         : PlacementBody = new PlacementBody(change(rules), childrenAt)
+    def rewritten(rewrite: Operation => Operation): Operation =
+      new PlacementBody(rules, childrenAt.andThen(_.map(rewrite)))
 
   /** Generic rules-aware placement seam. A power changes the rules its play is
     * planned under without placing its identity in the card-play code.
     *
-    * `children` is the play under the default rules. A `Transform` at
-    * `SearchPlayAdviser` calls [[adjust]] with the children it was handed and
-    * the change it wants. Every contributor's change is applied to the same
-    * rules, so contributors compose in any order, and the result is the play
-    * planned under all of them. A node a contributor appends after the body
-    * is kept by the later ones.
+    * `children` is the play under the default rules, in one body, so a
+    * rewrite of the body and an [[adjust]] compose in either order. A
+    * `Transform` at `SearchPlayAdviser` calls [[adjust]] with the children
+    * it was handed and the change it wants. Every contributor's change is
+    * applied to the same rules, so contributors compose in any order, and
+    * the result is the play planned under all of them. A node a contributor
+    * appends after the body is kept by the later ones.
     */
   final class PlacementTree private[cardplay](val card: WorldCardId,
       childrenAt: CardPlayRules => Vector[Operation])
@@ -140,7 +146,7 @@ object CardPlayProcedure:
     override val window: Option[PowerWindow] =
       Some(PowerWindow.SearchPlayAdviser)
     override val children: Vector[Operation] =
-      childrenAt(CardPlayRules.default)
+      Vector(new PlacementBody(CardPlayRules.default, childrenAt))
 
     def adjust(current: Vector[Operation])(
         change: CardPlayRules => CardPlayRules): Vector[Operation] =

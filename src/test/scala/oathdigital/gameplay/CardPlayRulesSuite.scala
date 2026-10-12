@@ -117,6 +117,23 @@ class CardPlayRulesSuite extends munit.FunSuite:
       assertEquals(ops.size, 1)
     }
 
+  test("a rewrite of the play's body survives a later adjust"):
+    val tree = as[CardPlayProcedure.PlacementTree](
+      build(Table.start.hand(p1, card).ready, p1, card))
+    val marker = Note(PowerId("test.marker"), _ => None)
+    val marked = tree.children.map {
+      case body: RewritableComposite =>
+        body.rewritten(child => Sequence(Vector(child, marker)))
+      case other => other
+    }
+    val body = as[CardPlayProcedure.PlacementBody](
+      tree.adjust(marked)(_.limitAdvisers(2)).head)
+    assertEquals(body.rules.adviserLimit, 2)
+    assert(body.children.nonEmpty && body.children.forall {
+      case Sequence(Vector(_, last), _) => last eq marker
+      case _ => false
+    })
+
   test("a contributed limit reaches the placement: two advisers fill an " +
       "area limited to two"):
     val first = CatalogNames.denizen("Wrestlers")

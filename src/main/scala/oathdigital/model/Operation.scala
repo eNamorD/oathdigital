@@ -18,6 +18,16 @@ trait Operation:
   /** Immediate children of this node. Primitives expose `Vector(this)`. */
   def children: Vector[Operation]
 
+/** A custom composite that plans its children from inputs it keeps, so it
+  * cannot be rebuilt from new children alone (a card play's body).
+  * `rewritten` rebuilds it with each child passed through `rewrite`, and
+  * the rebuilt node keeps the rewrite whenever it plans its children
+  * again. `OperationRewrite` descends it unless it carries a window of its
+  * own.
+  */
+trait RewritableComposite extends Operation:
+  def rewritten(rewrite: Operation => Operation): Operation
+
 object Operation:
   /** Depth-first leaf sequence of an operation tree.
     *

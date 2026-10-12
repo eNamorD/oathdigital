@@ -516,11 +516,14 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
   private def placementId(card: DenizenId): String =
     s"cardplay.place.${card.kind}.${card.value}"
 
-  /** p1 holds Vow of Peace facedown, parked on its placement. */
+  /** p1 holds Vow of Peace facedown, parked on its placement, which the
+    * card play's tree asks first inside its one placement body. */
   private def facedownAdviserPlacement(using munit.Location)
       : ScopedProjectionContext =
-    parked(ActionRef.PlayFacedownAdviser,
+    val context = parked(ActionRef.PlayFacedownAdviser,
       steps = _.adviser(p1, facedownAdviserCard, facedown = true))
+    context.copy(ready = context.ready.updateCurrent(_.copy(walkerPending =
+      Some(PendingTree(Vector("0", "0"), Vector.empty)))))
 
   test("a placement decision names the card being placed"):
     val context = facedownAdviserPlacement

@@ -9,6 +9,13 @@ import oathdigital.testkit.Unwrap.as
 private final case class WindowlessComposite(
     override val children: Vector[Operation]) extends Operation
 
+/** A windowless composite that rebuilds itself with its children
+  * rewritten, as a card play's body does. */
+private final case class RebuiltComposite(
+    override val children: Vector[Operation]) extends RewritableComposite:
+  def rewritten(rewrite: Operation => Operation): Operation =
+    RebuiltComposite(children.map(rewrite))
+
 /** `OperationRewrite`: what it descends, what it leaves alone, and when it
   * matches (operation rewrite design). Pure: no walker and no catalog. */
 class OperationRewriteSuite extends munit.FunSuite:
@@ -118,6 +125,18 @@ class OperationRewriteSuite extends munit.FunSuite:
       Vector(nested, custom))(gainByMoment)
     assert(rewritten(0) eq nested)
     assert(rewritten(1) eq custom)
+
+  test("a rewritable composite is entered by ops and by nodes, and rebuilt " +
+      "with its children rewritten"):
+    assertEquals(OperationRewrite.ops(foldingSequence,
+      Vector(RebuiltComposite(Vector(gainOne))))(gainByMoment),
+      Vector[Operation](RebuiltComposite(Vector(GainSupply(actor, 2)))))
+    val build = BuildOps((_, _) => Right(Vector(gainOne)))
+    val note = Note(PowerId("test.note"), _ => None)
+    assertEquals(OperationRewrite.nodes(foldingSequence,
+      Vector(RebuiltComposite(Vector(build))))(
+      (_, _) => { case _: BuildOps => Vector(note) }),
+      Vector[Operation](RebuiltComposite(Vector(note))))
 
   test("a leaf with the fold's window is left alone below a composite, and " +
       "entered below the leaf being folded"):
