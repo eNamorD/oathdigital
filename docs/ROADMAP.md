@@ -12,6 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
+**Phase - Catalog batch 8** is designed and starts with its slice 1.
 
 ## Next
 
@@ -116,62 +117,64 @@ did":
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
 
+### Phase - Catalog batch 8
+
+[Design](superpowers/specs/2026-10-12-catalog-batch-8-design.md) and
+[rulings](superpowers/specs/2026-10-12-catalog-batch-8-rulings.md), approved
+2026-10-12: 30 engine-blocked cards in 15 slices, one mechanism each, in
+this order. Each slice gets its own plan.
+
+- [ ] **1. No new engine:** Ward of Silence, Hospitality, Vow of Wisdom.
+- [ ] **2. Oathkeeper goal:** True Oath, The Red Seer.
+- [ ] **3. Warbands at a Campaign's start:** Vow of Union.
+- [ ] **4. A Raid's defeat replaced:** Keep.
+- [ ] **5. Burns taken:** Vow of Silence, Vow of Division.
+- [ ] **6. Operation triggers:** Secret Testament, Brass Army.
+- [ ] **7. Trade at another site:** Small Friends, Friendly Familiar, Secret
+  Signal.
+- [ ] **8. Effective suit:** Pledge to Discord, Spiteful Mirror.
+- [ ] **9. Darkest Secret lens:** Yew Staff.
+- [ ] **10. Power-use restrictions:** Spell Breaker, Forest Council, City
+  Wall, Giant Python.
+- [ ] **11. Actor-aware lock:** Ancient Bloodline.
+- [ ] **12. Card play at another site:** Baron, New Growth, Forest Warden.
+- [ ] **13. Campaign from another site:** Wild Allies, Captains.
+- [ ] **14. Off-turn actor:** Sneak Attack, Second Wind for a defender.
+- [ ] **15. Palanquin.**
+
 ### Phase - Catalog batch - engine-blocked
 
 Cards that need an engine change first, grouped by the missing mechanism.
+Catalog batch 8 left these out: each costs a slice or more per card, or
+belongs with another phase.
 
-- The Gathering and Whispering Stone need a nested Negotiation with its own
-  participants.
-- Sneak Attack needs an off-turn actor: a Campaign whose acting player is
-  not the active player, including selecting modifiers off turn. It queues
-  through follow-ups via `QueuedProcedure.actor`
-  ([follow-up actions design](superpowers/specs/2026-10-08-follow-up-actions-design.md),
-  "Sneak Attack hooks"). Campaign powers read `ctx.activePlayer` as the
-  attacker today (`PlanContext`, `BattlePlan`, `VowOfPeaceContribution`).
-  Second Wind waits for the same actor on the defender's side: a defender
-  who wins with it would be owed a Travel and a Campaign off turn, so it is
-  offered to the attacker only. Vow of Union waits for it too: its holder
-  may move warbands at the start of any Campaign
-  ([catalog batch 5 rulings](superpowers/specs/2026-10-08-catalog-batch-5-rulings.md#moved-out-of-the-batch)).
-- Search Party: a card played after its WHEN PLAYED, as if searched. Nested
-  inside the WHEN PLAYED, the played card fires neither its own WHEN PLAYED
-  nor the card-play triggers (`WalkerHooks.gathered` is keyed by window), and
-  Search re-reads its live hand on a single-card draw. It needs its own spec.
-  Recorded in the
+- **Negotiation:** The Gathering and Whispering Stone need a nested
+  Negotiation with its own participants. Council Arbiter, Deed Writer and
+  Traveling Negotiator widen who may negotiate and what a deal may hold.
+  They belong with **Phase - Negotiation terms and promises**.
+- **Search Party:** a card played after its WHEN PLAYED, as if searched.
+  Nested inside the WHEN PLAYED, the played card fires neither its own WHEN
+  PLAYED nor the card-play triggers (`WalkerHooks.gathered` is keyed by
+  window), and Search re-reads its live hand on a single-card draw. It needs
+  its own spec. Recorded in the
   [catalog batch 4 rulings](superpowers/specs/2026-10-05-catalog-batch-4-rulings.md#moved-out-of-the-batch).
-- Council Arbiter, Deed Writer and Traveling Negotiator widen who may
-  negotiate and what a deal may hold.
-
-Found by the survey of 2026-09-29:
-
-- **A choice of discard or placement destination:** Bracken, Cracked Horn,
-  Ring of Devotion, Baron, New Growth, Forest Warden, Vow of Wisdom.
-- **Acting as if elsewhere, or overriding a suit:** Small Friends, Friendly
-  Familiar, Master of Disguise, Acting Troupe, Pledge to Discord, Spiteful
-  Mirror, Yew Staff.
-- **A nested Campaign or Travel, or an overridden actor site:** Wild Allies,
-  Captains, Palanquin.
-- **A variable X:** Ward of Silence, an ACTION power. The Act menu it waited
-  for exists now.
+- **A choice of discard destination:** Bracken, Cracked Horn, Ring of
+  Devotion. A discard is always to the top of a region's pile, and an
+  optional destination needs a deferred operation plus a question.
+- **Acting as another card:** Master of Disguise and Acting Troupe, a choice
+  made per use.
 - **New target kinds:** Relic Hunter, Glamor.
-- **Restricting other cards' powers or placements:** Spell Breaker, Forest
-  Council, City Wall, Giant Python, Ancient Bloodline.
-- **New triggers** (a burn, a banner taken, a pawn move): Vow of Silence, Vow
-  of Division, Secret Testament, Brass Army.
 - **Challenge** (`legalBanners` is hard-coded, no ribbon adjustment): Sigil of
   the Eye, Sigil of the Heart, Favored Son, Magician's Code (its 2 secrets
   count toward placing more than the banner holds, but the start gate runs
   before any modifier).
-- **A Travel that can pause on a decision:** **Hospitality** is unblocked:
-  start facts keep Travel's source across a resume
-  ([travel destination design](superpowers/specs/2026-10-07-travel-destination-walker-design.md)).
 - **Other:** Pilgrimage (shuffling the Dispossessed), Autumn Wind (a combined
-  shuffle and deal), Tracker (memory across turns), Keep (replacing a Raid's defeat),
-  Obsidian Cage (a new warband store), Secret Signal (no generic gain window),
-  and False Prophet, True Oath and The Red Seer (the Oathkeeper goal is not modelled).
-  False Prophet is also the only card that plays a card outside the active
+  shuffle and deal), Tracker (memory across turns), Obsidian Cage (a new
+  warband store), and False Prophet.
+  False Prophet is the only card that plays a card outside the active
   player's turn: its holder plays the Vision when another player's action
-  discards it. Card play assumes the player is the walk's `ctx.activePlayer`
+  discards it. It needs batch 8's off-turn actor. Card play assumes the
+  player is the walk's `ctx.activePlayer`
   (the `SearchPlayAdviser` transforms, such as `HolderAdviserLimit`, Pied
   Piper and Lost Tapestry, and the `ActionCardPlayedFaceup` readers, such as
   Book Binders, Secret Police and Conspiracy). So the play must either run
