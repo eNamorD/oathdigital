@@ -51,7 +51,8 @@ class WardOfSilenceSuite extends munit.FunSuite:
   private def secretsOf(ready: ReadyGame, id: PlayerId): (Int, Int) =
     (Look(ready).faceUpSecrets(id), Look(ready).faceDownSecrets(id))
 
-  private def targeted(ready: ReadyGame): OathTransition =
+  /** `ready`'s Ward of Silence used and aimed at p2, parked on X. */
+  private def wardAimedAtP2(ready: ReadyGame): OathTransition =
     val t = accepted(use(ready, WardOfSilence, source))
     accepted(answer(t, p1, WardOfSilence.targetDecisionId,
       pick(DecisionOptionRef.Player(p2))))
@@ -87,14 +88,14 @@ class WardOfSilenceSuite extends munit.FunSuite:
 
   test("X is bounded by the smaller of the two faceup counts"):
     // The target's two faceup secrets bound X under the user's three.
-    val byTarget = targeted(wardHeldWithP2AndP3AtTheSite())
+    val byTarget = wardAimedAtP2(wardHeldWithP2AndP3AtTheSite())
     assertEquals(answer(byTarget, p1, WardOfSilence.amountDecisionId,
       ChooseAmountAnswer(3)).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         s"decision ${WardOfSilence.amountDecisionId} amount 3 is " +
           "outside 1..2")))
     // The user's one faceup secret bounds X under the target's two.
-    val byUser = targeted(wardHeldWithP2AndP3AtTheSite(own = 1))
+    val byUser = wardAimedAtP2(wardHeldWithP2AndP3AtTheSite(own = 1))
     assertEquals(answer(byUser, p1, WardOfSilence.amountDecisionId,
       ChooseAmountAnswer(2)).left.toOption,
       Some(OathViolation.InvalidEventOrder(
@@ -102,8 +103,9 @@ class WardOfSilenceSuite extends munit.FunSuite:
           "outside 1..1")))
 
   test("its line names the target and the secrets flipped"):
-    val done = accepted(answer(targeted(wardHeldWithP2AndP3AtTheSite()), p1,
-      WardOfSilence.amountDecisionId, ChooseAmountAnswer(2)))
+    val aimed = wardAimedAtP2(wardHeldWithP2AndP3AtTheSite())
+    val done = accepted(answer(aimed, p1, WardOfSilence.amountDecisionId,
+      ChooseAmountAnswer(2)))
     assertEquals(NoteText.said(WardOfSilence, done.events),
       Vector(NoteText.Said(NoteKey.Used,
         s"Flipped 2 secrets on ${p2.value}'s board facedown.",

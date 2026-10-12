@@ -99,8 +99,24 @@ class HospitalitySuite extends munit.FunSuite:
     val done = accepted(travel(ready, coast))
     assertEquals(favorGains(done.events), Vector.empty)
 
+  test("matching banks that hold no favor give nothing"):
+    val ready = holdingHospitalityAndCoastHolding(Vector(elders))()
+    val done = accepted(travel(ready, coast))
+    assertEquals(favorGains(done.events), Vector.empty)
+
+  test("an edifice at the site matches as a denizen does"):
+    // Great Forge is a Nomad edifice; Hospitality itself is the Nomad adviser.
+    val greatForge = CatalogNames.edifice("Great Forge")
+    val ready = on(holdingHospitalityAndCoastHolding(Vector.empty,
+      Suit.Nomad -> 2)())(_.edifice(greatForge, EdificeSide.Intact, coast))
+    val done = accepted(travel(ready, coast))
+    assertEquals(favorGains(done.events),
+      Vector(Gain.Favor(actor, Suit.Nomad, 1)))
+
   test("a facedown Hospitality does nothing"):
-    val ready = holdingHospitalityAndCoastHolding(Vector(elders),
-      Suit.Nomad -> 2)(hospitalityFacedown = true)
+    // Siege Engines matches the faceup Messenger, so only the facedown
+    // Hospitality stops the gain.
+    val ready = holdingHospitalityAndCoastHolding(Vector(siegeEngines),
+      Suit.Order -> 2)(hospitalityFacedown = true)
     val done = accepted(travel(ready, coast))
     assertEquals(favorGains(done.events), Vector.empty)
