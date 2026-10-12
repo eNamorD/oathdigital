@@ -8,7 +8,8 @@
 
 - **Hospitality** is a Travel rule, like Tyrant. At `TravelCost` it appends a `Branch` after the pawn's move. The branch reads the destination's cards and the traveller's faceup advisers when the walk reaches it. With one stocked matching bank it gains 1 favor from it. With several it asks first, which parks a decision after the move.
 - **Ward of Silence** is a `PaidAction` with a free printed cost. Its `build` asks for the target and then X. It pays X secrets onto its card and flips X of the target's faceup secrets facedown, in one batch. Its own `usable` checks the empty-card rule, which a free printed cost skips.
-- **Vow of Wisdom** is a rule at `SearchPlayAdviser`, like Family Wagon. It plans its holder's card plays under a new `CardPlayRules.siteGainsSecrets` flag. Card play applies the flag to the play's batch: each `Gain.Favor` becomes a `Gain.Secrets` of the same amount.
+- **Rewrites reach into a card play.** `OperationRewrite` today leaves every custom composite alone, so it cannot reach the site play's favor gain inside `CardPlayProcedure.PlacementBody`. A new model trait, `RewritableComposite`, lets a composite rebuild itself with its children rewritten, and `OperationRewrite` descends it. `PlacementBody` implements it and keeps the rewrite through every later `adjust`. `PlacementTree` always holds one body, so a rewrite and an `adjust` compose in either order.
+- **Vow of Wisdom** is an `OperationRewrite` at `SearchPlayAdviser`. It follows its holder's `Play` to a site with a `Gain.Secrets` of 1, and drops the play's `Gain.Favor`.
 
 **Tech Stack:** Scala 3 on the JVM and Scala.js, munit, built through `./sbtw`.
 
@@ -48,15 +49,16 @@ Where this plan quotes code, read the file as it is on `main` and apply the chan
   - `WardOfSilence` (case object) and `WardOfSilenceCard`. Decisions `power.ward-of-silence.target` and `power.ward-of-silence.amount`.
   - `Hospitality` (final case class with `forCatalog`) and `HospitalityCard`. Decision `travel.hospitality`.
   - `VowOfWisdom` (case object) and `VowOfWisdomCard`.
-  - `CardPlayRules.siteGainsSecrets: Boolean = false`, `CardPlayRules.gainSecretsAtSite: CardPlayRules`, `CardPlayRules.gains(operations: Vector[CoreOperation]): Vector[CoreOperation]`.
+  - `oathdigital.model.RewritableComposite`, a trait extending `Operation`, with `def rewritten(rewrite: Operation => Operation): Operation`.
 - **Texts, exactly:**
   - Ward of Silence's unavailable target: "No faceup secrets". Its line: "Flipped 2 secrets on {Blue}'s board facedown.", the action's own line.
   - Ward of Silence's headings: "Ward of Silence: flip secrets of a player at your site", and "Ward of Silence: place X secrets on this card to flip X of their secrets facedown", confirmed with "Flip".
   - Hospitality's heading: "Hospitality: gain 1 favor from which bank?". Its unavailable bank: "This bank is empty".
   - Hospitality and Vow of Wisdom write no line of their own. The generic lines say it: "Gained 1 favor from the Order bank" and "Gained 1 secret".
 - **Baseline.** Record the server and frontend test counts from your first full `./sbtw "test" "frontend/test"` run in the worktree, and compare them at the end.
-  - This plan adds 16 server tests and no frontend test.
+  - This plan adds 17 server tests and no frontend test.
   - It changes one existing test: `PowerKindsCatalogSuite`'s persistent-rule list gains `denizen.vow-of-wisdom` (Task 4).
+  - Task 4 adds a level to every card play's node path. A test that pins such a path is updated in Task 4 and named in the report.
 - **Gates**, in order, before the final commit:
   1. `./sbtw "test" "frontend/test"`
   2. `./sbtw frontend/fullOptJS`
@@ -66,8 +68,13 @@ Where this plan quotes code, read the file as it is on `main` and apply the chan
 
 The product owner reviews these with the plan. Task 1 writes all of them into the spec.
 
-1. **Vow of Wisdom needs a card-play flag.** The design gave Vow of Wisdom an `OperationRewrite` at `SearchPlayAdviser`. `OperationRewrite` does not enter the card play's body (`CardPlayProcedure.PlacementBody`), and the site play's `Gain.Favor` is built inside it. So `CardPlayRules` gains `siteGainsSecrets`, set by `gainSecretsAtSite`, in the same way as its other rules. Card play passes the play's batch through `CardPlayRules.gains`, which turns each `Gain.Favor` into a `Gain.Secrets` of the same amount. A play gains favor only at a site, so only a play to a site changes. This change lies outside `gameplay/powers/` and is not in the design's bar.
-2. **Vow of Wisdom with an empty bank.** A play to a site whose suit bank is empty gains no favor, so under Vow of Wisdom it gains no secret either.
+1. **Rewrites reach into a card play.** The design gave Vow of Wisdom an `OperationRewrite` at `SearchPlayAdviser`, but the operation rewrite design left custom composites alone. The site play's `Gain.Favor` is built inside one, `CardPlayProcedure.PlacementBody`. A rewrite was also lost when it ran before the first `adjust`, which replaced the default children with a fresh body. So:
+   - A model trait, `RewritableComposite`, lets a composite rebuild itself with each child passed through a rewrite. `OperationRewrite.ops` and `.nodes` descend it, unless it carries its own window.
+   - `PlacementBody` implements it. The rewrite joins the closure that plans the body's children, so every later `adjust` keeps it.
+   - `PlacementTree`'s children are always one `PlacementBody`, under the default rules until a contributor adjusts them. So a rewrite and an `adjust` compose in either order.
+   - Every card play's node path gains one level. A game parked inside a card play when the server updates may not resume.
+   The other custom composites carry their own windows and stay as they are. Any of them may implement the trait when a power needs it.
+2. **Vow of Wisdom always gains a secret.** Its holder's play to a site gains 1 secret, whether or not the card's suit bank holds favor, and gains no favor. The rewrite follows the `Play` to a site with `Gain.Secrets(holder, 1)` and drops the play's `Gain.Favor`.
 3. **Ward of Silence pays inside its action.** Its printed cost is free, so the engine places nothing and does not check the empty-card rule. Its `usable` checks that its card could take one secret (`Costs.affordable`): a faceup secret, and an empty card. It also checks that another player at the site holds a faceup secret. Otherwise the Act menu shows it unavailable with the engine's "Nothing to do now". A reason of its own would need a change to `PhasePower`, which is out of scope.
 4. **Ward of Silence's line** is the action's own: "Flipped 2 secrets on {Blue}'s board facedown." Neither question posts a "Chose" line.
 5. **Hospitality's banks.** A matching bank is the suit of a card at the destination (a denizen or an edifice) and of one of the traveller's faceup advisers. Marriage counts as its suit, as `AdviserSuits` reads it. With one matching bank that holds favor, Hospitality gains from it without asking, even when other matching banks are empty. With two or more, it asks. Every matching bank is listed, and an empty one is shown unavailable with "This bank is empty". With none holding favor, nothing happens.
@@ -89,11 +96,12 @@ The product owner reviews these with the plan. Task 1 writes all of them into th
 - Tests: new `WardOfSilenceSuite`.
 
 **Vow of Wisdom (Task 4):**
-- `src/main/scala/oathdigital/gameplay/actions/CardPlayRules.scala`: `siteGainsSecrets`, `gainSecretsAtSite`, `gains`.
-- `src/main/scala/oathdigital/gameplay/actions/cardplay/CardPlayProcedure.scala`: `played` applies `rules.gains`.
+- `src/main/scala/oathdigital/model/Operation.scala`: `RewritableComposite`.
+- `src/main/scala/oathdigital/gameplay/powerresolver/OperationRewrite.scala`: descends a `RewritableComposite`.
+- `src/main/scala/oathdigital/gameplay/actions/cardplay/CardPlayProcedure.scala`: `PlacementBody` implements the trait; `PlacementTree` always holds one body.
 - `src/main/scala/oathdigital/gameplay/powers/cardplay/VowOfWisdom.scala`: new. `VowOfWisdomCard` moves out of `catalog/holding/HoldingArcaneDenizens.scala`.
 - Registration: `CardPlayTriggers.scala`, and the `powers.cardplay` import in `NewFoundations.scala`.
-- Tests: new `VowOfWisdomSuite`. `CardPlayRulesSuite` gains one test. `PowerKindsCatalogSuite`'s persistent-rule list gains an entry.
+- Tests: new `VowOfWisdomSuite`. `OperationRewriteSuite` and `CardPlayRulesSuite` gain one test each. `PowerKindsCatalogSuite`'s persistent-rule list gains an entry.
 
 **Roadmap (Task 5):** `docs/ROADMAP.md`, and the design's status.
 
@@ -112,11 +120,12 @@ The product owner reviews these with the plan. Task 1 writes all of them into th
 2. In "The bar", before the bullet that begins `- **A Set Oathkeeper Goal operation** (slice 2).`, add:
 
 ```markdown
-- **Secrets in place of a site play's favor** (slice 1). `CardPlayRules`
-  gains `siteGainsSecrets`. Card play passes each play's batch through
-  `CardPlayRules.gains`, which turns its favor gain into a gain of as many
-  secrets while the flag is set. `OperationRewrite` does not enter the card
-  play's body, so a rewrite at `SearchPlayAdviser` cannot reach that gain
+- **Rewrites inside a card play** (slice 1). A model trait,
+  `RewritableComposite`, lets a custom composite rebuild itself with its
+  children rewritten, and `OperationRewrite` descends it.
+  `CardPlayProcedure.PlacementBody` implements it and keeps the rewrite
+  through every later `adjust`, and `PlacementTree` always holds one body,
+  so a rewrite at `SearchPlayAdviser` reaches the site play's favor gain
   (Vow of Wisdom).
 ```
 
@@ -134,17 +143,21 @@ The product owner reviews these with the plan. Task 1 writes all of them into th
 - **Hospitality** runs after the pawn's move in Travel, as Tyrant does. It
   asks which bank when more than one matches, which parks a decision after
   the move.
-- **Vow of Wisdom** is a rule at `SearchPlayAdviser`, as Family Wagon is.
-  It plans its holder's card plays under `CardPlayRules.gainSecretsAtSite`.
+- **Vow of Wisdom** is an `OperationRewrite` at `SearchPlayAdviser`. It
+  follows its holder's `Play` to a site with a gain of 1 secret, and drops
+  the play's favor gain.
 
 ### Plan-time rulings
 
-- **Vow of Wisdom needs a card-play flag.** `OperationRewrite` does not
-  enter the card play's body, where the site play's favor gain is built. So
-  `CardPlayRules` gains `siteGainsSecrets`, and card play applies it to
-  each play's batch. Only a play to a site gains favor, so only it changes.
-- **Vow of Wisdom with an empty bank.** A play to a site whose suit bank
-  is empty gains no favor, so it gains no secret either.
+- **Rewrites reach into a card play.** The operation rewrite design left
+  custom composites alone, and the site play's favor gain is built inside
+  one. A rewrite that ran before the first `adjust` was also lost. The
+  `RewritableComposite` trait fixes both for `PlacementBody`, and
+  `PlacementTree` always holds one body. Every card play's node path gains
+  a level, so a game parked inside a card play when the server updates may
+  not resume.
+- **Vow of Wisdom always gains a secret.** Its holder's play to a site
+  gains 1 secret whether or not the suit bank holds favor, and no favor.
 - **Ward of Silence pays inside its action.** Its `usable` checks that its
   card could take one secret (a faceup secret and an empty card), and that
   another player at the site holds a faceup secret. Otherwise the Act menu
@@ -194,10 +207,10 @@ Replace the whole "## Slice 1: No new engine" section, up to `## Slice 2`, with:
     (Palanquin).
   - It writes no line: the generic gain line names the bank.
 - **203 Vow of Wisdom.** "You must gain [secret] instead of [favor] when you
-  play to a site." When its holder plays a card to a site, the favor that
-  play gains becomes the same number of secrets. There is no choice. When
-  the bank is empty the play gains no favor, and so no secret (plan-time
-  ruling). It writes no line: the generic line reads "Gained 1 secret".
+  play to a site." When its holder plays a card to a site, the play gains
+  1 secret and no favor. There is no choice. The secret is gained whether
+  or not the card's suit bank holds favor (plan-time ruling). It writes no
+  line: the generic line reads "Gained 1 secret".
 ```
 
 Re-wrap every edited paragraph to 78 characters.
@@ -850,36 +863,164 @@ git commit -m "feat(batch8): Ward of Silence flips a player's secrets facedown"
 
 ---
 
-### Task 4: Vow of Wisdom gains secrets for a site play's favor
+### Task 4: Rewrites inside a card play, and Vow of Wisdom
+
+The engine half comes first. Its own tests pin it before Vow of Wisdom relies on it.
 
 **Files:**
-- Modify: `src/main/scala/oathdigital/gameplay/actions/CardPlayRules.scala`
+- Modify: `src/main/scala/oathdigital/model/Operation.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/powerresolver/OperationRewrite.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/actions/cardplay/CardPlayProcedure.scala`
 - Create: `src/main/scala/oathdigital/gameplay/powers/cardplay/VowOfWisdom.scala`
 - Modify: `src/main/scala/oathdigital/catalog/holding/HoldingArcaneDenizens.scala` (remove `VowOfWisdomCard`)
 - Modify: `src/main/scala/oathdigital/gameplay/powers/cardplay/CardPlayTriggers.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala` (import)
+- Test: `src/test/scala/oathdigital/gameplay/powerresolver/OperationRewriteSuite.scala`
 - Test: `src/test/scala/oathdigital/gameplay/CardPlayRulesSuite.scala`
 - Test: `src/test/scala/oathdigital/gameplay/powers/cardplay/VowOfWisdomSuite.scala`
 - Test: `src/test/scala/oathdigital/gameplay/PowerKindsCatalogSuite.scala`
 
 **Interfaces:**
-- Consumes: `CardPlayProcedure.PlacementTree.adjust`, `CardPlay.operations`.
-- Produces: `CardPlayRules.siteGainsSecrets: Boolean = false`, `CardPlayRules.gainSecretsAtSite: CardPlayRules`, `CardPlayRules.gains(operations: Vector[CoreOperation]): Vector[CoreOperation]`, `VowOfWisdom` (case object), `VowOfWisdomCard`.
+- Consumes: `OperationRewrite.ops`, `CardPlayProcedure.PlacementTree.adjust`.
+- Produces: `oathdigital.model.RewritableComposite` with `rewritten(rewrite: Operation => Operation): Operation`; `CardPlayProcedure.PlacementBody` implementing it; `VowOfWisdom` (case object) with `Secrets: Int = 1`; `VowOfWisdomCard`.
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write the failing engine tests**
 
-In `CardPlayRulesSuite`, add:
+In `OperationRewriteSuite.scala`, after `WindowlessComposite`, add:
 
 ```scala
-  test("gaining secrets at a site turns each favor gain into as many " +
-      "secrets, and nothing else"):
-    val batch = Vector[CoreOperation](Gain.Favor(p1, Suit.Order, 1),
-      Gain.Secrets(p1, 2))
-    assertEquals(CardPlayRules.default.gains(batch), batch)
-    assertEquals(CardPlayRules.default.gainSecretsAtSite.gains(batch),
-      Vector[CoreOperation](Gain.Secrets(p1, 1), Gain.Secrets(p1, 2)))
+/** A windowless composite that rebuilds itself with its children
+  * rewritten, as a card play's body does. */
+private final case class RebuiltComposite(
+    override val children: Vector[Operation]) extends RewritableComposite:
+  def rewritten(rewrite: Operation => Operation): Operation =
+    RebuiltComposite(children.map(rewrite))
 ```
+
+and, after the test "a node with its own window and a custom composite are left alone", add:
+
+```scala
+  test("a rewritable composite is entered by ops and by nodes, and rebuilt " +
+      "with its children rewritten"):
+    assertEquals(OperationRewrite.ops(foldingSequence,
+      Vector(RebuiltComposite(Vector(gainOne))))(gainByMoment),
+      Vector[Operation](RebuiltComposite(Vector(GainSupply(actor, 2)))))
+    val build = BuildOps((_, _) => Right(Vector(gainOne)))
+    val note = Note(PowerId("test.note"), _ => None)
+    assertEquals(OperationRewrite.nodes(foldingSequence,
+      Vector(RebuiltComposite(Vector(build))))(
+      (_, _) => { case _: BuildOps => Vector(note) }),
+      Vector[Operation](RebuiltComposite(Vector(note))))
+```
+
+In `CardPlayRulesSuite`, which imports `oathdigital.model._`, add this test after "two contributors compose in either order":
+
+```scala
+  test("a rewrite of the play's body survives a later adjust"):
+    val tree = as[CardPlayProcedure.PlacementTree](
+      build(Table.start.hand(p1, card).ready, p1, card))
+    val marker = Note(PowerId("test.marker"), _ => None)
+    val marked = tree.children.map {
+      case body: RewritableComposite =>
+        body.rewritten(child => Sequence(Vector(child, marker)))
+      case other => other
+    }
+    val body = as[CardPlayProcedure.PlacementBody](
+      tree.adjust(marked)(_.limitAdvisers(2)).head)
+    assertEquals(body.rules.adviserLimit, 2)
+    assert(body.children.nonEmpty && body.children.forall {
+      case Sequence(Vector(_, last), _) => last eq marker
+      case _ => false
+    })
+```
+
+- [ ] **Step 2: Run them to see them fail**
+
+Run: `./sbtw "testOnly oathdigital.gameplay.powerresolver.OperationRewriteSuite oathdigital.gameplay.CardPlayRulesSuite"`
+Expected: compile failure, `RewritableComposite` not found.
+
+- [ ] **Step 3: The trait and the descent**
+
+In `model/Operation.scala`, after `trait Operation`, add:
+
+```scala
+/** A custom composite that plans its children from inputs it keeps, so it
+  * cannot be rebuilt from new children alone (a card play's body).
+  * `rewritten` rebuilds it with each child passed through `rewrite`, and
+  * the rebuilt node keeps the rewrite whenever it plans its children
+  * again. `OperationRewrite` descends it unless it carries a window of its
+  * own.
+  */
+trait RewritableComposite extends Operation:
+  def rewritten(rewrite: Operation => Operation): Operation
+```
+
+In `OperationRewrite.scala`:
+
+1. In the object's doc, replace `It descends through `Sequence`, `Repeat`, `Branch` and `BuildOps`,` with `It descends through `Sequence`, `Repeat`, `Branch`, `BuildOps` and a `RewritableComposite`,`, re-wrapped.
+2. In `ops`' doc, replace `only the walker's own composites are descended.` with `only the walker's own composites and a `RewritableComposite` are descended.`
+3. In `nodes`' doc, after `Sequence` and `Repeat` are descended, never matched.`, add ` A `RewritableComposite` it does not match is entered.`
+4. In `Ops.at`, before `case other => other`, add:
+
+```scala
+      case composite: RewritableComposite =>
+        composite.rewritten(at(ready, pending))
+```
+
+5. In `Nodes.at`, before `case other =>`, add:
+
+```scala
+      case composite: RewritableComposite =>
+        matcher(ready, pending).lift(composite).fold[Operation](
+          composite.rewritten(at(ready, pending)))(placed)
+```
+
+Add `RewritableComposite` to the file's `oathdigital.model` import.
+
+- [ ] **Step 4: The card play's body**
+
+In `CardPlayProcedure.scala`, replace `PlacementBody` with:
+
+```scala
+  /** The placement subtree planned under one set of [[CardPlayRules]]. A
+    * rewrite of its children joins the planning, so a later `adjust` keeps
+    * it. */
+  final class PlacementBody private[cardplay](val rules: CardPlayRules,
+      childrenAt: CardPlayRules => Vector[Operation])
+      extends RewritableComposite:
+    override val children: Vector[Operation] = childrenAt(rules)
+    private[cardplay] def adjust(change: CardPlayRules => CardPlayRules)
+        : PlacementBody = new PlacementBody(change(rules), childrenAt)
+    def rewritten(rewrite: Operation => Operation): Operation =
+      new PlacementBody(rules, childrenAt.andThen(_.map(rewrite)))
+```
+
+In `PlacementTree`, replace `override val children: Vector[Operation] = childrenAt(CardPlayRules.default)` with:
+
+```scala
+    override val children: Vector[Operation] =
+      Vector(new PlacementBody(CardPlayRules.default, childrenAt))
+```
+
+In `PlacementTree`'s doc, replace ``children` is the play under the default rules.` with ``children` is the play under the default rules, in one body, so a rewrite of the body and an [[adjust]] compose in either order.`, re-wrapped. Import `RewritableComposite` if the file does not import `oathdigital.model._`.
+
+- [ ] **Step 5: Run the whole server suite**
+
+Every card play's tree now has one more level, so run everything.
+
+Run: `./sbtw test`
+Expected: PASS, with the two new tests. A test that pins a card play's node path or parked position fails because of the extra level. Update the path in that test, and name the test in your report. Any other failure means the body broke something: fix it before going on.
+
+- [ ] **Step 6: Commit the engine half**
+
+```bash
+git add src/main/scala/oathdigital/model/Operation.scala src/main/scala/oathdigital/gameplay/powerresolver/OperationRewrite.scala src/main/scala/oathdigital/gameplay/actions/cardplay/CardPlayProcedure.scala src/test/scala/oathdigital/gameplay/powerresolver/OperationRewriteSuite.scala src/test/scala/oathdigital/gameplay/CardPlayRulesSuite.scala
+git commit -m "feat(batch8): operation rewrites reach into a card play's body"
+```
+
+Add to that commit any test whose node path you updated in Step 5.
+
+- [ ] **Step 7: Write the failing Vow of Wisdom tests**
 
 In `PowerKindsCatalogSuite`, add `"denizen.vow-of-wisdom"` to the end of `persistentRules`.
 
@@ -896,8 +1037,8 @@ import oathdigital.testkit.{CatalogNames, Look, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap
 
-/** Vow of Wisdom (card 203): its holder's play to a site gains secrets in
-  * place of the favor. */
+/** Vow of Wisdom (card 203): its holder's play to a site gains 1 secret and
+  * no favor. */
 class VowOfWisdomSuite extends munit.FunSuite:
   import PlacementFixture.{answer, build, park}
 
@@ -926,7 +1067,7 @@ class VowOfWisdomSuite extends munit.FunSuite:
   private def secretsOf(ready: ReadyGame): Int =
     Look(ready).faceUpSecrets(actor) + Look(ready).faceDownSecrets(actor)
 
-  test("a play to a site gains a secret in place of the favor"):
+  test("a play to a site gains a secret and no favor"):
     val ready = wrestlersInHandAtEmptyAncientCity(orderFavor = 3)(
       _.adviser(actor, vow))
     val done = playedToSite(ready)
@@ -934,6 +1075,13 @@ class VowOfWisdomSuite extends munit.FunSuite:
     assertEquals(Look(done.treeless).favor(actor), Look(ready).favor(actor))
     assertEquals(Look(done.treeless).bankFavor(Suit.Order), 3)
     assertWireRoundTrips(done.events)
+
+  test("with the suit bank empty, the play still gains a secret"):
+    val ready = wrestlersInHandAtEmptyAncientCity(orderFavor = 0)(
+      _.adviser(actor, vow))
+    val done = playedToSite(ready)
+    assertEquals(secretsOf(done.treeless), secretsOf(ready) + 1)
+    assertEquals(Look(done.treeless).favor(actor), Look(ready).favor(actor))
 
   test("without the Vow faceup, the play gains the favor"):
     val unheld = wrestlersInHandAtEmptyAncientCity(orderFavor = 3)(identity)
@@ -946,58 +1094,16 @@ class VowOfWisdomSuite extends munit.FunSuite:
       assertEquals(secretsOf(done.treeless), secretsOf(ready))
       assertEquals(Look(done.treeless).bankFavor(Suit.Order), 2)
     }
-
-  test("with the bank empty, the play gains neither"):
-    val ready = wrestlersInHandAtEmptyAncientCity(orderFavor = 0)(
-      _.adviser(actor, vow))
-    val done = playedToSite(ready)
-    assertEquals(secretsOf(done.treeless), secretsOf(ready))
-    assertEquals(Look(done.treeless).favor(actor), Look(ready).favor(actor))
 ```
 
 If the play to Ancient City asks a further question on `main` (the Homeland rule's discard, for example), answer it with no discard in `playedToSite`. Then say so in your report.
 
-- [ ] **Step 2: Run them to see them fail**
+- [ ] **Step 8: Run them to see them fail**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.CardPlayRulesSuite oathdigital.gameplay.powers.cardplay.VowOfWisdomSuite oathdigital.gameplay.PowerKindsCatalogSuite"`
-Expected: compile failure, `gains` and `VowOfWisdom` not found.
+Run: `./sbtw "testOnly oathdigital.gameplay.powers.cardplay.VowOfWisdomSuite oathdigital.gameplay.PowerKindsCatalogSuite"`
+Expected: compile failure, `VowOfWisdom` not found.
 
-- [ ] **Step 3: The card-play flag**
-
-In `CardPlayRules.scala`, add to the class doc's bullet list, after the `placementLimits` bullet:
-
-```scala
-  *  - `siteGainsSecrets` turns the favor a play gains into as many
-  *    secrets (Vow of Wisdom). Only a play to a site gains favor, so only
-  *    it changes.
-```
-
-In the paragraph after the list, replace `Every change lowers or lifts a limit, exempts a face, or adds a permission, a note or a placement limit,` with `Every change lowers or lifts a limit, exempts a face, adds a permission, a note or a placement limit, or turns favor into secrets,`, re-wrapped.
-
-Add the field, last: `placementLimits: Vector[PlacementLimit] = Vector.empty, siteGainsSecrets: Boolean = false):`. After `refusal`, add:
-
-```scala
-  /** A play gains secrets in place of its favor. */
-  def gainSecretsAtSite: CardPlayRules = copy(siteGainsSecrets = true)
-
-  /** `operations`, one play's batch, with each favor gain turned into a gain
-    * of as many secrets while `siteGainsSecrets` holds. */
-  def gains(operations: Vector[CoreOperation]): Vector[CoreOperation] =
-    if !siteGainsSecrets then operations
-    else operations.map {
-      case Gain.Favor(player, _, amount) => Gain.Secrets(player, amount)
-      case other => other
-    }
-```
-
-In `CardPlayProcedure.played`, replace the `apply` binding with:
-
-```scala
-      val apply = BuildOps((state, _) => CardPlay.operations(catalog, state,
-        actor, card, slot.placement, from, extra).map(rules.gains))
-```
-
-- [ ] **Step 4: Write the rule**
+- [ ] **Step 9: Write the rule**
 
 Delete `VowOfWisdomCard` from `HoldingArcaneDenizens.scala`. Create `VowOfWisdom.scala`:
 
@@ -1005,9 +1111,8 @@ Delete `VowOfWisdomCard` from `HoldingArcaneDenizens.scala`. Create `VowOfWisdom
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
-import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
-  PowerCtx, Transform}
+  OperationRewrite, PowerCtx, Transform}
 import oathdigital.model._
 
 object VowOfWisdomCard extends Denizen(DenizenId("203"), "Vow of Wisdom",
@@ -1022,25 +1127,29 @@ object VowOfWisdomCard extends Denizen(DenizenId("203"), "Vow of Wisdom",
   * adviser: "You must gain secret instead of favor when you play to a
   * site."
   *
-  * While its holder has it faceup, a transform at `SearchPlayAdviser` plans
-  * the holder's card plays under `CardPlayRules.gainSecretsAtSite`, so the
-  * favor a play to a site gains becomes as many secrets. There is no
-  * choice. A play to a site whose suit bank is empty gains no favor, and so
-  * no secret.
+  * While its holder has it faceup, a rewrite at `SearchPlayAdviser` follows
+  * the holder's `Play` to a site with a gain of 1 secret, and drops the
+  * play's favor gain. The secret is gained whether or not the card's suit
+  * bank holds favor. There is no choice. A WHEN PLAYED power's own gain
+  * sits under its own window, so the rewrite leaves it alone.
   *
   * It writes no line: the play's generic line reads "Gained 1 secret".
   */
 case object VowOfWisdom extends ContributingPower:
   val cardId: DenizenId = VowOfWisdomCard.id
   val id: PowerId = VowOfWisdomCard.power.id
+  val Secrets: Int = 1
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
-      ctx.operation match
-        case tree: CardPlayProcedure.PlacementTree =>
-          tree.adjust(children)(_.gainSecretsAtSite)
-        case _ => children)))
+      OperationRewrite.ops(ctx, children)((_, _) => {
+        case play @ Play(_, _, Location.Site(_), _, _) =>
+          Vector[CoreOperation](play,
+            Gain.Secrets(ctx.activePlayer, Secrets))
+        case Gain.Favor(player, _, _) if player == ctx.activePlayer =>
+          Vector.empty
+      }))))
 
   override def applicable(ctx: PowerCtx): Boolean =
     ctx.state.game.current.players.find(_.player == ctx.activePlayer)
@@ -1052,16 +1161,16 @@ case object VowOfWisdom extends ContributingPower:
 
 Register it in `CardPlayTriggers.forCatalog`, last: `Vector(SacredGround) ++ Vector(VowOfWisdom)`. In that object's doc, replace `the triggers that reward a play and the rules that forbid one` with `the triggers that reward a play and the rules that change or forbid one`. Add `VowOfWisdomCard` to the `oathdigital.gameplay.powers.cardplay` import in `NewFoundations.scala`, in alphabetical order.
 
-- [ ] **Step 5: Run the tests**
+- [ ] **Step 10: Run the tests**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.CardPlay* oathdigital.gameplay.powers.cardplay.* oathdigital.gameplay.powers.search.* oathdigital.gameplay.PowerKindsCatalogSuite oathdigital.catalog.* oathdigital.gameplay.cards.*"`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
-git add src/main/scala/oathdigital/gameplay/actions/CardPlayRules.scala src/main/scala/oathdigital/gameplay/actions/cardplay/CardPlayProcedure.scala src/main/scala/oathdigital/gameplay/powers/cardplay/VowOfWisdom.scala src/main/scala/oathdigital/catalog/holding/HoldingArcaneDenizens.scala src/main/scala/oathdigital/gameplay/powers/cardplay/CardPlayTriggers.scala src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala src/test/scala/oathdigital/gameplay/CardPlayRulesSuite.scala src/test/scala/oathdigital/gameplay/powers/cardplay/VowOfWisdomSuite.scala src/test/scala/oathdigital/gameplay/PowerKindsCatalogSuite.scala
-git commit -m "feat(batch8): Vow of Wisdom gains secrets for a site play's favor"
+git add src/main/scala/oathdigital/gameplay/powers/cardplay/VowOfWisdom.scala src/main/scala/oathdigital/catalog/holding/HoldingArcaneDenizens.scala src/main/scala/oathdigital/gameplay/powers/cardplay/CardPlayTriggers.scala src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala src/test/scala/oathdigital/gameplay/powers/cardplay/VowOfWisdomSuite.scala src/test/scala/oathdigital/gameplay/PowerKindsCatalogSuite.scala
+git commit -m "feat(batch8): Vow of Wisdom gains a secret for a play to a site"
 ```
 
 ---
@@ -1080,7 +1189,7 @@ Run, in order:
 2. `./sbtw frontend/fullOptJS`
 3. `python3 scripts/check-architecture.py && python3 scripts/check-markdown-links.py`
 
-Expected: all pass. The server count is the baseline plus 16, and the frontend count is the baseline. If a count differs, find out why before going on.
+Expected: all pass. The server count is the baseline plus 17, and the frontend count is the baseline. If a count differs, find out why before going on.
 
 - [ ] **Step 2: Mark the slice done**
 
