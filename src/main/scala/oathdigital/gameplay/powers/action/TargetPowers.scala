@@ -11,5 +11,5 @@ import oathdigital.gameplay.powers.wake.HornedMask
   */
 object TargetPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
-    Vector[PhasePower](Wolves, Alchemist, SleightOfHand,
+    Vector[PhasePower](Wolves, Alchemist, SleightOfHand, WardOfSilence,
       CrystalVial(catalog), IvoryEye, HornedMask(catalog))
