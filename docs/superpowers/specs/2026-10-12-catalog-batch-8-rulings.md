@@ -29,22 +29,31 @@
   at your site. Flip X [secret] on their board facedown."
   - The target is another player whose pawn is at the user's site.
   - X runs from one to the smaller of the user's faceup secrets and the
-    target's faceup secrets. The user pays X secrets, then X of the target's
-    faceup secrets flip facedown.
+    target's faceup secrets. The user places X secrets on the card, and X
+    of the target's faceup secrets flip facedown, in one batch.
   - A player at the site with no faceup secrets is shown unavailable as a
-    target. With no faceup secret of their own, the action is shown
-    unavailable in the Act menu.
+    target, with "No faceup secrets".
+  - The action is usable when its card could take a secret (the user has a
+    faceup secret and the card is empty) and another player at the site has
+    a faceup secret. Otherwise the Act menu shows it unavailable with
+    "Nothing to do now" (plan-time ruling).
+  - Line: "Ward of Silence: Flipped 2 secrets on {Blue}'s board facedown."
 - **171 Hospitality.** "After traveling, gain [favor] from one favor bank
   that matches both a card at your site and one of your advisers."
-  - After the pawn arrives, the eligible banks are the suits shared by a
-    card at the new site and one of the holder's advisers.
-  - With one eligible bank it gains from it without asking; with several it
-    asks which; with none, nothing happens. An empty bank gives nothing.
+  - After the pawn arrives, the matching banks are the suits shared by a
+    card at the new site and one of the holder's faceup advisers.
+  - With one matching bank that holds favor, it gains from it without
+    asking. With several, it asks which, listing every matching bank; an
+    empty one is shown unavailable with "This bank is empty". With none
+    holding favor, nothing happens (plan-time ruling).
   - It applies to every Travel the holder makes, including one made off turn
     (Palanquin).
+  - It writes no line: the generic gain line names the bank.
 - **203 Vow of Wisdom.** "You must gain [secret] instead of [favor] when you
-  play to a site." When its holder plays a card to a site, the favor that
-  play gains becomes the same number of secrets. There is no choice.
+  play to a site." When its holder plays a card to a site, the play gains
+  1 secret and no favor. There is no choice. The secret is gained whether
+  or not the card's suit bank holds favor (plan-time ruling). It writes no
+  line: the generic line reads "Gained 1 secret".
 
 ## Slice 2: Oathkeeper goal
 

@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. No slice has started. The per-card rulings
+**Status:** designed 2026-10-12. Slice 1 is planned. The per-card rulings
 are in [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
 **Builds on** [Catalog batch 5](2026-10-08-catalog-batch-5-design.md),
@@ -51,6 +51,13 @@ Slices 9 and 11 may fold into slice 10 at plan time if they turn out tiny.
 
 The approved changes outside `gameplay/powers/`:
 
+- **Rewrites inside a card play** (slice 1). A model trait,
+  `RewritableComposite`, lets a custom composite rebuild itself with its
+  children rewritten, and `OperationRewrite` descends it.
+  `CardPlayProcedure.PlacementBody` implements it and keeps the rewrite
+  through every later `adjust`, and `PlacementTree` always holds one body,
+  so a rewrite at `SearchPlayAdviser` reaches the site play's favor gain
+  (Vow of Wisdom).
 - **A Set Oathkeeper Goal operation** (slice 2). `SetOathkeeperGoal(goal)`
   writes the campaign state's `oathkeeperGoal`, beside `SetOathkeeper`
   (`model/CoreOperations.scala`). Replay applies it and the codec records it.
@@ -142,14 +149,44 @@ card-play site, and the origin and destination start arguments.
 ## Slice 1: No new engine
 
 - **Ward of Silence** is an ACTION power with a free printed cost. Its
-  `build` chooses the target, asks X with a `ChooseAmount`, pays X secrets,
-  then flips X of the target's secrets facedown with `FlipSecrets`. Sleight
-  of Hand gives the target choice and Blood Pact the amount.
-- **Hospitality** runs after the pawn's move in Travel, as Tyrant does, and
-  asks which bank when more than one matches, as Way Station parks a
-  decision in Travel.
-- **Vow of Wisdom** is an `OperationRewrite` at `SearchPlayAdviser`, as Land
-  Warden is, swapping the site play's `Gain.Favor` for `Gain.Secrets`.
+  `build` chooses the target and asks X with a `ChooseAmount`. It then
+  pays X secrets onto its card and flips X of the target's secrets facedown
+  with `FlipSecrets`, in one batch. Sleight of Hand gives the target choice
+  and Blood Pact the amount. Its own `usable` checks the empty-card rule,
+  which a free printed cost skips.
+- **Hospitality** runs after the pawn's move in Travel, as Tyrant does. It
+  asks which bank when more than one matches, which parks a decision after
+  the move.
+- **Vow of Wisdom** is an `OperationRewrite` at `SearchPlayAdviser`. It
+  follows its holder's `Play` to a site with a gain of 1 secret, and drops
+  the play's favor gain.
+
+### Plan-time rulings
+
+- **Rewrites reach into a card play.** The operation rewrite design left
+  custom composites alone, and the site play's favor gain is built inside
+  one. A rewrite that ran before the first `adjust` was also lost. The
+  `RewritableComposite` trait fixes both for `PlacementBody`, and
+  `PlacementTree` always holds one body. Every card play's node path gains
+  a level, so a game parked inside a card play when the server updates may
+  not resume.
+- **Vow of Wisdom always gains a secret.** Its holder's play to a site
+  gains 1 secret whether or not the suit bank holds favor, and no favor.
+- **Ward of Silence pays inside its action.** Its `usable` checks that its
+  card could take one secret (a faceup secret and an empty card), and that
+  another player at the site holds a faceup secret. Otherwise the Act menu
+  shows the engine's "Nothing to do now".
+- **Ward of Silence's line** is the action's own: "Flipped 2 secrets on
+  {Blue}'s board facedown." Neither question posts a "Chose" line.
+- **Hospitality's banks.** A matching bank is the suit of a card at the
+  destination and of one of the traveller's faceup advisers, Marriage as
+  `AdviserSuits` reads it. One matching bank with favor is used without
+  asking. With two or more it asks, listing every matching bank, and an
+  empty one is shown unavailable with "This bank is empty".
+- **Hospitality writes no line.** Its question posts no "Chose" line, and
+  the generic gain line names the bank, and the traveller when they are not
+  the active player. The rule follows the pawn that moves, so it covers an
+  off-turn Travel; slice 15 tests that with Palanquin.
 
 ## Slice 2: Oathkeeper goal
 
