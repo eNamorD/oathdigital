@@ -53,8 +53,8 @@ import oathdigital.gameplay.powers.campaign.{ArcaneArmorCard,
   WildMountsCard}
 import oathdigital.gameplay.powers.cardplay.{BookBindersCard,
   FamilyWagonCard, GossipCard, LostTapestryCard, SacredGroundCard,
-  SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard, WelcomingPartyCard,
-  WildCryCard}
+  SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard, VowOfWisdomCard,
+  WelcomingPartyCard, WildCryCard}
 import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard,
   AwaitedReturnCard, BirdsongCard, CupOfPlentyCard, CurfewCard,
   DefameCard, DowntroddenCard, GolemLegionsCard, InitiationRiteCard,

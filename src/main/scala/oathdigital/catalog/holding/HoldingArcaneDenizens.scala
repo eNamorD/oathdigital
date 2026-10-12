@@ -14,13 +14,6 @@ object CouncilArbiterCard extends Denizen(DenizenId("200"), "Council Arbiter", S
       "follow your adviser limit._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object VowOfWisdomCard extends Denizen(DenizenId("203"), "Vow of Wisdom", Suit.Arcane) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.vow-of-wisdom"),
-    persistent = true, cost = Cost.free,
-    text = "You **must** gain [secret] instead of [favor] when you play " +
-      "to a site.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object GlamorCard extends Denizen(DenizenId("207"), "Glamor", Suit.Arcane):
   val power = PrintedPower(PowerId("denizen.glamor"),
     persistent = false, cost = Cost.free,
