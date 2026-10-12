@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is designed and starts with its slice 1.
+**Phase - Catalog batch 8** is under way: slice 1 is done, and slice 2 is next.
 
 ## Next
 
@@ -124,7 +124,7 @@ did":
 2026-10-12: 30 engine-blocked cards in 15 slices, one mechanism each, in
 this order. Each slice gets its own plan.
 
-- [ ] **1. No new engine:** Ward of Silence, Hospitality, Vow of Wisdom.
+- [x] **1. No new engine:** Ward of Silence, Hospitality, Vow of Wisdom.
 - [ ] **2. Oathkeeper goal:** True Oath, The Red Seer.
 - [ ] **3. Warbands at a Campaign's start:** Vow of Union.
 - [ ] **4. A Raid's defeat replaced:** Keep.
