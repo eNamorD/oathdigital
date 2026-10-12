@@ -18,4 +18,5 @@ object TravelModifiers:
       Vector(AFastSteed.forCatalog(catalog)) ++
       Vector(SpecialEnvoy.forCatalog(catalog)) ++
       Vector(WayStation.forCatalog(catalog)) ++
+      Vector(Hospitality.forCatalog(catalog)) ++
       Vector(Tyrant)

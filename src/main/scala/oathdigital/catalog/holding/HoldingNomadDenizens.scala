@@ -48,13 +48,6 @@ object AncientPactCard extends Denizen(DenizenId("166"), "Ancient Pact", Suit.No
       "your Act Phase._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object HospitalityCard extends Denizen(DenizenId("171"), "Hospitality", Suit.Nomad) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.hospitality"),
-    persistent = false, cost = Cost.free,
-    text = "After traveling, gain [favor] from one favor bank that " +
-      "matches both a card at your site and one of your advisers.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SearchPartyCard extends Denizen(DenizenId("240"), "Search Party", Suit.Nomad):
   val power = PrintedPower(PowerId("denizen.search-party"),
     persistent = false, cost = Cost.free,
