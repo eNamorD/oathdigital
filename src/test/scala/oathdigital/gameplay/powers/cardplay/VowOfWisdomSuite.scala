@@ -28,12 +28,17 @@ class VowOfWisdomSuite extends munit.FunSuite:
     held(Table.start.turn(actor, Phase.Act).pawn(actor, home)
       .hand(actor, wrestlers).bankFavor(Suit.Order, orderFavor)).ready
 
-  /** Wrestlers played from hand to Ancient City's first slot. */
-  private def playedToSite(ready: ReadyGame): WalkerOutcome.Finished =
+  /** Wrestlers played from hand to `slot`. */
+  private def playedTo(slot: DecisionOptionRef)(ready: ReadyGame)
+      : WalkerOutcome.Finished =
     val tree = build(ready, actor, wrestlers)
     Unwrap.as[WalkerOutcome.Finished](answer(ready, tree,
       park(ready, tree, powers), powers,
-      CardPlayProcedure.placementDecisionId(wrestlers), toSite, actor))
+      CardPlayProcedure.placementDecisionId(wrestlers), slot, actor))
+
+  /** Wrestlers played from hand to Ancient City's first slot. */
+  private def playedToSite(ready: ReadyGame): WalkerOutcome.Finished =
+    playedTo(toSite)(ready)
 
   private def secretsOf(ready: ReadyGame): Int =
     Look(ready).faceUpSecrets(actor) + Look(ready).faceDownSecrets(actor)
@@ -65,3 +70,11 @@ class VowOfWisdomSuite extends munit.FunSuite:
       assertEquals(secretsOf(done.treeless), secretsOf(ready))
       assertEquals(Look(done.treeless).bankFavor(Suit.Order), 2)
     }
+
+  test("a play to the advisers gains no secret"):
+    val ready = wrestlersInHandAtEmptyAncientCity(orderFavor = 3)(
+      _.adviser(actor, vow))
+    val done = playedTo(DecisionOptionRef.AdviserPlay(actor, 1,
+      faceup = true))(ready)
+    assertEquals(secretsOf(done.treeless), secretsOf(ready))
+    assertEquals(Look(done.treeless).bankFavor(Suit.Order), 3)
