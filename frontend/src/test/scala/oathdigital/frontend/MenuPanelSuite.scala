@@ -44,18 +44,17 @@ class MenuPanelSuite extends munit.FunSuite:
     assertEquals(all(panel, ".menu-ending").map(_.textContent),
       Vector("End Act and Rest (+5 Supply)"))
 
-  test("an unavailable option is disabled and says why"):
+  test("an unavailable option is withheld and says why only in its note"):
     val panel = draw(Vector(recover, ending))
     val shown = as[dom.html.Button](all(panel, ".menu-option").head)
-    assert(shown.disabled)
-    assertEquals(shown.getAttribute("title"), "Needs 1 Supply; you have 0")
-    assertEquals(all(panel, ".walker-choice-reason").map(_.textContent),
-      Vector("Needs 1 Supply; you have 0"))
+    assertEquals(shown.getAttribute("aria-disabled"), "true")
+    assertEquals(shown.getAttribute("data-tip"), "Needs 1 Supply; you have 0")
+    assert(!panel.textContent.contains("Needs 1 Supply"))
 
   test("a power shows its rules text on hover"):
     val panel = draw(Vector(power, ending))
     assertEquals(as[dom.html.Button](all(panel, ".menu-option").head)
-      .getAttribute("title"), "**ACT:** Gain [secret].")
+      .getAttribute("data-tip"), "**ACT:** Gain [secret].")
 
   test("a power's own button sits under the Powers heading"):
     val panel = draw(Vector(search, flame, ending))

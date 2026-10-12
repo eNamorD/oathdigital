@@ -44,7 +44,7 @@ class SitePowerGridSuite extends munit.FunSuite:
       "grid for a player who does not rule it"):
     val world = WorldBoardRenderer.world(table, BoardOptions.none)
     assertEquals(label(world).textContent, "Pass")
-    assertEquals(label(world).getAttribute("title"), s"Pass: $passText")
+    assertEquals(label(world).getAttribute("data-tip"), s"Pass: $passText")
     label(world).click()
     assertEquals((power.title, power.lines, power.grid),
       ("Pass", Vector(passText), None))

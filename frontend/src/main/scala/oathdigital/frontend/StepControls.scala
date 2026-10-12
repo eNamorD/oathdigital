@@ -29,7 +29,7 @@ private[frontend] object StepControls:
       offer: StepOfferProjection, intent: GameCommand, canControl: Boolean,
       submit: GameCommand => Unit): dom.html.Button =
     val pressed = button(label, className)
-    pressed.title = offer.note
+    HoverTip.set(pressed, offer.note)
     pressed.disabled = !canControl
     pressed.onclick = _ => submit(intent)
     pressed

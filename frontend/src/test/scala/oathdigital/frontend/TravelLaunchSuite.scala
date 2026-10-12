@@ -28,5 +28,5 @@ class TravelLaunchSuite extends munit.FunSuite:
       OptionState.Unavailable, Some(reason))
     val world = WorldBoardRenderer.world(table, recording(refused).options)
     val shore = one(world, """article[aria-label="Desolate Shore"]""")
-    assertEquals(shore.getAttribute("title"), reason)
+    assertEquals(shore.getAttribute("data-tip"), reason)
     assertEquals(shore.getAttribute("aria-disabled"), "true")

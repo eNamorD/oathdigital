@@ -79,13 +79,15 @@ private[frontend] object BoardDecisionPanel:
           "board-decision-variant")
         choice.setAttribute("aria-pressed",
           open.keys.contains(BoardOptionViews.key(option)).toString)
-        choice.disabled = !canControl || !option.choosable
-        option.reason.foreach(choice.setAttribute("title", _))
+        choice.disabled = !canControl
         choice.onclick = _ => controls.stage(Draft.Board(Some(
           open.choose(option))))
+        option.reason match
+          case Some(reason) if !option.choosable =>
+            HoverTip.withhold(choice, reason)
+          case Some(reason) => HoverTip.set(choice, reason)
+          case None => if !option.choosable then choice.disabled = true
         toggle.appendChild(choice)
-        option.reason.foreach(reason => toggle.appendChild(
-          text("span", "board-decision-variant-reason", reason)))
       }
       panel.appendChild(toggle)
     }
@@ -124,10 +126,13 @@ private[frontend] object BoardDecisionPanel:
       toggle.setAttribute("data-option-ref", key)
       toggle.setAttribute("aria-pressed",
         found.exists(_.state == OptionState.Selected).toString)
-      toggle.disabled = !canControl ||
-        found.exists(_.state == OptionState.Unavailable)
-      found.flatMap(_.reason).foreach(toggle.setAttribute("title", _))
+      toggle.disabled = !canControl
       toggle.onclick = _ => if askable then ask(option, toggle) else stage(option)
+      val unavailable = found.exists(_.state == OptionState.Unavailable)
+      found.flatMap(_.reason) match
+        case Some(reason) if unavailable => HoverTip.withhold(toggle, reason)
+        case Some(reason) => HoverTip.set(toggle, reason)
+        case None => if unavailable then toggle.disabled = true
       BoardOptions.hoverSync(toggle, key)
       panel.appendChild(toggle)
     }
@@ -145,7 +150,7 @@ private[frontend] object BoardDecisionPanel:
           else controls.submitCommand(
             WalkerPanelSupport.resolveChooseOneCommand(decision, option))
         panel.appendChild(decide)
-        WalkerPanelSupport.withholds(decide, option, panel)
+        WalkerPanelSupport.withholds(decide, option)
       }
 
     panel.appendChild(text("p", "board-decision-rule-labelled", "Decision"))

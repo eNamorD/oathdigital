@@ -57,7 +57,7 @@ private[frontend] object DistributePanelRenderer:
   private def stepper(label: String, className: String, canControl: Boolean,
       controls: TableControls, next: Boolean => WalkerDistributeDraft): dom.Element =
     val control = button(label, className)
-    control.setAttribute("title", AllTooltip)
+    HoverTip.set(control, AllTooltip)
     control.disabled = !canControl
     control.onclick = (event: dom.MouseEvent) =>
       controls.stage(Draft.Distribute(next(event.shiftKey)))

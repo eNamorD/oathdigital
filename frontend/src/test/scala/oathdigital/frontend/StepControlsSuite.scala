@@ -48,7 +48,7 @@ class StepControlsSuite extends munit.FunSuite:
       ActionPanels.actingViewer("red"), new RecordingControls())
     val buttons = undoButtons(panel)
     assertEquals(buttons.map(_.textContent), Vector("Undo"))
-    assertEquals(buttons.head.title, "Undo: Travelled to Buried Giant")
+    assertEquals(buttons.head.getAttribute("data-tip"), "Undo: Travelled to Buried Giant")
     assert(!buttons.head.disabled)
     assertEquals(redoButtons(panel), Vector.empty)
 
@@ -64,7 +64,7 @@ class StepControlsSuite extends munit.FunSuite:
       ActionPanels.actingViewer("red"), new RecordingControls())
     val buttons = redoButtons(panel)
     assertEquals(buttons.map(_.textContent), Vector("Redo"))
-    assertEquals(buttons.head.title, "Redo: Travelled to Great Spire")
+    assertEquals(buttons.head.getAttribute("data-tip"), "Redo: Travelled to Great Spire")
     assert(!buttons.head.disabled)
     assertEquals(undoButtons(panel), Vector.empty)
 

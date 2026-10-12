@@ -214,16 +214,18 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
       "cardplay.place.denizen.spirit",
       DecisionAnswerWire.ChooseOneWire("adviser-play", "red:2:faceup"))))
 
-  test("an unavailable facing is disabled and says why"):
+  test("an unavailable facing is withheld and says why in its note"):
     val refused = DecisionQueryState.ChooseOne(Vector(
       adviserPlayAtRedSlot3("faceup").copy(state = "unavailable",
         reason = Some("Refused by a test power")), adviserPlayAtRedSlot3("facedown")),
       Some("Play Wayward Spirit"))
     val panel = pane(new RecordingControls(), refused, placing,
       open(refused, "adviser-play:red:2:facedown"))
-    assertEquals(variants(panel).map(_.disabled), Vector(true, false))
-    assertEquals(all(panel, ".board-decision-variant-reason")
-      .map(_.textContent), Vector("Refused by a test power"))
+    assertEquals(variants(panel).map(_.getAttribute("aria-disabled")),
+      Vector("true", null))
+    assertEquals(variants(panel).map(_.getAttribute("data-tip")),
+      Vector("Refused by a test power", null))
+    assert(!panel.textContent.contains("Refused by a test power"))
 
   test("a Replace pick's summary is the sentence the projector wrote"):
     val replace = DecisionOptionState("site-slot", "plains:0",

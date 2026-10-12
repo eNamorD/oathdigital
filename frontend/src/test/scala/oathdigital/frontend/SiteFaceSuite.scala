@@ -165,7 +165,7 @@ class SiteFaceSuite extends munit.FunSuite:
     val line = firstMatch(node, ".site-powers")
       .getOrElse(fail("no site powers"))
     assertEquals(line.textContent, "River · Coast · Enduring")
-    assertEquals(all(line, ".site-power").map(_.getAttribute("title")), Vector(
+    assertEquals(all(line, ".site-power").map(_.getAttribute("data-tip")), Vector(
       "River: Part of the River route.",
       "Coast: Travel along the Coast route.",
       "Enduring"))

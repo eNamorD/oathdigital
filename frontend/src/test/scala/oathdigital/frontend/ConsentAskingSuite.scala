@@ -56,7 +56,7 @@ class ConsentAskingSuite extends munit.FunSuite:
     val box = dom.document.createElement("article")
     options.decorate(box, Vector(BoardOptionViews.key(woods)))
     assert(box.classList.contains("board-option-askable"))
-    assertEquals(box.getAttribute("title"), reason)
+    assertEquals(box.getAttribute("data-tip"), reason)
     click(box)
     assertEquals(confirmation.question,
       "Ask Red for consent to ignore Narrow Pass?")
@@ -82,7 +82,7 @@ class ConsentAskingSuite extends munit.FunSuite:
       .asInstanceOf[dom.html.Button]
     assert(control.classList.contains("walker-choice-askable"))
     assert(!control.disabled)
-    assertEquals(control.getAttribute("title"), reason)
+    assertEquals(control.getAttribute("data-tip"), reason)
     control.click()
     confirmation.confirm()
     assertEquals(ui.submitted, Vector(requested))

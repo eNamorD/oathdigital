@@ -50,7 +50,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     def titles(option: DecisionOptionState) =
       all(draw(WalkerDecisionState("rest-menu", "phase.menu", "decide",
         query = Some(DecisionQueryState.ChooseOne(Vector(option))))),
-        ".walker-choice").map(_.getAttribute("title"))
+        ".walker-choice").map(_.getAttribute("data-tip"))
     assertEquals(titles(power), Vector("**REST:** Gain [secret]."))
     assertEquals(titles(used), Vector("Already used this turn"))
 
@@ -173,7 +173,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     // A Campaign's defense rolls the defense die.
     assertEquals(all(panel, ".die-face-defense").size, 2)
 
-  test("an unavailable option is a disabled control that says why"):
+  test("an unavailable option is a withheld control that says why in its note"):
     val ui = new RecordingControls()
     val blocked = pub.copy(state = "unavailable",
       reason = Some("Lost Tongue: Red may not be targeted."))
@@ -181,11 +181,10 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       options = Vector(oak, blocked)))), ui)
     val control = all(panel, ".walker-choice").last
       .asInstanceOf[dom.html.Button]
-    assert(control.disabled)
-    assertEquals(control.getAttribute("title"),
+    assertEquals(control.getAttribute("aria-disabled"), "true")
+    assertEquals(control.getAttribute("data-tip"),
       "Lost Tongue: Red may not be targeted.")
-    assertEquals(all(panel, ".walker-choice-reason").map(_.textContent),
-      Vector("Lost Tongue: Red may not be targeted."))
+    assert(!panel.textContent.contains("Lost Tongue"))
     control.click()
     assertEquals(ui.submitted, Vector.empty)
 
@@ -198,9 +197,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val control = all(panel, ".walker-choice").last
       .asInstanceOf[dom.html.Button]
     assert(!control.disabled)
-    assertEquals(control.getAttribute("title"),
+    assertEquals(control.getAttribute("data-tip"),
       "Hunting Party needs the world deck")
-    assertEquals(all(panel, ".walker-choice-reason").map(_.textContent),
-      Vector("Hunting Party needs the world deck"))
+    assert(!panel.textContent.contains("Hunting Party needs"))
     control.click()
     assertEquals(ui.submitted.size, 1)

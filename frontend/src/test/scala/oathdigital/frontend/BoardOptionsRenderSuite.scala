@@ -132,7 +132,7 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     val root = world(shown.options)
     val box = site(root)
     assert(box.classList.contains("board-option-unavailable"))
-    assertEquals(box.getAttribute("title"), "Not ruled by the defender")
+    assertEquals(box.getAttribute("data-tip"), "Not ruled by the defender")
     assertEquals(box.getAttribute("aria-disabled"), "true")
     click(box)
     val face = one(root, "button.card-face")
