@@ -50,6 +50,23 @@ object TargetingFixture:
       case many: DecisionQuery.ChooseMany => many.options.filter(_.available).map(_.ref)
       case other => throw new AssertionError(s"unexpected query $other")
 
+  /** Every option of the decision a parked walk of `procedure` is waiting
+    * on, the unavailable ones too, with the reason they carry. */
+  def optionsIncludingUnavailableAt(transition: OathTransition,
+      procedure: ProcedureRef)(using munit.Location): Vector[DecisionOption] =
+    val state = ready(transition)
+    val current = state.game.current
+    val tree = accepted(WalkerProcedureRegistry.rebuild(procedure, catalog,
+      state, current.turn.activePlayer, current.walkerStartArgs))
+    val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
+      Vector.empty)
+    val pending = present(current.walkerPending, "a parked walker decision")
+    present(ProcedureWalker.parkedDecide(state, tree, pending, powers),
+      "the parked decision").query match
+      case one: DecisionQuery.ChooseOne => one.options
+      case many: DecisionQuery.ChooseMany => many.options
+      case other => throw new AssertionError(s"unexpected query $other")
+
   def start(state: ReadyGame, procedure: ActionRef, actor: PlayerId)
       : Either[OathViolation, OathTransition] =
     rules.startWalker(Ready(MenuPlay.withoutMenu(state)), procedure, actor)

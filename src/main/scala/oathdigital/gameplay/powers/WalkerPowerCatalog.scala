@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.powers.action.{Assassin, PiedPiper}
 import oathdigital.gameplay.powers.banner.BannerFacePowers
+import oathdigital.gameplay.powers.burn.{VowOfDivision, VowOfSilence}
 import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRestrictions,
   PlanRewrites, PlanRules, SimplePlans, VowOfPeaceContribution}
 import oathdigital.gameplay.powers.dice.Jinx
@@ -45,6 +46,9 @@ import oathdigital.gameplay.walker.WalkerPowers
   * play runs `ActionCardPlayedFaceup` for Conspiracy.
   * Vow of Peace's restriction is inert until Campaign walks
   * `CampaignActionEligibility`.
+  * Vow of Silence and Vow of Division claim enemies' burns whenever the walker
+  * runs a batch, and are inert at the Challenge until a Challenge walks its
+  * windows.
   * The battle plans are inert until a Campaign folds its plan windows: each
   * offers itself there, and the title's defense, which no card prints, is always
   * present.
@@ -56,6 +60,7 @@ object WalkerPowerCatalog:
   def default(catalog: ExecutableCatalog): WalkerPowers =
     WalkerPowers(Vector(CatacombsContribution.forCatalog(catalog)) ++
       Vector(VowOfPeaceContribution) ++
+      Vector(VowOfSilence, VowOfDivision) ++
       TravelSitePowers.all ++
       TravelModifiers.forCatalog(catalog) ++
       Vector(LeagueTreatyContribution.forCatalog(catalog)) ++
