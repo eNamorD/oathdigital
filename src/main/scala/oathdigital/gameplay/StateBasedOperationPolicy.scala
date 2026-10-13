@@ -13,8 +13,8 @@ private[gameplay] object StateBasedOperationPolicy extends OperationPolicy:
           Piece.Warbands(ForceKind.Bandit, _),
           PositionedLocation(
             Location.WarbandBank(ForceKind.Bandit),
-            StackPosition.Unspecified),
-          PositionedLocation(Location.Site(site), StackPosition.Unspecified),
+            StackPosition.Unspecified, _),
+          PositionedLocation(Location.Site(site), StackPosition.Unspecified, _),
           None
       ) => ready.game.current.map.inPlay.contains(site) &&
         ready.game.current.map.sites.get(site).exists(

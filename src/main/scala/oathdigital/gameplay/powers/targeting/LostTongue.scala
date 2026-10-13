@@ -65,7 +65,7 @@ final case class LostTongue private (catalog: ExecutableCatalog)
   private object takes extends OperationRestriction:
     def reason(ready: ReadyGame, operation: CoreOperation)
         : Option[OperationReason] = operation match
-      case Take(piece, taker, Location.PlayArea(owner), _, _, _, _)
+      case Take(piece, taker, Location.PlayArea(owner), _, _, _, _, _)
           if relicOrBanner(piece) &&
             protectedHolder(ready, taker).contains(owner) =>
         Some(OperationReason("lost-tongue", s"${owner.value}'s Lost Tongue " +

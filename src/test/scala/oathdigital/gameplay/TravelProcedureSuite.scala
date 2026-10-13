@@ -268,7 +268,7 @@ class TravelProcedureSuite extends munit.FunSuite:
       case branch: Branch => branch.select(moved, pending)
       case other => fail(s"not the route branch: $other")
     assertEquals(selected.flatMap(Operation.flatten).collect {
-      case Move(Piece.Pawn(_), PositionedLocation(Location.Site(from), _),
+      case Move(Piece.Pawn(_), PositionedLocation(Location.Site(from), _, _),
           _, _) => from }, Vector(cradlePlains))
 
   test("a start that names a selection is refused, and so is a resume " +

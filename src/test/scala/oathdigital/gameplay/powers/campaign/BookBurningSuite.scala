@@ -51,18 +51,19 @@ class BookBurningSuite extends munit.FunSuite:
     assertEquals(lines(done), Vector(NoteText.Said("burned",
       s"Burned 3 secrets from ${b.rival.value}'s board.", covers = false)))
 
-  test("facedown secrets are turned faceup and burnt in one step, and the " +
-      "one left stays facedown"):
+  test("facedown secrets are burnt by name, and the one left stays " +
+      "facedown"):
     val b = raid(faceUp = 0, faceDown = 3)
     val done = playedRaidWithBookBurning(b, winningDice)
     assertEquals(Look(done.state).faceUpSecrets(b.rival), 0)
     assertEquals(Look(done.state).faceDownSecrets(b.rival), 1)
-    val flipped = done.events.collect {
-      case step: WalkerStepRecorded
-          if step.ops.exists(_.isInstanceOf[FlipSecrets]) => step.ops }
-    assertEquals(flipped, Vector(Vector[CoreOperation](
-      FlipSecrets(b.rival, 2, SecretSide.FaceDown, SecretSide.FaceUp),
-      Burn.secrets(2, PositionedLocation(Location.PlayArea(b.rival))))))
+    val burnt = done.events.collect {
+      case step: WalkerStepRecorded if step.ops.exists {
+          case burn: Burn => burn.resource.isInstanceOf[Piece.Secrets]
+          case _ => false } => step.ops }
+    assertEquals(burnt, Vector(Vector[CoreOperation](
+      Burn.secrets(2, PositionedLocation(Location.PlayArea(b.rival),
+        side = Some(SecretSide.FaceDown))))))
 
   test("a defender with one secret loses nothing, and the line says there " +
       "was none to burn"):

@@ -314,6 +314,30 @@ class OperationExecutorSuite extends munit.FunSuite:
       Some(OperationError.InsufficientPieces(Piece.Secrets(1),
         Location.PlayArea(playerId), 0)))
 
+  test("a secret move naming its side takes only that side, and the " +
+      "secrets keep it"):
+    val mixed =
+      Table.from(ready).secrets(playerId, faceUp = 1, faceDown = 2).unchecked
+    val blueBefore = Look(mixed).player(blueId).board
+    val taken = accepted(executor.execute(mixed, Take(Piece.Secrets(2),
+      blueId, Location.PlayArea(playerId), Location.PlayArea(blueId),
+      sourceSide = Some(SecretSide.FaceDown))))
+    val red = Look(taken).player(playerId).board
+    val blue = Look(taken).player(blueId).board
+    assertEquals(red.faceUpSecrets -> red.faceDownSecrets, 1 -> 0)
+    assertEquals(blue.faceUpSecrets -> blue.faceDownSecrets,
+      blueBefore.faceUpSecrets -> (blueBefore.faceDownSecrets + 2))
+    val burnt = accepted(executor.execute(mixed, Burn.secrets(2,
+      PositionedLocation(Location.PlayArea(playerId),
+        side = Some(SecretSide.FaceDown)))))
+    val left = Look(burnt).player(playerId).board
+    assertEquals(left.faceUpSecrets -> left.faceDownSecrets, 1 -> 0)
+    assertEquals(executor.execute(mixed, Take(Piece.Secrets(2), blueId,
+      Location.PlayArea(playerId), Location.PlayArea(blueId),
+      sourceSide = Some(SecretSide.FaceUp))).left.toOption,
+      Some(OperationError.InsufficientPieces(Piece.Secrets(2),
+        Location.PlayArea(playerId), 1)))
+
   test("FlipSecrets and Peek update orientation and knowledge only"):
     val flipped = accepted(executor.execute(ready, FlipSecrets(
       playerId, 1, SecretSide.FaceUp, SecretSide.FaceDown

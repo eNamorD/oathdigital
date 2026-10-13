@@ -50,7 +50,7 @@ class PeaceEnvoySuite extends munit.FunSuite:
   private def killsFromBoard(ops: Vector[CoreOperation], player: PlayerId)
       : Boolean = ops.exists {
     case Kill(Piece.Warbands(_, _),
-        PositionedLocation(Location.PlayArea(`player`), _)) => true
+        PositionedLocation(Location.PlayArea(`player`), _, _)) => true
     case _ => false
   }
 

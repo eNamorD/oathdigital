@@ -405,6 +405,25 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     assertEquals(ops(0)("leaving").arr.size, 2)
     assert(!ops(1).obj.contains("leaving"))
 
+  test("a secret move's side round trips, and a move without one writes " +
+      "none"):
+    val red = PlayerId("red")
+    val blue = PlayerId("blue")
+    val moves = Vector[CoreOperation](
+      Move(Piece.Secrets(2), PositionedLocation(Location.PlayArea(red),
+        side = Some(SecretSide.FaceDown)),
+        PositionedLocation(Location.PlayArea(blue))),
+      Take(Piece.Secrets(1), blue, Location.PlayArea(red),
+        Location.PlayArea(blue), sourceSide = Some(SecretSide.FaceUp)),
+      Move(Piece.Favor(1), PositionedLocation(Location.PlayArea(red)),
+        PositionedLocation(Location.PlayArea(blue))))
+    val events = moves.map(move => recordedOperation("side", move))
+    val encoded = encodedStreamThatRoundTrips("secret-side", events)
+    val ops = ujson.read(encoded).arr.map(_("payload")("ops")(0))
+    assertEquals(ops(0)("from")("side").str, "face-down")
+    assertEquals(ops(1)("sourceSide").str, "face-up")
+    assert(!ops(2)("from").obj.contains("side"))
+
   test("a walker tree-control node can never be recorded, and surfaces a " +
       "typed WireError instead of an opaque exception"):
     // Decide/BuildOps/Repeat/Branch/Sequence are `encodeOperation`'s five

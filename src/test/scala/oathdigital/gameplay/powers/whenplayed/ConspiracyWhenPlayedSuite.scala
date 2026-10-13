@@ -143,7 +143,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     val returned = PhasePowerHarness.ops(done.events)
       .flatMap(Operation.flatten).collect:
         case Move(Piece.Favor(1), _,
-            PositionedLocation(Location.FavorBank(suit), _), _) => suit
+            PositionedLocation(Location.FavorBank(suit), _, _), _) => suit
     // Discord holds the least before each favor: 0, then 1.
     assertEquals(returned, Vector(Suit.Discord, Suit.Discord))
     assertEquals(after.game.current.temporaryHands(p1), Vector.empty)

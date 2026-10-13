@@ -39,8 +39,8 @@ private[campaign] object LossRewrite:
           if owner.contains(player) =>
         Vector(sacrifice, ModifyDicePool(pool, count))
       case move @ Move(Piece.Warbands(`kind`, count),
-          PositionedLocation(Location.WarbandBank(_), _),
-          PositionedLocation(Location.PlayArea(player), _), None)
+          PositionedLocation(Location.WarbandBank(_), _, _),
+          PositionedLocation(Location.PlayArea(player), _, _), None)
           if returns && owner.contains(player) =>
         Vector(move, ModifyDicePool(pool, -count))
       case other => Vector(other)

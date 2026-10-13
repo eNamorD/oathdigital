@@ -1,7 +1,7 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.model.ReadyGame
-import oathdigital.model.{Location, Move, OperationError, Piece}
+import oathdigital.model.{Location, Move, OperationError, Piece, SecretSide}
 
 
 /** Resolves secret orientations for one atomic operation snapshot. */
@@ -39,19 +39,23 @@ private[operations] object OperationSecretPlanner:
         (index, move, SecretSplit(amount, 0))
       })
     else secrets(ready, source).flatMap { inventory =>
-      // Only faceup secrets can be burned, so a SharedBank (burn) destination
-      // is a mandatory-faceup move just like a card or site destination. A burn
-      // that would consume facedown secrets therefore fails as if the source
-      // held no faceup secrets at all.
-      val (faceUpOnly, flexible) =
-        indexed.foldLeft[(Vector[(Move, Int)], Vector[(Move, Int)])](
-          (Vector.empty, Vector.empty)):
-          case ((fixed, flexible), entry) => entry._1.to.location match
-            case _: Location.PlayArea => (fixed, flexible :+ entry)
-            case _ => (fixed :+ entry, flexible)
+      // A move naming a side takes exactly that side. Without one, only
+      // faceup secrets can be burned, so a SharedBank (burn) destination is
+      // a mandatory-faceup move just like a card or site destination, and a
+      // move to a board takes either side.
+      val empty = Vector.empty[(Move, Int)]
+      val (faceUpOnly, faceDownOnly, flexible) =
+        indexed.foldLeft((empty, empty, empty)):
+          case ((up, down, free), entry) =>
+            (entry._1.from.side, entry._1.to.location) match
+              case (Some(SecretSide.FaceUp), _) => (up :+ entry, down, free)
+              case (Some(SecretSide.FaceDown), _) => (up, down :+ entry, free)
+              case (None, _: Location.PlayArea) => (up, down, free :+ entry)
+              case (None, _) => (up :+ entry, down, free)
       val mandatoryFaceUp = secretAmount(faceUpOnly)
+      val mandatoryFaceDown = secretAmount(faceDownOnly)
       val flexibleTotal = secretAmount(flexible)
-      val total = mandatoryFaceUp + flexibleTotal
+      val total = mandatoryFaceUp + mandatoryFaceDown + flexibleTotal
       val availableFaceUp = inventory.faceUp.toLong
       val availableFaceDown = inventory.faceDown.toLong
       val availableTotal = availableFaceUp + availableFaceDown
@@ -62,6 +66,12 @@ private[operations] object OperationSecretPlanner:
           source,
           clampNonNegative(availableFaceUp)
         ))
+      else if mandatoryFaceDown > availableFaceDown then
+        Left(InsufficientPieces(
+          Piece.Secrets(clampPositive(mandatoryFaceDown)),
+          source,
+          clampNonNegative(availableFaceDown)
+        ))
       else if total > availableTotal then
         Left(InsufficientPieces(
           Piece.Secrets(clampPositive(total)),
@@ -70,8 +80,9 @@ private[operations] object OperationSecretPlanner:
         ))
       else
         val remainingFaceUp = availableFaceUp - mandatoryFaceUp
+        val remainingFaceDown = availableFaceDown - mandatoryFaceDown
         val minimumFlexibleFaceUp = math.max(
-          0L, flexibleTotal - availableFaceDown)
+          0L, flexibleTotal - remainingFaceDown)
         val maximumFlexibleFaceUp = math.min(
           flexibleTotal, remainingFaceUp)
         uniqueFlexibleSecretSplits(
@@ -81,11 +92,15 @@ private[operations] object OperationSecretPlanner:
           minimumFlexibleFaceUp,
           maximumFlexibleFaceUp
         ).map { flexibleSplits =>
-          val mandatory = faceUpOnly.map { case (move, index) =>
+          val faceUp = faceUpOnly.map { case (move, index) =>
             val amount = move.piece.asInstanceOf[Piece.Secrets].amount
             (index, move, SecretSplit(amount, 0))
           }
-          mandatory ++ flexibleSplits
+          val faceDown = faceDownOnly.map { case (move, index) =>
+            val amount = move.piece.asInstanceOf[Piece.Secrets].amount
+            (index, move, SecretSplit(0, amount))
+          }
+          faceUp ++ faceDown ++ flexibleSplits
         }
     }
 

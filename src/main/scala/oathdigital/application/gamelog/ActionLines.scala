@@ -32,7 +32,7 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
     run.procedure match
       case ActionRef.Travel => ops.collect {
         case OpStep(Move(Piece.Pawn(mover), _,
-            PositionedLocation(Location.Site(to), _), _), _, _)
+            PositionedLocation(Location.Site(to), _, _), _), _, _)
             if mover == actor =>
           action(Vector(Text("Travelled to "), words.site(to)))
       }
@@ -66,8 +66,8 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
         playedAdviser(journal, run, at, viewer)
       case ActionRef.Muster => ops.collect {
         case OpStep(Move(Piece.Warbands(_, count),
-            PositionedLocation(Location.WarbandBank(_), _),
-            PositionedLocation(Location.PlayArea(taker), _), _), before, after)
+            PositionedLocation(Location.WarbandBank(_), _, _),
+            PositionedLocation(Location.PlayArea(taker), _, _), _), before, after)
             if taker == actor =>
           action(Vector(Text(
             s"Mustered $count ${plural(count, "warband", "warbands")} with ")) ++
@@ -77,13 +77,13 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       case ActionRef.Trade =>
         val gained = ops.collect {
           case OpStep(Move(piece @ Piece.Favor(_),
-              PositionedLocation(Location.FavorBank(_), _),
-              PositionedLocation(Location.PlayArea(taker), _), _), before, after)
+              PositionedLocation(Location.FavorBank(_), _, _),
+              PositionedLocation(Location.PlayArea(taker), _, _), _), before, after)
               if taker == actor =>
             traded(journal, run, at, resource(piece), before, after, viewer)
           case OpStep(Move(piece @ Piece.Secrets(_),
-              PositionedLocation(Location.SharedBank, _),
-              PositionedLocation(Location.PlayArea(taker), _), _), before, after)
+              PositionedLocation(Location.SharedBank, _, _),
+              PositionedLocation(Location.PlayArea(taker), _, _), _), before, after)
               if taker == actor =>
             traded(journal, run, at, resource(piece), before, after, viewer)
         }
@@ -95,8 +95,8 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
         else journal.readyBefore(at).toVector.map(ready =>
           traded(journal, run, at, "no secrets", ready, ready, viewer))
       case ActionRef.TakeWealth => ops.collect {
-        case OpStep(Move(piece, PositionedLocation(Location.Site(site), _),
-            PositionedLocation(Location.PlayArea(taker), _), _), _, _)
+        case OpStep(Move(piece, PositionedLocation(Location.Site(site), _, _),
+            PositionedLocation(Location.PlayArea(taker), _, _), _), _, _)
             if taker == actor && resource(piece).nonEmpty =>
           action(Vector(Text(s"Took ${resource(piece)} from "),
             words.site(site)))
@@ -104,8 +104,8 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       case ActionRef.Recover =>
         val recovered = ops.collect {
           case OpStep(Move(Piece.Card(relic: RelicId),
-              PositionedLocation(Location.Site(site), _),
-              PositionedLocation(Location.PlayArea(taker), _), _), before, after)
+              PositionedLocation(Location.Site(site), _, _),
+              PositionedLocation(Location.PlayArea(taker), _, _), _), before, after)
               if taker == actor =>
             action(Vector(Text("Recovered ")) ++
               words.one(words.card(relic, before, after, viewer)) ++
@@ -136,7 +136,7 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
           else Vector(action(Text("Placed ") +: LogWords.join(halves)))
         val forged = ops.collect {
           case OpStep(Play(relic: RelicId,
-              PositionedLocation(Location.Deck(CardDeck.Relic), _), _, _, _),
+              PositionedLocation(Location.Deck(CardDeck.Relic), _, _), _, _, _),
               before, after) =>
             action(Vector(Text("Forged ")) ++
               words.one(words.card(relic, before, after, viewer)))
@@ -144,8 +144,8 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
         payment ++ forged
       case ActionRef.Campaign => campaigns.lines(journal, run, at, viewer)
       case ActionRef.Challenge => ops.collect {
-        case OpStep(Move(Piece.Banner(banner), PositionedLocation(from, _),
-            PositionedLocation(Location.PlayArea(taker), _), _), _, _)
+        case OpStep(Move(Piece.Banner(banner), PositionedLocation(from, _, _),
+            PositionedLocation(Location.PlayArea(taker), _, _), _), _, _)
             if taker == actor =>
           val holder = from match
             case Location.PlayArea(player) => words.player(player)
@@ -155,8 +155,8 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
               Text(s" with $paid")))
       }
       case ActionRef.PlaceBannerResource => ops.collect {
-        case OpStep(Move(piece, PositionedLocation(Location.PlayArea(giver), _),
-            PositionedLocation(Location.OnBanner(banner), _), _), _, _)
+        case OpStep(Move(piece, PositionedLocation(Location.PlayArea(giver), _, _),
+            PositionedLocation(Location.OnBanner(banner), _, _), _), _, _)
             if giver == actor && resource(piece).nonEmpty =>
           action(Vector(Text(s"Placed ${resource(piece)} on "),
             words.banner(banner)))
@@ -178,13 +178,13 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       }
       case ActionRef.MoveWarbands => ops.collect {
         case OpStep(Move(Piece.Warbands(_, count),
-            PositionedLocation(Location.PlayArea(_), _),
-            PositionedLocation(Location.Site(site), _), _), _, _) =>
+            PositionedLocation(Location.PlayArea(_), _, _),
+            PositionedLocation(Location.Site(site), _, _), _), _, _) =>
           action(Vector(Text(s"Moved $count " +
             s"${plural(count, "warband", "warbands")} to "), words.site(site)))
         case OpStep(Move(Piece.Warbands(_, count),
-            PositionedLocation(Location.Site(site), _),
-            PositionedLocation(Location.PlayArea(_), _), _), _, _) =>
+            PositionedLocation(Location.Site(site), _, _),
+            PositionedLocation(Location.PlayArea(_), _, _), _), _, _) =>
           action(Vector(Text(s"Moved $count " +
             s"${plural(count, "warband", "warbands")} from "),
             words.site(site)))
@@ -332,8 +332,8 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
   private def paidOnto(journal: LogJournal, run: Run, at: Int, banner: Banner)
       : Option[String] =
     journal.runOps(run, at).collectFirst {
-      case (_, OpStep(Move(piece, PositionedLocation(Location.PlayArea(giver), _),
-          PositionedLocation(Location.OnBanner(onto), _), _), _, _))
+      case (_, OpStep(Move(piece, PositionedLocation(Location.PlayArea(giver), _, _),
+          PositionedLocation(Location.OnBanner(onto), _, _), _), _, _))
           if giver == run.actor && onto == banner && resource(piece).nonEmpty =>
         resource(piece)
     }
@@ -356,8 +356,8 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
           case RecordPowerUse(_) => true
           case QueueProcedure(_, _) => true
           case Move(Piece.Favor(_) | Piece.Secrets(_),
-              PositionedLocation(Location.PlayArea(payer), _),
-              PositionedLocation(Location.OnCard(_) | Location.SharedBank, _),
+              PositionedLocation(Location.PlayArea(payer), _, _),
+              PositionedLocation(Location.OnCard(_) | Location.SharedBank, _, _),
               _) => payer == run.actor
           case _ => false
         }
@@ -410,10 +410,10 @@ private[gamelog] object ActionLines:
     case _ => ""
 
   def isTradeGain(actor: PlayerId)(step: OpStep): Boolean = step match
-    case OpStep(Move(Piece.Favor(_), PositionedLocation(Location.FavorBank(_), _),
-        PositionedLocation(Location.PlayArea(taker), _), _), _, _) => taker == actor
-    case OpStep(Move(Piece.Secrets(_), PositionedLocation(Location.SharedBank, _),
-        PositionedLocation(Location.PlayArea(taker), _), _), _, _) => taker == actor
+    case OpStep(Move(Piece.Favor(_), PositionedLocation(Location.FavorBank(_), _, _),
+        PositionedLocation(Location.PlayArea(taker), _, _), _), _, _) => taker == actor
+    case OpStep(Move(Piece.Secrets(_), PositionedLocation(Location.SharedBank, _, _),
+        PositionedLocation(Location.PlayArea(taker), _, _), _), _, _) => taker == actor
     case _ => false
 
   /** `CardPlayProcedure`'s placement decision id prefix; the card follows as

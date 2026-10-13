@@ -77,15 +77,15 @@ private[campaign] object SparedForce:
       result: CampaignResult, atTargets: Int)(operation: CoreOperation)
       : Vector[CoreOperation] = operation match
     case kill @ Kill(Piece.Warbands(`kind`, count),
-        PositionedLocation(Location.PlayArea(`user`), _)) => side match
+        PositionedLocation(Location.PlayArea(`user`), _, _)) => side match
       case CampaignPlanSide.Attacker =>
         val toll = math.min(count, result.skullLosses + result.sacrificed)
         if toll > 0 then Vector(kill.copy(warbands = Piece.Warbands(kind, toll)))
         else Vector.empty
       case CampaignPlanSide.Defender => Vector.empty
     case move @ Move(Piece.Warbands(`kind`, _),
-        PositionedLocation(Location.WarbandBank(_), _),
-        PositionedLocation(Location.PlayArea(`user`), _), None) =>
+        PositionedLocation(Location.WarbandBank(_), _, _),
+        PositionedLocation(Location.PlayArea(`user`), _, _), None) =>
       Vector(move.copy(piece = Piece.Warbands(kind, atTargets)))
     case other => Vector(other)
 

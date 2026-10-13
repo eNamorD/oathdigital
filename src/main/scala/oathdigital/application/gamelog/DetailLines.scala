@@ -110,15 +110,15 @@ private[gamelog] final class DetailLines(words: LogWords,
     operation match
       case Gain.Favor(player, suit, amount) => gainedFavor(player, suit, amount)
       case Move(Piece.Favor(amount),
-          PositionedLocation(Location.FavorBank(suit), _),
-          PositionedLocation(Location.PlayArea(player), _), _) =>
+          PositionedLocation(Location.FavorBank(suit), _, _),
+          PositionedLocation(Location.PlayArea(player), _, _), _) =>
         gainedFavor(player, suit, amount)
       case Gain.Secrets(player, amount) => gainedSecrets(player, amount)
-      case Move(Piece.Secrets(amount), PositionedLocation(Location.SharedBank, _),
-          PositionedLocation(Location.PlayArea(player), _), _) =>
+      case Move(Piece.Secrets(amount), PositionedLocation(Location.SharedBank, _, _),
+          PositionedLocation(Location.PlayArea(player), _, _), _) =>
         gainedSecrets(player, amount)
       case Move(Piece.Warbands(kind, amount), _,
-          PositionedLocation(Location.Site(site), _), _)
+          PositionedLocation(Location.Site(site), _, _), _)
           if run.procedure != ActionRef.Campaign &&
               run.procedure != ActionRef.MoveWarbands =>
         line(LogSpan.Text(s"Moved $amount ") +:
@@ -140,8 +140,8 @@ private[gamelog] final class DetailLines(words: LogWords,
         line(words.subject(peeker, actor, "peeked at") ++ words.one(card(id)))
       case Reveal(id, _) if run.procedure != ActionRef.RevealOwnedRelic =>
         line(LogSpan.Text("Revealed ") +: words.one(card(id)))
-      case Move(Piece.Card(id), PositionedLocation(Location.PlayArea(owner), _),
-          PositionedLocation(Location.PlayArea(same), _),
+      case Move(Piece.Card(id), PositionedLocation(Location.PlayArea(owner), _, _),
+          PositionedLocation(Location.PlayArea(same), _, _),
           Some(Orientation.FaceUp)) if owner == same && faceDown(before, id) &&
           !playedFaceup.contains(id) =>
         line(words.subject(owner, actor, "revealed") ++ words.one(card(id)))
