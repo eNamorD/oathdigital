@@ -14,18 +14,6 @@ object SmallFriendsCard extends Denizen(DenizenId("177"), "Small Friends", Suit.
       "card. _(You may use Trade modifiers there.)_")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object VowOfUnionCard extends Denizen(DenizenId("185"), "Vow of Union", Suit.Beast) with Locked with AdviserOnly:
-  val campaign = PrintedPower(PowerId("denizen.vow-of-union.campaign"),
-    persistent = true, cost = Cost.free,
-    text = "At the start of **any** campaign, you may move any number " +
-      "of warbands from sites you rule in your region to your " +
-      "board or vice versa.")
-  val restriction = PrintedPower(PowerId("denizen.vow-of-union.restriction"),
-    persistent = true, cost = Cost.free,
-    text = "You may only have [suit-beast] advisers—-bury other " +
-      "advisers you have or would gain.")
-  val powers: Vector[PrintedPower] = Vector(campaign, restriction)
-
 object GiantPythonCard extends Denizen(DenizenId("186"), "Giant Python", Suit.Beast) with SiteOnly:
   val action = PrintedPower(PowerId("denizen.giant-python.action"),
     persistent = false, cost = Cost(secret = 1),

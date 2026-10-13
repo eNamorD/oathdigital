@@ -16,6 +16,9 @@ import oathdigital.model._
   * follow may change who rules the targets. After the losses run, every later
   * step reads the durable `CampaignResult` and the answers instead, because
   * the losses change the board.
+  *
+  * A Campaign ends before its force is committed when the attacker skips it
+  * or nothing is left to attack (`endStep`).
   */
 object CampaignProcedure:
   /** Every decision a Campaign asks starts with this, whether the engine or a
@@ -69,7 +72,8 @@ object CampaignProcedure:
     Sequence(Vector[Operation](SpendSupply(actor, CampaignIds.SupplyCost)),
       Some(PowerWindow.CampaignCost)),
     Sequence(Vector[Operation](kindStep(actor), defenderStep(actor),
-      targetsStep(catalog, actor)), Some(PowerWindow.CampaignBeforeTargets)),
+      targetsStep(catalog, actor), endStep(actor)),
+      Some(PowerWindow.CampaignBeforeTargets)),
     forceStep(state, actor),
     Sequence(Vector[Operation](BuildOps((ready, pending) =>
       withSetup(ready, actor, pending)(setup => CampaignSetup.pin(setup) +:
@@ -146,14 +150,28 @@ object CampaignProcedure:
         "Campaign reached its outcome without a recorded result"))))
     })
 
-  /** Omitted when exactly one kind is legal. */
+  /** Asked when several kinds are legal, or when a power at the Campaign's
+    * start offered the Skip, which is then the last option. Omitted when no
+    * kind is legal: `endStep` then ends the Campaign. */
   private def kindStep(actor: PlayerId): Operation = Branch((ready, _) => {
     val kinds = CampaignSetup.kindOptions(ready, actor)
-    if kinds.size < 2 then Vector.empty
-    else Vector(Decide(CampaignIds.kind, actor, DecisionQuery.ChooseOne(kinds,
-      heading = Some("Choose a Campaign")),
+    val skip = CampaignSetup.skipOffered(ready)
+    if kinds.isEmpty || (kinds.size < 2 && !skip) then Vector.empty
+    else Vector(Decide(CampaignIds.kind, actor, DecisionQuery.ChooseOne(
+      kinds ++ Option.when(skip)(DecisionOption.Button(CampaignIds.skip,
+        "Skip Campaign")), heading = Some("Choose a Campaign")),
       window = Some(PowerWindow.CampaignKindSelection)))
   })
+
+  /** Ends the Campaign when no kind is settled once its targets are chosen:
+    * the attacker skipped, or a power at its start left nothing to attack.
+    * The Supply stays spent. It is the last of the before-targets steps, so
+    * no later step's place in the tree moves. */
+  private def endStep(actor: PlayerId): Operation =
+    Branch((ready, pending) =>
+      if CampaignSetup.kindOf(ready, actor, pending).isEmpty then
+        Vector(EndWalk)
+      else Vector.empty)
 
   /** A Raid only, and only when several enemy pawns stand here. */
   private def defenderStep(actor: PlayerId): Operation = Branch((ready, pending) =>

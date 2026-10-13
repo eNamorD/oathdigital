@@ -19,9 +19,10 @@ order. Its root window is `CampaignActionEligibility`.
 Sequence(
   Sequence(CampaignCost, SpendSupply(actor, 2))
   Sequence(CampaignBeforeTargets,
-    Decide(campaign.kind)                 -- omitted when one kind is legal
+    Decide(campaign.kind)                 -- omitted when one kind is legal, unless a Skip is offered
     Decide(campaign.defender)             -- Raid only, omitted with one enemy pawn
-    Decide(campaign.targets))             -- optional additions, omitted when none
+    Decide(campaign.targets)              -- optional additions, omitted when none
+    EndWalk)                              -- only when no kind is settled
   Decide(campaign.force)                  -- always asked, 0 to the board's warbands
   Sequence(CampaignGatherPools, BuildOps(both dice pools))
   attacker battle plans                   -- CampaignAttackerBattlePlans
@@ -43,6 +44,13 @@ is in play, so the root keeps one shape on every fold. When the attacker chose
 it, the branch walks the defense roll and its result first; the sacrifice still
 follows the attack roll.
 
+- **Ending early.** The last before-targets step runs `EndWalk` when no kind
+  is settled, which ends the walk there: no force, no dice, no result and no
+  after-Campaign step. That happens when a power at the Campaign's start left
+  no legal kind, or when the attacker answered "Skip Campaign". A power offers
+  the Skip by recording the marker pool `campaign.skip-offered` (Vow of Union
+  does so when it moved a warband); the kind question is then asked even with
+  one legal kind. The Supply stays spent.
 - **Start.** A start is refused unless the actor is in Act
   and at least one kind is legal. Conquest is legal when the actor's pawn
   site is ruled by Bandits or by another player. Raid is legal when another

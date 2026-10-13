@@ -23,9 +23,10 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * enemy's dead), Salt the Earth (a targeted site's cards buried), Sealing Ward
   * (defense dice for targeted relics), Unstable Summon (an amount asked when
   * applied), Arcane Armor (defense dice set before the roll), Mountain Giant
-  * (an amount asked when applied, and a discard at the end on three) and
-  * Herald (a favor after another player's Campaign). Each names its card, so
-  * all are always present.
+  * (an amount asked when applied, and a discard at the end on three),
+  * Herald (a favor after another player's Campaign) and Vow of Union
+  * (warbands moved at the start of any Campaign). Each names its card, so all
+  * are always present.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -63,4 +64,5 @@ object PlanRules:
       Vector(CursedCauldron) ++
       Vector(SaltTheEarth.forCatalog(catalog)) ++
       Vector(SealingWard.forCatalog(catalog)) ++
-      Vector(Herald.forCatalog(catalog))
+      Vector(Herald.forCatalog(catalog)) ++
+      Vector(VowOfUnion)

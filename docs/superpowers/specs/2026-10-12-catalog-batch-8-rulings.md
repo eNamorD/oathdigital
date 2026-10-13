@@ -91,16 +91,29 @@
   vice versa." and "You may only have [suit-beast] advisers—bury other
   advisers you have or would gain."
   - It fires at the start of every Campaign, the holder's or another
-    player's, and asks the holder.
-  - The sites are those the holder rules in their region when the Campaign
-    starts.
+    player's, and asks the holder: after the Supply is spent, before the
+    kind and the targets (plan-time ruling).
+  - The sites are those the holder rules in the region of their pawn when
+    the Campaign starts.
   - One rearrangement in one direction: from those sites to the board, or
-    from the board to those sites. Any number may move, including none.
+    from the board to those sites. Any number may move, including none. It
+    asks the direction ("Move warbands to your board", "Move warbands to
+    your sites", "Move none"), then the amounts (plan-time ruling).
   - Emptying a site of the holder's warbands may lose its rule. That is
-    allowed.
+    allowed. If no Campaign kind is legal afterwards, the Campaign ends with
+    its Supply spent: "Nothing left to attack: the Campaign ended." (product
+    owner).
+  - When it moved at least one warband, the attacker may answer the kind
+    question with "Skip Campaign", which ends the Campaign the same way:
+    "Skipped the Campaign." (product owner).
+  - Lines: "Vow of Union: Moved 2 warbands from sites to the board." on the
+    holder's turn, "Vow of Union: {Blue} moved 2 warbands from sites to
+    their board." off turn, and the same for the other direction (plan-time
+    ruling).
   - The restriction half buries every non-Beast adviser when the card
     arrives, and any non-Beast adviser its holder would gain, as Family
-    Wagon does.
+    Wagon does. A play it would bury carries "Vow of Union will bury it".
+    It lifts no limit.
 
 ## Slice 4: A Raid's defeat replaced
 

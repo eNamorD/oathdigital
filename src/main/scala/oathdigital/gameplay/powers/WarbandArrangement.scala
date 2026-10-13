@@ -5,7 +5,8 @@ import oathdigital.model._
 /** A player's warbands arranged again over their board and a set of sites
   * (P6): Warning Signals over the sites it defends, Messenger over the sites
   * its user rules. One exact distribution keeps the total and leaves each
-  * site at least one warband.
+  * site at least one warband. Vow of Union arranges them in one direction,
+  * with no minimum (`oneWay`).
   */
 object WarbandArrangement:
   /** The player's board, and each of `sites` that holds warbands, with what
@@ -41,6 +42,27 @@ object WarbandArrangement:
         Some(count)) }
     DecisionQuery.Distribute.exactly(slots, total, Some(heading),
       "Move warbands")
+
+  /** One rearrangement in one direction, as Vow of Union makes it: any
+    * number of warbands leave `sites` for the board (`intoSites` false), or
+    * leave the board for `sites` (`intoSites` true), and none need move.
+    * Each slot opens on what it holds now, and its bounds keep the
+    * direction. A site may empty. */
+  def oneWay(user: PlayerId, board: Int, sites: Vector[(SiteId, Int)],
+      intoSites: Boolean, heading: String): DecisionQuery =
+    val total = board + sites.map(_._2).sum
+    val boardSlot =
+      if intoSites then DistributeSlot(DecisionOptionRef.Player(user), 0,
+        board, Some(board))
+      else DistributeSlot(DecisionOptionRef.Player(user), board, total,
+        Some(board))
+    val siteSlots = sites.map { case (site, count) =>
+      if intoSites then DistributeSlot(DecisionOptionRef.Site(site), count,
+        count + board, Some(count))
+      else DistributeSlot(DecisionOptionRef.Site(site), 0, count,
+        Some(count)) }
+    DecisionQuery.Distribute.exactly(boardSlot +: siteSlots, total,
+      Some(heading), "Move warbands")
 
   /** The moves from what each of `sites` holds now to what the answer gives
     * it: every site that shrinks sends its extras to the board first, so the

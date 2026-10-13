@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, Branch, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -253,6 +253,8 @@ object ProcedureWalker:
     step match
       case Done(ctx) =>
         Right(WalkerOutcome.Finished(finish(ctx), ctx.events))
+      case Ended(ctx) =>
+        Right(WalkerOutcome.Finished(finish(ctx), ctx.events))
       case Park(position, ctx) =>
         Right(WalkerOutcome.Parked(PendingTree(at = position,
           answered = ctx.answered), ctx.events))
@@ -284,6 +286,7 @@ object ProcedureWalker:
       case branch: Branch => walkBranch(branch, ctx, path, cursor, resume, hooks)
       case leaf: PrimitiveOperation =>
         walkLeaf(leaf, ctx, path, cursor, resume, hooks)
+      case EndWalk => Right(Ended(ctx))
       case note: Note => Right(Done(noted(note, ctx)))
       case composite =>
         walkComposite(composite, ctx, path, cursor, resume, hooks)
@@ -373,7 +376,7 @@ object ProcedureWalker:
         at: Option[Vector[String]]): Either[OathViolation, Step] =
       walkFolded(repeat.window, repeat, repeat.children, current, path, at, resume,
         hooks).flatMap:
-          case stop @ (_: Park | _: Stopped) => Right(stop)
+          case stop @ (_: Park | _: Stopped | _: Ended) => Right(stop)
           // A pass that recorded nothing and asked nothing cannot change what
           // the guard reads, so it would only repeat itself for ever.
           case Done(next) if recorded(next) == recorded(current) &&
@@ -655,6 +658,6 @@ object ProcedureWalker:
     else
       walk(children(index), ctx, path :+ index.toString, cursorAt, resume,
         hooks).flatMap:
-          case stop @ (_: Park | _: Stopped) => Right(stop)
+          case stop @ (_: Park | _: Stopped | _: Ended) => Right(stop)
           case Done(next) => continue(children, index + 1, next, path, None,
             resume, hooks)

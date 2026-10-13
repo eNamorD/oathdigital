@@ -64,13 +64,16 @@ private[gamelog] final class StartLines(words: LogWords,
     * destination decision), Search (its first step once no more modifiers
     * can be picked), the facedown-adviser play (its adviser's pick) and
     * Campaign (the first event by which kind and defender are both
-    * settled). */
+    * settled, or its completion). */
   private def opening(journal: LogJournal, run: Run, at: Int)
       : Option[(String, Vector[LogSpan])] =
     val completing = journal.event(at).isInstanceOf[WalkerCompleted]
     run.procedure match
+      // A Campaign that ended before its kind was settled is tagged where it
+      // completes.
       case ActionRef.Campaign =>
-        campaign(journal, run, at).map(said => ("Campaign", said))
+        campaign(journal, run, at).orElse(Option.when(completing)(Vector.empty))
+          .map(said => ("Campaign", said))
       case ActionRef.Muster | ActionRef.Trade =>
         name(run.procedure).filter(_ =>
           paysCost(journal, run, at) || completing)
