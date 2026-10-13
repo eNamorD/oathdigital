@@ -22,7 +22,7 @@ import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,
   SecondChanceCard, ShiftingMapCard,
   SiegeEnginesCard, SingingMaskCard, SkeletonKeyCard, SleightOfHandCard, SpiritSnareCard,
   SpoiledSuppliesCard, StorytellerCard, TamingCharmCard, TavernSongsCard,
-  TerrorSpellsCard,
+  TerrorSpellsCard, TheRedSeerCard,
   TinkersFairCard, TutorCard, WardOfSilenceCard, WaysideInnCard,
   WhisperingLeavesCard, WhistleCard, WitchsBargainCard,
   WizardSchoolCard, WolvesCard}

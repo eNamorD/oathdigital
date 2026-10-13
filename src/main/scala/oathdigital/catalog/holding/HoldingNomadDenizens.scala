@@ -61,13 +61,6 @@ object TravelingNegotiatorCard extends Denizen(DenizenId("242"), "Traveling Nego
     text = "**WHEN NEGOTIATING:** You may negotiate with any player.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object TheRedSeerCard extends Denizen(DenizenId("244"), "The Red Seer", Suit.Nomad):
-  val power = PrintedPower(PowerId("denizen.the-red-seer"),
-    persistent = false, cost = Cost(secret = 1, secretBurnt = 2),
-    text = "**ACTION:** If you hold the Darkest Secret, change the " +
-      "Oathkeeper goal to anything but Devotion.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object TheGatheringCard extends Denizen(DenizenId("27"), "The Gathering", Suit.Nomad) with SiteOnly:
   val power = PrintedPower(PowerId("denizen.the-gathering"),
     persistent = false, cost = Cost.free,
