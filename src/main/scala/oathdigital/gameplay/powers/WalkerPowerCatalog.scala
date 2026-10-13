@@ -9,7 +9,7 @@ import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRestrictions,
 import oathdigital.gameplay.powers.dice.Jinx
 import oathdigital.gameplay.powers.economy.{KnightsErrant, Marriage}
 import oathdigital.gameplay.powers.cardplay.{CardPlayTriggers, FamilyWagon,
-  LostTapestry}
+  LostTapestry, VowOfUnionAdvisers}
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.powers.rest.{Insomnia, LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.powers.setup.{BanditMarket, BrokenForge, EmptyGrounds, GreatForge, GreatMarket, ProvingGrounds}
@@ -65,6 +65,7 @@ object WalkerPowerCatalog:
       Vector(LostTapestry) ++
       Vector(PiedPiper) ++
       Vector(FamilyWagon.forCatalog(catalog)) ++
+      Vector(VowOfUnionAdvisers.forCatalog(catalog)) ++
       Vector(ASmallFavor) ++
       Vector(FaithfulFriend) ++
       Vector(Garrison) ++

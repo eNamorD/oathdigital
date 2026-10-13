@@ -30,7 +30,8 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
     "denizen.forced-labor", "denizen.way-station", "denizen.vow-of-wandering",
     "denizen.marriage", "relic.lost-tapestry", "denizen.family-wagon",
     "denizen.marsh-spirit", "denizen.beast-tamer", "denizen.true-names",
-    "denizen.vow-of-wisdom")
+    "denizen.vow-of-wisdom", "denizen.vow-of-union.campaign",
+    "denizen.vow-of-union.restriction")
 
   private def flag(id: String): Option[Boolean] =
     catalog.printedPower(PowerId(id)).map(_.persistent)
