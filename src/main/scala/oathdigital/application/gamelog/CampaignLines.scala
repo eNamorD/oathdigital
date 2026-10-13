@@ -106,20 +106,26 @@ private[gamelog] final class CampaignLines(words: LogWords,
     }
 
   /** At completion: what the winner gained, then what the loser lost that
-    * no earlier line says. */
+    * no earlier line says, a power's covering line included. */
   private def closing(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] = journal.event(at) match
     case _: WalkerCompleted =>
-      val ops = journal.runOps(run, at).map(_._2)
+      val stepped = journal.runOps(run, at)
+      val ops = stepped.map(_._2)
+      // A power's covering line already restates these steps.
+      val restated = stepped.collect {
+        case (index, step) if journal.covered(index) => step }
       val outcome = ops.dropWhile {
         case OpStep(_: RecordCampaignResult, _, _) => false
         case _ => true
       }
+      val told = outcome.drop(1).filterNot(step =>
+        restated.exists(_ eq step))
       outcome.headOption.collect {
         case OpStep(RecordCampaignResult(result), _, _) => result
       }.fold(ended(journal, run, at))(result =>
-        gains(result, outcome.tail, viewer) ++
-          losses(result, run.actor, outcome.tail, viewer))
+        gains(result, told, viewer) ++
+          losses(result, run.actor, told, viewer))
     case _ => Vector.empty
 
   /** The line of a Campaign that ended before its battle: skipped by the
