@@ -56,14 +56,17 @@ class BurnTakesSuite extends munit.FunSuite:
     assertEquals(lines(events), Vector(line(p2, 3)))
 
   test("a cost or a burn in the tree runs whole: the cost's take is " +
-      "required, and facedown secrets stay facedown"):
+      "paid in full, and facedown secrets stay facedown"):
     val (paid, paidEvents) = walked(Sequence(Vector[Operation](
       PayCost(p2, Location.SharedBank, Cost(favorBurnt = 2)))))
     assertEquals(Look(paid).favor(p1), 2)
     assertEquals(steps(paidEvents), Vector(Vector[CoreOperation](
       PayCost(p2, Location.SharedBank, Cost.free),
-      Take(Piece.Favor(2), p1, Location.PlayArea(p2), Location.PlayArea(p1),
-        required = true))))
+      Take(Piece.Favor(2), p1, Location.PlayArea(p2), Location.PlayArea(p1)))))
+    // The take is paid in full: p2 holds 3 favor, so a cost of 5 is refused.
+    assert(ProcedureWalker.advance(start, Sequence(Vector[Operation](
+      PayCost(p2, Location.SharedBank, Cost(favorBurnt = 5)))), None,
+      powers).isLeft)
     val faceDownBefore = Look(start).faceDownSecrets(p1)
     val (taken, takenEvents) = walked(Sequence(Vector[Operation](
       Burn.secrets(2, PositionedLocation(Location.PlayArea(p2),
