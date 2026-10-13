@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is under way: slices 1 to 3 are done, and slice 4 is next.
+**Phase - Catalog batch 8** is under way: slices 1 to 4 are done, and slice 5 is next.
 
 ## Next
 
@@ -127,7 +127,7 @@ this order. Each slice gets its own plan.
 - [x] **1. No new engine:** Ward of Silence, Hospitality, Vow of Wisdom.
 - [x] **2. Oathkeeper goal:** True Oath, The Red Seer.
 - [x] **3. Warbands at a Campaign's start:** Vow of Union.
-- [ ] **4. A Raid's defeat replaced:** Keep.
+- [x] **4. A Raid's defeat replaced:** Keep.
 - [ ] **5. Burns taken:** Vow of Silence, Vow of Division.
 - [ ] **6. Operation triggers:** Secret Testament, Brass Army.
 - [ ] **7. Trade at another site:** Small Friends, Friendly Familiar, Secret
