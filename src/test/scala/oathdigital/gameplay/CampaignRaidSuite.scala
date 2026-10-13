@@ -6,7 +6,10 @@ import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker}
+import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
+  Transform}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions,
+  ProcedureWalker, WalkerDice, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
@@ -31,16 +34,17 @@ class CampaignRaidSuite extends munit.FunSuite:
       Vector(started, kind, targeted, forced, sacrificed).flatMap(_.events)
 
   /** Raids the rival with `attack` swords against blank defense dice,
-    * sacrificing `sacrifice`. */
-  private def walk(b: Board, relic: RelicId, attack: Int, sacrifice: Int = 0)
-      : RaidWalk =
+    * sacrificing `sacrifice`, under `rulesFor`'s rules. */
+  private def walk(b: Board, relic: RelicId, attack: Int, sacrifice: Int = 0,
+      rulesFor: WalkerDice => OathRules = rules(_)): RaidWalk =
     // The printed defense: 2 dice for the pawn, the relic's own defense, and
     // 3 for the banner.
     val relicDefense =
       catalog.relics.find(_.id.value == relic.value).get.defense
     val printed = 2 + relicDefense + 3
     val sword = Vector.fill(attack)(AttackDieFace.OneSword)
-    val game = rules(dice(sword, Vector.fill(printed)(DefenseDieFace.Blank)))
+    val game = rulesFor(dice(sword,
+      Vector.fill(printed)(DefenseDieFace.Blank)))
     val started = accepted(game.startWalker(Ready(b.ready), ActionRef.Campaign,
       b.actor))
     val kind = accepted(game.resolveWalker(started.state, b.actor,
@@ -166,3 +170,34 @@ class CampaignRaidSuite extends munit.FunSuite:
       ChooseOneAnswer(DecisionOptionRef.Site(destination))))
     assertEquals(ActPowerHarness.replayed(walked.game, b.ready,
       walked.events ++ done.events), ready(done.state))
+
+  /** Drops every Raid's consequences: the seam Keep relies on. */
+  private object DropsRaidConsequences extends ContributingPower:
+    val id: PowerId = PowerId("test.drops-raid-consequences")
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+    def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
+      PowerWindow.CampaignRaidConsequences ->
+        Vector(Transform((_, _) => Vector.empty)))
+
+  test("a power can drop the Raid's consequences while its takes stay, " +
+      "and the relocation is still asked"):
+    val RaidBoard(b, relic) = raidBoard()
+    val walked = walk(b, relic, attack = 4,
+      rulesFor = rulesWith(Vector(DropsRaidConsequences), _))
+    val sacrificed = walked.sacrificed
+    val after = ready(sacrificed.state)
+    val rival = Look(sacrificed.state).player(b.rival)
+    // The takes stand.
+    assert(Look(sacrificed.state).player(b.actor).relics
+      .exists(_.id == relic))
+    assertEquals(BannerRules.holder(after.game.current, Banner.PeoplesFavor),
+      Some(b.actor))
+    // No favor is burnt, and no facedown card is discarded or set aside.
+    assertEquals(rival.board.favor, 5)
+    assertEquals(rival.advisers.size, 3)
+    assertEquals(rival.relics.map(_.id),
+      Vector(RelicId("raid-facedown-relic")))
+    assertEquals(after.game.current.setAsideRelics, Vector.empty)
+    new ParkedDecisionAssertions(catalog,
+      WalkerPowers(Vector(DropsRaidConsequences))).assertParked(
+        sacrificed.state, ActionRef.Campaign, CampaignIds.relocation, b.actor)

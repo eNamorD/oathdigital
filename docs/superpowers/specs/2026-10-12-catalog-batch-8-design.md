@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 3 are done. The per-card rulings are
+**Status:** designed 2026-10-12. Slices 1 to 4 are done. The per-card rulings are
 in [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
 **Builds on** [Catalog batch 5](2026-10-08-catalog-batch-5-design.md),
@@ -74,10 +74,14 @@ The approved changes outside `gameplay/powers/`:
   the Campaign's start offers the Skip by recording the marker pool
   `CampaignIds.skipOffered`; the kind question is then asked even with one
   legal kind. The Supply stays spent.
-- **A Raid transfer in two parts** (slice 4). `CampaignRaid.transfer` builds
-  the takes, the facedown discards, the set-aside relics and the half-favor
-  burn as one batch. It splits into the takes and the consequences, so a
-  power can keep the first and drop the second.
+- **A Raid transfer in two parts** (slice 4). `CampaignRaid.transfer`
+  builds the takes, the facedown discards, the set-aside relics and the
+  half-favor burn as one batch. It splits into `takes` and `consequences`.
+  The consequences run in their own window, `CampaignRaidConsequences`,
+  nested in the transfer's window after the takes, so a power can drop them
+  while the takes stay. The relocation keeps its tree address. The
+  Campaign's closing line leaves out any step that a power's covering line
+  restates.
 - **A burn's actor** (slice 5). Each `Burn` names the player who burns. It
   is the actor of the procedure that builds it, or the payer for a cost.
   "Each player" effects (Revelation, Ancient Binding) name each owner for
@@ -270,11 +274,34 @@ card arrives and when one would be gained.
 
 ## Slice 4: A Raid's defeat replaced
 
-Keep transforms `CampaignRaidTransfer` and `CampaignRaidRelocation` when the
-defeated defender rules Keep's site. The takes stay; the consequences and
-the relocation are dropped, and the defender's pawn moves to Keep's site.
-The raid's remaining steps are skipped. Losses resolved before the raid and
-"after the Campaign" powers run as usual.
+Keep transforms `CampaignRaidConsequences` and `CampaignRaidRelocation`
+when the defeated defender rules Keep's site. The takes stay. The
+consequences are dropped, and the relocation question is replaced by
+placing the defender's pawn at Keep's site. Nothing else in the Raid
+follows the relocation. The losses before the Raid, and the effects at the
+Campaign's end, run as usual.
+
+### Plan-time rulings
+
+- **When.** Keep is faceup at a site the defeated defender rules, judged
+  after the battle's losses. The losses and the takes never change who
+  rules a site, so this holds for the rest of the Raid.
+- **Automatic.** Keep asks nothing, and the defender cannot decline it.
+- **What stays.** The battle's losses, the attacker's takes, and the tokens
+  that leave with a taken banner: the People's Favor's favor returns to
+  the banks, and the Darkest Secret's secrets are burnt.
+- **What is dropped.** The half-favor burn, the facedown advisers'
+  discard (a Conspiracy's return to the box too), the facedown relics set
+  aside, and the relocation question.
+- **The pawn** moves to Keep's site, or stays when it is already there.
+- **"End the action"** ends the Raid. The effects at the Campaign's end
+  still run: Book Burning still burns, Herald still pays, and battle plans
+  still discard.
+- **Lines.** "Ended the Raid with {Blue}'s pawn at {site}." whether the
+  pawn moved or stayed. The closing line no longer says the pawn "was sent
+  to" Keep's site.
+- **Saved games.** The relocation keeps its tree address. Old journals
+  replay their one transfer batch unchanged.
 
 ## Slice 5: Burns taken
 

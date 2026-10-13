@@ -3,14 +3,19 @@ package oathdigital.gameplay.actions.campaign
 import oathdigital.gameplay.actions.{BannerRules, VisionRules}
 import oathdigital.model._
 
-/** Step 9 for a Raid victory: the printed transfer, then the pawn's
-  * relocation. Both read the durable [[CampaignResult]].
+/** Step 9 for a Raid victory: the printed transfer (the takes, then the
+  * consequences in a window of their own), then the pawn's relocation. All
+  * read the durable [[CampaignResult]].
   */
 private[campaign] object CampaignRaid:
   def steps(ready: ReadyGame, actor: PlayerId, result: CampaignResult)
       : Vector[Operation] = result.defender match
     case CampaignDefender.Player(defender) => Vector(
-      Sequence(Vector[Operation](BuildOps((state, _) => transfer(state, result))),
+      Sequence(Vector[Operation](
+        BuildOps((state, _) => takes(state, result)),
+        Sequence(Vector[Operation](
+          BuildOps((state, _) => consequences(state, result))),
+          Some(PowerWindow.CampaignRaidConsequences))),
         Some(PowerWindow.CampaignRaidTransfer)),
       Sequence(Vector[Operation](
         Decide(CampaignIds.relocation, actor, DecisionQuery.ChooseOne(
@@ -36,9 +41,10 @@ private[campaign] object CampaignRaid:
     case Region.Provinces => Region.Hinterland
     case Region.Hinterland => Region.Cradle
 
-  /** The printed Raid resolution as one recorded batch, from live state. */
-  def transfer(ready: ReadyGame, result: CampaignResult)
-      : Either[OathViolation, Vector[CoreOperation]] =
+  /** The Raid's defender and the region its facedown advisers are
+    * discarded to, the one after the origin's, from live state. */
+  private def defeated(ready: ReadyGame, result: CampaignResult)
+      : Either[OathViolation, (PlayerState, Region)] =
     val current = ready.game.current
     for
       defenderId <- result.defender match
@@ -51,7 +57,15 @@ private[campaign] object CampaignRaid:
         OathViolation.PawnSiteMissing(result.attacker))
       region <- current.map.regionOf(origin).toRight(
         OathViolation.InvalidEventOrder("the Raid's origin has no region"))
-    yield
+    yield (defender, next(region))
+
+  /** What the attacker targeted, taken: the relics, then the banners. A
+    * banner's favor and secrets leave with it. */
+  def takes(ready: ReadyGame, result: CampaignResult)
+      : Either[OathViolation, Vector[CoreOperation]] =
+    defeated(ready, result).map { (defender, _) =>
+      val current = ready.game.current
+      val defenderId = defender.player
       val attacker = result.attacker
       val relics = result.raidTargets.collect {
         case CampaignRaidTarget.Relic(_, id) => id }
@@ -79,6 +93,17 @@ private[campaign] object CampaignRaid:
         Take(Piece.Banner(banner), attacker, Location.PlayArea(defenderId),
           Location.PlayArea(attacker), leaving = leaving)
       }
+      relicTakes ++ bannerOps
+    }
+
+  /** What the defeat costs the defender beyond the takes, in the printed
+    * order: the facedown advisers discarded, the facedown relics set
+    * aside, half the favor burnt, and a facedown Conspiracy returned to
+    * the box. Read after the takes, which change none of it. */
+  def consequences(ready: ReadyGame, result: CampaignResult)
+      : Either[OathViolation, Vector[CoreOperation]] =
+    defeated(ready, result).map { (defender, discardRegion) =>
+      val defenderId = defender.player
       val facedown: Vector[WorldCardId] = defender.advisers.collect:
         case card: DenizenState if card.orientation == Orientation.FaceDown =>
           card.id: WorldCardId
@@ -87,7 +112,7 @@ private[campaign] object CampaignRaid:
       val discards: Vector[CoreOperation] = facedown
         .filterNot(_ == VisionRules.Conspiracy).map(id => Move(Piece.Card(id),
           PositionedLocation(Location.PlayArea(defenderId)),
-          PositionedLocation(Location.RegionalDiscard(next(region)),
+          PositionedLocation(Location.RegionalDiscard(discardRegion),
             StackPosition.Top), resultingOrientation = Some(Orientation.FaceDown)))
       val boxed: Vector[CoreOperation] = facedown
         .filter(_ == VisionRules.Conspiracy).map(id => Move(Piece.Card(id),
@@ -100,7 +125,8 @@ private[campaign] object CampaignRaid:
       val burn: Vector[CoreOperation] = Option.when(defender.board.favor / 2 > 0)(
         Burn.favor(defender.board.favor / 2,
           PositionedLocation(Location.PlayArea(defenderId)))).toVector
-      relicTakes ++ bannerOps ++ discards ++ setAside ++ burn ++ boxed
+      discards ++ setAside ++ burn ++ boxed
+    }
 
   private def relocate(ready: ReadyGame, defender: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] = for

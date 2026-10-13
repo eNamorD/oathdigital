@@ -114,6 +114,8 @@ object PowerWindow:
     val key = "campaign.placement"
   case object CampaignRaidTransfer extends CampaignWindow:
     val key = "campaign.raid-transfer"
+  case object CampaignRaidConsequences extends CampaignWindow:
+    val key = "campaign.raid-consequences"
   case object CampaignRaidRelocation extends CampaignWindow:
     val key = "campaign.raid-relocation"
   case object MusterCost extends MusterWindow { val key = "muster.cost" }

@@ -126,6 +126,20 @@
     skipped, and the defender's pawn is placed at Keep's site.
   - "End the action" ends the Raid there. Powers that act "after the
     Campaign" still run.
+  - Keep applies when it is faceup at a site the defeated defender rules,
+    judged after the battle's losses. It asks nothing, and the defender
+    cannot decline it (plan-time ruling).
+  - The tokens that leave with a taken banner still leave: the People's
+    Favor's favor returns to the banks, and the Darkest Secret's secrets
+    are burnt. They are part of the take (plan-time ruling).
+  - The facedown advisers' discard includes a Conspiracy's return to the
+    box, and it is skipped too (plan-time ruling).
+  - A pawn already at Keep's site stays there (plan-time ruling).
+  - The effects at the Campaign's end still run: Book Burning still burns,
+    Herald still pays, and battle plans still discard (plan-time ruling).
+  - Line: "Keep: Ended the Raid with {Blue}'s pawn at {site}." The closing
+    line no longer says the pawn "was sent to" Keep's site (plan-time
+    ruling).
 
 ## Slice 5: Burns taken
 
