@@ -91,7 +91,7 @@ import oathdigital.gameplay.powers.whenplayed.{ARoundOfAleCard,
   FabledFeastCard, FaithfulFriendCard, FamilyHeirloomCard, GarrisonCard,
   GreatHerdCard, KeyToTheCityCard, RevelationCard, RiotsCard, RoyalTaxCard,
   SaladDaysCard, ShiftingFogCard, ThreateningRoarCard, TownMeetingCard,
-  TwinBrotherCard, WizardsConclaveCard}
+  TrueOathCard, TwinBrotherCard, WizardsConclaveCard}
 
 /** Every printed New Foundations component, listed by kind in printed-id
   * order. A new card is added here and in its own file; `CardCatalogSuite`

@@ -26,4 +26,5 @@ object WhenPlayedPowers:
       Vector(WizardsConclave.forCatalog(catalog)) ++
       Vector(BanditChief) ++
       Vector(ARoundOfAle.forCatalog(catalog)) ++
-      Vector(CallForHelp.forCatalog(catalog))
+      Vector(CallForHelp.forCatalog(catalog)) ++
+      Vector(TrueOath.forCatalog(catalog))

@@ -31,8 +31,9 @@ case object TheRedSeer extends PaidAction(TheRedSeerCard.power):
   private val barred: Map[OathkeeperGoal, String] =
     Map(OathkeeperGoal.Devotion -> notDevotion)
 
-  override def noteKeys: Vector[NoteKey] =
-    OathkeeperGoalChoice.changedKeys(NoteKey.Used)
+  /** "Changed the Oathkeeper goal to Protection." */
+  val changed: NoteKey = OathkeeperGoalChoice.changed(NoteKey.Used)
+  override def noteKeys: Vector[NoteKey] = Vector(changed)
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   override def usable(ready: ReadyGame, player: PlayerId,
@@ -49,4 +50,4 @@ case object TheRedSeer extends PaidAction(TheRedSeerCard.power):
     BuildOps((live, pending) =>
       OathkeeperGoalChoice.set(live, pending, decisionId, barred.keySet)),
     Note(id, states => PowerSourceRef.of(source).flatMap(card =>
-      OathkeeperGoalChoice.changedNote(states, NoteKey.Used, card))))))
+      OathkeeperGoalChoice.changedNote(states, changed, card))))))

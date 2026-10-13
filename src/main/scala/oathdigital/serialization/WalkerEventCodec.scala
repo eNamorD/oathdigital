@@ -140,6 +140,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       "region" -> region.key)
     case NoteArg.SuitName(suit) => ujson.Obj("kind" -> "suit",
       "suit" -> suit.key)
+    case NoteArg.Goal(goal) => ujson.Obj("kind" -> "goal", "goal" -> goal.key)
     case NoteArg.Dice(faces) => ujson.Obj("kind" -> "dice",
       "faces" -> ujson.Arr.from(faces.map(encodeDieFace)))
 
@@ -186,6 +187,9 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       .map(NoteArg.RegionName.apply)
     case "suit" => decodeSuit(value("suit").str, s"$path.suit")
       .map(NoteArg.SuitName.apply)
+    case "goal" => OathkeeperGoal.all.find(_.key == value("goal").str)
+      .toRight(InvalidValue(s"$path.goal", "unknown Oathkeeper goal"))
+      .map(NoteArg.Goal.apply)
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown note argument '$other'"))
 

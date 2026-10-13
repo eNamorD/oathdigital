@@ -20,7 +20,7 @@ object OathkeeperGoalChoice:
     case OathkeeperGoal.Devotion => "Devotion"
 
   /** The goal's name inside a sentence, "the People". */
-  private def named(goal: OathkeeperGoal): String = goal match
+  def named(goal: OathkeeperGoal): String = goal match
     case OathkeeperGoal.ThePeople => "the People"
     case other => label(other)
 
@@ -59,20 +59,15 @@ object OathkeeperGoalChoice:
         OathViolation.InvalidEventOrder(
           s"the Oathkeeper goal cannot change to ${goal.key}")))
 
-  /** "Changed the Oathkeeper goal to Protection.", named
-    * `{prefix}.{goal key}`. */
-  def changed(prefix: String, goal: OathkeeperGoal): NoteKey =
-    NoteKey(s"$prefix.${goal.key}", Vector(NotePart.Text(
-      s"Changed the Oathkeeper goal to ${named(goal)}.")))
-
-  /** One change line per goal. */
-  def changedKeys(prefix: String): Vector[NoteKey] =
-    OathkeeperGoal.all.map(changed(prefix, _))
+  /** "Changed the Oathkeeper goal to Protection.", named `name`. */
+  def changed(name: String): NoteKey = NoteKey(name, Vector(
+    NotePart.Text("Changed the Oathkeeper goal to "), NotePart.Arg(0),
+    NotePart.Text(".")))
 
   /** The line for the goal the step before set, if it changed one. */
-  def changedNote(states: NoteStates, prefix: String,
+  def changedNote(states: NoteStates, key: NoteKey,
       source: PowerSourceRef): Option[PowerNote] = for
     (before, after) <- states.previous
     goal = after.game.campaign.oathkeeperGoal
     if goal != before.game.campaign.oathkeeperGoal
-  yield changed(prefix, goal)(source)
+  yield key(source, NoteArg.Goal(goal))

@@ -74,7 +74,7 @@ class TheRedSeerSuite extends munit.FunSuite:
     assertEquals(replayed(ready, events), Right(done.state))
     assertWireRoundTrips(events)
     assertEquals(NoteText.said(TheRedSeer, done.events), Vector(
-      NoteText.Said(s"${NoteKey.Used}.the-people",
+      NoteText.Said(NoteKey.Used,
         "Changed the Oathkeeper goal to the People.", covers = false)))
 
   test("under Devotion, Devotion is the current goal and the other three " +

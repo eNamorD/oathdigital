@@ -68,13 +68,6 @@ object WildAlliesCard extends Denizen(DenizenId("198"), "Wild Allies", Suit.Beas
       "warbands there to your force.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object TrueOathCard extends Denizen(DenizenId("209"), "True Oath", Suit.Beast) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.true-oath"),
-    persistent = false, cost = Cost.free,
-    text = "**WHEN PLAYED,** if you rule at least three other " +
-      "[suit-beast] cards, you may change the Oathkeeper goal.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object AutumnWindCard extends Denizen(DenizenId("213"), "Autumn Wind", Suit.Beast):
   val power = PrintedPower(PowerId("denizen.autumn-wind"),
     persistent = false, cost = Cost.free,
