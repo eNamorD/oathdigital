@@ -65,6 +65,15 @@ The approved changes outside `gameplay/powers/`:
   forces at least one warband per site and allows no move back when
   `toSites` is false. Vow of Union needs a variant over a fixed set of
   sites, in one direction, with any number moved and none required.
+- **An end to a walk** (slice 3, approved 2026-10-12). `EndWalk` is a
+  control node: the procedure finishes where it is reached, and nothing
+  after it runs. It changes no state and is never journaled.
+- **A Campaign that ends early** (slice 3, approved 2026-10-12). The last
+  step before the Campaign's targets ends it when no kind is settled: no
+  kind is legal any more, or the attacker chose "Skip Campaign". A power at
+  the Campaign's start offers the Skip by recording the marker pool
+  `CampaignIds.skipOffered`; the kind question is then asked even with one
+  legal kind. The Supply stays spent.
 - **A Raid transfer in two parts** (slice 4). `CampaignRaid.transfer` builds
   the takes, the facedown discards, the set-aside relics and the half-favor
   burn as one batch. It splits into the takes and the consequences, so a
@@ -226,6 +235,39 @@ Campaign, so the holder may be the attacker, the defender or neither. Its
 restriction half clones Family Wagon: other advisers are buried when the
 card arrives and when one would be gained.
 
+### Plan-time rulings
+
+- **When it asks.** After the Campaign's Supply is spent, before the kind,
+  the defender and the targets.
+- **Two questions.** A direction ("Move warbands to your board", "Move
+  warbands to your sites" or "Move none"), then one distribution in that
+  direction. Its slot bounds enforce the direction, and each slot opens on
+  what it holds now.
+- **"Your region"** is the region of the holder's pawn when the Campaign
+  starts.
+- **When nothing is asked.** Nothing is asked when the holder rules no site
+  in their region. "Move warbands to your sites" with an empty board is
+  shown unavailable: "No warbands on your board".
+- **A site may empty** (product owner). If no Campaign kind is legal
+  afterwards, the Campaign ends: the Supply stays spent, and there is no
+  battle, result or after-Campaign effect. The log says "Nothing left to
+  attack: the Campaign ended."
+- **Skip Campaign** (product owner). When Vow of Union moved at least one
+  warband, the attacker's kind question is asked even with one legal kind
+  and adds "Skip Campaign" last, which ends the Campaign the same way. The
+  log says "Skipped the Campaign." Nothing moved, no Skip.
+- **Lines.** "Moved 2 warbands from sites to the board." or "Moved 3
+  warbands from the board to sites." on the holder's turn; "{Blue} moved 2
+  warbands from sites to their board." or "{Blue} moved 3 warbands from
+  their board to sites." off turn. Nothing moved, no line. Neither question
+  posts a "Chose" line.
+- **The restriction half** is Family Wagon's code with Beasts and no limit
+  lift, shared through `SuitOnlyAdvisers`. A play it would bury carries
+  "Vow of Union will bury it".
+- **The force question reads the moved warbands.** The walker rebuilds the
+  Campaign from live state on every command, so an attacker may move
+  warbands to their board and commit them.
+
 ## Slice 4: A Raid's defeat replaced
 
 Keep transforms `CampaignRaidTransfer` and `CampaignRaidRelocation` when the
@@ -322,6 +364,8 @@ product owner.
 
 - A variable X paid inside an ACTION's `build` (Ward of Silence).
 - A non-attacker's question at the start of a Campaign (Vow of Union).
+- A walk ended early, and a Campaign skipped or left with nothing to attack
+  (Vow of Union).
 - A Raid's consequences dropped while its takes stay (Keep).
 - A burn rewritten into a take, on a cost (Vow of Silence).
 - A trigger on executed operations that asks a question (Brass Army).
