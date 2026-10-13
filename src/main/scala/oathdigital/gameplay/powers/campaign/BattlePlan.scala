@@ -105,6 +105,7 @@ object BattlePlan:
     */
   private val afterOutcome: Set[PowerWindow] = Set(PowerWindow.CampaignLosses,
     PowerWindow.CampaignPlacement, PowerWindow.CampaignRaidTransfer,
-    PowerWindow.CampaignRaidRelocation, PowerWindow.CampaignActionEligibility)
+    PowerWindow.CampaignRaidConsequences, PowerWindow.CampaignRaidRelocation,
+    PowerWindow.CampaignActionEligibility)
 
   def outcomeKnown(window: PowerWindow): Boolean = afterOutcome(window)
