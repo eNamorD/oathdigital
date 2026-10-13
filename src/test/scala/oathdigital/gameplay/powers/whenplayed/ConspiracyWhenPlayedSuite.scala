@@ -170,7 +170,8 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     assert(ops.contains(Take(Piece.Banner(Banner.DarkestSecret),
       p1, Location.PlayArea(p2), Location.PlayArea(p1),
       leaving = Vector(Burn.secrets(3,
-        PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))))),
+        PositionedLocation(Location.OnBanner(Banner.DarkestSecret)),
+        Some(p1))))),
       ops.toString)
     assertJournalRebuilds(f.ready, done.events, after)
 

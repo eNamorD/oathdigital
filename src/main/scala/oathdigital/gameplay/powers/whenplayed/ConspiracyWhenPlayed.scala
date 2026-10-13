@@ -130,7 +130,8 @@ case object ConspiracyWhenPlayed extends ContributingPower:
             case Banner.DarkestSecret =>
               val secrets = BannerRules.resources(current, held)
               Option.when(secrets > 0)(Burn.secrets(secrets,
-                PositionedLocation(Location.OnBanner(held)))).toVector
+                PositionedLocation(Location.OnBanner(held)), Some(actor)))
+                .toVector
           Vector(banner(held, owner, leaving))
         }
       case _ => Vector.empty

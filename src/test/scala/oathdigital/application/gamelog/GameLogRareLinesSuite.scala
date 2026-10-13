@@ -103,7 +103,7 @@ class GameLogRareLinesSuite extends munit.FunSuite:
         Location.PlayArea(actor)),
       Kill(Piece.Warbands(ForceKind.Exile(lineage(other)), 2),
         PositionedLocation(Location.PlayArea(other))),
-      Burn.favor(1, PositionedLocation(Location.PlayArea(other))),
+      Burn.favor(1, PositionedLocation(Location.PlayArea(other)), None),
       Move(Piece.Card(relic), PositionedLocation(Location.PlayArea(other)),
         PositionedLocation(Location.SetAsideRelics)))
     assert(lines.exists(line => line.startsWith("Took ") &&

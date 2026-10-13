@@ -63,7 +63,7 @@ class BookBurningSuite extends munit.FunSuite:
           case _ => false } => step.ops }
     assertEquals(burnt, Vector(Vector[CoreOperation](
       Burn.secrets(2, PositionedLocation(Location.PlayArea(b.rival),
-        side = Some(SecretSide.FaceDown))))))
+        side = Some(SecretSide.FaceDown)), Some(b.actor)))))
 
   test("a defender with one secret loses nothing, and the line says there " +
       "was none to burn"):

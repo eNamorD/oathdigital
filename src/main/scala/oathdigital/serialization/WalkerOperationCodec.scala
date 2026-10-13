@@ -176,7 +176,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "from" -> encodePositionedLocation(from))
       case burn: Burn => ujson.Obj("kind" -> "burn",
         "resource" -> encodePiece(burn.resource),
-        "from" -> encodePositionedLocation(burn.from))
+        "from" -> encodePositionedLocation(burn.from),
+        "by" -> burn.by.fold[ujson.Value](ujson.Null)(
+          by => ujson.Str(by.value)))
       case give: Give => encodeGive(give, "give")
       case Exchange(give, receive) => ujson.Obj("kind" -> "exchange",
         "give" -> encodeGive(give, "exchange-give"),
@@ -450,9 +452,10 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     case "burn" => for
       resource <- decodePiece(value("resource"), s"$path.resource")
       from <- decodePositionedLocation(value("from"), s"$path.from")
+      by = value("by").strOpt.map(PlayerId(_))
       burn <- resource match
-        case Piece.Favor(amount) => Right(Burn.favor(amount, from))
-        case Piece.Secrets(amount) => Right(Burn.secrets(amount, from))
+        case Piece.Favor(amount) => Right(Burn.favor(amount, from, by))
+        case Piece.Secrets(amount) => Right(Burn.secrets(amount, from, by))
         case other => Left(InvalidValue(s"$path.resource",
           s"unsupported burn resource $other"))
     yield burn

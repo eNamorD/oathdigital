@@ -8,9 +8,10 @@ import oathdigital.model._
   * secrets kept are faceup when any faceup one remains.
   */
 object SecretBurns:
-  /** Every secret on `held`'s board but `kept`. A board holding `kept` or
-    * fewer loses nothing. */
-  def keeping(held: PlayerState, kept: Int): Vector[CoreOperation] =
+  /** Every secret on `held`'s board but `kept`, burnt by `by`. A board
+    * holding `kept` or fewer loses nothing. */
+  def keeping(held: PlayerState, kept: Int, by: PlayerId)
+      : Vector[CoreOperation] =
     val burnt = held.board.faceUpSecrets + held.board.faceDownSecrets - kept
     val faceDown = math.min(held.board.faceDownSecrets, burnt)
     def side(value: SecretSide) = PositionedLocation(
@@ -18,6 +19,6 @@ object SecretBurns:
     if burnt <= 0 then Vector.empty
     else Vector(
       Option.when(faceDown > 0)(Burn.secrets(faceDown,
-        side(SecretSide.FaceDown))),
+        side(SecretSide.FaceDown), Some(by))),
       Option.when(burnt > faceDown)(Burn.secrets(burnt - faceDown,
-        side(SecretSide.FaceUp)))).flatten
+        side(SecretSide.FaceUp), Some(by)))).flatten

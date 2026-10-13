@@ -116,23 +116,32 @@ final case class SpendSupply(player: PlayerId, amount: Int,
     override val required: Boolean = true) extends PrimitiveOperation:
   require(amount > 0, "supply spend must be positive")
 
-/** Moves favor or secrets to the shared bank. */
+/** Moves favor or secrets to the shared bank. `by` is the player who burns
+  * (catalog batch 8, "A burn's actor"): the actor of the procedure that
+  * burns, each owner when an effect makes each player burn, the defeated
+  * defender for a Raid's half-favor burn, and `None` when no player burns,
+  * as in a setup rule. A cost's burnt portions are its payer's, so
+  * `PayCost` holds no `Burn`.
+  */
 sealed trait Burn extends CoreOperation:
   def resource: Piece.Counted
   def from: PositionedLocation
+  def by: Option[PlayerId]
 
   final lazy val move: Move = Move(resource, from,
     PositionedLocation(Location.SharedBank))
   final override lazy val children: Vector[Operation] = Vector(move)
 object Burn:
-  def favor(amount: Int, from: PositionedLocation): Burn =
-    ResourceBurn(Piece.Favor(amount), from)
+  def favor(amount: Int, from: PositionedLocation,
+      by: Option[PlayerId]): Burn =
+    ResourceBurn(Piece.Favor(amount), from, by)
 
-  def secrets(amount: Int, from: PositionedLocation): Burn =
-    ResourceBurn(Piece.Secrets(amount), from)
+  def secrets(amount: Int, from: PositionedLocation,
+      by: Option[PlayerId]): Burn =
+    ResourceBurn(Piece.Secrets(amount), from, by)
 
   private final case class ResourceBurn(resource: Piece.Counted,
-      from: PositionedLocation) extends Burn
+      from: PositionedLocation, by: Option[PlayerId]) extends Burn
 
 sealed trait BuryableCard extends Product with Serializable:
   def id: CardId

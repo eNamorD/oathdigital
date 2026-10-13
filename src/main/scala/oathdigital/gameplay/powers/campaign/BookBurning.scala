@@ -18,9 +18,9 @@ object BookBurningCard extends Denizen(DenizenId("22"), "Book Burning", Suit.Dis
   * It is free, and offered only in a Raid. A Raid's defender is always a player,
   * whose pawn the attacker reached. Once the Campaign has resolved, if the
   * attacker won, every secret on the defender's board is burnt except one. Only
-  * a faceup secret can be burnt, so the facedown ones go first: they are turned
-  * faceup and burnt in the same step. The defender keeps one secret, faceup if
-  * any remains. A defender with one secret or none loses nothing.
+  * a faceup secret can be burnt unless the burn names the facedown side, so
+  * the facedown ones are burnt by name, first. The defender keeps one secret,
+  * faceup if any remains. A defender with one secret or none loses nothing.
   *
   * When the attacker won it writes "Burned {n secrets} from {Blue}'s board.",
   * or "{Blue} had no secret to burn." when nothing was burnt.
@@ -39,9 +39,10 @@ case object BookBurning extends BattlePlan:
     NotePart.Text(" had no secret to burn.")))
 
   /** Every secret on `defender`'s board but one ([[SecretBurns]]). */
-  private def burn(ready: ReadyGame, defender: PlayerId): Vector[CoreOperation] =
+  private def burn(ready: ReadyGame, defender: PlayerId, attacker: PlayerId)
+      : Vector[CoreOperation] =
     ready.game.current.players.find(_.player == defender).toVector
-      .flatMap(SecretBurns.keeping(_, 1))
+      .flatMap(SecretBurns.keeping(_, 1, attacker))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
@@ -61,7 +62,8 @@ case object BookBurning extends BattlePlan:
       else use.result.map(_.defender).collect {
         case CampaignDefender.Player(defender) => defender
       }.toVector.flatMap(defender => Vector(
-        BuildOps((ready, _) => Right(BookBurning.burn(ready, defender))),
+        BuildOps((ready, _) =>
+          Right(BookBurning.burn(ready, defender, use.actor))),
         Note(id, states => states.previous.map { step =>
           val burnt = -NoteSupport.secrets(step, defender)
           if burnt > 0 then BookBurning.burned(PowerSourceRef.Card(cardId),

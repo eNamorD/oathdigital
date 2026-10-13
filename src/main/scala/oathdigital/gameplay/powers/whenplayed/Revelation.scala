@@ -72,7 +72,8 @@ case object Revelation extends WhenPlayedPower:
       Some(declined(cardSource, NoteArg.Player(player)))))
     case Some(amount) => Vector(
       BuildOps((_, _) => Right(Vector(
-        Burn.favor(amount, PositionedLocation(Location.PlayArea(player))),
+        Burn.favor(amount, PositionedLocation(Location.PlayArea(player)),
+          Some(player)),
         Gain.Secrets(player, amount)))),
       Note(id, burnedNote(_, player), covers = true))
     case None => Vector.empty

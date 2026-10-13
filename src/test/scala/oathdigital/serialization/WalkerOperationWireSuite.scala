@@ -273,7 +273,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Peek(player, denizen, Location.Site(site)),
       Flip(denizen, Location.Site(site), Orientation.FaceUp),
       FlipSecrets(player, 2, SecretSide.FaceUp, SecretSide.FaceDown),
-      Burn.favor(3, PositionedLocation(Location.PlayArea(player))),
+      Burn.favor(3, PositionedLocation(Location.PlayArea(player)), None),
       Bury(BuryableCard.Relic(relic), PositionedLocation(Location.PlayArea(player))),
       Discard.Denizen(denizen, PositionedLocation(Location.Site(site)),
         Region.Cradle, Suit.Arcane, favor = 1, secrets = 1,
@@ -393,7 +393,8 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Move(Piece.Favor(1),
         PositionedLocation(Location.OnBanner(Banner.PeoplesFavor)),
         PositionedLocation(Location.FavorBank(Suit.Order))),
-      Burn.secrets(2, PositionedLocation(Location.OnBanner(Banner.DarkestSecret))))
+      Burn.secrets(2, PositionedLocation(Location.OnBanner(Banner.DarkestSecret)),
+        None))
     val takes = Vector(
       Take(Piece.Banner(Banner.PeoplesFavor), player, Location.PlayArea(holder),
         Location.PlayArea(player), leaving = leaving),
@@ -423,6 +424,19 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     assertEquals(ops(0)("from")("side").str, "face-down")
     assertEquals(ops(1)("sourceSide").str, "face-up")
     assert(!ops(2)("from").obj.contains("side"))
+
+  test("a burn's burner round trips, and a burn no player makes writes " +
+      "null"):
+    val red = PlayerId("red")
+    val burns = Vector[CoreOperation](
+      Burn.favor(2, PositionedLocation(Location.PlayArea(red)), Some(red)),
+      Burn.favor(1, PositionedLocation(Location.FavorBank(Suit.Order)),
+        None))
+    val events = burns.map(burn => recordedOperation("burn", burn))
+    val encoded = encodedStreamThatRoundTrips("burn-by", events)
+    val ops = ujson.read(encoded).arr.map(_("payload")("ops")(0))
+    assertEquals(ops(0)("by").str, "red")
+    assertEquals(ops(1)("by"), ujson.Null)
 
   test("a walker tree-control node can never be recorded, and surfaces a " +
       "typed WireError instead of an opaque exception"):

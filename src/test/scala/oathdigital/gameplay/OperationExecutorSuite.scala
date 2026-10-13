@@ -239,7 +239,8 @@ class OperationExecutorSuite extends munit.FunSuite:
       ))))
 
     val changed = accepted(executor.executeAll(source, Vector(
-      Burn.favor(1, PositionedLocation(Location.OnCard(atlasDenizen.id))),
+      Burn.favor(1, PositionedLocation(Location.OnCard(atlasDenizen.id)),
+        None),
       Flip(atlasDenizen.id, Location.Atlas, Orientation.FaceUp)
     )))
     val stored =
@@ -299,18 +300,18 @@ class OperationExecutorSuite extends munit.FunSuite:
     def holder(faceUp: Int, faceDown: Int) =
       Table.from(ready).secrets(playerId, faceUp, faceDown).unchecked
     val mixed = accepted(executor.execute(holder(1, 1), Burn.secrets(1,
-      PositionedLocation(Location.PlayArea(playerId)))))
+      PositionedLocation(Location.PlayArea(playerId)), None)))
     val actor = Look(mixed).player(playerId)
     assertEquals(actor.board.faceUpSecrets -> actor.board.faceDownSecrets,
       0 -> 1)
     // A player with only facedown secrets cannot burn them: the burn fails as
     // if the player held no secrets at all.
     assertEquals(executor.execute(holder(0, 2), Burn.secrets(2,
-      PositionedLocation(Location.PlayArea(playerId)))).left.toOption,
+      PositionedLocation(Location.PlayArea(playerId)), None)).left.toOption,
       Some(OperationError.InsufficientPieces(Piece.Secrets(2),
         Location.PlayArea(playerId), 0)))
     assertEquals(executor.execute(holder(0, 0), Burn.secrets(1,
-      PositionedLocation(Location.PlayArea(playerId)))).left.toOption,
+      PositionedLocation(Location.PlayArea(playerId)), None)).left.toOption,
       Some(OperationError.InsufficientPieces(Piece.Secrets(1),
         Location.PlayArea(playerId), 0)))
 
@@ -329,7 +330,7 @@ class OperationExecutorSuite extends munit.FunSuite:
       blueBefore.faceUpSecrets -> (blueBefore.faceDownSecrets + 2))
     val burnt = accepted(executor.execute(mixed, Burn.secrets(2,
       PositionedLocation(Location.PlayArea(playerId),
-        side = Some(SecretSide.FaceDown)))))
+        side = Some(SecretSide.FaceDown)), None)))
     val left = Look(burnt).player(playerId).board
     assertEquals(left.faceUpSecrets -> left.faceDownSecrets, 1 -> 0)
     assertEquals(executor.execute(mixed, Take(Piece.Secrets(2), blueId,
@@ -381,7 +382,7 @@ class OperationExecutorSuite extends munit.FunSuite:
     assertEquals(Look(sacrificed).player(playerId).board.warbands, 2)
 
     val burned = accepted(executor.execute(ready, Burn.favor(1,
-      PositionedLocation(Location.PlayArea(playerId)))))
+      PositionedLocation(Location.PlayArea(playerId)), None)))
     // Red's only favor, burned.
     assertEquals(Look(burned).player(playerId).board.favor, 0)
 
