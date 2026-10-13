@@ -30,7 +30,7 @@ object KeepCard extends Denizen(DenizenId("5"), "Keep", Suit.Order) with SiteOnl
   * with {Blue}'s pawn at {site}.", restates a pawn move and covers it, so
   * the Campaign's closing line does not say the pawn was sent there.
   */
-case object Keep extends ContributingPower:
+case object KeepRule extends ContributingPower:
   val cardId: DenizenId = KeepCard.id
   val id: PowerId = KeepCard.power.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)

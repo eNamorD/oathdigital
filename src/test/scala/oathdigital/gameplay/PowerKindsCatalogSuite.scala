@@ -84,7 +84,7 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
   test("Keep's rule is automatic whatever its flag: it is a must, not a " +
       "modifier"):
     assertEquals(flag("denizen.keep"), Some(false))
-    assertEquals(oathdigital.gameplay.powers.campaign.Keep.resolution,
+    assertEquals(oathdigital.gameplay.powers.campaign.KeepRule.resolution,
       PowerResolution.Automatic)
 
   test("Vow of Beastkin's rule is automatic whatever its flag"):

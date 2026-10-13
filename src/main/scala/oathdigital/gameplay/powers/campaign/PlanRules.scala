@@ -66,4 +66,4 @@ object PlanRules:
       Vector(SealingWard.forCatalog(catalog)) ++
       Vector(Herald.forCatalog(catalog)) ++
       Vector(VowOfUnion) ++
-      Vector(Keep)
+      Vector(KeepRule)

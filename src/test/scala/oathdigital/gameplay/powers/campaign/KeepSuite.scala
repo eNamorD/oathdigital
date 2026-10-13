@@ -74,7 +74,7 @@ class KeepSuite extends munit.FunSuite:
     assertEquals(rival.pawnSite, Some(site))
     // Nothing more is asked: the Campaign is over.
     parked.assertResumed(done.state, Phase.Act, b.actor)
-    assertEquals(said(Keep, done.events),
+    assertEquals(said(KeepRule, done.events),
       Vector(keepLine(b.rival, site, covers = true)))
     assertEquals(ActPowerHarness.replayed(done.game, b.ready, done.events),
       ready(done.state))
@@ -92,7 +92,7 @@ class KeepSuite extends munit.FunSuite:
       case move @ Move(Piece.Pawn(_), _, _, _) => move }
     assertEquals(pawnMoves, Vector.empty)
     parked.assertResumed(done.state, Phase.Act, b.actor)
-    assertEquals(said(Keep, done.events),
+    assertEquals(said(KeepRule, done.events),
       Vector(keepLine(b.rival, b.origin, covers = false)))
 
   test("Keep at a site another player rules changes nothing"):
@@ -102,7 +102,7 @@ class KeepSuite extends munit.FunSuite:
     assert(awaits(run, b.actor, CampaignIds.relocation))
     assertEquals(Look(run.state).player(b.rival).board.favor, 5 - 5 / 2)
     assertEquals(Look(run.state).player(b.rival).advisers, Vector.empty)
-    assertEquals(said(Keep, run.events), Vector.empty)
+    assertEquals(said(KeepRule, run.events), Vector.empty)
 
   test("the effects at the Campaign's end still run: Book Burning still " +
       "burns the defender's secrets"):
