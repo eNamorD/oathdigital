@@ -171,7 +171,9 @@ card-play site, and the origin and destination start arguments.
   a level, so a game parked inside a card play when the server updates may
   not resume.
 - **Vow of Wisdom always gains a secret.** Its holder's play to a site
-  gains 1 secret whether or not the suit bank holds favor, and no favor.
+  gains 1 secret whether or not the suit bank holds favor, and not the
+  play's own favor. A favor another power gives for the play, such as
+  Welcoming Party's, is still gained.
 - **Ward of Silence pays inside its action.** Its `usable` checks that its
   card could take one secret (a faceup secret and an empty card), and that
   another player at the site holds a faceup secret. Otherwise the Act menu

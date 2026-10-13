@@ -20,8 +20,10 @@ object VowOfWisdomCard extends Denizen(DenizenId("203"), "Vow of Wisdom",
   * While its holder has it faceup, a rewrite at `SearchPlayAdviser` follows
   * the holder's `Play` to a site with a gain of 1 secret, and drops the
   * play's favor gain. The secret is gained whether or not the card's suit
-  * bank holds favor. There is no choice. A WHEN PLAYED power's own gain
-  * sits under its own window, so the rewrite leaves it alone.
+  * bank holds favor. There is no choice. A gain another power gives for
+  * the play, a WHEN PLAYED power's or Welcoming Party's, sits under its own
+  * window, so the rewrite leaves it alone: "instead of" replaces only the
+  * play's own favor.
   *
   * It writes no line: the play's generic line reads "Gained 1 secret".
   */

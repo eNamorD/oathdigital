@@ -43,6 +43,18 @@ class WelcomingPartySuite extends munit.FunSuite:
     assertEquals(favor(after), favor(ready) + 2)
     assertEquals(ActPowerHarness.replayed(rules, ready, done.events), after)
 
+  test("beside Vow of Wisdom, a play to a site still gains the Hearth " +
+      "favor, and the play's own favor becomes a secret"):
+    val ready = partyAtHome(plain)
+      .adviser(actor, CatalogNames.denizen("Vow of Wisdom")).unchecked
+    val after = SearchFixture.after(play(ready, modifiers, plain.head,
+      PlayedAs.AtSite))
+    assertEquals(hearthBank(after), hearthBank(ready) - 1)
+    assertEquals(favor(after), favor(ready) + 1)
+    assertEquals(Look(after).faceUpSecrets(actor) +
+      Look(after).faceDownSecrets(actor), Look(ready).faceUpSecrets(actor) +
+      Look(ready).faceDownSecrets(actor) + 1)
+
   test("a card played as a faceup adviser gains it too, of any suit"):
     val ready = withParty(plain)
     val after = SearchFixture.after(play(ready, modifiers, plain.head,

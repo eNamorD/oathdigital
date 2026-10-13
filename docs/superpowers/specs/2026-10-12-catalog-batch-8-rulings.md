@@ -52,8 +52,11 @@
 - **203 Vow of Wisdom.** "You must gain [secret] instead of [favor] when you
   play to a site." When its holder plays a card to a site, the play gains
   1 secret and no favor. There is no choice. The secret is gained whether
-  or not the card's suit bank holds favor (plan-time ruling). It writes no
-  line: the generic line reads "Gained 1 secret".
+  or not the card's suit bank holds favor (plan-time ruling). A favor
+  another power gives for the play, such as Welcoming Party's, is still
+  gained: "instead of" replaces only the play's own favor (ruled
+  2026-10-12). It writes no line: the generic line reads "Gained 1
+  secret".
 
 ## Slice 2: Oathkeeper goal
 
