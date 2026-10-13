@@ -28,6 +28,18 @@ private[frontend] object RulesTextRenderer:
     node.appendChild(use)
     node
 
+  /** A short line that may hold tokens, such as a cost badge ("1 Supply · 1
+    * [favor]"), appended to `into` with each token drawn as its glyph. */
+  def inline(value: String, into: dom.Element): Unit = tokenise(value, into)
+
+  /** The same line in words, each token named ("1 Supply · 1 favor"), for a
+    * reader who cannot see the glyphs. */
+  def spoken(value: String): String = Token.replaceAllIn(value, found =>
+    scala.util.matching.Regex.quoteReplacement(
+      if TokenSprite.isToken(found.group(1)) then
+        TokenSprite.label(found.group(1))
+      else found.matched))
+
   def powers(rulesText: String): Vector[dom.Element] =
     rulesText.split("\n\\s*\n").toVector.map(_.trim).filter(_.nonEmpty)
       .map { block =>

@@ -44,6 +44,16 @@ class MenuPanelSuite extends munit.FunSuite:
     assertEquals(all(panel, ".menu-ending").map(_.textContent),
       Vector("End Act and Rest (+5 Supply)"))
 
+  test("a cost's favor is drawn as glyphs and named in words"):
+    val trade = button("trade.secret", "Trade for secrets",
+      Some("1 Supply · 1 [favor] · 1 [favor-burnt]"))
+    val shown = all(draw(Vector(trade, ending)), ".menu-option").head
+    assertEquals(all(shown, ".menu-option-cost .token-glyph")
+      .map(_.getAttribute("aria-label")), Vector("favor", "burnt favor"))
+    assert(!shown.textContent.contains("["), shown.textContent)
+    assertEquals(shown.getAttribute("aria-label"),
+      "Trade for secrets (1 Supply · 1 favor · 1 burnt favor)")
+
   test("an unavailable option is withheld and says why only in its note"):
     val panel = draw(Vector(recover, ending))
     val shown = as[dom.html.Button](all(panel, ".menu-option").head)

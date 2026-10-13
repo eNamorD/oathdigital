@@ -17,19 +17,16 @@ import oathdigital.model._
   * player.
   */
 object QueuedStart:
-  /** What a start costs its actor by its cheapest way, and whether another
-    * way costs more Supply or more favor. */
-  final case class StartCost(supply: Int, favor: Int,
-      moreSupply: Boolean = false, moreFavor: Boolean = false):
-    /** "1 Supply", "2 Supply · 1 favor", "1+ Supply", "2+ Supply · 1+
-      * favor": a "+" marks an amount another way spends more of. `None`
-      * when the start is free. */
+  /** What a start costs its actor by its cheapest way, `least`, and by every
+    * other way it could go. */
+  final case class StartCost(least: PricedOptions.Spent,
+      others: Vector[PricedOptions.Spent] = Vector.empty):
+    /** "1 Supply", "2 Supply · 1 [favor]", "1+ Supply", "1 Supply · 1
+      * [favor] · 1 [favor-burnt]": a "+" marks an amount another way spends
+      * more of. `None` when the start is free. */
     def words: Option[String] =
-      def part(amount: Int, more: Boolean, unit: String) =
-        Option.when(amount > 0)(s"$amount${if more then "+" else ""} $unit")
-      Option.when(supply > 0 || favor > 0)(Vector(
-        part(supply, moreSupply, "Supply"), part(favor, moreFavor, "favor"))
-        .flatten.mkString(" · "))
+      Option.when(least != PricedOptions.Spent())(least.words(part =>
+        others.exists(way => part.of(way) > part.of(least))))
 
   def refusal(catalog: ExecutableCatalog, ready: ReadyGame,
       entry: QueuedProcedure, powers: WalkerPowers,
@@ -48,25 +45,21 @@ object QueuedStart:
       cost <- costOf(entry, tree, past, powers)
     yield cost
 
-  /** "Needs 2 Supply; you have 1", or the same for favor, when the start
-    * would open with the actor's Supply raised to the track's maximum, then
-    * also their favor raised: a refusal carries no amount. */
+  /** "Needs 2 Supply; you have 1", or the same for favor or secrets, when
+    * the start would open with the actor's Supply raised to the track's
+    * maximum, then also their favor and secrets raised: a refusal carries no
+    * amount. */
   def needs(catalog: ExecutableCatalog, ready: ReadyGame,
       entry: QueuedProcedure, powers: WalkerPowers,
       phasePowers: PhasePowers): Option[String] =
-    def lifted(favor: Boolean) = priced(catalog,
-      PricedOptions.lift(ready, entry.actor, favor), entry, powers,
+    def lifted(resources: Boolean) = priced(catalog,
+      PricedOptions.lift(ready, entry.actor, resources), entry, powers,
       phasePowers).toOption
     for
       board <- ready.game.current.players.find(_.player == entry.actor)
         .map(_.board)
-      cost <- lifted(favor = false).orElse(lifted(favor = true))
-      text <-
-        if cost.supply > board.supply.supply then Some(
-          s"Needs ${cost.supply} Supply; you have ${board.supply.supply}")
-        else if cost.favor > board.favor then Some(
-          s"Needs ${cost.favor} favor; you have ${board.favor}")
-        else None
+      cost <- lifted(resources = false).orElse(lifted(resources = true))
+      text <- PricedOptions.needs(cost.least, board)
     yield text
 
   /** The state the entry's start runs on: no walk open, and the entry
@@ -84,7 +77,7 @@ object QueuedStart:
       past: WalkerSimulation.Started, powers: WalkerPowers)
       : Either[OathViolation, StartCost] =
     val actor = entry.actor
-    val (supply, favor) = PricedOptions.spent(past.operations, actor)
+    val before = PricedOptions.spent(past.operations, actor)
     past.at match
       case Some((state, pending))
           if WalkerProcedureRegistry.requiresPlayableOption(
@@ -95,13 +88,15 @@ object QueuedStart:
             case WalkerSimulation.PreviewedOption(_, Right(outcome))
                 if PricedOptions.answerable(outcome) => outcome
           }.flatMap(PricedOptions.paths).map(PricedOptions.spent(_, actor))
-            .map((more, extra) => (supply + more, favor + extra)).distinct
+            .map(before + _).distinct
           if ways.isEmpty then
             Left(OathViolation.NoPlayableOption(entry.procedure.key))
           else
-            val (least, leastFavor) = ways.min
-            Right(StartCost(least, leastFavor,
-              moreSupply = ways.exists(_._1 > least),
-              moreFavor = ways.exists(_._2 > leastFavor)))
+            // The cheapest way is the one that spends the least Supply,
+            // then the least favor, then the fewest secrets.
+            val least = ways.minBy(way =>
+              (way.supply, way.allFavor, way.allSecrets, way.favorBurnt,
+                way.secretsBurnt))
+            Right(StartCost(least, ways.filter(_ != least)))
         }
-      case _ => Right(StartCost(supply, favor))
+      case _ => Right(StartCost(before))

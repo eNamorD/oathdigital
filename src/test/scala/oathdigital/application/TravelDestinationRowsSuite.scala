@@ -53,7 +53,7 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
       .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
       .favor(actor, 1).warbandsAt(provincePlains, Table.p2, 1)
       .warbandsAt(coast, Table.p2, 1).unchecked
-    assertEquals(row(ready, coast).badge, Some("1 Supply · 1 favor"))
+    assertEquals(row(ready, coast).badge, Some("1 Supply · 1 [favor]"))
 
   test("a toll its ruler waived reads both ways on"):
     val tolled = Table.from(open(supply = 7))
@@ -64,7 +64,7 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
       ConsentKey(TollRoads.id, actor, TollRoads.decisionId,
         TollRoads.free(coast))), ConsentTurn.of(tolled)))
     assertEquals(row(granted, coast).badge,
-      Some("1 Supply · 1 favor or 1 Supply"))
+      Some("1 Supply · 1 [favor] or 1 Supply"))
 
   test("a selected modifier that makes the Travel free reads 0 Supply, and " +
       "its own card payment is not in the badge"):
@@ -100,9 +100,9 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
     val ready = Table.from(open(supply = 7))
       .denizen(CatalogNames.denizen("Way Station"), at = coast)
       .warbandsAt(coast, Table.p2, 1).favor(actor, 1).unchecked
-    assertEquals(row(ready, coast).badge, Some("1 Supply or 1 favor"))
+    assertEquals(row(ready, coast).badge, Some("1 Supply or 1 [favor]"))
     val broke = Table.from(ready).supply(actor, 0).unchecked
-    assertEquals(row(broke, coast).badge, Some("1 favor"))
+    assertEquals(row(broke, coast).badge, Some("1 [favor]"))
 
   test("a destination Narrow Pass blocks says so on hover and logs nothing"):
     val ready = board(supply = 7)
@@ -137,9 +137,9 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
 
   test("a toll leaves Way Station's favor answer unaffordable on one favor"):
     assertEquals(row(tolledWayStation(favor = 1, supply = 7), coast).badge,
-      Some("1 Supply · 1 favor"))
+      Some("1 Supply · 1 [favor]"))
     assertEquals(row(tolledWayStation(favor = 2, supply = 7), coast).badge,
-      Some("1 Supply · 1 favor or 2 favor"))
+      Some("1 Supply · 1 [favor] or 2 [favor]"))
 
   test("a toll and no Supply leave a player with one favor no way there"):
     assertEquals(rejected(rules.startWalker(Ready(tolledWayStation(favor = 1,

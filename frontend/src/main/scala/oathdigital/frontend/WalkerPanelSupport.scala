@@ -184,11 +184,13 @@ private[frontend] object WalkerPanelSupport:
         choose.insertBefore(RulesTextRenderer.glyph(s"suit-${option.id}"),
           choose.firstChild)
       option.badge.foreach { badge =>
-        choose.appendChild(
-          text("span", s"option-badge ${badgeClass(badge)}", badge))
+        val chip = element("span", s"option-badge ${badgeClass(badge)}")
+        RulesTextRenderer.inline(badge, chip)
+        choose.appendChild(chip)
         // Named in words: the content alone reads the label and the chip
         // run together.
-        choose.setAttribute("aria-label", s"$label, $badge")
+        choose.setAttribute("aria-label",
+          s"$label, ${RulesTextRenderer.spoken(badge)}")
       }
       choose.disabled = !canControl
       // A card option reads its rules text on hover, as the menu panel's
@@ -223,12 +225,13 @@ private[frontend] object WalkerPanelSupport:
     }
 
   /** The three battle-plan chips, so a side reads as a colour as well as a
-    * word. An unknown badge gets the neutral class rather than none.
+    * word. Any other badge is a cost and gets the plain cost chip.
     */
   private def badgeClass(badge: String): String = badge match
     case "Attack Plan" => "plan-side-attack"
     case "Defense Plan" => "plan-side-defense"
-    case _ => "plan-side-both"
+    case "Battle Plan" => "plan-side-both"
+    case _ => "option-cost"
 
   /** The faces as the symbols printed on them, then one line of totals: what
     * the roll came to, the number it is measured against where there is one,

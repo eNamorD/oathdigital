@@ -36,9 +36,19 @@ private[frontend] object MenuPanel:
     val options = surface.query.options
     def control(option: DecisionOptionState, style: String): dom.Element =
       val row = element("div", "action-option")
-      val label = option.badge.fold(option.label)(badge =>
-        s"${option.label} ($badge)")
-      val choose = button(label, s"walker-choice menu-option $style".trim)
+      val choose = button(option.label,
+        s"walker-choice menu-option $style".trim)
+      // What the pick costs, after its name, its resources drawn as glyphs
+      // and named in words for a reader who cannot see them.
+      option.badge.foreach { badge =>
+        val cost = element("span", "menu-option-cost")
+        cost.appendChild(dom.document.createTextNode(" ("))
+        RulesTextRenderer.inline(badge, cost)
+        cost.appendChild(dom.document.createTextNode(")"))
+        choose.appendChild(cost)
+        choose.setAttribute("aria-label",
+          s"${option.label} (${RulesTextRenderer.spoken(badge)})")
+      }
       choose.disabled = !canControl
       option.card.flatMap(_.rulesText)
         .foreach(HoverTip.set(choose, _))
