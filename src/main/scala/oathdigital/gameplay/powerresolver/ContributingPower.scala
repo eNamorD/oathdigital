@@ -239,6 +239,10 @@ trait ContributingPower extends NotingPower:
     * arrived (catalog batch 5, "The arrival pass"). None by default. */
   def onArrival(arrived: AdviserArrivals): Option[ArrivalFollowUp] = None
 
+  /** Who takes `burnt` instead of the bank, when this power claims it
+    * (catalog batch 8, "A burn's actor"). None by default. */
+  def takesBurn(ready: ReadyGame, burnt: Burnt): Option[BurnTake] = None
+
 object ContributingPower:
 
   /** The single deterministic ordering used everywhere contributions are
