@@ -145,8 +145,11 @@ private[frontend] object WorldBoardRenderer:
    * designs, ruling 3). */
  private def badged(target: dom.Element, keys: Vector[String],
      options: BoardOptions): Unit =
-   options.view(keys).flatMap(_.option.badge).foreach(badge =>
-     target.appendChild(text("span", "target-detail-badge", badge)))
+   options.view(keys).flatMap(_.option.badge).foreach { badge =>
+     val chip = text("span", "target-detail-badge", "")
+     RulesTextRenderer.inline(badge, chip)
+     target.appendChild(chip)
+   }
 
  /** The World pane. `options` draws the parked board decision onto its
    * sites, cards, pawns, banks and banners.

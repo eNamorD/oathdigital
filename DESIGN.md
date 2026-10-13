@@ -337,7 +337,11 @@ the log, and never stand for a suit, a player or a die. Every tag clears
 **The Shape First Rule.** Every suit, token and die has its own glyph. Color
 only keeps them from blurring; it never carries meaning alone. A token glyph
 is 1.25em of its line (`.token-glyph`); the strip's resource figures carry
-it at 1.3em and a card header at 1.5em.
+it at 1.3em and a card header at 1.5em. A cost names its favor and secrets
+by glyph, each right after its count at 1.1em ("1 Supply · 1 [favor] · 1
+[favor-burnt]"); Supply has no glyph and stays a word, and a burnt part is
+its own count beside its cracked glyph, never folded into the paid one. A
+hover note is plain text, so a cost there stays in words.
 
 **The One Cool Rule.** Selection blue is the only cool UI color, and it means
 "selected". Do not use it for links, information or decoration.
@@ -588,6 +592,8 @@ controls are 30px.
 - **Vision slot**: pill, `currentColor` border, 0.85em, no fill.
 - **Plan side**: 1em pill, `0 0.6em` padding, 0.75em; Discord fill for attack,
   Order fill for defense, a Discord-to-Order gradient for both; white text.
+- **Option cost**: the plan-side pill's shape on a choice, read as a target
+  detail badge: `#a98b58` border, Base fill, Bright Brass 700 text.
 - **Unimplemented badge**: a band across the card's foot, out to its dashed
   border, in the Unimplemented fill: Cream mixed case at `max(0.62em,
   0.7rem)`, centered. The card keeps the band's height free at its foot, so

@@ -72,8 +72,8 @@ class SearchSourceRowsSuite extends munit.FunSuite:
       .denizen(CatalogNames.denizen("Forced Labor"), at = peaks)
       .warbandsAt(peaks, p2, 1).warbandsAt(home, p2, 1).ready
     val shown = rows(ready)
-    assertEquals(shown("world").badge, Some("2 Supply · 1 favor"))
-    assertEquals(shown("cradle").badge, Some("2 Supply · 1 favor"))
+    assertEquals(shown("world").badge, Some("2 Supply · 1 [favor]"))
+    assertEquals(shown("cradle").badge, Some("2 Supply · 1 [favor]"))
 
   test("a pile the actor cannot afford says how much it needs"):
     // One Vision drawn puts the world deck at 3 Supply.

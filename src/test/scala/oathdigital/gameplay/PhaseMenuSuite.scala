@@ -247,12 +247,16 @@ class PhaseMenuSuite extends munit.FunSuite:
     val placeButton = PhaseMenu.powerButton(WanderingFlamePlace.id)
     assertEquals(moveButton.wireId,
       "use-power:banner.darkest-secret.wandering-flame.move")
+    // Placing the secret spends it, so that button carries its badge.
     assertEquals(listed.collect {
-      case DecisionOption.Button(ref, label) if ref == moveButton ||
-        ref == placeButton => ref -> label
-    }, Vector[(DecisionOptionRef, String)](
-      moveButton -> "Wandering Flame: move",
-      placeButton -> "Wandering Flame: place a secret on your site"))
+      case DecisionOption.Button(ref, label) if ref == moveButton =>
+        (ref, label, None)
+      case DecisionOption.Badged(DecisionOption.Button(ref, label), badge)
+          if ref == placeButton => (ref, label, Some(badge))
+    }, Vector[(DecisionOptionRef, String, Option[String])](
+      (moveButton, "Wandering Flame: move", None),
+      (placeButton, "Wandering Flame: place a secret on your site",
+        Some("1 [secret]"))))
     assert(!listed.exists(_.ref.isInstanceOf[DecisionOptionRef.Banner]),
       listed)
     // Picking the second button uses the second power.
