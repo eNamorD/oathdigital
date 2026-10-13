@@ -45,9 +45,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     Move | Take | Kill | Replace | Sacrifice | Burn | Give | Exchange | PayCost
   private type ResourceOperation = SpendSupply | GainSupply | FlipSecrets | Gain
   private type TurnOperation = AdvanceVisionsDrawn.type | BeginTurn | EnterPhase |
-    SetOathkeeper | RecordPowerUse | RecordCampaignResult | ModifyDicePool | Roll |
-    ModifyRollOutcome | Reroll | SetDieFaces | QueueProcedure | Defer |
-    TakeDeferred
+    SetOathkeeper | SetOathkeeperGoal | RecordPowerUse | RecordCampaignResult |
+    ModifyDicePool | Roll | ModifyRollOutcome | Reroll | SetDieFaces |
+    QueueProcedure | Defer | TakeDeferred
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match
@@ -222,6 +222,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       case SetOathkeeper(holder) => ujson.Obj("kind" -> "set-oathkeeper",
         "holderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p =>
           ujson.Str(p.value)))
+      case SetOathkeeperGoal(goal) => ujson.Obj(
+        "kind" -> "set-oathkeeper-goal", "goal" -> goal.key)
       // A use limit is journalled as the ref it records, not as the power
       // that asked for it: replay adds the same ref to the same turn without
       // gathering anything.
@@ -508,6 +510,11 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       case ujson.Null => None
       case other => Some(PlayerId(other.str))
     }))
+    case "set-oathkeeper-goal" =>
+      val key = value("goal").str
+      OathkeeperGoal.all.find(_.key == key).toRight(
+        InvalidValue(s"$path.goal", s"unknown Oathkeeper goal '$key'"))
+        .map(SetOathkeeperGoal.apply)
     case "record-power-use" => for
       timing <- decodePowerTiming(value("timing").str, s"$path.timing")
       source <- (if value.obj.contains("siteId") then

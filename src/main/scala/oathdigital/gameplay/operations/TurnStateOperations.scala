@@ -142,6 +142,12 @@ private[operations] object TurnStateOperations:
         title = OathkeeperState(holder, TitleSide.Oathkeeper))),
       OathkeeperUnchanged(holder))
 
+  def setOathkeeperGoal(ready: ReadyGame,
+      goal: OathkeeperGoal): Either[OperationError, ReadyGame] =
+    Either.cond(ready.game.campaign.oathkeeperGoal != goal,
+      ready.updateCampaign(_.copy(oathkeeperGoal = goal)),
+      OathkeeperGoalUnchanged(goal))
+
   def beginTurn(ready: ReadyGame, player: PlayerId,
       phase: Phase): Either[OperationError, ReadyGame] =
     if !ready.game.current.players.exists(_.player == player) then

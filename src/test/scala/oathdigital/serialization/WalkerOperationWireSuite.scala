@@ -330,6 +330,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Shuffle(SearchSource.RegionalDiscard(Region.Hinterland)),
       SetOathkeeper(Some(PlayerId("red"))),
       SetOathkeeper(None),
+      SetOathkeeperGoal(OathkeeperGoal.ThePeople),
       QueueProcedure(QueuedProcedure(PlayerId("p1"), ActionRef.Campaign,
           Vector.empty,
           Some(PowerSourceRef.Card(CatalogNames.denizen("Knights Errant"))),
