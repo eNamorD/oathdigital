@@ -195,6 +195,28 @@ card-play site, and the origin and destination start arguments.
 True Oath is a WHEN PLAYED power and The Red Seer an ACTION power. Both ask
 the new goal with a `ChooseOne` and apply `SetOathkeeperGoal`.
 
+### Plan-time rulings
+
+- **One goal question.** Both cards list the four goals in printed order.
+  The current goal is shown unavailable with "The current goal". The Red
+  Seer also shows Devotion unavailable, with "The Red Seer cannot choose
+  Devotion". True Oath adds "Keep the current goal", which declines.
+- **The title follows at the action's end.** The Oathkeeper check at every
+  action boundary reads the new goal, so the title may pass in the same
+  action. The log's "Oathkeeper passed to {Blue}" line tells it.
+- **The Red Seer without the Darkest Secret** is shown unavailable with the
+  engine's "Nothing to do now", and its cost is not paid.
+- **True Oath counts live,** when the power fires, with True Oath already
+  among its player's advisers. With fewer than three other Beast cards it
+  asks nothing.
+- **Lines.** Both cards write "Changed the Oathkeeper goal to Protection."
+  True Oath writes "Kept the Oathkeeper goal." when declined, and "Ruled
+  fewer than three other Beast cards." when it cannot ask. Neither question
+  posts a "Chose" line.
+- **An unchanged goal is rejected.** `SetOathkeeperGoal` with the goal
+  already set fails with `oathkeeper-goal-unchanged`, as `SetOathkeeper`
+  treats an unchanged holder.
+
 ## Slice 3: Warbands at a Campaign's start
 
 Vow of Union's Campaign half is a `Transform` at `CampaignBeforeTargets`
