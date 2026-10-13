@@ -115,6 +115,13 @@ object OperationError:
       "the Oathkeeper title is already in the shared bank")(player =>
       s"${player.value} already holds the Oathkeeper title")
 
+  /** A goal "change" to the goal already set. */
+  final case class OathkeeperGoalUnchanged(goal: OathkeeperGoal)
+      extends OperationError:
+    override val code: String = "oathkeeper-goal-unchanged"
+    override val detail: String =
+      s"the Oathkeeper goal is already ${goal.key}"
+
   final case class InvalidPostState(problems: Vector[DomainProblem])
       extends OperationError:
     override val code: String = "invalid-post-state"

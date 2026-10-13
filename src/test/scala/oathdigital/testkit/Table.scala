@@ -314,6 +314,10 @@ final case class Table private (private val game: ReadyGame,
       side: TitleSide = TitleSide.Oathkeeper): Table =
     update(_.updateCurrent(_.copy(title = OathkeeperState(holder, side))))
 
+  /** The campaign's Oathkeeper goal set to `goal`. */
+  def oathkeeperGoal(goal: OathkeeperGoal): Table =
+    update(_.updateCampaign(_.copy(oathkeeperGoal = goal)))
+
   def bankFavor(suit: Suit, n: Int): Table =
     update(r => r.copy(banks = r.banks.copy(favor = r.banks.favor.updated(suit, n))))
 

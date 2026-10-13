@@ -47,3 +47,4 @@ object NoteText:
     case NoteArg.Pile(pile) => SearchSource.name(pile)
     case NoteArg.RegionName(region) => region.toString
     case NoteArg.SuitName(suit) => suit.toString
+    case NoteArg.Goal(goal) => OathkeeperGoalChoice.named(goal)

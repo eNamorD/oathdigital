@@ -63,13 +63,26 @@
 - **209 True Oath.** "WHEN PLAYED, if you rule at least three other
   [suit-beast] cards, you may change the Oathkeeper goal."
   - The three Beast cards are counted as `RuledCards.of` counts ruled
-    cards, without True Oath itself.
-  - The new goal must differ from the current one. The player may decline.
+    cards, without True Oath itself, when the power fires (plan-time
+    ruling).
+  - With three or more, it lists the four goals, the current one shown
+    unavailable with "The current goal", and "Keep the current goal". The
+    new goal must differ from the current one. The player may decline.
+  - Lines: "True Oath: Changed the Oathkeeper goal to Protection.", "True
+    Oath: Kept the Oathkeeper goal." and, with fewer than three, "True
+    Oath: Ruled fewer than three other Beast cards." (plan-time ruling).
 - **244 The Red Seer.** "[secret] [secret-burnt] [secret-burnt] ACTION: If
   you hold the Darkest Secret, change the Oathkeeper goal to anything but
-  Devotion." The new goal is neither the current goal nor Devotion. Without
-  the Darkest Secret the action is shown unavailable (Yew Staff satisfies
-  it once slice 9 lands).
+  Devotion."
+  - The new goal is neither the current goal nor Devotion. Both are listed
+    unavailable: "The current goal", and "The Red Seer cannot choose
+    Devotion" (plan-time ruling).
+  - Without the Darkest Secret the action is shown unavailable, with
+    "Nothing to do now" (Yew Staff satisfies it once slice 9 lands).
+  - Line: "The Red Seer: Changed the Oathkeeper goal to Protection."
+- **Both.** The title follows at the action's end: the Oathkeeper check
+  reads the new goal, and "Oathkeeper passed to {Blue}" tells a pass
+  (plan-time ruling).
 
 ## Slice 3: Warbands at a Campaign's start
 

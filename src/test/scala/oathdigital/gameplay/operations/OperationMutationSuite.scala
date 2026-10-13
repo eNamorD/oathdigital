@@ -57,6 +57,19 @@ class OperationMutationSuite extends munit.FunSuite:
     assertEquals(set(titled(None, TitleSide.Oathkeeper), None).left.map(_.code),
       Left("oathkeeper-unchanged"))
 
+  private def setGoal(from: OathkeeperGoal, to: OathkeeperGoal) =
+    new OperationExecutor().executeAll(
+      Table.start.oathkeeperGoal(from).ready, Vector(SetOathkeeperGoal(to)))
+      .map(_.game.campaign.oathkeeperGoal)
+
+  test("SetOathkeeperGoal changes the campaign's Oathkeeper goal"):
+    assertEquals(setGoal(OathkeeperGoal.Supremacy, OathkeeperGoal.Devotion),
+      Right(OathkeeperGoal.Devotion))
+
+  test("SetOathkeeperGoal rejects leaving the goal unchanged"):
+    assertEquals(setGoal(OathkeeperGoal.Protection, OathkeeperGoal.Protection)
+      .left.map(_.code), Left("oathkeeper-goal-unchanged"))
+
   private def begin(ready: ReadyGame, operation: BeginTurn) =
     new OperationExecutor().executeAll(ready, Vector(operation))
       .map(_.game.current.turn)

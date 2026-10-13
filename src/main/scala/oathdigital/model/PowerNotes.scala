@@ -32,6 +32,8 @@ object NoteArg:
   final case class RegionName(region: Region) extends NoteArg
   /** A suit by its name, "Hearth" (Spinning Bee's declared suit). */
   final case class SuitName(suit: Suit) extends NoteArg
+  /** An Oathkeeper goal in a sentence, "Protection" or "the People". */
+  final case class Goal(goal: OathkeeperGoal) extends NoteArg
 
 /** `key` is the wire spelling. */
 enum NoteUnit(val key: String, val one: String, val many: String):

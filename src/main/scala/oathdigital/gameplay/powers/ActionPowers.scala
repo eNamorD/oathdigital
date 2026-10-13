@@ -32,7 +32,7 @@ object ActionPowers:
   object Bewitch extends ReviewedPower("denizen.bewitch", None, played)
   object WizardsConclave extends ReviewedPower("denizen.wizard-s-conclave", None, playedDone)
   object LongLostHeir extends ReviewedPower("denizen.long-lost-heir", None, played)
-  object TrueOath extends ReviewedPower("denizen.true-oath", None, played)
+  object TrueOath extends ReviewedPower("denizen.true-oath", None, playedDone)
   object AutumnWind extends ReviewedPower("denizen.autumn-wind", None, played)
   object ShiftingFog extends ReviewedPower("denizen.shifting-fog", None, played)
   object RoyalAmbitions extends ReviewedPower("denizen.royal-ambitions", None, played)

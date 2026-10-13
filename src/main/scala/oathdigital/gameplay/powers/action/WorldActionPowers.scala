@@ -12,7 +12,8 @@ import oathdigital.gameplay.powerresolver.PhasePower
 object WorldActionPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](Storyteller, Firebrand, Levelers, MemoryOfHome,
-      PlagueEngines, BanditPaymaster, TerrorSpells, AncientBinding, Convoys) ++
+      PlagueEngines, BanditPaymaster, TerrorSpells, AncientBinding, Convoys,
+      TheRedSeer) ++
       Vector(MemoryOfNature.forCatalog(catalog)) ++
       Vector(BallotBox.forCatalog(catalog)) ++
       Vector(DarkEnforcer.forCatalog(catalog)) ++

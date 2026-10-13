@@ -22,7 +22,7 @@ import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,
   SecondChanceCard, ShiftingMapCard,
   SiegeEnginesCard, SingingMaskCard, SkeletonKeyCard, SleightOfHandCard, SpiritSnareCard,
   SpoiledSuppliesCard, StorytellerCard, TamingCharmCard, TavernSongsCard,
-  TerrorSpellsCard,
+  TerrorSpellsCard, TheRedSeerCard,
   TinkersFairCard, TutorCard, WardOfSilenceCard, WaysideInnCard,
   WhisperingLeavesCard, WhistleCard, WitchsBargainCard,
   WizardSchoolCard, WolvesCard}
@@ -91,7 +91,7 @@ import oathdigital.gameplay.powers.whenplayed.{ARoundOfAleCard,
   FabledFeastCard, FaithfulFriendCard, FamilyHeirloomCard, GarrisonCard,
   GreatHerdCard, KeyToTheCityCard, RevelationCard, RiotsCard, RoyalTaxCard,
   SaladDaysCard, ShiftingFogCard, ThreateningRoarCard, TownMeetingCard,
-  TwinBrotherCard, WizardsConclaveCard}
+  TrueOathCard, TwinBrotherCard, WizardsConclaveCard}
 
 /** Every printed New Foundations component, listed by kind in printed-id
   * order. A new card is added here and in its own file; `CardCatalogSuite`

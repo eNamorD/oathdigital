@@ -28,7 +28,7 @@ import oathdigital.model._
   * arm.
   */
 private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
-    with FollowUpWire:
+    with FollowUpWire with OathkeeperWire:
   this: GameEventJsonSupport =>
   import WireError._
 
@@ -45,9 +45,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     Move | Take | Kill | Replace | Sacrifice | Burn | Give | Exchange | PayCost
   private type ResourceOperation = SpendSupply | GainSupply | FlipSecrets | Gain
   private type TurnOperation = AdvanceVisionsDrawn.type | BeginTurn | EnterPhase |
-    SetOathkeeper | RecordPowerUse | RecordCampaignResult | ModifyDicePool | Roll |
-    ModifyRollOutcome | Reroll | SetDieFaces | QueueProcedure | Defer |
-    TakeDeferred
+    SetOathkeeper | SetOathkeeperGoal | RecordPowerUse | RecordCampaignResult |
+    ModifyDicePool | Roll | ModifyRollOutcome | Reroll | SetDieFaces |
+    QueueProcedure | Defer | TakeDeferred
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match
@@ -219,9 +219,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "playerId" -> player.value, "phase" -> phase.key)
       case EnterPhase(phase) => ujson.Obj("kind" -> "enter-phase",
         "phase" -> phase.key)
-      case SetOathkeeper(holder) => ujson.Obj("kind" -> "set-oathkeeper",
-        "holderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p =>
-          ujson.Str(p.value)))
+      case operation: SetOathkeeper => encodeSetOathkeeper(operation)
+      case operation: SetOathkeeperGoal => encodeSetOathkeeperGoal(operation)
       // A use limit is journalled as the ref it records, not as the power
       // that asked for it: replay adds the same ref to the same turn without
       // gathering anything.
@@ -504,10 +503,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       Phase.fromKey(key).toRight(
         InvalidValue(s"$path.phase", s"unknown phase '$key'"))
         .map(EnterPhase.apply)
-    case "set-oathkeeper" => Right(SetOathkeeper(value("holderPlayerId") match {
-      case ujson.Null => None
-      case other => Some(PlayerId(other.str))
-    }))
+    case "set-oathkeeper" => Right(decodeSetOathkeeper(value))
+    case "set-oathkeeper-goal" => decodeSetOathkeeperGoal(value, path)
     case "record-power-use" => for
       timing <- decodePowerTiming(value("timing").str, s"$path.timing")
       source <- (if value.obj.contains("siteId") then

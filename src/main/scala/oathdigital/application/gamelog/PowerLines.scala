@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.gameplay.powers.OathkeeperGoalChoice
 import oathdigital.gameplay.walker.{PowerNoted, WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
@@ -95,3 +96,4 @@ private[gamelog] final class PowerLines(words: LogWords,
     case NoteArg.Pile(pile) => Vector(Text(SearchSource.name(pile)))
     case NoteArg.RegionName(region) => Vector(Text(region.toString))
     case NoteArg.SuitName(suit) => Vector(Text(suit.toString))
+    case NoteArg.Goal(goal) => Vector(Text(OathkeeperGoalChoice.named(goal)))

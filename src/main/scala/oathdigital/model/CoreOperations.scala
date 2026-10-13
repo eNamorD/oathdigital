@@ -525,6 +525,17 @@ final case class EnterPhase(phase: Phase) extends PrimitiveOperation
   */
 final case class SetOathkeeper(holder: Option[PlayerId]) extends PrimitiveOperation
 
+/** Sets the campaign's Oathkeeper goal (catalog batch 8, slice 2).
+  *
+  * Which goal a power may choose is the power's rule. The title follows at
+  * the next action boundary, where `OathkeeperRules.outcome` reads the goal.
+  * The one thing applying this rejects is leaving the goal as it is
+  * (`OperationError.OathkeeperGoalUnchanged`), which is a doubled or
+  * reordered journal, as for [[SetOathkeeper]].
+  */
+final case class SetOathkeeperGoal(goal: OathkeeperGoal)
+    extends PrimitiveOperation
+
 /** Records the result of the Campaign just fought as the public
   * `lastCampaignResult`, replacing the previous one.
   */
