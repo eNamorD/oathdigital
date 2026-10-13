@@ -46,7 +46,7 @@ case object Firebrand extends PaidAction(FirebrandCard.power):
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     Branch((live, _) => ask(live, player)),
-    BuildOps((live, pending) => Right(effect(live, pending))),
+    BuildOps((live, pending) => Right(effect(live, pending, player))),
     Note(id, firedNote(_, player, source)))))
 
   private def favorOn(ready: ReadyGame): Int =
@@ -76,12 +76,12 @@ case object Firebrand extends PaidAction(FirebrandCard.power):
     case Vector(only) => Some(only)
     case _ => PowerAnswers.one(pending, decisionId)
 
-  private def effect(ready: ReadyGame, pending: PendingTree)
-      : Vector[CoreOperation] = chosen(ready, pending) match
+  private def effect(ready: ReadyGame, pending: PendingTree,
+      player: PlayerId): Vector[CoreOperation] = chosen(ready, pending) match
     case Some(DecisionOptionRef.FavorBank(suit)) => Vector(Move(
       Piece.Favor(Moved), PositionedLocation(Location.FavorBank(suit)),
       banner))
-    case Some(`burn`) => Vector(Burn.favor(Moved, banner))
+    case Some(`burn`) => Vector(Burn.favor(Moved, banner, Some(player)))
     case _ => Vector.empty
 
   /** What the People's Favor gained or lost in the step before the note.

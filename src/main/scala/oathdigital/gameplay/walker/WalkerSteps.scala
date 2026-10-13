@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy, OperationRun}
 import oathdigital.model.{Answered, BuildOps, CoreOperation, Decide, DieFace, OathViolation, Operation, PendingTree, PowerId, Roll}
 
 /** The leaf steps [[ProcedureWalker]] runs rather than parks, and the
@@ -44,7 +44,9 @@ private[walker] object WalkerSteps:
     * the two leaf kinds that run rather than park (spec decision 5: one
     * hookable node, one event, its final operation batch). `ops` must already
     * be non-empty; callers short-circuit an empty batch themselves (an empty
-    * [[oathdigital.model.BuildOps]] batch records nothing). The adviser
+    * [[oathdigital.model.BuildOps]] batch records nothing). Each burn a
+    * power claims is first replaced by a `Take` ([[BurnTakes]]), and the
+    * claims' lines follow the step. The adviser
     * arrival pass then runs the follow-ups of any adviser that arrived in the
     * batch (`AdviserArrivalPass`).
     */
@@ -53,17 +55,23 @@ private[walker] object WalkerSteps:
       label: String,
       requireAll: Boolean)
       : Either[OathViolation, WalkCtx] =
-    OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive,
-      ctx.powers.operationRestrictions, requireAll)(
-      Right(_)).flatMap { updated =>
+    val swapped = BurnTakes.replace(ctx.state, ctx.powers.powers, ops)
+    val ran =
+      if swapped.operations.isEmpty then
+        Right(OperationRun(ctx.state, Vector.empty, Vector.empty))
+      else OperationPipeline.run(ctx.state, swapped.operations,
+        OperationPolicy.Permissive, ctx.powers.operationRestrictions,
+        requireAll)(Right(_))
+    ran.flatMap { updated =>
       val nodeId = if path.isEmpty then label else path.mkString(".")
-      val events = if updated.executed.isEmpty then ctx.events else
-        ctx.events :+ WalkerStepRecorded(
-          nodeId = nodeId,
-          payload = WalkerStepPayload.DeltaRecorded(
-            DeltaMeaning.of(updated.executed, label)),
-          ops = updated.executed,
-          contributions = contributions)
+      val step = Option.when(updated.executed.nonEmpty)(WalkerStepRecorded(
+        nodeId = nodeId,
+        payload = WalkerStepPayload.DeltaRecorded(
+          DeltaMeaning.of(updated.executed, label)),
+        ops = updated.executed,
+        contributions = contributions))
+      val events = ctx.events ++ step ++
+        swapped.lines(updated.executed, ctx.activePlayer)
       AdviserArrivalPass.after(ctx.state, ctx.copy(state = updated.state,
         events = events, previous = Some((ctx.state, updated.state))),
         nodeId)

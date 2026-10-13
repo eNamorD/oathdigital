@@ -28,7 +28,7 @@ import oathdigital.model._
   * arm.
   */
 private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
-    with FollowUpWire with OathkeeperWire:
+    with FollowUpWire with OathkeeperWire with PositionWire:
   this: GameEventJsonSupport =>
   import WireError._
 
@@ -151,7 +151,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "to" -> encodePositionedLocation(to),
         "resultingOrientation" -> orientation.fold[ujson.Value](ujson.Null)(
           value => ujson.Str(orientationKey(value))))
-      case Take(piece, player, from, to, sourcePosition, _, leaving) =>
+      case Take(piece, player, from, to, sourcePosition, _, leaving,
+          sourceSide) =>
         // Written only when present, so a Take without it encodes as before.
         val optional: Vector[(String, ujson.Value)] =
           if leaving.isEmpty then Vector.empty
@@ -160,7 +161,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
           "kind" -> "take", "piece" -> encodePiece(piece),
           "playerId" -> player.value, "from" -> encodeLocation(from),
           "to" -> encodeLocation(to),
-          "sourcePosition" -> encodeStackPosition(sourcePosition)) ++ optional)
+          "sourcePosition" -> encodeStackPosition(sourcePosition)) ++
+          optional ++ sideField("sourceSide", sourceSide))
       case Kill(warbands, from) => ujson.Obj("kind" -> "kill",
         "warbands" -> encodePiece(warbands),
         "from" -> encodePositionedLocation(from))
@@ -174,7 +176,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "from" -> encodePositionedLocation(from))
       case burn: Burn => ujson.Obj("kind" -> "burn",
         "resource" -> encodePiece(burn.resource),
-        "from" -> encodePositionedLocation(burn.from))
+        "from" -> encodePositionedLocation(burn.from),
+        "by" -> burn.by.fold[ujson.Value](ujson.Null)(
+          by => ujson.Str(by.value)))
       case give: Give => encodeGive(give, "give")
       case Exchange(give, receive) => ujson.Obj("kind" -> "exchange",
         "give" -> encodeGive(give, "exchange-give"),
@@ -420,8 +424,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
           Vector[CoreOperation]]](Right(Vector.empty))(raw =>
         traverse(raw.arr.zipWithIndex.toVector)({ case (operation, index) =>
           decodeOperation(operation, s"$path.leaving[$index]") }))
+      sourceSide <- decodeSide(value, "sourceSide", path)
     yield Take(piece, PlayerId(value("playerId").str), from, to,
-      sourcePosition, leaving = leaving)
+      sourcePosition, leaving = leaving, sourceSide = sourceSide)
     case "kill" => for
       piece <- decodePiece(value("warbands"), s"$path.warbands")
       warbands <- asWarbands(piece, s"$path.warbands")
@@ -447,9 +452,10 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     case "burn" => for
       resource <- decodePiece(value("resource"), s"$path.resource")
       from <- decodePositionedLocation(value("from"), s"$path.from")
+      by = value("by").strOpt.map(PlayerId(_))
       burn <- resource match
-        case Piece.Favor(amount) => Right(Burn.favor(amount, from))
-        case Piece.Secrets(amount) => Right(Burn.secrets(amount, from))
+        case Piece.Favor(amount) => Right(Burn.favor(amount, from, by))
+        case Piece.Secrets(amount) => Right(Burn.secrets(amount, from, by))
         case other => Left(InvalidValue(s"$path.resource",
           s"unsupported burn resource $other"))
     yield burn
@@ -584,16 +590,6 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown buryable card '$other'"))
 
-  private def encodeSecretSide(value: SecretSide): String = value match
-    case SecretSide.FaceUp => "face-up"
-    case SecretSide.FaceDown => "face-down"
-
-  private def decodeSecretSide(value: String,
-      path: String): Either[WireError, SecretSide] = value match
-    case "face-up" => Right(SecretSide.FaceUp)
-    case "face-down" => Right(SecretSide.FaceDown)
-    case other => Left(InvalidValue(path, s"unknown secret side '$other'"))
-
   private def encodeDiceKind(kind: DiceKind): String = kind match
     case DiceKind.Defense => "defense"
     case DiceKind.Attack => "attack"
@@ -662,14 +658,17 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     case other => Left(InvalidValue(path, s"unknown stack position '$other'"))
 
   private def encodePositionedLocation(value: PositionedLocation): ujson.Value =
-    ujson.Obj("location" -> encodeLocation(value.location),
-      "position" -> encodeStackPosition(value.position))
+    ujson.Obj.from(Vector[(String, ujson.Value)](
+      "location" -> encodeLocation(value.location),
+      "position" -> encodeStackPosition(value.position)) ++
+      sideField("side", value.side))
 
   private def decodePositionedLocation(value: ujson.Value,
       path: String): Either[WireError, PositionedLocation] = for
     location <- decodeLocation(value("location"), s"$path.location")
     position <- decodeStackPosition(value("position").str, s"$path.position")
-  yield PositionedLocation(location, position)
+    side <- decodeSide(value, "side", path)
+  yield PositionedLocation(location, position, side)
 
   /** Total over `Location`, unlike the other encoders here, which stay bounded
     * to the leaf shapes this slice records. A location is a closed sealed

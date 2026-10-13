@@ -69,8 +69,8 @@ case object AmberFlame extends PaidAction(AmberFlameCard.power):
     yield
       val from = PositionedLocation(Location.OnBanner(banner))
       val burnt: CoreOperation = banner match
-        case Banner.PeoplesFavor => Burn.favor(Burned, from)
-        case Banner.DarkestSecret => Burn.secrets(Burned, from)
+        case Banner.PeoplesFavor => Burn.favor(Burned, from, Some(actor))
+        case Banner.DarkestSecret => Burn.secrets(Burned, from, Some(actor))
       if BannerRules.resources(ready.game.current, banner) == 0 then
         Vector.empty
       else Vector(burnt)

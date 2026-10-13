@@ -89,7 +89,8 @@ private[campaign] object CampaignRaid:
           case Banner.DarkestSecret =>
             val secrets = BannerRules.resources(current, banner)
             Option.when(secrets > 0)(Burn.secrets(secrets,
-              PositionedLocation(Location.OnBanner(banner)))).toVector
+              PositionedLocation(Location.OnBanner(banner)),
+              Some(attacker))).toVector
         Take(Piece.Banner(banner), attacker, Location.PlayArea(defenderId),
           Location.PlayArea(attacker), leaving = leaving)
       }
@@ -124,7 +125,8 @@ private[campaign] object CampaignRaid:
           PositionedLocation(Location.SetAsideRelics)))
       val burn: Vector[CoreOperation] = Option.when(defender.board.favor / 2 > 0)(
         Burn.favor(defender.board.favor / 2,
-          PositionedLocation(Location.PlayArea(defenderId)))).toVector
+          PositionedLocation(Location.PlayArea(defenderId)),
+          Some(defenderId))).toVector
       discards ++ setAside ++ burn ++ boxed
     }
 

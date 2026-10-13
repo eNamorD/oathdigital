@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 4 are done. The per-card rulings are
+**Status:** designed 2026-10-12. Slices 1 to 5 are done. The per-card rulings are
 in [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
 **Builds on** [Catalog batch 5](2026-10-08-catalog-batch-5-design.md),
@@ -39,7 +39,8 @@ Slices run in this order. The dependencies that fix it:
 
 - Slice 10 needs slice 9: Giant Python's ACTION checks the Darkest Secret
   through Yew Staff's lens.
-- Slice 11 needs the acting player that slice 5 gives a burn.
+- Slice 11 needs an acting player on an operation, as slice 5 gives one to
+  a burn.
 - Slice 15 needs slice 14's off-turn actor, and is tested with slice 1's
   Hospitality and slice 6's Brass Army.
 - Slices 1 to 8 need nothing from each other and come first because they
@@ -82,11 +83,21 @@ The approved changes outside `gameplay/powers/`:
   while the takes stay. The relocation keeps its tree address. The
   Campaign's closing line leaves out any step that a power's covering line
   restates.
-- **A burn's actor** (slice 5). Each `Burn` names the player who burns. It
-  is the actor of the procedure that builds it, or the payer for a cost.
-  "Each player" effects (Revelation, Ancient Binding) name each owner for
-  their own tokens. A rewrite may then replace an enemy's burn with a
-  `Take` to another player.
+- **A burn's actor, and burns taken** (slice 5, detailed at plan time).
+  Each `Burn` names the player who burns, as `by`:
+  - the actor of the procedure that builds it;
+  - each owner in an effect that makes each player burn;
+  - the defeated defender, for a Raid's half-favor burn.
+
+  A cost's burnt portions are its payer's. Before the walker runs a batch,
+  each burn a power claims becomes a `Take` of the same tokens to its
+  taker, so a restriction on a `Take` holds against it. A `Burn` or
+  `PayCost` in the tree that a power claims runs whole as one batch.
+- **A secret move's side** (slice 5, added at plan time). A secret move
+  from a board may name the side it takes (`PositionedLocation.side`,
+  `Take.sourceSide`), and the secrets keep their side where they land.
+  Book Burning and Ancient Binding burn facedown secrets by naming that
+  side, instead of flipping them faceup first.
 - **Triggers on executed operations** (slice 6). A hook beside
   `ContributingPower.onArrival`, called from `WalkerSteps.recordBatch` with
   the operations a batch executed, as `AdviserArrivalPass` is. A follow-up
@@ -114,8 +125,9 @@ The approved changes outside `gameplay/powers/`:
   `applicable`, and ACTION powers through `PhasePowerProcedure.check`. It
   sees the power's printed persistence and cost and the card's site.
 - **An actor-aware operation restriction** (slice 11). An
-  `OperationRestriction` learns the acting player, through the same actor as
-  slice 5, so a lock can hold against enemies only.
+  `OperationRestriction` learns the acting player, so a lock can hold
+  against enemies only. Slice 5 names only a burn's actor, on the `Burn`
+  itself, so slice 11 settles how a restriction learns its own.
 - **A card-play site** (slice 12). `SearchPlacement.Site` names its site.
   `CardPlay.plan`, `operationsOf`, `atSite` and `CardSlots.siteSlots` read
   it instead of the pawn site. `CardPlayRules` lets a power widen the slots
@@ -305,10 +317,61 @@ Campaign's end, run as usual.
 
 ## Slice 5: Burns taken
 
-Vow of Silence and Vow of Division rewrite an enemy's `Burn` of secrets or
-favor into a `Take` of the same tokens to the holder. The rewrite reaches
-costs as well as effects. Each card's "cannot challenge" half is a start
-restriction on the Challenge action.
+Each `Burn` names its burner. Before a batch runs, Vow of Silence and Vow of
+Division claim the secrets or favor that their holder's enemies burn, costs
+included, and each claimed burn becomes a `Take` to the holder. Each card's
+"cannot challenge" half refuses the Challenge at the Challenge's own
+windows.
+
+### Plan-time rulings
+
+- **A taken burn becomes a `Take`**, so a restriction on a `Take` holds
+  against it. The count is cut to what is there, as a burn's is.
+- **Secrets keep their side.** A burn from a board takes faceup secrets
+  unless it names the facedown side. Taken secrets land on the side they
+  left. Book Burning and Ancient Binding burn facedown secrets by naming
+  that side.
+- **The holder's own tokens stay.** When an enemy burns from the holder's
+  board, nothing moves, and the Vow's line still says what it took. The
+  burning card's own line then reports nothing burnt.
+- **Costs:** a cost's burnt portion becomes a `Take` that must be paid in
+  full.
+- **Banners:** a burn inside a banner's `Take` is replaced there and rides
+  with it.
+- **A Raid's half-favor burn is the defeated defender's own.**
+  - An attacker or a bystander who holds Vow of Division takes it.
+  - A defender who holds it does not, which is the card's "unless it was
+    burned by a raid targeting you".
+- **Who burns.**
+  - The attacker burns the Darkest Secret's secrets when taking it in a
+    Raid, and so does Conspiracy's player when they take it.
+  - **Book Burning:** the attacker.
+  - **Ancient Binding:** each player burns their own board. A held card's
+    secrets are its holder's burn, and the user burns a site card's.
+  - **Revelation:** each player.
+  - **Defame, Riots, Charlatan, Firebrand and Amber Flame:** the user.
+  - **Unstable Summon:** the attacker.
+  - **Costs:** the payer.
+  - **Bandit Market's setup burn:** no player.
+- **An enemy is every other player.** When two powers claim one burn, the
+  first in the contribution order takes it.
+- **Lines.**
+  - One line per taker and burner per step, right after it: "Took {Red}'s
+    2 burned secrets." on the holder's turn, "{Blue} took {Red}'s 2 burned
+    secrets." off it.
+  - A Raid's closing line no longer counts favor a Vow took.
+- **Faceup only.** The holder holds the Vow faceup as an adviser.
+- **Vow of Division:** the Challenge is unavailable to its holder: "Vow of
+  Division prevents you from challenging".
+- **Vow of Silence.**
+  - The holder's banner choice shows the Darkest Secret unavailable:
+    "Cannot challenge the Darkest Secret."
+  - When it is the only banner they could challenge, the Challenge is
+    unavailable: "Vow of Silence prevents you from challenging the Darkest
+    Secret".
+- **Not replaced:** an adviser arrival follow-up's burns, and a modifier
+  menu's dry run of its costs.
+- **No old journals:** a recorded burn always carries its burner.
 
 ## Slice 6: Operation triggers
 

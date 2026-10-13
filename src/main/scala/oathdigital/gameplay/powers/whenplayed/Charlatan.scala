@@ -34,16 +34,17 @@ case object Charlatan extends WhenPlayedPower:
   private def secretsOn(ready: ReadyGame): Int =
     ready.game.current.banners.darkestSecret.secrets
 
-  private def burn(ready: ReadyGame): Vector[CoreOperation] =
+  private def burn(ready: ReadyGame, actor: PlayerId): Vector[CoreOperation] =
     val extra = secretsOn(ready) - Kept
     if extra <= 0 then Vector.empty
     else Vector(Burn.secrets(extra,
-      PositionedLocation(Location.OnBanner(Banner.DarkestSecret))))
+      PositionedLocation(Location.OnBanner(Banner.DarkestSecret)),
+      Some(actor)))
 
   override def noteKeys: Vector[NoteKey] = Vector(burned, none)
 
   def effect(ctx: PowerCtx): Vector[Operation] = Vector(
-    BuildOps((ready, _) => Right(burn(ready))),
+    BuildOps((ready, _) => Right(burn(ready, ctx.activePlayer))),
     Note(id, burnedNote))
 
   /** What the burn step took from the banner. */

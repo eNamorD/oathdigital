@@ -41,7 +41,7 @@ final case class Riots private (catalog: ExecutableCatalog)
       Vector(
         BuildOps((ready, _) => region.discards(ready, actor)),
         Note(id, RegionDiscard.said(cardId, found), covers = true),
-        BuildOps((ready, _) => Right(burn(ready, found))),
+        BuildOps((ready, _) => Right(burn(ready, found, actor))),
         Note(id, burnedNote(_, found)))))
 
   /** What the burn step took from the banner, or that it held none. Nothing
@@ -74,9 +74,10 @@ object Riots:
     ready.game.current.banners.peoplesFavor.favor
 
   /** One favor for each of `found` that no site holds now. */
-  private def burn(ready: ReadyGame, found: Vector[CardId])
+  private def burn(ready: ReadyGame, found: Vector[CardId], actor: PlayerId)
       : Vector[CoreOperation] =
     val count = RegionDiscard.gone(found, ready).size
     if count == 0 then Vector.empty
     else Vector(Burn.favor(count,
-      PositionedLocation(Location.OnBanner(Banner.PeoplesFavor))))
+      PositionedLocation(Location.OnBanner(Banner.PeoplesFavor)),
+      Some(actor)))

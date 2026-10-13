@@ -61,9 +61,16 @@ enum SecretSide { case FaceUp, FaceDown }
 
 enum StackPosition { case Unspecified, Top, Bottom }
 
+/** A location, and where in it a piece is moved from or to. `side`, for
+  * secrets on a player's board, is the side a move takes them from; with
+  * none, the move takes either side as its destination allows. Moved
+  * secrets keep their side (catalog batch 8, slice 5). */
 final case class PositionedLocation(
     location: Location,
-    position: StackPosition = StackPosition.Unspecified)
+    position: StackPosition = StackPosition.Unspecified,
+    side: Option[SecretSide] = None):
+  require(side.isEmpty || location.isInstanceOf[Location.PlayArea],
+    "only secrets on a board have a side to move from")
 
 /** Changes a piece's location or role within one play area. */
 final case class Move(
@@ -79,6 +86,9 @@ final case class Move(
     "a move must change location, stack position, or card role within a play area")
   require(resultingOrientation.isEmpty || piece.isInstanceOf[Piece.Card],
     "only cards have an orientation")
+  require(from.side.isEmpty || piece.isInstanceOf[Piece.Secrets],
+    "only secrets have a side")
+  require(to.side.isEmpty, "a move names the side it takes, not lands on")
 
 /** Looks at a card's front without changing its orientation or location. */
 final case class Peek(viewer: PlayerId, card: CardId,
@@ -106,23 +116,32 @@ final case class SpendSupply(player: PlayerId, amount: Int,
     override val required: Boolean = true) extends PrimitiveOperation:
   require(amount > 0, "supply spend must be positive")
 
-/** Moves favor or secrets to the shared bank. */
+/** Moves favor or secrets to the shared bank. `by` is the player who burns
+  * (catalog batch 8, "A burn's actor"): the actor of the procedure that
+  * burns, each owner when an effect makes each player burn, the defeated
+  * defender for a Raid's half-favor burn, and `None` when no player burns,
+  * as in a setup rule. A cost's burnt portions are its payer's, so
+  * `PayCost` holds no `Burn`.
+  */
 sealed trait Burn extends CoreOperation:
   def resource: Piece.Counted
   def from: PositionedLocation
+  def by: Option[PlayerId]
 
   final lazy val move: Move = Move(resource, from,
     PositionedLocation(Location.SharedBank))
   final override lazy val children: Vector[Operation] = Vector(move)
 object Burn:
-  def favor(amount: Int, from: PositionedLocation): Burn =
-    ResourceBurn(Piece.Favor(amount), from)
+  def favor(amount: Int, from: PositionedLocation,
+      by: Option[PlayerId]): Burn =
+    ResourceBurn(Piece.Favor(amount), from, by)
 
-  def secrets(amount: Int, from: PositionedLocation): Burn =
-    ResourceBurn(Piece.Secrets(amount), from)
+  def secrets(amount: Int, from: PositionedLocation,
+      by: Option[PlayerId]): Burn =
+    ResourceBurn(Piece.Secrets(amount), from, by)
 
   private final case class ResourceBurn(resource: Piece.Counted,
-      from: PositionedLocation) extends Burn
+      from: PositionedLocation, by: Option[PlayerId]) extends Burn
 
 sealed trait BuryableCard extends Product with Serializable:
   def id: CardId
@@ -444,17 +463,20 @@ final case class Swap(firstCard: CardId, firstLocation: PositionedLocation,
   * banner's favor returned to the banks, its secrets burnt. Those operations
   * are the `Take`'s first children, so a restriction that refuses the `Take`
   * refuses them with it, and the banner stays whole.
+  *
+  * `sourceSide` names the side of the secrets it takes from a board.
   */
 final case class Take(piece: Piece, player: PlayerId,
     from: Location, to: Location,
     sourcePosition: StackPosition = StackPosition.Unspecified,
     override val required: Boolean = false,
-    leaving: Vector[CoreOperation] = Vector.empty)
+    leaving: Vector[CoreOperation] = Vector.empty,
+    sourceSide: Option[SecretSide] = None)
     extends CoreOperation:
   require(Location.ownedBy(to, player),
     "take destination must belong to the taking player")
-  val move: Move = Move(piece, PositionedLocation(from, sourcePosition),
-    PositionedLocation(to))
+  val move: Move = Move(piece, PositionedLocation(from, sourcePosition,
+    sourceSide), PositionedLocation(to))
   override val children: Vector[Operation] = leaving :+ move
 
 // ---------------------------------------------------------------------------

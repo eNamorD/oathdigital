@@ -126,7 +126,7 @@ final case class BanditMarket private (catalog: ExecutableCatalog)
     val placed: Vector[CoreOperation] = bandited.map(s => Move(Piece.Favor(1),
       PositionedLocation(Location.SharedBank), PositionedLocation(Location.Site(s))))
     val burned: Vector[CoreOperation] = Suit.all.map(bank =>
-      Burn.favor(1, PositionedLocation(Location.FavorBank(bank))))
+      Burn.favor(1, PositionedLocation(Location.FavorBank(bank)), None))
     Right(placed ++ burned)
 object BanditMarket:
   val id: PowerId = GreatMarketCard.ruined.power.id

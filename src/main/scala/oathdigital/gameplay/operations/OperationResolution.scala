@@ -126,8 +126,9 @@ object OperationResolution:
       }
       case value: Burn => countedPiece(value.resource).map:
         case (amount, piece) => amount -> ((n: Int) => piece(n) match {
-          case Piece.Favor(count) => Burn.favor(count, value.from)
-          case Piece.Secrets(count) => Burn.secrets(count, value.from)
+          case Piece.Favor(count) => Burn.favor(count, value.from, value.by)
+          case Piece.Secrets(count) =>
+            Burn.secrets(count, value.from, value.by)
           case _ => throw new IllegalStateException("burn resource changed kind")
         })
       case value: Kill => Some(value.warbands.amount -> ((n: Int) =>

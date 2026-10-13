@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, Branch, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, WalkerEvent}
+import oathdigital.model.{Answered, Branch, Burn, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PayCost, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -326,25 +326,35 @@ object ProcedureWalker:
     // a `Reveal`) before any of it runs.
     if ctx.searching && cursor.isEmpty && WalkerSearch.hides(composite) then
       Right(Stopped(ctx))
-    else
-      // The composite is walked as its children, and a bare child is
-      // best-effort: without this its own `required` would be lost, and an
-      // unaffordable `PayCost` would shrink to what the player holds.
-      val required = composite match
-        case core: CoreOperation => core.required
-        case _ => false
-      // A fresh composite is checked whole first; a resumed one already was.
-      val runs = composite match
-        case core: CoreOperation if cursor.isEmpty =>
-          OperationResolution.screen(ctx.state, core,
-            ctx.powers.operationRestrictions, required || hooks.strict)
-        case _ => Right(true)
-      runs.flatMap { run =>
-        if !run then Right(Done(ctx.copy(previous = Some((ctx.state, ctx.state)))))
-        else walkFolded(composite.window, composite, composite.children, ctx,
-          path, cursor, resume,
-          if required then hooks.copy(strict = true) else hooks)
-      }
+    else composite match
+      // A burn or a cost a power claims runs whole as one batch, where
+      // `BurnTakes` replaces it: walked as its child moves, it would lose
+      // its burner.
+      case core @ (_: Burn | _: PayCost) if cursor.isEmpty &&
+          BurnTakes.takes(ctx.state, ctx.powers.powers, core) =>
+        WalkerSteps.runBuildOps(BuildOps((_, _) =>
+          Right(Vector[CoreOperation](core)),
+          required = core.required || hooks.strict), ctx, path,
+          hooks.inherited)
+      case _ =>
+        // The composite is walked as its children, and a bare child is
+        // best-effort: without this its own `required` would be lost, and an
+        // unaffordable `PayCost` would shrink to what the player holds.
+        val required = composite match
+          case core: CoreOperation => core.required
+          case _ => false
+        // A fresh composite is checked whole first; a resumed one already was.
+        val runs = composite match
+          case core: CoreOperation if cursor.isEmpty =>
+            OperationResolution.screen(ctx.state, core,
+              ctx.powers.operationRestrictions, required || hooks.strict)
+          case _ => Right(true)
+        runs.flatMap { run =>
+          if !run then Right(Done(ctx.copy(previous = Some((ctx.state, ctx.state)))))
+          else walkFolded(composite.window, composite, composite.children, ctx,
+            path, cursor, resume,
+            if required then hooks.copy(strict = true) else hooks)
+        }
 
   /** A `Branch` has no static children: its `select` chooses the children to
     * walk at walk time, and a resume cursor addresses the selected vector the

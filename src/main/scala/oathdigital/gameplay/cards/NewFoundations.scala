@@ -52,6 +52,7 @@ import oathdigital.gameplay.powers.campaign.{ArcaneArmorCard,
   WatchdogCard, WrestlersCard, SpecialistCard, CodeOfHonorCard,
   MarshSpiritCard, BeastTamerCard, TrueNamesCard, PeaceEnvoyCard,
   WildMountsCard}
+import oathdigital.gameplay.powers.burn.{VowOfDivisionCard, VowOfSilenceCard}
 import oathdigital.gameplay.powers.cardplay.{BookBindersCard,
   FamilyWagonCard, GossipCard, LostTapestryCard, SacredGroundCard,
   SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard, VowOfWisdomCard,

@@ -50,7 +50,7 @@ class UnstableSummonSuite extends munit.FunSuite:
       ChooseAmountAnswer(3))
     assertEquals(Look(done.state).secretsOnDarkestSecret, 0)
     // A burn is recorded as the move it is made of.
-    assert(done.since(asked).contains(Burn.secrets(3, onBanner).move))
+    assert(done.since(asked).contains(Burn.secrets(3, onBanner, None).move))
     assert(done.since(asked).contains(
       ModifyDicePool(CampaignIds.attackPool, 3)))
     assert(!done.since(run).exists(_.isInstanceOf[PayCost]))

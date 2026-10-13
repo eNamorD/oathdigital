@@ -1,6 +1,6 @@
 package oathdigital.catalog.holding
 
-import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
+import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
 import oathdigital.model.{Cost, DenizenId, PowerId, Suit}
 
 // Generated from the retired runtime JSON (card classes slice 1).
@@ -50,13 +50,6 @@ object BewitchCard extends Denizen(DenizenId("67"), "Bewitch", Suit.Arcane):
       "[secret] _(even on cards)_, you may take a random relic " +
       "from the Reliquary and become a Citizen. _Follow the steps " +
       "in the rules and end your Act Phase._")
-  val powers: Vector[PrintedPower] = Vector(power)
-
-object VowOfSilenceCard extends Denizen(DenizenId("74"), "Vow of Silence", Suit.Arcane) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.vow-of-silence"),
-    persistent = true, cost = Cost.free,
-    text = "You **cannot** challenge the Darkest Secret. Whenever an " +
-      "enemy burns [secret-burnt], you take those secrets.")
   val powers: Vector[PrintedPower] = Vector(power)
 
 object MasterOfDisguiseCard extends Denizen(DenizenId("78"), "Master of Disguise", Suit.Arcane) with AdviserOnly:

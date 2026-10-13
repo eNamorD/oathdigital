@@ -78,7 +78,7 @@ class CoreOperationsSuite extends munit.FunSuite:
       PositionedLocation(redArea)))
 
     val burned = Operation.flatten(Burn.favor(1,
-      PositionedLocation(redArea))).head
+      PositionedLocation(redArea), None)).head
     assertEquals(burned, Move(Piece.Favor(1),
       PositionedLocation(redArea),
       PositionedLocation(Location.SharedBank)))
@@ -151,7 +151,7 @@ class CoreOperationsSuite extends munit.FunSuite:
     val from = PositionedLocation(site)
 
     val operations = Vector[CoreOperation](
-      Burn.favor(1, from),
+      Burn.favor(1, from, None),
       Discard.Vision(VisionId("vision:root"), from, Region.Cradle),
       Discard.RuinedEdifice(EdificeId("edifice:root"), from, Suit.Order,
         favor = 1, secrets = 1, red),

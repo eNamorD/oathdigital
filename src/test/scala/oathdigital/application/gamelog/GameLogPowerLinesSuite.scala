@@ -74,7 +74,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
   /** Silver Tongue's take: the step that moves favor out of a bank. */
   private def take(steps: Steps): Int = steps.indexWhere(_.event.event match
     case step: WalkerStepRecorded => step.ops.exists {
-      case Move(Piece.Favor(_), PositionedLocation(Location.FavorBank(_), _),
+      case Move(Piece.Favor(_), PositionedLocation(Location.FavorBank(_), _, _),
           _, _) => true
       case _ => false
     }

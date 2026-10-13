@@ -50,14 +50,6 @@ object FalseProphetCard extends Denizen(DenizenId("85"), "False Prophet", Suit.D
       "play or discard the Vision as if you had searched.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object VowOfDivisionCard extends Denizen(DenizenId("86"), "Vow of Division", Suit.Discord) with Locked with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.vow-of-division"),
-    persistent = true, cost = Cost.free,
-    text = "You **cannot** take the Challenge action. Whenever an enemy " +
-      "burns [favor-burnt], you take that favor unless it was " +
-      "burned by a raid targeting you.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object RoyalAmbitionsCard extends Denizen(DenizenId("88"), "Royal Ambitions", Suit.Discord) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.royal-ambitions"),
     persistent = false, cost = Cost.free,

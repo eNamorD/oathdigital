@@ -55,23 +55,34 @@ case object AncientBinding extends PaidAction(AncientBindingCard.power):
       s"${other.kind} is not a denizen source"))
 
   /** The player's board and every card in play, then every other board
-    * down to one secret, in seat order. */
+    * down to one secret, in seat order. Each player burns their own
+    * board. */
   private def burns(ready: ReadyGame, actor: PlayerId, binding: DenizenId)
       : Vector[CoreOperation] =
     ready.game.current.players.flatMap(held =>
-      SecretBurns.keeping(held, if held.player == actor then 0 else 1)) ++
-      onCards(ready, binding)
+      SecretBurns.keeping(held, if held.player == actor then 0 else 1,
+        held.player)) ++
+      onCards(ready, actor, binding)
 
   /** Every secret on a card in play but Ancient Binding: advisers and
-    * relics in play areas, denizens, edifices and relics at sites. */
-  private def onCards(ready: ReadyGame, binding: DenizenId)
-      : Vector[CoreOperation] =
+    * relics in play areas, denizens, edifices and relics at sites. A held
+    * card's secrets are its holder's burn; a card at a site has no holder,
+    * so `actor` burns them. */
+  private def onCards(ready: ReadyGame, actor: PlayerId,
+      binding: DenizenId): Vector[CoreOperation] =
     val found = InPlayCardResources.discover(ready)
     val cards: Vector[(CardId, Int)] =
       found.denizens.map(card => (card.id: CardId) -> card.tokens.secrets) ++
         found.relics.map(relic => (relic.id: CardId) -> relic.tokens.secrets)
     cards.collect { case (card, secrets) if secrets > 0 && card != binding =>
-      Burn.secrets(secrets, PositionedLocation(Location.OnCard(card))) }
+      Burn.secrets(secrets, PositionedLocation(Location.OnCard(card)),
+        Some(holderOf(ready, card).getOrElse(actor))) }
+
+  /** The player holding `card` as an adviser or a relic, if any. */
+  private def holderOf(ready: ReadyGame, card: CardId): Option[PlayerId] =
+    ready.game.current.players.find(player =>
+      player.advisers.exists(_.id == card) ||
+        player.relics.exists(_.id == card)).map(_.player)
 
   /** The secrets that left boards and cards in the step before the note. */
   private def burnedNote(states: NoteStates, source: DecisionOptionRef)

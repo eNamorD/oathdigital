@@ -54,7 +54,7 @@ final case class Defame private (catalog: ExecutableCatalog)
       Vector(
         Decide(decisionId, actor, DecisionQuery.ChooseOne(options,
           heading = Some("Defame: burn 1 favor from a player's board"))),
-        BuildOps((_, answered) => burn(answered)),
+        BuildOps((_, answered) => burn(actor, answered)),
         Note(id, burnedNote)))
 
   private def discordSource(pending: PendingTree): Boolean =
@@ -64,12 +64,13 @@ final case class Defame private (catalog: ExecutableCatalog)
       case _ => None
     }.contains(Suit.Discord)
 
-  private def burn(pending: PendingTree)
+  private def burn(actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     PowerAnswers.one(pending, decisionId) match
       case Some(`skip`) => Right(Vector.empty)
       case Some(DecisionOptionRef.Player(target)) => Right(Vector(
-        Burn.favor(Burned, PositionedLocation(Location.PlayArea(target)))))
+        Burn.favor(Burned, PositionedLocation(Location.PlayArea(target)),
+          Some(actor))))
       case Some(other) => Left(OathViolation.InvalidEventOrder(
         s"${other.wireId} is not a player or Skip"))
       case None => Left(PowerAnswers.missing(decisionId))

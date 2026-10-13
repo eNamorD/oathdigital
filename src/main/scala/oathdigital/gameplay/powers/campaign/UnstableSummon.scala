@@ -53,13 +53,16 @@ case object UnstableSummon extends BattlePlan:
       if !context.holds(Banner.DarkestSecret) || secrets < 1 then
         offer.copy(withheld = Some(OptionReason.Written(noBanner)))
       else offer.copy(amount = Some(PlanAmounts.range(decisionId, 1,
-        secrets, heading, confirm)(summon)))
+        secrets, heading, confirm)(summon(context.setup.actor))))
     }
 
-  /** X secrets burnt from the banner, X attack dice, and the line. */
-  private def summon(count: Int): Vector[CampaignPlanEffect] = Vector(
+  /** X secrets the attacker burns from the banner, X attack dice, and the
+    * line. */
+  private def summon(attacker: PlayerId)(count: Int)
+      : Vector[CampaignPlanEffect] = Vector(
     CampaignPlanEffect.Run(Vector(Burn.secrets(count,
-      PositionedLocation(Location.OnBanner(Banner.DarkestSecret))))),
+      PositionedLocation(Location.OnBanner(Banner.DarkestSecret)),
+      Some(attacker)))),
     CampaignPlanEffect.AddAttackDice(count),
     CampaignPlanEffect.Run(Vector(Note(id, _ => Some(burned(
       PowerSourceRef.Card(cardId), NoteArg.Amount(count, NoteUnit.Secret),

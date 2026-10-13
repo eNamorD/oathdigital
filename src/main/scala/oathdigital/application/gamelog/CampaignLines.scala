@@ -143,9 +143,9 @@ private[gamelog] final class CampaignLines(words: LogWords,
     else result.kind match
       case CampaignKind.Raid =>
         val taken = ops.collect {
-          case OpStep(Take(Piece.Card(id), _, _, _, _, _, _), before, after) =>
+          case OpStep(Take(Piece.Card(id), _, _, _, _, _, _, _), before, after) =>
             words.one(words.card(id, before, after, viewer))
-          case OpStep(Take(Piece.Banner(banner), _, _, _, _, _, _), _, _) =>
+          case OpStep(Take(Piece.Banner(banner), _, _, _, _, _, _, _), _, _) =>
             Vector(words.banner(banner))
         }
         result.defender match
@@ -157,8 +157,8 @@ private[gamelog] final class CampaignLines(words: LogWords,
       case CampaignKind.Conquest =>
         val placed = ops.collect {
           case OpStep(Move(Piece.Warbands(_, count),
-              PositionedLocation(Location.PlayArea(player), _),
-              PositionedLocation(Location.Site(site), _), _), _, _)
+              PositionedLocation(Location.PlayArea(player), _, _),
+              PositionedLocation(Location.Site(site), _, _), _), _, _)
               if player == result.attacker =>
             Vector(Text(s"$count ${plural(count, "warband", "warbands")} on "),
               words.site(site))
@@ -178,14 +178,14 @@ private[gamelog] final class CampaignLines(words: LogWords,
     def from(location: Location) = owner.exists(player =>
       location == Location.PlayArea(player))
     val killed = ops.collect {
-      case OpStep(Kill(Piece.Warbands(_, count), PositionedLocation(place, _)),
+      case OpStep(Kill(Piece.Warbands(_, count), PositionedLocation(place, _, _)),
           _, _) if from(place) || (loser == result.defender &&
             place.isInstanceOf[Location.Site]) => count
     }.sum
     val returned = ops.collect {
       case OpStep(Move(Piece.Warbands(_, count),
-          PositionedLocation(Location.WarbandBank(_), _),
-          PositionedLocation(place, _), _), _, _) if from(place) => count
+          PositionedLocation(Location.WarbandBank(_), _, _),
+          PositionedLocation(place, _, _), _), _, _) if from(place) => count
     }.sum
     val lost = killed - returned
     val burned = ops.collect {
@@ -195,18 +195,18 @@ private[gamelog] final class CampaignLines(words: LogWords,
           case _ => 0
     }.sum
     val discarded = ops.collect {
-      case OpStep(Move(Piece.Card(id), PositionedLocation(place, _),
-          PositionedLocation(Location.RegionalDiscard(_), _), _), before, after)
+      case OpStep(Move(Piece.Card(id), PositionedLocation(place, _, _),
+          PositionedLocation(Location.RegionalDiscard(_), _, _), _), before, after)
           if from(place) => words.card(id, before, after, viewer)
     }
     val setAside = ops.collect {
-      case OpStep(Move(Piece.Card(id), PositionedLocation(place, _),
-          PositionedLocation(Location.SetAsideRelics, _), _), before, after)
+      case OpStep(Move(Piece.Card(id), PositionedLocation(place, _, _),
+          PositionedLocation(Location.SetAsideRelics, _, _), _), before, after)
           if from(place) => words.card(id, before, after, viewer)
     }
     val sent = ops.collect {
       case OpStep(Move(Piece.Pawn(player), _,
-          PositionedLocation(Location.Site(site), _), _), _, _)
+          PositionedLocation(Location.Site(site), _, _), _), _, _)
           if owner.contains(player) => site
     }.lastOption
     val parts = Vector(

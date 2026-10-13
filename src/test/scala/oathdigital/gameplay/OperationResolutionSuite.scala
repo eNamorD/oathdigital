@@ -91,7 +91,7 @@ class OperationResolutionSuite extends munit.FunSuite:
         Location.Site(sites.head)) ->
         Give(Piece.Favor(1), playerId, Location.PlayArea(playerId),
           Location.Site(sites.head)),
-      Burn.favor(3, toArea) -> Burn.favor(1, toArea),
+      Burn.favor(3, toArea, None) -> Burn.favor(1, toArea, None),
       Kill(Piece.Warbands(ForceKind.Bandit, 3), site) ->
         Kill(Piece.Warbands(ForceKind.Bandit, 1), site),
       Sacrifice(playerId, Piece.Warbands(ForceKind.Exile(lineageId), 5),
