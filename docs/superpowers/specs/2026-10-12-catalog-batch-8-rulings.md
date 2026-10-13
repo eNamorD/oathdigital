@@ -14,10 +14,14 @@
   for later.
 - **An unusable option stays listed.** It is shown unavailable with its
   reason on hover, never hidden.
-- **Who burns.** A burn's actor is the actor of the procedure that burns,
-  or the payer when the burn is a cost. In an effect that makes each player
-  burn (Revelation, Ancient Binding), each owner is the actor of their own
-  burn. A player never counts as their own enemy.
+- **Who burns.**
+  - A burn's actor is the actor of the procedure that burns, or the payer
+    when the burn is a cost.
+  - In an effect that makes each player burn (Revelation, Ancient
+    Binding), each owner is the actor of their own burn. A card's secrets
+    are its holder's.
+  - A Raid's half-favor burn is the defeated defender's own.
+  - A player never counts as their own enemy.
 - **Off-turn moves count.** A rule that watches a player's pawn or tokens
   applies on and off that player's turn.
 - **Log lines omit the actor** and follow the earlier batches' wording
@@ -146,14 +150,17 @@
 - **74 Vow of Silence.** "You cannot challenge the Darkest Secret. Whenever
   an enemy burns [secret-burnt], you take those secrets."
   - Every burn of secrets by an enemy counts, cost or effect. The burn is
-    replaced by a take: the tokens go to the holder instead of the bank.
+    replaced by a `Take`: the tokens go to the holder instead of the bank,
+    and a facedown secret stays facedown. Secrets an enemy burns from the
+    holder's own board stay there.
   - Its holder cannot start a Challenge for the Darkest Secret. The option
     is shown unavailable with the reason.
 - **86 Vow of Division.** "You cannot take the Challenge action. Whenever an
   enemy burns [favor-burnt], you take that favor unless it was burned by a
   raid targeting you."
-  - As Vow of Silence, for favor. A raid's burn of the holder's own favor,
-    in a Raid targeting the holder, still goes to the bank.
+  - As Vow of Silence, for favor. A Raid's half-favor burn is the defeated
+    defender's own (plan-time ruling), so an attacker or a bystander who
+    holds the Vow takes it, and a defender who holds it does not.
   - Its holder cannot take the Challenge action at all.
 
 ## Slice 6: Operation triggers
