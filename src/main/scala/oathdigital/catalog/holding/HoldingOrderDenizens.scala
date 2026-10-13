@@ -60,11 +60,3 @@ object CityWallCard extends Denizen(DenizenId("252"), "City Wall", Suit.Order) w
       "place [favor] / [secret] on cards or use non-persistent " +
       "powers.")
   val powers: Vector[PrintedPower] = Vector(power)
-
-object KeepCard extends Denizen(DenizenId("5"), "Keep", Suit.Order) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.keep"),
-    persistent = false, cost = Cost.free,
-    text = "If defeated in a raid, after the attacker takes what they " +
-      "targeted, place your pawn at this site and end the action. " +
-      "_Do not burn favor, move pawn, etc._")
-  val powers: Vector[PrintedPower] = Vector(power)

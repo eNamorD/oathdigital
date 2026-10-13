@@ -25,8 +25,8 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * applied), Arcane Armor (defense dice set before the roll), Mountain Giant
   * (an amount asked when applied, and a discard at the end on three),
   * Herald (a favor after another player's Campaign) and Vow of Union
-  * (warbands moved at the start of any Campaign). Each names its card, so all
-  * are always present.
+  * (warbands moved at the start of any Campaign) and Keep (a Raid's defeat
+  * replaced). Each names its card, so all are always present.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -65,4 +65,5 @@ object PlanRules:
       Vector(SaltTheEarth.forCatalog(catalog)) ++
       Vector(SealingWard.forCatalog(catalog)) ++
       Vector(Herald.forCatalog(catalog)) ++
-      Vector(VowOfUnion)
+      Vector(VowOfUnion) ++
+      Vector(Keep)
