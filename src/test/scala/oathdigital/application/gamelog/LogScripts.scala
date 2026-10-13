@@ -543,7 +543,7 @@ object LogScripts:
 
   /** A Raid's answers: all force committed and sacrificed, and Finish at
     * every battle plan window unless `plans` answers it first. */
-  private def raidAnswers(act: Situation,
+  def raidAnswers(act: Situation,
       plans: Answers = PartialFunction.empty): Situation =
     act.withAnswers(plans.orElse {
       case park if park.decisionId == CampaignIds.kind =>

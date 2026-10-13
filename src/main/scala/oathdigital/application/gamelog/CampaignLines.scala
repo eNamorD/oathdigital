@@ -1,8 +1,8 @@
 package oathdigital.application.gamelog
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds,
-  CampaignPlans, CampaignSetup}
+import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignBattle,
+  CampaignIds, CampaignPlans, CampaignSetup}
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerStepRecorded}
 import oathdigital.model._
@@ -117,9 +117,19 @@ private[gamelog] final class CampaignLines(words: LogWords,
       }
       outcome.headOption.collect {
         case OpStep(RecordCampaignResult(result), _, _) => result
-      }.toVector.flatMap(result => gains(result, outcome.tail, viewer) ++
-        losses(result, run.actor, outcome.tail, viewer))
+      }.fold(ended(journal, run, at))(result =>
+        gains(result, outcome.tail, viewer) ++
+          losses(result, run.actor, outcome.tail, viewer))
     case _ => Vector.empty
+
+  /** The line of a Campaign that ended before its battle: skipped by the
+    * attacker, or left with nothing to attack. */
+  private def ended(journal: LogJournal, run: Run, at: Int): Vector[Posted] =
+    val skipped = CampaignAnswers.skipped(
+      PendingTree(Vector.empty, journal.answers(run, at)))
+    Vector(Posted.line(LogKind.Delta, Vector(Text(
+      if skipped then "Skipped the Campaign."
+      else "Nothing left to attack: the Campaign ended."))))
 
   private def gains(result: CampaignResult, ops: Vector[OpStep],
       viewer: Option[PlayerId]): Vector[Posted] =
