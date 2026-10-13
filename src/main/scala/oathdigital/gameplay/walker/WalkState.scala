@@ -40,3 +40,6 @@ private[walker] final case class Park(position: Vector[String], ctx: WalkCtx)
   * decision it already stands at in the same state. Only a search's walk
   * returns it. */
 private[walker] final case class Stopped(ctx: WalkCtx) extends Step
+/** The walk reached `EndWalk`: the procedure finishes here, and every
+  * enclosing node stops walking its later children. */
+private[walker] final case class Ended(ctx: WalkCtx) extends Step

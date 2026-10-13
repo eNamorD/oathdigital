@@ -34,6 +34,15 @@ object CampaignIds:
 
   val SupplyCost = 2
 
+  /** The kind question's last option when a power at the Campaign's start
+    * offered it: the attacker ends the Campaign instead. */
+  val skip: DecisionOptionRef.Button = DecisionOptionRef.Button("skip")
+
+  /** Recorded by a power that moved pieces at the Campaign's start (Vow of
+    * Union), so the kind question offers `skip`. It is never rolled, and it
+    * is cleared with the other pools when the Campaign ends. */
+  val skipOffered: PoolKey = PoolKey("campaign.skip-offered")
+
   /** The option that ends a plan window. */
   val finish: DecisionOptionRef.Button = DecisionOptionRef.Button("finish")
 
@@ -116,15 +125,23 @@ object CampaignSetup:
         }
       case _ => Vector.empty
 
+  /** Whether a power at this Campaign's start offered the Skip. */
+  def skipOffered(ready: ReadyGame): Boolean =
+    ready.game.current.rollPools.contains(CampaignIds.skipOffered)
+
   /** The chosen kind: the pinned kind once the pools are gathered; before
     * that, the answer, or the only legal kind when the decision was omitted.
+    * No kind is settled once the attacker skipped, nor by the one legal kind
+    * while the Skip is on offer.
     */
   def kindOf(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
-      : Option[CampaignKind] = pinned(ready).map(_._1).orElse(
-    CampaignAnswers.kind(pending).orElse(legalKinds(ready, actor) match {
-      case Vector(only) => Some(only)
-      case _ => None
-    }))
+      : Option[CampaignKind] =
+    if CampaignAnswers.skipped(pending) then None
+    else pinned(ready).map(_._1).orElse(
+      CampaignAnswers.kind(pending).orElse(legalKinds(ready, actor) match {
+        case Vector(only) if !skipOffered(ready) => Some(only)
+        case _ => None
+      }))
 
   /** The defender: the pinned one once the pools are gathered; before that,
     * the ruler of the origin (Conquest) or the pawn answered or alone there
@@ -213,6 +230,11 @@ object CampaignSetup:
 object CampaignAnswers:
   private def latest(pending: PendingTree, id: String): Option[DecisionAnswer] =
     pending.answered.reverse.collectFirst { case Answered(`id`, answer, _) => answer }
+
+  /** Whether the attacker answered the kind question with Skip. */
+  def skipped(pending: PendingTree): Boolean =
+    latest(pending, CampaignIds.kind).contains(
+      DecisionAnswer.ChooseOneAnswer(CampaignIds.skip))
 
   def kind(pending: PendingTree): Option[CampaignKind] =
     latest(pending, CampaignIds.kind).collect {

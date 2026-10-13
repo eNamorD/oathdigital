@@ -28,6 +28,14 @@ trait Operation:
 trait RewritableComposite extends Operation:
   def rewritten(rewrite: Operation => Operation): Operation
 
+/** Ends the walk where it is reached: the procedure finishes at once, and
+  * nothing after it in the tree runs. It changes no state and is never
+  * part of a recorded batch, so the journal holds only the procedure's
+  * usual completion. A Campaign that is skipped, or left with nothing to
+  * attack, ends with it. */
+case object EndWalk extends Operation:
+  val children: Vector[Operation] = Vector.empty
+
 object Operation:
   /** Depth-first leaf sequence of an operation tree.
     *
