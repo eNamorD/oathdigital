@@ -260,15 +260,42 @@
 
 - **223 Pledge to Discord.** "Your advisers all have the [suit-discord] suit
   instead of their printed suit. Marriage counts as two [suit-discord]."
-  Every rule that reads the suit of the holder's advisers sees Discord.
-  Marriage counts as two Discord advisers.
+  - Every rule that reads the suit of the holder's faceup advisers sees
+    Discord. Marriage counts as two Discord advisers. A facedown adviser
+    still has no suit, and a facedown Pledge changes nothing.
+  - Favor going back from the holder's adviser goes to the Discord bank:
+    at Rest, in an off-turn cost settlement, and on a discard or bury.
+  - A card played faceup to the holder's adviser slot reads Discord, so
+    Wild Cry and Saddle Makers do not fire for it. A card played to a site
+    reads its printed suit.
+  - The client shows printed suits.
+  - **With Family Wagon or Vow of Union.** Simultaneous effects are ordered
+    by the active player. Every adviser that does not keep the rule by its
+    printed suit, Pledge aside, is buried at once. When faceup advisers
+    that keep it by their printed suit remain, the active player sorts
+    them between "Bury before Pledge to Discord" and "Keep in advisers"
+    (confirm "Bury"). Those placed first are buried, then Pledge; the rest
+    revert and stay. With none, Pledge goes in the first bury.
+    - The heading, when the holder is the active player: "Family Wagon:
+      Depending on when you bury Pledge to Discord, you can keep all or
+      none of your Nomad advisers. Choose which Nomad advisers you keep."
+    - When another player answers: "Family Wagon: Depending on when Pledge
+      to Discord is buried, its holder keeps all or none of their Nomad
+      advisers. Choose which they keep."
+    - The question posts no "Chose" line; each bury posts "Buried
+      {cards}.".
+  - Pledge writes no line.
 - **R41 Spiteful Mirror.** "[secret] This turn, you may act as if any cards
   you use to trade or muster are [suit-discord] cards."
-  - The secret is paid once per turn, on the first trade or muster where the
-    player uses it. Its use is recorded for the turn.
-  - For every trade and muster that turn, a free option offers to treat the
-    cards used as Discord. The player may decline it on any one action,
-    since Discord changes the favor bank.
+  - An optional Trade and Muster modifier. Picked, it turns the source card
+    Discord: favor comes from the Discord bank, the Discord advisers match,
+    and every reader of the traded or mustered card sees Discord.
+  - Its first pick in a turn pays 1 secret onto the relic and records the
+    use for the turn. Later picks that turn are free. The player may leave
+    it unpicked on any action.
+  - It is offered only while its player holds the relic.
+  - Its line, once the source is chosen: "Spiteful Mirror: Acting as if
+    {card} is a Discord card."
 
 ## Slice 9: Darkest Secret lens
 

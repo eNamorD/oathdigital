@@ -129,12 +129,22 @@ The approved changes outside `gameplay/powers/`:
   player selected when the action started, so a modifier judged there can
   tell a Trade for secrets. The walk's state does not hold the selection yet
   on the command that starts the action.
-- **An effective suit** (slice 8). One function gives a card's suit as the
-  rules see it for a player. Every reader of an adviser's suit and of a
-  traded or mustered card's suit goes through it: `AdviserSuits`,
-  `MusterSource.resolve` and `matching`, `RuledCards.of`, the suit waivers,
-  Defame, Downtrodden, Vow of Beastkin, Curfew, Ballot Box, Silver Tongue
-  and the travel payments. Marriage's existing rule moves into it.
+- **An effective suit** (slice 8, detailed at plan time).
+  `EffectiveSuit.of` gives a card's suit as the rules see it: Discord for a
+  faceup adviser of a player who has Pledge to Discord faceup, otherwise
+  its printed suit. `EffectiveSuit.traded` gives a Trade's or Muster's
+  source suit: Discord when the walk's answers pick Spiteful Mirror,
+  otherwise `of`. Every reader of an adviser's suit goes through `of`,
+  including the bank that favor on an adviser returns to, and every reader
+  of a traded or mustered card's suit goes through `traded`.
+  `EffectiveSuit` replaces `AdviserSuits` and keeps Marriage's weight. It
+  lives in `gameplay`, because the operation pipeline reads it too: an
+  off-turn payment onto a Pledge holder's adviser settles to the Discord
+  bank. The projection still sends printed suits.
+- **Family Wagon asks when Pledge is buried** (slice 8, added at plan
+  time). `SuitOnlyAdvisers` becomes a trigger on executed operations, so
+  that the active player can order the burials when Pledge to Discord sits
+  beside advisers that keep the rule by their printed suit.
 - **One Darkest Secret check** (slice 9). One `holdsDarkestSecret(player,
   forCardPower)` replaces the scattered checks in card powers (Disciples,
   Terror Spells, Fae Battalion and others).
@@ -433,6 +443,24 @@ suit. Spiteful Mirror, once paid in a turn, records its use in
 `TurnState.usedPowers`; every trade and muster that turn then offers, as a
 free modifier, to treat the cards used as Discord. No new turn field is
 needed.
+
+### Plan-time rulings
+
+- **Pledge reaches every reader of its holder's faceup adviser suits,**
+  the design's list and every other: Honor Guard, Second Chance, Resettle,
+  Twin Brother, Military Parade, Rotting Fortress and the battle plans
+  that read an enemy's advisers among them. Silver Tongue and the travel
+  payments read only site cards.
+- **Favor going back from a Pledge holder's adviser** goes to the Discord
+  bank, at Rest, in an off-turn settlement, and on a discard or bury.
+- **A card played faceup to a Pledge holder's advisers reads Discord,** so
+  Wild Cry and Saddle Makers do not fire for it.
+- **The client shows printed suits.**
+- **Spiteful Mirror** turns only the source card Discord. Its first pick in
+  a turn pays the secret and records the use; later picks are free.
+- **Family Wagon with Pledge** buries at once what goes whatever the order,
+  then asks the active player which advisers that keep the rule by their
+  printed suit to bury before Pledge.
 
 ## Slice 9: Darkest Secret lens
 
