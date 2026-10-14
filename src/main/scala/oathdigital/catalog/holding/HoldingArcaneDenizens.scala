@@ -37,12 +37,6 @@ object ActingTroupeCard extends Denizen(DenizenId("36"), "Acting Troupe", Suit.A
       "card instead.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object SecretSignalCard extends Denizen(DenizenId("55"), "Secret Signal", Suit.Arcane) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.secret-signal"),
-    persistent = false, cost = Cost.free,
-    text = "If you gain only one [favor], gain one more [favor].")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object BewitchCard extends Denizen(DenizenId("67"), "Bewitch", Suit.Arcane):
   val power = PrintedPower(PowerId("denizen.bewitch"),
     persistent = false, cost = Cost.free,

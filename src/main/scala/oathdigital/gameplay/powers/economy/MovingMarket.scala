@@ -33,6 +33,9 @@ object MovingMarketCard extends Denizen(DenizenId("241"), "Moving Market", Suit.
   * required batch. The gain is its own optional batch, so an empty bank
   * never rejects the move, and the line then names only the move. Skip
   * writes nothing.
+  *
+  * The gain is recorded under `TradeFavor.key`, at what the Nomad bank can
+  * give, so a power that counts the Trade's favor sees it.
   */
 final case class MovingMarket private (catalog: ExecutableCatalog)
     extends SelectedModifier:
@@ -91,11 +94,11 @@ final case class MovingMarket private (catalog: ExecutableCatalog)
   /** The favor, once the card stands at the chosen slot's site. */
   private def gain(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
-    Right(PowerAnswers.one(pending, decisionId).collect {
+    Right(PowerAnswers.one(pending, decisionId).toVector.collect {
       case slot: DecisionOptionRef.SiteSlot
           if SiteRulers.siteOf(ready, cardId).contains(slot.site) =>
         Gain.Favor(actor, Suit.Nomad, Gained)
-    }.toVector)
+    }.flatMap(gain => TradeFavor.record(ready, gain) :+ gain))
 
   /** Written when the card stands at the chosen slot's site. The favor is
     * read from the gain's step; with none, the line names only the move. */

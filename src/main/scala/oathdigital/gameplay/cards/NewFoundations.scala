@@ -63,8 +63,8 @@ import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard,
   DefameCard, DowntroddenCard, FriendlyFamiliarCard, GolemLegionsCard,
   InitiationRiteCard, KnightsErrantCard, MapLibraryCard, MountedLibraryCard,
   MovingMarketCard, OldSongsCard, PressgangsCard, RowdyPubCard,
-  SkilledMerchantsCard, SmallFriendsCard, TheOldOakCard, VillageIdiotCard,
-  VowOfBeastkinCard, VowOfPovertyCard, VowOfWanderingCard}
+  SecretSignalCard, SkilledMerchantsCard, SmallFriendsCard, TheOldOakCard,
+  VillageIdiotCard, VowOfBeastkinCard, VowOfPovertyCard, VowOfWanderingCard}
 import oathdigital.gameplay.powers.dice.JinxCard
 import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard,
   SilverCharmCard}
