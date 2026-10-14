@@ -39,15 +39,14 @@ class ArmedMobSuite extends munit.FunSuite:
 
   private val yewStaff = "Yew Staff"
 
-  /** The options of the decision the use is parked on, unavailable ones
-    * included. */
-  private def parkedChoiceOptions(t: OathTransition)
-      : Vector[DecisionOption] =
+  /** The choose-one the use is parked on, with its heading and its
+    * unavailable options. */
+  private def parkedChooseOne(t: OathTransition): DecisionQuery.ChooseOne =
     ParkedNode.of(t.state, catalog,
       phasePowers = PhasePowerCatalog.default(catalog)) match
       case Right(Some(ParkedNode.Decision(_, decide, _))) =>
         decide.query match
-          case DecisionQuery.ChooseOne(options, _, _) => options
+          case query: DecisionQuery.ChooseOne => query
           case other => fail(s"expected a choose-one, got $other")
       case other => fail(s"expected a parked decision, got $other")
 
@@ -139,9 +138,13 @@ class ArmedMobSuite extends munit.FunSuite:
     assert(awaits(started, ArmedMob.playerDecisionId))
     assertEquals(offered(started, p1),
       Some(Vector("player" -> p1.value, "player" -> p2.value)))
+    assertEquals(parkedChooseOne(started).heading,
+      Some(ArmedMob.playerHeading))
     val chose = accepted(answer(started, p1, ArmedMob.playerDecisionId,
       pick(DecisionOptionRef.Player(p1))))
     assert(awaits(chose, ArmedMob.decisionId))
+    assertEquals(parkedChooseOne(chose).heading,
+      Some(ArmedMob.adviserHeading(own = true)))
     assertEquals(offered(chose, p1),
       Some(Vector("denizen" -> homesteaders.value)))
     val done = accepted(answer(chose, p1, ArmedMob.decisionId,
@@ -157,11 +160,32 @@ class ArmedMobSuite extends munit.FunSuite:
         s"${p1.value}'s advisers.",
       covers = true)))
 
+  test("with Yew Staff, choosing the holder discards from the holder's " +
+      "advisers"):
+    val ready = staged().relic(p1, yewStaff).adviser(p1, homesteaders)
+      .adviser(p2, landWarden).ready
+    val started = accepted(use(ready, power, source))
+    val chose = accepted(answer(started, p1, ArmedMob.playerDecisionId,
+      pick(DecisionOptionRef.Player(p2))))
+    assertEquals(parkedChooseOne(chose).heading,
+      Some(ArmedMob.adviserHeading(own = false)))
+    assertEquals(offered(chose, p1),
+      Some(Vector("denizen" -> landWarden.value)))
+    val done = accepted(answer(chose, p1, ArmedMob.decisionId,
+      pick(DecisionOptionRef.Denizen(landWarden))))
+    assertEquals(Look(after(done)).advisers(p1), Vector[CardId](homesteaders))
+    assertEquals(Look(after(done)).advisers(p2), Vector.empty[CardId])
+    assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
+      NoteKey.Used,
+      s"${p1.value} discarded ${landWarden.value} from " +
+        s"${p2.value}'s advisers.",
+      covers = true)))
+
   test("a target with no faceup adviser is shown unavailable"):
     val ready = staged().relic(p1, yewStaff).adviser(p1, homesteaders)
       .adviser(p2, landWarden, facedown = true).ready
     val started = accepted(use(ready, power, source))
-    assertEquals(parkedChoiceOptions(started), Vector[DecisionOption](
+    assertEquals(parkedChooseOne(started).options, Vector[DecisionOption](
       playerOption(p1), DecisionOption.Unavailable(playerOption(p2),
         OptionReason.Written(ArmedMob.noAdviser))))
 

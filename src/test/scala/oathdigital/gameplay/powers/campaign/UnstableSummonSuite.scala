@@ -77,14 +77,17 @@ class UnstableSummonSuite extends munit.FunSuite:
         ref), Some(OptionReason.Written(UnstableSummon.noBanner)))
 
   test("with Yew Staff it burns from the Darkest Secret another player " +
-      "holds"):
+      "holds, or the bank"):
     val base = attackerWithSummon(bannerSecrets = 3,
       attackerHoldsBanner = false)
-    val b = on(base)(_.relic(base.actor, "Yew Staff"))
-    val done = commit(rules(winningDice), b, 2)
-      .pick(b.actor, CampaignIds.attackerPlan, ref)
-      .answer(b.actor, UnstableSummon.decisionId, ChooseAmountAnswer(2))
-    assertEquals(Look(done.state).secretsOnDarkestSecret, 1)
-    assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, 2)))
-    assertEquals(lines(done), Vector(burned(
-      "2 secrets from the Darkest Secret for 2 attack dice")))
+    for holder <- Vector(Some(base.rival), None) do
+      val b = on(base)(_.darkestSecret(holder, 3)
+        .relic(base.actor, "Yew Staff"))
+      val done = commit(rules(winningDice), b, 2)
+        .pick(b.actor, CampaignIds.attackerPlan, ref)
+        .answer(b.actor, UnstableSummon.decisionId, ChooseAmountAnswer(2))
+      assertEquals(Look(done.state).secretsOnDarkestSecret, 1,
+        holder.toString)
+      assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, 2)))
+      assertEquals(lines(done), Vector(burned(
+        "2 secrets from the Darkest Secret for 2 attack dice")))
