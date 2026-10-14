@@ -58,7 +58,9 @@ final case class RiverSitePower(id: PowerId, site: SiteId)
   import RiverSitePower._
 
   def timing: PowerTiming = PowerTiming.Wake
-  override def noteKeys: Vector[NoteKey] = Vector(placed)
+  private val own = NoteSet(id)
+  own.include(RiverSitePower.notes)
+  override def noteKeys: Vector[NoteKey] = own.declared
   override def noteSource: Option[String] = Some(name)
 
   def usable(ready: ReadyGame, player: PlayerId,
@@ -80,8 +82,11 @@ final case class RiverSitePower(id: PowerId, site: SiteId)
 object RiverSitePower:
   val name: String = "River"
   val siteDecisionId: String = "power.river.site"
+  /** The keys the River powers share: one line written by whichever river
+    * site's power ran. No one power owns it. */
+  val notes: NoteSet = NoteSet.unowned("RiverSitePower")
   /** "{player} placed at {site}.", the power's own line. */
-  val placed: NoteKey = PawnMoves.placedKey(NoteKey.Used)
+  val placed: NoteKey = PawnMoves.placedKey(notes, NoteKey.Used)
 
   /** One River power for each River site. */
   val all: Vector[RiverSitePower] = Vector(

@@ -30,7 +30,7 @@ final class BrassHorse(catalog: ExecutableCatalog)
     extends PaidAction(BrassHorseCard.power):
   import BrassHorse._
 
-  override def noteKeys: Vector[NoteKey] = Vector(revealed, placed)
+  override def noteKeys: Vector[NoteKey] = BrassHorse.noteKeys
 
   override def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean =
@@ -105,9 +105,11 @@ final class BrassHorse(catalog: ExecutableCatalog)
 object BrassHorse:
   val id: PowerId = BrassHorseCard.power.id
   val decisionId: String = "power.brass-horse.site"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** Its own line: the reveal is its first effect, so the line sits there,
     * in the command that starts it. The placement may follow a question in
     * a later command, so it writes a line of its own. */
-  val revealed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val revealed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" revealed "), NotePart.Arg(1), NotePart.Text(".")))
-  val placed: NoteKey = PawnMoves.placedKey("placed")
+  val placed: NoteKey = PawnMoves.placedKey(notes, "placed")

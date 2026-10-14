@@ -18,8 +18,9 @@ import oathdigital.model._
 case object WanderingFlameMove extends PaidAction(
     PowerId("banner.darkest-secret.wandering-flame.move"), Cost.free):
   val decisionId: String = "power.wandering-flame.site"
-  val placed: NoteKey = PawnMoves.placedKey(NoteKey.Used)
-  override def noteKeys: Vector[NoteKey] = Vector(placed)
+  private val notes = NoteSet(id)
+  val placed: NoteKey = PawnMoves.placedKey(notes, NoteKey.Used)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def buttonName: Option[String] =
     BannerFacePowers.printed(id).map(_._1)
 

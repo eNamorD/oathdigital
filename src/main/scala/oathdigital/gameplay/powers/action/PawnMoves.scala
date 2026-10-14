@@ -50,7 +50,8 @@ object PawnMoves:
 
   /** "{player} placed at {site}.": a pawn a power places does not travel or
     * move. */
-  def placedKey(name: String): NoteKey = NoteKey(name, Vector(NotePart.Arg(0),
+  def placedKey(notes: NoteSet, name: String): NoteKey =
+    notes.key(name, Vector(NotePart.Arg(0),
     NotePart.Text(" placed at "), NotePart.Arg(1), NotePart.Text(".")))
 
   /** Where `player`'s pawn stands after the power placed it. */

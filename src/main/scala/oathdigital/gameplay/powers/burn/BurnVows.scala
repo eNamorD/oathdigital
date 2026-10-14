@@ -66,13 +66,15 @@ sealed abstract class BurnVow extends ContributingPower:
 
 object BurnVow:
   /** "Took {Red}'s {2} burned {secrets}." */
-  def taken(one: String, many: String): NoteKey = NoteKey("taken", Vector(
+  def taken(notes: NoteSet, one: String, many: String): NoteKey =
+    notes.key("taken", Vector(
     NotePart.Text("Took "), NotePart.Arg(0), NotePart.Text("'s "),
     NotePart.Arg(1), NotePart.Text(" burned "),
     NotePart.Plural(1, one, many), NotePart.Text(".")))
 
   /** "{Blue} took {Red}'s {2} burned {secrets}." */
-  def takenBy(one: String, many: String): NoteKey = NoteKey("taken-by",
+  def takenBy(notes: NoteSet, one: String, many: String): NoteKey =
+    notes.key("taken-by",
     Vector(NotePart.Arg(0), NotePart.Text(" took "), NotePart.Arg(1),
       NotePart.Text("'s "), NotePart.Arg(2), NotePart.Text(" burned "),
       NotePart.Plural(2, one, many), NotePart.Text(".")))
@@ -86,18 +88,19 @@ object BurnVow:
 case object VowOfSilence extends BurnVow:
   val cardId: DenizenId = VowOfSilenceCard.id
   val id: PowerId = VowOfSilenceCard.power.id
-  val taken: NoteKey = BurnVow.taken("secret", "secrets")
-  val takenBy: NoteKey = BurnVow.takenBy("secret", "secrets")
+  private val notes = NoteSet(id)
+  val taken: NoteKey = BurnVow.taken(notes, "secret", "secrets")
+  val takenBy: NoteKey = BurnVow.takenBy(notes, "secret", "secrets")
   protected def takes(resource: Piece.Counted): Boolean =
     resource.isInstanceOf[Piece.Secrets]
 
   /** "Cannot challenge the {Darkest Secret}.": the banner's hover
     * reason. */
-  val forbidden: NoteKey = NoteKey("forbidden", Vector(
+  val forbidden: NoteKey = notes.key("forbidden", Vector(
     NotePart.Text("Cannot challenge the "), NotePart.Arg(0),
     NotePart.Text(".")))
 
-  override def noteKeys: Vector[NoteKey] = Vector(taken, takenBy, forbidden)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ChallengeBannerSelection ->
@@ -129,12 +132,13 @@ case object VowOfSilence extends BurnVow:
 case object VowOfDivision extends BurnVow:
   val cardId: DenizenId = VowOfDivisionCard.id
   val id: PowerId = VowOfDivisionCard.power.id
-  val taken: NoteKey = BurnVow.taken("favor", "favor")
-  val takenBy: NoteKey = BurnVow.takenBy("favor", "favor")
+  private val notes = NoteSet(id)
+  val taken: NoteKey = BurnVow.taken(notes, "favor", "favor")
+  val takenBy: NoteKey = BurnVow.takenBy(notes, "favor", "favor")
   protected def takes(resource: Piece.Counted): Boolean =
     resource.isInstanceOf[Piece.Favor]
 
-  override def noteKeys: Vector[NoteKey] = Vector(taken, takenBy)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ChallengeActionEligibility -> Vector(Restriction((ctx, _) =>

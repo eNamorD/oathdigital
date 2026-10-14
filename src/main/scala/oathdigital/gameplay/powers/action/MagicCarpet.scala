@@ -24,12 +24,13 @@ case object MagicCarpet extends PaidAction(MagicCarpetCard.power):
   val siteDecisionId: String = "power.magic-carpet.site"
   val fateDecisionId: String = "power.magic-carpet.fate"
   val discard: DecisionOptionRef.Button = DecisionOptionRef.Button("discard")
-  val placed: NoteKey = PawnMoves.placedKey(NoteKey.Used)
-  val givenAway: NoteKey = NoteKey("given", Vector(NotePart.Text("Given to "),
+  private val notes = NoteSet(id)
+  val placed: NoteKey = PawnMoves.placedKey(notes, NoteKey.Used)
+  val givenAway: NoteKey = notes.key("given", Vector(NotePart.Text("Given to "),
     NotePart.Arg(0), NotePart.Text(".")))
-  val discarded: NoteKey = NoteKey("discarded", Vector(
+  val discarded: NoteKey = notes.key("discarded", Vector(
     NotePart.Text("Discarded.")))
-  override def noteKeys: Vector[NoteKey] = Vector(placed, givenAway, discarded)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] =
     Set(siteDecisionId, fateDecisionId)
 

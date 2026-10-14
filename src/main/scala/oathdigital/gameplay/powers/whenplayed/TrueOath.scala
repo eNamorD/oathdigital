@@ -35,8 +35,7 @@ final case class TrueOath private (catalog: ExecutableCatalog)
   import TrueOath._
   def id: PowerId = TrueOath.id
 
-  override def noteKeys: Vector[NoteKey] =
-    Vector(changed, kept, unmet)
+  override def noteKeys: Vector[NoteKey] = TrueOath.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
@@ -76,13 +75,15 @@ object TrueOath:
   val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep")
   /** The other Beast cards it needs. */
   val Others: Int = 3
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Changed the Oathkeeper goal to Protection." */
-  val changed: NoteKey = OathkeeperGoalChoice.changed("changed")
+  val changed: NoteKey = OathkeeperGoalChoice.changed(notes, "changed")
   /** "Kept the Oathkeeper goal." */
-  val kept: NoteKey = NoteKey("kept", Vector(
+  val kept: NoteKey = notes.key("kept", Vector(
     NotePart.Text("Kept the Oathkeeper goal.")))
   /** "Ruled fewer than three other Beast cards." */
-  val unmet: NoteKey = NoteKey("unmet", Vector(
+  val unmet: NoteKey = notes.key("unmet", Vector(
     NotePart.Text("Ruled fewer than three other Beast cards.")))
 
   def forCatalog(catalog: ExecutableCatalog): TrueOath = new TrueOath(catalog)
