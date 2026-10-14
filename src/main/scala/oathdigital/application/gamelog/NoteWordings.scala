@@ -1,8 +1,8 @@
 package oathdigital.application.gamelog
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.RuleNotes
-import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{DeclaredNotes, PhasePowerCatalog,
+  WalkerPowerCatalog}
 import oathdigital.model.{NoteKey, NotePart, PowerId}
 
 /** Every power's note templates, by power and key (power log lines design,
@@ -29,13 +29,19 @@ private[application] object NoteWordings:
     NoteWordings(keys.map(key => (power, key.name) -> key.template).toMap,
       source.map(power -> _).toMap, narrated)
 
-  /** The walker powers', the phase powers' and the game rules' keys. */
+  /** The walker powers', the phase powers' and the game rules' keys. The
+    * keys come from the one declared-set union, which already holds the
+    * game rules' and gives a power listed in both catalogs one set; only
+    * the note source and the narrated decisions are still read off each
+    * power, because neither belongs to a key. */
   def default(catalog: ExecutableCatalog): NoteWordings =
-    (WalkerPowerCatalog.default(catalog).powers.map(power =>
-      of(power.id, power.noteKeys, power.noteSource,
+    val declared = DeclaredNotes.of(catalog)
+    val templates = declared.keys.toVector.flatMap((power, keys) =>
+      keys.map(key => (power, key.name) -> key.template)).toMap
+    val named = WalkerPowerCatalog.default(catalog).powers.map(power =>
+      of(power.id, Vector.empty, power.noteSource,
         power.narratedDecisions)) ++
       PhasePowerCatalog.default(catalog).powers.map(power =>
-        of(power.id, power.noteKeys, power.noteSource,
-          power.narratedDecisions)) ++
-      RuleNotes.all.map((id, keys) => of(id, keys)))
-      .foldLeft(NoteWordings(Map.empty))(_ ++ _)
+        of(power.id, Vector.empty, power.noteSource,
+          power.narratedDecisions))
+    named.foldLeft(NoteWordings(templates))(_ ++ _)

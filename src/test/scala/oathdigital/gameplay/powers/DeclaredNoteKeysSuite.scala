@@ -27,11 +27,11 @@ class DeclaredNoteKeysSuite extends munit.FunSuite:
     PhasePowerCatalog.default(catalog).powers.map(power =>
       power.id -> power.noteKeys) ++ RuleNotes.all
 
-  /** One entry per power, as the wordings table sees it: keyed by power and
-    * key name, so a power listed in both catalogs has one declared set. */
+  /** One entry per power, from the union the Game Log and the walker read,
+    * so this fixture records what they see and not a second derivation of
+    * it. A power listed in both catalogs has one declared set there. */
   private val declared: Vector[(PowerId, Vector[NoteKey])] =
-    listings.groupMapReduce(_._1)(_._2)(_ ++ _).toVector
-      .map((id, keys) => id -> keys.distinctBy(_.name))
+    DeclaredNotes.of(catalog).keys.toVector
 
   /** A key's sentence, as the parts that render it: text as itself, an
     * argument as `{index}`, a plural as `{index?one|many}`. A key's name
