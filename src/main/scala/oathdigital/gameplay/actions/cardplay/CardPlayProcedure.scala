@@ -270,7 +270,9 @@ object CardPlayProcedure:
     // A Branch is selected when the walk reaches it, which for this one is
     // after the follow-up's answer, so the play sees the cards chosen there.
     // The lines come after the last answer and before the play, joining the
-    // play's own node so the hook keeps its place.
+    // play's own node so the hook keeps its place. They sit in a node of
+    // their own, so the play is always the node's second child, as in
+    // `settled`: a trigger's follow-up after the play is addressed under it.
     val play = Branch((_, pending) => {
       val extra = pending.answered.collectFirst {
         case Answered(id, DecisionAnswer.ChooseManyAnswer(refs), _)
@@ -278,11 +280,11 @@ object CardPlayProcedure:
       }.getOrElse(Vector.empty)
       val apply = BuildOps((state, _) => CardPlay.operations(catalog, state,
         actor, card, slot.placement, from, extra))
-      Vector(CardSlots.credits(catalog, ready, actor, card, rules,
+      CardSlots.credits(catalog, ready, actor, card, rules,
           slot.replacedAtSite.toVector ++ extra) match
-        case Left(error) => BuildOps((_, _) => Left(error))
-        case Right(notes) if notes.isEmpty => apply
-        case Right(notes) => Sequence(notes :+ apply))
+        case Left(error) => Vector(Sequence(Vector.empty),
+          BuildOps((_, _) => Left(error)))
+        case Right(notes) => Vector(Sequence(notes), apply)
     })
     Vector(followUp, play) ++ hook(ready, actor, card, slot.placement)
 
@@ -295,8 +297,11 @@ object CardPlayProcedure:
   private def settled(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
       ref: DecisionOptionRef): Vector[Operation] =
     playedAs(ref).map(placementOf).toVector.flatMap { placement =>
-      val play = BuildOps((_, _) => Left(OathViolation.InvalidSearchPlacement(
-        "the card has already been played")))
+      // The play's shape as `played` built it, lines then play, so a path
+      // into a follow-up after the play finds it.
+      val play = Sequence(Vector(Sequence(Vector.empty),
+        BuildOps((_, _) => Left(OathViolation.InvalidSearchPlacement(
+          "the card has already been played")))))
       Vector(noFollowUp, play) ++ hook(ready, actor, card, placement)
     }
 

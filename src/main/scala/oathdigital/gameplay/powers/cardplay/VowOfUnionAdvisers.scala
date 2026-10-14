@@ -17,11 +17,15 @@ final case class VowOfUnionAdvisers private (catalog: ExecutableCatalog)
   def cardId: DenizenId = VowOfUnionCard.id
   def suit: Suit = Suit.Beast
   def buryWarning: String = VowOfUnionAdvisers.buryWarning
+  def ruleName: String = VowOfUnionCard.name
+  def pledgeDecisionId: String = VowOfUnionAdvisers.pledgeDecisionId
 
 object VowOfUnionAdvisers:
   val id: PowerId = VowOfUnionCard.restriction.id
   /** The note on a card play Vow of Union will bury. */
   val buryWarning: String = "Vow of Union will bury it"
+  /** The question that orders Pledge to Discord's bury. */
+  val pledgeDecisionId: String = "power.vow-of-union.pledge"
 
   def forCatalog(catalog: ExecutableCatalog): VowOfUnionAdvisers =
     new VowOfUnionAdvisers(catalog)
