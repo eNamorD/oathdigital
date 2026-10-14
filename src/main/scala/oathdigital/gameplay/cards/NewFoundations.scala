@@ -5,96 +5,22 @@ import oathdigital.catalog.holding._
 import oathdigital.gameplay.actions.economy.MarriageCard
 import oathdigital.gameplay.operations.{HallOfMinistersCard,
   TheGrandScepterCard}
-import oathdigital.gameplay.powers.action.{AlchemistCard, AmberFlameCard,
-  AncientBindingCard,
-  ArcaneBrokersCard, ArmedMobCard, AssassinCard, BallotBoxCard, BanditPaymasterCard,
-  BarbedNetCard, BedOfRootsCard, BloodPactCard, BogCard, BoneDiceCard,
-  BookOfRecordsCard, BrassHorseCard, CharmingFriendCard, ClayRattleCard,
-  ConvoysCard,
-  CrystalVialCard, DarkEnforcerCard, DemonTailCard, DowsingSticksCard,
-  DreamThiefCard, EldersCard, EnchantressCard, FaeMerchantCard, FirebrandCard,
-  GamblingHallCard, GreatFeastCard, HomesteadersCard, HonorGuardCard,
-  InquisitorCard,
-  IvoryEyeCard, LevelersCard, MagicCarpetCard, MagicWaterskinCard, MemoryOfHomeCard, MemoryOfNatureCard,
-  MessengerCard, OracleCard, OracularPigCard, PiedPiperCard,
-  PlagueEnginesCard, QuickExitCard,
-  RelicBreakerCard, RelicThiefCard, ResettleCard, RovingTerrorCard, ScryerCard,
-  SecondChanceCard, ShiftingMapCard,
-  SiegeEnginesCard, SingingMaskCard, SkeletonKeyCard, SleightOfHandCard, SpiritSnareCard,
-  SpoiledSuppliesCard, StorytellerCard, TamingCharmCard, TavernSongsCard,
-  TerrorSpellsCard, TheRedSeerCard,
-  TinkersFairCard, TutorCard, WardOfSilenceCard, WaysideInnCard,
-  WhisperingLeavesCard, WhistleCard, WitchsBargainCard,
-  WizardSchoolCard, WolvesCard}
-import oathdigital.gameplay.powers.campaign.{ArcaneArmorCard,
-  BagOfSiegeworksCard, BanditStandardCard, BannerBreakersCard, BattleAxesCard,
-  BearTrapsCard,
-  BattleHonorsCard,
-  BillowingFogCard, BlackSwordCard, BookBurningCard, BrassArmyCard,
-  CarefulPlansCard,
-  CrackedSageCard, CrackingGroundCard, CursedCauldronCard, DisgracedCaptainCard,
-  EncirclementCard, ExtraProvisionsCard, FaeBattalionCard, FearsomeGeneralCard,
-  FearsomeShieldCard, FieldPromotionCard, FireTalkersCard, GarrisonArmoryCard,
-  GleamingArmorCard, GreatCrusadeCard, HeraldCard, HorseArchersCard,
-  HeartsAndMindsCard,
-  HospitalCard, InsectSwarmCard, KeepCard, KindredWarriorsCard, LancersCard,
-  LongbowsCard,
-  MasterAtArmsCard, MercenariesCard, MilitaryParadeCard, MountainGiantCard,
-  MountedPatrolCard,
-  NatureWorshipCard, OutridersCard, PledgeOfDefenseCard, RainBootsCard,
-  RangersCard, RivalKhanCard,
-  RustingRayCard, SaltTheEarthCard, ScoutsCard, SealingWardCard, ShieldWallCard,
-  StickyFireCard, StormCallerCard, TheGreatLevyCard, ToweringRampartCard,
-  TravelingDoctorCard, TributeSpoilsCard, UnstableSummonCard,
-  SignalTreesCard, VillageConstableCard, VowOfPeaceCard,
-  VowOfUnionCard, WeepingBannerCard, ZealotsCard,
-  SecondWindCard, WalledGardenCard, WarTortoiseCard, WarningSignalsCard,
-  WatchdogCard, WrestlersCard, SpecialistCard, CodeOfHonorCard,
-  MarshSpiritCard, BeastTamerCard, TrueNamesCard, PeaceEnvoyCard,
-  WildMountsCard}
-import oathdigital.gameplay.powers.banner.SecretTestamentCard
-import oathdigital.gameplay.powers.burn.{VowOfDivisionCard, VowOfSilenceCard}
-import oathdigital.gameplay.powers.cardplay.{BookBindersCard,
-  FamilyWagonCard, GossipCard, LostTapestryCard, SacredGroundCard,
-  SaddleMakersCard, SecretPoliceCard, VowOfObedienceCard, VowOfWisdomCard,
-  WelcomingPartyCard, WildCryCard}
-import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard,
-  AwaitedReturnCard, BirdsongCard, CupOfPlentyCard, CurfewCard,
-  DefameCard, DowntroddenCard, FriendlyFamiliarCard, GolemLegionsCard,
-  InitiationRiteCard, KnightsErrantCard, MapLibraryCard, MountedLibraryCard,
-  MovingMarketCard, OldSongsCard, PressgangsCard, RowdyPubCard,
-  SecretSignalCard, SkilledMerchantsCard, SmallFriendsCard, TheOldOakCard,
-  VillageIdiotCard, VowOfBeastkinCard, VowOfPovertyCard, VowOfWanderingCard}
-import oathdigital.gameplay.powers.dice.JinxCard
-import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard,
-  SilverCharmCard}
-import oathdigital.gameplay.powers.rest.{InsomniaCard, LeagueTreatyCard,
-  SilverTongueCard}
-import oathdigital.gameplay.powers.search.{AuguryCard, CropRotationCard,
-  DisciplesCard, ErrandBoyCard, ForcedLaborCard, HuntingPartyCard,
-  LandWardenCard, MushroomsCard, NewsFromAfarCard, ObservatoryCard,
-  PaintedTrumpetCard, SpinningBeeCard, TruthfulHarpCard, WineOfWelcomeCard}
-import oathdigital.gameplay.powers.setup.{GreatForgeCard, GreatMarketCard,
-  ProvingGroundsCard}
-import oathdigital.gameplay.powers.targeting.{CircletOfCommandCard,
-  DiplomatCard, ForgottenVaultCard, LostTongueCard, OakenFortressCard}
-import oathdigital.gameplay.powers.title.ChaosCultCard
-import oathdigital.gameplay.powers.travel.{AFastSteedCard, BrokenPeaksSite,
-  DesolateShoreSite, DragonskinDrumCard, FairIsleSite, ForestPathsCard,
-  GraspingVinesCard, GreenShoreSite, HiddenPlaceSite, HospitalityCard,
-  MinesSite, NarrowPassSite, RockyCoastSite, RoyalStablesCard,
-  SpecialEnvoyCard, SunkenIslesSite, TentsCard, TollRoadsCard, TyrantCard,
-  WayStationCard}
-import oathdigital.gameplay.powers.wake.{AncientCitySite, HeadwatersSite,
-  HornedMaskCard, HungerCard, MarbleFountainsCard, QuartermasterCard,
-  RiverbankSite, TidalMarshesSite}
-import oathdigital.gameplay.powers.whenplayed.{ARoundOfAleCard,
-  ASmallFavorCard, AnimalHostCard, BanditChiefCard, BanditPrinceCard,
-  BlackmailCard, CallForHelpCard, CharlatanCard, DazzleCard, DissentCard,
-  FabledFeastCard, FaithfulFriendCard, FamilyHeirloomCard, GarrisonCard,
-  GreatHerdCard, KeyToTheCityCard, RevelationCard, RiotsCard, RoyalTaxCard,
-  SaladDaysCard, ShiftingFogCard, ThreateningRoarCard, TownMeetingCard,
-  TrueOathCard, TwinBrotherCard, WizardsConclaveCard}
+import oathdigital.gameplay.powers.action._
+import oathdigital.gameplay.powers.banner._
+import oathdigital.gameplay.powers.burn._
+import oathdigital.gameplay.powers.campaign._
+import oathdigital.gameplay.powers.cardplay._
+import oathdigital.gameplay.powers.dice._
+import oathdigital.gameplay.powers.economy._
+import oathdigital.gameplay.powers.recover._
+import oathdigital.gameplay.powers.rest._
+import oathdigital.gameplay.powers.search._
+import oathdigital.gameplay.powers.setup._
+import oathdigital.gameplay.powers.targeting._
+import oathdigital.gameplay.powers.title._
+import oathdigital.gameplay.powers.travel._
+import oathdigital.gameplay.powers.wake._
+import oathdigital.gameplay.powers.whenplayed._
 
 /** Every printed New Foundations component, listed by kind in printed-id
   * order. A new card is added here and in its own file; `CardCatalogSuite`
