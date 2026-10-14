@@ -156,18 +156,40 @@ leaf and falls through `case delta => WalkerSteps.record(delta, ...)`. Once
 control leaves are not `CoreOperation`, that fallthrough cannot type-check,
 because the remaining leaf is not provably a game operation.
 
-The walker consumes control leaves one level up, in `walkNode`, so that
-`runLeaf`, `runNarrowed` and `WalkerSteps.record` take `CoreOperation` and no
-catch-all exists. The invariant the deleted 24-line codec doc asserted in
-prose becomes a parameter type.
+**Amended 2026-10-14, while writing the plan.** The design originally called
+for a third slice that pushed control-leaf handling up into `walkNode` so
+that no catch-all existed anywhere. That is not achievable, and the reason is
+the design's own premise: `LeafOperation` is unsealed, because an extensible
+generic layer is the point. No match over an unsealed type is ever
+exhaustive, so the compiler cannot be shown that a leaf which is neither
+`Decide` nor `BuildOps` must be a `CoreOperation` -- and
+`WalkerStubs.WindowedNode` is standing proof that leaves are authored outside
+the family. A catch-all at the leaf tier is structural, not defensive.
 
-Narrowing in place instead -- `case delta: CoreOperation` plus a
-`contractViolation` catch-all -- compiles, and is rejected as an end state:
-it relocates the defensive throw from the codec to the walker rather than
-removing it, which would leave the change half-made. Slice 2 cannot compile
-without some handling for that fallthrough, so it carries the catch-all as a
-stated temporary and slice 3 deletes it. The catch-all therefore exists in
-exactly one landed commit, and slice 3 must follow slice 2.
+So the resolution is the arm itself, in `runNarrowed`:
+
+```scala
+case build: BuildOps => WalkerSteps.runBuildOps(build, ctx, path, contributions)
+case delta: CoreOperation =>
+  WalkerSteps.record(delta, ctx, path, contributions, strict).map(Done(_))
+case other => contractViolation(
+  s"leaf ${WalkerSteps.leafLabel(other)} is neither a control leaf nor a " +
+    "recordable operation")
+```
+
+`WalkerSteps.record` already takes `CoreOperation`, so the typed boundary is
+reached by narrowing this one arm; nothing moves. `contractViolation` is
+already the walker's idiom for an unreachable contract breach, used eleven
+times in this file, including the neighbouring resume arms for "not a
+Decide/Roll park". This is three lines in the same edit as the rest of the
+hierarchy move, not a separate reviewable deliverable, so the former slice 3
+is folded into slice 2 and the plan has two slices.
+
+What the change still buys at this boundary is real but narrower than first
+claimed: the codec's six throws and `OperationResolution`'s container guard
+go away entirely, and the walker keeps one arm whose impossibility is
+asserted in the walker, where the walker's own contract lives, rather than in
+the serializer, which had no business knowing it.
 
 ### Codec
 
@@ -226,18 +248,16 @@ demonstrates.
 2. **Hierarchy move.** Add `LeafOperation`, lift `required`, move the five
    control operations into `Operation.scala`, take the two `CardPlayed`
    hooks out of `CoreOperation`, retarget the four leaf-dispatch files,
-   delete the codec's six arms and class doc, delete the dead guard in
-   `OperationResolution`, retire `UnencodableOperation`, rewrite the two
-   stale comments. Mechanical throughout.
-3. **Walker leaf step.** Move control-leaf handling up into `walkNode` so
-   `runLeaf`, `runNarrowed` and `WalkerSteps.record` take `CoreOperation`.
-   Real walker surgery, kept out of slice 2 so the mechanical move stays
-   reviewable on its own.
+   narrow `runNarrowed`'s fallthrough, delete the codec's six arms and class
+   doc, delete the dead guard in `OperationResolution`, and delete the suite
+   that pins the codec's throw. `-Werror` promotes every one of those
+   deletions to a build break, so they are one atomic commit and cannot be
+   split further. Retiring `UnencodableOperation` and rewriting the two
+   stale comments are separable and follow as their own commits.
 
-Slice 1 stands alone and can land on its own. Slice 2 carries a temporary
-`contractViolation` catch-all in `ProcedureWalker` so that it compiles;
-slice 3 removes it, so slice 3 is not optional and follows slice 2
-directly.
+Slice 1 stands alone and can land on its own. Slice 2 depends on nothing in
+slice 1 and could land first; the plan runs slice 1 first because it is the
+unblock and the cheaper review.
 
 ## Testing
 
@@ -251,8 +271,11 @@ directly.
   game operation still fails to compile until it is given a real arm. What
   is given up is that a new *control* operation forces a codec arm; it no
   longer needs one, because it is no longer in the encoded family.
-- Walker suites cover slice 3 unchanged: the restructure moves where control
-  leaves are consumed, not whether or in what order they are.
+- Walker suites cover the narrowed `runNarrowed` arm unchanged: the arm
+  order is preserved, so which leaf each case catches does not change. The
+  new `contractViolation` arm is unreachable by construction and gets no
+  test, for the same reason the codec's throws are being deleted rather than
+  tested.
 - `scripts/check-architecture.py` and `BackendArchitectureSuite` gate the
   line counts at each slice.
 
