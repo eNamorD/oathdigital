@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is under way: slices 1 to 8 are done, and slice 9 is next.
+**Phase - Catalog batch 8** is under way: slices 1 to 9 are done, and slice 10 is next.
 
 ## Next
 
@@ -133,7 +133,7 @@ this order. Each slice gets its own plan.
 - [x] **7. Trade at another site:** Small Friends, Friendly Familiar, Secret
   Signal.
 - [x] **8. Effective suit:** Pledge to Discord, Spiteful Mirror.
-- [ ] **9. Darkest Secret lens:** Yew Staff.
+- [x] **9. Darkest Secret lens:** Yew Staff.
 - [ ] **10. Power-use restrictions:** Spell Breaker, Forest Council, City
   Wall, Giant Python.
 - [ ] **11. Actor-aware lock:** Ancient Bloodline.
