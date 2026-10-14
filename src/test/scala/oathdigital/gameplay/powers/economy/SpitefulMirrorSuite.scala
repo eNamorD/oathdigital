@@ -141,3 +141,18 @@ class SpitefulMirrorSuite extends munit.FunSuite:
     assert(PhasePowerHarness.offered(asked, p1).exists(
       _.contains("player" -> p2.value)),
       PhasePowerHarness.offered(asked, p1).toString)
+
+  test("The Old Oak, traded as Discord, gives its secret for a Discord " +
+      "adviser"):
+    val oak = CatalogNames.denizen("The Old Oak")
+    val ready = mirrorAtWrestlers(secrets = 1).denizen(oak, at = home)
+      .favor(p1, 2).ready
+    val bothPicked = answeredWith(mirrorPicked(begun(ready, ActionRef.Trade,
+      forSecrets), PowerWindow.TradeModifierSelection),
+      modifiers(PowerWindow.TradeModifierSelection),
+      DecisionOptionRef.Denizen(oak))
+    val done = answeredWith(bothPicked, TradeProcedure.decisionId,
+      DecisionOptionRef.Denizen(oak))
+    // The Mirror's secret paid, then 1 for the Discord adviser and 1 more
+    // from The Old Oak.
+    assertEquals(Look(done.state).faceUpSecrets(p1), 2)

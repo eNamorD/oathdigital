@@ -296,6 +296,9 @@
   - It is offered only while its player holds the relic.
   - Its line, once the source is chosen: "Spiteful Mirror: Acting as if
     {card} is a Discord card."
+  - **With The Old Oak** (product owner, 2026-10-14). The Old Oak, traded
+    with the Mirror picked, is Discord, so its bonus secret comes when the
+    player has a Discord adviser, not a Beast one.
 
 ## Slice 9: Darkest Secret lens
 
