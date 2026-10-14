@@ -19,8 +19,9 @@ import oathdigital.model._
   *    `SearchPlayAdviser`. `playRules` adds the card's other card-play
   *    rules, such as Family Wagon's lifted limit.
   *  - an adviser arriving in the holder's advisers, by any route, makes the
-  *    holder bury every adviser that is not a faceup card of `suit`, in held
-  *    order (`onArrival`). The card's own arrival counts. A facedown card
+  *    holder bury every adviser that is not a faceup card of `suit` as the
+  *    rules see it (`EffectiveSuit`), in held order, Pledge to Discord
+  *    aside (below) (`onArrival`). The card's own arrival counts. A facedown card
   *    has no suit, so it is buried, and Locked does not stop a bury.
   *
   * A card it buries on arrival was never gained, so its WHEN PLAYED does
@@ -83,7 +84,11 @@ trait SuitOnlyAdvisers extends ExecutedTrigger:
 
   /** After a batch that left Pledge to Discord faceup beside advisers that
     * keep the rule by their printed suit: the active player sorts those
-    * advisers, then the ones placed to bury go, then Pledge. */
+    * advisers, then the ones placed to bury go, then Pledge. It reads the
+    * state alone, not the batch: only an arrival leaves that state, and
+    * the follow-up always buries Pledge. An arrival inside another
+    * trigger's follow-up, which holds no batch, would be asked after the
+    * next batch instead. */
   def onExecuted(batch: ExecutedBatch): Option[Operation] = for
     holder <- holderOf(batch.now)
     waiting = ordered(batch.now, holder)
