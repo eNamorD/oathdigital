@@ -32,7 +32,7 @@ final case class MountainGiant private (catalog: ExecutableCatalog)
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def planNoteKeys: Vector[NoteKey] = MountainGiant.noteKeys
+  override def planNoteKeys: Vector[NoteKey] = MountainGiant.ownNoteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     val side = context.side
@@ -68,7 +68,9 @@ object MountainGiant:
   val decisionId: String = CampaignProcedure.decisionPrefix +
     "mountain-giant"
   private val notes = NoteSet(id)
-  def noteKeys: Vector[NoteKey] = notes.declared
+  /** This plan's own keys. Its `noteKeys` adds the discard's
+    * line, which `DiscardedAtEnd` owns, not this object. */
+  def ownNoteKeys: Vector[NoteKey] = notes.declared
   /** "Added {n} attack dice." */
   val added: NoteKey = notes.key("added", Vector(NotePart.Text("Added "),
     NotePart.Arg(0), NotePart.Plural(0, " attack die.", " attack dice.")))

@@ -1,10 +1,11 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.powers.DeclaredNotes
+import oathdigital.gameplay.powers.{DeclaredNotes, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.campaign.{WarningSignals,
   WarningSignalsCard}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.model.{NoteArg, PlayerId, PowerNote, PowerSourceRef}
+import oathdigital.model.{NoteArg, PlayerId, PowerId, PowerNote,
+  PowerSourceRef}
 
 /** A note whose key no power declares has no wording, so the Game Log would
   * render nothing for it. The walker refuses to journal it instead (derive
@@ -34,6 +35,22 @@ class UndeclaredNoteSuite extends munit.FunSuite:
     assertEquals(
       NoteCheck.journal(declared, power, note, covers = false, strict = false),
       None)
+
+  test("a power the catalogs never heard of writes what it likes"):
+    val invented = PowerId("denizen.nonesuch")
+    val note = PowerNote(source, "whatever", Vector.empty)
+    assert(!DeclaredNotes.of(catalog).knows(invented))
+    assertEquals(
+      NoteCheck.journal(declared, invented, note, covers = false).map(_.note),
+      Some(note))
+
+  test("a catalog power that declares nothing is still checked"):
+    val quiet = WalkerPowerCatalog.default(catalog).powers
+      .find(_.noteKeys.isEmpty).map(_.id)
+      .getOrElse(fail("no catalog power declares an empty key set"))
+    assert(DeclaredNotes.of(catalog).knows(quiet))
+    intercept[AssertionError](NoteCheck.journal(declared, quiet,
+      PowerNote(source, "whatever", Vector.empty), covers = false))
 
   test("powers with no catalog behind them declare nothing and are not checked"):
     val note = PowerNote(source, "nonesuch", Vector.empty)

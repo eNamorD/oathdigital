@@ -35,10 +35,13 @@ private[application] object NoteWordings:
     * the note source and the narrated decisions are still read off each
     * power, because neither belongs to a key. */
   def default(catalog: ExecutableCatalog): NoteWordings =
-    val declared = DeclaredNotes.of(catalog)
+    val walkers = WalkerPowerCatalog.default(catalog)
+    // The catalog built the union already; building a second one here would
+    // walk both power catalogs again for the same answer.
+    val declared = walkers.declared.getOrElse(DeclaredNotes.of(catalog))
     val templates = declared.keys.toVector.flatMap((power, keys) =>
       keys.map(key => (power, key.name) -> key.template)).toMap
-    val named = WalkerPowerCatalog.default(catalog).powers.map(power =>
+    val named = walkers.powers.map(power =>
       of(power.id, Vector.empty, power.noteSource,
         power.narratedDecisions)) ++
       PhasePowerCatalog.default(catalog).powers.map(power =>

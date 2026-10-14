@@ -14,6 +14,12 @@ final class DeclaredNotes private (val keys: Map[PowerId, Vector[NoteKey]]):
   def declares(power: PowerId, key: String): Boolean =
     keys.get(power).exists(_.exists(_.name == key))
 
+  /** Whether this union covers `power` at all. A catalog power is covered
+    * even when it declares nothing, so a note it never declared is still
+    * refused; a power the catalogs have never heard of is a test's own
+    * invention, and what it declares is that test's business. */
+  def knows(power: PowerId): Boolean = keys.contains(power)
+
 object DeclaredNotes:
   /** A power listed in both catalogs keeps the keys of both, as the Game
     * Log's wordings do by keying on power and key name. Six powers are

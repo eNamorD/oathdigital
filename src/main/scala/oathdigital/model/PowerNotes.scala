@@ -72,12 +72,13 @@ object NoteKey:
   *
   * `declared` is complete only once the owning object's initialiser has run,
   * so: read it through a `def`, never a `val`; declare keys as plain `val`s
-  * in the object that owns the set, never `lazy val`s, which would never
-  * register; and declare no key in a trait body, which initialises once per
-  * mixin. A set left partly filled is a `DeclaredNoteKeysSuite` failure, not
-  * a missing line in a player's log.
+  * in the object that owns the set, never `lazy val`s, whose key is absent
+  * from `declared` until something forces them; and declare no key in a
+  * trait body, which initialises once per mixin. A set left partly filled
+  * is a `DeclaredNoteKeysSuite` failure, not a missing line in a player's
+  * log.
   */
-final class NoteSet private (label: String):
+final class NoteSet private (private val label: String):
   private val own = scala.collection.mutable.ArrayBuffer.empty[NoteKey]
   private val included = scala.collection.mutable.ArrayBuffer.empty[NoteSet]
 
@@ -90,11 +91,24 @@ final class NoteSet private (label: String):
 
   /** Declares every key `other` owns, for a key this object borrows. */
   def include(other: NoteSet): Unit =
+    require(!other.reaches(this), s"$label and ${other.label} include each " +
+      "other, so neither could say what it declares")
     if !included.contains(other) then included += other
 
-  /** Every key this object owns or borrows, its own first. */
+  /** Every key this object owns or borrows, its own first. Two sets may
+    * include a third, so one key arriving by two routes is one key; two
+    * different keys of one name are a conflict, and picking a winner
+    * silently is how a borrowed line goes missing. */
   def declared: Vector[NoteKey] =
-    (own.toVector ++ included.toVector.flatMap(_.declared)).distinctBy(_.name)
+    val all = own.toVector ++ included.toVector.flatMap(_.declared)
+    all.groupBy(_.name).foreach: (name, keys) =>
+      require(keys.distinct.sizeIs == 1, s"$label declares $name as " +
+        keys.distinct.map(_.template).mkString(" and as "))
+    all.distinct
+
+  /** Whether `other` is this set, or anything this set includes. */
+  private def reaches(other: NoteSet): Boolean =
+    this.eq(other) || included.exists(_.reaches(other))
 
 object NoteSet:
   def apply(power: PowerId): NoteSet = new NoteSet(power.value)

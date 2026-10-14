@@ -1,7 +1,8 @@
 package oathdigital.testkit
 
 import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
-import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{DeclaredNotes, PhasePowerCatalog,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions,
   WalkerCompleted, WalkerDice, WalkerPowers}
@@ -14,12 +15,18 @@ import oathdigital.model.OathState.Ready
   */
 object ActPowerHarness:
   private val actor: PlayerId = Table.p1
+  /** Built once: it walks both power catalogs, and `rules` is called per
+    * test. */
+  private val declared = Some(DeclaredNotes.of(catalog))
 
   /** Rules with every production phase power. Dice fail loudly unless given,
     * so a power that must not roll proves it by not asking.
     */
   def rules(dice: WalkerDice = WalkerDice.unavailable): OathRules =
     new OathRules(catalog,
+      // No walker powers, as before, but the catalog's declared note keys,
+      // so a power that writes a note it never declared fails here.
+      walkerPowerCatalog = WalkerPowers(Vector.empty, declared = declared),
       phasePowerCatalog = PhasePowerCatalog.default(catalog),
       walkerDice = dice)
 

@@ -14,6 +14,11 @@ import oathdigital.model.{PowerId, PowerNote}
   * is logged: the Log pane is player-facing, and one missing line must not
   * take the whole pane down with it.
   *
+  * A power the union has never heard of is a test's own invention, so what
+  * it declares is that test's business and its notes pass. That is what
+  * lets a harness driving both catalog powers and synthetic ones carry the
+  * real union: the catalog powers are checked, the inventions are not.
+  *
   * Which of the two happens is `strict`, whose default is the system
   * property `oathdigital.notes.strict`. `build.sbt` sets that property for
   * the test scope and nothing sets it in production, so the player-facing
@@ -21,7 +26,8 @@ import oathdigital.model.{PowerId, PowerNote}
   * to ask for. `UndeclaredNoteSuite` asserts the test scope has it.
   */
 private[walker] object NoteCheck:
-  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
+  private val logger =
+    org.slf4j.LoggerFactory.getLogger("oathdigital.gameplay.walker.NoteCheck")
 
   /** Whether an undeclared note fails rather than being dropped. */
   def strictByDefault: Boolean =
@@ -30,10 +36,12 @@ private[walker] object NoteCheck:
   def journal(declared: Option[DeclaredNotes], power: PowerId,
       note: PowerNote, covers: Boolean, strict: Boolean = strictByDefault)
       : Option[PowerNoted] =
-    if declared.forall(_.declares(power, note.key)) then
+    if declared.forall(union =>
+        !union.knows(power) || union.declares(power, note.key)) then
       Some(PowerNoted(power, note, covers))
     else
-      val message = s"${power.value} wrote the undeclared note ${note.key}"
+      val message = s"${power.value} wrote the undeclared note ${note.key} " +
+        s"from ${note.source}"
       if strict then throw new AssertionError(message)
       logger.error(message)
       None

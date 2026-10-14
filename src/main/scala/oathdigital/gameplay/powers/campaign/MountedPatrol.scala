@@ -30,7 +30,7 @@ final case class MountedPatrol private (catalog: ExecutableCatalog)
   def id: PowerId = MountedPatrol.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def planNoteKeys: Vector[NoteKey] = MountedPatrol.noteKeys
+  override def planNoteKeys: Vector[NoteKey] = MountedPatrol.ownNoteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
@@ -45,7 +45,9 @@ final case class MountedPatrol private (catalog: ExecutableCatalog)
 object MountedPatrol:
   val id: PowerId = MountedPatrolCard.power.id
   private val notes = NoteSet(id)
-  def noteKeys: Vector[NoteKey] = notes.declared
+  /** This plan's own keys. Its `noteKeys` adds the discard's
+    * line, which `DiscardedAtEnd` owns, not this object. */
+  def ownNoteKeys: Vector[NoteKey] = notes.declared
   /** "The attack pool was halved to {n} dice." */
   val halved: NoteKey = notes.key("halved", Vector(
     NotePart.Text("The attack pool was halved to "), NotePart.Arg(0),

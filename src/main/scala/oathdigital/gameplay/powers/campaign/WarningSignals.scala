@@ -39,7 +39,7 @@ final case class WarningSignals private (catalog: ExecutableCatalog)
   def id: PowerId = WarningSignals.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def planNoteKeys: Vector[NoteKey] = WarningSignals.noteKeys
+  override def planNoteKeys: Vector[NoteKey] = WarningSignals.ownNoteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.user.flatMap(user => context.denizen(cardId).map(source =>
@@ -78,7 +78,9 @@ object WarningSignals:
   val redistributed: NoteKey = notes.key("redistributed",
     Vector(NotePart.Arg(0),
       NotePart.Text(" redistributed their warbands.")))
-  def noteKeys: Vector[NoteKey] = notes.declared
+  /** This plan's own keys. Its `noteKeys` adds the discard's
+    * line, which `DiscardedAtEnd` owns, not this object. */
+  def ownNoteKeys: Vector[NoteKey] = notes.declared
 
   def forCatalog(catalog: ExecutableCatalog): WarningSignals =
     new WarningSignals(catalog)

@@ -27,7 +27,7 @@ final case class Lancers private (catalog: ExecutableCatalog)
   def id: PowerId = Lancers.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def planNoteKeys: Vector[NoteKey] = Lancers.noteKeys
+  override def planNoteKeys: Vector[NoteKey] = Lancers.ownNoteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
@@ -44,7 +44,9 @@ final case class Lancers private (catalog: ExecutableCatalog)
 object Lancers:
   val id: PowerId = LancersCard.power.id
   private val notes = NoteSet(id)
-  def noteKeys: Vector[NoteKey] = notes.declared
+  /** This plan's own keys. Its `noteKeys` adds the discard's
+    * line, which `DiscardedAtEnd` owns, not this object. */
+  def ownNoteKeys: Vector[NoteKey] = notes.declared
   /** "The attack roll was doubled." */
   val doubled: NoteKey = notes.key("doubled",
     Vector(NotePart.Text("The attack roll was doubled.")))
