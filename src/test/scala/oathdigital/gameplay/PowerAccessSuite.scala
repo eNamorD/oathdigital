@@ -100,3 +100,30 @@ class PowerAccessSuite extends munit.FunSuite:
       assertEquals(PowerAccess.locate(state, actor, edifice),
         Some(PowerAccess.Held.AtSite(far)), side.toString)
     }
+
+  /** A plain Order denizen, at the pawn site. */
+  private val wrestlers = CatalogNames.denizen("Wrestlers")
+
+  /** The walk's answer that `actor` acts as if at `site`. */
+  private def actingAt(site: SiteId): Vector[Answered] = Vector(Answered(
+    PowerAccess.asIfDecision,
+    DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site)), actor))
+
+  test("an as-if site takes the pawn site's place: its cards are usable " +
+      "and the pawn site's are not"):
+    val state = Table.start.pawn(actor, at = home)
+      .denizen(wrestlers, at = home).denizen(card, at = far).ready
+    assertEquals(PowerAccess.locate(state, actor, card, actingAt(far)),
+      Some(PowerAccess.Held.AtSite(far)))
+    assertEquals(PowerAccess.locate(state, actor, wrestlers, actingAt(far)),
+      None)
+    // Without the answer, the pawn site's card is usable as before.
+    assertEquals(PowerAccess.locate(state, actor, wrestlers),
+      Some(PowerAccess.Held.AtSite(home)))
+
+  test("a pawn site the actor rules stays usable beside an as-if site"):
+    val state = Table.start.pawn(actor, at = home)
+      .warbandsAt(home, actor, 1).denizen(wrestlers, at = home)
+      .denizen(card, at = far).ready
+    assertEquals(PowerAccess.locate(state, actor, wrestlers, actingAt(far)),
+      Some(PowerAccess.Held.AtSite(home)))

@@ -20,14 +20,16 @@ object TradeProcedure:
       PowerWindow.TradeSourceSelection, PowerWindow.TradeCost,
       PowerWindow.TradeGain, Cost(secret = 1),
       (actor, source, matching, _) =>
-        Some(Gain.Favor(actor, source.suit, 1 + matching)))
+        Some(Gain.Favor(actor, source.suit, 1 + matching)),
+      selection = selection(resource))
     case TradeResource.Secret => EconomyTree.Kind(decisionId,
       "Choose a card to Trade for secrets", PowerWindow.TradeModifierSelection,
       "Start Trade", PowerWindow.TradeActionEligibility,
       PowerWindow.TradeSourceSelection, PowerWindow.TradeCost,
       PowerWindow.TradeGain, Cost(favor = 1, favorBurnt = 1),
       (actor, _, matching, _) =>
-        Option.when(matching > 0)(Gain.Secrets(actor, matching)))
+        Option.when(matching > 0)(Gain.Secrets(actor, matching)),
+      selection = selection(resource))
 
   def resourceOf(args: Vector[DecisionOptionRef])
       : Either[OathViolation, TradeResource] = args match

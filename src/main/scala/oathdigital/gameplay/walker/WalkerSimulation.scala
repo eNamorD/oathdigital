@@ -81,15 +81,16 @@ object WalkerSimulation:
 
   /** Why `tree` would not start now, or `None` when it would: a restriction,
     * then the first walk up to its first park, with nothing persisted. A tree
-    * that parks and one that finishes both start. */
-  def refusal(tree: Operation, state: ReadyGame, powers: WalkerPowers)
-      : Option[OathViolation] =
+    * that parks and one that finishes both start. `answered` are the answers
+    * the walk starts with (`ProcedureWalker.advance`'s `seed`). */
+  def refusal(tree: Operation, state: ReadyGame, powers: WalkerPowers,
+      answered: Vector[Answered] = Vector.empty): Option[OathViolation] =
     guarded {
       ProcedureWalker.restrictionViolations(tree, powers, state,
-        state.game.current.turn.activePlayer)
+        state.game.current.turn.activePlayer, answered)
         .headOption.toLeft(())
         .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
-          WalkerDice.placeholder))
+          WalkerDice.placeholder, answered))
     }.left.toOption
 
   /** Where a start's walk is once it is past its modifier decision: the
@@ -191,14 +192,15 @@ object WalkerSimulation:
     * that decision. The tree must park before it runs any operation, because
     * the state after an executed prefix is not reported by `advance`.
     */
-  def preview(tree: Operation, state: ReadyGame,
-      powers: WalkerPowers): Either[OathViolation, Vector[PreviewedOption]] =
+  def preview(tree: Operation, state: ReadyGame, powers: WalkerPowers,
+      answered: Vector[Answered] = Vector.empty)
+      : Either[OathViolation, Vector[PreviewedOption]] =
     guarded:
       ProcedureWalker.restrictionViolations(tree, powers, state,
-        state.game.current.turn.activePlayer)
+        state.game.current.turn.activePlayer, answered)
         .headOption.toLeft(())
         .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
-          WalkerDice.placeholder))
+          WalkerDice.placeholder, answered))
         .flatMap:
           case WalkerOutcome.Parked(pending, events)
               if recordedOperations(events).isEmpty =>

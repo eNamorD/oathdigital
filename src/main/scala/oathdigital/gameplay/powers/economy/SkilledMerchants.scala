@@ -14,7 +14,8 @@ object SkilledMerchantsCard extends Denizen(DenizenId("238"), "Skilled Merchants
 
 /** Skilled Merchants (card 238, adviser-only), a selected Trade modifier
   * with no cost: the Trade may draw on any card at any site in the pawn's
-  * region, the pawn's own site and edifices included.
+  * region, the pawn's own site and edifices included. A player acting as
+  * if at another site draws on that site's region.
   *
   * It adds those cards to the source decision, after the pawn site's
   * ([[EconomySources.widened]]). The token-free rule still applies. Map
@@ -31,7 +32,8 @@ final case class SkilledMerchants private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeSourceSelection -> Vector(Transform((ctx, operations) =>
       EconomySources.widened(ctx, operations,
-        EconomySources.inPawnRegion(catalog, ctx.state, ctx.activePlayer)))))
+        EconomySources.inPawnRegion(catalog, ctx.state, ctx.activePlayer,
+          ctx.answered)))))
 
 object SkilledMerchants:
   val id: PowerId = SkilledMerchantsCard.power.id

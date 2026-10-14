@@ -210,6 +210,11 @@ trait ContributingPower extends NotingPower:
   /** The modifier-selection windows at which the player may pick this
     * power. Empty for any power that is not player-selected. */
   def selectionWindows: Set[PowerWindow] = Set.empty
+  /** What the modifier decision asks once the player has picked this power
+    * and paid for it, in the same pass, before the next pass (catalog
+    * batch 8, "An as-if pawn site for Trade"). Nothing by default. */
+  def selectionQuestions(ready: ReadyGame, actor: PlayerId)
+      : Vector[Operation] = Vector.empty
   /** Why this power's option in the modifier decision is unavailable or
     * deserves a warning, given the picks so far in `ctx.answered`. A rule
     * that one modifier states about another lives on the card that states

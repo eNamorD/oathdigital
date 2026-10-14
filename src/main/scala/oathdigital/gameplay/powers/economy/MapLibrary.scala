@@ -21,7 +21,7 @@ object MapLibraryCard extends Denizen(DenizenId("76"), "Map Library", Suit.Arcan
   * It adds those cards to the source decision, after the pawn site's
   * ([[EconomySources.widened]]). The token-free rule still applies. Skilled
   * Merchants adds the same cards, so with both selected each is offered
-  * once. It writes no line: the start line names it, and the Trade's own
+  * once. A player acting as if at another site draws on that site's region. It writes no line: the start line names it, and the Trade's own
   * line names the source.
   */
 final case class MapLibrary private (catalog: ExecutableCatalog)
@@ -33,13 +33,15 @@ final case class MapLibrary private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeSourceSelection -> Vector(Transform((ctx, operations) =>
       EconomySources.widened(ctx, operations,
-        EconomySources.inPawnRegion(catalog, ctx.state, ctx.activePlayer)))))
+        EconomySources.inPawnRegion(catalog, ctx.state, ctx.activePlayer,
+          ctx.answered)))))
 
-  /** The rulebook's access, and the pawn at Map Library's site: ruling the
-    * site is not enough. */
-  override def selectable(ready: ReadyGame, actor: PlayerId): Boolean =
-    super.selectable(ready, actor) &&
-      PowerAccess.pawnSite(ready, actor).exists(site =>
+  /** The rulebook's access, and the pawn at Map Library's site, or the
+    * player acting as if there: ruling the site is not enough. */
+  override def selectable(ready: ReadyGame, actor: PlayerId,
+      answered: Vector[Answered]): Boolean =
+    super.selectable(ready, actor, answered) &&
+      PowerAccess.presentSite(ready, actor, answered).exists(site =>
         SiteRulers.siteOf(ready, cardId).contains(site))
 
 object MapLibrary:

@@ -27,15 +27,36 @@ private[economy] object EconomySources:
     }
 
   /** Every card with a suit at the sites in play in the region of `actor`'s
-    * pawn, the pawn's own site included, in map then site order. A card
-    * without a suit is no source, as at the pawn site. */
+    * pawn, or of the site the walk's answers place them at, that site
+    * included, in map then site order. A card without a suit is no source,
+    * as at the pawn site. */
   def inPawnRegion(catalog: ExecutableCatalog, ready: ReadyGame,
-      actor: PlayerId): Vector[SiteDenizenState] =
+      actor: PlayerId, answered: Vector[Answered])
+      : Vector[SiteDenizenState] =
     val map = ready.game.current.map
-    val region = PowerAccess.pawnSite(ready, actor).flatMap(map.regionOf)
+    val region = PowerAccess.presentSite(ready, actor, answered)
+      .flatMap(map.regionOf)
     map.inPlay.filter(site => region.exists(map.regionOf(site).contains))
-      .flatMap(site => map.sites.get(site).toVector.flatMap(_.denizens))
+      .flatMap(site => cardsAt(catalog, ready, site))
+
+  /** Every card with a suit at `site`, in site order. */
+  def cardsAt(catalog: ExecutableCatalog, ready: ReadyGame, site: SiteId)
+      : Vector[SiteDenizenState] =
+    ready.game.current.map.sites.get(site).toVector.flatMap(_.denizens)
       .filter(card => catalog.suitOf(card.id).nonEmpty)
+
+  /** The priority the as-if site's rewrite folds at: before the powers that
+    * add cards, at 0, which then add to the new site's cards. */
+  val RelocationPriority: Int = -1
+
+  /** `operations` with each source decision's options replaced by the
+    * cards at the site the walk's answers place the actor at, offered as
+    * the pawn site's are. Unchanged without such a site. */
+  def relocated(catalog: ExecutableCatalog, ctx: PowerCtx,
+      operations: Vector[Operation]): Vector[Operation] =
+    PowerAccess.asIfSite(ctx.answered).fold(operations)(site =>
+      withOptions(ctx, operations)(_ =>
+        cardsAt(catalog, ctx.state, site).map(MusterSource.offered)))
 
   /** The priority an exemption folds at: after the powers that add cards,
     * at 0, so that a card one of them adds can be exempted too. */

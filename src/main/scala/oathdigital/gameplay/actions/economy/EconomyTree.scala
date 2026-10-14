@@ -45,7 +45,10 @@ private[economy] object EconomyTree:
       cost: PowerWindow,
       gain: PowerWindow,
       payment: Cost,
-      yields: (PlayerId, MusterSource, Int, ForceKind) => Option[CoreOperation])
+      yields: (PlayerId, MusterSource, Int, ForceKind) => Option[CoreOperation],
+      /** What the player selected when the action started, which the
+        * modifier decision names. */
+      selection: Vector[DecisionOptionRef] = Vector.empty)
 
   /** Fresh start: the lifecycle gate, a pawn site, a resolvable ruler for
     * every site.
@@ -78,7 +81,7 @@ private[economy] object EconomyTree:
       kind: Kind): Operation =
     val rest = afterModifiers(catalog, state, actor, kind)
     Sequence(Vector(ModifierChoice.loop(actor, kind.modifiers, rest,
-      kind.startLabel, Some(startReason)), rest))
+      kind.startLabel, Some(startReason), kind.selection), rest))
 
   /** The source pick, then the payment and the gain. */
   private def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,

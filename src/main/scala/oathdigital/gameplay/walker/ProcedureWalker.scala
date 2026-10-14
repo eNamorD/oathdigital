@@ -73,12 +73,16 @@ object ProcedureWalker:
     WalkerReplay.applyOperation(state, operation)
 
 
+  /** `seed` are the answers a fresh walk starts with, for a dry run of the
+    * rest of an action that must see what the player answered before it. A
+    * resumed walk ignores it and reads `pending`. */
   def advance(state: ReadyGame, action: Operation,
       pending: Option[PendingTree], powers: WalkerPowers,
-      dice: WalkerDice = WalkerDice.unavailable)
+      dice: WalkerDice = WalkerDice.unavailable,
+      seed: Vector[Answered] = Vector.empty)
       : Either[OathViolation, WalkerOutcome] =
     val activePlayer = state.game.current.turn.activePlayer
-    val answered = pending.fold(Vector.empty[Answered])(_.answered)
+    val answered = pending.fold(seed)(_.answered)
     val cursor: Option[Vector[String]] = pending.map(_.at)
     // The stored pending tree is navigation state passed by parameter; a
     // running walk must not carry it inside CurrentGameState, so clear the

@@ -1,8 +1,8 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powerresolver.{ContributingPower, ModifierPicks,
-  OfferReason, PowerCtx}
+import oathdigital.gameplay.powerresolver.{ContributingPower, ModifierHost,
+  ModifierPicks, OfferReason, PowerCtx}
 import oathdigital.model._
 
 /** One pass of an action's modifier decision (modifier walker design): the
@@ -21,11 +21,17 @@ import oathdigital.model._
   * The first pass asks only when a modifier can be picked. A later pass asks
   * while any modifier is still listed. A walk resuming inside a pass keeps
   * its two children whatever is listed.
+  *
+  * A pick pays, then asks the picked power's own questions
+  * (`selectionQuestions`), inside the pass's second child. The walk's
+  * answers reach every judgement of the next pass: which cards the actor
+  * may use, and the dry runs of "Start".
   */
 final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
     rest: Operation, startLabel: String,
-    explain: Option[WalkerProcedureRegistry.OptionPricing])
-    extends Operation:
+    explain: Option[WalkerProcedureRegistry.OptionPricing],
+    val startSelection: Vector[DecisionOptionRef])
+    extends ModifierHost:
   override val window: Option[PowerWindow] = Some(modifierWindow)
   override val children: Vector[Operation] = Vector.empty
   private val decisionId = ModifierPicks.decisionId(modifierWindow)
@@ -47,7 +53,8 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
     power.resolution == PowerResolution.PlayerSelected &&
       power.selectionWindows(modifierWindow) &&
       power.selectionCard.exists(card =>
-        PowerAccess.locate(pass.state, actor, card).isDefined))
+        PowerAccess.locate(pass.state, actor, card, pass.answered)
+          .isDefined))
     .sortBy(ContributingPower.sortKey)
 
   private def option(pass: ModifierChoice.Pass, power: ContributingPower)
@@ -78,13 +85,15 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
     BuildOps((ready, _) => Right(power.selectionPayments(ready, actor)),
       required = true)
 
-  /** After the pass's answer: the payment of the modifier it picked. */
+  /** After the pass's answer: the payment of the modifier it picked, then
+    * the questions that modifier asks once picked. */
   private def payment(powers: WalkerPowers): Operation =
-    Branch((_, tree) => tree.answered.reverseIterator.collectFirst {
+    Branch((ready, tree) => tree.answered.reverseIterator.collectFirst {
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) =>
         ref
     }.flatMap(ModifierPicks.powerFor(powers.pool, modifierWindow, _))
-      .toVector.map(paying))
+      .toVector.flatMap(power =>
+        paying(power) +: power.selectionQuestions(ready, actor)))
 
   private def price(shown: DecisionOption, operations: Vector[CoreOperation])
       : DecisionOption =
@@ -125,20 +134,22 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
     val powers = pass.powers.quiet
     // A preview needs `rest` to park on a choose-one before it runs
     // anything; any other `rest` is asked only whether it would start.
-    val opens = WalkerSimulation.preview(rest, pass.state, powers) match
+    val opens = WalkerSimulation.preview(rest, pass.state, powers,
+        pass.answered) match
       case Right(previewed) => previewed.exists(_.outcome.isRight)
-      case Left(_) =>
-        WalkerSimulation.refusal(rest, pass.state, powers).isEmpty
+      case Left(_) => WalkerSimulation.refusal(rest, pass.state, powers,
+        pass.answered).isEmpty
     if opens then None
-    else Some(explained(pass.state, powers)
+    else Some(explained(pass.state, powers, pass.answered)
       .getOrElse(ModifierChoice.cannotStart))
 
   /** The first refused option of the action's first decision, as the
     * procedure prices it. */
-  private def explained(state: ReadyGame, powers: WalkerPowers)
-      : Option[String] = for
+  private def explained(state: ReadyGame, powers: WalkerPowers,
+      answered: Vector[Answered]): Option[String] = for
     pricing <- explain
-    pending <- ProcedureWalker.advance(state, rest, None, powers).toOption
+    pending <- ProcedureWalker.advance(state, rest, None, powers,
+        seed = answered).toOption
       .collect { case WalkerOutcome.Parked(at, _) => at }
     decide <- ProcedureWalker.parkedDecide(state, rest, pending, powers,
       probing = false)
@@ -166,11 +177,14 @@ object ModifierChoice:
   /** The modifier decision for `window`, as the first node of an action's
     * tree: passes until "Start". `rest` is what the tree runs after it,
     * which "Start" previews; `explain` is the procedure's option pricing,
-    * which words why "Start" is unavailable. */
+    * which words why "Start" is unavailable; `selection` is what the player
+    * selected when the action started. */
   def loop(actor: PlayerId, window: PowerWindow, rest: Operation,
       startLabel: String,
-      explain: Option[WalkerProcedureRegistry.OptionPricing] = None)
+      explain: Option[WalkerProcedureRegistry.OptionPricing] = None,
+      selection: Vector[DecisionOptionRef] = Vector.empty)
       : Operation =
     val id = ModifierPicks.decisionId(window)
     Repeat((_, pending) => !ModifierPicks.started(pending.answered, id),
-      new ModifierChoice(actor, window, rest, startLabel, explain))
+      new ModifierChoice(actor, window, rest, startLabel, explain,
+        selection))
