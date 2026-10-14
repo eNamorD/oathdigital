@@ -299,8 +299,9 @@ object ProcedureWalker:
     * cursor, so a note runs only on the walk that first reaches it. */
   private def noted(note: Note, ctx: WalkCtx): WalkCtx =
     note.build(NoteStates(ctx.state, ctx.previous, ctx.answered)).fold(ctx)(
-      built => ctx.copy(events = ctx.events :+
-        PowerNoted(note.power, built, note.covers)))
+      built => NoteCheck.journal(ctx.powers.declared, note.power, built,
+        note.covers).fold(ctx)(event =>
+        ctx.copy(events = ctx.events :+ event)))
 
   /** Events other than notes: a note changes nothing a guard reads. */
   private def recorded(ctx: WalkCtx): Int =

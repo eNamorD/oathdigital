@@ -49,8 +49,9 @@ private[walker] object AdviserArrivalPass:
         ops = updated.executed,
         contributions = Vector(power)))
       val note = followUp.note.build(NoteStates(updated.state,
-        Some((ctx.state, updated.state)), ctx.answered)).map(built =>
-        PowerNoted(followUp.note.power, built, followUp.note.covers))
+        Some((ctx.state, updated.state)), ctx.answered)).flatMap(built =>
+        NoteCheck.journal(ctx.powers.declared, followUp.note.power, built,
+          followUp.note.covers))
       ctx.copy(state = updated.state, events = ctx.events ++ step ++ note)
     }
 

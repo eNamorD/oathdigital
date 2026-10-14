@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.operations.OperationRestrictions
+import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.gameplay.powers.action._
 import oathdigital.gameplay.powers.banner._
 import oathdigital.gameplay.powers.burn._
@@ -58,7 +59,17 @@ import oathdigital.gameplay.walker.WalkerPowers
   */
 object WalkerPowerCatalog:
   def default(catalog: ExecutableCatalog): WalkerPowers =
-    WalkerPowers(Vector(CatacombsContribution.forCatalog(catalog)) ++
+    val powers = contributing(catalog)
+    WalkerPowers(powers,
+      restrictionSet = OperationRestrictions.forCatalog(catalog),
+      declared = Some(DeclaredNotes.of(powers, catalog)))
+
+  /** The powers themselves. `DeclaredNotes` reads them to build the union a
+    * `WalkerPowers` carries, so it is taken separately from `default`: a
+    * union built from `default` would build a union to build a union. */
+  private[powers] def contributing(catalog: ExecutableCatalog)
+      : Vector[ContributingPower] =
+    Vector(CatacombsContribution.forCatalog(catalog)) ++
       Vector(VowOfPeaceContribution) ++
       Vector(VowOfSilence, VowOfDivision) ++
       Vector(BrassArmyMoves) ++
@@ -97,5 +108,4 @@ object WalkerPowerCatalog:
         BanditMarket.forCatalog(catalog), GreatForge.forCatalog(catalog),
         BrokenForge.forCatalog(catalog), ProvingGrounds.forCatalog(catalog),
         EmptyGrounds.forCatalog(catalog), TakeWealthLimit,
-        ConspiracyWhenPlayed),
-      restrictionSet = OperationRestrictions.forCatalog(catalog))
+        ConspiracyWhenPlayed)

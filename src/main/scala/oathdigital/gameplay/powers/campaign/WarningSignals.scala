@@ -39,8 +39,7 @@ final case class WarningSignals private (catalog: ExecutableCatalog)
   def id: PowerId = WarningSignals.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def planNoteKeys: Vector[NoteKey] =
-    Vector(WarningSignals.redistributed)
+  override def planNoteKeys: Vector[NoteKey] = WarningSignals.noteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.user.flatMap(user => context.denizen(cardId).map(source =>
@@ -74,9 +73,12 @@ object WarningSignals:
   val id: PowerId = WarningSignalsCard.power.id
   /** Under the Campaign's prefix, so a parked question is a Campaign decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix + "warning-signals"
+  private val notes = NoteSet(id)
   /** "{Blue} redistributed their warbands." */
-  val redistributed: NoteKey = NoteKey("redistributed", Vector(NotePart.Arg(0),
-    NotePart.Text(" redistributed their warbands.")))
+  val redistributed: NoteKey = notes.key("redistributed",
+    Vector(NotePart.Arg(0),
+      NotePart.Text(" redistributed their warbands.")))
+  def noteKeys: Vector[NoteKey] = notes.declared
 
   def forCatalog(catalog: ExecutableCatalog): WarningSignals =
     new WarningSignals(catalog)

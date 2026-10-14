@@ -46,6 +46,14 @@ lazy val root = (project in file("."))
     }.taskValue,
     Compile / unmanagedSourceDirectories += baseDirectory.value / "shared" / "src" / "main" / "scala",
     Test / unmanagedSourceDirectories += baseDirectory.value / "shared" / "src" / "test" / "scala",
+    // A note whose power never declared its key has no wording, so the Game
+    // Log would render nothing for it. Under test that is a programming
+    // error and `NoteCheck` throws at the note; in production it drops the
+    // note and logs, because one missing line must not take the player's
+    // Log pane down. Tests do not fork, so the property is set in this JVM
+    // before the test task runs rather than through `Test / javaOptions`.
+    Test / testOptions += Tests.Setup(() =>
+      sys.props("oathdigital.notes.strict") = "true"),
     libraryDependencies ++= Seq(
       "com.lihaoyi" %% "ujson" % "4.4.3",
       "com.typesafe.slick" %% "slick" % "3.5.2",

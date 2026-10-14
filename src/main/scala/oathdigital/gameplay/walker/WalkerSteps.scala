@@ -73,7 +73,7 @@ private[walker] object WalkerSteps:
         ops = updated.executed,
         contributions = contributions))
       val events = ctx.events ++ step ++
-        swapped.lines(run.executed, ctx.activePlayer)
+        swapped.lines(run.executed, ctx.activePlayer, ctx.powers.declared)
       AdviserArrivalPass.after(ctx.state, ctx.copy(state = updated.state,
         events = events, previous = Some((ctx.state, updated.state))),
         nodeId)
