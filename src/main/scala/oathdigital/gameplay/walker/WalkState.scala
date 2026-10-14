@@ -26,7 +26,10 @@ private[walker] final case class WalkCtx(
       * answer leads on from, and its events are thrown away. */
     searching: Boolean = false,
     /** The decisions this search stands at, with the state at each. */
-    visited: Set[(Vector[String], ReadyGame)] = Set.empty
+    visited: Set[(Vector[String], ReadyGame)] = Set.empty,
+    /** Set while the walk runs a trigger's follow-up, whose batches start
+      * no follow-up of their own (`ExecutedTriggers`). */
+    following: Boolean = false
 )
 
 private[walker] sealed trait Step extends Product with Serializable

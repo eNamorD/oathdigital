@@ -46,9 +46,11 @@ private[walker] object WalkerSteps:
     * be non-empty; callers short-circuit an empty batch themselves (an empty
     * [[oathdigital.model.BuildOps]] batch records nothing). Each burn a
     * power claims is first replaced by a `Take` ([[BurnTakes]]), and the
-    * claims' lines follow the step. The adviser
-    * arrival pass then runs the follow-ups of any adviser that arrived in the
-    * batch (`AdviserArrivalPass`).
+    * claims' lines follow the step. A batch whose operations start a
+    * trigger's follow-up also holds them, in the same step
+    * ([[ExecutedTriggers]]), and the walker walks the follow-ups after it.
+    * The adviser arrival pass then runs the follow-ups of any adviser that
+    * arrived in the batch (`AdviserArrivalPass`).
     */
   def recordBatch(ops: Vector[CoreOperation],
       contributions: Vector[PowerId], ctx: WalkCtx, path: Vector[String],
@@ -62,7 +64,7 @@ private[walker] object WalkerSteps:
       else OperationPipeline.run(ctx.state, swapped.operations,
         OperationPolicy.Permissive, ctx.powers.operationRestrictions,
         requireAll)(Right(_))
-    ran.flatMap { updated =>
+    ran.flatMap(run => ExecutedTriggers.held(ctx, run).flatMap { updated =>
       val nodeId = if path.isEmpty then label else path.mkString(".")
       val step = Option.when(updated.executed.nonEmpty)(WalkerStepRecorded(
         nodeId = nodeId,
@@ -71,11 +73,11 @@ private[walker] object WalkerSteps:
         ops = updated.executed,
         contributions = contributions))
       val events = ctx.events ++ step ++
-        swapped.lines(updated.executed, ctx.activePlayer)
+        swapped.lines(run.executed, ctx.activePlayer)
       AdviserArrivalPass.after(ctx.state, ctx.copy(state = updated.state,
         events = events, previous = Some((ctx.state, updated.state))),
         nodeId)
-    }
+    })
 
   /** Validates a resolved answer against the parked Decide and records its
     * step: the answer's submitter must be the node's owner, the query must
