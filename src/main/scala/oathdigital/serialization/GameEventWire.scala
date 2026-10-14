@@ -85,18 +85,16 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     * `encodeLocation`), so an unencodable value reaching this append path
     * must surface as a typed [[WireError]] rather than escape as a raw
     * exception (matches the decode side's `NonFatal` boundary in
-    * `decodePayload`). `UnencodableOperation` is special-cased ahead of the
-    * generic `NonFatal` fallback so the FEW genuinely-impractical shapes
-    * (a walker tree-control node closing over a function value) surface
-    * their specific, already-typed `WireError` instead of the generic
-    * "$.payload" / stringified-message fallback below.
+    * `decodePayload`). There is no longer a special case ahead of the
+    * generic `NonFatal` fallback: the walker's control vocabulary is not a
+    * `CoreOperation`, so the shapes that once needed one cannot reach the
+    * encoder at all.
     */
   private def encodePayloadSafe(
       event: OathEvent
   ): Either[WireError, ujson.Value] =
     try Right(encodePayload(event))
     catch
-      case UnencodableOperation(error) => Left(error)
       case NonFatal(error) =>
         Left(
           InvalidValue(
