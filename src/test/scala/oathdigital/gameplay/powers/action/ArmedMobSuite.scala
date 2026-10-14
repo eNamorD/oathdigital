@@ -1,9 +1,10 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.NoteText
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, ParkedNode,
+  PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
@@ -35,6 +36,23 @@ class ArmedMobSuite extends munit.FunSuite:
   private def choose(ready: ReadyGame, card: DenizenId): UsedAndAnswered =
     useAndAnswer(ready, power, source,
       ArmedMob.decisionId, DecisionOptionRef.Denizen(card))
+
+  private val yewStaff = "Yew Staff"
+
+  /** The options of the decision the use is parked on, unavailable ones
+    * included. */
+  private def parkedChoiceOptions(t: OathTransition)
+      : Vector[DecisionOption] =
+    ParkedNode.of(t.state, catalog,
+      phasePowers = PhasePowerCatalog.default(catalog)) match
+      case Right(Some(ParkedNode.Decision(_, decide, _))) =>
+        decide.query match
+          case DecisionQuery.ChooseOne(options, _, _) => options
+          case other => fail(s"expected a choose-one, got $other")
+      case other => fail(s"expected a parked decision, got $other")
+
+  private def playerOption(player: PlayerId): DecisionOption =
+    DecisionOption.Player(DecisionOptionRef.Player(player))
 
   test("it places a favor and offers the Darkest Secret holder's faceup " +
       "advisers, not facedown or locked ones"):
@@ -101,3 +119,74 @@ class ArmedMobSuite extends munit.FunSuite:
     assert(!usableNow(broke).exists(_.power.id == ArmedMob.id))
     assertEquals(use(broke, power, source).left.toOption,
       Some(OathViolation.InsufficientFavor(1, 0)))
+
+  test("an enemy's Yew Staff makes them no target"):
+    val ready = staged().darkestSecret(None, 1).relic(p2, yewStaff)
+      .adviser(p2, homesteaders).ready
+    val done = accepted(use(ready, power, source))
+    parked.assertResumed(done.state, Phase.Act, p1)
+    assertEquals(Look(after(done)).advisers(p2), Vector[CardId](homesteaders))
+    assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
+      "used.none",
+      "No player held the Darkest Secret without the People's Favor.",
+      covers = true)))
+
+  test("with Yew Staff the player is a target beside the holder: it asks " +
+      "whose adviser, then which"):
+    val ready = staged().relic(p1, yewStaff).adviser(p1, homesteaders)
+      .adviser(p2, landWarden).ready
+    val started = accepted(use(ready, power, source))
+    assert(awaits(started, ArmedMob.playerDecisionId))
+    assertEquals(offered(started, p1),
+      Some(Vector("player" -> p1.value, "player" -> p2.value)))
+    val chose = accepted(answer(started, p1, ArmedMob.playerDecisionId,
+      pick(DecisionOptionRef.Player(p1))))
+    assert(awaits(chose, ArmedMob.decisionId))
+    assertEquals(offered(chose, p1),
+      Some(Vector("denizen" -> homesteaders.value)))
+    val done = accepted(answer(chose, p1, ArmedMob.decisionId,
+      pick(DecisionOptionRef.Denizen(homesteaders))))
+    assertEquals(Look(after(done)).advisers(p1), Vector.empty[CardId])
+    assertEquals(Look(after(done)).advisers(p2), Vector[CardId](landWarden))
+    val events = started.events ++ chose.events ++ done.events
+    assertEquals(replayed(ready, events), Right(done.state))
+    assertWireRoundTrips(events)
+    assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
+      NoteKey.Used,
+      s"${p1.value} discarded ${homesteaders.value} from " +
+        s"${p1.value}'s advisers.",
+      covers = true)))
+
+  test("a target with no faceup adviser is shown unavailable"):
+    val ready = staged().relic(p1, yewStaff).adviser(p1, homesteaders)
+      .adviser(p2, landWarden, facedown = true).ready
+    val started = accepted(use(ready, power, source))
+    assertEquals(parkedChoiceOptions(started), Vector[DecisionOption](
+      playerOption(p1), DecisionOption.Unavailable(playerOption(p2),
+        OptionReason.Written(ArmedMob.noAdviser))))
+
+  test("with Yew Staff and no other target it asks only for the player's " +
+      "own adviser"):
+    val ready = staged().darkestSecret(None, 1).relic(p1, yewStaff)
+      .adviser(p1, homesteaders).ready
+    val started = accepted(use(ready, power, source))
+    assert(awaits(started, ArmedMob.decisionId))
+    assertEquals(offered(started, p1),
+      Some(Vector("denizen" -> homesteaders.value)))
+
+  test("with the People's Favor, Yew Staff makes the player no target"):
+    val ready = staged().peoplesFavor(Some(p1), 1).relic(p1, yewStaff)
+      .adviser(p1, homesteaders).adviser(p2, landWarden).ready
+    val started = accepted(use(ready, power, source))
+    assert(awaits(started, ArmedMob.decisionId))
+    assertEquals(offered(started, p1),
+      Some(Vector("denizen" -> landWarden.value)))
+
+  test("with two targets and no faceup adviser nothing is asked, and the " +
+      "line says so"):
+    val done = accepted(use(staged().relic(p1, yewStaff).ready, power,
+      source))
+    parked.assertResumed(done.state, Phase.Act, p1)
+    assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
+      "used.empty-both", "Neither target had a faceup adviser to discard.",
+      covers = true)))
