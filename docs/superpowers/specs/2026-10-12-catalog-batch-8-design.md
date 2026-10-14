@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 5 are done. The per-card rulings are
+**Status:** designed 2026-10-12. Slices 1 to 6 are done. The per-card rulings are
 in [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
 **Builds on** [Catalog batch 5](2026-10-08-catalog-batch-5-design.md),
@@ -104,7 +104,9 @@ The approved changes outside `gameplay/powers/`:
   walked right after the batch under the batch's own node, so Brass Army
   can ask its holder. The batch holds its operations with `Defer`, in its
   own step, so a command that resumes inside a follow-up asks again with
-  the same operations. A follow-up's own batches start no follow-up.
+  the same operations. A follow-up's own batches start no follow-up. A
+  parked position inside a follow-up resolves to its node through
+  `WalkerPowerGather.leafAt`, which asks the triggers the same way.
   Secret Testament needs no trigger: it is a Challenge modifier.
 - **An as-if pawn site for Trade** (slice 7). `PowerAccess.locate` takes an
   optional site that replaces the pawn site in `usableSites`. Ruled sites
