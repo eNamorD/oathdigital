@@ -16,7 +16,7 @@
 - Production Scala files are capped at 800 lines, enforced by `scripts/check-architecture.py:29-30` and `BackendArchitectureSuite`. Run `python3 scripts/check-architecture.py` before every commit.
 - `src/main/scala/oathdigital/model` must not import `application`, `gameplay`, `persistence`, `serialization` or `server` (`scripts/check-architecture.py:32-37`).
 - The wire format does not change in this plan. Every encoded spelling stays byte-identical; `WalkerOperationWireSuite` is the pin.
-- Do not touch `src/test/scala/oathdigital/gameplay/HiddenScopeProbeSuite.scala` beyond the single annotation Task 2 Step 9 specifies. It was untracked when this plan was written -- another session owns it.
+- Do not touch `src/test/scala/oathdigital/gameplay/HiddenScopeProbeSuite.scala` beyond the single annotation Task 2 Step 14 specifies. It was untracked when this plan was written -- another session owns it.
 - Measurements here were taken at `3dcbfd9a`. If `CoreOperations.scala` or `WalkerOperationCodec.scala` has changed since, re-run the line counts in Task 1 Step 1 and Task 2 Step 1 and adjust the expected numbers rather than assuming them.
 - Commit messages end with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 
