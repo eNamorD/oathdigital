@@ -1,0 +1,215 @@
+banner.darkest-secret.wandering-flame.move: used
+banner.darkest-secret.wandering-flame.place: used
+banner.peoples-favor.mob: discard-first
+denizen.a-round-of-ale: cleanup
+denizen.alchemist: used
+denizen.ancient-binding: used, used.none
+denizen.animal-host: gained, none
+denizen.arcane-armor: set
+denizen.arcane-brokers: used, used.none
+denizen.armed-mob: used, used.empty, used.none
+denizen.assassin: used, used.none
+denizen.awaited-return: sacrificed
+denizen.ballot-box: removed, removed.bandits, used, used.bandits, used.none, used.unmatched, vow-of-wandering
+denizen.bandit-chief: killed, none
+denizen.bandit-paymaster: used, used.none
+denizen.bandit-prince: none, replaced, vow-of-wandering
+denizen.bear-traps: killed
+denizen.beast-tamer: tamed
+denizen.bed-of-roots: used, used.none
+denizen.billowing-fog: spared
+denizen.blackmail: none, paid, took
+denizen.blood-pact: used, used.none
+denizen.bog: used, used.discarded, used.none
+denizen.book-binders: gained
+denizen.book-burning: burned, none
+denizen.call-for-help: discarded, none, revealed
+denizen.chaos-cult: took
+denizen.charlatan: burned, none
+denizen.charming-friend: used, used.empty, used.none
+denizen.code-of-honor: no-others, not-with-others
+denizen.convoys: used
+denizen.crop-rotation: discard-first
+denizen.curfew: burned, gave, no-free-trade, no-free-trade-consent, waived
+denizen.dark-enforcer: used, used.none
+denizen.dazzle: discarded, none
+denizen.defame: burned
+denizen.dissent: none, placed
+denizen.dream-thief: used, used.none
+denizen.elders: used
+denizen.enchantress: used, used.none
+denizen.fabled-feast: empty, none, took
+denizen.fae-battalion: counted
+denizen.fae-merchant: returned, used
+denizen.family-heirloom: bottom, keep
+denizen.family-wagon: buried, buried.holder
+denizen.fearsome-general: added
+denizen.field-promotion: gained
+denizen.firebrand: used, used.burned, used.empty
+denizen.forced-labor: burned, gave, no-free-search, no-free-search-consent, waived
+denizen.forest-paths: ignoring
+denizen.forgotten-vault: shielded
+denizen.friendly-familiar: acted
+denizen.gambling-hall: gained, used
+denizen.garrison-armory: added
+denizen.garrison: vow-of-wandering
+denizen.gleaming-armor: taxed
+denizen.gossip: gained
+denizen.grasping-vines: killed, must-kill, must-kill-consent, spared
+denizen.great-crusade: discarded
+denizen.great-feast: used, used.none
+denizen.great-herd: none, swapped
+denizen.hearts-and-minds: discarded
+denizen.herald: gained
+denizen.homesteaders: used, used.none
+denizen.honor-guard: used, used.none
+denizen.horse-archers: discarded
+denizen.hospital: placed
+denizen.hunger: buried, none
+denizen.inquisitor: used, used.conspiracy.right, used.conspiracy.wrong, used.vision-of-conquest.right, used.vision-of-conquest.wrong, used.vision-of-faith.right, used.vision-of-faith.wrong, used.vision-of-rebellion.right, used.vision-of-rebellion.wrong, used.vision-of-sanctuary.right, used.vision-of-sanctuary.wrong
+denizen.insect-swarm: taxed
+denizen.insomnia: used
+denizen.jinx: rerolled-attack, rerolled-defense
+denizen.keep: ended
+denizen.key-to-the-city: bandits, guarded, killed, placed, unplaced, vow-of-wandering
+denizen.kindred-warriors: ignored
+denizen.lancers: discarded, doubled
+denizen.league-treaty: sent
+denizen.levelers: used, used.empty
+denizen.lost-tongue: shielded
+denizen.marsh-spirit: mired
+denizen.master-at-arms: rerolled
+denizen.memory-of-home: used, used.empty
+denizen.memory-of-nature: used, used.none
+denizen.mercenaries: discarded
+denizen.messenger: used, used.none
+denizen.mountain-giant: added, discarded, removed
+denizen.mounted-library: discarded, doubled
+denizen.mounted-patrol: discarded, halved
+denizen.moving-market: moved, moved.only
+denizen.oracle: used, used.none
+denizen.outriders: ignored
+denizen.peace-envoy: decided, gave, gave-off-turn, no-others, not-with-others, won, won-off-turn
+denizen.pied-piper: used, used.empty
+denizen.plague-engines: used, used.none
+denizen.pledge-of-defense: discarded
+denizen.quartermaster: used
+denizen.quick-exit: used, used.none
+denizen.rain-boots: discarded, ignored
+denizen.rangers: ignored
+denizen.relic-breaker: used, used.none
+denizen.relic-thief: used, used.kept, used.none
+denizen.resettle: used, used.none
+denizen.revelation: burned, declined, none
+denizen.riots: burned, discarded, none, unburned
+denizen.rival-khan: discarded
+denizen.roving-terror: used, used.none
+denizen.royal-tax: broke, none, took
+denizen.rusting-ray: ignored
+denizen.saddle-makers: gained
+denizen.salad-days: none
+denizen.salt-the-earth: buried
+denizen.scouts: gained
+denizen.scryer: used, used.empty
+denizen.sealing-ward: added
+denizen.second-chance: used, used.killed, used.none, used.spared
+denizen.secret-police: no-faceup, no-faceup-consent
+denizen.secret-signal: gained
+denizen.shield-wall: killed
+denizen.shifting-fog: moved
+denizen.siege-engines: used, used.bandits, used.none
+denizen.signal-trees: added, none, removed, revealed
+denizen.silver-tongue: used
+denizen.sleight-of-hand: used, used.none
+denizen.small-friends: acted
+denizen.special-envoy: ended
+denizen.specialist: silenced
+denizen.spinning-bee: alone, drawing
+denizen.spirit-snare: used, used.empty
+denizen.spoiled-supplies: used, used.none
+denizen.storm-caller: discarded
+denizen.storyteller: used
+denizen.taming-charm: used, used.discarded, used.none
+denizen.tavern-songs: used, used.empty
+denizen.terror-spells: used, used.empty, used.none
+denizen.the-great-levy: ignored
+denizen.the-red-seer: used
+denizen.threatening-roar: discarded, none
+denizen.tinker-s-fair: used, used.empty
+denizen.toll-roads: burned, no-free-travel, no-free-travel-consent, paid, waived
+denizen.town-meeting: empty, gained, none
+denizen.traveling-doctor: discarded, spared
+denizen.true-names: named
+denizen.true-oath: changed, kept, unmet
+denizen.tutor: used
+denizen.twin-brother: swapped
+denizen.tyrant: killed, killed.bandits
+denizen.unstable-summon: burned
+denizen.vow-of-beastkin: gained
+denizen.vow-of-division: taken, taken-by
+denizen.vow-of-obedience: no-faceup, used
+denizen.vow-of-peace: no-sacrifice
+denizen.vow-of-poverty: used
+denizen.vow-of-silence: forbidden, taken, taken-by
+denizen.vow-of-union.campaign: moved.board, moved.board.holder, moved.sites, moved.sites.holder
+denizen.vow-of-union.restriction: buried, buried.holder
+denizen.vow-of-wandering.muster: gained
+denizen.vow-of-wandering: kept
+denizen.war-tortoise: attack, defense
+denizen.ward-of-silence: used
+denizen.warning-signals: discarded, redistributed
+denizen.way-station: burned, gave, waived
+denizen.wayside-inn: used
+denizen.whispering-leaves: used, used.empty
+denizen.wild-mounts: swapped, swapped-off-turn
+denizen.witchs-bargain: favor, secret, used
+denizen.wizard-s-conclave: kept, none, took
+denizen.wizard-school: ended, used
+denizen.wolves: used, used.none
+denizen.zealots: no-effect
+edifice.e02.intact: placed
+edifice.e02.ruined: burned, placed, placed-and-burned
+edifice.e06.intact: used
+edifice.e06.ruined: discarded
+edifice.e08.intact: no-faceup
+edifice.e15.intact: used
+edifice.e15.ruined: ended, gained, used, used.away
+edifice.e16.intact: no-discard-consent
+edifice.e22.intact: gained
+edifice.e22.ruined: discarded
+edifice.e28.intact: all-shielded, shielded
+edifice.e28.ruined: all-shielded, shielded
+relic.amber-flame: used, used.empty, used.none
+relic.bag-of-siegeworks: ignored
+relic.barbed-net: used, used.none, used.peeked
+relic.bone-dice: buried, gained, used
+relic.book-of-records: used, used.empty, used.none
+relic.brass-army.restriction: buried, buried-by, flipped, flipped-by
+relic.brass-horse: placed, used
+relic.circlet-of-command: shielded
+relic.clay-rattle: used
+relic.crystal-vial: used
+relic.cursed-cauldron: gained
+relic.demon-tail: used
+relic.dowsing-sticks: used, used.empty
+relic.dragonskin-drum: gained
+relic.horned-mask: taken, used
+relic.ivory-eye: used
+relic.magic-carpet: discarded, given, used
+relic.magic-waterskin: used
+relic.oracular-pig: used
+relic.secret-testament: took-favor, took-secrets
+relic.shifting-map: used
+relic.silver-charm: rerolled
+relic.singing-mask: used, used.none, used.returned
+relic.skeleton-key: used, used.away, used.none, used.peeked
+relic.sticky-fire: burned, gained, killed
+relic.truthful-harp: revealed
+relic.whistle: used, used.none
+rule.homeland-discard: discard-first
+site.ancient-city.river: used
+site.headwaters.river: used
+site.narrow-pass.pass: no-target, no-target-consent, no-travel, no-travel-consent
+site.riverbank.river: used
+site.tidal-marshes.river: used
+vision.conspiracy: seized
