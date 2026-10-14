@@ -26,16 +26,17 @@ object BanditChiefCard extends Denizen(DenizenId("100"), "Bandit Chief", Suit.Di
 case object BanditChief extends WhenPlayedPower:
   val cardId: DenizenId = BanditChiefCard.id
   val id: PowerId = BanditChiefCard.power.id
+  private val notes = NoteSet(id)
   /** "Killed {n} {Blue} warband at {site}." */
-  val killed: NoteKey = NoteKey("killed", Vector(NotePart.Text("Killed "),
+  val killed: NoteKey = notes.key("killed", Vector(NotePart.Text("Killed "),
     NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
     NotePart.Plural(0, " warband at ", " warbands at "), NotePart.Arg(2),
     NotePart.Text(".")))
   /** "No warband was killed." */
-  val none: NoteKey = NoteKey("none", Vector(
+  val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("No warband was killed.")))
 
-  override def noteKeys: Vector[NoteKey] = Vector(killed, none)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 

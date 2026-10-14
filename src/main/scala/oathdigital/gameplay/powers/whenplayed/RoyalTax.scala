@@ -27,15 +27,16 @@ case object RoyalTax extends WhenPlayedPower:
   val id: PowerId = RoyalTaxCard.power.id
   /** The favor each target gives. */
   val Taken: Int = 2
+  private val notes = NoteSet(id)
   /** "{Red} took {n favor} from {Blue}." */
-  val took: NoteKey = NoteKey("took", Vector(NotePart.Arg(0),
+  val took: NoteKey = notes.key("took", Vector(NotePart.Arg(0),
     NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "{Blue} had no favor to take." */
-  val broke: NoteKey = NoteKey("broke", Vector(NotePart.Arg(0),
+  val broke: NoteKey = notes.key("broke", Vector(NotePart.Arg(0),
     NotePart.Text(" had no favor to take.")))
   /** "No player could be taxed." */
-  val none: NoteKey = NoteKey("none", Vector(
+  val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("No player could be taxed.")))
 
   /** Every other player, in seat order from the actor, whose pawn stands at
@@ -51,7 +52,7 @@ case object RoyalTax extends WhenPlayedPower:
     (current.players.drop(seat + 1) ++ current.players.take(seat))
       .filter(_.pawnSite.exists(taxed.contains))
 
-  override def noteKeys: Vector[NoteKey] = Vector(took, broke, none)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 

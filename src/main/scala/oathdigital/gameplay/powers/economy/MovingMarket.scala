@@ -44,7 +44,7 @@ final case class MovingMarket private (catalog: ExecutableCatalog)
   val cardId: DenizenId = MovingMarketCard.id
   def id: PowerId = MovingMarket.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
-  override def noteKeys: Vector[NoteKey] = Vector(moved, movedOnly)
+  override def noteKeys: Vector[NoteKey] = MovingMarket.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -121,12 +121,14 @@ object MovingMarket:
   val skip: DecisionOptionRef.Button = DecisionOptionRef.Button("skip")
   /** The favor a move gains, best-effort. */
   val Gained: Int = 1
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Moved it to {site} and gained {n favor} from {the Nomad bank}." */
-  val moved: NoteKey = NoteKey("moved", Vector(NotePart.Text("Moved it to "),
+  val moved: NoteKey = notes.key("moved", Vector(NotePart.Text("Moved it to "),
     NotePart.Arg(0), NotePart.Text(" and gained "), NotePart.Arg(1),
     NotePart.Text(" from "), NotePart.Arg(2), NotePart.Text(".")))
   /** "Moved it to {site}." */
-  val movedOnly: NoteKey = NoteKey("moved.only", Vector(
+  val movedOnly: NoteKey = notes.key("moved.only", Vector(
     NotePart.Text("Moved it to "), NotePart.Arg(0), NotePart.Text(".")))
 
   def forCatalog(catalog: ExecutableCatalog): MovingMarket =

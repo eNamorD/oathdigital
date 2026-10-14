@@ -37,7 +37,7 @@ final case class TwinBrother private (catalog: ExecutableCatalog)
   import TwinBrother._
   def id: PowerId = TwinBrother.id
 
-  override def noteKeys: Vector[NoteKey] = Vector(swapped)
+  override def noteKeys: Vector[NoteKey] = TwinBrother.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
@@ -98,8 +98,10 @@ object TwinBrother:
   val id: PowerId = TwinBrotherCard.power.id
   val decisionId: String = "cardplay.twin-brother.swap"
   val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} swapped it for {Blue}'s {card}." */
-  val swapped: NoteKey = NoteKey("swapped", Vector(NotePart.Arg(0),
+  val swapped: NoteKey = notes.key("swapped", Vector(NotePart.Arg(0),
     NotePart.Text(" swapped it for "), NotePart.Arg(1), NotePart.Text("'s "),
     NotePart.Arg(2), NotePart.Text(".")))
 

@@ -39,7 +39,7 @@ final case class Hunger private (catalog: ExecutableCatalog)
   def timing: PowerTiming = PowerTiming.Wake
   override def forced: Boolean = true
 
-  override def noteKeys: Vector[NoteKey] = Vector(buried, spared)
+  override def noteKeys: Vector[NoteKey] = Hunger.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def usable(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -104,14 +104,16 @@ final case class Hunger private (catalog: ExecutableCatalog)
 object Hunger:
   val id: PowerId = HungerCard.power.id
   val decisionId: String = "power.hunger.adviser"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} buried {card} from {Blue}'s advisers." The card reads as its
     * back to anyone who may not identify it, so the owner is named apart
     * from it, as Ivory Eye's line does. */
-  val buried: NoteKey = NoteKey("buried", Vector(NotePart.Arg(0),
+  val buried: NoteKey = notes.key("buried", Vector(NotePart.Arg(0),
     NotePart.Text(" buried "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text("'s advisers.")))
   /** "No adviser could be buried." */
-  val spared: NoteKey = NoteKey("none", Vector(
+  val spared: NoteKey = notes.key("none", Vector(
     NotePart.Text("No adviser could be buried.")))
 
   private final case class Candidate(owner: PlayerId, slot: Int,

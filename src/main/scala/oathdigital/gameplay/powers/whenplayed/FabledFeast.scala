@@ -29,7 +29,7 @@ final case class FabledFeast private (catalog: ExecutableCatalog)
   import FabledFeast._
   def id: PowerId = FabledFeast.id
 
-  override def noteKeys: Vector[NoteKey] = Vector(took, empty, none)
+  override def noteKeys: Vector[NoteKey] = FabledFeast.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
@@ -50,15 +50,17 @@ final case class FabledFeast private (catalog: ExecutableCatalog)
 object FabledFeast:
   val id: PowerId = FabledFeastCard.power.id
   val decisionId: String = "cardplay.fabled-feast.bank"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} took {n favor} from {the Hearth bank}." */
-  val took: NoteKey = NoteKey("took", Vector(NotePart.Arg(0),
+  val took: NoteKey = notes.key("took", Vector(NotePart.Arg(0),
     NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "Every favor bank was empty." */
-  val empty: NoteKey = NoteKey("empty", Vector(
+  val empty: NoteKey = notes.key("empty", Vector(
     NotePart.Text("Every favor bank was empty.")))
   /** "{Red} ruled no Hearth card." */
-  val none: NoteKey = NoteKey("none", Vector(NotePart.Arg(0),
+  val none: NoteKey = notes.key("none", Vector(NotePart.Arg(0),
     NotePart.Text(" ruled no Hearth card.")))
 
   def forCatalog(catalog: ExecutableCatalog): FabledFeast =

@@ -23,12 +23,13 @@ case object Charlatan extends WhenPlayedPower:
   val id: PowerId = CharlatanCard.power.id
   /** The secrets the Darkest Secret keeps. */
   val Kept: Int = 1
+  private val notes = NoteSet(id)
   /** "Burned {n secrets} from the {Darkest Secret}." */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
+  val burned: NoteKey = notes.key("burned", Vector(NotePart.Text("Burned "),
     NotePart.Arg(0), NotePart.Text(" from the "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "The {Darkest Secret} had no secret to burn." */
-  val none: NoteKey = NoteKey("none", Vector(NotePart.Text("The "),
+  val none: NoteKey = notes.key("none", Vector(NotePart.Text("The "),
     NotePart.Arg(0), NotePart.Text(" had no secret to burn.")))
 
   private def secretsOn(ready: ReadyGame): Int =
@@ -41,7 +42,7 @@ case object Charlatan extends WhenPlayedPower:
       PositionedLocation(Location.OnBanner(Banner.DarkestSecret)),
       Some(actor)))
 
-  override def noteKeys: Vector[NoteKey] = Vector(burned, none)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def effect(ctx: PowerCtx): Vector[Operation] = Vector(
     BuildOps((ready, _) => Right(burn(ready, ctx.activePlayer))),

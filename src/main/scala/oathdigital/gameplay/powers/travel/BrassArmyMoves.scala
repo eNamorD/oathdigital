@@ -30,23 +30,23 @@ case object BrassArmyMoves extends ExecutedTrigger:
   val flip: DecisionOptionRef.Button =
     DecisionOptionRef.Button("brass-army.flip")
 
+  private val notes = NoteSet(id)
   /** "Buried after a pawn move." */
-  val buried: NoteKey = NoteKey("buried",
+  val buried: NoteKey = notes.key("buried",
     Vector(NotePart.Text("Buried after a pawn move.")))
   /** "{Red} buried it after a pawn move." */
-  val buriedBy: NoteKey = NoteKey("buried-by", Vector(NotePart.Arg(0),
+  val buriedBy: NoteKey = notes.key("buried-by", Vector(NotePart.Arg(0),
     NotePart.Text(" buried it after a pawn move.")))
   /** "Flipped a secret facedown." */
-  val flipped: NoteKey = NoteKey("flipped",
+  val flipped: NoteKey = notes.key("flipped",
     Vector(NotePart.Text("Flipped a secret facedown.")))
   /** "{Red} flipped a secret facedown." */
-  val flippedBy: NoteKey = NoteKey("flipped-by", Vector(NotePart.Arg(0),
+  val flippedBy: NoteKey = notes.key("flipped-by", Vector(NotePart.Arg(0),
     NotePart.Text(" flipped a secret facedown.")))
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
-  override def noteKeys: Vector[NoteKey] =
-    Vector(buried, buriedBy, flipped, flippedBy)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def onExecuted(batch: ExecutedBatch): Option[Operation] =

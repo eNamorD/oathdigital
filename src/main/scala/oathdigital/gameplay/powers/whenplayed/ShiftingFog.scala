@@ -24,8 +24,9 @@ object ShiftingFogCard extends Denizen(DenizenId("214"), "Shifting Fog", Suit.Be
 case object ShiftingFog extends WhenPlayedPower:
   val cardId: DenizenId = ShiftingFogCard.id
   val id: PowerId = ShiftingFogCard.power.id
+  private val notes = NoteSet(id)
   /** "Every bank's favor moved to the next bank." */
-  val moved: NoteKey = NoteKey("moved", Vector(
+  val moved: NoteKey = notes.key("moved", Vector(
     NotePart.Text("Every bank's favor moved to the next bank.")))
 
   /** The bank to the right of `suit`, in the printed order. */
@@ -40,7 +41,7 @@ case object ShiftingFog extends WhenPlayedPower:
       PositionedLocation(Location.FavorBank(next(suit)))))
   }
 
-  override def noteKeys: Vector[NoteKey] = Vector(moved)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def effect(ctx: PowerCtx): Vector[Operation] = Vector(Branch((live, _) =>
     if moves(live).isEmpty then Vector.empty

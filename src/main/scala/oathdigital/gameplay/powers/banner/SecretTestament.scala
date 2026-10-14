@@ -32,18 +32,19 @@ case object SecretTestament extends ContributingPower:
   val cardId: RelicId = SecretTestamentCard.id
   val id: PowerId = SecretTestamentCard.power.id
 
+  private val notes = NoteSet(id)
   /** "{Red} took 2 favor from the {People's Favor}." */
-  val tookFavor: NoteKey = NoteKey("took-favor", Vector(NotePart.Arg(0),
+  val tookFavor: NoteKey = notes.key("took-favor", Vector(NotePart.Arg(0),
     NotePart.Text(" took "), NotePart.Arg(1),
     NotePart.Text(" favor from the "), NotePart.Arg(2), NotePart.Text(".")))
   /** "{Red} took 2 secrets from the {Darkest Secret}." */
-  val tookSecrets: NoteKey = NoteKey("took-secrets", Vector(
+  val tookSecrets: NoteKey = notes.key("took-secrets", Vector(
     NotePart.Arg(0), NotePart.Text(" took "), NotePart.Arg(1),
     NotePart.Text(" "), NotePart.Plural(1, "secret", "secrets"),
     NotePart.Text(" from the "), NotePart.Arg(2), NotePart.Text(".")))
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] = Vector(tookFavor, tookSecrets)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ChallengeRibbon -> Vector(Transform((ctx, children) =>

@@ -40,7 +40,7 @@ final case class CallForHelp private (catalog: ExecutableCatalog)
   import CallForHelp._
   def id: PowerId = CallForHelp.id
 
-  override def noteKeys: Vector[NoteKey] = Vector(revealed, discarded, none)
+  override def noteKeys: Vector[NoteKey] = CallForHelp.noteKeys
 
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 
@@ -153,16 +153,18 @@ object CallForHelp:
   val PerNomad: Int = 2
   val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep-drawing")
   val stop: DecisionOptionRef.Button = DecisionOptionRef.Button("stop")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Revealed and discarded {cards}, and gained {n warbands}." */
-  val revealed: NoteKey = NoteKey("revealed", Vector(
+  val revealed: NoteKey = notes.key("revealed", Vector(
     NotePart.Text("Revealed and discarded "), NotePart.Arg(0),
     NotePart.Text(", and gained "), NotePart.Arg(1), NotePart.Text(".")))
   /** "Revealed and discarded {cards}." */
-  val discarded: NoteKey = NoteKey("discarded", Vector(
+  val discarded: NoteKey = notes.key("discarded", Vector(
     NotePart.Text("Revealed and discarded "), NotePart.Arg(0),
     NotePart.Text(".")))
   /** "Nothing was revealed." */
-  val none: NoteKey = NoteKey("none", Vector(
+  val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("Nothing was revealed.")))
 
   def forCatalog(catalog: ExecutableCatalog): CallForHelp =

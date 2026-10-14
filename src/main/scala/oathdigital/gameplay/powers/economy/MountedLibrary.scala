@@ -46,7 +46,7 @@ final case class MountedLibrary private (catalog: ExecutableCatalog)
   def id: PowerId = MountedLibrary.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
   override def discardsItself: Boolean = true
-  override def noteKeys: Vector[NoteKey] = Vector(doubled, discarded)
+  override def noteKeys: Vector[NoteKey] = MountedLibrary.noteKeys
 
   private val nomadCards = new SiteCards(catalog, Set(Suit.Nomad))
 
@@ -107,11 +107,13 @@ object MountedLibrary:
   val id: PowerId = MountedLibraryCard.power.id
   /** The Trade's secret gain, recorded as it runs. */
   val deferred: DeferralKey = DeferralKey("mounted-library")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Gained {n} more secrets." */
-  val doubled: NoteKey = NoteKey("doubled", Vector(NotePart.Text("Gained "),
+  val doubled: NoteKey = notes.key("doubled", Vector(NotePart.Text("Gained "),
     NotePart.Arg(0), NotePart.Plural(0, " more secret.", " more secrets.")))
   /** "Discarded after the Trade." */
-  val discarded: NoteKey = NoteKey("discarded", Vector(
+  val discarded: NoteKey = notes.key("discarded", Vector(
     NotePart.Text("Discarded after the Trade.")))
 
   def forCatalog(catalog: ExecutableCatalog): MountedLibrary =

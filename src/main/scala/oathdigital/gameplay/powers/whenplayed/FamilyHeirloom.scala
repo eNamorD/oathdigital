@@ -32,10 +32,11 @@ case object FamilyHeirloom extends WhenPlayedPower:
   val decisionId: String = "cardplay.family-heirloom.keep"
   val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep")
   val bottom: DecisionOptionRef.Button = DecisionOptionRef.Button("bottom")
+  private val notes = NoteSet(id)
   /** A note key is named for the choice it tells. */
-  val kept: NoteKey = NoteKey(keep.key, Vector(NotePart.Arg(0),
+  val kept: NoteKey = notes.key(keep.key, Vector(NotePart.Arg(0),
     NotePart.Text(" drew "), NotePart.Arg(1), NotePart.Text(" and kept it.")))
-  val returned: NoteKey = NoteKey(bottom.key, Vector(NotePart.Arg(0),
+  val returned: NoteKey = notes.key(bottom.key, Vector(NotePart.Arg(0),
     NotePart.Text(" drew "), NotePart.Arg(1),
     NotePart.Text(" and put it on the bottom of the relic deck.")))
 
@@ -65,7 +66,7 @@ case object FamilyHeirloom extends WhenPlayedPower:
       case _ => Left(OathViolation.InvalidEventOrder(
         "no Family Heirloom choice is recorded"))
 
-  override def noteKeys: Vector[NoteKey] = Vector(kept, returned)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =

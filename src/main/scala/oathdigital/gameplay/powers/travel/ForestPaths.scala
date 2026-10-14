@@ -37,7 +37,7 @@ final case class ForestPaths private (catalog: ExecutableCatalog)
   def id: PowerId = ForestPaths.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Travel)
   override def cost: Cost = Cost(favor = ForestPaths.Favor)
-  override def noteKeys: Vector[NoteKey] = Vector(ForestPaths.ignoring)
+  override def noteKeys: Vector[NoteKey] = ForestPaths.noteKeys
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
@@ -65,8 +65,10 @@ final case class ForestPaths private (catalog: ExecutableCatalog)
 object ForestPaths:
   val id: PowerId = ForestPathsCard.power.id
   val Favor: Int = 1
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Ignoring site powers." */
-  val ignoring: NoteKey = NoteKey("ignoring",
+  val ignoring: NoteKey = notes.key("ignoring",
     Vector(NotePart.Text("Ignoring site powers.")))
 
   def forCatalog(catalog: ExecutableCatalog): ForestPaths =

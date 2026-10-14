@@ -29,11 +29,12 @@ object MarbleFountainsCard extends Edifice(EdificeId("E15"), Suit.Arcane):
 case object MarbleFountains extends PhasePower:
   val id: PowerId = MarbleFountainsCard.intact.power.id
   def timing: PowerTiming = PowerTiming.Wake
+  private val notes = NoteSet(id)
   /** Its own line: the Supply it refreshed to. */
-  val refreshed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val refreshed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text("'s Supply refreshed to "), NotePart.Arg(1),
     NotePart.Text(".")))
-  override def noteKeys: Vector[NoteKey] = Vector(refreshed)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = source match

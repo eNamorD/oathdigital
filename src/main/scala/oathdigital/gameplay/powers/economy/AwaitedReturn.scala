@@ -31,7 +31,7 @@ final case class AwaitedReturn private (catalog: ExecutableCatalog)
   val cardId: DenizenId = AwaitedReturnCard.id
   def id: PowerId = AwaitedReturn.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
-  override def noteKeys: Vector[NoteKey] = Vector(AwaitedReturn.sacrificed)
+  override def noteKeys: Vector[NoteKey] = AwaitedReturn.noteKeys
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeCost -> Vector(Transform((ctx, operations) =>
@@ -62,8 +62,10 @@ final case class AwaitedReturn private (catalog: ExecutableCatalog)
 object AwaitedReturn:
   val id: PowerId = AwaitedReturnCard.power.id
   val Sacrificed: Int = 1
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Spent no Supply after sacrificing {n} warband." */
-  val sacrificed: NoteKey = NoteKey("sacrificed", Vector(
+  val sacrificed: NoteKey = notes.key("sacrificed", Vector(
     NotePart.Text("Spent no Supply after sacrificing "), NotePart.Arg(0),
     NotePart.Plural(0, " warband.", " warbands.")))
 

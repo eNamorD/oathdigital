@@ -35,7 +35,7 @@ final case class WizardsConclave private (catalog: ExecutableCatalog)
   import WizardsConclave._
   def id: PowerId = WizardsConclave.id
 
-  override def noteKeys: Vector[NoteKey] = Vector(took, kept, none)
+  override def noteKeys: Vector[NoteKey] = WizardsConclave.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
@@ -97,14 +97,16 @@ final case class WizardsConclave private (catalog: ExecutableCatalog)
 object WizardsConclave:
   val id: PowerId = WizardsConclaveCard.power.id
   val decisionId: String = "cardplay.wizards-conclave.winner"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Blue} took the {Darkest Secret}." */
-  val took: NoteKey = NoteKey("took", Vector(NotePart.Arg(0),
+  val took: NoteKey = notes.key("took", Vector(NotePart.Arg(0),
     NotePart.Text(" took the "), NotePart.Arg(1), NotePart.Text(".")))
   /** "{Blue} kept the {Darkest Secret}." */
-  val kept: NoteKey = NoteKey("kept", Vector(NotePart.Arg(0),
+  val kept: NoteKey = notes.key("kept", Vector(NotePart.Arg(0),
     NotePart.Text(" kept the "), NotePart.Arg(1), NotePart.Text(".")))
   /** "The {Darkest Secret} did not move." */
-  val none: NoteKey = NoteKey("none", Vector(NotePart.Text("The "),
+  val none: NoteKey = notes.key("none", Vector(NotePart.Text("The "),
     NotePart.Arg(0), NotePart.Text(" did not move.")))
 
   def forCatalog(catalog: ExecutableCatalog): WizardsConclave =

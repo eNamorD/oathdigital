@@ -46,7 +46,7 @@ final case class LostTongue private (catalog: ExecutableCatalog)
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
-  override def noteKeys: Vector[NoteKey] = Vector(LostTongue.shielded)
+  override def noteKeys: Vector[NoteKey] = LostTongue.noteKeys
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignTargetSelection -> Vector(OptionRestriction(guard,
@@ -120,8 +120,10 @@ final case class LostTongue private (catalog: ExecutableCatalog)
 object LostTongue:
   val id: PowerId = LostTongueCard.power.id
 
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Blue}'s banners and relics cannot be targeted." */
-  val shielded: NoteKey = NoteKey("shielded", Vector(NotePart.Arg(0),
+  val shielded: NoteKey = notes.key("shielded", Vector(NotePart.Arg(0),
     NotePart.Text("'s banners and relics cannot be targeted.")))
 
   def forCatalog(catalog: ExecutableCatalog): LostTongue =

@@ -37,7 +37,7 @@ final case class SilverCharm private (catalog: ExecutableCatalog)
   val cardId: RelicId = SilverCharmCard.id
   def id: PowerId = SilverCharm.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Recover)
-  override def noteKeys: Vector[NoteKey] = Vector(SilverCharm.rerolled)
+  override def noteKeys: Vector[NoteKey] = SilverCharm.noteKeys
   override def narratedDecisions: Set[String] = Set(SilverCharm.decisionId)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -81,8 +81,10 @@ object SilverCharm:
   val heading: String = "Reroll earlier dice with this roll"
   /** "Reroll 2 dice". */
   val summary: DecisionSummary = DecisionSummary("Reroll", "die", "dice")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Rerolled {dice}." */
-  val rerolled: NoteKey = NoteKey("rerolled", Vector(
+  val rerolled: NoteKey = notes.key("rerolled", Vector(
     NotePart.Text("Rerolled "), NotePart.Arg(0), NotePart.Text(".")))
   private val DiePrefix = "die-"
 

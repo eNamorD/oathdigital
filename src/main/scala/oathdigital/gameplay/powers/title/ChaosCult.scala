@@ -32,14 +32,15 @@ case object ChaosCult extends ContributingPower:
   val cardId: DenizenId = ChaosCultCard.id
   val id: PowerId = ChaosCultCard.power.id
   val Favor: Int = 1
+  private val notes = NoteSet(id)
   /** "{Red} took {1 favor} from {Blue}." */
-  val took: NoteKey = NoteKey("took", Vector(NotePart.Arg(0),
+  val took: NoteKey = notes.key("took", Vector(NotePart.Arg(0),
     NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text(".")))
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
-  override def noteKeys: Vector[NoteKey] = Vector(took)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   override def applicable(ctx: PowerCtx): Boolean = holderOf(ctx.state).nonEmpty
 

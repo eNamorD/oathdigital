@@ -35,7 +35,7 @@ final case class LeagueTreatyContribution private (catalog: ExecutableCatalog)
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
-  override def noteKeys: Vector[NoteKey] = Vector(sent)
+  override def noteKeys: Vector[NoteKey] = LeagueTreatyContribution.noteKeys
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.RestReturnFavor -> Vector(Transform((ctx, ops) =>
       treaty(ctx.state).fold(ops)(inserted(ctx.state, ctx.activePlayer, _) ++ ops))))
@@ -139,8 +139,10 @@ object LeagueTreatyContribution:
   val id: PowerId = LeagueTreatyCard.power.id
   private val Decline = "decline"
 
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Blue} sent {3 favor} to {the Nomad bank}." */
-  val sent: NoteKey = NoteKey("sent", Vector(NotePart.Arg(0),
+  val sent: NoteKey = notes.key("sent", Vector(NotePart.Arg(0),
     NotePart.Text(" sent "), NotePart.Arg(1), NotePart.Text(" to "),
     NotePart.Arg(2), NotePart.Text(".")))
 

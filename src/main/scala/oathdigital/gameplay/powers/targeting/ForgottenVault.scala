@@ -35,7 +35,7 @@ final case class ForgottenVault private (catalog: ExecutableCatalog)
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
-  override def noteKeys: Vector[NoteKey] = Vector(ForgottenVault.shielded)
+  override def noteKeys: Vector[NoteKey] = ForgottenVault.noteKeys
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignTargetSelection ->
@@ -68,8 +68,10 @@ final case class ForgottenVault private (catalog: ExecutableCatalog)
 object ForgottenVault:
   val id: PowerId = ForgottenVaultCard.power.id
 
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{ruler}'s relics cannot be targeted." */
-  val shielded: NoteKey = NoteKey("shielded", Vector(NotePart.Arg(0),
+  val shielded: NoteKey = notes.key("shielded", Vector(NotePart.Arg(0),
     NotePart.Text("'s relics cannot be targeted.")))
 
   def forCatalog(catalog: ExecutableCatalog): ForgottenVault =

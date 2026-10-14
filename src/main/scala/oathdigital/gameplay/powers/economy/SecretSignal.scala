@@ -42,7 +42,7 @@ final case class SecretSignal private (catalog: ExecutableCatalog)
   val cardId: DenizenId = SecretSignalCard.id
   def id: PowerId = SecretSignal.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
-  override def noteKeys: Vector[NoteKey] = Vector(gained)
+  override def noteKeys: Vector[NoteKey] = SecretSignal.noteKeys
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeGain -> Vector(Transform((ctx, operations) =>
@@ -87,8 +87,10 @@ object SecretSignal:
   val Only: Int = 1
   val Extra: Int = 1
   val noFavor: String = "A Trade for secrets gains no favor"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Gained {n} more favor." */
-  val gained: NoteKey = NoteKey("gained", Vector(NotePart.Text("Gained "),
+  val gained: NoteKey = notes.key("gained", Vector(NotePart.Text("Gained "),
     NotePart.Arg(0), NotePart.Text(" more favor.")))
 
   def forCatalog(catalog: ExecutableCatalog): SecretSignal =
