@@ -34,8 +34,7 @@ final case class BallotBox private (catalog: ExecutableCatalog)
     extends PaidAction(BallotBoxCard.power):
   import BallotBox._
 
-  override def noteKeys: Vector[NoteKey] = Vector(replaced, replacedBandits,
-    removed, removedBandits, unmatched, empty, VowOfWandering.forbidden)
+  override def noteKeys: Vector[NoteKey] = BallotBox.noteKeys
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match
@@ -136,32 +135,35 @@ final case class BallotBox private (catalog: ExecutableCatalog)
 
 object BallotBox:
   val id: PowerId = BallotBoxCard.power.id
+  private val notes = NoteSet(id)
+  notes.borrow(VowOfWandering.forbidden)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Replaced {n} {Blue} warband at {site}." */
-  val replaced: NoteKey = NoteKey(NoteKey.Used, Vector(
+  val replaced: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("Replaced "), NotePart.Arg(0), NotePart.Text(" "),
     NotePart.Arg(1), NotePart.Plural(0, " warband at ", " warbands at "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "Replaced {n} bandit warband at {site}." */
-  val replacedBandits: NoteKey = NoteKey("used.bandits", Vector(
+  val replacedBandits: NoteKey = notes.key("used.bandits", Vector(
     NotePart.Text("Replaced "), NotePart.Arg(0),
     NotePart.Plural(0, " bandit warband at ", " bandit warbands at "),
     NotePart.Arg(1), NotePart.Text(".")))
   /** "Removed {n} {Blue} warband at {site}." */
-  val removed: NoteKey = NoteKey("removed", Vector(
+  val removed: NoteKey = notes.key("removed", Vector(
     NotePart.Text("Removed "), NotePart.Arg(0), NotePart.Text(" "),
     NotePart.Arg(1), NotePart.Plural(0, " warband at ", " warbands at "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "Removed {n} bandit warband at {site}." */
-  val removedBandits: NoteKey = NoteKey("removed.bandits", Vector(
+  val removedBandits: NoteKey = notes.key("removed.bandits", Vector(
     NotePart.Text("Removed "), NotePart.Arg(0),
     NotePart.Plural(0, " bandit warband at ", " bandit warbands at "),
     NotePart.Arg(1), NotePart.Text(".")))
   /** "{Red} had no adviser matching a card at {site}." */
-  val unmatched: NoteKey = NoteKey("used.unmatched", Vector(NotePart.Arg(0),
+  val unmatched: NoteKey = notes.key("used.unmatched", Vector(NotePart.Arg(0),
     NotePart.Text(" had no adviser matching a card at "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "{site} held no warband to replace." */
-  val empty: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val empty: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no warband to replace.")))
 
   private def forcesAt(ready: ReadyGame, site: SiteId): Option[SiteForces] =

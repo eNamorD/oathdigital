@@ -29,13 +29,14 @@ case object Insomnia extends PhasePower with ContributingPower:
   /** How many advisers the holder may have, in either orientation. */
   val HolderLimit: Int = 2
   val Secrets: Int = 1
-  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
+  private val notes = NoteSet(id)
+  val gained: NoteKey = NoteSupport.gainedKey(notes, NoteKey.Used)
 
   private val limit = HolderAdviserLimit(cardId, Insomnia.HolderLimit)
 
   def timing: PowerTiming = PowerTiming.Rest
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] = Vector(Insomnia.gained)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = true

@@ -21,9 +21,11 @@ object SpiritSnareCard extends Denizen(DenizenId("33"), "Spirit Snare", Suit.Arc
   * empty-banks line never reads a step the take did not run.
   */
 case object SpiritSnare extends PaidAction(SpiritSnareCard.power):
-  val empty: NoteKey = NoteKey("used.empty", Vector(
+  private val notes = NoteSet(id)
+  val empty: NoteKey = notes.key("used.empty", Vector(
     NotePart.Text("Every favor bank was empty.")))
-  override def noteKeys: Vector[NoteKey] = Vector(NoteSupport.took, empty)
+  notes.include(NoteSupport.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] =

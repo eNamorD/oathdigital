@@ -35,8 +35,7 @@ final case class ForcedLabor private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = RulerToll.keys ++
-    Vector(ForcedLabor.noFreeSearch, ForcedLabor.noFreeSearchConsent)
+  override def noteKeys: Vector[NoteKey] = ForcedLabor.noteKeys
   override def narratedDecisions: Set[String] = Set(ForcedLabor.decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -61,14 +60,17 @@ final case class ForcedLabor private (catalog: ExecutableCatalog)
 object ForcedLabor:
   val id: PowerId = ForcedLaborCard.power.id
   val decisionId: String = "power.forced-labor.toll"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Cannot search at its ruler's sites without giving favor.": the reason
     * of the free option once its ruler refused. */
-  val noFreeSearch: NoteKey = NoteKey("no-free-search", Vector(NotePart.Text(
+  val noFreeSearch: NoteKey = notes.key("no-free-search", Vector(NotePart.Text(
     "Cannot search at its ruler's sites without giving favor.")))
   /** The free option's reason while its ruler may be asked. */
-  val noFreeSearchConsent: NoteKey = NoteKey("no-free-search-consent",
+  val noFreeSearchConsent: NoteKey = notes.key("no-free-search-consent",
     Vector(NotePart.Text("Cannot search at its ruler's sites without " +
       "giving favor or ruler's consent.")))
+  notes.include(RulerToll.notes)
   val step: PayOrAsk = PayOrAsk(id, ForcedLaborCard.id, decisionId,
     noFreeSearch, noFreeSearchConsent)
 

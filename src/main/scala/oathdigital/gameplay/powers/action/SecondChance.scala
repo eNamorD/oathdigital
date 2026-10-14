@@ -28,8 +28,7 @@ final case class SecondChance private (catalog: ExecutableCatalog)
     extends PaidAction(SecondChanceCard.power):
   import SecondChance._
 
-  override def noteKeys: Vector[NoteKey] =
-    Vector(gained, killedOnly, spared, nobody)
+  override def noteKeys: Vector[NoteKey] = SecondChance.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -93,18 +92,20 @@ object SecondChance:
   val Killed: Int = 1
   val Gained: Int = 1
   private val Suits: Set[Suit] = Set(Suit.Order, Suit.Discord)
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Killed {n} {Blue} warband, and {Red} gained {1 warband}." */
-  val gained: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Killed "),
+  val gained: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Killed "),
     NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
     NotePart.Plural(0, " warband, and ", " warbands, and "), NotePart.Arg(2),
     NotePart.Text(" gained "), NotePart.Arg(3), NotePart.Text(".")))
   /** "Killed {n} {Blue} warband." */
-  val killedOnly: NoteKey = NoteSupport.killedKey("used.killed")
+  val killedOnly: NoteKey = NoteSupport.killedKey(notes, "used.killed")
   /** "{Blue} had no warband to kill." */
-  val spared: NoteKey = NoteKey("used.spared", Vector(NotePart.Arg(0),
+  val spared: NoteKey = notes.key("used.spared", Vector(NotePart.Arg(0),
     NotePart.Text(" had no warband to kill.")))
   /** "No player had a faceup Order or Discord adviser." */
-  val nobody: NoteKey = NoteKey("used.none", Vector(NotePart.Text(
+  val nobody: NoteKey = notes.key("used.none", Vector(NotePart.Text(
     "No player had a faceup Order or Discord adviser.")))
 
   def forCatalog(catalog: ExecutableCatalog): SecondChance =

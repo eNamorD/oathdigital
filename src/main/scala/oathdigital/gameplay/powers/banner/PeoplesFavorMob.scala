@@ -27,7 +27,9 @@ object PeoplesFavorMob extends ContributingPower:
     val favor = ctx.state.game.current.banners.peoplesFavor
     favor.active == PeoplesFavorFace.Mob && favor.holder.contains(ctx.activePlayer)
 
-  override def noteKeys: Vector[NoteKey] = Vector(CardPlayRules.discardFirst)
+  private val notes = NoteSet(id)
+  notes.include(CardPlayRules.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>

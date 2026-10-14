@@ -32,14 +32,16 @@ case object BanditPrince extends WhenPlayedPower:
   val cardId: DenizenId = BanditPrinceCard.id
   val id: PowerId = BanditPrinceCard.power.id
   val decisionId: String = "cardplay.bandit-prince.sites"
+  private val notes = NoteSet(id)
   /** "Replaced {n} bandit at {site} with {Red}'s warbands." */
-  val replaced: NoteKey = NoteKey("replaced", Vector(
+  val replaced: NoteKey = notes.key("replaced", Vector(
     NotePart.Text("Replaced "), NotePart.Arg(0),
     NotePart.Plural(0, " bandit at ", " bandits at "), NotePart.Arg(1),
     NotePart.Text(" with "), NotePart.Arg(2), NotePart.Text("'s warbands.")))
   /** "No site was ruled by bandits." */
-  val none: NoteKey = NoteKey("none", Vector(
+  val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("No site was ruled by bandits.")))
+  notes.borrow(VowOfWandering.forbidden)
 
   /** The sites in play that bandits hold, in map order. */
   private def banditSites(ready: ReadyGame): Vector[SiteId] =
@@ -85,8 +87,7 @@ case object BanditPrince extends WhenPlayedPower:
       Piece.Warbands(ForceKind.Bandit, count), Piece.Warbands(kind, count),
       PositionedLocation(Location.Site(site))) }
 
-  override def noteKeys: Vector[NoteKey] =
-    Vector(replaced, none, VowOfWandering.forbidden)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =

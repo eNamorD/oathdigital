@@ -21,8 +21,11 @@ object PlanDiscard:
   def denizen(catalog: ExecutableCatalog, user: PlayerId, card: DenizenId)
       : Operation = BuildOps((ready, _) => operations(catalog, ready, user, card))
 
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("PlanDiscard")
   /** "Discarded after the Campaign." */
-  val discarded: NoteKey = NoteKey("discarded",
+  val discarded: NoteKey = notes.key("discarded",
     Vector(NotePart.Text("Discarded after the Campaign.")))
 
   /** The standard discard of `card` once the Campaign has resolved, whoever

@@ -22,11 +22,12 @@ object WolvesCard extends Denizen(DenizenId("39"), "Wolves", Suit.Beast):
   */
 case object Wolves extends PaidAction(WolvesCard.power):
   val decisionId: String = "power.wolves.board"
-  val killed: NoteKey = NoteSupport.killedKey(NoteKey.Used)
+  private val notes = NoteSet(id)
+  val killed: NoteKey = NoteSupport.killedKey(notes, NoteKey.Used)
   /** Its line when the chosen board had no warband: the kill is best-effort. */
-  val spared: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val spared: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" had no warband to kill.")))
-  override def noteKeys: Vector[NoteKey] = Vector(killed, spared)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

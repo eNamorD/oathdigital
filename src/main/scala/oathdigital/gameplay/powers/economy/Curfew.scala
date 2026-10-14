@@ -37,8 +37,7 @@ final case class Curfew private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = RulerToll.keys ++
-    Vector(Curfew.noFreeTrade, Curfew.noFreeTradeConsent)
+  override def noteKeys: Vector[NoteKey] = Curfew.noteKeys
   override def narratedDecisions: Set[String] = Set(Curfew.decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -96,14 +95,17 @@ final case class Curfew private (catalog: ExecutableCatalog)
 object Curfew:
   val id: PowerId = CurfewCard.power.id
   val decisionId: String = "power.curfew.toll"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Cannot trade with its ruler's cards without giving favor.": the
     * reason of the free option once its ruler refused. */
-  val noFreeTrade: NoteKey = NoteKey("no-free-trade", Vector(NotePart.Text(
+  val noFreeTrade: NoteKey = notes.key("no-free-trade", Vector(NotePart.Text(
     "Cannot trade with its ruler's cards without giving favor.")))
   /** The free option's reason while its ruler may be asked. */
-  val noFreeTradeConsent: NoteKey = NoteKey("no-free-trade-consent",
+  val noFreeTradeConsent: NoteKey = notes.key("no-free-trade-consent",
     Vector(NotePart.Text("Cannot trade with its ruler's cards without " +
       "giving favor or ruler's consent.")))
+  notes.include(RulerToll.notes)
   val step: PayOrAsk = PayOrAsk(id, CurfewCard.id, decisionId, noFreeTrade,
     noFreeTradeConsent)
 

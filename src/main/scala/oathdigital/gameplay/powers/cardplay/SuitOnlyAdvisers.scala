@@ -103,11 +103,14 @@ trait SuitOnlyAdvisers extends ContributingPower:
       .find(SuitOnlyAdvisers.hasFaceUp(ready, _, cardId))
 
 object SuitOnlyAdvisers:
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("SuitOnlyAdvisers")
   /** "Buried {cards}.", on the holder's turn. */
-  val buried: NoteKey = NoteKey("buried", Vector(NotePart.Text("Buried "),
+  val buried: NoteKey = notes.key("buried", Vector(NotePart.Text("Buried "),
     NotePart.Arg(0), NotePart.Text(".")))
   /** "{Blue} buried {cards}.", when the holder is not the active player. */
-  val buriedByHolder: NoteKey = NoteKey("buried.holder", Vector(
+  val buriedByHolder: NoteKey = notes.key("buried.holder", Vector(
     NotePart.Arg(0), NotePart.Text(" buried "), NotePart.Arg(1),
     NotePart.Text(".")))
 

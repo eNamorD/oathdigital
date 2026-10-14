@@ -23,7 +23,9 @@ object OutridersCard extends Denizen(DenizenId("104"), "Outriders", Suit.Order):
 case object Outriders extends BattlePlan:
   val cardId: DenizenId = OutridersCard.id
   val id: PowerId = OutridersCard.power.id
-  private val notes = NoteSet(id)
+  /** Exposed: other powers write this power's lines and include this
+    * set to declare them. */
+  val notes: NoteSet = NoteSet(id)
   /** "Skulls ignored." */
   val ignored: NoteKey = notes.key("ignored",
     Vector(NotePart.Text("Skulls ignored.")))

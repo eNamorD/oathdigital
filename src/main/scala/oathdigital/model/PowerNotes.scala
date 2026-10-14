@@ -80,6 +80,7 @@ object NoteKey:
   */
 final class NoteSet private (private val label: String):
   private val own = scala.collection.mutable.ArrayBuffer.empty[NoteKey]
+  private val borrowed = scala.collection.mutable.ArrayBuffer.empty[NoteKey]
   private val included = scala.collection.mutable.ArrayBuffer.empty[NoteSet]
 
   /** Declares a key and returns it. */
@@ -89,7 +90,15 @@ final class NoteSet private (private val label: String):
     own += declaredKey
     declaredKey
 
-  /** Declares every key `other` owns, for a key this object borrows. */
+  /** Declares one key another object owns, and returns it, for a power that
+    * writes that one line and not the rest of the owner's set. Prefer this
+    * to `include`: a power declares what it writes, so the check that
+    * refuses an undeclared note stays as tight as the power is. */
+  def borrow(key: NoteKey): NoteKey =
+    if !borrowed.contains(key) then borrowed += key
+    key
+
+  /** Declares every key `other` owns, for a power that writes any of them. */
   def include(other: NoteSet): Unit =
     require(!other.reaches(this), s"$label and ${other.label} include each " +
       "other, so neither could say what it declares")
@@ -100,7 +109,8 @@ final class NoteSet private (private val label: String):
     * different keys of one name are a conflict, and picking a winner
     * silently is how a borrowed line goes missing. */
   def declared: Vector[NoteKey] =
-    val all = own.toVector ++ included.toVector.flatMap(_.declared)
+    val all = own.toVector ++ borrowed.toVector ++
+      included.toVector.flatMap(_.declared)
     all.groupBy(_.name).foreach: (name, keys) =>
       require(keys.distinct.sizeIs == 1, s"$label declares $name as " +
         keys.distinct.map(_.template).mkString(" and as "))

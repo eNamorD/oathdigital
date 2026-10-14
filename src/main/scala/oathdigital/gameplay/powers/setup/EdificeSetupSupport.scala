@@ -37,7 +37,10 @@ object EdificeSetupSupport:
       case Answered(_, DecisionAnswer.ChooseOneAnswer(
         DecisionOptionRef.Site(site)), by) => by -> site
 
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("EdificeSetupSupport")
   /** "Discarded {cards}.": Broken Forge's relics and Empty Grounds'
     * denizens. */
-  val discarded: NoteKey = NoteKey("discarded", Vector(
+  val discarded: NoteKey = notes.key("discarded", Vector(
     NotePart.Text("Discarded "), NotePart.Arg(0), NotePart.Text(".")))

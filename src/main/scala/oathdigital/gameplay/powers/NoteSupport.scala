@@ -38,9 +38,13 @@ object NoteSupport:
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
     }
 
-  /** "{player} gained {amount}." */
-  def gainedKey(name: String): NoteKey = NoteKey(name, Vector(NotePart.Arg(0),
-    NotePart.Text(" gained "), NotePart.Arg(1), NotePart.Text(".")))
+  /** "{player} gained {amount}.", declared in the borrowing power's own
+    * set. The wording is this object's and the name is the caller's, so the
+    * key does not exist until the caller asks for it: taking the set makes
+    * getting the key and declaring it one act. */
+  def gainedKey(notes: NoteSet, name: String): NoteKey =
+    notes.key(name, Vector(NotePart.Arg(0),
+      NotePart.Text(" gained "), NotePart.Arg(1), NotePart.Text(".")))
 
   /** What `player` gained in the step before the note, by `read`. Nothing
     * gained writes nothing. */
@@ -59,10 +63,12 @@ object NoteSupport:
     if amount > 0
   yield key(card, NoteArg.Player(player), NoteArg.Amount(amount, unit))
 
-  /** "{player} gained {amount} from {bank}." */
-  def gainedFromKey(name: String): NoteKey = NoteKey(name, Vector(
-    NotePart.Arg(0), NotePart.Text(" gained "), NotePart.Arg(1),
-    NotePart.Text(" from "), NotePart.Arg(2), NotePart.Text(".")))
+  /** "{player} gained {amount} from {bank}.", declared in the borrowing
+    * power's own set. */
+  def gainedFromKey(notes: NoteSet, name: String): NoteKey =
+    notes.key(name, Vector(
+      NotePart.Arg(0), NotePart.Text(" gained "), NotePart.Arg(1),
+      NotePart.Text(" from "), NotePart.Arg(2), NotePart.Text(".")))
 
   /** The favor `player` took from one bank in the step before the note. */
   def gainedFromNote(key: NoteKey, card: PowerSourceRef, player: PlayerId)(
@@ -74,10 +80,12 @@ object NoteSupport:
   yield key(card, NoteArg.Player(player), NoteArg.Amount(amount, NoteUnit.Favor),
     NoteArg.Bank(bank))
 
-  /** "Killed {n} {player} warband." */
-  def killedKey(name: String): NoteKey = NoteKey(name, Vector(
-    NotePart.Text("Killed "), NotePart.Arg(0), NotePart.Text(" "),
-    NotePart.Arg(1), NotePart.Plural(0, " warband.", " warbands.")))
+  /** "Killed {n} {player} warband.", declared in the borrowing power's own
+    * set. */
+  def killedKey(notes: NoteSet, name: String): NoteKey =
+    notes.key(name, Vector(
+      NotePart.Text("Killed "), NotePart.Arg(0), NotePart.Text(" "),
+      NotePart.Arg(1), NotePart.Plural(0, " warband.", " warbands.")))
 
   /** The warbands `player` lost in the step before the note. */
   def killedNote(key: NoteKey, card: PowerSourceRef, player: PlayerId)(
@@ -87,9 +95,13 @@ object NoteSupport:
     if lost > 0
   yield key(card, NoteArg.Number(lost), NoteArg.Player(player))
 
+  /** The keys this object owns outright, which no one power owns. A power
+    * that writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("NoteSupport")
+
   /** "{player} took {amount} from {whom}.": a REST power's take, or a secret
     * taken from a player. */
-  val took: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val took: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text(".")))
 

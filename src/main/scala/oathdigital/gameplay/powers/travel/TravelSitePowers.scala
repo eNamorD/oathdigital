@@ -5,9 +5,9 @@ import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.wake.{HeadwatersSite, TidalMarshesSite}
 import oathdigital.model.{DecisionOptionRef, Location, Move, NoteKey,
-  NotePart, OathViolation, Operation, Piece, PlayerId, PositionedLocation,
-  PowerId, PowerNote, PowerSourceRef, PowerWindow, RuleSourceRef, SiteId,
-  SiteRule, SiteRuler, SpendSupply, Tokens}
+  NotePart, NoteSet, OathViolation, Operation, Piece, PlayerId,
+  PositionedLocation, PowerId, PowerNote, PowerSourceRef, PowerWindow,
+  RuleSourceRef, SiteId, SiteRule, SiteRuler, SpendSupply, Tokens}
 
 object BrokenPeaksSite extends Site(SiteId("site:broken-peaks"), "Broken Peaks",
     defense = 2, capacity = 1, relicSlots = 2,
@@ -247,21 +247,24 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
     }
 
 object NarrowPassSitePower:
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("NarrowPassSitePower")
   /** "Cannot target other sites in the region." */
-  val noTarget: NoteKey = NoteKey("no-target", Vector(
+  val noTarget: NoteKey = notes.key("no-target", Vector(
     NotePart.Text("Cannot target other sites in the region.")))
   /** "Cannot travel to other sites in the region." */
-  val noTravel: NoteKey = NoteKey("no-travel", Vector(
+  val noTravel: NoteKey = notes.key("no-travel", Vector(
     NotePart.Text("Cannot travel to other sites in the region.")))
   /** "Cannot travel to other sites in the region without ruler's consent.":
     * the reason of a destination its ruler may be asked about. */
-  val noTravelConsent: NoteKey = NoteKey("no-travel-consent", Vector(
+  val noTravelConsent: NoteKey = notes.key("no-travel-consent", Vector(
     NotePart.Text("Cannot travel to other sites in the region without " +
       "ruler's consent.")))
 
   /** "Cannot target other sites in the region without ruler's consent.":
     * the reason of a campaign target its ruler may be asked about. */
-  val noTargetConsent: NoteKey = NoteKey("no-target-consent", Vector(
+  val noTargetConsent: NoteKey = notes.key("no-target-consent", Vector(
     NotePart.Text("Cannot target other sites in the region without " +
       "ruler's consent.")))
 

@@ -29,7 +29,9 @@ case object Rangers extends BattlePlan:
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def noteKeys: Vector[NoteKey] = Vector(Outriders.ignored)
+  private val notes = NoteSet(id)
+  notes.include(Outriders.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   private def defensePool(ready: ReadyGame): Int =
     ready.game.current.rollPools.get(CampaignIds.defensePool).fold(0)(_.count)

@@ -29,11 +29,13 @@ object FaeMerchantCard extends Denizen(DenizenId("180"), "Fae Merchant", Suit.Be
   */
 case object FaeMerchant extends PaidAction(FaeMerchantCard.power):
   val decisionId: String = "fae-merchant.relic"
-  val returned: NoteKey = NoteKey("returned", Vector(NotePart.Arg(0),
+  private val notes = NoteSet(id)
+  val returned: NoteKey = notes.key("returned", Vector(NotePart.Arg(0),
     NotePart.Text(" put "), NotePart.Arg(1),
     NotePart.Text(" on the bottom of the relic deck.")))
+  notes.borrow(RelicDraws.drew)
 
-  override def noteKeys: Vector[NoteKey] = Vector(RelicDraws.drew, returned)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

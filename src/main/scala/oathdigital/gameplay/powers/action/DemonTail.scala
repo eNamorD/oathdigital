@@ -16,8 +16,9 @@ object DemonTailCard extends Relic(RelicId("R46"), "Demon Tail", value = 69, def
   */
 case object DemonTail extends PaidAction(DemonTailCard.power):
   val Supply: Int = 2
-  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
-  override def noteKeys: Vector[NoteKey] = Vector(gained)
+  private val notes = NoteSet(id)
+  val gained: NoteKey = NoteSupport.gainedKey(notes, NoteKey.Used)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector(

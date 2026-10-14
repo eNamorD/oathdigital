@@ -138,9 +138,12 @@ object CardPlayRules:
     * replacing it frees no room. */
   val notCounted: String = "Does not count toward the adviser limit"
 
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("CardPlayRules")
   /** "{Red} may discard a card at their site first.": the line of the power
     * or rule that let a play to a site discard a card there. */
-  val discardFirst: NoteKey = NoteKey("discard-first", Vector(NotePart.Arg(0),
+  val discardFirst: NoteKey = notes.key("discard-first", Vector(NotePart.Arg(0),
     NotePart.Text(" may discard a card at their site first.")))
 
   /** The Homeland rule's permission (CR p. 31) for `actor`'s play to `site`,

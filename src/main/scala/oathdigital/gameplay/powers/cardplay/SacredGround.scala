@@ -37,7 +37,9 @@ case object SacredGround extends ContributingPower:
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
-  override def noteKeys: Vector[NoteKey] = Vector(VisionPlay.noFaceup)
+  private val notes = NoteSet(id)
+  notes.include(VisionPlay.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup ->

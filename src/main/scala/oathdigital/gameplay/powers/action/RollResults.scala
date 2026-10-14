@@ -18,9 +18,12 @@ private[action] object RollResults:
   def skulls(ready: ReadyGame, pool: PoolKey): Int =
     ready.game.current.rollOutcomes.get(pool).fold(0)(_.skulls)
 
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("RollResults")
   /** "{player} rolled {dice}, Total: {n}": a dice power's own line, in place
     * of the generic "Rolled" line it covers. */
-  val rolled: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val rolled: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" rolled "), NotePart.Arg(1), NotePart.Text(", Total: "),
     NotePart.Arg(2)))
 

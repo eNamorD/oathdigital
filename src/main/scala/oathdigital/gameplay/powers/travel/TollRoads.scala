@@ -102,7 +102,9 @@ final case class TollRoads private (catalog: ExecutableCatalog)
 object TollRoads:
   val id: PowerId = TollRoadsCard.power.id
   val Favor: Int = 1
-  private val notes = NoteSet(id)
+  /** Exposed: other powers write this power's lines and include this
+    * set to declare them. */
+  val notes: NoteSet = NoteSet(id)
   def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} paid {1 favor} to {Blue}." */
   val paid: NoteKey = notes.key("paid", Vector(NotePart.Arg(0),

@@ -31,8 +31,9 @@ final case class TravelingDoctor private (catalog: ExecutableCatalog)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
   override def priority: Int = SparedForce.Priority
-  override def planNoteKeys: Vector[NoteKey] =
-    Vector(SparedForce.spared)
+  private val notes = NoteSet(id)
+  notes.include(SparedForce.notes)
+  override def planNoteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,

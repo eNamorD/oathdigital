@@ -153,12 +153,15 @@ sealed abstract class FortressRule extends ContributingPower:
     case _ => None
 
 object FortressRule:
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("FortressRule")
   /** "{Blue} cannot be targeted." */
-  val shielded: NoteKey = NoteKey("shielded", Vector(NotePart.Arg(0),
+  val shielded: NoteKey = notes.key("shielded", Vector(NotePart.Arg(0),
     NotePart.Text(" cannot be targeted.")))
   /** "No player at {site} can be targeted.", for a Raid hidden from several
     * protected players. */
-  val allShielded: NoteKey = NoteKey("all-shielded", Vector(
+  val allShielded: NoteKey = notes.key("all-shielded", Vector(
     NotePart.Text("No player at "), NotePart.Arg(0),
     NotePart.Text(" can be targeted.")))
 

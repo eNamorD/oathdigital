@@ -25,13 +25,14 @@ case object FieldPromotion extends BattlePlan:
   /** The favor placed to choose it. */
   val Favor: Int = 1
   val Warbands: Int = 3
+  private val notes = NoteSet(id)
   /** "{Red} gained {n warbands}." */
-  val gained: NoteKey = NoteSupport.gainedKey("gained")
+  val gained: NoteKey = NoteSupport.gainedKey(notes, "gained")
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(FieldPromotion.gained)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,

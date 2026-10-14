@@ -59,7 +59,9 @@ final case class GreatForge private (catalog: ExecutableCatalog)
   def id: PowerId = GreatForge.id
   protected def side: EdificeSide = EdificeSide.Intact
 
-  override def noteKeys: Vector[NoteKey] = Vector(RelicDraws.drew)
+  private val notes = NoteSet(id)
+  notes.borrow(RelicDraws.drew)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   protected def note(actor: PlayerId, at: SiteId): Note =
     Note(id, RelicDraws.drewNote(PowerSourceRef.Card(edifice), actor))
@@ -78,7 +80,9 @@ final case class BrokenForge private (catalog: ExecutableCatalog)
   def id: PowerId = BrokenForge.id
   protected def side: EdificeSide = EdificeSide.Ruined
 
-  override def noteKeys: Vector[NoteKey] = Vector(EdificeSetupSupport.discarded)
+  private val notes = NoteSet(id)
+  notes.include(EdificeSetupSupport.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   /** The relics at sites before the step that no site holds after it. */
   protected def note(actor: PlayerId, at: SiteId): Note = Note(id, states => for

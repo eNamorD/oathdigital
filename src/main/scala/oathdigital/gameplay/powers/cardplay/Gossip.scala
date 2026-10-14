@@ -33,7 +33,7 @@ final case class Gossip private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = Vector(Gossip.gained)
+  override def noteKeys: Vector[NoteKey] = Gossip.noteKeys
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFacedown -> Vector(Transform((ctx, children) =>
@@ -56,7 +56,9 @@ final case class Gossip private (catalog: ExecutableCatalog)
 object Gossip:
   val id: PowerId = GossipCard.power.id
   val Favor: Int = 1
-  val gained: NoteKey = NoteSupport.gainedFromKey("gained")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  val gained: NoteKey = NoteSupport.gainedFromKey(notes, "gained")
 
   def forCatalog(catalog: ExecutableCatalog): Gossip =
     new Gossip(catalog)

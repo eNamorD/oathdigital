@@ -37,7 +37,7 @@ final case class SaddleMakers private (catalog: ExecutableCatalog)
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
-  override def noteKeys: Vector[NoteKey] = Vector(SaddleMakers.gained)
+  override def noteKeys: Vector[NoteKey] = SaddleMakers.noteKeys
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
@@ -68,7 +68,9 @@ object SaddleMakers:
   val id: PowerId = SaddleMakersCard.power.id
   val Favor: Int = 2
   val Suits: Set[Suit] = Set(Suit.Nomad, Suit.Order)
-  val gained: NoteKey = NoteSupport.gainedFromKey("gained")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  val gained: NoteKey = NoteSupport.gainedFromKey(notes, "gained")
 
   def forCatalog(catalog: ExecutableCatalog): SaddleMakers =
     new SaddleMakers(catalog)

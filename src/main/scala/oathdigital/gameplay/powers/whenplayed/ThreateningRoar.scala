@@ -23,8 +23,9 @@ final case class ThreateningRoar private (catalog: ExecutableCatalog)
   val cardId: DenizenId = ThreateningRoarCard.id
   def id: PowerId = ThreateningRoar.id
 
-  override def noteKeys: Vector[NoteKey] =
-    Vector(RegionDiscard.discarded, RegionDiscard.none)
+  private val notes = NoteSet(id)
+  notes.include(RegionDiscard.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   private val region = new RegionDiscard(catalog, ThreateningRoar.suits)
 

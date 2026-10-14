@@ -42,7 +42,7 @@ final case class BookBinders private (catalog: ExecutableCatalog)
 
   override def applicable(ctx: PowerCtx): Boolean = reward(ctx).nonEmpty
 
-  override def noteKeys: Vector[NoteKey] = Vector(BookBinders.gained)
+  override def noteKeys: Vector[NoteKey] = BookBinders.noteKeys
 
   /** The `Branch` that takes the holder's reward, whenever another player
     * plays a Vision faceup and this card's holder is a different player.
@@ -81,7 +81,9 @@ final case class BookBinders private (catalog: ExecutableCatalog)
 object BookBinders:
   val id: PowerId = BookBindersCard.power.id
   val Favor: Int = 2
-  val gained: NoteKey = NoteSupport.gainedFromKey("gained")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  val gained: NoteKey = NoteSupport.gainedFromKey(notes, "gained")
 
   def forCatalog(catalog: ExecutableCatalog): BookBinders =
     new BookBinders(catalog)

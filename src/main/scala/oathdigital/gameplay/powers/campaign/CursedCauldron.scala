@@ -44,14 +44,15 @@ case object CursedCauldron extends BattlePlan:
     * the walker clears it with every pool when the Campaign ends. */
   val Died: PoolKey = PoolKey("campaign.cursed-cauldron.died")
 
+  private val notes = NoteSet(id)
   /** "{Blue} gained {n warbands}." */
-  val gained: NoteKey = NoteSupport.gainedKey("gained")
+  val gained: NoteKey = NoteSupport.gainedKey(notes, "gained")
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
   override def priority: Int = CursedCauldron.Priority
-  override def noteKeys: Vector[NoteKey] = Vector(CursedCauldron.gained)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.relic(relicId).map(source => CampaignPlanOffer(source,

@@ -19,8 +19,9 @@ object MagicWaterskinCard extends Relic(RelicId("R45"), "Magic Waterskin", value
   */
 case object MagicWaterskin extends PaidAction(MagicWaterskinCard.power):
   val Supply: Int = 4
-  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
-  override def noteKeys: Vector[NoteKey] = Vector(gained)
+  private val notes = NoteSet(id)
+  val gained: NoteKey = NoteSupport.gainedKey(notes, NoteKey.Used)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match

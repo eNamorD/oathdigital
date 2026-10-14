@@ -34,25 +34,27 @@ case object KeyToTheCity extends WhenPlayedPower:
   val id: PowerId = KeyToTheCityCard.power.id
   /** The warbands gained and placed. */
   val Placed: Int = 1
+  private val notes = NoteSet(id)
   /** "Killed {n} {Blue} warband at {site}." */
-  val killed: NoteKey = NoteKey("killed", Vector(NotePart.Text("Killed "),
+  val killed: NoteKey = notes.key("killed", Vector(NotePart.Text("Killed "),
     NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
     NotePart.Plural(0, " warband at ", " warbands at "), NotePart.Arg(2),
     NotePart.Text(".")))
   /** "Killed {n} bandit warband at {site}." */
-  val bandits: NoteKey = NoteKey("bandits", Vector(NotePart.Text("Killed "),
+  val bandits: NoteKey = notes.key("bandits", Vector(NotePart.Text("Killed "),
     NotePart.Arg(0), NotePart.Plural(0, " bandit warband at ",
       " bandit warbands at "), NotePart.Arg(1), NotePart.Text(".")))
   /** "{Red} placed {1 warband} at {site}." */
-  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Arg(0),
+  val placed: NoteKey = notes.key("placed", Vector(NotePart.Arg(0),
     NotePart.Text(" placed "), NotePart.Arg(1), NotePart.Text(" at "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "{Red} had no warband to place." */
-  val unplaced: NoteKey = NoteKey("unplaced", Vector(NotePart.Arg(0),
+  val unplaced: NoteKey = notes.key("unplaced", Vector(NotePart.Arg(0),
     NotePart.Text(" had no warband to place.")))
   /** "{Blue} was at {site}." */
-  val guarded: NoteKey = NoteKey("guarded", Vector(NotePart.Arg(0),
+  val guarded: NoteKey = notes.key("guarded", Vector(NotePart.Arg(0),
     NotePart.Text(" was at "), NotePart.Arg(1), NotePart.Text(".")))
+  notes.borrow(VowOfWandering.forbidden)
 
   /** The player ruling `site` whose pawn stands there, if any. */
   private def guard(ready: ReadyGame, site: SiteId): Option[PlayerId] =
@@ -81,9 +83,7 @@ case object KeyToTheCity extends WhenPlayedPower:
     ready.game.current.players.find(state =>
       PlayerForceKind.of(ready, state).contains(kind)).map(_.player)
 
-  override def noteKeys: Vector[NoteKey] =
-    Vector(killed, bandits, placed, unplaced, guarded,
-      VowOfWandering.forbidden)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 

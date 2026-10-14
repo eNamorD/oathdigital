@@ -28,8 +28,10 @@ case object VowOfWanderingMuster extends ContributingPower:
   val id: PowerId = VowOfWanderingCard.muster.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   val Warbands: Int = 2
+  private val notes = NoteSet(id)
+  notes.borrow(ExtraWarbands.gained)
 
-  override def noteKeys: Vector[NoteKey] = Vector(ExtraWarbands.gained)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterGain -> Vector(Transform((ctx, operations) =>
@@ -64,16 +66,20 @@ case object VowOfWandering extends ContributingPower:
 
   /** The restriction's detail, which Move Warbands shows. */
   val Reason: String = "Vow of Wandering forbids placing warbands on sites"
+  private val notes = NoteSet(id)
+  /** Holds the restriction line, which this power defines but never writes:
+    * the powers that place warbands do, and each borrows it from here. */
+  val shared: NoteSet = NoteSet.unowned("VowOfWandering")
   /** "Vow of Wandering forbids placing warbands on sites.", the line a power
     * writes under its own name when the Vow stops its placement. */
-  val forbidden: NoteKey = NoteKey("vow-of-wandering",
+  val forbidden: NoteKey = shared.key("vow-of-wandering",
     Vector(NotePart.Text(s"$Reason.")))
   /** "Kept {n} surviving warband on the board." */
-  val kept: NoteKey = NoteKey("kept", Vector(NotePart.Text("Kept "),
+  val kept: NoteKey = notes.key("kept", Vector(NotePart.Text("Kept "),
     NotePart.Arg(0), NotePart.Plural(0, " surviving warband on the board.",
       " surviving warbands on the board.")))
 
-  override def noteKeys: Vector[NoteKey] = Vector(kept)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignPlacement -> Vector(Transform((ctx, operations) =>

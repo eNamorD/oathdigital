@@ -26,8 +26,9 @@ case object Quartermaster extends PhasePower:
   val id: PowerId = QuartermasterCard.power.id
   def timing: PowerTiming = PowerTiming.Wake
   val Supply: Int = 1
-  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
-  override def noteKeys: Vector[NoteKey] = Vector(gained)
+  private val notes = NoteSet(id)
+  val gained: NoteKey = NoteSupport.gainedKey(notes, NoteKey.Used)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = source match

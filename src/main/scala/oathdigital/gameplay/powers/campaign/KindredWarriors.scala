@@ -29,7 +29,9 @@ final case class KindredWarriors private (catalog: ExecutableCatalog)
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(Outriders.ignored)
+  private val notes = NoteSet(id)
+  notes.include(Outriders.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   /** X: the suits other than Arcane among the cards the user rules. */
   private def suits(context: PlanContext): Int =

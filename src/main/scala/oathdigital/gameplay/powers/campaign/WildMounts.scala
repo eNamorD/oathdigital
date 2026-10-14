@@ -152,7 +152,9 @@ object WildMounts:
     * decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix + "wild-mounts"
   val skip: DecisionOptionRef.Button = DecisionOptionRef.Button("skip")
-  private val notes = NoteSet(id)
+  /** Exposed: other powers write this power's lines and include this
+    * set to declare them. */
+  val notes: NoteSet = NoteSet(id)
   def noteKeys: Vector[NoteKey] = notes.declared
   /** "Discarded {card} instead of the battle plans." */
   val swapped: NoteKey = notes.key("swapped", Vector(

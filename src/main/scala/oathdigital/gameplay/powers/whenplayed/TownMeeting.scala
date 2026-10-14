@@ -31,7 +31,7 @@ final case class TownMeeting private (catalog: ExecutableCatalog)
   import TownMeeting._
   def id: PowerId = TownMeeting.id
 
-  override def noteKeys: Vector[NoteKey] = Vector(gained, empty, none)
+  override def noteKeys: Vector[NoteKey] = TownMeeting.noteKeys
 
   private val banks = new FavorSplit(decisionId, Suit.all, "Take favor")
 
@@ -55,13 +55,15 @@ final case class TownMeeting private (catalog: ExecutableCatalog)
 object TownMeeting:
   val id: PowerId = TownMeetingCard.power.id
   val decisionId: String = "cardplay.town-meeting.banks"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} gained {n favor}." */
-  val gained: NoteKey = NoteSupport.gainedKey("gained")
+  val gained: NoteKey = NoteSupport.gainedKey(notes, "gained")
   /** "Every favor bank was empty." */
-  val empty: NoteKey = NoteKey("empty", Vector(
+  val empty: NoteKey = notes.key("empty", Vector(
     NotePart.Text("Every favor bank was empty.")))
   /** "{Red} ruled no Hearth card." */
-  val none: NoteKey = NoteKey("none", Vector(NotePart.Arg(0),
+  val none: NoteKey = notes.key("none", Vector(NotePart.Arg(0),
     NotePart.Text(" ruled no Hearth card.")))
 
   def forCatalog(catalog: ExecutableCatalog): TownMeeting =

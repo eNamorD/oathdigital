@@ -74,8 +74,11 @@ trait ActingSite extends SelectedModifier:
     }
 
 object ActingSite:
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("ActingSite")
   /** "Acted as if at {the Shrine}." */
-  val acted: NoteKey = NoteKey("acted", Vector(
+  val acted: NoteKey = notes.key("acted", Vector(
     NotePart.Text("Acted as if at "), NotePart.Arg(0), NotePart.Text(".")))
   val elsewhere: String = "Already acting as if at another site"
   val pickedHere: String = "A modifier you picked is at your pawn site"

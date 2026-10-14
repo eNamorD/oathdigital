@@ -27,8 +27,9 @@ final case class RainBoots private (catalog: ExecutableCatalog)
   def id: PowerId = RainBoots.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def planNoteKeys: Vector[NoteKey] =
-    Vector(SingleShields.ignored)
+  private val notes = NoteSet(id)
+  notes.include(SingleShields.notes)
+  override def planNoteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
