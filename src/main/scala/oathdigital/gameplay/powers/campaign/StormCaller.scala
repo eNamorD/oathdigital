@@ -17,21 +17,16 @@ object StormCallerCard extends Denizen(DenizenId("167"), "Storm Caller", Suit.No
   * defender applies it at a site it rules, and it is discarded then too.
   */
 final case class StormCaller private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = StormCallerCard.id
   def id: PowerId = StormCaller.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(PlanDiscard.discarded)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Storm Caller: add 2 defense dice", Vector.empty,
       Vector(CampaignPlanEffect.AddDefenseDice(StormCaller.Dice))))
-
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignActionEligibility -> (use =>
-      PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
 object StormCaller:
   val id: PowerId = StormCallerCard.power.id

@@ -19,13 +19,12 @@ object RivalKhanCard extends Denizen(DenizenId("156"), "Rival Khan", Suit.Nomad)
   * Campaign has resolved, whoever won, as Horse Archers is.
   */
 final case class RivalKhan private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = RivalKhanCard.id
   def id: PowerId = RivalKhan.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(PlanDiscard.discarded)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId)
@@ -33,10 +32,6 @@ final case class RivalKhan private (catalog: ExecutableCatalog)
       .map(source => CampaignPlanOffer(source,
         PlanDice.label("Rival Khan", context.side, RivalKhan.Dice),
         Vector.empty, Vector(PlanDice.effect(context.side, RivalKhan.Dice))))
-
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignActionEligibility -> (use =>
-      PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
 object RivalKhan:
   val id: PowerId = RivalKhanCard.power.id
