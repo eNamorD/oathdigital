@@ -98,11 +98,14 @@ The approved changes outside `gameplay/powers/`:
   `Take.sourceSide`), and the secrets keep their side where they land.
   Book Burning and Ancient Binding burn facedown secrets by naming that
   side, instead of flipping them faceup first.
-- **Triggers on executed operations** (slice 6). A hook beside
-  `ContributingPower.onArrival`, called from `WalkerSteps.recordBatch` with
-  the operations a batch executed, as `AdviserArrivalPass` is. A follow-up
-  it starts may hold a decision tree, not only operations, so Brass Army can
-  ask its holder.
+- **Triggers on executed operations** (slice 6, detailed at plan time). An
+  `ExecutedTrigger` power's `onExecuted` is asked after each walker batch,
+  with the operations the batch executed. A follow-up it starts is a tree,
+  walked right after the batch under the batch's own node, so Brass Army
+  can ask its holder. The batch holds its operations with `Defer`, in its
+  own step, so a command that resumes inside a follow-up asks again with
+  the same operations. A follow-up's own batches start no follow-up.
+  Secret Testament needs no trigger: it is a Challenge modifier.
 - **An as-if pawn site for Trade** (slice 7). `PowerAccess.locate` takes an
   optional site that replaces the pawn site in `usableSites`. Ruled sites
   and the player's advisers and relics stay usable; the physical pawn site
@@ -375,12 +378,16 @@ windows.
 
 ## Slice 6: Operation triggers
 
-- **Secret Testament** watches executed operations for an enemy taking a
-  banner from its holder, and moves the banner's favor or secrets to the
-  holder.
-- **Brass Army**'s restriction half watches its holder's pawn moves, on or
-  off turn, and asks the holder to bury the relic or flip a faceup secret
-  facedown. Its Campaign half already exists.
+- **Secret Testament** is a persistent Challenge modifier at
+  `ChallengeRibbon`. When an enemy challenges for a banner its holder
+  holds, the holder takes every favor or secret on the banner, in place of
+  the ribbon's returns. A Campaign or a card that takes a banner walks no
+  ribbon, so it changes nothing there.
+- **Brass Army**'s restriction half is the first `ExecutedTrigger`. It
+  watches its holder's pawn moves, on or off turn, and asks the holder to
+  bury the relic or flip a faceup secret facedown. Its Campaign half
+  already exists, and becomes a plan for either side, ±4 attack dice: the
+  component catalog's "+4" is a typo.
 
 ## Slice 7: Trade at another site
 

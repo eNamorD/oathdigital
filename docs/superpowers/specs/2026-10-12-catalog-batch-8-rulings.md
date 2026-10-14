@@ -166,15 +166,45 @@
 ## Slice 6: Operation triggers
 
 - **R38 Secret Testament.** "When an enemy takes a banner from you, take
-  all [favor] or [secret] on the banner." Any way an enemy takes a banner
-  from the holder counts. The tokens on the banner move to the holder as
-  the banner moves.
+  all [favor] or [secret] on the banner."
+  - A persistent Challenge modifier (ruled 2026-10-13). It works only when
+    an enemy challenges for a banner its holder holds. A Raid, a
+    Conspiracy or Wizard's Conclave that takes the banner does not
+    trigger it.
+  - The holder takes the tokens that would leave the banner (ruled
+    2026-10-13): every favor on the People's Favor, in place of their
+    return to the banks, and every secret on the Darkest Secret, in place
+    of the retained half and the secrets placed on sites. The challenger
+    then pays onto the empty banner and takes it.
+  - The holder holds the relic faceup.
+  - The line names the holder, whose turn it never is: "{Red} took 2
+    favor from the {People's Favor}." or "{Red} took 2 secrets from the
+    {Darkest Secret}." An empty banner writes no line.
 - **R25 Brass Army** (restriction half). "Whenever your pawn moves (travel
   or place), bury this or flip a secret you have facedown."
-  - Every move of the holder's pawn counts, on or off turn: Travel, Keep's
-    placement and Palanquin.
+  - Every move of the holder's pawn counts, on or off turn: Travel, a
+    Raid's relocation, Keep's placement, Whistle, Brass Horse, Magic Carpet
+    and Palanquin. A placement that leaves the pawn where it stands moves
+    nothing, so it asks nothing.
   - The holder chooses: bury the relic, or flip one faceup secret facedown.
     With no faceup secret, the bury is forced and nothing is asked.
+  - The question comes right after the move, before the rest of the
+    action. In a Travel it comes before after-travel powers such as
+    Hospitality.
+  - The holder holds the relic faceup. A Raid that takes the relic before
+    the defender's pawn moves leaves nothing to ask.
+  - The question: "Brass Army: your pawn moved", with "Bury Brass Army" and
+    "Flip a secret facedown".
+  - Lines: "Buried after a pawn move." and "Flipped a secret facedown." on
+    the holder's turn; "{Red} buried it after a pawn move." and "{Red}
+    flipped a secret facedown." off it.
+- **R25 Brass Army** (Campaign half, corrected 2026-10-13). "[secret] ±4
+  [attack-die]". The component catalog prints "+4", a typo: it is a
+  gradient battle plan for either side.
+  - An attacker places the secret onto the relic and adds four attack
+    dice, which are not force.
+  - A defender places the secret onto the relic and removes four attack
+    dice. The attack pool never goes below zero.
 
 ## Slice 7: Trade at another site
 
