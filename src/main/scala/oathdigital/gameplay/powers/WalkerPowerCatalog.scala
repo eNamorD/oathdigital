@@ -16,7 +16,7 @@ import oathdigital.gameplay.powers.rest.{Insomnia, LeagueTreatyContribution, Sil
 import oathdigital.gameplay.powers.setup.{BanditMarket, BrokenForge, EmptyGrounds, GreatForge, GreatMarket, ProvingGrounds}
 import oathdigital.gameplay.powers.targeting.TargetProtections
 import oathdigital.gameplay.powers.title.ChaosCult
-import oathdigital.gameplay.powers.travel.{TravelModifiers, TravelSitePowers}
+import oathdigital.gameplay.powers.travel.{BrassArmyMoves, TravelModifiers, TravelSitePowers}
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.powers.whenplayed.{ASmallFavor, ConspiracyWhenPlayed, Dazzle, FaithfulFriend, FamilyHeirloom, Garrison, ShiftingFog, TwinBrother, WhenPlayedPowers}
 import oathdigital.gameplay.walker.WalkerPowers
@@ -52,6 +52,7 @@ import oathdigital.gameplay.walker.WalkerPowers
   * The battle plans are inert until a Campaign folds its plan windows: each
   * offers itself there, and the title's defense, which no card prints, is always
   * present.
+  * Brass Army's restriction is inert until a batch moves its holder's pawn.
   * Jinx is inert until a roll step asks for rerolls.
   * `restrictionSet` gives every walker step the catalog's global operation
   * restrictions.
@@ -61,6 +62,7 @@ object WalkerPowerCatalog:
     WalkerPowers(Vector(CatacombsContribution.forCatalog(catalog)) ++
       Vector(VowOfPeaceContribution) ++
       Vector(VowOfSilence, VowOfDivision) ++
+      Vector(BrassArmyMoves) ++
       TravelSitePowers.all ++
       TravelModifiers.forCatalog(catalog) ++
       Vector(LeagueTreatyContribution.forCatalog(catalog)) ++

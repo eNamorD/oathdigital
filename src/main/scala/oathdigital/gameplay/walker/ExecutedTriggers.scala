@@ -4,7 +4,8 @@ import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy,
   OperationRun}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Deferred,
   ExecutedBatch, ExecutedTrigger}
-import oathdigital.model.{Defer, DeferralKey, OathViolation, ReadyGame}
+import oathdigital.model.{Defer, DeferralKey, OathViolation, PlayerId,
+  ReadyGame}
 
 /** The walker's side of triggers on executed operations (catalog batch 8,
   * slice 6). A batch that starts a follow-up holds its executed operations
@@ -22,8 +23,11 @@ private[walker] object ExecutedTriggers:
       .sortBy(ContributingPower.sortKey)
 
   /** What a trigger reads now: the held operations and the walk's state. */
-  def batch(ctx: WalkCtx): ExecutedBatch =
-    ExecutedBatch(ctx.activePlayer, Deferred.held(ctx.state, key), ctx.state)
+  def batch(ctx: WalkCtx): ExecutedBatch = batch(ctx.activePlayer, ctx.state)
+
+  /** The same, for a lookup that has no walk, only the parked state. */
+  def batch(activePlayer: PlayerId, ready: ReadyGame): ExecutedBatch =
+    ExecutedBatch(activePlayer, Deferred.held(ready, key), ready)
 
   /** Whether a batch's operations are held for its follow-ups. */
   def holds(ready: ReadyGame): Boolean = Deferred.held(ready, key).nonEmpty

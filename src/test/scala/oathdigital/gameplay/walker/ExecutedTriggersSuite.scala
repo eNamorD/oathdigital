@@ -85,3 +85,14 @@ class ExecutedTriggersSuite extends munit.FunSuite:
       Vector[CoreOperation](TakeDeferred(ExecutedTriggers.key)),
       Vector[CoreOperation](spendOneSupply)))
     assertEquals(pawnSiteOf(done.treeless), pawnSiteOf(ready))
+
+  test("the position parked inside a follow-up resolves to its question, " +
+      "which only a held batch makes reachable"):
+    val park = parked(ProcedureWalker.advance(ready, movedThenSpent, None,
+      asking))
+    val atPark = applyEvents(ready, park.events)
+    val pending = PendingTree(at = park.tree.at, answered = Vector.empty)
+    assertEquals(ProcedureWalker.parkedDecide(atPark, movedThenSpent, pending,
+      asking), Some(decide))
+    assertEquals(ProcedureWalker.parkedDecide(ready, movedThenSpent, pending,
+      asking), None)

@@ -461,14 +461,35 @@ private[walker] object WalkerPowerGather:
       consumed: Vector[String], gathered: Set[PowerWindow]): Option[Operation] =
     remaining.headOption match
       case None => Some(node)
-      case Some(segment) => segment.toIntOption.flatMap { index =>
-        val (children, nextGathered) = foldedChildrenAt(state, pending,
-          powers, node, consumed, gathered)
-        if index >= 0 && index < children.size then
-          resolveAt(state, pending, powers, children(index), remaining.tail,
-            consumed :+ segment, nextGathered)
-        else None
-      }
+      case Some(segment) => node match
+        // Past a leaf whose batch is held, the path enters a follow-up.
+        case leaf: PrimitiveOperation
+            if leaf.window.forall(gathered.contains) &&
+              ExecutedTriggers.holds(state) =>
+          followUpAt(state, pending, powers, segment, remaining.tail, consumed)
+        case _ => segment.toIntOption.flatMap { index =>
+          val (children, nextGathered) = foldedChildrenAt(state, pending,
+            powers, node, consumed, gathered)
+          if index >= 0 && index < children.size then
+            resolveAt(state, pending, powers, children(index), remaining.tail,
+              consumed :+ segment, nextGathered)
+          else None
+        }
+
+  /** The node at `rest` inside the follow-up that trigger `segment` started
+    * after a held batch: the tree it returns now, asked as the walk asked it
+    * (`ExecutedTrigger`). */
+  private def followUpAt(state: ReadyGame, pending: PendingTree,
+      powers: WalkerPowers, segment: String, rest: Vector[String],
+      consumed: Vector[String]): Option[Operation] =
+    val triggers = ExecutedTriggers.of(powers)
+    for
+      index <- segment.toIntOption if index >= 0 && index < triggers.size
+      tree <- triggers(index).onExecuted(ExecutedTriggers.batch(
+        state.game.current.turn.activePlayer, state))
+      found <- resolveAt(state, pending, powers, tree, rest,
+        consumed :+ segment, Set.empty)
+    yield found
 
   /** The children `node` presents at `path` for the purpose of navigating one
     * more path segment -- mirroring `walkBranch`/`walkLeaf`/`walkComposite`'s
