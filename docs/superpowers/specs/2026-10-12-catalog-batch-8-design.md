@@ -145,9 +145,17 @@ The approved changes outside `gameplay/powers/`:
   time). `SuitOnlyAdvisers` becomes a trigger on executed operations, so
   that the active player can order the burials when Pledge to Discord sits
   beside advisers that keep the rule by their printed suit.
-- **One Darkest Secret check** (slice 9). One `holdsDarkestSecret(player,
-  forCardPower)` replaces the scattered checks in card powers (Disciples,
-  Terror Spells, Fae Battalion and others).
+- **One Darkest Secret check for card powers** (slice 9, detailed at plan
+  time). `CardPowerBanners.holdsDarkestSecret(ready, player)` says whether
+  a player holds the Darkest Secret as a card power they use sees it: they
+  hold the banner, or a power that overrides the check
+  (`CardPowerBanners.DarkestSecretOverride`) says they act as if they do.
+  Yew Staff is the one override, listed once in `CardPowerBanners`. The
+  card powers that ask (Disciples, Terror Spells, The Red Seer, Fae
+  Battalion, Rusting Ray, Fire Talkers, Unstable Summon, and Armed Mob for
+  its user) call it and never name Yew Staff. Challenge, scoring, the
+  Oathkeeper goal and every other reader keep `BannerRules.holder`, so the
+  check needs no flag.
 - **A power-use filter** (slice 10). One "may this player use this card's
   power" rule, read by both paths: walker contributions through
   `applicable`, and ACTION powers through `PhasePowerProcedure.check`. It
@@ -467,6 +475,19 @@ needed.
 Yew Staff makes `holdsDarkestSecret` true for its holder when the check is
 made for a card power. Challenge, scoring and the Oathkeeper goal do not go
 through it.
+
+### Plan-time rulings
+
+Settled 2026-10-14; the rulings appendix has them per card.
+
+- Yew Staff works only while its holder uses the card power. It applies
+  automatically and writes no line.
+- Unstable Summon burns from the Darkest Secret wherever the banner is.
+- The Yew Staff holder may target themselves with their own Armed Mob.
+  With two targets, Armed Mob first asks whose adviser to discard.
+- Slice 9 stays separate from slice 10. Giant Python, Ancient Pact and
+  High Priest read the check when they land; Tome Guardians reads the real
+  holder.
 
 ## Slice 10: Power-use restrictions
 

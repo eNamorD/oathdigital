@@ -305,11 +305,33 @@
 - **R40 Yew Staff.** "When using card powers, you may act as if you hold
   the Darkest Secret."
   - Every condition inside a card power its holder uses that asks whether
-    they hold the Darkest Secret is met (Giant Python, The Red Seer,
-    Disciples, Terror Spells, Fae Battalion).
-  - It applies automatically; no printed card penalizes holding the secret.
-  - It does not reach Challenge, scoring, the Oathkeeper goal or anything
-    that is not a card power.
+    they hold the Darkest Secret is met: Disciples, Terror Spells, The Red
+    Seer, Fae Battalion, Rusting Ray, Fire Talkers and Unstable Summon.
+    Giant Python (slice 10) reads it too.
+  - It works only while its holder is the one using the power, with Yew
+    Staff faceup on their board. An enemy's Armed Mob does not make them a
+    target, and Banner Breakers, the attacker's power, is unaffected.
+  - It applies automatically and writes no line; the power's own line
+    shows its effect.
+  - It does not reach Challenge, scoring, the Oathkeeper goal or the
+    Darkest Secret banner's own powers, which are not card powers.
+  - **Unstable Summon** burns X secrets from the Darkest Secret wherever
+    the banner is: held by another player or in the bank. The line is
+    unchanged (plan-time ruling).
+  - **Armed Mob used by the holder** (plan-time ruling). The holder may be
+    a target of their own Armed Mob unless they also hold the People's
+    Favor.
+    - With two targets it first asks "Armed Mob: discard a faceup adviser
+      of which player?". A target with no faceup adviser is shown
+      unavailable, with "No faceup adviser to discard". With neither
+      having one, nothing is asked, and the line is "Neither target had a
+      faceup adviser to discard."
+    - With one target nothing is asked about players. The adviser question
+      reads "Armed Mob: discard one of your faceup advisers" for the
+      user's own advisers.
+  - **Cards not built yet** (plan-time ruling). Ancient Pact and High
+    Priest read the check when they land. Tome Guardians' protection reads
+    the real holder, because it guards the actual banner.
 
 ## Slice 10: Power-use restrictions
 
