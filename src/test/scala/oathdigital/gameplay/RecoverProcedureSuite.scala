@@ -347,7 +347,7 @@ class RecoverProcedureSuite extends munit.FunSuite
   private def allNodes(node: Operation, state: ReadyGame,
       actor: PlayerId): Vector[Operation] =
     val nested = node match
-      case _: PrimitiveOperation => Vector.empty
+      case _: LeafOperation => Vector.empty
       case branch: Branch =>
         branch.select(state, PendingTree(Vector.empty, Vector.empty))
           .flatMap(allNodes(_, state, actor))

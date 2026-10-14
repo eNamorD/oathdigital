@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, RerollHost, Restriction, Waiver}
-import oathdigital.model.{Answered, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, OfferedReroll, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
+import oathdigital.model.{Answered, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, OfferedReroll, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, LeafOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -288,10 +288,10 @@ private[walker] object WalkerPowerGather:
         children.zipWithIndex.flatMap { case (child, index) =>
           windowsIn(child, path :+ index.toString) }
       val nested = node match
-        // A PrimitiveOperation's `children` is `Vector(this)` (leaf
+        // A LeafOperation's `children` is `Vector(this)` (leaf
         // self-reference, see `Operation.scala`); descending into it would
         // recurse forever, so leaves never contribute nested windows.
-        case _: PrimitiveOperation => Vector.empty
+        case _: LeafOperation => Vector.empty
         case branch: Branch => descend(applyWindow(branch.window, branch,
           state, activePlayer, powers, path, branch.select(state,
             PendingTree(at = path, answered = answered)),
@@ -463,7 +463,7 @@ private[walker] object WalkerPowerGather:
       case None => Some(node)
       case Some(segment) => node match
         // Past a leaf whose batch is held, the path enters a follow-up.
-        case leaf: PrimitiveOperation
+        case leaf: LeafOperation
             if leaf.window.forall(gathered.contains) &&
               ExecutedTriggers.holds(state) =>
           followUpAt(state, pending, powers, segment, remaining.tail, consumed)
@@ -495,7 +495,7 @@ private[walker] object WalkerPowerGather:
     * more path segment -- mirroring `walkBranch`/`walkLeaf`/`walkComposite`'s
     * dispatch, but computing only the folded children rather than executing
     * anything. `gathered` mirrors [[WalkerHooks.gathered]]: a windowed leaf's
-    * own fold (applied to `Vector(leaf)`, since a `PrimitiveOperation`'s
+    * own fold (applied to `Vector(leaf)`, since a `LeafOperation`'s
     * `children` is a self-reference) is applied at most once per branch, so a
     * transform that hands the leaf back unchanged does not re-trigger its own
     * window on the next path segment. A composite's fold needs no such guard
@@ -512,7 +512,7 @@ private[walker] object WalkerPowerGather:
           activePlayer, powers, path, selected, state.game.current.walkerProcedure,
           pending.answered, resuming = true)
         (folded, gathered)
-      case leaf: PrimitiveOperation =>
+      case leaf: LeafOperation =>
         leaf.window match
           case Some(w) if !gathered.contains(w) =>
             val (folded, _) = applyWindow(Some(w), leaf, state,

@@ -569,7 +569,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     * here -- it carries no window, which is what this is used to inventory.
     */
   private def allNodes(node: Operation): Vector[Operation] = node match
-    case _: PrimitiveOperation => Vector(node)
+    case _: LeafOperation => Vector(node)
     case _ => node +: node.children.flatMap(allNodes)
 
   test("the tree windows exactly its modifier decision, the Forge and its " +

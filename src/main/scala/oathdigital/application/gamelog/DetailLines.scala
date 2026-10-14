@@ -192,7 +192,7 @@ private[gamelog] object DetailLines:
   def parts(operation: CoreOperation): Vector[CoreOperation] = operation match
     case _: Gain.Favor | _: Gain.Secrets | _: Draw | _: Discard.Denizen |
         _: Discard.Vision | _: Reveal => Vector(operation)
-    case _: PrimitiveOperation => Vector(operation)
+    case _: LeafOperation => Vector(operation)
     case composite => composite.children.collect {
       case child: CoreOperation => child }.flatMap(parts)
 

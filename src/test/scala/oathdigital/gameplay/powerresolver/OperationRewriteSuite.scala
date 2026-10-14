@@ -140,14 +140,14 @@ class OperationRewriteSuite extends munit.FunSuite:
 
   test("a leaf with the fold's window is left alone below a composite, and " +
       "entered below the leaf being folded"):
-    val ask = Decide("test.ask", actor, DecisionQuery.ChooseOne(Vector.empty),
-      window = Some(window))
-    val dropAsks: OperationRewrite.Matcher[CoreOperation, CoreOperation] =
-      (_, _) => { case _: Decide => Vector.empty }
-    assertEquals(OperationRewrite.ops(foldingSequence, Vector(ask))(dropAsks),
-      Vector[Operation](ask))
-    assertEquals(OperationRewrite.ops(foldingCtx(ask), Vector(ask))(dropAsks),
-      Vector[Operation](Sequence(Vector.empty)))
+    val hooked = ModifyDicePool(PoolKey("test.pool"), 1, window = Some(window))
+    val dropPoolChanges
+        : OperationRewrite.Matcher[CoreOperation, CoreOperation] =
+      (_, _) => { case _: ModifyDicePool => Vector.empty }
+    assertEquals(OperationRewrite.ops(foldingSequence, Vector(hooked))(
+      dropPoolChanges), Vector[Operation](hooked))
+    assertEquals(OperationRewrite.ops(foldingCtx(hooked), Vector(hooked))(
+      dropPoolChanges), Vector[Operation](Sequence(Vector.empty)))
 
   test("a semantic composite is matched whole, never entered"):
     val discard = Discard.Denizen(CatalogNames.denizen("Wild Mounts"),

@@ -9,21 +9,14 @@ import oathdigital.model._
   * split, which `WalkerOperationWireSuite` pins.
   *
   * `encodeOperation`/`encodePiece` (I8) are total over `CoreOperation`/
-  * `Piece`, exactly like [[encodeLocation]] below (added for the same
-  * reason: a bounded operation set is what let Catacombs' recorded `Move`
-  * out of `Location.Deck` reach an append-time throw with no test to catch
-  * it -- that lesson generalises to every recorded shape, not just
-  * `Location`). The one genuine exception is `encodeOperation`'s five
-  * walker tree-control arms (`Decide`/`BuildOps`/`Repeat`/`Branch`/
-  * `Sequence`): three close over a Scala function value with no data
-  * representation at all, and none of the five can ever legally reach this
-  * method, because `ProcedureWalker` only ever records an
-  * ALREADY-APPLIED delta batch (a leaf's own effect, or a `BuildOps`
-  * closure's *returned* `Vector[CoreOperation]`) -- never one of these
-  * control nodes themselves. Those five arms throw
-  * [[UnencodableOperation]] (a typed [[WireError]] carrier caught by
-  * `GameEventWire.encodePayloadSafe`) instead of falling into a silent
-  * wildcard `case other => throw`, so a NEW `CoreOperation` case fails to
+  * `Piece`, exactly like [[encodeLocation]] in [[WalkerValueCodec]] (added
+  * for the same reason: a bounded operation set is what let Catacombs'
+  * recorded `Move` out of `Location.Deck` reach an append-time throw with no
+  * test to catch it -- that lesson generalises to every recorded shape, not
+  * just `Location`). Totality is now exceptionless: the walker's control
+  * vocabulary lives under the unsealed `Operation`, not under
+  * `CoreOperation`, so a control node is not a member of the encoded family
+  * and cannot reach this method. A NEW `CoreOperation` case still fails to
   * compile here ("match may not be exhaustive") until it is given a real
   * arm.
   */
@@ -56,39 +49,6 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       case operation: PieceOperation => encodePieceOperation(operation)
       case operation: ResourceOperation => encodeResourceOperation(operation)
       case operation: TurnOperation => encodeTurnOperation(operation)
-      // The five arms below are the walker's own tree-control vocabulary
-      // (see this trait's doc): `decide`/`build`/`repeat`/`branch` each
-      // close over a Scala function value with no data representation, and
-      // `sequence`'s children are typed as the deliberately non-sealed
-      // `Operation` (not `CoreOperation`), so even a closure-free Sequence
-      // cannot be soundly decomposed here. None of the five can legally
-      // reach this method: `ProcedureWalker` only ever records an
-      // ALREADY-APPLIED delta batch, never one of its own control nodes.
-      // Each throws a specific `UnencodableOperation` (a typed `WireError`
-      // carrier `GameEventWire.encodePayloadSafe` unwraps) instead of a
-      // silent wildcard, so a genuine new `CoreOperation` case still fails
-      // to compile here until it is given a real arm.
-      case decide: Decide => throw UnencodableOperation(InvalidValue(
-        "$.payload.ops", s"a Decide node (decision '${decide.decisionId}') " +
-          "parks the walker and can never be a recorded, already-applied " +
-          "operation"))
-      case _: BuildOps => throw UnencodableOperation(InvalidValue(
-        "$.payload.ops", "a BuildOps node closes over a build function " +
-          "and can never be a recorded, already-applied operation -- only " +
-          "the Vector[CoreOperation] it RETURNS is ever recorded"))
-      case _: Repeat => throw UnencodableOperation(InvalidValue(
-        "$.payload.ops", "a Repeat node closes over a guard function and " +
-          "is a tree-control composite, never a recorded delta"))
-      case _: Branch => throw UnencodableOperation(InvalidValue(
-        "$.payload.ops", "a Branch node closes over a select function and " +
-          "is a tree-control composite, never a recorded delta"))
-      case _: Sequence => throw UnencodableOperation(InvalidValue(
-        "$.payload.ops", "a Sequence node is a tree-control composite over " +
-          "the non-sealed Operation type, never a recorded delta"))
-      case _: CardPlayedFaceup | _: CardPlayedFacedown =>
-        throw UnencodableOperation(InvalidValue(
-          "$.payload.ops", "a CardPlayed hook is a tree-control composite, " +
-            "never a recorded delta"))
 
   private def encodeCardOperation(operation: CardOperation): ujson.Value =
     operation match

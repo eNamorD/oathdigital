@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powerresolver
 
 import oathdigital.model.{Branch, BuildOps, CoreOperation, Operation,
-  PendingTree, PrimitiveOperation, ReadyGame, Repeat, RewritableComposite,
+  PendingTree, LeafOperation, ReadyGame, Repeat, RewritableComposite,
   Sequence}
 
 /** Finds the operations a window's children hold by what they are, and
@@ -69,8 +69,8 @@ object OperationRewrite:
     /** Whether `node` is the windowed leaf being folded, or a leaf below it
       * with its window (`WalkerHooks.gathered`). */
     private def folded(node: Operation): Boolean = ctx.operation match
-      case leaf: PrimitiveOperation =>
-        node.isInstanceOf[PrimitiveOperation] && node.window == leaf.window
+      case leaf: LeafOperation =>
+        node.isInstanceOf[LeafOperation] && node.window == leaf.window
       case _ => false
 
   private final case class Ops(scope: Scope,

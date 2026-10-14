@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, Branch, Burn, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PayCost, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, TakeDeferred, WalkerEvent}
+import oathdigital.model.{Answered, Branch, Burn, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PayCost, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, LeafOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, TakeDeferred, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -288,7 +288,7 @@ object ProcedureWalker:
     node match
       case repeat: Repeat => walkRepeat(repeat, ctx, path, cursor, resume, hooks)
       case branch: Branch => walkBranch(branch, ctx, path, cursor, resume, hooks)
-      case leaf: PrimitiveOperation =>
+      case leaf: LeafOperation =>
         walkLeaf(leaf, ctx, path, cursor, resume, hooks)
       case EndWalk => Right(Ended(ctx))
       case note: Note => Right(Done(noted(note, ctx)))
@@ -425,7 +425,7 @@ object ProcedureWalker:
     * dispatched instead of re-gathered. Resuming re-applies the same fold,
     * which is why a `Transform` must be a pure function of state.
     */
-  private def walkLeaf(leaf: PrimitiveOperation, ctx: WalkCtx,
+  private def walkLeaf(leaf: LeafOperation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] = leaf.window match
     case Some(w) if !hooks.gathered.contains(w) =>
@@ -443,7 +443,7 @@ object ProcedureWalker:
     * asking. A search's walk does not park at a decision it reaches: it asks
     * whether some answer leads on ([[reach]]).
     */
-  private def runLeaf(leaf: PrimitiveOperation, ctx: WalkCtx,
+  private def runLeaf(leaf: LeafOperation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
       resume: Resume, contributions: Vector[PowerId],
       strict: Boolean): Either[OathViolation, Step] =
@@ -578,7 +578,7 @@ object ProcedureWalker:
         remaining.isEmpty && resume.isInstanceOf[AnswerResume]
 
   /** Executes or parks one leaf that the look-ahead has already narrowed. */
-  private def runNarrowed(leaf: PrimitiveOperation, ctx: WalkCtx,
+  private def runNarrowed(leaf: LeafOperation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
       resume: Resume, contributions: Vector[PowerId],
       strict: Boolean): Either[OathViolation, Step] =
@@ -644,8 +644,17 @@ object ProcedureWalker:
                 WalkerSteps.record(_, ctx, path, contributions, strict)).map(Done(_))
             case _: Decide | _: Roll => Right(Park(path, ctx))
             case build: BuildOps => WalkerSteps.runBuildOps(build, ctx, path, contributions)
-            case delta =>
+            case delta: CoreOperation =>
               WalkerSteps.record(delta, ctx, path, contributions, strict).map(Done(_))
+            // `LeafOperation` is unsealed, so no match over it is
+            // exhaustive: the compiler cannot be shown that a leaf which is
+            // neither control nor core is impossible. In the walker it is --
+            // every leaf an action tree can hold is one or the other -- so
+            // this is the walker's own contract, asserted where the
+            // walker's contract lives rather than in the serializer.
+            case other => contractViolation(
+              s"leaf ${WalkerSteps.leafLabel(other)} is neither a control " +
+                "leaf nor a recordable operation")
         ).flatMap(triggered(path, resume))
 
   /** After a batch, the follow-ups its triggers started, when it held its

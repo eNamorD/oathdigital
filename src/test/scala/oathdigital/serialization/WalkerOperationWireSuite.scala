@@ -438,32 +438,6 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     assertEquals(ops(0)("by").str, "red")
     assertEquals(ops(1)("by"), ujson.Null)
 
-  test("a walker tree-control node can never be recorded, and surfaces a " +
-      "typed WireError instead of an opaque exception"):
-    // Decide/BuildOps/Repeat/Branch/Sequence are `encodeOperation`'s five
-    // documented exceptions to totality (I8): three close over a Scala
-    // function value with no data representation, and none can legally
-    // reach this codec (ProcedureWalker only ever records an
-    // ALREADY-APPLIED delta batch, never one of its own control nodes). If
-    // one somehow did, this proves the failure is `UnencodableOperation`
-    // unwrapped into a typed `WireError` -- not an exception escaping the
-    // append path.
-    val player = PlayerId("red")
-    val nodes: Vector[CoreOperation] = Vector(
-      Decide("recover.relic", player, DecisionQuery.ChooseOne(Vector(
-        DecisionOption.Relic(DecisionOptionRef.Relic(RelicId("r")))))),
-      BuildOps((_, _) => Right(Vector.empty)),
-      Repeat((_, _) => false, SpendSupply(player, 1)),
-      Branch((_, _) => Vector.empty),
-      Sequence(Vector(SpendSupply(player, 1))))
-    nodes.foreach { node =>
-      val event = recordedOperation("bad", node)
-      GameEventWire.encodeEvent("walker", 0, event) match
-        case Left(_: WireError) => ()
-        case Right(value) => fail(s"expected a typed WireError for $node, " +
-          s"got $value")
-    }
-
   test("a deferral and its take round trip, with the held ops"):
     val key = DeferralKey("test.held")
     val held = Vector[CoreOperation](ModifyDicePool(PoolKey("test.pool"), 2),

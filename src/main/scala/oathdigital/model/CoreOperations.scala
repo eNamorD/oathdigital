@@ -5,19 +5,20 @@ package oathdigital.model
   * These values describe semantic game instructions. They do not
   * validate restrictions, choices, and consent.
   *
-  * Re-rooted under [[Operation]]: composites expose their constituent
-  * operations through `children` (the vectors they previously exposed as
-  * `primitives`, now widened to `Vector[Operation]`); read the leaves with
-  * [[Operation.flatten]]. `PrimitiveOperation` stays a subtype so the
-  * existing operation-batch vocabulary (`Vector[CoreOperation]`, policies,
-  * executor) keeps accepting both leaves and composites.
+  * Oath's own vocabulary, sealed so that the serializer and the restriction
+  * screener can match it exhaustively. The walker's generic control
+  * vocabulary is not here: it lives under the unsealed [[Operation]] in
+  * `Operation.scala`, and a control node is therefore not a
+  * `Vector[CoreOperation]` member and never a recorded delta.
+  *
+  * Composites expose their constituent operations through `children`; read
+  * the leaves with [[Operation.flatten]]. `PrimitiveOperation` is Oath's
+  * sealed half of [[LeafOperation]].
   */
 sealed trait CoreOperation extends Operation:
   def simultaneous: Boolean = false
-  def required: Boolean = false
 
-sealed trait PrimitiveOperation extends CoreOperation:
-  final override val children: Vector[Operation] = Vector(this)
+sealed trait PrimitiveOperation extends CoreOperation, LeafOperation
 
 sealed trait Piece extends Product with Serializable
 object Piece:
@@ -664,106 +665,11 @@ final case class Defer(key: DeferralKey, ops: Vector[CoreOperation])
   * changes nothing. It writes no Game Log line. */
 final case class TakeDeferred(key: DeferralKey) extends PrimitiveOperation
 
-/** Parks a walker until `owner` resolves the decision `query` states.
-  *
-  * `query` is the single source of both halves of the contract: the walker
-  * accepts exactly the answers it declares (via `DecisionQueries`), and the
-  * projector offers exactly the options it declares. There is deliberately
-  * no `validate` closure beside it — a legality fact that is not expressible
-  * as an option set is a fact the client could never have been shown, so it
-  * belongs in how the tree BUILDS the query, not in a second check the
-  * projector cannot read. An option that authoritative state no longer
-  * supports is simply absent from the query the next command rebuilds.
-  *
-  * `owner` is a concrete player rather than a resolver: the tree is rebuilt
-  * against live state on every command, so whatever would have been computed
-  * at resume time can be computed at build time instead.
-  *
-  * `coOwners` are further players who may answer the same decision. One
-  * answer from any owner resolves it, so a `Repeat` around it re-asks it
-  * after each answer.
-  *
-  * `window` makes the decision hookable: the walker folds the gathered
-  * transforms over `Vector(this)` before walking it, so a power may insert
-  * operations around the decision, or replace its query.
-  *
-  * `passWhenEmpty` lets the search leave a choose-one with no option (global
-  * operation restrictions design, "Empty choices"): the walker then passes
-  * it, as it passes an empty optional choose-many, instead of failing the
-  * path. With one option left it still parks, so the player confirms it.
-  *
-  * `presentation` says where a client answers it: on the board, where each
-  * option with a place on the table is drawn, or in the Action panel.
-  */
-final case class Decide(decisionId: String, owner: PlayerId,
-    query: DecisionQuery,
-    override val window: Option[PowerWindow] = None,
-    coOwners: Vector[PlayerId] = Vector.empty,
-    passWhenEmpty: Boolean = false,
-    presentation: DecisionPresentation = DecisionPresentation.Board)
-    extends PrimitiveOperation:
-  require(!passWhenEmpty || query.isInstanceOf[DecisionQuery.ChooseOne],
-    "only a choose-one can be passed when empty")
-
-  /** Everyone who may answer: `owner` first, then the co-owners, each once.
-    * `owner` stays the primary owner, the player `awaitedPlayer` names.
-    */
-  def owners: Vector[PlayerId] = (owner +: coOwners).distinct
-
-/** A leaf whose concrete deltas are decided AT WALK TIME: the walker calls
-  * `build(state, pending)` when it reaches the node and executes whatever
-  * `CoreOperation`s come back, recording them in the node's
-  * `WalkerStepRecorded.ops`.
-  *
-  * The closure lives in the action tree, which is derived per command and
-  * never persisted, so it may close over anything reachable at build time
-  * (e.g. a chosen relic id from an earlier answered decision). A `build` that
-  * returns `Vector.empty` runs nothing and records no step (nothing ran).
-  * Flatten sees a leaf: `Operation.flatten(BuildOps(...))` is itself.
-  *
-  * A `required` batch runs whole or rejects: an operation a restriction
-  * refuses rejects the batch instead of being skipped, so a search counts the
-  * path as failed.
-  */
-final case class BuildOps(
-    build: (ReadyGame, PendingTree) => Either[OathViolation, Vector[CoreOperation]],
-    override val window: Option[PowerWindow] = None,
-    override val required: Boolean = false)
-    extends PrimitiveOperation
-
-/** Re-executes `body` until `guard` is false. The guard runs only at command
-  * time (the walker's job); `Operation.flatten` always descends into `body`,
-  * and replay applies recorded ops, never re-guarding.
-  */
-final case class Repeat(guard: (ReadyGame, PendingTree) => Boolean,
-    body: Operation) extends CoreOperation:
-  override val children: Vector[Operation] = Vector(body)
-
-/** A composite whose children are chosen AT WALK TIME: the walker evaluates
-  * `select(state, pending)` when it reaches the node and walks the returned
-  * operations in order.
-  *
-  * `children` is statically empty because the selection is dynamic, so
-  * `Operation.flatten(Branch(...))` is empty and a Branch must never sit on
-  * an action root that other code flattens — the walker resolves it and
-  * replay applies recorded ops, never re-selecting. Selected children are
-  * addressed by child index inside the branch, exactly like static children.
-  */
-final case class Branch(select: (ReadyGame, PendingTree) => Vector[Operation])
-    extends CoreOperation:
-  override val children: Vector[Operation] = Vector.empty
-
-/** Runs `children` in order. The walker's sequence composite; `Repeat`,
-  * `Sequence`, and `Branch` are the composites the walker consumes this slice.
-  */
-final case class Sequence(override val children: Vector[Operation],
-    override val window: Option[PowerWindow] = None) extends CoreOperation
-
 /** Semantic window for a card played faceup, to a site or as a faceup
   * adviser. Powers supply its children; no hook is a delta.
   */
 final case class CardPlayedFaceup(card: WorldCardId, resultingSource: RuleSourceRef)
-    extends CoreOperation:
+    extends Operation:
   override val window: Option[PowerWindow] = Some(PowerWindow.ActionCardPlayedFaceup)
   override val children: Vector[Operation] = Vector.empty
 
@@ -772,13 +678,7 @@ final case class CardPlayedFaceup(card: WorldCardId, resultingSource: RuleSource
   * children; no hook is a delta.
   */
 final case class CardPlayedFacedown(card: WorldCardId, player: PlayerId)
-    extends CoreOperation:
+    extends Operation:
   override val window: Option[PowerWindow] = Some(PowerWindow.ActionCardPlayedFacedown)
   override val children: Vector[Operation] = Vector.empty
 
-object Sequence:
-  /** Vararg builder so action trees read `Sequence(a, b)`
-   *  instead of wrapping a vector by hand.
-   */
-  def apply(first: Operation, rest: Operation*): Sequence =
-    new Sequence(first +: rest.toVector)
