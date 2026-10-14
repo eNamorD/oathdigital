@@ -29,8 +29,7 @@ final case class Riots private (catalog: ExecutableCatalog)
   import Riots._
   def id: PowerId = Riots.id
 
-  override def noteKeys: Vector[NoteKey] =
-    Vector(RegionDiscard.discarded, burned, unburned, RegionDiscard.none)
+  override def noteKeys: Vector[NoteKey] = Riots.noteKeys
 
   private val region = new RegionDiscard(catalog, _ => true)
 
@@ -59,12 +58,15 @@ final case class Riots private (catalog: ExecutableCatalog)
 
 object Riots:
   val id: PowerId = RiotsCard.power.id
+  private val notes = NoteSet(id)
+  notes.include(RegionDiscard.notes)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Burned {n favor} from the {People's Favor}." */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
+  val burned: NoteKey = notes.key("burned", Vector(NotePart.Text("Burned "),
     NotePart.Arg(0), NotePart.Text(" from the "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "The {People's Favor} had no favor to burn." */
-  val unburned: NoteKey = NoteKey("unburned", Vector(NotePart.Text("The "),
+  val unburned: NoteKey = notes.key("unburned", Vector(NotePart.Text("The "),
     NotePart.Arg(0), NotePart.Text(" had no favor to burn.")))
 
   def forCatalog(catalog: ExecutableCatalog): Riots =

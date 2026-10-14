@@ -159,9 +159,9 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
     coastSites: Set[SiteId], coastOrIslandSites: Set[SiteId])
     extends ContributingPower:
   def source: RuleSourceRef = RuleSourceRef.Site(site)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(NarrowPassSitePower.noTarget, NarrowPassSitePower.noTravel,
-      NarrowPassSitePower.noTravelConsent, NarrowPassSitePower.noTargetConsent)
+  private val own = NoteSet(id)
+  own.include(NarrowPassSitePower.notes)
+  override def noteKeys: Vector[NoteKey] = own.declared
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelActionEligibility ->
       Vector(Restriction((ctx, _) => blocked(ctx), travelNote,

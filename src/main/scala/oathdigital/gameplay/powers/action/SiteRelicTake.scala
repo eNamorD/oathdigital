@@ -20,17 +20,20 @@ import oathdigital.model._
 final class SiteRelicTake(power: PowerId, decisionId: String, heading: String,
     reach: (ReadyGame, PlayerId) => Option[SiteId]):
   /** "{Red} peeked at the relics at {site}: {relics}." */
-  val peeked: NoteKey = NoteKey("used.peeked", Vector(NotePart.Arg(0),
+  /** The take's own lines, declared in the set of the power that
+    * carries this take. */
+  val notes: NoteSet = NoteSet(power)
+  val peeked: NoteKey = notes.key("used.peeked", Vector(NotePart.Arg(0),
     NotePart.Text(" peeked at the relics at "), NotePart.Arg(1),
     NotePart.Text(": "), NotePart.Arg(2), NotePart.Text(".")))
   /** "{Red} took {relic} facedown from {site}." */
-  val took: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val took: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" took "), NotePart.Arg(1),
     NotePart.Text(" facedown from "), NotePart.Arg(2), NotePart.Text(".")))
   /** "{site} held no relic." */
-  val bare: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val bare: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no relic.")))
-  def keys: Vector[NoteKey] = Vector(peeked, took, bare)
+  def keys: Vector[NoteKey] = notes.declared
   /** The relic choice, which the take's line names. */
   def narrated: Set[String] = Set(decisionId)
 

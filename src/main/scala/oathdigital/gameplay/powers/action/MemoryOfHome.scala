@@ -21,11 +21,12 @@ object MemoryOfHomeCard extends Denizen(DenizenId("49"), "Memory of Home", Suit.
   */
 case object MemoryOfHome extends PaidAction(MemoryOfHomeCard.power):
   val decisionId: String = "power.memory-of-home.bank"
-  val moved: NoteKey = BankMoves.moved
+  private val notes = NoteSet(id)
+  val moved: NoteKey = notes.borrow(BankMoves.moved)
   /** "Every other favor bank was empty." */
-  val empty: NoteKey = NoteKey("used.empty", Vector(
+  val empty: NoteKey = notes.key("used.empty", Vector(
     NotePart.Text("Every other favor bank was empty.")))
-  override def noteKeys: Vector[NoteKey] = Vector(moved, empty)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

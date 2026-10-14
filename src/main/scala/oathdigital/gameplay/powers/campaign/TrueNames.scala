@@ -61,10 +61,11 @@ final case class TrueNames private (catalog: ExecutableCatalog)
 object TrueNames:
   val id: PowerId = TrueNamesCard.power.id
   /** "No battle plans matching {Blue}'s advisers." */
-  val named: NoteKey = NoteKey("named", Vector(
+  private val notes = NoteSet(id)
+  val named: NoteKey = notes.key("named", Vector(
     NotePart.Text("No battle plans matching "), NotePart.Arg(0),
     NotePart.Text("'s advisers.")))
-  val noteKeys: Vector[NoteKey] = Vector(named)
+  def noteKeys: Vector[NoteKey] = notes.declared
 
   def forCatalog(catalog: ExecutableCatalog): TrueNames =
     new TrueNames(catalog)

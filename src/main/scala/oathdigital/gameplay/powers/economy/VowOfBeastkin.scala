@@ -36,7 +36,7 @@ final case class VowOfBeastkin private (catalog: ExecutableCatalog)
   def id: PowerId = VowOfBeastkin.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
-  override def noteKeys: Vector[NoteKey] = Vector(VowOfBeastkin.gained)
+  override def noteKeys: Vector[NoteKey] = VowOfBeastkin.noteKeys
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterSourceSelection -> Vector(OptionRestriction(refused)),
@@ -72,7 +72,9 @@ object VowOfBeastkin:
   val id: PowerId = VowOfBeastkinCard.power.id
   val Warbands: Int = 1
   /** "Gained {n} more warband." */
-  val gained: NoteKey = ExtraWarbands.gained
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  val gained: NoteKey = notes.borrow(ExtraWarbands.gained)
 
   def forCatalog(catalog: ExecutableCatalog): VowOfBeastkin =
     new VowOfBeastkin(catalog)

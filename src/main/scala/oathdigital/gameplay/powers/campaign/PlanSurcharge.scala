@@ -44,6 +44,9 @@ trait PlanSurcharge extends ContributingPower:
   /** The added cost of the title's plan, which has no card. By default it is
     * paid from the user's board, as the title's own burnt cost is
     * (`CampaignPlanApplication`), which suits a cost with no placed portion. */
+  /** The set the mixing power declares its tax line in. */
+  protected def surchargeNotes: NoteSet
+
   protected def onTitle(ready: ReadyGame, user: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =
     Right(Vector[CoreOperation](PayCost(user, Location.PlayArea(user), cost)))
@@ -52,7 +55,7 @@ trait PlanSurcharge extends ContributingPower:
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = Vector(taxed)
+  override def noteKeys: Vector[NoteKey] = surchargeNotes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignPlanApplication -> Vector(Transform((ctx, children) =>

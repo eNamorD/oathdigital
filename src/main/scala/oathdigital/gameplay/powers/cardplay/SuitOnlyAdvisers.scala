@@ -40,8 +40,9 @@ trait SuitOnlyAdvisers extends ContributingPower:
   protected def playRules(rules: CardPlayRules): CardPlayRules = rules
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(SuitOnlyAdvisers.buried, SuitOnlyAdvisers.buriedByHolder)
+  private val notes = NoteSet(id)
+  notes.include(SuitOnlyAdvisers.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>

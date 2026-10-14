@@ -32,7 +32,9 @@ trait ActingSite extends SelectedModifier:
 
   final def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
   final override def priority: Int = EconomySources.RelocationPriority
-  final override def noteKeys: Vector[NoteKey] = Vector(ActingSite.acted)
+  private val notes = NoteSet(id)
+  notes.include(ActingSite.notes)
+  final override def noteKeys: Vector[NoteKey] = notes.declared
   final override def narratedDecisions: Set[String] =
     Set(PowerAccess.asIfDecision)
 

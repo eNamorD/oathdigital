@@ -65,8 +65,9 @@ sealed abstract class FortressRule extends ContributingPower:
   final override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  final override def noteKeys: Vector[NoteKey] =
-    Vector(FortressRule.shielded, FortressRule.allShielded)
+  private val notes = NoteSet(id)
+  notes.include(FortressRule.notes)
+  final override def noteKeys: Vector[NoteKey] = notes.declared
 
   final def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignKindSelection ->

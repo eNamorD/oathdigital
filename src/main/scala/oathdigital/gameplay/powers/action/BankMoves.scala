@@ -10,7 +10,10 @@ private[action] object BankMoves:
     PositionedLocation(Location.FavorBank(to)))
 
   /** "Moved {n favor} from {the Beast bank} to {the Arcane bank}." */
-  val moved: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Moved "),
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one borrows it. */
+  val notes: NoteSet = NoteSet.unowned("BankMoves")
+  val moved: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Moved "),
     NotePart.Arg(0), NotePart.Text(" from "), NotePart.Arg(1),
     NotePart.Text(" to "), NotePart.Arg(2), NotePart.Text(".")))
 
