@@ -238,10 +238,9 @@ class WalkerOperationWireSuite extends munit.FunSuite:
   test("every CoreOperation variant round-trips through the walker codec"):
     // `encodeOperation`/`encodePiece` are total over the sealed hierarchy
     // (I8), exactly like `encodeLocation` above -- this list is every
-    // `CoreOperation` case EXCEPT the five walker tree-control nodes
-    // (`Decide`/`BuildOps`/`Repeat`/`Branch`/`Sequence`), which can never be
-    // a recorded, already-applied operation and are covered by the
-    // "surfaces a typed WireError" test below instead.
+    // `CoreOperation` case. The walker's tree-control nodes are not in this
+    // list because they are not `CoreOperation`s: they live under the
+    // unsealed `Operation` and cannot be passed to the encoder at all.
     val player = PlayerId("red")
     val other = PlayerId("blue")
     val site = SiteId("site")
