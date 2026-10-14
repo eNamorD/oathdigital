@@ -48,6 +48,18 @@ class GreatCrusadeSuite extends munit.FunSuite:
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 1)))
 
+  test("from the advisers of a Pledge to Discord holder it is Discord, " +
+      "so it counts only the nomad cards at the sites they rule"):
+    val pledge = CatalogNames.denizen("Pledge to Discord")
+    val site = CatalogNames.site("Broken Peaks")
+    val advisers = withAdviser(withAdviser(board(warbands = 5, supply = 7),
+      card, Orientation.FaceUp), pledge, Orientation.FaceUp)
+    val b = withSiteCard(actorRules(advisers, site), site, nomads(2))
+    val run = commit(rules(winningDice), b, 2)
+    val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
+    assert(
+      picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 1)))
+
   test("it is discarded after the Campaign, and says so"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)

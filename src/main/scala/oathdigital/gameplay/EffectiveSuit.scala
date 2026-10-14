@@ -33,8 +33,8 @@ object PledgeToDiscordCard extends Denizen(DenizenId("223"), "Pledge to Discord"
   *
   * It lives in `gameplay`, below `actions` and `powers`, because the
   * operation pipeline reads `pledged` too. It names the cards its rules
-  * read, as `AdviserSuits` named Marriage. Their registered powers add
-  * nothing.
+  * read: Marriage and Pledge to Discord, whose registered powers add
+  * nothing, and Spiteful Mirror, whose pick it reads.
   */
 object EffectiveSuit:
   /** How many advisers of its suit `card` counts as, faceup. */

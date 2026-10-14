@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.EffectiveSuit
+import oathdigital.gameplay.{EffectiveSuit, PledgeToDiscordCard}
 import oathdigital.model._
 
 object GreatCrusadeCard extends Denizen(DenizenId("164"), "Great Crusade", Suit.Nomad):
@@ -46,12 +46,26 @@ object GreatCrusade:
   /** The nomad cards the plan's user rules, counting `card` once whatever its
     * orientation: choosing a plan reveals a facedown adviser, so it is faceup
     * and ruled once chosen. A bandit defender counts the nomad cards at every
-    * site bandits rule. Always at least 1. Pledge of Defense counts the same.
+    * site bandits rule. `card` counts nothing when it is an adviser of a user
+    * who has Pledge to Discord faceup: revealed, it is Discord. Pledge of
+    * Defense counts the same.
     */
   private[campaign] def nomads(catalog: ExecutableCatalog, context: PlanContext,
       card: DenizenId): Int =
     context.cardsRuled(catalog, context.ruler, Suit.Nomad).filter(_ != card)
-      .map(EffectiveSuit.weight).sum + 1
+      .map(EffectiveSuit.weight).sum +
+      (if pledged(context, card) then 0 else 1)
+
+  /** Whether `card` is an adviser of the plan's user, who has Pledge to
+    * Discord faceup. */
+  private def pledged(context: PlanContext, card: DenizenId): Boolean =
+    context.user.flatMap(user => context.ready.game.current.players
+      .find(_.player == user)).exists(player =>
+      player.advisers.exists(_.id == card) && player.advisers.exists {
+        case DenizenState(held, Orientation.FaceUp, _) =>
+          held == PledgeToDiscordCard.id
+        case _ => false
+      })
 
   def forCatalog(catalog: ExecutableCatalog): GreatCrusade =
     new GreatCrusade(catalog)
