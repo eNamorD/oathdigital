@@ -66,6 +66,42 @@ object NoteKey:
     * "Used {card}" and is its action's line. */
   def isUse(name: String): Boolean = name == Used || name.startsWith(s"$Used.")
 
+/** The keys one object declares (derive note keys design, "Mechanism"). A
+  * key is created through the set that declares it, so defining a key and
+  * declaring it are one act and the two cannot disagree.
+  *
+  * `declared` is complete only once the owning object's initialiser has run,
+  * so: read it through a `def`, never a `val`; declare keys as plain `val`s
+  * in the object that owns the set, never `lazy val`s, which would never
+  * register; and declare no key in a trait body, which initialises once per
+  * mixin. A set left partly filled is a `DeclaredNoteKeysSuite` failure, not
+  * a missing line in a player's log.
+  */
+final class NoteSet private (label: String):
+  private val own = scala.collection.mutable.ArrayBuffer.empty[NoteKey]
+  private val included = scala.collection.mutable.ArrayBuffer.empty[NoteSet]
+
+  /** Declares a key and returns it. */
+  def key(name: String, template: Vector[NotePart]): NoteKey =
+    require(!own.exists(_.name == name), s"$label declares $name twice")
+    val declaredKey = NoteKey(name, template)
+    own += declaredKey
+    declaredKey
+
+  /** Declares every key `other` owns, for a key this object borrows. */
+  def include(other: NoteSet): Unit =
+    if !included.contains(other) then included += other
+
+  /** Every key this object owns or borrows, its own first. */
+  def declared: Vector[NoteKey] =
+    (own.toVector ++ included.toVector.flatMap(_.declared)).distinctBy(_.name)
+
+object NoteSet:
+  def apply(power: PowerId): NoteSet = new NoteSet(power.value)
+  /** A set for a helper that owns keys no single power owns, such as the
+    * end-of-Campaign discard line. `label` names it in failures only. */
+  def unowned(label: String): NoteSet = new NoteSet(label)
+
 /** What a note may read when the walker reaches it. `previous` is the states
   * before and after the leaf this command ran last, if any, so a note that
   * restates a step reads the applied amount instead of repeating the
