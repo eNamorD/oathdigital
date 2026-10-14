@@ -34,13 +34,6 @@ object PledgeToDiscordCard extends Denizen(DenizenId("223"), "Pledge to Discord"
       "their printed suit. _Marriage counts as two [suit-discord]._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object FriendlyFamiliarCard extends Denizen(DenizenId("224"), "Friendly Familiar", Suit.Discord) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.friendly-familiar"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "Act as if your pawn is at any site. _You may use Trade " +
-      "modifiers at the site._")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object FalseProphetCard extends Denizen(DenizenId("85"), "False Prophet", Suit.Discord) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.false-prophet"),
     persistent = false, cost = Cost.free,

@@ -60,11 +60,11 @@ import oathdigital.gameplay.powers.cardplay.{BookBindersCard,
   WelcomingPartyCard, WildCryCard}
 import oathdigital.gameplay.powers.economy.{AnimalPlaymatesCard,
   AwaitedReturnCard, BirdsongCard, CupOfPlentyCard, CurfewCard,
-  DefameCard, DowntroddenCard, GolemLegionsCard, InitiationRiteCard,
-  KnightsErrantCard, MapLibraryCard, MountedLibraryCard, MovingMarketCard,
-  OldSongsCard, PressgangsCard, RowdyPubCard, SkilledMerchantsCard,
-  TheOldOakCard, VillageIdiotCard, VowOfBeastkinCard, VowOfPovertyCard,
-  VowOfWanderingCard}
+  DefameCard, DowntroddenCard, FriendlyFamiliarCard, GolemLegionsCard,
+  InitiationRiteCard, KnightsErrantCard, MapLibraryCard, MountedLibraryCard,
+  MovingMarketCard, OldSongsCard, PressgangsCard, RowdyPubCard,
+  SkilledMerchantsCard, SmallFriendsCard, TheOldOakCard, VillageIdiotCard,
+  VowOfBeastkinCard, VowOfPovertyCard, VowOfWanderingCard}
 import oathdigital.gameplay.powers.dice.JinxCard
 import oathdigital.gameplay.powers.recover.{CatacombsCard, RelicWorshipCard,
   SilverCharmCard}

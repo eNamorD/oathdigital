@@ -7,13 +7,6 @@ import oathdigital.model.{Cost, DenizenId, PowerId, Suit}
 // Generated from the retired runtime JSON (card classes slice 1).
 // Hand-edited from here on; a card moves out when it is implemented.
 
-object SmallFriendsCard extends Denizen(DenizenId("177"), "Small Friends", Suit.Beast) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.small-friends"),
-    persistent = false, cost = Cost.free,
-    text = "Act as if your pawn is at any site with a [suit-beast] " +
-      "card. _(You may use Trade modifiers there.)_")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object GiantPythonCard extends Denizen(DenizenId("186"), "Giant Python", Suit.Beast) with SiteOnly:
   val action = PrintedPower(PowerId("denizen.giant-python.action"),
     persistent = false, cost = Cost(secret = 1),
