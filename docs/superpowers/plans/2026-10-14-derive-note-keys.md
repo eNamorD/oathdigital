@@ -803,7 +803,7 @@ MSG
 
 ### Task 4: Convert the powers that own all their keys
 
-The mechanical bulk: roughly 131 declarations that borrow nothing. One commit per directory so a bad edit is found at the commit that caused it.
+The mechanical bulk: every power that owns its keys outright and has an id of its own. 112 of them, converted in two commits rather than one per directory, because the snapshot proves each batch inert and a scripted conversion either applies cleanly or refuses the file by name.
 
 **Files:** every file under `src/main/scala/oathdigital/gameplay/powers/` that contains `def noteKeys` and whose `noteKeys` vector names no key from another object. Counts of files containing `def noteKeys` by directory, for sizing: `action` 72, `campaign` 51, `whenplayed` 25, `economy` 10, `travel` 9, `cardplay` 7, `wake` 5, `targeting` 4, `search` 4, `banner` 4, `setup` 3, `rest` 3, `title` 1, `recover` 1, `dice` 1, `burn` 1.
 
@@ -892,7 +892,16 @@ Expected: PASS, every golden log unchanged.
 
 ### Task 5: Convert the borrowed keys
 
-Roughly 75 declarations that name a key owned elsewhere. Explicit `include` everywhere, plus compile-time evidence for the five helpers that build the note themselves.
+80 files, counted rather than estimated once Task 4 had taken every power that owns its keys outright. Explicit `include` where a key is relisted, plus compile-time evidence where a helper builds the key or the note itself.
+
+Task 4 drew its boundary at the shape it could convert safely: a power with an id of its own that defines each of its keys as `val k: NoteKey = NoteKey("name", template)`. 112 powers had it. The 80 that remain do not, in four shapes, and the counts are exact:
+
+- **34 relist a key another object owns.** `include` the owner's set. The owners are `VowOfWandering`, `RollResults`, `NoteSupport`, `RelicDraws`, `CardPlayRules`, `SparedForce`, `PlanDiscard`, `Outriders`, `SingleShields`, `VisionPlay`, `RulerToll`, `ExtraWarbands`, `EdificeSetupSupport` and `RegionDiscard` — fourteen, not the eleven the design guessed.
+- **24 take their key from a factory.** `Alchemist`'s only key is `val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)`: the name is the caller's, the wording the helper's. `include` cannot declare it, because the key does not exist until the helper is called. The factory takes the caller's set instead and creates the key in it, which declares it and is the evidence in one move: `NoteSupport.gainedKey(notes, NoteKey.Used)`.
+- **17 name a key that is neither a literal nor a plain borrow** — an alias, a `def`, or a key whose name differs from the field holding it (`HornedMask`'s `noteKeys` names `taken` where the file defines `took`). Read each before deciding; they are few.
+- **5 own shared keys but have no power id**: `ActingSite`, `SuitOnlyAdvisers`, `NarrowPassSitePower` in `TravelSitePowers`, `FortressRule` in `FortressRules`, and `GreatMarketRules`, whose keys are split between `GreatMarket` and `BanditMarket`. Each takes `NoteSet.unowned`, and the trait or powers that carry its keys include it. `BurnVows` belongs here too: `BurnVow.taken(one, many)` is a factory two vow objects call with different words, so it takes each caller's set as the 24 above do.
+
+Task 4's conversion was scripted, and the script refused any file outside the one shape it handled, naming the file and the reason rather than forcing it. The four shapes above are that refusal list, grouped.
 
 **Files:**
 - Modify, to own an unowned set: `powers/RelicDraws.scala:6`, `powers/NoteSupport.scala:10`, `powers/RulerToll.scala:17`, `powers/whenplayed/RegionDiscard.scala:86`, `powers/setup/EdificeSetupSupport.scala:9`, `powers/campaign/PlanDiscard.scala:20,25-26`, plus the owners of `SparedForce.spared`, `RollResults.rolled`, `VisionPlay.noFaceup`, `CardPlayRules.discardFirst` and `BannerFacePowers.printed`
