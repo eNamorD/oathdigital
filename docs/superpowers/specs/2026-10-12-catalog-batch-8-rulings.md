@@ -210,25 +210,51 @@
 
 - **177 Small Friends.** "Act as if your pawn is at any site with a
   [suit-beast] card. (You may use Trade modifiers there.)"
-  - A Trade modifier. Picked in the modifier loop, it asks which site, from
-    the sites with a Beast card.
+  - A Trade modifier. Picked in the modifier loop, it asks which site, right
+    after the pick, in the same pass. It offers the sites in play, other
+    than the pawn site, that hold a card of the Beast suit. The question has
+    no Skip.
   - For the rest of the Trade, the chosen site takes the place of the pawn
     site: the Trade's source cards and the modifiers usable at a site come
     from it. Ruled sites, advisers and relics stay usable.
   - The player is not in two places at once. The physical pawn site's cards
     are not usable unless the player rules that site (FAQ: Trade modifiers
     only at the new site).
+  - Rules that read the pawn site follow the chosen site: Skilled Merchants'
+    and Map Library's region is its region, and Map Library there is
+    selectable.
+  - Unavailable, with the reason:
+    - once a picked modifier's card stands at the pawn site, and the player
+      does not rule it: "A modifier you picked is at your pawn site";
+    - once Friendly Familiar acts at another site: "Already acting as if at
+      another site";
+    - with no such site: "No other site has a Beast card".
+  - The question: "Small Friends: act as if at which site?". The line:
+    "Acted as if at {the Shrine}."
 - **224 Friendly Familiar.** "[secret] Act as if your pawn is at any site.
-  You may use Trade modifiers at the site." As Small Friends, at any site,
-  costing one secret.
+  You may use Trade modifiers at the site." As Small Friends, costing one
+  secret paid onto it when picked.
+  - It offers the sites in play, other than the pawn site, that hold a card
+    a Trade can draw on (a card with a suit). With none: "No other site has
+    a card to trade with".
+  - The question: "Friendly Familiar: act as if at which site?". The line:
+    "Acted as if at {the Shrine}."
 - **55 Secret Signal.** "If you gain only one [favor], gain one more
   [favor]."
-  - An optional Trade modifier. It reads the Trade's whole favor gain: when
-    that is exactly one, one more favor is gained.
-  - Two separate gains of one favor are not "only one".
+  - An optional Trade modifier. It reads the Trade's whole favor gain at the
+    Trade's end, after Moving Market: the Trade's own gain and Moving
+    Market's. When that is exactly one, one more favor is gained from the
+    bank of the Trade's own gain.
+  - Two separate gains of one favor are not "only one": a Trade with Moving
+    Market that gains one favor and moves it gains two, and nothing more.
+  - Moving Market's favor counts at what the Nomad bank could give, so an
+    empty bank counts 0.
   - The extra favor does not count again.
-  - When the Trade gains more than one favor, it is shown unavailable with
-    the reason.
+  - Unavailable for a Trade for secrets: "A Trade for secrets gains no
+    favor". In a Trade for favor it is always available: the source is
+    chosen after the modifiers. When the gain is not one, it does nothing
+    and writes no line.
+  - The line: "Gained 1 more favor.", covering the generic gain line.
 
 ## Slice 8: Effective suit
 

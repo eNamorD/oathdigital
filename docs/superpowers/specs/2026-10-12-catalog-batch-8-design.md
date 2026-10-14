@@ -108,14 +108,27 @@ The approved changes outside `gameplay/powers/`:
   parked position inside a follow-up resolves to its node through
   `WalkerPowerGather.leafAt`, which asks the triggers the same way.
   Secret Testament needs no trigger: it is a Challenge modifier.
-- **An as-if pawn site for Trade** (slice 7). `PowerAccess.locate` takes an
-  optional site that replaces the pawn site in `usableSites`. Ruled sites
-  and the player's advisers and relics stay usable; the physical pawn site
-  does not, unless the player rules it. `ModifierChoice` reads the override
-  from the walk's answers, and `SelectedModifier.selectable` and its
-  overrides receive them. A sibling of `EconomySources.widened` replaces the
-  Trade source options with the new site's cards. A modifier pick may be
-  followed by its own question inside the modifier loop.
+- **An as-if pawn site for Trade** (slice 7, detailed at plan time). A
+  modifier pick may be followed by its own questions inside the modifier
+  loop, in the same pass, after its payment
+  (`ContributingPower.selectionQuestions`). Small Friends and Friendly
+  Familiar ask for a site under one shared decision,
+  `PowerAccess.asIfDecision`. `PowerAccess.locate` reads the walk's
+  answers: the as-if site replaces the pawn site in `usableSites`. Ruled
+  sites and the player's advisers and relics stay usable; the physical
+  pawn site does not, unless the player rules it. `ModifierChoice` passes
+  its answers to `locate`, and `SelectedModifier.selectable` and its
+  overrides receive them. `EconomySources.relocated`, a sibling of
+  `widened`, replaces the Trade source options with the new site's cards.
+- **"Start" judged with the walk's answers** (slice 7, approved
+  2026-10-14). The dry runs that judge a modifier pass's "Start" begin
+  with the pass's answers (`ProcedureWalker.advance`'s `seed`), so they see
+  the as-if site as the walk will.
+- **The modifier decision names its start selection** (slice 7, added at
+  plan time). `ModifierChoice` is a `ModifierHost`, which carries what the
+  player selected when the action started, so a modifier judged there can
+  tell a Trade for secrets. The walk's state does not hold the selection yet
+  on the command that starts the action.
 - **An effective suit** (slice 8). One function gives a card's suit as the
   rules see it for a player. Every reader of an adviser's suit and of a
   traded or mustered card's suit goes through it: `AdviserSuits`,
@@ -398,6 +411,20 @@ modifier loop, each asks which site its user acts as if at. Later modifier
 passes and the Trade's source options read that site in place of the pawn
 site. Secret Signal is an optional Trade modifier that gains one more favor
 when the Trade's whole favor gain is one.
+
+### Plan-time rulings
+
+- **Pick order.** Once a picked modifier's card stands at the unruled pawn
+  site, Small Friends and Friendly Familiar are unavailable. Once one of
+  them is picked, the other is.
+- **Rules that read the pawn site follow the as-if site:** Skilled
+  Merchants' and Map Library's region, and Map Library's own site.
+- **Secret Signal** sums, at the Trade's end, every favor its trader gained
+  in the Trade, Moving Market's included. Each records under one deferral
+  key, `TradeFavor.key`.
+- **Secret Signal's availability.** Unavailable only for a Trade for
+  secrets: the Trade's source, and so its gain, is chosen after the
+  modifiers.
 
 ## Slice 8: Effective suit
 
