@@ -29,18 +29,18 @@ object WarTortoiseCard extends Denizen(DenizenId("187"), "War Tortoise", Suit.Be
 case object WarTortoise extends BattlePlan:
   val cardId: DenizenId = WarTortoiseCard.id
   val id: PowerId = WarTortoiseCard.power.id
+  private val notes = NoteSet(id)
   /** "Double swords added no attack." */
-  val attack: NoteKey = NoteKey("attack",
+  val attack: NoteKey = notes.key("attack",
     Vector(NotePart.Text("Double swords added no attack.")))
   /** "Double shields added no defense." */
-  val defense: NoteKey = NoteKey("defense",
+  val defense: NoteKey = notes.key("defense",
     Vector(NotePart.Text("Double shields added no defense.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(WarTortoise.attack, WarTortoise.defense)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   private def label(side: CampaignPlanSide): String = side match
     case CampaignPlanSide.Attacker =>

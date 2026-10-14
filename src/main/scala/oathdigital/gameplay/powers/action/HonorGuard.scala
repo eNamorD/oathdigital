@@ -31,7 +31,7 @@ final case class HonorGuard private (catalog: ExecutableCatalog)
     extends PaidAction(HonorGuardCard.power):
   import HonorGuard._
 
-  override def noteKeys: Vector[NoteKey] = Vector(buried, spared)
+  override def noteKeys: Vector[NoteKey] = HonorGuard.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -107,12 +107,14 @@ final case class HonorGuard private (catalog: ExecutableCatalog)
 object HonorGuard:
   val id: PowerId = HonorGuardCard.power.id
   val decisionId: String = "power.honor-guard.adviser"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} buried {card} from {Blue}'s advisers." */
-  val buried: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val buried: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" buried "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text("'s advisers.")))
   /** "No adviser could be buried." */
-  val spared: NoteKey = NoteKey("used.none", Vector(
+  val spared: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No adviser could be buried.")))
 
   def forCatalog(catalog: ExecutableCatalog): HonorGuard =

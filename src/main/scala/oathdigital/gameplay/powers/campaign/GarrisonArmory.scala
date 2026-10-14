@@ -28,14 +28,15 @@ case object GarrisonArmory extends BattlePlan:
   val cardId: DenizenId = GarrisonArmoryCard.id
   val id: PowerId = GarrisonArmoryCard.power.id
 
+  private val notes = NoteSet(id)
   /** "Warbands on the targets added {n} more defense." */
-  val added: NoteKey = NoteKey("added", Vector(
+  val added: NoteKey = notes.key("added", Vector(
     NotePart.Text("Warbands on the targets added "), NotePart.Arg(0),
     NotePart.Text(" more defense.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(GarrisonArmory.added)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId)

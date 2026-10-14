@@ -21,14 +21,15 @@ object WhistleCard extends Relic(RelicId("R08"), "Whistle", value = 6, defense =
   */
 case object Whistle extends PaidAction(WhistleCard.power):
   val decisionId: String = "power.whistle.target"
-  val pulled: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Placed "),
+  private val notes = NoteSet(id)
+  val pulled: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Placed "),
     NotePart.Arg(0), NotePart.Text(" at "), NotePart.Arg(1),
     NotePart.Text(" and gave "), NotePart.Arg(0),
     NotePart.Text(" the Whistle's secret.")))
   /** Its line when no other player stands at another site. */
-  val nobody: NoteKey = NoteKey("used.none", Vector(
+  val nobody: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No pawn could be pulled.")))
-  override def noteKeys: Vector[NoteKey] = Vector(pulled, nobody)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

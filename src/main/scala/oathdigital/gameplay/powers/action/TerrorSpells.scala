@@ -33,16 +33,17 @@ object TerrorSpellsCard extends Denizen(DenizenId("61"), "Terror Spells", Suit.A
 case object TerrorSpells extends PaidAction(TerrorSpellsCard.power):
   val decisionId: String = "power.terror-spells.kills"
   val Kills: Int = 2
+  private val notes = NoteSet(id)
   /** "Killed {n} warbands." */
-  val killed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Killed "),
+  val killed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Killed "),
     NotePart.Arg(0), NotePart.Plural(0, " warband.", " warbands.")))
   /** "The {Darkest Secret} was not held." */
-  val unheld: NoteKey = NoteKey("used.none", Vector(NotePart.Text("The "),
+  val unheld: NoteKey = notes.key("used.none", Vector(NotePart.Text("The "),
     NotePart.Arg(0), NotePart.Text(" was not held.")))
   /** "No warband was in the region." */
-  val empty: NoteKey = NoteKey("used.empty", Vector(
+  val empty: NoteKey = notes.key("used.empty", Vector(
     NotePart.Text("No warband was in the region.")))
-  override def noteKeys: Vector[NoteKey] = Vector(killed, unheld, empty)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

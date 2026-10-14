@@ -23,8 +23,9 @@ object OutridersCard extends Denizen(DenizenId("104"), "Outriders", Suit.Order):
 case object Outriders extends BattlePlan:
   val cardId: DenizenId = OutridersCard.id
   val id: PowerId = OutridersCard.power.id
+  private val notes = NoteSet(id)
   /** "Skulls ignored." */
-  val ignored: NoteKey = NoteKey("ignored",
+  val ignored: NoteKey = notes.key("ignored",
     Vector(NotePart.Text("Skulls ignored.")))
 
   /** The attack scored again by every chosen plan (`AttackScore`), then
@@ -44,7 +45,7 @@ case object Outriders extends BattlePlan:
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Outriders: ignore all attack skulls", Vector.empty, Vector.empty))
 
-  override def noteKeys: Vector[NoteKey] = Vector(Outriders.ignored)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignAttackResult -> (use =>

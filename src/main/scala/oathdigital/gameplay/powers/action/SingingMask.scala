@@ -33,7 +33,7 @@ final case class SingingMask private (catalog: ExecutableCatalog)
   private val banner =
     PositionedLocation(Location.OnBanner(Banner.PeoplesFavor))
 
-  override def noteKeys: Vector[NoteKey] = Vector(moved, returned, nothing)
+  override def noteKeys: Vector[NoteKey] = SingingMask.noteKeys
   override def narratedDecisions: Set[String] =
     Set(cardDecisionId, directionDecisionId, amountDecisionId)
 
@@ -152,17 +152,19 @@ object SingingMask:
   val toBanner: DecisionOptionRef.Button =
     DecisionOptionRef.Button("to-peoples-favor")
   val toBank: DecisionOptionRef.Button = DecisionOptionRef.Button("to-bank")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Moved {n favor} from {the Beast bank} to the {People's Favor}." */
-  val moved: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Moved "),
+  val moved: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Moved "),
     NotePart.Arg(0), NotePart.Text(" from "), NotePart.Arg(1),
     NotePart.Text(" to the "), NotePart.Arg(2), NotePart.Text(".")))
   /** "Moved {n favor} from the {People's Favor} to {the Beast bank}." */
-  val returned: NoteKey = NoteKey("used.returned", Vector(
+  val returned: NoteKey = notes.key("used.returned", Vector(
     NotePart.Text("Moved "), NotePart.Arg(0), NotePart.Text(" from the "),
     NotePart.Arg(1), NotePart.Text(" to "), NotePart.Arg(2),
     NotePart.Text(".")))
   /** "No favor moved." */
-  val nothing: NoteKey = NoteKey("used.none", Vector(
+  val nothing: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No favor moved.")))
 
   def forCatalog(catalog: ExecutableCatalog): SingingMask =

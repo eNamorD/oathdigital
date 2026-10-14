@@ -27,13 +27,14 @@ object WhisperingLeavesCard extends Denizen(DenizenId("211"), "Whispering Leaves
 case object WhisperingLeaves extends PaidAction(WhisperingLeavesCard.power):
   val decisionId: String = "power.whispering-leaves.target"
   val Placed: Int = 2
+  private val notes = NoteSet(id)
   /** "{Blue} placed {n favor} on it." */
-  val placed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val placed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" placed "), NotePart.Arg(1), NotePart.Text(" on it.")))
   /** "{Blue} had no favor to place." */
-  val broke: NoteKey = NoteKey("used.empty", Vector(NotePart.Arg(0),
+  val broke: NoteKey = notes.key("used.empty", Vector(NotePart.Arg(0),
     NotePart.Text(" had no favor to place.")))
-  override def noteKeys: Vector[NoteKey] = Vector(placed, broke)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

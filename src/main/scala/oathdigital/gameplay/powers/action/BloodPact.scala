@@ -22,14 +22,15 @@ object BloodPactCard extends Denizen(DenizenId("62"), "Blood Pact", Suit.Arcane)
   */
 case object BloodPact extends PaidAction(BloodPactCard.power):
   val decisionId: String = "power.blood-pact.pairs"
+  private val notes = NoteSet(id)
   /** "{Red} sacrificed {n warbands} and gained {m secrets}." */
-  val sacrificed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val sacrificed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" sacrificed "), NotePart.Arg(1),
     NotePart.Text(" and gained "), NotePart.Arg(2), NotePart.Text(".")))
   /** "{Red} sacrificed no warbands." */
-  val spared: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val spared: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" sacrificed no warbands.")))
-  override def noteKeys: Vector[NoteKey] = Vector(sacrificed, spared)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

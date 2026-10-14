@@ -34,15 +34,16 @@ case object UnstableSummon extends BattlePlan:
     "Darkest Secret, for an attack die each?"
   val confirm: String = "Burn"
   val noBanner: String = "Needs the Darkest Secret with a secret on it"
+  private val notes = NoteSet(id)
   /** "Burned {n secrets} from the {Darkest Secret} for {n} attack dice." */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
+  val burned: NoteKey = notes.key("burned", Vector(NotePart.Text("Burned "),
     NotePart.Arg(0), NotePart.Text(" from the "), NotePart.Arg(1),
     NotePart.Text(" for "), NotePart.Arg(2),
     NotePart.Plural(2, " attack die.", " attack dice.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def noteKeys: Vector[NoteKey] = Vector(burned)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map { source =>

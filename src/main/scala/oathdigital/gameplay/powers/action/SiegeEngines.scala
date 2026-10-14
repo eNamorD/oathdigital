@@ -27,20 +27,21 @@ object SiegeEnginesCard extends Denizen(DenizenId("116"), "Siege Engines", Suit.
 case object SiegeEngines extends PaidAction(SiegeEnginesCard.power):
   val decisionId: String = "power.siege-engines.site"
   val Kills: Int = 2
+  private val notes = NoteSet(id)
   /** "Killed {n} {Blue} warbands at {site}." */
-  val killed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Killed "),
+  val killed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Killed "),
     NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
     NotePart.Plural(0, " warband at ", " warbands at "), NotePart.Arg(2),
     NotePart.Text(".")))
   /** "Killed {n} bandit warbands at {site}." */
-  val bandits: NoteKey = NoteKey("used.bandits", Vector(
+  val bandits: NoteKey = notes.key("used.bandits", Vector(
     NotePart.Text("Killed "), NotePart.Arg(0),
     NotePart.Plural(0, " bandit warband at ", " bandit warbands at "),
     NotePart.Arg(1), NotePart.Text(".")))
   /** "{site} had no warband to kill." */
-  val spared: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val spared: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" had no warband to kill.")))
-  override def noteKeys: Vector[NoteKey] = Vector(killed, bandits, spared)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

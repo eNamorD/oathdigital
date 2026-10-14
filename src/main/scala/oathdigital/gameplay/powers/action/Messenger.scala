@@ -30,13 +30,14 @@ object MessengerCard extends Denizen(DenizenId("105"), "Messenger", Suit.Order):
   */
 case object Messenger extends PaidAction(MessengerCard.power):
   val decisionId: String = "power.messenger.arrange"
+  private val notes = NoteSet(id)
   /** "{Red} redistributed their warbands." */
-  val redistributed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val redistributed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" redistributed their warbands.")))
   /** "No warband could be moved." */
-  val stuck: NoteKey = NoteKey("used.none", Vector(
+  val stuck: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No warband could be moved.")))
-  override def noteKeys: Vector[NoteKey] = Vector(redistributed, stuck)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Branch((live, _) => {

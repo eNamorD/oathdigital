@@ -33,7 +33,7 @@ final case class ArmedMob private (catalog: ExecutableCatalog)
     extends PaidAction(ArmedMobCard.power):
   import ArmedMob._
 
-  override def noteKeys: Vector[NoteKey] = Vector(discarded, nobody, bare)
+  override def noteKeys: Vector[NoteKey] = ArmedMob.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -98,15 +98,17 @@ final case class ArmedMob private (catalog: ExecutableCatalog)
 object ArmedMob:
   val id: PowerId = ArmedMobCard.power.id
   val decisionId: String = "power.armed-mob.adviser"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} discarded {card} from {Blue}'s advisers." */
-  val discarded: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val discarded: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" discarded "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text("'s advisers.")))
   /** "No player held the Darkest Secret without the People's Favor." */
-  val nobody: NoteKey = NoteKey("used.none", Vector(NotePart.Text(
+  val nobody: NoteKey = notes.key("used.none", Vector(NotePart.Text(
     "No player held the Darkest Secret without the People's Favor.")))
   /** "{Blue} had no faceup adviser to discard." */
-  val bare: NoteKey = NoteKey("used.empty", Vector(NotePart.Arg(0),
+  val bare: NoteKey = notes.key("used.empty", Vector(NotePart.Arg(0),
     NotePart.Text(" had no faceup adviser to discard.")))
 
   /** The Darkest Secret's holder, unless they also hold the People's Favor. */

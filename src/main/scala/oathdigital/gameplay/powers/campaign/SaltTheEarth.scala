@@ -36,7 +36,7 @@ final case class SaltTheEarth private (catalog: ExecutableCatalog)
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def noteKeys: Vector[NoteKey] = Vector(SaltTheEarth.buried)
+  override def noteKeys: Vector[NoteKey] = SaltTheEarth.noteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId)
@@ -110,8 +110,10 @@ object SaltTheEarth:
   /** Under the Campaign's prefix, so a parked question is a Campaign
     * decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix + "salt-the-earth"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Buried {cards} from {site}." */
-  val buried: NoteKey = NoteKey("buried", Vector(NotePart.Text("Buried "),
+  val buried: NoteKey = notes.key("buried", Vector(NotePart.Text("Buried "),
     NotePart.Arg(0), NotePart.Text(" from "), NotePart.Arg(1),
     NotePart.Text(".")))
 

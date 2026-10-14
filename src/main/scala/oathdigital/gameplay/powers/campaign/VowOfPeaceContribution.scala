@@ -30,14 +30,14 @@ case object VowOfPeaceContribution extends ContributingPower:
   val cardId: DenizenId = VowOfPeaceCard.id
   val id: PowerId = VowOfPeaceCard.power.id
 
+  private val notes = NoteSet(id)
   /** Where its second sentence removed the attacker's sacrifice decision. */
-  val noSacrifice: NoteKey = NoteKey("no-sacrifice", Vector(
+  val noSacrifice: NoteKey = notes.key("no-sacrifice", Vector(
     NotePart.Text("The attacker cannot sacrifice against "), NotePart.Arg(0),
     NotePart.Text(".")))
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(VowOfPeaceContribution.noSacrifice)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignActionEligibility ->

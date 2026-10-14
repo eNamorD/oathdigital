@@ -43,14 +43,15 @@ case object ArcaneArmor extends BattlePlan:
   val confirm: String = "Pay and set"
   val noSecret: String = "Needs 1 secret; you have 0"
   val noDefenseDice: String = "No defense dice to set"
+  private val notes = NoteSet(id)
   /** "Set {n} defense dice to double shields." */
-  val set: NoteKey = NoteKey("set", Vector(NotePart.Text("Set "),
+  val set: NoteKey = notes.key("set", Vector(NotePart.Text("Set "),
     NotePart.Arg(0), NotePart.Plural(0, " defense die to double shields.",
       " defense dice to double shields.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(set)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map { source =>

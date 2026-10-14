@@ -25,14 +25,15 @@ object FearsomeGeneralCard extends Denizen(DenizenId("253"), "Fearsome General",
 case object FearsomeGeneral extends BattlePlan:
   val cardId: DenizenId = FearsomeGeneralCard.id
   val id: PowerId = FearsomeGeneralCard.power.id
+  private val notes = NoteSet(id)
   /** "Skulls added {n} more swords." */
-  val added: NoteKey = NoteKey("added", Vector(
+  val added: NoteKey = notes.key("added", Vector(
     NotePart.Text("Skulls added "), NotePart.Arg(0),
     NotePart.Text(" more swords.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def noteKeys: Vector[NoteKey] = Vector(FearsomeGeneral.added)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,

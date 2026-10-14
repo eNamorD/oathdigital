@@ -33,7 +33,7 @@ final case class MasterAtArms private (catalog: ExecutableCatalog)
   def id: PowerId = MasterAtArms.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def noteKeys: Vector[NoteKey] = Vector(MasterAtArms.rerolled)
+  override def noteKeys: Vector[NoteKey] = MasterAtArms.noteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
@@ -77,8 +77,10 @@ object MasterAtArms:
   val label: String = "Master at Arms: reroll hollow swords"
   val heading: String = "Reroll how many hollow swords?"
   val noHollowSword: String = "No die shows a hollow sword"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Rerolled {n} hollow swords." */
-  val rerolled: NoteKey = NoteKey("rerolled", Vector(
+  val rerolled: NoteKey = notes.key("rerolled", Vector(
     NotePart.Text("Rerolled "), NotePart.Arg(0),
     NotePart.Plural(0, " hollow sword.", " hollow swords.")))
 

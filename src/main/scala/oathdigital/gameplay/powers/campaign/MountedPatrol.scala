@@ -30,8 +30,7 @@ final case class MountedPatrol private (catalog: ExecutableCatalog)
   def id: PowerId = MountedPatrol.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def planNoteKeys: Vector[NoteKey] =
-    Vector(MountedPatrol.halved)
+  override def planNoteKeys: Vector[NoteKey] = MountedPatrol.noteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
@@ -45,8 +44,10 @@ final case class MountedPatrol private (catalog: ExecutableCatalog)
 
 object MountedPatrol:
   val id: PowerId = MountedPatrolCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "The attack pool was halved to {n} dice." */
-  val halved: NoteKey = NoteKey("halved", Vector(
+  val halved: NoteKey = notes.key("halved", Vector(
     NotePart.Text("The attack pool was halved to "), NotePart.Arg(0),
     NotePart.Plural(0, " die.", " dice.")))
 

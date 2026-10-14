@@ -32,8 +32,7 @@ final case class MountainGiant private (catalog: ExecutableCatalog)
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def planNoteKeys: Vector[NoteKey] = Vector(MountainGiant.added,
-    MountainGiant.removed)
+  override def planNoteKeys: Vector[NoteKey] = MountainGiant.noteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     val side = context.side
@@ -68,11 +67,13 @@ object MountainGiant:
     * decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix +
     "mountain-giant"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Added {n} attack dice." */
-  val added: NoteKey = NoteKey("added", Vector(NotePart.Text("Added "),
+  val added: NoteKey = notes.key("added", Vector(NotePart.Text("Added "),
     NotePart.Arg(0), NotePart.Plural(0, " attack die.", " attack dice.")))
   /** "Removed {n} attack dice." */
-  val removed: NoteKey = NoteKey("removed", Vector(
+  val removed: NoteKey = notes.key("removed", Vector(
     NotePart.Text("Removed "), NotePart.Arg(0),
     NotePart.Plural(0, " attack die.", " attack dice.")))
 

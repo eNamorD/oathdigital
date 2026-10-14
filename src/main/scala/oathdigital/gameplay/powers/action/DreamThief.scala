@@ -28,15 +28,16 @@ object DreamThiefCard extends Denizen(DenizenId("70"), "Dream Thief", Suit.Arcan
 case object DreamThief extends PaidAction(DreamThiefCard.power):
   val firstDecisionId: String = "power.dream-thief.first"
   val secondDecisionId: String = "power.dream-thief.second"
+  private val notes = NoteSet(id)
   /** "{Red} swapped {Blue}'s {card} with {Green}'s {card}." */
-  val swapped: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val swapped: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" swapped "), NotePart.Arg(1), NotePart.Text("'s "),
     NotePart.Arg(2), NotePart.Text(" with "), NotePart.Arg(3),
     NotePart.Text("'s "), NotePart.Arg(4), NotePart.Text(".")))
   /** "No two facedown advisers could be swapped." */
-  val nothing: NoteKey = NoteKey("used.none", Vector(
+  val nothing: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No two facedown advisers could be swapped.")))
-  override def noteKeys: Vector[NoteKey] = Vector(swapped, nothing)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] =
     Set(firstDecisionId, secondDecisionId)
 

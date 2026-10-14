@@ -21,15 +21,16 @@ object PlagueEnginesCard extends Denizen(DenizenId("65"), "Plague Engines", Suit
   * asked. One line per player who paid; with none, one line says so.
   */
 case object PlagueEngines extends PaidAction(PlagueEnginesCard.power):
+  private val notes = NoteSet(id)
   /** "{Blue} put {n favor} into {the Arcane bank}." */
-  val paid: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val paid: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" put "), NotePart.Arg(1), NotePart.Text(" into "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "No player put favor into {the Arcane bank}." */
-  val nobody: NoteKey = NoteKey("used.none", Vector(
+  val nobody: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No player put favor into "), NotePart.Arg(0),
     NotePart.Text(".")))
-  override def noteKeys: Vector[NoteKey] = Vector(paid, nobody)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] =

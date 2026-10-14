@@ -34,7 +34,7 @@ final case class SealingWard private (catalog: ExecutableCatalog)
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
-  override def noteKeys: Vector[NoteKey] = Vector(SealingWard.added)
+  override def noteKeys: Vector[NoteKey] = SealingWard.noteKeys
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignGatherPools -> Vector(Transform((ctx, children) =>
@@ -75,8 +75,10 @@ final case class SealingWard private (catalog: ExecutableCatalog)
 
 object SealingWard:
   val id: PowerId = SealingWardCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Added {n} more defense dice." */
-  val added: NoteKey = NoteKey("added", Vector(NotePart.Text("Added "),
+  val added: NoteKey = notes.key("added", Vector(NotePart.Text("Added "),
     NotePart.Arg(0),
     NotePart.Plural(0, " more defense die.", " more defense dice.")))
 

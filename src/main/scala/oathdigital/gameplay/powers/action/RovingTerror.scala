@@ -34,7 +34,7 @@ final case class RovingTerror private (catalog: ExecutableCatalog)
   import RovingTerror._
 
   private val cards = new SiteCards(catalog, Suit.all.toSet)
-  override def noteKeys: Vector[NoteKey] = Vector(replaced, nothing)
+  override def noteKeys: Vector[NoteKey] = RovingTerror.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -98,12 +98,14 @@ final case class RovingTerror private (catalog: ExecutableCatalog)
 object RovingTerror:
   val id: PowerId = RovingTerrorCard.power.id
   val decisionId: String = "power.roving-terror.card"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Replaced {card} at {site}." */
-  val replaced: NoteKey = NoteKey(NoteKey.Used, Vector(
+  val replaced: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("Replaced "), NotePart.Arg(0), NotePart.Text(" at "),
     NotePart.Arg(1), NotePart.Text(".")))
   /** "No card could be replaced." */
-  val nothing: NoteKey = NoteKey("used.none", Vector(
+  val nothing: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No card could be replaced.")))
 
   def forCatalog(catalog: ExecutableCatalog): RovingTerror =

@@ -50,8 +50,7 @@ final case class WildMounts private (catalog: ExecutableCatalog)
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(WildMounts.swapped, WildMounts.swappedOffTurn)
+  override def noteKeys: Vector[NoteKey] = WildMounts.noteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
@@ -153,13 +152,15 @@ object WildMounts:
     * decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix + "wild-mounts"
   val skip: DecisionOptionRef.Button = DecisionOptionRef.Button("skip")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Discarded {card} instead of the battle plans." */
-  val swapped: NoteKey = NoteKey("swapped", Vector(
+  val swapped: NoteKey = notes.key("swapped", Vector(
     NotePart.Text("Discarded "), NotePart.Arg(0),
     NotePart.Text(" instead of the battle plans.")))
   /** "{Blue} discarded {card} instead of the battle plans.", for a
     * defender. */
-  val swappedOffTurn: NoteKey = NoteKey("swapped-off-turn", Vector(
+  val swappedOffTurn: NoteKey = notes.key("swapped-off-turn", Vector(
     NotePart.Arg(0), NotePart.Text(" discarded "), NotePart.Arg(1),
     NotePart.Text(" instead of the battle plans.")))
 

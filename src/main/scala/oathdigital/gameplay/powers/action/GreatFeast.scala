@@ -27,7 +27,7 @@ final case class GreatFeast private (catalog: ExecutableCatalog)
   import GreatFeast._
 
   private val cards = new SiteCards(catalog, Set(Suit.Beast))
-  override def noteKeys: Vector[NoteKey] = Vector(feasted, bare)
+  override def noteKeys: Vector[NoteKey] = GreatFeast.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -69,12 +69,14 @@ object GreatFeast:
   val id: PowerId = GreatFeastCard.power.id
   val decisionId: String = "power.great-feast.card"
   val Gained: Int = 3
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} discarded {card} and gained {n} Supply." */
-  val feasted: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val feasted: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" discarded "), NotePart.Arg(1),
     NotePart.Text(" and gained "), NotePart.Arg(2), NotePart.Text(".")))
   /** "{site} held no Beast card." */
-  val bare: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val bare: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no Beast card.")))
 
   def forCatalog(catalog: ExecutableCatalog): GreatFeast =

@@ -52,8 +52,9 @@ case object Hospital extends BattlePlan:
     * walker clears it with every pool when the Campaign ends. */
   val Saved: PoolKey = PoolKey("campaign.hospital.saved")
 
+  private val notes = NoteSet(id)
   /** "Placed {n} {Red} warband at {site} instead." */
-  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Text("Placed "),
+  val placed: NoteKey = notes.key("placed", Vector(NotePart.Text("Placed "),
     NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
     NotePart.Plural(0, " warband at ", " warbands at "), NotePart.Arg(2),
     NotePart.Text(" instead.")))
@@ -71,7 +72,7 @@ case object Hospital extends BattlePlan:
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
   override def priority: Int = Hospital.Priority
-  override def noteKeys: Vector[NoteKey] = Vector(Hospital.placed)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.user.flatMap(_ => context.denizen(cardId)).map(source =>

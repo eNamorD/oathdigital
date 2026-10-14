@@ -37,11 +37,12 @@ case object WardOfSilence extends PaidAction(WardOfSilenceCard.power):
   val targetDecisionId: String = "power.ward-of-silence.target"
   val amountDecisionId: String = "power.ward-of-silence.amount"
   val noFaceupSecrets: String = "No faceup secrets"
+  private val notes = NoteSet(id)
   /** "Flipped {n secrets} on {Blue}'s board facedown." */
-  val flipped: NoteKey = NoteKey(NoteKey.Used, Vector(
+  val flipped: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("Flipped "), NotePart.Arg(0), NotePart.Text(" on "),
     NotePart.Arg(1), NotePart.Text("'s board facedown.")))
-  override def noteKeys: Vector[NoteKey] = Vector(flipped)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] =
     Set(targetDecisionId, amountDecisionId)
 

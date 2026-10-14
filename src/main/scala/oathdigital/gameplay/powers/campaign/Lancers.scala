@@ -27,8 +27,7 @@ final case class Lancers private (catalog: ExecutableCatalog)
   def id: PowerId = Lancers.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def planNoteKeys: Vector[NoteKey] =
-    Vector(Lancers.doubled)
+  override def planNoteKeys: Vector[NoteKey] = Lancers.noteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
@@ -44,8 +43,10 @@ final case class Lancers private (catalog: ExecutableCatalog)
 
 object Lancers:
   val id: PowerId = LancersCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "The attack roll was doubled." */
-  val doubled: NoteKey = NoteKey("doubled",
+  val doubled: NoteKey = notes.key("doubled",
     Vector(NotePart.Text("The attack roll was doubled.")))
 
   def forCatalog(catalog: ExecutableCatalog): Lancers = new Lancers(catalog)

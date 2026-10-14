@@ -30,7 +30,7 @@ final case class Oracle private (catalog: ExecutableCatalog)
     extends PaidAction(OracleCard.power):
   import Oracle._
 
-  override def noteKeys: Vector[NoteKey] = Vector(drew, noVision)
+  override def noteKeys: Vector[NoteKey] = Oracle.noteKeys
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
@@ -48,12 +48,14 @@ final case class Oracle private (catalog: ExecutableCatalog)
 
 object Oracle:
   val id: PowerId = OracleCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} drew {Vision} from the world deck." */
-  val drew: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val drew: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" drew "), NotePart.Arg(1),
     NotePart.Text(" from the world deck.")))
   /** "The world deck held no Vision." */
-  val noVision: NoteKey = NoteKey("used.none",
+  val noVision: NoteKey = notes.key("used.none",
     Vector(NotePart.Text("The world deck held no Vision.")))
 
   def forCatalog(catalog: ExecutableCatalog): Oracle =

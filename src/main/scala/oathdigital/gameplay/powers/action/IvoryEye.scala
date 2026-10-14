@@ -25,13 +25,14 @@ object IvoryEyeCard extends Relic(RelicId("R16"), "Ivory Eye", value = 79, defen
   */
 case object IvoryEye extends PaidAction(IvoryEyeCard.power):
   val decisionId: String = "power.ivory-eye.adviser"
+  private val notes = NoteSet(id)
   /** Its own line, in place of the generic Peeked line. The card reads as
     * its back to anyone but the peeker, so the owner is named apart from
     * it. */
-  val peeked: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val peeked: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" peeked at "), NotePart.Arg(1), NotePart.Text(" in "),
     NotePart.Arg(2), NotePart.Text("'s advisers.")))
-  override def noteKeys: Vector[NoteKey] = Vector(peeked)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   /** The option for the facedown adviser in position `slot` of `owner`'s
