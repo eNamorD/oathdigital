@@ -484,7 +484,7 @@ final case class Take(piece: Piece, player: PlayerId,
 // Walker leaves and composites.
 //
 // These cases MUST live in this file: CoreOperation/PrimitiveOperation are
-// sealed and Scala 2.13 requires sealed subclasses in the same source file
+// sealed and Scala requires sealed subclasses in the same source file
 // (Task 1 review ruling / plan amendment). They extend PrimitiveOperation, so
 // `children = Vector(this)` — each is a leaf.
 //

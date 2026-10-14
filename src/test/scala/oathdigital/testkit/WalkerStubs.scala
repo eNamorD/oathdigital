@@ -12,11 +12,11 @@ object WalkerStubs:
   val stopOption: DecisionOptionRef.Button = DecisionOptionRef.Button("stop")
 
   /** Stub of Operation: a test-only composite that hooks a `PowerWindow` on
-    * an arbitrary children vector. `Operation` is deliberately unsealed
-    * (unlike `CoreOperation`/`PrimitiveOperation`, which Scala 2.13 pins to
-    * `CoreOperations.scala`) precisely so a windowed node can be authored
-    * outside that file, so a suite can prove the walker's generic wiring
-    * with a tree it builds itself.
+    * an arbitrary children vector. `Operation` is the unsealed generic
+    * layer, so a windowed node can be authored here and a suite can prove
+    * the walker's generic wiring with a tree it builds itself. Oath's own
+    * operations are sealed under `CoreOperation`, which Scala pins to
+    * `CoreOperations.scala`; this node is deliberately not one of them.
     */
   final case class WindowedNode(hook: PowerWindow,
       override val children: Vector[Operation]) extends Operation:
