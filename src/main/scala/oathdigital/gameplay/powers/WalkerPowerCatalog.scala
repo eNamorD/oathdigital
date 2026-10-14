@@ -52,6 +52,7 @@ import oathdigital.gameplay.walker.WalkerPowers
   * present.
   * Brass Army's restriction is inert until a batch moves its holder's pawn.
   * Secret Testament is inert until a Challenge walks `ChallengeRibbon`.
+  * Yew Staff hooks no window: card powers read it through CardPowerBanners.
   * Jinx is inert until a roll step asks for rerolls.
   * `restrictionSet` gives every walker step the catalog's global operation
   * restrictions.
@@ -63,6 +64,7 @@ object WalkerPowerCatalog:
       Vector(VowOfSilence, VowOfDivision) ++
       Vector(BrassArmyMoves) ++
       Vector(SecretTestament) ++
+      Vector(YewStaff) ++
       TravelSitePowers.all ++
       TravelModifiers.forCatalog(catalog) ++
       Vector(LeagueTreatyContribution.forCatalog(catalog)) ++
