@@ -2,23 +2,21 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.operations.OperationRestrictions
-import oathdigital.gameplay.powers.action.{Assassin, PiedPiper}
-import oathdigital.gameplay.powers.banner.{BannerFacePowers, SecretTestament}
-import oathdigital.gameplay.powers.burn.{VowOfDivision, VowOfSilence}
-import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRestrictions,
-  PlanRewrites, PlanRules, SimplePlans, VowOfPeaceContribution}
-import oathdigital.gameplay.powers.dice.Jinx
-import oathdigital.gameplay.powers.economy.{KnightsErrant, Marriage}
-import oathdigital.gameplay.powers.cardplay.{CardPlayTriggers, FamilyWagon,
-  LostTapestry, VowOfUnionAdvisers}
-import oathdigital.gameplay.powers.recover.CatacombsContribution
-import oathdigital.gameplay.powers.rest.{Insomnia, LeagueTreatyContribution, SilverTongue}
-import oathdigital.gameplay.powers.setup.{BanditMarket, BrokenForge, EmptyGrounds, GreatForge, GreatMarket, ProvingGrounds}
-import oathdigital.gameplay.powers.targeting.TargetProtections
-import oathdigital.gameplay.powers.title.ChaosCult
-import oathdigital.gameplay.powers.travel.{BrassArmyMoves, TravelModifiers, TravelSitePowers}
-import oathdigital.gameplay.powers.wake.TakeWealthLimit
-import oathdigital.gameplay.powers.whenplayed.{ASmallFavor, ConspiracyWhenPlayed, Dazzle, FaithfulFriend, FamilyHeirloom, Garrison, ShiftingFog, TwinBrother, WhenPlayedPowers}
+import oathdigital.gameplay.powers.action._
+import oathdigital.gameplay.powers.banner._
+import oathdigital.gameplay.powers.burn._
+import oathdigital.gameplay.powers.campaign._
+import oathdigital.gameplay.powers.cardplay._
+import oathdigital.gameplay.powers.dice._
+import oathdigital.gameplay.powers.economy._
+import oathdigital.gameplay.powers.recover._
+import oathdigital.gameplay.powers.rest._
+import oathdigital.gameplay.powers.setup._
+import oathdigital.gameplay.powers.targeting._
+import oathdigital.gameplay.powers.title._
+import oathdigital.gameplay.powers.travel._
+import oathdigital.gameplay.powers.wake._
+import oathdigital.gameplay.powers.whenplayed._
 import oathdigital.gameplay.walker.WalkerPowers
 
 /** The real catalog of `ContributingPower`s wired onto the generic walker
