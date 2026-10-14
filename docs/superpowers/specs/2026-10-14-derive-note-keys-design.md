@@ -43,8 +43,8 @@ omitted from the log. The rest of the log renders.
 So the defect is a **duplicated declaration**: a key is defined in one place
 and relisted in another, and the two can disagree silently. There are 206
 `noteKeys` overrides. Roughly 75 of them relist a key owned by another
-object; `PlanDiscard.discarded` alone is relisted by 12 powers that also
-carry a byte-identical `later` body.
+object; `PlanDiscard.discarded` alone is relisted by 12 powers, seven of
+which also carry a byte-identical `later` body.
 
 ### Why this cannot be a compile error under `-Werror`
 
@@ -79,7 +79,7 @@ power *does* declare and cannot see one it omits.
 | 7 | Proof the rewrite is inert | A committed snapshot of `power id -> sorted key names`, taken before anything moves, byte-identical after every slice. |
 | 8 | Scope | Note keys only. `noteSource` and `narratedDecisions` keep their own overrides. |
 | 9 | Second idiom | Closed: the bare `NoteKey` constructor is restricted once the rewrite lands. |
-| 10 | The 12 `PlanDiscard` relists | Fixed first, by a trait supplying both the key and the shared `later` body. One section here, no spec of its own. |
+| 10 | The 12 `PlanDiscard` relists | Fixed first, by a trait supplying the key to all 12 and the shared `later` body to the seven that discard unconditionally. One section here, no spec of its own. |
 | 11 | Vocabulary | "Note", "note key", "wording" and "declared set" are added to CONTEXT.md's `## Language`. |
 
 ### Why not a compile error everywhere (decision 1)
@@ -173,6 +173,15 @@ the 12-relist bug lived.
 to attach evidence to, so they stay an explicit `include`. There are about
 ten such sites and decision 6 covers them.
 
+### The end-of-Campaign discard
+
+The 12 powers whose card says "At end, discard" relist
+`PlanDiscard.discarded` and, seven of them, an identical `later` body. A
+`DiscardedAtEnd` trait over `BattlePlan` supplies both, and leaves each power
+expressing only what differs from the standard: its own keys, a condition on
+the discard, or a second window. This is slice 2 and depends on nothing
+else.
+
 ### One declared-set union
 
 The union of walker powers, phase powers and `RuleNotes.all` is re-derived
@@ -208,9 +217,12 @@ same one-line proof, which is why the snapshot is taken first.
    "wording" and "declared set" to CONTEXT.md's `## Language`, pointing at
    the 2026-09-26 design. *Proves:* green against untouched code, so the
    baseline predates every later slice.
-2. **`PlanDiscard` trait.** One trait supplies both `PlanDiscard.discarded`
-   and the shared `later` body, deleting 12 relists and 12 identical bodies.
-   *Proves:* snapshot byte-identical.
+2. **`PlanDiscard` trait.** One trait supplies `PlanDiscard.discarded` to
+   all 12 powers and the end-of-Campaign `later` entry to the seven that
+   discard unconditionally. The other five keep only what differs: a
+   condition on the discard (Hearts and Minds, Traveling Doctor, Mountain
+   Giant) or a second window (Rain Boots, Lancers). Deletes 12 relists and
+   seven identical bodies. *Proves:* snapshot byte-identical.
 3. **Mechanism.** `NoteSet`, `DeclaredNotes`, the walker helper and the
    production error log, applied to two powers only. *Proves:* a deliberately
    undeclared key fails a test at emission; snapshot byte-identical.
