@@ -1,12 +1,14 @@
 package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{InPlayCardResources, PlayerResourceSources}
+import oathdigital.gameplay.{EffectiveSuit, InPlayCardResources,
+  PlayerResourceSources}
 import oathdigital.model._
 
 /** One in-play card's planned Rest return. Denizens and edifices return both
-  * favor (to their printed suit bank) and secrets; relics return only secrets
-  * and keep favor in place.
+  * favor (to their suit bank, Discord for a Pledge to Discord holder's
+  * advisers: `EffectiveSuit`) and secrets; relics return only secrets and
+  * keep favor in place.
   */
 final case class RestCleanupCard(
     id: CardId,
@@ -33,7 +35,7 @@ object RestCleanupPlan:
         case (result, card) => result.flatMap { accumulated =>
           if card.tokens.favor == 0 then Right(accumulated :+ RestCleanupCard(
             card.id, None, 0, card.tokens.secrets))
-          else catalog.suitOf(card.id).toRight(
+          else EffectiveSuit.of(catalog, ready, card.id).toRight(
             s"cannot attribute favor on ${card.id.value} to a suit").map { suit =>
             accumulated :+ RestCleanupCard(card.id, Some(suit),
               card.tokens.favor, card.tokens.secrets)
@@ -54,7 +56,8 @@ object RestCleanupPlan:
     }
 
 /** The Rest cleanup's operations: favor on every card in play to its
-  * printed suit bank, secrets on cards to the resting player, and the
+  * suit bank (`EffectiveSuit`: a Pledge to Discord holder's advisers return
+  * to Discord), secrets on cards to the resting player, and the
   * resting player's facedown secrets flipped faceup -- the operations legacy
   * `Rest.applyCompletion` ran. Finish Rest runs them at the Rest favor
   * window; A Round of Ale runs them in an action, outside that window.

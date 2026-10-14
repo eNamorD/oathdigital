@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.actions.economy.AdviserSuits
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.model._
 
 object NatureWorshipCard extends Denizen(DenizenId("175"), "Nature Worship", Suit.Beast):
@@ -46,7 +46,7 @@ final case class NatureWorship private (catalog: ExecutableCatalog)
       .flatMap(_.advisers).collect {
         case DenizenState(held, Orientation.FaceUp, _)
             if held != cardId && catalog.suitOf(held).contains(Suit.Beast) =>
-          AdviserSuits.weight(held)
+          EffectiveSuit.weight(held)
       }.sum
 
 object NatureWorship:

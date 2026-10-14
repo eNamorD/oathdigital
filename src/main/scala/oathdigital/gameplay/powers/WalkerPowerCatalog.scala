@@ -85,6 +85,7 @@ object WalkerPowerCatalog:
       TargetProtections.forCatalog(catalog) ++
       Vector(KnightsErrant.forCatalog(catalog)) ++
       Vector(Marriage) ++
+      Vector(PledgeToDiscord) ++
       Vector(Jinx.forCatalog(catalog)) ++
       BattlePlans.forCatalog(catalog) ++
       PlanRules.forCatalog(catalog) ++

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.actions.economy.AdviserSuits
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.model._
 
 object MilitaryParadeCard extends Denizen(DenizenId("109"), "Military Parade", Suit.Order):
@@ -58,12 +58,12 @@ object MilitaryParade:
       case CampaignDefender.Player(player) => player }
 
   /** `player`'s faceup advisers, a Marriage listed twice since it counts as
-    * two (`AdviserSuits.weight`). */
+    * two (`EffectiveSuit.weight`). */
   private def advisers(ready: ReadyGame, player: PlayerId): Vector[CardId] =
     ready.game.current.players.find(_.player == player).toVector
       .flatMap(_.advisers.collect {
         case DenizenState(held, Orientation.FaceUp, _) => held })
-      .flatMap(held => Vector.fill(AdviserSuits.weight(held))(held))
+      .flatMap(held => Vector.fill(EffectiveSuit.weight(held))(held))
 
   def forCatalog(catalog: ExecutableCatalog): MilitaryParade =
     new MilitaryParade(catalog)

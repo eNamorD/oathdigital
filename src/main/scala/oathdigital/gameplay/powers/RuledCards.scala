@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.SiteRulers
-import oathdigital.gameplay.actions.economy.AdviserSuits
+import oathdigital.gameplay.{EffectiveSuit, SiteRulers}
 import oathdigital.model._
 
 /** The cards a ruler rules (catalog batch 3 rulings, "Cards a player
@@ -10,7 +9,9 @@ import oathdigital.model._
   * sites the ruler rules. Bandits hold no advisers; they rule the cards at the
   * sites they rule, as `SiteRulers.rulerOfCard` treats them. Only a faceup
   * card has a suit, so a facedown adviser or denizen belongs to no suit, while
-  * an edifice has its suit on either face.
+  * an edifice has its suit on either face. An adviser's suit is its
+  * effective suit (`EffectiveSuit`), so a Pledge to Discord holder rules its
+  * advisers as Discord.
   */
 object RuledCards:
   /** The cards of `suit` that `ruler` rules: its advisers first, then the
@@ -29,10 +30,11 @@ object RuledCards:
         case DenizenState(held, Orientation.FaceUp, _) => held
         case edifice: EdificeState => edifice.id
       }
-    (advisers ++ atSites).filter(card => catalog.suitOf(card).contains(suit))
+    (advisers ++ atSites).filter(card =>
+      EffectiveSuit.of(catalog, ready, card).contains(suit))
 
   /** How many cards of `suit` `ruler` rules, a faceup Marriage counting as
-    * two (`AdviserSuits.weight`). */
+    * two (`EffectiveSuit.weight`). */
   def count(catalog: ExecutableCatalog, ready: ReadyGame, ruler: SiteRuler,
       suit: Suit): Int =
-    of(catalog, ready, ruler, suit).map(AdviserSuits.weight).sum
+    of(catalog, ready, ruler, suit).map(EffectiveSuit.weight).sum
