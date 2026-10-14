@@ -94,6 +94,20 @@ class CampaignPlansSuite extends munit.FunSuite:
     val down = on(b)(_.relic(b.actor, brassCard, facedown = true))
     assertEquals(brass.plan(context(down, CampaignPlanSide.Attacker)), None)
 
+  test("a defender's Brass Army costs a secret placed onto it and removes " +
+      "four attack dice"):
+    val b = board(warbands = 5, supply = 7)
+    val held = on(b)(_.relic(b.rival, brassCard))
+    val offer = present(brass.plan(defending(held)),
+      "the defender's Brass Army offer")
+    assertEquals(offer.label, "Brass Army: remove 4 attack dice")
+    assertEquals(offer.costs,
+      Vector[CampaignPlanCost](CampaignPlanCost.Secret(1)))
+    assertEquals(offer.effects, Vector[CampaignPlanEffect](
+      CampaignPlanEffect.RemoveAttackDice(4)))
+    assertEquals(brass.sides, Set[CampaignPlanSide](
+      CampaignPlanSide.Attacker, CampaignPlanSide.Defender))
+
   test("Watchdog adds a defense die when a target is in the Cradle, for a " +
       "ruler of its card"):
     val base = board(warbands = 5, supply = 7)

@@ -227,7 +227,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(parkedDecision(b, plans).query, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Priced(
         DecisionOption.Badged(DecisionOption.Relic(DecisionOptionRef.Relic(
-          brass)), "Attack Plan"),
+          brass)), "Battle Plan"),
         OptionPrice(secrets = 1)),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Choose a battle plan, or finish")))
@@ -255,7 +255,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(parkedDecision(b, first).query, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Priced(
         DecisionOption.Badged(DecisionOption.Relic(DecisionOptionRef.Relic(
-          brass)), "Attack Plan"),
+          brass)), "Battle Plan"),
         OptionPrice(secrets = 1)),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Choose a battle plan, or finish")))

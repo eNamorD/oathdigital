@@ -3960,7 +3960,7 @@
         {
           "id": "relic.brass-army.campaign",
           "persistent": false,
-          "rulesText": "[secret] +4 [attack-die]"
+          "rulesText": "[secret] ±4 [attack-die]"
         },
         {
           "id": "relic.brass-army.restriction",
