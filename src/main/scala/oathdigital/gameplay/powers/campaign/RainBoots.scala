@@ -22,23 +22,22 @@ object RainBootsCard extends Denizen(DenizenId("14"), "Rain Boots", Suit.Nomad):
   * Archers is.
   */
 final case class RainBoots private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = RainBootsCard.id
   def id: PowerId = RainBoots.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(SingleShields.ignored, PlanDiscard.discarded)
+  override def planNoteKeys: Vector[NoteKey] =
+    Vector(SingleShields.ignored)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Rain Boots: ignore single shields", Vector.empty, Vector.empty))
 
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
+  override def otherWindows
+      : Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignDefenseResult -> (use =>
-      SingleShields.ignore(use, id, PowerSourceRef.Card(cardId))),
-    PowerWindow.CampaignActionEligibility -> (use =>
-      PlanDiscard.afterCampaign(catalog, id, use, cardId)))
+      SingleShields.ignore(use, id, PowerSourceRef.Card(cardId))))
 
 object RainBoots:
   val id: PowerId = RainBootsCard.power.id

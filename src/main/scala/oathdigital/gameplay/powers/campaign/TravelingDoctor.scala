@@ -23,7 +23,7 @@ object TravelingDoctorCard extends Denizen(DenizenId("51"), "Traveling Doctor", 
   * nothing and every targeted bandit still dies, and the card is discarded.
   */
 final case class TravelingDoctor private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = TravelingDoctorCard.id
   def id: PowerId = TravelingDoctor.id
 
@@ -31,8 +31,8 @@ final case class TravelingDoctor private (catalog: ExecutableCatalog)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
   override def priority: Int = SparedForce.Priority
-  override def noteKeys: Vector[NoteKey] =
-    Vector(SparedForce.spared, PlanDiscard.discarded)
+  override def planNoteKeys: Vector[NoteKey] =
+    Vector(SparedForce.spared)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
@@ -43,11 +43,10 @@ final case class TravelingDoctor private (catalog: ExecutableCatalog)
     PowerWindow.CampaignLosses -> ((ctx, use, losses) =>
       SparedForce.spare(ctx, id, cardId, use, losses)))
 
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignActionEligibility -> (use =>
-      if use.won.contains(false) then
-        PlanDiscard.afterCampaign(catalog, id, use, cardId)
-      else Vector.empty))
+  override def endDiscard: PlanUse => Vector[Operation] = use =>
+    if use.won.contains(false) then
+      PlanDiscard.afterCampaign(catalog, id, use, cardId)
+    else Vector.empty
 
   override def ignores(ctx: PowerCtx, other: ContributingPower): Boolean =
     SparedForce.ignores(ctx, this, other)

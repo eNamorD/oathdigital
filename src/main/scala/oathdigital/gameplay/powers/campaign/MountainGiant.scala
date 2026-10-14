@@ -26,14 +26,14 @@ object MountainGiantCard extends Denizen(DenizenId("155"), "Mountain Giant",
   * discard line when it is discarded.
   */
 final case class MountainGiant private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = MountainGiantCard.id
   def id: PowerId = MountainGiant.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(MountainGiant.added,
-    MountainGiant.removed, PlanDiscard.discarded)
+  override def planNoteKeys: Vector[NoteKey] = Vector(MountainGiant.added,
+    MountainGiant.removed)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     val side = context.side
@@ -53,13 +53,12 @@ final case class MountainGiant private (catalog: ExecutableCatalog)
     Note(id, _ => Some(key(PowerSourceRef.Card(cardId),
       NoteArg.Number(dice))))
 
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignActionEligibility -> (use => Vector(Branch(
-      (_, pending) =>
-        if PowerAnswers.one(pending, MountainGiant.decisionId).contains(
-            PlanAmounts.button(MountainGiant.Three)) then
-          PlanDiscard.afterCampaign(catalog, id, use, cardId)
-        else Vector.empty))))
+  override def endDiscard: PlanUse => Vector[Operation] = use =>
+    Vector(Branch((_, pending) =>
+      if PowerAnswers.one(pending, MountainGiant.decisionId).contains(
+          PlanAmounts.button(MountainGiant.Three)) then
+        PlanDiscard.afterCampaign(catalog, id, use, cardId)
+      else Vector.empty))
 
 object MountainGiant:
   val id: PowerId = MountainGiantCard.power.id

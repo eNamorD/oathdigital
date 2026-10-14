@@ -22,26 +22,25 @@ object LancersCard extends Denizen(DenizenId("154"), "Lancers", Suit.Nomad):
   * When the attack rolled a die it writes "The attack roll was doubled."
   */
 final case class Lancers private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = LancersCard.id
   def id: PowerId = Lancers.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(Lancers.doubled, PlanDiscard.discarded)
+  override def planNoteKeys: Vector[NoteKey] =
+    Vector(Lancers.doubled)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Lancers: double the attack roll", Vector.empty, Vector.empty))
 
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
+  override def otherWindows
+      : Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignAttackResult -> (use => Vector(
       AttackScore.rescore(use.actor),
       Note(id, states => Option.when(
         CampaignBattle.attackFacesOf(states.now).nonEmpty)(
-        Lancers.doubled(PowerSourceRef.Card(cardId)))))),
-    PowerWindow.CampaignActionEligibility -> (use =>
-      PlanDiscard.afterCampaign(catalog, id, use, cardId)))
+        Lancers.doubled(PowerSourceRef.Card(cardId)))))))
 
 object Lancers:
   val id: PowerId = LancersCard.power.id

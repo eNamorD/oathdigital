@@ -27,12 +27,11 @@ object HeartsAndMindsCard extends Denizen(DenizenId("138"),
   * Campaign.".
   */
 final case class HeartsAndMinds private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = HeartsAndMindsCard.id
   def id: PowerId = HeartsAndMinds.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(PlanDiscard.discarded)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
@@ -42,10 +41,9 @@ final case class HeartsAndMinds private (catalog: ExecutableCatalog)
   override def wrapping: Map[PowerWindow, BattlePlan.Wrap] =
     VictoriousNow.silent
 
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignActionEligibility -> (use =>
-      if use.user.exists(favored(use.ready, _)) then Vector.empty
-      else PlanDiscard.afterCampaign(catalog, id, use, cardId)))
+  override def endDiscard: PlanUse => Vector[Operation] = use =>
+    if use.user.exists(favored(use.ready, _)) then Vector.empty
+    else PlanDiscard.afterCampaign(catalog, id, use, cardId)
 
   private def favored(ready: ReadyGame, player: PlayerId): Boolean =
     BannerRules.holder(ready.game.current, Banner.PeoplesFavor)
