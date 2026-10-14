@@ -567,10 +567,11 @@ object DeclaredNotes:
       power.id -> power.noteKeys) ++
       PhasePowerCatalog.default(catalog).powers.map(power =>
         power.id -> power.noteKeys) ++ RuleNotes.all)
-      .groupMapReduce(_._1)(_._2)(_ ++ _))
+      .groupMapReduce(_._1)(_._2)(_ ++ _)
+      .view.mapValues(_.distinctBy(_.name)).toMap)
 ```
 
-`groupMapReduce` concatenates rather than replacing, so a power that appears in both catalogs keeps the keys from both — which is what `NoteWordings.++` does today.
+`groupMapReduce` concatenates rather than replacing, so a power that appears in both catalogs keeps the keys of both. Six powers are listed in both — Silver Tongue, Insomnia, Vow of Obedience, Vow of Poverty, Pied Piper and the Assassin — and each declares the same keys in each, so concatenation alone would hold every one of their key names twice. `distinctBy(_.name)` is therefore load-bearing, not tidying: `PowerNoteCatalogSuite`'s "a power names each of its notes once" reads this union and would fail on all six without it, and so would the declared-keys snapshot. `NoteWordings.++` has no such problem to solve, because it is keyed by `(PowerId, String)` and replaces at that granularity rather than concatenating.
 
 - [ ] **Step 9: Run the test to verify it passes**
 
@@ -595,14 +596,14 @@ In `src/main/scala/oathdigital/application/gamelog/NoteWordings.scala`, replace 
       powers.flatMap(_.narratedDecisions).toSet)
 ```
 
-Then in `DeclaredNoteKeysSuite`, replace the hand-built `declared` with the union, keeping the rendering and both tests as they are:
+Then in `DeclaredNoteKeysSuite`, replace only the suite's own merge of `listings` with the union, keeping the rendering and both tests as they are:
 
 ```scala
   private val declared: Vector[(PowerId, Vector[NoteKey])] =
     DeclaredNotes.of(catalog).keys.toVector
 ```
 
-The `RuleNotes`, `WalkerPowerCatalog` and `PhasePowerCatalog` references in the suite become unused; delete the `RuleNotes` import. The suite's second test, "no power is listed twice", is now trivially true because the union is a `Map` — delete it and say so in the commit body, because `groupMapReduce` is what makes it true.
+Keep `listings` and the cross-catalog test that reads it. That test is about catalog membership, not about declared sets, so the union does not make it trivial: it is what pins the six powers listed in both catalogs and what fails if a seventh appears. Keep the `RuleNotes` import and the two catalog references with it; they are still used by `listings`, and deleting the import as a tidy-up would fail to compile. The one thing that changes is where `declared` comes from, and the snapshot must stay byte-identical across the change — which is what `distinctBy` in Step 8 is for.
 
 - [ ] **Step 11: Run the snapshot and the log suites**
 

@@ -92,11 +92,10 @@ key carries its own; the Game Log holds no sentence a key does not.
 _Avoid_: template string, note text, format
 
 **Declared set**:
-Every key a power may write. A key the power defines itself it _owns_; a key
-defined in another object it _borrows_, and it borrows the key by including
-the owner's set. A note whose key is outside the writing power's declared
-set has no wording to render. See
-`docs/superpowers/specs/2026-10-14-derive-note-keys-design.md`.
+Every key a power may write. A power owns a key it defines itself, and
+borrows one defined in another object, which it must declare too. A note
+whose key is outside the writing power's declared set has no wording to
+render.
 _Avoid_: key list, note registry, declared keys list
 
 ### Consent
