@@ -81,3 +81,10 @@ class DisciplesSuite extends munit.FunSuite:
     val started = accepted(SearchPlay.searched(rules, Ready(ready), p1,
       world, modifiers))
     assertEquals(Look(SearchFixture.after(started)).supply(p1), 0)
+
+  test("with Yew Staff and no Darkest Secret, a world Search costing 3 " +
+      "costs 2"):
+    for holder <- Vector(Some(p2), None) do
+      val ready = Table.from(holdingDisciples(visions = 1, holder = holder))
+        .relic(p1, "Yew Staff").ready
+      assertEquals(spent(ready, modifiers), 2, holder.toString)

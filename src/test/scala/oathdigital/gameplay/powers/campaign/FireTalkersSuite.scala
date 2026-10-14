@@ -53,3 +53,12 @@ class FireTalkersSuite extends munit.FunSuite:
     assertEquals(Look(picked.state).player(b.rival).board.faceUpSecrets, 0)
     assertEquals(Look(picked.state).player(b.rival).board.faceDownSecrets,
       facedown + 1)
+
+  test("with Yew Staff it is offered while another player holds the " +
+      "Darkest Secret"):
+    val attacker = attackerHoldingFireTalkersAndTheDarkestSecret
+    val b = on(withDarkestSecret(attacker, attacker.rival))(
+      _.relic(attacker.actor, "Yew Staff"))
+    val picked = commit(rules(winningDice), b, 2)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+    assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, 3)))

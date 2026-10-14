@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.actions.BannerRules
+import oathdigital.gameplay.powers.banner.CardPowerBanners
 import oathdigital.gameplay.powers.OathkeeperGoalChoice
 import oathdigital.model._
 
@@ -38,8 +38,7 @@ case object TheRedSeer extends PaidAction(TheRedSeerCard.power):
 
   override def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean =
-    BannerRules.holder(ready.game.current, Banner.DarkestSecret)
-      .contains(player)
+    CardPowerBanners.holdsDarkestSecret(ready, player)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

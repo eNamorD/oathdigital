@@ -75,3 +75,16 @@ class UnstableSummonSuite extends munit.FunSuite:
       val asked = withAdviser(b, "Longbows", Orientation.FaceUp)
       assertEquals(commit(rules(winningDice), asked, 2).withheld(b.actor,
         ref), Some(OptionReason.Written(UnstableSummon.noBanner)))
+
+  test("with Yew Staff it burns from the Darkest Secret another player " +
+      "holds"):
+    val base = attackerWithSummon(bannerSecrets = 3,
+      attackerHoldsBanner = false)
+    val b = on(base)(_.relic(base.actor, "Yew Staff"))
+    val done = commit(rules(winningDice), b, 2)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+      .answer(b.actor, UnstableSummon.decisionId, ChooseAmountAnswer(2))
+    assertEquals(Look(done.state).secretsOnDarkestSecret, 1)
+    assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, 2)))
+    assertEquals(lines(done), Vector(burned(
+      "2 secrets from the Darkest Secret for 2 attack dice")))

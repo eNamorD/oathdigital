@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.actions.BannerRules
+import oathdigital.gameplay.powers.banner.CardPowerBanners
 import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
@@ -58,8 +58,7 @@ case object TerrorSpells extends PaidAction(TerrorSpellsCard.power):
     def most: Int = math.min(Kills, count)
 
   private def holds(ready: ReadyGame, player: PlayerId): Boolean =
-    BannerRules.holder(ready.game.current, Banner.DarkestSecret)
-      .contains(player)
+    CardPowerBanners.holdsDarkestSecret(ready, player)
 
   /** The places holding warbands in the region of the player's pawn: sites
     * in map order, then boards in seat order. None while the player does

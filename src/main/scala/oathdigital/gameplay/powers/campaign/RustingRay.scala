@@ -33,7 +33,7 @@ case object RustingRay extends BattlePlan:
   override def noteKeys: Vector[NoteKey] = Vector(RustingRay.ignored)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
-    context.denizen(cardId).filter(_ => context.holds(Banner.DarkestSecret))
+    context.denizen(cardId).filter(_ => context.holdsDarkestSecret)
       .map(source => CampaignPlanOffer(source,
         "Rusting Ray: the attack's hollow swords score nothing",
         Vector(CampaignPlanCost.Secret(1)), Vector.empty))

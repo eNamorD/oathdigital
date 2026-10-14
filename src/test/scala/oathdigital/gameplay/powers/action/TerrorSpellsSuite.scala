@@ -87,3 +87,12 @@ class TerrorSpellsSuite extends munit.FunSuite:
     assertEquals(NoteText.said(TerrorSpells, done.events), Vector(
       NoteText.Said("used.empty", "No warband was in the region.",
         covers = false)))
+
+  test("with Yew Staff and no Darkest Secret it kills two"):
+    val ready = staged.darkestSecret(Some(p2), 1).relic(p1, "Yew Staff")
+      .boardWarbands(p2, 0).ready
+    val done = accepted(use(ready, TerrorSpells, source))
+    assert(backToActing(done))
+    assertEquals(Look(after(done)).boardWarbands(p1), 1)
+    assertEquals(NoteText.said(TerrorSpells, done.events), Vector(
+      NoteText.Said(NoteKey.Used, "Killed 2 warbands.", covers = false)))

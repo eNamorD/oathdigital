@@ -26,7 +26,7 @@ case object FireTalkers extends BattlePlan:
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
-    context.denizen(cardId).filter(_ => context.holds(Banner.DarkestSecret))
+    context.denizen(cardId).filter(_ => context.holdsDarkestSecret)
       .map(source => CampaignPlanOffer(source,
         PlanDice.label("Fire Talkers", context.side, FireTalkers.Dice),
         Vector(CampaignPlanCost.Secret(1)),

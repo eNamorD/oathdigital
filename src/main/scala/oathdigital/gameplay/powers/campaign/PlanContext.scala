@@ -5,6 +5,7 @@ import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignIds, CampaignPlans, CampaignSetup}
 import oathdigital.gameplay.powerresolver.PowerCtx
+import oathdigital.gameplay.powers.banner.CardPowerBanners
 import oathdigital.gameplay.powers.RuledCards
 import oathdigital.model._
 
@@ -106,9 +107,11 @@ final case class PlanContext(ready: ReadyGame, setup: CampaignSetup,
   def enemyHolds(banner: Banner): Boolean = enemyPlayer.exists(held =>
     BannerRules.holder(ready.game.current, banner).contains(held.player))
 
-  /** Whether the plan's user holds `banner`. A bandit defender holds none. */
-  def holds(banner: Banner): Boolean = user.exists(player =>
-    BannerRules.holder(ready.game.current, banner).contains(player))
+  /** Whether the plan's user holds the Darkest Secret, as the card powers
+    * they use see it (`CardPowerBanners`). A bandit defender holds
+    * none. */
+  def holdsDarkestSecret: Boolean =
+    user.exists(CardPowerBanners.holdsDarkestSecret(ready, _))
 
   /** The cards of `suit` that `who` rules (`RuledCards`): the plan's user
     * (`ruler`), the enemy or the Campaign's defender. */

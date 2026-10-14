@@ -32,7 +32,7 @@ case object FaeBattalion extends BattlePlan:
   override def noteKeys: Vector[NoteKey] = Vector(FaeBattalion.counted)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
-    context.denizen(cardId).filter(_ => context.holds(Banner.DarkestSecret))
+    context.denizen(cardId).filter(_ => context.holdsDarkestSecret)
       .map(source => CampaignPlanOffer(source,
         "Fae Battalion: count hollow swords as swords", Vector.empty,
         Vector.empty))

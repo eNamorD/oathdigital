@@ -38,3 +38,12 @@ class FaeBattalionSuite extends munit.FunSuite:
     val run = commit(rules(losingDice), b, 3)
     assert(awaits(run, b.actor, CampaignIds.attackerPlan))
     assert(!run.offered(b.actor).contains(ref))
+
+  test("with Yew Staff it counts hollow swords while another player holds " +
+      "the Darkest Secret"):
+    val base = attacker
+    val b = on(base)(_.darkestSecret(Some(base.rival), secrets = 1)
+      .relic(base.actor, "Yew Staff"))
+    val done = commit(rules(losingDice), b, 3)
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
+    assertEquals(done.result.attackScore, 3)
