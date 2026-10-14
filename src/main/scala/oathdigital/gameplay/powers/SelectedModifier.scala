@@ -76,7 +76,10 @@ trait SelectedModifier extends ContributingPower:
     PowerAccess.locate(ready, actor, cardId, answered).isDefined &&
       Costs.affordable(ready, actor, Location.OnCard(cardId), cost)
 
-  final override def selectionPayments(ready: ReadyGame, actor: PlayerId)
+  /** The pick's payment: the `cost`, onto the card. A modifier whose price
+    * depends on the state, such as Spiteful Mirror's once per turn,
+    * overrides it and `selectable`. */
+  override def selectionPayments(ready: ReadyGame, actor: PlayerId)
       : Vector[CoreOperation] =
     if cost == Cost.free then Vector.empty else Vector(payment(actor))
 

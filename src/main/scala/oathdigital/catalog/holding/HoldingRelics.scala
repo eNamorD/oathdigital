@@ -74,13 +74,6 @@ object YewStaffCard extends Relic(RelicId("R40"), "Yew Staff", value = 60, defen
       "Darkest Secret.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object SpitefulMirrorCard extends Relic(RelicId("R41"), "Spiteful Mirror", value = 27, defense = 1):
-  val power = PrintedPower(PowerId("relic.spiteful-mirror"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "This turn, you may act as if any cards you use to trade or " +
-      "muster are [suit-discord] cards.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object SigilOfTheEyeCard extends Relic(RelicId("R43"), "Sigil of the Eye", value = 66, defense = 1):
   val power = PrintedPower(PowerId("relic.sigil-of-the-eye"),
     persistent = false, cost = Cost.free,

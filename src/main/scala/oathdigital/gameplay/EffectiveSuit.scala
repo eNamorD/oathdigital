@@ -1,8 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
-  PrintedPower}
-import oathdigital.catalog.holding.SpitefulMirrorCard
+  PrintedPower, Relic}
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.model._
 
@@ -20,6 +19,13 @@ object PledgeToDiscordCard extends Denizen(DenizenId("223"), "Pledge to Discord"
       "their printed suit. _Marriage counts as two [suit-discord]._")
   val powers: Vector[PrintedPower] = Vector(power)
 
+object SpitefulMirrorCard extends Relic(RelicId("R41"), "Spiteful Mirror", value = 27, defense = 1):
+  val power = PrintedPower(PowerId("relic.spiteful-mirror"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "This turn, you may act as if any cards you use to trade or " +
+      "muster are [suit-discord] cards.")
+  val powers: Vector[PrintedPower] = Vector(power)
+
 /** A card's suit as the rules see it (catalog batch 8, slice 8).
   *
   * Pledge to Discord makes every faceup adviser of its holder Discord, while
@@ -32,7 +38,7 @@ object PledgeToDiscordCard extends Denizen(DenizenId("223"), "Pledge to Discord"
   * Mirror.
   *
   * It lives in `gameplay`, below `actions` and `powers`, because the
-  * operation pipeline reads `pledged` too. It names the cards its rules
+  * operation pipeline reads `pledged` too. It holds the cards its rules
   * read: Marriage and Pledge to Discord, whose registered powers add
   * nothing, and Spiteful Mirror, whose pick it reads.
   */

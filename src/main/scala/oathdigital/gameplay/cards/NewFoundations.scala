@@ -2,7 +2,8 @@ package oathdigital.gameplay.cards
 
 import oathdigital.catalog.{Denizen, Edifice, ExecutableCatalog, Legacy, Relic, Site}
 import oathdigital.catalog.holding._
-import oathdigital.gameplay.{MarriageCard, PledgeToDiscordCard}
+import oathdigital.gameplay.{MarriageCard, PledgeToDiscordCard,
+  SpitefulMirrorCard}
 import oathdigital.gameplay.operations.{HallOfMinistersCard,
   TheGrandScepterCard}
 import oathdigital.gameplay.powers.action._
