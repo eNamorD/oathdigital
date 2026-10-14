@@ -67,13 +67,6 @@ object WhisperingStoneCard extends Relic(RelicId("R34"), "Whispering Stone", val
       "if their pawn is not at your site.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object SecretTestamentCard extends Relic(RelicId("R38"), "Secret Testament", value = 82, defense = 2):
-  val power = PrintedPower(PowerId("relic.secret-testament"),
-    persistent = true, cost = Cost.free,
-    text = "When an enemy takes a banner from you, take all [favor] or " +
-      "[secret] on the banner.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object YewStaffCard extends Relic(RelicId("R40"), "Yew Staff", value = 60, defense = 2):
   val power = PrintedPower(PowerId("relic.yew-staff"),
     persistent = true, cost = Cost.free,

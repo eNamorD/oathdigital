@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.powers.action.{Assassin, PiedPiper}
-import oathdigital.gameplay.powers.banner.BannerFacePowers
+import oathdigital.gameplay.powers.banner.{BannerFacePowers, SecretTestament}
 import oathdigital.gameplay.powers.burn.{VowOfDivision, VowOfSilence}
 import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRestrictions,
   PlanRewrites, PlanRules, SimplePlans, VowOfPeaceContribution}
@@ -53,6 +53,7 @@ import oathdigital.gameplay.walker.WalkerPowers
   * offers itself there, and the title's defense, which no card prints, is always
   * present.
   * Brass Army's restriction is inert until a batch moves its holder's pawn.
+  * Secret Testament is inert until a Challenge walks `ChallengeRibbon`.
   * Jinx is inert until a roll step asks for rerolls.
   * `restrictionSet` gives every walker step the catalog's global operation
   * restrictions.
@@ -63,6 +64,7 @@ object WalkerPowerCatalog:
       Vector(VowOfPeaceContribution) ++
       Vector(VowOfSilence, VowOfDivision) ++
       Vector(BrassArmyMoves) ++
+      Vector(SecretTestament) ++
       TravelSitePowers.all ++
       TravelModifiers.forCatalog(catalog) ++
       Vector(LeagueTreatyContribution.forCatalog(catalog)) ++
