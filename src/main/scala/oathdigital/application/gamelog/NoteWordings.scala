@@ -7,8 +7,10 @@ import oathdigital.model.{NoteKey, NotePart, PowerId}
 
 /** Every power's note templates, by power and key (power log lines design,
   * "Wording"), the name a power's notes are written under when it names
-  * one, and the decisions whose answer a power's notes tell. A note whose
-  * power or key is missing here renders nothing. */
+  * one, and the decisions whose answer a power's notes tell. Every key here
+  * comes from the power's own `NoteSet`, so a key cannot reach a note
+  * without its wording; a note the walker could not match to a declared key
+  * never arrives (`NoteCheck`). */
 private[application] final case class NoteWordings(
     templates: Map[(PowerId, String), Vector[NotePart]],
     sources: Map[PowerId, String] = Map.empty,

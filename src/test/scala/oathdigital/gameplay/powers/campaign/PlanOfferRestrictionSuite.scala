@@ -24,7 +24,10 @@ class PlanOfferRestrictionSuite extends munit.FunSuite:
   private val title: DecisionOptionRef = DecisionOptionRef.Button("title")
 
   /** "Not this plan." */
-  private val barred = NoteKey("barred",
+  /** This suite's own keys: a test declares what it writes,
+    * as a power does. */
+  private val testNotes = NoteSet.unowned("PlanOfferRestrictionSuite")
+  private val barred = testNotes.key("barred",
     Vector(NotePart.Text("Not this plan.")))
 
   /** Forbids the defender's plan `forbidden`, noting why when `noted`. */

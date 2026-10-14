@@ -55,7 +55,8 @@ enum NotePart:
 /** One line a power can write: its key and the sentence the log renders
   * after "{source}: ". A power declares its keys and builds its notes
   * through them, so a key never lacks a template. */
-final case class NoteKey(name: String, template: Vector[NotePart]):
+final case class NoteKey private[model] (name: String,
+    template: Vector[NotePart]):
   def apply(source: PowerSourceRef, args: NoteArg*): PowerNote =
     PowerNote(source, name, args.toVector)
 object NoteKey:

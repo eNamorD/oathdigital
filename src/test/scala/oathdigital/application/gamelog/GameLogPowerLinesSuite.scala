@@ -22,15 +22,18 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
   private type Steps = Vector[ReplayStep[OathState, OathEvent]]
   private val power = SilverTongue.id
   private val card = PowerSourceRef.Card(silverTongueCard)
-  private val said = NoteKey("said", Vector(NotePart.Arg(0),
+  /** This suite's own keys: a test declares what it writes,
+    * as a power does. */
+  private val testNotes = NoteSet.unowned("GameLogPowerLinesSuite")
+  private val said = testNotes.key("said", Vector(NotePart.Arg(0),
     NotePart.Text(" said "), NotePart.Arg(1), NotePart.Text(".")))
-  private val took = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  private val took = testNotes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(".")))
-  private val counted = NoteKey("counted", Vector(NotePart.Arg(0),
+  private val counted = testNotes.key("counted", Vector(NotePart.Arg(0),
     NotePart.Text(" lost "), NotePart.Arg(1), NotePart.Text(" "),
     NotePart.Plural(1, "warband", "warbands"), NotePart.Text(", then "),
     NotePart.Arg(2), NotePart.Text(".")))
-  private val none = NoteKey("used.none", Vector(NotePart.Text("Nothing to take.")))
+  private val none = testNotes.key("used.none", Vector(NotePart.Text("Nothing to take.")))
   private val noting = new GameLogFormatter(catalog, presentation,
     NoteWordings.default(catalog) ++
       NoteWordings.of(power, Vector(said, took, counted, none)))

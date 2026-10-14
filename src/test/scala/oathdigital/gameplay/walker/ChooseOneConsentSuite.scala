@@ -20,8 +20,11 @@ class ChooseOneConsentSuite extends munit.FunSuite:
   private val payButton = DecisionOption.Button(pay, "Pay")
   private val freeButton = DecisionOption.Button(free, "Go free")
   private val source = PowerSourceRef.Site(SiteId("test-site"))
-  private val plain = NoteKey("plain", Vector(NotePart.Text("Pay first.")))
-  private val consent = NoteKey("consent",
+  /** This suite's own keys: a test declares what it writes,
+    * as a power does. */
+  private val testNotes = NoteSet.unowned("ChooseOneConsentSuite")
+  private val plain = testNotes.key("plain", Vector(NotePart.Text("Pay first.")))
+  private val consent = testNotes.key("consent",
     Vector(NotePart.Text("Pay first, unless its ruler consents.")))
 
   /** A power barring `free` at the step until `granter` consents. */
