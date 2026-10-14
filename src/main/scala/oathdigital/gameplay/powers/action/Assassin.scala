@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
   PrintedPower}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
@@ -90,7 +90,7 @@ final case class Assassin private (catalog: ExecutableCatalog)
             .find(candidate => DecisionOptionRef.Denizen(candidate.card.id) == ref)
             .toRight(OathViolation.InvalidEventOrder(
               s"${ref.wireId} is not an adviser Assassin can discard"))
-          suit <- catalog.suitOf(chosen.card.id)
+          suit <- EffectiveSuit.of(catalog, ready, chosen.card.id)
             .toRight(OathViolation.UnknownWorldCard(chosen.card.id))
           region <- PowerAccess.pawnSite(ready, actor)
             .flatMap(ready.game.current.map.regionOf).map(CardPlay.nextRegion)

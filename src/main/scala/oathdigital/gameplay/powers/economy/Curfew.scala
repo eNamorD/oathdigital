@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
@@ -90,7 +91,7 @@ final case class Curfew private (catalog: ExecutableCatalog)
   /** Whether `ruler` rules `card`: one of its faceup advisers, or a card at
     * a site it rules. */
   private def ruled(ready: ReadyGame, ruler: SiteRuler, card: CardId)
-      : Boolean = catalog.suitOf(card).exists(suit =>
+      : Boolean = EffectiveSuit.of(catalog, ready, card).exists(suit =>
     RuledCards.of(catalog, ready, ruler, suit).contains(card))
 
 object Curfew:

@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers, SiteRoom}
 import oathdigital.model._
 
@@ -48,7 +49,8 @@ final case class Resettle private (catalog: ExecutableCatalog)
       player <- ready.game.current.players
       card <- player.advisers.collect {
         case DenizenState(id, Orientation.FaceUp, _)
-            if catalog.suitOf(id).contains(Suit.Nomad) => id }
+            if EffectiveSuit.of(catalog, ready, id).contains(Suit.Nomad) =>
+              id }
     yield Candidate(player.player, card)
 
   private def askAdviser(ready: ReadyGame, actor: PlayerId): Vector[Operation] =

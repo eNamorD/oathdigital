@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.model._
 
@@ -65,7 +66,9 @@ object PlanDiscard:
       case Some((from, tokens, region)) =>
         for
           own <- region.toRight(OathViolation.PawnSiteMissing(user))
-          suit <- catalog.suitOf(card).toRight(OathViolation.UnknownWorldCard(card))
+          // A plan from the user's advisers is read before it leaves.
+          suit <- EffectiveSuit.of(catalog, ready, card)
+            .toRight(OathViolation.UnknownWorldCard(card))
         yield Vector[CoreOperation](Discard.Denizen(card, from,
           CardPlay.nextRegion(own), suit, tokens.favor, tokens.secrets, user,
           required = true))

@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
@@ -41,7 +42,7 @@ final case class SecondChance private (catalog: ExecutableCatalog)
   private def candidates(ready: ReadyGame): Vector[PlayerId] =
     ready.game.current.players.filter(_.advisers.exists {
       case DenizenState(card, Orientation.FaceUp, _) =>
-        catalog.suitOf(card).exists(Suits.contains)
+        EffectiveSuit.of(catalog, ready, card).exists(Suits.contains)
       case _ => false
     }).map(_.player)
 

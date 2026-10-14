@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.wake
 
 import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
 import oathdigital.gameplay.actions.{AdviserFace, CardPlay, CardPlayRules}
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.{AdviserLimit, NoteSupport, PlayerFacts,
@@ -162,7 +162,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
       .toRight(OathViolation.PawnSiteMissing(actor))
     from = PositionedLocation(Location.PlayArea(actor))
     operation <- chosen match
-      case d: DenizenState => catalog.suitOf(d.id)
+      case d: DenizenState => EffectiveSuit.of(catalog, ready, d.id)
         .toRight(OathViolation.UnknownWorldCard(d.id)).map(suit =>
           Discard.Denizen(d.id, from, region, suit, d.tokens.favor,
             d.tokens.secrets, actor, required = true))

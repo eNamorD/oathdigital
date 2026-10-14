@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
@@ -79,7 +79,7 @@ final case class CrystalVial(catalog: ExecutableCatalog)
         .toRight(PowerAnswers.missing(decisionId))
       chosen <- found.find(_.ref == ref).toRight(OathViolation
         .InvalidEventOrder(s"${ref.wireId} is not a card the Vial can bury"))
-      suit = catalog.suitOf(chosen.card.id)
+      suit = EffectiveSuit.of(catalog, ready, chosen.card.id)
       _ <- Either.cond(chosen.tokens.favor == 0 || suit.isDefined, (),
         OathViolation.InvalidEventOrder(
           s"no suit is known for ${chosen.card.id.value}"))

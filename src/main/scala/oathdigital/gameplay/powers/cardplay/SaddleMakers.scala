@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
@@ -51,7 +52,8 @@ final case class SaddleMakers private (catalog: ExecutableCatalog)
     ctx.operation match
       case CardPlayedFaceup(card: DenizenId, _) =>
         for
-          suit <- catalog.suitOf(card).filter(SaddleMakers.Suits)
+          suit <- EffectiveSuit.of(catalog, ctx.state, card)
+            .filter(SaddleMakers.Suits)
           holder <- holderOf(ctx.state).filter(_ != ctx.activePlayer)
         yield Vector[Operation](Gain.Favor(holder, suit, SaddleMakers.Favor),
           Note(id, NoteSupport.gainedFromNote(SaddleMakers.gained,

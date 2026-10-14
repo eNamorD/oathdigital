@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.model._
 
 /** The favor a plan gains one of per card, from each card's suit bank (Tribute
@@ -10,11 +11,12 @@ import oathdigital.model._
   */
 object FavorBySuit:
   /** How many of `cards` belong to each suit, in suit order, leaving out the
-    * suits with none. A card whose suit the catalog does not know counts
+    * suits with none, each card by its suit as the rules see it
+    * (`EffectiveSuit`). A card whose suit the catalog does not know counts
     * nothing. */
-  def counts(catalog: ExecutableCatalog, cards: Vector[CardId])
-      : Vector[(Suit, Int)] =
-    val suits = cards.flatMap(card => catalog.suitOf(card))
+  def counts(catalog: ExecutableCatalog, ready: ReadyGame,
+      cards: Vector[CardId]): Vector[(Suit, Int)] =
+    val suits = cards.flatMap(card => EffectiveSuit.of(catalog, ready, card))
     Suit.all.map(suit => suit -> suits.count(_ == suit)).filter(_._2 > 0)
 
   /** One gain per suit for `user`. A bandit defender has no board, so its favor

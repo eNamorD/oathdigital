@@ -45,7 +45,8 @@ final case class NatureWorship private (catalog: ExecutableCatalog)
     context.ready.game.current.players.filter(p => context.user.contains(p.player))
       .flatMap(_.advisers).collect {
         case DenizenState(held, Orientation.FaceUp, _)
-            if held != cardId && catalog.suitOf(held).contains(Suit.Beast) =>
+            if held != cardId && EffectiveSuit.of(catalog, context.ready, held)
+              .contains(Suit.Beast) =>
           EffectiveSuit.weight(held)
       }.sum
 

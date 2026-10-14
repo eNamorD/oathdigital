@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
 import oathdigital.gameplay.actions.{BannerRules, CardPlay}
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
@@ -68,7 +68,7 @@ final case class ArmedMob private (catalog: ExecutableCatalog)
         .find(card => DecisionOptionRef.Denizen(card.id) == ref)
         .toRight(OathViolation.InvalidEventOrder(
           s"${ref.wireId} is not an adviser Armed Mob can discard"))
-      suit <- catalog.suitOf(chosen.id)
+      suit <- EffectiveSuit.of(catalog, ready, chosen.id)
         .toRight(OathViolation.UnknownWorldCard(chosen.id))
       region <- PowerAccess.pawnSite(ready, actor)
         .flatMap(ready.game.current.map.regionOf).map(CardPlay.nextRegion)

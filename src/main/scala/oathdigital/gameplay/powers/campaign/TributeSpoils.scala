@@ -41,7 +41,7 @@ final case class TributeSpoils private (catalog: ExecutableCatalog)
     PowerWindow.CampaignActionEligibility -> (use =>
       if !use.won.contains(true) then Vector.empty
       else use.result.toVector.flatMap(result => FavorBySuit.gains(use.user,
-        FavorBySuit.counts(catalog,
+        FavorBySuit.counts(catalog, use.ready,
           TributeSpoils.cardsAt(use.ready, result.targetSites))))))
 
 object TributeSpoils:

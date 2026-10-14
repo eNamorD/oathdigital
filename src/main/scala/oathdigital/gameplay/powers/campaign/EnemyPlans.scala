@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
 
@@ -24,10 +25,10 @@ private[campaign] object EnemyPlans:
       case _ => false
     }).map(_.player)
 
-  /** The suit of the plan named by `ref`: its source card's. A relic and
-    * the title have none. */
-  def suitOf(catalog: ExecutableCatalog, ref: DecisionOptionRef)
-      : Option[Suit] = ref match
-    case DecisionOptionRef.Denizen(id) => catalog.suitOf(id)
-    case DecisionOptionRef.Edifice(id) => catalog.suitOf(id)
+  /** The suit of the plan named by `ref`: its source card's, as the rules
+    * see it (`EffectiveSuit`). A relic and the title have none. */
+  def suitOf(catalog: ExecutableCatalog, ready: ReadyGame,
+      ref: DecisionOptionRef): Option[Suit] = ref match
+    case DecisionOptionRef.Denizen(id) => EffectiveSuit.of(catalog, ready, id)
+    case DecisionOptionRef.Edifice(id) => EffectiveSuit.of(catalog, ready, id)
     case _ => None

@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.targeting
 
 import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
   PrintedPower}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignSetup}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx, Restriction}
@@ -210,7 +211,7 @@ final case class RottingFortress private (catalog: ExecutableCatalog)
   private def holdsBeastAdviser(ready: ReadyGame, player: PlayerId): Boolean =
     ready.game.current.players.find(_.player == player).exists(_.advisers.exists {
       case DenizenState(card, Orientation.FaceUp, _) =>
-        catalog.suitOf(card).contains(Suit.Beast)
+        EffectiveSuit.of(catalog, ready, card).contains(Suit.Beast)
       case _ => false
     })
 

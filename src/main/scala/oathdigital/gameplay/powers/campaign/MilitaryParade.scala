@@ -44,7 +44,7 @@ final case class MilitaryParade private (catalog: ExecutableCatalog)
     PowerWindow.CampaignActionEligibility -> (use =>
       if !use.won.contains(true) then Vector.empty
       else MilitaryParade.enemy(use).toVector.flatMap(enemy =>
-        FavorBySuit.gains(use.user, FavorBySuit.counts(catalog,
+        FavorBySuit.gains(use.user, FavorBySuit.counts(catalog, use.ready,
           MilitaryParade.advisers(use.ready, enemy))))))
 
 object MilitaryParade:

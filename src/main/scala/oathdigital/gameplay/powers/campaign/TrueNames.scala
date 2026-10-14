@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, PowerCtx}
 import oathdigital.model._
@@ -48,14 +49,15 @@ final case class TrueNames private (catalog: ExecutableCatalog)
   private def matched(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[PlayerId] =
     EnemyPlans.holderAgainst(ctx, cardId).filter(holder =>
-      EnemyPlans.suitOf(catalog, ref).exists(suits(ctx.state, holder)))
+      EnemyPlans.suitOf(catalog, ctx.state, ref)
+        .exists(suits(ctx.state, holder)))
 
   /** The suits of `holder`'s faceup advisers. */
   private def suits(ready: ReadyGame, holder: PlayerId): Set[Suit] =
     ready.game.current.players.find(_.player == holder).toVector
       .flatMap(_.advisers.collect {
         case DenizenState(held, Orientation.FaceUp, _) =>
-          catalog.suitOf(held)
+          EffectiveSuit.of(catalog, ready, held)
       }.flatten).toSet
 
 object TrueNames:
