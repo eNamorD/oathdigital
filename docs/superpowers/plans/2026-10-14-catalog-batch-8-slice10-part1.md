@@ -243,10 +243,10 @@ git commit -m "docs(batch8): record slice 10's plan-time rulings"
 
 **Interfaces:**
 - Produces:
-  - `PowerUse(user: PlayerId, power: PowerId, card: Option[CardId], persistent: Boolean, costsSecret: Boolean, consent: Boolean = true)`
-  - `PowerUse.of(user: PlayerId, printed: PrintedPower, card: CardId, secret: Boolean = false, consent: Boolean = true): PowerUse`
+  - `PowerUse(user: PlayerId, power: PowerId, card: Option[CardId], persistent: Boolean, costsSecret: Boolean, consent: Boolean = true, places: Boolean = false)`
+  - `PowerUse.of(user: PlayerId, printed: PrintedPower, card: CardId, secret: Boolean = false, consent: Boolean = true, places: Boolean = false): PowerUse`
   - `PowerUseRefusal(power: PowerId, note: PowerNote, reason: OperationReason)`
-  - `trait PowerUseRestriction { def refusal(ready: ReadyGame, use: PowerUse): Option[PowerUseRefusal] }`
+  - `trait PowerUseRestriction { def refusal(ready: ReadyGame, use: PowerUse): Option[PowerUseRefusal]; def waiver: Option[Waiver] = None }`
   - `PowerUseRules.useKey: String = "power.use"`
   - `PowerUseRules.target(use: PowerUse): DecisionOptionRef`
   - `PowerUseRules.refusals(ready: ReadyGame, use: PowerUse, restrictions: Vector[PowerUseRestriction]): Vector[PowerUseRefusal]`
@@ -353,21 +353,28 @@ import oathdigital.model.{CardId, OperationReason, PlayerId, PowerId,
   * batch 8, slice 10): who uses it, the card it is printed on, whether it
   * is printed persistent, and whether using it costs a secret. `consent` is
   * whether a refusal may be asked of a ruler: never inside a Campaign
-  * (consent design, ruling 2).
+  * (consent design, ruling 2). `places` is whether its cost places favor
+  * or secrets on its card, which the placement bans of part 2 read; the
+  * payment settles to the bank off its user's turn, so a ban reads it only
+  * on that turn.
   */
 final case class PowerUse(user: PlayerId, power: PowerId,
     card: Option[CardId], persistent: Boolean, costsSecret: Boolean,
-    consent: Boolean = true)
+    consent: Boolean = true, places: Boolean = false)
 
 object PowerUse:
   /** A use of `printed` from `card`. It costs a secret when its printed
     * cost has a secret or a burnt secret, or when `secret` says it pays one
-    * another way: an X secret cost, or a tax on battle plans. */
+    * another way: an X secret cost, or a tax on battle plans. It places on
+    * the card when its printed cost has favor or secrets, or when `places`
+    * says its payment does. */
   def of(user: PlayerId, printed: PrintedPower, card: CardId,
-      secret: Boolean = false, consent: Boolean = true): PowerUse =
+      secret: Boolean = false, consent: Boolean = true,
+      places: Boolean = false): PowerUse =
     PowerUse(user, printed.id, Some(card), printed.persistent,
       secret || printed.cost.secret > 0 || printed.cost.secretBurnt > 0,
-      consent)
+      consent,
+      places || printed.cost.favor > 0 || printed.cost.secret > 0)
 
 /** Why a restriction refuses a use. `power` is the restriction's and
   * `note` the reason shown when nobody may be asked. `reason` is the
@@ -378,10 +385,15 @@ final case class PowerUseRefusal(power: PowerId, note: PowerNote,
 
 /** A rule that forbids some uses of powers (Spell Breaker, Forest Council,
   * City Wall, Giant Python). A walker power declares it as
-  * `powerUseRestrictions`; the engine reads it without naming it. */
+  * `powerUseRestrictions`; the engine reads it without naming it. `waiver`
+  * is how its ruler may waive it, for the consent grid, the preferences and
+  * the consent log (`ConsentPowers`); `None` when nothing waives it. */
 trait PowerUseRestriction:
   def refusal(ready: ReadyGame, use: PowerUse): Option[PowerUseRefusal]
+  def waiver: Option[Waiver] = None
 ```
+
+`Waiver` is declared in `ContributingPower.scala`, in the same package.
 
 - [ ] **Step 4: Create `PowerUseRules.scala`**
 
@@ -509,6 +521,7 @@ git commit -m "feat(batch8): a power-use filter with consent"
 - Modify: `src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala` (import the new package)
 - Modify: `src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/powers/ConsentPowers.scala`
 - Modify: `src/test/scala/oathdigital/gameplay/PowerKindsCatalogSuite.scala`
 - Test: `src/test/scala/oathdigital/gameplay/powers/poweruse/SpellBreakerSuite.scala`
 
@@ -518,8 +531,10 @@ git commit -m "feat(batch8): a power-use filter with consent"
   - `RulerBans.ruler(ready: ReadyGame, card: DenizenId): Option[SiteRuler]`, the ruler of the card's site when that is a player or bandits.
   - `RulerBans.enemy(ruler: SiteRuler, player: PlayerId): Boolean`.
   - `RulerBans.refusal(power: PowerId, card: DenizenId, ruler: SiteRuler, requester: PlayerId, covers: ConsentKey, plain: NoteKey, asked: NoteKey, code: String): PowerUseRefusal`.
-  - `SpellBreaker.id`, `SpellBreaker.plain`, `SpellBreaker.asked`.
+  - `RulerBans.waiver(card: DenizenId, asked: NoteKey): Waiver`, whose granter is the card's site's ruler when that is a player.
+  - `SpellBreaker.id`, `SpellBreaker.plain`, `SpellBreaker.asked`, `SpellBreaker.waiver`.
   - `WalkerPowerCatalog.useRestrictions(catalog: ExecutableCatalog): Vector[PowerUseRestriction]`.
+  - `ConsentPowers` lists a power whose `powerUseRestrictions` declare a waiver.
 
 - [ ] **Step 1: Write the failing restriction tests**
 
@@ -578,7 +593,18 @@ class SpellBreakerSuite extends munit.FunSuite:
   test("at an unruled site it refuses nobody"):
     assertEquals(SpellBreaker.refusal(breakerAtDeepWoods(identity),
       secretUse(p1)), None)
+
+  test("the consent grid lists it, granted by its ruler"):
+    val powers = ConsentPowers.default(catalog)
+    assertEquals(powers.granter(breakerAtDeepWoods(), SpellBreaker.id),
+      Some(p2))
+    assertEquals(powers.source(SpellBreaker.id),
+      Some(PowerSourceRef.Card(breaker)))
+    assertEquals(powers.granter(breakerAtDeepWoods(_.bandits(woods, 2)),
+      SpellBreaker.id), None)
 ```
+
+Add the imports `oathdigital.gameplay.powers.ConsentPowers` and `oathdigital.gameplay.setup.FirstGameSetupFixture.catalog`.
 
 If `Table` names its steps differently (`warbandsAt`, `bandits`), use the names `HallOfMinistersConsentSuite` uses for the same boards.
 
@@ -593,7 +619,7 @@ Expected: compilation fails, because `SpellBreaker` does not exist.
 package oathdigital.gameplay.powers.poweruse
 
 import oathdigital.gameplay.SiteRulers
-import oathdigital.gameplay.powerresolver.PowerUseRefusal
+import oathdigital.gameplay.powerresolver.{PowerUseRefusal, Waiver}
 import oathdigital.model._
 
 /** The ban a site card holds over its ruler's enemies (Spell Breaker,
@@ -608,6 +634,14 @@ private[powers] object RulerBans:
 
   def enemy(ruler: SiteRuler, player: PlayerId): Boolean =
     ruler != SiteRuler.Player(player)
+
+  /** The ban's waiver, for the consent grid: its granter is the player who
+    * rules `card`'s site, and `asked` is its reason when asked. */
+  def waiver(card: DenizenId, asked: NoteKey): Waiver =
+    val source = PowerSourceRef.Card(card)
+    Waiver(ready => ruler(ready, card).collect {
+      case SiteRuler.Player(player) => player }, source,
+      (_, _) => asked(source))
 
   /** `power`'s refusal of `requester`, waivable by a player ruler under
     * `covers`. */
@@ -676,7 +710,12 @@ case object SpellBreaker extends ContributingPower with PowerUseRestriction:
     yield RulerBans.refusal(id, SpellBreakerCard.id, ruler, use.user,
       ConsentKey(id, use.user, PowerUseRules.useKey,
         PowerUseRules.target(use)), plain, asked, "spell-breaker")
+
+  override val waiver: Option[Waiver] =
+    Some(RulerBans.waiver(SpellBreakerCard.id, asked))
 ```
+
+Add `Waiver` to the `powerresolver` import. Declare `waiver` after `asked`, since it reads it.
 
 `case object SpellBreaker` would put its name in the engine scan as "SpellBreaker"; no engine file contains that word, so the scan passes.
 
@@ -694,6 +733,19 @@ case object SpellBreaker extends ContributingPower with PowerUseRestriction:
 
 - In `PhasePowerCatalog.scala`, pass them: `PhasePowers(<the vector as it is>, WalkerPowerCatalog.useRestrictions(catalog))`.
 - In `PowerKindsCatalogSuite.scala`, add `"denizen.spell-breaker"` to `persistentRules`.
+- In `ConsentPowers.scala`, list the waivers the power-use restrictions declare beside the contributions' own, so the grid, the preferences and the consent log name Spell Breaker:
+
+  ```scala
+    private val waivers: Map[PowerId, Waiver] = (for
+      power <- powers
+      waiver <- power.contributions.values.flatten.collectFirst {
+        case Restriction(_, _, Some(waiver)) => waiver
+        case OptionRestriction(_, _, Some(waiver)) => waiver }
+        .orElse(power.powerUseRestrictions.flatMap(_.waiver).headOption)
+    yield power.id -> waiver).toMap ++ operations
+  ```
+
+  and add "and the power-use restrictions that declare one (catalog batch 8, slice 10)" to the class comment's list.
 - Regenerate the note-key snapshot: `NOTE_KEYS_SNAPSHOT=write ./sbtw "testOnly oathdigital.gameplay.powers.DeclaredNoteKeysSuite"`. Check with `git diff src/test/resources/notes/declared-keys.txt` that the only change is two added lines, for `denizen.spell-breaker`'s `no-secret-powers` and `no-secret-powers-consent`.
 
 `notes` must be declared after `id` and before the keys, as plain `val`s, never `lazy`: `NoteSet` reads its keys as the object initialises (`PowerNotes.scala`, "declared is complete only once the owning object's initialiser has run").
@@ -701,12 +753,12 @@ case object SpellBreaker extends ContributingPower with PowerUseRestriction:
 - [ ] **Step 6: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.poweruse.SpellBreakerSuite oathdigital.gameplay.PowerKindsCatalogSuite oathdigital.gameplay.BackendArchitectureSuite oathdigital.gameplay.powers.DeclaredNoteKeysSuite"`
-Expected: all pass. SpellBreakerSuite has 4 tests.
+Expected: all pass. SpellBreakerSuite has 5 tests.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/main/scala/oathdigital/gameplay/powers/poweruse/RulerBans.scala src/main/scala/oathdigital/gameplay/powers/poweruse/SpellBreaker.scala src/main/scala/oathdigital/catalog/holding/HoldingNomadDenizens.scala src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala src/test/scala/oathdigital/gameplay/PowerKindsCatalogSuite.scala src/test/scala/oathdigital/gameplay/powers/poweruse/SpellBreakerSuite.scala src/test/resources/notes/declared-keys.txt
+git add src/main/scala/oathdigital/gameplay/powers/poweruse/RulerBans.scala src/main/scala/oathdigital/gameplay/powers/poweruse/SpellBreaker.scala src/main/scala/oathdigital/catalog/holding/HoldingNomadDenizens.scala src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala src/main/scala/oathdigital/gameplay/powers/ConsentPowers.scala src/test/scala/oathdigital/gameplay/PowerKindsCatalogSuite.scala src/test/scala/oathdigital/gameplay/powers/poweruse/SpellBreakerSuite.scala src/test/resources/notes/declared-keys.txt
 git commit -m "feat(batch8): Spell Breaker refuses its ruler's enemies secret powers"
 ```
 
@@ -838,7 +890,9 @@ Add, after `payable`:
         case _ => None
       val persistent = catalog.printedPower(power.id).exists(_.persistent)
       PowerUseRules.refusals(ready, PowerUse(player, power.id, card,
-        persistent, power.costsSecret), restrictions)
+        persistent, power.costsSecret,
+        places = power.cost.favor > 0 || power.cost.secret > 0),
+        restrictions)
 ```
 
 Give `check` a last parameter `restrictions: Vector[PowerUseRestriction] = Vector.empty`, and after the `found <- ...` line add:
@@ -1013,17 +1067,19 @@ In `SelectedModifier.scala`, add to the trait:
       printed <- catalog.printedPower(id)
     yield PowerUse.of(ctx.activePlayer, printed, cardId,
       secret = cost.secret > 0 || cost.secretBurnt > 0,
-      consent = ctx.window != PowerWindow.CampaignModifierSelection)
+      consent = ctx.window != PowerWindow.CampaignModifierSelection,
+      places = cost.favor > 0 || cost.secret > 0)
 ```
 
-In `CatacombsContribution.scala`, add the same for its card, with `secret = true`, because its pick pays one secret:
+In `CatacombsContribution.scala`, add the same for its card, with `secret = true` and `places = true`, because its pick pays one secret onto its card:
 
 ```scala
   override def use(ctx: PowerCtx): Option[PowerUse] =
     for
       _ <- SelectedModifier.selectionAction(ctx.window)
       printed <- catalog.printedPower(id)
-    yield PowerUse.of(ctx.activePlayer, printed, cardId, secret = true)
+    yield PowerUse.of(ctx.activePlayer, printed, cardId, secret = true,
+      places = true)
 ```
 
 Add the `PowerUse` import from `gameplay.powerresolver` to both.
@@ -1262,7 +1318,11 @@ In `BattlePlan.scala`, add to the trait:
         case _ => false
       } || offer.amount.exists(_.secretsEach > 0) ||
         PlanSurcharge.taxesSecret(ctx.state, context),
-      consent = false)
+      consent = false,
+      places = offer.costs.exists {
+        case _: CampaignPlanCost.Favor | _: CampaignPlanCost.Secret => true
+        case _ => false
+      })
 ```
 
 `CampaignPlans.cardOf` is in `gameplay.actions.campaign`; `PlanSurcharge` already imports it. If it returns a `DenizenId` or another narrower type, widen it to `CardId` with `.map(c => c: CardId)`.
@@ -1348,7 +1408,7 @@ git commit -m "feat(batch8): Spell Breaker withholds secret battle plans and rer
 - [ ] **Step 1: Run the full gate**
 
 Run: `./sbtw "test" "frontend/test"`
-Expected: everything passes. The server count rises by the tests this plan adds: 4 + 4 + 7 + 3 + 6 = 24 (the phase suite's 7 include its projection test).
+Expected: everything passes. The server count rises by the tests this plan adds: 4 + 5 + 7 + 3 + 6 = 25 (the phase suite's 7 include its projection test).
 
 Run: `./sbtw "frontend/fullOptJS"`
 Expected: it links.
