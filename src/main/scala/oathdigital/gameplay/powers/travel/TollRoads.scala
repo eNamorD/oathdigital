@@ -39,9 +39,7 @@ final case class TollRoads private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = Vector(TollRoads.paid,
-    TollRoads.burned, TollRoads.waived, TollRoads.noFreeTravel,
-    TollRoads.noFreeTravelConsent)
+  override def noteKeys: Vector[NoteKey] = TollRoads.noteKeys
   override def narratedDecisions: Set[String] = Set(TollRoads.decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -104,24 +102,28 @@ final case class TollRoads private (catalog: ExecutableCatalog)
 object TollRoads:
   val id: PowerId = TollRoadsCard.power.id
   val Favor: Int = 1
+  /** Exposed: other powers write this power's lines and include this
+    * set to declare them. */
+  val notes: NoteSet = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} paid {1 favor} to {Blue}." */
-  val paid: NoteKey = NoteKey("paid", Vector(NotePart.Arg(0),
+  val paid: NoteKey = notes.key("paid", Vector(NotePart.Arg(0),
     NotePart.Text(" paid "), NotePart.Arg(1), NotePart.Text(" to "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "{Red} burned {1 favor}.", when bandits rule. */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Arg(0),
+  val burned: NoteKey = notes.key("burned", Vector(NotePart.Arg(0),
     NotePart.Text(" burned "), NotePart.Arg(1), NotePart.Text(".")))
   val decisionId: String = "power.toll-roads.toll"
   /** "{Red} paid nothing, with {Blue}'s consent." */
-  val waived: NoteKey = NoteKey("waived", Vector(NotePart.Arg(0),
+  val waived: NoteKey = notes.key("waived", Vector(NotePart.Arg(0),
     NotePart.Text(" paid nothing, with "), NotePart.Arg(1),
     NotePart.Text("'s consent.")))
   /** "Cannot travel to its ruler's sites without giving favor.": the reason
     * of the free option once its ruler refused. */
-  val noFreeTravel: NoteKey = NoteKey("no-free-travel", Vector(NotePart.Text(
+  val noFreeTravel: NoteKey = notes.key("no-free-travel", Vector(NotePart.Text(
     "Cannot travel to its ruler's sites without giving favor.")))
   /** The free option's reason while its ruler may be asked. */
-  val noFreeTravelConsent: NoteKey = NoteKey("no-free-travel-consent",
+  val noFreeTravelConsent: NoteKey = notes.key("no-free-travel-consent",
     Vector(NotePart.Text("Cannot travel to its ruler's sites without " +
       "giving favor or ruler's consent.")))
   val step: PayOrAsk = PayOrAsk(id, TollRoadsCard.id, decisionId,

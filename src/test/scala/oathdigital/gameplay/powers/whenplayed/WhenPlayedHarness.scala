@@ -5,6 +5,7 @@ import scala.reflect.ClassTag
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy,
   OperationRestrictions}
 import oathdigital.gameplay.powerresolver.ContributingPower
+import oathdigital.gameplay.powers.DeclaredNotes
 import oathdigital.gameplay.powers.{NoteText, PowerFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.powers.PowerFixture.{actor, quietTable}
@@ -26,9 +27,14 @@ object WhenPlayedHarness:
   def hookAt(card: DenizenId, site: SiteId): CardPlayedFaceup =
     CardPlayedFaceup(card, RuleSourceRef.SiteCard(site, card))
 
+  /** Built once: it walks both power catalogs, and `powers` is called per
+    * test. */
+  private val declared = Some(DeclaredNotes.of(catalog))
+
   def powers(power: ContributingPower): WalkerPowers =
     WalkerPowers(Vector(power),
-      restrictionSet = OperationRestrictions.forCatalog(catalog))
+      restrictionSet = OperationRestrictions.forCatalog(catalog),
+      declared = declared)
 
   def play(ready: ReadyGame, power: ContributingPower, card: DenizenId)
       : Either[OathViolation, WalkerOutcome] =

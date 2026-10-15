@@ -20,9 +20,10 @@ object AlchemistCard extends Denizen(DenizenId("9"), "Alchemist", Suit.Arcane) w
 case object Alchemist extends PaidAction(AlchemistCard.power):
   val Favor: Int = 4
   val decisionId: String = "power.alchemist.banks"
+  private val notes = NoteSet(id)
   /** Its own line: the whole favor it gained. Each bank's Gain line stays. */
-  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
-  override def noteKeys: Vector[NoteKey] = Vector(gained)
+  val gained: NoteKey = NoteSupport.gainedKey(notes, NoteKey.Used)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   private val banks = new FavorSplit(decisionId, Suit.all, "Take favor")
 

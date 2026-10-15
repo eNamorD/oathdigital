@@ -43,7 +43,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
 
   def id: PowerId = HornedMask.id
   def timing: PowerTiming = PowerTiming.Wake
-  override def noteKeys: Vector[NoteKey] = Vector(took, taken)
+  override def noteKeys: Vector[NoteKey] = HornedMask.noteKeys
   override def narratedDecisions: Set[String] = Set(denizenDecisionId)
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = true
@@ -174,7 +174,9 @@ object HornedMask:
   val id: PowerId = HornedMaskCard.power.id
   val denizenDecisionId: String = "power.horned-mask.denizen"
   val discardDecisionId: String = "power.horned-mask.discard"
-  val took: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  val took: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" took "), NotePart.Arg(1),
     NotePart.Text(" as a facedown adviser.")))
-  val taken: NoteKey = took.copy(name = "taken")
+  val taken: NoteKey = notes.key("taken", took.template)

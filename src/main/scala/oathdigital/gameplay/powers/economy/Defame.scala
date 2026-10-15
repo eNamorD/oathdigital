@@ -37,7 +37,7 @@ final case class Defame private (catalog: ExecutableCatalog)
   val cardId: DenizenId = DefameCard.id
   def id: PowerId = Defame.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
-  override def noteKeys: Vector[NoteKey] = Vector(burned)
+  override def noteKeys: Vector[NoteKey] = Defame.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -91,9 +91,11 @@ object Defame:
   val decisionId: String = "trade.defame.burn"
   val skip: DecisionOptionRef.Button = DecisionOptionRef.Button("skip")
   val Burned: Int = 1
+  private val notes = NoteSet(id)
   /** "Burned {1 favor} from {Blue}'s board." */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
+  val burned: NoteKey = notes.key("burned", Vector(NotePart.Text("Burned "),
     NotePart.Arg(0), NotePart.Text(" from "), NotePart.Arg(1),
     NotePart.Text("'s board.")))
+  def noteKeys: Vector[NoteKey] = notes.declared
 
   def forCatalog(catalog: ExecutableCatalog): Defame = new Defame(catalog)

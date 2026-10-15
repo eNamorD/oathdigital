@@ -34,13 +34,14 @@ object AncientBindingCard extends Denizen(DenizenId("23"), "Ancient Binding", Su
   * No generic line exists for a burn, so the line covers nothing.
   */
 case object AncientBinding extends PaidAction(AncientBindingCard.power):
+  private val notes = NoteSet(id)
   /** "Burned {n secrets}." */
-  val burned: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Burned "),
+  val burned: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Burned "),
     NotePart.Arg(0), NotePart.Text(".")))
   /** "No secret was burned." */
-  val nothing: NoteKey = NoteKey("used.none", Vector(
+  val nothing: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No secret was burned.")))
-  override def noteKeys: Vector[NoteKey] = Vector(burned, nothing)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match

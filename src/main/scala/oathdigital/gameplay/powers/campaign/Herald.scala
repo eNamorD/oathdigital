@@ -41,7 +41,7 @@ final case class Herald private (catalog: ExecutableCatalog)
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
-  override def noteKeys: Vector[NoteKey] = Vector(Herald.gained)
+  override def noteKeys: Vector[NoteKey] = Herald.noteKeys
   override def narratedDecisions: Set[String] = Set(Herald.decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -74,7 +74,9 @@ object Herald:
   /** Under the Campaign's prefix, so a parked question is a Campaign
     * decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix + "herald"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Blue} gained {1 favor} from {the Order bank}." */
-  val gained: NoteKey = NoteSupport.gainedFromKey("gained")
+  val gained: NoteKey = NoteSupport.gainedFromKey(notes, "gained")
 
   def forCatalog(catalog: ExecutableCatalog): Herald = new Herald(catalog)

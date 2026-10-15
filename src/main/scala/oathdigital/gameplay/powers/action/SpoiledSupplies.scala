@@ -22,12 +22,13 @@ object SpoiledSuppliesCard extends Denizen(DenizenId("228"), "Spoiled Supplies",
   */
 case object SpoiledSupplies extends PaidAction(SpoiledSuppliesCard.power):
   val Loss: Int = 1
+  private val notes = NoteSet(id)
   /** "{Blue} lost {1 Supply}." */
-  val lost: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val lost: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" lost "), NotePart.Arg(1), NotePart.Text(".")))
-  val nobody: NoteKey = NoteKey("used.none", Vector(
+  val nobody: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No enemy lost Supply.")))
-  override def noteKeys: Vector[NoteKey] = Vector(lost, nobody)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Branch((live, _) => {

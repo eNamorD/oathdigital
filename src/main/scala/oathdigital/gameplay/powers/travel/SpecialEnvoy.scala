@@ -27,7 +27,7 @@ final case class SpecialEnvoy private (catalog: ExecutableCatalog)
   def id: PowerId = SpecialEnvoy.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Travel)
   override def priority: Int = SpecialEnvoy.Priority
-  override def noteKeys: Vector[NoteKey] = Vector(SpecialEnvoy.ended)
+  override def noteKeys: Vector[NoteKey] = SpecialEnvoy.noteKeys
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
@@ -43,8 +43,10 @@ object SpecialEnvoy:
   val id: PowerId = SpecialEnvoyCard.power.id
   /** Folds after every Travel power, Royal Stables included. */
   val Priority: Int = RoyalStables.Priority + 1
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "The Act Phase ended." */
-  val ended: NoteKey = NoteKey("ended", Vector(
+  val ended: NoteKey = notes.key("ended", Vector(
     NotePart.Text("The Act Phase ended.")))
 
   def forCatalog(catalog: ExecutableCatalog): SpecialEnvoy =

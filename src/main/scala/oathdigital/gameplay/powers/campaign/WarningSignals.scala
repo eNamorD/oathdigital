@@ -34,22 +34,17 @@ object WarningSignalsCard extends Denizen(DenizenId("25"), "Warning Signals", Su
   * plan that says "At end, discard" does.
   */
 final case class WarningSignals private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = WarningSignalsCard.id
   def id: PowerId = WarningSignals.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(WarningSignals.redistributed, PlanDiscard.discarded)
+  override def planNoteKeys: Vector[NoteKey] = WarningSignals.ownNoteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.user.flatMap(user => context.denizen(cardId).map(source =>
       CampaignPlanOffer(source, "Warning Signals: rearrange your warbands",
         Vector.empty, Vector(CampaignPlanEffect.Run(Vector(rearrange(user)))))))
-
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignActionEligibility -> (use =>
-      PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
   /** The sites the user defends as a player, in map order. */
   private def defended(ready: ReadyGame, user: PlayerId): Vector[SiteId] =
@@ -78,9 +73,14 @@ object WarningSignals:
   val id: PowerId = WarningSignalsCard.power.id
   /** Under the Campaign's prefix, so a parked question is a Campaign decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix + "warning-signals"
+  private val notes = NoteSet(id)
   /** "{Blue} redistributed their warbands." */
-  val redistributed: NoteKey = NoteKey("redistributed", Vector(NotePart.Arg(0),
-    NotePart.Text(" redistributed their warbands.")))
+  val redistributed: NoteKey = notes.key("redistributed",
+    Vector(NotePart.Arg(0),
+      NotePart.Text(" redistributed their warbands.")))
+  /** This plan's own keys. Its `noteKeys` adds the discard's
+    * line, which `DiscardedAtEnd` owns, not this object. */
+  def ownNoteKeys: Vector[NoteKey] = notes.declared
 
   def forCatalog(catalog: ExecutableCatalog): WarningSignals =
     new WarningSignals(catalog)

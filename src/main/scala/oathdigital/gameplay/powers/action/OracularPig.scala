@@ -20,11 +20,12 @@ object OracularPigCard extends Relic(RelicId("R14"), "Oracular Pig", value = 93,
 case object OracularPig extends PaidAction(OracularPigCard.power):
   val inspectDecisionId: String = "power.oracular-pig.inspect"
   val Count: Int = 3
+  private val notes = NoteSet(id)
   /** "{Red} peeked at the top of the world deck: {cards}." */
-  val peeked: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val peeked: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" peeked at the top of the world deck: "), NotePart.Arg(1),
     NotePart.Text(".")))
-  override def noteKeys: Vector[NoteKey] = Vector(peeked)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

@@ -30,7 +30,7 @@ final case class AnimalHost private (catalog: ExecutableCatalog)
   import AnimalHost._
   def id: PowerId = AnimalHost.id
 
-  override def noteKeys: Vector[NoteKey] = Vector(gained, none)
+  override def noteKeys: Vector[NoteKey] = AnimalHost.noteKeys
 
   def effect(ctx: PowerCtx): Vector[Operation] =
     val actor = ctx.activePlayer
@@ -67,10 +67,12 @@ final case class AnimalHost private (catalog: ExecutableCatalog)
 
 object AnimalHost:
   val id: PowerId = AnimalHostCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} gained {n warbands}." */
-  val gained: NoteKey = NoteSupport.gainedKey("gained")
+  val gained: NoteKey = NoteSupport.gainedKey(notes, "gained")
   /** "{Red} gained no warbands." */
-  val none: NoteKey = NoteKey("none", Vector(NotePart.Arg(0),
+  val none: NoteKey = notes.key("none", Vector(NotePart.Arg(0),
     NotePart.Text(" gained no warbands.")))
 
   def forCatalog(catalog: ExecutableCatalog): AnimalHost =

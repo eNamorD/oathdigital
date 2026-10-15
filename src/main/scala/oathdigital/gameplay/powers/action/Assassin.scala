@@ -41,7 +41,7 @@ final case class Assassin private (catalog: ExecutableCatalog)
   private val limit = HolderAdviserLimit(AssassinCard.id, HolderLimit)
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(this.id.value)
-  override def noteKeys: Vector[NoteKey] = Vector(discarded, nothing)
+  override def noteKeys: Vector[NoteKey] = Assassin.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
@@ -116,12 +116,14 @@ object Assassin:
   val decisionId: String = "power.assassin.adviser"
   /** How many advisers the holder may have, in either orientation. */
   val HolderLimit: Int = 2
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Discarded {card} from {Blue}'s advisers." */
-  val discarded: NoteKey = NoteKey(NoteKey.Used, Vector(
+  val discarded: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("Discarded "), NotePart.Arg(0), NotePart.Text(" from "),
     NotePart.Arg(1), NotePart.Text("'s advisers.")))
   /** "No faceup adviser could be discarded." */
-  val nothing: NoteKey = NoteKey("used.none", Vector(
+  val nothing: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No faceup adviser could be discarded.")))
 
   def forCatalog(catalog: ExecutableCatalog): Assassin =

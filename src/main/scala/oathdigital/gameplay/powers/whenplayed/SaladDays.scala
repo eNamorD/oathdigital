@@ -29,8 +29,9 @@ case object SaladDays extends WhenPlayedPower:
   val Banks: Int = 3
   /** The favor it takes from each. */
   val Each: Int = 1
+  private val notes = NoteSet(id)
   /** "Every favor bank was empty." */
-  val empty: NoteKey = NoteKey("none", Vector(
+  val empty: NoteKey = notes.key("none", Vector(
     NotePart.Text("Every favor bank was empty.")))
 
   /** The banks that hold favor, in suit order. */
@@ -53,7 +54,7 @@ case object SaladDays extends WhenPlayedPower:
             "Salad Days takes from three different banks that hold favor"))
       }
 
-  override def noteKeys: Vector[NoteKey] = Vector(empty)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =

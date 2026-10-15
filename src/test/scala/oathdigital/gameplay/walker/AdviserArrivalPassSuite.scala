@@ -13,7 +13,10 @@ class AdviserArrivalPassSuite extends munit.FunSuite:
   private val elders = CatalogNames.denizen("Elders")
   private val rainBoots = CatalogNames.denizen("Rain Boots")
   /** "{cards}": the arrivals a stub heard. */
-  private val heard = NoteKey("heard", Vector(NotePart.Arg(0)))
+  /** This suite's own keys: a test declares what it writes,
+    * as a power does. */
+  private val testNotes = NoteSet.unowned("AdviserArrivalPassSuite")
+  private val heard = testNotes.key("heard", Vector(NotePart.Arg(0)))
 
   /** Stub of ContributingPower: hooks no window. Whenever advisers arrive,
     * it follows up with `follow(arrived)` and notes the arrivals it heard.

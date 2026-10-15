@@ -27,7 +27,12 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
     probing: Boolean = true,
     restrictionSet: OperationRestrictions = OperationRestrictions.none,
     modifiers: Vector[PowerId] = Vector.empty,
-    pool: Vector[ContributingPower] = Vector.empty):
+    pool: Vector[ContributingPower] = Vector.empty,
+    /** Every note key the catalog declares, which `NoteCheck` reads to
+      * refuse a note no power declared. `WalkerPowerCatalog` supplies it;
+      * a `WalkerPowers` assembled from hand-made powers has no catalog
+      * behind it and declares nothing, so its notes are not checked. */
+    declared: Option[oathdigital.gameplay.powers.DeclaredNotes] = None):
   /** These powers indexed by the windows they hook, built once per instance
     * (see [[PowerWindowIndex]]). */
   lazy val windowIndex: PowerWindowIndex = PowerWindowIndex.of(powers)

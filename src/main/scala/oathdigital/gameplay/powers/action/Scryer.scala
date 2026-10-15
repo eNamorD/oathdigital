@@ -25,15 +25,16 @@ object ScryerCard extends Denizen(DenizenId("19"), "Scryer", Suit.Discord):
 case object Scryer extends PaidAction(ScryerCard.power):
   val pileDecisionId: String = "power.scryer.pile"
   val inspectDecisionId: String = "power.scryer.inspect"
+  private val notes = NoteSet(id)
   /** "{Red} peeked at the {Cradle discard pile}: {cards}." */
-  val peeked: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val peeked: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" peeked at the "), NotePart.Arg(1), NotePart.Text(": "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "{Red} peeked at the {Cradle discard pile}, which was empty." */
-  val peekedEmpty: NoteKey = NoteKey("used.empty", Vector(NotePart.Arg(0),
+  val peekedEmpty: NoteKey = notes.key("used.empty", Vector(NotePart.Arg(0),
     NotePart.Text(" peeked at the "), NotePart.Arg(1),
     NotePart.Text(", which was empty.")))
-  override def noteKeys: Vector[NoteKey] = Vector(peeked, peekedEmpty)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(pileDecisionId)
 
   /** The regions whose discard piles it may peek at, in the order offered. */

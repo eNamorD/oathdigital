@@ -30,7 +30,7 @@ final case class BedOfRoots private (catalog: ExecutableCatalog)
     extends PaidAction(BedOfRootsCard.power):
   import BedOfRoots._
 
-  override def noteKeys: Vector[NoteKey] = Vector(buried, bare)
+  override def noteKeys: Vector[NoteKey] = BedOfRoots.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -85,12 +85,14 @@ object BedOfRoots:
   val id: PowerId = BedOfRootsCard.power.id
   val decisionId: String = "power.bed-of-roots.adviser"
   val Gained: Int = 2
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} buried {card} and gained {n secrets}." */
-  val buried: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val buried: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" buried "), NotePart.Arg(1),
     NotePart.Text(" and gained "), NotePart.Arg(2), NotePart.Text(".")))
   /** "{Red} had no faceup adviser." */
-  val bare: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val bare: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" had no faceup adviser.")))
 
   /** The player's faceup denizen advisers, in adviser order. */

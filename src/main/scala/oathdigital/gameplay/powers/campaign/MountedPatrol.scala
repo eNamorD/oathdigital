@@ -25,13 +25,12 @@ object MountedPatrolCard extends Denizen(DenizenId("163"), "Mounted Patrol", Sui
   * It writes "The attack pool was halved to {n} dice.", with the dice left.
   */
 final case class MountedPatrol private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = MountedPatrolCard.id
   def id: PowerId = MountedPatrol.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(MountedPatrol.halved, PlanDiscard.discarded)
+  override def planNoteKeys: Vector[NoteKey] = MountedPatrol.ownNoteKeys
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
@@ -43,14 +42,14 @@ final case class MountedPatrol private (catalog: ExecutableCatalog)
       Note(id, states => Some(MountedPatrol.halved(PowerSourceRef.Card(cardId),
         NoteArg.Number(MountedPatrol.pool(states.now)))))) ++ children))
 
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignActionEligibility -> (use =>
-      PlanDiscard.afterCampaign(catalog, id, use, cardId)))
-
 object MountedPatrol:
   val id: PowerId = MountedPatrolCard.power.id
+  private val notes = NoteSet(id)
+  /** This plan's own keys. Its `noteKeys` adds the discard's
+    * line, which `DiscardedAtEnd` owns, not this object. */
+  def ownNoteKeys: Vector[NoteKey] = notes.declared
   /** "The attack pool was halved to {n} dice." */
-  val halved: NoteKey = NoteKey("halved", Vector(
+  val halved: NoteKey = notes.key("halved", Vector(
     NotePart.Text("The attack pool was halved to "), NotePart.Arg(0),
     NotePart.Plural(0, " die.", " dice.")))
 

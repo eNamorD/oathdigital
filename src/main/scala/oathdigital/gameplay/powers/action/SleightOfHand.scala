@@ -25,10 +25,12 @@ object SleightOfHandCard extends Denizen(DenizenId("17"), "Sleight of Hand", Sui
 case object SleightOfHand extends PaidAction(SleightOfHandCard.power):
   val decisionId: String = "power.sleight-of-hand.target"
   val MinimumSecrets: Int = 2
+  private val notes = NoteSet(id)
   /** Its line when no player at the site holds two secrets. */
-  val nobody: NoteKey = NoteKey("used.none", Vector(
+  val nobody: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No player could be robbed.")))
-  override def noteKeys: Vector[NoteKey] = Vector(NoteSupport.took, nobody)
+  notes.include(NoteSupport.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

@@ -30,7 +30,7 @@ final case class ARoundOfAle private (catalog: ExecutableCatalog)
   import ARoundOfAle._
   def id: PowerId = ARoundOfAle.id
 
-  override def noteKeys: Vector[NoteKey] = Vector(cleanup)
+  override def noteKeys: Vector[NoteKey] = ARoundOfAle.noteKeys
 
   def effect(ctx: PowerCtx): Vector[Operation] =
     val actor = ctx.activePlayer
@@ -40,8 +40,10 @@ final case class ARoundOfAle private (catalog: ExecutableCatalog)
 
 object ARoundOfAle:
   val id: PowerId = ARoundOfAleCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Triggering resource cleanup." */
-  val cleanup: NoteKey = NoteKey("cleanup", Vector(
+  val cleanup: NoteKey = notes.key("cleanup", Vector(
     NotePart.Text("Triggering resource cleanup.")))
 
   def forCatalog(catalog: ExecutableCatalog): ARoundOfAle =

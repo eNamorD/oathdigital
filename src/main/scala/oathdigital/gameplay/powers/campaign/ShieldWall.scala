@@ -31,13 +31,14 @@ case object ShieldWall extends BattlePlan:
   /** The defense dice it adds. */
   val Dice: Int = 2
 
+  private val notes = NoteSet(id)
   /** "{Blue}'s whole force was killed." */
-  val killed: NoteKey = NoteKey("killed", Vector(NotePart.Arg(0),
+  val killed: NoteKey = notes.key("killed", Vector(NotePart.Arg(0),
     NotePart.Text("'s whole force was killed.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(ShieldWall.killed)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,

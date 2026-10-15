@@ -9,8 +9,11 @@ import oathdigital.model._
   * two plans that both rescore write the same score.
   */
 private[campaign] object SingleShields:
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("SingleShields")
   /** "Single shields ignored." */
-  val ignored: NoteKey = NoteKey("ignored",
+  val ignored: NoteKey = notes.key("ignored",
     Vector(NotePart.Text("Single shields ignored.")))
 
   /** The defense dice score with every single shield scoring 0. */

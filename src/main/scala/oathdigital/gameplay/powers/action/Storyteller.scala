@@ -20,11 +20,12 @@ object StorytellerCard extends Denizen(DenizenId("52"), "Storyteller", Suit.Hear
   */
 case object Storyteller extends PaidAction(StorytellerCard.power):
   val Placed: Int = 1
+  private val notes = NoteSet(id)
   /** "{Red} placed {1 secret} on the {Darkest Secret}." */
-  val placed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val placed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" placed "), NotePart.Arg(1), NotePart.Text(" on the "),
     NotePart.Arg(2), NotePart.Text(".")))
-  override def noteKeys: Vector[NoteKey] = Vector(placed)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

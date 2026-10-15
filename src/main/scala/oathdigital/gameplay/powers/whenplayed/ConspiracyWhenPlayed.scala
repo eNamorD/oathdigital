@@ -38,11 +38,12 @@ case object ConspiracyWhenPlayed extends ContributingPower:
     case CardPlayedFaceup(card, _) => card == VisionRules.Conspiracy
     case _ => false
 
-  override def noteKeys: Vector[NoteKey] = Vector(seized)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
+  private val notes = NoteSet(id)
   /** "{Red} seized {relic or banner} from {Blue}." */
-  val seized: NoteKey = NoteKey("seized", Vector(NotePart.Arg(0),
+  val seized: NoteKey = notes.key("seized", Vector(NotePart.Arg(0),
     NotePart.Text(" seized "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text(".")))
 

@@ -32,7 +32,7 @@ final case class TamingCharm private (catalog: ExecutableCatalog)
   import TamingCharm._
 
   private val cards = new SiteCards(catalog, Set(Suit.Beast, Suit.Nomad))
-  override def noteKeys: Vector[NoteKey] = Vector(gained, discardedOnly, bare)
+  override def noteKeys: Vector[NoteKey] = TamingCharm.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -86,17 +86,19 @@ object TamingCharm:
   val id: PowerId = TamingCharmCard.power.id
   val decisionId: String = "power.taming-charm.card"
   val Gained: Int = 2
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} discarded {card} and gained {n favor} from {the Beast bank}." */
-  val gained: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val gained: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" discarded "), NotePart.Arg(1),
     NotePart.Text(" and gained "), NotePart.Arg(2), NotePart.Text(" from "),
     NotePart.Arg(3), NotePart.Text(".")))
   /** "{Red} discarded {card}." */
-  val discardedOnly: NoteKey = NoteKey("used.discarded", Vector(
+  val discardedOnly: NoteKey = notes.key("used.discarded", Vector(
     NotePart.Arg(0), NotePart.Text(" discarded "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "{site} held no Beast or Nomad card." */
-  val bare: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val bare: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no Beast or Nomad card.")))
 
   def forCatalog(catalog: ExecutableCatalog): TamingCharm =

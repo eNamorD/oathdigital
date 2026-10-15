@@ -32,7 +32,9 @@ trait ActingSite extends SelectedModifier:
 
   final def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
   final override def priority: Int = EconomySources.RelocationPriority
-  final override def noteKeys: Vector[NoteKey] = Vector(ActingSite.acted)
+  private val notes = NoteSet(id)
+  notes.include(ActingSite.notes)
+  final override def noteKeys: Vector[NoteKey] = notes.declared
   final override def narratedDecisions: Set[String] =
     Set(PowerAccess.asIfDecision)
 
@@ -74,8 +76,11 @@ trait ActingSite extends SelectedModifier:
     }
 
 object ActingSite:
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("ActingSite")
   /** "Acted as if at {the Shrine}." */
-  val acted: NoteKey = NoteKey("acted", Vector(
+  val acted: NoteKey = notes.key("acted", Vector(
     NotePart.Text("Acted as if at "), NotePart.Arg(0), NotePart.Text(".")))
   val elsewhere: String = "Already acting as if at another site"
   val pickedHere: String = "A modifier you picked is at your pawn site"

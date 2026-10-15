@@ -29,7 +29,9 @@ case object BarbedNet extends PaidAction(BarbedNetCard.power):
   val took: NoteKey = take.took
   /** "{site} held no relic." */
   val bare: NoteKey = take.bare
-  override def noteKeys: Vector[NoteKey] = take.keys
+  private val notes = NoteSet(id)
+  notes.include(take.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = take.narrated
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

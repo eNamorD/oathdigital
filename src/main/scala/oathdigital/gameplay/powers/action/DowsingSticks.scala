@@ -18,8 +18,10 @@ object DowsingSticksCard extends Relic(RelicId("R09"), "Dowsing Sticks", value =
   */
 case object DowsingSticks extends PaidAction(DowsingSticksCard.power):
   /** Its line when the deck had no relic to draw. */
+  private val notes = NoteSet(id)
+  notes.include(RelicDraws.notes)
   val emptyDeck: NoteKey = RelicDraws.emptyDeck
-  override def noteKeys: Vector[NoteKey] = Vector(RelicDraws.drew, emptyDeck)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] =

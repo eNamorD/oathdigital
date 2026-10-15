@@ -39,7 +39,7 @@ final case class RelicThief private (catalog: ExecutableCatalog)
 
   private val lostTongue = LostTongue.forCatalog(catalog)
 
-  override def noteKeys: Vector[NoteKey] = Vector(took, kept, nothing)
+  override def noteKeys: Vector[NoteKey] = RelicThief.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -119,16 +119,18 @@ object RelicThief:
   val decisionId: String = "power.relic-thief.relic"
   /** Its own dice pool. */
   val pool: PoolKey = PoolKey("relic-thief")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Rolled no shield and took {relic} from {Blue}." */
-  val took: NoteKey = NoteKey(NoteKey.Used, Vector(
+  val took: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("Rolled no shield and took "), NotePart.Arg(0),
     NotePart.Text(" from "), NotePart.Arg(1), NotePart.Text(".")))
   /** "Rolled a shield; {Blue} kept {relic}." */
-  val kept: NoteKey = NoteKey("used.kept", Vector(
+  val kept: NoteKey = notes.key("used.kept", Vector(
     NotePart.Text("Rolled a shield; "), NotePart.Arg(0),
     NotePart.Text(" kept "), NotePart.Arg(1), NotePart.Text(".")))
   /** "No faceup relic could be taken." */
-  val nothing: NoteKey = NoteKey("used.none", Vector(
+  val nothing: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No faceup relic could be taken.")))
 
   def forCatalog(catalog: ExecutableCatalog): RelicThief =

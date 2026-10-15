@@ -25,8 +25,9 @@ final case class Dazzle private (catalog: ExecutableCatalog)
   val cardId: DenizenId = DazzleCard.id
   def id: PowerId = Dazzle.id
 
-  override def noteKeys: Vector[NoteKey] =
-    Vector(RegionDiscard.discarded, RegionDiscard.none)
+  private val notes = NoteSet(id)
+  notes.include(RegionDiscard.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   private val region = new RegionDiscard(catalog, Dazzle.suits)
 

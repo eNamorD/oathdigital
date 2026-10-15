@@ -136,12 +136,13 @@ this order. Each slice gets its own plan.
 - [x] **9. Darkest Secret lens:** Yew Staff.
 - [ ] **10. Power-use restrictions:** Spell Breaker, Forest Council, City
   Wall, Giant Python.
-- [ ] **10b. Consent for refused automatic powers.** Slice 10 refuses an
-  enemy's automatic non-persistent power (When Played, Tyrant, Hospitality,
-  Hunger and the like) silently. With this item, such a power refused only
-  by waivable restrictions asks the refusing card's ruler through consent,
-  worded "Use City Wall to deactivate Blue's Tyrant?". The power's user is
-  never asked. Design:
+- [ ] **10b. The ruler's choice over refused automatic powers.** Slice 10
+  refuses an enemy's automatic non-persistent power (When Played, Tyrant,
+  Hospitality, Hunger and the like) silently. With this item, such a power
+  refused only by waivable restrictions asks the refusing card's ruler
+  through consent, worded "Use City Wall to deactivate Blue's Tyrant?". The
+  power's user is not asked, since many of these powers carry a penalty its
+  user would gladly lose. Design:
   [automatic power consent](superpowers/specs/2026-10-15-automatic-power-consent-design.md).
 - [ ] **11. Actor-aware lock:** Ancient Bloodline.
 - [ ] **12. Card play at another site:** Baron, New Growth, Forest Warden.

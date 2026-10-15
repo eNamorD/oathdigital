@@ -41,8 +41,7 @@ final case class SpinningBee private (catalog: ExecutableCatalog)
   val cardId: DenizenId = SpinningBeeCard.id
   def id: PowerId = SpinningBee.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(SpinningBee.alone, SpinningBee.drawing)
+  override def noteKeys: Vector[NoteKey] = SpinningBee.noteKeys
   /** The declared suit is told by Spinning Bee's own line. */
   override def narratedDecisions: Set[String] =
     Set(SpinningBee.suitDecisionId)
@@ -141,12 +140,14 @@ object SpinningBee:
   val heading: String = "Declare a suit"
   /** Why Spinning Bee is unavailable once another modifier is picked. */
   val notWithOthers: String = "Cannot be used with other Search modifiers"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "You cannot use other Search modifiers.": why every other modifier
     * is unavailable once Spinning Bee is picked. */
-  val alone: NoteKey = NoteKey("alone", Vector(
+  val alone: NoteKey = notes.key("alone", Vector(
     NotePart.Text("You cannot use other Search modifiers.")))
   /** "Drawing from the {region} discard until {suit} card is drawn". */
-  val drawing: NoteKey = NoteKey("drawing", Vector(
+  val drawing: NoteKey = notes.key("drawing", Vector(
     NotePart.Text("Drawing from the "), NotePart.Arg(0),
     NotePart.Text(" discard until "), NotePart.Arg(1),
     NotePart.Text(" card is drawn")))

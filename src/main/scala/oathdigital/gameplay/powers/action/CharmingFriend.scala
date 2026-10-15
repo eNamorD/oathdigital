@@ -24,13 +24,14 @@ object CharmingFriendCard extends Denizen(DenizenId("131"), "Charming Friend", S
 case object CharmingFriend extends PaidAction(CharmingFriendCard.power):
   val decisionId: String = "power.charming-friend.target"
   val Taken: Int = 1
-  val nobody: NoteKey = NoteKey("used.none", Vector(
+  private val notes = NoteSet(id)
+  val nobody: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No player could be robbed.")))
   /** "{Blue} had no favor to take." */
-  val broke: NoteKey = NoteKey("used.empty", Vector(NotePart.Arg(0),
+  val broke: NoteKey = notes.key("used.empty", Vector(NotePart.Arg(0),
     NotePart.Text(" had no favor to take.")))
-  override def noteKeys: Vector[NoteKey] =
-    Vector(NoteSupport.took, nobody, broke)
+  notes.include(NoteSupport.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

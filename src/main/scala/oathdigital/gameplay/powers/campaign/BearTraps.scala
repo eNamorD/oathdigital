@@ -24,14 +24,15 @@ object BearTrapsCard extends Denizen(DenizenId("3"), "Bear Traps", Suit.Order):
 case object BearTraps extends BattlePlan:
   val cardId: DenizenId = BearTrapsCard.id
   val id: PowerId = BearTrapsCard.power.id
+  private val notes = NoteSet(id)
   /** "Killed {1 warband} on {Red}'s board." */
-  val killed: NoteKey = NoteKey("killed", Vector(NotePart.Text("Killed "),
+  val killed: NoteKey = notes.key("killed", Vector(NotePart.Text("Killed "),
     NotePart.Arg(0), NotePart.Text(" on "), NotePart.Arg(1),
     NotePart.Text("'s board.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(BearTraps.killed)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,

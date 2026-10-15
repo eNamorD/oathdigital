@@ -32,8 +32,7 @@ final case class Jinx private (catalog: ExecutableCatalog)
     extends ContributingPower:
   def id: PowerId = Jinx.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(Jinx.rerolledAttack, Jinx.rerolledDefense)
+  override def noteKeys: Vector[NoteKey] = Jinx.noteKeys
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.Reroll -> Vector(OfferReroll(offer)))
@@ -52,11 +51,13 @@ object Jinx:
   val id: PowerId = JinxCard.power.id
   private val card: DenizenId = JinxCard.id
 
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Rerolled the attack dice." */
-  val rerolledAttack: NoteKey = NoteKey("rerolled-attack",
+  val rerolledAttack: NoteKey = notes.key("rerolled-attack",
     Vector(NotePart.Text("Rerolled the attack dice.")))
   /** "Rerolled the defense dice." */
-  val rerolledDefense: NoteKey = NoteKey("rerolled-defense",
+  val rerolledDefense: NoteKey = notes.key("rerolled-defense",
     Vector(NotePart.Text("Rerolled the defense dice.")))
 
   private def line(rolled: DiceThrow): NoteKey = rolled.die match

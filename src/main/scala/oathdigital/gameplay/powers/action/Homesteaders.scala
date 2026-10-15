@@ -27,7 +27,7 @@ final case class Homesteaders private (catalog: ExecutableCatalog)
     extends PaidAction(HomesteadersCard.power):
   import Homesteaders._
 
-  override def noteKeys: Vector[NoteKey] = Vector(moved, nothing)
+  override def noteKeys: Vector[NoteKey] = Homesteaders.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -85,12 +85,14 @@ final case class Homesteaders private (catalog: ExecutableCatalog)
 object Homesteaders:
   val id: PowerId = HomesteadersCard.power.id
   val decisionId: String = "power.homesteaders.adviser"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Moved {card} to {site}." */
-  val moved: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Moved "),
+  val moved: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Moved "),
     NotePart.Arg(0), NotePart.Text(" to "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "No adviser could be moved." */
-  val nothing: NoteKey = NoteKey("used.none", Vector(
+  val nothing: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No adviser could be moved.")))
 
   def forCatalog(catalog: ExecutableCatalog): Homesteaders =

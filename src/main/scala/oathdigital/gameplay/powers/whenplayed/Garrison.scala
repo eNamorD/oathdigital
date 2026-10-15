@@ -72,7 +72,9 @@ case object Garrison extends WhenPlayedPower:
     }.toRight(OathViolation.InvalidEventOrder(
       "no Garrison site choice is recorded"))
 
-  override def noteKeys: Vector[NoteKey] = Vector(VowOfWandering.forbidden)
+  private val notes = NoteSet(id)
+  notes.borrow(VowOfWandering.forbidden)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   /** Whether Vow of Wandering stops the placement: the actor holds it and
     * rules a site. */

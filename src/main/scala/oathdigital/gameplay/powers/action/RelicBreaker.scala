@@ -23,14 +23,15 @@ object RelicBreakerCard extends Denizen(DenizenId("139"), "Relic Breaker", Suit.
 case object RelicBreaker extends PaidAction(RelicBreakerCard.power):
   val decisionId: String = "power.relic-breaker.relic"
   val Gained: Int = 1
+  private val notes = NoteSet(id)
   /** "{Red} buried {relic} and gained {n secrets}." */
-  val buried: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val buried: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" buried "), NotePart.Arg(1),
     NotePart.Text(" and gained "), NotePart.Arg(2), NotePart.Text(".")))
   /** "{Red} held no relic." */
-  val bare: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val bare: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no relic.")))
-  override def noteKeys: Vector[NoteKey] = Vector(buried, bare)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   private val relic = new HeldRelicSpend(decisionId,

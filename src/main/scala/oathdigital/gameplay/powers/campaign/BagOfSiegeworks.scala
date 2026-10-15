@@ -26,14 +26,15 @@ case object BagOfSiegeworks extends BattlePlan:
   val id: PowerId = BagOfSiegeworksCard.power.id
 
   /** "Single shields ignored." */
-  val ignored: NoteKey = SingleShields.ignored
+  private val notes = NoteSet(id)
+  val ignored: NoteKey = notes.borrow(SingleShields.ignored)
 
   /** The defense dice score with every single shield scoring 0. */
   def score(faces: Vector[DefenseDieFace]): Int = SingleShields.score(faces)
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def noteKeys: Vector[NoteKey] = Vector(BagOfSiegeworks.ignored)
+  override def noteKeys: Vector[NoteKey] = BagOfSiegeworks.notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.relic(relicId).filter(_ => context.setup.kind == CampaignKind.Conquest)

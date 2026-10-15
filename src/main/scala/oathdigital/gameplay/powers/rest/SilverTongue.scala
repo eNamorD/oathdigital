@@ -30,7 +30,9 @@ final case class SilverTongue private (catalog: ExecutableCatalog)
   def id: PowerId = SilverTongue.id
   def timing: PowerTiming = PowerTiming.Rest
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] = Vector(NoteSupport.took)
+  private val notes = NoteSet(id)
+  notes.include(NoteSupport.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = stocked(ready, player).nonEmpty

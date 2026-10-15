@@ -34,8 +34,10 @@ case object VowOfObedience extends PhasePower with ContributingPower:
 
   def timing: PowerTiming = PowerTiming.Rest
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(NoteSupport.took, VisionPlay.noFaceup)
+  private val notes = NoteSet(id)
+  notes.include(NoteSupport.notes)
+  notes.include(VisionPlay.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup -> Vector(Restriction((ctx, _) =>

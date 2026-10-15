@@ -23,14 +23,15 @@ object EnchantressCard extends Denizen(DenizenId("96"), "Enchantress", Suit.Disc
   */
 case object Enchantress extends PaidAction(EnchantressCard.power):
   val decisionId: String = "power.enchantress.adviser"
+  private val notes = NoteSet(id)
   /** "{Red} swapped it for {Blue}'s {card}." */
-  val swapped: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val swapped: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" swapped it for "), NotePart.Arg(1), NotePart.Text("'s "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "No faceup adviser could be swapped." */
-  val nothing: NoteKey = NoteKey("used.none", Vector(
+  val nothing: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No faceup adviser could be swapped.")))
-  override def noteKeys: Vector[NoteKey] = Vector(swapped, nothing)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

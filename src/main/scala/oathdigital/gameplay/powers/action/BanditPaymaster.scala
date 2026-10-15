@@ -23,17 +23,18 @@ object BanditPaymasterCard extends Denizen(DenizenId("219"), "Bandit Paymaster",
 case object BanditPaymaster extends PaidAction(BanditPaymasterCard.power):
   val Removed: Int = 1
   val Gained: Int = 3
+  private val notes = NoteSet(id)
   /** "Removed {1} bandit warband from {site}, and {Red} gained
     * {n warbands}." */
-  val paid: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Removed "),
+  val paid: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Removed "),
     NotePart.Arg(0), NotePart.Plural(0, " bandit warband from ",
       " bandit warbands from "), NotePart.Arg(1), NotePart.Text(", and "),
     NotePart.Arg(2), NotePart.Text(" gained "), NotePart.Arg(3),
     NotePart.Text(".")))
   /** "{site} had no bandit to spare." */
-  val spared: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val spared: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" had no bandit to spare.")))
-  override def noteKeys: Vector[NoteKey] = Vector(paid, spared)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

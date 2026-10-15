@@ -84,11 +84,14 @@ private[whenplayed] final class RegionDiscard(catalog: ExecutableCatalog,
     case edifice: EdificeState => edifice.side == EdificeSide.Ruined
 
 private[whenplayed] object RegionDiscard:
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("RegionDiscard")
   /** "Discarded {cards}." */
-  val discarded: NoteKey = NoteKey("discarded", Vector(
+  val discarded: NoteKey = notes.key("discarded", Vector(
     NotePart.Text("Discarded "), NotePart.Arg(0), NotePart.Text(".")))
   /** "Nothing was discarded." */
-  val none: NoteKey = NoteKey("none", Vector(
+  val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("Nothing was discarded.")))
 
   /** The region whose discard pile takes the cards discarded in `origin`. */

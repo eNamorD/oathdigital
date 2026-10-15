@@ -55,7 +55,8 @@ enum NotePart:
 /** One line a power can write: its key and the sentence the log renders
   * after "{source}: ". A power declares its keys and builds its notes
   * through them, so a key never lacks a template. */
-final case class NoteKey(name: String, template: Vector[NotePart]):
+final case class NoteKey private[model] (name: String,
+    template: Vector[NotePart]):
   def apply(source: PowerSourceRef, args: NoteArg*): PowerNote =
     PowerNote(source, name, args.toVector)
 object NoteKey:
@@ -65,6 +66,66 @@ object NoteKey:
     * as nothing to target: `used`, or `used.{variant}`. Either replaces
     * "Used {card}" and is its action's line. */
   def isUse(name: String): Boolean = name == Used || name.startsWith(s"$Used.")
+
+/** The keys one object declares (derive note keys design, "Mechanism"). A
+  * key is created through the set that declares it, so defining a key and
+  * declaring it are one act and the two cannot disagree.
+  *
+  * `declared` is complete only once the owning object's initialiser has run,
+  * so: read it through a `def`, never a `val`; declare keys as plain `val`s
+  * in the object that owns the set, never `lazy val`s, whose key is absent
+  * from `declared` until something forces them; and declare no key in a
+  * trait body, which initialises once per mixin. A set left partly filled
+  * is a `DeclaredNoteKeysSuite` failure, not a missing line in a player's
+  * log.
+  */
+final class NoteSet private (private val label: String):
+  private val own = scala.collection.mutable.ArrayBuffer.empty[NoteKey]
+  private val borrowed = scala.collection.mutable.ArrayBuffer.empty[NoteKey]
+  private val included = scala.collection.mutable.ArrayBuffer.empty[NoteSet]
+
+  /** Declares a key and returns it. */
+  def key(name: String, template: Vector[NotePart]): NoteKey =
+    require(!own.exists(_.name == name), s"$label declares $name twice")
+    val declaredKey = NoteKey(name, template)
+    own += declaredKey
+    declaredKey
+
+  /** Declares one key another object owns, and returns it, for a power that
+    * writes that one line and not the rest of the owner's set. Prefer this
+    * to `include`: a power declares what it writes, so the check that
+    * refuses an undeclared note stays as tight as the power is. */
+  def borrow(key: NoteKey): NoteKey =
+    if !borrowed.contains(key) then borrowed += key
+    key
+
+  /** Declares every key `other` owns, for a power that writes any of them. */
+  def include(other: NoteSet): Unit =
+    require(!other.reaches(this), s"$label and ${other.label} include each " +
+      "other, so neither could say what it declares")
+    if !included.contains(other) then included += other
+
+  /** Every key this object owns or borrows, its own first. Two sets may
+    * include a third, so one key arriving by two routes is one key; two
+    * different keys of one name are a conflict, and picking a winner
+    * silently is how a borrowed line goes missing. */
+  def declared: Vector[NoteKey] =
+    val all = own.toVector ++ borrowed.toVector ++
+      included.toVector.flatMap(_.declared)
+    all.groupBy(_.name).foreach: (name, keys) =>
+      require(keys.distinct.sizeIs == 1, s"$label declares $name as " +
+        keys.distinct.map(_.template).mkString(" and as "))
+    all.distinct
+
+  /** Whether `other` is this set, or anything this set includes. */
+  private def reaches(other: NoteSet): Boolean =
+    this.eq(other) || included.exists(_.reaches(other))
+
+object NoteSet:
+  def apply(power: PowerId): NoteSet = new NoteSet(power.value)
+  /** A set for a helper that owns keys no single power owns, such as the
+    * end-of-Campaign discard line. `label` names it in failures only. */
+  def unowned(label: String): NoteSet = new NoteSet(label)
 
 /** What a note may read when the walker reaches it. `previous` is the states
   * before and after the leaf this command ran last, if any, so a note that

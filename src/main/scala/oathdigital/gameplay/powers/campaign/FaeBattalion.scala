@@ -23,13 +23,14 @@ object FaeBattalionCard extends Denizen(DenizenId("215"), "Fae Battalion", Suit.
 case object FaeBattalion extends BattlePlan:
   val cardId: DenizenId = FaeBattalionCard.id
   val id: PowerId = FaeBattalionCard.power.id
+  private val notes = NoteSet(id)
   /** "Hollow swords counted as swords." */
-  val counted: NoteKey = NoteKey("counted",
+  val counted: NoteKey = notes.key("counted",
     Vector(NotePart.Text("Hollow swords counted as swords.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def noteKeys: Vector[NoteKey] = Vector(FaeBattalion.counted)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).filter(_ => context.holdsDarkestSecret)

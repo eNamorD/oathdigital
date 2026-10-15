@@ -25,19 +25,20 @@ object AmberFlameCard extends Relic(RelicId("R32"), "Amber Flame", value = 26, d
 case object AmberFlame extends PaidAction(AmberFlameCard.power):
   val decisionId: String = "power.amber-flame.banner"
   val Burned: Int = 1
+  private val notes = NoteSet(id)
   /** "{Red} burned {1 favor} from {Blue}'s {People's Favor}." */
-  val burned: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val burned: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" burned "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text("'s "), NotePart.Arg(3),
     NotePart.Text(".")))
   /** "{Blue}'s {banner} held nothing to burn." */
-  val empty: NoteKey = NoteKey("used.empty", Vector(NotePart.Arg(0),
+  val empty: NoteKey = notes.key("used.empty", Vector(NotePart.Arg(0),
     NotePart.Text("'s "), NotePart.Arg(1),
     NotePart.Text(" held nothing to burn.")))
   /** "No player at the site held a banner." */
-  val nobody: NoteKey = NoteKey("used.none", Vector(
+  val nobody: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No player at the site held a banner.")))
-  override def noteKeys: Vector[NoteKey] = Vector(burned, empty, nobody)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

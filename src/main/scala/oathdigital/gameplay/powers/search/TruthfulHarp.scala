@@ -32,7 +32,7 @@ final case class TruthfulHarp private (catalog: ExecutableCatalog)
   def id: PowerId = TruthfulHarp.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
-  override def noteKeys: Vector[NoteKey] = Vector(TruthfulHarp.revealed)
+  override def noteKeys: Vector[NoteKey] = TruthfulHarp.noteKeys
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchBeforeDraw -> Vector(Transform((ctx, operations) =>
@@ -57,8 +57,10 @@ final case class TruthfulHarp private (catalog: ExecutableCatalog)
 object TruthfulHarp:
   val id: PowerId = TruthfulHarpCard.power.id
   val More: Int = 2
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Revealed {cards}." */
-  val revealed: NoteKey = NoteKey("revealed", Vector(
+  val revealed: NoteKey = notes.key("revealed", Vector(
     NotePart.Text("Revealed "), NotePart.Arg(0), NotePart.Text(".")))
 
   def forCatalog(catalog: ExecutableCatalog): TruthfulHarp =

@@ -28,15 +28,16 @@ case object TavernSongs extends PaidAction(TavernSongsCard.power):
   val inspectDecisionId: String = "power.tavern-songs.inspect"
   /** How many cards it peeks at. */
   val Depth: Int = 3
+  private val notes = NoteSet(id)
   /** "{Red} peeked at the top of the {Cradle discard pile}: {cards}." */
-  val peeked: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val peeked: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" peeked at the top of the "), NotePart.Arg(1),
     NotePart.Text(": "), NotePart.Arg(2), NotePart.Text(".")))
   /** "{Red} peeked at the {Cradle discard pile}, which was empty." */
-  val peekedEmpty: NoteKey = NoteKey("used.empty", Vector(NotePart.Arg(0),
+  val peekedEmpty: NoteKey = notes.key("used.empty", Vector(NotePart.Arg(0),
     NotePart.Text(" peeked at the "), NotePart.Arg(1),
     NotePart.Text(", which was empty.")))
-  override def noteKeys: Vector[NoteKey] = Vector(peeked, peekedEmpty)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

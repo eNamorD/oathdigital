@@ -32,7 +32,7 @@ final case class SpitefulMirror private (catalog: ExecutableCatalog)
   def actions: Set[MajorActionType] =
     Set(MajorActionType.Trade, MajorActionType.Muster)
   override def cost: Cost = SpitefulMirrorCard.power.cost
-  override def noteKeys: Vector[NoteKey] = Vector(acting)
+  override def noteKeys: Vector[NoteKey] = SpitefulMirror.noteKeys
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeCost -> Vector(Transform((_, children) =>
@@ -64,11 +64,13 @@ final case class SpitefulMirror private (catalog: ExecutableCatalog)
 
 object SpitefulMirror:
   val id: PowerId = SpitefulMirrorCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** The record of this turn's payment. */
   val useRef: PowerUseRef = PowerUseRef(PowerTiming.Act,
     PowerSourceRef.Card(SpitefulMirrorCard.id), id)
   /** "Acting as if {card} is a Discord card." */
-  val acting: NoteKey = NoteKey("acting", Vector(
+  val acting: NoteKey = notes.key("acting", Vector(
     NotePart.Text("Acting as if "), NotePart.Arg(0),
     NotePart.Text(" is a Discord card.")))
 

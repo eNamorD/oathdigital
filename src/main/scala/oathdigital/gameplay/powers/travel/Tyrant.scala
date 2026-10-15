@@ -33,18 +33,19 @@ case object Tyrant extends ContributingPower:
   val id: PowerId = TyrantCard.power.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   val Warbands: Int = 1
+  private val notes = NoteSet(id)
   /** "Killed {n} {Blue} warband at {site}." */
-  val killed: NoteKey = NoteKey("killed", Vector(NotePart.Text("Killed "),
+  val killed: NoteKey = notes.key("killed", Vector(NotePart.Text("Killed "),
     NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
     NotePart.Plural(0, " warband at ", " warbands at "), NotePart.Arg(2),
     NotePart.Text(".")))
   /** "Killed {n} bandit warband at {site}." */
-  val killedBandits: NoteKey = NoteKey("killed.bandits", Vector(
+  val killedBandits: NoteKey = notes.key("killed.bandits", Vector(
     NotePart.Text("Killed "), NotePart.Arg(0),
     NotePart.Plural(0, " bandit warband at ", " bandit warbands at "),
     NotePart.Arg(1), NotePart.Text(".")))
 
-  override def noteKeys: Vector[NoteKey] = Vector(killed, killedBandits)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>

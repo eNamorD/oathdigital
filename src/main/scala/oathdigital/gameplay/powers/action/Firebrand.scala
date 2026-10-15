@@ -25,19 +25,20 @@ case object Firebrand extends PaidAction(FirebrandCard.power):
   val decisionId: String = "power.firebrand.choice"
   val Moved: Int = 1
   val burn: DecisionOptionRef.Button = DecisionOptionRef.Button("burn")
+  private val notes = NoteSet(id)
   /** "{Red} moved {1 favor} from {the Order bank} to the {People's Favor}." */
-  val moved: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val moved: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" moved "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text(" to the "), NotePart.Arg(3),
     NotePart.Text(".")))
   /** "{Red} burned {1 favor} from the {People's Favor}." */
-  val burned: NoteKey = NoteKey("used.burned", Vector(NotePart.Arg(0),
+  val burned: NoteKey = notes.key("used.burned", Vector(NotePart.Arg(0),
     NotePart.Text(" burned "), NotePart.Arg(1), NotePart.Text(" from the "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "Every favor bank and the People's Favor were empty." */
-  val empty: NoteKey = NoteKey("used.empty", Vector(NotePart.Text(
+  val empty: NoteKey = notes.key("used.empty", Vector(NotePart.Text(
     "Every favor bank and the People's Favor were empty.")))
-  override def noteKeys: Vector[NoteKey] = Vector(moved, burned, empty)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   private val banner = PositionedLocation(

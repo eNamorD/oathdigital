@@ -39,8 +39,9 @@ case object VowOfPoverty extends PhasePower with ContributingPower:
   val id: PowerId = VowOfPovertyCard.power.id
   /** What the REST takes, or what the chosen bank holds. */
   val Taken: Int = 2
+  private val notes = NoteSet(id)
   /** "Took {n favor} from {the Order bank}." */
-  val took: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Took "),
+  val took: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Took "),
     NotePart.Arg(0), NotePart.Text(" from "), NotePart.Arg(1),
     NotePart.Text(".")))
 
@@ -49,7 +50,7 @@ case object VowOfPoverty extends PhasePower with ContributingPower:
 
   def timing: PowerTiming = PowerTiming.Rest
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] = Vector(took)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeGain -> Vector(Restriction((ctx, _) =>

@@ -24,15 +24,16 @@ object QuickExitCard extends Denizen(DenizenId("58"), "Quick Exit", Suit.Arcane)
 case object QuickExit extends PaidAction(QuickExitCard.power):
   val targetDecisionId: String = "power.quick-exit.target"
   val siteDecisionId: String = "power.quick-exit.site"
+  private val notes = NoteSet(id)
   /** "Placed {Blue} at {site}." */
-  val placed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Placed "),
+  val placed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Placed "),
     NotePart.Arg(0), NotePart.Text(" at "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "No other pawn was at {site}." */
-  val nobody: NoteKey = NoteKey("used.none", Vector(
+  val nobody: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No other pawn was at "), NotePart.Arg(0),
     NotePart.Text(".")))
-  override def noteKeys: Vector[NoteKey] = Vector(placed, nobody)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] =
     Set(targetDecisionId, siteDecisionId)
 

@@ -24,7 +24,7 @@ final case class DragonskinDrum private (catalog: ExecutableCatalog)
   def id: PowerId = DragonskinDrum.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Travel)
 
-  override def noteKeys: Vector[NoteKey] = Vector(DragonskinDrum.gained)
+  override def noteKeys: Vector[NoteKey] = DragonskinDrum.noteKeys
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
@@ -43,7 +43,9 @@ final case class DragonskinDrum private (catalog: ExecutableCatalog)
 object DragonskinDrum:
   val id: PowerId = DragonskinDrumCard.power.id
   val Warbands: Int = 1
-  val gained: NoteKey = NoteSupport.gainedKey("gained")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  val gained: NoteKey = NoteSupport.gainedKey(notes, "gained")
 
   def forCatalog(catalog: ExecutableCatalog): DragonskinDrum =
     new DragonskinDrum(catalog)

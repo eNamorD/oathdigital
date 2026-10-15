@@ -25,12 +25,13 @@ object BoneDiceCard extends Relic(RelicId("R24"), "Bone Dice", value = 1, defens
 case object BoneDice extends PaidAction(BoneDiceCard.power):
   val Dice: Int = 2
   val pool: PoolKey = PoolKey("bone-dice")
-  val gained: NoteKey = NoteSupport.gainedKey("gained")
+  private val notes = NoteSet(id)
+  notes.include(RollResults.notes)
+  val gained: NoteKey = NoteSupport.gainedKey(notes, "gained")
   /** The bury a skull forces, in place of the generic Buried line. */
-  val buried: NoteKey = NoteKey("buried", Vector(
+  val buried: NoteKey = notes.key("buried", Vector(
     NotePart.Text("Buried after a skull.")))
-  override def noteKeys: Vector[NoteKey] = Vector(RollResults.rolled, gained,
-    buried)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match

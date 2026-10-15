@@ -31,7 +31,7 @@ final case class GreatHerd private (catalog: ExecutableCatalog)
   import GreatHerd._
   def id: PowerId = GreatHerd.id
 
-  override def noteKeys: Vector[NoteKey] = Vector(swapped, none)
+  override def noteKeys: Vector[NoteKey] = GreatHerd.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
@@ -98,12 +98,14 @@ object GreatHerd:
   val id: PowerId = GreatHerdCard.power.id
   val decisionId: String = "cardplay.great-herd.swap"
   val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Red} swapped it with {card} at {site}." */
-  val swapped: NoteKey = NoteKey("swapped", Vector(NotePart.Arg(0),
+  val swapped: NoteKey = notes.key("swapped", Vector(NotePart.Arg(0),
     NotePart.Text(" swapped it with "), NotePart.Arg(1), NotePart.Text(" at "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "No Nomad card could be swapped." */
-  val none: NoteKey = NoteKey("none", Vector(
+  val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("No Nomad card could be swapped.")))
 
   private final case class Candidate(site: SiteId, card: CardId,

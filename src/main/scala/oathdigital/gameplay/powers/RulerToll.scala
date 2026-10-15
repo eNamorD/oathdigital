@@ -16,18 +16,23 @@ import oathdigital.model._
   */
 private[powers] object RulerToll:
   val Favor: Int = 1
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("RulerToll")
   /** "Gave {1 favor} to {Blue}." */
-  val gave: NoteKey = NoteKey("gave", Vector(NotePart.Text("Gave "),
+  val gave: NoteKey = notes.key("gave", Vector(NotePart.Text("Gave "),
     NotePart.Arg(0), NotePart.Text(" to "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "Burned {1 favor}.", when bandits rule. */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
+  val burned: NoteKey = notes.key("burned", Vector(NotePart.Text("Burned "),
     NotePart.Arg(0), NotePart.Text(".")))
   /** "Gave nothing, with {Blue}'s consent.", when the ruler waived it. */
-  val waived: NoteKey = NoteKey("waived", Vector(
+  val waived: NoteKey = notes.key("waived", Vector(
     NotePart.Text("Gave nothing, with "), NotePart.Arg(0),
     NotePart.Text("'s consent.")))
-  val keys: Vector[NoteKey] = Vector(gave, burned, waived)
+  /** Every key this toll writes, derived from the set rather than
+    * relisted, so a key added above travels to every borrower. */
+  def keys: Vector[NoteKey] = notes.declared
 
   /** `operations` with what `payer` owes `ruler` for `step`'s card on
     * `occasion`: the step when a player rules it, the payment and its line

@@ -27,7 +27,7 @@ final case class DarkEnforcer private (catalog: ExecutableCatalog)
   import DarkEnforcer._
 
   private val cards = new SiteCards(catalog, Set(Suit.Order, Suit.Hearth))
-  override def noteKeys: Vector[NoteKey] = Vector(discarded, kept)
+  override def noteKeys: Vector[NoteKey] = DarkEnforcer.noteKeys
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
@@ -59,11 +59,13 @@ final case class DarkEnforcer private (catalog: ExecutableCatalog)
 
 object DarkEnforcer:
   val id: PowerId = DarkEnforcerCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Discarded {cards}." */
-  val discarded: NoteKey = NoteKey(NoteKey.Used, Vector(
+  val discarded: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("Discarded "), NotePart.Arg(0), NotePart.Text(".")))
   /** "{site} held no Order or Hearth card to discard." */
-  val kept: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val kept: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no Order or Hearth card to discard.")))
 
   def forCatalog(catalog: ExecutableCatalog): DarkEnforcer =

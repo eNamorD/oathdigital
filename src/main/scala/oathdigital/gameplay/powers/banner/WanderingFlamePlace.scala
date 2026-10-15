@@ -15,11 +15,12 @@ import oathdigital.model._
   */
 case object WanderingFlamePlace extends PaidAction(
     PowerId("banner.darkest-secret.wandering-flame.place"), Cost.free):
+  private val notes = NoteSet(id)
   /** It moves one secret or none, so the line names no amount. */
-  val placed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val placed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" placed a secret at "), NotePart.Arg(1),
     NotePart.Text(".")))
-  override def noteKeys: Vector[NoteKey] = Vector(placed)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def buttonName: Option[String] =
     BannerFacePowers.printed(id).map(_._1)
 

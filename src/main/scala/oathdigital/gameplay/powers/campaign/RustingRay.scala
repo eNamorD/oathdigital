@@ -24,13 +24,14 @@ object RustingRayCard extends Denizen(DenizenId("57"), "Rusting Ray", Suit.Arcan
 case object RustingRay extends BattlePlan:
   val cardId: DenizenId = RustingRayCard.id
   val id: PowerId = RustingRayCard.power.id
+  private val notes = NoteSet(id)
   /** "Hollow swords ignored." */
-  val ignored: NoteKey = NoteKey("ignored",
+  val ignored: NoteKey = notes.key("ignored",
     Vector(NotePart.Text("Hollow swords ignored.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(RustingRay.ignored)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).filter(_ => context.holdsDarkestSecret)

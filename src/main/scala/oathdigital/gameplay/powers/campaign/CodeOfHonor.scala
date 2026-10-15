@@ -24,18 +24,18 @@ case object CodeOfHonor extends BattlePlan:
   val cardId: DenizenId = CodeOfHonorCard.id
   val id: PowerId = CodeOfHonorCard.power.id
   val Dice: Int = 2
+  private val notes = NoteSet(id)
   /** "Cannot be used with other battle plans." */
-  val notWithOthers: NoteKey = NoteKey("not-with-others",
+  val notWithOthers: NoteKey = notes.key("not-with-others",
     Vector(NotePart.Text("Cannot be used with other battle plans.")))
   /** "No other battle plans." */
-  val noOthers: NoteKey = NoteKey("no-others",
+  val noOthers: NoteKey = notes.key("no-others",
     Vector(NotePart.Text("No other battle plans.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] =
-    Vector(CodeOfHonor.notWithOthers, CodeOfHonor.noOthers)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,

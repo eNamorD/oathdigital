@@ -15,8 +15,9 @@ object TinkersFairCard extends Denizen(DenizenId("13"), "Tinker's Fair", Suit.He
   * relic deck pays the cost and does nothing else.
   */
 case object TinkersFair extends PaidAction(TinkersFairCard.power):
-  override def noteKeys: Vector[NoteKey] =
-    Vector(RelicDraws.drew, RelicDraws.emptyDeck)
+  private val notes = NoteSet(id)
+  notes.include(RelicDraws.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] =

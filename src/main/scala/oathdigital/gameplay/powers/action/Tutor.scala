@@ -15,8 +15,9 @@ object TutorCard extends Denizen(DenizenId("69"), "Tutor", Suit.Arcane) with Adv
   * line restates the gain in place of the generic Gain line.
   */
 case object Tutor extends PaidAction(TutorCard.power):
-  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
-  override def noteKeys: Vector[NoteKey] = Vector(gained)
+  private val notes = NoteSet(id)
+  val gained: NoteKey = NoteSupport.gainedKey(notes, NoteKey.Used)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector(

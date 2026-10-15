@@ -21,14 +21,15 @@ import oathdigital.model._
 case object MurkyFountain extends PaidAction(MarbleFountainsCard.ruined.power):
   val Dice: Int = 2
   val pool: PoolKey = PoolKey("murky-fountain")
-  val gained: NoteKey = NoteSupport.gainedKey("gained")
-  val ended: NoteKey = NoteKey("ended", Vector(NotePart.Arg(0),
+  private val notes = NoteSet(id)
+  notes.include(RollResults.notes)
+  val gained: NoteKey = NoteSupport.gainedKey(notes, "gained")
+  val ended: NoteKey = notes.key("ended", Vector(NotePart.Arg(0),
     NotePart.Text("'s Act phase ended.")))
   /** Its line when the pawn is elsewhere: the cost is paid, nothing else. */
-  val away: NoteKey = NoteKey("used.away", Vector(NotePart.Arg(0),
+  val away: NoteKey = notes.key("used.away", Vector(NotePart.Arg(0),
     NotePart.Text(" was not at its site.")))
-  override def noteKeys: Vector[NoteKey] = Vector(RollResults.rolled, gained,
-    ended, away)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match

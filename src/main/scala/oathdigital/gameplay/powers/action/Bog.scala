@@ -25,20 +25,20 @@ object BogCard extends Denizen(DenizenId("210"), "Bog", Suit.Beast) with SiteOnl
 case object Bog extends PaidAction(BogCard.power):
   val decisionId: String = "power.bog.relic"
   val Gained: Int = 3
+  private val notes = NoteSet(id)
   /** "{Red} discarded {relic} and gained {n favor} from {the Beast bank}." */
-  val discarded: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val discarded: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" discarded "), NotePart.Arg(1),
     NotePart.Text(" and gained "), NotePart.Arg(2), NotePart.Text(" from "),
     NotePart.Arg(3), NotePart.Text(".")))
   /** "{Red} discarded {relic}." */
-  val discardedOnly: NoteKey = NoteKey("used.discarded", Vector(
+  val discardedOnly: NoteKey = notes.key("used.discarded", Vector(
     NotePart.Arg(0), NotePart.Text(" discarded "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "{Red} held no relic." */
-  val bare: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val bare: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no relic.")))
-  override def noteKeys: Vector[NoteKey] =
-    Vector(discarded, discardedOnly, bare)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   private val relic = new HeldRelicSpend(decisionId,

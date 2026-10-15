@@ -22,12 +22,14 @@ object SkeletonKeyCard extends Relic(RelicId("R13"), "Skeleton Key", value = 18,
   */
 case object SkeletonKey extends PaidAction(SkeletonKeyCard.power):
   val decisionId: String = "power.skeleton-key.relic"
-  /** "{Red} was not at a Hinterland site." */
-  val away: NoteKey = NoteKey("used.away", Vector(NotePart.Arg(0),
-    NotePart.Text(" was not at a Hinterland site.")))
   private val take = new SiteRelicTake(id, decisionId,
     "Skeleton Key: take a relic from your site", hinterland)
-  override def noteKeys: Vector[NoteKey] = take.keys :+ away
+  private val notes = NoteSet(id)
+  notes.include(take.notes)
+  /** "{Red} was not at a Hinterland site." */
+  val away: NoteKey = notes.key("used.away", Vector(NotePart.Arg(0),
+    NotePart.Text(" was not at a Hinterland site.")))
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = take.narrated
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

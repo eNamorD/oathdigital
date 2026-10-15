@@ -16,10 +16,11 @@ object WizardSchoolCard extends Denizen(DenizenId("34"), "Wizard School", Suit.A
   * the state.
   */
 case object WizardSchool extends PaidAction(WizardSchoolCard.power):
-  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
-  val ended: NoteKey = NoteKey("ended", Vector(NotePart.Arg(0),
+  private val notes = NoteSet(id)
+  val gained: NoteKey = NoteSupport.gainedKey(notes, NoteKey.Used)
+  val ended: NoteKey = notes.key("ended", Vector(NotePart.Arg(0),
     NotePart.Text("'s Act phase ended.")))
-  override def noteKeys: Vector[NoteKey] = Vector(gained, ended)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector(

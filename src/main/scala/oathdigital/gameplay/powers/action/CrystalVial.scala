@@ -27,7 +27,7 @@ final case class CrystalVial(catalog: ExecutableCatalog)
     extends PaidAction(CrystalVialCard.power):
   import CrystalVial._
 
-  override def noteKeys: Vector[NoteKey] = Vector(buried)
+  override def noteKeys: Vector[NoteKey] = CrystalVial.noteKeys
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -89,7 +89,9 @@ final case class CrystalVial(catalog: ExecutableCatalog)
 object CrystalVial:
   val id: PowerId = CrystalVialCard.power.id
   val decisionId: String = "power.crystal-vial.card"
-  val buried: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  val buried: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" buried "), NotePart.Arg(1), NotePart.Text(".")))
 
   private[action] final case class Candidate(ref: DecisionOptionRef,

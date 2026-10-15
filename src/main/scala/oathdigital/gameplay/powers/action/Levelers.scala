@@ -29,11 +29,12 @@ case object Levelers extends PaidAction(LevelersCard.power):
   val sourceDecisionId: String = "power.levelers.source"
   val destinationDecisionId: String = "power.levelers.destination"
   val Moved: Int = 2
-  val moved: NoteKey = BankMoves.moved
+  private val notes = NoteSet(id)
+  val moved: NoteKey = notes.borrow(BankMoves.moved)
   /** "Every favor bank was empty." */
-  val empty: NoteKey = NoteKey("used.empty", Vector(
+  val empty: NoteKey = notes.key("used.empty", Vector(
     NotePart.Text("Every favor bank was empty.")))
-  override def noteKeys: Vector[NoteKey] = Vector(moved, empty)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] =
     Set(sourceDecisionId, destinationDecisionId)
 

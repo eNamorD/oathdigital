@@ -44,7 +44,9 @@ final case class WayStation private (catalog: ExecutableCatalog)
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
-  override def noteKeys: Vector[NoteKey] = RulerToll.keys
+  private val notes = NoteSet(id)
+  notes.include(RulerToll.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>

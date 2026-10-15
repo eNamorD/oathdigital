@@ -38,7 +38,7 @@ final case class Blackmail private (catalog: ExecutableCatalog)
 
   private val lostTongue = LostTongue.forCatalog(catalog)
 
-  override def noteKeys: Vector[NoteKey] = Vector(paid, took, none)
+  override def noteKeys: Vector[NoteKey] = Blackmail.noteKeys
   override def narratedDecisions: Set[String] =
     Set(relicDecisionId, answerDecisionId)
 
@@ -137,16 +137,18 @@ object Blackmail:
   val pay: DecisionOptionRef.Button = DecisionOptionRef.Button("pay")
   val handOver: DecisionOptionRef.Button =
     DecisionOptionRef.Button("hand-over")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Blue} gave {3 favor} to keep {relic}." */
-  val paid: NoteKey = NoteKey("paid", Vector(NotePart.Arg(0),
+  val paid: NoteKey = notes.key("paid", Vector(NotePart.Arg(0),
     NotePart.Text(" gave "), NotePart.Arg(1), NotePart.Text(" to keep "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "Took {relic} from {Blue}." */
-  val took: NoteKey = NoteKey("took", Vector(NotePart.Text("Took "),
+  val took: NoteKey = notes.key("took", Vector(NotePart.Text("Took "),
     NotePart.Arg(0), NotePart.Text(" from "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "No relic could be taken." */
-  val none: NoteKey = NoteKey("none", Vector(
+  val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("No relic could be taken.")))
 
   def forCatalog(catalog: ExecutableCatalog): Blackmail =

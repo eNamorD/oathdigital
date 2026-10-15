@@ -36,7 +36,7 @@ final case class CircletOfCommand private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = Vector(CircletOfCommand.shielded)
+  override def noteKeys: Vector[NoteKey] = CircletOfCommand.noteKeys
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignTargetSelection ->
@@ -81,8 +81,10 @@ final case class CircletOfCommand private (catalog: ExecutableCatalog)
 object CircletOfCommand:
   val id: PowerId = CircletOfCommandCard.power.id
 
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Blue}'s banners and relics cannot be targeted." */
-  val shielded: NoteKey = NoteKey("shielded", Vector(NotePart.Arg(0),
+  val shielded: NoteKey = notes.key("shielded", Vector(NotePart.Arg(0),
     NotePart.Text("'s banners and relics cannot be targeted.")))
 
   def forCatalog(catalog: ExecutableCatalog): CircletOfCommand =

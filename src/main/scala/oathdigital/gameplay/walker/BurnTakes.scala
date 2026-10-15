@@ -2,6 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.powerresolver.{BurnTake, Burnt,
   ContributingPower}
+import oathdigital.gameplay.powers.DeclaredNotes
 import oathdigital.model.{Burn, CoreOperation, Location, PayCost, Piece,
   PlayerId, PositionedLocation, PowerId, ReadyGame, SecretSide, Take}
 
@@ -25,15 +26,16 @@ private[walker] object BurnTakes:
       taken: Vector[Taken]):
     /** One line per power, taker and burner, for what `executed` took. A
       * burn of the taker's own board counts in full: nothing moved. */
-    def lines(executed: Vector[CoreOperation], actor: PlayerId)
-        : Vector[PowerNoted] =
+    def lines(executed: Vector[CoreOperation], actor: PlayerId,
+        declared: Option[DeclaredNotes]): Vector[PowerNoted] =
       val moved = takesIn(executed)
       taken.map(group).distinct.flatMap { key =>
         val claims = taken.filter(group(_) == key)
         val amount = claims.map(kept).sum + claims.filterNot(own)
           .map(source).distinct.map(took(moved, key._2, _)).sum
-        Option.when(amount > 0)(PowerNoted(key._1,
-          claims.head.take.line(key._3, amount, actor), covers = false))
+        Option.when(amount > 0)(
+          claims.head.take.line(key._3, amount, actor))
+          .flatMap(NoteCheck.journal(declared, key._1, _, covers = false))
       }
 
   /** `operations` with every burn a power claims replaced. */

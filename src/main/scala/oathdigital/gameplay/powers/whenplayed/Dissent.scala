@@ -36,7 +36,7 @@ final case class Dissent private (catalog: ExecutableCatalog)
   import Dissent._
   def id: PowerId = Dissent.id
 
-  override def noteKeys: Vector[NoteKey] = Vector(placed, none)
+  override def noteKeys: Vector[NoteKey] = Dissent.noteKeys
 
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 
@@ -75,11 +75,13 @@ final case class Dissent private (catalog: ExecutableCatalog)
 
 object Dissent:
   val id: PowerId = DissentCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{Blue} placed {n favor} on it." */
-  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Arg(0),
+  val placed: NoteKey = notes.key("placed", Vector(NotePart.Arg(0),
     NotePart.Text(" placed "), NotePart.Arg(1), NotePart.Text(" on it.")))
   /** "Nobody placed favor." */
-  val none: NoteKey = NoteKey("none", Vector(
+  val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("Nobody placed favor.")))
 
   def forCatalog(catalog: ExecutableCatalog): Dissent = new Dissent(catalog)

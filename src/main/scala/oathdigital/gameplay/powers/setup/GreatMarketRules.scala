@@ -64,7 +64,7 @@ final case class GreatMarket private (catalog: ExecutableCatalog)
   def id: PowerId = GreatMarket.id
   protected def side: EdificeSide = EdificeSide.Intact
 
-  override def noteKeys: Vector[NoteKey] = Vector(GreatMarket.placed)
+  override def noteKeys: Vector[NoteKey] = GreatMarket.noteKeys
 
   protected def note(at: SiteId): Note = Note(id, states => for
     step <- states.previous
@@ -86,8 +86,10 @@ final case class GreatMarket private (catalog: ExecutableCatalog)
       PositionedLocation(Location.SharedBank), PositionedLocation(Location.Site(at))))
 object GreatMarket:
   val id: PowerId = GreatMarketCard.intact.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Placed {3 favor} on {site}." */
-  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Text("Placed "),
+  val placed: NoteKey = notes.key("placed", Vector(NotePart.Text("Placed "),
     NotePart.Arg(0), NotePart.Text(" on "), NotePart.Arg(1), NotePart.Text(".")))
   def forCatalog(catalog: ExecutableCatalog): GreatMarket =
     new GreatMarket(catalog)
@@ -98,8 +100,7 @@ final case class BanditMarket private (catalog: ExecutableCatalog)
   def id: PowerId = BanditMarket.id
   protected def side: EdificeSide = EdificeSide.Ruined
 
-  override def noteKeys: Vector[NoteKey] =
-    Vector(BanditMarket.placedAndBurned, BanditMarket.placed, BanditMarket.burned)
+  override def noteKeys: Vector[NoteKey] = BanditMarket.noteKeys
 
   /** Each bandit site took one favor from the shared supply; the banks lost
     * only the burn. */
@@ -130,19 +131,21 @@ final case class BanditMarket private (catalog: ExecutableCatalog)
     Right(placed ++ burned)
 object BanditMarket:
   val id: PowerId = GreatMarketCard.ruined.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Placed {2 favor} on the bandit sites and burned {6 favor} from the
     * banks." */
-  val placedAndBurned: NoteKey = NoteKey("placed-and-burned", Vector(
+  val placedAndBurned: NoteKey = notes.key("placed-and-burned", Vector(
     NotePart.Text("Placed "), NotePart.Arg(0),
     NotePart.Plural(0, " on the bandit site", " on the bandit sites"),
     NotePart.Text(" and burned "), NotePart.Arg(1),
     NotePart.Text(" from the banks.")))
   /** "Placed {2 favor} on the bandit sites." */
-  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Text("Placed "),
+  val placed: NoteKey = notes.key("placed", Vector(NotePart.Text("Placed "),
     NotePart.Arg(0),
     NotePart.Plural(0, " on the bandit site.", " on the bandit sites.")))
   /** "Burned {6 favor} from the banks." */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
+  val burned: NoteKey = notes.key("burned", Vector(NotePart.Text("Burned "),
     NotePart.Arg(0), NotePart.Text(" from the banks.")))
   def forCatalog(catalog: ExecutableCatalog): BanditMarket =
     new BanditMarket(catalog)

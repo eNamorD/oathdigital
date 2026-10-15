@@ -36,9 +36,7 @@ final case class GraspingVines private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  override def noteKeys: Vector[NoteKey] = Vector(GraspingVines.killed,
-    GraspingVines.spared, GraspingVines.mustKill,
-    GraspingVines.mustKillConsent)
+  override def noteKeys: Vector[NoteKey] = GraspingVines.noteKeys
   override def narratedDecisions: Set[String] = Set(GraspingVines.decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -83,18 +81,20 @@ final case class GraspingVines private (catalog: ExecutableCatalog)
 object GraspingVines:
   val id: PowerId = GraspingVinesCard.power.id
   val Warbands: Int = 1
-  val killed: NoteKey = NoteSupport.killedKey("killed")
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  val killed: NoteKey = NoteSupport.killedKey(notes, "killed")
   val decisionId: String = "power.grasping-vines.kill"
   /** "Killed nothing, with {Blue}'s consent." */
-  val spared: NoteKey = NoteKey("spared", Vector(
+  val spared: NoteKey = notes.key("spared", Vector(
     NotePart.Text("Killed nothing, with "), NotePart.Arg(0),
     NotePart.Text("'s consent.")))
   /** "Must kill a warband when traveling from its ruler's sites.": the
     * reason of the free option once its ruler refused. */
-  val mustKill: NoteKey = NoteKey("must-kill", Vector(NotePart.Text(
+  val mustKill: NoteKey = notes.key("must-kill", Vector(NotePart.Text(
     "Must kill a warband when traveling from its ruler's sites.")))
   /** The free option's reason while its ruler may be asked. */
-  val mustKillConsent: NoteKey = NoteKey("must-kill-consent", Vector(
+  val mustKillConsent: NoteKey = notes.key("must-kill-consent", Vector(
     NotePart.Text("Must kill a warband when traveling from its ruler's " +
       "sites, unless ruler consents.")))
   val step: PayOrAsk = PayOrAsk(id, GraspingVinesCard.id, decisionId,

@@ -28,6 +28,7 @@ final case class InsectSwarm private (catalog: ExecutableCatalog)
   def id: PowerId = InsectSwarm.id
   protected def cost: Cost = Cost(favorBurnt = InsectSwarm.Favor)
   protected def taxed: NoteKey = InsectSwarm.taxed
+  protected def surchargeNotes: NoteSet = InsectSwarm.notes
   protected def amount: Int = InsectSwarm.Favor
   protected def unpayable: OathViolation =
     OathViolation.InsufficientFavor(InsectSwarm.Favor, 0)
@@ -37,7 +38,8 @@ object InsectSwarm:
   /** The added cost, in favor burnt. */
   val Favor: Int = 1
   /** "{Red}'s battle plans cost {1} extra favor, burnt." */
-  val taxed: NoteKey = NoteKey("taxed", Vector(NotePart.Arg(0),
+  val notes: NoteSet = NoteSet(id)
+  val taxed: NoteKey = notes.key("taxed", Vector(NotePart.Arg(0),
     NotePart.Text("'s battle plans cost "), NotePart.Arg(1),
     NotePart.Text(" extra favor, burnt.")))
 

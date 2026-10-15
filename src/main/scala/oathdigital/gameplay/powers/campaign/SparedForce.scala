@@ -27,8 +27,11 @@ import oathdigital.model._
 private[campaign] object SparedForce:
   val Priority: Int = 1
 
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("SparedForce")
   /** "{Blue}'s force was spared." */
-  val spared: NoteKey = NoteKey("spared", Vector(NotePart.Arg(0),
+  val spared: NoteKey = notes.key("spared", Vector(NotePart.Arg(0),
     NotePart.Text("'s force was spared.")))
 
   /** The powers that kill all of a defeated force, by id, so that no plan

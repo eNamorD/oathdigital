@@ -60,7 +60,8 @@ object OathkeeperGoalChoice:
           s"the Oathkeeper goal cannot change to ${goal.key}")))
 
   /** "Changed the Oathkeeper goal to Protection.", named `name`. */
-  def changed(name: String): NoteKey = NoteKey(name, Vector(
+  def changed(notes: NoteSet, name: String): NoteKey =
+    notes.key(name, Vector(
     NotePart.Text("Changed the Oathkeeper goal to "), NotePart.Arg(0),
     NotePart.Text(".")))
 

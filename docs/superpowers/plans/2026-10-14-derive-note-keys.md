@@ -567,10 +567,11 @@ object DeclaredNotes:
       power.id -> power.noteKeys) ++
       PhasePowerCatalog.default(catalog).powers.map(power =>
         power.id -> power.noteKeys) ++ RuleNotes.all)
-      .groupMapReduce(_._1)(_._2)(_ ++ _))
+      .groupMapReduce(_._1)(_._2)(_ ++ _)
+      .view.mapValues(_.distinctBy(_.name)).toMap)
 ```
 
-`groupMapReduce` concatenates rather than replacing, so a power that appears in both catalogs keeps the keys from both — which is what `NoteWordings.++` does today.
+`groupMapReduce` concatenates rather than replacing, so a power that appears in both catalogs keeps the keys of both. Six powers are listed in both — Silver Tongue, Insomnia, Vow of Obedience, Vow of Poverty, Pied Piper and the Assassin — and each declares the same keys in each, so concatenation alone would hold every one of their key names twice. `distinctBy(_.name)` is therefore load-bearing, not tidying: `PowerNoteCatalogSuite`'s "a power names each of its notes once" reads this union and would fail on all six without it, and so would the declared-keys snapshot. `NoteWordings.++` has no such problem to solve, because it is keyed by `(PowerId, String)` and replaces at that granularity rather than concatenating.
 
 - [ ] **Step 9: Run the test to verify it passes**
 
@@ -595,14 +596,14 @@ In `src/main/scala/oathdigital/application/gamelog/NoteWordings.scala`, replace 
       powers.flatMap(_.narratedDecisions).toSet)
 ```
 
-Then in `DeclaredNoteKeysSuite`, replace the hand-built `declared` with the union, keeping the rendering and both tests as they are:
+Then in `DeclaredNoteKeysSuite`, replace only the suite's own merge of `listings` with the union, keeping the rendering and both tests as they are:
 
 ```scala
   private val declared: Vector[(PowerId, Vector[NoteKey])] =
     DeclaredNotes.of(catalog).keys.toVector
 ```
 
-The `RuleNotes`, `WalkerPowerCatalog` and `PhasePowerCatalog` references in the suite become unused; delete the `RuleNotes` import. The suite's second test, "no power is listed twice", is now trivially true because the union is a `Map` — delete it and say so in the commit body, because `groupMapReduce` is what makes it true.
+Keep `listings` and the cross-catalog test that reads it. That test is about catalog membership, not about declared sets, so the union does not make it trivial: it is what pins the six powers listed in both catalogs and what fails if a seventh appears. Keep the `RuleNotes` import and the two catalog references with it; they are still used by `listings`, and deleting the import as a tidy-up would fail to compile. The one thing that changes is where `declared` comes from, and the snapshot must stay byte-identical across the change — which is what `distinctBy` in Step 8 is for.
 
 - [ ] **Step 11: Run the snapshot and the log suites**
 
@@ -802,7 +803,7 @@ MSG
 
 ### Task 4: Convert the powers that own all their keys
 
-The mechanical bulk: roughly 131 declarations that borrow nothing. One commit per directory so a bad edit is found at the commit that caused it.
+The mechanical bulk: every power that owns its keys outright and has an id of its own. 112 of them, converted in two commits rather than one per directory, because the snapshot proves each batch inert and a scripted conversion either applies cleanly or refuses the file by name.
 
 **Files:** every file under `src/main/scala/oathdigital/gameplay/powers/` that contains `def noteKeys` and whose `noteKeys` vector names no key from another object. Counts of files containing `def noteKeys` by directory, for sizing: `action` 72, `campaign` 51, `whenplayed` 25, `economy` 10, `travel` 9, `cardplay` 7, `wake` 5, `targeting` 4, `search` 4, `banner` 4, `setup` 3, `rest` 3, `title` 1, `recover` 1, `dice` 1, `burn` 1.
 
@@ -891,7 +892,16 @@ Expected: PASS, every golden log unchanged.
 
 ### Task 5: Convert the borrowed keys
 
-Roughly 75 declarations that name a key owned elsewhere. Explicit `include` everywhere, plus compile-time evidence for the five helpers that build the note themselves.
+80 files, counted rather than estimated once Task 4 had taken every power that owns its keys outright. Explicit `include` where a key is relisted, plus compile-time evidence where a helper builds the key or the note itself.
+
+Task 4 drew its boundary at the shape it could convert safely: a power with an id of its own that defines each of its keys as `val k: NoteKey = NoteKey("name", template)`. 112 powers had it. The 80 that remain do not, in four shapes, and the counts are exact:
+
+- **34 relist a key another object owns.** `include` the owner's set. The owners are `VowOfWandering`, `RollResults`, `NoteSupport`, `RelicDraws`, `CardPlayRules`, `SparedForce`, `PlanDiscard`, `Outriders`, `SingleShields`, `VisionPlay`, `RulerToll`, `ExtraWarbands`, `EdificeSetupSupport` and `RegionDiscard` — fourteen, not the eleven the design guessed.
+- **24 take their key from a factory.** `Alchemist`'s only key is `val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)`: the name is the caller's, the wording the helper's. `include` cannot declare it, because the key does not exist until the helper is called. The factory takes the caller's set instead and creates the key in it, which declares it and is the evidence in one move: `NoteSupport.gainedKey(notes, NoteKey.Used)`.
+- **17 name a key that is neither a literal nor a plain borrow** — an alias, a `def`, or a key whose name differs from the field holding it (`HornedMask`'s `noteKeys` names `taken` where the file defines `took`). Read each before deciding; they are few.
+- **5 own shared keys but have no power id**: `ActingSite`, `SuitOnlyAdvisers`, `NarrowPassSitePower` in `TravelSitePowers`, `FortressRule` in `FortressRules`, and `GreatMarketRules`, whose keys are split between `GreatMarket` and `BanditMarket`. Each takes `NoteSet.unowned`, and the trait or powers that carry its keys include it. `BurnVows` belongs here too: `BurnVow.taken(one, many)` is a factory two vow objects call with different words, so it takes each caller's set as the 24 above do.
+
+Task 4's conversion was scripted, and the script refused any file outside the one shape it handled, naming the file and the reason rather than forcing it. The four shapes above are that refusal list, grouped.
 
 **Files:**
 - Modify, to own an unowned set: `powers/RelicDraws.scala:6`, `powers/NoteSupport.scala:10`, `powers/RulerToll.scala:17`, `powers/whenplayed/RegionDiscard.scala:86`, `powers/setup/EdificeSetupSupport.scala:9`, `powers/campaign/PlanDiscard.scala:20,25-26`, plus the owners of `SparedForce.spared`, `RollResults.rolled`, `VisionPlay.noFaceup`, `CardPlayRules.discardFirst` and `BannerFacePowers.printed`

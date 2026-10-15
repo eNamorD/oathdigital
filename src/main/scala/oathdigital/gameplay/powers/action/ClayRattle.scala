@@ -22,9 +22,10 @@ object ClayRattleCard extends Relic(RelicId("R47"), "Clay Rattle", value = 45, d
   */
 case object ClayRattle extends PaidAction(ClayRattleCard.power):
   val decisionId: String = "power.clay-rattle.pile"
-  val shuffled: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  private val notes = NoteSet(id)
+  val shuffled: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" shuffled the "), NotePart.Arg(1), NotePart.Text(".")))
-  override def noteKeys: Vector[NoteKey] = Vector(shuffled)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   /** The piles it may shuffle, in the order they are offered. */

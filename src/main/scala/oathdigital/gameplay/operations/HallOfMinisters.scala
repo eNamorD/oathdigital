@@ -42,7 +42,10 @@ case object HallOfMinisters extends OperationRestriction:
   /** "Cannot discard cards from its ruler's sites without ruler's
     * consent.": the reason of an option the Hall's ruler may be asked
     * about. */
-  val noDiscardConsent: NoteKey = NoteKey("no-discard-consent", Vector(
+  /** The keys this rule owns. An operation restriction is not a power,
+    * so `RuleNotes` declares it for the formatter. */
+  val notes: NoteSet = NoteSet.unowned("HallOfMinisters")
+  val noDiscardConsent: NoteKey = notes.key("no-discard-consent", Vector(
     NotePart.Text("Cannot discard cards from its ruler's sites without " +
       "ruler's consent.")))
 

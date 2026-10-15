@@ -42,7 +42,7 @@ final case class Mercenaries private (catalog: ExecutableCatalog)
         Vector(effect))
     }
 
-  override def noteKeys: Vector[NoteKey] = Vector(Mercenaries.discarded)
+  override def noteKeys: Vector[NoteKey] = Mercenaries.noteKeys
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>
@@ -66,8 +66,10 @@ final case class Mercenaries private (catalog: ExecutableCatalog)
 object Mercenaries:
   val id: PowerId = MercenariesCard.power.id
   val Dice: Int = 3
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Discarded after {Red} lost." */
-  val discarded: NoteKey = NoteKey("discarded", Vector(
+  val discarded: NoteKey = notes.key("discarded", Vector(
     NotePart.Text("Discarded after "), NotePart.Arg(0), NotePart.Text(" lost.")))
 
   def forCatalog(catalog: ExecutableCatalog): Mercenaries =

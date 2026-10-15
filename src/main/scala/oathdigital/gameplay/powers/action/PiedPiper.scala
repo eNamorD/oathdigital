@@ -37,19 +37,20 @@ case object PiedPiper extends PaidAction(PiedPiperCard.power)
     with ContributingPower:
   val decisionId: String = "power.pied-piper.target"
   val Taken: Int = 2
+  private val notes = NoteSet(id)
   /** "Moved to {Blue}'s advisers and took {2 favor} from them." */
-  val moved: NoteKey = NoteKey(NoteKey.Used, Vector(
+  val moved: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("Moved to "), NotePart.Arg(0),
     NotePart.Text("'s advisers and took "), NotePart.Arg(1),
     NotePart.Text(" from them.")))
   /** "Moved to {Blue}'s advisers. {Blue} had no favor to take." */
-  val broke: NoteKey = NoteKey("used.empty", Vector(
+  val broke: NoteKey = notes.key("used.empty", Vector(
     NotePart.Text("Moved to "), NotePart.Arg(0),
     NotePart.Text("'s advisers. "), NotePart.Arg(1),
     NotePart.Text(" had no favor to take.")))
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(this.id.value)
-  override def noteKeys: Vector[NoteKey] = Vector(moved, broke)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(

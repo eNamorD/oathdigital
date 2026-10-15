@@ -50,9 +50,10 @@ object BeastTamer:
   /** The suits of the plans it withholds. */
   val Suits: Set[Suit] = Set(Suit.Beast, Suit.Nomad)
   /** "No Beast or Nomad battle plans." */
-  val tamed: NoteKey = NoteKey("tamed",
+  private val notes = NoteSet(id)
+  val tamed: NoteKey = notes.key("tamed",
     Vector(NotePart.Text("No Beast or Nomad battle plans.")))
-  val noteKeys: Vector[NoteKey] = Vector(tamed)
+  def noteKeys: Vector[NoteKey] = notes.declared
 
   def forCatalog(catalog: ExecutableCatalog): BeastTamer =
     new BeastTamer(catalog)

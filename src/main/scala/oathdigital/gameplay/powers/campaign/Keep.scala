@@ -35,12 +35,13 @@ case object KeepRule extends ContributingPower:
   val id: PowerId = KeepCard.power.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
+  private val notes = NoteSet(id)
   /** "Ended the Raid with {Blue}'s pawn at {site}." */
-  val ended: NoteKey = NoteKey("ended", Vector(
+  val ended: NoteKey = notes.key("ended", Vector(
     NotePart.Text("Ended the Raid with "), NotePart.Arg(0),
     NotePart.Text("'s pawn at "), NotePart.Arg(1), NotePart.Text(".")))
 
-  override def noteKeys: Vector[NoteKey] = Vector(ended)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignRaidConsequences ->

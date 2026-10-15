@@ -33,7 +33,9 @@ final case class CropRotation private (catalog: ExecutableCatalog)
   val cardId: DenizenId = CropRotationCard.id
   def id: PowerId = CropRotation.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
-  override def noteKeys: Vector[NoteKey] = Vector(CardPlayRules.discardFirst)
+  private val notes = NoteSet(id)
+  notes.include(CardPlayRules.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>

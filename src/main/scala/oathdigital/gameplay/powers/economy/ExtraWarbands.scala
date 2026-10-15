@@ -14,8 +14,11 @@ import oathdigital.model._
   * the line of the vow that folded last. An empty bank writes nothing.
   */
 private[economy] object ExtraWarbands:
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("ExtraWarbands")
   /** "Gained {n} more warband." */
-  val gained: NoteKey = NoteKey("gained", Vector(NotePart.Text("Gained "),
+  val gained: NoteKey = notes.key("gained", Vector(NotePart.Text("Gained "),
     NotePart.Arg(0), NotePart.Plural(0, " more warband.", " more warbands.")))
 
   /** `operations` with `extra` more warbands on the actor's gain, wherever

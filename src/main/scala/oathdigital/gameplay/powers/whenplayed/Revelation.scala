@@ -33,18 +33,19 @@ case object Revelation extends WhenPlayedPower:
   val cardId: DenizenId = RevelationCard.id
   val id: PowerId = RevelationCard.power.id
   val decisionId: String = "cardplay.revelation.burn"
+  private val notes = NoteSet(id)
   /** "{Blue} burned {n favor} and gained {n secrets}." */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Arg(0),
+  val burned: NoteKey = notes.key("burned", Vector(NotePart.Arg(0),
     NotePart.Text(" burned "), NotePart.Arg(1), NotePart.Text(" and gained "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "{Blue} did not burn any favor." */
-  val declined: NoteKey = NoteKey("declined", Vector(NotePart.Arg(0),
+  val declined: NoteKey = notes.key("declined", Vector(NotePart.Arg(0),
     NotePart.Text(" did not burn any favor.")))
   /** "Nobody had favor to burn." */
-  val none: NoteKey = NoteKey("none", Vector(
+  val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("Nobody had favor to burn.")))
 
-  override def noteKeys: Vector[NoteKey] = Vector(burned, declined, none)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 

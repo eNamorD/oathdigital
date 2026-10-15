@@ -15,8 +15,9 @@ object EldersCard extends Denizen(DenizenId("26"), "Elders", Suit.Nomad):
   * restates the gain in place of the generic Gain line.
   */
 case object Elders extends PaidAction(EldersCard.power):
-  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
-  override def noteKeys: Vector[NoteKey] = Vector(gained)
+  private val notes = NoteSet(id)
+  val gained: NoteKey = NoteSupport.gainedKey(notes, NoteKey.Used)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector(

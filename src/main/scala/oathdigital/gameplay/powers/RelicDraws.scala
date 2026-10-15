@@ -12,8 +12,11 @@ object RelicDraws:
       Play(relic, PositionedLocation(Location.Deck(CardDeck.Relic),
         StackPosition.Top), Location.PlayArea(actor), Orientation.FaceDown))
 
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("RelicDraws")
   /** "The relic deck was empty.": a relic draw's line when it drew none. */
-  val emptyDeck: NoteKey = NoteKey("used.empty", Vector(
+  val emptyDeck: NoteKey = notes.key("used.empty", Vector(
     NotePart.Text("The relic deck was empty.")))
 
   /** A power's draw of the top relic, taken facedown, then its line: the
@@ -29,7 +32,7 @@ object RelicDraws:
       .orElse(PowerSourceRef.of(source).map(emptyDeck(_)))))
 
   /** "{player} drew {relic} facedown.": a relic draw's own line. */
-  val drew: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val drew: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" drew "), NotePart.Arg(1), NotePart.Text(" facedown.")))
 
   /** The relic the step before the note drew, restated. Nothing when that

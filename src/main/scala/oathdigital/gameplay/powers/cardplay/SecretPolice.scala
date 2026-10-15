@@ -34,13 +34,14 @@ case object SecretPolice extends ContributingPower:
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
+  private val notes = NoteSet(id)
   /** "Cannot play a Vision faceup without ruler's consent.": the reason of
     * a faceup play the Police's ruler may be asked about. */
-  val noFaceupConsent: NoteKey = NoteKey("no-faceup-consent", Vector(
+  val noFaceupConsent: NoteKey = notes.key("no-faceup-consent", Vector(
     NotePart.Text("Cannot play a Vision faceup without ruler's consent.")))
+  notes.include(VisionPlay.notes)
 
-  override def noteKeys: Vector[NoteKey] =
-    Vector(VisionPlay.noFaceup, noFaceupConsent)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup ->

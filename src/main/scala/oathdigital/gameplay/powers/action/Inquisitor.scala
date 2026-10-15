@@ -49,22 +49,21 @@ case object Inquisitor extends PaidAction(InquisitorCard.power):
   def guess(vision: VisionId): DecisionOptionRef.Button =
     DecisionOptionRef.Button(vision.value.stripPrefix("vision:"))
 
+  private val notes = NoteSet(id)
   /** "Guessed {name} and discarded {card} from {Blue}.", one per Vision. */
   val right: Map[VisionId, NoteKey] = visions.map((vision, name) =>
-    vision -> NoteKey(s"used.${guess(vision).key}.right", Vector(
+    vision -> notes.key(s"used.${guess(vision).key}.right", Vector(
       NotePart.Text(s"Guessed $name and discarded "), NotePart.Arg(0),
       NotePart.Text(" from "), NotePart.Arg(1), NotePart.Text(".")))).toMap
   /** "Guessed {name} for {Blue}'s Vision, wrongly.", one per Vision. */
   val wrong: Map[VisionId, NoteKey] = visions.map((vision, name) =>
-    vision -> NoteKey(s"used.${guess(vision).key}.wrong", Vector(
+    vision -> notes.key(s"used.${guess(vision).key}.wrong", Vector(
       NotePart.Text(s"Guessed $name for "), NotePart.Arg(0),
       NotePart.Text("'s Vision, wrongly.")))).toMap
   /** "No player at the site held a facedown Vision." */
-  val nothing: NoteKey = NoteKey(NoteKey.Used, Vector(
+  val nothing: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("No player at the site held a facedown Vision.")))
-  override def noteKeys: Vector[NoteKey] =
-    visions.flatMap((vision, _) => Vector(right(vision), wrong(vision))) :+
-      nothing
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] =
     Set(visionDecisionId, guessDecisionId)
 

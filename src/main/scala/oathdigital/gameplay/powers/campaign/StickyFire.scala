@@ -46,22 +46,22 @@ case object StickyFire extends BattlePlan:
   val yes: DecisionOptionRef.Button = DecisionOptionRef.Button("kill")
   val no: DecisionOptionRef.Button = DecisionOptionRef.Button("spare")
 
+  private val notes = NoteSet(id)
   /** "Killed {n} {Blue} warband, and {Blue} gained {1 favor}." */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Killed "),
+  val burned: NoteKey = notes.key("burned", Vector(NotePart.Text("Killed "),
     NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
     NotePart.Plural(0, " warband, and ", " warbands, and "), NotePart.Arg(1),
     NotePart.Text(" gained "), NotePart.Arg(2), NotePart.Text(".")))
   /** The kill alone, when the winner had no favor to give. */
-  val killed: NoteKey = NoteSupport.killedKey("killed")
+  val killed: NoteKey = NoteSupport.killedKey(notes, "killed")
   /** The favor alone, when the loser's board held no warband. */
-  val gave: NoteKey = NoteSupport.gainedKey("gained")
+  val gave: NoteKey = NoteSupport.gainedKey(notes, "gained")
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
 
-  override def noteKeys: Vector[NoteKey] =
-    Vector(StickyFire.burned, StickyFire.killed, StickyFire.gave)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.relic(relicId).map(source => CampaignPlanOffer(source,

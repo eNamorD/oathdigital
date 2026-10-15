@@ -23,12 +23,13 @@ object MarshSpiritCard extends Denizen(DenizenId("192"), "Marsh Spirit", Suit.Be
 case object MarshSpirit extends ContributingPower:
   val cardId: DenizenId = MarshSpiritCard.id
   val id: PowerId = MarshSpiritCard.power.id
+  private val notes = NoteSet(id)
   /** "Players who target its site cannot use battle plans." */
-  val mired: NoteKey = NoteKey("mired", Vector(NotePart.Text(
+  val mired: NoteKey = notes.key("mired", Vector(NotePart.Text(
     "Players who target its site cannot use battle plans.")))
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] = Vector(MarshSpirit.mired)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignAttackerBattlePlans -> Vector(OptionRestriction(

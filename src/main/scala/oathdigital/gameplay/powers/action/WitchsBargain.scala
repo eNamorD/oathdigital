@@ -44,18 +44,19 @@ case object WitchsBargain extends PaidAction(WitchsBargainCard.power):
   val giveFavor: DecisionOptionRef.Button = DecisionOptionRef.Button("give-favor")
   val switch: DecisionOptionRef.Button = DecisionOptionRef.Button("switch")
   val stop: DecisionOptionRef.Button = DecisionOptionRef.Button("stop")
+  private val notes = NoteSet(id)
   /** "Gave {1 secret} to {Blue} and took {n favor}." */
   val forSecret: NoteKey = exchangeKey("secret")
   /** "Gave {2 favor} to {Blue} and took {n secrets}." */
   val forFavor: NoteKey = exchangeKey("favor")
   /** "No exchange was made." */
-  val nothing: NoteKey = NoteKey(NoteKey.Used, Vector(
+  val nothing: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("No exchange was made.")))
-  override def noteKeys: Vector[NoteKey] = Vector(forSecret, forFavor, nothing)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] =
     Set(playerDecisionId, exchangeDecisionId)
 
-  private def exchangeKey(name: String): NoteKey = NoteKey(name, Vector(
+  private def exchangeKey(name: String): NoteKey = notes.key(name, Vector(
     NotePart.Text("Gave "), NotePart.Arg(0), NotePart.Text(" to "),
     NotePart.Arg(1), NotePart.Text(" and took "), NotePart.Arg(2),
     NotePart.Text(".")))

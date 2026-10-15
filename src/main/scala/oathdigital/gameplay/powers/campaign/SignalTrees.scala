@@ -40,8 +40,7 @@ final case class SignalTrees private (catalog: ExecutableCatalog)
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(SignalTrees.added,
-    SignalTrees.removed, SignalTrees.revealed, SignalTrees.none)
+  override def noteKeys: Vector[NoteKey] = SignalTrees.noteKeys
 
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 
@@ -114,22 +113,24 @@ object SignalTrees:
   val Revealed: Int = 3
   /** The attack dice each Beast revealed adds or removes. */
   val PerBeast: Int = 2
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Revealed and discarded {cards}; added {4} attack dice." */
-  val added: NoteKey = NoteKey("added", Vector(
+  val added: NoteKey = notes.key("added", Vector(
     NotePart.Text("Revealed and discarded "), NotePart.Arg(0),
     NotePart.Text("; added "), NotePart.Arg(1),
     NotePart.Plural(1, " attack die.", " attack dice.")))
   /** "Revealed and discarded {cards}; removed {4} attack dice." */
-  val removed: NoteKey = NoteKey("removed", Vector(
+  val removed: NoteKey = notes.key("removed", Vector(
     NotePart.Text("Revealed and discarded "), NotePart.Arg(0),
     NotePart.Text("; removed "), NotePart.Arg(1),
     NotePart.Plural(1, " attack die.", " attack dice.")))
   /** "Revealed and discarded {cards}." */
-  val revealed: NoteKey = NoteKey("revealed", Vector(
+  val revealed: NoteKey = notes.key("revealed", Vector(
     NotePart.Text("Revealed and discarded "), NotePart.Arg(0),
     NotePart.Text(".")))
   /** "Nothing was revealed." */
-  val none: NoteKey = NoteKey("none", Vector(
+  val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("Nothing was revealed.")))
 
   def forCatalog(catalog: ExecutableCatalog): SignalTrees =

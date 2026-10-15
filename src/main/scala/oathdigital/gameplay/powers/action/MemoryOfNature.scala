@@ -25,7 +25,7 @@ final case class MemoryOfNature private (catalog: ExecutableCatalog)
     extends PaidAction(MemoryOfNatureCard.power):
   import MemoryOfNature._
 
-  override def noteKeys: Vector[NoteKey] = Vector(moved, unmoved)
+  override def noteKeys: Vector[NoteKey] = MemoryOfNature.noteKeys
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
@@ -65,12 +65,14 @@ final case class MemoryOfNature private (catalog: ExecutableCatalog)
 object MemoryOfNature:
   val id: PowerId = MemoryOfNatureCard.power.id
   val decisionId: String = "power.memory-of-nature.banks"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Moved {n favor} to {the Beast bank}." */
-  val moved: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Moved "),
+  val moved: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Moved "),
     NotePart.Arg(0), NotePart.Text(" to "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "No favor moved to {the Beast bank}." */
-  val unmoved: NoteKey = NoteKey("used.none", Vector(
+  val unmoved: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No favor moved to "), NotePart.Arg(0), NotePart.Text(".")))
   private val banks = new FavorSplit(decisionId,
     Suit.all.filterNot(_ == Suit.Beast), "Move favor")

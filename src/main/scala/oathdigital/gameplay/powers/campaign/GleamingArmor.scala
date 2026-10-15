@@ -26,6 +26,7 @@ final case class GleamingArmor private (catalog: ExecutableCatalog)
   def id: PowerId = GleamingArmor.id
   protected def cost: Cost = Cost(secret = GleamingArmor.Secret)
   protected def taxed: NoteKey = GleamingArmor.taxed
+  protected def surchargeNotes: NoteSet = GleamingArmor.notes
   protected def amount: Int = GleamingArmor.Secret
   protected def unpayable: OathViolation =
     OathViolation.InsufficientSecrets(GleamingArmor.Secret, 0)
@@ -46,7 +47,8 @@ object GleamingArmor:
   /** The added cost, in secrets. */
   val Secret: Int = 1
   /** "{Red}'s battle plans cost {1} extra secret." */
-  val taxed: NoteKey = NoteKey("taxed", Vector(NotePart.Arg(0),
+  val notes: NoteSet = NoteSet(id)
+  val taxed: NoteKey = notes.key("taxed", Vector(NotePart.Arg(0),
     NotePart.Text("'s battle plans cost "), NotePart.Arg(1),
     NotePart.Plural(1, " extra secret.", " extra secrets.")))
 

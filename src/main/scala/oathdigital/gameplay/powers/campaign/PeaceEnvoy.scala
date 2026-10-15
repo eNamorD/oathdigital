@@ -48,36 +48,35 @@ case object PeaceEnvoy extends BattlePlan:
   val Favor: Int = 1
   /** Why the plan is shown but not offered. */
   val Apart: String = "Your enemy's pawn must be at your site"
+  private val notes = NoteSet(id)
   /** "Cannot be used with other battle plans." */
-  val notWithOthers: NoteKey = NoteKey("not-with-others",
+  val notWithOthers: NoteKey = notes.key("not-with-others",
     Vector(NotePart.Text("Cannot be used with other battle plans.")))
   /** "No other battle plans." */
-  val noOthers: NoteKey = NoteKey("no-others",
+  val noOthers: NoteKey = notes.key("no-others",
     Vector(NotePart.Text("No other battle plans.")))
   /** "The battle is decided.", on the defender's plans. */
-  val decided: NoteKey = NoteKey("decided",
+  val decided: NoteKey = notes.key("decided",
     Vector(NotePart.Text("The battle is decided.")))
   /** "Gave {2 favor} to {Blue}." */
-  val gave: NoteKey = NoteKey("gave", Vector(NotePart.Text("Gave "),
+  val gave: NoteKey = notes.key("gave", Vector(NotePart.Text("Gave "),
     NotePart.Arg(0), NotePart.Text(" to "), NotePart.Arg(1),
     NotePart.Text(".")))
   /** "{Blue} gave {2 favor} to {Red}.", for a defender. */
-  val gaveOffTurn: NoteKey = NoteKey("gave-off-turn", Vector(NotePart.Arg(0),
+  val gaveOffTurn: NoteKey = notes.key("gave-off-turn", Vector(NotePart.Arg(0),
     NotePart.Text(" gave "), NotePart.Arg(1), NotePart.Text(" to "),
     NotePart.Arg(2), NotePart.Text(".")))
   /** "Won the battle without a roll." */
-  val won: NoteKey = NoteKey("won",
+  val won: NoteKey = notes.key("won",
     Vector(NotePart.Text("Won the battle without a roll.")))
   /** "{Blue} won the battle without a roll.", for a defender. */
-  val wonOffTurn: NoteKey = NoteKey("won-off-turn", Vector(NotePart.Arg(0),
+  val wonOffTurn: NoteKey = notes.key("won-off-turn", Vector(NotePart.Arg(0),
     NotePart.Text(" won the battle without a roll.")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(PeaceEnvoy.notWithOthers,
-    PeaceEnvoy.noOthers, PeaceEnvoy.decided, PeaceEnvoy.gave,
-    PeaceEnvoy.gaveOffTurn, PeaceEnvoy.won, PeaceEnvoy.wonOffTurn)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map { source =>

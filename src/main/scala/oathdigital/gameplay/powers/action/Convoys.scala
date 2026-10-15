@@ -26,11 +26,12 @@ object ConvoysCard extends Denizen(DenizenId("151"), "Convoys", Suit.Nomad) with
   */
 case object Convoys extends PaidAction(ConvoysCard.power):
   val decisionId: String = "power.convoys.pile"
+  private val notes = NoteSet(id)
   /** "Moved the {pile} onto the {pile}." */
-  val moved: NoteKey = NoteKey(NoteKey.Used, Vector(
+  val moved: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("Moved the "), NotePart.Arg(0), NotePart.Text(" onto the "),
     NotePart.Arg(1), NotePart.Text(".")))
-  override def noteKeys: Vector[NoteKey] = Vector(moved)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   /** The button for `region`'s pile. */

@@ -60,26 +60,26 @@ case object VowOfUnion extends ContributingPower:
   val toSites: DecisionOptionRef.Button = DecisionOptionRef.Button("to-sites")
   val stay: DecisionOptionRef.Button = DecisionOptionRef.Button("stay")
   val noBoardWarbands: String = "No warbands on your board"
+  private val notes = NoteSet(id)
   /** "Moved {2 warbands} from sites to the board." */
-  val movedToBoard: NoteKey = NoteKey("moved.board", Vector(
+  val movedToBoard: NoteKey = notes.key("moved.board", Vector(
     NotePart.Text("Moved "), NotePart.Arg(0),
     NotePart.Text(" from sites to the board.")))
   /** "Moved {3 warbands} from the board to sites." */
-  val movedToSites: NoteKey = NoteKey("moved.sites", Vector(
+  val movedToSites: NoteKey = notes.key("moved.sites", Vector(
     NotePart.Text("Moved "), NotePart.Arg(0),
     NotePart.Text(" from the board to sites.")))
   /** "{Blue} moved {2 warbands} from sites to their board." */
-  val holderMovedToBoard: NoteKey = NoteKey("moved.board.holder", Vector(
+  val holderMovedToBoard: NoteKey = notes.key("moved.board.holder", Vector(
     NotePart.Arg(0), NotePart.Text(" moved "), NotePart.Arg(1),
     NotePart.Text(" from sites to their board.")))
   /** "{Blue} moved {3 warbands} from their board to sites." */
-  val holderMovedToSites: NoteKey = NoteKey("moved.sites.holder", Vector(
+  val holderMovedToSites: NoteKey = notes.key("moved.sites.holder", Vector(
     NotePart.Arg(0), NotePart.Text(" moved "), NotePart.Arg(1),
     NotePart.Text(" from their board to sites.")))
 
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] = Vector(movedToBoard, movedToSites,
-    holderMovedToBoard, holderMovedToSites)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] =
     Set(directionDecisionId, arrangeDecisionId)
 

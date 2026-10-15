@@ -20,12 +20,11 @@ object PledgeOfDefenseCard extends Denizen(DenizenId("243"), "Pledge of Defense"
   * whoever won, as Horse Archers is.
   */
 final case class PledgeOfDefense private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = PledgeOfDefenseCard.id
   def id: PowerId = PledgeOfDefense.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(PlanDiscard.discarded)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map { source =>
@@ -34,10 +33,6 @@ final case class PledgeOfDefense private (catalog: ExecutableCatalog)
       CampaignPlanOffer(source, s"Pledge of Defense: add $dice $noun",
         Vector.empty, Vector(CampaignPlanEffect.AddDefenseDice(dice)))
     }
-
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignActionEligibility -> (use =>
-      PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
 object PledgeOfDefense:
   val id: PowerId = PledgeOfDefenseCard.power.id

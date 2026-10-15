@@ -32,10 +32,12 @@ case object GamblingHall extends PaidAction(GamblingHallCard.power):
 
   /** Its own line: the roll and its total, in place of "Used Gambling Hall"
     * and the generic "Rolled" line. */
+  private val notes = NoteSet(id)
+  notes.include(RollResults.notes)
   val rolled: NoteKey = RollResults.rolled
   /** What the total took from the chosen bank, which a thin bank caps. */
-  val gained: NoteKey = NoteSupport.gainedFromKey("gained")
-  override def noteKeys: Vector[NoteKey] = Vector(rolled, gained)
+  val gained: NoteKey = NoteSupport.gainedFromKey(notes, "gained")
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

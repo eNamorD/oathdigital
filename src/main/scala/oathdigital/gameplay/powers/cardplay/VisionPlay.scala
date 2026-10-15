@@ -26,9 +26,12 @@ private[cardplay] object VisionPlay:
   def forbidden(card: String): OathViolation =
     OathViolation.InvalidSearchPlacement(s"$card forbids playing a Vision faceup")
 
+  /** The keys this object owns, which no one power owns. A power that
+    * writes one includes this set. */
+  val notes: NoteSet = NoteSet.unowned("VisionPlay")
   /** Where a faceup placement was hidden, as its hover reason: "Cannot play
     * a Vision faceup." */
-  val noFaceup: NoteKey = NoteKey("no-faceup", Vector(
+  val noFaceup: NoteKey = notes.key("no-faceup", Vector(
     NotePart.Text("Cannot play a Vision faceup.")))
 
   /** The hide hook of a rule printed on `card`: the acting player cannot

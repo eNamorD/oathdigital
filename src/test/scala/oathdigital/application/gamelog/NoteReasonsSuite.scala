@@ -13,7 +13,10 @@ class NoteReasonsSuite extends munit.FunSuite:
   private val ready = Table.start.ready
   private val site = ready.game.current.map.inPlay.head
   private val power = PowerId("test.hider")
-  private val hid = NoteKey("hid", Vector(NotePart.Text("This is hidden.")))
+  /** This suite's own keys: a test declares what it writes,
+    * as a power does. */
+  private val testNotes = NoteSet.unowned("NoteReasonsSuite")
+  private val hid = testNotes.key("hid", Vector(NotePart.Text("This is hidden.")))
   private val reasons = new NoteReasons(catalog, presentation,
     NoteWordings.of(power, Vector(hid)))
 

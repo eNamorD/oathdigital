@@ -28,7 +28,7 @@ final case class Resettle private (catalog: ExecutableCatalog)
     extends PaidAction(ResettleCard.power):
   import Resettle._
 
-  override def noteKeys: Vector[NoteKey] = Vector(moved, nothing)
+  override def noteKeys: Vector[NoteKey] = Resettle.noteKeys
   override def narratedDecisions: Set[String] =
     Set(adviserDecisionId, siteDecisionId)
 
@@ -111,12 +111,14 @@ object Resettle:
   val id: PowerId = ResettleCard.power.id
   val adviserDecisionId: String = "power.resettle.adviser"
   val siteDecisionId: String = "power.resettle.site"
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "Moved {Blue}'s {card} to {site}." */
-  val moved: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Moved "),
+  val moved: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Text("Moved "),
     NotePart.Arg(0), NotePart.Text("'s "), NotePart.Arg(1),
     NotePart.Text(" to "), NotePart.Arg(2), NotePart.Text(".")))
   /** "No Nomad adviser could be moved." */
-  val nothing: NoteKey = NoteKey("used.none", Vector(
+  val nothing: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No Nomad adviser could be moved.")))
 
   def forCatalog(catalog: ExecutableCatalog): Resettle =

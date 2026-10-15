@@ -18,22 +18,17 @@ object HorseArchersCard extends Denizen(DenizenId("24"), "Horse Archers", Suit.N
   * at a site it rules, and it is discarded then too.
   */
 final case class HorseArchers private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = HorseArchersCard.id
   def id: PowerId = HorseArchers.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(PlanDiscard.discarded)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       PlanDice.label("Horse Archers", context.side, HorseArchers.Dice),
       Vector.empty, Vector(PlanDice.effect(context.side, HorseArchers.Dice))))
-
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignActionEligibility -> (use =>
-      PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
 object HorseArchers:
   val id: PowerId = HorseArchersCard.power.id

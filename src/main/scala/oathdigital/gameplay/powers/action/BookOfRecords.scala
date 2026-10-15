@@ -27,18 +27,19 @@ object BookOfRecordsCard extends Relic(RelicId("R19"), "Book of Records", value 
 case object BookOfRecords extends PaidAction(BookOfRecordsCard.power):
   val decisionId: String = "power.book-of-records.banner"
   val Most: Int = 2
+  private val notes = NoteSet(id)
   /** "{Red} took {2 favor} from {Blue}'s {People's Favor}." */
-  val took: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val took: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(" from "),
     NotePart.Arg(2), NotePart.Text("'s "), NotePart.Arg(3),
     NotePart.Text(".")))
   /** "{Blue}'s {banner} held nothing to take." */
-  val empty: NoteKey = NoteKey("used.empty", Vector(NotePart.Arg(0),
+  val empty: NoteKey = notes.key("used.empty", Vector(NotePart.Arg(0),
     NotePart.Text("'s "), NotePart.Arg(1),
     NotePart.Text(" held nothing to take.")))
-  val nobody: NoteKey = NoteKey("used.none", Vector(
+  val nobody: NoteKey = notes.key("used.none", Vector(
     NotePart.Text("No player at the site held a banner.")))
-  override def noteKeys: Vector[NoteKey] = Vector(took, empty, nobody)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

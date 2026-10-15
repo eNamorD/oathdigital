@@ -24,14 +24,15 @@ object ArcaneBrokersCard extends Denizen(DenizenId("204"), "Arcane Brokers", Sui
 case object ArcaneBrokers extends PaidAction(ArcaneBrokersCard.power):
   val decisionId: String = "power.arcane-brokers.relic"
   val Gained: Int = 2
+  private val notes = NoteSet(id)
   /** "{Red} discarded {relic} and gained {n secrets}." */
-  val discarded: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+  val discarded: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" discarded "), NotePart.Arg(1),
     NotePart.Text(" and gained "), NotePart.Arg(2), NotePart.Text(".")))
   /** "{Red} held no relic." */
-  val bare: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+  val bare: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no relic.")))
-  override def noteKeys: Vector[NoteKey] = Vector(discarded, bare)
+  override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   private val relic = new HeldRelicSpend(decisionId,

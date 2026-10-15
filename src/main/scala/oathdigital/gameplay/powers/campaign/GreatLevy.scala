@@ -38,7 +38,9 @@ case object GreatLevy extends BattlePlan:
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(Outriders.ignored)
+  private val notes = NoteSet(id)
+  notes.include(Outriders.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId)

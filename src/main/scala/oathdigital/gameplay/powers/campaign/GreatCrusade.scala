@@ -21,13 +21,12 @@ object GreatCrusadeCard extends Denizen(DenizenId("164"), "Great Crusade", Suit.
   * Campaign has resolved, whoever won, as Horse Archers is.
   */
 final case class GreatCrusade private (catalog: ExecutableCatalog)
-    extends BattlePlan:
+    extends BattlePlan with DiscardedAtEnd:
   val cardId: DenizenId = GreatCrusadeCard.id
   def id: PowerId = GreatCrusade.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
-  override def noteKeys: Vector[NoteKey] = Vector(PlanDiscard.discarded)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map { source =>
@@ -35,10 +34,6 @@ final case class GreatCrusade private (catalog: ExecutableCatalog)
       CampaignPlanOffer(source, PlanDice.label("Great Crusade", context.side,
         dice), Vector.empty, Vector(PlanDice.effect(context.side, dice)))
     }
-
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignActionEligibility -> (use =>
-      PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
 object GreatCrusade:
   val id: PowerId = GreatCrusadeCard.power.id

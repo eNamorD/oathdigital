@@ -39,7 +39,7 @@ final case class ProvingGrounds private (catalog: ExecutableCatalog)
 
   override def applicable(ctx: PowerCtx): Boolean = at(ctx).isDefined
 
-  override def noteKeys: Vector[NoteKey] = Vector(ProvingGrounds.gained)
+  override def noteKeys: Vector[NoteKey] = ProvingGrounds.noteKeys
 
   private def build(ready: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =
@@ -57,8 +57,10 @@ final case class ProvingGrounds private (catalog: ExecutableCatalog)
     Map(PowerWindow.SetupPawnPlaced -> effect, PowerWindow.WhenExplored -> effect)
 object ProvingGrounds:
   val id: PowerId = ProvingGroundsCard.intact.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
   /** "{player} gained {3 warbands}." */
-  val gained: NoteKey = NoteSupport.gainedKey("gained")
+  val gained: NoteKey = NoteSupport.gainedKey(notes, "gained")
   def forCatalog(catalog: ExecutableCatalog): ProvingGrounds =
     new ProvingGrounds(catalog)
 
@@ -80,7 +82,9 @@ final case class EmptyGrounds private (catalog: ExecutableCatalog)
 
   override def applicable(ctx: PowerCtx): Boolean = at(ctx.state).isDefined
 
-  override def noteKeys: Vector[NoteKey] = Vector(EdificeSetupSupport.discarded)
+  private val notes = NoteSet(id)
+  notes.include(EdificeSetupSupport.notes)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   /** Every card at a site in `site`'s region except this edifice, in map
     * order. An intact edifice among them is locked and stays. */

@@ -32,14 +32,15 @@ case object Zealots extends BattlePlan:
   val id: PowerId = ZealotsCard.power.id
   /** What each sacrificed warband adds while the plan holds. */
   val Worth: Int = 3
+  private val notes = NoteSet(id)
   /** "Has no effect unless defending force is larger than yours", the
     * option's warning. */
-  val noEffect: NoteKey = NoteKey("no-effect", Vector(NotePart.Text(
+  val noEffect: NoteKey = notes.key("no-effect", Vector(NotePart.Text(
     "Has no effect unless defending force is larger than yours")))
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-  override def noteKeys: Vector[NoteKey] = Vector(Zealots.noEffect)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map { source =>
