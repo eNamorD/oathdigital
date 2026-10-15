@@ -36,7 +36,7 @@
 
 Task 1 amends the batch 8 documents with this slice's rulings. Read them again after Task 1.
 
-**Starts from:** `main` at `6219eddc` or later. Slice 9 (`07d6f06c`) is in. Where this plan quotes code, read the file as it is on `main` and apply the change to what is there.
+**Starts from:** `main` at `6f374302` or later. Slice 9 (`07d6f06c`) and the note-keys change (`b4a6d331`) are in. A note key is now made only by declaring it through a `NoteSet` (`model/PowerNotes.scala`), and `src/test/resources/notes/declared-keys.txt` snapshots every declared key; Task 3 adds Spell Breaker's two. Where this plan quotes code, read the file as it is on `main` and apply the change to what is there.
 
 ## Global Constraints
 
@@ -281,8 +281,10 @@ class PowerUseRulesSuite extends munit.FunSuite:
     costsSecret = true)
   private val covers = ConsentKey(ruled, p1, PowerUseRules.useKey,
     DecisionOptionRef.Denizen(card))
-  private val plain = NoteKey("test-ban", Vector(NotePart.Text("Banned.")))
-  private val asked = NoteKey("test-ban-consent",
+  private val notes = NoteSet(ruled)
+  private val plain = notes.key("test-ban",
+    Vector(NotePart.Text("Banned.")))
+  private val asked = notes.key("test-ban-consent",
     Vector(NotePart.Text("Banned without ruler's consent.")))
   private val source = PowerSourceRef.Card(card)
 
@@ -656,13 +658,14 @@ case object SpellBreaker extends ContributingPower with PowerUseRestriction:
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
   override def powerUseRestrictions: Vector[PowerUseRestriction] =
     Vector(this)
-  override def noteKeys: Vector[NoteKey] = Vector(plain, asked)
+  private val notes = NoteSet(id)
+  override def noteKeys: Vector[NoteKey] = notes.declared
 
   /** "Cannot use powers that cost secrets." */
-  val plain: NoteKey = NoteKey("no-secret-powers", Vector(NotePart.Text(
+  val plain: NoteKey = notes.key("no-secret-powers", Vector(NotePart.Text(
     "Cannot use powers that cost secrets.")))
   /** "Cannot use powers that cost secrets without ruler's consent." */
-  val asked: NoteKey = NoteKey("no-secret-powers-consent", Vector(
+  val asked: NoteKey = notes.key("no-secret-powers-consent", Vector(
     NotePart.Text("Cannot use powers that cost secrets without ruler's " +
       "consent.")))
 
@@ -691,16 +694,19 @@ case object SpellBreaker extends ContributingPower with PowerUseRestriction:
 
 - In `PhasePowerCatalog.scala`, pass them: `PhasePowers(<the vector as it is>, WalkerPowerCatalog.useRestrictions(catalog))`.
 - In `PowerKindsCatalogSuite.scala`, add `"denizen.spell-breaker"` to `persistentRules`.
+- Regenerate the note-key snapshot: `NOTE_KEYS_SNAPSHOT=write ./sbtw "testOnly oathdigital.gameplay.powers.DeclaredNoteKeysSuite"`. Check with `git diff src/test/resources/notes/declared-keys.txt` that the only change is two added lines, for `denizen.spell-breaker`'s `no-secret-powers` and `no-secret-powers-consent`.
+
+`notes` must be declared after `id` and before the keys, as plain `val`s, never `lazy`: `NoteSet` reads its keys as the object initialises (`PowerNotes.scala`, "declared is complete only once the owning object's initialiser has run").
 
 - [ ] **Step 6: Run the suites**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.powers.poweruse.SpellBreakerSuite oathdigital.gameplay.PowerKindsCatalogSuite oathdigital.gameplay.BackendArchitectureSuite"`
+Run: `./sbtw "testOnly oathdigital.gameplay.powers.poweruse.SpellBreakerSuite oathdigital.gameplay.PowerKindsCatalogSuite oathdigital.gameplay.BackendArchitectureSuite oathdigital.gameplay.powers.DeclaredNoteKeysSuite"`
 Expected: all pass. SpellBreakerSuite has 4 tests.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/main/scala/oathdigital/gameplay/powers/poweruse/RulerBans.scala src/main/scala/oathdigital/gameplay/powers/poweruse/SpellBreaker.scala src/main/scala/oathdigital/catalog/holding/HoldingNomadDenizens.scala src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala src/test/scala/oathdigital/gameplay/PowerKindsCatalogSuite.scala src/test/scala/oathdigital/gameplay/powers/poweruse/SpellBreakerSuite.scala
+git add src/main/scala/oathdigital/gameplay/powers/poweruse/RulerBans.scala src/main/scala/oathdigital/gameplay/powers/poweruse/SpellBreaker.scala src/main/scala/oathdigital/catalog/holding/HoldingNomadDenizens.scala src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala src/test/scala/oathdigital/gameplay/PowerKindsCatalogSuite.scala src/test/scala/oathdigital/gameplay/powers/poweruse/SpellBreakerSuite.scala src/test/resources/notes/declared-keys.txt
 git commit -m "feat(batch8): Spell Breaker refuses its ruler's enemies secret powers"
 ```
 
