@@ -157,9 +157,11 @@ The approved changes outside `gameplay/powers/`:
   Oathkeeper goal and every other reader keep `BannerRules.holder`, so the
   check needs no flag.
 - **A power-use filter** (slice 10). One "may this player use this card's
-  power" rule, read by both paths: walker contributions through
-  `applicable`, and ACTION powers through `PhasePowerProcedure.check`. It
-  sees the power's printed persistence and cost and the card's site.
+  power" rule, read by both paths: walker contributions, and ACTION powers
+  through `PhasePowerProcedure.check`. It sees the power's printed
+  persistence and cost and the card's site. An automatic power is judged
+  where its effect runs, inside a `PowerUse` node, not when its window
+  folds ([automatic power consent design](2026-10-15-automatic-power-consent-design.md)).
 - **An actor-aware operation restriction** (slice 11). An
   `OperationRestriction` learns the acting player, so a lock can hold
   against enemies only. Slice 5 names only a burn's actor, on the `Burn`
@@ -496,6 +498,21 @@ Forest Council and City Wall also refuse placing favor or secrets on cards
 through `operationRestrictions`. Giant Python's restriction half reads both,
 for every player. Its ACTION moves the card to another site, discarding a
 card there first when the user chooses or the site is full.
+
+Automatic powers go through a new `PowerUse(power, user, effect)` node,
+which judges the filter against the live state when the walk reaches it:
+the effect runs when allowed, and nothing runs when refused. Judging at the
+window's fold would see Tyrant's traveller before the pawn moves, and a
+resume after the move could flip the verdict and move a parked position.
+Only the powers the rulings appendix lists as used are wrapped: WHEN PLAYED
+(the `WhenPlayedPower` base and Conspiracy), Tyrant, Hospitality, Hunger
+(in `ForcedWakeProcedure`), and Vow of Beastkin and Vow of Wandering's
+Muster, which append their extra warbands instead of rewriting the
+Muster's gain. Keep, which replaces a Raid's consequences, keeps a
+fold-time check in `applicable`. Slice 10 refuses silently; roadmap item
+10b ([automatic power consent design](2026-10-15-automatic-power-consent-design.md))
+adds the waivable branch, where the refusing card's ruler decides through
+consent.
 
 ## Slice 11: Actor-aware lock
 

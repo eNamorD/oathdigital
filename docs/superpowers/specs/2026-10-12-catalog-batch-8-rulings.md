@@ -356,6 +356,23 @@
   - Its restriction moves with it, and its ruler becomes the ruler of its
     new site.
   - The restriction holds for every player, its ruler included.
+- **Automatic powers** (ruled 2026-10-15). An automatic power is used when
+  it makes something happen: a gain, a kill, a bury, a card's effect.
+  Restrictions, limits, requirements on an action and cost changes are not
+  uses.
+  - Used, so refused like any other non-persistent power: every WHEN
+    PLAYED power (Conspiracy included), Tyrant, Hospitality, Hunger, Keep,
+    Vow of Beastkin's extra warband and Vow of Wandering's extra Muster
+    warbands.
+  - Not used, so never refused: Initiation Rite, Pied Piper's "ignores the
+    adviser limit", the adviser limits of Insomnia, Silver Tongue and
+    Assassin, Vow of Obedience, Vow of Poverty, and the edifice setup rules
+    during Setup.
+  - A refusal is judged when the power's effect would run. Tyrant arriving
+    at City Wall's site is refused.
+  - Slice 10 refuses an automatic power silently. Roadmap item 10b lets the
+    refusing card's ruler decide through consent
+    ([design](2026-10-15-automatic-power-consent-design.md)).
 
 ## Slice 11: Actor-aware lock
 

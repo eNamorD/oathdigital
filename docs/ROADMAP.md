@@ -139,10 +139,10 @@ this order. Each slice gets its own plan.
 - [ ] **10b. Consent for refused automatic powers.** Slice 10 refuses an
   enemy's automatic non-persistent power (When Played, Tyrant, Hospitality,
   Hunger and the like) silently. With this item, such a power refused only
-  by waivable restrictions becomes a two-option step for its user, as a toll
-  does (`PayOrAsk`): an askable "use it" option and a "go on without" one.
-  The fold at the power's window must keep a stable shape across resumes.
-  It needs its own design (approved 2026-10-14).
+  by waivable restrictions asks the refusing card's ruler through consent,
+  worded "Use City Wall to deactivate Blue's Tyrant?". The power's user is
+  never asked. Design:
+  [automatic power consent](superpowers/specs/2026-10-15-automatic-power-consent-design.md).
 - [ ] **11. Actor-aware lock:** Ancient Bloodline.
 - [ ] **12. Card play at another site:** Baron, New Growth, Forest Warden.
 - [ ] **13. Campaign from another site:** Wild Allies, Captains.
