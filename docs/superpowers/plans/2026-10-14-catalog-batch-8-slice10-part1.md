@@ -126,7 +126,8 @@ Under "## Slice 10: Power-use restrictions", after its paragraph, add:
 - **A power that costs a secret** has a secret or a burnt secret in its
   printed cost, Jinx and Spiteful Mirror's free later picks included. Ward
   of Silence and Arcane Armor pay X secrets, at least one, and count too, as
-  does every battle plan Gleaming Armor taxes. Initiation Rite costs no
+  does every battle plan Gleaming Armor taxes, the title's included: the
+  title's plan is a power, though no card prints it. Initiation Rite costs no
   secret, and mustering is not a power. Unstable Summon burns from the
   Darkest Secret, which is not a cost.
 - **A Beast card** is judged by `EffectiveSuit.of` for a faceup adviser,
@@ -146,7 +147,9 @@ Under "## Slice 10: Power-use restrictions", after its paragraph, add:
   placements and the rerolls. Inside a Campaign (its modifiers, its battle
   plans and the rerolls of its dice) nobody is asked.
 - **A refused automatic power** does not apply. Nobody is asked and no
-  line is written. Consent for it is the roadmap's item 10b.
+  line is written. The roadmap's item 10b replaces this: the restriction's
+  ruler chooses, each time, whether to deactivate the power ("Use City Wall
+  to deactivate Tyrant?"), and the power's user is not asked.
 - **Hover reasons**, in the consent design's format:
   - "Spell Breaker: Cannot use powers that cost secrets."
   - "Forest Council: Cannot use non-persistent powers of Beast cards." and
@@ -183,7 +186,7 @@ In `docs/superpowers/specs/2026-10-12-catalog-batch-8-rulings.md`, replace every
   - Reached: every power whose printed cost has a secret or a burnt
     secret, of any kind (ACTION, modifier, battle plan, Jinx's reroll);
     Ward of Silence and Arcane Armor, which pay X secrets; and every
-    battle plan Gleaming Armor taxes.
+    battle plan Gleaming Armor taxes, the title's plan included.
   - Not reached: Initiation Rite, Unstable Summon's burn from the Darkest
     Secret.
   - The ruler may consent outside a Campaign.
@@ -1111,6 +1114,7 @@ class SpellBreakerOfferSuite extends munit.FunSuite:
   private val armor = CatalogNames.denizen("Gleaming Armor")
   private val watchdog = CatalogNames.denizen("Watchdog")
   private val watchdogRef = DecisionOptionRef.Denizen(watchdog)
+  private val titleRef: DecisionOptionRef = DecisionOptionRef.Button("title")
   private val jinx = CatalogNames.denizen("Jinx")
   private val jinxRef = DecisionOptionRef.Denizen(jinx)
   private val broken = Some(OptionReason.Noted(SpellBreaker.id,
@@ -1140,10 +1144,12 @@ class SpellBreakerOfferSuite extends munit.FunSuite:
     assert(commit(rules(winningDice), b, 2).offered(b.actor)
       .contains(fireTalkersRef))
 
-  test("a free plan Gleaming Armor taxes with a secret is withheld too"):
+  test("a free plan Gleaming Armor taxes with a secret is withheld too, " +
+      "the title's plan included"):
     // p1 attacks holding Gleaming Armor and rules Spell Breaker; the
     // defender's Watchdog costs nothing of itself, but a secret with the
-    // tax, so the defender, p1's enemy, may not use it.
+    // tax, so the defender, p1's enemy, may not use it. The title's plan,
+    // which the tax makes flip a secret, is a power too.
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val held = withAdviserFor(withAdviser(base, armor, Orientation.FaceUp),
@@ -1152,6 +1158,7 @@ class SpellBreakerOfferSuite extends munit.FunSuite:
       base.actor)
     val run = commit(rules(losingDice), b, 4)
     assertEquals(run.withheld(b.actor, watchdogRef), broken)
+    assertEquals(run.withheld(b.actor, titleRef), broken)
 
   test("Jinx after a Campaign roll shows the plain reason"):
     val base = withSecrets(withAdviser(board(warbands = 2, supply = 7), jinx,
@@ -1230,18 +1237,19 @@ In `BattlePlan.scala`, add to the trait:
 
 ```scala
   /** Its use at its plan window (catalog batch 8, slice 10): the plan's
-    * user's, from its card. It costs a secret when its costs or its
-    * amount hold one, or a secret surcharge taxes it. Battle plans are
-    * printed non-persistent. Nobody is asked inside a Campaign, and a
-    * bandit plan has no user. */
+    * user's, from its card, or from no card for the title's plan, which
+    * is a power too. It costs a secret when its costs or its amount hold
+    * one, or a secret surcharge taxes it. Battle plans are printed
+    * non-persistent. Nobody is asked inside a Campaign, and a bandit plan
+    * has no user. */
   override def use(ctx: PowerCtx): Option[PowerUse] =
     for
       context <- PlanContext.of(ctx)
       if sides(context.side)
       user <- context.user
       offer <- plan(context)
-      card <- CampaignPlans.cardOf(offer.source)
-    yield PowerUse(user, id, Some(card), persistent = false,
+    yield PowerUse(user, id, CampaignPlans.cardOf(offer.source),
+      persistent = false,
       costsSecret = offer.costs.exists {
         case _: CampaignPlanCost.Secret | _: CampaignPlanCost.SecretBurnt =>
           true
@@ -1251,7 +1259,9 @@ In `BattlePlan.scala`, add to the trait:
       consent = false)
 ```
 
-`CampaignPlans.cardOf` is in `gameplay.actions.campaign`; `PlanSurcharge` already imports it.
+`CampaignPlans.cardOf` is in `gameplay.actions.campaign`; `PlanSurcharge` already imports it. If it returns a `DenizenId` or another narrower type, widen it to `CardId` with `.map(c => c: CardId)`.
+
+The title's plan (`TitleDefensePlan`) is a `BattlePlan`, so it gets this use with `card = None`. Check that its `plan` passes `PlanContext.of` the same way; if it overrides `use` or is not a `BattlePlan` on `main`, give it the same `use` with `card = None`.
 
 - [ ] **Step 4: Jinx's use**
 
