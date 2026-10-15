@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
-import oathdigital.gameplay.actions.economy.AdviserSuits
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
 import oathdigital.gameplay.powers.PowerAnswers
@@ -22,7 +22,7 @@ object HospitalityCard extends Denizen(DenizenId("171"), "Hospitality",
   *
   * After the traveller's pawn moves in the cost node, a branch reads the
   * destination's cards (denizens and edifices) and the traveller's faceup
-  * advisers (`AdviserSuits`, so Marriage counts). The matching banks are
+  * advisers (`EffectiveSuit`, so Marriage counts). The matching banks are
   * the suits both share. With one that holds favor, 1 favor is gained from
   * it. With two or more, the traveller is asked first, and every matching
   * bank is listed, an empty one unavailable with "This bank is empty". With
@@ -58,7 +58,7 @@ final case class Hospitality private (catalog: ExecutableCatalog)
     val atSite = ready.game.current.map.sites.get(site).toVector
       .flatMap(_.denizens).flatMap(card => catalog.suitOf(card.id)).toSet
     Suit.all.filter(suit => atSite(suit) &&
-      AdviserSuits.count(catalog, ready, guest, suit) > 0)
+      EffectiveSuit.count(catalog, ready, guest, suit) > 0)
 
   private def welcome(ready: ReadyGame, guest: PlayerId, site: SiteId)
       : Vector[Operation] =

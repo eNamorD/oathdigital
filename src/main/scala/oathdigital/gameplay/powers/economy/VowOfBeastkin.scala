@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
   PrintedPower}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
 import oathdigital.gameplay.actions.economy.MusterSource
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, PowerCtx, Transform}
@@ -58,7 +58,7 @@ final case class VowOfBeastkin private (catalog: ExecutableCatalog)
   private def refused(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = for
     card <- cardOf(ref)
-    suit <- catalog.suitOf(card)
+    suit <- EffectiveSuit.traded(catalog, ctx.state, ctx.answered, ref)
     if MusterSource.matching(catalog, ctx.state, ctx.activePlayer, suit) == 0
     site <- PowerAccess.pawnSite(ctx.state, ctx.activePlayer)
   yield OathViolation.EconomyCardUnavailable(site, card)

@@ -1,6 +1,7 @@
 package oathdigital.gameplay.actions.economy
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.model._
 
 /** What a Muster or Trade draws on: the card its cost is placed on, the suit
@@ -52,15 +53,18 @@ object MusterSource:
     * option, so a power that lets a Muster or Trade draw on another card adds
     * it to the decision and changes nothing here. A Muster or Trade resumed
     * after its cost finds its source although the cost put tokens on it.
+    * The suit is the one the action reads (`EffectiveSuit.traded`): Discord
+    * once Spiteful Mirror is picked in `answered`.
     */
   def resolve(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      ref: DecisionOptionRef): Either[OathViolation, MusterSource] = for
+      ref: DecisionOptionRef, answered: Vector[Answered] = Vector.empty)
+      : Either[OathViolation, MusterSource] = for
     id <- cardIdOf(ref).toRight(OathViolation.InvalidEventOrder(
       s"${ref.kind}/${ref.wireId} is not a card a Muster or Trade can draw on"))
     siteId <- pawnSite(state, actor).toRight(OathViolation.PawnSiteMissing(actor))
     found <- locate(state, actor, id)
       .toRight(OathViolation.EconomyCardUnavailable(siteId, id))
-    suit <- catalog.suitOf(id).toRight(
+    suit <- EffectiveSuit.traded(catalog, state, answered, ref).toRight(
       OathViolation.UnsupportedEconomyState(s"no catalog suit for $id"))
   yield MusterSource(id, suit, found.origin)
 
@@ -72,11 +76,11 @@ object MusterSource:
     cardIdOf(ref).flatMap(locate(state, actor, _)).map(_.card)
 
   /** The actor's faceup advisers of `suit`, a Marriage counting as two
-    * (`AdviserSuits`): how many warbands, favor or secrets a Muster or Trade
+    * (`EffectiveSuit`): how many warbands, favor or secrets a Muster or Trade
     * adds to its base yield.
     */
   def matching(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      suit: Suit): Int = AdviserSuits.count(catalog, state, actor, suit)
+      suit: Suit): Int = EffectiveSuit.count(catalog, state, actor, suit)
 
   /** A card and where it stands. */
   private final case class Located(card: SiteDenizenState,

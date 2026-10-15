@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
@@ -58,7 +59,7 @@ final case class BedOfRoots private (catalog: ExecutableCatalog)
             .find(card => DecisionOptionRef.Denizen(card.id) == ref)
             .toRight(OathViolation.InvalidEventOrder(
               s"${ref.wireId} is not a faceup adviser Bed of Roots can bury"))
-          suit = catalog.suitOf(chosen.id)
+          suit = EffectiveSuit.of(catalog, ready, chosen.id)
           _ <- Either.cond(chosen.tokens.favor == 0 || suit.isDefined, (),
             OathViolation.InvalidEventOrder(
               s"no suit is known for ${chosen.id.value}"))

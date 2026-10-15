@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.{AdviserOnly, ExecutableCatalog, SiteOnly}
-import oathdigital.gameplay.LimitedResource
+import oathdigital.gameplay.{EffectiveSuit, LimitedResource}
 import oathdigital.gameplay.setup.FirstGameRulesData
 import oathdigital.model.OathViolation._
 import oathdigital.model._
@@ -249,7 +249,9 @@ object CardPlay:
     case id: VisionId => Right(Discard.Vision(id, from, destination,
       required = true))
     case id: DenizenId =>
-      val suit = catalog.suitOf(id).toRight(UnknownWorldCard(id))
+      // The replaced adviser is read before it leaves.
+      val suit = EffectiveSuit.of(catalog, ready, id)
+        .toRight(UnknownWorldCard(id))
       val held = ready.game.current.players.find(_.player == actor)
         .toVector.flatMap(_.advisers).collectFirst:
           case value: DenizenState if value.id == id => value.tokens

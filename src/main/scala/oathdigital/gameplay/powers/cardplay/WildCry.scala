@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{PlayerFacts, SelectedModifier}
 import oathdigital.model._
@@ -33,7 +34,8 @@ final case class WildCry private (catalog: ExecutableCatalog)
 
   override def appliesAt(ctx: PowerCtx): Boolean = ctx.operation match
     case CardPlayedFaceup(card: DenizenId, _) =>
-      card != cardId && catalog.suitOf(card).contains(Suit.Beast)
+      card != cardId &&
+        EffectiveSuit.of(catalog, ctx.state, card).contains(Suit.Beast)
     case _ => false
 
   private def effects(actor: PlayerId): Vector[Operation] = Vector(

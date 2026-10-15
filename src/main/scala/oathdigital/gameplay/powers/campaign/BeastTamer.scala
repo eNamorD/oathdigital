@@ -43,7 +43,7 @@ final case class BeastTamer private (catalog: ExecutableCatalog)
   /** Whether `ref` is a Beast or Nomad plan of the holder's enemy. */
   private def bars(ctx: PowerCtx, ref: DecisionOptionRef): Boolean =
     EnemyPlans.holderAgainst(ctx, cardId).nonEmpty &&
-      EnemyPlans.suitOf(catalog, ref).exists(BeastTamer.Suits)
+      EnemyPlans.suitOf(catalog, ctx.state, ref).exists(BeastTamer.Suits)
 
 object BeastTamer:
   val id: PowerId = BeastTamerCard.power.id

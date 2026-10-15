@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
 import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers, SelectedModifier}
@@ -35,16 +36,14 @@ final case class Downtrodden private (catalog: ExecutableCatalog)
       operations :+ bonus(ctx.activePlayer))))
 
   private def bonus(actor: PlayerId): Operation = BuildOps((ready, pending) =>
-    if suitOf(pending).exists(Downtrodden.least(ready, _)) then
+    if suitOf(ready, pending).exists(Downtrodden.least(ready, _)) then
       PlayerFacts.forceKind(ready, actor).map(kind => Vector[CoreOperation](
         Gain.Warbands(actor, kind, Downtrodden.Warbands)))
     else Right(Vector.empty))
 
-  private def suitOf(pending: PendingTree): Option[Suit] =
-    PowerAnswers.one(pending, MusterProcedure.decisionId).flatMap:
-      case DecisionOptionRef.Denizen(card) => catalog.suitOf(card)
-      case DecisionOptionRef.Edifice(card) => catalog.suitOf(card)
-      case _ => None
+  private def suitOf(ready: ReadyGame, pending: PendingTree): Option[Suit] =
+    PowerAnswers.one(pending, MusterProcedure.decisionId)
+      .flatMap(EffectiveSuit.traded(catalog, ready, pending.answered, _))
 
 object Downtrodden:
   val id: PowerId = DowntroddenCard.power.id

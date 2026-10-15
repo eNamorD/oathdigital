@@ -1,9 +1,9 @@
 package oathdigital.gameplay.powers.search
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.{Contribution, OperationRewrite,
   Transform}
+import oathdigital.gameplay.powers.banner.CardPowerBanners
 import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
@@ -39,8 +39,7 @@ final case class Disciples private (catalog: ExecutableCatalog)
       OperationRewrite.ops(ctx, operations)((ready, _) => {
         case pay @ SpendSupply(player, amount, _)
             if player == ctx.activePlayer && amount > Disciples.Supply &&
-              BannerRules.holder(ready.game.current, Banner.DarkestSecret)
-                .contains(player) =>
+              CardPowerBanners.holdsDarkestSecret(ready, player) =>
           Vector(pay.copy(amount = Disciples.Supply))
       }))))
 

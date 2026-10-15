@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.wake
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
   PrintedPower}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
@@ -80,7 +80,7 @@ final case class Hunger private (catalog: ExecutableCatalog)
         .toRight(PowerAnswers.missing(decisionId))
       chosen <- found.find(_.ref == ref).toRight(OathViolation
         .InvalidEventOrder(s"${ref.wireId} is not an adviser Hunger can bury"))
-      suit = catalog.suitOf(chosen.card.id)
+      suit = EffectiveSuit.of(catalog, ready, chosen.card.id)
       _ <- Either.cond(chosen.tokens.favor == 0 || suit.isDefined, (),
         OathViolation.InvalidEventOrder(
           s"no suit is known for ${chosen.card.id.value}"))

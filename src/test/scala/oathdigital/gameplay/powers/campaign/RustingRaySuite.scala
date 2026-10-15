@@ -56,3 +56,11 @@ class RustingRaySuite extends munit.FunSuite:
     val run = commit(rules(losingDice), b, 4)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     assert(!run.offered(b.actor).contains(ref))
+
+  test("with Yew Staff the defender uses it without the Darkest Secret"):
+    val base = defender(darkest = false)
+    val b = on(base)(_.relic(base.rival, "Yew Staff"))
+    val done = commit(rules(losingDice), b, 4)
+      .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
+    assertEquals(done.result.attackScore, 0)
+    assertEquals(said(RustingRay, done.events), Vector(ignored))

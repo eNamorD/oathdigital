@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
@@ -42,17 +42,18 @@ final case class HonorGuard private (catalog: ExecutableCatalog)
 
   private final case class Candidate(owner: PlayerId, card: DenizenState)
 
-  private def ordered(owner: PlayerState): Boolean = owner.advisers.exists {
-    case DenizenState(card, Orientation.FaceUp, _) =>
-      catalog.suitOf(card).contains(Suit.Order)
-    case _ => false
-  }
+  private def ordered(ready: ReadyGame, owner: PlayerState): Boolean =
+    owner.advisers.exists {
+      case DenizenState(card, Orientation.FaceUp, _) =>
+        EffectiveSuit.of(catalog, ready, card).contains(Suit.Order)
+      case _ => false
+    }
 
   private def candidates(ready: ReadyGame, actor: PlayerId): Vector[Candidate] =
     val site = PowerAccess.pawnSite(ready, actor)
     for
       owner <- ready.game.current.players
-      if site.nonEmpty && owner.pawnSite == site && !ordered(owner)
+      if site.nonEmpty && owner.pawnSite == site && !ordered(ready, owner)
       card <- owner.advisers.collect {
         case card @ DenizenState(_, Orientation.FaceUp, _) => card }
     yield Candidate(owner.player, card)
@@ -80,7 +81,7 @@ final case class HonorGuard private (catalog: ExecutableCatalog)
         .find(c => DecisionOptionRef.Denizen(c.card.id) == ref)
         .toRight(OathViolation.InvalidEventOrder(
           s"${ref.wireId} is not an adviser Honor Guard can bury"))
-      suit = catalog.suitOf(chosen.card.id)
+      suit = EffectiveSuit.of(catalog, ready, chosen.card.id)
       _ <- Either.cond(chosen.card.tokens.favor == 0 || suit.isDefined, (),
         OathViolation.InvalidEventOrder(
           s"no suit is known for ${chosen.card.id.value}"))

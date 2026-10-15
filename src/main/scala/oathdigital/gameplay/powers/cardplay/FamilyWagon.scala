@@ -30,6 +30,8 @@ final case class FamilyWagon private (catalog: ExecutableCatalog)
   def cardId: DenizenId = FamilyWagon.cardId
   def suit: Suit = Suit.Nomad
   def buryWarning: String = FamilyWagon.buryWarning
+  def ruleName: String = FamilyWagonCard.name
+  def pledgeDecisionId: String = FamilyWagon.pledgeDecisionId
   override protected def playRules(rules: CardPlayRules): CardPlayRules =
     rules.liftWhileFaceUp(cardId)
 
@@ -38,6 +40,8 @@ object FamilyWagon:
   val cardId: DenizenId = FamilyWagonCard.id
   /** The note on a card play Family Wagon will bury. */
   val buryWarning: String = "Family Wagon will bury it"
+  /** The question that orders Pledge to Discord's bury. */
+  val pledgeDecisionId: String = "power.family-wagon.pledge"
 
   def forCatalog(catalog: ExecutableCatalog): FamilyWagon =
     new FamilyWagon(catalog)

@@ -90,8 +90,9 @@ private[economy] object EconomyTree:
       MusterSource.atSite(catalog, state, actor),
       heading = Some(kind.heading)), window = Some(kind.sourceSelection)),
     Branch((ready, pending) => answered(pending, kind.decisionId).toVector
-      .flatMap(ref => afterSource(catalog, ready, actor, kind, ref)
-        .fold(error => Vector[Operation](fail(error)), identity)))),
+      .flatMap(ref => afterSource(catalog, ready, actor, kind, ref,
+        pending.answered).fold(error => Vector[Operation](fail(error)),
+          identity)))),
     Some(kind.eligibility))
 
   /** Why "Start" cannot go on: the source decision priced, so that a
@@ -105,9 +106,10 @@ private[economy] object EconomyTree:
       fallback = ModifierChoice.cannotStart)
 
   private def afterSource(catalog: ExecutableCatalog, ready: ReadyGame,
-      actor: PlayerId, kind: Kind, ref: DecisionOptionRef)
+      actor: PlayerId, kind: Kind, ref: DecisionOptionRef,
+      answered: Vector[Answered])
       : Either[OathViolation, Vector[Operation]] = for
-    source <- MusterSource.resolve(catalog, ready, actor, ref)
+    source <- MusterSource.resolve(catalog, ready, actor, ref, answered)
     player <- ready.game.current.players.find(_.player == actor)
       .toRight(OathViolation.PawnSiteMissing(actor))
     force <- PlayerForceKind.of(ready, player).toRight(

@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is under way: slices 1 to 7 are done, and slice 8 is next.
+**Phase - Catalog batch 8** is under way: slices 1 to 9 are done, and slice 10 is next.
 
 ## Next
 
@@ -132,10 +132,17 @@ this order. Each slice gets its own plan.
 - [x] **6. Operation triggers:** Secret Testament, Brass Army.
 - [x] **7. Trade at another site:** Small Friends, Friendly Familiar, Secret
   Signal.
-- [ ] **8. Effective suit:** Pledge to Discord, Spiteful Mirror.
-- [ ] **9. Darkest Secret lens:** Yew Staff.
+- [x] **8. Effective suit:** Pledge to Discord, Spiteful Mirror.
+- [x] **9. Darkest Secret lens:** Yew Staff.
 - [ ] **10. Power-use restrictions:** Spell Breaker, Forest Council, City
   Wall, Giant Python.
+- [ ] **10b. Consent for refused automatic powers.** Slice 10 refuses an
+  enemy's automatic non-persistent power (When Played, Tyrant, Hospitality,
+  Hunger and the like) silently. With this item, such a power refused only
+  by waivable restrictions becomes a two-option step for its user, as a toll
+  does (`PayOrAsk`): an askable "use it" option and a "go on without" one.
+  The fold at the power's window must keep a stable shape across resumes.
+  It needs its own design (approved 2026-10-14).
 - [ ] **11. Actor-aware lock:** Ancient Bloodline.
 - [ ] **12. Card play at another site:** Baron, New Growth, Forest Warden.
 - [ ] **13. Campaign from another site:** Wild Allies, Captains.

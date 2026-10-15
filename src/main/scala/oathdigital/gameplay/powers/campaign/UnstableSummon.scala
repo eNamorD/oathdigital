@@ -15,10 +15,11 @@ object UnstableSummonCard extends Denizen(DenizenId("225"),
 /** Unstable Summon (card 225), an attacker's battle plan: "If you hold the
   * Darkest Secret, burn X [secret] from it to collect X [attack-die]."
   *
-  * It is free. While its user holds the Darkest Secret with a secret on it,
-  * they choose X, from one to the secrets on the banner: X secrets burn from
-  * the banner, and X attack dice join the attack pool. Otherwise it is shown
-  * unavailable.
+  * It is free. While its user holds the Darkest Secret, as their card
+  * powers see it, with a secret on it, they choose X, from one to the
+  * secrets on the banner: X secrets burn from the banner, and X attack dice
+  * join the attack pool. Otherwise it is shown unavailable. With Yew Staff
+  * the secrets burn from the banner wherever it is.
   *
   * It writes "Burned {n secrets} from the Darkest Secret for {n} attack
   * dice."
@@ -51,7 +52,7 @@ case object UnstableSummon extends BattlePlan:
       val offer = CampaignPlanOffer(source,
         "Unstable Summon: burn secrets for attack dice", Vector.empty,
         Vector.empty)
-      if !context.holds(Banner.DarkestSecret) || secrets < 1 then
+      if !context.holdsDarkestSecret || secrets < 1 then
         offer.copy(withheld = Some(OptionReason.Written(noBanner)))
       else offer.copy(amount = Some(PlanAmounts.range(decisionId, 1,
         secrets, heading, confirm)(summon(context.setup.actor))))

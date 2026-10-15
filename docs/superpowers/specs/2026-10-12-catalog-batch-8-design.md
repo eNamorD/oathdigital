@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 7 are done. The per-card rulings are
+**Status:** designed 2026-10-12. Slices 1 to 9 are done. The per-card rulings are
 in [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
 **Builds on** [Catalog batch 5](2026-10-08-catalog-batch-5-design.md),
@@ -129,15 +129,33 @@ The approved changes outside `gameplay/powers/`:
   player selected when the action started, so a modifier judged there can
   tell a Trade for secrets. The walk's state does not hold the selection yet
   on the command that starts the action.
-- **An effective suit** (slice 8). One function gives a card's suit as the
-  rules see it for a player. Every reader of an adviser's suit and of a
-  traded or mustered card's suit goes through it: `AdviserSuits`,
-  `MusterSource.resolve` and `matching`, `RuledCards.of`, the suit waivers,
-  Defame, Downtrodden, Vow of Beastkin, Curfew, Ballot Box, Silver Tongue
-  and the travel payments. Marriage's existing rule moves into it.
-- **One Darkest Secret check** (slice 9). One `holdsDarkestSecret(player,
-  forCardPower)` replaces the scattered checks in card powers (Disciples,
-  Terror Spells, Fae Battalion and others).
+- **An effective suit** (slice 8, detailed at plan time).
+  `EffectiveSuit.of` gives a card's suit as the rules see it: Discord for a
+  faceup adviser of a player who has Pledge to Discord faceup, otherwise
+  its printed suit. `EffectiveSuit.traded` gives a Trade's or Muster's
+  source suit: Discord when the walk's answers pick Spiteful Mirror,
+  otherwise `of`. Every reader of an adviser's suit goes through `of`,
+  including the bank that favor on an adviser returns to, and every reader
+  of a traded or mustered card's suit goes through `traded`.
+  `EffectiveSuit` replaces `AdviserSuits` and keeps Marriage's weight. It
+  lives in `gameplay`, because the operation pipeline reads it too: an
+  off-turn payment onto a Pledge holder's adviser settles to the Discord
+  bank. The projection still sends printed suits.
+- **Family Wagon asks when Pledge is buried** (slice 8, added at plan
+  time). `SuitOnlyAdvisers` becomes a trigger on executed operations, so
+  that the active player can order the burials when Pledge to Discord sits
+  beside advisers that keep the rule by their printed suit.
+- **One Darkest Secret check for card powers** (slice 9, detailed at plan
+  time). `CardPowerBanners.holdsDarkestSecret(ready, player)` says whether
+  a player holds the Darkest Secret as a card power they use sees it: they
+  hold the banner, or a power that overrides the check
+  (`CardPowerBanners.DarkestSecretOverride`) says they act as if they do.
+  Yew Staff is the one override, listed once in `CardPowerBanners`. The
+  card powers that ask (Disciples, Terror Spells, The Red Seer, Fae
+  Battalion, Rusting Ray, Fire Talkers, Unstable Summon, and Armed Mob for
+  its user) call it and never name Yew Staff. Challenge, scoring, the
+  Oathkeeper goal and every other reader keep `BannerRules.holder`, so the
+  check needs no flag.
 - **A power-use filter** (slice 10). One "may this player use this card's
   power" rule, read by both paths: walker contributions through
   `applicable`, and ACTION powers through `PhasePowerProcedure.check`. It
@@ -434,11 +452,42 @@ suit. Spiteful Mirror, once paid in a turn, records its use in
 free modifier, to treat the cards used as Discord. No new turn field is
 needed.
 
+### Plan-time rulings
+
+- **Pledge reaches every reader of its holder's faceup adviser suits,**
+  the design's list and every other: Honor Guard, Second Chance, Resettle,
+  Twin Brother, Military Parade, Rotting Fortress and the battle plans
+  that read an enemy's advisers among them. Silver Tongue and the travel
+  payments read only site cards.
+- **Favor going back from a Pledge holder's adviser** goes to the Discord
+  bank, at Rest, in an off-turn settlement, and on a discard or bury.
+- **A card played faceup to a Pledge holder's advisers reads Discord,** so
+  Wild Cry and Saddle Makers do not fire for it.
+- **The client shows printed suits.**
+- **Spiteful Mirror** turns only the source card Discord. Its first pick in
+  a turn pays the secret and records the use; later picks are free.
+- **Family Wagon with Pledge** buries at once what goes whatever the order,
+  then asks the active player which advisers that keep the rule by their
+  printed suit to bury before Pledge.
+
 ## Slice 9: Darkest Secret lens
 
 Yew Staff makes `holdsDarkestSecret` true for its holder when the check is
 made for a card power. Challenge, scoring and the Oathkeeper goal do not go
 through it.
+
+### Plan-time rulings
+
+Settled 2026-10-14; the rulings appendix has them per card.
+
+- Yew Staff works only while its holder uses the card power. It applies
+  automatically and writes no line.
+- Unstable Summon burns from the Darkest Secret wherever the banner is.
+- The Yew Staff holder may target themselves with their own Armed Mob.
+  With two targets, Armed Mob first asks whose adviser to discard.
+- Slice 9 stays separate from slice 10. Giant Python, Ancient Pact and
+  High Priest read the check when they land; Tome Guardians reads the real
+  holder.
 
 ## Slice 10: Power-use restrictions
 

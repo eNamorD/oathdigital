@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.{EffectiveSuit, SiteRulers}
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
@@ -71,7 +71,7 @@ final case class BallotBox private (catalog: ExecutableCatalog)
     val advised = PlayerFacts.player(ready, player).toOption.toVector
       .flatMap(_.advisers.collect {
         case DenizenState(card, Orientation.FaceUp, _) => card })
-      .flatMap(catalog.suitOf).toSet
+      .flatMap(EffectiveSuit.of(catalog, ready, _)).toSet
     ready.game.current.map.sites.get(site).toVector.flatMap(_.denizens.collect {
       case DenizenState(card, Orientation.FaceUp, _) => card: CardId
       case EdificeState(card, _, _) => card: CardId

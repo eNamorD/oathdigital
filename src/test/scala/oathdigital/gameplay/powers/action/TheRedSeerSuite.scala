@@ -99,3 +99,10 @@ class TheRedSeerSuite extends munit.FunSuite:
     assert(!usableNow(ready).exists(_.power.id == TheRedSeer.id))
     assertEquals(menuReason(ready),
       Some(OptionReason.Written("Nothing to do now")))
+
+  test("with Yew Staff and no Darkest Secret it is usable"):
+    val ready = Table.from(seerHeldUnder(OathkeeperGoal.Supremacy,
+      holds = false)).relic(p1, "Yew Staff").ready
+    assert(usableNow(ready).exists(_.power.id == TheRedSeer.id))
+    assert(awaits(accepted(use(ready, TheRedSeer, source)),
+      TheRedSeer.decisionId))

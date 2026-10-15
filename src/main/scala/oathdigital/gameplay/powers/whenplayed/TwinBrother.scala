@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
@@ -60,8 +61,7 @@ final case class TwinBrother private (catalog: ExecutableCatalog)
       held <- ready.game.current.players if held.player != actor
       card <- held.advisers.collect {
         case DenizenState(id, Orientation.FaceUp, _) => id }
-      definition <- catalog.denizen(card).toVector
-      if definition.suit == Suit.Nomad
+      if EffectiveSuit.of(catalog, ready, card).contains(Suit.Nomad)
     yield Candidate(held.player, card)
 
   private def swap(ready: ReadyGame, actor: PlayerId, pending: PendingTree)

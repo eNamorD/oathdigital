@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers,
@@ -19,7 +20,8 @@ object DefameCard extends Denizen(DenizenId("102"), "Defame", Suit.Discord):
   *
   * One `Branch` is appended to the Trade's root, as Moving Market's is: a
   * decision inside the Economy `Branch` would fail on resume. It asks only
-  * when the source was Discord, a denizen or an edifice by its suit, and some
+  * when the source was Discord, by its suit as the Trade reads it
+  * (`EffectiveSuit.traded`), and some
   * player holds favor. The options are the players with favor, the actor
   * included, in seat order, then Skip when some player holds none, since
   * burning from an empty board is legal and burns nothing. Skip writes
@@ -45,7 +47,7 @@ final case class Defame private (catalog: ExecutableCatalog)
   private def offer(actor: PlayerId): Operation = Branch((ready, pending) =>
     val players = ready.game.current.players
     val holding = players.filter(_.board.favor > 0).map(_.player)
-    if !discordSource(pending) || holding.isEmpty then Vector.empty
+    if !discordSource(ready, pending) || holding.isEmpty then Vector.empty
     else
       val options: Vector[DecisionOption] = holding.map(player =>
         DecisionOption.Player(DecisionOptionRef.Player(player))) ++
@@ -57,12 +59,10 @@ final case class Defame private (catalog: ExecutableCatalog)
         BuildOps((_, answered) => burn(actor, answered)),
         Note(id, burnedNote)))
 
-  private def discordSource(pending: PendingTree): Boolean =
-    PowerAnswers.one(pending, TradeProcedure.decisionId).flatMap {
-      case DecisionOptionRef.Denizen(card) => catalog.suitOf(card)
-      case DecisionOptionRef.Edifice(card) => catalog.suitOf(card)
-      case _ => None
-    }.contains(Suit.Discord)
+  private def discordSource(ready: ReadyGame, pending: PendingTree)
+      : Boolean = PowerAnswers.one(pending, TradeProcedure.decisionId)
+    .flatMap(EffectiveSuit.traded(catalog, ready, pending.answered, _))
+    .contains(Suit.Discord)
 
   private def burn(actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
