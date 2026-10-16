@@ -8,7 +8,9 @@ import org.scalajs.dom
   * it carries details the summary does not), the tally totals, the options
   * with no place on the table, the open home's toggle, the Decide buttons under an unlabelled rule,
   * then a rule labelled "Decision" over Clear and the confirm button. The table draws
-  * the options themselves, through `BoardOptions`.
+  * the options themselves, through `BoardOptions`. A choose-one with no
+  * option on the table to choose or ask about is a Continue screen: it says
+  * nothing can be chosen and shows only its Decide buttons.
   */
 private[frontend] object BoardDecisionPanel:
   import ServerUiSupport.{button, element, text}
@@ -34,6 +36,14 @@ private[frontend] object BoardDecisionPanel:
         .find(_.playerId == option.id).map(_.displayName).getOrElse(option.label)
       else option.label
 
+    // Nothing on the table to choose or ask about: the Decide buttons, such
+    // as an empty choice's Continue, are the only answers.
+    val boardChoices = query match
+      case one: DecisionQueryState.ChooseOne => one.options.exists(option =>
+        option.kind != "button" && option.state != "unavailable" &&
+          option.state != "locked")
+      case _ => true
+
     WalkerPanelSupport.rollFeedback(decision, panel)
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
     // The summary reads the answer so far. With nothing picked it is only
@@ -48,7 +58,8 @@ private[frontend] object BoardDecisionPanel:
           BoardOptionViews.variantPrompt(open.homeOptions))))
     panel.appendChild(summary.fold(text("p",
       "board-decision-summary board-decision-summary-empty",
-      "Choose on the board."))(text("p", "board-decision-summary", _)))
+      if boardChoices then "Choose on the board."
+      else "Nothing can be chosen."))(text("p", "board-decision-summary", _)))
 
     // Decided already: a choose-many's locked options, a choose-one's answers
     // so far. Then what this draft holds.
@@ -153,28 +164,29 @@ private[frontend] object BoardDecisionPanel:
         WalkerPanelSupport.withholds(decide, option)
       }
 
-    panel.appendChild(text("p", "board-decision-rule-labelled", "Decision"))
-    if picks.nonEmpty || draft.exists(_.home.nonEmpty) then
-      val clear = button("Clear", "board-decision-clear")
-      clear.disabled = !canControl
-      clear.onclick = _ => controls.stage(Draft.Board(draft.map(_.cleared)))
-      panel.appendChild(clear)
-    // The button says what pressing it does: a choose-many counts its
-    // selection, a choose-one names its pick after the query's verb,
-    // "Travel to Deep Woods", or after "Confirm" where it declares none.
-    val confirm = button(query match
-      case many: DecisionQueryState.ChooseMany =>
-        WalkerPanelSupport.chooseManyConfirmLabel(many, picks.size)
-      case one: DecisionQueryState.ChooseOne =>
-        val verb = one.confirmVerb.getOrElse("Confirm")
-        draft.flatMap(_.picked.headOption).fold("Confirm")(option =>
-          s"$verb ${label(option)}"), "board-decision-confirm")
-    confirm.disabled = !canControl || blocked.nonEmpty || current.isEmpty
-    confirm.onclick = _ =>
-      current.flatMap(_.command).foreach(controls.submitCommand)
-    panel.appendChild(confirm)
-    blocked.foreach(reason =>
-      panel.appendChild(text("p", "board-decision-reason", reason)))
+    if boardChoices then
+      panel.appendChild(text("p", "board-decision-rule-labelled", "Decision"))
+      if picks.nonEmpty || draft.exists(_.home.nonEmpty) then
+        val clear = button("Clear", "board-decision-clear")
+        clear.disabled = !canControl
+        clear.onclick = _ => controls.stage(Draft.Board(draft.map(_.cleared)))
+        panel.appendChild(clear)
+      // The button says what pressing it does: a choose-many counts its
+      // selection, a choose-one names its pick after the query's verb,
+      // "Travel to Deep Woods", or after "Confirm" where it declares none.
+      val confirm = button(query match
+        case many: DecisionQueryState.ChooseMany =>
+          WalkerPanelSupport.chooseManyConfirmLabel(many, picks.size)
+        case one: DecisionQueryState.ChooseOne =>
+          val verb = one.confirmVerb.getOrElse("Confirm")
+          draft.flatMap(_.picked.headOption).fold("Confirm")(option =>
+            s"$verb ${label(option)}"), "board-decision-confirm")
+      confirm.disabled = !canControl || blocked.nonEmpty || current.isEmpty
+      confirm.onclick = _ =>
+        current.flatMap(_.command).foreach(controls.submitCommand)
+      panel.appendChild(confirm)
+      blocked.foreach(reason =>
+        panel.appendChild(text("p", "board-decision-reason", reason)))
 
   /** One locked or picked option: its name, then its tally values and what
     * the engine annotated on it, such as a battle plan's price.

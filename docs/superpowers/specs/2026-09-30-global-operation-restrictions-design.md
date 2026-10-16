@@ -173,9 +173,11 @@ reach, computed only when the player reaches it.
   by a search when no option is left, as an empty optional choose-many is,
   instead of failing the path. The live walk parks it instead: every option
   is shown unavailable with its reason, or "Cannot be chosen now" when the
-  walk has none, under the heading "Nothing to choose", with one Continue
-  button (`Decide.Pass`) that passes it (catalog batch 8, slice 10, part
-  2b). A power reads Continue as no answer. With one option left it parks
+  walk has none, with one Continue button (`Decide.Pass`) that passes it
+  (catalog batch 8, slice 10, part 2b). Its heading keeps the power's name,
+  "{power}: nothing to choose", or reads "Nothing to choose" when the
+  question names none. On the table, the panel says "Nothing can be
+  chosen." and shows only Continue. A power reads Continue as no answer. With one option left it parks
   as any decision does: the player sees the one option and confirms it.
   Fae Merchant is the first user: it offers every relic held, the search
   hides the Grand Scepter, and with only the scepter held and an empty

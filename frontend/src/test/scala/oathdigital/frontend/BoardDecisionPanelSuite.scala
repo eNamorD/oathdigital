@@ -138,6 +138,24 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     assertEquals(one(panel, ".board-decision-rule-labelled").textContent,
       "Decision")
 
+  test("with nothing on the table to choose, the panel says so and offers " +
+      "Continue alone"):
+    val ui = new RecordingControls()
+    val empty = DecisionQueryState.ChooseOne(Vector(
+      option("hills").copy(state = "unavailable"),
+      DecisionOptionState("button", "pass", "Continue")),
+      Some("Roving Terror: nothing to choose"))
+    val panel = pane(ui, empty, decision.copy(decisionId =
+      "power.roving-terror.card"))
+    assertEquals(one(panel, ".board-decision-summary").textContent,
+      "Nothing can be chosen.")
+    assertEquals(all(panel, ".board-decision-confirm").size, 0)
+    assertEquals(all(panel, ".board-decision-rule-labelled").size, 0)
+    as[dom.html.Button](one(panel, ".board-decision-decide")).click()
+    assertEquals(ui.submitted, Vector(Intent.ResolveWalker(
+      "power.roving-terror.card",
+      DecisionAnswerWire.ChooseOneWire("button", "pass"))))
+
   private def slot(site: String, at: Int) = DecisionOptionState("site-slot",
     s"$site:$at", s"Empty slot at Site $site")
   private val move = DecisionQueryState.ChooseOne(Vector(slot("hills", 0),
