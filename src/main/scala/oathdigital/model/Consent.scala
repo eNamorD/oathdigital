@@ -129,6 +129,11 @@ final case class ConsentState(
     else if request.asks.isEmpty || request.asks.exists(_.answer.nonEmpty) then
       Left(OathViolation.InvalidEventOrder(
         "a consent request opens with every ask unanswered"))
+    // Each key is remembered as its ask's granter's answer (ruling 12).
+    else if request.keys.exists(key =>
+        !request.asks.exists(_.powers.contains(key.power))) then
+      Left(OathViolation.InvalidEventOrder(
+        "a consent request covers a power none of its asks holds"))
     else Right(copy(pending = Some(request)))
 
   /** `granter`'s answer. A refusal settles the whole request as refused; the
@@ -142,9 +147,9 @@ final case class ConsentState(
         val updated = request.copy(asks = request.asks.map(ask =>
           if ask.granter == granter then ask.copy(answer = Some(granted))
           else ask))
-        if !granted then Right(settled(updated, ConsentAnswer.Refused, now))
+        if !granted then Right(refusedBy(granter, updated, now))
         else if updated.open.isEmpty then
-          Right(settled(updated, ConsentAnswer.Granted, now))
+          Right(grantedBy(updated, now))
         else Right(copy(pending = Some(updated)))
 
   /** The requester takes their unanswered request back; nothing is
@@ -176,14 +181,22 @@ final case class ConsentState(
     * (consent design, "Undo"). */
   def carried: ConsentState = copy(pending = None)
 
-  /** Each key `request` settles, remembered as given by the granter of the
-    * ask whose powers hold the key's power. */
-  private def settled(request: ConsentRequest, answer: ConsentAnswer,
-      now: ConsentTurn): ConsentState =
+  /** Each key `request` settles, granted by the granter of the ask whose
+    * powers hold the key's power (`requested` checks there is one). */
+  private def grantedBy(request: ConsentRequest, now: ConsentTurn)
+      : ConsentState =
     copy(answers = answersAt(now) ++ request.keys.flatMap(key =>
       request.asks.find(_.powers.contains(key.power))
-        .map(ask => key -> answer.by(ask.granter))),
+        .map(ask => key -> ConsentAnswer.Granted.by(ask.granter))),
       pending = None, turn = Some(now))
+
+  /** Every key `request` settles, refused by `refuser`: their refusal
+    * settles the whole request (ruling 9), and it lapses for every key once
+    * they may no longer answer (ruling 12), whoever was asked about it. */
+  private def refusedBy(refuser: PlayerId, request: ConsentRequest,
+      now: ConsentTurn): ConsentState =
+    copy(answers = answersAt(now) ++ request.keys.map(_ ->
+      ConsentAnswer.Refused.by(refuser)), pending = None, turn = Some(now))
 
   /** The answers still standing at `now`: none once their turn has ended. */
   private def answersAt(now: ConsentTurn): Map[ConsentKey, Remembered] =

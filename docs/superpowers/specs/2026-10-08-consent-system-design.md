@@ -110,7 +110,8 @@ Pass blocks.
     An answer binds its granter: it counts only while the player who gave it
     may still answer that key. A ruler who loses the site, to another player
     or to bandits, no longer lifts or blocks anything with it, and the new
-    ruler may be asked (catalog batch 8, slice 10).
+    ruler may be asked (catalog batch 8, slice 10). A refusal, which settles
+    the whole request, is the refuser's for every key it settles.
 13. **Answers never block undo.** The requester may undo past a consent
     answer, as far as the ordinary barriers allow. The answer stays
     remembered and its log lines are never struck through.
