@@ -17,11 +17,20 @@ object PowerUseRules:
 
   /** The target of a grant's key: the card, or the power's own button
     * when it has no card or its card has no option ref. */
-  def target(use: PowerUse): DecisionOptionRef = use.card match
-    case Some(id: DenizenId) => DecisionOptionRef.Denizen(id)
-    case Some(id: RelicId) => DecisionOptionRef.Relic(id)
-    case Some(id: EdificeId) => DecisionOptionRef.Edifice(id)
-    case _ => DecisionOptionRef.Button(use.power.value)
+  def target(use: PowerUse): DecisionOptionRef =
+    use.card.flatMap(optionOf)
+      .getOrElse(DecisionOptionRef.Button(use.power.value))
+
+  /** The option reference of `card`, the target of a grant's key; the
+    * card's own button when it has no option ref. */
+  def cardRef(card: CardId): DecisionOptionRef =
+    optionOf(card).getOrElse(DecisionOptionRef.Button(card.value))
+
+  private def optionOf(card: CardId): Option[DecisionOptionRef] = card match
+    case id: DenizenId => Some(DecisionOptionRef.Denizen(id))
+    case id: RelicId => Some(DecisionOptionRef.Relic(id))
+    case id: EdificeId => Some(DecisionOptionRef.Edifice(id))
+    case _ => None
 
   /** Every refusal `restrictions` give `use`, less those a grant
     * remembered this turn lifts. */

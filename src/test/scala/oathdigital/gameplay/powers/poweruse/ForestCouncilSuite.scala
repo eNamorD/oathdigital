@@ -1,0 +1,157 @@
+package oathdigital.gameplay.powers.poweruse
+
+import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.powerresolver.PowerUse
+import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.economy.VowOfBeastkin
+import oathdigital.gameplay.powers.whenplayed.{ThreateningRoar,
+  WhenPlayedHarness}
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
+import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.{accepted, present}
+
+/** Forest Council (card 194): "Enemies of Forest Council's ruler cannot
+  * place [favor] / [secret] on [suit-beast] cards or use their
+  * non-persistent powers." (catalog batch 8, slice 10, part 2). */
+class ForestCouncilSuite extends munit.FunSuite:
+  private val council = CatalogNames.denizen("Forest Council")
+  private val woods = CatalogNames.site("Deep Woods")
+  private val home = CatalogNames.site("Ancient City")
+  private val terror = CatalogNames.denizen("Roving Terror")
+  private val wrestlers = CatalogNames.denizen("Wrestlers")
+  private val errandBoy = CatalogNames.denizen("Errand Boy")
+  private val errandBoyRef = DecisionOptionRef.Denizen(errandBoy)
+  private val power = ForestCouncil.forCatalog(catalog)
+  private val source = PowerSourceRef.Card(council)
+
+  /** p1's Act at Ancient City with 4 favor and 7 Supply, beside Errand Boy
+    * and Wrestlers, with Forest Council at Deep Woods, which `ruled` gives
+    * its ruler: p2 by default. */
+  private def councilAtDeepWoods(
+      ruled: Table => Table = _.warbandsAt(woods, p2, 1)): ReadyGame =
+    ruled(Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
+      .denizen(errandBoy, at = home).denizen(wrestlers, at = home)
+      .favor(p1, 4).supply(p1, 7).denizen(council, at = woods)).ready
+
+  private def useOf(card: DenizenId, persistent: Boolean): PowerUse =
+    PowerUse(p1, PowerId("test.power"), Some(card), persistent,
+      costsSecret = false)
+
+  test("it refuses an enemy a Beast card's non-persistent power, waivable " +
+      "by the ruler"):
+    val refusal = power.refusal(councilAtDeepWoods(),
+      useOf(terror, persistent = false))
+    assertEquals(refusal.map(_.note), Some(ForestCouncil.usePlain(source)))
+    assertEquals(refusal.flatMap(_.reason.waiver).flatMap(_.granter),
+      Some(p2))
+
+  test("it refuses neither a Beast card's persistent power that places " +
+      "nothing, nor another suit's non-persistent power, nor its ruler"):
+    val ready = councilAtDeepWoods()
+    assertEquals(power.refusal(ready, useOf(terror, persistent = true)),
+      None)
+    assertEquals(power.refusal(ready, useOf(wrestlers, persistent = false)),
+      None)
+    assertEquals(power.refusal(councilAtDeepWoods(_.warbandsAt(woods, p1,
+      1)), useOf(terror, persistent = false)), None)
+
+  test("a persistent power whose cost places on a Beast card is refused " +
+      "on its user's turn, with the placing reason"):
+    val placing = useOf(terror, persistent = true).copy(places = true)
+    assertEquals(power.refusal(councilAtDeepWoods(), placing).map(_.note),
+      Some(ForestCouncil.placingPlain(source)))
+    val offTurn = councilAtDeepWoods().updateCurrent(current =>
+      current.copy(turn = current.turn.copy(activePlayer = p2)))
+    assertEquals(power.refusal(offTurn, placing), None)
+
+  test("it refuses a payment onto a Beast card on the payer's turn, and " +
+      "not off it"):
+    val ready = councilAtDeepWoods()
+    val pay = PayCost(p1, Location.OnCard(errandBoy), Cost(favor = 1))
+    val ban = present(power.operationRestrictions.headOption, "the ban")
+    assertEquals(ban.reason(ready, pay).flatMap(_.waiver).map(_.covers),
+      Some(ConsentKey(ForestCouncil.id, p1, "power.use", errandBoyRef)))
+    assertEquals(ban.reason(ready, pay.copy(placedAt =
+      Location.OnCard(wrestlers))), None)
+    assertEquals(ban.reason(ready, pay.copy(player = p2)), None)
+
+  test("a Muster from a Beast card is askable of the ruler, beside a card " +
+      "of another suit"):
+    val options = musterSources(councilAtDeepWoods())
+    assertEquals(options.find(_.ref == errandBoyRef).map(_.askable),
+      Some(true))
+    assert(options.exists(option =>
+      option.ref == DecisionOptionRef.Denizen(wrestlers) && option.available))
+
+  test("an enemy's Beast When Played power does not fire"):
+    // Threatening Roar, played as p1's adviser, would discard Errand Boy,
+    // a Beast card at p1's site. Forest Council stands outside p1's
+    // region, where the Roar does not reach.
+    import WhenPlayedHarness.{awaySite, homeSite, p1AtHomeSite}
+    val roar = WhenPlayedHarness.registered[ThreateningRoar]
+    def errandBoyStays(rulerOfCouncil: PlayerId): Boolean =
+      val ready = p1AtHomeSite.adviser(p1, roar.cardId)
+        .denizen(errandBoy, at = homeSite).denizen(council, at = awaySite)
+        .warbandsAt(awaySite, rulerOfCouncil, 1).ready
+      val done = Outcomes.finished(WhenPlayedHarness.playBeside(ready, roar,
+        roar.cardId, power))
+      Look(done.treeless).cardsAt(homeSite).contains(errandBoy)
+    assert(errandBoyStays(rulerOfCouncil = p2))
+    // Its ruler's own Roar fires.
+    assert(!errandBoyStays(rulerOfCouncil = p1))
+
+  test("an enemy's Vow of Beastkin adds no warband, and its source limit " +
+      "still holds"):
+    // The Vow's extra warband is a use, and Forest Council refuses it. Its
+    // source limit is a restriction, not a use, so it holds: Tyrant, an
+    // Order adviser, makes Wrestlers (Order) a legal source. Wrestlers is
+    // not a Beast card, so Forest Council lets p1 place favor on it.
+    val vow = CatalogNames.denizen("Vow of Beastkin")
+    val tyrant = CatalogNames.denizen("Tyrant")
+    def board(withCouncil: Boolean): ReadyGame =
+      val base = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
+        .denizen(wrestlers, at = home).adviser(p1, vow).adviser(p1, tyrant)
+        .favor(p1, 4).supply(p1, 7).boardWarbands(p1, 3)
+      (if withCouncil then base.denizen(council, at = woods)
+        .warbandsAt(woods, p2, 1) else base).ready
+    def mustered(ready: ReadyGame): Int =
+      Look(musteredFrom(ready, DecisionOptionRef.Denizen(wrestlers)))
+        .boardWarbands(p1)
+    assertEquals(mustered(board(withCouncil = true)),
+      mustered(board(withCouncil = false)) - VowOfBeastkin.Warbands)
+
+  /** Every production walker power, as a command with no modifiers picked
+    * gets them. */
+  private val everyPower: WalkerPowers =
+    WalkerPowers.selected(WalkerPowerCatalog.default(catalog), Vector.empty)
+
+  /** The Muster tree, walked with every production power to its source
+    * decision. */
+  private final case class ParkedMuster(tree: Operation,
+      pending: PendingTree)
+
+  private def parkedMuster(ready: ReadyGame): ParkedMuster =
+    val tree = accepted(MusterProcedure.build(catalog, ready, p1))
+    ParkedMuster(tree, Outcomes.parked(ProcedureWalker.advance(ready, tree,
+      None, everyPower)).tree)
+
+  /** The game after p1 musters from `ref`. */
+  private def musteredFrom(ready: ReadyGame, ref: DecisionOptionRef)
+      : ReadyGame =
+    val walk = parkedMuster(ready)
+    Outcomes.finished(ProcedureWalker.resolve(ready, walk.tree,
+      walk.pending, Answered(MusterProcedure.decisionId,
+        DecisionAnswer.ChooseOneAnswer(ref), p1), everyPower)).treeless
+
+  /** The Muster source decision's options, walked with every production
+    * walker power. */
+  private def musterSources(ready: ReadyGame)(using munit.Location)
+      : Vector[DecisionOption] =
+    val walk = parkedMuster(ready)
+    present(ProcedureWalker.parkedDecide(ready, walk.tree, walk.pending,
+      everyPower), "the source decision").query match
+      case one: DecisionQuery.ChooseOne => one.options
+      case other => fail(s"expected a choose-one, got $other")

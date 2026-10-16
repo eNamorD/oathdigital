@@ -86,6 +86,7 @@ object WalkerPowerCatalog:
       Vector(SecretTestament) ++
       Vector(YewStaff) ++
       Vector(SpellBreaker) ++
+      Vector(ForestCouncil.forCatalog(catalog)) ++
       TravelSitePowers.all ++
       TravelModifiers.forCatalog(catalog) ++
       Vector(LeagueTreatyContribution.forCatalog(catalog)) ++

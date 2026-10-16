@@ -26,14 +26,6 @@ object NewGrowthCard extends Denizen(DenizenId("188"), "New Growth", Suit.Beast)
       "site _(that has space)_.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object ForestCouncilCard extends Denizen(DenizenId("194"), "Forest Council", Suit.Beast) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.forest-council"),
-    persistent = true, cost = Cost.free,
-    text = "Enemies of Forest Council's ruler **cannot** place [favor] " +
-      "/ [secret] on [suit-beast] cards or use their " +
-      "non-persistent powers.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object BrackenCard extends Denizen(DenizenId("197"), "Bracken", Suit.Beast):
   val power = PrintedPower(PowerId("denizen.bracken"),
     persistent = false, cost = Cost(secret = 1),
