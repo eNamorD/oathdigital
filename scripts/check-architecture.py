@@ -12,6 +12,12 @@ PRODUCTION_ROOTS = (
     ROOT / "shared/src/main/scala",
 )
 
+# The hard limit docs/architecture/codebase-structure.md sets for a Scala
+# source file. This is the only place the number is written: the
+# "stays at or below" tests in BackendArchitectureSuite read this
+# declaration, so keep the name and the assignment on one line.
+MAX_SCALA_FILE_LINES = 800
+
 
 def scala_sources(root: Path):
     return sorted(root.rglob("*.scala"))
@@ -26,8 +32,9 @@ sources = [path for root in PRODUCTION_ROOTS for path in scala_sources(root)]
 
 for path in sources:
     line_count = len(path.read_text(encoding="utf-8").splitlines())
-    if line_count > 800:
-        errors.append(f"{relative(path)}:{line_count}: production Scala file exceeds 800 lines")
+    if line_count > MAX_SCALA_FILE_LINES:
+        errors.append(f"{relative(path)}:{line_count}: production Scala file "
+                      f"exceeds {MAX_SCALA_FILE_LINES} lines")
 
 forbidden_imports = {
     "src/main/scala/oathdigital/model": (

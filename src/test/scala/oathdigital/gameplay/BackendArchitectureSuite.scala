@@ -283,10 +283,18 @@ class BackendArchitectureSuite extends munit.FunSuite:
     assert(Files.exists(Paths.get("shared/src/main/scala/oathdigital/" +
       "protocol/projection/LogProjectionDtos.scala")))
 
-  /** The hard limit docs/architecture/codebase-structure.md sets for a
-    * production file, also enforced by scripts/check-architecture.py.
+  /** The hard limit docs/architecture/codebase-structure.md sets for a Scala
+    * source file. `scripts/check-architecture.py` is the one place that writes
+    * the number, so this suite reads it from there rather than repeating it:
+    * both gates run on their own, and a second spelling would drift. That
+    * script scans production roots only, so the test-source cap below is this
+    * suite's alone.
     */
-  private val MaxLines = 800
+  private val MaxLines: Int =
+    val declaration = """MAX_SCALA_FILE_LINES = (\d+)""".r
+    val script = Files.readString(Paths.get("scripts/check-architecture.py"))
+    declaration.findFirstMatchIn(script).map(_.group(1).toInt).getOrElse(
+      fail("scripts/check-architecture.py declares no MAX_SCALA_FILE_LINES"))
 
   private def scalaFilesUnder(roots: Vector[Path]): Vector[Path] =
     roots.flatMap { root =>
@@ -295,7 +303,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
       finally stream.close()
     }
 
-  test("every production Scala file stays at or below 800 lines"):
+  test(s"every production Scala file stays at or below $MaxLines lines"):
     val roots = Vector(Paths.get("src/main/scala"),
       Paths.get("frontend/src/main/scala"), Paths.get("shared/src/main/scala"))
     val oversized = scalaFilesUnder(roots).flatMap { path =>
@@ -304,7 +312,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
     }.sorted
     assertEquals(oversized, Vector.empty)
 
-  test("every test Scala file stays at or below 800 lines"):
+  test(s"every test Scala file stays at or below $MaxLines lines"):
     val roots = Vector(Paths.get("src/test/scala"),
       Paths.get("frontend/src/test/scala"), Paths.get("shared/src/test/scala"))
     val oversized = scalaFilesUnder(roots).flatMap { path =>
