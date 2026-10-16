@@ -29,13 +29,12 @@
   - **Wrapping.** `OperationRestrictions.active` now wraps the walker powers' operation restrictions in `ConsentedRestriction`, as it already wraps the printed ones. A remembered grant then lifts them on every step.
   - **The search keeps the waiver.** A refused operation now rejects with `OathViolation.WaivableOperationRejected`, which carries its waiver.
   - The walker uses this when its search hides an option of a choose-one. If only waivable operation refusals stop that option's path, and granting them opens it, the walker shows the option askable (`walker/OperationAsks.scala`). This covers a Muster or Trade source card. It also covers the Hall of Ministers on any choose-one.
-- **Refused automatic powers do not apply.**
-  - `ContributionCollector.gather` takes a `refused` test. The walker passes one that judges automatic powers with `PowerUseRules`.
-  - A refused power keeps only its `Offer` and `OfferReroll` contributions, which part 1's hosts withhold with a reason. Everything else it contributes is left out.
-  - Each automatic non-persistent power states its use:
-    - Tyrant, Hospitality, Keep, Vow of Beastkin, Initiation Rite and Vow of Wandering's Muster;
-    - Great Forge, Broken Forge and Proving Grounds;
-    - every When Played power, through `WhenPlayedPower`.
+- **Refused automatic powers do not apply.** The rulings are in the [automatic power consent design](../specs/2026-10-15-automatic-power-consent-design.md), rulings 1 and 3.
+  - An automatic power is judged where its effect runs, not where its window folds. Each wrapped power appends its effect inside a new `AutomaticUse(user, power, card, effect)` node. The walker resolves the node when it reaches it: the effect when `PowerUseRules` finds no refusal, nothing otherwise.
+  - Wrapped: Tyrant, Hospitality, every When Played power through `WhenPlayedPower`, Conspiracy's When Played, and Vow of Beastkin's and Vow of Wandering's extra warbands, which become their own gain after the Muster's.
+  - Keep replaces a Raid's consequences, so it cannot be wrapped. It states its use, and `ContributionCollector.gather` takes a `refused` test that judges it where its window folds. A refused power keeps only its `Offer` and `OfferReroll` contributions.
+  - Never refused, since they are not uses: Initiation Rite (a cost change), the edifice setup rules (Setup), Vow of Beastkin's source limit (a restriction) and the lasting limits.
+  - Hunger's forced Wake keeps part 1's check. Roadmap item 10b wraps it.
 
 **Tech Stack:** Scala 3 on the JVM and Scala.js, munit, built through `./sbtw`.
 
@@ -60,7 +59,7 @@
   - A walker power (anything under `gameplay/powers`) never imports `gameplay.walker`.
   - The engine (`gameplay/walker`, `gameplay/operations`) never names a power. `BackendArchitectureSuite` scans the engine's sources for every power's name, lowercased. So no file there may contain "forestcouncil", "citywall" or any other power name.
   - Nothing under `gameplay/actions` imports `gameplay/powers`.
-- **Tree addresses.** No procedure tree gains, loses or moves a node.
+- **Tree addresses.** No procedure tree gains, loses or moves a node, except in Task 3: it appends one `AutomaticUse` node holding each wrapped power's effect, so positions inside that effect move one level down.
 - **Line width.** Scala lines stay at or under 80 characters, as in the files around them.
 - **Never touch the live database `var/oathdigital`.**
 - **Concurrent sessions.** Other sessions commit to `main` while you work.
@@ -84,6 +83,8 @@
   - `OathViolation.WaivableOperationRejected(code: String, detail: String, waiver: OperationWaiver)`.
   - File `src/main/scala/oathdigital/gameplay/walker/OperationAsks.scala`: `private[walker] object OperationAsks` with `def of`.
   - `ContributionCollector.gather(window, index, ctxFor, refused: ContributingPower => Boolean = _ => false)`.
+  - `final case class AutomaticUse(user: PlayerId, power: PowerId, card: CardId, effect: (ReadyGame, PendingTree) => Vector[Operation])` in `model/Operation.scala`.
+  - File `src/main/scala/oathdigital/gameplay/walker/AutomaticUses.scala`: `private[walker] object AutomaticUses` with `def children`.
   - `PowerUse.automatic(user: PlayerId, power: PowerId, card: CardId): PowerUse`.
   - `PowerUseRules.cardRef(card: CardId): DecisionOptionRef`.
   - File `src/main/scala/oathdigital/gameplay/powers/poweruse/Placements.scala`: `private[powers] object Placements` with `onto` and `byUse`.
@@ -123,13 +124,16 @@ In the design, under "### Plan-time rulings" in "## Slice 10: Power-use restrict
   with a reason. The walker cannot word an operation refusal that nobody
   may waive. This is a known gap.
 - **When an automatic power is judged** (part 2). An automatic power is
-  judged where it is gathered, against the state at that node. Tyrant's
-  kill is gathered before the pawn moves, so City Wall stops it when its
-  holder travels from City Wall's site.
-- **Edifice rules that name no player** (part 2). Great Market, Bandit
-  Market and Empty Grounds act on the board, not for a player. Nobody uses
-  them, so nothing refuses them. Great Forge, Broken Forge and Proving
-  Grounds are used by the player who places their pawn there.
+  judged where its effect runs, inside an `AutomaticUse` node, against the
+  state when the walk reaches it. Tyrant's kill runs after the pawn moves,
+  so City Wall stops it when its holder travels to City Wall's site, not
+  from it. Keep, which replaces a Raid's consequences, is judged where its
+  window folds.
+- **What an automatic use is** (part 2). An automatic power is used when
+  it makes something happen. Initiation Rite changes a cost, and Vow of
+  Beastkin's source limit is a restriction, so neither is refused; the
+  Vow's extra warband is. The edifice setup rules run during Setup, where
+  no player uses a power, so none is refused.
 ```
 
 - [ ] **Step 2: Add a line to the rulings appendix**
@@ -449,29 +453,43 @@ Also stage any test you updated in Step 7, by its path.
 
 ### Task 3: Refused automatic powers
 
+An automatic power is judged where its effect runs, not where its window
+folds (automatic power consent design, ruling 3). Tyrant's kill is
+gathered at `TravelCost` before the pawn moves; judged there, City Wall
+would read the origin, and a resume after the move (parked at
+Hospitality's bank question) would read the destination and move the
+parked position. So each wrapped power appends its effect inside an
+`AutomaticUse` node, which the walker judges when it reaches it. Keep
+replaces a Raid's consequences rather than appending, so it cannot be
+wrapped; the collector judges it at fold.
+
 **Files:**
+- Modify: `src/main/scala/oathdigital/model/Operation.scala` (add `AutomaticUse`)
 - Modify: `src/main/scala/oathdigital/gameplay/powerresolver/ContributionCollector.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powerresolver/PowerUse.scala` (add `automatic`)
+- Modify: `src/main/scala/oathdigital/gameplay/powerresolver/OperationRewrite.scala`
+- Create: `src/main/scala/oathdigital/gameplay/walker/AutomaticUses.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/whenplayed/WhenPlayedPower.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/powers/whenplayed/ConspiracyWhenPlayed.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/travel/Tyrant.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/travel/Hospitality.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/Keep.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/powers/economy/ExtraWarbands.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/economy/VowOfBeastkin.scala`
-- Modify: `src/main/scala/oathdigital/gameplay/powers/economy/InitiationRite.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/economy/VowOfWandering.scala` (`VowOfWanderingMuster`)
-- Modify: `src/main/scala/oathdigital/gameplay/powers/setup/GreatForgeRules.scala` (`ForgeRule`)
-- Modify: `src/main/scala/oathdigital/gameplay/powers/setup/ProvingGroundsRules.scala` (`ProvingGrounds`)
 - Test: `src/test/scala/oathdigital/gameplay/ContributionCollectorSuite.scala`
+- Test: `src/test/scala/oathdigital/gameplay/walker/AutomaticUseSuite.scala`
 - Test: `src/test/scala/oathdigital/gameplay/powers/poweruse/AutomaticPowerUseSuite.scala`
 
 **Interfaces:**
 - Consumes: part 1's `ContributingPower.use`, `WalkerPowers.useRestrictions` and `PowerUseRules.refusals`.
 - Produces:
-  - `ContributionCollector.gather(window: PowerWindow, index: PowerWindowIndex, ctxFor: ContributingPower => PowerCtx, refused: ContributingPower => Boolean = _ => false): GatheredContributions`. A refused applicable power keeps only its `Offer` and `OfferReroll` contributions. When it has none, it is not gathered and is not in `order`.
-  - The walker refuses an `Automatic` power when its `use` at the node meets a refusal.
+  - `AutomaticUse(user: PlayerId, power: PowerId, card: CardId, effect: (ReadyGame, PendingTree) => Vector[Operation])`, a composite with no static children, like `Branch`. The engine judges it without naming the power.
+  - `AutomaticUses.children(use, state, pending, powers)`: `use.effect(state, pending)` when `PowerUseRules.refusals(state, PowerUse.automatic(use.user, use.power, use.card), powers.useRestrictions)` is empty, else nothing.
+  - `ContributionCollector.gather(window: PowerWindow, index: PowerWindowIndex, ctxFor: ContributingPower => PowerCtx, refused: ContributingPower => Boolean = _ => false): GatheredContributions`. A refused applicable power keeps only its `Offer` and `OfferReroll` contributions. When it has none, it is not gathered and is not in `order`. Only Keep states a use at a window in this part.
   - `PowerUse.automatic(user, power, card)`: a non-persistent use that costs nothing.
-  - A `use` on each power named in the files above.
 
 - [ ] **Step 1: Write the failing collector tests**
 
@@ -501,7 +519,16 @@ Add to `ContributionCollectorSuite`:
     assertEquals(gathered.transforms, Vector.empty)
 ```
 
-- [ ] **Step 2: Write the failing use tests**
+- [ ] **Step 2: Write the failing node tests**
+
+Create `src/test/scala/oathdigital/gameplay/walker/AutomaticUseSuite.scala`. Model it on `BurnTakesSuite`: walk a tree with `ProcedureWalker.advance(from, tree, None, powers)`. Its test power declares one `PowerUseRestriction` (part 1's trait) through `powerUseRestrictions`, refusing every use of `PowerId("test.automatic")` while p1 holds no favor, with no waiver. Name it for what it does, for example `RefusesTestPowerWithoutFavor`. Tests:
+
+- "an allowed automatic use runs its effect": `AutomaticUse(p1, PowerId("test.automatic"), <a denizen id>, (_, _) => Vector(<a 1-favor gain for p1>))` walked with p1 holding favor gains it.
+- "a refused automatic use runs nothing": the same tree with p1 at 0 favor finishes with nothing gained.
+- "an automatic use is judged where the walk reaches it": `Sequence(<a step that gives p1 1 favor>, AutomaticUse(...))` from 0 favor runs the effect, because the restriction reads the state after the first step.
+- "a park inside an automatic use resumes at the same decision": the effect is a `Decide` followed by a gain; the walk parks at the decision, and answering it resumes at the gain. The parked position names the `AutomaticUse`'s index, then the decision's index inside it.
+
+- [ ] **Step 3: Write the failing use tests**
 
 Create `src/test/scala/oathdigital/gameplay/powers/poweruse/AutomaticPowerUseSuite.scala`:
 
@@ -511,18 +538,15 @@ package oathdigital.gameplay.powers.poweruse
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx,
   PowerUse}
 import oathdigital.gameplay.powers.campaign.KeepRule
-import oathdigital.gameplay.powers.economy.{InitiationRite,
-  VowOfWanderingMuster}
+import oathdigital.gameplay.powers.economy.InitiationRite
 import oathdigital.gameplay.powers.travel.Tyrant
-import oathdigital.gameplay.powers.whenplayed.{ThreateningRoar,
-  WhenPlayedHarness}
 import oathdigital.model._
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.p1
 
-/** The automatic non-persistent powers state their use, so the power-use
-  * restrictions can refuse them (catalog batch 8, slice 10, part 2). A
-  * lasting limit printed under a phase power's id states none. */
+/** Keep states its use at its windows; the wrapped automatic powers state
+  * theirs on their `AutomaticUse` node instead; a cost change and a
+  * lasting limit state none (catalog batch 8, slice 10, part 2). */
 class AutomaticPowerUseSuite extends munit.FunSuite:
   private val ready = Table.start.turn(p1, Phase.Act).ready
 
@@ -530,43 +554,30 @@ class AutomaticPowerUseSuite extends munit.FunSuite:
       : PowerCtx = PowerCtx(ready, p1, power.source, window, Vector.empty,
     Sequence(Vector.empty, Some(window)))
 
-  test("a holder's automatic rule is used by the active player, from its " +
-      "card"):
-    assertEquals(Tyrant.use(ctxAt(Tyrant, PowerWindow.TravelCost)),
-      Some(PowerUse.automatic(p1, Tyrant.id, Tyrant.cardId)))
-    assertEquals(InitiationRite.use(ctxAt(InitiationRite,
-      PowerWindow.MusterCost)), Some(PowerUse.automatic(p1,
-      InitiationRite.id, InitiationRite.cardId)))
-    assertEquals(VowOfWanderingMuster.use(ctxAt(VowOfWanderingMuster,
-      PowerWindow.MusterGain)), Some(PowerUse.automatic(p1,
-      VowOfWanderingMuster.id, VowOfWanderingMuster.cardId)))
-
   test("an automatic use is non-persistent and costs nothing"):
     val use = PowerUse.automatic(p1, Tyrant.id, Tyrant.cardId)
     assert(!use.persistent && !use.costsSecret && !use.places)
 
-  test("Keep is used by the defeated defender who rules its site, and by " +
-      "nobody without a Raid"):
+  test("Keep is used by nobody without a Raid"):
     assertEquals(KeepRule.use(ctxAt(KeepRule,
       PowerWindow.CampaignRaidRelocation)), None)
 
-  test("a When Played power is used by the player who plays its card"):
-    val roar = WhenPlayedHarness.registered[ThreateningRoar]
-    val ctx = PowerCtx(ready, p1, roar.source,
-      PowerWindow.ActionCardPlayedFaceup, Vector.empty,
-      WhenPlayedHarness.hook(roar.cardId))
-    assertEquals(roar.use(ctx),
-      Some(PowerUse.automatic(p1, roar.id, roar.cardId)))
+  test("a wrapped power states no use at its window; its node does"):
+    assertEquals(Tyrant.use(ctxAt(Tyrant, PowerWindow.TravelCost)), None)
+
+  test("Initiation Rite, a cost change, is never used"):
+    assertEquals(InitiationRite.use(ctxAt(InitiationRite,
+      PowerWindow.MusterCost)), None)
 ```
 
-If `WhenPlayedHarness` is not visible from this package, make the members used here public, or build the hook as `CardPlayedFaceup(roar.cardId, RuleSourceRef.Adviser(p1, roar.cardId))`.
+Each wrapped power's node is tested in its own suite in Step 9: Tyrant's kill, Hospitality's gain, a When Played effect (Threatening Roar), Conspiracy's seizure, and Vow of Beastkin's and Vow of Wandering's extra warbands are each wrapped in an `AutomaticUse` naming the power, its card and its user.
 
-- [ ] **Step 3: Run them to see them fail**
+- [ ] **Step 4: Run them to see them fail**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.ContributionCollectorSuite oathdigital.gameplay.powers.poweruse.AutomaticPowerUseSuite"`
-Expected: compilation fails. `gather` takes no `refused`, and `PowerUse.automatic` does not exist.
+Run: `./sbtw "testOnly oathdigital.gameplay.ContributionCollectorSuite oathdigital.gameplay.walker.AutomaticUseSuite oathdigital.gameplay.powers.poweruse.AutomaticPowerUseSuite"`
+Expected: compilation fails. `gather` takes no `refused`, and `AutomaticUse` and `PowerUse.automatic` do not exist.
 
-- [ ] **Step 4: Leave out a refused power in the collector**
+- [ ] **Step 5: Leave out a refused power in the collector**
 
 In `ContributionCollector.gather`, add the parameter `refused: ContributingPower => Boolean = _ => false`. After step 2, add:
 
@@ -587,15 +598,13 @@ In `ContributionCollector.gather`, add the parameter `refused: ContributingPower
 
 Read `used` instead of `applicable` in step 3 and after it. Update the object comment's step list to name step 2b.
 
-- [ ] **Step 5: Judge automatic powers in the walker**
-
 In `WalkerPowerGather`, add:
 
 ```scala
   /** Whether `power`, automatic, is refused where `ctx` gathers it
-    * (catalog batch 8, slice 10). A refused automatic power does not
-    * apply, and nobody is asked. A player-selected power is judged at its
-    * pick instead. */
+    * (catalog batch 8, slice 10). Only a power that states its use at a
+    * window is judged here: Keep. A wrapped power is judged at its
+    * `AutomaticUse` node, and a player-selected power at its pick. */
   private def deniedUse(powers: WalkerPowers)(power: ContributingPower,
       ctx: PowerCtx): Boolean =
     powers.useRestrictions.nonEmpty &&
@@ -621,44 +630,91 @@ In `object PowerUse`, add:
       costsSecret = false)
 ```
 
-- [ ] **Step 7: State each automatic power's use**
+- [ ] **Step 7: Add the `AutomaticUse` node and judge it in the walker**
 
-Add `override def use(ctx: PowerCtx): Option[PowerUse]` to each power below, with the import `oathdigital.gameplay.powerresolver.PowerUse`. The user is the player the power already acts for. Read it the way the power's `applicable` does.
-
-| Power | `use` |
-| --- | --- |
-| `Tyrant` | `Some(PowerUse.automatic(ctx.activePlayer, id, cardId))` |
-| `InitiationRite` | `Some(PowerUse.automatic(ctx.activePlayer, id, cardId))` |
-| `VowOfWanderingMuster` | `Some(PowerUse.automatic(ctx.activePlayer, id, cardId))` |
-| `VowOfBeastkin` | `Some(PowerUse.automatic(ctx.activePlayer, id, cardId))` |
-| `Hospitality` | `TravelRoute.pawnMove(ctx.operation).map(route => PowerUse.automatic(route.player, id, HospitalityCard.id))` |
-| `KeepRule` | `kept(ctx.state).map((defender, _) => PowerUse.automatic(defender, id, cardId))` |
-| `ForgeRule` | `at(ctx).map((player, _) => PowerUse.automatic(player, id, edifice))` |
-| `ProvingGrounds` | `at(ctx).map((player, _) => PowerUse.automatic(player, id, edifice))` |
-
-Write `ForgeRule`'s once, in the abstract class, so Great Forge and Broken Forge share it. Great Market, Bandit Market and Empty Grounds get no `use` (Task 1's ruling).
-
-In `WhenPlayedPower`, add one `use` for every When Played power:
+In `model/Operation.scala`, next to `Branch`:
 
 ```scala
-  /** Its use when its card is played (catalog batch 8, slice 10): by the
-    * player who plays it, from its card. When Played powers are printed
-    * non-persistent. */
-  final override def use(ctx: PowerCtx): Option[PowerUse] =
-    Some(PowerUse.automatic(ctx.activePlayer, id, cardId))
+/** An automatic power's effect, judged where the walk reaches it (catalog
+  * batch 8, slice 10): the walker runs `effect` when no power-use
+  * restriction refuses `user` using `power` from `card`, and nothing
+  * otherwise. Like a `Branch`, it has no static children: a resume cursor
+  * addresses the vector the walker resolved. The engine judges it without
+  * naming the power. */
+final case class AutomaticUse(user: PlayerId, power: PowerId, card: CardId,
+    effect: (ReadyGame, PendingTree) => Vector[Operation]) extends Operation:
+  override val children: Vector[Operation] = Vector.empty
 ```
 
-`ConspiracyWhenPlayed` is not a `WhenPlayedPower`, and a Conspiracy is not a denizen, so it gets no `use`.
+Create `walker/AutomaticUses.scala`:
 
-- [ ] **Step 8: Run the suites**
+```scala
+package oathdigital.gameplay.walker
 
-Run: `./sbtw "testOnly oathdigital.gameplay.ContributionCollectorSuite oathdigital.gameplay.ContributionIgnoresSuite oathdigital.gameplay.powers.poweruse.* oathdigital.gameplay.powers.whenplayed.* oathdigital.gameplay.powers.travel.* oathdigital.gameplay.powers.economy.* oathdigital.gameplay.powers.setup.* oathdigital.gameplay.powers.campaign.*"`
+import oathdigital.gameplay.operations.PowerUseRules
+import oathdigital.gameplay.powerresolver.PowerUse
+import oathdigital.model.{AutomaticUse, Operation, PendingTree, ReadyGame}
+
+/** How the walker resolves an [[AutomaticUse]] (catalog batch 8, slice
+  * 10): its effect, unless a power-use restriction refuses it in `state`.
+  * Every walker path that resolves a `Branch` resolves this node the same
+  * way, so a resume addresses the same vector the walk did. */
+private[walker] object AutomaticUses:
+  def children(use: AutomaticUse, state: ReadyGame, pending: PendingTree,
+      powers: WalkerPowers): Vector[Operation] =
+    val refused = PowerUseRules.refusals(state,
+      PowerUse.automatic(use.user, use.power, use.card),
+      powers.useRestrictions)
+    if refused.isEmpty then use.effect(state, pending) else Vector.empty
+```
+
+Wire it wherever the walker resolves a `Branch`:
+
+- `ProcedureWalker`'s dispatch: next to `case branch: Branch => walkBranch(...)`, add `case use: AutomaticUse =>` walking `AutomaticUses.children(use, ctx.state, PendingTree(at = path, answered = ctx.answered), <the walk's powers>)` with `walkFolded(None, use, ..., ctx, path, cursor, resume, hooks)`, as `walkBranch` does. Keep it one short case; `ProcedureWalker.scala` is near 800 lines.
+- `WalkerPowerGather.foldedChildrenAt`: a `case use: AutomaticUse =>` returning `(AutomaticUses.children(use, state, pending.copy(at = path), powers), gathered)`.
+- `WalkerPowerGather.attributed`'s `windowsIn`: descend into an `AutomaticUse` as into a `Branch`.
+- `OperationRewrite`: wherever it handles a `Branch` (`case branch: Branch =>`), handle an `AutomaticUse` the same way, rewriting what its `effect` returns and keeping its other fields.
+
+Search for every other `case _: Branch` and `case branch: Branch` under `src/main/scala` and give `AutomaticUse` the same treatment where it resolves children.
+
+- [ ] **Step 8: Wrap each automatic power's effect**
+
+Add the import `oathdigital.model.AutomaticUse` where needed (most powers import `oathdigital.model._`). The user is the player the power already acts for.
+
+| Power | Change |
+| --- | --- |
+| `WhenPlayedPower` | `children :+ AutomaticUse(ctx.activePlayer, id, cardId, (_, _) => effect(ctx))` in place of `children ++ effect(ctx)`. |
+| `ConspiracyWhenPlayed` | Its three appended operations (the target `Decide`s, the `BuildOps` and the `Note`) go inside one `AutomaticUse(ctx.activePlayer, id, <the Conspiracy's card id>, ...)` appended after `children`. |
+| `Tyrant` | `operations :+ AutomaticUse(route.player, id, cardId, (_, _) => Vector(kill(route.destination), Note(id, killedNote(_, route.destination))))`. |
+| `Hospitality` | `operations :+ AutomaticUse(route.player, id, HospitalityCard.id, (live, _) => welcome(live, route.player, route.destination))`, replacing its `Branch`. |
+| `VowOfBeastkin`, `VowOfWanderingMuster` | Append through `ExtraWarbands.appended` (below) instead of `ExtraWarbands.added`. |
+
+Each wrapped power keeps the default `use` (`None`).
+
+In `ExtraWarbands`, replace `added` with `appended(ctx, power, card, extra, operations)`: `operations :+ AutomaticUse(ctx.activePlayer, power, card, (_, _) => Vector(Gain.Warbands(ctx.activePlayer, <the Muster gain's force kind>, extra), Note(power, line(...), covers = true)))`. The vow's gain is its own step right after the Muster's gain, so its line counts what that step added (at most `extra`) and covers the step's generic gain line. Read the force kind the way the Muster's own `Gain.Warbands` does. Update the object's comment: each vow's warbands are their own gain, so under two vows each line tells its own gain. An empty bank still writes nothing.
+
+`KeepRule` states its use at its windows: `override def use(ctx: PowerCtx): Option[PowerUse] = kept(ctx.state).map((defender, _) => PowerUse.automatic(defender, id, cardId))`.
+
+Not refused, so not wrapped and stating no use: Initiation Rite (a cost change), Great Forge, Broken Forge, Proving Grounds and the other edifice setup rules (never refused during Setup), and every lasting limit. Hunger's forced Wake keeps part 1's check in `ForcedWakeProcedure.due`; roadmap item 10b wraps it.
+
+- [ ] **Step 9: Pin each wrap in its power's suite**
+
+In each wrapped power's existing suite, add a test that its window's fold appends one `AutomaticUse` naming the power, its card and its user (the traveller for Tyrant and Hospitality, the card player for When Played and Conspiracy, the musterer for the two vows). Update any test that asserts a parked position inside a wrapped effect: the position gains the `AutomaticUse`'s index.
+
+- [ ] **Step 10: Run the suites**
+
+Run: `./sbtw "testOnly oathdigital.gameplay.ContributionCollectorSuite oathdigital.gameplay.ContributionIgnoresSuite oathdigital.gameplay.walker.* oathdigital.gameplay.powers.poweruse.* oathdigital.gameplay.powers.whenplayed.* oathdigital.gameplay.powers.travel.* oathdigital.gameplay.powers.economy.* oathdigital.gameplay.powers.setup.* oathdigital.gameplay.powers.campaign.*"`
 Expected: all pass. Nothing in the catalog refuses these powers yet: Spell Breaker reaches none of them, since none costs a secret.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
-git add src/main/scala/oathdigital/gameplay/powerresolver/ContributionCollector.scala src/main/scala/oathdigital/gameplay/powerresolver/PowerUse.scala src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala src/main/scala/oathdigital/gameplay/powers/whenplayed/WhenPlayedPower.scala src/main/scala/oathdigital/gameplay/powers/travel/Tyrant.scala src/main/scala/oathdigital/gameplay/powers/travel/Hospitality.scala src/main/scala/oathdigital/gameplay/powers/campaign/Keep.scala src/main/scala/oathdigital/gameplay/powers/economy/VowOfBeastkin.scala src/main/scala/oathdigital/gameplay/powers/economy/InitiationRite.scala src/main/scala/oathdigital/gameplay/powers/economy/VowOfWandering.scala src/main/scala/oathdigital/gameplay/powers/setup/GreatForgeRules.scala src/main/scala/oathdigital/gameplay/powers/setup/ProvingGroundsRules.scala src/test/scala/oathdigital/gameplay/ContributionCollectorSuite.scala src/test/scala/oathdigital/gameplay/powers/poweruse/AutomaticPowerUseSuite.scala
+git add src/main/scala/oathdigital/model/Operation.scala src/main/scala/oathdigital/gameplay/powerresolver/ContributionCollector.scala src/main/scala/oathdigital/gameplay/powerresolver/PowerUse.scala src/main/scala/oathdigital/gameplay/powerresolver/OperationRewrite.scala src/main/scala/oathdigital/gameplay/walker/AutomaticUses.scala src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala src/main/scala/oathdigital/gameplay/powers/whenplayed/WhenPlayedPower.scala src/main/scala/oathdigital/gameplay/powers/whenplayed/ConspiracyWhenPlayed.scala src/main/scala/oathdigital/gameplay/powers/travel/Tyrant.scala src/main/scala/oathdigital/gameplay/powers/travel/Hospitality.scala src/main/scala/oathdigital/gameplay/powers/campaign/Keep.scala src/main/scala/oathdigital/gameplay/powers/economy/ExtraWarbands.scala src/main/scala/oathdigital/gameplay/powers/economy/VowOfBeastkin.scala src/main/scala/oathdigital/gameplay/powers/economy/VowOfWandering.scala src/test/scala/oathdigital/gameplay/ContributionCollectorSuite.scala src/test/scala/oathdigital/gameplay/walker/AutomaticUseSuite.scala src/test/scala/oathdigital/gameplay/powers/poweruse/AutomaticPowerUseSuite.scala
+```
+
+Also stage each power suite Step 9 changed, by explicit path.
+
+```bash
 git commit -m "feat(batch8): a refused automatic power does not apply"
 ```
 
@@ -704,6 +760,7 @@ package oathdigital.gameplay.powers.poweruse
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powerresolver.PowerUse
 import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.economy.VowOfBeastkin
 import oathdigital.gameplay.powers.whenplayed.{ThreateningRoar,
   WhenPlayedHarness}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -799,19 +856,25 @@ class ForestCouncilSuite extends munit.FunSuite:
       roar.cardId, power))
     assert(Look(done.treeless).cardsAt(homeSite).contains(errandBoy))
 
-  test("an enemy's Vow of Beastkin neither limits the source nor adds a " +
-      "warband"):
-    // Wrestlers (Order) matches none of p1's advisers, so an active Vow
-    // would forbid it and add a warband. Refused, the Muster is plain:
-    // no matching adviser, plus one.
+  test("an enemy's Vow of Beastkin adds no warband, and its source limit " +
+      "still holds"):
+    // The Vow's extra warband is a use, and Forest Council refuses it. Its
+    // source limit is a restriction, not a use, so it holds: Tyrant, an
+    // Order adviser, makes Wrestlers (Order) a legal source. Wrestlers is
+    // not a Beast card, so Forest Council lets p1 place favor on it.
     val vow = CatalogNames.denizen("Vow of Beastkin")
-    val ready = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
-      .denizen(wrestlers, at = home).adviser(p1, vow)
-      .favor(p1, 4).supply(p1, 7).boardWarbands(p1, 3)
-      .denizen(council, at = woods).warbandsAt(woods, p2, 1).ready
-    val after = Look(musteredFrom(ready,
-      DecisionOptionRef.Denizen(wrestlers)))
-    assertEquals(after.boardWarbands(p1), 3 + 1)
+    val tyrant = CatalogNames.denizen("Tyrant")
+    def board(withCouncil: Boolean): ReadyGame =
+      val base = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
+        .denizen(wrestlers, at = home).adviser(p1, vow).adviser(p1, tyrant)
+        .favor(p1, 4).supply(p1, 7).boardWarbands(p1, 3)
+      (if withCouncil then base.denizen(council, at = woods)
+        .warbandsAt(woods, p2, 1) else base).ready
+    def mustered(ready: ReadyGame): Int =
+      Look(musteredFrom(ready, DecisionOptionRef.Denizen(wrestlers)))
+        .boardWarbands(p1)
+    assertEquals(mustered(board(withCouncil = true)),
+      mustered(board(withCouncil = false)) - VowOfBeastkin.Warbands)
 
   /** Every production walker power, as a command with no modifiers picked
     * gets them. */
@@ -1137,7 +1200,7 @@ Then add these path tests. Each starts from the suite of the card it uses, with 
 2. **Muster.** p1 musters at City Wall's site, from Wrestlers, with 4 favor and 7 Supply. The only source is askable, and the decision still parks. Read it as `ForestCouncilSuite.musterSources` does.
 3. **Jinx's reroll.** Use `SpellBreakerOfferSuite`'s Recover board, with City Wall at Fair Isle ruled by p2 in place of Spell Breaker. Jinx is persistent, but its cost places a secret on it, so its reroll is askable. Its reason is `CityWall.placingAsked`.
 4. **A battle plan.** Use `SpellBreakerOfferSuite`'s Fire Talkers board, with City Wall at the attacker's origin, ruled by the rival. The board helper there is `rivalRulesOriginAndHoldsOathkeeper`. Fire Talkers is withheld with `Some(OptionReason.Noted(CityWall.id, CityWall.usePlain(source)))`, since nobody is asked inside a Campaign.
-5. **Tyrant.** Use `TyrantSuite`'s travel board. p1 holds Tyrant and travels from City Wall's site to a site with a warband. No warband dies.
+5. **Tyrant.** Use `TyrantSuite`'s travel board. p1 holds Tyrant and travels to City Wall's site, ruled by p2, where p2 has a warband. No warband dies: Tyrant is judged after the pawn moves. A second test travels from City Wall's site to a site with a warband, and that warband dies.
 6. **Hunger's forced Wake.** Use `HungerSuite`'s first forced board, with City Wall at p1's site, ruled by p2. p1's Wake does not force Hunger: `ForcedWakeProcedure.due` is empty for p1.
 
 - [ ] **Step 2: Run it to see it fail**

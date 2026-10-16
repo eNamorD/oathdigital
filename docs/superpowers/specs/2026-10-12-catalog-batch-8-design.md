@@ -160,7 +160,7 @@ The approved changes outside `gameplay/powers/`:
   power" rule, read by both paths: walker contributions, and ACTION powers
   through `PhasePowerProcedure.check`. It sees the power's printed
   persistence and cost and the card's site. An automatic power is judged
-  where its effect runs, inside a `PowerUse` node, not when its window
+  where its effect runs, inside an `AutomaticUse` node, not when its window
   folds ([automatic power consent design](2026-10-15-automatic-power-consent-design.md)).
 - **An actor-aware operation restriction** (slice 11). An
   `OperationRestriction` learns the acting player, so a lock can hold
@@ -499,20 +499,20 @@ through `operationRestrictions`. Giant Python's restriction half reads both,
 for every player. Its ACTION moves the card to another site, discarding a
 card there first when the user chooses or the site is full.
 
-Automatic powers go through a new `PowerUse(power, user, effect)` node,
-which judges the filter against the live state when the walk reaches it:
-the effect runs when allowed, and nothing runs when refused. Judging at the
-window's fold would see Tyrant's traveller before the pawn moves, and a
+Automatic powers go through a new `AutomaticUse(user, power, card, effect)`
+node, which judges the filter against the live state when the walk reaches
+it: the effect runs when allowed, and nothing runs when refused. Judging at
+the window's fold would see Tyrant's traveller before the pawn moves, and a
 resume after the move could flip the verdict and move a parked position.
 Only the powers the rulings appendix lists as used are wrapped: WHEN PLAYED
-(the `WhenPlayedPower` base and Conspiracy), Tyrant, Hospitality, Hunger
-(in `ForcedWakeProcedure`), and Vow of Beastkin and Vow of Wandering's
-Muster, which append their extra warbands instead of rewriting the
-Muster's gain. Keep, which replaces a Raid's consequences, keeps a
-fold-time check in `applicable`. Slice 10 refuses silently; roadmap item
+(the `WhenPlayedPower` base and Conspiracy), Tyrant, Hospitality, and Vow
+of Beastkin and Vow of Wandering's Muster, which append their extra
+warbands instead of rewriting the Muster's gain. Keep, which replaces a
+Raid's consequences, is judged where its window folds. Hunger's forced
+Wake is left out where it is due. Slice 10 refuses silently; roadmap item
 10b ([automatic power consent design](2026-10-15-automatic-power-consent-design.md))
 adds the waivable branch, where the refusing card's ruler decides through
-consent.
+consent, and wraps Hunger.
 
 ## Slice 11: Actor-aware lock
 

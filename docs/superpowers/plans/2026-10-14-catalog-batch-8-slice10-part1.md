@@ -95,7 +95,9 @@ Replace the bullet that starts "**A power-use filter** (slice 10)." with:
   - the modifier picker, for modifiers;
   - the battle-plan window and the reroll choice, which withhold a refused
     offer with its reason;
-  - the contribution collector, which leaves out a refused automatic power.
+  - the `AutomaticUse` node, which judges an automatic power where its
+    effect runs, and the contribution collector, which judges Keep where
+    its window folds (part 2).
 
   A grant is remembered under the key `"power.use"` and the card, so it
   covers the card's use by that player for the turn on every path.
@@ -111,7 +113,7 @@ Replace the bullet that starts "**A power-use filter** (slice 10)." with:
 
 - [ ] **Step 2: Add the slice's plan-time rulings to the design**
 
-Under "## Slice 10: Power-use restrictions", after its paragraph, add:
+Under "## Slice 10: Power-use restrictions", after its paragraphs, add:
 
 ```markdown
 ### Plan-time rulings
@@ -119,10 +121,13 @@ Under "## Slice 10: Power-use restrictions", after its paragraph, add:
 - **Using a non-persistent power** means using any power printed
   `persistent: false`: phase powers, Hunger's forced Wake, modifiers and
   Catacombs, battle plans and their rerolls, When Played powers, and the
-  automatic rules (Tyrant, Hospitality, Keep, Vow of Beastkin, Initiation
-  Rite, Vow of Wandering's Muster, the edifice setup rules). A lasting limit
+  automatic rules that make something happen (Tyrant, Hospitality, Keep,
+  Vow of Beastkin's and Vow of Wandering's extra warbands). Restrictions,
+  limits and cost changes are not uses, so they still hold: a lasting limit
   printed under a phase power's id (Assassin, Insomnia, Silver Tongue, Pied
-  Piper, Vow of Obedience, Vow of Poverty) still holds: nobody uses it.
+  Piper, Vow of Obedience, Vow of Poverty), Vow of Beastkin's source limit
+  and Initiation Rite. The edifice setup rules run during Setup, where
+  nobody uses a power.
 - **A power that costs a secret** has a secret or a burnt secret in its
   printed cost, Jinx and Spiteful Mirror's free later picks included. Ward
   of Silence and Arcane Armor pay X secrets, at least one, and count too, as
@@ -147,7 +152,8 @@ Under "## Slice 10: Power-use restrictions", after its paragraph, add:
   placements and the rerolls. Inside a Campaign (its modifiers, its battle
   plans and the rerolls of its dice) nobody is asked.
 - **A refused automatic power** does not apply. Nobody is asked and no
-  line is written. The roadmap's item 10b replaces this: the restriction's
+  line is written. It is judged where its effect runs: Tyrant arriving at
+  City Wall's site is refused. The roadmap's item 10b replaces this: the restriction's
   ruler chooses, each time, whether to deactivate the power ("Use City Wall
   to deactivate Tyrant?"), and the power's user is not asked.
 - **Hover reasons**, in the consent design's format:

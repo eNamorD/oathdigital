@@ -364,10 +364,10 @@
     PLAYED power (Conspiracy included), Tyrant, Hospitality, Hunger, Keep,
     Vow of Beastkin's extra warband and Vow of Wandering's extra Muster
     warbands.
-  - Not used, so never refused: Initiation Rite, Pied Piper's "ignores the
-    adviser limit", the adviser limits of Insomnia, Silver Tongue and
-    Assassin, Vow of Obedience, Vow of Poverty, and the edifice setup rules
-    during Setup.
+  - Not used, so never refused: Initiation Rite, Vow of Beastkin's source
+    limit, Pied Piper's "ignores the adviser limit", the adviser limits of
+    Insomnia, Silver Tongue and Assassin, Vow of Obedience, Vow of Poverty,
+    and the edifice setup rules during Setup.
   - A refusal is judged when the power's effect would run. Tyrant arriving
     at City Wall's site is refused.
   - Slice 10 refuses an automatic power silently. Roadmap item 10b lets the

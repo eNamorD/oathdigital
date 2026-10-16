@@ -13,7 +13,7 @@
   - `PowerUse`, `PowerUseRestriction` and `PowerUseRules`;
   - `Placements`, from part 2;
   - the askable search, from part 2;
-  - the collector's refusal of automatic powers, from part 2.
+  - the refusal of automatic powers (`AutomaticUse` and the collector's `refused` test), from part 2.
 - **One slot question.** A new helper, `SiteSlotMoves` in `powers/action`, asks one question over the slots of the other sites, as card play does.
   - Each other site in play offers its first empty slot, when the site has room and the power allows empty slots.
   - It also offers each faceup denizen and ruined edifice there, marked Replace (`DecisionOption.Replacing`).

@@ -3,7 +3,7 @@
 **Status:** designed 2026-10-15. It covers roadmap item **10b. Consent for
 refused automatic powers** under **Phase - Catalog batch 8**. It depends on
 slice 10 of [catalog batch 8](2026-10-12-catalog-batch-8-design.md), which
-lands the `PowerUse` node with silent refusal (see "Slice 10's share"
+lands the `AutomaticUse` node with silent refusal (see "Slice 10's share"
 below). Implementation starts only once slice 10 is on main.
 
 **Builds on** the [consent system](2026-10-08-consent-system-design.md),
@@ -92,9 +92,10 @@ site.
    is not its enemy, so their own powers are never refused by it (consent
    ruling 5). Slice 10's silent refusal writes no line, and nor does this.
 5. **Answers last the turn.** An answer is remembered for the rest of the
-   turn for the refusing power, the user and the used power (consent ruling
-   12). It covers every later use of that power by that user that turn,
-   whatever the occasion. It survives undo (consent ruling 13).
+   turn for the refusing power, the user and the used power's card
+   (consent ruling 12), the key slice 10 uses for a chosen use. It covers
+   every later use of that card's power by that user that turn, chosen or
+   automatic, whatever the occasion. It survives undo (consent ruling 13).
 6. **Several rulers.** When refusing cards with different rulers fall on
    one use, every ruler is asked at once and the first deactivation
    settles it (consent rulings 9 and 10). One ruler of several refusing
@@ -120,22 +121,31 @@ site.
 
 Slice 10 adds the power-use filter: one rule saying whether a player may
 use a card's power, read by the walker and by `PhasePowerProcedure.check`.
-For automatic powers it adds the `PowerUse` node below, with only the
-silent refusal. This design adds the waivable branch, the step and the
-consent wiring. The [batch 8 design](2026-10-12-catalog-batch-8-design.md)'s
-slice 10 section records this split.
+Part 1 ([plan](../plans/2026-10-14-catalog-batch-8-slice10-part1.md))
+defines `PowerUse`, the description of a use, and `PowerUseRules`. Part 2
+([plan](../plans/2026-10-15-catalog-batch-8-slice10-part2.md), Task 3)
+adds the `AutomaticUse` node below with only the silent refusal, and wraps
+every automatic power this design asks about except Hunger. Hunger keeps
+part 1's check in `ForcedWakeProcedure.due`; this design wraps it. Keep
+keeps a check where its window folds (see "Which powers are wrapped").
 
-### The `PowerUse` node
+This design adds the waivable branch, the step and the consent wiring. The
+[batch 8 design](2026-10-12-catalog-batch-8-design.md)'s slice 10 section
+records this split.
 
-`PowerUse(power, user, effect)` is a new composite `Operation`. `effect` is
-built live, `(ReadyGame, PendingTree) => Vector[Operation]`, as a `Branch`'s
-selector is. The walker resolves the node when it reaches it, against the
-live state:
+### The `AutomaticUse` node
+
+`AutomaticUse(user, power, card, effect)` is a composite `Operation` that
+slice 10 adds. `effect` is built live, `(ReadyGame, PendingTree) =>
+Vector[Operation]`, as a `Branch`'s selector is. The walker resolves the
+node when it reaches it (`walker/AutomaticUses`), against the live state,
+judging `PowerUse.automatic(user, power, card)`:
 
 - **Allowed:** its children are the effect.
 - **Refused, not waivable** (ruling 4): no children.
 - **Refused, waivable:** its children are the power-use step and a branch
-  on the step's answer: the effect on `use`, nothing on `skip`.
+  on the step's answer: the effect on `use`, nothing on `skip`. Slice 10
+  has no such case; it treats every refusal as not waivable.
 
 The filter's verdict for this purpose ignores the consent ledger. A grant
 or a refusal never changes the node's shape, only the step's answer. So the
@@ -147,8 +157,8 @@ A refold could still flip a verdict when the effect itself changes what
 the filter reads (moving the user's pawn, changing a ruler) before a later
 decision inside the same node. No power in ruling 1's list does.
 
-The node names its power, so a tree dump reads `PowerUse(Tyrant)` with its
-effect below, not nested anonymous branches.
+The node names its power, so a tree dump reads `AutomaticUse(…, Tyrant,
+…)` with its effect below, not nested anonymous branches.
 
 ### The power-use step
 
@@ -163,8 +173,10 @@ Spell Breaker, Forest Council and City Wall each contribute a waivable
 refuses the power. Its `Waiver` names the card's ruler as granter and
 carries the card's consent-worded note. The existing ledger check in
 `WalkerPowerGather.forbidding` drops the bar once a grant is remembered.
-The consent key is `ConsentKey(refusing power, user, "power-use.<power
-id>", use)`, which gives ruling 5's scope.
+The request covers the key slice 10 remembers a chosen use's grant under:
+`ConsentKey(refusing power, user, "power.use", PowerUseRules.target(use))`,
+the used power's card. So one answer covers that card's use by that player
+for the turn, chosen or automatic (ruling 5).
 
 ### Reaching the step
 
@@ -231,31 +243,34 @@ as one:
 
 ### Which powers are wrapped
 
-- **WHEN PLAYED:** the `WhenPlayedPower` base appends one
-  `PowerUse(power, card player, effect)` in place of its raw effect, which
-  covers the 26 denizens in one place. Conspiracy's WHEN PLAYED
-  (`ConspiracyWhenPlayed`) wraps its appended operations the same way.
-  Forest Council reaches only Beast cards, so it never reaches the Vision.
-- **Tyrant:** its appended kill and line go inside a `PowerUse` whose user
-  is the traveller.
+Slice 10 part 2 wraps, each in an `AutomaticUse` appended at its window:
+
+- **WHEN PLAYED:** the `WhenPlayedPower` base, which covers the 26
+  denizens in one place, and Conspiracy's WHEN PLAYED
+  (`ConspiracyWhenPlayed`). The user is the card player. Forest Council
+  reaches only Beast cards, so it never reaches the Vision.
+- **Tyrant:** its kill and line. The user is the traveller.
 - **Hospitality:** its `Branch((live, _) => welcome(...))` becomes the
-  `PowerUse`'s live effect, so the node replaces a layer rather than adding
-  one. The user is the traveller (`route.player`), on or off turn.
-- **Hunger:** `ForcedWakeProcedure.build` wraps each due forced power's
-  tree in a `PowerUse` whose user is its holder. Hunger is the only forced
+  node's live effect, so the node replaces a layer rather than adding one.
+  The user is the traveller (`route.player`), on or off turn.
+- **Vow of Beastkin and Vow of Wandering's Muster:** each appends its own
+  `Gain.Warbands` of the extra amount and its "Gained {n} more warband."
+  line after the Muster's gain, instead of rewriting that gain.
+
+This design adds:
+
+- **Hunger:** `ForcedWakeProcedure.build` wraps each forced power's tree
+  in an `AutomaticUse` whose user is its holder, and `due` stops leaving
+  out a refused one, so the node judges it. Hunger is the only forced
   power.
-- **Vow of Beastkin and Vow of Wandering's Muster:** each stops rewriting
-  the Muster's `Gain.Warbands` in place (`ExtraWarbands.added`). Each
-  instead appends a `PowerUse` holding its own `Gain.Warbands` of the
-  extra amount and its "Gained {n} more warband." line, right after the
-  Muster's own gain. Every power-use step then sits in a `PowerUse` node.
-- **Keep:** not wrapped. Its transforms replace a Raid's consequences and
-  relocation rather than append, so they cannot sit inside a `PowerUse`.
-  It runs inside a Campaign, so it is deactivated unasked (ruling 4) and
-  needs no step. Slice 10's check in Keep's `applicable` stays, judged at
-  fold. Slice 10's plan checks that the fold-time verdict cannot flip
-  between Keep's windows (`CampaignRaidConsequences` and
-  `CampaignRaidRelocation`) before a later park.
+
+Not wrapped:
+
+- **Keep.** Its transforms replace a Raid's consequences and relocation
+  rather than append, so they cannot sit inside a node. It runs inside a
+  Campaign, so it is deactivated unasked (ruling 4) and needs no step.
+  Slice 10 judges it where its window folds, through the collector's
+  `refused` test.
 
 ### Model and projection
 
@@ -323,12 +338,12 @@ as one:
 
 ## Slices
 
-1. **The step and Tyrant.** The step, the waivable branch of `PowerUse`,
-   the opened request, settling, undo coupling, the log lines, the
-   projection and the client wording, end to end for Tyrant.
-2. **The other powers.** The `WhenPlayedPower` base and Conspiracy,
-   Hospitality, Hunger, and the reshape of Vow of Beastkin and Vow of
-   Wandering's Muster.
+1. **The step and Tyrant.** The step, the waivable branch of
+   `AutomaticUse`, the opened request, settling, undo coupling, the log
+   lines, the projection and the client wording, end to end for Tyrant.
+2. **Hunger and the other powers.** Hunger wrapped in `ForcedWakeProcedure`,
+   and a scenario for each other wrapped power under a waivable refusal:
+   a When Played power, Conspiracy, Hospitality and the two vows.
 
 Docs, with slice 1: rulings 2 to 9 go into the
 [batch 8 rulings](2026-10-12-catalog-batch-8-rulings.md) under slice 10,
