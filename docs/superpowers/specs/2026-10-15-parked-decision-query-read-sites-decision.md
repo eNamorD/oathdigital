@@ -120,7 +120,7 @@ not list — it names choose one, choose many, choose an amount, partition,
 distribute and negotiate. The first census taken for this decision was built
 from that vocabulary and undercounted by three, all of them
 `DecisionQueryProjection.Inspect` patterns in gameplay power tests. The
-vocabulary gap is worth closing on its own; it is not closed here.
+**Form** entry has since been corrected to name inspect.
 
 Under this rule, `5203ff09` would have touched 24 files instead of 48.
 
@@ -234,11 +234,10 @@ which is why the original change went in as one commit of 48 files.
   parked-decision query should read this file first. The file count alone does
   not say where the cost is, and in the one measured case it pointed at the
   wrong half of the change.
-- `CONTEXT.md`'s **Form** entry lists six forms; `DecisionQuery` has seven. The
-  missing one is `Inspect`. Any census of the query hierarchy built from the
-  vocabulary rather than the ADT will undercount, as the first one taken for
-  this decision did. Closing that gap is a `CONTEXT.md` change and belongs with
-  the domain model, not here.
+- `CONTEXT.md`'s **Form** entry listed six forms while `DecisionQuery` has
+  seven; the missing one was `Inspect`, and the first census taken for this
+  decision undercounted because it was built from the vocabulary. The entry
+  now names inspect, so the vocabulary and the ADT agree.
 - The two pinned sites are load-bearing in a way their code does not announce.
   Treat converting either of them to a typed bind as removing a build check, not
   as tidying. `DecisionQueries` is deliberately not among them; its blindness to
