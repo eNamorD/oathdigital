@@ -97,13 +97,15 @@ Replace the bullet that starts "**A power-use filter** (slice 10)." with:
     offer with its reason;
   - the `AutomaticUse` node, which judges an automatic power where its
     effect runs, and the contribution collector, which judges Keep where
-    its window folds (part 2).
+    its window folds (part 2), as the
+    [automatic power consent design](2026-10-15-automatic-power-consent-design.md)
+    describes.
 
   A grant is remembered under the key `"power.use"` and the card, so it
   covers the card's use by that player for the turn on every path.
 - **Placement bans** (slice 10, added at plan time). Forest Council, City
   Wall and Giant Python refuse a placement of favor or secrets onto a card
-  as printed operation restrictions: a `PayCost` that places onto the card,
+  through their `operationRestrictions`: a `PayCost` that places onto the card,
   or a `Give` onto it, with its payer or giver as the placer. An off-turn
   payment settles to the bank and is not a placement.
 - **A slot question for moving a site card** (slice 10, added at plan
@@ -182,11 +184,9 @@ Under "## Slice 10: Power-use restrictions", after its paragraphs, add:
 
 - [ ] **Step 3: Rewrite the rulings appendix's slice 10 entry**
 
-In `docs/superpowers/specs/2026-10-12-catalog-batch-8-rulings.md`, replace everything from "## Slice 10: Power-use restrictions" up to "## Slice 11" with:
+In `docs/superpowers/specs/2026-10-12-catalog-batch-8-rulings.md`, under "## Slice 10: Power-use restrictions", replace the four card bullets, from "**162 Spell Breaker.**" up to but not including "**Automatic powers** (ruled 2026-10-15)", with the bullets below. Keep the "Automatic powers" bullet and everything after it as they are: the automatic power consent design recorded them, and they decide which automatic powers are used.
 
 ```markdown
-## Slice 10: Power-use restrictions
-
 - **162 Spell Breaker.** "Enemies of Spell Breaker's ruler cannot use
   powers that cost any [secret] or [secret-burnt]."
   - Reached: every power whose printed cost has a secret or a burnt
@@ -218,8 +218,8 @@ In `docs/superpowers/specs/2026-10-12-catalog-batch-8-rulings.md`, replace every
   - The restriction holds for every player, its ruler included, and is
     not waivable.
 - **For every card:** a non-persistent power is any power printed
-  `persistent: false`, automatic or chosen; a refused automatic power does
-  not apply, silently. A placement is a cost paid onto a card or a `Give`
+  `persistent: false` that a player chooses, or an automatic power the
+  "Automatic powers" entry below lists as used. A placement is a cost paid onto a card or a `Give`
   onto it; an off-turn payment is not one. Enemies are every player but a
   player ruler, every player at a bandit site, and nobody at an unruled or
   Empire site.
@@ -414,7 +414,7 @@ import oathdigital.model._
   * meets, with consent applied, and how an option for a refused use is
   * shown. Every path that uses a power reads it: the phase menu and the
   * start check, the modifier picker, the battle-plan and reroll offers, and
-  * the contribution collector. */
+  * the automatic powers (part 2). */
 object PowerUseRules:
   /** The decision slot of a power-use grant's key. A grant covers the
     * card's use by its requester for the turn, on whichever path uses it,
@@ -464,8 +464,8 @@ In `ContributingPower.scala`, in `trait ContributingPower`, after `operationRest
   /** This power's use at `ctx`, as the power-use restrictions judge it.
     * `None` for a power nobody uses: a game rule, or a lasting limit
     * printed under a phase power's id. A player-selected power is judged
-    * at its pick; an automatic one at each fold of its windows, and its
-    * use must read only what holds at the node it is gathered for. */
+    * at its pick. An automatic one is judged where its effect runs, in
+    * part 2's `AutomaticUse` node, and Keep where its window folds. */
   def use(ctx: PowerCtx): Option[PowerUse] = None
 ```
 
