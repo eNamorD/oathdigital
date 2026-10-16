@@ -9,8 +9,13 @@ import scala.collection.mutable.ArrayBuffer
 private[frontend] object TestSites:
   def quietSite(id: String, label: String): GameSite =
     GameSite(id, label, looseFavor = 0, looseSecrets = 0, denizenCapacity = 3,
-      relicCapacity = 0, denizens = Vector.empty, relics = GameSiteRelics(0),
+      relicCapacity = 0, denizens = Vector.empty, relics = GameSiteRelics(),
       defense = 0)
+
+  /** A relic's back, as the server projects a relic the viewer does not
+    * know. */
+  val hiddenRelic: CardDetails = CardDetails("hidden", "relic",
+    "Facedown relic", orientation = Some("face-down"), hidden = true)
 
   extension (site: GameSite)
     def withDenizens(cards: GameSiteCard*): GameSite =
@@ -20,11 +25,12 @@ private[frontend] object TestSites:
     def withRelicCapacity(slots: Int): GameSite =
       site.copy(relicCapacity = slots)
 
-    /** `facedown` relics lie on the site; `known` of them are readable by
-      * the viewer.
+    /** `facedown` relics lie on the site; `known` of them, first in the
+      * row, are readable by the viewer, and the rest are backs.
       */
     def withRelics(facedown: Int, known: CardDetails*): GameSite =
-      site.copy(relics = GameSiteRelics(facedown, known.toVector))
+      site.copy(relics = GameSiteRelics(known.toVector ++
+        Vector.fill(math.max(0, facedown - known.size))(hiddenRelic)))
     def withLooseTokens(favor: Int, secrets: Int): GameSite =
       site.copy(looseFavor = favor, looseSecrets = secrets)
     def withDefense(defense: Int): GameSite = site.copy(defense = defense)

@@ -65,14 +65,12 @@ private[protocol] object WorldProjectionCodec:
   yield SiteCardProjection(id, label, details)
 
   private def encodeRelics(value: SiteRelicsProjection): ujson.Value = ujson.Obj(
-    "facedownCount" -> value.facedownCount,
-    "knownRelics" -> encoded(value.knownRelics)(encodeCard))
+    "relics" -> encoded(value.relics)(encodeCard))
   private def decodeRelics(raw: ujson.Value, path: String): Result[SiteRelicsProjection] = for
-    value <- obj(raw, path); _ <- exact(value, Set("facedownCount", "knownRelics"), path)
-    count <- int(value, "facedownCount", path)
-    raws <- default(value, "knownRelics", path, Vector.empty[ujson.Value])(array)
-    cards <- traverse(raws, s"$path.knownRelics")(decodeCard)
-  yield SiteRelicsProjection(count, cards)
+    value <- obj(raw, path); _ <- exact(value, Set("relics"), path)
+    raws <- default(value, "relics", path, Vector.empty[ujson.Value])(array)
+    cards <- traverse(raws, s"$path.relics")(decodeCard)
+  yield SiteRelicsProjection(cards)
 
   /** The wire keeps the flat shape older clients read: kind, ruler and colour
     * are each spelled out, and the decoder checks they name the same force.

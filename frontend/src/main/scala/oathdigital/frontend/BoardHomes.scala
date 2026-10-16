@@ -27,6 +27,10 @@ private[frontend] object BoardHomes:
       case "site-slot" =>
         slot(option.id).exists((site, at) => sites(value)
           .exists(found => found.siteId == site && at < found.denizenCapacity))
+      case "site-relic-slot" =>
+        slot(option.id).exists((site, at) => sites(value)
+          .exists(found => found.siteId == site &&
+            found.relics.relics.isDefinedAt(at)))
       case "revealed-vision" =>
         value.playerBoards.exists(_.playerId == option.id)
       case "discard-pile" => value.world.exists(_.regionId == option.id)

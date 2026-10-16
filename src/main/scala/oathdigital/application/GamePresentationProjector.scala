@@ -123,13 +123,15 @@ private[application] final class GamePresentationProjector(
         }
         SiteCardProjection(denizen.id.value, label, details)
       },
-      SiteRelicsProjection(state.fold(0)(_.relics.size), for
-        game <- ready.toVector
-        player <- viewer.toVector
-        known <- game.knowledge.siteRelics.getOrElse(player, Map.empty)
-          .getOrElse(siteId, Vector.empty)
-        relic <- state.toVector.flatMap(_.relics).filter(_.id == known)
-      yield cardDetails(relic.id, Some(Orientation.FaceDown), hidden = false)),
+      SiteRelicsProjection(state.toVector.flatMap(_.relics).map(relic =>
+        val known = for
+          game <- ready
+          player <- viewer
+        yield game.knowledge.siteRelics.getOrElse(player, Map.empty)
+          .getOrElse(siteId, Vector.empty).contains(relic.id)
+        if known.contains(true) then
+          cardDetails(relic.id, Some(Orientation.FaceDown), hidden = false)
+        else hiddenCard("relic"))),
       definition.fold(0)(_.defense),
       definition.flatMap(site => Option.when(site.forgeRequirements.isEmpty)(
         site.recoverDifficulty).flatten),

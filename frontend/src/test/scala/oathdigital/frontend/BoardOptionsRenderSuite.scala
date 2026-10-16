@@ -17,6 +17,7 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
   private val fox = CardDetails("fox", "denizen", "Fox", rulesText = Some("Sly."))
   private val woods = quietSite("woods", "Deep Woods")
     .withDenizenCapacity(3).withDenizens(GameSiteCard("fox", "Fox", Some(fox)))
+    .withRelicCapacity(1).withRelics(1)
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
   private val oak = CardDetails("oak", "denizen", "Old Oak")
   private val horn = CardDetails("horn", "relic", "Horn")
@@ -178,6 +179,14 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     val shown = recording(available(replace))
     assertEquals(one(world(shown.options), """[data-option-ref="site-slot:woods:0"]""")
       .getAttribute("data-card-id"), "fox")
+
+  test("a site relic, known or not, answers to its slot"):
+    val pick = option("site-relic-slot", "woods:0")
+    val shown = recording(available(pick))
+    val marked = one(world(shown.options),
+      """[data-option-ref="site-relic-slot:woods:0"]""")
+    click(marked)
+    assertEquals(shown.picks, Vector(pick))
 
   test("a Replace option carries the badge, and an empty slot does not"):
     val replace = option("site-slot", "woods:0").copy(replaces = Some(fox))

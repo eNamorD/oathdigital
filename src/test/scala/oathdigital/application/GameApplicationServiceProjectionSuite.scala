@@ -123,13 +123,15 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     assertEquals(site.relicCapacity, printed.relicSlots)
     assertEquals(site.denizens.map(card => card.cardId -> card.label),
       Vector(errandBoy.value -> "Errand Boy", wrestlers.value -> "Wrestlers"))
-    assertEquals(site.relics.facedownCount, 2)
+    assertEquals(site.relics.relics.size, 2)
+    assert(site.relics.relics.forall(_.hidden), site.relics.toString)
     assertEquals(empty.denizens, Vector.empty)
-    assertEquals(empty.relics.facedownCount, 0)
+    assertEquals(empty.relics.relics, Vector.empty)
     assertEquals(publicDetails.world, ownDetails.world)
     val json = GameHttpWire.encodeProjection(publicDetails)
     assert(json.contains("\"looseFavor\":2"))
-    assert(json.contains("\"facedownCount\":2"))
+    assert(json.contains("\"relics\":["))
+    assert(!json.contains("\"facedownCount\""))
     siteRelics.foreach(relic => assert(!json.contains(relic.value)))
 
   test("a site projects Exile, Imperial and Bandit forces"):

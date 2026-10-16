@@ -73,14 +73,19 @@ private[frontend] object ServerUiSupport:
     (site.denizens.size until site.denizenCapacity).foreach(at =>
       cards.appendChild(openSlot(options, "denizen", "Empty denizen slot", at,
         siteSlot(site, at))))
-    // A peeked relic is a real card sitting face-down: CardFace gives it the
-    // knowable pip and the hover reveal, in the same box as an unknown one.
-    presentation.peekedRelics.foreach(value => cards.appendChild(options.card(
-      CardFace.render(value.card), value.card,
-      Vector(BoardOptions.cardKey(value.card)))))
-    (0 until presentation.unknownRelicCount)
-      .foreach(_ => cards.appendChild(facedownCard("relic")))
-    (site.relics.facedownCount until site.relicCapacity)
+    // Each relic in its place answers to its slot: a known one is its face,
+    // an unknown one its back. A peeked relic is a real card sitting
+    // face-down: CardFace gives it the knowable pip and the hover reveal.
+    presentation.relics.zipWithIndex.foreach((card, at) =>
+      val slot = siteRelicSlot(site, at)
+      cards.appendChild(
+        if card.hidden then
+          val back = facedownCard("relic")
+          options.decorate(back, Vector(slot))
+          back
+        else options.card(CardFace.render(card), card,
+          Vector(BoardOptions.cardKey(card), slot))))
+    (presentation.relics.size until site.relicCapacity)
       .foreach(_ => cards.appendChild(emptySlot("relic")))
     details.appendChild(cards)
     site.forces.foreach { forces =>
@@ -169,6 +174,9 @@ private[frontend] object ServerUiSupport:
     * slot order, so a card's index is its slot. */
   private def siteSlot(site: GameSite, at: Int): String =
     BoardOptionViews.key("site-slot", s"${site.siteId}:$at")
+
+  private def siteRelicSlot(site: GameSite, at: Int): String =
+    BoardOptionViews.key("site-relic-slot", s"${site.siteId}:$at")
 
   /** Empty slot `at`, which a card play may fill: it carries its index and
     * is marked when an option names `key`. */

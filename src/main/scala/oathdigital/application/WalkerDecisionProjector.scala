@@ -401,6 +401,16 @@ private[application] final class WalkerDecisionProjector(
             .exists(_.relics.isDefinedAt(slot.slot)) then
           row(s"${presentation.playerLabel(slot.owner)} facedown relic")
         else None
+      // The relic when the viewer may identify it, else its back: a slot
+      // never discloses a facedown relic.
+      case DecisionOption.SiteRelicSlot(slot) =>
+        ready.game.current.map.sites.get(slot.site)
+          .flatMap(_.relics.lift(slot.index)).flatMap(held =>
+            card(ready, viewer, index, held.id) match
+              case Some(details) => row(details.name, Some(details))
+              case None => row(
+                s"Facedown relic at ${presentation.siteLabel(slot.site)}",
+                Some(presentation.hiddenCard("relic"))))
       // The card when the viewer may identify it, else its back: a slot
       // never discloses a facedown adviser, but the panel still draws a card.
       case DecisionOption.AdviserSlot(slot) =>

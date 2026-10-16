@@ -25,7 +25,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     world = Vector(SetupRegionProjection("cradle", Vector(SetupSiteProjection(
       "site:a", "Site A", 1, 2, 3, 2,
       Vector(SiteCardProjection("hidden", "Unknown", Some(hidden))),
-      SiteRelicsProjection(1, Vector(known)), defense = 2,
+      SiteRelicsProjection(Vector(known)), defense = 2,
       recoverDifficulty = Some(3), forgeCost = Some(ForgeCostProjection(1, 1)),
       powers = Vector(SitePowerProjection("rest", "Rest", Some("public"))),
       forces = Some(SiteForcesProjection.Exile(2, "red", PlayerColor.Red,
@@ -414,10 +414,10 @@ class ProjectionProtocolSuite extends munit.FunSuite:
 
   test("projection decoder reports exact nested paths and unexpected fields"):
     val wrong = ujson.read(GameProjectionCodec.encode(projection))
-    wrong("world")(0)("sites")(0)("relics")("facedownCount") = "one"
+    wrong("world")(0)("sites")(0)("relics")("relics") = ujson.Obj()
     assertEquals(
       Unwrap.rejected(GameProjectionCodec.decode(ujson.write(wrong))).path,
-      "$.world[0].sites[0].relics.facedownCount")
+      "$.world[0].sites[0].relics.relics")
     val extra = ujson.read(GameProjectionCodec.encode(projection))
     extra("playerBoards")(0)("privateCardId") = "injected"
     assertEquals(
