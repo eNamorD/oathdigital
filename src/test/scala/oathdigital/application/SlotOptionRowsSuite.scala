@@ -45,9 +45,43 @@ class SlotOptionRowsSuite extends munit.FunSuite:
     assertEquals(row.label, s"Replace Wrestlers at $site")
     assertEquals(row.replaces.map(_.cardId), Some(wrestlers.value))
 
+  test("a bury names the card it buries and is marked a bury"):
+    val row = rowOf(DecisionOption.Burying(
+      DecisionOption.SiteSlot(DecisionOptionRef.SiteSlot(home, 0)), wrestlers))
+    assertEquals(row.label, s"Bury Wrestlers at $site")
+    assertEquals((row.replaces.map(_.cardId), row.buries),
+      (Some(wrestlers.value), true))
+
   test("a site slot past the site's capacity is not presentable"):
     assertEquals(projector.optionProjection(board, Some(p1), None,
       DecisionOption.SiteSlot(DecisionOptionRef.SiteSlot(home, 3))), None)
+
+  private val horn = CatalogNames.relic("Cracked Horn")
+  private val peaks = CatalogNames.site("Broken Peaks")
+
+  /** Cracked Horn lies at Broken Peaks, where p2 stands and p1 does not. */
+  private lazy val relicBoard: ReadyGame =
+    Table.start.relicAt(horn, at = peaks).ready
+
+  test("a site relic slot shows its relic to a viewer at the site, and a " +
+      "back to anyone else"):
+    val option = DecisionOption.SiteRelicSlot(
+      DecisionOptionRef.SiteRelicSlot(peaks, 0))
+    val index = CardIndex.from(relicBoard.game).toOption
+    val near = present(projector.optionProjection(relicBoard, Some(p2),
+      index, option), "p2's row")
+    assertEquals(near.card.map(_.cardId), Some(horn.value))
+    val far = present(projector.optionProjection(relicBoard, Some(p1),
+      index, option), "p1's row")
+    assert(far.card.exists(_.hidden), far.toString)
+    assertEquals(far.label,
+      s"Facedown relic at ${presentation.siteLabel(peaks)}")
+    assert(!far.label.contains("Horn"), far.label)
+
+  test("a site relic slot past the site's relics is not presentable"):
+    assertEquals(projector.optionProjection(relicBoard, Some(p1), None,
+      DecisionOption.SiteRelicSlot(DecisionOptionRef.SiteRelicSlot(peaks,
+        1))), None)
 
   test("an adviser play names its slot and its facing"):
     assertEquals(rowOf(DecisionOption.AdviserPlay(

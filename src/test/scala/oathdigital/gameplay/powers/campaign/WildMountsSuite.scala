@@ -20,9 +20,9 @@ class WildMountsSuite extends munit.FunSuite:
   private val stormCaller = CatalogNames.denizen("Storm Caller")
   private val mountedPatrol = CatalogNames.denizen("Mounted Patrol")
   private val warningSignals = CatalogNames.denizen("Warning Signals")
-  private val forestWarden = planlessCard("Forest Warden")
+  private val bracken = planlessCard("Bracken")
   private val wildAllies = planlessCard("Wild Allies")
-  private val newGrowth = planlessCard("New Growth")
+  private val autumnWind = planlessCard("Autumn Wind")
 
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(
     WildMounts.id, Vector(WildMounts.swapped, WildMounts.swappedOffTurn),
@@ -32,10 +32,10 @@ class WildMountsSuite extends munit.FunSuite:
     "swapped", s"Discarded ${beast.value} instead of the battle plans.",
     covers = false)
 
-  /** The actor holds Wild Mounts, Forest Warden (a Beast card) and `plans`
+  /** The actor holds Wild Mounts, Bracken (a Beast card) and `plans`
     * faceup. Two bandits rule the origin. */
   private def mountsBeastAndPlansHeldByActor(plans: DenizenId*): Board =
-    (Vector(card, forestWarden) ++ plans).foldLeft(
+    (Vector(card, bracken) ++ plans).foldLeft(
       board(warbands = 5, supply = 7))((b, id) =>
       withAdviser(b, id, Orientation.FaceUp))
 
@@ -57,7 +57,7 @@ class WildMountsSuite extends munit.FunSuite:
     val done = attackerChoosesMountsThen(b)
     assert(done.winner.nonEmpty)
     assert(!awaits(done, b.actor, WildMounts.decisionId))
-    assert(Look(done.state).advisers(b.actor).contains(forestWarden))
+    assert(Look(done.state).advisers(b.actor).contains(bracken))
     assertEquals(lines(done), Vector.empty)
 
   test("a Nomad plan's discard is replaced by a Beast card the user rules"):
@@ -65,30 +65,30 @@ class WildMountsSuite extends munit.FunSuite:
     val asked = attackerChoosesMountsThen(b, horseArchers)
     assert(awaits(asked, b.actor, WildMounts.decisionId))
     assertEquals(asked.options(b.actor).map(_.ref),
-      Vector(DecisionOptionRef.Denizen(forestWarden), WildMounts.skip))
+      Vector(DecisionOptionRef.Denizen(bracken), WildMounts.skip))
     val done = asked.pick(b.actor, WildMounts.decisionId,
-      DecisionOptionRef.Denizen(forestWarden))
-    assert(Look(done.state).inRegionalDiscard(forestWarden))
+      DecisionOptionRef.Denizen(bracken))
+    assert(Look(done.state).inRegionalDiscard(bracken))
     assert(Look(done.state).advisers(b.actor).contains(horseArchers))
-    assertEquals(lines(done), Vector(swapped(forestWarden)))
+    assertEquals(lines(done), Vector(swapped(bracken)))
 
   test("Skip Wild Mounts discards the plans as usual"):
     val b = mountsBeastAndPlansHeldByActor(horseArchers)
     val done = attackerChoosesMountsThen(b, horseArchers)
       .pick(b.actor, WildMounts.decisionId, WildMounts.skip)
     assert(Look(done.state).inRegionalDiscard(horseArchers))
-    assert(Look(done.state).advisers(b.actor).contains(forestWarden))
+    assert(Look(done.state).advisers(b.actor).contains(bracken))
     assertEquals(lines(done), Vector.empty)
 
   test("one Beast card replaces two Nomad plans"):
     val b = mountsBeastAndPlansHeldByActor(horseArchers, lancers)
     val done = attackerChoosesMountsThen(b, horseArchers, lancers)
       .pick(b.actor, WildMounts.decisionId,
-        DecisionOptionRef.Denizen(forestWarden))
+        DecisionOptionRef.Denizen(bracken))
     val advisers = Look(done.state).advisers(b.actor)
     assert(advisers.contains(horseArchers) && advisers.contains(lancers))
-    assert(Look(done.state).inRegionalDiscard(forestWarden))
-    assertEquals(lines(done), Vector(swapped(forestWarden)))
+    assert(Look(done.state).inRegionalDiscard(bracken))
+    assertEquals(lines(done), Vector(swapped(bracken)))
 
   test("a user who rules no Beast card is not asked"):
     val b = Vector(card, horseArchers).foldLeft(
@@ -101,7 +101,7 @@ class WildMountsSuite extends munit.FunSuite:
   test("a defender is asked, and the line names them"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val b = Vector(card, stormCaller, forestWarden).foldLeft(base)(
+    val b = Vector(card, stormCaller, bracken).foldLeft(base)(
       (b, id) => withAdviserFor(b, base.rival, id, Orientation.FaceUp))
     val asked = commit(rules(losingDice), b, 4).finishAttackerPlans(b.actor)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
@@ -109,10 +109,10 @@ class WildMountsSuite extends munit.FunSuite:
         DecisionOptionRef.Denizen(stormCaller)).finishPlanWindows
     assert(awaits(asked, b.rival, WildMounts.decisionId))
     val done = asked.pick(b.rival, WildMounts.decisionId,
-      DecisionOptionRef.Denizen(forestWarden))
+      DecisionOptionRef.Denizen(bracken))
     assert(Look(done.state).advisers(b.rival).contains(stormCaller))
     assertEquals(lines(done), Vector(NoteText.Said("swapped-off-turn",
-      s"${b.rival.value} discarded ${forestWarden.value} instead of the " +
+      s"${b.rival.value} discarded ${bracken.value} instead of the " +
         "battle plans.", covers = false)))
 
   test("Warning Signals' discard is replaced too"):
@@ -122,7 +122,7 @@ class WildMountsSuite extends munit.FunSuite:
       board(warbands = 5, supply = 7))
     val base = on(ruled)(_.warbandsAt(ruled.origin, ruled.rival, 1)
       .boardWarbands(ruled.rival, 0))
-    val b = Vector(card, warningSignals, forestWarden).foldLeft(base)(
+    val b = Vector(card, warningSignals, bracken).foldLeft(base)(
       (b, id) => withAdviserFor(b, base.rival, id, Orientation.FaceUp))
     val asked = commit(rules(losingDice), b, 4).finishAttackerPlans(b.actor)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
@@ -130,9 +130,9 @@ class WildMountsSuite extends munit.FunSuite:
         DecisionOptionRef.Denizen(warningSignals)).finishPlanWindows
     assert(awaits(asked, b.rival, WildMounts.decisionId))
     val done = asked.pick(b.rival, WildMounts.decisionId,
-      DecisionOptionRef.Denizen(forestWarden))
+      DecisionOptionRef.Denizen(bracken))
     assert(Look(done.state).advisers(b.rival).contains(warningSignals))
-    assert(Look(done.state).inRegionalDiscard(forestWarden))
+    assert(Look(done.state).inRegionalDiscard(bracken))
 
   test("bandits discard the first Beast card they rule, in map order, " +
       "instead of two Nomad plans"):
@@ -143,14 +143,14 @@ class WildMountsSuite extends munit.FunSuite:
     // the bandits apply at the origin.
     val b = withSiteCard(withSiteCard(Vector(card, mountedPatrol,
       stormCaller).foldLeft(base)((b, id) => withSiteCard(b, base.origin,
-      id)), second, newGrowth), first, wildAllies)
+      id)), second, autumnWind), first, wildAllies)
     val inOrder = b.ready.game.current.map.inPlay
     val expected = if inOrder.indexOf(first) < inOrder.indexOf(second)
-      then wildAllies else newGrowth
+      then wildAllies else autumnWind
     val done = commit(rules(losingDice), b, 4).finishPlanWindows
     assert(Look(done.state).inRegionalDiscard(expected))
     assert(!Look(done.state).inRegionalDiscard(
-      if expected == wildAllies then newGrowth else wildAllies))
+      if expected == wildAllies then autumnWind else wildAllies))
     val atOrigin = Look(done.state).cardsAt(base.origin)
     assert(atOrigin.contains(mountedPatrol) && atOrigin.contains(stormCaller))
     assertEquals(lines(done), Vector(swapped(expected)))
@@ -178,9 +178,9 @@ class WildMountsSuite extends munit.FunSuite:
     val b = mountsBeastAndPlansHeldByActor(horseArchers)
     val done = attackerChoosesMountsUnder(rulesWith(powers, winningDice), b,
       horseArchers).pick(b.actor, WildMounts.decisionId,
-      DecisionOptionRef.Denizen(forestWarden))
+      DecisionOptionRef.Denizen(bracken))
     assert(Look(done.state).advisers(b.actor).contains(horseArchers))
-    assert(Look(done.state).inRegionalDiscard(forestWarden))
+    assert(Look(done.state).inRegionalDiscard(bracken))
 
 /** Horse Archers' card as a free attacker plan whose discard at the end of
   * the Campaign is a bare `PlanDiscard.denizen`, with no helper and no

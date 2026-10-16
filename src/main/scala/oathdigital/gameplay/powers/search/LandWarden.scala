@@ -60,7 +60,7 @@ object LandWarden:
   /** Only a play to a site stays open. */
   val siteRule: PlacementLimit = PlacementLimit(OptionReason.Written(toSite),
     {
-      case SearchPlacement.Site(_) => true
+      case SearchPlacement.Site(_, _) => true
       case _ => false
     })
 

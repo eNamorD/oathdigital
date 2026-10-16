@@ -7,6 +7,7 @@ import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
   PlacementPicks, Refusals, Table}
@@ -162,8 +163,11 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       .denizen(kept, at = ancientCity).adviser(who, tongue)
       .adviser(who, adviser, facedown = true).peoplesFavor(Some(who), 1).ready
     val tree = PlacementFixture.build(ready, who, played)
+    // The play picks no modifier, so only the automatic powers apply: the
+    // whole pool would apply every selected modifier as if picked.
+    val unpicked = WalkerPowers.selected(walkerPowers, Vector.empty)
     val shown = PlacementFixture.placementOptions(ready, tree,
-      PlacementFixture.park(ready, tree, walkerPowers), walkerPowers)
+      PlacementFixture.park(ready, tree, unpicked), unpicked)
     // Two advisers held under Silver Tongue: a faceup play replaces one, and
     // the faceup Silver Tongue is a locked card, so only the other may go.
     assertEquals(shown.filter(option => option.available &&
@@ -204,7 +208,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite,
       homesteaders))
     assertEquals(mobSaid(done.events), Vector(NoteText.Said("discard-first",
-      s"${actor.value} may discard a card at their site first.", covers = false)))
+      s"May discard a card at ${ancientCity.value} first.", covers = false)))
 
   test("a play to the empty slot writes no Mob line"):
     val asked = toPlacement(searchAtAncientCityHolding(Vector(homesteaders)))

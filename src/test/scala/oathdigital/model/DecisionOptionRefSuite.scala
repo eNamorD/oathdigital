@@ -33,6 +33,26 @@ class DecisionOptionRefSuite extends munit.FunSuite:
       assertEquals(DecisionOptionRef.fromWire("relic-slot", id), None, id)
     }
 
+  private val siteRelic = DecisionOptionRef.SiteRelicSlot(
+    CatalogNames.site("Broken Peaks"), 1)
+
+  test("a site relic slot spells itself as a kind and site-and-index id " +
+      "and parses back"):
+    assertEquals((siteRelic.kind, siteRelic.wireId),
+      ("site-relic-slot", s"${siteRelic.site.value}:1"))
+    assertEquals(DecisionOptionRef.fromWire(siteRelic.kind,
+      siteRelic.wireId), Some(siteRelic))
+
+  test("a malformed site relic slot is not a reference"):
+    Vector("peaks", "peaks:", ":1", "peaks:-1", "peaks:x").foreach { id =>
+      assertEquals(DecisionOptionRef.fromWire("site-relic-slot", id), None,
+        id)
+    }
+
+  test("a site relic slot is presentable from the reference alone"):
+    assertEquals(DecisionOption.forRef(siteRelic),
+      Some(DecisionOption.SiteRelicSlot(siteRelic)))
+
   private val adviser = DecisionOptionRef.AdviserSlot(PlayerId("blue"), 1)
 
   test("an adviser slot spells itself as a kind and owner-and-index id and " +

@@ -57,7 +57,7 @@ class SiteFaceSuite extends munit.FunSuite:
     val row = firstMatch(ServerUiSupport.siteDetails(woods.copy(
       denizenCapacity = 2, relicCapacity = 1,
       denizens = Vector(denizen("denizen:fox", "Fox", "beast")),
-      relics = GameSiteRelics(1))), ".site-cards")
+      relics = GameSiteRelics(Vector(TestSites.hiddenRelic)))), ".site-cards")
       .getOrElse(fail("no site card row"))
     assertEquals(boxClasses(row), Vector(
       "card-face card-face-denizen",
@@ -70,7 +70,7 @@ class SiteFaceSuite extends munit.FunSuite:
   test("an empty relic slot is drawn like an empty denizen slot"):
     val row = firstMatch(ServerUiSupport.siteDetails(woods.copy(
       denizenCapacity = 1, relicCapacity = 2, denizens = Vector.empty,
-      relics = GameSiteRelics(0))), ".site-cards")
+      relics = GameSiteRelics())), ".site-cards")
       .getOrElse(fail("no site card row"))
     assertEquals(all(row, ".card-face").map(_.getAttribute("class")), Vector(
       "card-face card-face-denizen card-slot-empty",

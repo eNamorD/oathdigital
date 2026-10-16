@@ -10,11 +10,17 @@ import oathdigital.model._
   *
   *  1. `cardplay.place.{kind}.{value}`, a choose-one of the card's slots
   *     (`CardSlots`).
-  *  2. When the answer was a Replace site slot and site discard permissions
-  *     remain, `cardplay.discard.{kind}.{value}`: a choose-many of the other
-  *     site cards, from none up to the permissions left, the replaced card
-  *     locked.
-  *  3. The line of each permission a site discard spent, the play's
+  *  2. The follow-ups, each asked only when it applies:
+  *     - `cardplay.replaced.{kind}.{value}`, when a discard and a bury may
+  *       both take the replaced card: a choose-one of Bury or Discard.
+  *     - `cardplay.discard.{kind}.{value}`, when the answer was a Replace
+  *       site slot and discard permissions remain: a choose-many of the
+  *       site's other row cards, from none up to the permissions left, the
+  *       replaced card locked.
+  *     - `cardplay.bury.{kind}.{value}`, when the replaced card was
+  *       discarded and a bury permission holds: a choose-many of at most one
+  *       of the site's remaining row cards and its relics.
+  *  3. The line of each permission a site removal spent, the play's
   *     operations, then the `CardPlayedFacedown` or `CardPlayedFaceup` hook.
   *
   * The facedown-adviser play asks one decision before these:
@@ -39,10 +45,18 @@ object CardPlayProcedure:
   def playedAs(ref: DecisionOptionRef): Option[PlayedAs] = ref match
     case _: DecisionOptionRef.DiscardPile => Some(PlayedAs.Discarded)
     case _: DecisionOptionRef.SiteSlot => Some(PlayedAs.AtSite)
+    case _: DecisionOptionRef.SiteRelicSlot => Some(PlayedAs.AtSite)
     case DecisionOptionRef.AdviserPlay(_, _, faceup) =>
       Some(if faceup then PlayedAs.Faceup else PlayedAs.Facedown)
     case _: DecisionOptionRef.RevealedVision | CardSlots.play =>
       Some(PlayedAs.Faceup)
+    case _ => None
+
+  /** The site a placement option plays the card to, for a site slot or a
+    * site relic's bury. */
+  def siteOf(ref: DecisionOptionRef): Option[SiteId] = ref match
+    case DecisionOptionRef.SiteSlot(site, _) => Some(site)
+    case DecisionOptionRef.SiteRelicSlot(site, _) => Some(site)
     case _ => None
 
   /** The facedown-adviser play's first decision: which facedown adviser to
@@ -185,6 +199,8 @@ object CardPlayProcedure:
 
   private val placementPrefix = "cardplay.place."
   private val discardPrefix = "cardplay.discard."
+  private val replacedPrefix = "cardplay.replaced."
+  private val buryPrefix = "cardplay.bury."
 
   /** `card`'s placement decision id, `cardplay.place.{kind}.{value}` -- the
     * one place that spells it, so every reader agrees with `childrenFor`.
@@ -196,6 +212,20 @@ object CardPlayProcedure:
     * `cardplay.discard.{kind}.{value}`. */
   def discardDecisionId(card: WorldCardId): String =
     s"$discardPrefix${card.kind}.${card.value}"
+
+  /** `card`'s bury-or-discard decision id,
+    * `cardplay.replaced.{kind}.{value}`. */
+  def replacedDecisionId(card: WorldCardId): String =
+    s"$replacedPrefix${card.kind}.${card.value}"
+
+  /** `card`'s bury follow-up decision id, `cardplay.bury.{kind}.{value}`. */
+  def buryDecisionId(card: WorldCardId): String =
+    s"$buryPrefix${card.kind}.${card.value}"
+
+  /** The answers of the bury-or-discard decision. */
+  val buryReplaced: DecisionOptionRef.Button = DecisionOptionRef.Button("bury")
+  val discardReplaced: DecisionOptionRef.Button =
+    DecisionOptionRef.Button("discard")
 
   /** The card whose placement was answered in `pending`, inverting
     * [[placementDecisionId]]. The parse splits the remainder at the first
@@ -249,24 +279,63 @@ object CardPlayProcedure:
     })
     Vector(choose, selected)
 
-  /** The play of `slot`: the follow-up, the line of each permission its site
-    * discards spent and the operations, and the hook. The follow-up's place is
-    * always filled, by its Decide when `slot` is a Replace site slot that
-    * leaves permissions and by nothing otherwise, so the shape never depends
-    * on whether the walker asked it (it skips a choose-many with no option
-    * left, recording no answer). */
+  /** The play of `slot`: the follow-ups, the line of each permission its
+    * site removals spent and the operations, and the hook. The follow-ups
+    * sit in one node whose three places are always filled, by a Decide or a
+    * Branch that offers nothing, so the shape never depends on whether the
+    * walker asked them (it skips a choose-many with no option left,
+    * recording no answer). */
   private def played(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, from: CardPlay.Origin,
       rules: CardPlayRules, slot: CardSlot, picked: Vector[CardId])
       : Vector[Operation] =
-    val followUp: Operation = CardSlots.moreDiscards(catalog, ready, actor,
-      card, from, rules, slot, picked).fold[Operation](noFollowUp)(offer =>
-      Decide(discardDecisionId(card), actor,
+    val replacedId = replacedDecisionId(card)
+    val discardId = discardDecisionId(card)
+    val buryId = buryDecisionId(card)
+    def chose(pending: PendingTree, ref: DecisionOptionRef): Boolean =
+      pending.answered.collectFirst {
+        case Answered(`replacedId`, DecisionAnswer.ChooseOneAnswer(r), _) =>
+          r
+      }.contains(ref)
+    // The replaced card is buried when the slot is a bury, or its follow-up
+    // says Bury.
+    def buriesReplaced(pending: PendingTree): Boolean =
+      slot.buried.exists(slot.replacedAtSite.contains) ||
+        chose(pending, buryReplaced)
+    def discarded(pending: PendingTree): Vector[CardId] =
+      pending.answered.collectFirst {
+        case Answered(`discardId`, DecisionAnswer.ChooseManyAnswer(refs), _) =>
+          refs.flatMap(siteCard)
+      }.getOrElse(Vector.empty)
+    def buriedMore(pending: PendingTree): Option[CardId] =
+      pending.answered.collectFirst {
+        case Answered(`buryId`, DecisionAnswer.ChooseManyAnswer(refs), _) =>
+          refs.flatMap(ref => siteCard(ref).orElse(siteRelic(ready, ref)))
+      }.flatMap(_.headOption)
+    val askReplaced: Operation =
+      if !slot.mayBury then noFollowUp
+      else Decide(replacedId, actor, DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Button(buryReplaced, "Bury"),
+        DecisionOption.Button(discardReplaced, "Discard")),
+        heading = Some("Bury or discard the replaced card")))
+    val moreDiscards = Branch((_, pending) => CardSlots.moreDiscards(catalog,
+      ready, actor, card, from, rules, slot, buriesReplaced(pending), picked)
+      .toVector.map(offer => Decide(discardId, actor,
         DecisionQuery.ChooseMany(0, offer.most, offer.options,
           heading = Some("Discard more cards from the site"),
           locked = Vector(offer.locked),
           confirm = Some(CountedConfirm("Discard", "more card", "more cards",
-            Some("Discard no more"))))))
+            Some("Discard no more")))))))
+    // A bury the slot made, or the replaced card's, spends the bury.
+    val moreBuries = Branch((_, pending) =>
+      if slot.buried.nonEmpty || buriesReplaced(pending) then Vector.empty
+      else CardSlots.moreBuries(catalog, ready, actor, card, from, rules,
+        slot, discarded(pending), picked).toVector.map(offer =>
+        Decide(buryId, actor, DecisionQuery.ChooseMany(0, 1, offer.options,
+          heading = Some("Bury a card at the site"),
+          confirm = Some(CountedConfirm("Bury", "card", "cards",
+            Some("Bury nothing")))))))
+    val followUp = Sequence(Vector(askReplaced, moreDiscards, moreBuries))
     // A Branch is selected when the walk reaches it, which for this one is
     // after the follow-up's answer, so the play sees the cards chosen there.
     // The lines come after the last answer and before the play, joining the
@@ -274,14 +343,18 @@ object CardPlayProcedure:
     // their own, so the play is always the node's second child, as in
     // `settled`: a trigger's follow-up after the play is addressed under it.
     val play = Branch((_, pending) => {
-      val extra = pending.answered.collectFirst {
-        case Answered(id, DecisionAnswer.ChooseManyAnswer(refs), _)
-            if id == discardDecisionId(card) => refs.flatMap(siteCard)
-      }.getOrElse(Vector.empty)
+      val extra = discarded(pending)
+      val buried =
+        if buriesReplaced(pending) then slot.replacedAtSite
+        else slot.buried.orElse(buriedMore(pending))
       val apply = BuildOps((state, _) => CardPlay.operations(catalog, state,
-        actor, card, slot.placement, from, extra))
-      CardSlots.credits(catalog, ready, actor, card, rules,
-          slot.replacedAtSite.toVector ++ extra) match
+        actor, card, slot.placement, from, extra, buried))
+      val credited = slot.site.fold[Either[OathViolation, Vector[Note]]](
+        Right(Vector.empty))(site => CardSlots.credits(catalog, ready, actor,
+        card, site, rules,
+        slot.replacedAtSite.filterNot(buried.contains).toVector ++ extra,
+        buried))
+      credited match
         case Left(error) => Vector(Sequence(Vector.empty),
           BuildOps((_, _) => Left(error)))
         case Right(notes) => Vector(Sequence(notes), apply)
@@ -291,12 +364,16 @@ object CardPlayProcedure:
   /** The follow-up's place when nothing is to be asked. */
   private def noFollowUp: Operation = Sequence(Vector.empty)
 
-  /** The shape of a play once the card has left its origin: the follow-up's
-    * place, the play, and the hook, as in the live shape. A resumed walk
-    * starts past the decisions and the play, so neither runs again. */
+  /** The shape of a play once the card has left its origin: the follow-ups'
+    * place, left empty, then the play and the hook at the positions the
+    * live shape gives them. A resumed walk starts past the decisions and
+    * the play, so neither runs again, and nothing addresses inside the
+    * follow-ups' place. */
   private def settled(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
       ref: DecisionOptionRef): Vector[Operation] =
-    playedAs(ref).map(placementOf).toVector.flatMap { placement =>
+    playedAs(ref).flatMap(way => siteOf(ref)
+        .map(SearchPlacement.Site(_, None)).orElse(placementOf(way)))
+        .toVector.flatMap { placement =>
       // The play's shape as `played` built it, lines then play, so a path
       // into a follow-up after the play finds it.
       val play = Sequence(Vector(Sequence(Vector.empty),
@@ -305,11 +382,15 @@ object CardPlayProcedure:
       Vector(noFollowUp, play) ++ hook(ready, actor, card, placement)
     }
 
-  private def placementOf(way: PlayedAs): SearchPlacement = way match
-    case PlayedAs.Discarded => SearchPlacement.Discard
-    case PlayedAs.AtSite => SearchPlacement.Site(None)
-    case PlayedAs.Faceup => SearchPlacement.Adviser(Orientation.FaceUp, None)
-    case PlayedAs.Facedown => SearchPlacement.Adviser(Orientation.FaceDown, None)
+  /** The placement a way of playing names on its own. A play at a site
+    * names its site only in its ref (`siteOf`). */
+  private def placementOf(way: PlayedAs): Option[SearchPlacement] = way match
+    case PlayedAs.Discarded => Some(SearchPlacement.Discard)
+    case PlayedAs.AtSite => None
+    case PlayedAs.Faceup =>
+      Some(SearchPlacement.Adviser(Orientation.FaceUp, None))
+    case PlayedAs.Facedown =>
+      Some(SearchPlacement.Adviser(Orientation.FaceDown, None))
 
   private def hook(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
       placement: SearchPlacement): Vector[Operation] = placement match
@@ -321,4 +402,13 @@ object CardPlayProcedure:
   private def siteCard(ref: DecisionOptionRef): Option[CardId] = ref match
     case DecisionOptionRef.Denizen(id) => Some(id)
     case DecisionOptionRef.Edifice(id) => Some(id)
+    case _ => None
+
+  /** The relic a site relic slot names, on the board the play was planned
+    * on. */
+  private def siteRelic(ready: ReadyGame, ref: DecisionOptionRef)
+      : Option[CardId] = ref match
+    case DecisionOptionRef.SiteRelicSlot(site, index) =>
+      ready.game.current.map.sites.get(site).flatMap(_.relics.lift(index))
+        .map(_.id)
     case _ => None

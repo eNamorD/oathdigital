@@ -125,7 +125,7 @@ class CropRotationSuite extends munit.FunSuite:
     val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite,
       fillers(0)))
     assertEquals(cropSaid(done.events), Vector(NoteText.Said("discard-first",
-      s"${p1.value} may discard a card at their site first.", covers = false)))
+      s"May discard a card at ${home.value} first.", covers = false)))
 
   test("with the Mob as well, two cards may go, each credited to the " +
       "permission it spent"):
@@ -138,7 +138,7 @@ class CropRotationSuite extends munit.FunSuite:
     assertEquals(siteCards(SearchFixture.after(done)), Vector[CardId](played))
     val events = replaced.events ++ done.events
     assertEquals(cropSaid(events), Vector(NoteText.Said("discard-first",
-      s"${p1.value} may discard a card at their site first.", covers = false)))
+      s"May discard a card at ${home.value} first.", covers = false)))
     assertEquals(NoteText.said(PeoplesFavorMob.id, PeoplesFavorMob.noteKeys,
       events), Vector(NoteText.Said("discard-first",
-      s"${p1.value} may discard a card at their site first.", covers = false)))
+      s"May discard a card at ${home.value} first.", covers = false)))

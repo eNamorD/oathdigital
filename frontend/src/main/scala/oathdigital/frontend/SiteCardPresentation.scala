@@ -1,7 +1,5 @@
 package oathdigital.frontend
 
-private[frontend] final case class PeekedRelicPresentation(card: CardDetails)
-
 /** What a site asks of a player, which is never both at once: a site is
   * either buildable or plunderable, and the rules give no site both.
   */
@@ -15,8 +13,9 @@ private[frontend] final case class SiteCardPresentation(
     looseSecrets: Int,
     defense: Int,
     requirement: Option[SiteRequirement],
-    unknownRelicCount: Int,
-    peekedRelics: Vector[PeekedRelicPresentation]
+    /** The site's relics in their places: a known relic's card, or a
+      * hidden back. */
+    relics: Vector[CardDetails]
 )
 
 private[frontend] object SiteCardPresentation:
@@ -28,7 +27,5 @@ private[frontend] object SiteCardPresentation:
       requirement = site.forgeCost
         .map(cost => SiteRequirement.Forge(cost.favor, cost.secrets))
         .orElse(site.recoverDifficulty.map(SiteRequirement.Recover.apply)),
-      unknownRelicCount = math.max(0,
-        site.relics.facedownCount - site.relics.knownRelics.size),
-      peekedRelics = site.relics.knownRelics.map(PeekedRelicPresentation(_))
+      relics = site.relics.relics
     )

@@ -2,13 +2,44 @@ package oathdigital.gameplay.actions
 
 import oathdigital.model._
 
-/** Leave to discard one card from the actor's site before a play there. Any
-  * card of the site's card list may go: an edifice is a denizen for
-  * placement, and an intact edifice is refused only as a locked card.
-  * `source` is the power or rule that gives the leave, and `note` the line
-  * card play writes when a discard it allowed is made.
+/** How a permission removes a card from the site a card is played to:
+  * discarded, or buried (Forest Warden). */
+enum SiteRemoval:
+  case Discard, Bury
+
+/** Leave to remove one card from the site a card is played to, before the
+  * play. Any card of the site's card list may go: an edifice is a denizen
+  * for placement. A discard of an intact edifice is refused as a locked
+  * card's; a bury ignores locks, and may take a relic there too.
+  *
+  * `appliesAt` says at which sites the leave holds (Baron's: the sites its
+  * user rules). `source` is the power or rule that gives it, and `note`
+  * the line card play writes at the site when a removal it allowed is
+  * made.
   */
-final case class DiscardPermission(source: PowerId, note: Note)
+final case class DiscardPermission(source: PowerId, note: SiteId => Note,
+    removal: SiteRemoval = SiteRemoval.Discard,
+    appliesAt: (ReadyGame, SiteId) => Boolean = DiscardPermission.anySite)
+
+object DiscardPermission:
+  val anySite: (ReadyGame, SiteId) => Boolean = (_, _) => true
+
+  /** A permission from `from` whose line is its removal's: "May discard a
+    * card at {site} first." or "May bury a card at {site} first." */
+  def lined(source: PowerId, from: PowerSourceRef,
+      removal: SiteRemoval = SiteRemoval.Discard,
+      appliesAt: (ReadyGame, SiteId) => Boolean = anySite)
+      : DiscardPermission =
+    val key = removal match
+      case SiteRemoval.Discard => CardPlayRules.discardFirst
+      case SiteRemoval.Bury => CardPlayRules.buryFirst
+    DiscardPermission(source,
+      site => Note(source, _ => Some(key(from, NoteArg.Site(site)))),
+      removal, appliesAt)
+
+/** Leave to play to sites other than the pawn's: each site `opens` holds
+  * of (Baron's, the sites its user rules; New Growth's, every site). */
+final case class PlaySites(opens: (ReadyGame, SiteId) => Boolean)
 
 /** An adviser as card play counts it: the card and the face it shows. */
 final case class AdviserFace(card: CardId, orientation: Orientation)
@@ -46,16 +77,19 @@ final case class PlacementLimit(reason: OptionReason,
   *    gone, so neither sets its limit.
   *  - `uncounted` are the adviser faces that do not count toward the limit
   *    (a faceup Pied Piper; a facedown Vision under Lost Tapestry).
-  *  - `siteDiscards` are the permissions to discard a card from the site a
-  *    card is played to, one card each. They stack. The Homeland rule's is
-  *    not among them: card play adds it at the Homeland of the played card's
-  *    suit (`homeland`).
+  *  - `siteDiscards` are the permissions to discard or bury a card at the
+  *    site a card is played to, one card each, at the sites each holds at.
+  *    They stack. The Homeland rule's is not among them: card play adds it
+  *    at the Homeland of the played card's effective suit (`homeland`).
   *  - `adviserNotes` are the notes an adviser play may carry. The first
   *    that applies to the advisers after the play wins.
   *  - `placementLimits` are limits on where the card may go. A play one
   *    refuses is shown unavailable with its reason. When the limits
   *    leave no play, the discard pile stays open: a card that cannot be
   *    played is discarded.
+  *  - `playSites` are the leaves to play to sites other than the pawn's.
+  *    Card play offers the pawn site, then every site one opens, in map
+  *    order. Each site follows the pawn site's rules.
   *
   * Every change lowers or lifts a limit, exempts a face, or adds a
   * permission, a note or a placement limit, so contributions compose in any
@@ -69,7 +103,8 @@ final case class CardPlayRules(
     siteDiscards: Vector[DiscardPermission] = Vector.empty,
     lifts: Set[CardId] = Set.empty,
     adviserNotes: Vector[AdviserPlayNote] = Vector.empty,
-    placementLimits: Vector[PlacementLimit] = Vector.empty):
+    placementLimits: Vector[PlacementLimit] = Vector.empty,
+    playSites: Vector[PlaySites] = Vector.empty):
 
   /** The limit over `advisers`, the advisers after a play: `adviserLimit`,
     * or none while a card that lifts it is faceup, lowered by each faceup
@@ -128,6 +163,14 @@ final case class CardPlayRules(
   def refusal(placement: SearchPlacement): Option[OptionReason] =
     placementLimits.find(!_.allows(placement)).map(_.reason)
 
+  /** Adds leave to play to the sites `sites` opens. */
+  def openSites(sites: PlaySites): CardPlayRules =
+    copy(playSites = playSites :+ sites)
+
+  /** Whether some leave opens `site`. */
+  def opens(ready: ReadyGame, site: SiteId): Boolean =
+    playSites.exists(_.opens(ready, site))
+
 object CardPlayRules:
   val DefaultAdviserLimit: Int = 3
   /** No limit: the base limit while a card that lifts it is faceup. */
@@ -141,15 +184,20 @@ object CardPlayRules:
   /** The keys this object owns, which no one power owns. A power that
     * writes one includes this set. */
   val notes: NoteSet = NoteSet.unowned("CardPlayRules")
-  /** "{Red} may discard a card at their site first.": the line of the power
-    * or rule that let a play to a site discard a card there. */
-  val discardFirst: NoteKey = notes.key("discard-first", Vector(NotePart.Arg(0),
-    NotePart.Text(" may discard a card at their site first.")))
+  /** "May discard a card at {site} first.": the line of the power or rule
+    * that let a play to a site discard a card there. */
+  val discardFirst: NoteKey = notes.key("discard-first", Vector(
+    NotePart.Text("May discard a card at "), NotePart.Arg(0),
+    NotePart.Text(" first.")))
+  /** "May bury a card at {site} first.": the line of the power that let a
+    * play to a site bury a card there (Forest Warden). */
+  val buryFirst: NoteKey = notes.key("bury-first", Vector(
+    NotePart.Text("May bury a card at "), NotePart.Arg(0),
+    NotePart.Text(" first.")))
 
-  /** The Homeland rule's permission (CR p. 31) for `actor`'s play to `site`,
-    * the Homeland of the played card's suit: one discard of any card there,
+  /** The Homeland rule's permission (CR p. 31) for a play to `site`, the
+    * Homeland of the played card's suit: one discard of any card there,
     * whatever that card's suit. */
-  def homeland(site: SiteId, actor: PlayerId): DiscardPermission =
-    DiscardPermission(RuleNotes.homelandDiscard,
-      Note(RuleNotes.homelandDiscard, _ => Some(discardFirst(
-        PowerSourceRef.Site(site), NoteArg.Player(actor)))))
+  def homeland(site: SiteId): DiscardPermission =
+    DiscardPermission.lined(RuleNotes.homelandDiscard,
+      PowerSourceRef.Site(site), appliesAt = (_, at) => at == site)

@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 11 are done. The per-card
+**Status:** designed 2026-10-12. Slices 1 to 12 are done. The per-card
 rulings are in
 [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
@@ -192,10 +192,15 @@ The approved changes outside `gameplay/powers/`:
   signature does not change. Ancient Bloodline joins `LockedCards` as an
   as-if lock (`AsIfLocked`).
 - **A card-play site** (slice 12). `SearchPlacement.Site` names its site.
-  `CardPlay.plan`, `operationsOf`, `atSite` and `CardSlots.siteSlots` read
-  it instead of the pawn site. `CardPlayRules` lets a power widen the slots
-  to other sites, and the Replace path accepts a bury in place of the
-  discard.
+  `CardPlay` and `CardSlots` read it instead of the pawn site.
+  `CardPlayRules` lets a power open other sites (`PlaySites`) and scope a
+  removal permission to sites, and a permission is a discard or a bury.
+  The Replace path accepts a bury (a bury and replace), a relic may be
+  buried before a play (a bury and play), both badged "Bury" on the board,
+  and two follow-ups ask "Bury or
+  discard the replaced card" and for one more bury. A site's relics gain
+  a positional ref, `DecisionOptionRef.SiteRelicSlot`, and the site
+  projection lists them by position.
 - **A queued Campaign's origin** (slice 13). A queued Campaign may carry an
   origin site in its start arguments. `CampaignSetup.originOf` reads it
   before the pawn site, and the force rule adds the actor's warbands at the
@@ -208,7 +213,8 @@ The approved changes outside `gameplay/powers/`:
   destination in its start arguments, and its actor may be another player.
 
 The serialization codec gains `SetOathkeeperGoal`, a burn's actor, a
-card-play site, and the origin and destination start arguments.
+site relic slot, and the origin and destination start arguments. A play's
+site travels in its slot ref.
 
 ### Catalog and roadmap corrections
 
@@ -658,7 +664,7 @@ that an enemy cannot Recover a relic there.
 Baron, New Growth and Forest Warden widen a card play's slots to other
 sites. The slots keep their refs; only the site varies. Baron's discard and
 Forest Warden's bury use the Replace path, the bury labelled "Bury and
-replace".
+replace". A relic at the site may be buried too, named by its slot.
 
 ## Slice 13: Campaign from another site
 

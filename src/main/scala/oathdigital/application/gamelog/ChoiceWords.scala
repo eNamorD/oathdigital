@@ -37,6 +37,11 @@ private[gamelog] final class ChoiceWords(words: LogWords,
     case DecisionOptionRef.FavorBank(suit) => Vector(Text(s"the $suit bank"))
     case DecisionOptionRef.SiteSlot(site, slot) =>
       Vector(Text(s"slot ${slot + 1} at "), words.site(site))
+    case DecisionOptionRef.SiteRelicSlot(site, slot) =>
+      before.game.current.map.sites.get(site).flatMap(_.relics.lift(slot))
+        .fold(Vector[LogSpan](Text(s"relic ${slot + 1}")))(held =>
+          card(held.id, before, after, viewer)) ++
+        Vector(Text(" at "), words.site(site))
     case DecisionOptionRef.AdviserPlay(owner, slot, faceup) =>
       Vector(words.player(owner), Text(s"'s adviser slot ${slot + 1}, " +
         (if faceup then "faceup" else "facedown")))
@@ -65,4 +70,5 @@ private[gamelog] final class ChoiceWords(words: LogWords,
     case DecisionOption.Warned(inner, _) => labelled(ref)(inner)
     case DecisionOption.Unavailable(inner, _) => labelled(ref)(inner)
     case DecisionOption.Replacing(inner, _) => labelled(ref)(inner)
+    case DecisionOption.Burying(inner, _) => labelled(ref)(inner)
     case _ => None

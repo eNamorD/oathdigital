@@ -67,12 +67,13 @@ private[frontend] final class BoardOptions(views: Map[String, OptionView],
     val key = BoardOptionViews.home(found.option)
     found.state.classes.foreach(target.classList.add)
     if found.option.replaces.nonEmpty then
+      val word = if found.option.buries then "Bury" else "Replace"
       target.classList.add("board-option-replace")
-      target.appendChild(text("span", "board-option-badge", "Replace"))
+      target.appendChild(text("span", "board-option-badge", word))
       // A card face names itself with an aria-label, which hides its
       // content from a screen reader, so the word joins the label.
       Option(target.getAttribute("aria-label")).foreach(name =>
-        target.setAttribute("aria-label", s"$name, Replace"))
+        target.setAttribute("aria-label", s"$name, $word"))
     target.setAttribute("data-option-ref", key)
     found.reason.orElse(Option.when(found.option.details.nonEmpty)(
       found.option.details.mkString(" · ")))

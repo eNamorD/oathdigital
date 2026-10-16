@@ -2,6 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.{ConsentPowers, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.powerresolver.PhasePowers
@@ -375,6 +376,13 @@ private[application] final class WalkerDecisionProjector(
         optionProjection(ready, viewer, index, inner, details).map(row =>
           row.copy(label = replacingLabel(inner.ref, replaced.name),
             replaces = Some(replaced)))
+      case DecisionOption.Burying(inner, card) =>
+        val buried = shown(ready, viewer, index, card)
+        val name = if buried.hidden then s"a ${buried.name.toLowerCase}"
+          else buried.name
+        optionProjection(ready, viewer, index, inner, details).map(row =>
+          row.copy(label = buryingLabel(inner.ref, name),
+            replaces = Some(buried), buries = true))
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
         if ready.game.current.players.exists(_.player == player.id) then
@@ -401,6 +409,16 @@ private[application] final class WalkerDecisionProjector(
             .exists(_.relics.isDefinedAt(slot.slot)) then
           row(s"${presentation.playerLabel(slot.owner)} facedown relic")
         else None
+      // The relic when the viewer may identify it, else its back: a slot
+      // never discloses a facedown relic.
+      case DecisionOption.SiteRelicSlot(slot) =>
+        ready.game.current.map.sites.get(slot.site)
+          .flatMap(_.relics.lift(slot.index)).flatMap(held =>
+            card(ready, viewer, index, held.id) match
+              case Some(details) => row(details.name, Some(details))
+              case None => row(
+                s"Facedown relic at ${presentation.siteLabel(slot.site)}",
+                Some(presentation.hiddenCard("relic"))))
       // The card when the viewer may identify it, else its back: a slot
       // never discloses a facedown adviser, but the panel still draws a card.
       case DecisionOption.AdviserSlot(slot) =>
@@ -455,6 +473,11 @@ private[application] final class WalkerDecisionProjector(
       case _: DecisionOptionRef.RevealedVision =>
         s"Replace $name as revealed Vision"
       case _ => s"Replace $name"
+
+  /** A bury option's label: the card it buries, and where. */
+  private def buryingLabel(ref: DecisionOptionRef, name: String): String =
+    CardPlayProcedure.siteOf(ref).fold(s"Bury $name")(site =>
+      s"Bury $name at ${presentation.siteLabel(site)}")
 
   private def facing(faceup: Boolean): String =
     if faceup then "faceup" else "facedown"
@@ -518,7 +541,8 @@ private[application] final class WalkerDecisionProjector(
       viewer: Option[PlayerId], decisionId: String)
       : Vector[CardDetailsProjection] =
     val index = ready.game.cardIndex.toOption
-    val prefixes = Vector("cardplay.place.", "cardplay.discard.")
+    val prefixes = Vector("cardplay.place.", "cardplay.discard.",
+      "cardplay.replaced.", "cardplay.bury.")
     prefixes.find(decisionId.startsWith).toVector.flatMap { prefix =>
       decisionId.stripPrefix(prefix).split("\\.", 2).toVector match
         case Vector("denizen", value) => Vector(DenizenId(value): CardId)
@@ -543,9 +567,11 @@ private[application] final class WalkerDecisionProjector(
       if decisionId.startsWith("cardplay.place.") then
         played.map(card => s"Play ${card.name}")
       else if decisionId.startsWith("cardplay.discard.") then
-        viewer.flatMap(player => ready.game.current.players
-          .find(_.player == player)).flatMap(_.pawnSite).map(site =>
-            s"Discard more cards from ${presentation.siteLabel(site)}")
+        followUpSite(ready, projected).map(site =>
+          s"Discard more cards from ${presentation.siteLabel(site)}")
+      else if decisionId.startsWith("cardplay.bury.") then
+        followUpSite(ready, projected).map(site =>
+          s"Bury a card at ${presentation.siteLabel(site)}")
       else None
     heading.fold(query)(text => query match
       case one: DecisionQueryProjection.ChooseOne =>
@@ -553,6 +579,21 @@ private[application] final class WalkerDecisionProjector(
       case many: DecisionQueryProjection.ChooseMany =>
         many.copy(heading = Some(text))
       case other => other)
+
+  /** The site a card play's follow-up is about: the site holding the cards
+    * it offers, its locked card among them. */
+  private def followUpSite(ready: ReadyGame,
+      query: DecisionQueryProjection): Option[SiteId] =
+    val rows = query match
+      case many: DecisionQueryProjection.ChooseMany => many.options
+      case _ => Vector.empty
+    rows.iterator.flatMap(row =>
+      DecisionOptionRef.fromWire(row.kind, row.id).flatMap {
+        case DecisionOptionRef.SiteRelicSlot(site, _) => Some(site)
+        case _ => ready.game.current.map.sites.collectFirst {
+          case (site, state)
+              if state.denizens.exists(_.id.value == row.id) => site }
+      }).nextOption()
 
   /** A card play's Replace options as the board's summary reads them:
     * "Discard {replaced}; play {played} here", with the facing after an
@@ -563,7 +604,8 @@ private[application] final class WalkerDecisionProjector(
       played: CardDetailsProjection): DecisionQueryProjection =
     def worded(option: DecisionOptionProjection) = option.replaces
       .filterNot(_.hidden).fold(option)(replaced => option.copy(label =
-        s"Discard ${replaced.name}; play ${played.name} here" +
+        s"${if option.buries then "Bury" else "Discard"} ${replaced.name}; " +
+          s"play ${played.name} here" +
           option.variant.fold("")(word => s", ${word.toLowerCase}")))
     query match
       case one: DecisionQueryProjection.ChooseOne =>

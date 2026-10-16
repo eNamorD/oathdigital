@@ -15,8 +15,12 @@ import scala.scalajs.js
   */
 class BoardOptionsRenderSuite extends munit.FunSuite:
   private val fox = CardDetails("fox", "denizen", "Fox", rulesText = Some("Sly."))
+  /** A relic at Deep Woods the viewer knows, beside one they do not. */
+  private val cup = CardDetails("cup", "relic", "Cup",
+    orientation = Some("face-down"))
   private val woods = quietSite("woods", "Deep Woods")
     .withDenizenCapacity(3).withDenizens(GameSiteCard("fox", "Fox", Some(fox)))
+    .withRelicCapacity(1).withRelics(1)
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
   private val oak = CardDetails("oak", "denizen", "Old Oak")
   private val horn = CardDetails("horn", "relic", "Horn")
@@ -178,6 +182,27 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     val shown = recording(available(replace))
     assertEquals(one(world(shown.options), """[data-option-ref="site-slot:woods:0"]""")
       .getAttribute("data-card-id"), "fox")
+
+  test("a site relic, known or not, answers to its slot"):
+    val known = option("site-relic-slot", "woods:0")
+    val unknown = option("site-relic-slot", "woods:1")
+    val shown = recording(available(known), available(unknown))
+    // Deep Woods holds the known Cup first, then an unknown relic.
+    val root = WorldBoardRenderer.world(table.copy(world = Vector(GameRegion(
+      "cradle", Vector(woods.withRelicCapacity(2).withRelics(2, cup))))),
+      shown.options)
+    click(one(root, """[data-option-ref="site-relic-slot:woods:0"]"""))
+    click(one(root, """[data-option-ref="site-relic-slot:woods:1"]"""))
+    assertEquals(shown.picks, Vector(known, unknown))
+
+  test("a bury option carries the Bury badge"):
+    val buried = option("site-slot", "woods:0").copy(replaces = Some(fox),
+      buries = true)
+    val root = world(recording(available(buried)).options)
+    assertEquals(all(root, ".board-option-badge").map(_.textContent),
+      Vector("Bury"))
+    assertEquals(one(root, """[data-option-ref="site-slot:woods:0"]""")
+      .getAttribute("aria-label"), "Fox, Bury")
 
   test("a Replace option carries the badge, and an empty slot does not"):
     val replace = option("site-slot", "woods:0").copy(replaces = Some(fox))

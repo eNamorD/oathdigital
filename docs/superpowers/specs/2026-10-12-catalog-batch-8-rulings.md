@@ -421,15 +421,74 @@
 
 ## Slice 12: Card play at another site
 
+Ruled 2026-10-16. Each card is a free Search modifier the player selects,
+and the selection reaches the Play-Facedown-Adviser action too.
+
 - **250 Baron.** "You may play to any site you rule, and you may discard a
-  card from that site first." The card play's slots widen to every site the
-  player rules. The discard uses the Replace path.
+  card from that site first."
+  - It opens every site the player rules.
+  - Every play to a ruled site carries Baron's discard permission, the pawn
+    site included when the player rules it.
 - **188 New Growth.** "You may play [suit-beast] and [suit-hearth] cards to
-  any site (that has space)." Beast and Hearth cards may be played to any
-  site with space. Full sites are shown unavailable with the reason.
+  any site (that has space)."
+  - It opens every site for a card whose effective suit is Beast or
+    Hearth.
+  - "(that has space)" is a reminder only, so every site follows the pawn
+    site's rules. A site with room offers its empty slot. A full site
+    offers Replace options only under a discard or bury permission, and
+    nothing otherwise.
+  - This replaces the earlier ruling that full sites are shown unavailable
+    with the reason: a full site with no permission has no option.
 - **218 Forest Warden.** "If you play a [suit-beast] card to a site, you
-  may bury a card at the site first." When a Beast card is played to a
-  site, the Replace path offers a bury, labelled "Bury and replace".
+  may bury a card at the site first."
+  - It gives one bury at the site, when the card's effective suit is
+    Beast.
+  - Bury ignores locks, so any card there may go: any card in the site's
+    row (denizens, intact edifices, and cards the Hall of Ministers or
+    Ancient Bloodline protect) and any relic there.
+
+The shared rules:
+
+- **Permissions follow the site played to.** The Homeland rule applies
+  where the site is the Homeland of the card's effective suit. Crop
+  Rotation, People's Favor Mob and Forest Warden apply at any site. Baron
+  applies at ruled sites.
+- **Bury or discard.**
+  - A Replace covered only by Forest Warden is a bury: a bury and
+    replace. The board badges it "Bury" and labels it "Bury {card} at
+    {site}".
+  - A Replace covered only by a discard permission is a discard, shown
+    "Replace".
+  - When both cover it, the option reads "Replace". A follow-up choose-one
+    titled "Bury or discard the replaced card" then offers the buttons
+    "Bury" and "Discard".
+  - Forest Warden's bury is spent by the replaced card or by the bury
+    follow-up, never twice.
+- **Relics.**
+  - At a site with room, each relic there is offered as a bury and play,
+    and the card goes to the first empty slot. The board badges it "Bury"
+    and sums it up as "Bury {card}; play {card} here".
+  - After a Replace that discarded, the follow-ups run in order. "Discard
+    more cards from the site" offers row cards up to the discard
+    permissions left. Then, if Forest Warden is still unused, "Bury a card
+    at the site" is a choose-many from 0 to 1 over the remaining row cards
+    and every relic there.
+  - Relics are offered by their slot (`SiteRelicSlot`), never by their
+    identity.
+- **Discard piles.** A site card discarded in a play goes to the pile of
+  the region after the target site's region. A replaced adviser, and the
+  discard-pile slot, keep the pile after the pawn's region.
+- **Order.** The slot question's options run in this order: the discard
+  pile; the pawn site; each other site in map order, with its empty slot,
+  then its Replace options, then its relics; the faceup plays; the facedown
+  plays.
+- **Lines.**
+  - Every discard permission writes "May discard a card at {site} first.":
+    the Homeland rule, Crop Rotation, the Mob and Baron. This drops the old
+    "{Red} … at their site".
+  - Forest Warden writes "May bury a card at {site} first."
+  - Baron and New Growth write nothing else. "Played {card} to {site}" now
+    names the target site.
 
 ## Slice 13: Campaign from another site
 

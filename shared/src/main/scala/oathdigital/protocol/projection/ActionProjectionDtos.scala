@@ -138,7 +138,9 @@ object DecisionQueryProjection:
   * `reason` saying why).
   *
   * `replaces` is the card choosing the option discards to make room (a
-  * Replace slot), as the viewer may see it.
+  * Replace slot), as the viewer may see it, or the card or relic it buries
+  * first. `buries` marks an option whose play buries `replaces` instead of
+  * discarding it, Forest Warden's "Bury and replace" and "Bury and play".
   *
   * `variant` is the word that tells this option from the others drawn on the
   * same board home, such as an adviser play's facing; the client's toggle
@@ -151,6 +153,7 @@ final case class DecisionOptionProjection(kind: String, id: String,
     state: String = "available",
     reason: Option[String] = None,
     replaces: Option[CardDetailsProjection] = None,
+    buries: Boolean = false,
     variant: Option[String] = None,
     consent: Option[ConsentAskProjection] = None):
   /** Whether the viewer may choose it: available, or available with a

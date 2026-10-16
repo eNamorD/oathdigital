@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is under way: slices 1 to 11 are done, and item 10b is next.
+**Phase - Catalog batch 8** is under way: slices 1 to 12 are done, and item 10b is next.
 
 ## Next
 
@@ -145,7 +145,7 @@ this order. Each slice gets its own plan.
   user would gladly lose. Design:
   [automatic power consent](superpowers/specs/2026-10-15-automatic-power-consent-design.md).
 - [x] **11. Actor-aware lock:** Ancient Bloodline.
-- [ ] **12. Card play at another site:** Baron, New Growth, Forest Warden.
+- [x] **12. Card play at another site:** Baron, New Growth, Forest Warden.
 - [ ] **13. Campaign from another site:** Wild Allies, Captains.
 - [ ] **13b. Campaign kills at their moment.** A Campaign now kills the
   attacker's dead in one `Kill` at the kill step: the skull losses, the

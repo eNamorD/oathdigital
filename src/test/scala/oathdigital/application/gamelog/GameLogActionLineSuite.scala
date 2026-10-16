@@ -1,8 +1,14 @@
 package oathdigital.application.gamelog
 
+import oathdigital.gameplay.ModifierPlay
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
+import oathdigital.gameplay.powers.search.NewGrowth
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.protocol.projection.{LogKind, LogSpan}
+import oathdigital.testkit.{Answers, CatalogNames, MenuPlay, Table}
+import oathdigital.testkit.Table.{p1, p2, p3}
 import LogScripts._
 
 class GameLogActionLineSuite extends munit.FunSuite:
@@ -128,3 +134,32 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val site = facedownAdviser("placed-site", Some(PlayedAs.AtSite))
     assert(lines(site, None).exists(line => "^Played .+ to .+$".r.matches(line)),
       lines(site, None))
+
+  /** p1 holds New Growth faceup and Errand Boy, a Beast card, as a facedown
+    * adviser, which the Play-Facedown-Adviser action plays to Deep Woods
+    * with New Growth picked. It lives here, not in `LogScripts`, which is
+    * at the test files' line limit. */
+  private def facedownAdviserToAnotherSite(using munit.Location): Script =
+    val beast = CatalogNames.denizen("Errand Boy")
+    val woods = DecisionOptionRef.SiteSlot(CatalogNames.site("Deep Woods"), 0)
+    val (service, acted) = atTable("another-site", Table.start
+      .pawn(p1, "Ancient City").pawn(p2, "Broken Peaks")
+      .pawn(p3, "Buried Giant").adviser(p1, CatalogNames.denizen("New Growth"))
+      .adviser(p1, beast, facedown = true).banditsRefilled)
+    val pickingBeastThenDeepWoods: Answers = {
+      case park
+          if park.decisionId == CardPlayProcedure.facedownAdviserDecisionId =>
+        ChooseOneAnswer(DecisionOptionRef.Denizen(beast))
+      case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
+        ChooseOneAnswer(woods)
+    }
+    acted.withAnswers(ModifierPlay.answers(
+        PowerWindow.SearchModifierSelection, Vector(NewGrowth.id))
+        .orElse(pickingBeastThenDeepWoods))
+      .after(MenuPlay.start(p1, ActionRef.PlayFacedownAdviser))
+    Script("another-site", service, p1)
+
+  test("a card played to another site names that site"):
+    val script = facedownAdviserToAnotherSite
+    assert(lines(script, None).exists(_.matches(
+      "^Played .+ to Deep Woods$")), lines(script, None))

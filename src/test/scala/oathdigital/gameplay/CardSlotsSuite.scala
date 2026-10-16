@@ -115,7 +115,7 @@ class CardSlotsSuite extends munit.FunSuite:
     assertEquals(atSite(slots), Vector(siteSlot(2),
       replacing(siteSlot(0), rainBoots), replacing(siteSlot(1), binding)))
     assertEquals(slots.find(_.option == replacing(siteSlot(0), rainBoots))
-      .map(_.placement), Some(SearchPlacement.Site(Some(rainBoots))))
+      .map(_.placement), Some(SearchPlacement.Site(home, Some(rainBoots))))
 
   test("a full site is offered only as Replace slots, and not at all " +
       "without a permission"):
@@ -145,7 +145,7 @@ class CardSlotsSuite extends munit.FunSuite:
     assertEquals(atSite(slotsOf(beast)), Vector(siteSlot(2, woods),
       replacing(siteSlot(0, woods), rainBoots),
       replacing(siteSlot(1, woods), wolves)))
-    assertEquals(CardSlots.permissions(catalog, beast, p1, card,
+    assertEquals(CardSlots.permissions(catalog, beast, p1, card, woods,
       CardPlayRules.default).map(_.source), Vector(RuleNotes.homelandDiscard))
 
   test("playing a card of another suit at a Homeland may replace nothing"):
@@ -448,10 +448,10 @@ class CardSlotsSuite extends munit.FunSuite:
   test("the credits name one permission per discard, in the order the " +
       "permissions are given, and refuse more discards than permissions"):
     val ready = fullWithHall
-    assertEquals(CardSlots.credits(catalog, ready, p1, card, twoDiscards,
-      Vector(hall, rainBoots)), Right(Vector(testPermission.note,
-        secondTestPermission.note)))
-    assertEquals(CardSlots.credits(catalog, ready, p1, card, permitted,
+    assertEquals(CardSlots.credits(catalog, ready, p1, card, home,
+      twoDiscards, Vector(hall, rainBoots)), Right(Vector(
+        testPermission.note(home), secondTestPermission.note(home))))
+    assertEquals(CardSlots.credits(catalog, ready, p1, card, home, permitted,
       Vector(rainBoots, binding)), Left(OathViolation.InvalidSearchPlacement(
         "more site cards are discarded than the permissions in play allow")))
 
@@ -459,22 +459,23 @@ class CardSlotsSuite extends munit.FunSuite:
       "before the play"):
     val ready = atHome(rainBoots, binding).hand(p1, card).ready
     val operations = accepted(CardPlay.operations(catalog, ready, p1, card,
-      SearchPlacement.Site(Some(rainBoots)), CardPlay.Origin.TemporaryHand,
-      Vector(binding)))
+      SearchPlacement.Site(home, Some(rainBoots)),
+      CardPlay.Origin.TemporaryHand, Vector(binding)))
     assertEquals(operations.collect { case discard: Discard.Denizen =>
       discard.card }, Vector[CardId](rainBoots, binding))
     assert(operations.indexWhere(_.isInstanceOf[Play]) >
       operations.lastIndexWhere(_.isInstanceOf[Discard.Denizen]))
     assertEquals(CardPlay.operations(catalog, ready, p1, card,
-      SearchPlacement.Site(Some(rainBoots)), CardPlay.Origin.TemporaryHand,
-      Vector(rainBoots)), Left(OathViolation.InvalidSearchPlacement(
+      SearchPlacement.Site(home, Some(rainBoots)),
+      CardPlay.Origin.TemporaryHand, Vector(rainBoots)),
+      Left(OathViolation.InvalidSearchPlacement(
         "a site card is discarded twice")))
 
   test("a ruined edifice is discarded back to the edifice deck, not buried"):
     val ready = atHome(rainBoots).hand(p1, card).edifice(hall, EdificeSide.Ruined, at = home)
       .ready
     val operations = accepted(CardPlay.operations(catalog, ready, p1, card,
-      SearchPlacement.Site(Some(hall)), CardPlay.Origin.TemporaryHand))
+      SearchPlacement.Site(home, Some(hall)), CardPlay.Origin.TemporaryHand))
     assertEquals(operations.collect { case ruined: Discard.RuinedEdifice =>
       ruined.card }, Vector(hall))
     assertEquals(operations.collect { case bury: Bury => bury }, Vector.empty)
@@ -497,10 +498,131 @@ class CardSlotsSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(secondChance))), more.options.toString)
     assertEquals(more.most, 1)
 
+  private val giant = CatalogNames.site("Buried Giant")
+  private val openWoods =
+    CardPlayRules.default.openSites(PlacementFixture.opening(woods))
+
+  test("a rule that opens another site offers its empty slot after the " +
+      "pawn site's"):
+    val sites = options(slotsOf(atHome().hand(p1, card).ready,
+      rules = openWoods)).filter(_.ref.isInstanceOf[DecisionOptionRef.SiteSlot])
+    assertEquals(sites, Vector(siteSlot(0), siteSlot(0, at = woods)))
+
+  test("a full opened site offers nothing without a permission, and its " +
+      "Replace options with one"):
+    // An Order card: no Homeland rule at Deep Woods.
+    val honor = CatalogNames.denizen("Code of Honor")
+    val full = Vector(binding, wrestlers, rainBoots).foldLeft(
+      atHome().hand(p1, card).hand(p1, honor))((t, held) =>
+      t.denizen(held, at = woods)).ready
+    def atWoods(played: DenizenId) = options(slotsOf(full, played,
+      rules = openWoods)).filter(_.ref match
+        case DecisionOptionRef.SiteSlot(`woods`, _) => true
+        case _ => false)
+    assertEquals(atWoods(honor), Vector.empty)
+    // Errand Boy is Beast and Deep Woods the Beast Homeland: the Homeland
+    // rule's permission applies at the site played to.
+    assertEquals(atWoods(card), Vector(
+      replacing(siteSlot(0, at = woods), binding),
+      replacing(siteSlot(1, at = woods), wrestlers),
+      replacing(siteSlot(2, at = woods), rainBoots)))
+
+  test("a permission scoped to one site applies there and nowhere else"):
+    val scoped = openWoods.permitSiteDiscard(testPermission.copy(
+      appliesAt = (_, site) => site == woods))
+    val ready = atHome(rainBoots).hand(p1, CatalogNames.denizen("Wrestlers"))
+      .denizen(binding, at = woods).ready
+    val replaced = slotsOf(ready, CatalogNames.denizen("Wrestlers"),
+      rules = scoped).flatMap(_.replacedAtSite)
+    assertEquals(replaced, Vector[CardId](binding))
+
+  test("a site card discarded at another site goes to the pile after that " +
+      "site's region, and the play and its hook are the site's"):
+    val ready = atHome().hand(p1, card).denizen(binding, at = giant).ready
+    val operations = accepted(CardPlay.operations(catalog, ready, p1, card,
+      SearchPlacement.Site(giant, Some(binding)),
+      CardPlay.Origin.TemporaryHand))
+    val pile = present(ready.game.current.map.regionOf(giant)
+      .map(CardPlay.nextRegion), "Buried Giant's next region")
+    assertEquals(operations.collect { case d: Discard.Denizen => d.to },
+      Vector(pile))
+    assertNotEquals(Some(pile), CardPlay.discardRegion(ready, p1))
+    assert(operations.exists {
+      case Play(`card`, _, Location.Site(`giant`), _, _) => true
+      case _ => false
+    }, operations.toString)
+    assertEquals(CardPlay.playedSource(ready, p1, card,
+      SearchPlacement.Site(giant, None)),
+      Some(RuleSourceRef.SiteCard(giant, card)))
+
+  private val buryOnlyRules = CardPlayRules.default.permitSiteDiscard(
+    PlacementFixture.testBury)
+  private def bury(option: DecisionOption, card: CardId): DecisionOption =
+    DecisionOption.Burying(option, card)
+  private val horn = CatalogNames.relic("Cracked Horn")
+
+  test("a bury alone makes each Replace a bury, a locked card included"):
+    val ready = atHome(rainBoots).hand(p1, card)
+      .edifice(hall, EdificeSide.Intact, at = home).ready
+    val site = slotsOf(ready, rules = buryOnlyRules)
+      .filter(_.site.contains(home))
+    assertEquals(site.map(_.option), Vector(siteSlot(2),
+      bury(siteSlot(0), rainBoots), bury(siteSlot(1), hall)))
+    assertEquals(site.map(_.buried), Vector(None, Some(rainBoots),
+      Some(hall)))
+
+  test("a bury and a discard together leave each Replace a Replace that " +
+      "asks, and a card only a bury may take a bury"):
+    val ready = atHome(rainBoots).hand(p1, card)
+      .edifice(hall, EdificeSide.Intact, at = home).ready
+    val both = slotsOf(ready, rules = buryOnlyRules.permitSiteDiscard(
+      testPermission)).filter(_.site.contains(home))
+    assertEquals(both.map(s => (s.option, s.mayBury)), Vector(
+      (siteSlot(2), false), (replacing(siteSlot(0), rainBoots), true),
+      (bury(siteSlot(1), hall), false)))
+
+  test("at a site with room, each relic is offered as a bury, and a full " +
+      "site offers none"):
+    val ready = atHome().hand(p1, card).relicAt(horn, at = home).ready
+    val relic = DecisionOption.SiteRelicSlot(
+      DecisionOptionRef.SiteRelicSlot(home, 0))
+    val slots = slotsOf(ready, rules = buryOnlyRules)
+    assert(slots.exists(s => s.option == bury(relic, horn) &&
+      s.buried.contains(horn) &&
+      s.placement == SearchPlacement.Site(home, None)), slots.toString)
+    val full = atHome(rainBoots, binding, wrestlers).hand(p1, card)
+      .relicAt(horn, at = home).ready
+    assert(!slotsOf(full, rules = buryOnlyRules).exists(_.option.ref ==
+      relic.ref))
+
+  test("a play buries the named card, a relic included, " +
+      "and credits the bury"):
+    val ready = atHome(rainBoots).hand(p1, card).relicAt(horn, at = home)
+      .ready
+    val operations = accepted(CardPlay.operations(catalog, ready, p1, card,
+      SearchPlacement.Site(home, None), CardPlay.Origin.TemporaryHand,
+      buried = Some(horn)))
+    assertEquals(operations.collect { case b: Bury => b.card },
+      Vector(BuryableCard.Relic(horn)))
+    val replaced = accepted(CardPlay.operations(catalog, ready, p1, card,
+      SearchPlacement.Site(home, Some(rainBoots)),
+      CardPlay.Origin.TemporaryHand, buried = Some(rainBoots)))
+    assertEquals(replaced.collect { case b: Bury => b.card },
+      Vector(BuryableCard.Denizen(rainBoots)))
+    assertEquals(replaced.collect { case d: Discard.Denizen => d },
+      Vector.empty)
+    assertEquals(CardSlots.credits(catalog, ready, p1, card, home,
+      buryOnlyRules, Vector.empty, Some(rainBoots)).map(_.map(_.power)),
+      Right(Vector(PlacementFixture.testBury.source)))
+    assertEquals(CardSlots.credits(catalog, ready, p1, card, home,
+      buryOnlyRules, Vector(rainBoots)).left.toOption, Some(OathViolation
+      .InvalidSearchPlacement("more site cards are discarded than the " +
+        "permissions in play allow")))
+
   /** A limit that leaves only plays to a site open. */
   private val siteOnly = CardPlayRules.default.limitPlacements(
     PlacementLimit(OptionReason.Written("Test: site only"), {
-      case SearchPlacement.Site(_) => true
+      case SearchPlacement.Site(_, _) => true
       case _ => false
     }))
 

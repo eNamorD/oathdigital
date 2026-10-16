@@ -1,23 +1,33 @@
 package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.actions.{AdviserFace, CardPlay, CardPlayRules,
-  DiscardPermission, VisionRules}
+  DiscardPermission, SiteRemoval, VisionRules}
 import oathdigital.gameplay.operations.{OperationConsent,
   OperationRestrictions}
 import oathdigital.model._
 
 /** One way to play a card: the option the placement decision offers, and
   * where the planner puts the card when it is chosen. A Replace option's
-  * placement names the card it discards.
+  * placement names the card it removes. `buried` is the card the play
+  * buries ("Bury and replace" or "Bury and play"). `mayBury` marks a
+  * Replace whose card may be buried instead of discarded: the play asks
+  * which.
   */
-final case class CardSlot(option: DecisionOption, placement: SearchPlacement):
+final case class CardSlot(option: DecisionOption, placement: SearchPlacement,
+    buried: Option[CardId] = None, mayBury: Boolean = false):
   def ref: DecisionOptionRef = option.ref
 
-  /** The site card this play discards to make room, for a Replace site
+  /** The site card this play removes to make room, for a Replace site
     * slot. */
   def replacedAtSite: Option[CardId] = placement match
-    case SearchPlacement.Site(replaced) => replaced
+    case SearchPlacement.Site(_, replaced) => replaced
+    case _ => None
+
+  /** The site the card is played to, for a site slot. */
+  def site: Option[SiteId] = placement match
+    case SearchPlacement.Site(at, _) => Some(at)
     case _ => None
 
 /** The follow-up of a Replace site slot: the replaced card, shown chosen; the
@@ -26,13 +36,20 @@ final case class CardSlot(option: DecisionOption, placement: SearchPlacement):
 final case class MoreDiscards(locked: DecisionOption,
     options: Vector[DecisionOption], most: Int)
 
+/** The bury follow-up of a Replace site slot whose card was discarded: the
+  * site's other row cards and its relics, at most one to bury. */
+final case class MoreBuries(options: Vector[DecisionOption])
+
 /** Where a card may be played, as card slots (card play slots design, "Slot
   * builder").
   *
-  * The options, in order: the discard pile; the site's first empty slot,
-  * then, when a permission allows a site discard, each site card marked
-  * Replace; the faceup plays;
-  * the facedown plays. An adviser play is checked against the advisers as
+  * The options, in order: the discard pile; the site slots, the pawn
+  * site's first and then each opened site's in map order (`playSites`),
+  * each site's first empty slot, then each site card marked Replace when
+  * a discard permission holds there (or as a bury when only a bury
+  * permission may take it), then, while the site has room and a bury
+  * permission holds, each relic there as a bury; the faceup plays; the
+  * facedown plays. An adviser play is checked against the advisers as
   * they would be after it (`CardPlayRules.fits`): it offers a new slot when
   * that fits, and only that; or else each held adviser marked Replace whose
   * replacement fits, an adviser that does not count shown unavailable with
@@ -69,15 +86,18 @@ object CardSlots:
       picked: Vector[CardId] = Vector.empty): Vector[CardSlot] =
     ready.game.current.players.find(_.player == actor).toVector.flatMap {
       player =>
-        val candidates = discardPile(ready, actor).toVector ++
-          siteSlots(catalog, ready, player, card, rules) ++
-          faceup(player, card, origin, rules) ++
-          facedown(player, card, origin, rules)
-        limited(candidates.flatMap { (option, placement) =>
+        def judged(candidates: Vector[(DecisionOption, SearchPlacement)])
+            : Vector[CardSlot] = candidates.flatMap { (option, placement) =>
           judge(catalog, ready, actor, option, CardPlay.operations(catalog,
             ready, actor, card, placement, origin), picked)
             .map(CardSlot(_, placement))
-        }, rules)
+        }
+        limited(judged(discardPile(ready, actor).toVector) ++
+          playSites(ready, player, rules).flatMap(site =>
+            siteSlots(catalog, ready, player, card, origin, site, rules,
+              picked)) ++
+          judged(faceup(player, card, origin, rules) ++
+            facedown(player, card, origin, rules)), rules)
     }
 
   /** `slots` under the placement limits of `rules`: a play a limit
@@ -95,53 +115,101 @@ object CardSlots:
       if before.placement == SearchPlacement.Discard then before
       else after)
 
-  /** The site discard permissions of `actor`'s play of `card`: the Homeland
-    * rule's first, when the actor's site is the Homeland of the card's suit,
-    * then the powers'. */
-  def permissions(catalog: ExecutableCatalog, ready: ReadyGame,
-      actor: PlayerId, card: WorldCardId, rules: CardPlayRules)
-      : Vector[DiscardPermission] =
-    val homeland = for
-      site <- ready.game.current.players.find(_.player == actor)
-        .flatMap(_.pawnSite)
-      suit <- catalog.suitOf(card)
-      if CardPlay.homelandSuit(catalog, site).contains(suit)
-    yield CardPlayRules.homeland(site, actor)
-    homeland.toVector ++ rules.siteDiscards
+  /** The sites `player` may play to under `rules`: the pawn site, then
+    * each other site in play that a leave opens, in map order. */
+  def playSites(ready: ReadyGame, player: PlayerState,
+      rules: CardPlayRules): Vector[SiteId] =
+    val pawn = player.pawnSite.toVector
+    pawn ++ ready.game.current.map.inPlay.filter(site =>
+      !pawn.contains(site) && rules.opens(ready, site))
 
-  /** The follow-up of `slot`, a Replace site slot: the other site cards,
-    * an edifice included, and how many more the permissions left allow;
-    * `None` when nothing more may be discarded. */
+  /** The removal permissions of `actor`'s play of `card` to `site`: the
+    * Homeland rule's first, when `site` is the Homeland of the card's
+    * effective suit, then the powers' that hold there. */
+  def permissions(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, card: WorldCardId, site: SiteId,
+      rules: CardPlayRules): Vector[DiscardPermission] =
+    val homeland = for
+      suit <- EffectiveSuit.of(catalog, ready, card)
+      if CardPlay.homelandSuit(catalog, site).contains(suit)
+    yield CardPlayRules.homeland(site)
+    homeland.toVector ++ rules.siteDiscards.filter(_.appliesAt(ready, site))
+
+  /** The follow-up of `slot`, a Replace site slot: the other cards of its
+    * site's row, an edifice included, and how many more the discard
+    * permissions left allow. The replaced card spent one, unless it was
+    * buried (`buriedReplaced`). `None` when nothing more may be
+    * discarded. */
   def moreDiscards(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: CardPlay.Origin,
-      rules: CardPlayRules, slot: CardSlot,
+      rules: CardPlayRules, slot: CardSlot, buriedReplaced: Boolean = false,
       picked: Vector[CardId] = Vector.empty): Option[MoreDiscards] =
-    val permitted = permissions(catalog, ready, actor, card, rules)
-    val held = siteCards(ready, actor)
     for
+      site <- slot.site
       replacedId <- slot.replacedAtSite
+      held = rowCards(ready, site)
       replaced <- held.find(_.id == replacedId)
-      if permitted.size > 1
+      discards = permissions(catalog, ready, actor, card, site, rules)
+        .count(_.removal == SiteRemoval.Discard)
+      left = if buriedReplaced then discards else discards - 1
+      if left >= 1
       options = held.filter(_.id != replacedId).flatMap(other =>
         judge(catalog, ready, actor, optionOf(other), CardPlay.operations(
           catalog, ready, actor, card, slot.placement, origin,
-          Vector(other.id)), picked))
-      most = math.min(permitted.size - 1, options.count(_.available))
+          Vector(other.id), buried = Option.when(buriedReplaced)(replacedId)),
+          picked))
+      most = math.min(left, options.count(_.available))
       if most >= 1
     yield MoreDiscards(optionOf(replaced), options, most)
 
-  /** The line of the permission each discarded site card spent, in discard
-    * order: permissions are spent in the order `permissions` gives them, and
-    * every one covers any site card. Refused when more cards are discarded
-    * than there are permissions. */
+  /** The bury follow-up of `slot`, a Replace site slot whose card was
+    * discarded with `discarded` after it: the site's remaining row cards
+    * and every relic there, when a bury permission holds at the site;
+    * `None` when nothing may be buried. */
+  def moreBuries(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, card: WorldCardId, origin: CardPlay.Origin,
+      rules: CardPlayRules, slot: CardSlot, discarded: Vector[CardId],
+      picked: Vector[CardId] = Vector.empty): Option[MoreBuries] =
+    for
+      site <- slot.site
+      replacedId <- slot.replacedAtSite
+      if permissions(catalog, ready, actor, card, site, rules)
+        .exists(_.removal == SiteRemoval.Bury)
+      state <- ready.game.current.map.sites.get(site)
+      gone = replacedId +: discarded
+      rows = state.denizens.filterNot(c => gone.contains(c.id))
+        .map(c => (c.id: CardId) -> optionOf(c))
+      relics = state.relics.zipWithIndex.map((relic, index) =>
+        (relic.id: CardId) -> (DecisionOption.SiteRelicSlot(
+          DecisionOptionRef.SiteRelicSlot(site, index)): DecisionOption))
+      options = (rows ++ relics).flatMap((id, option) => judge(catalog,
+        ready, actor, option, CardPlay.operations(catalog, ready, actor,
+          card, slot.placement, origin, discarded, buried = Some(id)),
+        picked))
+      if options.exists(_.available)
+    yield MoreBuries(options)
+
+  /** The line of the permission each removal at `site` spent: discards
+    * spend the discard permissions and a bury a bury permission, each in
+    * the order `permissions` gives them, and every one covers any site
+    * card. Refused when more cards are removed than there are permissions
+    * for. */
   def credits(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      card: WorldCardId, rules: CardPlayRules, discarded: Vector[CardId])
+      card: WorldCardId, site: SiteId, rules: CardPlayRules,
+      discarded: Vector[CardId], buried: Option[CardId] = None)
       : Either[OathViolation, Vector[Note]] =
-    val permitted = permissions(catalog, ready, actor, card, rules)
-    Either.cond(discarded.size <= permitted.size,
-      permitted.take(discarded.size).map(_.note),
-      OathViolation.InvalidSearchPlacement(
-        "more site cards are discarded than the permissions in play allow"))
+    val permitted = permissions(catalog, ready, actor, card, site, rules)
+    val discards = permitted.filter(_.removal == SiteRemoval.Discard)
+    val buries = permitted.filter(_.removal == SiteRemoval.Bury)
+    for
+      _ <- Either.cond(discarded.size <= discards.size, (),
+        OathViolation.InvalidSearchPlacement("more site cards are " +
+          "discarded than the permissions in play allow"))
+      _ <- Either.cond(buried.size <= buries.size, (),
+        OathViolation.InvalidSearchPlacement("more site cards are buried " +
+          "than the permissions in play allow"))
+    yield (discards.take(discarded.size) ++ buries.take(buried.size))
+      .map(_.note(site))
 
   /** `option` as the restrictions in force judge the plan it stands for,
     * played by `actor`. It is kept as it is when nothing refuses. When only
@@ -175,24 +243,62 @@ object CardSlots:
       DecisionOption.DiscardPile(DecisionOptionRef.DiscardPile(region)) ->
         SearchPlacement.Discard)
 
+  /** The slots of `siteId`, judged: its first empty slot; each row card
+    * as a Replace when a discard permission holds there, or as a bury when
+    * only a bury permission may take it; and, while the site has room,
+    * each relic there as a bury when a bury permission holds. A Replace
+    * both may take asks which after it is chosen (`mayBury`). A bury is
+    * never refused by a lock, so a locked card a discard may not take is
+    * still offered as a bury. */
   private def siteSlots(catalog: ExecutableCatalog, ready: ReadyGame,
-      player: PlayerState, card: WorldCardId, rules: CardPlayRules)
-      : Vector[(DecisionOption, SearchPlacement)] =
+      player: PlayerState, card: WorldCardId, origin: CardPlay.Origin,
+      siteId: SiteId, rules: CardPlayRules, picked: Vector[CardId])
+      : Vector[CardSlot] =
+    val actor = player.player
     (for
-      siteId <- player.pawnSite
       site <- ready.game.current.map.sites.get(siteId)
       capacity <- catalog.site(siteId).map(_.capacity)
     yield
       def slot(index: Int): DecisionOption =
         DecisionOption.SiteSlot(DecisionOptionRef.SiteSlot(siteId, index))
-      val permitted = permissions(catalog, ready, player.player, card, rules)
-      val empty = Option.when(site.denizens.size < capacity)(
-        slot(site.denizens.size) -> SearchPlacement.Site(None))
-      val replacing = if permitted.isEmpty then Vector.empty
-        else site.denizens.zipWithIndex.map((held, index) =>
-          DecisionOption.Replacing(slot(index), held.id) ->
-            SearchPlacement.Site(Some(held.id)))
-      empty.toVector ++ replacing).getOrElse(Vector.empty)
+      def judged(option: DecisionOption, placement: SearchPlacement,
+          buried: Option[CardId] = None): Option[DecisionOption] =
+        judge(catalog, ready, actor, option, CardPlay.operations(catalog,
+          ready, actor, card, placement, origin, buried = buried), picked)
+      val permitted = permissions(catalog, ready, actor, card, siteId, rules)
+      val discards = permitted.exists(_.removal == SiteRemoval.Discard)
+      val buries = permitted.exists(_.removal == SiteRemoval.Bury)
+      val room = site.denizens.size < capacity
+      val open = SearchPlacement.Site(siteId, None)
+      val empty = Option.when(room)(slot(site.denizens.size)).flatMap(
+        option => judged(option, open).map(CardSlot(_, open)))
+      // A Replace a discard covers is a Replace; one only a bury may take
+      // is a bury; one both may take asks which, after it is chosen.
+      def replace(held: CardId, index: Int): Vector[CardSlot] =
+        val placement = SearchPlacement.Site(siteId, Some(held))
+        val discarded = Option.when(discards)(judged(
+          DecisionOption.Replacing(slot(index), held), placement)).flatten
+        val buried = Option.when(buries)(judged(
+          DecisionOption.Burying(slot(index), held), placement,
+          Some(held))).flatten
+        (discarded, buried) match
+          case (Some(d), Some(b)) if d.available && b.available =>
+            Vector(CardSlot(d, placement, mayBury = true))
+          case (Some(d), Some(b)) if !b.available && d.available =>
+            Vector(CardSlot(d, placement))
+          case (_, Some(b)) =>
+            Vector(CardSlot(b, placement, buried = Some(held)))
+          case (Some(d), None) => Vector(CardSlot(d, placement))
+          case (None, None) => Vector.empty
+      val replacing = site.denizens.zipWithIndex.flatMap((held, index) =>
+        replace(held.id, index))
+      val relics = if !room || !buries then Vector.empty
+        else site.relics.zipWithIndex.flatMap((relic, index) =>
+          judged(DecisionOption.Burying(DecisionOption.SiteRelicSlot(
+            DecisionOptionRef.SiteRelicSlot(siteId, index)), relic.id),
+            open, Some(relic.id)).map(CardSlot(_, open,
+              buried = Some(relic.id))))
+      empty.toVector ++ replacing ++ relics).getOrElse(Vector.empty)
 
   private def faceup(player: PlayerState, card: WorldCardId,
       origin: CardPlay.Origin, rules: CardPlayRules)
@@ -261,10 +367,9 @@ object CardSlots:
     else fitting.filter((index, fits) =>
       fits || rules.uncounted(faces(index)))
 
-  private def siteCards(ready: ReadyGame, actor: PlayerId)
+  private def rowCards(ready: ReadyGame, site: SiteId)
       : Vector[SiteDenizenState] =
-    ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
-      .flatMap(ready.game.current.map.sites.get)
+    ready.game.current.map.sites.get(site)
       .fold(Vector.empty[SiteDenizenState])(_.denizens)
 
   private def optionOf(card: SiteDenizenState): DecisionOption = card match

@@ -34,7 +34,7 @@ package oathdigital.model
   * part of a card's identity.
   */
 sealed trait DecisionOptionRef extends Product with Serializable:
-  /** Which of the sixteen variants this is, as a stable wire string. */
+  /** Which of the seventeen variants this is, as a stable wire string. */
   def kind: String
 
   /** The variant's identity as a stable wire string, paired with [[kind]].
@@ -119,6 +119,16 @@ object DecisionOptionRef:
     require(index >= 0, "a site slot must be non-negative")
     val kind: String = "site-slot"
     def wireId: String = s"${site.value}:$index"
+  /** Relic `index` of `site`'s relics, in their order there: a relic named
+    * by its place rather than by the card, so a facedown relic's identity
+    * is never disclosed by an option. The site may contain a colon; the
+    * index is always the text after the last one.
+    */
+  final case class SiteRelicSlot(site: SiteId, index: Int)
+      extends DecisionOptionRef:
+    require(index >= 0, "a site relic slot must be non-negative")
+    val kind: String = "site-relic-slot"
+    def wireId: String = s"${site.value}:$index"
   /** Playing the card to `owner`'s adviser slot `index`, faceup or facedown.
     * A choose-one answer is one ref, so the ref carries the facing, and an
     * adviser slot is offered as two options. The owner may contain a colon;
@@ -144,7 +154,7 @@ object DecisionOptionRef:
     * pair from untrusted input: `None` for an unknown kind or an id that
     * variant cannot carry, never a thrown `require`.
     *
-    * Total over the sixteen variants, and the exact inverse of the two
+    * Total over the seventeen variants, and the exact inverse of the two
     * accessors above — a new variant that forgets this method fails to
     * compile, because the match below is exhaustive over nothing and the
     * accessors are abstract.
@@ -168,6 +178,8 @@ object DecisionOptionRef:
       case "favor-bank" => Suit.fromKey(wireId).map(FavorBank(_))
       case "site-slot" => indexOf(wireId).map((site, index) =>
         SiteSlot(SiteId(site), index))
+      case "site-relic-slot" => indexOf(wireId).map((site, index) =>
+        SiteRelicSlot(SiteId(site), index))
       case "adviser-play" => facingOf(wireId).flatMap((slot, faceup) =>
         slotOf(slot).map((owner, index) => AdviserPlay(owner, index, faceup)))
       case "revealed-vision" => Some(RevealedVision(PlayerId(wireId)))
@@ -237,6 +249,8 @@ object DecisionOption:
       extends DecisionOption
   final case class SiteSlot(ref: DecisionOptionRef.SiteSlot)
       extends DecisionOption
+  final case class SiteRelicSlot(ref: DecisionOptionRef.SiteRelicSlot)
+      extends DecisionOption
   final case class AdviserPlay(ref: DecisionOptionRef.AdviserPlay)
       extends DecisionOption
   final case class RevealedVision(ref: DecisionOptionRef.RevealedVision)
@@ -294,6 +308,16 @@ object DecisionOption:
     def ref: DecisionOptionRef = option.ref
     override def available: Boolean = option.available
 
+  /** An option whose play buries `card` at the site first (Forest Warden):
+    * the card in that site slot, or the relic in that site relic slot.
+    * Wrapping for the reason `Replacing` wraps: `ref` is the wrapped
+    * option's. The projector names the card as the viewer may see it.
+    */
+  final case class Burying(option: DecisionOption, card: CardId)
+      extends DecisionOption:
+    def ref: DecisionOptionRef = option.ref
+    override def available: Boolean = option.available
+
   /** The option presenting `ref`, for every kind whose name the projector
     * resolves itself. A button has no such name: its label is authored, so
     * a reference alone cannot present one.
@@ -312,6 +336,7 @@ object DecisionOption:
     case value: DecisionOptionRef.Deck => Some(Deck(value))
     case value: DecisionOptionRef.FavorBank => Some(FavorBank(value))
     case value: DecisionOptionRef.SiteSlot => Some(SiteSlot(value))
+    case value: DecisionOptionRef.SiteRelicSlot => Some(SiteRelicSlot(value))
     case value: DecisionOptionRef.AdviserPlay => Some(AdviserPlay(value))
     case value: DecisionOptionRef.RevealedVision => Some(RevealedVision(value))
     case value: DecisionOptionRef.DiscardPile => Some(DiscardPile(value))

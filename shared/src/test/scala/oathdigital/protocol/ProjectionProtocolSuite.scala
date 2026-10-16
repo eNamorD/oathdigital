@@ -25,7 +25,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     world = Vector(SetupRegionProjection("cradle", Vector(SetupSiteProjection(
       "site:a", "Site A", 1, 2, 3, 2,
       Vector(SiteCardProjection("hidden", "Unknown", Some(hidden))),
-      SiteRelicsProjection(1, Vector(known)), defense = 2,
+      SiteRelicsProjection(Vector(known)), defense = 2,
       recoverDifficulty = Some(3), forgeCost = Some(ForgeCostProjection(1, 1)),
       powers = Vector(SitePowerProjection("rest", "Rest", Some("public"))),
       forces = Some(SiteForcesProjection.Exile(2, "red", PlayerColor.Red,
@@ -113,6 +113,14 @@ class ProjectionProtocolSuite extends munit.FunSuite:
         region.sites.map(site => site.copy(powers = Vector(
           SitePowerProjection("pass", "Pass", Some("text"),
             "site.narrow-pass.pass"))))))))
+
+  test("a bury option's mark round-trips"):
+    assertRoundTrips(projection.copy(
+      walkerDecision = Some(WalkerDecisionProjection("search",
+        "cardplay.place.denizen.1", "decide", query = Some(
+          DecisionQueryProjection.ChooseOne(Vector(DecisionOptionProjection(
+            "site-slot", "site:a:0", "Bury Known at Site A",
+            replaces = Some(known), buries = true))))))))
 
   test("a payload without consent parts decodes to none"):
     val raw = ujson.read(GameProjectionCodec.encode(projection))
@@ -414,10 +422,10 @@ class ProjectionProtocolSuite extends munit.FunSuite:
 
   test("projection decoder reports exact nested paths and unexpected fields"):
     val wrong = ujson.read(GameProjectionCodec.encode(projection))
-    wrong("world")(0)("sites")(0)("relics")("facedownCount") = "one"
+    wrong("world")(0)("sites")(0)("relics")("relics") = ujson.Obj()
     assertEquals(
       Unwrap.rejected(GameProjectionCodec.decode(ujson.write(wrong))).path,
-      "$.world[0].sites[0].relics.facedownCount")
+      "$.world[0].sites[0].relics.relics")
     val extra = ujson.read(GameProjectionCodec.encode(projection))
     extra("playerBoards")(0)("privateCardId") = "injected"
     assertEquals(

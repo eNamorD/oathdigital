@@ -80,10 +80,11 @@ class ServerUiSupportSuite extends FunSuite:
       .withRelicCapacity(2)
     val owner = SiteCardPresentation.from(site.withRelics(2, known))
     val other = SiteCardPresentation.from(site.withRelics(2))
-    assertEquals(owner.unknownRelicCount, 1)
-    assertEquals(other.unknownRelicCount, 2)
-    assertEquals(owner.peekedRelics.map(_.card.name), Vector("Ancient Crown"))
-    assertEquals(other.peekedRelics, Vector.empty)
+    assertEquals(owner.relics.count(_.hidden), 1)
+    assertEquals(other.relics.count(_.hidden), 2)
+    assertEquals(owner.relics.filterNot(_.hidden).map(_.name),
+      Vector("Ancient Crown"))
+    assertEquals(other.relics.filterNot(_.hidden), Vector.empty)
 
   test("pile symbols and shape classes distinguish public tops and empty piles"):
     assertEquals(ServerUiSupport.pileSymbol(2, Some("denizen")), "D")

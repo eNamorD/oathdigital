@@ -27,8 +27,15 @@ final case class SiteCardProjection(
     label: String,
     details: Option[CardDetailsProjection] = None):
   def denizenId: String = cardId
-final case class SiteRelicsProjection(facedownCount: Int,
-    knownRelics: Vector[CardDetailsProjection] = Vector.empty)
+/** A site's relics in their places, as the viewer may see them: a relic
+  * the viewer knows is its card, any other a hidden back. A relic's index
+  * here is its `site-relic-slot`. */
+final case class SiteRelicsProjection(
+    relics: Vector[CardDetailsProjection] = Vector.empty):
+  /** Every relic at the site; site relics lie facedown. */
+  def facedownCount: Int = relics.size
+  /** The relics the viewer knows. */
+  def knownRelics: Vector[CardDetailsProjection] = relics.filterNot(_.hidden)
 final case class ForgeCostProjection(favor: Int, secrets: Int)
 /** Whose warbands hold a site. One case per kind of force, so a force, its
   * ruler and its colour cannot disagree.

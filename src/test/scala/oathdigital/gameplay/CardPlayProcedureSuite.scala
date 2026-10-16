@@ -245,3 +245,107 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     assertEquals(dottedId, s"cardplay.place.vision.${dotted.value}")
     assertEquals(CardPlayProcedure.placedCard(pendingFor(dottedId)),
       Some(dotted))
+
+  test("a Replace at another site asks its follow-up over that site's " +
+      "cards"):
+    val woods = CatalogNames.site("Deep Woods")
+    val opensWoods = rulePower("test.opens-woods")(_
+      .openSites(PlacementFixture.opening(woods))
+      .permitSiteDiscard(testPermission).permitSiteDiscard(testPermission))
+    val ready = others.foldLeft(atHome.hand(actor, card))(
+      _.denizen(_, at = woods)).ready
+    val parked = parkOnPlacement(ready, WalkerPowers(Vector(opensWoods)))
+    val asked = Outcomes.parked(parked.place(
+      DecisionOptionRef.SiteSlot(woods, 0)))
+    val more = present(ProcedureWalker.parkedDecide(parked.ready,
+      parked.tree, asked.tree, parked.powers), "the follow-up")
+    assertEquals(more.decisionId, discardId)
+    val done = Outcomes.finished(parked.resolve(asked.tree, discardId,
+      DecisionAnswer.ChooseManyAnswer(Vector(
+        DecisionOptionRef.Denizen(others(1))))))
+    assertEquals(Look(done.treeless).cardsAt(woods),
+      Vector[CardId](others(2), card))
+    assertEquals(Look(done.treeless).cardsAt(home), Vector.empty[CardId])
+
+  private val buryAndDiscard = rulePower("test.bury-and-discard")(
+    _.permitSiteDiscard(testPermission)
+      .permitSiteDiscard(PlacementFixture.testBury))
+  private val replacedId = CardPlayProcedure.replacedDecisionId(card)
+  private val buryId = CardPlayProcedure.buryDecisionId(card)
+
+  test("a Replace both may cover asks bury or discard, and Bury buries the " +
+      "replaced card"):
+    val parked = parkOnPlacement(fullSite,
+      WalkerPowers(Vector(buryAndDiscard)))
+    val asked = Outcomes.parked(parked.place(DecisionOptionRef.SiteSlot(home,
+      0)))
+    val choice = present(ProcedureWalker.parkedDecide(parked.ready,
+      parked.tree, asked.tree, parked.powers), "the bury-or-discard choice")
+    assertEquals(choice.decisionId, replacedId)
+    assertEquals(choice.query, DecisionQuery.ChooseOne(Vector(
+      DecisionOption.Button(CardPlayProcedure.buryReplaced, "Bury"),
+      DecisionOption.Button(CardPlayProcedure.discardReplaced, "Discard")),
+      heading = Some("Bury or discard the replaced card")))
+    // The bury spent the bury permission, so the discard permission is
+    // left: the discard follow-up asks next.
+    val buried = Outcomes.parked(parked.resolve(asked.tree, replacedId,
+      DecisionAnswer.ChooseOneAnswer(CardPlayProcedure.buryReplaced)))
+    assertEquals(ProcedureWalker.parkedDecide(parked.ready, parked.tree,
+      buried.tree, parked.powers).map(_.decisionId), Some(discardId))
+    val done = Outcomes.finished(parked.resolve(buried.tree, discardId,
+      DecisionAnswer.ChooseManyAnswer(Vector.empty)))
+    assertEquals(done.treeless.game.current.commonCards.worldDeck.lastOption,
+      Some(others(0)))
+    assertEquals(Look(done.treeless).cardsAt(home),
+      Vector[CardId](others(1), others(2), card))
+
+  test("after Discard, the bury follow-up offers the other cards and the " +
+      "relics, and buries one"):
+    val horn = CatalogNames.relic("Cracked Horn")
+    val ready = others.foldLeft(atHome.hand(actor, card))(
+      _.denizen(_, at = home)).relicAt(horn, at = home).ready
+    val parked = parkOnPlacement(ready, WalkerPowers(Vector(buryAndDiscard)))
+    val asked = Outcomes.parked(parked.place(DecisionOptionRef.SiteSlot(home,
+      0)))
+    val chose = Outcomes.parked(parked.resolve(asked.tree, replacedId,
+      DecisionAnswer.ChooseOneAnswer(CardPlayProcedure.discardReplaced)))
+    val more = present(ProcedureWalker.parkedDecide(parked.ready,
+      parked.tree, chose.tree, parked.powers), "the bury follow-up")
+    assertEquals(more.decisionId, buryId)
+    val relic = DecisionOption.SiteRelicSlot(
+      DecisionOptionRef.SiteRelicSlot(home, 0))
+    assertEquals(more.query match
+      case many: DecisionQuery.ChooseMany =>
+        (many.min, many.max, many.options)
+      case other => fail(s"not a choose-many: $other"),
+      (0, 1, others.tail.map(id =>
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(id))) :+ relic))
+    val done = Outcomes.finished(parked.resolve(chose.tree, buryId,
+      DecisionAnswer.ChooseManyAnswer(Vector(relic.ref))))
+    assertEquals(done.treeless.game.current.commonCards.relicDeck.lastOption,
+      Some(horn))
+    assert(Look(done.treeless).discardAfter(home).contains(others(0)))
+
+  test("after Discard with a discard left, the discard follow-up asks " +
+      "before the bury follow-up"):
+    val twoDiscardsAndABury = rulePower("test.two-discards-and-a-bury")(
+      _.permitSiteDiscard(testPermission).permitSiteDiscard(testPermission)
+        .permitSiteDiscard(PlacementFixture.testBury))
+    val parked = parkOnPlacement(fullSite,
+      WalkerPowers(Vector(twoDiscardsAndABury)))
+    val asked = Outcomes.parked(parked.place(DecisionOptionRef.SiteSlot(home,
+      0)))
+    val chose = Outcomes.parked(parked.resolve(asked.tree, replacedId,
+      DecisionAnswer.ChooseOneAnswer(CardPlayProcedure.discardReplaced)))
+    assertEquals(ProcedureWalker.parkedDecide(parked.ready, parked.tree,
+      chose.tree, parked.powers).map(_.decisionId), Some(discardId))
+    val discarded = Outcomes.parked(parked.resolve(chose.tree, discardId,
+      DecisionAnswer.ChooseManyAnswer(Vector(
+        DecisionOptionRef.Denizen(others(1))))))
+    val bury = present(ProcedureWalker.parkedDecide(parked.ready,
+      parked.tree, discarded.tree, parked.powers), "the bury follow-up")
+    assertEquals(bury.decisionId, buryId)
+    assertEquals(bury.query match
+      case many: DecisionQuery.ChooseMany => many.options.map(_.ref)
+      case other => fail(s"not a choose-many: $other"),
+      Vector(DecisionOptionRef.Denizen(others(2))))
