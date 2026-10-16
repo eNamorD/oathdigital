@@ -5,6 +5,7 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignSetup}
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.QueuedStart
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseAmountAnswer
 import oathdigital.model.OathState.Ready
@@ -38,6 +39,16 @@ class CampaignOriginSuite extends munit.FunSuite:
   test("a Campaign started without a source refuses a site argument"):
     val (b, away) = rivalAloneAtASiteTheActorHolds(board = 1, atSite = 2)
     val refused = rules().startWalker(Ready(b.ready), ActionRef.Campaign,
+      b.actor, Vector(DecisionOptionRef.Site(away)))
+    assert(refused.isLeft, refused)
+
+  test("an entry with no source names no origin, so its site argument is " +
+      "refused"):
+    val (b, away) = rivalAloneAtASiteTheActorHolds(board = 1, atSite = 2)
+    val sourceless = QueuedStart.startingFrom(b.ready,
+      queuedCampaignEntry(b, away, source).copy(source = None))
+    assertEquals(CampaignSetup.queuedOrigin(sourceless, b.actor), None)
+    val refused = rules().startWalker(Ready(sourceless), ActionRef.Campaign,
       b.actor, Vector(DecisionOptionRef.Site(away)))
     assert(refused.isLeft, refused)
 

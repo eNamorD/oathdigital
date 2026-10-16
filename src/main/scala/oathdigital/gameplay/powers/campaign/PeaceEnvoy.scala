@@ -89,7 +89,10 @@ case object PeaceEnvoy extends BattlePlan:
         case Some((user, enemy)) => offer.copy(effects = Vector(
           CampaignPlanEffect.Run(Vector(
             gift(user, enemy, favor(context.ready, user)),
-            giftNote(context.side, user, enemy)))))
+            giftNote(context.side, user, enemy),
+            // Nothing is rolled and the losses kill nothing, so the
+            // attacker's dead are none, at the origin too (slice 13).
+            ModifyDicePool(CampaignIds.attackerSpared, 1)))))
         case None => offer.copy(withheld =
           Some(OptionReason.Written(PeaceEnvoy.Apart)))
     }

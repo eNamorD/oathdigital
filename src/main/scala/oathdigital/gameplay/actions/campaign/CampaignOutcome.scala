@@ -3,8 +3,9 @@ package oathdigital.gameplay.actions.campaign
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 
-/** What follows the victor. Read from the durable [[CampaignResult]] only:
-  * this is selected again after the losses have changed the board.
+/** What follows the victor. Read from the durable [[CampaignResult]] and
+  * the `attackerSpared` pool, which holds for the whole walk: this is
+  * selected again after the losses have changed the board.
   */
 private[campaign] object CampaignOutcome:
   def steps(ready: ReadyGame, catalog: ExecutableCatalog, actor: PlayerId,

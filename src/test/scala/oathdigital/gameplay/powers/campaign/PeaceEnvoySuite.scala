@@ -82,6 +82,23 @@ class PeaceEnvoySuite extends munit.FunSuite:
     assertEquals(giftLines(picked.events), Vector(NoteText.Said(
       "gave", s"Gave 2 favor to ${b.rival.value}.", covers = false)))
 
+  test("a defender's Envoy against a Campaign from an origin kills none " +
+      "there, and the split is not asked"):
+    val (base, away) = rivalAloneAtASiteTheActorHolds(board = 1, atSite = 3)
+    val b = on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
+      _.favor(base.rival, 5).favor(base.actor, 0))
+    val game = rules(losingDice)
+    val done = committed(game, campaignQueuedFrom(game, b, away,
+        PowerSourceRef.Card(CatalogNames.denizen("Wild Allies"))), b,
+        force = 4, raid = true)
+      .finishAttackerPlans(b.actor)
+      .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
+    assertEquals(done.winner, Some(false))
+    assert(!awaits(done, b.actor, CampaignIds.originDeaths))
+    assertEquals(Look(done.state).boardWarbands(b.actor), 1)
+    assertEquals(Look(done.state).forces(away), SiteForces.Occupied(
+      Look(done.state).forceKind(b.actor), 3))
+
   test("its price counts the gift"):
     val b = envoyAttackerWithRivalAtOrigin(favor = 5)
     val price = commit(rules(losingDice), b, 2).options(b.actor).collectFirst {

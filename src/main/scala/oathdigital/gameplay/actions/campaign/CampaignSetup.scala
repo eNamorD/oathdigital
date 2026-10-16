@@ -36,9 +36,9 @@ object CampaignIds:
   val sacrificeWorth: PoolKey = PoolKey("campaign.sacrifice-worth")
 
   /** Recorded by an attacker's plan that spares a defeated force
-    * (Billowing Fog, Traveling Doctor): the losses then kill only the
-    * skulls and the sacrifices. It is never rolled, and it is cleared with
-    * the others when the Campaign ends. */
+    * (Billowing Fog, Traveling Doctor), and by Peace Envoy on either side:
+    * the losses then kill only the skulls and the sacrifices. It is never
+    * rolled, and it is cleared with the others when the Campaign ends. */
   val attackerSpared: PoolKey = PoolKey("campaign.attacker-spared")
 
   val SupplyCost = 2

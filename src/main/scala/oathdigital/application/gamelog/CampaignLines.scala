@@ -181,10 +181,11 @@ private[gamelog] final class CampaignLines(words: LogWords,
     // A site kill is the defender's in a Conquest, at its targets, and the
     // attacker's in a Raid, at a queued origin (slice 13).
     def fromSite(location: Location) = location match
-      case _: Location.Site => result.kind match
+      case Location.Site(site) => result.kind match
         case CampaignKind.Conquest => loser == result.defender
         case CampaignKind.Raid =>
-          loser == CampaignDefender.Player(result.attacker)
+          loser == CampaignDefender.Player(result.attacker) &&
+            result.originForce.exists(_.site == site)
       case _ => false
     val killed = ops.collect {
       case OpStep(Kill(Piece.Warbands(_, count), PositionedLocation(place, _,

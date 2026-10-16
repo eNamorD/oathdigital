@@ -4,9 +4,9 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseAmountAnswer
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.testkit.{CatalogNames, Look}
 
 /** Billowing Fog: when its user is defeated, the defeat kills none of their

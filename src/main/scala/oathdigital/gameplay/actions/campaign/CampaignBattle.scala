@@ -202,7 +202,8 @@ object CampaignBattle:
       OathViolation.InvalidEventOrder("the Campaign's attacker is not in the game"))
       .map { attacker =>
         val deaths = attackerDeaths(result, attackerSpared(ready))
-        val kind = ForceKind.Exile(attacker.lineage)
+        val kind = PlayerForceKind.of(ready, attacker)
+          .getOrElse(ForceKind.Exile(attacker.lineage))
         val fromSite = result.originForce.fold(0) { origin =>
           val (least, most) = originDeathRange(origin, deaths)
           CampaignAnswers.originDeaths(pending)
