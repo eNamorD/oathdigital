@@ -164,6 +164,20 @@ object PlanDriver:
         : Option[OathViolation] =
       game.resolveWalker(state, who, id, answer).left.toOption
 
+    /** Answers the questions before `id` as `committed` does: a Raid at the
+      * kind question, the first player offered at the defender question and
+      * no extra targets, until `id` is parked. */
+    def answeredUntil(id: String): Run = parkedHere.parkedDecision(state) match
+      case Some(facts) if facts.decision != id => facts.decision match
+        case CampaignIds.kind => pick(facts.awaiting, facts.decision,
+          DecisionOptionRef.Button("raid")).answeredUntil(id)
+        case CampaignIds.defender => pick(facts.awaiting, facts.decision,
+          offered(facts.awaiting).head).answeredUntil(id)
+        case CampaignIds.targets => answer(facts.awaiting, facts.decision,
+          ChooseManyAnswer(Vector.empty)).answeredUntil(id)
+        case _ => this
+      case _ => this
+
     /** Finishes every plan window, sacrifices nothing and places nothing, until
       * the Campaign ends or asks something else.
       */

@@ -4,7 +4,7 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.campaign.BattlePlan
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{WalkerDice, WalkerPowers}
+import oathdigital.gameplay.walker.{QueuedStart, WalkerDice, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Table}
 
@@ -44,6 +44,42 @@ object CampaignFixture:
   /** The rival joins the actor at `origin`, so a Raid is legal. */
   def withEnemyAtOrigin(b: Board)(using munit.Location): Board =
     on(b)(_.pawn(b.rival, at = b.origin))
+
+  /** The `Run` entry a power queues for a Campaign from `origin`. */
+  def queuedCampaignEntry(b: Board, origin: SiteId,
+      source: PowerSourceRef): QueuedProcedure =
+    QueuedProcedure(b.actor, ActionRef.Campaign,
+      Vector(DecisionOptionRef.Site(origin)), Some(source), QueueKind.Run)
+
+  /** The board as the driver leaves it to start that entry: dequeued. */
+  def dequeuedCampaignFrom(b: Board, origin: SiteId,
+      source: PowerSourceRef): ReadyGame =
+    QueuedStart.startingFrom(b.ready, queuedCampaignEntry(b, origin, source))
+
+  /** p1 at the bandit-ruled Ancient City with `board` warbands on their
+    * board; the rival alone at a third site, with `rivalBoard` board
+    * warbands, where p1 has `atSite` warbands. Returns the board and that
+    * site. Suites of later tasks share it. */
+  def rivalAloneAtASiteTheActorHolds(board: Int, atSite: Int,
+      rivalBoard: Int = 3)(using munit.Location): (Board, SiteId) =
+    val base = CampaignFixture.board(warbands = board, supply = 7)
+    val current = base.ready.game.current
+    val away = current.map.inPlay.find(site => site != base.origin &&
+      !current.players.exists(_.pawnSite.contains(site))).get
+    val b = on(base)(table =>
+      val placed = table.pawn(base.rival, at = away)
+        .boardWarbands(base.rival, rivalBoard)
+      if atSite > 0 then placed.warbandsAt(away, base.actor, atSite)
+      else placed)
+    (b, away)
+
+  /** A Campaign started as the driver starts a power's queued `Run` that
+    * names `origin`: the entry dequeued, then the walk started with it. */
+  def campaignQueuedFrom(game: OathRules, b: Board, origin: SiteId,
+      source: PowerSourceRef)(using munit.Location): OathTransition =
+    game.startWalker(OathState.Ready(dequeuedCampaignFrom(b, origin, source)),
+      ActionRef.Campaign, b.actor, Vector(DecisionOptionRef.Site(origin)))
+      .fold(error => munit.Assertions.fail(s"no start: $error"), identity)
 
   /** `b` continued by Table steps. Suites build further on a board by hand,
     * so nothing is checked here. */
