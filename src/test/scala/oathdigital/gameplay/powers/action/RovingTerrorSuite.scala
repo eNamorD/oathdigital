@@ -44,13 +44,15 @@ class RovingTerrorSuite extends munit.FunSuite:
     assert(awaits(t, RovingTerror.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(Look(after(t)).tokensOn(terror), Tokens(0, 1))
-    assertEquals(offered(t, p1), Some(Vector("denizen" -> errandBoy.value)))
+    assertEquals(offered(t, p1), Some(Vector(
+      "site-slot" -> DecisionOptionRef.SiteSlot(peaks, 0).wireId)))
 
   test("the chosen denizen gets the standard discard, and Roving Terror " +
       "moves there with its secret"):
     val ready = staged.tokens(errandBoy, favor = 1, secrets = 1)
       .bankFavor(Suit.Beast, 2).ready
-    val UsedAndAnswered(t, done) = choose(ready, DecisionOptionRef.Denizen(errandBoy))
+    val UsedAndAnswered(t, done) = choose(ready,
+      DecisionOptionRef.SiteSlot(peaks, 0))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = Look(after(done))
     assertEquals(end.cardsAt(peaks), Vector[CardId](terror))
@@ -69,7 +71,8 @@ class RovingTerrorSuite extends munit.FunSuite:
 
   test("a ruined edifice goes to the bottom of the edifice deck"):
     val ready = staged.edifice(debate, EdificeSide.Ruined, at = giant).ready
-    val UsedAndAnswered(_, done) = choose(ready, DecisionOptionRef.Edifice(debate))
+    val UsedAndAnswered(_, done) = choose(ready,
+      DecisionOptionRef.SiteSlot(giant, 0))
     val end = after(done)
     assertEquals(Look(end).cardsAt(giant), Vector[CardId](terror))
     assertEquals(end.game.current.commonCards.edificeDeck.lastOption,
@@ -94,3 +97,10 @@ class RovingTerrorSuite extends munit.FunSuite:
     assert(!usableNow(broke).exists(_.power.id == RovingTerror.id))
     assertEquals(use(broke, power, source).left.toOption,
       Some(OathViolation.InsufficientSecrets(1, 0)))
+
+  test("it offers only cards to replace, never an empty slot"):
+    val ready = staged.ready
+    val woods = CatalogNames.site("Deep Woods")
+    val t = accepted(use(ready, power, source))
+    assert(!offered(t, p1).toVector.flatten.exists((kind, id) =>
+      kind == "site-slot" && id.startsWith(woods.value)))

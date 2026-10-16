@@ -20,6 +20,8 @@ class HallOfMinistersConsentServiceSuite extends munit.FunSuite:
   private val woods = CatalogNames.site("Deep Woods")
   private val errandBoy = CatalogNames.denizen("Errand Boy")
   private val errandBoyRef = DecisionOptionRef.Denizen(errandBoy)
+  /** Errand Boy's slot at Deep Woods, Roving Terror's answer for it. */
+  private val errandBoySlot = DecisionOptionRef.SiteSlot(woods, 0)
   /** Errand Boy at the Hall's site, which p2 rules; Wrestlers at Broken
     * Peaks, which the Hall does not protect, so the question is asked. */
   private val board = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
@@ -30,7 +32,7 @@ class HallOfMinistersConsentServiceSuite extends munit.FunSuite:
       at = CatalogNames.site("Broken Peaks"))
   private val useTerror = MenuPlay.starting(p1, ActionRef.UsePower(RovingTerror.id), Vector(DecisionOptionRef.Denizen(terror)))
   private val request = ConsentRequest(p1, RovingTerror.decisionId,
-    errandBoyRef, Vector(ConsentAsk(p2, Vector(HallOfMinisters.id))),
+    errandBoySlot, Vector(ConsentAsk(p2, Vector(HallOfMinisters.id))),
     Vector(ConsentKey(HallOfMinisters.id, p1, HallOfMinisters.discardKey,
       errandBoyRef)))
 
@@ -38,7 +40,8 @@ class HallOfMinistersConsentServiceSuite extends munit.FunSuite:
       : GameAccepted =
     val used = accepted(service.handle(gameId, 0L, useTerror))
     accepted(service.handle(gameId, used.nextSequence,
-      GameCommand.RequestConsent(p1, RovingTerror.decisionId, errandBoyRef)))
+      GameCommand.RequestConsent(p1, RovingTerror.decisionId,
+        errandBoySlot)))
 
   test("Yes lets Roving Terror take the card, as p1's own step, and the " +
       "journal reads back the same"):

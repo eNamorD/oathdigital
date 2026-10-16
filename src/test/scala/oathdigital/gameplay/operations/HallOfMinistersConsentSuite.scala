@@ -24,6 +24,8 @@ class HallOfMinistersConsentSuite extends munit.FunSuite:
   private val wrestlers = CatalogNames.denizen("Wrestlers")
   private val hall = CatalogNames.edifice("Hall of Ministers")
   private val errandBoyRef = DecisionOptionRef.Denizen(errandBoy)
+  /** Errand Boy's slot at Deep Woods, Roving Terror's answer for it. */
+  private val errandBoySlot = DecisionOptionRef.SiteSlot(woods, 0)
   private val covers = ConsentKey(HallOfMinisters.id, p1,
     HallOfMinisters.discardKey, errandBoyRef)
 
@@ -45,7 +47,7 @@ class HallOfMinistersConsentSuite extends munit.FunSuite:
 
   private def errandBoyRow(t: OathTransition)(using munit.Location) =
     present(queryOf(t, p1).toVector.flatMap(_.offeredOptions)
-      .find(_.id == errandBoy.value), "the Errand Boy row")
+      .find(_.id == errandBoySlot.wireId), "the Errand Boy row")
 
   test("a card the Hall protects for a player is askable of that player, " +
       "beside a card it does not protect"):
@@ -62,7 +64,7 @@ class HallOfMinistersConsentSuite extends munit.FunSuite:
   test("the ask names its granter and covers the card"):
     val t = accepted(use(guarded(), power, source))
     assertEquals(rules.consentAsk(t.state, p1, RovingTerror.decisionId,
-      errandBoyRef), Right(OptionReason.Askable(HallOfMinisters.id,
+      errandBoySlot), Right(OptionReason.Askable(HallOfMinisters.id,
         HallOfMinisters.noDiscardConsent(HallOfMinisters.source),
         Vector(ConsentAsk(p2, Vector(HallOfMinisters.id))), Vector(covers))))
 
@@ -105,7 +107,7 @@ class HallOfMinistersConsentSuite extends munit.FunSuite:
     val t = accepted(use(ready, power, source))
     assertEquals(errandBoyRow(t).state, "available")
     val done = accepted(answer(t, p1, RovingTerror.decisionId,
-      pick(errandBoyRef)))
+      pick(errandBoySlot)))
     assert(Look(after(done)).cardsAt(woods).contains(terror))
     assert(Look(after(done)).discardAfter(woods).contains(errandBoy))
 
