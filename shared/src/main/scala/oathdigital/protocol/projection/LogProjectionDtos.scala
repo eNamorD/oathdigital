@@ -41,8 +41,9 @@ final case class LogPageWire(gameId: String, after: Long, nextSequence: Long,
   * is a headline, depth 1 a line; only a line can carry a section.
   */
 final case class LogEntry(sequence: Long, ordinal: Int, kind: LogKind,
-    depth: Int, spans: Vector[LogSpan], section: Option[LogSection] = None,
-    takenBack: Option[LogTakenBack] = None)
+    spans: Vector[LogSpan], section: Option[LogSection] = None,
+    takenBack: Option[LogTakenBack] = None):
+  def depth: Int = kind.depth
 
 /** The taken-back group an entry belongs to (undo design, "Game Log"):
   * `group` is the sequence of the group's first entry, the same for every
@@ -56,21 +57,23 @@ final case class LogTakenBack(group: Long, header: Vector[LogSpan])
   * for a minor action. A client draws one band per section. */
 final case class LogSection(id: Long, action: String)
 
-/** `key` is the kind's wire spelling. */
-enum LogKind(val key: String):
-  case Round extends LogKind("round")
-  case Turn extends LogKind("turn")
+/** `key` is the kind's wire spelling, and `depth` where its entries sit: 0
+  * is a headline, 1 a line. The kind decides it, so no caller can post a
+  * headline at a line's depth and no wire can carry a disagreeing pair. */
+enum LogKind(val key: String, val depth: Int):
+  case Round extends LogKind("round", 0)
+  case Turn extends LogKind("turn", 0)
   /** Wake, Act or Rest, under its turn's headline. */
-  case Phase extends LogKind("phase")
+  case Phase extends LogKind("phase", 0)
   /** The tag that opens an action's band: its name and the Supply it spent
     * (log action sections design, "The tag entry"). */
-  case Section extends LogKind("section")
-  case Action extends LogKind("action")
-  case Decision extends LogKind("decision")
-  case Roll extends LogKind("roll")
-  case Delta extends LogKind("delta")
-  case Trigger extends LogKind("trigger")
-  case Victory extends LogKind("victory")
+  case Section extends LogKind("section", 1)
+  case Action extends LogKind("action", 1)
+  case Decision extends LogKind("decision", 1)
+  case Roll extends LogKind("roll", 1)
+  case Delta extends LogKind("delta", 1)
+  case Trigger extends LogKind("trigger", 1)
+  case Victory extends LogKind("victory", 0)
 
 /** One piece of an entry's text: plain words or a typed reference. `text` is
   * what a reader that ignores the kind shows. A card a viewer may not

@@ -47,7 +47,7 @@ private[gamelog] final class DetailLines(words: LogWords,
 
   /** "Rolled {faces}", then the pool's words. */
   private def rolled(pool: PoolKey, faces: Vector[DieFace]): Vector[Posted] =
-    LogWords.dice(faces).toVector.map(dice => Posted.line(LogKind.Roll,
+    LogWords.dice(faces).toVector.map(dice => Posted(LogKind.Roll,
       Vector(LogSpan.Text("Rolled "), dice) ++ DetailLines.forPool(pool)))
 
   private def decision(journal: LogJournal, run: Run, at: Int,
@@ -66,7 +66,7 @@ private[gamelog] final class DetailLines(words: LogWords,
         before <- journal.readyBefore(at)
         after <- journal.readyAfter(at)
         if refs.nonEmpty
-      yield Posted.line(LogKind.Decision, words.subject(by, run.actor, "chose")
+      yield Posted(LogKind.Decision, words.subject(by, run.actor, "chose")
         ++ choices.options(refs, before, after, viewer))).toVector
     case _ => Vector.empty
 
@@ -89,7 +89,7 @@ private[gamelog] final class DetailLines(words: LogWords,
     }.map {
       case DetailLines.Line(posted) => posted
       case DetailLines.Discarded(who, region, cards) =>
-        Posted.line(LogKind.Delta, who ++ words.cards(cards) ++ Vector(
+        Posted(LogKind.Delta, who ++ words.cards(cards) ++ Vector(
           LogSpan.Text(s" to the ${region.key.capitalize} discard")))
     }
 
@@ -100,7 +100,7 @@ private[gamelog] final class DetailLines(words: LogWords,
     val actor = run.actor
     val OpStep(operation, before, after) = step
     def line(spans: Vector[LogSpan]) =
-      Vector(Line(Posted.line(LogKind.Delta, spans)))
+      Vector(Line(Posted(LogKind.Delta, spans)))
     def card(id: CardId) = words.card(id, before, after, viewer)
     def gainedFavor(player: PlayerId, suit: Suit, amount: Int) =
       if run.procedure == ActionRef.Trade && player == actor then Vector.empty

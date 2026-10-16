@@ -33,9 +33,9 @@ private[gamelog] final class StartLines(words: LogWords,
         if said.isEmpty then Option.when(chosen.nonEmpty)(Text("With ") +: chosen)
         else Some(said ++ (if chosen.isEmpty then Vector.empty
           else Text(" with ") +: chosen))
-      Posted.line(LogKind.Section, Text(named) +:
+      Posted(LogKind.Section, Text(named) +:
         (queuedBy(journal, run, at, viewer) ++ cost(journal, run, at))) +:
-        line.toVector.map(Posted.line(LogKind.Action, _))
+        line.toVector.map(Posted(LogKind.Action, _))
     }
 
   /** " · Knights Errant" when the run was started from the queue: its
@@ -54,7 +54,7 @@ private[gamelog] final class StartLines(words: LogWords,
       case ActionRef.Recover
           if run.started.exists(_ != journal.segmentEnd(at)) =>
         val spent = journal.supplySpent(at, run.actor)
-        Option.when(spent > 0)(Posted.line(LogKind.Action,
+        Option.when(spent > 0)(Posted(LogKind.Action,
           Vector(Text("Continued"), LogSpan.Cost(spent, "Supply"))))
       case _ => None
 

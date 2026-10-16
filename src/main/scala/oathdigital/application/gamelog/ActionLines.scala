@@ -39,12 +39,12 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       }
       case TriggeredProcedureRef.Oathkeeper => ops.collect {
         case OpStep(SetOathkeeper(holder), _, _) =>
-          Posted.line(LogKind.Trigger, Vector(Text("Oathkeeper passed to "),
+          Posted(LogKind.Trigger, Vector(Text("Oathkeeper passed to "),
             holder.fold[LogSpan](Text("the bank"))(words.player)))
       }
       case PhaseTransitionRef.FinishRest => ops.collect {
         case OpStep(GainSupply(player, _), before, after) =>
-          Posted.line(LogKind.Delta, Vector(Text(
+          Posted(LogKind.Delta, Vector(Text(
             s"Increased supply from ${LogJournal.supply(before, player)} " +
               s"to ${LogJournal.supply(after, player)}")))
       }
@@ -401,7 +401,7 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
     case _ => None
 
 private[gamelog] object ActionLines:
-  def action(spans: Vector[LogSpan]): Posted = Posted.line(LogKind.Action, spans)
+  def action(spans: Vector[LogSpan]): Posted = Posted(LogKind.Action, spans)
 
   def plural(count: Int, one: String, many: String): String =
     if count == 1 then one else many

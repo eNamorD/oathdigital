@@ -121,7 +121,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
           case _ => opened
         val posted = quietWake(entries.lastOption, filed)
         (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
-          LogEntry(journal.sequence(at), ordinal, entry.kind, entry.depth,
+          LogEntry(journal.sequence(at), ordinal, entry.kind,
             entry.spans, entry.section) })
     }._2
 
@@ -146,21 +146,21 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     * longer journal never takes it back. */
   private def quietWake(last: Option[LogEntry], posted: Vector[Posted])
       : Vector[Posted] =
-    val previous = last.map(entry => (entry.kind, entry.depth, entry.spans))
+    val previous = last.map(entry => (entry.kind, entry.spans))
     posted.foldLeft((previous, Vector.empty[Posted])) {
       case ((before, done), entry) =>
         val quiet = entry == phaseHeadline(Phase.Act) &&
-          before.contains((LogKind.Phase, 0, phaseWords(Phase.Wake)))
-        val lines = if quiet then Vector(Posted.line(LogKind.Action,
+          before.contains((LogKind.Phase, phaseWords(Phase.Wake)))
+        val lines = if quiet then Vector(Posted(LogKind.Action,
           Vector(Text("Nothing happened in Wake"))), entry) else Vector(entry)
-        (Some((entry.kind, entry.depth, entry.spans)), done ++ lines)
+        (Some((entry.kind, entry.spans)), done ++ lines)
     }._2
 
   private def eventLines(journal: LogJournal, run: Option[Run], at: Int,
       viewer: Option[PlayerId]): (Vector[Posted], Option[Run]) =
     journal.event(at) match
       case OathEvent.GameStarted(_, _) =>
-        (Vector(Posted.headline(LogKind.Round, Vector(Text("Setup")))), run)
+        (Vector(Posted(LogKind.Round, Vector(Text("Setup")))), run)
       case OathEvent.RoundEnded(_, Some(next)) =>
         (roundHeadline(next) +: journal.readyAfter(at).toVector.flatMap(ready =>
           Vector(turnHeadline(ready.game.current.turn.activePlayer),
@@ -190,7 +190,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         walker(journal, run, at, viewer)
       // Outside any run; `formatLive` files it in the latest section.
       case FollowUpSkipped(entry) =>
-        (Vector(Posted.line(LogKind.Action,
+        (Vector(Posted(LogKind.Action,
           entry.source.toVector.flatMap(words.source(_,
             journal.readyBefore(at).toVector, viewer)) ++
             Vector(Text(s": ${starts.name(entry.procedure)
@@ -250,16 +250,16 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     case _ => Vector(Text("Rest"))
 
   private def phaseHeadline(phase: Phase): Posted =
-    Posted.headline(LogKind.Phase, phaseWords(phase))
+    Posted(LogKind.Phase, phaseWords(phase))
 
   private def roundHeadline(round: Int): Posted =
-    Posted.headline(LogKind.Round, Vector(Text(s"Round $round")))
+    Posted(LogKind.Round, Vector(Text(s"Round $round")))
 
   private def turnHeadline(player: PlayerId): Posted =
-    Posted.headline(LogKind.Turn, Vector(words.player(player), Text("'s turn")))
+    Posted(LogKind.Turn, Vector(words.player(player), Text("'s turn")))
 
   private def victory(player: PlayerId, rest: Vector[LogSpan]): Posted =
-    Posted.headline(LogKind.Victory, words.player(player) +: rest)
+    Posted(LogKind.Victory, words.player(player) +: rest)
 
   private def exhaustion(kind: VictoryKind, vision: Option[VisionId])
       : Vector[LogSpan] = kind match

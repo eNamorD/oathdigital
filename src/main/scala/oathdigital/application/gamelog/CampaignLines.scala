@@ -30,9 +30,9 @@ private[gamelog] final class CampaignLines(words: LogWords,
         setup <- CampaignSetup.setup(ready, run.actor,
           PendingTree(Vector.empty, journal.answers(run, at)))
       yield Vector(
-        Posted.line(LogKind.Decision, Text("Targets: ") +:
+        Posted(LogKind.Decision, Text("Targets: ") +:
           targets(setup, ready, viewer)),
-        Posted.line(LogKind.Delta, Vector(Text(s"Attack Pool: ${setup.force}, " +
+        Posted(LogKind.Delta, Vector(Text(s"Attack Pool: ${setup.force}, " +
           s"Defense Pool: ${CampaignBattle.printedDefense(catalog, setup)}")))))
         .getOrElse(Vector.empty)
     case WalkerStepRecorded(_, ChoicePayload(id, ChooseOneAnswer(ref), by), _, _)
@@ -41,7 +41,7 @@ private[gamelog] final class CampaignLines(words: LogWords,
       (for
         before <- journal.readyBefore(at)
         after <- journal.readyAfter(at)
-      yield Posted.line(LogKind.Decision, words.subject(by, run.actor,
+      yield Posted(LogKind.Decision, words.subject(by, run.actor,
         "activated") ++ choices.option(ref, before, after, viewer))).toVector
     case WalkerStepRecorded(_, ChoicePayload(CampaignIds.sacrifice,
         ChooseAmountAnswer(count), _), _, _) if count > 0 =>
@@ -51,7 +51,7 @@ private[gamelog] final class CampaignLines(words: LogWords,
       val attack = before.flatMap(_.game.current.rollOutcomes
         .get(CampaignIds.attackPool)).fold(0)(_.score)
       val worth = before.fold(1)(CampaignBattle.sacrificeWorth)
-      Vector(Posted.line(LogKind.Decision, Vector(Text(
+      Vector(Posted(LogKind.Decision, Vector(Text(
         s"Sacrificed $count ${plural(count, "warband", "warbands")} " +
           s"for an attack of ${attack + count * worth}"))))
     case _ => Vector.empty
@@ -84,7 +84,7 @@ private[gamelog] final class CampaignLines(words: LogWords,
     ops.zipWithIndex.collect {
       case (OpStep(ModifyDicePool(pool, _, _), before, after), _)
           if CampaignPlans.markedRef(pool).nonEmpty =>
-        Posted.line(LogKind.Decision, Text("The bandits activated ") +:
+        Posted(LogKind.Decision, Text("The bandits activated ") +:
           choices.option(CampaignPlans.markedRef(pool).get, before, after,
             viewer))
       case (OpStep(ModifyRollOutcome(CampaignIds.attackPool, skulls,
@@ -92,10 +92,10 @@ private[gamelog] final class CampaignLines(words: LogWords,
           if !rewritten(index, CampaignIds.attackPool) =>
         val paid = skulls.filter(_ > 0).fold("")(count =>
           s" with $count ${plural(count, "skull", "skulls")}")
-        Posted.line(LogKind.Roll, Vector(Text(s"Attack: $score$paid")))
+        Posted(LogKind.Roll, Vector(Text(s"Attack: $score$paid")))
       case (OpStep(ModifyRollOutcome(CampaignIds.defensePool, _, Some(score)),
           _, _), index) if !rewritten(index, CampaignIds.defensePool) =>
-        Posted.line(LogKind.Roll, Vector(Text(s"Defense: $score")))
+        Posted(LogKind.Roll, Vector(Text(s"Defense: $score")))
       case (OpStep(RecordCampaignResult(result), _, _), _) =>
         action(
           if result.attackerWins then
@@ -134,7 +134,7 @@ private[gamelog] final class CampaignLines(words: LogWords,
   private def ended(journal: LogJournal, run: Run, at: Int): Vector[Posted] =
     val skipped = CampaignAnswers.skipped(
       PendingTree(Vector.empty, journal.answers(run, at)))
-    Vector(Posted.line(LogKind.Delta, Vector(Text(
+    Vector(Posted(LogKind.Delta, Vector(Text(
       if skipped then "Skipped the Campaign."
       else "Nothing left to attack: the Campaign ended."))))
 
@@ -151,7 +151,7 @@ private[gamelog] final class CampaignLines(words: LogWords,
         }
         result.defender match
           case CampaignDefender.Player(defender) if taken.nonEmpty =>
-            Vector(Posted.line(LogKind.Delta, Text("Took ") +:
+            Vector(Posted(LogKind.Delta, Text("Took ") +:
               (LogWords.join(taken) ++ Vector(Text(" from "),
                 words.player(defender)))))
           case _ => Vector.empty
@@ -165,7 +165,7 @@ private[gamelog] final class CampaignLines(words: LogWords,
               words.site(site))
         }
         if placed.isEmpty then Vector.empty
-        else Vector(Posted.line(LogKind.Delta, Text("Placed ") +:
+        else Vector(Posted(LogKind.Delta, Text("Placed ") +:
           LogWords.join(placed)))
 
   private def losses(result: CampaignResult, actor: PlayerId,
@@ -230,4 +230,4 @@ private[gamelog] final class CampaignLines(words: LogWords,
       val spans = if subject.nonEmpty then subject ++ said else said match
         case Text(first) +: rest => Text(first.capitalize) +: rest
         case other => other
-      Vector(Posted.line(LogKind.Delta, spans))
+      Vector(Posted(LogKind.Delta, spans))
