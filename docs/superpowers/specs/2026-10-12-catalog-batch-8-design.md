@@ -195,8 +195,9 @@ The approved changes outside `gameplay/powers/`:
   `CardPlay` and `CardSlots` read it instead of the pawn site.
   `CardPlayRules` lets a power open other sites (`PlaySites`) and scope a
   removal permission to sites, and a permission is a discard or a bury.
-  The Replace path accepts a bury ("Bury and replace"), a relic may be
-  buried before a play ("Bury and play"), and two follow-ups ask "Bury or
+  The Replace path accepts a bury (a bury and replace), a relic may be
+  buried before a play (a bury and play), both badged "Bury" on the board,
+  and two follow-ups ask "Bury or
   discard the replaced card" and for one more bury. A site's relics gain
   a positional ref, `DecisionOptionRef.SiteRelicSlot`, and the site
   projection lists them by position.

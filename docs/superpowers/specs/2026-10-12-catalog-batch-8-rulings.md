@@ -454,8 +454,9 @@ The shared rules:
   Rotation, People's Favor Mob and Forest Warden apply at any site. Baron
   applies at ruled sites.
 - **Bury or discard.**
-  - A Replace covered only by Forest Warden is a bury, shown "Bury and
-    replace".
+  - A Replace covered only by Forest Warden is a bury: a bury and
+    replace. The board badges it "Bury" and labels it "Bury {card} at
+    {site}".
   - A Replace covered only by a discard permission is a discard, shown
     "Replace".
   - When both cover it, the option reads "Replace". A follow-up choose-one
@@ -464,8 +465,9 @@ The shared rules:
   - Forest Warden's bury is spent by the replaced card or by the bury
     follow-up, never twice.
 - **Relics.**
-  - At a site with room, each relic there is offered as "Bury and play",
-    and the card goes to the first empty slot.
+  - At a site with room, each relic there is offered as a bury and play,
+    and the card goes to the first empty slot. The board badges it "Bury"
+    and sums it up as "Bury {card}; play {card} here".
   - After a Replace that discarded, the follow-ups run in order. "Discard
     more cards from the site" offers row cards up to the discard
     permissions left. Then, if Forest Warden is still unused, "Bury a card
