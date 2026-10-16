@@ -16,9 +16,9 @@ import oathdigital.model._
   * the running action, and the restrictions the offered powers register.
   * Every one refuses as `Impossible`: an optional operation is skipped, a
   * required one rejects.
-  * `active` reads each printed restriction through [[ConsentedRestriction]],
-  * so a remembered grant lifts the refusal it covers (consent design, slice
-  * 3).
+  * `active` reads each printed restriction and each power's through
+  * [[ConsentedRestriction]], so a remembered grant lifts the refusal it
+  * covers (consent design, slice 3).
   */
 final class OperationRestrictions private (catalog: Option[ExecutableCatalog]):
   val printed: Vector[OperationRestriction] =
@@ -29,7 +29,8 @@ final class OperationRestrictions private (catalog: Option[ExecutableCatalog]):
       : Vector[OperationRestriction] =
     printed.map(ConsentedRestriction(_)) ++ catalog
       .filter(_ => modifiers.nonEmpty || picked.nonEmpty)
-      .map(ActiveModifier(_, modifiers, picked)).toVector ++ powerRestrictions
+      .map(ActiveModifier(_, modifiers, picked)).toVector ++
+      powerRestrictions.map(ConsentedRestriction(_))
 
 object OperationRestrictions:
   /** No catalog: only the powers' own restrictions hold. For suites that

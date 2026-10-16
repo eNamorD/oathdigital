@@ -6,6 +6,12 @@ sealed trait OathViolation extends Product with Serializable
 object OathViolation:
   final case class CoreOperationRejected(code: String, detail: String)
       extends OathViolation
+  /** A required operation a waivable restriction refused (consent design,
+    * slice 3). `waiver` names who may lift it and the key a grant is
+    * remembered under, so the walker's search can ask about the option
+    * whose path it met (catalog batch 8, slice 10). */
+  final case class WaivableOperationRejected(code: String, detail: String,
+      waiver: OperationWaiver) extends OathViolation
   final case class UnsupportedRuleCatalog(expected: String, actual: String)
       extends OathViolation
   case object GameAlreadyExists extends OathViolation

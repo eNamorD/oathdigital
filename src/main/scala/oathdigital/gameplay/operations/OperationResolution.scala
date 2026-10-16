@@ -145,4 +145,7 @@ object OperationResolution:
     case _ => None
 
   private def rejection(reason: OperationReason): OathViolation =
-    OathViolation.CoreOperationRejected(reason.code, reason.detail)
+    reason.waiver.fold[OathViolation](OathViolation.CoreOperationRejected(
+      reason.code, reason.detail))(waiver =>
+      OathViolation.WaivableOperationRejected(reason.code, reason.detail,
+        waiver))
