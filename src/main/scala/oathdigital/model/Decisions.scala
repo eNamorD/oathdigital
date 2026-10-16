@@ -308,6 +308,16 @@ object DecisionOption:
     def ref: DecisionOptionRef = option.ref
     override def available: Boolean = option.available
 
+  /** An option whose play buries `card` at the site first (Forest Warden):
+    * the card in that site slot, or the relic in that site relic slot.
+    * Wrapping for the reason `Replacing` wraps: `ref` is the wrapped
+    * option's. The projector names the card as the viewer may see it.
+    */
+  final case class Burying(option: DecisionOption, card: CardId)
+      extends DecisionOption:
+    def ref: DecisionOptionRef = option.ref
+    override def available: Boolean = option.available
+
   /** The option presenting `ref`, for every kind whose name the projector
     * resolves itself. A button has no such name: its label is authored, so
     * a reference alone cannot present one.

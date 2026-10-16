@@ -313,6 +313,7 @@ private[projection] object ActionProjectionCodec:
       "badge" -> stringOption(row.badge), "state" -> row.state,
       "reason" -> stringOption(row.reason),
       "replaces" -> option(row.replaces)(encodeCard),
+      "buries" -> ujson.Bool(row.buries),
       "variant" -> stringOption(row.variant),
       "consent" -> option(row.consent)(ConsentProjectionCodec.encodeAsk))
 
@@ -320,7 +321,7 @@ private[projection] object ActionProjectionCodec:
       : Result[DecisionOptionProjection] = for
     row <- obj(raw, child)
     _ <- exact(row, Set("kind", "id", "label", "card", "details", "badge",
-      "state", "reason", "replaces", "variant", "consent"), child)
+      "state", "reason", "replaces", "buries", "variant", "consent"), child)
     kind <- string(row, "kind", child); id <- string(row, "id", child)
     label <- string(row, "label", child)
     card <- optionalAbsent(row, "card", child)(decodeCard)
@@ -329,11 +330,12 @@ private[projection] object ActionProjectionCodec:
     state <- default(row, "state", child, "available")(string)
     reason <- optionalAbsent(row, "reason", child)(string)
     replaces <- optionalAbsent(row, "replaces", child)(decodeCard)
+    buries <- boolOr(row, "buries", child, false)
     variant <- optionalAbsent(row, "variant", child)(string)
     consent <- optionalAbsent(row, "consent", child)(
       ConsentProjectionCodec.decodeAsk)
   yield DecisionOptionProjection(kind, id, label, card, details, badge, state,
-    reason, replaces, variant, consent)
+    reason, replaces, buries, variant, consent)
 
   private def encodeTransfer(row: NegotiationTransferProjection): ujson.Value =
     ujson.Obj("authorPlayerId" -> row.authorPlayerId,

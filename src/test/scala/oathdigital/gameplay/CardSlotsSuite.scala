@@ -555,6 +555,70 @@ class CardSlotsSuite extends munit.FunSuite:
       SearchPlacement.Site(giant, None)),
       Some(RuleSourceRef.SiteCard(giant, card)))
 
+  private val burying = CardPlayRules.default.permitSiteDiscard(
+    PlacementFixture.testBury)
+  private def bury(option: DecisionOption, card: CardId): DecisionOption =
+    DecisionOption.Burying(option, card)
+  private val horn = CatalogNames.relic("Cracked Horn")
+
+  test("a bury alone makes each Replace a bury, a locked card included"):
+    val ready = atHome(rainBoots).hand(p1, card)
+      .edifice(hall, EdificeSide.Intact, at = home).ready
+    val site = slotsOf(ready, rules = burying)
+      .filter(_.site.contains(home))
+    assertEquals(site.map(_.option), Vector(siteSlot(2),
+      bury(siteSlot(0), rainBoots), bury(siteSlot(1), hall)))
+    assertEquals(site.map(_.buried), Vector(None, Some(rainBoots),
+      Some(hall)))
+
+  test("a bury and a discard together leave each Replace a Replace that " +
+      "asks, and a card only a bury may take a bury"):
+    val ready = atHome(rainBoots).hand(p1, card)
+      .edifice(hall, EdificeSide.Intact, at = home).ready
+    val both = slotsOf(ready, rules = burying.permitSiteDiscard(
+      testPermission)).filter(_.site.contains(home))
+    assertEquals(both.map(s => (s.option, s.mayBury)), Vector(
+      (siteSlot(2), false), (replacing(siteSlot(0), rainBoots), true),
+      (bury(siteSlot(1), hall), false)))
+
+  test("at a site with room, each relic is offered as a bury, and a full " +
+      "site offers none"):
+    val ready = atHome().hand(p1, card).relicAt(horn, at = home).ready
+    val relic = DecisionOption.SiteRelicSlot(
+      DecisionOptionRef.SiteRelicSlot(home, 0))
+    val slots = slotsOf(ready, rules = burying)
+    assert(slots.exists(s => s.option == bury(relic, horn) &&
+      s.buried.contains(horn) &&
+      s.placement == SearchPlacement.Site(home, None)), slots.toString)
+    val full = atHome(rainBoots, binding, wrestlers).hand(p1, card)
+      .relicAt(horn, at = home).ready
+    assert(!slotsOf(full, rules = burying).exists(_.option.ref ==
+      relic.ref))
+
+  test("a play buries the named card with its returns, a relic included, " +
+      "and credits the bury"):
+    val ready = atHome(rainBoots).hand(p1, card).relicAt(horn, at = home)
+      .ready
+    val operations = accepted(CardPlay.operations(catalog, ready, p1, card,
+      SearchPlacement.Site(home, None), CardPlay.Origin.TemporaryHand,
+      buried = Some(horn)))
+    assertEquals(operations.collect { case b: Bury => b.card },
+      Vector(BuryableCard.Relic(horn)))
+    val replaced = accepted(CardPlay.operations(catalog, ready, p1, card,
+      SearchPlacement.Site(home, Some(rainBoots)),
+      CardPlay.Origin.TemporaryHand, buried = Some(rainBoots)))
+    assertEquals(replaced.collect { case b: Bury => b.card },
+      Vector(BuryableCard.Denizen(rainBoots)))
+    assertEquals(replaced.collect { case d: Discard.Denizen => d },
+      Vector.empty)
+    assertEquals(CardSlots.credits(catalog, ready, p1, card, home, burying,
+      Vector.empty, Some(rainBoots)).map(_.map(_.power)),
+      Right(Vector(PlacementFixture.testBury.source)))
+    assertEquals(CardSlots.credits(catalog, ready, p1, card, home, burying,
+      Vector(rainBoots)).left.toOption, Some(OathViolation
+      .InvalidSearchPlacement("more site cards are discarded than the " +
+        "permissions in play allow")))
+
   /** A limit that leaves only plays to a site open. */
   private val siteOnly = CardPlayRules.default.limitPlacements(
     PlacementLimit(OptionReason.Written("Test: site only"), {

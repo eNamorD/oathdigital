@@ -114,6 +114,14 @@ class ProjectionProtocolSuite extends munit.FunSuite:
           SitePowerProjection("pass", "Pass", Some("text"),
             "site.narrow-pass.pass"))))))))
 
+  test("a bury option's mark round-trips"):
+    assertRoundTrips(projection.copy(
+      walkerDecision = Some(WalkerDecisionProjection("search",
+        "cardplay.place.denizen.1", "decide", query = Some(
+          DecisionQueryProjection.ChooseOne(Vector(DecisionOptionProjection(
+            "site-slot", "site:a:0", "Bury Known at Site A",
+            replaces = Some(known), buries = true))))))))
+
   test("a payload without consent parts decodes to none"):
     val raw = ujson.read(GameProjectionCodec.encode(projection))
     Vector("consentWaiting", "consentPrompt", "consentPreferences")

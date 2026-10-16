@@ -70,4 +70,5 @@ private[gamelog] final class ChoiceWords(words: LogWords,
     case DecisionOption.Warned(inner, _) => labelled(ref)(inner)
     case DecisionOption.Unavailable(inner, _) => labelled(ref)(inner)
     case DecisionOption.Replacing(inner, _) => labelled(ref)(inner)
+    case DecisionOption.Burying(inner, _) => labelled(ref)(inner)
     case _ => None

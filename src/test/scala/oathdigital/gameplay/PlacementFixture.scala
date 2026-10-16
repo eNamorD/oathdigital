@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission,
-  PlaySites}
+  PlaySites, SiteRemoval}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -41,6 +41,12 @@ object PlacementFixture:
 
   /** A plain site discard permission, of any card, whose line says nothing. */
   val testPermission: DiscardPermission = plainPermission("test.discard-first")
+
+  /** A plain bury permission, of any card at any site, whose line says
+    * nothing. */
+  val testBury: DiscardPermission =
+    val note = Note(PowerId("test.bury"), _ => None)
+    DiscardPermission(PowerId("test.bury"), _ => note, SiteRemoval.Bury)
 
   /** A second plain site discard permission, besides `testPermission`. */
   val secondTestPermission: DiscardPermission =

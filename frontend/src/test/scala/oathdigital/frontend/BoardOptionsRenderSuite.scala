@@ -195,6 +195,15 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     click(one(root, """[data-option-ref="site-relic-slot:woods:1"]"""))
     assertEquals(shown.picks, Vector(known, unknown))
 
+  test("a bury option carries the Bury badge"):
+    val buried = option("site-slot", "woods:0").copy(replaces = Some(fox),
+      buries = true)
+    val root = world(recording(available(buried)).options)
+    assertEquals(all(root, ".board-option-badge").map(_.textContent),
+      Vector("Bury"))
+    assertEquals(one(root, """[data-option-ref="site-slot:woods:0"]""")
+      .getAttribute("aria-label"), "Fox, Bury")
+
   test("a Replace option carries the badge, and an empty slot does not"):
     val replace = option("site-slot", "woods:0").copy(replaces = Some(fox))
     val shown = recording(available(replace),

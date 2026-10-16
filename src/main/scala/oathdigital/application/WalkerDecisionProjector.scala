@@ -2,6 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.{ConsentPowers, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.powerresolver.PhasePowers
@@ -375,6 +376,13 @@ private[application] final class WalkerDecisionProjector(
         optionProjection(ready, viewer, index, inner, details).map(row =>
           row.copy(label = replacingLabel(inner.ref, replaced.name),
             replaces = Some(replaced)))
+      case DecisionOption.Burying(inner, card) =>
+        val buried = shown(ready, viewer, index, card)
+        val name = if buried.hidden then s"a ${buried.name.toLowerCase}"
+          else buried.name
+        optionProjection(ready, viewer, index, inner, details).map(row =>
+          row.copy(label = buryingLabel(inner.ref, name),
+            replaces = Some(buried), buries = true))
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
         if ready.game.current.players.exists(_.player == player.id) then
@@ -466,6 +474,11 @@ private[application] final class WalkerDecisionProjector(
         s"Replace $name as revealed Vision"
       case _ => s"Replace $name"
 
+  /** A bury option's label: the card it buries, and where. */
+  private def buryingLabel(ref: DecisionOptionRef, name: String): String =
+    CardPlayProcedure.siteOf(ref).fold(s"Bury $name")(site =>
+      s"Bury $name at ${presentation.siteLabel(site)}")
+
   private def facing(faceup: Boolean): String =
     if faceup then "faceup" else "facedown"
 
@@ -528,7 +541,8 @@ private[application] final class WalkerDecisionProjector(
       viewer: Option[PlayerId], decisionId: String)
       : Vector[CardDetailsProjection] =
     val index = ready.game.cardIndex.toOption
-    val prefixes = Vector("cardplay.place.", "cardplay.discard.")
+    val prefixes = Vector("cardplay.place.", "cardplay.discard.",
+      "cardplay.replaced.", "cardplay.bury.")
     prefixes.find(decisionId.startsWith).toVector.flatMap { prefix =>
       decisionId.stripPrefix(prefix).split("\\.", 2).toVector match
         case Vector("denizen", value) => Vector(DenizenId(value): CardId)
@@ -555,6 +569,9 @@ private[application] final class WalkerDecisionProjector(
       else if decisionId.startsWith("cardplay.discard.") then
         followUpSite(ready, projected).map(site =>
           s"Discard more cards from ${presentation.siteLabel(site)}")
+      else if decisionId.startsWith("cardplay.bury.") then
+        followUpSite(ready, projected).map(site =>
+          s"Bury a card at ${presentation.siteLabel(site)}")
       else None
     heading.fold(query)(text => query match
       case one: DecisionQueryProjection.ChooseOne =>
@@ -587,7 +604,8 @@ private[application] final class WalkerDecisionProjector(
       played: CardDetailsProjection): DecisionQueryProjection =
     def worded(option: DecisionOptionProjection) = option.replaces
       .filterNot(_.hidden).fold(option)(replaced => option.copy(label =
-        s"Discard ${replaced.name}; play ${played.name} here" +
+        s"${if option.buries then "Bury" else "Discard"} ${replaced.name}; " +
+          s"play ${played.name} here" +
           option.variant.fold("")(word => s", ${word.toLowerCase}")))
     query match
       case one: DecisionQueryProjection.ChooseOne =>

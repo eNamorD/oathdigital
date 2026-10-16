@@ -65,9 +65,19 @@ object PlacementPicks:
     * availability, price or badge mark. */
   def replaces(option: DecisionOption): Option[CardId] = option match
     case DecisionOption.Replacing(_, card) => Some(card)
+    case DecisionOption.Burying(_, card) => Some(card)
     case DecisionOption.Unavailable(inner, _) => replaces(inner)
     case DecisionOption.Priced(inner, _) => replaces(inner)
     case DecisionOption.Badged(inner, _) => replaces(inner)
+    case _ => None
+
+  /** The card `option` buries, read through any availability, price or
+    * badge mark. */
+  def buries(option: DecisionOption): Option[CardId] = option match
+    case DecisionOption.Burying(_, card) => Some(card)
+    case DecisionOption.Unavailable(inner, _) => buries(inner)
+    case DecisionOption.Priced(inner, _) => buries(inner)
+    case DecisionOption.Badged(inner, _) => buries(inner)
     case _ => None
 
   /** The option of `options` that plays the card `way` in the place of

@@ -45,6 +45,13 @@ class SlotOptionRowsSuite extends munit.FunSuite:
     assertEquals(row.label, s"Replace Wrestlers at $site")
     assertEquals(row.replaces.map(_.cardId), Some(wrestlers.value))
 
+  test("a bury names the card it buries and is marked a bury"):
+    val row = rowOf(DecisionOption.Burying(
+      DecisionOption.SiteSlot(DecisionOptionRef.SiteSlot(home, 0)), wrestlers))
+    assertEquals(row.label, s"Bury Wrestlers at $site")
+    assertEquals((row.replaces.map(_.cardId), row.buries),
+      (Some(wrestlers.value), true))
+
   test("a site slot past the site's capacity is not presentable"):
     assertEquals(projector.optionProjection(board, Some(p1), None,
       DecisionOption.SiteSlot(DecisionOptionRef.SiteSlot(home, 3))), None)
