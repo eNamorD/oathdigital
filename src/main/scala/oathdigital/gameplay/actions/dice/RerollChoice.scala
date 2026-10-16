@@ -47,10 +47,8 @@ final class RerollChoice(val pool: PoolKey, val die: DiceKind,
       else Vector[Operation](
         // A walk parked on the question keeps it, though a ruler's refusal
         // has since left nothing to pick (catalog batch 8, slice 10).
-        Branch((_, tree) => if !playable && tree.answered.exists {
-            case Answered(`decisionId`, _, _) => true
-            case _ => false
-          } then Vector.empty
+        Branch((ready, tree) => if !playable && !ready.game.current
+            .walkerPending.exists(_.at.startsWith(tree.at)) then Vector.empty
           else Vector(decision(decisionId, listed))),
         Branch((_, tree) => RerollChoice.picked(tree, decisionId) match {
           case None => Vector.empty
