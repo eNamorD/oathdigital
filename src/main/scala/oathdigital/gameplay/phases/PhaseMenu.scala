@@ -137,11 +137,9 @@ object PhaseMenu:
           // are left out of the walk too, since their placement bans
           // refuse the use's own cost under the same grant (catalog batch
           // 8, slice 10).
-          val refusers = refused.map(_.power).toSet
           val unrefused = offered(ActionRef.UsePower(power.id), Vector(ref),
             option, phasePowers.copy(useRestrictions = Vector.empty),
-            powers.copy(powers = powers.powers.filterNot(walker =>
-              refusers(walker.id))))
+            powers.without(refused.map(_.power).toSet))
           if !unrefused.option.available then unrefused
           else unrefused.copy(option = DecisionOption.Unavailable(option,
             PowerUseRules.shown(ready, actor, refused, consent = true)))))

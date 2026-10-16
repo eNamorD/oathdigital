@@ -58,6 +58,14 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
   /** The verdicts this instance's searches have found (see [[SearchMemo]]). */
   private[walker] lazy val searchMemo: SearchMemo = new SearchMemo
 
+  /** These powers without `refusers`: what a use refused by their power-use
+    * restrictions would meet once granted, since one grant also lifts their
+    * placement bans on its card (catalog batch 8, slice 10). A copy has its
+    * own search memo. */
+  def without(refusers: Set[PowerId]): WalkerPowers =
+    if !powers.exists(power => refusers(power.id)) then this
+    else copy(powers = powers.filterNot(power => refusers(power.id)))
+
   /** These powers without the search, for a dry run inside one. It is built
     * once per instance, so repeated dry runs share one copy and build its
     * restrictions once. */

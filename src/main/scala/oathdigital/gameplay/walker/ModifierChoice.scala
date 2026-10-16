@@ -66,11 +66,14 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
   yield
     val ctx = PowerCtx(pass.state, actor, power.source, modifierWindow,
       Vector.empty, this, None, pass.answered)
+    val refusal = refusedUse(pass, power, ctx)
+    // A refused pick is priced as its grant would leave it.
+    val judging = pass.powers.quiet.without(refusal.fold(Set.empty)(_._1))
     val offered = power.offerReason(ctx) match
       case Some(OfferReason.Unavailable(reason)) => unavailable(shown, reason)
       case judged =>
         val priced = WalkerSimulation.applies(paying(power), pass.state,
-            pass.powers.quiet) match
+            judging) match
           case Left(_) => unavailable(shown, shortfall(pass.state,
             power.selectionPayments(pass.state, actor)))
           case Right(_) if !power.applicable(ctx) =>
@@ -80,19 +83,20 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
           case Some(OfferReason.Warned(reason)) if priced.available =>
             DecisionOption.Warned(priced, OptionReason.Written(reason))
           case _ => priced
-    refusedUse(pass, power, ctx).filter(_ => offered.available)
-      .fold(offered)(DecisionOption.Unavailable(shown, _))
+    refusal.filter(_ => offered.available)
+      .fold(offered)(found => DecisionOption.Unavailable(shown, found._2))
 
-  /** Why a power-use restriction refuses the pick (catalog batch 8, slice
-    * 10), for a pick that could otherwise be made: a refusal over a pick
-    * that cannot be made anyway would ask a ruler for nothing. */
+  /** The powers that refuse the pick by a power-use restriction (catalog
+    * batch 8, slice 10), and why, shown over a pick that could otherwise be
+    * made: a refusal over a pick that cannot be made anyway would ask a
+    * ruler for nothing. */
   private def refusedUse(pass: ModifierChoice.Pass, power: ContributingPower,
-      ctx: PowerCtx): Option[OptionReason] =
+      ctx: PowerCtx): Option[(Set[PowerId], OptionReason)] =
     power.use(ctx).flatMap { use =>
       val refused = PowerUseRules.refusals(pass.state, use,
         pass.powers.useRestrictions)
-      Option.when(refused.nonEmpty)(PowerUseRules.shown(pass.state, actor,
-        refused, use.consent))
+      Option.when(refused.nonEmpty)(refused.map(_.power).toSet ->
+        PowerUseRules.shown(pass.state, actor, refused, use.consent))
     }
 
   /** The pick's payment, onto its card, required. */
