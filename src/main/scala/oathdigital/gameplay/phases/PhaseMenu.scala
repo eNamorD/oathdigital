@@ -93,15 +93,16 @@ object PhaseMenu:
       actor: PlayerId, phasePowers: PhasePowers, powers: WalkerPowers)
       : Vector[Offered] =
     def offered(procedure: StartableRef, args: Vector[DecisionOptionRef],
-        shown: DecisionOption, judging: PhasePowers = phasePowers): Offered =
+        shown: DecisionOption, judging: PhasePowers = phasePowers,
+        walking: WalkerPowers = powers): Offered =
       val entry = QueuedProcedure(actor, procedure, args, None, QueueKind.Run)
-      Offered(entry, QueuedStart.priced(catalog, ready, entry, powers,
+      Offered(entry, QueuedStart.priced(catalog, ready, entry, walking,
           judging) match
         case Right(cost) =>
           cost.words.fold(shown)(DecisionOption.Badged(shown, _))
         case Left(violation) => DecisionOption.Unavailable(shown,
           OptionReason.Written(QueuedStart.needs(catalog, ready, entry,
-            powers, judging).getOrElse(reason(procedure, violation)))))
+            walking, judging).getOrElse(reason(procedure, violation)))))
     val wealth: Vector[Offered] =
       if menu != Menu.Wake then Vector.empty
       else WakeResource.all.map(resource => offered(ActionRef.TakeWealth,
@@ -132,9 +133,15 @@ object PhaseMenu:
           offered(ActionRef.UsePower(power.id), Vector(ref), option)
         else
           // A refusal is shown over a use that could otherwise start: over
-          // one that cannot, an ask would gain nothing.
+          // one that cannot, an ask would gain nothing. The refusing powers
+          // are left out of the walk too, since their placement bans
+          // refuse the use's own cost under the same grant (catalog batch
+          // 8, slice 10).
+          val refusers = refused.map(_.power).toSet
           val unrefused = offered(ActionRef.UsePower(power.id), Vector(ref),
-            option, phasePowers.copy(useRestrictions = Vector.empty))
+            option, phasePowers.copy(useRestrictions = Vector.empty),
+            powers.copy(powers = powers.powers.filterNot(walker =>
+              refusers(walker.id))))
           if !unrefused.option.available then unrefused
           else unrefused.copy(option = DecisionOption.Unavailable(option,
             PowerUseRules.shown(ready, actor, refused, consent = true)))))

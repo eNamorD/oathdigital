@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.poweruse
 
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powerresolver.PowerUse
+import oathdigital.gameplay.powers.action.RovingTerror
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.economy.VowOfBeastkin
 import oathdigital.gameplay.powers.whenplayed.{ThreateningRoar,
@@ -9,7 +10,7 @@ import oathdigital.gameplay.powers.whenplayed.{ThreateningRoar,
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -76,7 +77,19 @@ class ForestCouncilSuite extends munit.FunSuite:
       Some(ConsentKey(ForestCouncil.id, p1, "power.use", errandBoyRef)))
     assertEquals(ban.reason(ready, pay.copy(placedAt =
       Location.OnCard(wrestlers))), None)
-    assertEquals(ban.reason(ready, pay.copy(player = p2)), None)
+    // Off p1's turn the payment settles to the bank and places nothing.
+    val offTurn = ready.updateCurrent(current =>
+      current.copy(turn = current.turn.copy(activePlayer = p2)))
+    assertEquals(ban.reason(offTurn, pay), None)
+
+  test("it refuses an enemy's gift of favor onto a Beast card, the giver " +
+      "placing it"):
+    val ban = present(power.operationRestrictions.headOption, "the ban")
+    val gift = Give(Piece.Favor(1), p1, Location.PlayArea(p1),
+      Location.OnCard(errandBoy))
+    assertEquals(ban.reason(councilAtDeepWoods(), gift).flatMap(_.waiver)
+      .map(_.covers), Some(ConsentKey(ForestCouncil.id, p1, "power.use",
+      errandBoyRef)))
 
   test("a Muster from a Beast card is askable of the ruler, beside a card " +
       "of another suit"):
@@ -85,6 +98,34 @@ class ForestCouncilSuite extends munit.FunSuite:
       Some(true))
     assert(options.exists(option =>
       option.ref == DecisionOptionRef.Denizen(wrestlers) && option.available))
+
+  test("a grant remembered this turn lets the Muster place its favor on " +
+      "the Beast card"):
+    val ready = councilAtDeepWoods()
+    val granted = ready.copy(consent = ConsentState(answers = Map(
+      ConsentKey(ForestCouncil.id, p1, "power.use", errandBoyRef) ->
+        ConsentAnswer.Granted), turn = Some(ConsentTurn.of(ready))))
+    assertEquals(Look(musteredFrom(granted, errandBoyRef)).tokensOn(errandBoy),
+      Tokens(1, 0))
+
+  test("under bandits the Beast source is left out, as nobody may grant it"):
+    val options = musterSources(councilAtDeepWoods(_.bandits(woods, 2)))
+    assert(!options.exists(_.ref == errandBoyRef), options.toString)
+    assert(options.exists(_.ref == DecisionOptionRef.Denizen(wrestlers)))
+
+  test("the phase menu asks the ruler about an enemy's Beast ACTION, whose " +
+      "own cost places on it"):
+    // Roving Terror's secret is paid onto it: the placement ban and the
+    // use ban are one ask.
+    val ready = Table.from(councilAtDeepWoods()).denizen(terror, at = home)
+      .denizen(CatalogNames.denizen("Messenger"),
+        at = CatalogNames.site("Broken Peaks")).ready
+    MenuPlay.menuOptionFor(catalog, ready, ActionRef.UsePower(
+        RovingTerror.forCatalog(catalog).id),
+        Vector(DecisionOptionRef.Denizen(terror))) match
+      case DecisionOption.Unavailable(_, ask: OptionReason.Askable) =>
+        assertEquals(ask.power, ForestCouncil.id)
+      case other => fail(s"expected an askable option, got $other")
 
   test("an enemy's Beast When Played power does not fire"):
     // Threatening Roar, played as p1's adviser, would discard Errand Boy,

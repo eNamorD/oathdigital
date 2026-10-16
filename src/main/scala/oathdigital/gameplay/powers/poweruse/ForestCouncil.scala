@@ -20,8 +20,8 @@ object ForestCouncilCard extends Denizen(DenizenId("194"), "Forest Council", Sui
   * ruler cannot place [favor] / [secret] on [suit-beast] cards or use their
   * non-persistent powers."
   *
-  * A Beast card is a faceup adviser of effective suit Beast, or a site card
-  * printed Beast (`EffectiveSuit.of`). The enemies are its site's ruler's
+  * A Beast card is one whose effective suit is Beast (`EffectiveSuit.of`):
+  * its printed suit, unless it is an adviser pledged to Discord. The enemies are its site's ruler's
   * ([[RulerBans]]). It refuses an enemy's non-persistent use of a Beast
   * card, a use whose cost places on one ([[Placements.byUse]]), and a
   * placement on one ([[Placements.onto]]). A player ruler may consent
