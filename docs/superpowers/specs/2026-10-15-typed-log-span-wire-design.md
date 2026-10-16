@@ -258,8 +258,30 @@ affordance.
 
 `logResponse` is wired the same way: `UnknownVariant` becomes
 `UnsupportedProjection`, every other decode failure stays `DecodeFailure`, and
-`fetchLog` routes a failure to the session's existing unsupported branch
-instead of dropping it. No new failure type, no new session state.
+`fetchLog` stops dropping the `Left`. No new failure type, no new session
+state.
+
+Three outcomes, not two, because the cause differs and so does the remedy:
+
+- `UnsupportedProjection` stops polling and offers Reload. The vocabulary
+  this page uses is one this build does not have, and only a new build will
+  read it.
+- Any other `DecodeFailure` is shown and polling continues. The payload is
+  wrong rather than the bundle stale, so a reload would not mend it -- but
+  silence is the defect this route is being fixed for, and the projection
+  route already shows one of these without stopping. The notice clears on
+  the next page that parses.
+- A transient failure keeps the posture this spec quotes above: it changes
+  nothing, and the next advancing position asks again. A network blip must
+  not raise a banner on a secondary pane.
+
+A stale bundle meeting a page whose *shape* changed -- a field added or
+removed rather than a kind renamed -- lands in the middle case as
+`MissingField` or `UnexpectedField`, so it is reported but not named as a
+stale bundle. Mapping those two to `UnsupportedProjection` as well would name
+it precisely, at the cost of calling a server bug a stale bundle whenever one
+produces the same shape. Left for the slice that has a reason to need the
+distinction.
 
 As on the projection route, the only case this can arise from is a browser
 holding a stale cached bundle: `build.sbt` links the frontend with

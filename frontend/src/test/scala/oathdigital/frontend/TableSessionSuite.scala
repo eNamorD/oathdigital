@@ -521,10 +521,25 @@ class TableSessionSuite extends munit.FunSuite:
       }
     }
 
-  test("a log page that fails to decode for any other reason changes nothing"):
+  /** The payload is wrong rather than the bundle stale, so a reload would
+    * not mend it -- but silence was the defect this route was fixed for, so
+    * it is shown, and polling carries on as the projection route's does. */
+  test("a log page that fails to decode for another reason is shown, and polling goes on"):
+    displayed(3).flatMap { fixture =>
+      val wrong = GameClientFailure.DecodeFailure("$.entries",
+        "expected array")
+      fixture.client.answerLog(Left(wrong))
+      settle().map { _ =>
+        assertEquals(fixture.session.shownFailure, Some(wrong))
+        assert(!fixture.session.clientOutOfDate)
+        assert(fixture.clock.hasPendingTask)
+      }
+    }
+
+  test("a transient log failure still changes nothing"):
     displayed(3).flatMap { fixture =>
       fixture.client.answerLog(
-        Left(GameClientFailure.DecodeFailure("$.entries", "expected array")))
+        Left(GameClientFailure.NetworkFailure("down")))
       settle().map { _ =>
         assertEquals(fixture.session.shownFailure, None)
         assert(!fixture.session.clientOutOfDate)

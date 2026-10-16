@@ -72,10 +72,11 @@ private[frontend] final class TableSession(
     logReplacing = true
 
   /** Asks for the entries after the log's cursor when `target`, a displayed
-    * position, is past it. One request at a time; a failure changes nothing
-    * and the next advancing position asks again (spec, "Fetching"), except
-    * a page this build cannot parse, which stops the session as an
-    * unsupported projection does. */
+    * position, is past it. One request at a time; a transient failure
+    * changes nothing and the next advancing position asks again (spec,
+    * "Fetching"). A page this build cannot parse is the exception: an
+    * unknown variant stops the session as it does on the projection route,
+    * and any other decode failure is shown without stopping it. */
   private def fetchLog(target: Long): Unit =
     if !logLoading && target > logSequence then
       logLoading = true
@@ -101,13 +102,22 @@ private[frontend] final class TableSession(
                 fetchLog(current.nextSequence))
             // A log page this build cannot parse is the same stale bundle
             // the projection route reports: polling cannot recover from it
-            // and only a reload can. Every other failure keeps the posture
-            // the spec sets -- it changes nothing, and the next advancing
-            // position asks again.
+            // and only a reload can.
             case Left(error) if TableSession.unsupported(error) =>
               polling.stop()
               failure = Some(error)
               redraw()
+            // Any other decode failure means the payload is wrong, which a
+            // reload would not mend -- but it must not be silent either, or
+            // the pane stops updating with no message, which is the posture
+            // this route was fixed to leave. The projection route shows one
+            // and keeps polling; this route now agrees, and the notice
+            // clears on the next page that parses.
+            case Left(error: GameClientFailure.DecodeFailure) =>
+              failure = Some(error)
+              redraw()
+            // A transient failure keeps the posture the spec sets: it
+            // changes nothing, and the next advancing position asks again.
             case Left(_) => ()
       }
 
@@ -323,6 +333,14 @@ private[frontend] final class TableSession(
     * the table past the park this build could not parse -- after which a
     * latched flag would have labelled the NEXT unrelated failure a stale
     * bundle.
+    *
+    * On the log route nothing carries the session past it: the log is
+    * append-only and the next fetch asks from the same cursor, so an
+    * unparseable page comes back unparseable. A submit that succeeds
+    * clears the notice and resumes polling (`store`), and the following
+    * fetch raises it again -- a flicker rather than a recovery. Left
+    * derived all the same: the flicker is self-correcting, and latching
+    * would cost the projection route the property above.
     */
   def clientOutOfDate: Boolean = failure.exists(TableSession.unsupported)
 
