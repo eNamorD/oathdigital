@@ -69,12 +69,13 @@ object CampaignSetup:
 
   /** The origin a power's queued Campaign names, while that Campaign's
     * walk runs for `actor` (catalog batch 8, slice 13): its one start
-    * argument, a site. Only an entry with a source carries one; a menu
+    * argument, a site. Only a `Run` entry with a source carries one; a menu
     * Campaign never does. */
   def queuedOrigin(ready: ReadyGame, actor: PlayerId): Option[SiteId] =
     ready.game.current.walkerEntry.filter(entry =>
       entry.procedure == ActionRef.Campaign && entry.actor == actor &&
-        entry.source.nonEmpty).flatMap(_.startArgs match
+        entry.source.nonEmpty && entry.kind == QueueKind.Run)
+      .flatMap(_.startArgs match
       case Vector(DecisionOptionRef.Site(site)) => Some(site)
       case _ => None)
 

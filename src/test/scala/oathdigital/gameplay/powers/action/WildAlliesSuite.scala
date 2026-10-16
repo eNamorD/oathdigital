@@ -78,6 +78,26 @@ class WildAlliesSuite extends munit.FunSuite:
     assert(options.find(_.ref == DecisionOptionRef.Site(wilds))
       .exists(_.available))
 
+  test("a Beast edifice and the pawn's own site count, and a facedown " +
+      "Beast does not"):
+    val spring = oathdigital.catalog.holding.HallowedSpringCard.id
+    val ready = alliesWithABeastSiteHoldingTheRival
+      .edifice(spring, EdificeSide.Intact, at = home)
+      .denizen(CatalogNames.denizen("Wolves"), at = lonely, facedown = true)
+      .ready
+    val options = siteOptions(accepted(ActPowerHarness.use(rules, ready,
+      WildAllies.id, source)))
+    assertEquals(options.map(_.ref).toSet, Set[DecisionOptionRef](
+      DecisionOptionRef.Site(home), DecisionOptionRef.Site(wilds)))
+
+  test("with no Supply it is still usable, since the Campaign spends none"):
+    val ready = alliesWithABeastSiteHoldingTheRival.supply(p1, 0).ready
+    assert(menuOption(ready).available, menuOption(ready))
+    val options = siteOptions(accepted(ActPowerHarness.use(rules, ready,
+      WildAllies.id, source)))
+    assert(options.find(_.ref == DecisionOptionRef.Site(wilds))
+      .exists(_.available), options)
+
   test("the Campaign runs from the chosen site for no Supply, its " +
       "warbands there join the force, and the pawn stays"):
     val (_, queued) = campaignAtTheWilds(
