@@ -40,7 +40,7 @@ class HallOfMinistersConsentSuite extends munit.FunSuite:
 
   private def remembering(ready: ReadyGame, answer: ConsentAnswer)
       : ReadyGame =
-    ready.copy(consent = ConsentState(answers = Map(covers -> answer),
+    ready.copy(consent = ConsentState(answers = Map(covers -> answer.by(p2)),
       turn = Some(ConsentTurn.of(ready))))
 
   private def errandBoyRow(t: OathTransition)(using munit.Location) =

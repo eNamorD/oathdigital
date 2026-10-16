@@ -75,7 +75,7 @@ final case class ForestCouncil private (catalog: ExecutableCatalog)
         ruler <- RulerBans.ruler(ready, ForestCouncilCard.id)
         if RulerBans.enemy(ruler, placed._1)
       yield RulerBans.reason(id, ForestCouncilCard.id, ruler, placed._1,
-        covers(placed._1, placed._2), placingAsked,
+        covers(placed._1, placed._2), placingPlain, placingAsked,
         "forest-council-placing")
 
 object ForestCouncil:

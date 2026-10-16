@@ -29,7 +29,7 @@ class NarrowPassConsentSuite extends munit.FunSuite:
   /** `ready` remembering `answer` for Dunes, for `turn`. */
   private def remembering(ready: ReadyGame, answer: ConsentAnswer,
       turn: ConsentTurn): ReadyGame = ready.copy(consent = ConsentState(
-    answers = Map(key -> answer), turn = Some(turn)))
+    answers = Map(key -> answer.by(p2)), turn = Some(turn)))
 
   /** A restriction nobody can waive, on Dunes too. */
   private object DunesBarrier extends ContributingPower:

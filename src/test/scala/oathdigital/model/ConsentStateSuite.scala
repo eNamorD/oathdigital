@@ -38,6 +38,42 @@ class ConsentStateSuite extends munit.FunSuite:
     assertEquals(refused.remembered(key(police), turn),
       Some(ConsentAnswer.Refused))
 
+  test("a granted request remembers each key with its ask's granter, and " +
+      "the answer counts only for that granter"):
+    val granted = accepted(accepted(waitingOn(redOnPass, greenOnPolice)
+      .answered(red, granted = true, turn)).answered(green, granted = true,
+      turn))
+    assertEquals(granted.answers.get(key(pass)),
+      Some(ConsentAnswer.Granted.by(red)))
+    assertEquals(granted.answers.get(key(police)),
+      Some(ConsentAnswer.Granted.by(green)))
+    assertEquals(granted.answer(key(pass), Some(red), turn),
+      Some(ConsentAnswer.Granted))
+    assertEquals(granted.answer(key(pass), Some(green), turn), None)
+    assertEquals(granted.answer(key(pass), None, turn), None)
+
+  test("a refusal is the refuser's, for every key: it lapses once they " +
+      "may no longer answer, whoever was asked about the key"):
+    val refused = accepted(waitingOn(redOnPass, greenOnPolice)
+      .answered(green, granted = false, turn))
+    assertEquals(refused.answers.get(key(pass)),
+      Some(ConsentAnswer.Refused.by(green)))
+    assertEquals(refused.answer(key(police), Some(green), turn),
+      Some(ConsentAnswer.Refused))
+    // Red never refused the Pass, so it is not refused of red.
+    assertEquals(refused.answer(key(pass), Some(red), turn), None)
+
+  test("a request covering a power none of its asks holds is refused"):
+    val stray = request(redOnPass).copy(covers = Vector(key(police)))
+    assert(ConsentState().requested(stray).isLeft)
+
+  test("a supposed grant counts for any granter, nobody included"):
+    val supposed = ConsentState().granting(Vector(key(pass)), turn)
+    assertEquals(supposed.answer(key(pass), None, turn),
+      Some(ConsentAnswer.Granted))
+    assertEquals(supposed.answer(key(pass), Some(red), turn),
+      Some(ConsentAnswer.Granted))
+
   test("a grant with another ask still open keeps the request waiting"):
     val partial = accepted(waitingOn(redOnPass, greenOnPolice)
       .answered(red, granted = true, turn))

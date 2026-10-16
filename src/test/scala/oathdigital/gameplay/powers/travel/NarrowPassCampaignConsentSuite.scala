@@ -24,7 +24,7 @@ class NarrowPassCampaignConsentSuite extends munit.FunSuite:
       decisionId: String = CampaignIds.targets): ReadyGame =
     ready.copy(consent = ConsentState(
       answers = Map(ConsentKey(passPower, p1, decisionId, deepWoodsRef) ->
-        answer),
+        answer.by(p2)),
       turn = Some(ConsentTurn.of(ready))))
 
   /** A target restriction nobody can waive, on Deep Woods too. */
@@ -106,7 +106,7 @@ class NarrowPassCampaignConsentSuite extends munit.FunSuite:
   test("a grant from another turn counts for nothing"):
     val stale = passRuledByP2.copy(consent = ConsentState(
       answers = Map(ConsentKey(passPower, p1, CampaignIds.targets,
-        deepWoodsRef) -> ConsentAnswer.Granted),
+        deepWoodsRef) -> ConsentAnswer.Granted.by(p2)),
       turn = Some(ConsentTurn(passRuledByP2.game.current.tracks.round, p2))))
     assert(askable(woods(targetOptions(started(stale)))))
 

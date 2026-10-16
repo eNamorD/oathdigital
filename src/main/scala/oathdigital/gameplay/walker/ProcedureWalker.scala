@@ -473,10 +473,12 @@ object ProcedureWalker:
     * powers do not search. An option its own window's waivable restriction
     * bars is made askable when a grant would open it (consent slice 4), and
     * so is an option only waivable operation refusals hide ([[OperationAsks]],
-    * catalog batch 8, slice 10). A required decision with nothing left is
-    * kept when such an option remains, as the search kept it ([[reach]]):
-    * its player may ask. A choose-one passed when empty with nothing left
-    * parks on its Continue screen (catalog batch 8, slice 10, part 2b). */
+    * catalog batch 8, slice 10), or it shows their plain reason when nobody
+    * may be asked. A required decision with nothing left is kept when an
+    * askable option remains, as the search kept it ([[reach]]): its player
+    * may ask. A plain reason alone keeps nothing, since nothing then can be
+    * answered. A choose-one passed when empty with nothing left parks on
+    * its Continue screen (catalog batch 8, slice 10, part 2b). */
   private def narrowAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Option[Decide]] =
     if !ctx.powers.probing then Right(Some(
@@ -488,7 +490,7 @@ object ProcedureWalker:
       case Left(refused) =>
         val asks = asksAt(decide, ctx, path) ++ operationAsksAt(decide, ctx,
           path, WalkerSearch.choosable(decide))
-        if asks.isEmpty then Left(refused)
+        if !asks.values.exists(askable) then Left(refused)
         else Right(Some(WalkerSearch.reasoned(WalkerSearch.narrowed(decide,
           _ => false, asks.get).getOrElse(decide), asks)))
       case Right(narrowed) =>
@@ -524,7 +526,7 @@ object ProcedureWalker:
     else WalkerSearch.reach(decide, verdict(decide, ctx, path)) match
       case Left(refused) =>
         if asksAt(decide, ctx, path).nonEmpty || operationAsksAt(decide, ctx,
-            path, WalkerSearch.choosable(decide)).nonEmpty then
+            path, WalkerSearch.choosable(decide)).values.exists(askable) then
           Right(Stopped(ctx))
         else Left(refused)
       case Right(WalkerSearch.Reach.Skipped) => Right(Done(ctx))
@@ -538,8 +540,11 @@ object ProcedureWalker:
       ctx.powers, path, ctx.procedure, ctx.answered,
       grantable(decide, ctx, path)).toMap
 
-  /** The asks of `refs`, options of `decide` the search hid, that only
-    * waivable operation refusals stop (catalog batch 8, slice 10). */
+  private def askable(reason: OptionReason): Boolean =
+    reason.isInstanceOf[OptionReason.Askable]
+
+  /** The reasons of `refs`, options of `decide` the search hid, that only
+    * powers' operation refusals stop (catalog batch 8, slice 10). */
   private def operationAsksAt(decide: Decide, ctx: WalkCtx,
       path: Vector[String], refs: Vector[DecisionOptionRef])
       : Map[DecisionOptionRef, OptionReason] =

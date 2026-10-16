@@ -231,7 +231,7 @@ class CardSlotsSuite extends munit.FunSuite:
     def remembering(answer: ConsentAnswer) = ready.copy(consent =
       ConsentState(answers = Map(ConsentKey(HallOfMinisters.id, p1,
         HallOfMinisters.discardKey, DecisionOptionRef.Denizen(fae)) ->
-        answer), turn = Some(ConsentTurn.of(ready))))
+        answer.by(p2)), turn = Some(ConsentTurn.of(ready))))
     assertEquals(atSite(slotsOf(remembering(ConsentAnswer.Granted), roar))
       .head, replacing(siteSlot(0, woods), fae))
     assertEquals(atSite(slotsOf(remembering(ConsentAnswer.Refused), roar))
@@ -458,7 +458,7 @@ class CardSlotsSuite extends munit.FunSuite:
     val ready = guarded(_.warbandsAt(woods, p2, 1))
     val granted = ready.copy(consent = ConsentState(answers = Map(
       ConsentKey(HallOfMinisters.id, p1, HallOfMinisters.discardKey,
-        DecisionOptionRef.Denizen(fae)) -> ConsentAnswer.Granted),
+        DecisionOptionRef.Denizen(fae)) -> ConsentAnswer.Granted.by(p2)),
       turn = Some(ConsentTurn.of(ready))))
     val slot = present(slotsOf(granted, roar, rules = permitted)
       .find(_.option == replacing(siteSlot(0, woods), fae)), "the Replace slot")

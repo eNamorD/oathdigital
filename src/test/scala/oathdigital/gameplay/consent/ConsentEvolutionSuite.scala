@@ -47,7 +47,8 @@ class ConsentEvolutionSuite extends munit.FunSuite:
     val covered = ConsentKey(PowerId("edifice.e16.intact"), p1,
       "operation.discard", DecisionOptionRef.Denizen(
         CatalogNames.denizen("Errand Boy")))
-    val after = folded(ConsentRequested(request.copy(covers = Vector(covered))),
+    val after = folded(ConsentRequested(request.copy(covers = Vector(covered),
+        asks = Vector(ConsentAsk(p2, Vector(covered.power))))),
       ConsentAnswered(p2, true))
     val now = ConsentTurn.of(after)
     assertEquals(after.consent.remembered(covered, now),

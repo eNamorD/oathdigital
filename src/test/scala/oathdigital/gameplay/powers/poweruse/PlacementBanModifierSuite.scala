@@ -63,5 +63,5 @@ class PlacementBanModifierSuite extends munit.FunSuite:
     val ready = besideMushrooms(insideCityWall)
     val granted = ready.copy(consent = ConsentState(answers = Map(
       ConsentKey(CityWall.id, p1, "power.use", mushroomsRef) ->
-        ConsentAnswer.Granted), turn = Some(ConsentTurn.of(ready))))
+        ConsentAnswer.Granted.by(p2)), turn = Some(ConsentTurn.of(ready))))
     assert(mushroomsPick(granted).available)

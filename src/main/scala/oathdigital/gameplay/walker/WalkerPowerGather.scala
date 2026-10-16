@@ -159,9 +159,10 @@ private[walker] object WalkerPowerGather:
     restrictions.flatMap { case (id, restriction) =>
       val ctx = ctxFor(byId(id))
       restriction.fn(ctx, ref)
-        .filterNot(_ => restriction.waiver.nonEmpty && ctx.state.consent
-          .remembered(ConsentKey(id, decide.owner, decide.decisionId, ref),
-            ConsentTurn.of(ctx.state)).contains(ConsentAnswer.Granted))
+        .filterNot(_ => restriction.waiver.exists(waiver => ctx.state.consent
+          .answer(ConsentKey(id, decide.owner, decide.decisionId, ref),
+            waiver.granter(ctx.state), ConsentTurn.of(ctx.state))
+          .contains(ConsentAnswer.Granted)))
         .map(Forbidding(id, restriction, ctx, _))
     }
 
@@ -360,13 +361,14 @@ private[walker] object WalkerPowerGather:
     * search and the previews agree. */
   private def waived(power: PowerId, restriction: Restriction,
       ctx: PowerCtx): Boolean =
-    restriction.waiver.nonEmpty && {
+    restriction.waiver.exists { waiver =>
       val turn = ConsentTurn.of(ctx.state)
+      val granter = waiver.granter(ctx.state)
       ctx.answered.exists:
         case Answered(decisionId, DecisionAnswer.ChooseOneAnswer(target),
             by) =>
-          ctx.state.consent.remembered(ConsentKey(power, by, decisionId,
-            target), turn).contains(ConsentAnswer.Granted)
+          ctx.state.consent.answer(ConsentKey(power, by, decisionId,
+            target), granter, turn).contains(ConsentAnswer.Granted)
         case _ => false
     }
 
@@ -444,8 +446,9 @@ private[walker] object WalkerPowerGather:
     val turn = ConsentTurn.of(state)
     val granters = blocks.map(_.waiver.flatMap(_.granter(state))
       .filter(_ != requester))
-    val refused = blocks.exists(block => state.consent.remembered(
-      ConsentKey(block.power, requester, decide.decisionId, ref), turn)
+    val refused = blocks.exists(block => state.consent.answer(
+      ConsentKey(block.power, requester, decide.decisionId, ref),
+      block.waiver.flatMap(_.granter(state)), turn)
       .contains(ConsentAnswer.Refused))
     if blocks.isEmpty || granters.exists(_.isEmpty) || refused then None
     else

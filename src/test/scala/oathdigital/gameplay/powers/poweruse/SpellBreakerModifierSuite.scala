@@ -61,7 +61,7 @@ class SpellBreakerModifierSuite extends munit.FunSuite:
     val ready = mushroomsBesideBreaker()
     val covers = ConsentKey(SpellBreaker.id, p1, "power.use", mushroomsRef)
     val granted = ready.copy(consent = ConsentState(
-      answers = Map(covers -> ConsentAnswer.Granted),
+      answers = Map(covers -> ConsentAnswer.Granted.by(p2)),
       turn = Some(ConsentTurn.of(ready))))
     assert(mushroomsPick(granted).available)
 

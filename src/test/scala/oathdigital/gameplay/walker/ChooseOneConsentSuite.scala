@@ -40,7 +40,7 @@ class ChooseOneConsentSuite extends munit.FunSuite:
   private val askable = OptionReason.Askable(toll.id, consent(source),
     Vector(ConsentAsk(p2, Vector(toll.id))))
   private val refused = ready.copy(consent = ConsentState(
-    answers = Map(key -> ConsentAnswer.Refused),
+    answers = Map(key -> ConsentAnswer.Refused.by(p2)),
     turn = Some(ConsentTurn.of(ready))))
 
   /** The step offering `payOption` and the free option, then `afterPay` or

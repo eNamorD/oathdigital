@@ -59,7 +59,7 @@ class TollRoadsSuite extends munit.FunSuite:
     val broke = on(rivalRules)(_.favor(actor, 0))
     val refused = broke.copy(consent = ConsentState(
       answers = Map(ConsentKey(TollRoads.id, actor, TollRoads.decisionId,
-        TollRoads.free(coast)) -> ConsentAnswer.Refused),
+        TollRoads.free(coast)) -> ConsentAnswer.Refused.by(rival)),
       turn = Some(ConsentTurn.of(broke))))
     assertEquals(candidates(refused).get(coast), None)
     assertEquals(travel(refused, coast).left.toOption,

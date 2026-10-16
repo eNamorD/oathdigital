@@ -577,15 +577,18 @@ consent, and wraps Hunger.
   Ministers is askable the same way. A placement that no choose-one offers
   is refused without a question: Forge's partition, Whispering Leaves' and
   Dissent's gifts.
-- **An unexplained placement refusal** (part 2). Under bandits, a source
-  card whose placement is refused is left out of its question, not shown
-  with a reason. The walker cannot word an operation refusal that nobody
-  may waive. This is a known gap.
+- **A placement nobody may waive** (part 2). Under bandits, or once the
+  ruler refused it this turn, a source card whose placement is refused is
+  shown unavailable with its card's plain reason, beside the cards that may
+  be chosen. A required decision with no card left to choose is not
+  asked; one passed when empty shows Continue (part 2b). The Hall
+  of Ministers' protected cards read the same way: "Hall of Ministers:
+  Cannot discard cards from its ruler's sites."
 - **A Forge that cannot place** (part 2). The walker tries each split of a
   small partition, so a Forge whose every split places on a Beast card,
   under an enemy's Forest Council, does not start: it is shown unavailable
-  with its generic reason, as an unexplained placement refusal is. City
-  Wall cannot cause it, since a Forge's site is its actor's.
+  with its generic reason. City Wall cannot cause it, since a Forge's site
+  is its actor's.
 - **An empty choice shows Continue** (part 2b). A question passed when
   empty is no longer passed silently. With nothing that may be chosen it
   shows each candidate unavailable with its reason and one Continue
@@ -595,8 +598,8 @@ consent, and wraps Hunger.
   The cost stays paid and nothing happens, as before; the menus do not
   change. When a matching card was there but refused, Great Feast's and
   Taming Charm's line says it could not be discarded ("No Beast card at
-  {site} could be discarded."), not that the site held none. This closes the gap where such a question passed before its
-  player could ask.
+  {site} could be discarded."), not that the site held none. This closes
+  the gap where such a question passed before its player could ask.
 - **When an automatic power is judged** (part 2). An automatic power is
   judged where its effect runs, inside an `AutomaticUse` node, against the
   state when the walk reaches it. Tyrant's kill runs after the pawn moves,

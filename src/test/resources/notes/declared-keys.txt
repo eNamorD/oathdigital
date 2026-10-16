@@ -350,6 +350,7 @@ edifice.e15.ruined ended = {0}'s Act phase ended.
 edifice.e15.ruined gained = {0} gained {1}.
 edifice.e15.ruined used = {0} rolled {1}, Total: {2}
 edifice.e15.ruined used.away = {0} was not at its site.
+edifice.e16.intact no-discard = Cannot discard cards from its ruler's sites.
 edifice.e16.intact no-discard-consent = Cannot discard cards from its ruler's sites without ruler's consent.
 edifice.e22.intact gained = {0} gained {1}.
 edifice.e22.ruined discarded = Discarded {0}.

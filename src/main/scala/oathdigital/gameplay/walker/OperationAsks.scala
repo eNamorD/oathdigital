@@ -3,15 +3,17 @@ package oathdigital.gameplay.walker
 import oathdigital.gameplay.operations.OperationConsent
 import oathdigital.model._
 
-/** The asks of a choose-one's options that the search hid because a
-  * waivable operation refusal rejects their path (catalog batch 8, slice
+/** The reasons of a choose-one's options that the search hid because a
+  * power's operation refusal rejects their path (catalog batch 8, slice
   * 10): a Muster's source card that Forest Council forbids placing on, or
-  * a card the Hall of Ministers protects. An option is askable when every
-  * refusal its path meets is waivable by a player other than the
-  * decision's owner, none was refused this turn (consent design, ruling
-  * 8), and granting them all opens the path. Each round grants what the
-  * last refusal covers and tries again. The ask covers every refusal's
-  * key, so a grant lifts each of them on the operation path.
+  * a card the Hall of Ministers protects. Each round grants what the last
+  * refusal covers and tries again; an option has a reason when granting
+  * every refusal its path meets opens it. It is askable when every refusal
+  * is waivable by a player other than the decision's owner and none was
+  * refused this turn (consent design, ruling 8); the ask covers every
+  * refusal's key, so a grant lifts each of them on the operation path.
+  * Otherwise it shows the first refusal's plain reason, which never keeps
+  * a decision alive by itself ([[ProcedureWalker]]).
   */
 private[walker] object OperationAsks:
   /** Enough rounds for every waivable restriction one path can meet. */
@@ -46,4 +48,4 @@ private[walker] object OperationAsks:
         case Left(_) => Vector.empty
     val found = met(Vector.empty, 0)
     if found.isEmpty then None
-    else OperationConsent.ask(state, decide.owner, found)
+    else OperationConsent.shown(state, decide.owner, found)
