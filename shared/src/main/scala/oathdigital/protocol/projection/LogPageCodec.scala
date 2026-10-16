@@ -27,6 +27,12 @@ object LogPageCodec:
     "section", "takenBack")
   private val SectionFields = Set("id", "action")
   private val TakenBackFields = Set("group", "header")
+  private val TextFields = Set("kind", "text")
+  private val NamedFields = Set("kind", "id", "name")
+  private val AmountFields = Set("kind", "value", "unit")
+  private val CostFields = Set("kind", "value")
+  private val DiceFields = Set("kind", "faces")
+  private val CardsFields = Set("kind", "cards")
 
   def encode(value: LogPage): String = ujson.write(ujson.Obj(
     "gameId" -> value.gameId,
@@ -136,28 +142,28 @@ object LogPageCodec:
 
   private def decodeText(value: ujson.Obj, path: String): Result[LogSpan] =
     for
-      _ <- exact(value, Set("kind", "text"), path)
+      _ <- exact(value, TextFields, path)
       text <- string(value, "text", path)
     yield LogSpan.Text(text)
 
   private def decodeNamed(value: ujson.Obj, path: String,
       make: (String, String) => LogSpan): Result[LogSpan] =
     for
-      _ <- exact(value, Set("kind", "id", "name"), path)
+      _ <- exact(value, NamedFields, path)
       id <- string(value, "id", path)
       name <- string(value, "name", path)
     yield make(id, name)
 
   private def decodeAmount(value: ujson.Obj, path: String): Result[LogSpan] =
     for
-      _ <- exact(value, Set("kind", "value", "unit"), path)
+      _ <- exact(value, AmountFields, path)
       amount <- int(value, "value", path)
       unit <- string(value, "unit", path)
     yield LogSpan.Amount(amount, unit)
 
   private def decodeCost(value: ujson.Obj, path: String): Result[LogSpan] =
     for
-      _ <- exact(value, Set("kind", "value"), path)
+      _ <- exact(value, CostFields, path)
       amount <- int(value, "value", path)
     yield LogSpan.Cost(amount)
 
@@ -166,7 +172,7 @@ object LogPageCodec:
     * can send. */
   private def decodeDice(value: ujson.Obj, path: String): Result[LogSpan] =
     for
-      _ <- exact(value, Set("kind", "faces"), path)
+      _ <- exact(value, DiceFields, path)
       keys <- strings(value, "faces", path)
       faces <- traverse(keys, s"$path.faces")((key, child) =>
         DieFace.values.find(_.key == key).toRight(UnknownVariant(child,
@@ -182,7 +188,7 @@ object LogPageCodec:
     * an empty list is not a span this server can send. */
   private def decodeCards(value: ujson.Obj, path: String): Result[LogSpan] =
     for
-      _ <- exact(value, Set("kind", "cards"), path)
+      _ <- exact(value, CardsFields, path)
       raw <- array(value, "cards", path)
       cards <- traverse(raw, s"$path.cards")(WorldProjectionCodec.decodeCard)
       _ <- Either.cond(cards.nonEmpty, (),

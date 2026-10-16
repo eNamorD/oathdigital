@@ -267,7 +267,8 @@ class BackendArchitectureSuite extends munit.FunSuite:
     val roots = Vector(Paths.get("src/main/scala"), Paths.get("frontend/src/main/scala"))
     val forbidden = Set("GameProjection", "SetupPlayerProjection",
       "CardDetailsProjection", "PlayerBoardProjection", "FirstGameBootstrapRequest",
-      "BootstrapParticipantRequest")
+      "BootstrapParticipantRequest", "LogPage", "LogEntry", "LogSection",
+      "LogTakenBack")
     val definition = "\\s*final case class ([A-Za-z0-9_]+).*".r
     val offenders = roots.flatMap(root => Files.walk(root).iterator.asScala)
       .filter(_.toString.endsWith(".scala")).flatMap { path =>

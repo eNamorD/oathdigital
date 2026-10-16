@@ -151,3 +151,11 @@ class LogPageCodecSuite extends munit.FunSuite:
     assertEquals(LogPageCodec.decode(json),
       Left(ProtocolDecodeFailure.UnknownVariant(
         "$.entries[0].spans[0].faces[0]", "unknown die face 'three-moons'")))
+
+  /** The entry's own `exact` set, the one `depth` came out of: a build that
+    * put it back would be caught here and nowhere else. */
+  test("a field no entry declares is rejected at its path"):
+    val json = LogPageCodec.encode(page).replace("\"ordinal\":0",
+      "\"ordinal\":0,\"depth\":0")
+    assertEquals(LogPageCodec.decode(json).left.map(_.path),
+      Left("$.entries[0].depth"))

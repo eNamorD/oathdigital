@@ -19,8 +19,8 @@ import oathdigital.application.{
   GameCommand,
   GameIntentMapper
 }
-import oathdigital.protocol.projection.{GameProjection, LogPageCodec,
-  LogPage}
+import oathdigital.protocol.projection.{GameProjection, LogPage,
+  LogPageCodec}
 import oathdigital.model.PlayerId
 
 private[server] object CommandRejectionMessage:

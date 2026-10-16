@@ -1,7 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
-import oathdigital.protocol.projection.{LogSection}
+import oathdigital.protocol.projection.LogSection
 
 /** Which runs are sections (log action sections design, "Where a section
   * comes from"): every top-level action is one. Wake's Take Wealth, phase

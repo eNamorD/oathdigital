@@ -156,7 +156,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     assertEquals(formatAppended(script, Vector(OathEvent.RoundEnded(8, None))),
       before)
 
-  test("a kind carries its own depth, and headlines never carry a section"):
+  test("every kind carries its own depth, headline or line"):
     assertEquals(LogKind.values.filter(_.depth == 0).toSet,
       Set(LogKind.Round, LogKind.Turn, LogKind.Phase, LogKind.Victory))
     assertEquals(LogKind.values.filter(_.depth == 1).toSet,
