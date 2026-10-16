@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.campaign
 
+import oathdigital.gameplay.actions.campaign.CampaignPlans
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  FoldPhase, Offer, OptionRestriction, PowerCtx, Transform}
+  FoldPhase, Offer, OptionRestriction, PowerCtx, PowerUse, Transform}
 import oathdigital.model._
 
 /** A power that offers a Campaign battle plan. It is chosen at the plan step,
@@ -61,6 +62,32 @@ trait BattlePlan extends ContributingPower:
     * own vocabulary, chosen or not: Master at Arms offers a reroll at
     * `PowerWindow.Reroll` and reads there whether it was chosen. */
   def otherContributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
+
+  /** Its use at its plan window (catalog batch 8, slice 10): the plan's
+    * user's, from its card, or from no card for the title's plan, which
+    * is a power too. It costs a secret when its costs or its amount hold
+    * one, or a secret surcharge taxes it. Battle plans are printed
+    * non-persistent. Nobody is asked inside a Campaign, and a bandit plan
+    * has no user. */
+  override def use(ctx: PowerCtx): Option[PowerUse] =
+    for
+      context <- PlanContext.of(ctx)
+      if sides(context.side)
+      user <- context.user
+      offer <- plan(context)
+    yield PowerUse(user, id, CampaignPlans.cardOf(offer.source),
+      persistent = false,
+      costsSecret = offer.costs.exists {
+        case _: CampaignPlanCost.Secret | _: CampaignPlanCost.SecretBurnt =>
+          true
+        case _ => false
+      } || offer.amount.exists(_.secretsEach > 0) ||
+        PlanSurcharge.taxesSecret(ctx.state, context),
+      consent = false,
+      places = offer.costs.exists {
+        case _: CampaignPlanCost.Favor | _: CampaignPlanCost.Secret => true
+        case _ => false
+      })
 
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   final override def resolution: PowerResolution = PowerResolution.Automatic

@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.campaign.{CampaignPlanApplication, CampaignPlans}
+import oathdigital.gameplay.actions.campaign.{CampaignPlanApplication,
+  CampaignPlans, CampaignSetup}
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.CatalogResolution
@@ -73,10 +74,7 @@ trait PlanSurcharge extends ContributingPower:
       PowerSourceRef.Card(cardId), NoteArg.Player(user), NoteArg.Number(amount))))
 
   private def holder(ctx: PowerCtx): Option[PlayerId] =
-    ctx.state.game.current.players.find(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    }).map(_.player)
+    PlanSurcharge.holderOf(ctx.state, cardId)
 
   /** The added cost, when the plan is the enemy's of a holder in this Campaign. */
   private def surcharge(ctx: PowerCtx, application: CampaignPlanApplication)
@@ -92,7 +90,27 @@ trait PlanSurcharge extends ContributingPower:
     }))
 
   private def enemy(application: CampaignPlanApplication, holding: PlayerId)
-      : Boolean = application.side match
-    case CampaignPlanSide.Defender => application.setup.actor == holding
+      : Boolean =
+    PlanSurcharge.enemy(application.side, application.setup, holding)
+
+object PlanSurcharge:
+  /** The player who holds `card` faceup among their advisers. */
+  def holderOf(ready: ReadyGame, card: DenizenId): Option[PlayerId] =
+    ready.game.current.players.find(_.advisers.exists {
+      case DenizenState(id, Orientation.FaceUp, _) => id == card
+      case _ => false
+    }).map(_.player)
+
+  /** Whether the plan of `side` in `setup` is the enemy's of `holding`. */
+  def enemy(side: CampaignPlanSide, setup: CampaignSetup,
+      holding: PlayerId): Boolean = side match
+    case CampaignPlanSide.Defender => setup.actor == holding
     case CampaignPlanSide.Attacker =>
-      application.setup.defender == CampaignDefender.Player(holding)
+      setup.defender == CampaignDefender.Player(holding)
+
+  /** Whether a surcharge that adds a secret taxes `context`'s plans:
+    * Gleaming Armor's holder is the enemy of the plan's side (catalog
+    * batch 8, slice 10). */
+  def taxesSecret(ready: ReadyGame, context: PlanContext): Boolean =
+    holderOf(ready, GleamingArmorCard.id)
+      .exists(enemy(context.side, context.setup, _))

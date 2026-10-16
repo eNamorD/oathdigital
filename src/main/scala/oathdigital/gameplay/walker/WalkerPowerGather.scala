@@ -1,5 +1,6 @@
 package oathdigital.gameplay.walker
 
+import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, RerollHost, Restriction, Waiver}
 import oathdigital.model.{Answered, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, OfferedReroll, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, LeafOperation, ProcedureRef, ReadyGame}
 
@@ -63,6 +64,15 @@ private[walker] object WalkerPowerGather:
         def ctxFor(power: ContributingPower): PowerCtx =
           PowerCtx(state, activePlayer, power.source, w, path, operation,
             procedure, answered)
+        /** Why `power` may not be used here, when a power-use restriction
+          * refuses it (catalog batch 8, slice 10). */
+        def refused(power: ContributingPower): Option[OptionReason] =
+          power.use(ctxFor(power)).flatMap { use =>
+            val found = PowerUseRules.refusals(state, use,
+              powers.useRestrictions)
+            Option.when(found.nonEmpty)(PowerUseRules.shown(state,
+              use.user, found, use.consent))
+          }
         val gathered = ContributionCollector.gather(w, powers.windowIndex, ctxFor)
         val folded = gathered.transforms.foldLeft(ops):
           case (acc, (powerId, transform)) =>
@@ -74,14 +84,18 @@ private[walker] object WalkerPowerGather:
           case host: OfferHost =>
             val offered = restrictOffers(
               gathered.offers.flatMap { case (powerId, offer) =>
-                offer.plan(ctxFor(byId(powerId))).map(OfferedPlan(powerId, _))
+                offer.plan(ctxFor(byId(powerId))).map(plan =>
+                  OfferedPlan(powerId, plan.withheld.fold(plan.copy(
+                    withheld = refused(byId(powerId))))(_ => plan)))
               }, gathered.optionRestrictions, ctxFor, byId)
             (folded ++ host.expand(offered, OfferHost.Pass(state, answered,
               resuming, WalkerSimulation.applies(_, state, powers))),
               gathered.order)
           case host: RerollHost =>
             val offered = gathered.rerolls.flatMap { case (powerId, reroll) =>
-              reroll.offer(ctxFor(byId(powerId))).map(OfferedReroll(powerId, _))
+              reroll.offer(ctxFor(byId(powerId))).map(offer =>
+                OfferedReroll(powerId, offer.withheld.fold(offer.copy(
+                  withheld = refused(byId(powerId))))(_ => offer)))
             }
             (folded ++ host.expand(offered, OfferHost.Pass(state, answered,
               resuming, WalkerSimulation.applies(_, state, powers))),

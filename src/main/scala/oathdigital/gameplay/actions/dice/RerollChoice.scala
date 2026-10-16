@@ -13,8 +13,8 @@ import oathdigital.model._
   *  - The roller is asked to pick a reroll or "Keep the roll". The rerolls
   *    listed are those not yet used on this throw: each the roller can pay
   *    for (a dry run of its payment says so) priced, the rest shown
-  *    unavailable with why. Nothing usable means nothing is asked, the pass
-  *    does nothing, and the `Repeat` ends.
+  *    unavailable with why. Nothing usable or askable of a ruler means
+  *    nothing is asked, the pass does nothing, and the `Repeat` ends.
   *  - The picked reroll pays and runs its steps.
   *
   * A walk resuming inside a pass keeps its two slots whatever is offered,
@@ -41,10 +41,16 @@ final class RerollChoice(val pool: PoolKey, val die: DiceKind,
       val used = RerollChoice.used(pending, decisionId)
       val listed = offers.filterNot(offered =>
         used.contains(RerollChoice.refOf(offered))).map(option(_, pass))
-      val playable = listed.exists(_.available)
+      val playable = listed.exists(option =>
+        option.available || option.askable)
       if !playable && !pass.resuming then Vector.empty
       else Vector[Operation](
-        Branch((_, _) => if !playable then Vector.empty
+        // A walk parked on the question keeps it, though a ruler's refusal
+        // has since left nothing to pick (catalog batch 8, slice 10).
+        Branch((_, tree) => if !playable && tree.answered.exists {
+            case Answered(`decisionId`, _, _) => true
+            case _ => false
+          } then Vector.empty
           else Vector(decision(decisionId, listed))),
         Branch((_, tree) => RerollChoice.picked(tree, decisionId) match {
           case None => Vector.empty

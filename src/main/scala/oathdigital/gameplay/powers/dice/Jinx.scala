@@ -2,10 +2,11 @@ package oathdigital.gameplay.powers.dice
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.dice.{DiceThrow, RerollChoice}
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  OfferReroll, PowerCtx}
+  OfferReroll, PowerCtx, PowerUse}
 import oathdigital.model._
 
 object JinxCard extends Denizen(DenizenId("68"), "Jinx", Suit.Arcane):
@@ -36,6 +37,16 @@ final case class Jinx private (catalog: ExecutableCatalog)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.Reroll -> Vector(OfferReroll(offer)))
+
+  /** Its use on the throw at hand (catalog batch 8, slice 10): the
+    * roller's, persistent, costing a secret. Nobody is asked about the
+    * Campaign's own dice. */
+  override def use(ctx: PowerCtx): Option[PowerUse] =
+    RerollChoice.throwOf(ctx).filter(rolled =>
+      Jinx.rules(ctx.state, rolled.roller)).map(rolled =>
+      PowerUse.of(rolled.roller, JinxCard.power, JinxCard.id,
+        consent = !Set(CampaignIds.attackPool, CampaignIds.defensePool)
+          .contains(rolled.pool)))
 
   private def offer(ctx: PowerCtx): Option[RerollOffer] =
     RerollChoice.throwOf(ctx).filter(rolled =>
