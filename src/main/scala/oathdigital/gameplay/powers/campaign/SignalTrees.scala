@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.CardPlay
-import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignSetup}
 import oathdigital.model._
 
 object SignalTreesCard extends Denizen(DenizenId("217"), "Signal Trees",
@@ -60,7 +59,8 @@ final case class SignalTrees private (catalog: ExecutableCatalog)
         Note(id, signalled(user, side), covers = true)))
 
   private def home(ready: ReadyGame, user: PlayerId): Option[Region] =
-    PowerAccess.pawnSite(ready, user).flatMap(ready.game.current.map.regionOf)
+    CampaignSetup.originOf(ready, user)
+      .flatMap(ready.game.current.map.regionOf)
 
   /** The top cards of `user`'s region's pile, top first. */
   private def drawn(ready: ReadyGame, user: PlayerId): Vector[WorldCardId] =

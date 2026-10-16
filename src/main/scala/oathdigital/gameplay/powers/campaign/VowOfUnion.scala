@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.campaign.{CampaignIds,
-  CampaignProcedure}
+  CampaignProcedure, CampaignSetup}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   Transform}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers,
@@ -146,11 +146,12 @@ case object VowOfUnion extends ContributingPower:
       case _ => false
     }).map(_.player)
 
-  /** The sites `holder` rules in the region of their pawn, in map order. */
+  /** The sites `holder` rules in the region they campaign from, in map
+    * order. */
   private def region(ready: ReadyGame, holder: PlayerId): Vector[SiteId] =
     val map = ready.game.current.map
     val ruled = PowerAccess.ruledSites(ready, holder)
-    PowerAccess.pawnSite(ready, holder).flatMap(map.regionOf).toVector
+    CampaignSetup.originOf(ready, holder).flatMap(map.regionOf).toVector
       .flatMap(home => map.inPlay.filter(site =>
         ruled.contains(site) && map.regionOf(site).contains(home)))
 

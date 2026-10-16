@@ -70,10 +70,10 @@ final case class PlanContext(ready: ReadyGame, setup: CampaignSetup,
       case _ => false
     } => CampaignPlanSource.SiteEdifice(site, id)
 
-  /** Whether the plan's user has their pawn at `site`. */
+  /** Whether the plan's user has their pawn, or campaigns from a queued
+    * origin, at `site`. */
   def pawnAt(site: SiteId): Boolean = user.exists(player =>
-    ready.game.current.players.find(_.player == player)
-      .exists(_.pawnSite.contains(site)))
+    CampaignSetup.originOf(ready, player).contains(site))
 
   /** Whether `site` is a target of the Campaign. */
   def targets(site: SiteId): Boolean = setup.targetSites.contains(site)

@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignIds}
+import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignIds,
+  CampaignSetup}
 import oathdigital.gameplay.powerresolver.{OptionRestriction, PowerCtx}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
@@ -154,12 +155,14 @@ case object PeaceEnvoy extends BattlePlan:
     for
       user <- context.user
       other <- enemy
-      site <- pawnSite(context.ready, user)
-      if pawnSite(context.ready, other).contains(site)
+      site <- standingSite(context.ready, user)
+      if standingSite(context.ready, other).contains(site)
     yield (user, other)
 
-  private def pawnSite(ready: ReadyGame, player: PlayerId): Option[SiteId] =
-    ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
+  /** Where `player` stands for the Campaign: a queued origin for the
+    * attacker, else the pawn site. */
+  private def standingSite(ready: ReadyGame, player: PlayerId)
+      : Option[SiteId] = CampaignSetup.originOf(ready, player)
 
   private def favor(ready: ReadyGame, player: PlayerId): Int =
     ready.game.current.players.find(_.player == player).fold(0)(_.board.favor)

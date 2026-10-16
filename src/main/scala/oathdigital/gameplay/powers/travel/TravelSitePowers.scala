@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.Site
 import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.wake.{HeadwatersSite, TidalMarshesSite}
 import oathdigital.model.{DecisionOptionRef, Location, Move, NoteKey,
@@ -217,8 +218,7 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
       val current = ctx.state.game.current
       val map = current.map
       val outside = for
-        pawn <- current.players.find(_.player == ctx.activePlayer)
-          .flatMap(_.pawnSite)
+        pawn <- CampaignSetup.originOf(ctx.state, ctx.activePlayer)
         pawnRegion <- map.regionOf(pawn)
         targetRegion <- map.regionOf(target)
         passRegion <- map.regionOf(site)
@@ -231,7 +231,8 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
         })
       Option.when(outside.contains(true) && !ruledByActor)(
         OathViolation.CampaignUnavailable(
-          s"a Pass prevents targeting '${target.value}' from the pawn site"))
+          s"a Pass prevents targeting '${target.value}' from the " +
+            "Campaign's site"))
     case _ => None
 
   private def blocked(ctx: PowerCtx): Option[OathViolation] =

@@ -191,6 +191,43 @@ class CityWallSuite extends munit.FunSuite:
     assert(run.offered(b.actor).contains(DecisionOptionRef.Denizen(
       CatalogNames.denizen("Fire Talkers"))))
 
+  /** p1 holds Fire Talkers faceup, a faceup secret and the Darkest Secret,
+    * with the pawn at Ancient City; the rival rules Buried Giant with 2
+    * warbands and stands there. City Wall stands at `wallAt`, ruled by the
+    * rival. */
+  private def firesAgainstTheRivalAtBuriedGiant(wallAt: SiteId)
+      : (CampaignFixture.Board, SiteId) =
+    import CampaignFixture.{board, on, withAdviser, withSecrets}
+    val giant = CatalogNames.site("Buried Giant")
+    val talkers = withSecrets(withAdviser(board(warbands = 5, supply = 7),
+      "Fire Talkers", Orientation.FaceUp), 1)
+    val b = on(talkers)(_.darkestSecret(Some(talkers.actor), secrets = 1)
+      .pawn(talkers.rival, at = giant).warbandsAt(giant, talkers.rival, 2)
+      .denizen(wall, at = wallAt).warbandsAt(wallAt, talkers.rival, 2))
+    (b, giant)
+
+  /** p1's Campaign queued from `origin`, a Conquest committing 2. */
+  private def conquestQueuedFrom(b: CampaignFixture.Board, origin: SiteId)
+      : PlanDriver.Run =
+    val game = CampaignFixture.rules(PlanDriver.winningDice)
+    PlanDriver.committed(game, CampaignFixture.campaignQueuedFrom(game, b,
+      origin, PowerSourceRef.Card(CatalogNames.denizen("Wild Allies"))), b,
+      force = 2)
+
+  test("an attacker campaigning from City Wall's site is walled in there"):
+    val giant = CatalogNames.site("Buried Giant")
+    val (b, origin) = firesAgainstTheRivalAtBuriedGiant(wallAt = giant)
+    assert(!PlanDriver.awaits(conquestQueuedFrom(b, origin), b.actor,
+      CampaignIds.attackerPlan))
+
+  test("an attacker standing at City Wall's site but campaigning from " +
+      "elsewhere is not walled in"):
+    val (b, origin) = firesAgainstTheRivalAtBuriedGiant(wallAt = home)
+    val run = conquestQueuedFrom(b, origin)
+    assert(PlanDriver.awaits(run, b.actor, CampaignIds.attackerPlan))
+    assert(run.offered(b.actor).contains(DecisionOptionRef.Denizen(
+      CatalogNames.denizen("Fire Talkers"))))
+
   /** The actor holding Tyrant at Buried Giant, laid out by `steps`. */
   private def holdingTyrant(steps: Table => Table): ReadyGame =
     TravelFixture.on(TravelFixture.board(supply = 7))(table =>

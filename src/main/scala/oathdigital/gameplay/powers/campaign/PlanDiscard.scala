@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.actions.CardPlay
+import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.model._
 
 /** The standard discard of a denizen a battle plan used, once the plan is spent:
@@ -53,7 +54,8 @@ object PlanDiscard:
       : Either[OathViolation, Vector[CoreOperation]] =
     val current = ready.game.current
     val player = current.players.find(_.player == user)
-    val pawnRegion = player.flatMap(_.pawnSite).flatMap(current.map.regionOf)
+    val pawnRegion = CampaignSetup.originOf(ready, user)
+      .flatMap(current.map.regionOf)
     val asAdviser = player.toVector.flatMap(_.advisers.collect {
       case held: DenizenState if held.id == card =>
         (PositionedLocation(Location.PlayArea(user)), held.tokens, pawnRegion)

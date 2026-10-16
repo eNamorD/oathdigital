@@ -124,6 +124,23 @@ class FortressRulesSuite extends munit.FunSuite:
     val crowded = on(b)(_.pawn(b.bystander, at = b.origin))
     assertEquals(startOf(crowded).left.toOption, Some(protectedRaid))
 
+  test("the Fortress note names the origin when it shields everyone there"):
+    // p1 campaigns from Buried Giant, which bandits rule, where the Rotting
+    // Fortress stands with p2 and p3; p1's pawn stays at Ancient City.
+    val base = board(warbands = 4, supply = 7)
+    val origin = CatalogNames.site("Buried Giant")
+    val b = on(base)(_.bandits(origin, 2).pawn(base.rival, at = origin)
+      .pawn(base.bystander, at = origin)
+      .edifice(fortress, EdificeSide.Ruined, at = origin))
+    val started = CampaignFixture.campaignQueuedFrom(TargetingFixture.rules,
+      b, origin, PowerSourceRef.Card(CatalogNames.denizen("Wild Allies")))
+    val raidOption = TargetingFixture.optionsIncludingUnavailableAt(started,
+      ActionRef.Campaign).find(_.ref == raid)
+    raidOption match
+      case Some(DecisionOption.Unavailable(_, OptionReason.Noted(_, note))) =>
+        assertEquals(note.args, Vector[NoteArg](NoteArg.Site(origin)))
+      case other => fail(s"expected the Raid noted, got $other")
+
   test("the Rotting Fortress leaves a Conquest of the same site alone"):
     val b = fortified(EdificeSide.Ruined, ruled = true)
     assertEquals(optionsAt(accepted(startOf(b)), ActionRef.Campaign),

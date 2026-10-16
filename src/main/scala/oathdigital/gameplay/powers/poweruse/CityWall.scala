@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.poweruse
 
 import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
-import oathdigital.gameplay.{PowerAccess, SiteRulers}
+import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
   PowerUse, PowerUseRefusal, PowerUseRestriction, Waiver}
@@ -22,9 +23,10 @@ object CityWallCard extends Denizen(DenizenId("252"), "City Wall", Suit.Order) w
   * An enemy of its site's ruler ([[RulerBans]]) whose pawn stands at that
   * site cannot use a non-persistent power from any card, a use whose cost
   * places on its card ([[Placements.byUse]]), or place on any card
-  * ([[Placements.onto]]). The pawn is the physical one: an as-if site does
-  * not count. A player ruler may consent outside a Campaign. It writes no
-  * line.
+  * ([[Placements.onto]]). The site is the one the player acts from: a
+  * queued Campaign's origin for its attacker (slice 13), else the pawn
+  * site. Small Friends' as-if Trade site does not count yet (ROADMAP 13c).
+  * A player ruler may consent outside a Campaign. It writes no line.
   */
 case object CityWall extends ContributingPower with PowerUseRestriction:
   val id: PowerId = CityWallCard.power.id
@@ -61,7 +63,7 @@ case object CityWall extends ContributingPower with PowerUseRestriction:
       : Option[SiteRuler] =
     for
       site <- SiteRulers.siteOf(ready, CityWallCard.id)
-      if PowerAccess.pawnSite(ready, player).contains(site)
+      if CampaignSetup.originOf(ready, player).contains(site)
       ruler <- RulerBans.ruler(ready, CityWallCard.id)
       if RulerBans.enemy(ruler, player)
     yield ruler

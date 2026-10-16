@@ -20,6 +20,7 @@ class SignalTreesSuite extends munit.FunSuite:
   private val swarm = CatalogNames.denizen("Insect Swarm")
   private val songs = CatalogNames.denizen("Tavern Songs")
   private val oracle = CatalogNames.denizen("Oracle")
+  private val homesteaders = CatalogNames.denizen("Homesteaders")
   // The origin, Ancient City, is in the Cradle.
   private val next = CardPlay.nextRegion(Region.Cradle)
 
@@ -54,6 +55,27 @@ class SignalTreesSuite extends munit.FunSuite:
     assertEquals(said(power, picked.events), Vector(line("added",
       s"Revealed and discarded ${wolves.value}, ${songs.value}, " +
         s"${swarm.value}; added 4 attack dice.")))
+
+  test("an attacker campaigning from an origin reveals the origin region's " +
+      "pile"):
+    // The origin, Buried Giant, lies outside the pawn's Cradle, whose pile
+    // holds no Beast.
+    val (base, away) = rivalAloneAtASiteTheActorHolds(board = 2, atSite = 1)
+    val originRegion = base.ready.game.current.map.regionOf(away).get
+    assertNotEquals(originRegion, Region.Cradle)
+    val b = on(withSecrets(withAdviser(base, card, Orientation.FaceUp),
+      faceUp = 1))(_.discarded(Region.Cradle, homesteaders)
+      .discarded(originRegion, oracle, swarm, songs, wolves))
+    val game = rules(winningDice)
+    val run = committed(game, campaignQueuedFrom(game, b, away,
+      PowerSourceRef.Card(CatalogNames.denizen("Wild Allies"))), b,
+      force = 2, raid = true)
+    val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
+    assert(picked.since(run).contains(
+      ModifyDicePool(CampaignIds.attackPool, 4)))
+    assertEquals(Look(picked.state).discardPile(originRegion), Vector(oracle))
+    assertEquals(Look(picked.state).discardPile(Region.Cradle),
+      Vector(homesteaders))
 
   // A dry run records no event and leaves no state, so no test can see a
   // reveal in one. A reveal wired outside the chosen plan, as a rewrite or
