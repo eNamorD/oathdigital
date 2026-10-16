@@ -159,6 +159,12 @@ this order. Each slice gets its own plan.
   {site}") then becomes one question at each kill. This item needs its own
   design, since it changes existing cards' outcomes. Recorded while
   planning slice 13 on 2026-10-16.
+- [ ] **13c. City Wall reads an as-if Trade site.** City Wall's "while at
+  this site" counts the site a player acts from. Slice 13 gives it a queued
+  Campaign's origin. Small Friends' as-if Trade site lives only in the walk's
+  answers, which a power-use restriction is not handed. With this item, a
+  player trading as if at City Wall's site is walled in for that Trade.
+  Recorded while planning slice 13 on 2026-10-16.
 - [ ] **14. Off-turn actor:** Sneak Attack, Second Wind for a defender.
 - [ ] **15. Palanquin.**
 

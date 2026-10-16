@@ -17,7 +17,8 @@
   - The force question asks 0 to B+S, where B is the actor's warbands on their board and S their warbands at the origin. Its heading names both counts.
   - The warbands at the origin stay there.
   - The `CampaignResult` records the origin's two counts (`OriginForce`). At the kill step, a question asks how many of the dead come from the origin, when that is a real choice, and the losses kill from the board and from the site.
-- **The attacker's own pawn reads become origin reads.** Six powers read the attacker's pawn site during a Campaign walk. Each reads `CampaignSetup.originOf` instead: Fortress notes, Narrow Pass, Peace Envoy, Signal Trees, Vow of Union and PlanDiscard. `PlanContext.pawnAt` reads it too.
+- **The attacker's own pawn reads become origin reads.** Seven powers read the attacker's pawn site during a Campaign walk. Each reads `CampaignSetup.originOf` instead: Fortress notes, Narrow Pass, Peace Envoy, Signal Trees, Vow of Union, PlanDiscard and City Wall. `PlanContext.pawnAt` reads it too.
+- **An attacker's spare is known to the losses.** Billowing Fog and Traveling Doctor, chosen by the attacker, record a pool. The losses then count only the skulls and the sacrifices as dead, in place of rewriting the attacker's kill afterwards.
 - **A phase power can check a queued start.**
   - A new trait in `powerresolver`, `QueuedStarts`, answers whether a `QueuedProcedure` would start, and why not.
   - `PhasePowerProcedure` fills it from `QueuedStart`, and hands it to a power through two defaulted `PhasePower` overloads, so no existing power changes.
@@ -52,7 +53,9 @@ The product owner settled these on 2026-10-16. They override the slice 13 entry 
 5. **"Act as if your pawn is there."**
    - Every read of the attacker's own pawn site during the Campaign walk reads the origin. Reads of other players' pawns don't change.
    - The physical pawn doesn't move. Later walks read the real pawn site, including Second Wind's Travel and Campaign and a Knights Errant Campaign.
-   - City Wall keeps reading the physical pawn, as its own ruling says ("an as-if site does not count").
+   - City Wall's "while at this site" reads the origin too. This replaces slice 10's ruling that an as-if site does not count. An attacker campaigning from City Wall's site is at it for that Campaign, and one campaigning from elsewhere is not.
+   - Using Wild Allies or Captains is itself a non-persistent power, judged where the pawn stands. So an enemy whose pawn is at City Wall's site cannot use either without the ruler's consent.
+   - Small Friends' as-if Trade site does not reach City Wall yet: ROADMAP item 13c. Small Friends is non-persistent too, so City Wall already refuses it to an enemy standing there.
 6. **The force.**
    - With a queued origin, the force question asks 0 to B+S, headed "Commit warbands to the Campaign: 0 to N (B on your board, S at {site}), each adds one attack die", and suggests the whole N.
    - With no warbands at the origin, the heading is today's. A Campaign without a queued origin adds no site warbands, even at the pawn site.
@@ -64,7 +67,7 @@ The product owner settled these on 2026-10-16. They override the slice 13 entry 
    - Survivors stay where they stand.
    - The question is asked once, at the kill step, where today's engine kills. ROADMAP item 13b moves each kill to its moment, and this question moves with it.
 8. **Loss powers.**
-   - Billowing Fog and Traveling Doctor cap the attacker's dead at the skulls and the sacrifices. With a split, they keep the board's kill first and trim the site's, so the site keeps its warbands.
+   - Billowing Fog and Traveling Doctor, chosen by the attacker, spare a defeated force's half: the dead are only the skulls and the sacrifices. The split question knows this, so it asks over the dead that will really die, and its answer is exactly what dies. The plan records the spare in a pool when chosen (`CampaignIds.attackerSpared`), as Zealots records a sacrifice's worth, and the losses read it. The defender's side of the two plans is unchanged.
    - Bear Traps kills a board warband when one stands outside the force: board plus origin warbands exceed the force, and the board holds one.
    - Hospital and Cursed Cauldron count both kills, as they count any kill of the force kind today.
 9. **Lines.**
@@ -105,7 +108,9 @@ The product owner settled these on 2026-10-16. They override the slice 13 entry 
   - `CampaignSetup.queuedOrigin(ready, actor): Option[SiteId]`, `CampaignSetup.atOrigin(ready, actor): Int` and `CampaignSetup.originForce(ready, actor): Option[OriginForce]`.
   - `final case class OriginForce(site: SiteId, atSite: Int, onBoard: Int)` in `model/CampaignTypes.scala`, and `CampaignResult.originForce: Option[OriginForce] = None`, on the wire as `"originForce"` with `"site"`, `"atSite"` and `"onBoard"`.
   - `CampaignIds.originDeaths = "campaign.origin-deaths"`, and `CampaignAnswers.originDeaths(pending): Option[Int]`.
-  - `CampaignBattle.attackerDeaths(result): Int`, `CampaignBattle.originDeathRange(origin, deaths): (Int, Int)` and `CampaignBattle.originDeathsStep(catalog, actor, result): Vector[Operation]`.
+  - `CampaignIds.attackerSpared: PoolKey = PoolKey("campaign.attacker-spared")` and `CampaignBattle.attackerSpared(ready): Boolean`.
+  - `CampaignBattle.attackerDeaths(result, spared: Boolean): Int`, `CampaignBattle.originDeathRange(origin, deaths): (Int, Int)` and `CampaignBattle.originDeathsStep(catalog, actor, result, spared): Vector[Operation]`.
+  - `CampaignFixture.rivalAloneAtASiteTheActorHolds(board, atSite, rivalBoard = 3): (Board, SiteId)`.
   - `trait QueuedStarts { def refusal(ready, entry): Option[OathViolation] }` with `QueuedStarts.unchecked`, in `powerresolver/PhasePower.scala`.
   - `PhasePower.build(ready, player, source, starts)` and `PhasePower.refusal(ready, player, source, starts): Option[String]`, both defaulted.
   - `CampaignFromSite` in `gameplay/powers/action/CampaignFromSite.scala`, plus `WildAllies` and `Captains` beside it, each with its card object moved in.
@@ -147,6 +152,23 @@ In `CampaignFixture.scala`, add the following (imports: `oathdigital.gameplay.wa
       source: PowerSourceRef): ReadyGame =
     QueuedStart.startingFrom(b.ready, queuedCampaignEntry(b, origin, source))
 
+  /** p1 at the bandit-ruled Ancient City with `board` warbands on their
+    * board; the rival alone at a third site, with `rivalBoard` board
+    * warbands, where p1 has `atSite` warbands. Returns the board and that
+    * site. Suites of later tasks share it. */
+  def rivalAloneAtASiteTheActorHolds(board: Int, atSite: Int,
+      rivalBoard: Int = 3)(using munit.Location): (Board, SiteId) =
+    val base = CampaignFixture.board(warbands = board, supply = 7)
+    val current = base.ready.game.current
+    val away = current.map.inPlay.find(site => site != base.origin &&
+      !current.players.exists(_.pawnSite.contains(site))).get
+    val b = on(base)(table =>
+      val placed = table.pawn(base.rival, at = away)
+        .boardWarbands(base.rival, rivalBoard)
+      if atSite > 0 then placed.warbandsAt(away, base.actor, atSite)
+      else placed)
+    (b, away)
+
   /** A Campaign started as the driver starts a power's queued `Run` that
     * names `origin`: the entry dequeued, then the walk started with it. */
   def campaignQueuedFrom(game: OathRules, b: Board, origin: SiteId,
@@ -178,22 +200,6 @@ import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
 class CampaignOriginSuite extends munit.FunSuite:
   private val source =
     PowerSourceRef.Card(CatalogNames.denizen("Wild Allies"))
-
-  /** p1 at the bandit-ruled Ancient City with `board` warbands on their
-    * board; the rival alone at a third site, with 3 board warbands, where
-    * p1 has `atSite` warbands. Returns the board and that site. */
-  private def rivalAloneAtASiteTheActorHolds(board: Int, atSite: Int)(
-      using munit.Location): (Board, SiteId) =
-    val base = CampaignFixture.board(warbands = board, supply = 7)
-    val current = base.ready.game.current
-    val away = current.map.inPlay.find(site => site != base.origin &&
-      !current.players.exists(_.pawnSite.contains(site))).get
-    val b = on(base)(table =>
-      val placed = table.pawn(base.rival, at = away)
-        .boardWarbands(base.rival, 3)
-      if atSite > 0 then placed.warbandsAt(away, base.actor, atSite)
-      else placed)
-    (b, away)
 
   test("a queued origin is where the Campaign judges from: a lone rival " +
       "there is the Raid's defender, though the pawn stands elsewhere"):
@@ -380,6 +386,8 @@ The losses learn where the force stands. The result records the origin's counts,
 - Modify: `src/main/scala/oathdigital/gameplay/actions/campaign/CampaignBattle.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/actions/campaign/CampaignOutcome.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/SparedForce.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/BillowingFog.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/TravelingDoctor.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/BearTraps.scala`
 - Modify: `src/main/scala/oathdigital/application/gamelog/CampaignLines.scala`
 - Test: `src/test/scala/oathdigital/gameplay/campaign/CampaignOriginSuite.scala`
@@ -390,8 +398,8 @@ The losses learn where the force stands. The result records the origin's counts,
 - Consumes: Task 1's `queuedOrigin`, `atOrigin` and `campaignQueuedFrom`.
 - Produces:
   - `OriginForce(site, atSite, onBoard)` and `CampaignResult.originForce`
-  - `CampaignIds.originDeaths`, `CampaignAnswers.originDeaths`
-  - `CampaignBattle.attackerDeaths`, `originDeathRange`, `originDeathsStep`
+  - `CampaignIds.originDeaths`, `CampaignAnswers.originDeaths`, `CampaignIds.attackerSpared`
+  - `CampaignBattle.attackerSpared`, `attackerDeaths`, `originDeathRange`, `originDeathsStep`
   - `CampaignBattle.losses(ready, result, pending)` (it gains `pending`)
 
 - [ ] **Step 1: Write the failing tests**
@@ -461,12 +469,16 @@ Add to `CampaignResultCodecSuite` a value and a test:
       "result")("originForce")("atSite").num.toInt, 2)
 ```
 
-In the Billowing Fog suite, copy its test where a defeated attacker keeps all but the skulls and sacrifices. Change only these:
-- the board, to `rivalAloneAtASiteTheActorHolds(board = 1, atSite = 3)`;
+In the Billowing Fog suite, copy its test where a defeated attacker keeps all but the skulls and sacrifices, and keep its way of holding and choosing the Fog. Change only these:
+- the board, to `rivalAloneAtASiteTheActorHolds(board = 1, atSite = 3, rivalBoard = 5)`, plus the Fog the copied test holds;
 - the start, to `campaignQueuedFrom`;
-- the split answer, to 2 from the site.
+- the force, 4 committed with `losingDice`, and 2 sacrificed. The attack is 2 plus 2 sacrificed against a defense of 5, a defeat.
 
-Name the copy "a defeated attacker's split loses no warband at the origin under Billowing Fog". Assert the site still holds 3 warbands and the board 1: the toll is 0, because `losingDice` rolls no skulls.
+Unspared, 2 + (4 − 2) / 2 = 3 would die; spared, only the 2 sacrifices die. Name the copy "under Billowing Fog the origin split asks over the sacrifices only". Assert:
+- the split question is a ChooseAmount from 1 to 2, headed "Choose how many of the 2 dead warbands come from {site}";
+- after answering 1, the board holds 0 and the site 2.
+
+Add a second copy, "a defeated attacker spared by Billowing Fog with no split still loses its sacrifices", from a plain Campaign (`CampaignFixture.board`, no queued origin). It asserts that the board loses exactly the sacrifices. It guards the move from the rewrite to the pool.
 
 In the Bear Traps suite, copy its test where the trap kills a warband beyond the force. Board 1 on the board and 2 at the origin, start with `campaignQueuedFrom`, and commit 2. Name it "Bear Traps kills a board warband the force does not need, counting the origin's". Assert the board ends at 0 before the losses.
 
@@ -496,7 +508,15 @@ In `CampaignResultCodec.scala`:
 
 - [ ] **Step 4: The ids, the answer reader and the setup's reading**
 
-In `CampaignIds`, add `val originDeaths = "campaign.origin-deaths"` with a doc comment ("How many of the attacker's dead come from a queued origin."), and add it to `all`.
+In `CampaignIds`, add `val originDeaths = "campaign.origin-deaths"` with a doc comment ("How many of the attacker's dead come from a queued origin."), and add it to `all`. Add the pool beside `sacrificeWorth`:
+
+```scala
+  /** Recorded by an attacker's plan that spares a defeated force
+    * (Billowing Fog, Traveling Doctor): the losses then kill only the
+    * skulls and the sacrifices. It is never rolled, and it is cleared with
+    * the others when the Campaign ends. */
+  val attackerSpared: PoolKey = PoolKey("campaign.attacker-spared")
+```
 
 In `CampaignAnswers`:
 
@@ -527,12 +547,16 @@ In `CampaignBattle.scala`:
 - Add:
 
 ```scala
+  /** Whether an attacker's plan spared a defeated force. */
+  def attackerSpared(ready: ReadyGame): Boolean =
+    ready.game.current.rollPools.contains(CampaignIds.attackerSpared)
+
   /** The attacker's dead: the skull and sacrifice losses, plus half the
-    * survivors on a defeat. */
-  def attackerDeaths(result: CampaignResult): Int =
+    * survivors on a defeat unless a plan spared them. */
+  def attackerDeaths(result: CampaignResult, spared: Boolean): Int =
     val survivors = result.force - result.skullLosses - result.sacrificed
     result.skullLosses + result.sacrificed +
-      (if result.attackerWins then 0 else survivors / 2)
+      (if result.attackerWins || spared then 0 else survivors / 2)
 
   /** How many of `deaths` may come from the origin: at least what the
     * board cannot hold, at most what the site holds. A toll beyond both
@@ -545,8 +569,8 @@ In `CampaignBattle.scala`:
     * split is a real choice. Read from the durable result, so the step
     * keeps its place when the losses have changed the board. */
   def originDeathsStep(catalog: ExecutableCatalog, actor: PlayerId,
-      result: CampaignResult): Vector[Operation] =
-    val deaths = attackerDeaths(result)
+      result: CampaignResult, spared: Boolean): Vector[Operation] =
+    val deaths = attackerDeaths(result, spared)
     result.originForce.toVector.flatMap { origin =>
       val (least, most) = originDeathRange(origin, deaths)
       val name = catalog.site(origin.site).fold(origin.site.value)(_.name)
@@ -560,7 +584,7 @@ In `CampaignBattle.scala`:
 Change `losses(ready, result)` to `losses(ready, result, pending: PendingTree)`. Replace its body's `deaths` and `own` with:
 
 ```scala
-        val deaths = attackerDeaths(result)
+        val deaths = attackerDeaths(result, attackerSpared(ready))
         val kind = ForceKind.Exile(attacker.lineage)
         val fromSite = result.originForce.fold(0) { origin =>
           val (least, most) = originDeathRange(origin, deaths)
@@ -584,7 +608,8 @@ In `CampaignOutcome.steps`, replace the losses Sequence with:
 
 ```scala
     val losses: Operation = Sequence(
-      CampaignBattle.originDeathsStep(catalog, actor, result) :+
+      CampaignBattle.originDeathsStep(catalog, actor, result,
+        CampaignBattle.attackerSpared(ready)) :+
         BuildOps((ready, pending) =>
           CampaignBattle.losses(ready, result, pending)),
       Some(PowerWindow.CampaignLosses))
@@ -592,23 +617,23 @@ In `CampaignOutcome.steps`, replace the losses Sequence with:
 
 - [ ] **Step 6: The loss powers and the line**
 
-In `SparedForce.kept`, add before `case other`:
+The attacker's spare moves from a rewrite of the kill to the pool, so the losses, and the split question before them, count only what really dies (ruling 8).
+
+In `SparedForce`, add:
 
 ```scala
-    // A queued origin's share of the dead (slice 13): the board's kill is
-    // kept first, so the site loses only the toll the board cannot hold.
-    case kill @ Kill(Piece.Warbands(`kind`, count),
-        PositionedLocation(Location.Site(site), _, _))
-        if side == CampaignPlanSide.Attacker &&
-          result.originForce.exists(_.site == site) =>
-      val toll = result.skullLosses + result.sacrificed
-      val board = CampaignBattle.attackerDeaths(result) - count
-      val kept = math.max(0, toll - board)
-      if kept > 0 then Vector(kill.copy(warbands = Piece.Warbands(kind, kept)))
-      else Vector.empty
+  /** What choosing the plan does at once: on the attacker's side it
+    * records the spare, which the losses read (slice 13). */
+  def effects(side: CampaignPlanSide): Vector[CampaignPlanEffect] =
+    side match
+      case CampaignPlanSide.Attacker => Vector(CampaignPlanEffect.Run(
+        Vector(ModifyDicePool(CampaignIds.attackerSpared, 1))))
+      case CampaignPlanSide.Defender => Vector.empty
 ```
 
-Import `CampaignBattle` if needed: `powers` may import `actions`.
+In `SparedForce.kept`, the attacker's arm of the `PlayArea` kill case becomes `Vector(kill)`, since the losses already leave out the half. Update the Scaladoc's first bullet to say the losses read the pool. Keep `cancelled`, which the line reads, as it is.
+
+In `BillowingFog.plan` and `TravelingDoctor.plan`, pass `SparedForce.effects(context.side)` as the offer's effects in place of `Vector.empty`. If Traveling Doctor's offer already carries effects, append these.
 
 In `BearTraps.trap`, replace the condition:
 
@@ -652,6 +677,8 @@ git add src/main/scala/oathdigital/model/CampaignTypes.scala \
   src/main/scala/oathdigital/gameplay/actions/campaign/CampaignBattle.scala \
   src/main/scala/oathdigital/gameplay/actions/campaign/CampaignOutcome.scala \
   src/main/scala/oathdigital/gameplay/powers/campaign/SparedForce.scala \
+  src/main/scala/oathdigital/gameplay/powers/campaign/BillowingFog.scala \
+  src/main/scala/oathdigital/gameplay/powers/campaign/TravelingDoctor.scala \
   src/main/scala/oathdigital/gameplay/powers/campaign/BearTraps.scala \
   src/main/scala/oathdigital/application/gamelog/CampaignLines.scala \
   src/test/scala/oathdigital/gameplay/campaign/CampaignOriginSuite.scala \
@@ -675,7 +702,8 @@ Ruling 5. Each read of the attacker's own pawn site during a Campaign walk reads
 - Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/VowOfUnion.scala` (`region`, line ~153)
 - Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/PlanDiscard.scala` (`pawnRegion`, line ~56)
 - Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/PlanContext.scala` (`pawnAt`, lines ~73-76)
-- Test: `SignalTreesSuite`, `PeaceEnvoySuite`, `MercenariesSuite`, `VowOfUnionSuite` and `FortressRulesSuite` under `src/test/scala/oathdigital/gameplay/powers/`, plus the Narrow Pass Campaign suite (`gameplay/powers/travel/NarrowPassCampaignConsentSuite.scala`)
+- Modify: `src/main/scala/oathdigital/gameplay/powers/poweruse/CityWall.scala` (`walledIn`, lines ~61-66, and the Scaladoc)
+- Test: `SignalTreesSuite`, `PeaceEnvoySuite`, `MercenariesSuite`, `VowOfUnionSuite` and `FortressRulesSuite` under `src/test/scala/oathdigital/gameplay/powers/`, the Narrow Pass Campaign suite (`gameplay/powers/travel/NarrowPassCampaignConsentSuite.scala`), and the City Wall suite (`grep -rl "CityWall" src/test/scala`)
 
 **Interfaces:**
 - Consumes: Task 1's `CampaignSetup.originOf` and `CampaignFixture.campaignQueuedFrom`.
@@ -690,6 +718,11 @@ Each test copies an existing test of its suite and changes only the start and th
 4. **VowOfUnionSuite:** copy the test quoted below, where an attacker holding the Vow commits the warbands it moved. The ruled sites stand in the origin's region, and the attacker's pawn in another region. Assert the direction question offers the move. Name it "an attacker holding the Vow gathers from the origin's region".
 5. **FortressRulesSuite:** copy "the Rotting Fortress protects every player at the site, so a second …". Stand the Rotting Fortress and the two players at the origin, and the attacker's pawn elsewhere. Assert the note names the origin. Name it "the Fortress note names the origin when it shields everyone there".
 6. **NarrowPassCampaignConsentSuite:** copy the test where the Pass refuses a target outside the attacker's region. The origin is inside the target's region and the attacker's pawn outside it. Assert the target is offered. Name it "the Narrow Pass judges the region from the origin".
+7. **The City Wall suite:** copy its test where an enemy at City Wall's site is refused a non-persistent power during a Campaign (a battle plan), or the nearest such test. Make two copies:
+   - "an attacker campaigning from City Wall's site is walled in there": City Wall stands at the origin, ruled by the rival, and the attacker's pawn is elsewhere. Assert the plan is refused with City Wall's reason.
+   - "an attacker standing at City Wall's site but campaigning from elsewhere is not walled in": the attacker's pawn stands at City Wall's site and the origin is another site. Assert the plan is offered.
+
+   If the suite has no Campaign test, build both from `PlanDriver`, with a non-persistent battle plan the attacker holds, such as Billowing Fog.
 
 The Vow of Union test to copy:
 
@@ -703,7 +736,7 @@ The Vow of Union test to copy:
 - [ ] **Step 2: Run them to see them fail**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.campaign.SignalTreesSuite" "testOnly oathdigital.gameplay.powers.campaign.PeaceEnvoySuite" "testOnly oathdigital.gameplay.powers.campaign.MercenariesSuite" "testOnly oathdigital.gameplay.powers.campaign.VowOfUnionSuite" "testOnly oathdigital.gameplay.powers.targeting.FortressRulesSuite" "testOnly oathdigital.gameplay.powers.travel.NarrowPassCampaignConsentSuite"`
-Expected: the six new tests FAIL, reading the pawn's site.
+Add the City Wall suite to the command. Expected: the eight new tests FAIL, reading the pawn's site.
 
 - [ ] **Step 3: Switch each read**
 
@@ -715,7 +748,7 @@ Expected: the six new tests FAIL, reading the pawn's site.
 - **`PlanDiscard.operations`:** `pawnRegion` reads `CampaignSetup.originOf(ready, user).flatMap(current.map.regionOf)`, and the line keeps its `PawnSiteMissing(user)` error.
 - **`PlanContext.pawnAt`:** `user.exists(player => CampaignSetup.originOf(ready, player).contains(site))`. Update its doc: "has their pawn, or campaigns from a queued origin, at `site`".
 
-Leave `CityWall.walledIn` alone (ruling 5).
+- **`CityWall.walledIn`:** `PowerAccess.pawnSite(ready, player)` becomes `CampaignSetup.originOf(ready, player)`. In the Scaladoc, replace "The pawn is the physical one: an as-if site does not count." with: "The site is the one the player acts from: a queued Campaign's origin for its attacker (slice 13), else the pawn site. Small Friends' as-if Trade site does not count yet (ROADMAP 13c)." Import `oathdigital.gameplay.actions.campaign.CampaignSetup`, and drop `PowerAccess` from the imports if nothing else uses it.
 
 - [ ] **Step 4: Run every Campaign and power suite**
 
@@ -732,7 +765,8 @@ git add src/main/scala/oathdigital/gameplay/powers/targeting/FortressRules.scala
   src/main/scala/oathdigital/gameplay/powers/campaign/VowOfUnion.scala \
   src/main/scala/oathdigital/gameplay/powers/campaign/PlanDiscard.scala \
   src/main/scala/oathdigital/gameplay/powers/campaign/PlanContext.scala \
-  <the six edited suites>
+  src/main/scala/oathdigital/gameplay/powers/poweruse/CityWall.scala \
+  <the seven edited suites>
 git commit -m "feat(campaign): the attacker's pawn reads a queued origin"
 ```
 
@@ -862,6 +896,18 @@ class WildAlliesSuite extends munit.FunSuite:
     // tokens.
     assertEquals(Look(live).tokensOn(card), Tokens(0, 1))
 
+  test("an enemy standing at City Wall's site cannot use it, with City " +
+      "Wall's reason"):
+    // City Wall at Ancient City, ruled by p2; p1, an enemy, stands there.
+    val ready = alliesWithABeastSiteHoldingTheRival
+      .denizen(CatalogNames.denizen("City Wall"), at = home)
+      .warbandsAt(home, p2, 1).ready
+    assert(menuReason(ready).exists {
+      case OptionReason.Askable(power, _, _, _) =>
+        power == CatalogNames.power("City Wall")
+      case _ => false
+    }, menuReason(ready))
+
   test("using it writes the site it campaigns at"):
     val rules = ActPowerHarness.rulesWithPrintedRestrictions()
     val ready = alliesWithABeastSiteHoldingTheRival.ready
@@ -883,6 +929,8 @@ class WildAlliesSuite extends munit.FunSuite:
     assertEquals(ActPowerHarness.replayed(rules, MenuPlay.withoutMenu(
       ActPowerHarness.act(ready)), events), Outcomes.ready(queued.state))
 ```
+
+For the City Wall test, read how `CityWallSuite` (or the slice 10 suite that tests City Wall) asserts a refused use in the menu, and match it. A player ruler's refusal is askable outside a Campaign, so the reason is `OptionReason.Askable` with City Wall's power id. Use the id the suite uses (`CityWallCard.power.id`) in place of `CatalogNames.power`, if that helper does not exist.
 
 Ruling 2 reads the effective suit, but Pledge to Discord changes only advisers (`EffectiveSuit.pledged`), so a site card's effective suit is its printed suit today. No test pledges a site card.
 
@@ -1258,6 +1306,8 @@ git commit -m "feat(batch8): Captains campaigns from a ruled site"
 
 Replace the slice 13 entry of the rulings appendix with this plan's "Rulings" section, rewritten as the appendix writes entries: one bullet per card with its printed text quoted, then the shared rules. Say that ruling 7's single question follows ROADMAP item 13b when that item moves the kills.
 
+In the slice 10 entry, append to the City Wall bullet: "Where the enemy is, is where they act from: a queued Campaign's origin counts (slice 13). Small Friends' as-if Trade site is ROADMAP item 13c."
+
 - [ ] **Step 2: Update the design**
 
 Replace the slice 13 bullet of "The bar" with:
@@ -1276,7 +1326,7 @@ Replace the slice 13 bullet of "The bar" with:
 - [ ] **Step 3: Run the full gate**
 
 Run: `./sbtw "test" "frontend/test"`
-Expected: everything passes. The server count rises by about 6 + 6 + 6 + 6 + 6 = 30 new tests, plus any the reviews ask for. The frontend count does not change.
+Expected: everything passes. The server count rises by about 6 + 7 + 8 + 6 + 6 = 33 new tests, plus any the reviews ask for. The frontend count does not change.
 
 Run: `./sbtw "frontend/fullOptJS"`
 Expected: it links.
