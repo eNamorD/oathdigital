@@ -73,8 +73,10 @@ class GreatFeastSuite extends munit.FunSuite:
 
   test("with nothing to discard the cost stays paid, and the line names " +
       "the site"):
-    val t = accepted(use(staged().denizen(wildMounts, at = home).ready, power,
-      source))
+    val asked = accepted(use(staged().denizen(wildMounts, at = home).ready,
+      power, source))
+    assert(awaits(asked, GreatFeast.decisionId))
+    val t = accepted(continuedPast(asked, GreatFeast.decisionId))
     parked.assertResumed(t.state, Phase.Act, p1)
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
       "used.none", s"${home.value} held no Beast card.", covers = true)))

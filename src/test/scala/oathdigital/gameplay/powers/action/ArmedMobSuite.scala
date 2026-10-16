@@ -93,10 +93,13 @@ class ArmedMobSuite extends munit.FunSuite:
     val done = choose(ready, homesteaders).answered
     assertEquals(Look(after(done)).advisers(p1), Vector.empty[CardId])
 
-  test("a holder of both banners is no target, and the line says so"):
+  test("a holder of both banners is no target: Continue, and the line " +
+      "says so"):
     val ready = staged().peoplesFavor(Some(p2), 1).adviser(p2, homesteaders)
       .ready
-    val done = accepted(use(ready, power, source))
+    val asked = accepted(use(ready, power, source))
+    assert(awaits(asked, ArmedMob.decisionId))
+    val done = accepted(continuedPast(asked, ArmedMob.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).advisers(p2), Vector[CardId](homesteaders))
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
@@ -125,7 +128,9 @@ class ArmedMobSuite extends munit.FunSuite:
   test("an enemy's Yew Staff makes them no target"):
     val ready = staged().darkestSecret(None, 1).relic(p2, yewStaff)
       .adviser(p2, homesteaders).ready
-    val done = accepted(use(ready, power, source))
+    val asked = accepted(use(ready, power, source))
+    assert(awaits(asked, ArmedMob.decisionId))
+    val done = accepted(continuedPast(asked, ArmedMob.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).advisers(p2), Vector[CardId](homesteaders))
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
@@ -209,10 +214,12 @@ class ArmedMobSuite extends munit.FunSuite:
     assertEquals(offered(started, p1),
       Some(Vector("denizen" -> landWarden.value)))
 
-  test("with two targets and no faceup adviser nothing is asked, and the " +
-      "line says so"):
-    val done = accepted(use(staged().relic(p1, yewStaff).ready, power,
+  test("with two targets and no faceup adviser only Continue is asked, " +
+      "and the line says so"):
+    val asked = accepted(use(staged().relic(p1, yewStaff).ready, power,
       source))
+    assert(awaits(asked, ArmedMob.decisionId))
+    val done = accepted(continuedPast(asked, ArmedMob.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
       "used.empty-both", "Neither target had a faceup adviser to discard.",

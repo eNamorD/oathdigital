@@ -21,9 +21,9 @@ object FaeMerchantCard extends Denizen(DenizenId("180"), "Fae Merchant", Suit.Be
   * decision and reads the relics after the draw, and the bury. The decision
   * offers every relic held, so a lone relic is confirmed with one click. The
   * Grand Scepter's restriction refuses its bury, and the bury is a required
-  * batch, so the search hides the scepter. The decision is passed when the
-  * search leaves it empty (`Decide.passWhenEmpty`): with only the scepter held
-  * and the relic deck empty, nothing goes back. The bury returns any secrets
+  * batch, so the search hides the scepter. The decision shows Continue when
+  * nothing can be chosen (`Decide.passWhenEmpty`): with only the scepter
+  * held and the relic deck empty, nothing goes back. The bury returns any secrets
   * on the relic to their holder. Its `returned` line names the relic chosen,
   * so the choice posts no "Chose" line.
   */
@@ -42,15 +42,12 @@ case object FaeMerchant extends PaidAction(FaeMerchantCard.power):
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     BuildOps((state, _) => Right(RelicDraws.takeTop(state, player))),
     Note(this.id, RelicDraws.drawNote(source, player)),
-    Branch((state, _) => held(state, player) match {
-      case Vector() => Vector.empty
-      case relics => Vector(Decide(decisionId, player,
-        DecisionQuery.ChooseOne(relics.map(id =>
-          DecisionOption.Relic(DecisionOptionRef.Relic(id))),
-          heading = Some("Fae Merchant: put a relic on the bottom of the " +
-            "relic deck")),
-        passWhenEmpty = true))
-    }),
+    Branch((state, _) => Vector(Decide(decisionId, player,
+      DecisionQuery.ChooseOne(held(state, player).map(id =>
+        DecisionOption.Relic(DecisionOptionRef.Relic(id))),
+        heading = Some("Fae Merchant: put a relic on the bottom of the " +
+          "relic deck")),
+      passWhenEmpty = true))),
     BuildOps((state, pending) => putBack(state, player, pending),
       required = true),
     Note(this.id, returnNote(_, player, source), covers = true))))

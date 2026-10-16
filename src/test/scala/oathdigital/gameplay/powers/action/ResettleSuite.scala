@@ -97,10 +97,13 @@ class ResettleSuite extends munit.FunSuite:
       NoteKey.Used, s"Moved ${p1.value}'s ${elders.value} to ${home.value}.",
       covers = false)))
 
-  test("with no faceup Nomad adviser it asks nothing and the line says so"):
+  test("with no faceup Nomad adviser it shows Continue and the line says " +
+      "so"):
     val ready = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
       .denizen(resettle, at = home).adviser(p2, landWarden).ready
-    val done = accepted(use(ready, power, source))
+    val asked = accepted(use(ready, power, source))
+    assert(awaits(asked, Resettle.adviserDecisionId))
+    val done = accepted(continuedPast(asked, Resettle.adviserDecisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).advisers(p2), Vector[CardId](landWarden))
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(

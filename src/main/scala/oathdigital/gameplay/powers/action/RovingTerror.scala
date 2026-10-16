@@ -23,9 +23,9 @@ object RovingTerrorCard extends Denizen(DenizenId("46"), "Roving Terror", Suit.B
   * site carrying its secret, and takes the site's last slot, since a row
   * has no gaps. The discard and the move are one required batch, so a card
   * the Hall of Ministers protects is shown with its reason, or askable of
-  * the Hall's ruler (consent slice 3), and the question passes when no card
-  * may be chosen. With no candidate the cost
-  * stays paid and one line says so.
+  * the Hall's ruler (consent slice 3). With no card that may be chosen the
+  * question shows Continue beside any askable card. With no candidate the
+  * cost stays paid and one line says so.
   *
   * The line covers the generic discard line.
   */
@@ -55,12 +55,12 @@ final case class RovingTerror private (catalog: ExecutableCatalog)
           Candidate(site, card, suit))))
 
   /** The question over the candidates, each judged for the actor's
-    * discard; asked only when some card may be chosen (`SiteCards.ask`). */
+    * discard. With none that may be chosen it is the Continue screen, where
+    * an askable card still asks (catalog batch 8, slice 10, part 2b). */
   private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
     val found = candidates(ready).flatMap(c =>
       cards.judged(ready, actor, c.site, c.card, c.suit))
-    if !found.exists(_.available) then Vector.empty
-    else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(found,
+    Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(found,
       heading = Some("Roving Terror: discard a card at another site and " +
         "move there")), passWhenEmpty = true))
 

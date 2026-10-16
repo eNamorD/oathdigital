@@ -21,8 +21,9 @@ object ResettleCard extends Denizen(DenizenId("159"), "Resettle", Suit.Nomad) wi
   * second offers every site in play with room, in map order, Resettle's own
   * included. The move is one `Move` in a required batch, so the search hides
   * an adviser-only or locked adviser, which every site refuses, and the
-  * first question passes when nothing is left. The card carries its favor
-  * and secrets. With no candidate nothing is asked and one line says so.
+  * first question shows Continue when nothing can be chosen, with no
+  * candidate too. The card carries its favor and secrets. After Continue
+  * one line says nothing moved.
   */
 final case class Resettle private (catalog: ExecutableCatalog)
     extends PaidAction(ResettleCard.power):
@@ -54,13 +55,11 @@ final case class Resettle private (catalog: ExecutableCatalog)
     yield Candidate(player.player, card)
 
   private def askAdviser(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
-    candidates(ready) match
-      case Vector() => Vector.empty
-      case found => Vector(Decide(adviserDecisionId, actor,
-        DecisionQuery.ChooseOne(found.map(c =>
-          DecisionOption.Denizen(DecisionOptionRef.Denizen(c.card))),
-          heading = Some("Resettle: choose a faceup Nomad adviser to move")),
-        passWhenEmpty = true))
+    Vector(Decide(adviserDecisionId, actor,
+      DecisionQuery.ChooseOne(candidates(ready).map(c =>
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(c.card))),
+        heading = Some("Resettle: choose a faceup Nomad adviser to move")),
+      passWhenEmpty = true))
 
   /** Asked once an adviser is chosen. */
   private def askSite(ready: ReadyGame, actor: PlayerId,

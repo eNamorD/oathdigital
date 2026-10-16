@@ -75,12 +75,14 @@ class RovingTerrorSuite extends munit.FunSuite:
     assertEquals(end.game.current.commonCards.edificeDeck.lastOption,
       Some(debate))
 
-  test("with nothing to replace it asks nothing, keeps its secret, and the " +
-      "line says so"):
+  test("with nothing to replace it shows Continue, keeps its secret, and " +
+      "the line says so"):
     val ready = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
       .denizen(terror, at = home)
       .edifice(debate, EdificeSide.Intact, at = giant).ready
-    val done = accepted(use(ready, power, source))
+    val asked = accepted(use(ready, power, source))
+    assert(awaits(asked, RovingTerror.decisionId))
+    val done = accepted(continuedPast(asked, RovingTerror.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).cardsAt(home), Vector[CardId](terror))
     assertEquals(Look(after(done)).tokensOn(terror), Tokens(0, 1))

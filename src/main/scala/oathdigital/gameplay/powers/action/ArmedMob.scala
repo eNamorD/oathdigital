@@ -26,13 +26,15 @@ object ArmedMobCard extends Denizen(DenizenId("53"), "Armed Mob", Suit.Hearth) w
   *
   * With two targets the player first chooses whose adviser to discard. A
   * target with no faceup adviser is shown unavailable, and with neither
-  * having one nothing is asked. The candidates are the target's faceup
+  * having one only the adviser question is asked, as its Continue screen.
+  * The candidates are the target's faceup
   * denizen advisers, in adviser order. The chosen card gets the standard
   * discard: to the discard pile of the region after the player's, its
   * favor to its suit's bank and its secrets to the player facedown. The
   * discard is a required batch, so the Locked restriction hides a locked
-  * adviser, and the question passes when nothing is left. With no target,
-  * or nothing to discard, the cost stays paid and one line says so.
+  * adviser, and the question shows Continue when nothing can be chosen.
+  * With no target, or nothing to discard, the cost stays paid and one line
+  * says so.
   *
   * Its line covers the generic Discarded line.
   */
@@ -70,14 +72,12 @@ final case class ArmedMob private (catalog: ExecutableCatalog)
 
   private def askAdviser(ready: ReadyGame, actor: PlayerId,
       pending: PendingTree): Vector[Operation] =
-    owner(ready, actor, pending).toVector.flatMap(target =>
-      candidates(ready, target) match
-        case Vector() => Vector.empty
-        case found => Vector(Decide(decisionId, actor,
-          DecisionQuery.ChooseOne(found.map(card => DecisionOption.Denizen(
-            DecisionOptionRef.Denizen(card.id))),
-            heading = Some(adviserHeading(target == actor))),
-          passWhenEmpty = true)))
+    val target = owner(ready, actor, pending)
+    Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
+      target.toVector.flatMap(candidates(ready, _)).map(card =>
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(card.id))),
+      heading = Some(adviserHeading(target.contains(actor)))),
+      passWhenEmpty = true))
 
   /** The target the discard comes from: the player chosen, else the only
     * target. */

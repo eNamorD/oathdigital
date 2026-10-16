@@ -115,7 +115,9 @@ class TamingCharmSuite extends munit.FunSuite:
   test("with nothing to discard the cost stays paid, and the line names " +
       "the site"):
     val ready = staged().denizen(codeOfHonor, at = home).ready
-    val t = accepted(use(ready, power, source))
+    val asked = accepted(use(ready, power, source))
+    assert(awaits(asked, TamingCharm.decisionId))
+    val t = accepted(continuedPast(asked, TamingCharm.decisionId))
     parked.assertResumed(t.state, Phase.Act, p1)
     assertEquals(Look(after(t)).tokensOn(charm), Tokens(0, 1))
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(

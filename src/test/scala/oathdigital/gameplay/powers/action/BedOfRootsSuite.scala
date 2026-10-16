@@ -80,9 +80,12 @@ class BedOfRootsSuite extends munit.FunSuite:
       denizenRef(insomnia)))
     assertEquals(Look(after(done)).advisers(p1), Vector.empty[CardId])
 
-  test("with no faceup adviser, the cost stays paid and the line says so"):
+  test("with no faceup adviser it shows Continue, the cost stays paid and " +
+      "the line says so"):
     val ready = staged().adviser(p1, landWarden, facedown = true).ready
-    val done = accepted(use(ready, power, source))
+    val asked = accepted(use(ready, power, source))
+    assert(awaits(asked, BedOfRoots.decisionId))
+    val done = accepted(continuedPast(asked, BedOfRoots.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).favor(p1), 0)
     assertEquals(Look(after(done)).advisers(p1), Vector[CardId](landWarden))

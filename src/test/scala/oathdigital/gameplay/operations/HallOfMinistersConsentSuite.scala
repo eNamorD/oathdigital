@@ -72,10 +72,20 @@ class HallOfMinistersConsentSuite extends munit.FunSuite:
     assertEquals(row.state, "unavailable")
     assertEquals(row.reason, Some("Protected by the Hall of Ministers"))
 
-  test("when the Hall protects every candidate the question is not asked: " +
-      "a refusal would leave nothing to choose"):
-    assert(backToActing(accepted(use(guarded(beside = false), power,
-      source))))
+  test("when the Hall protects every candidate the card is askable beside " +
+      "Continue, and after a refusal Continue remains"):
+    def continueOffered(t: OathTransition): Boolean =
+      queryOf(t, p1).toVector.flatMap(_.offeredOptions)
+        .exists(_.id == Decide.Pass.wireId)
+    val asked = accepted(use(guarded(beside = false), power, source))
+    assert(awaits(asked, RovingTerror.decisionId))
+    assertEquals(errandBoyRow(asked).state, "askable")
+    assert(continueOffered(asked))
+    val refused = accepted(use(remembering(guarded(beside = false),
+      ConsentAnswer.Refused), power, source))
+    assert(awaits(refused, RovingTerror.decisionId))
+    assertEquals(errandBoyRow(refused).state, "unavailable")
+    assert(continueOffered(refused))
 
   test("the Hall's own ruler takes the card freely"):
     val t = accepted(use(guarded(_.warbandsAt(woods, p1, 1)), power, source))

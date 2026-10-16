@@ -79,8 +79,11 @@ class RelicBreakerSuite extends munit.FunSuite:
     assertEquals(Look(after(done)).relics(p1), Vector(scepter))
     assertEquals(NoteText.said(RelicBreaker, done.events), Vector.empty)
 
-  test("holding no relic, nothing happens and the line says so"):
-    val done = accepted(use(staged(Vector.empty).ready, RelicBreaker, source))
+  test("holding no relic, it shows Continue, nothing happens and the line " +
+      "says so"):
+    val asked = accepted(use(staged(Vector.empty).ready, RelicBreaker, source))
+    assert(awaits(asked, RelicBreaker.decisionId))
+    val done = accepted(continuedPast(asked, RelicBreaker.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(NoteText.said(RelicBreaker, done.events), Vector(
       NoteText.Said("used.none", s"${p1.value} held no relic.",

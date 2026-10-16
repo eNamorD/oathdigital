@@ -83,8 +83,11 @@ class BogSuite extends munit.FunSuite:
     assertEquals(beastBank(after(done)), 5)
     assertEquals(NoteText.said(Bog, done.events), Vector.empty)
 
-  test("holding no relic, nothing happens and the line says so"):
-    val done = accepted(use(staged(Vector.empty), Bog, source))
+  test("holding no relic, it shows Continue, nothing happens and the line " +
+      "says so"):
+    val asked = accepted(use(staged(Vector.empty), Bog, source))
+    assert(awaits(asked, Bog.decisionId))
+    val done = accepted(continuedPast(asked, Bog.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(NoteText.said(Bog, done.events), Vector(
       NoteText.Said("used.none", s"${p1.value} held no relic.",

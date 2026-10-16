@@ -19,9 +19,9 @@ object HomesteadersCard extends Denizen(DenizenId("127"), "Homesteaders", Suit.H
   * included, in adviser order, read live, and only while the pawn's site
   * has room ([[SiteRoom]]). The move is one `Move` in a required batch, so
   * the restriction-icon rule hides an adviser-only adviser and the Locked
-  * rule a locked one; the question passes when nothing is left. The card
-  * carries its favor and secrets. With no candidate nothing is asked and
-  * one line says so.
+  * rule a locked one; the question shows Continue when nothing can be
+  * chosen, with no candidate too. The card carries its favor and secrets.
+  * After Continue one line says nothing moved.
   */
 final case class Homesteaders private (catalog: ExecutableCatalog)
     extends PaidAction(HomesteadersCard.power):
@@ -48,12 +48,11 @@ final case class Homesteaders private (catalog: ExecutableCatalog)
         case DenizenState(id, Orientation.FaceUp, _) => id })
 
   private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
-    candidates(ready, actor) match
-      case Vector() => Vector.empty
-      case found => Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
-        found.map(card => DecisionOption.Denizen(DecisionOptionRef.Denizen(card))),
-        heading = Some("Homesteaders: move a faceup adviser to your site")),
-        passWhenEmpty = true))
+    Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
+      candidates(ready, actor).map(card =>
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(card))),
+      heading = Some("Homesteaders: move a faceup adviser to your site")),
+      passWhenEmpty = true))
 
   /** No answer means no adviser could be moved. */
   private def move(ready: ReadyGame, actor: PlayerId, pending: PendingTree)

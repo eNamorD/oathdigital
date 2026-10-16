@@ -94,8 +94,12 @@ class ArcaneBrokersSuite extends munit.FunSuite:
     assertEquals(secretsOf(after(done)), secretsOf(ready))
     assertEquals(NoteText.said(ArcaneBrokers, done.events), Vector.empty)
 
-  test("holding no relic, the favor stays paid and the line says so"):
-    val done = accepted(use(staged(Vector.empty).ready, ArcaneBrokers, source))
+  test("holding no relic, it shows Continue, the favor stays paid and the " +
+      "line says so"):
+    val asked = accepted(use(staged(Vector.empty).ready, ArcaneBrokers,
+      source))
+    assert(awaits(asked, ArcaneBrokers.decisionId))
+    val done = accepted(continuedPast(asked, ArcaneBrokers.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).tokensOn(brokers), Tokens(1, 0))
     assertEquals(NoteText.said(ArcaneBrokers, done.events), Vector(

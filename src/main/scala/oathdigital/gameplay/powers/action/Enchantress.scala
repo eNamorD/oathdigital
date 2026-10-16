@@ -18,8 +18,9 @@ object EnchantressCard extends Denizen(DenizenId("96"), "Enchantress", Suit.Disc
   * `Swap` between the two play areas: both cards stay faceup and carry their
   * favor and secrets, Enchantress' new secret included. It runs as a required
   * batch, so the Locked restriction, which refuses swapping a locked card,
-  * hides a locked adviser from the choice. The question passes when nothing
-  * is left. With no candidate the cost stays paid and one line says so.
+  * hides a locked adviser from the choice. The question shows Continue when
+  * nothing can be chosen, with no candidate too: the cost stays paid and
+  * one line says so.
   */
 case object Enchantress extends PaidAction(EnchantressCard.power):
   val decisionId: String = "power.enchantress.adviser"
@@ -55,12 +56,11 @@ case object Enchantress extends PaidAction(EnchantressCard.power):
     yield Candidate(other.player, card)
 
   private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
-    candidates(ready, actor) match
-      case Vector() => Vector.empty
-      case found => Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
-        found.map(c => DecisionOption.Denizen(DecisionOptionRef.Denizen(c.card))),
-        heading = Some("Enchantress: swap it with another player's faceup " +
-          "adviser")), passWhenEmpty = true))
+    Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
+      candidates(ready, actor).map(c =>
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(c.card))),
+      heading = Some("Enchantress: swap it with another player's faceup " +
+        "adviser")), passWhenEmpty = true))
 
   /** No answer means no adviser could be swapped. */
   private def swap(ready: ReadyGame, actor: PlayerId, enchantress: DenizenId,

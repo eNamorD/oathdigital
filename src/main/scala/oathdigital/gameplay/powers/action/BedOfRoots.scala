@@ -17,8 +17,8 @@ object BedOfRootsCard extends Denizen(DenizenId("212"), "Bed of Roots", Suit.Bea
   *
   * The candidates are the player's faceup denizen advisers, in adviser
   * order. A Vision is not an adviser of that kind, and a facedown adviser is
-  * not faceup. `Bury` ignores locked. The question is asked whenever there
-  * is a candidate, even one. The bury and the gain run as one required
+  * not faceup. `Bury` ignores locked. The question is always asked, and
+  * with no candidate it is its Continue screen. The bury and the gain run as one required
   * batch, so the gain comes only with the bury. The bury uses the standard
   * returns: favor to the card's suit bank, secrets to the player facedown.
   * With no candidate the cost stays paid and nothing else happens.
@@ -40,13 +40,11 @@ final case class BedOfRoots private (catalog: ExecutableCatalog)
     Note(this.id, buriedNote(_, player, source), covers = true))))
 
   private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] =
-    candidates(ready, player) match
-      case Vector() => Vector.empty
-      case found => Vector(Decide(decisionId, player, DecisionQuery.ChooseOne(
-        found.map(card => DecisionOption.Denizen(
-          DecisionOptionRef.Denizen(card.id))),
-        heading = Some("Bed of Roots: bury one of your faceup advisers to " +
-          "gain 2 secrets")), passWhenEmpty = true))
+    Vector(Decide(decisionId, player, DecisionQuery.ChooseOne(
+      candidates(ready, player).map(card => DecisionOption.Denizen(
+        DecisionOptionRef.Denizen(card.id))),
+      heading = Some("Bed of Roots: bury one of your faceup advisers to " +
+        "gain 2 secrets")), passWhenEmpty = true))
 
   /** No answer means the player had no faceup adviser to offer. */
   private def bury(ready: ReadyGame, player: PlayerId, pending: PendingTree)

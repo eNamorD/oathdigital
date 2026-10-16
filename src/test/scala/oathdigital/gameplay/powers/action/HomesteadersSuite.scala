@@ -73,11 +73,13 @@ class HomesteadersSuite extends munit.FunSuite:
     assertEquals(Look(after(done)).cardsAt(home), Vector[CardId](homesteaders))
     assertEquals(Look(after(done)).advisers(p1), Vector.empty[CardId])
 
-  test("with the pawn's site full it asks nothing and the line says so"):
+  test("with the pawn's site full it shows Continue and the line says so"):
     val ready = holdingHomesteaders.adviser(p1, landWarden)
       .denizen(errandBoy, at = home).denizen("Wrestlers", at = home)
       .denizen("Elders", at = home).ready
-    val done = accepted(use(ready, power, source))
+    val asked = accepted(use(ready, power, source))
+    assert(awaits(asked, Homesteaders.decisionId))
+    val done = accepted(continuedPast(asked, Homesteaders.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).advisers(p1),
       Vector[CardId](homesteaders, landWarden))

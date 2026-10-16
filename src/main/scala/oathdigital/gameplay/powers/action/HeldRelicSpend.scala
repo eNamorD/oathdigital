@@ -7,13 +7,13 @@ import oathdigital.model._
   * Arcane Brokers and Bog discard it, Relic Breaker buries it (catalog batch
   * 3 rulings, slice 3a).
   *
-  * Two steps. A live `Branch` asks whenever the player holds a relic, even
-  * one. A required batch then spends the chosen relic and gains the reward
+  * Two steps. A live `Branch` always asks, and with no relic held the
+  * question is its Continue screen. A required batch then spends the chosen relic and gains the reward
   * together, so the reward comes only with the spending ("X to gain Y"). The
   * Grand Scepter's restriction refuses its discard and its bury, and the
-  * batch is required, so the search hides the scepter. The decision is passed
-  * when the search leaves it empty (`Decide.passWhenEmpty`), so a player
-  * holding only the scepter spends and gains nothing.
+  * batch is required, so the search hides the scepter. The decision shows
+  * Continue when nothing can be chosen (`Decide.passWhenEmpty`), so a
+  * player holding only the scepter spends and gains nothing.
   *
   * @param spend the spending and the reward for the chosen relic, as it
   *   stands in the player's play area, built against the live state. A reward
@@ -43,12 +43,10 @@ final class HeldRelicSpend(decisionId: String, heading: String,
     PlayerFacts.player(ready, player).toOption.toVector.flatMap(_.relics)
 
   private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] =
-    held(ready, player) match
-      case Vector() => Vector.empty
-      case relics => Vector(Decide(decisionId, player, DecisionQuery.ChooseOne(
-        relics.map(relic => DecisionOption.Relic(
-          DecisionOptionRef.Relic(relic.id))), heading = Some(heading)),
-        passWhenEmpty = true))
+    Vector(Decide(decisionId, player, DecisionQuery.ChooseOne(
+      held(ready, player).map(relic => DecisionOption.Relic(
+        DecisionOptionRef.Relic(relic.id))), heading = Some(heading)),
+      passWhenEmpty = true))
 
   /** No answer means the search left no relic to offer. */
   private def spent(ready: ReadyGame, player: PlayerId, pending: PendingTree)

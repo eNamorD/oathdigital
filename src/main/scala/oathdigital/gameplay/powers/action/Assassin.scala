@@ -30,9 +30,9 @@ object AssassinCard extends Denizen(DenizenId("80"), "Assassin", Suit.Discord) w
   * card gets the standard discard: to the discard pile of the region after
   * the player's, its favor to its suit's bank and its secrets to the player
   * facedown. The discard is a required batch, so the Locked restriction
-  * hides a locked adviser, Assassin among them, and the question passes
-  * when nothing is left. With nothing to discard the cost stays paid and
-  * one line says so. Its line covers the generic Discarded line.
+  * hides a locked adviser, Assassin among them, and the question shows
+  * Continue when nothing can be chosen. With nothing to discard the cost
+  * stays paid and one line says so. Its line covers the generic Discarded line.
   */
 final case class Assassin private (catalog: ExecutableCatalog)
     extends PaidAction(AssassinCard.power) with ContributingPower:
@@ -71,13 +71,11 @@ final case class Assassin private (catalog: ExecutableCatalog)
     yield Candidate(held.player, card))
 
   private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
-    candidates(ready, actor) match
-      case Vector() => Vector.empty
-      case found => Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
-        found.map(candidate =>
-          DecisionOption.Denizen(DecisionOptionRef.Denizen(candidate.card.id))),
-        heading = Some("Assassin: discard a faceup adviser of a player at " +
-          "your site")), passWhenEmpty = true))
+    Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
+      candidates(ready, actor).map(candidate =>
+        DecisionOption.Denizen(DecisionOptionRef.Denizen(candidate.card.id))),
+      heading = Some("Assassin: discard a faceup adviser of a player at " +
+        "your site")), passWhenEmpty = true))
 
   /** No answer means nothing could be discarded. */
   private def discard(ready: ReadyGame, actor: PlayerId, pending: PendingTree)

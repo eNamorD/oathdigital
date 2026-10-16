@@ -71,16 +71,15 @@ private[powers] final class SiteCards(catalog: ExecutableCatalog,
       discard(ready, site, card, suit, actor, required = true).map(Vector(_)))
 
   /** The question over the cards at the player's site, each judged for the
-    * player's discard. It is asked only when some card may be chosen: a
-    * choose-one has no empty answer, so a question with only askable cards
-    * would wait with nothing to choose after a refusal (consent slice 3). */
+    * player's discard. With none that may be chosen it is the Continue
+    * screen, where an askable card still asks (catalog batch 8, slice 10,
+    * part 2b). */
   def ask(ready: ReadyGame, player: PlayerId, decisionId: String,
       heading: String): Vector[Operation] =
     val found = PowerAccess.pawnSite(ready, player).toVector.flatMap(site =>
       at(ready, site).flatMap((card, suit) =>
         judged(ready, player, site, card, suit)))
-    if !found.exists(_.available) then Vector.empty
-    else Vector(Decide(decisionId, player, DecisionQuery.ChooseOne(found,
+    Vector(Decide(decisionId, player, DecisionQuery.ChooseOne(found,
       heading = Some(heading)), passWhenEmpty = true))
 
   /** The answered card, with its site and suit, while it is still at the
