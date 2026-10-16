@@ -40,7 +40,7 @@ object QueuedStart:
     val state = startingFrom(ready, entry)
     for
       tree <- WalkerProcedureRegistry.build(entry.procedure, catalog, state,
-        entry.actor, entry.startArgs, phasePowers)
+        entry.actor, entry.startArgs, phasePowers, walkerPowers = powers)
       past <- WalkerSimulation.started(tree, state, powers)
       cost <- costOf(entry, tree, past, powers)
     yield cost

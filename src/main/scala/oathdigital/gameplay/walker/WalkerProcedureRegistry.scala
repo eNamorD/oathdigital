@@ -431,12 +431,13 @@ object WalkerProcedureRegistry:
     * decision inside the power is a generic power decision, so the registry
     * names no power.
     */
-  private def usePowerEntry(id: PowerId, powers: PhasePowers): Entry = Entry(
+  private def usePowerEntry(id: PowerId, powers: PhasePowers,
+      walkerPowers: WalkerPowers): Entry = Entry(
     fallbackKind = None,
     rollDecisionId = None,
     modifierWindow = None,
-    build = PhasePowerProcedure.build(id, powers),
-    rebuild = PhasePowerProcedure.rebuild(id, powers))
+    build = PhasePowerProcedure.build(id, powers, walkerPowers),
+    rebuild = PhasePowerProcedure.rebuild(id, powers, walkerPowers))
 
   /** The forced Wake step reads the phase powers, as `UsePower` does. It is
     * started by the turn boundary, so it has no fallback kind, no modifier
@@ -476,7 +477,8 @@ object WalkerProcedureRegistry:
       walkerPowers: WalkerPowers = WalkerPowers.empty)
       : Either[OathViolation, Entry] =
     procedure match
-      case ActionRef.UsePower(id) => Right(usePowerEntry(id, powers))
+      case ActionRef.UsePower(id) =>
+        Right(usePowerEntry(id, powers, walkerPowers))
       case TriggeredProcedureRef.ForcedWake => Right(forcedWakeEntry(powers))
       case TriggeredProcedureRef.FollowUpOffer =>
         Right(followUpOfferEntry(powers, walkerPowers))

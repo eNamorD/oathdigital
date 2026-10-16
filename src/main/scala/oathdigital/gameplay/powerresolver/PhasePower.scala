@@ -1,6 +1,19 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Cost, DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerTiming, ReadyGame}
+import oathdigital.model.{Cost, DecisionOptionRef, OathViolation, Operation,
+  PlayerId, PowerId, PowerTiming, QueuedProcedure, ReadyGame}
+
+/** Whether a procedure a phase power would queue starts now, and why not
+  * (catalog batch 8, slice 13): the start check the driver runs, which the
+  * engine fills in. A power cannot reach the walker, so it is handed this.
+  */
+trait QueuedStarts:
+  def refusal(ready: ReadyGame, entry: QueuedProcedure)
+      : Option[OathViolation]
+
+object QueuedStarts:
+  /** No engine behind it: every start is taken to be accepted. */
+  val unchecked: QueuedStarts = (_, _) => None
 
 /** A WAKE, ACTION or REST power a player uses as an action.
   *
@@ -32,6 +45,18 @@ trait PhasePower extends NotingPower:
   def costsSecret: Boolean = cost.secret > 0 || cost.secretBurnt > 0
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation]
+
+  /** `build`, for a power that queues a procedure and must know whether
+    * it would start. Every other power builds as `build` does. */
+  def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef,
+      starts: QueuedStarts): Either[OathViolation, Operation] =
+    build(ready, player, source)
+
+  /** Why the power cannot be used now, in the player's words, beyond
+    * `usable`: for a power whose use only queues a procedure that would
+    * not start. `None` by default. */
+  def refusal(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef,
+      starts: QueuedStarts): Option[String] = None
 
 /** `useRestrictions` are the power-use restrictions the walker powers
   * declare (catalog batch 8, slice 10), so a phase power is judged by the

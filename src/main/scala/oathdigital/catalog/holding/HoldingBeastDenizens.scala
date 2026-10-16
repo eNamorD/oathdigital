@@ -13,14 +13,6 @@ object BrackenCard extends Denizen(DenizenId("197"), "Bracken", Suit.Beast):
       "bottom of any one discard pile _(even your region's)_.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object WildAlliesCard extends Denizen(DenizenId("198"), "Wild Allies", Suit.Beast):
-  val power = PrintedPower(PowerId("denizen.wild-allies"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "**ACTION:** Campaign at any site with a [suit-beast] card. " +
-      "Act as if your pawn is there. Spend no Supply and add your " +
-      "warbands there to your force.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object AutumnWindCard extends Denizen(DenizenId("213"), "Autumn Wind", Suit.Beast):
   val power = PrintedPower(PowerId("denizen.autumn-wind"),
     persistent = false, cost = Cost.free,

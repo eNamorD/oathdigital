@@ -337,6 +337,7 @@ denizen.way-station waived = Gave nothing, with {0}'s consent.
 denizen.wayside-inn used = {0} gained {1}.
 denizen.whispering-leaves used = {0} placed {1} on it.
 denizen.whispering-leaves used.empty = {0} had no favor to place.
+denizen.wild-allies campaign-at = Campaign at {0}.
 denizen.wild-mounts swapped = Discarded {0} instead of the battle plans.
 denizen.wild-mounts swapped-off-turn = {0} discarded {1} instead of the battle plans.
 denizen.witchs-bargain favor = Gave {0} to {1} and took {2}.
