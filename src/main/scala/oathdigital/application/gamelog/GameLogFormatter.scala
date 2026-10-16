@@ -37,9 +37,9 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val choices = new ChoiceWords(words,
     new WalkerDecisionProjector(catalog, presentation))
   private val actions = new ActionLines(words, choices, catalog)
-  // Built after `starts`: the table holds references to its rules, and
-  // `entries` is built eagerly. Task 2 adds `actions` here.
-  private[gamelog] val procedures = new ProcedureLogs(starts)
+  // Built after `starts` and `actions`: the table holds references to their
+  // rules, and `entries` is built eagerly.
+  private[gamelog] val procedures = new ProcedureLogs(starts, actions)
   private val details = new DetailLines(words, choices, wordings.narrated)
   private val events = new EventLines(words)
   private val notes = new PowerLines(words, wordings)
@@ -225,7 +225,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
           (if start.isEmpty then Vector.empty
             else notes.held(journal, begun, at, viewer)) ++
           log.continued(journal, begun, at, viewer).toVector ++
-          actions.lines(journal, begun, at, viewer) ++
+          log.lines(journal, begun, at, viewer) ++
           details.lines(journal, begun, at, viewer) ++
           notes.own(journal, begun, at, log.tag.nonEmpty, viewer)
         // A headline the run posts (a turn or phase change) is in no section.

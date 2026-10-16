@@ -25,185 +25,217 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
   private val campaigns = new CampaignLines(words, choices, catalog)
   private val negotiations = new NegotiationLines(words)
 
-  def lines(journal: LogJournal, run: Run, at: Int,
+  def travelLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    journal.ops(at).collect {
+      case OpStep(Move(Piece.Pawn(mover), _,
+          PositionedLocation(Location.Site(to), _, _), _, _), _, _)
+          if mover == run.actor =>
+        action(Vector(Text("Travelled to "), words.site(to)))
+    }
+
+  def oathkeeperLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    journal.ops(at).collect {
+      case OpStep(SetOathkeeper(holder), _, _) =>
+        Posted(LogKind.Trigger, Vector(Text("Oathkeeper passed to "),
+          holder.fold[LogSpan](Text("the bank"))(words.player)))
+    }
+
+  def finishRestLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    journal.ops(at).collect {
+      case OpStep(GainSupply(player, _), before, after) =>
+        Posted(LogKind.Delta, Vector(Text(
+          s"Increased supply from ${LogJournal.supply(before, player)} " +
+            s"to ${LogJournal.supply(after, player)}")))
+    }
+
+  def setupLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    setup.lines(journal, at, viewer)
+
+  def searchLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    search(journal, run, at, viewer) ++
+      playedAdviser(journal, run, at, viewer)
+
+  /** A power's covering line restates a gain of its own, such as a vow's
+    * warbands after the Muster's. */
+  def musterLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    if journal.covered(at) then Vector.empty
+    else journal.ops(at).collect {
+      case OpStep(Move(Piece.Warbands(_, count),
+          PositionedLocation(Location.WarbandBank(_), _, _),
+          PositionedLocation(Location.PlayArea(taker), _, _),
+          _, _), before, after)
+          if taker == run.actor =>
+        action(Vector(Text(
+          s"Mustered $count ${plural(count, "warband", "warbands")} with ")) ++
+          source(journal, run, at, MusterProcedure.decisionId, before, after,
+            viewer))
+    }
+
+  def tradeLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     val actor = run.actor
-    val ops = journal.ops(at)
-    val completing = journal.event(at).isInstanceOf[WalkerCompleted]
-    run.procedure match
-      case ActionRef.Travel => ops.collect {
-        case OpStep(Move(Piece.Pawn(mover), _,
-            PositionedLocation(Location.Site(to), _, _), _, _), _, _)
-            if mover == actor =>
-          action(Vector(Text("Travelled to "), words.site(to)))
-      }
-      case TriggeredProcedureRef.Oathkeeper => ops.collect {
-        case OpStep(SetOathkeeper(holder), _, _) =>
-          Posted(LogKind.Trigger, Vector(Text("Oathkeeper passed to "),
-            holder.fold[LogSpan](Text("the bank"))(words.player)))
-      }
-      case PhaseTransitionRef.FinishRest => ops.collect {
-        case OpStep(GainSupply(player, _), before, after) =>
-          Posted(LogKind.Delta, Vector(Text(
-            s"Increased supply from ${LogJournal.supply(before, player)} " +
-              s"to ${LogJournal.supply(after, player)}")))
-      }
-      // The phase changes show in the lines around them.
-      case PhaseTransitionRef.EndWake | PhaseTransitionRef.BeginRest =>
-        Vector.empty
-      // Each forced power writes its own lines. The follow-up offer and the
-      // phase menus write none: a pick starts its own walk, which writes
-      // them, and a Skip is a line of its own (`FollowUpSkipped`).
-      case TriggeredProcedureRef.ForcedWake |
-          TriggeredProcedureRef.FollowUpOffer |
-          TriggeredProcedureRef.WakeMenu |
-          TriggeredProcedureRef.RestMenu |
-          TriggeredProcedureRef.ActMenu => Vector.empty
-      case TriggeredProcedureRef.Setup => setup.lines(journal, at, viewer)
-      case ActionRef.Search =>
-        search(journal, run, at, viewer) ++
-          playedAdviser(journal, run, at, viewer)
-      case ActionRef.PlayFacedownAdviser =>
-        playedAdviser(journal, run, at, viewer)
-      // A power's covering line restates a gain of its own, such as a
-      // vow's warbands after the Muster's.
-      case ActionRef.Muster if journal.covered(at) => Vector.empty
-      case ActionRef.Muster => ops.collect {
-        case OpStep(Move(Piece.Warbands(_, count),
-            PositionedLocation(Location.WarbandBank(_), _, _),
-            PositionedLocation(Location.PlayArea(taker), _, _),
-            _, _), before, after)
-            if taker == actor =>
-          action(Vector(Text(
-            s"Mustered $count ${plural(count, "warband", "warbands")} with ")) ++
-            source(journal, run, at, MusterProcedure.decisionId, before, after,
-              viewer))
-      }
-      case ActionRef.Trade =>
-        val gained = ops.collect {
-          case OpStep(Move(piece @ Piece.Favor(_),
-              PositionedLocation(Location.FavorBank(_), _, _),
-              PositionedLocation(Location.PlayArea(taker), _, _),
-              _, _), before, after)
-              if taker == actor =>
-            traded(journal, run, at, resource(piece), before, after, viewer)
-          case OpStep(Move(piece @ Piece.Secrets(_),
-              PositionedLocation(Location.SharedBank, _, _),
-              PositionedLocation(Location.PlayArea(taker), _, _),
-              _, _), before, after)
-              if taker == actor =>
-            traded(journal, run, at, resource(piece), before, after, viewer)
-        }
-        // Trading favor for secrets with no matching adviser gains nothing:
-        // the line is posted at completion instead.
-        val gainedEarlier = (run.first until at).exists(index =>
-          journal.ops(index).exists(isTradeGain(actor)))
-        if gained.nonEmpty || !completing || gainedEarlier then gained
-        else journal.readyBefore(at).toVector.map(ready =>
-          traded(journal, run, at, "no secrets", ready, ready, viewer))
-      case ActionRef.TakeWealth => ops.collect {
-        case OpStep(Move(piece, PositionedLocation(Location.Site(site), _, _),
-            PositionedLocation(Location.PlayArea(taker), _, _), _, _), _, _)
-            if taker == actor && resource(piece).nonEmpty =>
-          action(Vector(Text(s"Took ${resource(piece)} from "),
-            words.site(site)))
-      }
-      case ActionRef.Recover =>
-        val recovered = ops.collect {
-          case OpStep(Move(Piece.Card(relic: RelicId),
-              PositionedLocation(Location.Site(site), _, _),
-              PositionedLocation(Location.PlayArea(taker), _, _),
-              _, _), before, after)
-              if taker == actor =>
-            action(Vector(Text("Recovered ")) ++
-              words.one(words.card(relic, before, after, viewer)) ++
-              Vector(Text(" at "), words.site(site)))
-        }
-        // A Recover that succeeds with no relic to take posts nothing.
-        val failed =
-          if completing && stopped(journal, run, at) then
-            journal.readyBefore(run.first).flatMap(LogJournal.pawnSite(_, actor))
-              .toVector.map(site =>
-                action(Vector(Text("Failed to recover at "), words.site(site))))
-          else Vector.empty
-        recovered ++ failed
-      case ActionRef.Forge =>
-        val paid = ops.collect {
-          case OpStep(PayCost(_, Location.OnCard(card), cost, _, _, _),
-              before, after) => (card, cost, before, after)
-        }
-        val favor = paid.collect { case (card, cost, before, after)
-          if cost.favor > 0 => words.card(card, before, after, viewer) }
-        val secret = paid.collect { case (card, cost, before, after)
-          if cost.secret > 0 => words.card(card, before, after, viewer) }
-        val halves = Vector(
-          Option.when(favor.nonEmpty)(Text("favor on ") +: words.cards(favor)),
-          Option.when(secret.nonEmpty)(Text("secrets on ") +: words.cards(secret))
-        ).flatten
-        val payment = if halves.isEmpty then Vector.empty
-          else Vector(action(Text("Placed ") +: LogWords.join(halves)))
-        val forged = ops.collect {
-          case OpStep(Play(relic: RelicId,
-              PositionedLocation(Location.Deck(CardDeck.Relic), _, _), _, _, _),
-              before, after) =>
-            action(Vector(Text("Forged ")) ++
-              words.one(words.card(relic, before, after, viewer)))
-        }
-        payment ++ forged
-      case ActionRef.Campaign => campaigns.lines(journal, run, at, viewer)
-      case ActionRef.Challenge => ops.collect {
-        case OpStep(Move(Piece.Banner(banner), PositionedLocation(from, _, _),
-            PositionedLocation(Location.PlayArea(taker), _, _), _, _), _, _)
-            if taker == actor =>
-          val holder = from match
-            case Location.PlayArea(player) => words.player(player)
-            case _ => Text("the bank")
-          action(Vector(Text("Took "), words.banner(banner), Text(" from "),
-            holder) ++ paidOnto(journal, run, at, banner).toVector.map(paid =>
-              Text(s" with $paid")))
-      }
-      case ActionRef.PlaceBannerResource => ops.collect {
-        case OpStep(Move(piece, PositionedLocation(Location.PlayArea(giver), _, _),
-            PositionedLocation(Location.OnBanner(banner), _, _), _, _), _, _)
-            if giver == actor && resource(piece).nonEmpty =>
-          action(Vector(Text(s"Placed ${resource(piece)} on "),
-            words.banner(banner)))
-      }
-      // The minor actions post their legacy lines, now as action lines.
-      case ActionRef.PeekSiteRelics =>
-        val peeked = ops.collect {
-          case OpStep(Peek(_, relic, Location.Site(site)), before, after) =>
-            site -> words.card(relic, before, after, viewer)
-        }
-        peeked.headOption.toVector.map((site, _) => action(
-          Vector(Text("Peeked at ")) ++ words.cards(peeked.map(_._2)) ++
-            Vector(Text(" at "), words.site(site))))
-      case ActionRef.RevealOwnedRelic => ops.collect {
-        case OpStep(Reveal(relic, Location.PlayArea(owner)), before, after)
-            if owner == actor =>
-          action(Text("Revealed ") +:
-            words.one(words.card(relic, before, after, viewer)))
-      }
-      case ActionRef.MoveWarbands => ops.collect {
-        case OpStep(Move(Piece.Warbands(_, count),
-            PositionedLocation(Location.PlayArea(_), _, _),
-            PositionedLocation(Location.Site(site), _, _), _, _), _, _) =>
-          action(Vector(Text(s"Moved $count " +
-            s"${plural(count, "warband", "warbands")} to "), words.site(site)))
-        case OpStep(Move(Piece.Warbands(_, count),
-            PositionedLocation(Location.Site(site), _, _),
-            PositionedLocation(Location.PlayArea(_), _, _), _, _), _, _) =>
-          action(Vector(Text(s"Moved $count " +
-            s"${plural(count, "warband", "warbands")} from "),
-            words.site(site)))
-      }
-      case ActionRef.Negotiation => negotiations.lines(journal, run, at, viewer)
-      // A power that plays a card as if searched (Oracle) posts where the
-      // card went, as a Search does. Only a run that answered a placement
-      // decision has such a line.
-      case ActionRef.UsePower(power) =>
-        usedPower(journal, run, at, power, completing, viewer) ++
-          playedAdviser(journal, run, at, viewer)
+    val gained = journal.ops(at).collect {
+      case OpStep(Move(piece @ Piece.Favor(_),
+          PositionedLocation(Location.FavorBank(_), _, _),
+          PositionedLocation(Location.PlayArea(taker), _, _),
+          _, _), before, after)
+          if taker == actor =>
+        traded(journal, run, at, resource(piece), before, after, viewer)
+      case OpStep(Move(piece @ Piece.Secrets(_),
+          PositionedLocation(Location.SharedBank, _, _),
+          PositionedLocation(Location.PlayArea(taker), _, _),
+          _, _), before, after)
+          if taker == actor =>
+        traded(journal, run, at, resource(piece), before, after, viewer)
+    }
+    // Trading favor for secrets with no matching adviser gains nothing: the
+    // line is posted at completion instead.
+    val gainedEarlier = (run.first until at).exists(index =>
+      journal.ops(index).exists(isTradeGain(actor)))
+    if gained.nonEmpty || gainedEarlier ||
+        !journal.event(at).isInstanceOf[WalkerCompleted] then gained
+    else journal.readyBefore(at).toVector.map(ready =>
+      traded(journal, run, at, "no secrets", ready, ready, viewer))
+
+  def takeWealthLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    journal.ops(at).collect {
+      case OpStep(Move(piece, PositionedLocation(Location.Site(site), _, _),
+          PositionedLocation(Location.PlayArea(taker), _, _), _, _), _, _)
+          if taker == run.actor && resource(piece).nonEmpty =>
+        action(Vector(Text(s"Took ${resource(piece)} from "),
+          words.site(site)))
+    }
+
+  def recoverLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    val actor = run.actor
+    val taken = journal.ops(at).collect {
+      case OpStep(Move(Piece.Card(relic: RelicId),
+          PositionedLocation(Location.Site(site), _, _),
+          PositionedLocation(Location.PlayArea(taker), _, _),
+          _, _), before, after)
+          if taker == actor =>
+        action(Vector(Text("Recovered ")) ++
+          words.one(words.card(relic, before, after, viewer)) ++
+          Vector(Text(" at "), words.site(site)))
+    }
+    // A Recover that succeeds with no relic to take posts nothing.
+    val failed =
+      if journal.event(at).isInstanceOf[WalkerCompleted] &&
+          stopped(journal, run, at) then
+        journal.readyBefore(run.first).flatMap(LogJournal.pawnSite(_, actor))
+          .toVector.map(site =>
+            action(Vector(Text("Failed to recover at "), words.site(site))))
+      else Vector.empty
+    taken ++ failed
+
+  def forgeLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    val paid = journal.ops(at).collect {
+      case OpStep(PayCost(_, Location.OnCard(card), cost, _, _, _),
+          before, after) => (card, cost, before, after)
+    }
+    val favor = paid.collect { case (card, cost, before, after)
+      if cost.favor > 0 => words.card(card, before, after, viewer) }
+    val secret = paid.collect { case (card, cost, before, after)
+      if cost.secret > 0 => words.card(card, before, after, viewer) }
+    val halves = Vector(
+      Option.when(favor.nonEmpty)(Text("favor on ") +: words.cards(favor)),
+      Option.when(secret.nonEmpty)(Text("secrets on ") +: words.cards(secret))
+    ).flatten
+    val payment = if halves.isEmpty then Vector.empty
+      else Vector(action(Text("Placed ") +: LogWords.join(halves)))
+    val made = journal.ops(at).collect {
+      case OpStep(Play(relic: RelicId,
+          PositionedLocation(Location.Deck(CardDeck.Relic), _, _), _, _, _),
+          before, after) =>
+        action(Vector(Text("Forged ")) ++
+          words.one(words.card(relic, before, after, viewer)))
+    }
+    payment ++ made
+
+  def campaignLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    campaigns.lines(journal, run, at, viewer)
+
+  def challengeLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    journal.ops(at).collect {
+      case OpStep(Move(Piece.Banner(banner), PositionedLocation(from, _, _),
+          PositionedLocation(Location.PlayArea(taker), _, _), _, _), _, _)
+          if taker == run.actor =>
+        val holder = from match
+          case Location.PlayArea(player) => words.player(player)
+          case _ => Text("the bank")
+        action(Vector(Text("Took "), words.banner(banner), Text(" from "),
+          holder) ++ paidOnto(journal, run, at, banner).toVector.map(paid =>
+            Text(s" with $paid")))
+    }
+
+  def bannerLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    journal.ops(at).collect {
+      case OpStep(Move(piece,
+          PositionedLocation(Location.PlayArea(giver), _, _),
+          PositionedLocation(Location.OnBanner(banner), _, _), _, _), _, _)
+          if giver == run.actor && resource(piece).nonEmpty =>
+        action(Vector(Text(s"Placed ${resource(piece)} on "),
+          words.banner(banner)))
+    }
+
+  /** The minor actions post their legacy lines, now as action lines. */
+  def peekLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    val peeked = journal.ops(at).collect {
+      case OpStep(Peek(_, relic, Location.Site(site)), before, after) =>
+        site -> words.card(relic, before, after, viewer)
+    }
+    peeked.headOption.toVector.map((site, _) => action(
+      Vector(Text("Peeked at ")) ++ words.cards(peeked.map(_._2)) ++
+        Vector(Text(" at "), words.site(site))))
+
+  def revealLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    journal.ops(at).collect {
+      case OpStep(Reveal(relic, Location.PlayArea(owner)), before, after)
+          if owner == run.actor =>
+        action(Text("Revealed ") +:
+          words.one(words.card(relic, before, after, viewer)))
+    }
+
+  def warbandLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    journal.ops(at).collect {
+      case OpStep(Move(Piece.Warbands(_, count),
+          PositionedLocation(Location.PlayArea(_), _, _),
+          PositionedLocation(Location.Site(site), _, _), _, _), _, _) =>
+        action(Vector(Text(s"Moved $count " +
+          s"${plural(count, "warband", "warbands")} to "), words.site(site)))
+      case OpStep(Move(Piece.Warbands(_, count),
+          PositionedLocation(Location.Site(site), _, _),
+          PositionedLocation(Location.PlayArea(_), _, _), _, _), _, _) =>
+        action(Vector(Text(s"Moved $count " +
+          s"${plural(count, "warband", "warbands")} from "),
+          words.site(site)))
+    }
+
+  def negotiationLines(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    negotiations.lines(journal, run, at, viewer)
+
+  /** Only a run that answered a placement decision has a played-card line. */
+  def usePowerLines(power: PowerId)(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
+    usedPower(journal, run, at, power,
+      journal.event(at).isInstanceOf[WalkerCompleted], viewer) ++
+      playedAdviser(journal, run, at, viewer)
 
   /** The card an economy action's source decision chose. */
   private def source(journal: LogJournal, run: Run, at: Int,
@@ -285,7 +317,7 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
 
   /** Where the played card went, at the first batch after the placement
     * answer. */
-  private def playedAdviser(journal: LogJournal, run: Run, at: Int,
+  def playedAdviser(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     journal.event(at) match
       case WalkerStepRecorded(_, _: WalkerStepPayload.DeltaRecorded, _, _) =>

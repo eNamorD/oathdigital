@@ -41,6 +41,7 @@ private[gamelog] object ActionLine:
   */
 private[gamelog] final case class ProcedureLog(
     tag: Option[String],
+    lines: ActionLine,
     anchor: Anchor = Anchor.AtFirstEvent,
     opening: Opening = Opening.none,
     continued: Continued = Continued.none,
@@ -58,7 +59,8 @@ private[gamelog] final case class ProcedureLog(
   * `ActionRef.UsePower` is parameterized, so `ProcedureRef.all` does not list
   * it and `of` builds its entry from the same match on demand.
   */
-private[gamelog] final class ProcedureLogs(starts: StartLines):
+private[gamelog] final class ProcedureLogs(starts: StartLines,
+    actions: ActionLines):
   private val entries: Map[ProcedureRef, ProcedureLog] =
     ProcedureRef.all.map(procedure => procedure -> rules(procedure)).toMap
 
@@ -67,37 +69,58 @@ private[gamelog] final class ProcedureLogs(starts: StartLines):
 
   private def rules(procedure: ProcedureRef): ProcedureLog = procedure match
     case ActionRef.Search => ProcedureLog(tag = Some("Search"),
-      anchor = starts.picksSettled)
+      lines = actions.searchLines, anchor = starts.picksSettled)
     case ActionRef.PlayFacedownAdviser =>
       ProcedureLog(tag = Some("Play facedown adviser"),
-        anchor = starts.adviserPicked)
+        lines = actions.playedAdviser, anchor = starts.adviserPicked)
     case ActionRef.Recover => ProcedureLog(tag = Some("Recover"),
-      anchor = starts.opensDicePool, continued = starts.continuedRecover)
-    case ActionRef.Forge => ProcedureLog(tag = Some("Forge"))
+      lines = actions.recoverLines, anchor = starts.opensDicePool,
+      continued = starts.continuedRecover)
+    case ActionRef.Forge => ProcedureLog(tag = Some("Forge"),
+      lines = actions.forgeLines)
     case ActionRef.Travel => ProcedureLog(tag = Some("Travel"),
-      anchor = starts.picksSettled)
+      lines = actions.travelLines, anchor = starts.picksSettled)
     case ActionRef.Muster => ProcedureLog(tag = Some("Muster"),
-      anchor = starts.paysCost)
+      lines = actions.musterLines, anchor = starts.paysCost)
     case ActionRef.Trade => ProcedureLog(tag = Some("Trade"),
-      anchor = starts.paysCost)
-    case ActionRef.Challenge => ProcedureLog(tag = Some("Challenge"))
+      lines = actions.tradeLines, anchor = starts.paysCost)
+    case ActionRef.Challenge => ProcedureLog(tag = Some("Challenge"),
+      lines = actions.challengeLines)
     case ActionRef.Campaign => ProcedureLog(tag = Some("Campaign"),
-      anchor = starts.campaignSettled, opening = starts.campaignWords)
+      lines = actions.campaignLines, anchor = starts.campaignSettled,
+      opening = starts.campaignWords)
     // Wake's own action: its lines stand outside any band.
-    case ActionRef.TakeWealth => ProcedureLog(tag = None, isSection = false)
+    case ActionRef.TakeWealth => ProcedureLog(tag = None,
+      lines = actions.takeWealthLines, isSection = false)
     // No modifier window, so no tag.
-    case ActionRef.PlaceBannerResource | ActionRef.Negotiation |
-        ActionRef.PeekSiteRelics | ActionRef.RevealOwnedRelic |
-        ActionRef.MoveWarbands => ProcedureLog(tag = None)
-    case ActionRef.UsePower(_) => ProcedureLog(tag = None)
-    // A phase change shows in the lines around it, and neither it nor a
-    // triggered procedure is an action a reader looks for.
-    case PhaseTransitionRef.EndWake | PhaseTransitionRef.BeginRest |
-        PhaseTransitionRef.FinishRest =>
-      ProcedureLog(tag = None, isSection = false)
-    case TriggeredProcedureRef.Oathkeeper | TriggeredProcedureRef.Setup |
-        TriggeredProcedureRef.ForcedWake |
+    case ActionRef.PlaceBannerResource => ProcedureLog(tag = None,
+      lines = actions.bannerLines)
+    case ActionRef.Negotiation => ProcedureLog(tag = None,
+      lines = actions.negotiationLines)
+    case ActionRef.PeekSiteRelics => ProcedureLog(tag = None,
+      lines = actions.peekLines)
+    case ActionRef.RevealOwnedRelic => ProcedureLog(tag = None,
+      lines = actions.revealLines)
+    case ActionRef.MoveWarbands => ProcedureLog(tag = None,
+      lines = actions.warbandLines)
+    // A power that plays a card as if searched (Oracle) posts where the card
+    // went, as a Search does.
+    case ActionRef.UsePower(power) => ProcedureLog(tag = None,
+      lines = actions.usePowerLines(power))
+    // The phase changes show in the lines around them.
+    case PhaseTransitionRef.EndWake | PhaseTransitionRef.BeginRest =>
+      ProcedureLog(tag = None, lines = ActionLine.none, isSection = false)
+    case PhaseTransitionRef.FinishRest => ProcedureLog(tag = None,
+      lines = actions.finishRestLines, isSection = false)
+    case TriggeredProcedureRef.Oathkeeper => ProcedureLog(tag = None,
+      lines = actions.oathkeeperLines, isSection = false)
+    case TriggeredProcedureRef.Setup => ProcedureLog(tag = None,
+      lines = actions.setupLines, isSection = false)
+    // Each forced power writes its own lines. The follow-up offer and the
+    // phase menus write none: a pick starts its own walk, which writes them,
+    // and a Skip is a line of its own (`FollowUpSkipped`).
+    case TriggeredProcedureRef.ForcedWake |
         TriggeredProcedureRef.FollowUpOffer |
         TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu |
         TriggeredProcedureRef.ActMenu =>
-      ProcedureLog(tag = None, isSection = false)
+      ProcedureLog(tag = None, lines = ActionLine.none, isSection = false)
