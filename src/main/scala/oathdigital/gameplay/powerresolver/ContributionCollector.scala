@@ -55,9 +55,10 @@ object ContributionCollector:
         }
         Option.when(kept.nonEmpty)(hooked.copy(contributions = kept)))
 
-    // Step 3: named ignore, one pass, no transitivity. Every applicable
-    // power's votes are collected against the full applicable set before
-    // any power is dropped, so a dropped power's votes still count.
+    // Step 3: named ignore, one pass, no transitivity. Every power step 2b
+    // kept votes against the full kept set before any power is dropped, so
+    // a dropped power's votes still count. A power step 2b left out casts
+    // none.
     val ignored: Set[PowerId] = used.flatMap { hooked =>
       used.filter(other =>
         hooked.power.ignores(ctxFor(hooked.power), other.power))

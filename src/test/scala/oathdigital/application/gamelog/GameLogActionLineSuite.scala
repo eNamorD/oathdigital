@@ -42,6 +42,12 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val mustered = mine.indexWhere(_.startsWith("Mustered "))
     assert(start >= 0 && mustered > start, mine)
 
+  test("Muster under Vow of Wandering: one Muster line, then the vow's"):
+    val script = vowMuster
+    val mine = lines(script, None)
+    assertEquals(mine.count(_.startsWith("Mustered ")), 1, mine)
+    assert(mine.contains("Vow of Wandering: Gained 2 more warbands."), mine)
+
   test("Muster on Golem Legions: the line names the adviser as the source"):
     val mine = lines(golemMuster, None)
     // 1, plus 1 for Golem Legions, a faceup Arcane adviser.

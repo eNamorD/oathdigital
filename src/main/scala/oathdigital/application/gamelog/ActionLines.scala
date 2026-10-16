@@ -64,6 +64,9 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
           playedAdviser(journal, run, at, viewer)
       case ActionRef.PlayFacedownAdviser =>
         playedAdviser(journal, run, at, viewer)
+      // A power's covering line restates a gain of its own, such as a
+      // vow's warbands after the Muster's.
+      case ActionRef.Muster if journal.covered(at) => Vector.empty
       case ActionRef.Muster => ops.collect {
         case OpStep(Move(Piece.Warbands(_, count),
             PositionedLocation(Location.WarbandBank(_), _, _),

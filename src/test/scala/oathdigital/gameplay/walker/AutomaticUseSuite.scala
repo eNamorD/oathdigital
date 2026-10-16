@@ -74,3 +74,25 @@ class AutomaticUseSuite extends munit.FunSuite:
       case WalkerOutcome.Finished(end, _) => end
       case other => fail(s"the walk did not finish: $other")
     assertEquals(Look(resumed).favor(p1), 2)
+
+  test("a resume inside an automatic use runs its effect, though the " +
+      "effect's own step turned the verdict"):
+    // p1 holds 1 favor, so the use is allowed; the effect burns it, parks,
+    // then gains 1. At the park p1 holds none, which a fresh judgement
+    // would refuse.
+    val ask = Decide("test.ask", p1, DecisionQuery.ChooseOne(Vector(
+      DecisionOption.Button(DecisionOptionRef.Button("go"), "Go"))))
+    val burnsThenAsks = Sequence(AutomaticUse(p1, automatic, card, (_, _) =>
+      Vector(Burn.favor(1, PositionedLocation(Location.PlayArea(p1)),
+        Some(p1)), ask, oneFavor)))
+    val parked = accepted(ProcedureWalker.advance(p1Holding(1),
+      burnsThenAsks, None, powers)) match
+      case WalkerOutcome.Parked(pending, _) => pending
+      case other => fail(s"the walk did not park: $other")
+    val resumed = accepted(ProcedureWalker.resolve(p1Holding(0),
+      burnsThenAsks, parked, Answered("test.ask",
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("go")), p1),
+      powers)) match
+      case WalkerOutcome.Finished(end, _) => end
+      case other => fail(s"the walk did not finish: $other")
+    assertEquals(Look(resumed).favor(p1), 1)

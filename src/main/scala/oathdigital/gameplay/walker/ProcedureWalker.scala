@@ -290,7 +290,8 @@ object ProcedureWalker:
       case branch: Branch => walkBranch(branch, ctx, path, cursor, resume, hooks)
       case use: AutomaticUse => walkFolded(None, use, AutomaticUses.children(
         use, ctx.state, PendingTree(at = path, answered = ctx.answered),
-        ctx.powers), ctx, path, cursor, resume, hooks)
+        ctx.powers, inside = cursor.nonEmpty), ctx, path, cursor, resume,
+        hooks)
       case leaf: LeafOperation =>
         walkLeaf(leaf, ctx, path, cursor, resume, hooks)
       case EndWalk => Right(Ended(ctx))

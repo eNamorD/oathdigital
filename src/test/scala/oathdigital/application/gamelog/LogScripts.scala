@@ -327,20 +327,26 @@ object LogScripts:
   private def source(table: Table): Table =
     table.edifice("Hiding Place", EdificeSide.Ruined, "Deep Woods")
 
-  /** p1 musters at Deep Woods. */
-  def muster(using munit.Location): Script =
-    val (service, act) = atTable("muster",
-      source(tableWithOnePawnPerSite.pawn(p1, "Deep Woods")).banditsRefilled)
+  /** p1 musters at Deep Woods holding `advisers` faceup. */
+  private def musterHolding(name: String, advisers: String*)(
+      using munit.Location): Script =
+    val (service, act) = atTable(name, source(advisers.foldLeft(
+      tableWithOnePawnPerSite.pawn(p1, "Deep Woods"))(_.adviser(p1, _)))
+      .banditsRefilled)
     start(act, ActionRef.Muster)
-    Script("muster", service, Look(act.ready).active)
+    Script(name, service, Look(act.ready).active)
+
+  /** p1 musters at Deep Woods. */
+  def muster(using munit.Location): Script = musterHolding("muster")
 
   /** p1 musters at Deep Woods holding Initiation Rite, so the card mustered
     * on receives a secret instead of a favor. */
   def initiatedMuster(using munit.Location): Script =
-    val (service, act) = atTable("initiated-muster", source(tableWithOnePawnPerSite
-      .pawn(p1, "Deep Woods").adviser(p1, "Initiation Rite")).banditsRefilled)
-    start(act, ActionRef.Muster)
-    Script("initiated-muster", service, Look(act.ready).active)
+    musterHolding("initiated-muster", "Initiation Rite")
+
+  /** p1 musters at Deep Woods holding Vow of Wandering. */
+  def vowMuster(using munit.Location): Script =
+    musterHolding("vow-muster", "Vow of Wandering")
 
   /** p1 musters on Golem Legions, their adviser, with no card at their site.
     * The Muster picks Golem Legions, its only modifier, so it starts by

@@ -326,7 +326,8 @@ private[walker] object WalkerPowerGather:
             PendingTree(at = path, answered = answered)),
           state.game.current.walkerProcedure, answered)._1)
         case use: AutomaticUse => descend(AutomaticUses.children(use, state,
-          PendingTree(at = path, answered = answered), powers))
+          PendingTree(at = path, answered = answered), powers,
+          inside = false))
         case _ => descend(applyWindow(node.window, node, state,
           activePlayer, powers, path, node.children,
           state.game.current.walkerProcedure, answered)._1)
@@ -546,9 +547,10 @@ private[walker] object WalkerPowerGather:
           activePlayer, powers, path, selected, state.game.current.walkerProcedure,
           pending.answered, resuming = true)
         (folded, gathered)
+      // Navigation descends into the node only toward a park inside it.
       case use: AutomaticUse =>
-        (AutomaticUses.children(use, state, pending.copy(at = path), powers),
-          gathered)
+        (AutomaticUses.children(use, state, pending.copy(at = path), powers,
+          inside = true), gathered)
       case leaf: LeafOperation =>
         leaf.window match
           case Some(w) if !gathered.contains(w) =>
