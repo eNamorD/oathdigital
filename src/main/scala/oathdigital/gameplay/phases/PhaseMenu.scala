@@ -93,15 +93,15 @@ object PhaseMenu:
       actor: PlayerId, phasePowers: PhasePowers, powers: WalkerPowers)
       : Vector[Offered] =
     def offered(procedure: StartableRef, args: Vector[DecisionOptionRef],
-        shown: DecisionOption): Offered =
+        shown: DecisionOption, judging: PhasePowers = phasePowers): Offered =
       val entry = QueuedProcedure(actor, procedure, args, None, QueueKind.Run)
       Offered(entry, QueuedStart.priced(catalog, ready, entry, powers,
-          phasePowers) match
+          judging) match
         case Right(cost) =>
           cost.words.fold(shown)(DecisionOption.Badged(shown, _))
         case Left(violation) => DecisionOption.Unavailable(shown,
           OptionReason.Written(QueuedStart.needs(catalog, ready, entry,
-            powers, phasePowers).getOrElse(reason(procedure, violation)))))
+            powers, judging).getOrElse(reason(procedure, violation)))))
     val wealth: Vector[Offered] =
       if menu != Menu.Wake then Vector.empty
       else WakeResource.all.map(resource => offered(ActionRef.TakeWealth,
@@ -130,10 +130,14 @@ object PhaseMenu:
       shown.toVector.map(option =>
         if refused.isEmpty then
           offered(ActionRef.UsePower(power.id), Vector(ref), option)
-        else Offered(QueuedProcedure(actor, ActionRef.UsePower(power.id),
-          Vector(ref), None, QueueKind.Run), DecisionOption.Unavailable(
-          option, PowerUseRules.shown(ready, actor, refused,
-            consent = true)))))
+        else
+          // A refusal is shown over a use that could otherwise start: over
+          // one that cannot, an ask would gain nothing.
+          val unrefused = offered(ActionRef.UsePower(power.id), Vector(ref),
+            option, phasePowers.copy(useRestrictions = Vector.empty))
+          if !unrefused.option.available then unrefused
+          else unrefused.copy(option = DecisionOption.Unavailable(option,
+            PowerUseRules.shown(ready, actor, refused, consent = true)))))
     (wealth ++ acting ++ used).distinctBy(_.option.ref) :+ offered(
       menu.ending, Vector.empty, DecisionOption.Button(menu.endingOption,
         endingLabel(menu, ready, actor)))

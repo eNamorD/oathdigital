@@ -19,7 +19,8 @@ import oathdigital.model._
   *
   * `build` is also `rebuild`. The list is read from the state the walk
   * resumes in, so a forced power must not change which forced powers are
-  * due before its own last decision. Hunger, the only one, asks before it
+  * due, by their `usable` or by a power-use refusal (catalog batch 8, slice
+  * 10), before its own last decision. Hunger, the only one, asks before it
   * changes anything, and cannot bury itself.
   */
 object ForcedWakeProcedure:

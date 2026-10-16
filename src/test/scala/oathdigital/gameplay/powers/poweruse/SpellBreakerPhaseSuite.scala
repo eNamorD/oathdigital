@@ -82,3 +82,9 @@ class SpellBreakerPhaseSuite extends munit.FunSuite:
     assertEquals(row.state, "askable")
     assertEquals(row.reason, Some("Spell Breaker: Cannot use powers that " +
       "cost secrets without ruler's consent."))
+
+  test("an ACTION p1 cannot pay for keeps its own reason: nobody is asked"):
+    val broke = Table.from(terrorBesideBreaker()).secrets(p1, faceUp = 0)
+      .ready
+    val option = terrorOption(broke)
+    assert(!option.available && !option.askable, option.toString)
