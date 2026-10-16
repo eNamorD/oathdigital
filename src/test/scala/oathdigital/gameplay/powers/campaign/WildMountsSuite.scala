@@ -21,7 +21,7 @@ class WildMountsSuite extends munit.FunSuite:
   private val mountedPatrol = CatalogNames.denizen("Mounted Patrol")
   private val warningSignals = CatalogNames.denizen("Warning Signals")
   private val forestWarden = planlessCard("Forest Warden")
-  private val python = planlessCard("Giant Python")
+  private val wildAllies = planlessCard("Wild Allies")
   private val newGrowth = planlessCard("New Growth")
 
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(
@@ -143,14 +143,14 @@ class WildMountsSuite extends munit.FunSuite:
     // the bandits apply at the origin.
     val b = withSiteCard(withSiteCard(Vector(card, mountedPatrol,
       stormCaller).foldLeft(base)((b, id) => withSiteCard(b, base.origin,
-      id)), second, newGrowth), first, python)
+      id)), second, newGrowth), first, wildAllies)
     val inOrder = b.ready.game.current.map.inPlay
     val expected = if inOrder.indexOf(first) < inOrder.indexOf(second)
-      then python else newGrowth
+      then wildAllies else newGrowth
     val done = commit(rules(losingDice), b, 4).finishPlanWindows
     assert(Look(done.state).inRegionalDiscard(expected))
     assert(!Look(done.state).inRegionalDiscard(
-      if expected == python then newGrowth else python))
+      if expected == wildAllies then newGrowth else wildAllies))
     val atOrigin = Look(done.state).cardsAt(base.origin)
     assert(atOrigin.contains(mountedPatrol) && atOrigin.contains(stormCaller))
     assertEquals(lines(done), Vector(swapped(expected)))
@@ -158,10 +158,10 @@ class WildMountsSuite extends munit.FunSuite:
   test("bandits with one Nomad plan discard it as usual"):
     val base = board(extras = 1, warbands = 5, supply = 7)
     val b = withSiteCard(withSiteCard(withSiteCard(base, base.origin, card),
-      base.origin, mountedPatrol), base.extras.head, python)
+      base.origin, mountedPatrol), base.extras.head, wildAllies)
     val done = commit(rules(losingDice), b, 4).finishPlanWindows
     assert(Look(done.state).inRegionalDiscard(mountedPatrol))
-    assert(!Look(done.state).inRegionalDiscard(python))
+    assert(!Look(done.state).inRegionalDiscard(wildAllies))
     assertEquals(lines(done), Vector.empty)
 
   test("its rewrite folds Late, after every plan's own steps at the root"):
