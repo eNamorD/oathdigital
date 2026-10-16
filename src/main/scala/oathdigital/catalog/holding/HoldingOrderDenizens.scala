@@ -52,11 +52,3 @@ object BaronCard extends Denizen(DenizenId("250"), "Baron", Suit.Order):
     text = "You may play to any site you rule, and you may discard a " +
       "card from that site first.")
   val powers: Vector[PrintedPower] = Vector(power)
-
-object CityWallCard extends Denizen(DenizenId("252"), "City Wall", Suit.Order) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.city-wall"),
-    persistent = true, cost = Cost.free,
-    text = "While at this site, enemies of City Wall's ruler **cannot** " +
-      "place [favor] / [secret] on cards or use non-persistent " +
-      "powers.")
-  val powers: Vector[PrintedPower] = Vector(power)
