@@ -114,7 +114,7 @@ class WildAlliesSuite extends munit.FunSuite:
     val (_, queued) = campaignAtTheWilds(
       alliesWithABeastSiteHoldingTheRival.ready)
     assertEquals(NoteText.said(WildAllies.id, WildAllies.noteKeys,
-      queued.events), Vector(NoteText.Said("campaign-at",
+      queued.events), Vector(NoteText.Said(NoteKey.Used,
       s"Campaign at ${wilds.value}.", covers = false)))
 
   test("a replayed use reaches the same state"):

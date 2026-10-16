@@ -35,8 +35,8 @@ object Captains:
   val id: PowerId = CaptainsCard.power.id
   val siteDecisionId: String = "power.captains.site"
   private val notes = NoteSet(id)
-  /** "Campaign at {site}." */
-  val campaignAt: NoteKey = notes.key("campaign-at", Vector(
+  /** "Campaign at {site}.": the use's own line. */
+  val campaignAt: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("Campaign at "), NotePart.Arg(0), NotePart.Text(".")))
   val noteKeys: Vector[NoteKey] = notes.declared
 

@@ -11,6 +11,7 @@ import oathdigital.protocol.projection.{LogKind, LogSpan}
 import oathdigital.testkit.{Answers, CatalogNames, MenuPlay, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import LogScripts._
+import CaptainsLogScripts._
 
 class GameLogActionLineSuite extends munit.FunSuite:
   private def lines(script: Script, viewer: Option[PlayerId]): Vector[String] =
