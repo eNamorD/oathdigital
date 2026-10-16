@@ -166,7 +166,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       .warbandsAt(woods, p2, 1).ready
     val granted = guarded.copy(consent = ConsentState(answers = Map(
       ConsentKey(HallOfMinisters.id, actor, HallOfMinisters.discardKey,
-        DecisionOptionRef.Denizen(others(1))) -> ConsentAnswer.Granted),
+        DecisionOptionRef.Denizen(others(1))) -> ConsentAnswer.Granted.by(p2)),
       turn = Some(ConsentTurn.of(guarded))))
     val parked = parkOnPlacement(granted, WalkerPowers(
       Vector(PlacementFixture.discardFirst),

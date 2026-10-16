@@ -99,14 +99,31 @@ class ForestCouncilSuite extends munit.FunSuite:
     assert(options.exists(option =>
       option.ref == DecisionOptionRef.Denizen(wrestlers) && option.available))
 
+  /** `ready` remembering p2's grant of Errand Boy to p1 this turn. */
+  private def grantedByP2(ready: ReadyGame): ReadyGame =
+    ready.copy(consent = ConsentState(answers = Map(
+      ConsentKey(ForestCouncil.id, p1, "power.use", errandBoyRef) ->
+        ConsentAnswer.Granted.by(p2)), turn = Some(ConsentTurn.of(ready))))
+
   test("a grant remembered this turn lets the Muster place its favor on " +
       "the Beast card"):
-    val ready = councilAtDeepWoods()
-    val granted = ready.copy(consent = ConsentState(answers = Map(
-      ConsentKey(ForestCouncil.id, p1, "power.use", errandBoyRef) ->
-        ConsentAnswer.Granted), turn = Some(ConsentTurn.of(ready))))
+    val granted = grantedByP2(councilAtDeepWoods())
     assertEquals(Look(musteredFrom(granted, errandBoyRef)).tokensOn(errandBoy),
       Tokens(1, 0))
+
+  test("a grant stops counting once its granter no longer rules: the new " +
+      "ruler is asked, and under bandits the plain reason shows"):
+    val p3 = Table.p3
+    val p3Rules = grantedByP2(councilAtDeepWoods(_.warbandsAt(woods, p3, 1)))
+    musterSources(p3Rules).find(_.ref == errandBoyRef) match
+      case Some(DecisionOption.Unavailable(_, ask: OptionReason.Askable)) =>
+        assertEquals(ask.asks.map(_.granter), Vector(p3))
+      case other => fail(s"expected Errand Boy askable of p3, got $other")
+    val banditsRule = grantedByP2(councilAtDeepWoods(_.bandits(woods, 2)))
+    assertEquals(musterSources(banditsRule).find(_.ref == errandBoyRef)
+      .map(_.askable), Some(false))
+    assertEquals(power.refusal(banditsRule, useOf(terror, persistent = false))
+      .map(_.power), Some(ForestCouncil.id))
 
   test("under bandits the Beast source shows the plain reason, as nobody " +
       "may grant it"):

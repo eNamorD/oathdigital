@@ -36,7 +36,7 @@ class PowerUseRulesSuite extends munit.FunSuite:
   private val quiet: ReadyGame = Table.start.ready
 
   private def remembering(answer: ConsentAnswer): ReadyGame =
-    quiet.copy(consent = ConsentState(answers = Map(covers -> answer),
+    quiet.copy(consent = ConsentState(answers = Map(covers -> answer.by(p2)),
       turn = Some(ConsentTurn.of(quiet))))
 
   test("the key names the restriction's slot and the card"):

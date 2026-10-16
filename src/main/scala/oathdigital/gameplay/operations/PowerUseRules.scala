@@ -37,8 +37,8 @@ object PowerUseRules:
   def refusals(ready: ReadyGame, use: PowerUse,
       restrictions: Vector[PowerUseRestriction]): Vector[PowerUseRefusal] =
     restrictions.flatMap(_.refusal(ready, use)).filterNot(refusal =>
-      refusal.reason.waiver.exists(waiver => ready.consent.remembered(
-        waiver.covers, ConsentTurn.of(ready))
+      refusal.reason.waiver.exists(waiver => ready.consent.answer(
+        waiver.covers, waiver.granter, ConsentTurn.of(ready))
         .contains(ConsentAnswer.Granted)))
 
   /** How an option for a use `refusals` stop is shown: askable of its

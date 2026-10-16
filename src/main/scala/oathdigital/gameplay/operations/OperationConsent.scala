@@ -25,8 +25,8 @@ object OperationConsent:
       case consented: ConsentedRestriction =>
         consented.copy(together = operations
           .flatMap(consented.inner.reason(ready, _)).flatMap(_.waiver)
-          .filter(waiver => ready.consent.remembered(waiver.covers, now)
-            .contains(ConsentAnswer.Granted))
+          .filter(waiver => ready.consent.answer(waiver.covers,
+            waiver.granter, now).contains(ConsentAnswer.Granted))
           .map(waiver => waiver.power -> waiver.covers.requester).toSet)
       case other => other
     }
@@ -40,8 +40,9 @@ object OperationConsent:
       refusals: Vector[OperationReason]): Option[OptionReason.Askable] =
     val waivers = refusals.flatMap(_.waiver)
     val granters = waivers.flatMap(_.granter).filter(_ != actor)
-    val refused = waivers.exists(waiver => ready.consent.remembered(
-      waiver.covers, ConsentTurn.of(ready)).contains(ConsentAnswer.Refused))
+    val refused = waivers.exists(waiver => ready.consent.answer(
+      waiver.covers, waiver.granter, ConsentTurn.of(ready))
+      .contains(ConsentAnswer.Refused))
     if refusals.isEmpty || waivers.size < refusals.size ||
         granters.size < waivers.size || refused then None
     else waivers.headOption.map { first =>
@@ -62,8 +63,8 @@ object OperationConsent:
     val waivers = refusals.flatMap(_.waiver)
     val now = ConsentTurn.of(ready)
     def unaskable(waiver: OperationWaiver): Boolean =
-      !waiver.granter.exists(_ != actor) || ready.consent.remembered(
-        waiver.covers, now).contains(ConsentAnswer.Refused)
+      !waiver.granter.exists(_ != actor) || ready.consent.answer(
+        waiver.covers, waiver.granter, now).contains(ConsentAnswer.Refused)
     if refusals.isEmpty || waivers.size < refusals.size then None
     else ask(ready, actor, refusals).orElse(waivers.find(unaskable)
       .orElse(waivers.headOption).map(blocker =>

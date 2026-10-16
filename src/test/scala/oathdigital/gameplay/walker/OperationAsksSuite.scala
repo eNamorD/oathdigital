@@ -60,7 +60,7 @@ class OperationAsksSuite extends munit.FunSuite:
 
   private def granted(ready: ReadyGame): ReadyGame =
     ready.copy(consent = ConsentState(
-      answers = Map(covers -> ConsentAnswer.Granted),
+      answers = Map(covers -> ConsentAnswer.Granted.by(p2)),
       turn = Some(ConsentTurn.of(ready))))
 
   /** The Muster tree with `power`, parked on its source decision. */
@@ -98,7 +98,7 @@ class OperationAsksSuite extends munit.FunSuite:
   test("a refusal remembered this turn shows the plain reason"):
     val ready = musterAtAncientCity()
     val refused = ready.copy(consent = ConsentState(
-      answers = Map(covers -> ConsentAnswer.Refused),
+      answers = Map(covers -> ConsentAnswer.Refused.by(p2)),
       turn = Some(ConsentTurn.of(ready))))
     assertEquals(sourceOptions(refused, favorOnAlchemistBannedBy(Some(p2))),
       Vector(alchemistPlain, DecisionOption.Denizen(wrestlersRef)))
@@ -154,6 +154,15 @@ class OperationAsksSuite extends munit.FunSuite:
     assertEquals(OperationConsent.shown(musterAtAncientCity(), p1, Vector(
       refusal(ban, Some(p2)), refusal(other, None))),
       Some(OptionReason.Noted(other, said(alchemistSource))))
+
+  test("a refusal from a player who no longer may grant leaves the card " +
+      "askable of the one who may"):
+    val ready = musterAtAncientCity()
+    val refusedByP3 = ready.copy(consent = ConsentState(
+      answers = Map(covers -> ConsentAnswer.Refused.by(Table.p3)),
+      turn = Some(ConsentTurn.of(ready))))
+    assert(sourceOptions(refusedByP3, favorOnAlchemistBannedBy(Some(p2)))
+      .find(_.ref == alchemistRef).exists(_.askable))
 
   test("a decision whose every option is askable still parks"):
     assertEquals(sourceOptions(musterAtAncientCity(beside = false),

@@ -62,7 +62,7 @@ class TollRoadsConsentSuite extends munit.FunSuite:
 
   test("a remembered refusal leaves the free option its ordinary reason"):
     val refused = rivalRules.copy(consent = ConsentState(
-      answers = Map(key -> ConsentAnswer.Refused),
+      answers = Map(key -> ConsentAnswer.Refused.by(rival)),
       turn = Some(ConsentTurn.of(rivalRules))))
     assertEquals(offered(refused, coast, free), DecisionOption.Unavailable(
       freeButton, OptionReason.Noted(TollRoads.id,

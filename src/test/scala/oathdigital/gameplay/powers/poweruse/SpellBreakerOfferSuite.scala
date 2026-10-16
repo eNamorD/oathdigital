@@ -133,7 +133,7 @@ class SpellBreakerOfferSuite extends munit.FunSuite:
       case other => fail(s"expected a ready game, got $other")
     val refused = Ready(parked.copy(consent = ConsentState(
       answers = Map(ConsentKey(SpellBreaker.id, Table.p1, "power.use",
-        jinxRef) -> ConsentAnswer.Refused),
+        jinxRef) -> ConsentAnswer.Refused.by(Table.p2)),
       turn = Some(ConsentTurn.of(parked)))))
     assertEquals(jinxAtRecoverReroll(refused), broken.map(reason =>
       DecisionOption.Unavailable(DecisionOption.Denizen(jinxRef), reason)))

@@ -128,7 +128,7 @@ A grant or refusal is remembered for the turn under its key. Before this task it
 - [ ] **Step 2: The ledger.** Add `Granter`, `Remembered` and `ConsentAnswer.by(player)` (a test convenience, `Remembered(answer, Granter.Player(player))`). `settled` records each key's granter; `granting` records `Supposed`; add `answer`.
 - [ ] **Step 3: The checks.** Pass the current granter at each check listed above.
 - [ ] **Step 4: The fixtures.** Every hand-built `answers` names the granter its test means: `ConsentAnswer.Granted.by(p2)`.
-- [ ] **Step 5: The design.** In the consent design's "Rulings", add: "**An answer binds its granter.** A grant or refusal remembered this turn counts only while its granter may still answer: a ruler who loses the site, to another player or to bandits, no longer lifts or blocks anything."
+- [ ] **Step 5: The design.** In the consent design's ruling 12 ("Answers last the turn"), add: "**An answer binds its granter.** A grant or refusal remembered this turn counts only while its granter may still answer: a ruler who loses the site, to another player or to bandits, no longer lifts or blocks anything."
 - [ ] **Step 6: Gates and commit.** `./sbtw test "frontend/test"`, `python3 scripts/check-architecture.py`, `python3 scripts/check-markdown-links.py`.
 
 ```bash

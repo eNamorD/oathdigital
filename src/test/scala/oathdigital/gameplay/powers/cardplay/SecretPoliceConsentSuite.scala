@@ -40,7 +40,7 @@ class SecretPoliceConsentSuite extends munit.FunSuite:
       : ReadyGame =
     ready.copy(consent = ConsentState(
       answers = Map(ConsentKey(SecretPolice.id, actor, placement, spot) ->
-        answer),
+        answer.by(other)),
       turn = Some(ConsentTurn.of(ready))))
 
   private def faceup(from: OathTransition, ref: DecisionOptionRef = spot)(

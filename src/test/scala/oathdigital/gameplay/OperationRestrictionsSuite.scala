@@ -250,7 +250,7 @@ class OperationRestrictionsSuite extends munit.FunSuite:
       "for another card does not"):
     val ready = hallRuledByP1
     val granted = ready.copy(consent = ConsentState(
-      answers = Map(coversPlainCard -> ConsentAnswer.Granted),
+      answers = Map(coversPlainCard -> ConsentAnswer.Granted.by(p1)),
       turn = Some(ConsentTurn.of(ready))))
     val byEnemy = discard(plainCard, Location.Site(hallSite), actor = p2)
     assertEquals(refusal(granted, byEnemy), None)
@@ -273,7 +273,7 @@ class OperationRestrictionsSuite extends munit.FunSuite:
     assertEquals(OperationConsent.ask(hallRuledByP1, p2, refusals :+ locked),
       None)
     val refused = hallRuledByP1.copy(consent = ConsentState(
-      answers = Map(coversPlainCard -> ConsentAnswer.Refused),
+      answers = Map(coversPlainCard -> ConsentAnswer.Refused.by(p1)),
       turn = Some(ConsentTurn.of(hallRuledByP1))))
     assertEquals(OperationConsent.ask(refused, p2, refusals), None)
 
@@ -284,7 +284,7 @@ class OperationRestrictionsSuite extends munit.FunSuite:
     val ready = Table.from(hallRuledByP1).denizen(wrestlers, at = hallSite)
       .ready
     val granted = ready.copy(consent = ConsentState(
-      answers = Map(coversPlainCard -> ConsentAnswer.Granted),
+      answers = Map(coversPlainCard -> ConsentAnswer.Granted.by(p1)),
       turn = Some(ConsentTurn.of(ready))))
     def byEnemy(card: DenizenId): CoreOperation =
       discard(card, Location.Site(hallSite), actor = p2).copy(required = true)

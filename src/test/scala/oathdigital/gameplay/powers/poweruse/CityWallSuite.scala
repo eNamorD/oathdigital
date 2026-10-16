@@ -106,7 +106,7 @@ class CityWallSuite extends munit.FunSuite:
     val ready = terrorInsideWall
     val granted = ready.copy(consent = ConsentState(answers = Map(
       ConsentKey(CityWall.id, p1, "power.use", terrorRef) ->
-        ConsentAnswer.Granted), turn = Some(ConsentTurn.of(ready))))
+        ConsentAnswer.Granted.by(p2)), turn = Some(ConsentTurn.of(ready))))
     assert(terrorOption(granted).available)
     assert(PhasePowerHarness.awaits(accepted(PhasePowerHarness.use(granted,
       rovingTerror, terrorRef)), RovingTerror.decisionId))

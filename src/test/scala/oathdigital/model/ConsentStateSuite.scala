@@ -38,6 +38,26 @@ class ConsentStateSuite extends munit.FunSuite:
     assertEquals(refused.remembered(key(police), turn),
       Some(ConsentAnswer.Refused))
 
+  test("a settled request remembers each key with its ask's granter, and " +
+      "the answer counts only for that granter"):
+    val refused = accepted(waitingOn(redOnPass, greenOnPolice)
+      .answered(green, granted = false, turn))
+    assertEquals(refused.answers.get(key(pass)),
+      Some(ConsentAnswer.Refused.by(red)))
+    assertEquals(refused.answers.get(key(police)),
+      Some(ConsentAnswer.Refused.by(green)))
+    assertEquals(refused.answer(key(pass), Some(red), turn),
+      Some(ConsentAnswer.Refused))
+    assertEquals(refused.answer(key(pass), Some(green), turn), None)
+    assertEquals(refused.answer(key(pass), None, turn), None)
+
+  test("a supposed grant counts for any granter, nobody included"):
+    val supposed = ConsentState().granting(Vector(key(pass)), turn)
+    assertEquals(supposed.answer(key(pass), None, turn),
+      Some(ConsentAnswer.Granted))
+    assertEquals(supposed.answer(key(pass), Some(red), turn),
+      Some(ConsentAnswer.Granted))
+
   test("a grant with another ask still open keeps the request waiting"):
     val partial = accepted(waitingOn(redOnPass, greenOnPolice)
       .answered(red, granted = true, turn))

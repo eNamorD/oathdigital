@@ -42,6 +42,20 @@ object ConsentChoice:
 enum ConsentAnswer:
   case Granted, Refused
 
+  /** This answer, given by `player`. */
+  def by(player: PlayerId): Remembered =
+    Remembered(this, Granter.Player(player))
+
+/** Who gave a remembered answer: a player, or nobody but a search
+  * supposing a grant (`ConsentState.granting`), which never persists. */
+enum Granter:
+  case Player(player: PlayerId)
+  case Supposed
+
+/** An answer remembered for the turn, with who gave it. It counts only
+  * while that player may still answer (consent design, ruling 12). */
+final case class Remembered(answer: ConsentAnswer, by: Granter)
+
 /** What one answer is remembered for (ruling 12): the power, the requester,
   * the decision and the option. The decision keeps Deep Woods as a Travel
   * destination apart from Deep Woods in another question. */
@@ -81,17 +95,33 @@ object ConsentTurn:
 final case class ConsentState(
     preferences: Map[(PlayerId, PowerId, PlayerId), ConsentPreference] =
       Map.empty,
-    answers: Map[ConsentKey, ConsentAnswer] = Map.empty,
+    answers: Map[ConsentKey, Remembered] = Map.empty,
     pending: Option[ConsentRequest] = None,
     turn: Option[ConsentTurn] = None):
 
   def preference(granter: PlayerId, power: PowerId, requester: PlayerId)
       : Option[ConsentPreference] = preferences.get((granter, power, requester))
 
-  /** The answer remembered for `key` this turn: none once the turn the
-    * answers belong to has ended (plan decision 4). */
+  /** The answer remembered for `key` this turn, whoever gave it: none once
+    * the turn the answers belong to has ended (plan decision 4). For
+    * display; a ledger check reads [[answer]]. */
   def remembered(key: ConsentKey, now: ConsentTurn): Option[ConsentAnswer] =
-    if turn.contains(now) then answers.get(key) else None
+    rememberedAt(key, now).map(_.answer)
+
+  /** The answer remembered for `key` this turn that counts now: one given
+    * by `granter`, who may answer `key` now, or one a search supposes. A
+    * ruler who lost the site, to another player or to bandits, no longer
+    * lifts or blocks anything (consent design, ruling 12). */
+  def answer(key: ConsentKey, granter: Option[PlayerId], now: ConsentTurn)
+      : Option[ConsentAnswer] = rememberedAt(key, now).collect {
+    case Remembered(answer, Granter.Supposed) => answer
+    case Remembered(answer, Granter.Player(by)) if granter.contains(by) =>
+      answer
+  }
+
+  private def rememberedAt(key: ConsentKey, now: ConsentTurn)
+      : Option[Remembered] = if turn.contains(now) then answers.get(key)
+    else None
 
   def requested(request: ConsentRequest): Either[OathViolation, ConsentState] =
     if pending.nonEmpty then Left(OathViolation.InvalidEventOrder(
@@ -139,18 +169,22 @@ final case class ConsentState(
     * before it offers to ask, so an option a grant still would not open is
     * never askable. */
   def granting(keys: Vector[ConsentKey], now: ConsentTurn): ConsentState =
-    copy(answers = answersAt(now) ++ keys.map(_ -> ConsentAnswer.Granted),
-      turn = Some(now))
+    copy(answers = answersAt(now) ++ keys.map(_ ->
+      Remembered(ConsentAnswer.Granted, Granter.Supposed)), turn = Some(now))
 
   /** What survives an undo or a redo: everything but a waiting request
     * (consent design, "Undo"). */
   def carried: ConsentState = copy(pending = None)
 
+  /** Each key `request` settles, remembered as given by the granter of the
+    * ask whose powers hold the key's power. */
   private def settled(request: ConsentRequest, answer: ConsentAnswer,
       now: ConsentTurn): ConsentState =
-    copy(answers = answersAt(now) ++ request.keys.map(_ -> answer),
+    copy(answers = answersAt(now) ++ request.keys.flatMap(key =>
+      request.asks.find(_.powers.contains(key.power))
+        .map(ask => key -> answer.by(ask.granter))),
       pending = None, turn = Some(now))
 
   /** The answers still standing at `now`: none once their turn has ended. */
-  private def answersAt(now: ConsentTurn): Map[ConsentKey, ConsentAnswer] =
+  private def answersAt(now: ConsentTurn): Map[ConsentKey, Remembered] =
     if turn.contains(now) then answers else Map.empty
