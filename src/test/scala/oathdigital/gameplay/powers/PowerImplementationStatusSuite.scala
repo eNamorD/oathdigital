@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powers
 
+import oathdigital.gameplay.operations.{AncientBloodline, GrandScepter,
+  HallOfMinisters, OperationRestrictions}
 import oathdigital.gameplay.powerresolver.Power
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.PowerId
@@ -33,6 +35,16 @@ class PowerImplementationStatusSuite extends munit.FunSuite:
   test("a power the walker or phase catalog covers is implemented, even " +
       "when ReviewedPowerCatalog still declares it unimplemented"):
     covered.foreach(id => assert(implemented(id), id.value))
+
+  test("the printed rules are Ancient Bloodline, the Hall of Ministers and " +
+      "the Grand Scepter's restriction"):
+    assertEquals(OperationRestrictions.printedRules.map(_.id),
+      Vector(AncientBloodline.id, HallOfMinisters.id, GrandScepter.id))
+
+  test("a power a printed operation restriction enforces, with no walker " +
+      "power, is implemented"):
+    OperationRestrictions.printedRules.foreach(rule =>
+      assert(implemented(rule.id), rule.id.value))
 
   test("an id nothing declares at all is not implemented"):
     assert(!implemented(PowerId("denizen.not-a-real-power")))

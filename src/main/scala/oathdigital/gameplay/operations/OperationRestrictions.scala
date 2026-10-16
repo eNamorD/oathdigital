@@ -9,9 +9,9 @@ import oathdigital.model._
   *
   * `printed` are the restrictions a catalog's cards print: [[LockedCards]],
   * holding every card whose `Locked` trait shows the lock icon and the cards
-  * [[AncientBloodline]] locks for its holder's enemies, [[RestrictionIcons]], holding every adviser-only and site-only denizen,
-  * and the [[HallOfMinisters]] and the [[GrandScepter]], which their cards
-  * declare.
+  * the [[AsIfLocked]] printed rules lock, [[RestrictionIcons]], holding
+  * every adviser-only and site-only denizen, and each printed rule that is a
+  * restriction itself. The printed rules are `printedRules`.
   * `active` adds the [[ActiveModifier]] rule for the modifiers picked for
   * the running action, and the restrictions the offered powers register.
   * Every one refuses as `Impossible`: an optional operation is skipped, a
@@ -40,10 +40,12 @@ object OperationRestrictions:
   def forCatalog(catalog: ExecutableCatalog): OperationRestrictions =
     new OperationRestrictions(Some(catalog))
 
-  /** The printed powers an operation restriction implements outright,
-    * with no walker power: they count as implemented
-    * (`PowerImplementationStatus`). */
-  val implementedRules: Set[PowerId] = Set(AncientBloodline.id)
+  /** The printed powers an operation restriction enforces, with no walker
+    * power: the one list `printed`, `PowerImplementationStatus`,
+    * `ConsentPowers` and `RuleNotes` read. An [[AsIfLocked]] rule joins
+    * [[LockedCards]]; a rule that is a restriction itself stands alone. */
+  val printedRules: Vector[PrintedRule] =
+    Vector(AncientBloodline, HallOfMinisters, GrandScepter)
 
   /** Only a card at a site or in a play area is in play. A card drawn by a
     * Search and discarded from the temporary hand is not. */
@@ -60,9 +62,10 @@ object OperationRestrictions:
       catalog.denizens.collect { case d: AdviserOnly => d.id: CardId }.toSet
     val siteOnly: Set[CardId] =
       catalog.denizens.collect { case d: SiteOnly => d.id: CardId }.toSet
-    Vector(LockedCards(locked, Vector(AncientBloodline)),
-      RestrictionIcons(adviserOnly, siteOnly),
-      HallOfMinisters, GrandScepter)
+    Vector(LockedCards(locked,
+        printedRules.collect { case rule: AsIfLocked => rule }),
+      RestrictionIcons(adviserOnly, siteOnly)) ++
+      printedRules.collect { case rule: OperationRestriction => rule }
 
 /** A card that prints a modifier picked for the running action cannot be
   * discarded while the action runs: a modifier the player picked in the
