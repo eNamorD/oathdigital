@@ -10,6 +10,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogEntry, LogKind, LogSpan}
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p2
 import LogScripts._

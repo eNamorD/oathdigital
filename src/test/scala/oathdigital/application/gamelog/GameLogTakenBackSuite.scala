@@ -7,6 +7,7 @@ import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, DeclineDeal,
   ProposeTerms}
+import oathdigital.protocol.projection.{LogEntry}
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}

@@ -18,6 +18,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, FollowUpOffer, RollPayload,
   WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer}
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 
 /** The detail lines of a walker run (spec, "Detail lines"): decisions, rolls
   * and deltas, between a start line and the action line that closes the

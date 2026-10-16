@@ -7,6 +7,7 @@ import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureDequeued,
   WalkerCompleted, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
 /** The tag that opens every action that can take modifiers (log action

@@ -2,6 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogKind}
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2, p3}
 import LogScripts._

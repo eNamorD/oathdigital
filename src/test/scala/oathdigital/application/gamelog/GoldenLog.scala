@@ -1,5 +1,7 @@
 package oathdigital.application.gamelog
 
+import oathdigital.protocol.projection.{LogEntry, LogSpan}
+
 /** An exact, readable rendering of log entries for golden files: one line
   * per entry, `sequence.ordinal kind depth` then every span, a typed span in
   * brackets with its identity. Nothing a `LogEntry` holds is lost. An entry in

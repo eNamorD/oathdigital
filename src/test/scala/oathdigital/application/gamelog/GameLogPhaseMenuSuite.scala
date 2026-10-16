@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.protocol.projection.{LogKind}
 import LogScripts._
 
 /** A phase menu's walk in the Game Log (walker-driven game loop design,

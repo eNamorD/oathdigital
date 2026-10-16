@@ -5,6 +5,7 @@ import oathdigital.application.{GameApplicationService}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogEntry, LogKind, LogSpan}
 import oathdigital.testkit.{Situation, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{accepted, present}

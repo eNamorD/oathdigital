@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogEntry, LogSpan, LogTakenBack}
 import LogSpan.Text
 
 /** Marks every entry posted by a voided event with its taken-back group

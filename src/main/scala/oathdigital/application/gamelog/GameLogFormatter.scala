@@ -10,6 +10,8 @@ import oathdigital.gameplay.walker.{FollowUpSkipped,
   FollowUpSupplyWaiver, PowerNoted, ProcedureDequeued, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogEntry, LogKind, LogSpan,
+  LogTakenBack}
 import LogSpan.Text
 
 /** The game log: a pure function of the scanned journal prefix and the

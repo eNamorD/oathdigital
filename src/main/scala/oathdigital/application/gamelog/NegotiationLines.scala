@@ -5,6 +5,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, DeclineDeal}
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import ActionLines.{action, isDelta}
 import LogSpan.Text
 

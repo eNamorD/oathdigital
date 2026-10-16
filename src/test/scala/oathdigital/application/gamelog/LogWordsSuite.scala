@@ -1,7 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
-import oathdigital.protocol.projection.LogSpanWire
+import oathdigital.protocol.projection.{LogSpan, LogSpanWire}
 import LogSpan.Text
 
 class LogWordsSuite extends munit.FunSuite:

@@ -7,6 +7,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import ActionLines.{action, plural}
 import LogSpan.Text
 

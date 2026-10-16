@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
 /** Setup's lines (spec, "Setup lines"): one per pawn placed, one per

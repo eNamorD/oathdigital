@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogEntry}
 import oathdigital.testkit.CatalogNames
 import LogScripts._
 

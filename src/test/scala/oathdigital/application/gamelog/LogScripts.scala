@@ -27,6 +27,7 @@ import oathdigital.gameplay.walker.{FollowUpOffer, PowerNoted, WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
+import oathdigital.protocol.projection.{LogEntry, LogSpan}
 import oathdigital.testkit.{Answers, CatalogNames, Dice, Look, MenuPlay, Park,
   PlacementPicks, Situation, Step, Table}
 import oathdigital.testkit.Unwrap.as
@@ -774,8 +775,7 @@ object LogScripts:
   val named: Vector[(String, () => Script)] = Vector(
     "woken" -> (() => woken), "round" -> (() => round),
     "oathkeeper" -> (() => oathkeeperTie), "search" -> (() => search),
-    "augury" -> (() => augury),
-    "facedown-adviser" -> (() => facedownAdviser),
+    "augury" -> (() => augury), "facedown-adviser" -> (() => facedownAdviser),
     "muster" -> (() => muster), "trade" -> (() => trade),
     "take-wealth" -> (() => takeWealth),
     "recover-failed" -> (() => recoverFailed),

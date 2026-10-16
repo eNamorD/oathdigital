@@ -3,8 +3,8 @@ package oathdigital.application.gamelog
 import oathdigital.application.{GameHistory, GamePresentationProjector}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.PlayerId
-import oathdigital.protocol.projection.{LogEntryWire, LogPageWire,
-  LogSectionWire, LogSpanWire, LogTakenBackWire}
+import oathdigital.protocol.projection.{LogEntry, LogEntryWire, LogPageWire,
+  LogSectionWire, LogSpan, LogSpanWire, LogTakenBackWire}
 
 /** The log page one seat reads: the whole prefix formatted for that seat,
   * then every entry at or after `after` (spec, "Routes" and "Cost"). */

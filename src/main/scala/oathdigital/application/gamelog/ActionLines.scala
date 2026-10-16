@@ -10,6 +10,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
 /** The action line each procedure posts, at the event its facts complete

@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
 /** The events that happen outside any walker run (spec, "Detail lines"):

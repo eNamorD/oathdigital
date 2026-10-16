@@ -4,6 +4,7 @@ import oathdigital.application.GamePresentationProjector
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogSpan}
 
 /** A card as one viewer may read it: by name, or by its back's kind. */
 private[gamelog] enum CardWord:

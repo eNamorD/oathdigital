@@ -3,6 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.gameplay.powers.OathkeeperGoalChoice
 import oathdigital.gameplay.walker.{PowerNoted, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
 /** The lines powers write about themselves (power log lines design,
