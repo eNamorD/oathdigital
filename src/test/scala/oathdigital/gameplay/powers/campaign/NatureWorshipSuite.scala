@@ -11,7 +11,7 @@ import oathdigital.testkit.{CatalogNames, Look}
 class NatureWorshipSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Nature Worship")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val beasts = planless("Bracken", "Forest Warden")
+  private val beasts = planless("Bracken", "Autumn Wind")
 
   private def advised(b: Board, who: PlayerId,
       cards: Vector[(DenizenId, Orientation)]): Board =

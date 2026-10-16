@@ -11,7 +11,7 @@ import oathdigital.testkit.CatalogNames
 class BattleAxesSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Battle Axes")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val beasts = planless("Bracken", "Forest Warden")
+  private val beasts = planless("Bracken", "Autumn Wind")
 
   test("an attacker adds two attack dice, for nothing, when the defender " +
       "rules a beast card"):

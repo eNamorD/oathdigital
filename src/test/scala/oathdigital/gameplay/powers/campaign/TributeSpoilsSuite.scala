@@ -16,7 +16,7 @@ class TributeSpoilsSuite extends munit.FunSuite:
   private val honors = CatalogNames.denizen("Battle Honors")
   private val honorsRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(honors)
-  private val orders = planless("Martial Culture", "Baron", "Palanquin")
+  private val orders = planless("Martial Culture", "Relic Hunter", "Palanquin")
   // Beast, on either face: Hallowed Spring intact, Hiding Place ruined.
   private val beastEdifice = CatalogNames.edifice("Hallowed Spring")
   // A relic at the site, which Tribute Spoils does not count.
