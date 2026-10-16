@@ -135,7 +135,8 @@ this order. Each slice gets its own plan.
 - [x] **8. Effective suit:** Pledge to Discord, Spiteful Mirror.
 - [x] **9. Darkest Secret lens:** Yew Staff.
 - [ ] **10. Power-use restrictions:** Spell Breaker, Forest Council, City
-  Wall, Giant Python.
+  Wall, Giant Python. Part 1 (Spell Breaker) is done; parts 2 and 3 are
+  next.
 - [ ] **10b. The ruler's choice over refused automatic powers.** Slice 10
   refuses an enemy's automatic non-persistent power (When Played, Tyrant,
   Hospitality, Hunger and the like) silently. With this item, such a power
