@@ -31,4 +31,5 @@ object PhasePowerCatalog:
       WorldActionPowers.forCatalog(catalog) ++
       BannerFacePowers.phasePowers ++
       Vector(Hunger.forCatalog(catalog)) ++
-      RiverSitePower.all)
+      RiverSitePower.all,
+      WalkerPowerCatalog.useRestrictions(catalog))

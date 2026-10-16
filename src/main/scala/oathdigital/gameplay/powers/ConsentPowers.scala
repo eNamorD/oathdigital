@@ -8,7 +8,8 @@ import oathdigital.model.{PlayerId, PowerId, PowerSourceRef, ReadyGame}
 
 /** The waivable powers (consent design, "Powers declare waivability"): every
   * power with a contribution, of either restriction kind, that declares a
-  * `Waiver`, and the operation restrictions in `operations` (the Hall of
+  * `Waiver`, the power-use restrictions that declare one (catalog batch 8,
+  * slice 10), and the operation restrictions in `operations` (the Hall of
   * Ministers, slice 3). The grid, the
   * stale-preference check and the log all look a power up here. */
 final class ConsentPowers(powers: Vector[ContributingPower],
@@ -18,6 +19,8 @@ final class ConsentPowers(powers: Vector[ContributingPower],
     waiver <- power.contributions.values.flatten.collectFirst {
       case Restriction(_, _, Some(waiver)) => waiver
       case OptionRestriction(_, _, Some(waiver)) => waiver }
+      .orElse(power.powerUseRestrictions.iterator.map(_.waiver)
+        .collectFirst { case Some(waiver) => waiver })
   yield power.id -> waiver).toMap ++ operations
 
   def waiver(power: PowerId): Option[Waiver] = waivers.get(power)

@@ -24,6 +24,7 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
     "denizen.friendly-familiar", "denizen.secret-signal",
     "relic.spiteful-mirror")
   private val persistentRules = Vector("denizen.toll-roads",
+    "denizen.spell-breaker",
     "denizen.grasping-vines", "relic.circlet-of-command", "denizen.gossip",
     "denizen.league-treaty", "denizen.gleaming-armor", "edifice.e28.intact",
     "edifice.e28.ruined", "denizen.secret-police", "edifice.e08.intact",

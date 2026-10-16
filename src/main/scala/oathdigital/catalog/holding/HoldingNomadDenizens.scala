@@ -25,13 +25,6 @@ object PilgrimageCard extends Denizen(DenizenId("161"), "Pilgrimage", Suit.Nomad
       "and put them on your region's discard pile.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object SpellBreakerCard extends Denizen(DenizenId("162"), "Spell Breaker", Suit.Nomad) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.spell-breaker"),
-    persistent = true, cost = Cost.free,
-    text = "Enemies of Spell Breaker's ruler **cannot** use powers that " +
-      "cost any [secret] or [secret-burnt].")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object AncientBloodlineCard extends Denizen(DenizenId("165"), "Ancient Bloodline", Suit.Nomad) with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.ancient-bloodline"),
     persistent = true, cost = Cost.free,

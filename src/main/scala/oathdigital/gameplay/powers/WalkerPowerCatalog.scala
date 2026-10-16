@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.operations.OperationRestrictions
-import oathdigital.gameplay.powerresolver.ContributingPower
+import oathdigital.gameplay.powerresolver.{ContributingPower,
+  PowerUseRestriction}
 import oathdigital.gameplay.powers.action._
 import oathdigital.gameplay.powers.banner._
 import oathdigital.gameplay.powers.burn._
@@ -10,6 +11,7 @@ import oathdigital.gameplay.powers.campaign._
 import oathdigital.gameplay.powers.cardplay._
 import oathdigital.gameplay.powers.dice._
 import oathdigital.gameplay.powers.economy._
+import oathdigital.gameplay.powers.poweruse._
 import oathdigital.gameplay.powers.recover._
 import oathdigital.gameplay.powers.rest._
 import oathdigital.gameplay.powers.setup._
@@ -65,6 +67,13 @@ object WalkerPowerCatalog:
       restrictionSet = OperationRestrictions.forCatalog(catalog),
       declared = Some(DeclaredNotes.of(powers, catalog)))
 
+  /** The power-use restrictions the walker powers of `catalog` declare,
+    * for the phase powers (catalog batch 8, slice 10). Read from
+    * `contributing`, since `default` builds the phase powers' notes. */
+  def useRestrictions(catalog: ExecutableCatalog)
+      : Vector[PowerUseRestriction] =
+    contributing(catalog).flatMap(_.powerUseRestrictions)
+
   /** The powers themselves. `DeclaredNotes` reads them to build the union a
     * `WalkerPowers` carries, so it is taken separately from `default`: a
     * union built from `default` would build a union to build a union. */
@@ -76,6 +85,7 @@ object WalkerPowerCatalog:
       Vector(BrassArmyMoves) ++
       Vector(SecretTestament) ++
       Vector(YewStaff) ++
+      Vector(SpellBreaker) ++
       TravelSitePowers.all ++
       TravelModifiers.forCatalog(catalog) ++
       Vector(LeagueTreatyContribution.forCatalog(catalog)) ++

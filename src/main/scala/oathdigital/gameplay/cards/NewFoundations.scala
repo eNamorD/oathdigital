@@ -13,6 +13,7 @@ import oathdigital.gameplay.powers.campaign._
 import oathdigital.gameplay.powers.cardplay._
 import oathdigital.gameplay.powers.dice._
 import oathdigital.gameplay.powers.economy._
+import oathdigital.gameplay.powers.poweruse._
 import oathdigital.gameplay.powers.recover._
 import oathdigital.gameplay.powers.rest._
 import oathdigital.gameplay.powers.search._
