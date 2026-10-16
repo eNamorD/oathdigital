@@ -3,7 +3,7 @@ package oathdigital.gameplay.operations
 import oathdigital.gameplay.powerresolver.{PowerUse, PowerUseRefusal,
   PowerUseRestriction}
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 /** The power-use filter's consent rules (catalog batch 8, slice 10): a
@@ -12,7 +12,7 @@ import oathdigital.testkit.Table.{p1, p2}
 class PowerUseRulesSuite extends munit.FunSuite:
   private val ruled = PowerId("test.ruled-ban")
   private val banned = PowerId("test.banned-power")
-  private val card = DenizenId("1")
+  private val card = CatalogNames.denizen("Roving Terror")
   private val use = PowerUse(p1, banned, Some(card), persistent = false,
     costsSecret = true)
   private val covers = ConsentKey(ruled, p1, PowerUseRules.useKey,

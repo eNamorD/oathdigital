@@ -368,9 +368,9 @@
 - **For every card:** a non-persistent power is any power printed
   `persistent: false` that a player chooses, or an automatic power the
   "Automatic powers" entry below lists as used. A placement is a cost paid
-  onto a card or a `Give` onto it; an off-turn payment is not one. Enemies are every player but a
-  player ruler, every player at a bandit site, and nobody at an unruled or
-  Empire site.
+  onto a card or a `Give` onto it; an off-turn payment is not one.
+  Enemies are every player but a player ruler, every player at a bandit
+  site, and nobody at an unruled or Empire site.
 - **Automatic powers** (ruled 2026-10-15). An automatic power is used when
   it makes something happen: a gain, a kill, a bury, a card's effect.
   Restrictions, limits, requirements on an action and cost changes are not

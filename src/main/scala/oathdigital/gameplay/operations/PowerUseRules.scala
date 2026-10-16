@@ -16,7 +16,7 @@ object PowerUseRules:
   val useKey: String = "power.use"
 
   /** The target of a grant's key: the card, or the power's own button
-    * when it has none. */
+    * when it has no card or its card has no option ref. */
   def target(use: PowerUse): DecisionOptionRef = use.card match
     case Some(id: DenizenId) => DecisionOptionRef.Denizen(id)
     case Some(id: RelicId) => DecisionOptionRef.Relic(id)
