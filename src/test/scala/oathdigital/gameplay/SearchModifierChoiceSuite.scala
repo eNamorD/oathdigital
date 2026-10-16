@@ -40,7 +40,7 @@ class SearchModifierChoiceSuite extends munit.FunSuite:
 
   private def options(transition: OathTransition)(using munit.Location)
       : Vector[DecisionOption] = parked(transition.state).query match
-    case DecisionQuery.ChooseOne(listed, _, _) => listed
+    case one: DecisionQuery.ChooseOne => one.options
     case other => fail(s"expected a choose-one, got $other")
 
   private def newsOption: DecisionOption =

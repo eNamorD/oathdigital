@@ -47,7 +47,7 @@ class LazyPruningSuite extends munit.FunSuite:
       case Right(WalkerOutcome.Parked(pending, _)) =>
         ProcedureWalker.openDecisions(ready, tree, pending, powers).head
           .query match
-          case DecisionQuery.ChooseOne(options, _, _) => options.map(_.ref)
+          case one: DecisionQuery.ChooseOne => one.options.map(_.ref)
           case other => fail(s"expected a choose-one, got $other")
       case other => fail(s"expected a park, got $other")
 
@@ -126,7 +126,7 @@ class LazyPruningSuite extends munit.FunSuite:
         ProcedureWalker.advance(state, tree, None, powers)).tree
       ProcedureWalker.openDecisions(state, tree, pending, powers).head.query
         match
-          case DecisionQuery.ChooseOne(options, _, _) => options.map(_.ref)
+          case one: DecisionQuery.ChooseOne => one.options.map(_.ref)
           case other => fail(s"expected a choose-one, got $other")
     assertEquals(offeredIn(ready), Vector(ref("keep")))
     val facedown = Table.start.adviser(p1, lockedCard, facedown = true).ready

@@ -32,7 +32,7 @@ object EmptyWindowModifier:
     ParkedNode.of(state, FirstGameSetupFixture.catalog, powers) match
       case Right(Some(ParkedNode.Decision(_, decide, _))) =>
         decide.decisionId -> (decide.query match
-          case DecisionQuery.ChooseOne(options, _, _) => options.headOption
+          case one: DecisionQuery.ChooseOne => one.options.headOption
           case _ => None)
       case other =>
         munit.Assertions.fail(s"expected a parked decision, got $other")

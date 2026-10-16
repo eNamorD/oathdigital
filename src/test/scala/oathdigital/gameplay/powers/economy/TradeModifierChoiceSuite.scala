@@ -40,7 +40,7 @@ class TradeModifierChoiceSuite extends munit.FunSuite:
 
   private def options(state: OathState)(using munit.Location)
       : Vector[DecisionOption] = parkedDecision(state).query match
-    case DecisionQuery.ChooseOne(listed, _, _) => listed
+    case one: DecisionQuery.ChooseOne => one.options
     case other => fail(s"expected a choose-one, got $other")
 
   test("a Trade starts on the modifier decision, and Start keeps its " +
@@ -54,7 +54,7 @@ class TradeModifierChoiceSuite extends munit.FunSuite:
     val source = parkedDecision(going.state)
     assertEquals(source.decisionId, TradeProcedure.decisionId)
     assertEquals(source.query match
-      case DecisionQuery.ChooseOne(_, heading, _) => heading
+      case one: DecisionQuery.ChooseOne => one.heading
       case _ => None,
       Some("Choose a card to Trade for secrets"))
 

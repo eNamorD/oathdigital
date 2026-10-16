@@ -210,10 +210,10 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       PowerWindow.ChallengeBannerSelection -> Vector(Transform((_, operations) =>
         operations.map {
           case decide: Decide => decide.query match {
-            case DecisionQuery.ChooseOne(options, heading, _) => decide.copy(query =
-              DecisionQuery.ChooseOne(
-                options :+ DecisionOption.Banner(darkestSecretOption),
-                heading)): Operation
+            case one: DecisionQuery.ChooseOne =>
+              decide.copy(query = one.copy(
+                options = one.options :+
+                  DecisionOption.Banner(darkestSecretOption))): Operation
             case _ => decide
           }
           case other => other
@@ -239,7 +239,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     val banner = ProcedureWalker.parkedDecide(board, tree, atBanner, powers)
       .getOrElse(fail("the walk must park on the banner decision"))
     assertEquals(banner.query match {
-      case DecisionQuery.ChooseOne(options, _, _) => options.map(_.ref)
+      case one: DecisionQuery.ChooseOne => one.options.map(_.ref)
       case _ => Vector.empty
     }, Vector[DecisionOptionRef](peoplesFavorOption, darkestSecretOption))
     val bannerAnswer = Answered("challenge.banner",

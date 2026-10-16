@@ -119,11 +119,13 @@ object Situation:
     * answered by default and fails the walk naming the decision.
     */
   val defaultAnswer: Answers =
-    case Park(Decide(_, _, DecisionQuery.ChooseOne(options, _, _), _, _, _, _),
-        _, _, _) if options.exists(_.available) =>
-      DecisionAnswer.ChooseOneAnswer(options.filter(_.available).head.ref)
-    case Park(Decide(_, _, DecisionQuery.Partition(sections, options, _, _),
-        _, _, _, _), _, _, _) if sections.nonEmpty && options.nonEmpty =>
+    case Park(Decide(_, _, one: DecisionQuery.ChooseOne, _, _, _, _),
+        _, _, _) if one.options.exists(_.available) =>
+      DecisionAnswer.ChooseOneAnswer(one.options.filter(_.available).head.ref)
+    case Park(Decide(_, _, partition: DecisionQuery.Partition,
+        _, _, _, _), _, _, _)
+        if partition.sections.nonEmpty && partition.options.nonEmpty =>
+      val (sections, options) = (partition.sections, partition.options)
       val keep = sections.find(_.minRequired > 0).getOrElse(sections.head)
       val discard = sections.find(_.key != keep.key).getOrElse(keep)
       val refs = options.map(_.ref)
@@ -133,9 +135,9 @@ object Situation:
         _, _, _) if many.options.count(_.available) >= many.min =>
       DecisionAnswer.ChooseManyAnswer(
         many.options.filter(_.available).take(many.min).map(_.ref))
-    case Park(Decide(_, _, DecisionQuery.ChooseAmount(min, _, _, _, _), _, _,
-        _, _), _, _, _) =>
-      DecisionAnswer.ChooseAmountAnswer(min)
+    case Park(Decide(_, _, amount: DecisionQuery.ChooseAmount, _, _, _, _),
+        _, _, _) =>
+      DecisionAnswer.ChooseAmountAnswer(amount.min)
 
   /** Setup's pawn placements at `sites`, in placement order: the n-th pawn
     * placed goes to `sites(n)`, whoever places it. The turn order stays the

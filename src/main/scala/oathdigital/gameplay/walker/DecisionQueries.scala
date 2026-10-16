@@ -64,15 +64,15 @@ object DecisionQueries:
     */
   def wellFormed(decisionId: String,
       query: DecisionQuery): Either[OathViolation, Unit] = query match
-    case DecisionQuery.ChooseOne(options, _, confirmVerb) =>
-      val refs = options.map(_.ref)
+    case one: DecisionQuery.ChooseOne =>
+      val refs = one.options.map(_.ref)
       for
         _ <- require(refs.nonEmpty, decisionId, "declares no options")
         _ <- require(refs.distinct.size == refs.size, decisionId,
           "declares duplicate options")
-        _ <- require(options.exists(_.available), decisionId,
+        _ <- require(one.options.exists(_.available), decisionId,
           "declares no option that may be chosen")
-        _ <- require(confirmVerb.forall(_.trim.nonEmpty), decisionId,
+        _ <- require(one.confirmVerb.forall(_.trim.nonEmpty), decisionId,
           "declares a blank confirm verb")
       yield ()
 
@@ -87,8 +87,10 @@ object DecisionQueries:
           "declares a blank done label")
       yield ()
 
-    case DecisionQuery.Negotiate(participants, terms, accepted, bounds,
-        acceptors, _) =>
+    case negotiate: DecisionQuery.Negotiate =>
+      val (participants, terms, accepted, bounds, acceptors) =
+        (negotiate.participants, negotiate.terms, negotiate.accepted,
+          negotiate.bounds, negotiate.acceptors)
       val members = participants.toSet
       for
         _ <- require(participants.size >= 2 &&
@@ -149,7 +151,8 @@ object DecisionQueries:
           decisionId, s"suggests ${suggested.getOrElse(0)} outside $min..$max")
       yield ()
 
-    case DecisionQuery.Partition(sections, options, _, _) =>
+    case partition: DecisionQuery.Partition =>
+      val (sections, options) = (partition.sections, partition.options)
       val refs = options.map(_.ref)
       val keys = sections.map(_.key)
       for
@@ -239,9 +242,9 @@ object DecisionQueries:
   def accepts(decisionId: String, query: DecisionQuery,
       answer: DecisionAnswer, by: PlayerId)
       : Either[OathViolation, Unit] = query match
-    case DecisionQuery.ChooseOne(options, _, _) => answer match
+    case one: DecisionQuery.ChooseOne => answer match
       case DecisionAnswer.ChooseOneAnswer(selected) =>
-        require(options.filter(_.available).map(_.ref).contains(selected),
+        require(one.options.filter(_.available).map(_.ref).contains(selected),
           decisionId, "does not offer the selected option")
       case _ =>
         reject(decisionId, "expects a single-choice answer")
@@ -269,27 +272,32 @@ object DecisionQueries:
       case _ =>
         reject(decisionId, "expects a multiple-choice answer")
 
-    case DecisionQuery.ChooseAmount(min, max, _, _, _) => answer match
+    case query: DecisionQuery.ChooseAmount => answer match
       case DecisionAnswer.ChooseAmountAnswer(amount) =>
+        val (min, max) = (query.min, query.max)
         require(amount >= min && amount <= max, decisionId,
           s"amount $amount is outside $min..$max")
       case _ =>
         reject(decisionId, "expects an amount answer")
 
-    case DecisionQuery.Partition(sections, options, _, _) => answer match
+    case partition: DecisionQuery.Partition => answer match
       case DecisionAnswer.PartitionAnswer(placements) =>
-        acceptsPartition(decisionId, sections.map(s => s.key -> s).toMap,
-          options.map(_.ref), placements)
+        acceptsPartition(decisionId,
+          partition.sections.map(s => s.key -> s).toMap,
+          partition.options.map(_.ref), placements)
       case _ =>
         reject(decisionId, "expects a partition answer")
 
-    case DecisionQuery.Distribute(slots, minTotal, maxTotal, _, _) => answer match
+    case distribute: DecisionQuery.Distribute => answer match
       case DecisionAnswer.DistributeAnswer(amounts) =>
-        acceptsDistribution(decisionId, slots, minTotal, maxTotal, amounts)
+        acceptsDistribution(decisionId, distribute.slots,
+          distribute.minTotal, distribute.maxTotal, amounts)
       case _ =>
         reject(decisionId, "expects a distribution answer")
 
-    case DecisionQuery.Negotiate(participants, _, _, bounds, acceptors, _) =>
+    case negotiate: DecisionQuery.Negotiate =>
+      val (participants, bounds, acceptors) =
+        (negotiate.participants, negotiate.bounds, negotiate.acceptors)
       answer match
         case DecisionAnswer.ProposeTerms(terms) =>
           acceptsTerms(decisionId, participants, bounds, by, terms)

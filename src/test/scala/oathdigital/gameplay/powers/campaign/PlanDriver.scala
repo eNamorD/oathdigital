@@ -135,7 +135,7 @@ object PlanDriver:
     def options(actor: PlayerId,
         catalogPowers: WalkerPowers = WalkerPowerCatalog.default(catalog))
         : Vector[DecisionOption] = query(actor, catalogPowers) match
-      case DecisionQuery.ChooseOne(options, _, _) => options
+      case one: DecisionQuery.ChooseOne => one.options
       case _ => Vector.empty
 
     /** The options the parked choice offers that may be chosen. */

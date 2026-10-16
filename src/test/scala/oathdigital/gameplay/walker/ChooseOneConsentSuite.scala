@@ -66,8 +66,8 @@ class ChooseOneConsentSuite extends munit.FunSuite:
       using munit.Location): DecisionOption =
     ProcedureWalker.openDecisions(at, action, parkedAt(at, action, powers),
       powers).head.query match
-      case DecisionQuery.ChooseOne(options, _, _) =>
-        options.find(_.ref == free).getOrElse(fail("free is listed"))
+      case one: DecisionQuery.ChooseOne =>
+        one.options.find(_.ref == free).getOrElse(fail("free is listed"))
       case other => fail(s"a choose-one, not $other")
 
   private def plainly: DecisionOption = DecisionOption.Unavailable(freeButton,
