@@ -467,7 +467,8 @@ class CardSlotsSuite extends munit.FunSuite:
       operations.lastIndexWhere(_.isInstanceOf[Discard.Denizen]))
     assertEquals(CardPlay.operations(catalog, ready, p1, card,
       SearchPlacement.Site(home, Some(rainBoots)),
-      CardPlay.Origin.TemporaryHand, Vector(rainBoots)), Left(OathViolation.InvalidSearchPlacement(
+      CardPlay.Origin.TemporaryHand, Vector(rainBoots)),
+      Left(OathViolation.InvalidSearchPlacement(
         "a site card is discarded twice")))
 
   test("a ruined edifice is discarded back to the edifice deck, not buried"):
@@ -509,7 +510,7 @@ class CardSlotsSuite extends munit.FunSuite:
 
   test("a full opened site offers nothing without a permission, and its " +
       "Replace options with one"):
-    /** An Order card: no Homeland rule at Deep Woods. */
+    // An Order card: no Homeland rule at Deep Woods.
     val honor = CatalogNames.denizen("Code of Honor")
     val full = Vector(binding, wrestlers, rainBoots).foldLeft(
       atHome().hand(p1, card).hand(p1, honor))((t, held) =>
@@ -536,7 +537,7 @@ class CardSlotsSuite extends munit.FunSuite:
     assertEquals(replaced, Vector[CardId](binding))
 
   test("a site card discarded at another site goes to the pile after that " +
-      "site's region, and the play's favor and hook are the site's"):
+      "site's region, and the play and its hook are the site's"):
     val ready = atHome().hand(p1, card).denizen(binding, at = giant).ready
     val operations = accepted(CardPlay.operations(catalog, ready, p1, card,
       SearchPlacement.Site(giant, Some(binding)),

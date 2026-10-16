@@ -269,16 +269,22 @@ object CardPlay:
       Right(Vector.empty))((done, item) =>
       done.flatMap(operations => f(item).map(operations :+ _)))
 
-  /** A card the play removes from `from`, `site`'s row or relics: a row
-    * card discarded to `region`'s pile with its tokens returned (a ruined
-    * edifice back to its deck), or any card there buried with them
-    * returned. */
+  /** A card the play removes from the site at `from`, its row or its
+    * relics: a row card discarded to `region`'s pile with its tokens
+    * returned (a ruined edifice back to its deck), or any card there buried
+    * with them returned. Favor returns to its suit's bank, so a card with
+    * favor and no suit is refused rather than buried. */
   private def removal(catalog: ExecutableCatalog, actor: PlayerId,
       from: PositionedLocation, region: Region)(removed: Removed)
       : Either[OathViolation, Vector[CoreOperation]] =
     val Removed(card, tokens, buried) = removed
-    if buried then buryable(card).map(target => Bury.standard(target, from,
-      catalog.suitOf(card), tokens.favor, tokens.secrets, actor))
+    val suit = catalog.suitOf(card)
+    if buried then for
+      target <- buryable(card)
+      _ <- Either.cond(tokens.favor == 0 || suit.isDefined, (),
+        InvalidSearchPlacement("buried favor needs its suit's bank"))
+    yield Bury.standard(target, from, suit, tokens.favor, tokens.secrets,
+      actor)
     else suitOf(catalog, card).flatMap(suit => card match
       case id: DenizenId => Right(Vector(Discard.Denizen(id, from, region,
         suit, tokens.favor, tokens.secrets, actor, required = true)))

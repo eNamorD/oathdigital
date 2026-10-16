@@ -15,6 +15,9 @@ import scala.scalajs.js
   */
 class BoardOptionsRenderSuite extends munit.FunSuite:
   private val fox = CardDetails("fox", "denizen", "Fox", rulesText = Some("Sly."))
+  /** A relic at Deep Woods the viewer knows, beside one they do not. */
+  private val cup = CardDetails("cup", "relic", "Cup",
+    orientation = Some("face-down"))
   private val woods = quietSite("woods", "Deep Woods")
     .withDenizenCapacity(3).withDenizens(GameSiteCard("fox", "Fox", Some(fox)))
     .withRelicCapacity(1).withRelics(1)
@@ -181,12 +184,16 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
       .getAttribute("data-card-id"), "fox")
 
   test("a site relic, known or not, answers to its slot"):
-    val pick = option("site-relic-slot", "woods:0")
-    val shown = recording(available(pick))
-    val marked = one(world(shown.options),
-      """[data-option-ref="site-relic-slot:woods:0"]""")
-    click(marked)
-    assertEquals(shown.picks, Vector(pick))
+    val known = option("site-relic-slot", "woods:0")
+    val unknown = option("site-relic-slot", "woods:1")
+    val shown = recording(available(known), available(unknown))
+    // Deep Woods holds the known Cup first, then an unknown relic.
+    val root = WorldBoardRenderer.world(table.copy(world = Vector(GameRegion(
+      "cradle", Vector(woods.withRelicCapacity(2).withRelics(2, cup))))),
+      shown.options)
+    click(one(root, """[data-option-ref="site-relic-slot:woods:0"]"""))
+    click(one(root, """[data-option-ref="site-relic-slot:woods:1"]"""))
+    assertEquals(shown.picks, Vector(known, unknown))
 
   test("a Replace option carries the badge, and an empty slot does not"):
     val replace = option("site-slot", "woods:0").copy(replaces = Some(fox))
