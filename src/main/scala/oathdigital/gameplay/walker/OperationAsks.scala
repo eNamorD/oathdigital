@@ -32,8 +32,10 @@ private[walker] object OperationAsks:
     @annotation.tailrec
     def met(found: Vector[OperationReason], round: Int)
         : Vector[OperationReason] =
-      val granted = state.copy(consent = state.consent.granting(
-        found.flatMap(_.waiver).map(_.covers), turn))
+      // The first round asks of `state` itself, so the live walk's memo
+      // answers it.
+      val granted = if found.isEmpty then state else state.copy(consent =
+        state.consent.granting(found.flatMap(_.waiver).map(_.covers), turn))
       verdict(granted)(answer) match
         case Right(()) => found
         case Left(OathViolation.WaivableOperationRejected(code, detail,

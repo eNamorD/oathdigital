@@ -86,6 +86,14 @@ class OperationAsksSuite extends munit.FunSuite:
       favorOnAlchemistBannedBy(None)),
       Vector(DecisionOption.Denizen(wrestlersRef)))
 
+  test("a refusal remembered this turn leaves the card out"):
+    val ready = musterAtAncientCity()
+    val refused = ready.copy(consent = ConsentState(
+      answers = Map(covers -> ConsentAnswer.Refused),
+      turn = Some(ConsentTurn.of(ready))))
+    assertEquals(sourceOptions(refused, favorOnAlchemistBannedBy(Some(p2))),
+      Vector(DecisionOption.Denizen(wrestlersRef)))
+
   test("a decision whose every option is askable still parks"):
     assertEquals(sourceOptions(musterAtAncientCity(beside = false),
       favorOnAlchemistBannedBy(Some(p2))).map(_.askable), Vector(true))
