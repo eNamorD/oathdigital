@@ -26,7 +26,8 @@ object HornedMaskCard extends Relic(RelicId("R06"), "Horned Mask", value = 48, d
   * taken card's favor and secrets, and move the card into the play area
   * facedown in one `Move`. The restriction-icon rule then sees it land
   * facedown, so a site-only denizen can be taken: a facedown adviser has no
-  * restrictions.
+  * restrictions. The take is required, so a denizen a restriction refuses
+  * (Ancient Bloodline) is marked on the question rather than skipped.
   *
   * The discard follows card play: a denizen or Vision goes to the next
   * region's discard pile, and a faceup locked card cannot be discarded (a
@@ -52,7 +53,8 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     Branch((live, _) => askDenizen(live, player)),
     Branch((live, pending) => askDiscard(live, player, pending)),
-    BuildOps((live, pending) => take(live, player, pending)),
+    BuildOps((live, pending) => take(live, player, pending),
+      required = true),
     Note(this.id, takeNote(_, player, source)))))
 
   /** After a discard question the take lands in a later command than the

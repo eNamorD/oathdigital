@@ -14,6 +14,9 @@ import oathdigital.model._
   * note covers only the step before it. So the peek has its own covering
   * line, `used.peeked`, as Scryer's does, and the take has the `used` line.
   *
+  * The take is required, so a relic a restriction refuses (Ancient
+  * Bloodline) is marked on the question rather than skipped.
+  *
   * @param reach the site the power reaches for the player, if any. With
   *   none, nothing is peeked, asked or written.
   */
@@ -54,7 +57,8 @@ final class SiteRelicTake(power: PowerId, decisionId: String, heading: String,
         if relics.isEmpty
       yield bare(card, NoteArg.Site(site))),
       Branch((live, _) => ask(live, player)),
-      BuildOps((live, pending) => take(live, player, pending)),
+      BuildOps((live, pending) => take(live, player, pending),
+        required = true),
       Note(power, tookNote(_, player, source)))
 
   /** The site the power reaches and the relics there, in the site's order. */

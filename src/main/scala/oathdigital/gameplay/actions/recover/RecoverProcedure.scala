@@ -2,6 +2,7 @@ package oathdigital.gameplay.actions.recover
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
+import oathdigital.gameplay.actions.cardplay.CardSlots
 import oathdigital.gameplay.actions.dice.RollStep
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerRollFeedback}
@@ -146,11 +147,11 @@ object RecoverProcedure:
       OathViolation.PawnSiteMissing(actor))
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
-  yield recovery(actor, siteId, difficulty)
+  yield recovery(catalog, actor, siteId, difficulty)
 
   /** Tree closes only over command-stable actor, site, and difficulty. */
-  private def recovery(actor: PlayerId, siteId: SiteId,
-      difficulty: Int): Operation =
+  private def recovery(catalog: ExecutableCatalog, actor: PlayerId,
+      siteId: SiteId, difficulty: Int): Operation =
     def scoreOf(ready: ReadyGame): Int =
       ready.game.current.rollOutcomes.get(recoverPool).fold(0)(_.score)
 
@@ -185,16 +186,17 @@ object RecoverProcedure:
         // a heading on.
         heading = Some("Recover")))
 
+    /** The recovered relic's move to the actor, facedown. */
+    def relicMove(relicId: RelicId): Move = Move(Piece.Card(relicId),
+      PositionedLocation(Location.Site(siteId)),
+      PositionedLocation(Location.PlayArea(actor)),
+      resultingOrientation = Some(Orientation.FaceDown), by = Some(actor))
+
     val moveRelic = BuildOps((ready, pending) =>
       pending.answered.lastOption match {
         case Some(Answered(_, ChooseOneAnswer(
             DecisionOptionRef.Relic(relicId)), _)) =>
-          Right(Vector[CoreOperation](Move(
-            Piece.Card(relicId),
-            PositionedLocation(Location.Site(siteId)),
-            PositionedLocation(Location.PlayArea(actor)),
-            resultingOrientation = Some(Orientation.FaceDown),
-            by = Some(actor))))
+          Right(Vector[CoreOperation](relicMove(relicId)))
         case _ => Left(OathViolation.InvalidEventOrder(
           "no recovered relic answer is recorded"))
       }, window = Some(PowerWindow.RecoverAfterRelic))
@@ -222,14 +224,18 @@ object RecoverProcedure:
     // are the SAME expression rather than two that agree only by convention.
     // A relic that left the site between the park and the answer is simply
     // absent from the rebuilt query, so the answer naming it is rejected.
+    // Each relic is judged as card play judges a slot, so a relic Ancient
+    // Bloodline locks is askable of its holder.
     val afterLoop = Branch((ready, _) => {
       val relics = actorFacedownRelics(ready, actor)
       if succeeded(ready) && relics.nonEmpty then
         Vector(Decide(
           decisionId = relicDecisionId,
           owner = actor,
-          query = DecisionQuery.ChooseOne(relics.map(relic =>
-            DecisionOption.Relic(DecisionOptionRef.Relic(relic.id))),
+          query = DecisionQuery.ChooseOne(relics.flatMap(relic =>
+            CardSlots.judge(catalog, ready, actor,
+              DecisionOption.Relic(DecisionOptionRef.Relic(relic.id)),
+              Right(Vector(relicMove(relic.id))))),
             heading = Some("Take a relic"), confirmVerb = Some("Take"))),
           moveRelic)
       else Vector.empty
