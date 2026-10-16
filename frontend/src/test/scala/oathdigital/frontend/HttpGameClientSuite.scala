@@ -297,3 +297,14 @@ class HttpGameClientSuite extends FunSuite:
   ): ScriptedTransport =
     val remaining = mutable.Queue(responses*)
     ScriptedTransport((_, _, _) => Future.successful(remaining.dequeue()))
+
+  test("a log page naming a span kind this build lacks is unsupported"):
+    val unknown = """{"gameId":"g","after":0,"nextSequence":1,"entries":[""" +
+      """{"sequence":0,"ordinal":0,"kind":"turn","spans":[""" +
+      """{"kind":"omen","text":"x"}]}]}"""
+    val transport = transportAnsweringInOrder(
+      Vector(Right(TransportResponse(200, unknown))))
+    new HttpGameClient(transport).loadLog("g", "red", 0L).map { result =>
+      assertEquals(result, Left(GameClientFailure.UnsupportedProjection(
+        "$.entries[0].spans[0].kind", "unknown log span kind 'omen'")))
+    }

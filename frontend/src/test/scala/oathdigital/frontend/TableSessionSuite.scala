@@ -505,3 +505,29 @@ class TableSessionSuite extends munit.FunSuite:
           assertEquals(fixture.session.viewedLog, pageTakenBackFrom(3, 6).entries)
         }
     }
+
+  /** The log route's half of the stale-bundle path: strict decoding gives
+    * the failure somewhere to go, instead of a pane that stops updating in
+    * silence. */
+  test("a log page this build cannot parse stops polling and asks for a reload"):
+    displayed(3).flatMap { fixture =>
+      val unsupported = GameClientFailure.UnsupportedProjection(
+        "$.entries[0].spans[0].kind", "unknown log span kind 'omen'")
+      fixture.client.answerLog(Left(unsupported))
+      settle().map { _ =>
+        assertEquals(fixture.session.shownFailure, Some(unsupported))
+        assert(fixture.session.clientOutOfDate)
+        assert(!fixture.clock.hasPendingTask)
+      }
+    }
+
+  test("a log page that fails to decode for any other reason changes nothing"):
+    displayed(3).flatMap { fixture =>
+      fixture.client.answerLog(
+        Left(GameClientFailure.DecodeFailure("$.entries", "expected array")))
+      settle().map { _ =>
+        assertEquals(fixture.session.shownFailure, None)
+        assert(!fixture.session.clientOutOfDate)
+        assert(fixture.clock.hasPendingTask)
+      }
+    }

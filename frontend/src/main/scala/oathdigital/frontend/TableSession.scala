@@ -73,7 +73,9 @@ private[frontend] final class TableSession(
 
   /** Asks for the entries after the log's cursor when `target`, a displayed
     * position, is past it. One request at a time; a failure changes nothing
-    * and the next advancing position asks again (spec, "Fetching"). */
+    * and the next advancing position asks again (spec, "Fetching"), except
+    * a page this build cannot parse, which stops the session as an
+    * unsupported projection does. */
   private def fetchLog(target: Long): Unit =
     if !logLoading && target > logSequence then
       logLoading = true
@@ -81,21 +83,32 @@ private[frontend] final class TableSession(
       client.loadLog(gameId, selectedPlayer, logSequence).foreach { result =>
         if epoch == logEpoch then
           logLoading = false
-          result.foreach { page =>
-            val advanced = page.nextSequence > logSequence
-            if logReplacing then
-              log = page.entries
-              logReplacing = false
-            else
-              val last = log.lastOption.map(entry =>
-                entry.sequence -> entry.ordinal)
-              log ++= page.entries.filter(entry => last.forall(key =>
-                Ordering[(Long, Int)].gt(entry.sequence -> entry.ordinal, key)))
-            logSequence = math.max(logSequence, page.nextSequence)
-            redraw()
-            if advanced then projection.foreach(current =>
-              fetchLog(current.nextSequence))
-          }
+          result match
+            case Right(page) =>
+              val advanced = page.nextSequence > logSequence
+              if logReplacing then
+                log = page.entries
+                logReplacing = false
+              else
+                val last = log.lastOption.map(entry =>
+                  entry.sequence -> entry.ordinal)
+                log ++= page.entries.filter(entry => last.forall(key =>
+                  Ordering[(Long, Int)].gt(entry.sequence -> entry.ordinal,
+                    key)))
+              logSequence = math.max(logSequence, page.nextSequence)
+              redraw()
+              if advanced then projection.foreach(current =>
+                fetchLog(current.nextSequence))
+            // A log page this build cannot parse is the same stale bundle
+            // the projection route reports: polling cannot recover from it
+            // and only a reload can. Every other failure keeps the posture
+            // the spec sets -- it changes nothing, and the next advancing
+            // position asks again.
+            case Left(error) if TableSession.unsupported(error) =>
+              polling.stop()
+              failure = Some(error)
+              redraw()
+            case Left(_) => ()
       }
 
   private def showSession(): Unit =
