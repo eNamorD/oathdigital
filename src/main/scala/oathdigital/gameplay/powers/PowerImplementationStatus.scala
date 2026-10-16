@@ -8,7 +8,9 @@ import oathdigital.model.PowerId
   * can make one true: `ReviewedPowerCatalog` carries the flag explicitly per
   * handler, while `WalkerPowerCatalog`/`PhasePowerCatalog` carry no such flag
   * -- for those, being wired in for this catalog at all is what implemented
-  * means. The single source both `ReviewedPowerCatalog`'s registry (so the
+  * means. `OperationRestrictions.implementedRules` likewise names the
+  * printed powers an operation restriction enforces with no walker power.
+  * The single source both `ReviewedPowerCatalog`'s registry (so the
   * legacy "ignored rule" diagnostic stops firing for a power a walker or
   * phase catalog already covers) and the presentation layer (the UI's
   * unimplemented-card marker) read, so the two cannot drift the way a

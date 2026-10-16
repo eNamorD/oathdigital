@@ -43,7 +43,8 @@ object OperationRestrictions:
   /** The printed powers an operation restriction implements outright,
     * with no walker power: they count as implemented
     * (`PowerImplementationStatus`). */
-  val implementedRules: Set[PowerId] = Set(AncientBloodline.id)
+  val implementedRules: Set[PowerId] =
+    Set(AncientBloodline.id, HallOfMinisters.id)
 
   /** Only a card at a site or in a play area is in play. A card drawn by a
     * Search and discarded from the temporary hand is not. */

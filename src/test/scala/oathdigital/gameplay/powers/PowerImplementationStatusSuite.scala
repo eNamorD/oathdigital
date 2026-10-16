@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers
 
+import oathdigital.gameplay.operations.HallOfMinisters
 import oathdigital.gameplay.powerresolver.Power
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.PowerId
@@ -33,6 +34,10 @@ class PowerImplementationStatusSuite extends munit.FunSuite:
   test("a power the walker or phase catalog covers is implemented, even " +
       "when ReviewedPowerCatalog still declares it unimplemented"):
     covered.foreach(id => assert(implemented(id), id.value))
+
+  test("the Hall of Ministers' intact power, which an operation " +
+      "restriction implements with no walker power, is implemented"):
+    assert(implemented(HallOfMinisters.id))
 
   test("an id nothing declares at all is not implemented"):
     assert(!implemented(PowerId("denizen.not-a-real-power")))
