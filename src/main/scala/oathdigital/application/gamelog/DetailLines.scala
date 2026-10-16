@@ -56,6 +56,8 @@ private[gamelog] final class DetailLines(words: LogWords,
       val refs = answer match
         // Pressing Done after looking at cards is not a choice (N5).
         case ChooseOneAnswer(DecisionQuery.Inspect.Done) => Vector.empty
+        // Pressing Continue on an empty choice is not a choice either.
+        case ChooseOneAnswer(Decide.Pass) => Vector.empty
         case ChooseOneAnswer(ref) => Vector(ref)
         case ChooseManyAnswer(selected) => selected
         case _ => Vector.empty

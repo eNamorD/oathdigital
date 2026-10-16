@@ -69,9 +69,12 @@ class RelicBreakerSuite extends munit.FunSuite:
       answer(t, p1, RelicBreaker.decisionId, relicRef(scepter)).left.toOption,
       Some(Refusals.notOffered(RelicBreaker.decisionId)))
 
-  test("holding only the Grand Scepter, it asks nothing and writes nothing"):
+  test("holding only the Grand Scepter, it shows Continue and writes " +
+      "nothing"):
     val ready = staged(Vector(scepter)).ready
-    val done = accepted(use(ready, RelicBreaker, source))
+    val asked = accepted(use(ready, RelicBreaker, source))
+    assert(awaits(asked, RelicBreaker.decisionId))
+    val done = accepted(continuedPast(asked, RelicBreaker.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).relics(p1), Vector(scepter))
     assertEquals(NoteText.said(RelicBreaker, done.events), Vector.empty)

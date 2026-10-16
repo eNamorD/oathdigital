@@ -35,7 +35,8 @@ object NoteSupport:
     * asked. */
   def answer(states: NoteStates, decisionId: String): Option[DecisionOptionRef] =
     states.answered.collectFirst {
-      case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
+      case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _)
+          if ref != Decide.Pass => ref
     }
 
   /** "{player} gained {amount}.", declared in the borrowing power's own

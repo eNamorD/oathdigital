@@ -104,9 +104,12 @@ class ArmedMobSuite extends munit.FunSuite:
       "No player held the Darkest Secret without the People's Favor.",
       covers = true)))
 
-  test("a target with only a locked adviser keeps it, and the line says so"):
+  test("a target with only a locked adviser keeps it after Continue, and " +
+      "the line says so"):
     val ready = staged().adviser(p2, insomnia).ready
-    val done = accepted(use(ready, power, source))
+    val asked = accepted(use(ready, power, source))
+    assert(awaits(asked, ArmedMob.decisionId))
+    val done = accepted(continuedPast(asked, ArmedMob.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).advisers(p2), Vector[CardId](insomnia))
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(

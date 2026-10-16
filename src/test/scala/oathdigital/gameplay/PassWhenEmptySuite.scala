@@ -8,10 +8,11 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
 
-/** A choose-one marked `passWhenEmpty` is passed when the search leaves it
-  * no option, and parks as any decision does when one is left (global
-  * operation restrictions design, "Empty choices"). Locked refuses to discard
-  * the faceup Sealing Ward, which is what prunes an option here.
+/** A choose-one marked `passWhenEmpty` is passed by a search when it is
+  * left no option, and the live walk parks it on its Continue screen; it
+  * parks as any decision does when one is left (global operation
+  * restrictions design, "Empty choices"). Locked refuses to discard the
+  * faceup Sealing Ward, which is what prunes an option here.
   */
 class PassWhenEmptySuite extends munit.FunSuite:
   private val powers = WalkerPowerCatalog.default(catalog)
@@ -53,14 +54,21 @@ class PassWhenEmptySuite extends munit.FunSuite:
   test("a single declared option parks"):
     assertEquals(offered(passable("keep")), Vector(ref("keep")))
 
-  test("with no option left the decision is passed and the action still runs"):
+  test("with no option left it parks on Continue, and Continue runs the " +
+      "rest of the action"):
     val tree = passable("discard")
     assertEquals(WalkerSimulation.refusal(tree, ready, powers), None)
-    ProcedureWalker.advance(ready, tree, None, powers) match
+    assertEquals(offered(tree), Vector(ref("discard"), Decide.Pass))
+    val pending = ProcedureWalker.advance(ready, tree, None, powers) match
+      case Right(WalkerOutcome.Parked(at, _)) => at
+      case other => fail(s"expected a park, got $other")
+    ProcedureWalker.resolve(ready, tree, pending, Answered(ask,
+        DecisionAnswer.ChooseOneAnswer(Decide.Pass), p1), powers) match
       case Right(WalkerOutcome.Finished(_, events)) =>
         assertEquals(events.collect {
           case WalkerStepRecorded(_, choice: ChoicePayload, _, _) => choice
-        }, Vector.empty)
+        }, Vector(ChoicePayload(ask, DecisionAnswer.ChooseOneAnswer(
+          Decide.Pass), p1)))
       case other => fail(s"expected a finished walk, got $other")
 
   test("a search passes a later choice with nothing left, so the earlier " +

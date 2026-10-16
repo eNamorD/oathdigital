@@ -4,12 +4,14 @@ import oathdigital.model._
 
 /** Reads of the answers a power's own decisions recorded in the pending
   * tree. A power's effect is a `BuildOps`, which runs after the answer is
-  * recorded, so it reads the answer from here.
+  * recorded, so it reads the answer from here. Continue, which passes an
+  * empty choice (`Decide.Pass`), reads as no answer.
   */
 object PowerAnswers:
   def one(pending: PendingTree, decision: String)
       : Option[DecisionOptionRef] = pending.answered.collectFirst:
-    case Answered(`decision`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
+    case Answered(`decision`, DecisionAnswer.ChooseOneAnswer(ref), _)
+        if ref != Decide.Pass => ref
 
   /** The option the latest answer to any of `decisions` chose. A `Repeat`
     * asks its decisions once per pass and `one` reads only the first
@@ -19,7 +21,7 @@ object PowerAnswers:
   def last(answered: Vector[Answered], decisions: String*)
       : Option[DecisionOptionRef] = answered.reverseIterator.collectFirst {
     case Answered(id, DecisionAnswer.ChooseOneAnswer(ref), _)
-        if decisions.contains(id) => ref
+        if decisions.contains(id) && ref != Decide.Pass => ref
   }
 
   /** The amount a power's `ChooseAmount` was answered with. */

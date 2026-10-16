@@ -444,8 +444,9 @@ object ProcedureWalker:
     * included) on whatever event it emits. A `Decide` where it is asked --
     * reached fresh or being answered -- is first narrowed by the search
     * ([[narrowAt]]). A required decision with nothing left rejects the
-    * command, and an optional one with nothing left is passed without
-    * asking. A search's walk does not park at a decision it reaches: it asks
+    * command, and an optional choose-many with nothing left is passed
+    * without asking; a choose-one passed when empty parks on its Continue
+    * screen ([[EmptyChoices]]). A search's walk does not park at a decision it reaches: it asks
     * whether some answer leads on ([[reach]]).
     */
   private def runLeaf(leaf: LeafOperation, ctx: WalkCtx,
@@ -474,7 +475,8 @@ object ProcedureWalker:
     * so is an option only waivable operation refusals hide ([[OperationAsks]],
     * catalog batch 8, slice 10). A required decision with nothing left is
     * kept when such an option remains, as the search kept it ([[reach]]):
-    * its player may ask. */
+    * its player may ask. A choose-one passed when empty with nothing left
+    * parks on its Continue screen (catalog batch 8, slice 10, part 2b). */
   private def narrowAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Option[Decide]] =
     if !ctx.powers.probing then Right(Some(decide))
@@ -485,16 +487,25 @@ object ProcedureWalker:
         if asks.isEmpty then Left(refused)
         else Right(Some(WalkerSearch.reasoned(WalkerSearch.narrowed(decide,
           _ => false, asks.get).getOrElse(decide), asks)))
-      case Right(narrowed) => Right(narrowed.map { cut =>
-        val kept = WalkerSearch.choosable(cut).toSet
-        val hidden = WalkerSearch.choosable(decide).filterNot(kept)
-        val reasons = operationAsksAt(decide, ctx, path, hidden) ++
-          WalkerPowerGather.lookAheadNoted(ctx.root, decide, cut,
-            ctx.state, ctx.activePlayer, ctx.powers, ctx.answered,
-            ctx.procedure, grantable(decide, ctx, path)).toMap
-        WalkerSearch.reasoned(WalkerSearch.explained(decide, cut, reasons),
-          asksAt(decide, ctx, path))
-      })
+      case Right(narrowed) =>
+        // A choose-one passed when empty parks on its Continue screen when
+        // nothing is left (catalog batch 8, slice 10, part 2b); a search
+        // still passes it ([[reach]]).
+        val cut = narrowed.getOrElse(EmptyChoices.nothingLeft(decide))
+        lazy val reasons =
+          val kept = WalkerSearch.choosable(cut).toSet
+          val hidden = WalkerSearch.choosable(decide).filterNot(kept)
+          operationAsksAt(decide, ctx, path, hidden) ++
+            WalkerPowerGather.lookAheadNoted(ctx.root, decide, cut,
+              ctx.state, ctx.activePlayer, ctx.powers, ctx.answered,
+              ctx.procedure, grantable(decide, ctx, path)).toMap
+        narrowed match
+          case Some(_) => Right(Some(WalkerSearch.reasoned(
+            WalkerSearch.explained(decide, cut, reasons),
+            asksAt(decide, ctx, path))))
+          case None if decide.passWhenEmpty => Right(Some(
+            EmptyChoices.offered(decide, reasons, asksAt(decide, ctx, path))))
+          case None => Right(None)
 
   /** A search at a decision it reaches. Back at a decision it already stands
     * at in the same state, it stops: the loop leads on exactly when the first

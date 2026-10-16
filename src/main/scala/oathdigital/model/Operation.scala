@@ -90,9 +90,11 @@ object Operation:
   * operations around the decision, or replace its query.
   *
   * `passWhenEmpty` lets the search leave a choose-one with no option (global
-  * operation restrictions design, "Empty choices"): the walker then passes
-  * it, as it passes an empty optional choose-many, instead of failing the
-  * path. With one option left it still parks, so the player confirms it.
+  * operation restrictions design, "Empty choices"): a search passes it, as
+  * it passes an empty optional choose-many, instead of failing the path.
+  * The live walk parks it with every option shown unavailable and one
+  * Continue button, [[Decide.Pass]], which passes it. With one option left
+  * it parks as any decision does, so the player confirms it.
   *
   * `presentation` says where a client answers it: on the board, where each
   * option with a place on the table is drawn, or in the Action panel.
@@ -111,6 +113,12 @@ final case class Decide(decisionId: String, owner: PlayerId,
     * `owner` stays the primary owner, the player `awaitedPlayer` names.
     */
   def owners: Vector[PlayerId] = (owner +: coOwners).distinct
+
+object Decide:
+  /** The answer that passes a choose-one marked `passWhenEmpty`, offered as
+    * a Continue button when nothing else may be chosen (catalog batch 8,
+    * slice 10, part 2b). A power reads it as no answer. */
+  val Pass: DecisionOptionRef.Button = DecisionOptionRef.Button("pass")
 
 /** A leaf whose concrete deltas are decided AT WALK TIME: the walker calls
   * `build(state, pending)` when it reaches the node and executes whatever

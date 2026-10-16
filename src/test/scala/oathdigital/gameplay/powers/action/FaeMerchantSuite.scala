@@ -130,18 +130,22 @@ class FaeMerchantSuite extends munit.FunSuite:
     assertEquals(relicIds(end), Vector.empty[RelicId])
     assertEquals(end.game.current.commonCards.relicDeck, Vector(whistle))
 
-  test("with only the Grand Scepter held and an empty relic deck, it asks " +
-      "nothing and puts nothing back"):
+  test("with only the Grand Scepter held and an empty relic deck, it shows " +
+      "Continue and puts nothing back"):
     val ready0 = stagedTable(Vector(scepter)).relicDeckEmptied.ready
     assert(usableIds(ready0).contains(FaeMerchant.id))
     val rules0 = rulesWithPrintedRestrictions()
-    val done = accepted(use(rules0, ready0, FaeMerchant.id, source))
+    val parked = accepted(use(rules0, ready0, FaeMerchant.id, source))
+    walkerParked.assertParked(parked.state, ActionRef.UsePower(FaeMerchant.id),
+      FaeMerchant.decisionId, actor)
+    val done = accepted(answer(rules0, parked.state, FaeMerchant.decisionId,
+      Decide.Pass))
     walkerParked.assertResumed(done.state, Phase.Act, actor)
     val end = ready(done.state)
     assertEquals(relicIds(end), Vector(scepter))
     assertEquals(end.game.current.commonCards.relicDeck, Vector.empty[RelicId])
     assertEquals(Look(end).tokensOn(fae), Tokens(0, 1))
-    assertEquals(replayed(rules0, ready0, done.events), end)
+    assertEquals(replayed(rules0, ready0, parked.events ++ done.events), end)
 
   test("it is unusable without a faceup secret"):
     assert(!usableIds(staged(secrets = 0)).contains(FaeMerchant.id))

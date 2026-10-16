@@ -72,9 +72,12 @@ class BogSuite extends munit.FunSuite:
       NoteText.Said("used.discarded",
         s"${p1.value} discarded ${whistle.value}.", covers = true)))
 
-  test("holding only the Grand Scepter, it asks nothing and writes nothing"):
+  test("holding only the Grand Scepter, it shows Continue and writes " +
+      "nothing"):
     val ready = staged(Vector(scepter), beast = 5)
-    val done = accepted(use(ready, Bog, source))
+    val asked = accepted(use(ready, Bog, source))
+    assert(awaits(asked, Bog.decisionId))
+    val done = accepted(continuedPast(asked, Bog.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).relics(p1), Vector(scepter))
     assertEquals(beastBank(after(done)), 5)

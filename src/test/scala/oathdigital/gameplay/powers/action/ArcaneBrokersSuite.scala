@@ -83,10 +83,12 @@ class ArcaneBrokersSuite extends munit.FunSuite:
       answer(t, p1, ArcaneBrokers.decisionId, relicRef(scepter)).left.toOption,
       Some(Refusals.notOffered(ArcaneBrokers.decisionId)))
 
-  test("holding only the Grand Scepter, it asks nothing, discards nothing " +
-      "and writes nothing"):
+  test("holding only the Grand Scepter, it shows Continue, discards " +
+      "nothing and writes nothing"):
     val ready = staged(Vector(scepter)).ready
-    val done = accepted(use(ready, ArcaneBrokers, source))
+    val asked = accepted(use(ready, ArcaneBrokers, source))
+    assert(awaits(asked, ArcaneBrokers.decisionId))
+    val done = accepted(continuedPast(asked, ArcaneBrokers.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).relics(p1), Vector(scepter))
     assertEquals(secretsOf(after(done)), secretsOf(ready))

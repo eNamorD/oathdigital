@@ -87,12 +87,14 @@ class AssassinSuite extends munit.FunSuite:
       s"Discarded ${landWarden.value} from ${p2.value}'s advisers.",
       covers = true)))
 
-  test("with only the locked Assassin to discard it asks nothing, and the " +
-      "line says so"):
+  test("with only the locked Assassin to discard it shows Continue, and " +
+      "the line says so"):
     val ready = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
       .pawn(p2, at = "Broken Peaks").pawn(p3, at = "Buried Giant")
       .adviser(p1, assassin).favor(p1, 1).ready
-    val done = accepted(use(ready, power, source))
+    val asked = accepted(use(ready, power, source))
+    assert(awaits(asked, Assassin.decisionId))
+    val done = accepted(continuedPast(asked, Assassin.decisionId))
     assert(backToActing(done))
     assertEquals(Look(after(done)).advisers(p1), Vector[CardId](assassin))
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(

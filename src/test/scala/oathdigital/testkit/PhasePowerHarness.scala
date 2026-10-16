@@ -59,6 +59,12 @@ object PhasePowerHarness:
       answered: DecisionAnswer): Either[OathViolation, OathTransition] =
     rules.resolveWalker(from.state, by, decision, answered)
 
+  /** `from`, parked on `decision`'s Continue screen, continued by the actor
+    * pressing Continue. */
+  def continuedPast(from: OathTransition, decision: String)
+      : Either[OathViolation, OathTransition] =
+    answer(from, actor, decision, pick(Decide.Pass))
+
   /** The game after `transition`; fails naming the state when it is not
     * Ready. */
   def after(transition: OathTransition)(using munit.Location): ReadyGame =

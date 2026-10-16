@@ -59,10 +59,13 @@ class EnchantressSuite extends munit.FunSuite:
         s"${p1.value} swapped it for ${p2.value}'s ${homesteaders.value}.",
         covers = false)))
 
-  test("offered only a locked adviser, it asks nothing and the line says so"):
+  test("offered only a locked adviser, it shows Continue and the line says " +
+      "so"):
     val ready = Table.start.turn(p1, Phase.Act).adviser(p1, enchantress)
       .secrets(p1, 1).adviser(p2, insomnia).ready
-    val done = accepted(use(ready, Enchantress, source))
+    val asked = accepted(use(ready, Enchantress, source))
+    assert(awaits(asked, Enchantress.decisionId))
+    val done = accepted(continuedPast(asked, Enchantress.decisionId))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).advisers(p2), Vector[CardId](insomnia))
     assertEquals(Look(after(done)).tokensOn(enchantress), Tokens(0, 1))
