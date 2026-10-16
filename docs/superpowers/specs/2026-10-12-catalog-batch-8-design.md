@@ -1,7 +1,7 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 9 are done, and slice 10's
-first two parts (Spell Breaker, Forest Council, City Wall). The per-card rulings are in
+**Status:** designed 2026-10-12. Slices 1 to 10 are done. The per-card
+rulings are in
 [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
 **Builds on** [Catalog batch 5](2026-10-08-catalog-batch-5-design.md),
