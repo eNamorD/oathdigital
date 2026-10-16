@@ -30,9 +30,9 @@ class NewGrowthSuite extends munit.FunSuite:
 
   /** p1 in Act at Ancient City holding New Growth faceup, with 5 Supply and
     * `top` on the world deck. Broken Peaks is full. */
-  private def growing(top: DenizenId): Table = Table.start.pawn(p1, home)
-    .worldDeckTop(top).supply(p1, 5).adviser(p1, newGrowth)
-    .denizen(filler, at = peaks)
+  private def newGrowthHeldWithDeckTop(top: DenizenId): Table =
+    Table.start.pawn(p1, home).worldDeckTop(top).supply(p1, 5)
+      .adviser(p1, newGrowth).denizen(filler, at = peaks)
 
   private def toPlacement(ready: ReadyGame, card: DenizenId,
       selected: Vector[PowerId] = Vector(NewGrowth.id)): OathTransition =
@@ -47,7 +47,7 @@ class NewGrowthSuite extends munit.FunSuite:
 
   test("selected, a Beast card may go to every site with room, after the " +
       "pawn site in map order; a full site has no option"):
-    val ready = growing(beast).ready
+    val ready = newGrowthHeldWithDeckTop(beast).ready
     val expected = DecisionOptionRef.SiteSlot(home, 0) +:
       ready.game.current.map.inPlay.filterNot(Set(home, peaks))
         .map(DecisionOptionRef.SiteSlot(_, 0))
@@ -55,13 +55,14 @@ class NewGrowthSuite extends munit.FunSuite:
 
   test("a Hearth card may go too, and a card of another suit only to the " +
       "pawn site"):
-    assert(siteSlotRefs(toPlacement(growing(hearth).ready, hearth))
-      .contains(DecisionOptionRef.SiteSlot(woods, 0)))
-    assertEquals(siteSlotRefs(toPlacement(growing(order).ready, order)),
+    assert(siteSlotRefs(toPlacement(newGrowthHeldWithDeckTop(hearth).ready,
+      hearth)).contains(DecisionOptionRef.SiteSlot(woods, 0)))
+    assertEquals(siteSlotRefs(toPlacement(
+      newGrowthHeldWithDeckTop(order).ready, order)),
       Vector(DecisionOptionRef.SiteSlot(home, 0)))
 
   test("with a discard permission, a full site offers its Replace"):
-    val ready = growing(beast).adviser(p1, crop).ready
+    val ready = newGrowthHeldWithDeckTop(beast).adviser(p1, crop).ready
     val options = PlacementPicks.parkedOptions(toPlacement(ready, beast,
       Vector(NewGrowth.id, CropRotation.id)).state, walkerPowers)
     assert(options.exists(option =>
@@ -69,7 +70,7 @@ class NewGrowthSuite extends munit.FunSuite:
         PlacementPicks.replaces(option).contains(filler)), options.toString)
 
   test("played at another site, the card stays there, and replays"):
-    val ready = growing(beast).ready
+    val ready = newGrowthHeldWithDeckTop(beast).ready
     val asked = toPlacement(ready, beast)
     val done = accepted(placeAt(asked, beast,
       DecisionOptionRef.SiteSlot(woods, 0)))

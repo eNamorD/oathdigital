@@ -364,9 +364,11 @@ object CardPlayProcedure:
   /** The follow-up's place when nothing is to be asked. */
   private def noFollowUp: Operation = Sequence(Vector.empty)
 
-  /** The shape of a play once the card has left its origin: the follow-up's
-    * place, the play, and the hook, as in the live shape. A resumed walk
-    * starts past the decisions and the play, so neither runs again. */
+  /** The shape of a play once the card has left its origin: the follow-ups'
+    * place, left empty, then the play and the hook at the positions the
+    * live shape gives them. A resumed walk starts past the decisions and
+    * the play, so neither runs again, and nothing addresses inside the
+    * follow-ups' place. */
   private def settled(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
       ref: DecisionOptionRef): Vector[Operation] =
     playedAs(ref).flatMap(way => siteOf(ref)

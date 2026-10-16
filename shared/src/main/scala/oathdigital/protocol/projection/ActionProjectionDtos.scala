@@ -138,9 +138,9 @@ object DecisionQueryProjection:
   * `reason` saying why).
   *
   * `replaces` is the card choosing the option discards to make room (a
-  * Replace slot), as the viewer may see it. `buries` marks an option whose
-  * play buries `replaces` instead of discarding it, Forest Warden's "Bury
-  * and replace" and "Bury and play".
+  * Replace slot), as the viewer may see it, or the card or relic it buries
+  * first. `buries` marks an option whose play buries `replaces` instead of
+  * discarding it, Forest Warden's "Bury and replace" and "Bury and play".
   *
   * `variant` is the word that tells this option from the others drawn on the
   * same board home, such as an adviser play's facing; the client's toggle

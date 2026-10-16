@@ -284,7 +284,7 @@ object CardSlots:
         (discarded, buried) match
           case (Some(d), Some(b)) if d.available && b.available =>
             Vector(CardSlot(d, placement, mayBury = true))
-          case (Some(d), Some(b)) if !b.available =>
+          case (Some(d), Some(b)) if !b.available && d.available =>
             Vector(CardSlot(d, placement))
           case (_, Some(b)) =>
             Vector(CardSlot(b, placement, buried = Some(held)))
