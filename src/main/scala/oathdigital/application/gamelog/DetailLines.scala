@@ -131,8 +131,9 @@ private[gamelog] final class DetailLines(words: LogWords,
         line(words.subject(player, actor, "drew") ++
           words.cards(cards.map(card)))
       case discard: Discard.Denizen if !placedDiscard.contains(discard.card) =>
-        Vector(Discarded(words.subject(discard.actingPlayer, actor,
-          "discarded"), discard.to, Vector(card(discard.card))))
+        Vector(Discarded(discard.by.fold(Vector(LogSpan.Text("Discarded ")))(
+          words.subject(_, actor, "discarded")), discard.to,
+          Vector(card(discard.card))))
       case discard: Discard.Vision if !placedDiscard.contains(discard.card) =>
         Vector(Discarded(Vector(LogSpan.Text("Discarded ")), discard.to,
           Vector(card(discard.card))))

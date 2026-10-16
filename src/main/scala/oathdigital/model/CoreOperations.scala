@@ -76,7 +76,8 @@ final case class PositionedLocation(
 /** Changes a piece's location or role within one play area. `by` is the
   * player who moves it, where a rule names one (catalog batch 8, slice 11):
   * a restriction that holds against some players only reads it off the
-  * operation tree. A card moved from a site always names one.
+  * operation tree. `None` also means nobody moves it, as for Empty
+  * Grounds' discards, so no such restriction holds.
   */
 final case class Move(
     piece: Piece,
@@ -95,15 +96,6 @@ final case class Move(
   require(from.side.isEmpty || piece.isInstanceOf[Piece.Secrets],
     "only secrets have a side")
   require(to.side.isEmpty, "a move names the side it takes, not lands on")
-  require(by.isDefined || !Move.fromSite(piece, from),
-    "a card moved from a site names who moves it")
-
-object Move:
-  /** Whether `piece` is a card leaving a site: a move that must name its
-    * mover. */
-  def fromSite(piece: Piece, from: PositionedLocation): Boolean =
-    piece.isInstanceOf[Piece.Card] &&
-      from.location.isInstanceOf[Location.Site]
 
 /** Looks at a card's front without changing its orientation or location. */
 final case class Peek(viewer: PlayerId, card: CardId,
@@ -198,17 +190,24 @@ object Bury:
 sealed trait Discard extends CoreOperation
 object Discard:
   /** Discards a denizen facedown to the specified regional pile and returns
-    * all resources on it.
+    * all resources on it. `actingPlayer` takes its secrets and discards it,
+    * unless the discard is `actorless`: an effect no player performs, as
+    * Empty Grounds'. Its secrets still go to `actingPlayer`, the active
+    * player, since secrets reach a card only on a player's turn.
     */
   final case class Denizen(card: DenizenId, from: PositionedLocation,
       to: Region, suit: Suit, favor: Int,
       secrets: Int, actingPlayer: PlayerId,
-      override val required: Boolean = false) extends Discard:
+      override val required: Boolean = false, actorless: Boolean = false)
+      extends Discard:
     require(favor >= 0, "discarded favor must be non-negative")
     require(secrets >= 0, "discarded secrets must be non-negative")
 
+    /** The player who discards it, if any. */
+    def by: Option[PlayerId] = Option.unless(actorless)(actingPlayer)
+
     override val children: Vector[Operation] =
-      discardWorld(card, from, to, Some(actingPlayer)) ++
+      discardWorld(card, from, to, by) ++
         returnedResources(card, suit, favor, secrets, actingPlayer)
 
   /** Visions carry no resources but otherwise use world-card discard rules. */
@@ -217,18 +216,22 @@ object Discard:
     override val children: Vector[Operation] =
       discardWorld(card, from, to, None)
 
-  /** Only a ruined edifice can be discarded; intact edifices are locked. */
+  /** Only a ruined edifice can be discarded; intact edifices are locked.
+    * `actingPlayer` and `actorless` are as for `Denizen`. */
   final case class RuinedEdifice(card: EdificeId, from: PositionedLocation,
       suit: Suit, favor: Int, secrets: Int, actingPlayer: PlayerId,
-      override val required: Boolean = false)
+      override val required: Boolean = false, actorless: Boolean = false)
       extends Discard:
     require(favor >= 0, "discarded favor must be non-negative")
     require(secrets >= 0, "discarded secrets must be non-negative")
 
+    /** The player who discards it, if any. */
+    def by: Option[PlayerId] = Option.unless(actorless)(actingPlayer)
+
     override val children: Vector[Operation] = Vector(Move(
       Piece.Card(card), from,
       PositionedLocation(Location.Deck(CardDeck.Edifice),
-        StackPosition.Bottom), by = Some(actingPlayer))) ++
+        StackPosition.Bottom), by = by)) ++
       returnedResources(card, suit, favor, secrets, actingPlayer)
 
   /** Sets a relic aside until Chronicle and takes its secrets facedown. */

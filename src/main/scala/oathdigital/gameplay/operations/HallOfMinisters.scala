@@ -21,7 +21,8 @@ object HallOfMinistersCard extends Edifice(EdificeId("E16"), Suit.Order):
 /** The Hall of Ministers (edifice E16, intact): an enemy of the Hall's ruler
   * acts as if the denizens and relics at the ruler's sites were locked, so it
   * cannot discard them. The actor is the discard's own acting player; a
-  * Vision's discard names none, so it is the active player's.
+  * Vision's discard names none, so it is the active player's. An actorless
+  * discard, as Empty Grounds', has no actor, so no enemy, and goes through.
   *
   * Its ruler may consent (consent design, slice 3). The refusal names the
   * ruler and the card, and a grant covers that card's discard by that player
@@ -102,12 +103,12 @@ case object HallOfMinisters extends OperationRestriction:
       : Option[(SiteId, PlayerId, DecisionOptionRef)] =
     val active = ready.game.current.turn.activePlayer
     val source = operation match
-      case value: Discard.Denizen => Some((value.from.location,
-        value.actingPlayer, DecisionOptionRef.Denizen(value.card)))
+      case value: Discard.Denizen => value.by.map(actor => (
+        value.from.location, actor, DecisionOptionRef.Denizen(value.card)))
       case value: Discard.Vision => Some((value.from.location, active,
         DecisionOptionRef.Vision(value.card)))
-      case value: Discard.RuinedEdifice => Some((value.from.location,
-        value.actingPlayer, DecisionOptionRef.Edifice(value.card)))
+      case value: Discard.RuinedEdifice => value.by.map(actor => (
+        value.from.location, actor, DecisionOptionRef.Edifice(value.card)))
       case value: Discard.Relic => Some((value.from.location,
         value.actingPlayer, DecisionOptionRef.Relic(value.card)))
       case _ => None

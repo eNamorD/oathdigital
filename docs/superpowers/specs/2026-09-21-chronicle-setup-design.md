@@ -88,7 +88,7 @@ A Homeland outside the first 8 sites keeps its edifice in storage, so a game may
 A `Setup` procedure runs on the walker:
 
 1. For each player in turn order, from the first player: the player places their pawn at a site in play. The `SetupPawnPlaced` window runs for that site. Then the player chooses one adviser from their three-card temporary hand; the other two go to the discard of the region after the pawn's region, as today.
-2. The `SetupEnd` window runs. Its automatic contributions resolve in site order, Cradle to Hinterland, and by position within a site. The actor for powers with no "you" is the first player.
+2. The `SetupEnd` window runs. Its automatic contributions resolve in site order, Cradle to Hinterland, and by position within a site. A power with no "you" has no actor: its moves name no mover, so no restriction against enemies holds, and returned secrets go to the active player (ruling of 2026-10-16; it replaced "the actor is the first player").
 3. The game enters Wake of round 1.
 
 Deleted, as in the other walker ports: `FirstGameSetupRules`, the `PlacePawn` and `ChooseAdviser` commands, intents, codecs and events, the `FirstGameSetupCommand` machinery, and the frontend's setup controls. The walker decision panel shows the setup decisions. Development data is reset, which the pre-release rule allows.

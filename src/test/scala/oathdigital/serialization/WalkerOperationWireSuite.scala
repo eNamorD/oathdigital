@@ -56,7 +56,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     assertEquals(replayed.game.current.temporaryHands(actor), Vector.empty)
 
   test("a move names its mover on the wire, and a site card's move " +
-      "without one does not decode"):
+      "without one decodes as moved by nobody"):
     val move = Move(Piece.Card(RelicId("R1")),
       PositionedLocation(Location.Site(SiteId("site"))),
       PositionedLocation(Location.PlayArea(Table.p1)),
@@ -66,7 +66,16 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
     val stripped = ujson.read(ujson.write(encoded))
     stripped("payload")("ops")(0).obj.remove("by")
-    assert(GameEventWire.decode(stripped).isLeft)
+    assertEquals(GameEventWire.decode(stripped).map(_.event),
+      Right(recordedOperation("recover", move.copy(by = None))))
+
+  test("an actorless discard says so on the wire"):
+    val discard = Discard.Denizen(DenizenId("D1"),
+      PositionedLocation(Location.Site(SiteId("site"))), Region.Provinces,
+      Suit.Beast, 0, 1, Table.p1, actorless = true)
+    val event = recordedOperation("setup", discard)
+    val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
 
   test("a swap names its mover on the wire"):
     val swap = Swap(DenizenId("D1"),

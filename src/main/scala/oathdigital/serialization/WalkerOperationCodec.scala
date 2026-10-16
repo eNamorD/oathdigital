@@ -61,19 +61,23 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       case bury: Bury => ujson.Obj("kind" -> "bury",
         "card" -> encodeBuryableCard(bury.card),
         "from" -> encodePositionedLocation(bury.from))
-      case Discard.Denizen(card, from, to, suit, favor, secrets, actingPlayer, _) =>
-        ujson.Obj("kind" -> "discard-denizen", "card" -> card.value,
+      case Discard.Denizen(card, from, to, suit, favor, secrets, actingPlayer,
+          _, actorless) =>
+        withActorless(ujson.Obj("kind" -> "discard-denizen",
+          "card" -> card.value,
           "from" -> encodePositionedLocation(from), "to" -> to.key,
           "suit" -> suit.key, "favor" -> favor, "secrets" -> secrets,
-          "actingPlayerId" -> actingPlayer.value)
+          "actingPlayerId" -> actingPlayer.value), actorless)
       case Discard.Vision(card, from, to, _) => ujson.Obj(
         "kind" -> "discard-vision", "card" -> card.value,
         "from" -> encodePositionedLocation(from), "to" -> to.key)
-      case Discard.RuinedEdifice(card, from, suit, favor, secrets, actingPlayer, _) =>
-        ujson.Obj("kind" -> "discard-ruined-edifice", "card" -> card.value,
+      case Discard.RuinedEdifice(card, from, suit, favor, secrets,
+          actingPlayer, _, actorless) =>
+        withActorless(ujson.Obj("kind" -> "discard-ruined-edifice",
+          "card" -> card.value,
           "from" -> encodePositionedLocation(from), "suit" -> suit.key,
           "favor" -> favor, "secrets" -> secrets,
-          "actingPlayerId" -> actingPlayer.value)
+          "actingPlayerId" -> actingPlayer.value), actorless)
       case Discard.Relic(card, from, secrets, actingPlayer) => ujson.Obj(
         "kind" -> "discard-relic", "card" -> card.value,
         "from" -> encodePositionedLocation(from), "secrets" -> secrets,
@@ -110,16 +114,20 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     by.foreach(player => encoded("by") = player.value)
     encoded
 
+  /** `encoded`, with `"actorless": true` when nobody performs the
+    * discard. Written only then, so other discards encode as before. */
+  private def withActorless(encoded: ujson.Obj, actorless: Boolean)
+      : ujson.Obj =
+    if actorless then encoded("actorless") = true
+    encoded
+
+  /** Whether a discard says nobody performs it. */
+  private def decodeActorless(value: ujson.Value): Boolean =
+    value.obj.get("actorless").exists(_.bool)
+
   /** The mover a move or swap names, if any. */
   private def decodeMover(value: ujson.Value): Option[PlayerId] =
     value.obj.get("by").map(by => PlayerId(by.str))
-
-  /** A card moved from a site names who moves it. Refused here, so the
-    * model's `require` never throws while decoding. */
-  private def requireMover(piece: Piece, from: PositionedLocation,
-      by: Option[PlayerId], path: String): Either[WireError, Unit] =
-    Either.cond(by.isDefined || !Move.fromSite(piece, from), (),
-      InvalidValue(path, "a card moved from a site names who moves it"))
 
   private def encodePieceOperation(operation: PieceOperation): ujson.Value =
     operation match
@@ -303,7 +311,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       favor <- safeIntField(value.obj, "favor", path)
       secrets <- safeIntField(value.obj, "secrets", path)
     yield Discard.Denizen(DenizenId(value("card").str), from, to, suit,
-      favor, secrets, PlayerId(value("actingPlayerId").str))
+      favor, secrets, PlayerId(value("actingPlayerId").str),
+      actorless = decodeActorless(value))
     case "discard-vision" => for
       from <- decodePositionedLocation(value("from"), s"$path.from")
       to <- decodeRegion(value("to").str, s"$path.to")
@@ -314,7 +323,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
       favor <- safeIntField(value.obj, "favor", path)
       secrets <- safeIntField(value.obj, "secrets", path)
     yield Discard.RuinedEdifice(EdificeId(value("card").str), from, suit,
-      favor, secrets, PlayerId(value("actingPlayerId").str))
+      favor, secrets, PlayerId(value("actingPlayerId").str),
+      actorless = decodeActorless(value))
     case "discard-relic" => for
       from <- decodePositionedLocation(value("from"), s"$path.from")
       secrets <- safeIntField(value.obj, "secrets", path)
@@ -361,10 +371,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         InvalidValue(path, "swap requires two different cards"))
       _ <- Either.cond(firstLocation != secondLocation, (),
         InvalidValue(path, "swap requires two different locations"))
-      by = decodeMover(value)
-      _ <- requireMover(Piece.Card(firstCard), firstLocation, by, path)
-      _ <- requireMover(Piece.Card(secondCard), secondLocation, by, path)
-    yield Swap(firstCard, firstLocation, secondCard, secondLocation, by)
+    yield Swap(firstCard, firstLocation, secondCard, secondLocation,
+      decodeMover(value))
     case "shuffle" => for
       pile <- decodeSearchSource(value("pile"), s"$path.pile")
       order <- decodeShuffleOrder(value, path)
@@ -395,9 +403,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         case ujson.Null => Right(None)
         case other => orientationFromKey(other.str,
           s"$path.resultingOrientation").map(Some(_))
-      by = decodeMover(value)
-      _ <- requireMover(piece, from, by, path)
-    yield Move(piece, from, to, orientation, by)
+    yield Move(piece, from, to, orientation, decodeMover(value))
     case "take" => for
       piece <- decodePiece(value("piece"), s"$path.piece")
       from <- decodeLocation(value("from"), s"$path.from")

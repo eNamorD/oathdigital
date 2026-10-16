@@ -3,8 +3,8 @@ package oathdigital.model
 import oathdigital.testkit.Table.{p1, p2}
 
 /** A move names the player who moves it (catalog batch 8, slice 11): the
-  * player its composite names, or the one its builder gives. A card moved
-  * from a site must name one. */
+  * player its composite names, or the one its builder gives, or none when
+  * nobody moves it. */
 class MoveActorSuite extends munit.FunSuite:
   private val site = SiteId("site")
   private val atSite = PositionedLocation(Location.Site(site))
@@ -34,9 +34,20 @@ class MoveActorSuite extends munit.FunSuite:
     assertEquals(cardMovers(Swap(denizen, atSite, DenizenId("D2"),
       atOtherSite, by = Some(p1))), Vector(Some(p1), Some(p1)))
 
-  test("a card moved from a site must name its mover; a move from " +
-      "elsewhere need not"):
-    intercept[IllegalArgumentException](Move(Piece.Card(relic), atSite,
-      PositionedLocation(Location.PlayArea(p1))))
-    assertEquals(Move(Piece.Card(relic), PositionedLocation(
-      Location.PlayArea(p1)), atSite).by, None)
+  test("an actorless discard names no mover, and its player still takes " +
+      "the secrets"):
+    val discard = Discard.Denizen(denizen, atSite, Region.Provinces,
+      Suit.Beast, 0, 2, p1, actorless = true)
+    assertEquals(cardMovers(discard), Vector(None))
+    assertEquals(discard.by, None)
+    assert(Operation.flatten(discard).exists {
+      case Move(Piece.Secrets(2), _, PositionedLocation(Location.PlayArea(
+        `p1`), _, _), _, _) => true
+      case _ => false
+    })
+    assertEquals(cardMovers(Discard.RuinedEdifice(EdificeId("E1"), atSite,
+      Suit.Beast, 0, 0, p1, actorless = true)), Vector(None))
+
+  test("a card moved from a site may name no mover"):
+    assertEquals(Move(Piece.Card(relic), atSite,
+      PositionedLocation(Location.PlayArea(p1))).by, None)

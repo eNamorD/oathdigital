@@ -67,6 +67,27 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
     assertEquals(remaining, Vector[SiteDenizenState](EdificeState(edifice,
       EdificeSide.Ruined, Tokens.empty)))
 
+  /** Every card at a site in the fixture's region, in map order. */
+  private def cradleCards(ready: ReadyGame): Vector[CardId] =
+    val map = ready.game.current.map
+    map.inPlay.filter(map.regionOf(_).contains(Region.Cradle))
+      .flatMap(map.sites(_).denizens.map(_.id))
+
+  test("Empty Grounds discards denizens at a site an Ancient Bloodline " +
+      "holder rules, since nobody moves them"):
+    // p1, not the first player, rules Ancient City and holds Bloodline.
+    val staged = Table.from(withOtherDenizens).warbandsAt(site, Table.p1, 1)
+      .adviser(Table.p1, CatalogNames.denizen("Ancient Bloodline"))
+      .unchecked
+    assertEquals(cradleCards(finish(staged)), Vector[CardId](edifice))
+
+  test("Empty Grounds discards denizens at a site the Hall of Ministers' " +
+      "ruler rules, since nobody discards them"):
+    val hall = CatalogNames.edifice("Hall of Ministers")
+    val staged = Table.from(withOtherDenizens).warbandsAt(site, Table.p1, 1)
+      .edifice(hall, EdificeSide.Intact, at = site).unchecked
+    assertEquals(cradleCards(finish(staged)), Vector[CardId](edifice, hall))
+
   // ---- Lines ----
 
   test("Proving Grounds writes the warbands its player gained"):

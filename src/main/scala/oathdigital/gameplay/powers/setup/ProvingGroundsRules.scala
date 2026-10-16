@@ -67,9 +67,10 @@ object ProvingGrounds:
 /** Discards all OTHER denizens in this region -- edifices count as denizens
   * for this clause specifically (design spec table), and a discarded ruined
   * edifice returns to the edifice deck via `Discard.RuinedEdifice`; an
-  * intact edifice is locked and stays, mirroring `Dazzle`. The actor is the
-  * first player, per the spec's "the actor for powers with no 'you' is the
-  * first player" (SetupEnd has no single "you").
+  * intact edifice is locked and stays, mirroring `Dazzle`. No player
+  * discards them: the printed text names no "you", so the discards are
+  * actorless and no restriction against enemies holds. Returned secrets go
+  * to the active player.
   */
 final case class EmptyGrounds private (catalog: ExecutableCatalog)
     extends ContributingPower:
@@ -108,7 +109,7 @@ final case class EmptyGrounds private (catalog: ExecutableCatalog)
 
   private def build(ready: ReadyGame, site: SiteId)
       : Either[OathViolation, Vector[CoreOperation]] =
-    val actor = ready.setup.firstPlayer
+    val active = ready.game.current.turn.activePlayer
     ready.game.current.map.regionOf(site).toRight(OathViolation.InvalidEventOrder(
       s"${site.value} is not in play")).flatMap { region =>
       val destination = CardPlay.nextRegion(region)
@@ -122,11 +123,13 @@ final case class EmptyGrounds private (catalog: ExecutableCatalog)
         yield card match
           case denizen: DenizenState => operations :+ Discard.Denizen(denizen.id,
             PositionedLocation(Location.Site(siteId)), destination, suit,
-            denizen.tokens.favor, denizen.tokens.secrets, actor)
+            denizen.tokens.favor, denizen.tokens.secrets, active,
+            actorless = true)
           case edifice: EdificeState if edifice.side == EdificeSide.Ruined =>
             operations :+ Discard.RuinedEdifice(edifice.id,
               PositionedLocation(Location.Site(siteId)), suit,
-              edifice.tokens.favor, edifice.tokens.secrets, actor)
+              edifice.tokens.favor, edifice.tokens.secrets, active,
+              actorless = true)
           case _ => operations
     }
 
