@@ -6,6 +6,8 @@ import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
   PhasePowerHarness}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.testkit.{AppendedAutomaticUses, Table}
 
 /** Hospitality: after its holder travels, 1 favor from a bank matching both
   * a card at the destination and one of the holder's faceup advisers. */
@@ -120,3 +122,16 @@ class HospitalitySuite extends munit.FunSuite:
       Suit.Order -> 2)(hospitalityFacedown = true)
     val done = accepted(travel(ready, coast))
     assertEquals(favorGains(done.events), Vector.empty)
+
+  /** p2's pawn moving from Ancient City to Deep Woods in a travel's cost
+    * node, folded with p1 acting. */
+  private val p2Travels: Operation = Sequence(Vector[Operation](Move(
+    Piece.Pawn(Table.p2), PositionedLocation(Location.Site(
+      CatalogNames.site("Ancient City"))), PositionedLocation(Location.Site(
+      CatalogNames.site("Deep Woods"))))), Some(PowerWindow.TravelCost))
+
+  test("its gain is an automatic use of the traveller's, judged where it " +
+      "runs"):
+    assertEquals(AppendedAutomaticUses.at(Hospitality.forCatalog(catalog),
+      PowerWindow.TravelCost, p2Travels), Vector(AppendedAutomaticUses.Named(
+      Table.p2, Hospitality.id, HospitalityCard.id)))

@@ -17,9 +17,9 @@ object VowOfWanderingCard extends Denizen(DenizenId("247"), "Vow of Wandering", 
 
 /** Vow of Wandering's Muster power (card 247, adviser-only, locked), an
   * automatic rule of a faceup adviser: every Muster of its holder gains two
-  * more warbands, best effort from the supply. They join the Muster's own
-  * gain, as Vow of Beastkin's one does, and the line after the gain says how
-  * many came ([[ExtraWarbands]]): "Gained {n} more warbands." The catalog
+  * more warbands, best effort from the supply. They are their own gain after
+  * the Muster's, as Vow of Beastkin's one is, and its line says how many
+  * came ([[ExtraWarbands]]): "Gained {n} more warbands." The catalog
   * marks the power `persistent: false`, but it is not a choice, so it keeps
   * the default automatic resolution.
   */
@@ -35,7 +35,7 @@ case object VowOfWanderingMuster extends ContributingPower:
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterGain -> Vector(Transform((ctx, operations) =>
-      ExtraWarbands.added(ctx, id, cardId, Warbands, operations))))
+      ExtraWarbands.appended(ctx, id, cardId, Warbands, operations))))
 
   override def applicable(ctx: PowerCtx): Boolean =
     VowOfWandering.holds(ctx.state, ctx.activePlayer)

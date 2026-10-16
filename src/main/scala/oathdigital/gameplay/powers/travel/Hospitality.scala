@@ -20,14 +20,16 @@ object HospitalityCard extends Denizen(DenizenId("171"), "Hospitality",
   * adviser: "After traveling, gain favor from one favor bank that matches
   * both a card at your site and one of your advisers."
   *
-  * After the traveller's pawn moves in the cost node, a branch reads the
-  * destination's cards (denizens and edifices) and the traveller's faceup
-  * advisers (`EffectiveSuit`, so Marriage counts). The matching banks are
-  * the suits both share. With one that holds favor, 1 favor is gained from
-  * it. With two or more, the traveller is asked first, and every matching
-  * bank is listed, an empty one unavailable with "This bank is empty". With
-  * none holding favor, nothing happens. The rule follows the pawn that
-  * moves, so an off-turn Travel counts too. Only Travel walks `TravelCost`.
+  * After the traveller's pawn moves in the cost node, an `AutomaticUse`
+  * reads the destination's cards (denizens and edifices) and the
+  * traveller's faceup advisers (`EffectiveSuit`, so Marriage counts),
+  * unless a power-use restriction refuses it there (catalog batch 8, slice
+  * 10). The matching banks are the suits both share. With one that holds
+  * favor, 1 favor is gained from it. With two or more, the traveller is
+  * asked first, and every matching bank is listed, an empty one unavailable
+  * with "This bank is empty". With none holding favor, nothing happens.
+  * The rule follows the pawn that moves, so an off-turn Travel counts too.
+  * Only Travel walks `TravelCost`.
   *
   * The catalog marks the power `persistent: false`, but it is a must, so it
   * keeps the default automatic resolution, as Tyrant does.
@@ -44,8 +46,8 @@ final case class Hospitality private (catalog: ExecutableCatalog)
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
       TravelRoute.pawnMove(ctx.operation).fold(operations)(route =>
-        operations :+ Branch((live, _) =>
-          welcome(live, route.player, route.destination))))))
+        operations :+ AutomaticUse(route.player, id, HospitalityCard.id,
+          (live, _) => welcome(live, route.player, route.destination))))))
 
   override def applicable(ctx: PowerCtx): Boolean =
     TravelRoute.pawnMove(ctx.operation).exists(route =>

@@ -12,9 +12,12 @@ import oathdigital.model._
   * a facedown adviser, and card play places nothing for it, so it is still at
   * its origin when this transform runs. The transform adds, after whatever
   * other powers contributed:
-  *  - a `Decide` offering each legal target, only when there is at least one;
-  *  - the take effects for the chosen target, then the card's removal, in one
-  *    batch, so the card leaves the game even when there was nothing to take.
+  *  - inside an `AutomaticUse`, which a power-use restriction may refuse the
+  *    actor where the walk reaches it (catalog batch 8, slice 10): a
+  *    `Decide` offering each legal target, only when there is at least one,
+  *    then the take effects for the chosen target;
+  *  - the card's removal, outside it, so the card leaves the game even when
+  *    nothing was taken or the take was refused.
   *
   * The banner moves by a `Take`, so a restriction on taking sees it; a relic
   * moves by a `Give`. Both are optional. The banner's favor and secrets leave
@@ -49,10 +52,13 @@ case object ConspiracyWhenPlayed extends ContributingPower:
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
-      (children ++ targetDecision(ctx.state, ctx.activePlayer)) :+
-        BuildOps((ready, pending) =>
-          effects(ready, ctx.activePlayer, pending)) :+
-        Note(id, seizedNote(ctx.activePlayer)))))
+      children :+ AutomaticUse(ctx.activePlayer, id, VisionRules.Conspiracy,
+        (_, _) => targetDecision(ctx.state, ctx.activePlayer) :+
+          BuildOps((ready, pending) =>
+            taken(ready, ctx.activePlayer, pending)) :+
+          Note(id, seizedNote(ctx.activePlayer))) :+
+        BuildOps((ready, _) =>
+          Right(Vector(removal(ready, ctx.activePlayer)))))))
 
   /** What the take moved to the actor, and from whom. */
   private def seizedNote(actor: PlayerId)(states: NoteStates)
@@ -93,12 +99,12 @@ case object ConspiracyWhenPlayed extends ContributingPower:
       heading = Some("Conspiracy: choose an enemy asset to take")),
       window = Some(PowerWindow.ConspiracyTargetSelection)))
 
-  private def effects(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
+  private def taken(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     val legal = legalTargets(ready, actor)
     val chosen = pending.answered.collectFirst:
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
-    val taken: Either[OathViolation, Vector[CoreOperation]] = chosen match
+    chosen match
       case Some(ref) if legal.contains(ref) => Right(take(ready, actor, ref))
       case Some(_) => Left(OathViolation.ConspiracyUnavailable(
         "the chosen target is no longer legal"))
@@ -106,7 +112,6 @@ case object ConspiracyWhenPlayed extends ContributingPower:
       // target window removed every one. The walker never skips a decision
       // that is asked, so nothing is taken.
       case None => Right(Vector.empty)
-    taken.map(_ :+ removal(ready, actor))
 
   private def take(ready: ReadyGame, actor: PlayerId, ref: DecisionOptionRef)
       : Vector[CoreOperation] =

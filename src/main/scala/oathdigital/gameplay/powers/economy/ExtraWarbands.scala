@@ -1,17 +1,18 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.powerresolver.{OperationRewrite, PowerCtx}
+import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
-/** A vow's warbands added to a Muster's own gain (Vow of Beastkin, Vow of
-  * Wandering), with the vow's line right after the gain: "Gained {n} more
-  * warband."
+/** A vow's warbands gained after a Muster's own gain (Vow of Beastkin, Vow
+  * of Wandering), with the vow's line: "Gained {n} more warband."
   *
-  * The line tells what the gain added beyond its amount before this vow, at
-  * most the vow's own count. Under two vows, each adds to the gain the other
-  * already changed, and each line tells its own part. A short bank shortens
-  * the line of the vow that folded last. An empty bank writes nothing.
+  * The vow's warbands are their own gain, inside an `AutomaticUse` a
+  * power-use restriction may refuse where the walk reaches it (catalog
+  * batch 8, slice 10). Its line tells what that gain added, at most the
+  * vow's own count, and covers the gain's generic line. Under two vows each
+  * line tells its own gain. A short bank shortens the line of the vow that
+  * gains last. An empty bank writes nothing.
   */
 private[economy] object ExtraWarbands:
   /** The keys this object owns, which no one power owns. A power that
@@ -21,22 +22,31 @@ private[economy] object ExtraWarbands:
   val gained: NoteKey = notes.key("gained", Vector(NotePart.Text("Gained "),
     NotePart.Arg(0), NotePart.Plural(0, " more warband.", " more warbands.")))
 
-  /** `operations` with `extra` more warbands on the actor's gain, wherever
-    * the tree holds it, and the line of `power`, from `card`, after it. A
-    * gain a `BuildOps` builds is not entered. Unchanged when they hold no
-    * such gain. A Muster's gain window holds one gain. */
-  def added(ctx: PowerCtx, power: PowerId, card: DenizenId, extra: Int,
+  /** `operations` and, after them, `power`'s use from `card`: `extra`
+    * warbands of the kind the actor's gain in `operations` takes, and its
+    * line. A gain a `BuildOps` builds is not found. Unchanged when they hold
+    * no such gain. A Muster's gain window holds one gain. */
+  def appended(ctx: PowerCtx, power: PowerId, card: DenizenId, extra: Int,
       operations: Vector[Operation]): Vector[Operation] =
-    OperationRewrite.nodes(ctx, operations)((_, _) => {
-      case gain @ Gain.Warbands(player, _, _) if player == ctx.activePlayer =>
-        Vector(gain.copy(amount = gain.amount + extra),
-          Note(power, line(_, card, player, gain.amount, extra)))
-    })
+    val actor = ctx.activePlayer
+    operations.iterator.flatMap(gainKind(_, actor)).nextOption()
+      .fold(operations)(kind => operations :+ AutomaticUse(actor, power,
+        card, (_, _) => Vector(Gain.Warbands(actor, kind, extra),
+          Note(power, line(_, card, actor, extra), covers = true))))
 
-  /** What the gain's step added beyond `before`, at most `extra`. */
+  /** The force kind of `actor`'s warband gain in `node`, when it holds
+    * one. */
+  private def gainKind(node: Operation, actor: PlayerId): Option[ForceKind] =
+    node match
+      case Gain.Warbands(`actor`, kind, _) => Some(kind)
+      case _: LeafOperation | _: BuildOps => None
+      case other =>
+        other.children.iterator.flatMap(gainKind(_, actor)).nextOption()
+
+  /** What the gain's step added, at most `extra`. */
   private def line(states: NoteStates, card: DenizenId, actor: PlayerId,
-      before: Int, extra: Int): Option[PowerNote] = for
+      extra: Int): Option[PowerNote] = for
     step <- states.previous
-    more = math.min(extra, NoteSupport.warbands(step, actor) - before)
+    more = math.min(extra, NoteSupport.warbands(step, actor))
     if more > 0
   yield gained(PowerSourceRef.Card(card), NoteArg.Number(more))

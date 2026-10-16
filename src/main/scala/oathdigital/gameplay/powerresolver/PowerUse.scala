@@ -31,6 +31,13 @@ object PowerUse:
       consent,
       places || printed.cost.favor > 0 || printed.cost.secret > 0)
 
+  /** An automatic rule's use (catalog batch 8, slice 10, part 2): printed
+    * non-persistent, costing nothing. Each one's catalog flag is pinned by
+    * `PowerKindsCatalogSuite`. */
+  def automatic(user: PlayerId, power: PowerId, card: CardId): PowerUse =
+    PowerUse(user, power, Some(card), persistent = false,
+      costsSecret = false)
+
 /** Why a restriction refuses a use. `power` is the restriction's and
   * `note` the reason shown when nobody may be asked. `reason` is the
   * refusal on the consent path: its waiver, when it has one, names who may

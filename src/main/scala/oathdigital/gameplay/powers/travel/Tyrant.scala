@@ -20,7 +20,9 @@ object TyrantCard extends Denizen(DenizenId("111"), "Tyrant", Suit.Order) with L
   * relocation move the pawn without it.
   *
   * The kill follows the pawn's move in the cost node and reads the
-  * destination when it runs. The catalog marks the power `persistent: false`,
+  * destination when it runs, inside an `AutomaticUse`: a power-use
+  * restriction judges it there, after the move (catalog batch 8, slice 10).
+  * The catalog marks the power `persistent: false`,
   * but it is a must, so it keeps the default automatic resolution, as Vow of
   * Obedience does.
   *
@@ -50,8 +52,9 @@ case object Tyrant extends ContributingPower:
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
       TravelRoute.pawnMove(ctx.operation).fold(operations)(route =>
-        operations ++ Vector(kill(route.destination),
-          Note(id, killedNote(_, route.destination)))))))
+        operations :+ AutomaticUse(route.player, id, cardId, (_, _) =>
+          Vector(kill(route.destination),
+            Note(id, killedNote(_, route.destination))))))))
 
   override def applicable(ctx: PowerCtx): Boolean =
     holds(ctx.state, ctx.activePlayer) &&

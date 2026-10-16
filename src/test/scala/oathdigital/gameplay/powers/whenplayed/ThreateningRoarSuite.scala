@@ -4,6 +4,8 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness}
 import oathdigital.testkit.Table.p1
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.testkit.AppendedAutomaticUses
 
 class ThreateningRoarSuite extends munit.FunSuite:
   import WhenPlayedHarness._
@@ -56,3 +58,11 @@ class ThreateningRoarSuite extends munit.FunSuite:
     assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "Nothing was discarded.", covers = true)))
+
+  test("its effect is an automatic use of the card's player"):
+    val played = CardPlayedFaceup(ThreateningRoarCard.id,
+      RuleSourceRef.GameRule(ThreateningRoar.id.value))
+    assertEquals(AppendedAutomaticUses.at(ThreateningRoar.forCatalog(catalog),
+      PowerWindow.ActionCardPlayedFaceup, played), Vector(
+      AppendedAutomaticUses.Named(p1, ThreateningRoar.id,
+        ThreateningRoarCard.id)))

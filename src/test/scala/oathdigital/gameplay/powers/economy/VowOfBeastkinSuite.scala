@@ -10,6 +10,7 @@ import oathdigital.testkit.{ActPowerHarness, CatalogNames, EconomyActions,
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.AppendedAutomaticUses
 
 class VowOfBeastkinSuite extends munit.FunSuite:
   private val vow = CatalogNames.denizen("Vow of Beastkin")
@@ -54,7 +55,7 @@ class VowOfBeastkinSuite extends munit.FunSuite:
     assertEquals(Look(done.result).boardWarbands(p1),
       Look(ready).boardWarbands(p1) + 3)
     assertEquals(said(done.journal.events), Vector(NoteText.Said("gained",
-      "Gained 1 more warband.", covers = false)))
+      "Gained 1 more warband.", covers = true)))
     assertEquals(ActPowerHarness.replayed(rules, ready, done.journal.events),
       done.result)
     assertWireRoundTrips(done.journal.events)
@@ -75,3 +76,12 @@ class VowOfBeastkinSuite extends munit.FunSuite:
         Look(ready).boardWarbands(p1) + 1)
       assertEquals(said(done.journal.events), Vector.empty)
     }
+
+  /** A Muster's gain node: one warband for p1. */
+  private val p1MusterGain: Operation = Sequence(Vector[Operation](
+    Gain.Warbands(p1, ForceKind.Bandit, 1)), Some(PowerWindow.MusterGain))
+
+  test("its extra warband is an automatic use of the musterer's"):
+    assertEquals(AppendedAutomaticUses.at(power, PowerWindow.MusterGain,
+      p1MusterGain), Vector(AppendedAutomaticUses.Named(p1,
+      VowOfBeastkin.id, vow)))

@@ -2,7 +2,8 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, RerollHost, Restriction, Waiver}
-import oathdigital.model.{Answered, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, OfferedReroll, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, LeafOperation, ProcedureRef, ReadyGame}
+import oathdigital.model.PowerResolution
+import oathdigital.model.{Answered, AutomaticUse, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, OfferedReroll, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, LeafOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -73,7 +74,8 @@ private[walker] object WalkerPowerGather:
             Option.when(found.nonEmpty)(PowerUseRules.shown(state,
               use.user, found, use.consent))
           }
-        val gathered = ContributionCollector.gather(w, powers.windowIndex, ctxFor)
+        val gathered = ContributionCollector.gather(w, powers.windowIndex,
+          ctxFor, power => deniedUse(powers)(power, ctxFor(power)))
         val folded = gathered.transforms.foldLeft(ops):
           case (acc, (powerId, transform)) =>
             transform.fn(ctxFor(byId(powerId)), acc)
@@ -194,6 +196,17 @@ private[walker] object WalkerPowerGather:
       found.map(forbid => Block(forbid.power, forbid.restriction.waiver,
         forbid.ctx)), first.ctx.state))
 
+  /** Whether `power`, automatic, is refused where `ctx` gathers it
+    * (catalog batch 8, slice 10). Only a power that states its use at a
+    * window is judged here: Keep. A wrapped power is judged at its
+    * `AutomaticUse` node, and a player-selected power at its pick. */
+  private def deniedUse(powers: WalkerPowers)(power: ContributingPower,
+      ctx: PowerCtx): Boolean =
+    powers.useRestrictions.nonEmpty &&
+      power.resolution == PowerResolution.Automatic &&
+      power.use(ctx).exists(use => PowerUseRules.refusals(ctx.state, use,
+        powers.useRestrictions).nonEmpty)
+
   /** The asks of a parked choose-one's options that its own window's option
     * restrictions bar (consent slice 4). The fold cannot search, so it marks
     * each such option unavailable with the first restriction's note; here an
@@ -213,7 +226,9 @@ private[walker] object WalkerPowerGather:
           PowerCtx(state, activePlayer, power.source, window, path, decide,
             procedure, answered)
         val forbids = forbidding(decide, ContributionCollector.gather(window,
-          powers.windowIndex, ctxFor).optionRestrictions, ctxFor, byId)
+          powers.windowIndex, ctxFor, power =>
+            deniedUse(powers)(power, ctxFor(power))).optionRestrictions,
+          ctxFor, byId)
         one.options.collect {
           case DecisionOption.Unavailable(option,
               OptionReason.Noted(power, _)) => (option.ref, power)
@@ -310,6 +325,8 @@ private[walker] object WalkerPowerGather:
           state, activePlayer, powers, path, branch.select(state,
             PendingTree(at = path, answered = answered)),
           state.game.current.walkerProcedure, answered)._1)
+        case use: AutomaticUse => descend(AutomaticUses.children(use, state,
+          PendingTree(at = path, answered = answered), powers))
         case _ => descend(applyWindow(node.window, node, state,
           activePlayer, powers, path, node.children,
           state.game.current.walkerProcedure, answered)._1)
@@ -318,7 +335,8 @@ private[walker] object WalkerPowerGather:
     val rejected = windows.flatMap:
       case (window, path, operation) =>
         val ctx = ctxFor(window, path, operation)
-        ContributionCollector.gather(window, powers.windowIndex, ctx).restrictions
+        ContributionCollector.gather(window, powers.windowIndex, ctx,
+            power => deniedUse(powers)(power, ctx(power))).restrictions
           .flatMap { case (powerId, restriction) =>
             val at = ctx(byId(powerId))
             restriction.fn(at, tree).filterNot(_ => waived(powerId,
@@ -328,7 +346,9 @@ private[walker] object WalkerPowerGather:
       case (window, path, decide: Decide) =>
         val ctx = ctxFor(window, path, decide)
         emptiedDecision(decide, ContributionCollector.gather(window,
-          powers.windowIndex, ctx).optionRestrictions, ctx, byId)
+          powers.windowIndex, ctx, power =>
+            deniedUse(powers)(power, ctx(power))).optionRestrictions, ctx,
+          byId)
       case _ => Vector.empty
     (rejected, emptied)
 
@@ -526,6 +546,9 @@ private[walker] object WalkerPowerGather:
           activePlayer, powers, path, selected, state.game.current.walkerProcedure,
           pending.answered, resuming = true)
         (folded, gathered)
+      case use: AutomaticUse =>
+        (AutomaticUses.children(use, state, pending.copy(at = path), powers),
+          gathered)
       case leaf: LeafOperation =>
         leaf.window match
           case Some(w) if !gathered.contains(w) =>

@@ -2,6 +2,8 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.PlacementFixture.cardPlayDecisionId
 import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
+  PowerUse, PowerUseRefusal, PowerUseRestriction}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.NoteText
@@ -13,6 +15,7 @@ import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   PlacementPicks, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as, present, rejected}
+import oathdigital.testkit.AppendedAutomaticUses
 
 class ConspiracyWhenPlayedSuite extends munit.FunSuite:
   import WhenPlayedHarness.assertJournalRebuilds
@@ -248,3 +251,40 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     val f = fromHand(p2Away)
     val done = Outcomes.finished(placedAs(f, PlayedAs.Faceup))
     assertEquals(seized(done.events), Vector.empty)
+
+  test("its seizure is an automatic use of the card's player, and the " +
+      "card's removal is not"):
+    val played = CardPlayedFaceup(VisionRules.Conspiracy,
+      RuleSourceRef.GameRule(ConspiracyWhenPlayed.id.value))
+    assertEquals(AppendedAutomaticUses.at(ConspiracyWhenPlayed,
+      PowerWindow.ActionCardPlayedFaceup, played), Vector(
+      AppendedAutomaticUses.Named(p1, ConspiracyWhenPlayed.id,
+        VisionRules.Conspiracy)))
+
+  /** A test power: refuses every use of Conspiracy, and nobody may waive
+    * it. */
+  private object RefusesConspiracy extends ContributingPower
+      with PowerUseRestriction:
+    val id: PowerId = PowerId("test.refuses-conspiracy")
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+    def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
+    override def powerUseRestrictions: Vector[PowerUseRestriction] =
+      Vector(this)
+    def refusal(ready: ReadyGame, use: PowerUse): Option[PowerUseRefusal] =
+      Option.when(use.power == ConspiracyWhenPlayed.id)(PowerUseRefusal(id,
+        PowerNote(PowerSourceRef.Card(conspiracy), "refused", Vector.empty),
+        OperationReason("test-refused", "no Conspiracy",
+          OperationReasonKind.Impossible)))
+
+  test("a refused Conspiracy takes nothing, but still leaves the game"):
+    val f = fromHand(p2AtAncientCity.relic(p2, crackedHorn, facedown = true))
+    val refusing = WalkerPowers(Vector(ConspiracyWhenPlayed,
+      RefusesConspiracy))
+    val placement = atPlacement(f)
+    val after = Outcomes.finished(ProcedureWalker.resolve(f.ready,
+      placement.tree, placement.at, Answered(placeId,
+        DecisionAnswer.ChooseOneAnswer(waying(f, placement,
+          PlayedAs.Faceup)), p1), refusing)).treeless
+    assert(Look(after).player(p2).relics.exists(_.id == crackedHorn))
+    assertEquals(after.game.current.temporaryHands(p1), Vector.empty)
+    assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))

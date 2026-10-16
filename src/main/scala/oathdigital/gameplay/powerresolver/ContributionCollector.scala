@@ -20,6 +20,8 @@ final case class GatheredContributions(
 /** Turns "which powers hook this window" into "which transforms, restrictions
   * and option restrictions apply, in what order" (spec decision 10, steps a-d; the
   * walker executes leaves and records the event -- steps e-f -- separately).
+  * Step 2b leaves out what a power `refused` here contributes, but its offers
+  * and rerolls (catalog batch 8, slice 10).
   *
   * Pure: reads only the `PowerCtx` values `ctxFor` produces and the index it
   * is handed. No state mutation, no catalog lookups, no walker imports.
@@ -29,7 +31,8 @@ object ContributionCollector:
   def gather(
       window: PowerWindow,
       index: PowerWindowIndex,
-      ctxFor: ContributingPower => PowerCtx
+      ctxFor: ContributingPower => PowerCtx,
+      refused: ContributingPower => Boolean = _ => false
   ): GatheredContributions =
     // Step 1: discovery -- the powers whose contributions declare this
     // window, with those contributions, from the index.
@@ -39,15 +42,28 @@ object ContributionCollector:
     val applicable = discovered.filter(hooked =>
       hooked.power.applicable(ctxFor(hooked.power)))
 
+    // Step 2b: use -- a power a power-use restriction refuses here keeps
+    // only its offers and rerolls, which its host withholds with the
+    // reason (catalog batch 8, slice 10). With none left it is not
+    // gathered.
+    val used = applicable.flatMap(hooked =>
+      if !refused(hooked.power) then Some(hooked)
+      else
+        val kept = hooked.contributions.filter {
+          case _: Offer | _: OfferReroll => true
+          case _ => false
+        }
+        Option.when(kept.nonEmpty)(hooked.copy(contributions = kept)))
+
     // Step 3: named ignore, one pass, no transitivity. Every applicable
     // power's votes are collected against the full applicable set before
     // any power is dropped, so a dropped power's votes still count.
-    val ignored: Set[PowerId] = applicable.flatMap { hooked =>
-      applicable.filter(other =>
+    val ignored: Set[PowerId] = used.flatMap { hooked =>
+      used.filter(other =>
         hooked.power.ignores(ctxFor(hooked.power), other.power))
         .map(_.power.id)
     }.toSet
-    val survivors = applicable.filterNot(hooked =>
+    val survivors = used.filterNot(hooked =>
       ignored.contains(hooked.power.id))
 
     // Step 4: deterministic order: by the earliest fold phase of each

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, Branch, Burn, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PayCost, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, LeafOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, TakeDeferred, WalkerEvent}
+import oathdigital.model.{Answered, AutomaticUse, Branch, Burn, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PayCost, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, LeafOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, TakeDeferred, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -288,6 +288,9 @@ object ProcedureWalker:
     node match
       case repeat: Repeat => walkRepeat(repeat, ctx, path, cursor, resume, hooks)
       case branch: Branch => walkBranch(branch, ctx, path, cursor, resume, hooks)
+      case use: AutomaticUse => walkFolded(None, use, AutomaticUses.children(
+        use, ctx.state, PendingTree(at = path, answered = ctx.answered),
+        ctx.powers), ctx, path, cursor, resume, hooks)
       case leaf: LeafOperation =>
         walkLeaf(leaf, ctx, path, cursor, resume, hooks)
       case EndWalk => Right(Ended(ctx))

@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
-  PowerCtx, Transform}
+  PowerCtx, PowerUse, Transform}
 import oathdigital.model._
 
 object KeepCard extends Denizen(DenizenId("5"), "Keep", Suit.Order) with SiteOnly:
@@ -51,6 +51,13 @@ case object KeepRule extends ContributingPower:
         placed(defender, site)))))
 
   override def applicable(ctx: PowerCtx): Boolean = kept(ctx.state).nonEmpty
+
+  /** The defender's use of Keep, which a power-use restriction judges where
+    * its window folds: it replaces the Raid's consequences, so it cannot sit
+    * in an `AutomaticUse` (catalog batch 8, slice 10). */
+  override def use(ctx: PowerCtx): Option[PowerUse] =
+    kept(ctx.state).map((defender, _) =>
+      PowerUse.automatic(defender, id, cardId))
 
   /** The Raid's defeated defender and Keep's site, when that defender rules
     * it. Both windows Keep folds come only after a Raid's victory, so the

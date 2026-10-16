@@ -118,3 +118,25 @@ class ContributionCollectorSuite extends munit.FunSuite:
       "power.late-high").map(PowerId(_))
     assertEquals(gathered.transforms.map(_._1), folded)
     assertEquals(gathered.order, folded)
+
+  test("a refused power keeps only its offers and rerolls"):
+    val offer = Offer(_ => None)
+    val reroll = OfferReroll(_ => None)
+    val refusedPower = fixturePower("power.refused", "a", Set(window),
+      Vector(Transform((_, ops) => ops), offer, reroll))
+    val gathered = ContributionCollector.gather(window,
+      PowerWindowIndex.of(Vector(refusedPower)), ctxFor(_, window),
+      refused = _.id == refusedPower.id)
+    assertEquals(gathered.transforms, Vector.empty)
+    assertEquals(gathered.offers, Vector(refusedPower.id -> offer))
+    assertEquals(gathered.rerolls, Vector(refusedPower.id -> reroll))
+    assertEquals(gathered.order, Vector(refusedPower.id))
+
+  test("a refused power with nothing to offer is not gathered"):
+    val refusedPower = fixturePower("power.refused", "a", Set(window),
+      Vector(Transform((_, ops) => ops)))
+    val gathered = ContributionCollector.gather(window,
+      PowerWindowIndex.of(Vector(refusedPower)), ctxFor(_, window),
+      refused = _ => true)
+    assertEquals(gathered.order, Vector.empty[PowerId])
+    assertEquals(gathered.transforms, Vector.empty)

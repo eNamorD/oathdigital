@@ -6,6 +6,7 @@ import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
   PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.AppendedAutomaticUses
 
 class TyrantSuite extends munit.FunSuite:
   import PowerFixture._
@@ -59,3 +60,16 @@ class TyrantSuite extends munit.FunSuite:
       assert(!PhasePowerHarness.ops(done.events).exists(_.isInstanceOf[Kill]))
       assertEquals(said(done.events), Vector.empty)
     }
+
+  /** p2's pawn moving from Ancient City to Deep Woods in a travel's cost
+    * node, folded with p1 acting. */
+  private val p2Travels: Operation = Sequence(Vector[Operation](Move(
+    Piece.Pawn(Table.p2), PositionedLocation(Location.Site(
+      CatalogNames.site("Ancient City"))), PositionedLocation(Location.Site(
+      CatalogNames.site("Deep Woods"))))), Some(PowerWindow.TravelCost))
+
+  test("its kill is an automatic use of the traveller's, judged where it " +
+      "runs"):
+    assertEquals(AppendedAutomaticUses.at(Tyrant, PowerWindow.TravelCost,
+      p2Travels), Vector(AppendedAutomaticUses.Named(Table.p2, Tyrant.id,
+      Tyrant.cardId)))

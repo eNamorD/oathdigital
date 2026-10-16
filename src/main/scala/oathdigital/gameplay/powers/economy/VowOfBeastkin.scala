@@ -24,8 +24,8 @@ object VowOfBeastkinCard extends Denizen(DenizenId("196"), "Vow of Beastkin", Su
   * refused. The Vow is itself a faceup Beast adviser, so a Beast card always
   * qualifies. The hidden sources write no line.
   *
-  * The extra warband joins the Muster's own gain, and the line follows that
-  * gain at once ([[ExtraWarbands]]): "Gained {n} more warband." An empty
+  * The extra warband is its own gain after the Muster's, with its line
+  * ([[ExtraWarbands]]): "Gained {n} more warband." An empty
   * warband bank writes nothing. The catalog marks the power
   * `persistent: false`, but it is a must, so it keeps the default automatic
   * resolution.
@@ -41,7 +41,7 @@ final case class VowOfBeastkin private (catalog: ExecutableCatalog)
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterSourceSelection -> Vector(OptionRestriction(refused)),
     PowerWindow.MusterGain -> Vector(Transform((ctx, operations) =>
-      ExtraWarbands.added(ctx, id, cardId, VowOfBeastkin.Warbands,
+      ExtraWarbands.appended(ctx, id, cardId, VowOfBeastkin.Warbands,
         operations))))
 
   override def applicable(ctx: PowerCtx): Boolean =

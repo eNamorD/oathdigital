@@ -155,6 +155,16 @@ final case class Branch(select: (ReadyGame, PendingTree) => Vector[Operation])
     extends Operation:
   override val children: Vector[Operation] = Vector.empty
 
+/** An automatic power's effect, judged where the walk reaches it (catalog
+  * batch 8, slice 10): the walker runs `effect` when no power-use
+  * restriction refuses `user` using `power` from `card`, and nothing
+  * otherwise. Like a `Branch`, it has no static children: a resume cursor
+  * addresses the vector the walker resolved. The engine judges it without
+  * naming the power. */
+final case class AutomaticUse(user: PlayerId, power: PowerId, card: CardId,
+    effect: (ReadyGame, PendingTree) => Vector[Operation]) extends Operation:
+  override val children: Vector[Operation] = Vector.empty
+
 /** Runs `children` in order. The walker's sequence composite; `Repeat`,
   * `Sequence`, and `Branch` are the composites the walker consumes this slice.
   */

@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Branch, BuildOps, CoreOperation, Operation,
-  PendingTree, LeafOperation, ReadyGame, Repeat, RewritableComposite,
-  Sequence}
+import oathdigital.model.{AutomaticUse, Branch, BuildOps, CoreOperation,
+  Operation, PendingTree, LeafOperation, ReadyGame, Repeat,
+  RewritableComposite, Sequence}
 
 /** Finds the operations a window's children hold by what they are, and
   * replaces them (operation rewrite design). A transform calls it on its
@@ -84,6 +84,8 @@ object OperationRewrite:
             (same: CoreOperation) => Vector(same)))))
       case branch: Branch => Branch((now, answers) =>
         branch.select(now, answers).map(at(now, answers)))
+      case use: AutomaticUse => use.copy(effect = (now, answers) =>
+        use.effect(now, answers).map(at(now, answers)))
       case sequence: Sequence =>
         sequence.copy(children = sequence.children.map(at(ready, pending)))
       case repeat: Repeat =>
@@ -107,6 +109,10 @@ object OperationRewrite:
         matcher(ready, pending).lift(branch).fold[Operation](
           Branch((now, answers) =>
             branch.select(now, answers).map(at(now, answers))))(placed)
+      case use: AutomaticUse =>
+        matcher(ready, pending).lift(use).fold[Operation](
+          use.copy(effect = (now, answers) =>
+            use.effect(now, answers).map(at(now, answers))))(placed)
       case composite: RewritableComposite =>
         matcher(ready, pending).lift(composite).fold[Operation](
           composite.rewritten(at(ready, pending)))(placed)

@@ -5,7 +5,9 @@ import oathdigital.model._
 
 /** A When Played power of one denizen. When that card is played, `effect`'s
   * operations run after whatever other powers contributed at the
-  * card-played window.
+  * card-played window, inside an `AutomaticUse` the walker judges when it
+  * reaches it: a power-use restriction may refuse the card's player the
+  * effect (catalog batch 8, slice 10).
   *
   * `effect` is called on every fold, and the walker folds again on every
   * command, so it must be a pure function of the state in `ctx`. Anything
@@ -31,4 +33,5 @@ trait WhenPlayedPower extends ContributingPower:
 
   final def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
-      children ++ effect(ctx))))
+      children :+ AutomaticUse(ctx.activePlayer, id, cardId,
+        (_, _) => effect(ctx)))))
