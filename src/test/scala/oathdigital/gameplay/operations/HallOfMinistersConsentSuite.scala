@@ -87,6 +87,15 @@ class HallOfMinistersConsentSuite extends munit.FunSuite:
     assertEquals(errandBoyRow(refused).state, "unavailable")
     assert(continueOffered(refused))
 
+  test("with every candidate protected, a grant opens the card and Continue " +
+      "goes"):
+    val t = accepted(use(remembering(guarded(beside = false),
+      ConsentAnswer.Granted), power, source))
+    assert(awaits(t, RovingTerror.decisionId))
+    assertEquals(errandBoyRow(t).state, "available")
+    assert(!queryOf(t, p1).toVector.flatMap(_.offeredOptions)
+      .exists(_.id == Decide.Pass.wireId))
+
   test("the Hall's own ruler takes the card freely"):
     val t = accepted(use(guarded(_.warbandsAt(woods, p1, 1)), power, source))
     assertEquals(errandBoyRow(t).state, "available")
