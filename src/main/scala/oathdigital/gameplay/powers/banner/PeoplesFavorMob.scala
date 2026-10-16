@@ -15,7 +15,7 @@ import oathdigital.model._
   * decide which cards may go (an intact edifice and a locked card may not).
   * A full site that would refuse the play accepts it with a discard.
   *
-  * Its line, "{Red} may discard a card at their site first.", travels in the
+  * Its line, "May discard a card at {site} first.", travels in the
   * permission, and card play writes it for the discard it allowed.
   */
 object PeoplesFavorMob extends ContributingPower:
@@ -35,12 +35,10 @@ object PeoplesFavorMob extends ContributingPower:
     Map(PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
       ctx.operation match {
         case tree: CardPlayProcedure.PlacementTree =>
-          tree.adjust(children)(_.permitSiteDiscard(permission(ctx.activePlayer)))
+          tree.adjust(children)(_.permitSiteDiscard(permission))
         case _ => children
       })))
 
   /** One discard of any site card, credited with the Mob's line. */
-  private def permission(actor: PlayerId): DiscardPermission =
-    DiscardPermission(id, Note(id, _ => Some(
-      CardPlayRules.discardFirst(PowerSourceRef.Banner(Banner.PeoplesFavor),
-        NoteArg.Player(actor)))))
+  private def permission: DiscardPermission =
+    DiscardPermission.lined(id, PowerSourceRef.Banner(Banner.PeoplesFavor))

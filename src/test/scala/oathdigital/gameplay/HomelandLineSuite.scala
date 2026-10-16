@@ -43,7 +43,7 @@ class HomelandLineSuite extends munit.FunSuite:
 
   /** The Homeland's line: the actor may discard a site card first. */
   private val discardFirstLine = Vector(NoteText.Said("discard-first",
-    s"${actor.value} may discard a card at their site first.", covers = false))
+    s"May discard a card at ${homeSite.value} first.", covers = false))
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(RuleNotes.homelandDiscard, Vector(CardPlayRules.discardFirst),

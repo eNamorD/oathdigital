@@ -245,3 +245,24 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     assertEquals(dottedId, s"cardplay.place.vision.${dotted.value}")
     assertEquals(CardPlayProcedure.placedCard(pendingFor(dottedId)),
       Some(dotted))
+
+  test("a Replace at another site asks its follow-up over that site's " +
+      "cards"):
+    val woods = CatalogNames.site("Deep Woods")
+    val opensWoods = rulePower("test.opens-woods")(_
+      .openSites(PlacementFixture.opening(woods))
+      .permitSiteDiscard(testPermission).permitSiteDiscard(testPermission))
+    val ready = others.foldLeft(atHome.hand(actor, card))(
+      _.denizen(_, at = woods)).ready
+    val parked = parkOnPlacement(ready, WalkerPowers(Vector(opensWoods)))
+    val asked = Outcomes.parked(parked.place(
+      DecisionOptionRef.SiteSlot(woods, 0)))
+    val more = present(ProcedureWalker.parkedDecide(parked.ready,
+      parked.tree, asked.tree, parked.powers), "the follow-up")
+    assertEquals(more.decisionId, discardId)
+    val done = Outcomes.finished(parked.resolve(asked.tree, discardId,
+      DecisionAnswer.ChooseManyAnswer(Vector(
+        DecisionOptionRef.Denizen(others(1))))))
+    assertEquals(Look(done.treeless).cardsAt(woods),
+      Vector[CardId](others(2), card))
+    assertEquals(Look(done.treeless).cardsAt(home), Vector.empty[CardId])

@@ -204,7 +204,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite,
       homesteaders))
     assertEquals(mobSaid(done.events), Vector(NoteText.Said("discard-first",
-      s"${actor.value} may discard a card at their site first.", covers = false)))
+      s"May discard a card at ${ancientCity.value} first.", covers = false)))
 
   test("a play to the empty slot writes no Mob line"):
     val asked = toPlacement(searchAtAncientCityHolding(Vector(homesteaders)))

@@ -305,11 +305,11 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
           way <- CardPlayProcedure.playedAs(ref)
           before <- journal.readyBefore(at)
           after <- journal.readyAfter(at)
-        yield played(card, way, before, after, run.actor, viewer)).toVector
+        yield played(card, way, ref, before, after, viewer)).toVector
       case _ => Vector.empty
 
-  private def played(card: CardId, way: PlayedAs, before: ReadyGame,
-      after: ReadyGame, actor: PlayerId, viewer: Option[PlayerId]): Posted =
+  private def played(card: CardId, way: PlayedAs, ref: DecisionOptionRef,
+      before: ReadyGame, after: ReadyGame, viewer: Option[PlayerId]): Posted =
     val named = words.one(words.card(card, before, after, viewer))
     way match
       // Named with its pile, as every other discard line is.
@@ -320,7 +320,7 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
               Text(s" to the ${region.key.capitalize} discard")
           }.toVector)
       case PlayedAs.AtSite => action(Vector(Text("Played ")) ++ named ++
-        LogJournal.pawnSite(before, actor).toVector.flatMap(site =>
+        CardPlayProcedure.siteOf(ref).toVector.flatMap(site =>
           Vector(Text(" to "), words.site(site))))
       // A Vision played faceup takes the revealed Vision slot, not an
       // adviser's.

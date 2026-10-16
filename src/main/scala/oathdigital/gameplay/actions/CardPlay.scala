@@ -12,9 +12,11 @@ import oathdigital.model._
   * site discard permissions and the adviser limits. This refuses only what no
   * rule changes: a Vision or an adviser-only card at a site, a site-only card
   * faceup, a facedown adviser played facedown or replacing an adviser, a full
-  * site with nothing discarded, and a discard of a card that is not there. It
-  * plans the rest as core operations: the play, its favor, and every card it
-  * discards.
+  * site with nothing discarded, and a discard or bury of a card that is not
+  * at the site played to. It plans the rest as core operations: the play,
+  * its favor, and every card it discards or buries. A site card discarded
+  * in a play goes to the pile after the site's region; a play-area card to
+  * the pile after the pawn's.
   */
 object CardPlay:
   enum Origin { case FacedownAdviser, TemporaryHand }
@@ -30,32 +32,44 @@ object CardPlay:
       .flatMap(ready.game.current.map.regionOf).map(nextRegion)
 
   /** The operations of playing `card` from `origin` to `placement`, which
-    * also discards `more` from the actor's site. Site discards run first,
-    * then play-area discards, then the play, so the played card can take a
-    * slot they free; the favor comes last.
+    * also discards `more` from the site played to and buries `buried`
+    * there: the replaced card, or another card or relic at the site. Site
+    * removals run first, then play-area discards, then the play, so the
+    * played card can take a slot they free; the favor comes last.
     */
   def operations(catalog: ExecutableCatalog, ready: ReadyGame,
       playerId: PlayerId, card: WorldCardId, placement: SearchPlacement,
-      origin: Origin, more: Vector[CardId] = Vector.empty)
+      origin: Origin, more: Vector[CardId] = Vector.empty,
+      buried: Option[CardId] = None)
       : Either[OathViolation, Vector[CoreOperation]] = for
     player <- ready.game.current.players.find(_.player == playerId)
       .toRight(InvalidSearchPlacement("player is not in the game"))
     _ <- validateOrigin(player, card, origin)
     plan <- plan(catalog, ready, player, card, placement, origin)
-    extra <- atSite(ready, player, more)
-    _ <- Either.cond(!extra.exists(plan.siteDiscards.contains), (),
-      InvalidSearchPlacement("a site card is discarded twice"))
+    site = placement match
+      case SearchPlacement.Site(at, _) => Some(at)
+      case _ => None
+    extra <- rowAt(ready, site, more)
+    _ <- Either.cond(!extra.exists(e => plan.fromSite.exists(_.card ==
+      e.card)), (), InvalidSearchPlacement("a site card is discarded twice"))
+    bury <- buried.filterNot(id => plan.fromSite.exists(_.card == id))
+      .fold[Either[OathViolation, Option[Removed]]](Right(None))(id =>
+        buryableAt(ready, site, id).map(Some(_)))
+    _ <- Either.cond(!bury.exists(b => extra.exists(_.card == b.card)), (),
+      InvalidSearchPlacement("a site card is both discarded and buried"))
+    removed = plan.fromSite.map(r =>
+      if buried.contains(r.card) then r.copy(buried = true) else r) ++
+      extra ++ bury.toVector
     operations <- operationsOf(catalog, ready, player, card, placement,
-      origin, plan.copy(siteDiscards = plan.siteDiscards ++ extra))
+      origin, plan.copy(fromSite = removed))
   yield operations
 
   def playedSource(ready: ReadyGame, playerId: PlayerId, card: WorldCardId,
       placement: SearchPlacement): Option[RuleSourceRef] = placement match
     case SearchPlacement.Adviser(Orientation.FaceUp, _) =>
       Some(RuleSourceRef.Adviser(playerId, card))
-    case SearchPlacement.Site(_) => ready.game.current.players
-      .find(_.player == playerId).flatMap(_.pawnSite)
-      .map(RuleSourceRef.SiteCard(_, card))
+    case SearchPlacement.Site(site, _) =>
+      Some(RuleSourceRef.SiteCard(site, card))
     case _ => None
 
   private def keptSource(origin: Origin, player: PlayerId): PositionedLocation =
@@ -77,10 +91,15 @@ object CardPlay:
 
   /** What one play moves: the card it keeps in play, the favor it gains, the
     * play-area cards it discards (a replaced adviser, or the revealed Vision a
-    * new one displaces) and the site cards it discards. */
+    * new one displaces) and the cards it removes from the site played to. */
   private final case class PlacementPlan(kept: Option[CoreOperation],
       favor: Vector[CoreOperation], fromPlayArea: Vector[WorldCardId],
-      siteDiscards: Vector[SiteDenizenState])
+      fromSite: Vector[Removed])
+
+  /** A card at the play's site the play removes first, with what it
+    * carries: discarded, or buried when `buried`. */
+  private final case class Removed(card: CardId, tokens: Tokens,
+      buried: Boolean)
 
   private val nothing =
     PlacementPlan(None, Vector.empty, Vector.empty, Vector.empty)
@@ -89,7 +108,7 @@ object CardPlay:
       player: PlayerState, card: WorldCardId, placement: SearchPlacement,
       origin: Origin): Either[OathViolation, PlacementPlan] = placement match
     case SearchPlacement.Discard => Right(nothing)
-    case SearchPlacement.Site(replace) => card match
+    case SearchPlacement.Site(siteId, replace) => card match
       case _: VisionId =>
         Left(InvalidSearchPlacement("Visions cannot be played to sites"))
       case id: DenizenId =>
@@ -98,10 +117,10 @@ object CardPlay:
           _ <- Either.cond(!definition.isInstanceOf[AdviserOnly], (),
             InvalidSearchPlacement(
               "adviser-only card cannot be played to a site"))
-          siteId <- player.pawnSite.toRight(PawnSiteMissing(player.player))
           site <- ready.game.current.map.sites.get(siteId)
-            .toRight(InvalidSearchPlacement("pawn site is not in play"))
-          replaced <- atSite(ready, player, replace.toVector)
+            .filter(_ => ready.game.current.map.inPlay.contains(siteId))
+            .toRight(InvalidSearchPlacement("the site is not in play"))
+          replaced <- rowAt(ready, Some(siteId), replace.toVector)
           capacity = catalog.site(siteId).map(_.capacity).getOrElse(0)
           _ <- Either.cond(site.denizens.size - replaced.size < capacity, (),
             InvalidSearchPlacement("a full site requires a site-card discard"))
@@ -127,7 +146,7 @@ object CardPlay:
 
   private def sitePlan(ready: ReadyGame, origin: Origin, player: PlayerState,
       id: DenizenId, siteId: SiteId, suit: Suit,
-      replaced: Vector[SiteDenizenState]): PlacementPlan =
+      replaced: Vector[Removed]): PlacementPlan =
     val kept = Some(Play(id, keptSource(origin, player.player),
       Location.Site(siteId), Orientation.FaceUp, required = true))
     val gain = LimitedResource.clamp(ready.banks.favor.getOrElse(suit, 0), 1)
@@ -185,18 +204,35 @@ object CardPlay:
             "replacement adviser is not a world card")))
     }
 
-  /** The cards `ids` names at the actor's site, in that order, each once. */
-  private def atSite(ready: ReadyGame, player: PlayerState, ids: Vector[CardId])
-      : Either[OathViolation, Vector[SiteDenizenState]] =
-    val held = player.pawnSite.flatMap(ready.game.current.map.sites.get)
-      .fold(Vector.empty[SiteDenizenState])(_.denizens)
-    ids.foldLeft[Either[OathViolation, Vector[SiteDenizenState]]](
-        Right(Vector.empty)) { (found, id) =>
-      found.flatMap(cards => held.find(_.id == id).filterNot(cards.contains)
-        .toRight(InvalidSearchPlacement(
-          "a discarded card is not at the site, or is named twice"))
-        .map(cards :+ _))
-    }
+  /** The cards `ids` names in `site`'s row, in that order, each once, to
+    * be discarded. With no site, nothing may be named. */
+  private def rowAt(ready: ReadyGame, site: Option[SiteId],
+      ids: Vector[CardId]): Either[OathViolation, Vector[Removed]] =
+    site match
+      case None => Either.cond(ids.isEmpty, Vector.empty,
+        InvalidSearchPlacement("nothing to discard: the play is not to a " +
+          "site"))
+      case Some(at) =>
+        val held = ready.game.current.map.sites.get(at)
+          .fold(Vector.empty[SiteDenizenState])(_.denizens)
+        ids.foldLeft[Either[OathViolation, Vector[Removed]]](
+            Right(Vector.empty)) { (found, id) =>
+          found.flatMap(cards => held.find(_.id == id)
+            .filterNot(c => cards.exists(_.card == c.id))
+            .toRight(InvalidSearchPlacement(
+              "a discarded card is not at the site, or is named twice"))
+            .map(c => cards :+ Removed(c.id, c.tokens, buried = false)))
+        }
+
+  /** The card `id` names at `site`, a row card or a relic there, to be
+    * buried. */
+  private def buryableAt(ready: ReadyGame, site: Option[SiteId], id: CardId)
+      : Either[OathViolation, Removed] =
+    val state = site.flatMap(ready.game.current.map.sites.get)
+    state.flatMap(at => at.denizens.find(_.id == id).map(_.tokens)
+      .orElse(at.relics.find(_.id == id).map(_.tokens)))
+      .map(Removed(id, _, buried = true))
+      .toRight(InvalidSearchPlacement("a buried card is not at the site"))
 
   private def operationsOf(catalog: ExecutableCatalog, ready: ReadyGame,
       player: PlayerState, card: WorldCardId, placement: SearchPlacement,
@@ -205,38 +241,58 @@ object CardPlay:
     val playArea = PositionedLocation(Location.PlayArea(player.player))
     val played = if placement == SearchPlacement.Discard then
       Vector(card -> keptSource(origin, player.player)) else Vector.empty
+    val target = placement match
+      case SearchPlacement.Site(at, _) => Some(at)
+      case _ => None
     for
-      siteId <- player.pawnSite.toRight(PawnSiteMissing(player.player))
-      region <- ready.game.current.map.regionOf(siteId).map(nextRegion)
+      pawnSite <- player.pawnSite.toRight(PawnSiteMissing(player.player))
+      region <- ready.game.current.map.regionOf(pawnSite).map(nextRegion)
         .toRight(InvalidSearchPlacement("pawn site is not in play"))
-      site = PositionedLocation(Location.Site(siteId))
-      fromSite <- each(plan.siteDiscards)(
-        siteDiscard(catalog, player.player, site, region))
+      fromSite <- target.fold[Either[OathViolation, Vector[CoreOperation]]](
+          Right(Vector.empty)) { siteId =>
+        for
+          pile <- ready.game.current.map.regionOf(siteId).map(nextRegion)
+            .toRight(InvalidSearchPlacement("the site is not in play"))
+          removed <- each(plan.fromSite)(removal(catalog, player.player,
+            PositionedLocation(Location.Site(siteId)), pile))
+        yield removed.flatten
+      }
       fromPlay <- each(plan.fromPlayArea.map(_ -> playArea) ++ played) {
         (id, from) => selectedDiscard(catalog, ready, player.player, id, from,
           region)
       }
     yield fromSite ++ fromPlay ++ plan.kept.toVector ++ plan.favor
 
-  private def each[A](items: Vector[A])(
-      discard: A => Either[OathViolation, CoreOperation])
-      : Either[OathViolation, Vector[CoreOperation]] =
-    items.foldLeft[Either[OathViolation, Vector[CoreOperation]]](
+  private def each[A, B](items: Vector[A])(
+      f: A => Either[OathViolation, B]): Either[OathViolation, Vector[B]] =
+    items.foldLeft[Either[OathViolation, Vector[B]]](
       Right(Vector.empty))((done, item) =>
-      done.flatMap(operations => discard(item).map(operations :+ _)))
+      done.flatMap(operations => f(item).map(operations :+ _)))
 
-  /** A site card's discard: a denizen to `region`'s pile with its tokens
-    * returned, an edifice back to the edifice deck. */
-  private def siteDiscard(catalog: ExecutableCatalog, actor: PlayerId,
-      site: PositionedLocation, region: Region)(card: SiteDenizenState)
-      : Either[OathViolation, CoreOperation] =
-    suitOf(catalog, card.id).map(suit => card match
-      case denizen: DenizenState => Discard.Denizen(denizen.id, site, region,
-        suit, denizen.tokens.favor, denizen.tokens.secrets, actor,
-        required = true)
-      case edifice: EdificeState => Discard.RuinedEdifice(edifice.id, site,
-        suit, edifice.tokens.favor, edifice.tokens.secrets, actor,
-        required = true))
+  /** A card the play removes from `from`, `site`'s row or relics: a row
+    * card discarded to `region`'s pile with its tokens returned (a ruined
+    * edifice back to its deck), or any card there buried with them
+    * returned. */
+  private def removal(catalog: ExecutableCatalog, actor: PlayerId,
+      from: PositionedLocation, region: Region)(removed: Removed)
+      : Either[OathViolation, Vector[CoreOperation]] =
+    val Removed(card, tokens, buried) = removed
+    if buried then buryable(card).map(target => Bury.standard(target, from,
+      catalog.suitOf(card), tokens.favor, tokens.secrets, actor))
+    else suitOf(catalog, card).flatMap(suit => card match
+      case id: DenizenId => Right(Vector(Discard.Denizen(id, from, region,
+        suit, tokens.favor, tokens.secrets, actor, required = true)))
+      case id: EdificeId => Right(Vector(Discard.RuinedEdifice(id, from,
+        suit, tokens.favor, tokens.secrets, actor, required = true)))
+      case _ => Left(InvalidSearchPlacement(
+        "only a card of the site's row is discarded")))
+
+  private def buryable(card: CardId): Either[OathViolation, BuryableCard] =
+    card match
+      case id: DenizenId => Right(BuryableCard.Denizen(id))
+      case id: EdificeId => Right(BuryableCard.Edifice(id))
+      case id: RelicId => Right(BuryableCard.Relic(id))
+      case _ => Left(InvalidSearchPlacement("the card cannot be buried"))
 
   private def suitOf(catalog: ExecutableCatalog, id: CardId)
       : Either[OathViolation, Suit] =

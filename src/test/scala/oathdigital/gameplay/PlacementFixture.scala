@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission}
+import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission,
+  PlaySites}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -29,10 +30,14 @@ object PlacementFixture:
             case _ => ops
           })))
 
-  /** A plain site discard permission named `name`, of any card, whose line
-    * says nothing. */
-  def plainPermission(name: String): DiscardPermission = DiscardPermission(
-    PowerId(name), Note(PowerId(name), _ => None))
+  /** A plain site discard permission named `name`, of any card at any
+    * site, whose line says nothing. */
+  def plainPermission(name: String): DiscardPermission =
+    val note = Note(PowerId(name), _ => None)
+    DiscardPermission(PowerId(name), _ => note)
+
+  /** Leave to play to `site` as well as the pawn site. */
+  def opening(site: SiteId): PlaySites = PlaySites((_, at) => at == site)
 
   /** A plain site discard permission, of any card, whose line says nothing. */
   val testPermission: DiscardPermission = plainPermission("test.discard-first")

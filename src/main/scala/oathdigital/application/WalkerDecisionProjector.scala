@@ -553,9 +553,8 @@ private[application] final class WalkerDecisionProjector(
       if decisionId.startsWith("cardplay.place.") then
         played.map(card => s"Play ${card.name}")
       else if decisionId.startsWith("cardplay.discard.") then
-        viewer.flatMap(player => ready.game.current.players
-          .find(_.player == player)).flatMap(_.pawnSite).map(site =>
-            s"Discard more cards from ${presentation.siteLabel(site)}")
+        followUpSite(ready, projected).map(site =>
+          s"Discard more cards from ${presentation.siteLabel(site)}")
       else None
     heading.fold(query)(text => query match
       case one: DecisionQueryProjection.ChooseOne =>
@@ -563,6 +562,21 @@ private[application] final class WalkerDecisionProjector(
       case many: DecisionQueryProjection.ChooseMany =>
         many.copy(heading = Some(text))
       case other => other)
+
+  /** The site a card play's follow-up is about: the site holding the cards
+    * it offers, its locked card among them. */
+  private def followUpSite(ready: ReadyGame,
+      query: DecisionQueryProjection): Option[SiteId] =
+    val rows = query match
+      case many: DecisionQueryProjection.ChooseMany => many.options
+      case _ => Vector.empty
+    rows.iterator.flatMap(row =>
+      DecisionOptionRef.fromWire(row.kind, row.id).flatMap {
+        case DecisionOptionRef.SiteRelicSlot(site, _) => Some(site)
+        case _ => ready.game.current.map.sites.collectFirst {
+          case (site, state)
+              if state.denizens.exists(_.id.value == row.id) => site }
+      }).nextOption()
 
   /** A card play's Replace options as the board's summary reads them:
     * "Discard {replaced}; play {played} here", with the facing after an

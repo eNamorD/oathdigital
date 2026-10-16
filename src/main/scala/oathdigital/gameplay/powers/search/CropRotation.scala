@@ -25,7 +25,7 @@ object CropRotationCard extends Denizen(DenizenId("128"), "Crop Rotation", Suit.
   * an intact edifice is locked, and Crop Rotation itself, being selected, is
   * refused by the active-modifier restriction.
   *
-  * Its line, "{Red} may discard a card at their site first.", travels in the
+  * Its line, "May discard a card at {site} first.", travels in the
   * permission, and card play writes it for the discard it allowed.
   */
 final case class CropRotation private (catalog: ExecutableCatalog)
@@ -41,16 +41,14 @@ final case class CropRotation private (catalog: ExecutableCatalog)
     PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
       ctx.operation match {
         case tree: CardPlayProcedure.PlacementTree =>
-          tree.adjust(children)(_.permitSiteDiscard(permission(ctx.activePlayer)))
+          tree.adjust(children)(_.permitSiteDiscard(permission))
         case _ => children
       })))
 
   /** One discard of a site card, credited with Crop Rotation's line. An
     * edifice is a denizen for placement, so a ruined one may go. */
-  private def permission(actor: PlayerId): DiscardPermission =
-    DiscardPermission(id, Note(id, _ => Some(
-      CardPlayRules.discardFirst(PowerSourceRef.Card(cardId),
-        NoteArg.Player(actor)))))
+  private def permission: DiscardPermission =
+    DiscardPermission.lined(id, PowerSourceRef.Card(cardId))
 
 object CropRotation:
   val id: PowerId = CropRotationCard.power.id

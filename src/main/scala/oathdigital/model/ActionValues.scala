@@ -52,7 +52,10 @@ object SearchSource:
 sealed trait SearchPlacement extends Product with Serializable
 object SearchPlacement:
   case object Discard extends SearchPlacement
-  final case class Site(replace: Option[CardId]) extends SearchPlacement
+  /** A play to `site`'s row, discarding `replace` there first to make
+    * room when it names a card. */
+  final case class Site(site: SiteId, replace: Option[CardId])
+      extends SearchPlacement
   final case class Adviser(
       orientation: Orientation,
       replace: Option[CardId]

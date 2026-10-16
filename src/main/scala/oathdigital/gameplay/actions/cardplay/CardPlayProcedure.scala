@@ -39,10 +39,18 @@ object CardPlayProcedure:
   def playedAs(ref: DecisionOptionRef): Option[PlayedAs] = ref match
     case _: DecisionOptionRef.DiscardPile => Some(PlayedAs.Discarded)
     case _: DecisionOptionRef.SiteSlot => Some(PlayedAs.AtSite)
+    case _: DecisionOptionRef.SiteRelicSlot => Some(PlayedAs.AtSite)
     case DecisionOptionRef.AdviserPlay(_, _, faceup) =>
       Some(if faceup then PlayedAs.Faceup else PlayedAs.Facedown)
     case _: DecisionOptionRef.RevealedVision | CardSlots.play =>
       Some(PlayedAs.Faceup)
+    case _ => None
+
+  /** The site a placement option plays the card to, for a site slot or a
+    * site relic's bury. */
+  def siteOf(ref: DecisionOptionRef): Option[SiteId] = ref match
+    case DecisionOptionRef.SiteSlot(site, _) => Some(site)
+    case DecisionOptionRef.SiteRelicSlot(site, _) => Some(site)
     case _ => None
 
   /** The facedown-adviser play's first decision: which facedown adviser to
@@ -260,8 +268,8 @@ object CardPlayProcedure:
       rules: CardPlayRules, slot: CardSlot, picked: Vector[CardId])
       : Vector[Operation] =
     val followUp: Operation = CardSlots.moreDiscards(catalog, ready, actor,
-      card, from, rules, slot, picked).fold[Operation](noFollowUp)(offer =>
-      Decide(discardDecisionId(card), actor,
+      card, from, rules, slot, picked = picked).fold[Operation](noFollowUp)(
+      offer => Decide(discardDecisionId(card), actor,
         DecisionQuery.ChooseMany(0, offer.most, offer.options,
           heading = Some("Discard more cards from the site"),
           locked = Vector(offer.locked),
@@ -280,8 +288,10 @@ object CardPlayProcedure:
       }.getOrElse(Vector.empty)
       val apply = BuildOps((state, _) => CardPlay.operations(catalog, state,
         actor, card, slot.placement, from, extra))
-      CardSlots.credits(catalog, ready, actor, card, rules,
-          slot.replacedAtSite.toVector ++ extra) match
+      val credited = slot.site.fold[Either[OathViolation, Vector[Note]]](
+        Right(Vector.empty))(site => CardSlots.credits(catalog, ready, actor,
+        card, site, rules, slot.replacedAtSite.toVector ++ extra))
+      credited match
         case Left(error) => Vector(Sequence(Vector.empty),
           BuildOps((_, _) => Left(error)))
         case Right(notes) => Vector(Sequence(notes), apply)
@@ -296,7 +306,9 @@ object CardPlayProcedure:
     * starts past the decisions and the play, so neither runs again. */
   private def settled(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
       ref: DecisionOptionRef): Vector[Operation] =
-    playedAs(ref).map(placementOf).toVector.flatMap { placement =>
+    playedAs(ref).flatMap(way => siteOf(ref)
+        .map(SearchPlacement.Site(_, None)).orElse(placementOf(way)))
+        .toVector.flatMap { placement =>
       // The play's shape as `played` built it, lines then play, so a path
       // into a follow-up after the play finds it.
       val play = Sequence(Vector(Sequence(Vector.empty),
@@ -305,11 +317,15 @@ object CardPlayProcedure:
       Vector(noFollowUp, play) ++ hook(ready, actor, card, placement)
     }
 
-  private def placementOf(way: PlayedAs): SearchPlacement = way match
-    case PlayedAs.Discarded => SearchPlacement.Discard
-    case PlayedAs.AtSite => SearchPlacement.Site(None)
-    case PlayedAs.Faceup => SearchPlacement.Adviser(Orientation.FaceUp, None)
-    case PlayedAs.Facedown => SearchPlacement.Adviser(Orientation.FaceDown, None)
+  /** The placement a way of playing names on its own. A play at a site
+    * names its site only in its ref (`siteOf`). */
+  private def placementOf(way: PlayedAs): Option[SearchPlacement] = way match
+    case PlayedAs.Discarded => Some(SearchPlacement.Discard)
+    case PlayedAs.AtSite => None
+    case PlayedAs.Faceup =>
+      Some(SearchPlacement.Adviser(Orientation.FaceUp, None))
+    case PlayedAs.Facedown =>
+      Some(SearchPlacement.Adviser(Orientation.FaceDown, None))
 
   private def hook(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
       placement: SearchPlacement): Vector[Operation] = placement match
