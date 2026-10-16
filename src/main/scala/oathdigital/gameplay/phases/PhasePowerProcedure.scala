@@ -2,9 +2,10 @@ package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{IndexedRuleSource, PowerAccess, RuleSourceIndex}
-import oathdigital.gameplay.operations.Costs
+import oathdigital.gameplay.operations.{Costs, PowerUseRules}
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
+import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers, PowerUse,
+  PowerUseRefusal, PowerUseRestriction}
 import oathdigital.model._
 
 /** Use Power (rest-walker spec, Phase powers).
@@ -58,8 +59,27 @@ object PhasePowerProcedure:
       case other => Left(InvalidEventOrder(
         s"${power.id.value} cannot charge a cost to $other"))
 
+  /** The power-use refusals `player`'s use of `power` from `source` meets
+    * (catalog batch 8, slice 10). The phase menu is never inside a
+    * Campaign, so every refusal may be asked of its ruler. */
+  def refusals(catalog: ExecutableCatalog, ready: ReadyGame,
+      player: PlayerId, power: PhasePower, source: PowerSourceRef,
+      restrictions: Vector[PowerUseRestriction])
+      : Vector[PowerUseRefusal] =
+    if restrictions.isEmpty then Vector.empty
+    else
+      val card = source match
+        case PowerSourceRef.Card(card) => Some(card)
+        case _ => None
+      val persistent = catalog.printedPower(power.id).exists(_.persistent)
+      PowerUseRules.refusals(ready, PowerUse(player, power.id, card,
+        persistent, power.costsSecret,
+        places = power.cost.favor > 0 || power.cost.secret > 0),
+        restrictions)
+
   def check(catalog: ExecutableCatalog, ready: ReadyGame, requester: PlayerId,
-      power: PhasePower, source: DecisionOptionRef)
+      power: PhasePower, source: DecisionOptionRef,
+      restrictions: Vector[PowerUseRestriction] = Vector.empty)
       : Either[OathViolation, PowerSourceRef] =
     val current = ready.game.current
     val active = current.turn.activePlayer
@@ -79,6 +99,9 @@ object PhasePowerProcedure:
         case (found, `source`) => found
       }.toRight(InvalidEventOrder(s"${source.kind}/${source.wireId} is not " +
         s"an accessible source of ${power.id.value}"))
+      _ <- refusals(catalog, ready, active, power, found, restrictions)
+        .headOption.map(refused => OathViolation.StartUnavailable(
+          refused.reason.detail)).toLeft(())
       _ <- Either.cond(!limited(power) ||
         !current.turn.usedPowers.contains(useRef(power, found)), (),
         PowerAlreadyUsed(useRef(power, found)))
@@ -93,7 +116,8 @@ object PhasePowerProcedure:
       : Either[OathViolation, Operation] = for
     power <- find(id, powers)
     source <- single(id, args)
-    found <- check(catalog, ready, player, power, source)
+    found <- check(catalog, ready, player, power, source,
+      powers.useRestrictions)
     tree <- power.build(ready, player, source)
   yield assemble(catalog, power, player, found, tree)
 

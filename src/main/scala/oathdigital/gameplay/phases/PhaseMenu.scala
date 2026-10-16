@@ -2,6 +2,7 @@ package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
+import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.walker.{QueuedStart, WalkerPowers}
@@ -115,17 +116,24 @@ object PhaseMenu:
       power <- phasePowers.powers
       if !power.forced &&
         PhasePowerProcedure.timingOf(menu.phase).contains(power.timing)
-      ref <- PhasePowerProcedure.sources(catalog, ready, actor, power)
-        .map(_._2)
-    yield (power, ref)
-    val used: Vector[Offered] = sourced.flatMap((power, ref) =>
+      (found, ref) <- PhasePowerProcedure.sources(catalog, ready, actor,
+        power)
+    yield (power, found, ref)
+    val used: Vector[Offered] = sourced.flatMap((power, found, ref) =>
       val shown =
-        if sourced.count(_._2 == ref) > 1 then
+        if sourced.count(_._3 == ref) > 1 then
           Some(DecisionOption.Button(powerButton(power.id),
             power.buttonName.getOrElse(power.id.value)))
         else DecisionOption.forRef(ref)
-      shown.toVector.map(offered(ActionRef.UsePower(power.id), Vector(ref),
-        _)))
+      val refused = PhasePowerProcedure.refusals(catalog, ready, actor,
+        power, found, phasePowers.useRestrictions)
+      shown.toVector.map(option =>
+        if refused.isEmpty then
+          offered(ActionRef.UsePower(power.id), Vector(ref), option)
+        else Offered(QueuedProcedure(actor, ActionRef.UsePower(power.id),
+          Vector(ref), None, QueueKind.Run), DecisionOption.Unavailable(
+          option, PowerUseRules.shown(ready, actor, refused,
+            consent = true)))))
     (wealth ++ acting ++ used).distinctBy(_.option.ref) :+ offered(
       menu.ending, Vector.empty, DecisionOption.Button(menu.endingOption,
         endingLabel(menu, ready, actor)))
@@ -143,8 +151,9 @@ object PhaseMenu:
   /** Whether the menu has nothing to ask: its ending is the only option
     * available. Act always asks (ruling 3). */
   def onlyEnding(menu: Menu, offers: Vector[Offered]): Boolean =
-    menu != Menu.Act && offers.forall(offered => !offered.option.available ||
-      offered.entry.procedure == menu.ending)
+    menu != Menu.Act && offers.forall(offered =>
+      (!offered.option.available && !offered.option.askable) ||
+        offered.entry.procedure == menu.ending)
 
   def build(menu: Menu, phasePowers: PhasePowers, powers: WalkerPowers)(
       catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,

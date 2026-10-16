@@ -42,6 +42,9 @@ case object WardOfSilence extends PaidAction(WardOfSilenceCard.power):
   val flipped: NoteKey = notes.key(NoteKey.Used, Vector(
     NotePart.Text("Flipped "), NotePart.Arg(0), NotePart.Text(" on "),
     NotePart.Arg(1), NotePart.Text("'s board facedown.")))
+  /** It pays X secrets, at least one, from its tree: a power that costs a
+    * secret (catalog batch 8, slice 10). */
+  override def costsSecret: Boolean = true
   override def noteKeys: Vector[NoteKey] = notes.declared
   override def narratedDecisions: Set[String] =
     Set(targetDecisionId, amountDecisionId)

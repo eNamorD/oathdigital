@@ -28,7 +28,9 @@ object ForcedWakeProcedure:
     powers.powers.filter(power => power.forced &&
       power.timing == PowerTiming.Wake).flatMap(power =>
       PhasePowerProcedure.sources(catalog, ready, player, power).collect {
-        case (_, ref) if power.usable(ready, player, ref) => power -> ref
+        case (found, ref) if power.usable(ready, player, ref) &&
+            PhasePowerProcedure.refusals(catalog, ready, player, power,
+              found, powers.useRestrictions).isEmpty => power -> ref
       })
 
   def build(powers: PhasePowers)(catalog: ExecutableCatalog,
