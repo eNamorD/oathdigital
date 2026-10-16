@@ -12,7 +12,10 @@
 > are drawn as dice, and the wording and anchors that slice fixed are
 > recorded under "Resolved decisions". Amended 2026-09-26 by the third
 > slice's plan: where the marker, the divider and the overlay's position come
-> from is recorded under "Resolved decisions".
+> from is recorded under "Resolved decisions". Its "Wire contract"
+> section is superseded by the [typed log span wire design](2026-10-15-typed-log-span-wire-design.md),
+> confirmed 2026-10-15, which replaces the flat span record with a sealed
+> family.
 
 ## Why now
 
@@ -463,6 +466,12 @@ the roadmap ("key `CardKnowledge` by card id") replaces this per-move
 maintenance with a structure where knowledge cannot be left behind.
 
 ## Wire contract
+
+> Superseded 2026-10-15 by the
+> [typed log span wire design](2026-10-15-typed-log-span-wire-design.md). The
+> shape below is the one this feature shipped with and the one that design
+> replaces; it is kept because the flat record was a deliberate choice at the
+> time, not an accident.
 
 The wire types live in `shared/src/main/scala/oathdigital/protocol/`, beside
 `GameProjectionDto`, so the server and the Scala.js client compile the same
