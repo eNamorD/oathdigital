@@ -1,7 +1,8 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.model.{Decide, DecisionAnswer, DecisionOption,
-  DecisionOptionRef, DecisionQuery, OathViolation, Operation, OptionReason}
+  DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection,
+  OathViolation, Operation, OptionReason}
 
 /** The lazy pruning's answers and narrowing (global operation restrictions
   * design, "Lazy pruning"), apart from the walk. A verdict says whether one
@@ -29,7 +30,9 @@ private[walker] object WalkerSearch:
     * survives. A choose-one is tried option by option. A choose-many keeps an
     * option when some accepted selection holding it survives, smallest first.
     * A choose-amount is tried value by value and narrowed when the survivors
-    * form one range; with a gap it is left whole. Other kinds are not
+    * form one range; with a gap it is left whole. A small partition is
+    * tried split by split and kept whole, since no option of it can be
+    * dropped: it fails when no split survives. Other kinds are not
     * narrowed. `Left` is a required decision with nothing left, carrying the
     * first option's rejection. `Right(None)` is an optional one with nothing
     * left, which is not asked: a choose-many whose minimum is zero, or a
@@ -62,13 +65,16 @@ private[walker] object WalkerSearch:
         else Right(Some(decide.copy(query = amount.copy(min = allowed.head,
           max = allowed.last, suggested = amount.suggested.map(value =>
             math.max(allowed.head, math.min(allowed.last, value)))))))
+      case partition: DecisionQuery.Partition =>
+        splits(decide, partition).fold(Right(Some(decide)))(all =>
+          survivor(all, verdict, None).map(_ => Some(decide)))
       case _ => Right(Some(decide))
 
   /** What a search does at `decide`: it passes an optional decision with
     * nothing to ask, stops at the first answer that survives, and fails when
     * none does. A choose-one passed when empty is passed when none does. A
-    * kind whose answers are not tried (`Partition`, `Distribute`) counts as
-    * answerable, and the answer-time check stays.
+    * kind whose answers are not tried (a large `Partition`, `Distribute`)
+    * counts as answerable, and the answer-time check stays.
     */
   def reach(decide: Decide,
       verdict: DecisionAnswer => Either[OathViolation, Unit])
@@ -170,7 +176,36 @@ private[walker] object WalkerSearch:
       case amount: DecisionQuery.ChooseAmount => Some(
         (amount.min to amount.max).iterator
           .map(DecisionAnswer.ChooseAmountAnswer(_)))
+      case partition: DecisionQuery.Partition => splits(decide, partition)
       case _ => None
+
+  /** The most ways of placing a partition's options in its sections that
+    * the search walks through: a Forge's three resources make at most 8. A
+    * larger partition counts as answerable. */
+  private val SplitLimit = 64
+
+  /** Every split `partition` accepts, each option in one section and each
+    * section within its bounds, when it has at most `SplitLimit` raw ways
+    * to place its options. A malformed partition is left to the
+    * answer-time check, which names what is wrong with it. */
+  private def splits(decide: Decide, partition: DecisionQuery.Partition)
+      : Option[Iterator[DecisionAnswer]] =
+    val refs = partition.options.map(_.ref)
+    val keys = partition.sections.map(_.key)
+    Option.when(BigInt(keys.size).pow(refs.size) <= SplitLimit &&
+        DecisionQueries.wellFormed(decide.decisionId, partition).isRight)(
+      refs.foldLeft(Iterator(Vector.empty[String]))((placed, _) =>
+        placed.flatMap(prefix => keys.iterator.map(prefix :+ _)))
+        .filter(fits(partition.sections, _))
+        .map(chosen => DecisionAnswer.PartitionAnswer(refs.zip(chosen)
+          .map(DecisionPlacement(_, _)))))
+
+  /** Whether `chosen`, one section key per option, fills each section
+    * within its bounds. */
+  private def fits(sections: Vector[DecisionSection], chosen: Vector[String])
+      : Boolean = sections.forall(section =>
+    val count = chosen.count(_ == section.key)
+    count >= section.minRequired && section.maxAllowed.forall(count <= _))
 
   /** The selections of `refs` a choose-many accepts, smallest first, each in
     * declared order. */

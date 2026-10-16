@@ -131,3 +131,40 @@ class WalkerSearchSuite extends munit.FunSuite:
     assertEquals(WalkerSearch.narrow(asked, only(_ => true)),
       Right(Some(asked)))
     assertEquals(WalkerSearch.choosable(asked), Vector(ref("a")))
+
+  /** A partition of `cards` into one favor and the rest secrets, as a
+    * Forge splits its printed cost. */
+  private def splitting(cards: Vector[String]): Decide =
+    decide(DecisionQuery.Partition(Vector(
+      DecisionSection("favor", "Favor", 1, Some(1)),
+      DecisionSection("secret", "Secret", cards.size - 1,
+        Some(cards.size - 1))),
+      cards.map(name => DecisionOption.Denizen(DecisionOptionRef.Denizen(
+        CatalogNames.denizen(name))))))
+
+  private val threeCards = splitting(Vector("Horse Archers", "Wrestlers",
+    "Errand Boy"))
+
+  test("a small partition with no surviving split is refused, by the " +
+      "walk and by a search"):
+    assertEquals(WalkerSearch.narrow(threeCards, only(_ => false)),
+      Left(refused))
+    assertEquals(WalkerSearch.reach(threeCards, only(_ => false)),
+      Left(refused))
+
+  test("a small partition with one surviving split is kept whole"):
+    val favorOnArchers: DecisionAnswer => Boolean =
+      case DecisionAnswer.PartitionAnswer(placements) => placements.contains(
+        DecisionPlacement(DecisionOptionRef.Denizen(card), "favor"))
+      case _ => false
+    assertEquals(WalkerSearch.narrow(threeCards, only(favorOnArchers)),
+      Right(Some(threeCards)))
+
+  test("a partition with more than 64 ways to place is not tried"):
+    // Seven cards in two sections: 128 ways.
+    val sevenCards = splitting(Vector("Horse Archers", "Wrestlers",
+      "Errand Boy", "Alchemist", "Messenger", "Wolves", "Elders"))
+    assertEquals(WalkerSearch.narrow(sevenCards, only(_ => false)),
+      Right(Some(sevenCards)))
+    assertEquals(WalkerSearch.reach(sevenCards, only(_ => false)),
+      Right(WalkerSearch.Reach.Answerable))

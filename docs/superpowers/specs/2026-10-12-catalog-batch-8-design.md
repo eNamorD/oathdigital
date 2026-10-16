@@ -581,11 +581,11 @@ consent, and wraps Hunger.
   card whose placement is refused is left out of its question, not shown
   with a reason. The walker cannot word an operation refusal that nobody
   may waive. This is a known gap.
-- **A Forge that cannot place** (part 2). Forge's start gate does not read
-  the placement bans, and the walker does not search a partition. So a
-  Forge whose three empty denizens include a Beast card, under an enemy's
-  Forest Council, starts and then refuses every split. City Wall cannot
-  cause it, since a Forge's site is its actor's. This is a known gap.
+- **A Forge that cannot place** (part 2). The walker tries each split of a
+  small partition, so a Forge whose every split places on a Beast card,
+  under an enemy's Forest Council, does not start: it is shown unavailable
+  with its generic reason, as an unexplained placement refusal is. City
+  Wall cannot cause it, since a Forge's site is its actor's.
 - **When an automatic power is judged** (part 2). An automatic power is
   judged where its effect runs, inside an `AutomaticUse` node, against the
   state when the walk reaches it. Tyrant's kill runs after the pawn moves,
