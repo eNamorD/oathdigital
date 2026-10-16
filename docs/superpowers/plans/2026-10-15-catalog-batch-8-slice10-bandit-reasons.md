@@ -106,3 +106,31 @@ Run: `NOTE_KEYS_SNAPSHOT=write ./sbtw "testOnly oathdigital.gameplay.powers.Decl
 ```bash
 git commit -m "feat(batch8): an operation refusal nobody may waive shows its reason"
 ```
+
+---
+
+### Task 2: A remembered answer binds only its granter
+
+A grant or refusal is remembered for the turn under its key. Before this task it lifted, or blocked, the refusal whoever could grant it now. A ruler who granted then lost the site, to another player or to bandits, still lifted the ban. That is a bug: the consent was given by someone who no longer may give it.
+
+**Architecture:**
+
+- **Each remembered answer names its granter.** `ConsentState.answers` becomes `Map[ConsentKey, Remembered]`, with `Remembered(answer: ConsentAnswer, by: Granter)`.
+  - `Granter.Player(player)` is a real answer, recorded when a request settles: the granter of the ask whose powers hold the key's power.
+  - `Granter.Supposed` is a search's hypothetical grant (`ConsentState.granting`). It never persists: only the look-ahead, the operation asks and the pay-or-ask preview build it.
+- **An answer counts only for its granter.** `ConsentState.answer(key, granter: Option[PlayerId], now): Option[ConsentAnswer]` gives the remembered answer when it is `Supposed`, or when its player is `granter`, the one who may answer `key` now. Under bandits nobody may, so no real answer counts there. A refusal binds the same way: the new ruler may be asked.
+- **Every ledger check passes the current granter:** `ConsentedRestriction`, `OperationConsent.together`, `.ask` and `.shown` (the waiver's `granter`); `PowerUseRules.refusals` (the waiver's `granter`); `WalkerPowerGather.forbidding`, `waived` and `consentAsk` (the `Waiver`'s `granter(state)`).
+- **`ConsentState.remembered(key, now)`** stays for display and tests: any answer remembered this turn, whoever gave it.
+
+**Steps:**
+
+- [ ] **Step 1: Failing tests.** In `ForestCouncilSuite`: a grant from p2 opens the Muster; the same ledger opens nothing once bandits rule Forest Council's site, nor once p3 rules it. In `ConsentStateSuite`: a settled request remembers each key with its ask's granter. In `OperationAsksSuite`: a refusal by a granter who no longer rules shows the option askable of the new granter.
+- [ ] **Step 2: The ledger.** Add `Granter`, `Remembered` and `ConsentAnswer.by(player)` (a test convenience, `Remembered(answer, Granter.Player(player))`). `settled` records each key's granter; `granting` records `Supposed`; add `answer`.
+- [ ] **Step 3: The checks.** Pass the current granter at each check listed above.
+- [ ] **Step 4: The fixtures.** Every hand-built `answers` names the granter its test means: `ConsentAnswer.Granted.by(p2)`.
+- [ ] **Step 5: The design.** In the consent design's "Rulings", add: "**An answer binds its granter.** A grant or refusal remembered this turn counts only while its granter may still answer: a ruler who loses the site, to another player or to bandits, no longer lifts or blocks anything."
+- [ ] **Step 6: Gates and commit.** `./sbtw test "frontend/test"`, `python3 scripts/check-architecture.py`, `python3 scripts/check-markdown-links.py`.
+
+```bash
+git commit -m "fix(consent): a remembered answer binds only the player who gave it"
+```
