@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.model.PowerId
 
 /** Whether a power genuinely runs for `catalog`, across every catalog that
@@ -17,7 +18,8 @@ import oathdigital.model.PowerId
 object PowerImplementationStatus:
   def implemented(catalog: ExecutableCatalog): PowerId => Boolean =
     val covered = WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet ++
-      PhasePowerCatalog.default(catalog).powers.map(_.id).toSet
+      PhasePowerCatalog.default(catalog).powers.map(_.id).toSet ++
+      OperationRestrictions.implementedRules
     val reviewedHandlers = ReviewedPowerCatalog.powers
       .map(power => power.id -> power.handlers).toMap
     id => covered.contains(id) ||

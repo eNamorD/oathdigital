@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.operations.HallOfMinisters
+import oathdigital.gameplay.operations.{AncientBloodline, HallOfMinisters}
 import oathdigital.gameplay.powerresolver.{ContributingPower,
   OptionRestriction, Restriction, Waiver}
 import oathdigital.model.{PlayerId, PowerId, PowerSourceRef, ReadyGame}
@@ -10,8 +10,8 @@ import oathdigital.model.{PlayerId, PowerId, PowerSourceRef, ReadyGame}
   * power with a contribution, of either restriction kind, that declares a
   * `Waiver`, the power-use restrictions that declare one (catalog batch 8,
   * slice 10), and the operation restrictions in `operations` (the Hall of
-  * Ministers, slice 3). The grid, the
-  * stale-preference check and the log all look a power up here. */
+  * Ministers, slice 3; Ancient Bloodline, catalog batch 8, slice 11). The
+  * grid, the stale-preference check and the log all look a power up here. */
 final class ConsentPowers(powers: Vector[ContributingPower],
     operations: Vector[(PowerId, Waiver)] = Vector.empty):
   private val waivers: Map[PowerId, Waiver] = (for
@@ -41,4 +41,7 @@ object ConsentPowers:
     new ConsentPowers(WalkerPowerCatalog.default(catalog).powers,
       Vector(HallOfMinisters.id -> Waiver(HallOfMinisters.granter,
         HallOfMinisters.source,
-        (_, _) => HallOfMinisters.noDiscardConsent(HallOfMinisters.source))))
+        (_, _) => HallOfMinisters.noDiscardConsent(HallOfMinisters.source)),
+        AncientBloodline.id -> Waiver(AncientBloodline.granter,
+          AncientBloodline.source,
+          (_, _) => AncientBloodline.lockedConsent(AncientBloodline.source))))

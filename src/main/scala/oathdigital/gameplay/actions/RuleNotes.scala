@@ -1,6 +1,6 @@
 package oathdigital.gameplay.actions
 
-import oathdigital.gameplay.operations.HallOfMinisters
+import oathdigital.gameplay.operations.{AncientBloodline, HallOfMinisters}
 import oathdigital.model.{NoteKey, PowerId}
 
 /** The game rules that write Game Log lines (power log lines design, "Game
@@ -12,9 +12,12 @@ object RuleNotes:
     * that site may discard a card there first, at any capacity. */
   val homelandDiscard: PowerId = PowerId("rule.homeland-discard")
 
-  /** The game rules' keys, and the Hall of Ministers' notes: an operation
-    * restriction is not a power either (consent slice 3). */
+  /** The game rules' keys, and the notes of the Hall of Ministers and
+    * Ancient Bloodline: an operation restriction is not a power either
+    * (consent slice 3). */
   val all: Vector[(PowerId, Vector[NoteKey])] =
     Vector(homelandDiscard -> Vector(CardPlayRules.discardFirst),
       HallOfMinisters.id -> Vector(HallOfMinisters.noDiscard,
-        HallOfMinisters.noDiscardConsent))
+        HallOfMinisters.noDiscardConsent),
+      AncientBloodline.id -> Vector(AncientBloodline.locked,
+        AncientBloodline.lockedConsent))

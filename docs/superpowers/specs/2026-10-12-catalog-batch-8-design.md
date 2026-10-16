@@ -184,10 +184,13 @@ The approved changes outside `gameplay/powers/`:
 - **A slot question for moving a site card** (slice 10, added at plan
   time). Giant Python and Roving Terror ask one question over site slots,
   as card play does: an empty slot, or a card marked Replace.
-- **An actor-aware operation restriction** (slice 11). An
-  `OperationRestriction` learns the acting player, so a lock can hold
-  against enemies only. Slice 5 names only a burn's actor, on the `Burn`
-  itself, so slice 11 settles how a restriction learns its own.
+- **An actor-aware operation restriction** (slice 11, settled at plan
+  time). A move names the player who moves it (`Move.by`). A `Take`,
+  `Give`, `Discard` or `Swap` fills it from its own player, and a bare move
+  from its builder's actor. A card moved from a site always names one. An
+  `OperationRestriction` reads the mover off the operation tree, so its
+  signature does not change. Ancient Bloodline joins `LockedCards` as an
+  as-if lock (`AsIfLocked`).
 - **A card-play site** (slice 12). `SearchPlacement.Site` names its site.
   `CardPlay.plan`, `operationsOf`, `atSite` and `CardSlots.siteSlots` read
   it instead of the pawn site. `CardPlayRules` lets a power widen the slots

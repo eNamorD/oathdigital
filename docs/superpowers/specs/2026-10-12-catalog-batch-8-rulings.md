@@ -397,13 +397,27 @@
 
 - **165 Ancient Bloodline.** "Your enemies act as if denizens and relics at
   sites you rule are locked."
-  - For an enemy of the holder, the denizens and relics at sites the holder
-    rules are locked: the enemy cannot move or flip them. Bury still goes
-    through, as for every lock.
-  - Site relics are never Raid targets, so the effect that matters is that
-    an enemy cannot Recover a relic at those sites. Recover shows the option
-    unavailable with the reason.
-  - Discards by an enemy at those sites (Baron, Giant Python) are refused.
+  - Ancient Bloodline must be faceup. Enemies are every player but its
+    holder. A site counts when the holder rules it as a player. An Imperial
+    holder waits for the Imperial rules.
+  - For an enemy, every card at those sites is locked: denizens, edifices
+    and relics. The enemy cannot move it, so cannot take, give, swap or
+    discard it. Bury still goes through, as for every lock.
+  - A card played to those sites, or a relic arriving there, is not
+    refused. It is locked once it is there.
+  - Site relics are never Raid targets. In practice, the lock stops an
+    enemy from Recovering a relic at those sites, or taking it with Skeleton
+    Key or Barbed Net. It also stops an enemy from taking a denizen there
+    (Horned Mask), moving one away (Giant Python, Roving Terror, Moving
+    Market, Great Herd) or discarding one (card play's Replace, Dazzle,
+    Threatening Roar, a battle plan's discard).
+  - The holder may consent outside a Campaign (consent design, ruling 1).
+    Inside a Campaign the lock holds.
+  - Hover reasons: "Ancient Bloodline: Locked." and "Ancient Bloodline:
+    Locked and needs the holder's consent."
+  - The mover is named on the operation itself (ruled 2026-10-16). Each
+    move names its player (`Move.by`), and a card moved from a site always
+    does. A restriction reads the mover off the operation tree.
 
 ## Slice 12: Card play at another site
 

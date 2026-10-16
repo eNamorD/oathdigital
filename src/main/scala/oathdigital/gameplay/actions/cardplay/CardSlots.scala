@@ -61,7 +61,8 @@ object CardSlots:
   private val reasons: Map[String, String] = Map(
     "locked" -> "Locked: cannot be discarded",
     "active-modifier" -> "In use as a modifier this action",
-    "discard-immune" -> "Protected by the Hall of Ministers")
+    "discard-immune" -> "Protected by the Hall of Ministers",
+    "bloodline-locked" -> "Ancient Bloodline: Locked.")
 
   def slots(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       card: WorldCardId, origin: CardPlay.Origin, rules: CardPlayRules,
