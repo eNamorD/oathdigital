@@ -62,6 +62,9 @@
   - Run `ExitWorktree` with `keep` before merging into `main`.
 - **Commit trailer:** the committing model's own `Co-Authored-By` line.
 - **Test helper names** say what they build.
+- **Lessons from part 1's tests:**
+  - To read a parked decision, match `ParkedNode.Decision(_, decide, _)` and compare `decide.decisionId`. The case's first field is the procedure, not the decision id. `SpellBreakerOfferSuite.jinxAtRecoverReroll` shows the pattern.
+  - A plan window, a reroll choice or a non-Act phase menu is not asked when it has nothing usable or askable to offer. A test that expects to see a refused option there needs one other usable option on the board to keep the question open. `SpellBreakerOfferSuite`'s first test adds Battle Honors for this.
 - **Log lines omit the actor.** Giant Python's lines name the card and the site only.
 - **Note keys** are declared through a `NoteSet`, as plain `val`s after the set. Regenerate `src/test/resources/notes/declared-keys.txt` with `NOTE_KEYS_SNAPSHOT=write ./sbtw "testOnly oathdigital.gameplay.powers.DeclaredNoteKeysSuite"`. Check that the diff adds only the keys named in the task.
 - **Words, exactly:**

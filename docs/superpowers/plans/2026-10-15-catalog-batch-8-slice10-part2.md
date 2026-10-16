@@ -71,6 +71,9 @@
   - Run `ExitWorktree` with `keep` before merging into `main`.
 - **Commit trailer:** the committing model's own `Co-Authored-By` line.
 - **Test helper names** say what they build. A doc comment does not excuse a vague name.
+- **Lessons from part 1's tests:**
+  - To read a parked decision, match `ParkedNode.Decision(_, decide, _)` and compare `decide.decisionId`. The case's first field is the procedure, not the decision id. `SpellBreakerOfferSuite.jinxAtRecoverReroll` shows the pattern.
+  - A plan window, a reroll choice or a non-Act phase menu is not asked when it has nothing usable or askable to offer. A test that expects to see a refused option there needs one other usable option on the board to keep the question open. `SpellBreakerOfferSuite`'s first test adds Battle Honors for this.
 - **Log lines.** Neither card writes a line. A refused power is not used, and a refused placement does not happen.
 - **Note keys** are declared through a `NoteSet` (`model/PowerNotes.scala`), as plain `val`s after the set, never `lazy`. `src/test/resources/notes/declared-keys.txt` snapshots every declared key. Regenerate it with `NOTE_KEYS_SNAPSHOT=write ./sbtw "testOnly oathdigital.gameplay.powers.DeclaredNoteKeysSuite"` and check the diff adds only the keys named in the task.
 - **Hover reasons, exactly.** The projector prefixes a power note with its card's name and a colon.
@@ -1199,7 +1202,7 @@ Then add these path tests. Each starts from the suite of the card it uses, with 
 1. **The phase menu.** Copy `SpellBreakerPhaseSuite`'s board, with City Wall in place of Spell Breaker at p1's site, Ancient City. Roving Terror's option is askable, and `ask.power == CityWall.id`.
 2. **Muster.** p1 musters at City Wall's site, from Wrestlers, with 4 favor and 7 Supply. The only source is askable, and the decision still parks. Read it as `ForestCouncilSuite.musterSources` does.
 3. **Jinx's reroll.** Use `SpellBreakerOfferSuite`'s Recover board, with City Wall at Fair Isle ruled by p2 in place of Spell Breaker. Jinx is persistent, but its cost places a secret on it, so its reroll is askable. Its reason is `CityWall.placingAsked`.
-4. **A battle plan.** Use `SpellBreakerOfferSuite`'s Fire Talkers board, with City Wall at the attacker's origin, ruled by the rival. The board helper there is `rivalRulesOriginAndHoldsOathkeeper`. Fire Talkers is withheld with `Some(OptionReason.Noted(CityWall.id, CityWall.usePlain(source)))`, since nobody is asked inside a Campaign.
+4. **A battle plan.** Use `SpellBreakerOfferSuite`'s `attackerWithFireTalkers` board, with Battle Honors added as that suite's first test adds it. Put City Wall at the attacker's site, ruled by the rival. No battle plan is persistent, so City Wall refuses Battle Honors as well as Fire Talkers. The attacker then has nothing usable, and the plan window is not asked: assert that the attacker is not awaited on `CampaignIds.attackerPlan`. A second test gives City Wall to the attacker. The window is then asked and offers Fire Talkers.
 5. **Tyrant.** Use `TyrantSuite`'s travel board. p1 holds Tyrant and travels to City Wall's site, ruled by p2, where p2 has a warband. No warband dies: Tyrant is judged after the pawn moves. A second test travels from City Wall's site to a site with a warband, and that warband dies.
 6. **Hunger's forced Wake.** Use `HungerSuite`'s first forced board, with City Wall at p1's site, ruled by p2. p1's Wake does not force Hunger: `ForcedWakeProcedure.due` is empty for p1.
 
@@ -1319,7 +1322,7 @@ City Wall refuses a banner or site power too, which has no card: part 1 counts t
 - [ ] **Step 5: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.poweruse.* oathdigital.gameplay.PowerKindsCatalogSuite oathdigital.gameplay.BackendArchitectureSuite oathdigital.gameplay.powers.DeclaredNoteKeysSuite oathdigital.gameplay.powers.travel.* oathdigital.gameplay.powers.wake.* oathdigital.gameplay.powers.dice.* oathdigital.gameplay.powers.campaign.*"`
-Expected: all pass. CityWallSuite has 9 tests.
+Expected: all pass. CityWallSuite has 11 tests: three for the restriction and eight path tests.
 
 - [ ] **Step 6: Commit**
 
