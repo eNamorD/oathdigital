@@ -4,13 +4,15 @@ import org.scalajs.dom
 
 /** The faces of the two dice, drawn as the symbols printed on them.
   *
-  * The engine names faces with the same seven strings for both dice
-  * (`WalkerDecisionProjector.defenseFaceName` and its attack twin), so one
-  * renderer serves every panel that shows a roll. Five faces compose from
-  * sprite glyphs; a blank face has nothing printed on it, and the doubler
-  * multiplies rather than adding, so it says so in figures.
+  * One renderer serves every panel that shows a roll. Five faces compose
+  * from sprite glyphs; a blank face has nothing printed on it, and the
+  * doubler multiplies rather than adding, so it says so in figures.
+  *
+  * Named `DieFaceChip`, not `DieFace`: the face itself is
+  * `oathdigital.protocol.projection.DieFace`, and this is what the page
+  * draws for one.
   */
-private[frontend] object DieFace:
+private[frontend] object DieFaceChip:
   private val words = Map(
     "hollow-sword" -> "hollow sword", "one-sword" -> "one sword",
     "two-swords-skull" -> "two swords and a skull", "blank" -> "blank",

@@ -268,7 +268,7 @@ private[frontend] object GameLogPane:
     case cost: LogSpan.Cost => text("span", "log-cost", cost.text)
     // The same die chips the table draws.
     case dice: LogSpan.Dice =>
-      val row = DieFace.roll(dice.faces, Some(dice.die))
+      val row = DieFaceChip.roll(dice.faces, Some(dice.die))
       row.setAttribute("class", s"die-faces log-dice log-dice-${dice.die}")
       row
     // More cards than a line names: a control that opens them as a card

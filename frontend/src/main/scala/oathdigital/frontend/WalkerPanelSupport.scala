@@ -246,7 +246,7 @@ private[frontend] object WalkerPanelSupport:
         // is read as the one sentence the glyphs add up to.
         row.setAttribute("role", "img")
         row.setAttribute("aria-label", rollOutcomeSummary(outcome))
-        row.appendChild(DieFace.roll(outcome.faces, poolDie(outcome.pool)))
+        row.appendChild(DieFaceChip.roll(outcome.faces, poolDie(outcome.pool)))
         panel.appendChild(row)
       val parts = Vector(s"${poolLabel(outcome.pool)} ${outcome.score}") ++
         outcome.target.map(target => s"need $target") ++ outcome.detail
