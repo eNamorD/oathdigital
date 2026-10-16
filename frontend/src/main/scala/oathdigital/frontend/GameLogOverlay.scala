@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
-import oathdigital.protocol.projection.LogEntryWire
+import oathdigital.protocol.projection.LogEntry
 import ServerUiSupport._
 
 /** The whole log, full height over the table (spec, "Overlay"). The card
@@ -41,7 +41,7 @@ private[frontend] final class GameLogOverlay(root: dom.Element,
   /** A closed overlay is never at the end: only what the reader sees counts. */
   def atEnd: Boolean = isOpen && log.atEnd
 
-  def show(sessionKey: String, entries: Vector[LogEntryWire],
+  def show(sessionKey: String, entries: Vector[LogEntry],
       colors: Map[String, String], since: Option[Long]): Unit =
     log.show(sessionKey, entries, colors, since)
 

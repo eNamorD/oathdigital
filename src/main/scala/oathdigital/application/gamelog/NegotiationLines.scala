@@ -5,6 +5,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, DeclineDeal}
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import ActionLines.{action, isDelta}
 import LogSpan.Text
 
@@ -51,7 +52,7 @@ private[gamelog] final class NegotiationLines(words: LogWords):
 
   private def settlement(journal: LogJournal, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
-    def delta(spans: Vector[LogSpan]) = Posted.line(LogKind.Delta, spans)
+    def delta(spans: Vector[LogSpan]) = Posted(LogKind.Delta, spans)
     journal.ops(at).collect {
       case OpStep(Give(Piece.Favor(amount), giver, _,
           Location.PlayArea(recipient), _), _, _) =>

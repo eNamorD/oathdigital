@@ -2,6 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogScripts._
 
 class GameLogActionLineSuite extends munit.FunSuite:

@@ -5,6 +5,7 @@ import oathdigital.application.{GameApplicationService}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogEntry, LogKind, LogSpan}
 import oathdigital.testkit.{Situation, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{accepted, present}
@@ -154,3 +155,10 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val before = format(script, None)
     assertEquals(formatAppended(script, Vector(OathEvent.RoundEnded(8, None))),
       before)
+
+  test("every kind carries its own depth, headline or line"):
+    assertEquals(LogKind.values.filter(_.depth == 0).toSet,
+      Set(LogKind.Round, LogKind.Turn, LogKind.Phase, LogKind.Victory))
+    assertEquals(LogKind.values.filter(_.depth == 1).toSet,
+      Set(LogKind.Section, LogKind.Action, LogKind.Decision, LogKind.Roll,
+        LogKind.Delta, LogKind.Trigger))

@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogEntry, LogSpan}
 import oathdigital.testkit.Outcomes
 import LogScripts._
 

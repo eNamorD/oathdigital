@@ -1,8 +1,7 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
-import oathdigital.protocol.projection.{LogEntryWire, LogSpanWire,
-  LogTakenBackWire}
+import oathdigital.protocol.projection.{LogEntry, LogSpan, LogTakenBack}
 import ServerUiSupport._
 
 /** One reading of the game log (spec, "Pane" and "Overlay"). The pane and the
@@ -32,7 +31,7 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
     * in the overlay (spec, "Pane" and "Overlay"). */
   private val sticky = if headings then "log-round" else "log-turn"
   private var key = Option.empty[String]
-  private var shown = Vector.empty[LogEntryWire]
+  private var shown = Vector.empty[LogEntry]
   // The taken-back groups on show that the reader opened, kept across redraws.
   private var expanded = Set.empty[Long]
   list.appendChild(headline(GameLogPane.placeholder, "round"))
@@ -46,7 +45,7 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
     * is drawn in full, so appends never move it. An undo changes lines
     * already shown, and a taken-back line is drawn inside its group, so
     * only new live lines at the end append; anything else redraws. */
-  def show(sessionKey: String, entries: Vector[LogEntryWire],
+  def show(sessionKey: String, entries: Vector[LogEntry],
       colors: Map[String, String], since: Option[Long] = None): Unit =
     val sameSession = key.contains(sessionKey)
     if !sameSession then expanded = Set.empty
@@ -74,7 +73,7 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
   /** `keepPlace` is a redraw of a list already on show, after an undo: a
     * reader at the end stays there and anyone else keeps their scroll.
     * Only a session's first draw goes to the divider. */
-  private def redraw(entries: Vector[LogEntryWire], colors: Map[String, String],
+  private def redraw(entries: Vector[LogEntry], colors: Map[String, String],
       since: Option[Long], keepPlace: Boolean): Unit =
     val following = atEnd
     val top = content.scrollTop
@@ -132,7 +131,7 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
   /** A taken-back group (undo design, "Game Log"): a toggle naming who took
     * the moves back, over the lines, collapsed unless the reader opened it.
     * Appends the group to the list and returns the list its lines go in. */
-  private def group(taken: LogTakenBackWire, colors: Map[String, String])
+  private def group(taken: LogTakenBack, colors: Map[String, String])
       : dom.Element =
     val node = element("li", "log-taken-back")
     val toggle = button("", "log-taken-back-toggle")
@@ -194,10 +193,10 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
     content.scrollTop = content.scrollTop + node.getBoundingClientRect().top -
       content.getBoundingClientRect().top - cover
 
-  private def item(entry: LogEntryWire, colors: Map[String, String],
+  private def item(entry: LogEntry, colors: Map[String, String],
       start: Boolean, end: Boolean): dom.Element =
     val node = GameLogPane.item(entry, colors, start, end)
-    if entry.depth == 0 then headline(node, entry.kind) else node
+    if entry.depth == 0 then headline(node, entry.kind.key) else node
 
   /** In headings mode the headline's spans move into an `h3`, an `h4` for
     * a turn, or an `h5` for a phase. */
@@ -226,10 +225,10 @@ private[frontend] object GameLogPane:
   /** Client-only: where the reader left off (spec, "Divider"). */
   def divider: dom.Element = text("li", "log-divider", "Since you last looked")
 
-  def item(entry: LogEntryWire, colors: Map[String, String],
+  def item(entry: LogEntry, colors: Map[String, String],
       start: Boolean = true, end: Boolean = true): dom.Element =
     val depth = if entry.depth == 0 then "log-headline" else "log-line"
-    val classes = Vector("log-entry", depth, s"log-${entry.kind}") ++
+    val classes = Vector("log-entry", depth, s"log-${entry.kind.key}") ++
       band(entry, start, end)
     val node = element("li", classes.mkString(" "))
     entry.spans.foreach(span => node.appendChild(spanNode(span, colors)))
@@ -237,7 +236,7 @@ private[frontend] object GameLogPane:
 
   /** An entry's band (DESIGN.md, The Action Band Rule): its section's band
     * class, and an edge where the band starts or ends in this list. */
-  def band(entry: LogEntryWire, start: Boolean, end: Boolean): Vector[String] =
+  def band(entry: LogEntry, start: Boolean, end: Boolean): Vector[String] =
     entry.section.toVector.flatMap(section =>
       Vector("log-band", s"log-band-${bandName(section.action)}") ++
         Option.when(start)("log-band-start") ++ Option.when(end)("log-band-end"))
@@ -249,35 +248,34 @@ private[frontend] object GameLogPane:
     else if action.startsWith("use-power:") then "use-power"
     else action
 
-  def sameSection(earlier: LogEntryWire, later: LogEntryWire): Boolean =
+  def sameSection(earlier: LogEntry, later: LogEntry): Boolean =
     earlier.section.nonEmpty &&
       earlier.section.map(_.id) == later.section.map(_.id)
 
   /** Two entries share a band only inside the same section and on the same
     * side of a taken-back group's edge. */
-  def joined(earlier: LogEntryWire, later: LogEntryWire): Boolean =
+  def joined(earlier: LogEntry, later: LogEntry): Boolean =
     sameSection(earlier, later) &&
       earlier.takenBack.map(_.group) == later.takenBack.map(_.group)
 
-  private def spanNode(span: LogSpanWire, colors: Map[String, String])
-      : dom.Node = span.kind match
-    case "player" => text("span", "log-player player-ref " +
-      span.id.flatMap(colors.get).getOrElse(PlayerColorCss.neutral), span.text)
-    case "card" | "site" | "amount" | "cost" =>
-      text("span", s"log-${span.kind}", span.text)
-    // The same die chips the table draws; the faces ride in `id`.
-    case "dice" => span.id.fold[dom.Node](dom.document.createTextNode(span.text)) {
-      faces =>
-        val dice = DieFace.roll(faces.split(" ").toVector.filter(_.nonEmpty),
-          span.unit)
-        dice.setAttribute("class",
-          s"die-faces log-dice log-dice-${span.unit.getOrElse("unknown")}")
-        dice
-    }
+  private def spanNode(span: LogSpan, colors: Map[String, String])
+      : dom.Node = span match
+    case LogSpan.Player(id, name) => text("span", "log-player player-ref " +
+      colors.getOrElse(id, PlayerColorCss.neutral), name)
+    case card: LogSpan.Card => text("span", "log-card", card.text)
+    case site: LogSpan.Site => text("span", "log-site", site.text)
+    case amount: LogSpan.Amount => text("span", "log-amount", amount.text)
+    case cost: LogSpan.Cost => text("span", "log-cost", cost.text)
+    // The same die chips the table draws.
+    case dice: LogSpan.Dice =>
+      val row = DieFaceChip.roll(dice.faces)
+      row.setAttribute("class",
+        s"die-faces log-dice log-dice-${dice.die.key}")
+      row
     // More cards than a line names: a control that opens them as a card
-    // list (catalog batch 2, N5). A span with no cards stays words.
-    case "cards" if span.cards.nonEmpty =>
-      val open = button(span.text, "log-cards")
-      open.onclick = _ => CardInspection.openCards(span.text, span.cards, open)
+    // list (catalog batch 2, N5).
+    case list: LogSpan.Cards =>
+      val open = button(list.text, "log-cards")
+      open.onclick = _ => CardInspection.openCards(list.text, list.cards, open)
       open
-    case _ => dom.document.createTextNode(span.text)
+    case LogSpan.Text(value) => dom.document.createTextNode(value)

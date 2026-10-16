@@ -7,7 +7,7 @@ import scala.util.control.NonFatal
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   ProtocolDecodeFailure, GameIntent => GameCommand}
 import oathdigital.protocol.projection.{GameProjection, GameProjectionCodec,
-  LogPageCodec, LogPageWire}
+  LogPage, LogPageCodec}
 
 final case class TransportResponse(status: Int, body: String)
 final case class RawEvent(sequence: Long, discriminator: String, rawPayload: String)
@@ -112,7 +112,7 @@ trait GameClient:
   ): Future[Either[GameClientFailure, GameProjection]]
   /** Every log entry at or after `after`, formatted for this seat. */
   def loadLog(gameId: String, selectedPlayerId: String, after: Long)
-      : Future[Either[GameClientFailure, LogPageWire]]
+      : Future[Either[GameClientFailure, LogPage]]
 
 final class HttpGameClient(transport: JsonTransport)
     extends GameClient:
@@ -201,11 +201,18 @@ object GameJson:
       decodeProjection(response.body)
     else Left(responseFailure(response))
 
+  /** As `decodeProjection`: a variant this build does not know means the
+    * bundle in this browser is stale, which the session can act on, and any
+    * other decode failure means the payload is wrong, which it cannot. */
   def logResponse(response: TransportResponse)
-      : Either[GameClientFailure, LogPageWire] =
+      : Either[GameClientFailure, LogPage] =
     if response.status >= 200 && response.status < 300 then
-      LogPageCodec.decode(response.body).left.map(error =>
-        GameClientFailure.DecodeFailure(error.path, error.message))
+      LogPageCodec.decode(response.body).left.map:
+        case unknown: ProtocolDecodeFailure.UnknownVariant =>
+          GameClientFailure.UnsupportedProjection(unknown.path,
+            unknown.message)
+        case error => GameClientFailure.DecodeFailure(error.path,
+          error.message)
     else Left(responseFailure(response))
 
   def responseFailure(response: TransportResponse): GameClientFailure =

@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.{GameIntent => GameCommand, _}
+import oathdigital.protocol.projection.Die
 import org.scalajs.dom
 
 /** The client half of the generic walker decision contract, extracted from
@@ -66,9 +67,9 @@ private[frontend] object WalkerPanelSupport:
   /** The die a pool rolls: a Campaign's attack rolls the attack die, its
     * defense and Recover the defense die. An unknown pool keeps the neutral
     * chip rather than a guessed color. */
-  private[frontend] def poolDie(pool: String): Option[String] = pool match
-    case "campaign.attack" => Some("attack")
-    case "campaign.defense" | "recover" => Some("defense")
+  private[frontend] def poolDie(pool: String): Option[Die] = pool match
+    case "campaign.attack" => Some(Die.Attack)
+    case "campaign.defense" | "recover" => Some(Die.Defense)
     case _ => None
 
   /** Renders the Recover panel for whichever of the parks
@@ -250,7 +251,8 @@ private[frontend] object WalkerPanelSupport:
         // is read as the one sentence the glyphs add up to.
         row.setAttribute("role", "img")
         row.setAttribute("aria-label", rollOutcomeSummary(outcome))
-        row.appendChild(DieFace.roll(outcome.faces, poolDie(outcome.pool)))
+        row.appendChild(DieFaceChip.rollKeys(outcome.faces,
+          poolDie(outcome.pool)))
         panel.appendChild(row)
       val parts = Vector(s"${poolLabel(outcome.pool)} ${outcome.score}") ++
         outcome.target.map(target => s"need $target") ++ outcome.detail

@@ -3,6 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.application.{GameApplicationService, GameCommand,
   ParkedServiceFixture}
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogEntry}
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}

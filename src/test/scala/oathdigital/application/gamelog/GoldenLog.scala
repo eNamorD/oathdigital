@@ -1,5 +1,7 @@
 package oathdigital.application.gamelog
 
+import oathdigital.protocol.projection.{LogEntry, LogSpan}
+
 /** An exact, readable rendering of log entries for golden files: one line
   * per entry, `sequence.ordinal kind depth` then every span, a typed span in
   * brackets with its identity. Nothing a `LogEntry` holds is lost. An entry in
@@ -18,9 +20,10 @@ object GoldenLog:
     case LogSpan.Card(id, name) => s"[card:$id|$name]"
     case LogSpan.Site(id, name) => s"[site:$id|$name]"
     case LogSpan.Amount(count, unit) => s"[amount:$count $unit]"
-    case LogSpan.Cost(count, unit) => s"[cost:$count $unit]"
+    case cost: LogSpan.Cost => s"[cost:${cost.text.stripPrefix("−")}]"
     case dice: LogSpan.Dice =>
-      s"[dice:${dice.die} ${dice.faces.mkString(" ")}|${dice.text}]"
+      s"[dice:${dice.die.key} ${dice.faces.map(_.key).mkString(" ")}" +
+        s"|${dice.text}]"
     case list: LogSpan.Cards => s"[cards:${list.cards.map(card =>
       if card.hidden then s"back ${card.cardKind}" else card.cardId)
       .mkString(" ")}|${list.text}]"

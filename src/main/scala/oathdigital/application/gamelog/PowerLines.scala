@@ -3,6 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.gameplay.powers.OathkeeperGoalChoice
 import oathdigital.gameplay.walker.{PowerNoted, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
 /** The lines powers write about themselves (power log lines design,
@@ -35,7 +36,7 @@ private[gamelog] final class PowerLines(words: LogWords,
       for
         after <- journal.readyAfter(at)
         spans <- spoken(power, note, states(journal, run, at) :+ after, viewer)
-      yield Posted.line(kind(run, power, note), spans)
+      yield Posted(kind(run, power, note), spans)
     case _ => None
 
   /** "{source}: {sentence}" for `note`, its cards judged at `seen`, or

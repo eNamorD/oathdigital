@@ -2,7 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.application._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.protocol.projection.LogPageCodec
+import oathdigital.protocol.projection.{LogKind, LogPageCodec}
 import oathdigital.server.{DevelopmentRoutes, GameServerGateway}
 import oathdigital.testkit.HttpTestServer
 import oathdigital.testkit.Unwrap.{accepted, present}
@@ -30,7 +30,7 @@ class GameLogRouteSuite extends munit.FunSuite:
     val script = LogScripts.round
     val page = present(new GameProjector(catalog).logPage("round",
       script.history, 0L, script.actor), "the whole log page")
-    val tag = page.entries.find(_.kind == "section").getOrElse(
+    val tag = page.entries.find(_.kind == LogKind.Section).getOrElse(
       fail(s"no tag in ${page.entries}"))
     // The tag posts at Travel's cost step; its section is keyed by the start.
     assert(tag.section.exists(section =>

@@ -1,26 +1,26 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
-import oathdigital.protocol.projection.{LogEntryWire, LogSectionWire,
-  LogSpanWire, LogTakenBackWire}
+import oathdigital.protocol.projection.{LogEntry, LogKind, LogSection,
+  LogSpan, LogTakenBack}
 
 /** Taken-back moves in the log (undo design, "Game Log"): each contiguous
   * run is one collapsed group under its header, its lines keep their bands,
   * and a redraw keeps both the reader's place and the groups they opened. */
 class GameLogTakenBackPaneSuite extends munit.FunSuite:
-  private val takenBackByRed = LogTakenBackWire(5L, Vector(
-    LogSpanWire("player", "Red", id = Some("red")),
-    LogSpanWire("text", " took back the following moves:")))
+  private val takenBackByRed = LogTakenBack(5L, Vector(
+    LogSpan.Player("red", "Red"),
+    LogSpan.Text(" took back the following moves:")))
 
-  private def travelLine(sequence: Long, words: String): LogEntryWire =
-    TestLog.textEntry(sequence, "action", depth = 1, words,
-      section = Some(LogSectionWire(5L, "travel")))
+  private def travelLine(sequence: Long, words: String): LogEntry =
+    TestLog.textEntry(sequence, LogKind.Action, words,
+      section = Some(LogSection(5L, "travel")))
 
-  private def takenBack(entry: LogEntryWire): LogEntryWire =
+  private def takenBack(entry: LogEntry): LogEntry =
     entry.copy(takenBack = Some(takenBackByRed))
 
-  private val setup = TestLog.textEntry(sequence = 0, kind = "round",
-    depth = 0, text = "Setup")
+  private val setup = TestLog.textEntry(sequence = 0, kind = LogKind.Round,
+    text = "Setup")
   private val started = travelLine(5, "Started Travel")
   private val moved = travelLine(6, "Travelled to Buried Giant")
   private val movedAgain = travelLine(8, "Travelled to Great Spire")
@@ -147,7 +147,7 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
 
   test("two groups side by side stay two groups"):
     val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
-    val later = LogTakenBackWire(8L, takenBackByRed.header)
+    val later = LogTakenBack(8L, takenBackByRed.header)
     new GameLogPane(content).show("g|red",
       Vector(setup, takenBack(started),
         movedAgain.copy(takenBack = Some(later))), Map.empty)
@@ -175,8 +175,8 @@ class GameLogTakenBackPaneSuite extends munit.FunSuite:
 
   /** `moved` as it reads in the group that remains after a Redo restored
     * `started`: the group is named by its new first line. */
-  private def takenBackFrom(first: Long)(entry: LogEntryWire): LogEntryWire =
-    entry.copy(takenBack = Some(LogTakenBackWire(first,
+  private def takenBackFrom(first: Long)(entry: LogEntry): LogEntry =
+    entry.copy(takenBack = Some(LogTakenBack(first,
       takenBackByRed.header)))
 
   test("a group the reader opened stays open when a Redo restores its first line"):

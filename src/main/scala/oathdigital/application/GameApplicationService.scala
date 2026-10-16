@@ -8,6 +8,7 @@ import oathdigital.gameplay.powers.{ConsentPowers, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
+import oathdigital.protocol.projection.LogKind
 
 
 /** `events` are the events the command produced: the batch's opening
@@ -243,7 +244,7 @@ final class GameApplicationService(
     val note = log.format(journal.steps.take(batch.until.toInt),
         Some(batch.issuer))
       .find(entry => entry.sequence >= batch.from &&
-        entry.kind != gamelog.LogKind.Section)
+        entry.kind != LogKind.Section)
       .map(_.spans.map(_.text).mkString)
     UndoStep(batch.issuer, batch.from, batch.until, note)
 

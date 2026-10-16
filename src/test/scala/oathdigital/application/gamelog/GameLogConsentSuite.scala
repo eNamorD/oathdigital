@@ -4,6 +4,7 @@ import oathdigital.application.{ConsentFixture, GameAccepted,
   GameApplicationService, GameCommand, TollConsentFixture}
 import oathdigital.gameplay.powers.travel.{NarrowPassSite, TravelFixture}
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogEntry, LogTakenBack}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
 import LogScripts.{formatter, texts}

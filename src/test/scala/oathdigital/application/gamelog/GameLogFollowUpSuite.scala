@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogKind}
 import LogScripts._
 
 /** A queued action's Game Log (follow-up actions design, "Game Log and roll

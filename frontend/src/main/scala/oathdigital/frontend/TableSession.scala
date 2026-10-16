@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.{GameIntent => GameCommand, _}
-import oathdigital.protocol.projection.LogEntryWire
+import oathdigital.protocol.projection.LogEntry
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
@@ -39,7 +39,7 @@ private[frontend] final class TableSession(
   private var drafts = SessionDrafts.empty
   private var rawEvents = Vector.empty[RawEvent]
   private var rawHistorySequence = Option.empty[Long]
-  private var log = Vector.empty[LogEntryWire]
+  private var log = Vector.empty[LogEntry]
   // The cursor the next request asks with: the log's `nextSequence`.
   private var logSequence = 0L
   // Bumped on every reset, so an answer to a request from before it lands
@@ -72,8 +72,11 @@ private[frontend] final class TableSession(
     logReplacing = true
 
   /** Asks for the entries after the log's cursor when `target`, a displayed
-    * position, is past it. One request at a time; a failure changes nothing
-    * and the next advancing position asks again (spec, "Fetching"). */
+    * position, is past it. One request at a time; a transient failure
+    * changes nothing and the next advancing position asks again (spec,
+    * "Fetching"). A page this build cannot parse is the exception: an
+    * unknown variant stops the session as it does on the projection route,
+    * and any other decode failure is shown without stopping it. */
   private def fetchLog(target: Long): Unit =
     if !logLoading && target > logSequence then
       logLoading = true
@@ -81,21 +84,41 @@ private[frontend] final class TableSession(
       client.loadLog(gameId, selectedPlayer, logSequence).foreach { result =>
         if epoch == logEpoch then
           logLoading = false
-          result.foreach { page =>
-            val advanced = page.nextSequence > logSequence
-            if logReplacing then
-              log = page.entries
-              logReplacing = false
-            else
-              val last = log.lastOption.map(entry =>
-                entry.sequence -> entry.ordinal)
-              log ++= page.entries.filter(entry => last.forall(key =>
-                Ordering[(Long, Int)].gt(entry.sequence -> entry.ordinal, key)))
-            logSequence = math.max(logSequence, page.nextSequence)
-            redraw()
-            if advanced then projection.foreach(current =>
-              fetchLog(current.nextSequence))
-          }
+          result match
+            case Right(page) =>
+              val advanced = page.nextSequence > logSequence
+              if logReplacing then
+                log = page.entries
+                logReplacing = false
+              else
+                val last = log.lastOption.map(entry =>
+                  entry.sequence -> entry.ordinal)
+                log ++= page.entries.filter(entry => last.forall(key =>
+                  Ordering[(Long, Int)].gt(entry.sequence -> entry.ordinal,
+                    key)))
+              logSequence = math.max(logSequence, page.nextSequence)
+              redraw()
+              if advanced then projection.foreach(current =>
+                fetchLog(current.nextSequence))
+            // A log page this build cannot parse is the same stale bundle
+            // the projection route reports: polling cannot recover from it
+            // and only a reload can.
+            case Left(error) if TableSession.unsupported(error) =>
+              polling.stop()
+              failure = Some(error)
+              redraw()
+            // Any other decode failure means the payload is wrong, which a
+            // reload would not mend -- but it must not be silent either, or
+            // the pane stops updating with no message, which is the posture
+            // this route was fixed to leave. The projection route shows one
+            // and keeps polling; this route now agrees, and the notice
+            // clears on the next page that parses.
+            case Left(error: GameClientFailure.DecodeFailure) =>
+              failure = Some(error)
+              redraw()
+            // A transient failure keeps the posture the spec sets: it
+            // changes nothing, and the next advancing position asks again.
+            case Left(_) => ()
       }
 
   private def showSession(): Unit =
@@ -302,7 +325,7 @@ private[frontend] final class TableSession(
   def controlsAvailable: Boolean =
     coordinator.connectionState == ServerConnectionState.Connected
   def viewedRawEvents: Vector[RawEvent] = rawEvents
-  def viewedLog: Vector[LogEntryWire] = log
+  def viewedLog: Vector[LogEntry] = log
   /** Derived from the failure on show rather than latched, so it cannot
     * outlive it. A non-transient failure leaves the session Connected
     * (`ServerSessionCoordinator.recordFailure`), so every control on the
@@ -310,6 +333,14 @@ private[frontend] final class TableSession(
     * the table past the park this build could not parse -- after which a
     * latched flag would have labelled the NEXT unrelated failure a stale
     * bundle.
+    *
+    * On the log route nothing carries the session past it: the log is
+    * append-only and the next fetch asks from the same cursor, so an
+    * unparseable page comes back unparseable. A submit that succeeds
+    * clears the notice and resumes polling (`store`), and the following
+    * fetch raises it again -- a flicker rather than a recovery. Left
+    * derived all the same: the flicker is self-correcting, and latching
+    * would cost the projection route the property above.
     */
   def clientOutOfDate: Boolean = failure.exists(TableSession.unsupported)
 

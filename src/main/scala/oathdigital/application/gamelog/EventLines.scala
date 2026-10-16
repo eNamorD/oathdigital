@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
 /** The events that happen outside any walker run (spec, "Detail lines"):
@@ -15,11 +16,11 @@ private[gamelog] final class EventLines(words: LogWords):
     yield
       journal.event(at) match
         case OathEvent.BanditsRefilled(sites) =>
-          Vector(Posted.line(LogKind.Trigger, Text("Bandits returned to ") +:
+          Vector(Posted(LogKind.Trigger, Text("Bandits returned to ") +:
             LogWords.join(sites.map { case (site, _) =>
               Vector(words.site(site)) })))
         case OathEvent.UsurperFlipped(player) =>
-          Vector(Posted.line(LogKind.Trigger, Vector(words.player(player),
+          Vector(Posted(LogKind.Trigger, Vector(words.player(player),
             Text(" became the Usurper"))))
         case _ => Vector.empty
     ).getOrElse(Vector.empty)

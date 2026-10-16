@@ -1,7 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
-import oathdigital.protocol.projection.LogSpanWire
+import oathdigital.protocol.projection.LogSpan
 import LogSpan.Text
 
 class LogWordsSuite extends munit.FunSuite:
@@ -24,15 +24,15 @@ class LogWordsSuite extends munit.FunSuite:
     assertEquals(joined("A", "B"), "A and B")
     assertEquals(joined("A", "B", "C"), "A, B and C")
 
-  test("every span kind has its wire form; only typed spans carry ids and amounts"):
-    assertEquals(GameLogProjector.span(Text("x")), LogSpanWire("text", "x"))
-    assertEquals(GameLogProjector.span(LogSpan.Player("red", "Red")),
-      LogSpanWire("player", "Red", id = Some("red")))
-    assertEquals(GameLogProjector.span(LogSpan.Card("c", "Card")),
-      LogSpanWire("card", "Card", id = Some("c")))
-    assertEquals(GameLogProjector.span(LogSpan.Site("s", "Site")),
-      LogSpanWire("site", "Site", id = Some("s")))
-    assertEquals(GameLogProjector.span(LogSpan.Amount(3, "favor")),
-      LogSpanWire("amount", "3 favor", value = Some(3), unit = Some("favor")))
-    assertEquals(GameLogProjector.span(LogSpan.Cost(2, "Supply")),
-      LogSpanWire("cost", "−2 Supply", value = Some(2), unit = Some("Supply")))
+  test("a cost names the one currency an action spends"):
+    assertEquals(LogSpan.Cost(2).text, "−2 Supply")
+
+  test("a roll is its faces; a mixed or empty pool is no span"):
+    assertEquals(LogWords.dice(Vector(AttackDieFace.OneSword,
+      AttackDieFace.TwoSwordsSkull)).map(_.text),
+      Some("sword, two swords and a skull"))
+    assertEquals(LogWords.dice(Vector(DefenseDieFace.OneShield))
+      .map(_.die), Some(oathdigital.protocol.projection.Die.Defense))
+    assertEquals(LogWords.dice(Vector(AttackDieFace.OneSword,
+      DefenseDieFace.Blank)), None)
+    assertEquals(LogWords.dice(Vector.empty), None)

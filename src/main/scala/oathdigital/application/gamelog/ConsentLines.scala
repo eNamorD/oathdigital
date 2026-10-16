@@ -4,6 +4,7 @@ import oathdigital.gameplay.powers.ConsentPowers
 import oathdigital.model._
 import oathdigital.model.OathEvent.{ConsentAnswered, ConsentPreferenceSet,
   ConsentPreferencesCleared, ConsentRequested}
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
 /** The consent lines (consent design, "Game Log"). The request leaves out
@@ -22,7 +23,7 @@ private[gamelog] final class ConsentLines(words: LogWords,
         ids.map(id => powers.source(id).fold(Vector[LogSpan](Text(id.value)))(
           words.source(_, Vector(before), viewer))))
       def line(spans: Vector[LogSpan]) =
-        Vector(Posted.line(LogKind.Decision, spans))
+        Vector(Posted(LogKind.Decision, spans))
       journal.event(at) match
         case ConsentRequested(request) => line(
           (Text("Asked ") +: LogWords.join(request.asks.map(ask =>

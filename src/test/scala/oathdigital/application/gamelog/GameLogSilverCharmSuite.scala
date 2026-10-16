@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.recover.SilverCharm
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer}
+import oathdigital.protocol.projection.{LogKind}
 import oathdigital.testkit.{Answers, Dice, MenuPlay}
 import oathdigital.testkit.Table.p1
 import LogScripts._

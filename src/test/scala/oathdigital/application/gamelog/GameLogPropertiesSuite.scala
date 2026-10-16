@@ -2,6 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked}
 import oathdigital.model._
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 import oathdigital.testkit.Unwrap.{accepted, present}
 import LogScripts._
 

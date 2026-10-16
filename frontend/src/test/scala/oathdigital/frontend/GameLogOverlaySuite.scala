@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import Dom.{click, press}
+import oathdigital.protocol.projection.LogKind
 import org.scalajs.dom
 
 /** The Log pane's heading opens the whole log over the table (spec,
@@ -8,12 +9,13 @@ import org.scalajs.dom
   * Runs the real shell in `TestBrowser`, which stubs what the map needs.
   */
 class GameLogOverlaySuite extends munit.FunSuite:
-  private def entry(sequence: Long, kind: String, depth: Int, text: String) =
-    TestLog.textEntry(sequence, kind, depth, text)
+  private def entry(sequence: Long, kind: LogKind, text: String) =
+    TestLog.textEntry(sequence, kind, text)
 
-  private val entries = Vector(entry(0, "round", 0, "Setup"),
-    entry(3, "turn", 0, "Red's turn"), entry(5, "action", 1, "Started Travel"))
-  private val searched = entry(8, "action", 1, "Started Search")
+  private val entries = Vector(entry(0, LogKind.Round, "Setup"),
+    entry(3, LogKind.Turn, "Red's turn"),
+    entry(5, LogKind.Action, "Started Travel"))
+  private val searched = entry(8, LogKind.Action, "Started Search")
 
   /** Where the shell keeps Red's place in game g's log. */
   private val redSeenKey = "oath.log.seen.g.red"
@@ -66,7 +68,7 @@ class GameLogOverlaySuite extends munit.FunSuite:
 
   test("a phase headline is a heading under its turn's"):
     withShell() { (browser, shell) =>
-      shell.showLog("g", "red", entries.take(2) :+ entry(4, "phase", 0, "Act"),
+      shell.showLog("g", "red", entries.take(2) :+ entry(4, LogKind.Phase, "Act"),
         Map.empty)
       click(heading(browser))
       assertEquals(overlay(browser).querySelector("h5").textContent, "Act")
