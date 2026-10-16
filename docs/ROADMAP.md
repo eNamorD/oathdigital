@@ -147,6 +147,18 @@ this order. Each slice gets its own plan.
 - [x] **11. Actor-aware lock:** Ancient Bloodline.
 - [ ] **12. Card play at another site:** Baron, New Growth, Forest Warden.
 - [ ] **13. Campaign from another site:** Wild Allies, Captains.
+- [ ] **13b. Campaign kills at their moment.** A Campaign now kills the
+  attacker's dead in one `Kill` at the kill step: the skull losses, the
+  sacrifices and half the survivors on a defeat, summed. The rules kill
+  each as it happens. The skull losses die at the attack result, the
+  sacrifices when they are chosen, and the defeat's half at the kill step.
+  Board-reading plans such as Bear Traps then see the right board. The loss
+  powers that rewrite or count the batched kill (Billowing Fog, Traveling
+  Doctor, Peace Envoy, Hospital, Cursed Cauldron, Spared Force) move with
+  it. Slice 13's single split question ("how many of the dead come from
+  {site}") then becomes one question at each kill. This item needs its own
+  design, since it changes existing cards' outcomes. Recorded while
+  planning slice 13 on 2026-10-16.
 - [ ] **14. Off-turn actor:** Sneak Attack, Second Wind for a defender.
 - [ ] **15. Palanquin.**
 
