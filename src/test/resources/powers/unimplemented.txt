@@ -9,7 +9,6 @@ denizen.council-seat
 denizen.deed-writer
 denizen.false-prophet
 denizen.favored-son
-denizen.forest-warden
 denizen.glamor
 denizen.long-lost-heir
 denizen.magicians-code

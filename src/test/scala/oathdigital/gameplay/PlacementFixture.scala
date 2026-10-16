@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.{CardPlayRules, DiscardPermission,
   PlaySites, SiteRemoval}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
@@ -7,6 +8,7 @@ import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Tran
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
+import oathdigital.protocol.projection.DecisionQueryProjection
 import oathdigital.testkit.Outcomes
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
@@ -58,6 +60,14 @@ object PlacementFixture:
   /** Stub of ContributingPower: lowers the adviser limit to two. */
   val limitTwo: ContributingPower =
     rulePower("test.limit-two")(_.limitAdvisers(2))
+
+  /** The parked placement as `viewer` is offered it, projected with the
+    * production walker powers. */
+  def projectedPlacement(transition: OathTransition, viewer: PlayerId)(
+      using munit.Location): DecisionQueryProjection =
+    present(new GameProjector(catalog).project("targets",
+      LoadedGame(transition.state, 30L), viewer).walkerDecision
+      .flatMap(_.query), "the projected placement")
 
   /** The id of a card play's `kind` decision ("place" or "discard") for
     * `card`. */

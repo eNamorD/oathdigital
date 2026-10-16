@@ -29,13 +29,6 @@ object AutumnWindCard extends Denizen(DenizenId("213"), "Autumn Wind", Suit.Beas
       "possible. You decide ties.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object ForestWardenCard extends Denizen(DenizenId("218"), "Forest Warden", Suit.Beast):
-  val power = PrintedPower(PowerId("denizen.forest-warden"),
-    persistent = false, cost = Cost.free,
-    text = "If you play a [suit-beast] card to a site, you may bury a " +
-      "card at the site first.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object LongLostHeirCard extends Denizen(DenizenId("44"), "Long-Lost Heir", Suit.Beast) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.long-lost-heir"),
     persistent = false, cost = Cost.free,
