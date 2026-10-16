@@ -325,3 +325,27 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     assertEquals(done.treeless.game.current.commonCards.relicDeck.lastOption,
       Some(horn))
     assert(Look(done.treeless).discardAfter(home).contains(others(0)))
+
+  test("after Discard with a discard left, the discard follow-up asks " +
+      "before the bury follow-up"):
+    val twoDiscardsAndABury = rulePower("test.two-discards-and-a-bury")(
+      _.permitSiteDiscard(testPermission).permitSiteDiscard(testPermission)
+        .permitSiteDiscard(PlacementFixture.testBury))
+    val parked = parkOnPlacement(fullSite,
+      WalkerPowers(Vector(twoDiscardsAndABury)))
+    val asked = Outcomes.parked(parked.place(DecisionOptionRef.SiteSlot(home,
+      0)))
+    val chose = Outcomes.parked(parked.resolve(asked.tree, replacedId,
+      DecisionAnswer.ChooseOneAnswer(CardPlayProcedure.discardReplaced)))
+    assertEquals(ProcedureWalker.parkedDecide(parked.ready, parked.tree,
+      chose.tree, parked.powers).map(_.decisionId), Some(discardId))
+    val discarded = Outcomes.parked(parked.resolve(chose.tree, discardId,
+      DecisionAnswer.ChooseManyAnswer(Vector(
+        DecisionOptionRef.Denizen(others(1))))))
+    val bury = present(ProcedureWalker.parkedDecide(parked.ready,
+      parked.tree, discarded.tree, parked.powers), "the bury follow-up")
+    assertEquals(bury.decisionId, buryId)
+    assertEquals(bury.query match
+      case many: DecisionQuery.ChooseMany => many.options.map(_.ref)
+      case other => fail(s"not a choose-many: $other"),
+      Vector(DecisionOptionRef.Denizen(others(2))))

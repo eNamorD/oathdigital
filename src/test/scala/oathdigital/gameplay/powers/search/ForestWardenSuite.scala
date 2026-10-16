@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.gameplay.PlacementFixture
+import oathdigital.gameplay.{PlacementFixture, PowerAccess}
 import oathdigital.gameplay.actions.{CardPlayRules, RuleNotes}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
@@ -31,7 +31,7 @@ class ForestWardenSuite extends munit.FunSuite:
 
   /** p1 in Act at `at` holding Forest Warden faceup, with 5 Supply and
     * `top` on the world deck. */
-  private def warding(top: DenizenId, at: SiteId = home): Table =
+  private def wardenHeldWithDeckTop(top: DenizenId, at: SiteId = home): Table =
     Table.start.pawn(p1, at).worldDeckTop(top).supply(p1, 5)
       .adviser(p1, warden)
 
@@ -49,7 +49,7 @@ class ForestWardenSuite extends munit.FunSuite:
 
   test("selected, a Beast card's Replace is Bury and replace, and the bury " +
       "sends the card to the bottom of the world deck with the line"):
-    val ready = warding(beast).denizen(filler, at = home)
+    val ready = wardenHeldWithDeckTop(beast).denizen(filler, at = home)
       .tokens(filler, favor = 1).ready
     val asked = toPlacement(ready)
     assert(parkedOptions(asked).exists(o =>
@@ -59,6 +59,9 @@ class ForestWardenSuite extends munit.FunSuite:
     assertEquals(end.game.current.commonCards.worldDeck.lastOption,
       Some(filler))
     assertEquals(Look(end).cardsAt(home), Vector[CardId](beast))
+    // Code of Honor is Order: its favor returns to the Order bank.
+    assertEquals(end.banks.favor.getOrElse(Suit.Order, 0),
+      ready.banks.favor.getOrElse(Suit.Order, 0) + 1)
     assertEquals(wardenSaid(done.events), Vector(NoteText.Said("bury-first",
       s"May bury a card at ${home.value} first.", covers = false)))
     assertEquals(ActPowerHarness.replayed(rules, ready,
@@ -66,23 +69,33 @@ class ForestWardenSuite extends munit.FunSuite:
     assertWireRoundTrips(asked.events ++ done.events)
 
   test("a card of another suit gets no bury"):
-    val asked = toPlacement(warding(order).denizen(filler, at = home).ready,
-      order)
+    val asked = toPlacement(wardenHeldWithDeckTop(order)
+      .denizen(filler, at = home).ready, order)
     assert(!parkedOptions(asked).exists(o => PlacementPicks.buries(o)
       .nonEmpty), parkedOptions(asked).toString)
 
   test("bury ignores locks: an intact edifice and a card Ancient Bloodline " +
-      "locks may be buried"):
+      "locks may be buried, though a discard may not take them"):
     val hall = CatalogNames.edifice("Hall of Ministers")
-    val ready = warding(beast).edifice(hall, EdificeSide.Intact, at = home)
+    val ready = wardenHeldWithDeckTop(beast)
+      .edifice(hall, EdificeSide.Intact, at = home)
       .denizen(filler, at = home).warbandsAt(home, p2, 1)
-      .adviser(p2, CatalogNames.denizen("Ancient Bloodline")).ready
-    val buried = parkedOptions(toPlacement(ready)).filter(_.available)
-      .flatMap(PlacementPicks.buries)
+      .adviser(p2, CatalogNames.denizen("Ancient Bloodline"))
+      .adviser(p1, CatalogNames.denizen("Crop Rotation")).ready
+    assert(PowerAccess.ruledSites(ready, p2).contains(home))
+    // Crop Rotation's discard alone may take neither card.
+    val discarding = parkedOptions(toPlacement(ready,
+      selected = Vector(CropRotation.id)))
+    Vector[CardId](hall, filler).foreach(card =>
+      assert(discarding.exists(o => PlacementPicks.replaces(o).contains(card)
+        && !o.available), discarding.toString))
+    val both = parkedOptions(toPlacement(ready,
+      selected = Vector(ForestWarden.id, CropRotation.id)))
+    val buried = both.filter(_.available).flatMap(PlacementPicks.buries)
     assertEquals(buried.toSet, Set[CardId](hall, filler))
 
   test("at a site with room, a relic there is Bury and play"):
-    val ready = warding(beast).relicAt(horn, at = home).ready
+    val ready = wardenHeldWithDeckTop(beast).relicAt(horn, at = home).ready
     val asked = toPlacement(ready)
     val done = accepted(placeAt(asked, beast,
       DecisionOptionRef.SiteRelicSlot(home, 0)))
@@ -90,18 +103,25 @@ class ForestWardenSuite extends munit.FunSuite:
     assertEquals(end.game.current.commonCards.relicDeck.lastOption,
       Some(horn))
     assertEquals(Look(end).cardsAt(home), Vector[CardId](beast))
+    assertEquals(ActPowerHarness.replayed(rules, ready,
+      asked.events ++ done.events), end)
+    assertWireRoundTrips(asked.events ++ done.events)
 
   test("with the Homeland's discard too, Replace asks: Discard discards " +
       "with the Homeland's line"):
-    val ready = warding(beast, at = woods).denizen(filler, at = woods).ready
+    val ready = wardenHeldWithDeckTop(beast, at = woods)
+      .denizen(filler, at = woods).ready
     val asked = toPlacement(ready)
     val placed = accepted(placeReplacing(asked, beast, PlayedAs.AtSite,
       filler))
     val done = accepted(rules.resolveWalker(placed.state, p1,
       CardPlayProcedure.replacedDecisionId(beast),
       DecisionAnswer.ChooseOneAnswer(CardPlayProcedure.discardReplaced)))
-    assert(Look(SearchFixture.after(done)).discardAfter(woods)
-      .contains(filler))
+    val end = SearchFixture.after(done)
+    assert(Look(end).discardAfter(woods).contains(filler))
+    val events = asked.events ++ placed.events ++ done.events
+    assertEquals(ActPowerHarness.replayed(rules, ready, events), end)
+    assertWireRoundTrips(events)
     assertEquals(wardenSaid(placed.events ++ done.events), Vector.empty)
     assertEquals(NoteText.said(RuleNotes.homelandDiscard,
       Vector(CardPlayRules.discardFirst), placed.events ++ done.events),
@@ -110,7 +130,8 @@ class ForestWardenSuite extends munit.FunSuite:
 
   test("a facedown relic at another site is offered by its slot, never by " +
       "its name"):
-    val ready = warding(beast).adviser(p1, CatalogNames.denizen("New Growth"))
+    val ready = wardenHeldWithDeckTop(beast)
+      .adviser(p1, CatalogNames.denizen("New Growth"))
       .relicAt(horn, at = woods).ready
     val asked = toPlacement(ready, selected = Vector(ForestWarden.id,
       NewGrowth.id))
