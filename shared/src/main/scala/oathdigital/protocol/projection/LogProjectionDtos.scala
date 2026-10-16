@@ -98,9 +98,11 @@ object LogSpan:
       names: Vector[String]) extends LogSpan:
     def text: String = names.mkString(", ")
   /** What an action spent, drawn apart from the sentence (game log design,
-    * "Supply"). */
-  final case class Cost(value: Int, unit: String) extends LogSpan:
-    def text: String = s"−$value $unit"
+    * "Supply"). Supply is the only thing an action spends, so the word is
+    * the case's, not a field: a second currency is a one-parameter change
+    * the compiler routes to every site. */
+  final case class Cost(value: Int) extends LogSpan:
+    def text: String = s"−$value Supply"
   /** More cards than a line names inline, read as "6 cards": the list a
     * client opens, in order, each card's face if its viewer may identify it
     * and its back otherwise (catalog batch 2, N5). */

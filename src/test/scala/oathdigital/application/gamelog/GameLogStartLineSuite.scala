@@ -28,7 +28,6 @@ class GameLogStartLineSuite extends munit.FunSuite:
       Look(script.history.steps(index).after).supply(script.actor)
     assertEquals(cost.head.value,
       supplyAfter(spentAt - 1) - supplyAfter(spentAt))
-    assertEquals(cost.head.unit, "Supply")
     val destination = travelled.spans.collect { case site: LogSpan.Site => site }
     assertEquals(destination.size, 1)
 

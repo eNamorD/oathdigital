@@ -20,7 +20,7 @@ object GoldenLog:
     case LogSpan.Card(id, name) => s"[card:$id|$name]"
     case LogSpan.Site(id, name) => s"[site:$id|$name]"
     case LogSpan.Amount(count, unit) => s"[amount:$count $unit]"
-    case LogSpan.Cost(count, unit) => s"[cost:$count $unit]"
+    case cost: LogSpan.Cost => s"[cost:${cost.text.stripPrefix("−")}]"
     case dice: LogSpan.Dice =>
       s"[dice:${dice.die} ${dice.faces.mkString(" ")}|${dice.text}]"
     case list: LogSpan.Cards => s"[cards:${list.cards.map(card =>

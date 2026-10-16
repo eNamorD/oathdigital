@@ -35,6 +35,7 @@ private[application] object GameLogProjector:
       LogSpanWire("amount", amount.text, value = Some(count), unit = Some(unit))
     case dice: LogSpan.Dice => LogSpanWire("dice", dice.text,
       id = Some(dice.faces.mkString(" ")), unit = Some(dice.die))
-    case cost @ LogSpan.Cost(count, unit) =>
-      LogSpanWire("cost", cost.text, value = Some(count), unit = Some(unit))
+    case cost @ LogSpan.Cost(count) =>
+      LogSpanWire("cost", cost.text, value = Some(count),
+        unit = Some("Supply"))
     case list: LogSpan.Cards => LogSpanWire("cards", list.text, cards = list.cards)

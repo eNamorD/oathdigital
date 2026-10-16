@@ -55,7 +55,7 @@ private[gamelog] final class StartLines(words: LogWords,
           if run.started.exists(_ != journal.segmentEnd(at)) =>
         val spent = journal.supplySpent(at, run.actor)
         Option.when(spent > 0)(Posted(LogKind.Action,
-          Vector(Text("Continued"), LogSpan.Cost(spent, "Supply"))))
+          Vector(Text("Continued"), LogSpan.Cost(spent))))
       case _ => None
 
   /** The tag's name and what its line says beyond the modifiers, but only at
@@ -184,4 +184,4 @@ private[gamelog] final class StartLines(words: LogWords,
   private def cost(journal: LogJournal, run: Run, at: Int): Vector[LogSpan] =
     val spent = (run.first to journal.segmentEnd(at))
       .map(journal.supplySpent(_, run.actor)).sum
-    if spent > 0 then Vector(LogSpan.Cost(spent, "Supply")) else Vector.empty
+    if spent > 0 then Vector(LogSpan.Cost(spent)) else Vector.empty

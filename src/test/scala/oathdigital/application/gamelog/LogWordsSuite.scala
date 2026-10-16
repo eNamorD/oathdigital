@@ -34,5 +34,8 @@ class LogWordsSuite extends munit.FunSuite:
       LogSpanWire("site", "Site", id = Some("s")))
     assertEquals(GameLogProjector.span(LogSpan.Amount(3, "favor")),
       LogSpanWire("amount", "3 favor", value = Some(3), unit = Some("favor")))
-    assertEquals(GameLogProjector.span(LogSpan.Cost(2, "Supply")),
+    assertEquals(GameLogProjector.span(LogSpan.Cost(2)),
       LogSpanWire("cost", "−2 Supply", value = Some(2), unit = Some("Supply")))
+
+  test("a cost names the one currency an action spends"):
+    assertEquals(LogSpan.Cost(2).text, "−2 Supply")
