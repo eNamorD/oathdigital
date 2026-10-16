@@ -70,7 +70,7 @@ existing typed binds in the codebase already do, and what every read of
 
 **Two plumbing sites are pinned fully bound**, by explicit path allowlist:
 `ActionProjectionCodec.scala`, whose seven patterns bind every field of every
-form on the way to and from the wire, and the four fully-bound patterns in
+form on the way to and from the wire, and the five fully-bound patterns in
 `WalkerDecisionProjector.scala`, which carry a domain query to that wire. Their
 arity coupling is the feature: it is the mechanism that fails the build when a
 new field reaches neither the wire nor the mapping onto it.
