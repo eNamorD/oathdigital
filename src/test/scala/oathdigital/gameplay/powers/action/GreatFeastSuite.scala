@@ -81,6 +81,20 @@ class GreatFeastSuite extends munit.FunSuite:
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
       "used.none", s"${home.value} held no Beast card.", covers = true)))
 
+  test("with only a Beast card the Hall protects, the line says it could " +
+      "not be discarded"):
+    // Bandits rule Ancient City, so nobody may consent to the discard.
+    val ready = staged().denizen(errandBoy, at = home)
+      .edifice(CatalogNames.edifice("Hall of Ministers"), EdificeSide.Intact,
+        at = home).bandits(home, 2).ready
+    val asked = accepted(use(ready, power, source))
+    assert(awaits(asked, GreatFeast.decisionId))
+    val t = accepted(continuedPast(asked, GreatFeast.decisionId))
+    assertEquals(Look(after(t)).cardsAt(home).contains(errandBoy), true)
+    assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
+      "used.kept", s"No Beast card at ${home.value} could be discarded.",
+      covers = true)))
+
   test("it is unusable without a favor"):
     val broke = staged(favor = 0).denizen(errandBoy, at = home).ready
     assert(!usableNow(broke).exists(_.power.id == GreatFeast.id))

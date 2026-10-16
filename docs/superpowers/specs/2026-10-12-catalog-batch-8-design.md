@@ -593,7 +593,9 @@ consent, and wraps Hunger.
   grant opens it, and after a refusal Continue remains. A power with no
   candidate at all asks too, so its player sees that nothing can be done.
   The cost stays paid and nothing happens, as before; the menus do not
-  change. This closes the gap where such a question passed before its
+  change. When a matching card was there but refused, Great Feast's and
+  Taming Charm's line says it could not be discarded ("No Beast card at
+  {site} could be discarded."), not that the site held none. This closes the gap where such a question passed before its
   player could ask.
 - **When an automatic power is judged** (part 2). An automatic power is
   judged where its effect runs, inside an `AutomaticUse` node, against the

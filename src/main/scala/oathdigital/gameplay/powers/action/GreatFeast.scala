@@ -63,7 +63,10 @@ final case class GreatFeast private (catalog: ExecutableCatalog)
             states.previous.fold(0)(NoteSupport.supply(_, player)),
             NoteUnit.Supply)))
         case None => PowerAccess.pawnSite(states.now, player).map(site =>
-          bare(card, NoteArg.Site(site))))
+          // A card was there, but a refusal kept it: it was not discarded.
+          if cards.at(states.now, site).nonEmpty then
+            kept(card, NoteArg.Site(site))
+          else bare(card, NoteArg.Site(site))))
 
 object GreatFeast:
   val id: PowerId = GreatFeastCard.power.id
@@ -78,6 +81,10 @@ object GreatFeast:
   /** "{site} held no Beast card." */
   val bare: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no Beast card.")))
+  /** "No Beast card at {site} could be discarded." */
+  val kept: NoteKey = notes.key("used.kept", Vector(
+    NotePart.Text("No Beast card at "), NotePart.Arg(0),
+    NotePart.Text(" could be discarded.")))
 
   def forCatalog(catalog: ExecutableCatalog): GreatFeast =
     new GreatFeast(catalog)

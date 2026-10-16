@@ -68,7 +68,10 @@ final case class TamingCharm private (catalog: ExecutableCatalog)
       NoteSupport.answer(states, decisionId).flatMap(cards.cardOf) match
         case Some(chosen) => Some(line(states, card, player, chosen))
         case None => PowerAccess.pawnSite(states.now, player).map(site =>
-          bare(card, NoteArg.Site(site))))
+          // A card was there, but a refusal kept it: it was not discarded.
+          if cards.at(states.now, site).nonEmpty then
+            kept(card, NoteArg.Site(site))
+          else bare(card, NoteArg.Site(site))))
 
   /** The favor the player gained in the step before the note: the gain's,
     * or none when the empty bank skipped it. */
@@ -100,6 +103,10 @@ object TamingCharm:
   /** "{site} held no Beast or Nomad card." */
   val bare: NoteKey = notes.key("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no Beast or Nomad card.")))
+  /** "No Beast or Nomad card at {site} could be discarded." */
+  val kept: NoteKey = notes.key("used.kept", Vector(
+    NotePart.Text("No Beast or Nomad card at "), NotePart.Arg(0),
+    NotePart.Text(" could be discarded.")))
 
   def forCatalog(catalog: ExecutableCatalog): TamingCharm =
     new TamingCharm(catalog)
