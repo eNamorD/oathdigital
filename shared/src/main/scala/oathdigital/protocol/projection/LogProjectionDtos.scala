@@ -62,11 +62,14 @@ object LogSpan:
     def text: String = name
   final case class Amount(value: Int, unit: String) extends LogSpan:
     def text: String = s"$value $unit"
-  /** One roll of one die kind, drawn as dice: `faces` are the wire names the
-    * client's die chips know, `names` the rulebook's ("Attack" and "Defend"). */
-  final case class Dice(die: String, faces: Vector[String],
-      names: Vector[String]) extends LogSpan:
-    def text: String = names.mkString(", ")
+  /** One roll of one die, drawn as dice. Head first rather than a `Vector`,
+    * so reading the die off the faces is total: there is no empty roll and
+    * no roll whose die must be sent beside it. */
+  final case class Dice(first: DieFace, rest: Vector[DieFace])
+      extends LogSpan:
+    def faces: Vector[DieFace] = first +: rest
+    def die: Die = first.die
+    def text: String = faces.map(_.word).mkString(", ")
   /** What an action spent, drawn apart from the sentence (game log design,
     * "Supply"). Supply is the only thing an action spends, so the word is
     * the case's, not a field: a second currency is a one-parameter change

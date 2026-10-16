@@ -132,8 +132,8 @@ class GameLogRareLinesSuite extends munit.FunSuite:
       Some("hollow sword, sword, two swords and a skull"))
     assertEquals(LogWords.dice(Vector(DefenseDieFace.Blank,
       DefenseDieFace.OneShield, DefenseDieFace.TwoShields,
-      DefenseDieFace.Doubler)).map(_.faces), Some(Vector("blank", "one-shield",
-      "two-shields", "doubler")))
+      DefenseDieFace.Doubler)).map(_.faces.map(_.key)),
+      Some(Vector("blank", "one-shield", "two-shields", "doubler")))
     assertEquals(LogWords.dice(Vector.empty), None)
     assertEquals(LogWords.dice(Vector(AttackDieFace.OneSword,
       DefenseDieFace.Blank)), None)

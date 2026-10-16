@@ -17,7 +17,7 @@ class LogPageCodecSuite extends munit.FunSuite:
       LogSpan.Player("red", "Red"), LogSpan.Card("c1", "Old Oak"),
       LogSpan.Site("s1", "Buried Giant"), LogSpan.Amount(3, "favor"),
       LogSpan.Cost(2),
-      LogSpan.Dice("attack", Vector("one-sword"), Vector("sword")),
+      LogSpan.Dice(DieFace.OneSword, Vector(DieFace.TwoSwordsSkull)),
       LogSpan.Cards(Vector(
         CardDetailsProjection("19", "denizen", "Scryer", Some("discord")))))
     val all = LogPage("g", 0, 9,
@@ -118,3 +118,36 @@ class LogPageCodecSuite extends munit.FunSuite:
         CardDetailsProjection("hidden", "vision", "Facedown vision",
           orientation = Some("face-down"), hidden = true)))))))
     assertEquals(LogPageCodec.decode(LogPageCodec.encode(list)), Right(list))
+
+  test("a dice span is its faces: the die and the words come off them"):
+    val roll = LogPage("g", 0, 9, Vector(LogEntry(7, 0, LogKind.Roll,
+      Vector(LogSpan.Dice(DieFace.OneSword,
+        Vector(DieFace.OneSword, DieFace.TwoSwordsSkull))))))
+    assertEquals(LogPageCodec.decode(LogPageCodec.encode(roll)), Right(roll))
+    val json = ujson.read(LogPageCodec.encode(roll))
+    assertEquals(json("entries")(0)("spans")(0),
+      ujson.Obj("kind" -> "dice", "faces" -> ujson.Arr("one-sword",
+        "one-sword", "two-swords-skull")))
+
+  test("an empty roll is rejected: no line builds one"):
+    val json = """{"gameId":"g","after":0,"nextSequence":9,"entries":[""" +
+      """{"sequence":7,"ordinal":0,"kind":"roll","spans":[""" +
+      """{"kind":"dice","faces":[]}]}]}"""
+    assertEquals(LogPageCodec.decode(json).left.map(_.path),
+      Left("$.entries[0].spans[0].faces"))
+
+  test("a roll mixing the two dice is rejected"):
+    val json = """{"gameId":"g","after":0,"nextSequence":9,"entries":[""" +
+      """{"sequence":7,"ordinal":0,"kind":"roll","spans":[""" +
+      """{"kind":"dice","faces":["one-sword","blank"]}]}]}"""
+    assertEquals(LogPageCodec.decode(json),
+      Left(ProtocolDecodeFailure.InvalidValue("$.entries[0].spans[0].faces",
+        "expected one die's faces")))
+
+  test("a face this build does not know is an unknown variant"):
+    val json = """{"gameId":"g","after":0,"nextSequence":9,"entries":[""" +
+      """{"sequence":7,"ordinal":0,"kind":"roll","spans":[""" +
+      """{"kind":"dice","faces":["three-moons"]}]}]}"""
+    assertEquals(LogPageCodec.decode(json),
+      Left(ProtocolDecodeFailure.UnknownVariant(
+        "$.entries[0].spans[0].faces[0]", "unknown die face 'three-moons'")))

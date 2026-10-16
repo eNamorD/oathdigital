@@ -2,7 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model._
-import oathdigital.protocol.projection.{LogKind, LogSpan}
+import oathdigital.protocol.projection.{Die, DieFace, LogKind, LogSpan}
 import LogScripts._
 
 class GameLogDetailSuite extends munit.FunSuite:
@@ -18,8 +18,8 @@ class GameLogDetailSuite extends munit.FunSuite:
     rolls.foreach { roll =>
       assertEquals(roll.spans.head, LogSpan.Text("Rolled "))
       val dice = roll.spans.collect { case dice: LogSpan.Dice => dice }
-      assertEquals(dice.map(_.die), Vector("defense"))
-      assert(dice.head.faces.forall(_ == "blank"), dice)
+      assertEquals(dice.map(_.die), Vector(Die.Defense))
+      assert(dice.head.faces.forall(_ == DieFace.Blank), dice)
       assertEquals(dice.head.text, dice.head.faces.map(_ => "blank")
         .mkString(", "))
     }

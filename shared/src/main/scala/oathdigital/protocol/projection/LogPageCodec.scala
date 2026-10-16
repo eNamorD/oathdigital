@@ -60,9 +60,8 @@ object LogPageCodec:
     case LogSpan.Amount(value, unit) =>
       ujson.Obj("kind" -> "amount", "value" -> value, "unit" -> unit)
     case LogSpan.Cost(value) => ujson.Obj("kind" -> "cost", "value" -> value)
-    case LogSpan.Dice(die, faces, names) => ujson.Obj("kind" -> "dice",
-      "die" -> die, "faces" -> encoded(faces)(ujson.Str(_)),
-      "names" -> encoded(names)(ujson.Str(_)))
+    case dice: LogSpan.Dice => ujson.Obj("kind" -> "dice",
+      "faces" -> encoded(dice.faces)(face => ujson.Str(face.key)))
     case LogSpan.Cards(cards) => ujson.Obj("kind" -> "cards",
       "cards" -> encoded(cards)(WorldProjectionCodec.encodeCard))
 
@@ -162,13 +161,21 @@ object LogPageCodec:
       amount <- int(value, "value", path)
     yield LogSpan.Cost(amount)
 
+  /** `LogWords.dice` builds a span only from a non-empty pool of one die's
+    * faces, so neither an empty roll nor a mixed one is a span this server
+    * can send. */
   private def decodeDice(value: ujson.Obj, path: String): Result[LogSpan] =
     for
-      _ <- exact(value, Set("kind", "die", "faces", "names"), path)
-      die <- string(value, "die", path)
-      faces <- strings(value, "faces", path)
-      names <- strings(value, "names", path)
-    yield LogSpan.Dice(die, faces, names)
+      _ <- exact(value, Set("kind", "faces"), path)
+      keys <- strings(value, "faces", path)
+      faces <- traverse(keys, s"$path.faces")((key, child) =>
+        DieFace.values.find(_.key == key).toRight(UnknownVariant(child,
+          s"unknown die face '$key'")))
+      first <- faces.headOption.toRight(
+        InvalidValue(s"$path.faces", "expected at least one face"))
+      _ <- Either.cond(faces.forall(_.die == first.die), (),
+        InvalidValue(s"$path.faces", "expected one die's faces"))
+    yield LogSpan.Dice(first, faces.tail)
 
   /** `LogWords.listed` builds a `Cards` span only past the inline threshold
     * and writes a `Text` span when the viewer may identify none of them, so

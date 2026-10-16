@@ -26,3 +26,13 @@ class LogWordsSuite extends munit.FunSuite:
 
   test("a cost names the one currency an action spends"):
     assertEquals(LogSpan.Cost(2).text, "−2 Supply")
+
+  test("a roll is its faces; a mixed or empty pool is no span"):
+    assertEquals(LogWords.dice(Vector(AttackDieFace.OneSword,
+      AttackDieFace.TwoSwordsSkull)).map(_.text),
+      Some("sword, two swords and a skull"))
+    assertEquals(LogWords.dice(Vector(DefenseDieFace.OneShield))
+      .map(_.die), Some(oathdigital.protocol.projection.Die.Defense))
+    assertEquals(LogWords.dice(Vector(AttackDieFace.OneSword,
+      DefenseDieFace.Blank)), None)
+    assertEquals(LogWords.dice(Vector.empty), None)

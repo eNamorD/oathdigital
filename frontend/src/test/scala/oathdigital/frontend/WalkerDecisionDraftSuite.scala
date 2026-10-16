@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.DecisionAnswerWire
+import oathdigital.protocol.projection.Die
 import oathdigital.testkit.Unwrap.present
 
 import munit.FunSuite
@@ -77,8 +78,9 @@ class WalkerDecisionDraftSuite extends FunSuite:
         DecisionAnswerWire.ChooseOneWire("player", "yellow")))
 
   test("a pool rolls the die its action rolls"):
-    assertEquals(WalkerPanelSupport.poolDie("campaign.attack"), Some("attack"))
+    assertEquals(WalkerPanelSupport.poolDie("campaign.attack"),
+      Some(Die.Attack))
     assertEquals(WalkerPanelSupport.poolDie("campaign.defense"),
-      Some("defense"))
-    assertEquals(WalkerPanelSupport.poolDie("recover"), Some("defense"))
+      Some(Die.Defense))
+    assertEquals(WalkerPanelSupport.poolDie("recover"), Some(Die.Defense))
     assertEquals(WalkerPanelSupport.poolDie("gambling-hall"), None)

@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
+import oathdigital.protocol.projection.{Die, DieFace}
 
 /** The faces of the two dice, drawn as the symbols printed on them.
   *
@@ -10,15 +11,11 @@ import org.scalajs.dom
   *
   * Named `DieFaceChip`, not `DieFace`: the face itself is
   * `oathdigital.protocol.projection.DieFace`, and this is what the page
-  * draws for one.
+  * draws for one. The words a face is read by are that enum's; this object
+  * keeps only the glyph composition, which is the client's own drawing
+  * concern and has no server twin.
   */
 private[frontend] object DieFaceChip:
-  private val words = Map(
-    "hollow-sword" -> "hollow sword", "one-sword" -> "one sword",
-    "two-swords-skull" -> "two swords and a skull", "blank" -> "blank",
-    "one-shield" -> "one shield", "two-shields" -> "two shields",
-    "doubler" -> "doubler")
-
   private val symbols = Map(
     "hollow-sword" -> Vector("hollow-sword"),
     "one-sword" -> Vector("sword"),
@@ -28,32 +25,38 @@ private[frontend] object DieFaceChip:
     "blank" -> Vector.empty[String],
     "doubler" -> Vector.empty[String])
 
-  /** The dice a roll can name. A roll on any other die keeps the neutral
-    * chip. */
-  private val dice = Set("attack", "defense")
+  def name(key: String): String =
+    DieFace.values.find(_.key == key).fold(key)(_.word)
 
-  def name(face: String): String = words.getOrElse(face, face)
-
-  /** `die` is the die the face was rolled on; a face on a known die is
-    * drawn in that die's color. */
-  def face(value: String, die: Option[String] = None): dom.Element =
-    val classes = Vector("die-face", s"die-face-$value") ++
-      die.filter(dice).map(kind => s"die-face-$kind")
+  def face(key: String, die: Option[Die] = None): dom.Element =
+    val classes = Vector("die-face", s"die-face-$key") ++
+      die.map(kind => s"die-face-${kind.key}")
     val node = ServerUiSupport.element("span", classes.mkString(" "))
     node.setAttribute("role", "img")
-    node.setAttribute("aria-label", name(value))
-    symbols.get(value) match
+    node.setAttribute("aria-label", name(key))
+    symbols.get(key) match
       case Some(glyphs) =>
         glyphs.foreach(glyph => node.appendChild(RulesTextRenderer.glyph(glyph)))
-        if value == "doubler" then
+        if key == "doubler" then
           node.appendChild(dom.document.createTextNode("×2"))
       // A face this client does not know is printed as itself rather than
-      // dropped, the same way an unknown rules token stays literal.
-      case None => node.appendChild(dom.document.createTextNode(value))
+      // dropped, the same way an unknown rules token stays literal. Only the
+      // decision wire can still send one; the log's faces are typed.
+      case None => node.appendChild(dom.document.createTextNode(key))
     node
 
-  def roll(faces: Vector[String], die: Option[String] = None): dom.Element =
+  /** The log's roll: every face typed, so the die comes off the faces. */
+  def roll(faces: Vector[DieFace]): dom.Element =
+    row(faces.map(_.key), faces.headOption.map(_.die))
+
+  /** The decision wire's roll. Its faces are still keys
+    * (`WalkerDecisionProjector.faceName`), held to `DieFace` by a test in
+    * `WalkerDecisionProjectorSuite`. */
+  def rollKeys(keys: Vector[String], die: Option[Die]): dom.Element =
+    row(keys, die)
+
+  private def row(keys: Vector[String], die: Option[Die]): dom.Element =
     val node = ServerUiSupport.element("span", "die-faces")
-    node.setAttribute("aria-label", faces.map(name).mkString(", "))
-    faces.foreach(value => node.appendChild(face(value, die)))
+    node.setAttribute("aria-label", keys.map(name).mkString(", "))
+    keys.foreach(key => node.appendChild(face(key, die)))
     node

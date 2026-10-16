@@ -2,7 +2,8 @@ package oathdigital.frontend
 
 import org.scalajs.dom
 import scala.scalajs.js
-import oathdigital.protocol.projection.{LogKind, LogSection, LogSpan}
+import oathdigital.protocol.projection.{DieFace, LogKind, LogSection,
+  LogSpan}
 
 class GameLogPaneSuite extends munit.FunSuite:
   private def entry(sequence: Long, kind: LogKind, spans: LogSpan*) =
@@ -71,12 +72,12 @@ class GameLogPaneSuite extends munit.FunSuite:
   test("a dice span draws the die-face chips, one per face"):
     val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     val roll = entry(7, LogKind.Roll, LogSpan.Text("Rolled "),
-      LogSpan.Dice("attack", Vector("one-sword", "blank"),
-        Vector("sword", "blank")), LogSpan.Text(" for the attack"))
+      LogSpan.Dice(DieFace.OneSword, Vector(DieFace.HollowSword)),
+      LogSpan.Text(" for the attack"))
     new GameLogPane(content).show("g|red", Vector(roll), Map.empty)
     val faces = content.querySelectorAll(".die-faces .die-face")
     assertEquals(faces.length, 2)
-    assertEquals(faces(0).getAttribute("aria-label"), "one sword")
+    assertEquals(faces(0).getAttribute("aria-label"), "sword")
     assertEquals(content.querySelector(".die-faces").getAttribute("class"),
       "die-faces log-dice log-dice-attack")
     assertEquals(content.querySelectorAll(".die-face-attack").length, 2)
