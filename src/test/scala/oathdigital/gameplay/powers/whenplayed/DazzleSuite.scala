@@ -69,6 +69,17 @@ class DazzleSuite extends munit.FunSuite:
     assert(Look(done.treeless).cardsAt(nearSite).contains(wrestlers))
     assertEquals(discarded(done.events), Vector(homesteaders))
 
+  test("Dazzle skips a card Ancient Bloodline locks and still discards " +
+      "another"):
+    // p2 rules the other Cradle site and holds Ancient Bloodline faceup.
+    val ready = holding
+      .warbandsAt(homeSite, p1, 1).denizen(homesteaders, at = homeSite)
+      .warbandsAt(nearSite, p2, 1).denizen(wrestlers, at = nearSite)
+      .adviser(p2, CatalogNames.denizen("Ancient Bloodline")).ready
+    val done = Outcomes.finished(play(ready, power, dazzle))
+    assert(Look(done.treeless).cardsAt(nearSite).contains(wrestlers))
+    assertEquals(discarded(done.events), Vector(homesteaders))
+
   test("Dazzle rejects a site denizen absent from the catalog"):
     // No Table step places a card the catalog lacks.
     val unknown = DenizenId("denizen:missing-from-catalog")

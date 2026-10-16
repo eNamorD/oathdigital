@@ -85,3 +85,18 @@ class GiantPythonSuite extends munit.FunSuite:
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
       "used.replaced", s"Replaced ${errandBoy.value} at ${peaks.value}.",
       covers = true)))
+
+  test("a card Ancient Bloodline locks is askable of its holder as a " +
+      "Replace"):
+    // p2 rules Broken Peaks, where Errand Boy stands, and holds Ancient
+    // Bloodline faceup.
+    val ready = pythonBesideDarkestSecretHolder
+      .warbandsAt(peaks, Table.p2, 1)
+      .adviser(Table.p2, CatalogNames.denizen("Ancient Bloodline")).ready
+    val t = accepted(use(ready, power, source))
+    assert(awaits(t, GiantPython.decisionId))
+    val row = queryOf(t, p1).toVector.flatMap(_.offeredOptions)
+      .find(_.id == DecisionOptionRef.SiteSlot(peaks, 0).wireId)
+    assertEquals(row.map(_.state), Some("askable"))
+    assertEquals(row.flatMap(_.reason), Some("Ancient Bloodline: Locked " +
+      "and needs the holder's consent."))

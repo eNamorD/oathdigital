@@ -4,7 +4,7 @@ import oathdigital.gameplay.actions.{AdviserFace, AdviserPlayNote, CardPlay,
   CardPlayRules, PlacementLimit, RuleNotes, VisionRules}
 import oathdigital.gameplay.actions.cardplay.{CardSlot, CardSlots,
   MoreDiscards}
-import oathdigital.gameplay.operations.HallOfMinisters
+import oathdigital.gameplay.operations.{AncientBloodline, HallOfMinisters}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, PlacementPicks, Table, TestCards}
@@ -198,6 +198,35 @@ class CardSlotsSuite extends munit.FunSuite:
       Vector(ConsentAsk(p2, Vector(HallOfMinisters.id))),
       Vector(ConsentKey(HallOfMinisters.id, p1, HallOfMinisters.discardKey,
         DecisionOptionRef.Denizen(replaced))))
+
+  /** p1 stands at Deep Woods, full with three plain cards, with Threatening
+    * Roar, a Beast card, in hand. p2 rules Deep Woods and holds Ancient
+    * Bloodline faceup. */
+  private def fullWoodsBesideBloodlineHolder: ReadyGame =
+    val roar = CatalogNames.denizen("Threatening Roar")
+    Vector("Fae Merchant", "Second Chance", "Wrestlers")
+      .map(CatalogNames.denizen(_))
+      .foldLeft(Table.start.pawn(p1, at = woods).hand(p1, roar))(
+        _.denizen(_, at = woods))
+      .warbandsAt(woods, p2, 1)
+      .adviser(p2, CatalogNames.denizen("Ancient Bloodline")).ready
+
+  private def askingBloodlineHolder(replaced: DenizenId): OptionReason =
+    OptionReason.Askable(AncientBloodline.id,
+      AncientBloodline.lockedConsent(AncientBloodline.source),
+      Vector(ConsentAsk(p2, Vector(AncientBloodline.id))),
+      Vector(ConsentKey(AncientBloodline.id, p1, AncientBloodline.moveKey,
+        DecisionOptionRef.Denizen(replaced))))
+
+  test("Ancient Bloodline makes its holder's site cards askable of the " +
+      "holder in a Replace"):
+    val roar = CatalogNames.denizen("Threatening Roar")
+    val fillers = Vector("Fae Merchant", "Second Chance", "Wrestlers")
+      .map(CatalogNames.denizen(_))
+    assertEquals(atSite(slotsOf(fullWoodsBesideBloodlineHolder, roar)),
+      fillers.zipWithIndex.map((filler, index) => DecisionOption.Unavailable(
+        replacing(siteSlot(index, woods), filler),
+        askingBloodlineHolder(filler))))
 
   test("the Hall of Ministers makes its ruler's site cards askable of that " +
       "ruler, protects them from everyone under bandits, and binds no ruler " +
