@@ -371,6 +371,10 @@
   onto a card or a `Give` onto it; an off-turn payment is not one.
   Enemies are every player but a player ruler, every player at a bandit
   site, and nobody at an unruled or Empire site.
+- **Placements in practice** (part 2). A use whose cost places on its card
+  counts as a placement. One grant covers both a card's power and placing
+  on it, for the turn. A placement is askable where a choose-one offers it.
+  Elsewhere it is refused without a question.
 - **Automatic powers** (ruled 2026-10-15). An automatic power is used when
   it makes something happen: a gain, a kill, a bury, a card's effect.
   Restrictions, limits, requirements on an action and cost changes are not

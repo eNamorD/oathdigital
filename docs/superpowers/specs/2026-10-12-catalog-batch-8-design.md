@@ -562,6 +562,31 @@ consent, and wraps Hunger.
   Jinx) or a `Give` onto it (Whispering Leaves' target, Dissent). The placer
   is the payer or the giver. An off-turn payment settles to the bank and
   places nothing.
+- **A use that places** (part 2). A use whose cost places favor or secrets
+  on its card is a placement too, made by its user on their own turn. So a
+  persistent power with a placed cost, such as Jinx, is refused where
+  placing is.
+- **One grant per card** (part 2). A placement refusal is remembered under
+  the same key as a power-use refusal: the restriction, the placer,
+  `"power.use"` and the card. Asking to use a card covers using its power
+  and placing on it, for the turn.
+- **Where a placement is askable** (part 2). A placement is askable on a
+  choose-one whose option leads to it, such as a Muster's or a Trade's
+  source card. The walker's search finds it: the option's path meets only
+  waivable operation refusals, and granting them opens it. The Hall of
+  Ministers is askable the same way. A placement that no choose-one offers
+  is refused without a question: Forge's partition, Whispering Leaves' and
+  Dissent's gifts.
+- **An unexplained placement refusal** (part 2). Under bandits, a source
+  card whose placement is refused is left out of its question, not shown
+  with a reason. The walker cannot word an operation refusal that nobody
+  may waive. This is a known gap.
+- **When an automatic power is judged** (part 2). An automatic power is
+  judged where its effect runs, inside an `AutomaticUse` node, against the
+  state when the walk reaches it. Tyrant's kill runs after the pawn moves,
+  so City Wall stops it when its holder travels to City Wall's site, not
+  from it. Keep, which replaces a Raid's consequences, is judged where its
+  window folds.
 - **Enemies.** Every other player is an enemy of a player ruler. At a site
   bandits rule, every player is an enemy and nobody may consent. At an
   unruled site, or one the Empire rules, nobody is restricted. City Wall's
