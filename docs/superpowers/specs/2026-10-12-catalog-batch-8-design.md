@@ -156,12 +156,33 @@ The approved changes outside `gameplay/powers/`:
   its user) call it and never name Yew Staff. Challenge, scoring, the
   Oathkeeper goal and every other reader keep `BannerRules.holder`, so the
   check needs no flag.
-- **A power-use filter** (slice 10). One "may this player use this card's
-  power" rule, read by both paths: walker contributions, and ACTION powers
-  through `PhasePowerProcedure.check`. It sees the power's printed
-  persistence and cost and the card's site. An automatic power is judged
-  where its effect runs, inside an `AutomaticUse` node, not when its window
-  folds ([automatic power consent design](2026-10-15-automatic-power-consent-design.md)).
+- **A power-use filter** (slice 10, detailed at plan time). A `PowerUse`
+  says who uses a power, its card, whether it is printed persistent,
+  whether it costs a secret, and whether a refusal may be asked of a
+  ruler. A walker power declares its `powerUseRestrictions`, which
+  `WalkerPowers` and `PhasePowers` both carry, and states its own use
+  through `ContributingPower.use`. The filter is read by:
+  - the phase menu and `PhasePowerProcedure.check`, for phase powers and
+    Hunger's forced Wake;
+  - the modifier picker, for modifiers;
+  - the battle-plan window and the reroll choice, which withhold a refused
+    offer with its reason;
+  - the `AutomaticUse` node, which judges an automatic power where its
+    effect runs, and the contribution collector, which judges Keep where
+    its window folds (part 2), as the
+    [automatic power consent design](2026-10-15-automatic-power-consent-design.md)
+    describes.
+
+  A grant is remembered under the key `"power.use"` and the card, so it
+  covers the card's use by that player for the turn on every path.
+- **Placement bans** (slice 10, added at plan time). Forest Council, City
+  Wall and Giant Python refuse a placement of favor or secrets onto a card
+  through their `operationRestrictions`: a `PayCost` that places onto the card,
+  or a `Give` onto it, with its payer or giver as the placer. An off-turn
+  payment settles to the bank and is not a placement.
+- **A slot question for moving a site card** (slice 10, added at plan
+  time). Giant Python and Roving Terror ask one question over site slots,
+  as card play does: an empty slot, or a card marked Replace.
 - **An actor-aware operation restriction** (slice 11). An
   `OperationRestriction` learns the acting player, so a lock can hold
   against enemies only. Slice 5 names only a burn's actor, on the `Burn`
@@ -513,6 +534,70 @@ Wake is left out where it is due. Slice 10 refuses silently; roadmap item
 10b ([automatic power consent design](2026-10-15-automatic-power-consent-design.md))
 adds the waivable branch, where the refusing card's ruler decides through
 consent, and wraps Hunger.
+
+### Plan-time rulings
+
+- **Using a non-persistent power** means using any power printed
+  `persistent: false`: phase powers, Hunger's forced Wake, modifiers and
+  Catacombs, battle plans and their rerolls, When Played powers, and the
+  automatic rules that make something happen (Tyrant, Hospitality, Keep,
+  Vow of Beastkin's and Vow of Wandering's extra warbands). Restrictions,
+  limits and cost changes are not uses, so they still hold: a lasting limit
+  printed under a phase power's id (Assassin, Insomnia, Silver Tongue, Pied
+  Piper, Vow of Obedience, Vow of Poverty), Vow of Beastkin's source limit
+  and Initiation Rite. The edifice setup rules run during Setup, where
+  nobody uses a power.
+- **A power that costs a secret** has a secret or a burnt secret in its
+  printed cost, Jinx and Spiteful Mirror's free later picks included. Ward
+  of Silence and Arcane Armor pay X secrets, at least one, and count too, as
+  does every battle plan Gleaming Armor taxes, the title's included: the
+  title's plan is a power, though no card prints it. Initiation Rite costs no
+  secret, and mustering is not a power. Unstable Summon burns from the
+  Darkest Secret, which is not a cost.
+- **A Beast card** is judged by `EffectiveSuit.of` for a faceup adviser,
+  and by its printed suit at a site.
+- **Placing favor or secrets on a card** is a cost paid onto it (a power's
+  cost, a Trade's or Muster's source card, Forge, a battle plan's cost,
+  Jinx) or a `Give` onto it (Whispering Leaves' target, Dissent). The placer
+  is the payer or the giver. An off-turn payment settles to the bank and
+  places nothing.
+- **Enemies.** Every other player is an enemy of a player ruler. At a site
+  bandits rule, every player is an enemy and nobody may consent. At an
+  unruled site, or one the Empire rules, nobody is restricted. City Wall's
+  "while at this site" reads the physical pawn, not an as-if site.
+- **Consent.** Spell Breaker, Forest Council and City Wall are waivable;
+  Giant Python is not ("Other cards"). Outside a Campaign every refusal they
+  make is askable of the ruler: the phase menu, the modifier picker, the
+  placements and the rerolls. Inside a Campaign (its modifiers, its battle
+  plans and the rerolls of its dice) nobody is asked.
+- **A refused automatic power** does not apply. Nobody is asked and no
+  line is written. It is judged where its effect runs: Tyrant arriving at
+  City Wall's site is refused. The roadmap's item 10b replaces this: the
+  restriction's ruler chooses, each time, whether to deactivate the power
+  ("Use City Wall to deactivate Tyrant?"), and the power's user is not
+  asked.
+- **Hover reasons**, in the consent design's format:
+  - "Spell Breaker: Cannot use powers that cost secrets."
+  - "Forest Council: Cannot use non-persistent powers of Beast cards." and
+    "Forest Council: Cannot place favor or secrets on Beast cards."
+  - "City Wall: Cannot use non-persistent powers while at its site." and
+    "City Wall: Cannot place favor or secrets on cards while at its site."
+  - "Giant Python: Cards at its site cannot be used for non-persistent
+    powers." and "Giant Python: Cannot place favor or secrets on cards at
+    its site."
+  - An askable reason ends " without ruler's consent." instead of ".".
+- **Giant Python's ACTION** is usable when its user holds the Darkest
+  Secret through `CardPowerBanners.holdsDarkestSecret` and some other site
+  can take it. It asks one question, "Giant Python: move to which slot?":
+  each other site's first empty slot when it has room, and each faceup
+  denizen and ruined edifice there marked Replace, judged by
+  `CardSlots.judge`. A Replace discards the card the standard way; Giant
+  Python then takes the site's last slot with its tokens. Its lines are
+  "Moved Giant Python to {site}." and "Replaced {card} at {site}.".
+- **Roving Terror** asks the same slot question with Replace options only.
+- **Three plans.** Part 1 builds the filter with Spell Breaker. Part 2
+  adds the placement bans and the automatic powers with Forest Council and
+  City Wall. Part 3 adds Giant Python and moves Roving Terror.
 
 ## Slice 11: Actor-aware lock
 

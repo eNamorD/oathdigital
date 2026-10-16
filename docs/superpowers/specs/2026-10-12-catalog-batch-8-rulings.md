@@ -336,26 +336,41 @@
 ## Slice 10: Power-use restrictions
 
 - **162 Spell Breaker.** "Enemies of Spell Breaker's ruler cannot use
-  powers that cost any [secret] or [secret-burnt]." Every power whose cost
-  includes a secret, ACTION or modifier, is shown unavailable to the
-  ruler's enemies.
+  powers that cost any [secret] or [secret-burnt]."
+  - Reached: every power whose printed cost has a secret or a burnt
+    secret, of any kind (ACTION, modifier, battle plan, Jinx's reroll);
+    Ward of Silence and Arcane Armor, which pay X secrets; and every
+    battle plan Gleaming Armor taxes, the title's plan included.
+  - Not reached: Initiation Rite, Unstable Summon's burn from the Darkest
+    Secret.
+  - The ruler may consent outside a Campaign.
 - **194 Forest Council.** "Enemies of Forest Council's ruler cannot place
   [favor] / [secret] on [suit-beast] cards or use their non-persistent
-  powers." Both bans cover Beast cards anywhere.
+  powers." Both bans cover Beast cards anywhere: a faceup adviser by its
+  effective suit, a site card by its printed suit. The ruler may consent
+  outside a Campaign.
 - **252 City Wall.** "While at this site, enemies of City Wall's ruler
   cannot place [favor] / [secret] on cards or use non-persistent powers."
   While an enemy's pawn is at City Wall's site, the enemy cannot place favor
   or secrets on any card or use any non-persistent power, wherever the card
-  is.
+  is. The ruler may consent outside a Campaign.
 - **186 Giant Python.** "[secret] ACTION: If you hold the Darkest Secret,
   move Giant Python to another site, and you may discard a card there
   first." and "Other cards at this site cannot be used for non-persistent
   powers or placing [favor] / [secret]."
-  - The move goes to any other site. At a full site, the discard is
-    required.
+  - The holding is read through Yew Staff's lens.
+  - The move goes to any other site, through one slot question. At a full
+    site the discard is required.
   - Its restriction moves with it, and its ruler becomes the ruler of its
     new site.
-  - The restriction holds for every player, its ruler included.
+  - The restriction holds for every player, its ruler included, and is
+    not waivable.
+- **For every card:** a non-persistent power is any power printed
+  `persistent: false` that a player chooses, or an automatic power the
+  "Automatic powers" entry below lists as used. A placement is a cost paid
+  onto a card or a `Give` onto it; an off-turn payment is not one. Enemies are every player but a
+  player ruler, every player at a bandit site, and nobody at an unruled or
+  Empire site.
 - **Automatic powers** (ruled 2026-10-15). An automatic power is used when
   it makes something happen: a gain, a kill, a bury, a card's effect.
   Restrictions, limits, requirements on an action and cost changes are not
