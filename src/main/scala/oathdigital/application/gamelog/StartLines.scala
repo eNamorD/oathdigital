@@ -123,18 +123,19 @@ private[gamelog] final class StartLines(words: LogWords,
     }
 
   /** Kind and defender from the answers so far and the state after `at`,
-    * read exactly as the procedure reads them; failing that, from the
-    * recorded result. */
+    * read exactly as the procedure reads them, through the one function that
+    * owns that read; failing that, from the recorded result, which is a
+    * journal read and so stays here. */
   private def campaign(journal: LogJournal, run: Run, at: Int)
       : Option[Vector[LogSpan]] =
     val pending = PendingTree(Vector.empty, journal.answers(run, at))
-    journal.readyAfter(at).flatMap(ready => for
-      kind <- CampaignSetup.kindOf(ready, run.actor, pending)
-      defender <- CampaignSetup.defenderOf(ready, run.actor, pending, kind)
-    yield campaignLine(kind, defender)).orElse(journal.ops(at).collectFirst {
-      case OpStep(RecordCampaignResult(result), _, _) =>
-        campaignLine(result.kind, result.defender)
-    })
+    journal.readyAfter(at)
+      .flatMap(ready => CampaignSetup.declaredAt(ready, run.actor, pending))
+      .map((kind, defender) => campaignLine(kind, defender))
+      .orElse(journal.ops(at).collectFirst {
+        case OpStep(RecordCampaignResult(result), _, _) =>
+          campaignLine(result.kind, result.defender)
+      })
 
   private def campaignLine(kind: CampaignKind, defender: CampaignDefender)
       : Vector[LogSpan] =
