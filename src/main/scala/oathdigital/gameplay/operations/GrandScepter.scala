@@ -31,8 +31,10 @@ object TheGrandScepterCard extends Relic(RelicId("grand-scepter"), "The Grand Sc
   * There is one Grand Scepter, so the restriction names its card and holds
   * whichever relics a catalog lists.
   */
-case object GrandScepter extends OperationRestriction:
+case object GrandScepter extends OperationRestriction with PrintedRule:
   val relic: RelicId = TheGrandScepterCard.id
+  val id: PowerId = TheGrandScepterCard.restriction.id
+  val source: PowerSourceRef = PowerSourceRef.Card(relic)
 
   override def reason(ready: ReadyGame,
       operation: CoreOperation): Option[OperationReason] =

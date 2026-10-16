@@ -8,8 +8,8 @@ import oathdigital.model.PowerId
   * can make one true: `ReviewedPowerCatalog` carries the flag explicitly per
   * handler, while `WalkerPowerCatalog`/`PhasePowerCatalog` carry no such flag
   * -- for those, being wired in for this catalog at all is what implemented
-  * means. `OperationRestrictions.implementedRules` likewise names the
-  * printed powers an operation restriction enforces with no walker power.
+  * means. Likewise, a power in `OperationRestrictions.printedRules` is
+  * implemented, since an operation restriction enforces it.
   * The single source both `ReviewedPowerCatalog`'s registry (so the
   * legacy "ignored rule" diagnostic stops firing for a power a walker or
   * phase catalog already covers) and the presentation layer (the UI's
@@ -21,7 +21,7 @@ object PowerImplementationStatus:
   def implemented(catalog: ExecutableCatalog): PowerId => Boolean =
     val covered = WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet ++
       PhasePowerCatalog.default(catalog).powers.map(_.id).toSet ++
-      OperationRestrictions.implementedRules
+      OperationRestrictions.printedRules.map(_.id).toSet
     val reviewedHandlers = ReviewedPowerCatalog.powers
       .map(power => power.id -> power.handlers).toMap
     id => covered.contains(id) ||

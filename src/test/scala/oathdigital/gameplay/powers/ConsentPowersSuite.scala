@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, Waiver}
-import oathdigital.gameplay.operations.HallOfMinisters
+import oathdigital.gameplay.operations.{GrandScepter, HallOfMinisters}
 import oathdigital.gameplay.powers.cardplay.SecretPolice
 import oathdigital.gameplay.powers.economy.Curfew
 import oathdigital.gameplay.powers.search.ForcedLabor
@@ -74,6 +74,9 @@ class ConsentPowersSuite extends munit.FunSuite:
       Some(PowerSourceRef.Card(hall)))
     assertEquals(powers.granter(ready, HallOfMinisters.id), Some(p2))
     assertEquals(powers.ruledBy(ready, p2), Vector(HallOfMinisters.id))
+
+  test("the Grand Scepter's restriction is not waivable"):
+    assertEquals(powers.waiver(GrandScepter.id), None)
 
   test("the toll and penalty cards are waivable, each named for its card"):
     Vector(TollRoads.step, ForcedLabor.step, Curfew.step, GraspingVines.step)

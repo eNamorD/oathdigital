@@ -125,7 +125,6 @@ relic.sigil-of-the-heart
 relic.the-grand-scepter.action
 relic.the-grand-scepter.campaign
 relic.the-grand-scepter.negotiation
-relic.the-grand-scepter.restriction
 relic.whispering-stone
 site.ancient-city.enduring
 site.buried-giant.plains

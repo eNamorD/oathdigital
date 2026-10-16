@@ -31,7 +31,7 @@ object HallOfMinistersCard extends Edifice(EdificeId("E16"), Suit.Order):
   * There is one Hall of Ministers, so the restriction names its card and
   * holds whichever edifices a catalog lists.
   */
-case object HallOfMinisters extends OperationRestriction:
+case object HallOfMinisters extends OperationRestriction with WaivableRule:
   val id: PowerId = HallOfMinistersCard.intact.power.id
   val source: PowerSourceRef = PowerSourceRef.Card(HallOfMinistersCard.id)
 
@@ -40,19 +40,20 @@ case object HallOfMinisters extends OperationRestriction:
     * key names the discard instead. */
   val discardKey: String = "operation.discard"
 
-  /** "Cannot discard cards from its ruler's sites without ruler's
-    * consent.": the reason of an option the Hall's ruler may be asked
-    * about. */
-  /** The keys this rule owns. An operation restriction is not a power,
-    * so `RuleNotes` declares it for the formatter. */
+  /** The keys this rule owns. */
   val notes: NoteSet = NoteSet.unowned("HallOfMinisters")
   /** "Cannot discard cards from its ruler's sites.": the reason of an
     * option nobody may be asked about. */
   val noDiscard: NoteKey = notes.key("no-discard", Vector(NotePart.Text(
     "Cannot discard cards from its ruler's sites.")))
+  /** "Cannot discard cards from its ruler's sites without ruler's
+    * consent.": the reason of an option the Hall's ruler may be asked
+    * about. */
   val noDiscardConsent: NoteKey = notes.key("no-discard-consent", Vector(
     NotePart.Text("Cannot discard cards from its ruler's sites without " +
       "ruler's consent.")))
+  override def noteKeys: Vector[NoteKey] = notes.declared
+  def consentNote: NoteKey = noDiscardConsent
 
   override def reason(ready: ReadyGame,
       operation: CoreOperation): Option[OperationReason] =

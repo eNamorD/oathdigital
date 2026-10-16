@@ -22,7 +22,7 @@ import oathdigital.model._
   * a holder protects nothing. That case is to be handled with the Imperial
   * rules.
   */
-case object AncientBloodline extends AsIfLocked:
+case object AncientBloodline extends AsIfLocked with WaivableRule:
   val id: PowerId = AncientBloodlineCard.power.id
   val source: PowerSourceRef = PowerSourceRef.Card(AncientBloodlineCard.id)
 
@@ -31,8 +31,7 @@ case object AncientBloodline extends AsIfLocked:
     * the move instead. */
   val moveKey: String = "operation.move"
 
-  /** The keys this rule owns. An operation restriction is not a power,
-    * so `RuleNotes` declares it for the formatter. */
+  /** The keys this rule owns. */
   val notes: NoteSet = NoteSet.unowned("AncientBloodline")
   /** "Locked.": the reason of a card nobody may be asked about. */
   val locked: NoteKey = notes.key("locked", Vector(NotePart.Text(
@@ -41,6 +40,8 @@ case object AncientBloodline extends AsIfLocked:
     * holder may be asked about. */
   val lockedConsent: NoteKey = notes.key("locked-consent", Vector(
     NotePart.Text("Locked and needs the holder's consent.")))
+  override def noteKeys: Vector[NoteKey] = notes.declared
+  def consentNote: NoteKey = lockedConsent
 
   /** The player who holds Ancient Bloodline faceup, who may consent. */
   def granter(ready: ReadyGame): Option[PlayerId] =
