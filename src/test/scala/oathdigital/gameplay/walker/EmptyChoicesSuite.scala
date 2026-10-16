@@ -119,3 +119,10 @@ class EmptyChoicesSuite extends munit.FunSuite:
       case one: DecisionQuery.ChooseOne => assertEquals(one.options,
         Vector(DecisionOption.Button(Decide.Pass, "Continue")))
       case other => fail(s"expected a choose-one, got $other")
+
+  test("the heading keeps the power's name before its colon"):
+    assertEquals(EmptyChoices.headingFor(Some("Assassin: discard an adviser")),
+      "Assassin: nothing to choose")
+    assertEquals(EmptyChoices.headingFor(Some("Pick a side")),
+      "Nothing to choose")
+    assertEquals(EmptyChoices.headingFor(None), "Nothing to choose")
