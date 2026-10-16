@@ -45,10 +45,3 @@ object RelicHunterCard extends Denizen(DenizenId("126"), "Relic Hunter", Suit.Or
       "[defense-die] per relic. You may put any relics you take on " +
       "the bottom of the relic deck.")
   val powers: Vector[PrintedPower] = Vector(power)
-
-object BaronCard extends Denizen(DenizenId("250"), "Baron", Suit.Order):
-  val power = PrintedPower(PowerId("denizen.baron"),
-    persistent = false, cost = Cost.free,
-    text = "You may play to any site you rule, and you may discard a " +
-      "card from that site first.")
-  val powers: Vector[PrintedPower] = Vector(power)

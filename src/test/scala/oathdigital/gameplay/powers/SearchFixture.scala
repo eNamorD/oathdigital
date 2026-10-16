@@ -127,6 +127,14 @@ object SearchFixture:
         PlacementFixture.cardPlayDecisionId(card, "place"),
         DecisionAnswer.ChooseOneAnswer(ref)))
 
+  /** Answers the parked placement of `card` with `ref`: a slot at another
+    * site, which `place` would not pick. */
+  def placeAt(from: OathTransition, card: WorldCardId,
+      ref: DecisionOptionRef): Either[OathViolation, OathTransition] =
+    rules.resolveWalker(from.state, actor,
+      PlacementFixture.cardPlayDecisionId(card, "place"),
+      DecisionAnswer.ChooseOneAnswer(ref))
+
   /** Answers the follow-up of a Replace site slot: discard `more` as well. */
   def discardMore(from: OathTransition, card: WorldCardId,
       more: Vector[CardId]): Either[OathViolation, OathTransition] =
