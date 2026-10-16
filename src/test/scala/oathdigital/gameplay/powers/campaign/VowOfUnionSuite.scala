@@ -115,8 +115,8 @@ class VowOfUnionSuite extends munit.FunSuite:
       DecisionOptionRef.Button("conquest"))
     // The force question reads the board after the moves.
     done.query(b.actor) match
-      case DecisionQuery.ChooseAmount(min, max, _, _, _) =>
-        assertEquals((min, max), (0, 4))
+      case amount: DecisionQuery.ChooseAmount =>
+        assertEquals((amount.min, amount.max), (0, 4))
       case other => fail(s"expected the force question, got $other")
     val committed = done.answer(b.actor, CampaignIds.force,
       ChooseAmountAnswer(4))

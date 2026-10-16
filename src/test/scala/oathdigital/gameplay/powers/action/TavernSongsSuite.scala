@@ -39,9 +39,10 @@ class TavernSongsSuite extends munit.FunSuite:
     assert(awaits(t, TavernSongs.inspectDecisionId),
       parked.parkedDecision(t.state).toString)
     queryOf(t, p1) match
-      case Some(DecisionQueryProjection.Inspect(cards, _, heading)) =>
-        assertEquals(cards.map(_.cardId), top.map(_.value))
-        assertEquals(heading, Some(s"Tavern Songs: the top of the $pileName"))
+      case Some(inspect: DecisionQueryProjection.Inspect) =>
+        assertEquals(inspect.cards.map(_.cardId), top.map(_.value))
+        assertEquals(inspect.heading,
+          Some(s"Tavern Songs: the top of the $pileName"))
       case other => fail(s"expected an Inspect, got $other")
     val seen = after(t)
     assert(top.forall(knows(seen, p1, _)))
@@ -65,8 +66,9 @@ class TavernSongsSuite extends munit.FunSuite:
   test("a pile of two shows both"):
     val t = accepted(use(staged(pile.take(2)), TavernSongs, source))
     queryOf(t, p1) match
-      case Some(DecisionQueryProjection.Inspect(cards, _, _)) =>
-        assertEquals(cards.map(_.cardId), pile.take(2).reverse.map(_.value))
+      case Some(inspect: DecisionQueryProjection.Inspect) =>
+        assertEquals(inspect.cards.map(_.cardId),
+          pile.take(2).reverse.map(_.value))
       case other => fail(s"expected an Inspect, got $other")
 
   test("an empty pile asks nothing and says so"):

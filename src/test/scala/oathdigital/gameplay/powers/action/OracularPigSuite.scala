@@ -33,10 +33,11 @@ class OracularPigSuite extends munit.FunSuite:
 
   private def shown(t: OathTransition): Vector[String] =
     queryOf(t, actor) match
-      case Some(DecisionQueryProjection.Inspect(cards, _, heading)) =>
-        assertEquals(heading, Some("Oracular Pig: the top of the world deck"))
-        assert(cards.forall(!_.hidden), cards.toString)
-        cards.map(_.cardId)
+      case Some(inspect: DecisionQueryProjection.Inspect) =>
+        assertEquals(inspect.heading,
+          Some("Oracular Pig: the top of the world deck"))
+        assert(inspect.cards.forall(!_.hidden), inspect.cards.toString)
+        inspect.cards.map(_.cardId)
       case other => fail(s"expected an Inspect, got $other")
 
   test("the top three cards are peeked and shown top first until Done"):

@@ -89,7 +89,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
 
   private def optionsOf(decide: Decide): Vector[DecisionOption] =
     decide.query match
-      case DecisionQuery.ChooseOne(options, _, _) => options
+      case one: DecisionQuery.ChooseOne => one.options
       case other => fail(s"expected a choose-one, got $other")
 
   /** Whether `state` is parked on `id`, awaiting `who`, rebuilt with exactly

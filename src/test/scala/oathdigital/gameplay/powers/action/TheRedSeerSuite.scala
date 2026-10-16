@@ -41,7 +41,7 @@ class TheRedSeerSuite extends munit.FunSuite:
       phasePowers = PhasePowerCatalog.default(catalog)) match
       case Right(Some(ParkedNode.Decision(_, decide, _))) =>
         decide.query match
-          case DecisionQuery.ChooseOne(options, _, _) => options
+          case one: DecisionQuery.ChooseOne => one.options
           case other => fail(s"expected a choose-one, got $other")
       case other => fail(s"expected a parked decision, got $other")
 

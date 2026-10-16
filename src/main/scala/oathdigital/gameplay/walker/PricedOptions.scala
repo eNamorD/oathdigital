@@ -46,7 +46,7 @@ object PricedOptions:
     * query. */
   def options(decide: Decide): Vector[DecisionOption] =
     decide.query match
-      case DecisionQuery.ChooseOne(offered, _, _) => offered
+      case one: DecisionQuery.ChooseOne => one.options
       case _ => Vector.empty
 
   /** Whether the walk can go on from `outcome`: it finished, its further

@@ -87,9 +87,10 @@ class WalkerPreviewSuite extends munit.FunSuite:
     val addExtra = TransformStub(PowerId("test.add-extra"), hooked,
       (_, operations) => operations.map {
         case decide: Decide => decide.query match {
-          case DecisionQuery.ChooseOne(options, heading, _) =>
-            decide.copy(query = DecisionQuery.ChooseOne(
-              options :+ DecisionOption.Button(extra, "Extra"), heading)): Operation
+          case one: DecisionQuery.ChooseOne =>
+            decide.copy(query = one.copy(
+              options = one.options :+ DecisionOption.Button(extra, "Extra")))
+              : Operation
           case _ => decide
         }
         case other => other

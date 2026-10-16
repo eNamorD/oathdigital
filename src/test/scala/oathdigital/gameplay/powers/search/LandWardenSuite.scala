@@ -72,8 +72,8 @@ class LandWardenSuite extends munit.FunSuite:
     assertEquals(Look(SearchFixture.after(at)).tokensOn(landWarden),
       Tokens(1, 0))
     val shown = parkedDecide(at.state).query match
-      case DecisionQuery.Partition(sections, _, heading, _) =>
-        Some((sections, heading))
+      case partition: DecisionQuery.Partition =>
+        Some((partition.sections, partition.heading))
       case _ => None
     assertEquals(shown, Some((Vector(
       DecisionSection(SearchProcedure.keepKey, "Keep", 1, Some(2)),

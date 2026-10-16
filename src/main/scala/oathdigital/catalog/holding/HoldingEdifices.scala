@@ -248,7 +248,7 @@ object SpiralCastleCard extends Edifice(EdificeId("E23"), Suit.Hearth):
         "site, and they lose 2 Supply. _Bandits will use this._")
     val powers: Vector[PrintedPower] = Vector(power)
 
-object BoilingLakeCard extends Edifice(EdificeId("E24"), Suit.Hearth):
+object BoilingLakeCard extends Edifice(EdificeId("E24"), Suit.Discord):
   object intact extends EdificeFace("Boiling Lake") with Locked:
     val power = PrintedPower(PowerId("edifice.e24.intact"),
       persistent = false, cost = Cost.free,

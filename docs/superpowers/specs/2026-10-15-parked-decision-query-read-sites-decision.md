@@ -70,7 +70,7 @@ existing typed binds in the codebase already do, and what every read of
 
 **Two plumbing sites are pinned fully bound**, by explicit path allowlist:
 `ActionProjectionCodec.scala`, whose seven patterns bind every field of every
-form on the way to and from the wire, and the four fully-bound patterns in
+form on the way to and from the wire, and the five fully-bound patterns in
 `WalkerDecisionProjector.scala`, which carry a domain query to that wire. Their
 arity coupling is the feature: it is the mechanism that fails the build when a
 new field reaches neither the wire nor the mapping onto it.
@@ -90,7 +90,7 @@ than as a rule and an exception.
 
 **The migration is two commits**: the 52 read-site edits first, then the check.
 
-**The 56 positional whole-query equality assertions in tests are out of scope.**
+**The positional whole-query equality assertions in tests are out of scope, and stay so.** They are contract checks, not arity coupling; see the rejections below.
 
 ## Why
 
@@ -120,7 +120,7 @@ not list — it names choose one, choose many, choose an amount, partition,
 distribute and negotiate. The first census taken for this decision was built
 from that vocabulary and undercounted by three, all of them
 `DecisionQueryProjection.Inspect` patterns in gameplay power tests. The
-vocabulary gap is worth closing on its own; it is not closed here.
+**Form** entry has since been corrected to name inspect.
 
 Under this rule, `5203ff09` would have touched 24 files instead of 48.
 
@@ -214,15 +214,21 @@ which is why the original change went in as one commit of 48 files.
   Rejected. The rule cannot name one subtype without reading as arbitrary, and
   the other 14 violations are the same one-line edit. A check that fails on
   existing code acquires an ignore list within a week.
-- **Including the 56 positional whole-query equality assertions.** Rejected for
-  this slice. An assertion such as
+- **Including the positional whole-query equality assertions.** Rejected, and
+  on inspection not worth a slice of their own. This entry first said an
+  assertion such as
   `assertEquals(asked.query, ChooseOne(options, Some(heading), Some(verb)))`
-  breaks on any added field even with typed binds everywhere, and it
-  over-specifies: the test wanted options and a heading, not the whole record.
-  Converting them decides what each test is *for*, one at a time, which is a
-  test-intent rewrite and not a mechanical migration. Bundling it would hide the
-  one real decision inside 34 files of noise. Six of these files changed in
-  `5203ff09`. Worth its own slice if it still looks worthwhile afterwards.
+  "breaks on any added field". That is wrong for a field with a default: the
+  assertion still compiles, and it passes until the thing under test declares
+  a non-default value, which is exactly the change the assertion exists to
+  catch. `5203ff09` shows it. Every whole-query assertion it touched was
+  edited to add a `confirmVerb` the query now genuinely declares (Search,
+  Travel to, Take, Move pawn to); none was edited for a field the query left
+  alone. The count was also loose: "56" came from a grep with a line of
+  context either side. A statement-level count finds 68 `assertEquals` calls
+  with a query constructor as an operand, in 26 files. They are contract
+  checks on the copy a power or procedure publishes, so a typed bind would
+  weaken them to a field comparison. Leave them.
 - **Creating a housekeeping ledger in the repo to file this under.** Rejected:
   the review's housekeeping ledger is a section of its HTML report, not a repo
   artifact, and inventing a file to hold one entry produces a document nobody
@@ -234,11 +240,10 @@ which is why the original change went in as one commit of 48 files.
   parked-decision query should read this file first. The file count alone does
   not say where the cost is, and in the one measured case it pointed at the
   wrong half of the change.
-- `CONTEXT.md`'s **Form** entry lists six forms; `DecisionQuery` has seven. The
-  missing one is `Inspect`. Any census of the query hierarchy built from the
-  vocabulary rather than the ADT will undercount, as the first one taken for
-  this decision did. Closing that gap is a `CONTEXT.md` change and belongs with
-  the domain model, not here.
+- `CONTEXT.md`'s **Form** entry listed six forms while `DecisionQuery` has
+  seven; the missing one was `Inspect`, and the first census taken for this
+  decision undercounted because it was built from the vocabulary. The entry
+  now names inspect, so the vocabulary and the ADT agree.
 - The two pinned sites are load-bearing in a way their code does not announce.
   Treat converting either of them to a typed bind as removing a build check, not
   as tidying. `DecisionQueries` is deliberately not among them; its blindness to

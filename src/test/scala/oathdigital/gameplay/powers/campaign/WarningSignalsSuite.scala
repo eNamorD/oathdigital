@@ -111,10 +111,10 @@ class WarningSignalsSuite extends munit.FunSuite:
       "each holds now"):
     val b = defending
     val slots = chosen(b).query(b.actor) match
-      case DecisionQuery.Distribute(slots, min, max, _, _) =>
+      case distribute: DecisionQuery.Distribute =>
         // The rival's 7 warbands: 3 on the board and 2 at each ruled site.
-        assertEquals((min, max), (7, 7))
-        slots
+        assertEquals((distribute.minTotal, distribute.maxTotal), (7, 7))
+        distribute.slots
       case other => fail(s"expected a distribution, got $other")
     // Each ruled site keeps at least 1, so it holds 1 to 6 of the 7; each
     // suggestion is what the slot holds now.

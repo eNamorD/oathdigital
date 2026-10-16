@@ -84,7 +84,7 @@ class TentsSuite extends munit.FunSuite:
     val picked = accepted(rules.resolveWalker(begun.state, actor,
       modifierDecisionId, ModifierPlay.pick(Tents.id)))
     val listed = parkedDecision(picked.state).query match
-      case DecisionQuery.ChooseOne(options, _, _) => options
+      case one: DecisionQuery.ChooseOne => one.options
       case other => fail(s"expected a choose-one, got $other")
     assertEquals(listed.find(_.ref == DecisionOptionRef.Denizen(paths)),
       Some(DecisionOption.Unavailable(

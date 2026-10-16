@@ -52,7 +52,7 @@ class ModifierMenuOptionsSuite extends munit.FunSuite:
     val modifiers = parked(started.state)
     assertEquals(modifiers.decisionId, travelModifiers)
     assertEquals(modifiers.query match
-      case DecisionQuery.ChooseOne(options, _, _) => options.headOption
+      case one: DecisionQuery.ChooseOne => one.options.headOption
       case _ => None,
       Some(DecisionOption.Unavailable(
         DecisionOption.Button(ModifierPicks.start, "Start Travel"),
@@ -97,7 +97,7 @@ class ModifierMenuOptionsSuite extends munit.FunSuite:
     val modifiers = parked(started.state)
     assertEquals(modifiers.decisionId, musterModifiers)
     assertEquals(modifiers.query match
-      case DecisionQuery.ChooseOne(options, _, _) => options.headOption
+      case one: DecisionQuery.ChooseOne => one.options.headOption
       case _ => None,
       Some(DecisionOption.Unavailable(
         DecisionOption.Button(ModifierPicks.start, "Start Muster"),
@@ -135,7 +135,7 @@ class ModifierMenuOptionsSuite extends munit.FunSuite:
     val modifiers = parked(started.state)
     assertEquals(modifiers.decisionId, tradeModifiers)
     assertEquals(modifiers.query match
-      case DecisionQuery.ChooseOne(options, _, _) => options.headOption
+      case one: DecisionQuery.ChooseOne => one.options.headOption
       case _ => None,
       Some(DecisionOption.Unavailable(
         DecisionOption.Button(ModifierPicks.start, "Start Trade"),
@@ -169,7 +169,7 @@ class ModifierMenuOptionsSuite extends munit.FunSuite:
     val modifiers = parked(started.state)
     assertEquals(modifiers.decisionId, search)
     assertEquals(modifiers.query match
-      case DecisionQuery.ChooseOne(options, _, _) => options.headOption
+      case one: DecisionQuery.ChooseOne => one.options.headOption
       case _ => None,
       Some(DecisionOption.Unavailable(
         DecisionOption.Button(ModifierPicks.start, "Start Search"),

@@ -17,10 +17,10 @@ object EconomyFixture:
       Map(PowerWindow.MusterSourceSelection -> Vector(Transform((_, operations) =>
         operations.map {
           case decide: Decide => decide.query match {
-            case DecisionQuery.ChooseOne(options, heading, _) =>
-              decide.copy(query = DecisionQuery.ChooseOne(options :+
-                DecisionOption.Denizen(DecisionOptionRef.Denizen(card)),
-                heading)): Operation
+            case one: DecisionQuery.ChooseOne =>
+              decide.copy(query = one.copy(options = one.options :+
+                DecisionOption.Denizen(DecisionOptionRef.Denizen(card))))
+                : Operation
             case _ => decide
           }
           case other => other

@@ -72,8 +72,8 @@ object CatacombsGame:
       case Right(Some(ParkedNode.Decision(_, decide, _)))
           if decide.decisionId == modifierDecisionId =>
         decide.query match
-          case DecisionQuery.ChooseOne(options, _, _) =>
-            options.find(_.ref == DecisionOptionRef.Denizen(card))
+          case one: DecisionQuery.ChooseOne =>
+            one.options.find(_.ref == DecisionOptionRef.Denizen(card))
               .getOrElse(munit.Assertions.fail(s"$card is not listed"))
           case other =>
             munit.Assertions.fail(s"expected a choose-one, got $other")

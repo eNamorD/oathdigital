@@ -38,7 +38,7 @@ The 56 positional whole-query equality assertions in tests (for example `assertE
 
 **Unchanged, and must stay unchanged (the pinned sites):**
 - `shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionCodec.scala:75,81,90,97,104,111` plus its `Inspect` arm — seven fully-bound patterns, one per form
-- `src/main/scala/oathdigital/application/WalkerDecisionProjector.scala:278,304,308,314` — four fully-bound patterns
+- `src/main/scala/oathdigital/application/WalkerDecisionProjector.scala:278,299,304,308,314` — five fully-bound patterns
 
 **Modified in Task 2:**
 - `src/test/scala/oathdigital/gameplay/BackendArchitectureSuite.scala` — two new tests appended
@@ -606,14 +606,14 @@ Append immediately after the first test, so the pair reads as one intent:
   test("the wire-facing query patterns stay fully bound"):
     val roots = PinnedQueryReaders.map(Paths.get(_))
     val patterns = queryPatterns(roots)
-    assert(patterns.sizeIs >= 11,
+    assert(patterns.sizeIs >= 12,
       s"expected the pinned readers' patterns, found ${patterns.size}")
     assertEquals(wildcardQueryPatterns(roots), Vector.empty)
 ```
 
 `scalaFilesUnder` walks a file path as well as a directory, so passing the
-two files directly works. The `sizeIs >= 11` floor is the seven patterns in
-`ActionProjectionCodec` plus the four in `WalkerDecisionProjector`; it fails
+two files directly works. The `sizeIs >= 12` floor is the seven patterns in
+`ActionProjectionCodec` plus the five in `WalkerDecisionProjector`; it fails
 if a pinned file is renamed out from under the allowlist, which an emptied
 `assertEquals` alone would not catch.
 

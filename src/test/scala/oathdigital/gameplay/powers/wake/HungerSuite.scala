@@ -47,7 +47,7 @@ class HungerSuite extends munit.FunSuite:
 
   private def optionRefs(query: DecisionQuery): Vector[DecisionOptionRef] =
     query match
-      case DecisionQuery.Partition(_, options, _, _) => options.map(_.ref)
+      case partition: DecisionQuery.Partition => partition.options.map(_.ref)
       case _ => Vector.empty
 
   private def bury(from: OathTransition, slot: DecisionOptionRef) =
