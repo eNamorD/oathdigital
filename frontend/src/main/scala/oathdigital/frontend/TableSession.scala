@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.{GameIntent => GameCommand, _}
-import oathdigital.protocol.projection.LogEntryWire
+import oathdigital.protocol.projection.LogEntry
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
@@ -39,7 +39,7 @@ private[frontend] final class TableSession(
   private var drafts = SessionDrafts.empty
   private var rawEvents = Vector.empty[RawEvent]
   private var rawHistorySequence = Option.empty[Long]
-  private var log = Vector.empty[LogEntryWire]
+  private var log = Vector.empty[LogEntry]
   // The cursor the next request asks with: the log's `nextSequence`.
   private var logSequence = 0L
   // Bumped on every reset, so an answer to a request from before it lands
@@ -302,7 +302,7 @@ private[frontend] final class TableSession(
   def controlsAvailable: Boolean =
     coordinator.connectionState == ServerConnectionState.Connected
   def viewedRawEvents: Vector[RawEvent] = rawEvents
-  def viewedLog: Vector[LogEntryWire] = log
+  def viewedLog: Vector[LogEntry] = log
   /** Derived from the failure on show rather than latched, so it cannot
     * outlive it. A non-transient failure leaves the session Connected
     * (`ServerSessionCoordinator.recordFailure`), so every control on the

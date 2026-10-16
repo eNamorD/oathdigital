@@ -162,7 +162,7 @@ private[frontend] final class GameTableShell(mount: dom.Element,
     * is read once per seat, so the pane and the overlay divide at the same
     * entry. */
   def showLog(gameId: String, seatId: String,
-      entries: Vector[oathdigital.protocol.projection.LogEntryWire],
+      entries: Vector[oathdigital.protocol.projection.LogEntry],
       colors: Map[String, String]): Unit =
     val sessionKey = s"$gameId|$seatId"
     if !logSeat.contains(sessionKey) then

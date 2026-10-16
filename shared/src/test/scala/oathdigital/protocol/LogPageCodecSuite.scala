@@ -3,74 +3,103 @@ package oathdigital.protocol
 import oathdigital.protocol.projection._
 
 class LogPageCodecSuite extends munit.FunSuite:
-  private val page = LogPageWire("game", 4L, 9L, Vector(
-    LogEntryWire(4L, 0, "turn", 0, Vector(
-      LogSpanWire("player", "Red", id = Some("red")),
-      LogSpanWire("text", "'s turn"))),
-    LogEntryWire(6L, 1, "action", 1, Vector(
-      LogSpanWire("text", "Started Travel"),
-      LogSpanWire("cost", "−2 Supply", value = Some(2),
-        unit = Some("Supply"))))))
+  private val page = LogPage("game", 4L, 9L, Vector(
+    LogEntry(4L, 0, LogKind.Turn, Vector(
+      LogSpan.Player("red", "Red"), LogSpan.Text("'s turn"))),
+    LogEntry(6L, 1, LogKind.Action, Vector(
+      LogSpan.Text("Started Travel"), LogSpan.Cost(2)))))
 
   test("a page round-trips"):
     assertEquals(LogPageCodec.decode(LogPageCodec.encode(page)), Right(page))
 
-  test("a dice span round-trips with its faces and die"):
-    val dice = LogPageWire("g", 0, 9, Vector(LogEntryWire(7, 0, "roll", 1,
-      Vector(LogSpanWire("text", "Rolled "), LogSpanWire("dice",
-        "sword, two swords and a skull", id = Some("one-sword two-swords-skull"),
-        unit = Some("attack"))))))
-    assertEquals(LogPageCodec.decode(LogPageCodec.encode(dice)), Right(dice))
+  test("every span case round-trips"):
+    val spans = Vector[LogSpan](LogSpan.Text("words"),
+      LogSpan.Player("red", "Red"), LogSpan.Card("c1", "Old Oak"),
+      LogSpan.Site("s1", "Buried Giant"), LogSpan.Amount(3, "favor"),
+      LogSpan.Cost(2),
+      LogSpan.Dice("attack", Vector("one-sword"), Vector("sword")),
+      LogSpan.Cards(Vector(
+        CardDetailsProjection("19", "denizen", "Scryer", Some("discord")))))
+    val all = LogPage("g", 0, 9,
+      Vector(LogEntry(7, 0, LogKind.Action, spans)))
+    assertEquals(LogPageCodec.decode(LogPageCodec.encode(all)), Right(all))
 
-  test("a text span carries no id, value or unit on the wire"):
-    val oneSpan = LogPageWire("g", 0, 9, Vector(LogEntryWire(7, 0, "turn", 0,
-      Vector(LogSpanWire("text", "'s turn")))))
-    val json = ujson.read(LogPageCodec.encode(oneSpan))
-    val text = json("entries")(0)("spans")(0).obj
-    assertEquals(text.keySet.toSet, Set("kind", "text"))
+  test("a text span is the whole of its object: a kind and its words"):
+    val json = ujson.read(LogPageCodec.encode(LogPage("g", 0, 9,
+      Vector(LogEntry(7, 0, LogKind.Turn, Vector(LogSpan.Text("'s turn")))))))
+    assertEquals(json("entries")(0)("spans")(0).obj.keySet.toSet,
+      Set("kind", "text"))
 
-  test("an unexpected field is rejected at its path"):
-    // Entry 0 has ordinal 0 and entry 1 has ordinal 1, so the replace hits
-    // only entry 0 and the path is entries[0].
-    val json = LogPageCodec.encode(page).replace("\"ordinal\":0",
-      "\"ordinal\":0,\"extra\":1")
+  test("an entry carries no depth: its kind decides it"):
+    val json = ujson.read(LogPageCodec.encode(page))
+    assertEquals(json("entries")(0).obj.keySet.toSet,
+      Set("sequence", "ordinal", "kind", "spans", "section", "takenBack"))
+
+  test("a span kind this build does not know is an unknown variant"):
+    val json = LogPageCodec.encode(page).replace("\"kind\":\"player\"",
+      "\"kind\":\"omen\"")
+    assertEquals(LogPageCodec.decode(json),
+      Left(ProtocolDecodeFailure.UnknownVariant("$.entries[0].spans[0].kind",
+        "unknown log span kind 'omen'")))
+
+  test("an entry kind this build does not know is an unknown variant"):
+    val json = LogPageCodec.encode(page).replace("\"kind\":\"turn\"",
+      "\"kind\":\"interlude\"")
+    assertEquals(LogPageCodec.decode(json),
+      Left(ProtocolDecodeFailure.UnknownVariant("$.entries[0].kind",
+        "unknown log entry kind 'interlude'")))
+
+  test("a field another span case declares is rejected at its path"):
+    val json = LogPageCodec.encode(page).replace("\"text\":\"'s turn\"",
+      "\"text\":\"'s turn\",\"value\":1")
     assertEquals(LogPageCodec.decode(json).left.map(_.path),
-      Left("$.entries[0].extra"))
+      Left("$.entries[0].spans[1].value"))
+
+  test("an empty card list is rejected: no line builds one"):
+    val empty = LogPage("g", 0, 9, Vector(LogEntry(7, 0, LogKind.Action,
+      Vector(LogSpan.Cards(Vector.empty)))))
+    assertEquals(LogPageCodec.decode(LogPageCodec.encode(empty)).left.map(
+      _.path), Left("$.entries[0].spans[0].cards"))
+
+  test("a section on a headline kind is rejected"):
+    val json = LogPageCodec.encode(LogPage("g", 0, 9, Vector(
+      LogEntry(6, 0, LogKind.Section, Vector(LogSpan.Text("Search")),
+        Some(LogSection(6, "search"))))))
+      .replace("\"kind\":\"section\"", "\"kind\":\"turn\"")
+    assertEquals(LogPageCodec.decode(json),
+      Left(ProtocolDecodeFailure.InvalidValue("$.entries[0].section",
+        "only a line can carry a section")))
 
   test("an entry's section round-trips, and an entry without one writes null"):
-    val banded = LogPageWire("g", 0, 9, Vector(
-      LogEntryWire(6, 0, "section", 1, Vector(LogSpanWire("text", "Search")),
-        Some(LogSectionWire(6, "search"))),
-      LogEntryWire(7, 0, "turn", 0, Vector(LogSpanWire("text", "Red's turn")))))
-    assertEquals(LogPageCodec.decode(LogPageCodec.encode(banded)), Right(banded))
+    val banded = LogPage("g", 0, 9, Vector(
+      LogEntry(6, 0, LogKind.Section, Vector(LogSpan.Text("Search")),
+        Some(LogSection(6, "search"))),
+      LogEntry(7, 0, LogKind.Turn, Vector(LogSpan.Text("Red's turn")))))
+    assertEquals(LogPageCodec.decode(LogPageCodec.encode(banded)),
+      Right(banded))
     val json = ujson.read(LogPageCodec.encode(banded))
     assertEquals(json("entries")(0)("section"),
       ujson.Obj("id" -> ujson.Num(6), "action" -> ujson.Str("search")))
     assertEquals(json("entries")(1)("section"), ujson.Null)
 
-  test("an entry written before sections decodes with none"):
+  test("an entry written before sections or groups decodes with none"):
     val json = """{"gameId":"g","after":0,"nextSequence":9,"entries":""" +
-      """[{"sequence":7,"ordinal":0,"kind":"turn","depth":0,"spans":[]}]}"""
-    assertEquals(LogPageCodec.decode(json).map(_.entries.map(_.section)),
-      Right(Vector(None)))
+      """[{"sequence":7,"ordinal":0,"kind":"turn","spans":[]}]}"""
+    assertEquals(LogPageCodec.decode(json).map(_.entries.map(entry =>
+      entry.section -> entry.takenBack)), Right(Vector(None -> None)))
 
   test("an entry's taken-back group round-trips with its header"):
-    val voided = LogPageWire("g", 0, 9, Vector(LogEntryWire(6, 0, "action", 1,
-      Vector(LogSpanWire("text", "Travelled")),
-      takenBack = Some(LogTakenBackWire(4L, Vector(
-        LogSpanWire("player", "p1", id = Some("p1")),
-        LogSpanWire("text", " took back the following moves:")))))))
-    assertEquals(LogPageCodec.decode(LogPageCodec.encode(voided)), Right(voided))
-
-  test("an entry written before taken-back groups decodes with none"):
-    val json = """{"gameId":"g","after":0,"nextSequence":9,"entries":""" +
-      """[{"sequence":7,"ordinal":0,"kind":"turn","depth":0,"spans":[]}]}"""
-    assertEquals(LogPageCodec.decode(json).map(_.entries.map(_.takenBack)),
-      Right(Vector(None)))
+    val voided = LogPage("g", 0, 9, Vector(LogEntry(6, 0, LogKind.Action,
+      Vector(LogSpan.Text("Travelled")),
+      takenBack = Some(LogTakenBack(4L, Vector(
+        LogSpan.Player("p1", "p1"),
+        LogSpan.Text(" took back the following moves:")))))))
+    assertEquals(LogPageCodec.decode(LogPageCodec.encode(voided)),
+      Right(voided))
 
   test("a section with an unexpected field is rejected at its path"):
     val banded = page.copy(entries = Vector(page.entries.head.copy(
-      section = Some(LogSectionWire(4, "travel")))))
+      kind = LogKind.Action, section = Some(LogSection(4, "travel")))))
     val json = LogPageCodec.encode(banded).replace("\"action\":\"travel\"",
       "\"action\":\"travel\",\"extra\":1")
     assertEquals(LogPageCodec.decode(json).left.map(_.path),
@@ -83,8 +112,8 @@ class LogPageCodecSuite extends munit.FunSuite:
       Left(ProtocolDecodeFailure.MalformedJson("$", "exhausted input")))
 
   test("a card list span round-trips its faces and backs"):
-    val list = LogPageWire("g", 0, 9, Vector(LogEntryWire(7, 0, "action", 1,
-      Vector(LogSpanWire("cards", "6 cards", cards = Vector(
+    val list = LogPage("g", 0, 9, Vector(LogEntry(7, 0, LogKind.Action,
+      Vector(LogSpan.Cards(Vector(
         CardDetailsProjection("19", "denizen", "Scryer", Some("discord")),
         CardDetailsProjection("hidden", "vision", "Facedown vision",
           orientation = Some("face-down"), hidden = true)))))))

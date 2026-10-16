@@ -2,18 +2,17 @@ package oathdigital.frontend
 
 import org.scalajs.dom
 import scala.scalajs.js
-import oathdigital.protocol.projection.{LogSectionWire, LogSpanWire}
+import oathdigital.protocol.projection.{LogKind, LogSection, LogSpan}
 
 class GameLogPaneSuite extends munit.FunSuite:
-  private def entry(sequence: Long, kind: String, depth: Int,
-      spans: LogSpanWire*) = TestLog.entry(sequence, kind, depth,
-    spans.toVector)
+  private def entry(sequence: Long, kind: LogKind, spans: LogSpan*) =
+    TestLog.entry(sequence, kind, spans.toVector)
 
-  private val setup = entry(0, "round", 0, LogSpanWire("text", "Setup"))
-  private val turn = entry(3, "turn", 0,
-    LogSpanWire("player", "Red", id = Some("red")), LogSpanWire("text", "'s turn"))
-  private val travel = entry(5, "action", 1, LogSpanWire("text", "Started Travel"),
-    LogSpanWire("cost", "−2 Supply", value = Some(2), unit = Some("Supply")))
+  private val setup = entry(0, LogKind.Round, LogSpan.Text("Setup"))
+  private val turn = entry(3, LogKind.Turn,
+    LogSpan.Player("red", "Red"), LogSpan.Text("'s turn"))
+  private val travel = entry(5, LogKind.Action,
+    LogSpan.Text("Started Travel"), LogSpan.Cost(2))
 
   private def items(content: dom.Element): Vector[dom.Element] =
     content.querySelectorAll("li").toVector.map(_.asInstanceOf[dom.Element])
@@ -34,7 +33,7 @@ class GameLogPaneSuite extends munit.FunSuite:
   test("a phase headline carries its kind and is not a heading in the pane"):
     val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     new GameLogPane(content).show("g|red", Vector(setup, turn,
-      entry(4, "phase", 0, LogSpanWire("text", "Wake"))), Map.empty)
+      entry(4, LogKind.Phase, LogSpan.Text("Wake"))), Map.empty)
     val shown = items(content)
     assertEquals(shown(2).getAttribute("class"),
       "log-entry log-headline log-phase")
@@ -71,9 +70,9 @@ class GameLogPaneSuite extends munit.FunSuite:
 
   test("a dice span draws the die-face chips, one per face"):
     val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
-    val roll = entry(7, "roll", 1, LogSpanWire("text", "Rolled "),
-      LogSpanWire("dice", "sword, blank", id = Some("one-sword blank"),
-        unit = Some("attack")), LogSpanWire("text", " for the attack"))
+    val roll = entry(7, LogKind.Roll, LogSpan.Text("Rolled "),
+      LogSpan.Dice("attack", Vector("one-sword", "blank"),
+        Vector("sword", "blank")), LogSpan.Text(" for the attack"))
     new GameLogPane(content).show("g|red", Vector(roll), Map.empty)
     val faces = content.querySelectorAll(".die-faces .die-face")
     assertEquals(faces.length, 2)
@@ -83,15 +82,15 @@ class GameLogPaneSuite extends munit.FunSuite:
     assertEquals(content.querySelectorAll(".die-face-attack").length, 2)
 
   /** A line of the section `id` for `action`, reading `text`. */
-  private def sectioned(sequence: Long, kind: String, action: String, id: Long,
-      text: String) = TestLog.textEntry(sequence, kind, depth = 1, text,
-    section = Some(LogSectionWire(id, action)))
+  private def sectioned(sequence: Long, kind: LogKind, action: String,
+      id: Long, text: String) = TestLog.textEntry(sequence, kind, text,
+    section = Some(LogSection(id, action)))
 
-  private val searchTag = sectioned(6, "section", "search", 6, "Search")
-  private val drew = sectioned(7, "action", "search", 6, "Drew Fox")
-  private val played = sectioned(8, "action", "search", 6,
+  private val searchTag = sectioned(6, LogKind.Section, "search", 6, "Search")
+  private val drew = sectioned(7, LogKind.Action, "search", 6, "Drew Fox")
+  private val played = sectioned(8, LogKind.Action, "search", 6,
     "Played Fox to Ruined Keep")
-  private val moved = sectioned(9, "delta", "minor", 9, "Moved 2 warbands")
+  private val moved = sectioned(9, LogKind.Delta, "minor", 9, "Moved 2 warbands")
 
   /** Each shown item's band classes, in order; "" for an item with none. */
   private def bands(content: dom.Element): Vector[String] =
@@ -142,9 +141,9 @@ class GameLogPaneSuite extends munit.FunSuite:
   test("a facedown adviser takes Search's band; a power's band drops its id"):
     val content = TestLog.sizedBox(total = 0, height = 0, scrolled = 0)
     new GameLogPane(content).show("g|red", Vector(
-      sectioned(6, "section", "play-facedown-adviser", 6,
+      sectioned(6, LogKind.Section, "play-facedown-adviser", 6,
         "Play facedown adviser"),
-      sectioned(8, "action", "use-power:silver-tongue", 8, "Silver Tongue")),
+      sectioned(8, LogKind.Action, "use-power:silver-tongue", 8, "Silver Tongue")),
       Map.empty)
     assertEquals(bands(content), Vector(
       "log-band log-band-search log-band-start log-band-end",
@@ -170,8 +169,8 @@ class GameLogPaneSuite extends munit.FunSuite:
     pane.show("g|blue", Vector(setup), Map.empty)
     assertEquals(items(content).map(_.textContent), Vector("Setup"))
 
-  private val victory = entry(9, "victory", 0,
-    LogSpanWire("player", "Red", id = Some("red")), LogSpanWire("text", " won"))
+  private val victory = entry(9, LogKind.Victory,
+    LogSpan.Player("red", "Red"), LogSpan.Text(" won"))
 
   /** Gives `node` a layout box: jsdom lays nothing out. */
   private def place(node: dom.Element, top: Double, bottom: Double): Unit =
@@ -261,7 +260,7 @@ class GameLogPaneSuite extends munit.FunSuite:
   test("the reading position is the first line seen below the stuck headline"):
     val content = TestLog.sizedBox(total = 500, height = 100, scrolled = 200)
     val pane = new GameLogPane(content)
-    val search = entry(6, "action", 1, LogSpanWire("text", "Started Search"))
+    val search = entry(6, LogKind.Action, LogSpan.Text("Started Search"))
     pane.show("g|red", Vector(setup, turn, travel, search), Map.empty)
     content.scrollTop = 200
     place(content, 0, 100)
@@ -311,11 +310,11 @@ class GameLogPaneSuite extends munit.FunSuite:
   test("a card list is a control that opens it; few cards or a count are words"):
     val cards = (1 to 6).toVector.map(n =>
       CardDetails(s"d$n", "denizen", s"Card $n"))
-    val listed = entry(7, "action", 1, LogSpanWire("text", "Scryer: "),
-      LogSpanWire("cards", "6 cards", cards = cards))
-    val plain = entry(8, "action", 1, LogSpanWire("text", "Oracle: 6 cards"))
-    val few = entry(9, "action", 1, LogSpanWire("text", "Pig: "),
-      LogSpanWire("card", "Old Oak", id = Some("d1")))
+    val listed = entry(7, LogKind.Action, LogSpan.Text("Scryer: "),
+      LogSpan.Cards(cards))
+    val plain = entry(8, LogKind.Action, LogSpan.Text("Oracle: 6 cards"))
+    val few = entry(9, LogKind.Action, LogSpan.Text("Pig: "),
+      LogSpan.Card("d1", "Old Oak"))
     var opened = Vector.empty[CardInspection.Request]
     CardInspection.onOpen(request => opened :+= request)
     try

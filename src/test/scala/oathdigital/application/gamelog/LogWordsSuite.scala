@@ -1,7 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.model._
-import oathdigital.protocol.projection.{LogSpan, LogSpanWire}
+import oathdigital.protocol.projection.LogSpan
 import LogSpan.Text
 
 class LogWordsSuite extends munit.FunSuite:
@@ -23,19 +23,6 @@ class LogWordsSuite extends munit.FunSuite:
     assertEquals(joined("A"), "A")
     assertEquals(joined("A", "B"), "A and B")
     assertEquals(joined("A", "B", "C"), "A, B and C")
-
-  test("every span kind has its wire form; only typed spans carry ids and amounts"):
-    assertEquals(GameLogProjector.span(Text("x")), LogSpanWire("text", "x"))
-    assertEquals(GameLogProjector.span(LogSpan.Player("red", "Red")),
-      LogSpanWire("player", "Red", id = Some("red")))
-    assertEquals(GameLogProjector.span(LogSpan.Card("c", "Card")),
-      LogSpanWire("card", "Card", id = Some("c")))
-    assertEquals(GameLogProjector.span(LogSpan.Site("s", "Site")),
-      LogSpanWire("site", "Site", id = Some("s")))
-    assertEquals(GameLogProjector.span(LogSpan.Amount(3, "favor")),
-      LogSpanWire("amount", "3 favor", value = Some(3), unit = Some("favor")))
-    assertEquals(GameLogProjector.span(LogSpan.Cost(2)),
-      LogSpanWire("cost", "−2 Supply", value = Some(2), unit = Some("Supply")))
 
   test("a cost names the one currency an action spends"):
     assertEquals(LogSpan.Cost(2).text, "−2 Supply")

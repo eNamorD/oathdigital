@@ -3,39 +3,19 @@ package oathdigital.application.gamelog
 import oathdigital.application.{GameHistory, GamePresentationProjector}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.PlayerId
-import oathdigital.protocol.projection.{LogEntry, LogEntryWire, LogPageWire,
-  LogSectionWire, LogSpan, LogSpanWire, LogTakenBackWire}
+import oathdigital.protocol.projection.LogPage
 
 /** The log page one seat reads: the whole prefix formatted for that seat,
-  * then every entry at or after `after` (spec, "Routes" and "Cost"). */
+  * then every entry at or after `after` (game log design, "Routes" and
+  * "Cost"). The formatter's entries are the wire's, so this projector maps
+  * nothing. */
 private[application] final class GameLogProjector(catalog: ExecutableCatalog,
     presentation: GamePresentationProjector):
   private val formatter = new GameLogFormatter(catalog, presentation)
 
   def page(gameId: String, history: GameHistory, after: Long,
-      viewer: PlayerId): Option[LogPageWire] =
-    Option.when(after >= 0 && after <= history.nextSequence)(LogPageWire(
+      viewer: PlayerId): Option[LogPage] =
+    Option.when(after >= 0 && after <= history.nextSequence)(LogPage(
       gameId, after, history.nextSequence,
       formatter.format(history.steps, Some(viewer))
-        .filter(_.sequence >= after).map(GameLogProjector.wire)))
-
-private[application] object GameLogProjector:
-  def wire(entry: LogEntry): LogEntryWire = LogEntryWire(entry.sequence,
-    entry.ordinal, entry.kind.key, entry.depth, entry.spans.map(span),
-    entry.section.map(section => LogSectionWire(section.id, section.action)),
-    entry.takenBack.map(group =>
-      LogTakenBackWire(group.group, group.header.map(span))))
-
-  def span(value: LogSpan): LogSpanWire = value match
-    case LogSpan.Text(text) => LogSpanWire("text", text)
-    case LogSpan.Player(id, name) => LogSpanWire("player", name, id = Some(id))
-    case LogSpan.Card(id, name) => LogSpanWire("card", name, id = Some(id))
-    case LogSpan.Site(id, name) => LogSpanWire("site", name, id = Some(id))
-    case amount @ LogSpan.Amount(count, unit) =>
-      LogSpanWire("amount", amount.text, value = Some(count), unit = Some(unit))
-    case dice: LogSpan.Dice => LogSpanWire("dice", dice.text,
-      id = Some(dice.faces.mkString(" ")), unit = Some(dice.die))
-    case cost @ LogSpan.Cost(count) =>
-      LogSpanWire("cost", cost.text, value = Some(count),
-        unit = Some("Supply"))
-    case list: LogSpan.Cards => LogSpanWire("cards", list.text, cards = list.cards)
+        .filter(_.sequence >= after)))

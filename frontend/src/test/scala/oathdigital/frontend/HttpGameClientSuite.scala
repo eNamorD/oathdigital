@@ -256,7 +256,7 @@ class HttpGameClientSuite extends FunSuite:
       )
     ))
 
-  private val logPage = """{"gameId":"g","after":3,"nextSequence":5,"entries":[{"sequence":3,"ordinal":0,"kind":"turn","depth":0,"spans":[{"kind":"player","text":"Red","id":"red"},{"kind":"text","text":"'s turn"}]}]}"""
+  private val logPage = """{"gameId":"g","after":3,"nextSequence":5,"entries":[{"sequence":3,"ordinal":0,"kind":"turn","spans":[{"kind":"player","id":"red","name":"Red"},{"kind":"text","text":"'s turn"}]}]}"""
 
   test("the trusted client reads the log after a cursor on the seat's path"):
     val transport = transportAnsweringInOrder(

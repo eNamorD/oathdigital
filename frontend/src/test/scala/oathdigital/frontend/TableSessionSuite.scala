@@ -3,8 +3,8 @@ package oathdigital.frontend
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.GameIntent => GameCommand
 
-import oathdigital.protocol.projection.{LogPageWire, LogSpanWire,
-  LogTakenBackWire}
+import oathdigital.protocol.projection.{LogKind, LogPage, LogSpan,
+  LogTakenBack}
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js.timers.setTimeout
@@ -60,13 +60,13 @@ class TableSessionSuite extends munit.FunSuite:
       pendingSubmits = pendingSubmits.tail
       promise.success(result)
     var logs = Vector.empty[LogLoad]
-    private var pendingLogs = Vector.empty[Promise[Answer[LogPageWire]]]
+    private var pendingLogs = Vector.empty[Promise[Answer[LogPage]]]
     def loadLog(gameId: String, selectedPlayerId: String, after: Long) =
       logs :+= LogLoad(gameId, selectedPlayerId, after)
-      val promise = Promise[Answer[LogPageWire]]()
+      val promise = Promise[Answer[LogPage]]()
       pendingLogs :+= promise
       promise.future
-    def answerLog(result: Answer[LogPageWire]): Unit =
+    def answerLog(result: Answer[LogPage]): Unit =
       val promise = pendingLogs.head
       pendingLogs = pendingLogs.tail
       promise.success(result)
@@ -392,9 +392,9 @@ class TableSessionSuite extends munit.FunSuite:
     assert(!TableSession.needsSeatLink(trusted = true,
       GameClientFailure.NetworkFailure("down")))
 
-  private def page(after: Long, next: Long): LogPageWire =
-    LogPageWire("g", after, next, (after until next).toVector.map(sequence =>
-      TestLog.textEntry(sequence, "action", depth = 1, s"line $sequence")))
+  private def page(after: Long, next: Long): LogPage =
+    LogPage("g", after, next, (after until next).toVector.map(sequence =>
+      TestLog.textEntry(sequence, LogKind.Action, s"line $sequence")))
 
   test("a displayed position fetches the log from the start and appends it"):
     displayed(3).flatMap { fixture =>
@@ -449,12 +449,12 @@ class TableSessionSuite extends munit.FunSuite:
 
   /** The whole log up to `next`, with every entry from `from` on taken back
     * by red. */
-  private def pageTakenBackFrom(from: Long, next: Long): LogPageWire =
+  private def pageTakenBackFrom(from: Long, next: Long): LogPage =
     val whole = page(0, next)
     whole.copy(entries = whole.entries.map(entry =>
       if entry.sequence < from then entry
-      else entry.copy(takenBack = Some(LogTakenBackWire(from,
-        Vector(LogSpanWire("text", "Red took back the following moves:")))))))
+      else entry.copy(takenBack = Some(LogTakenBack(from,
+        Vector(LogSpan.Text("Red took back the following moves:")))))))
 
   /** A poll answered with `snapshot(sequence)` carrying `revision`. */
   private def pollAnswered(fixture: Fixture, sequence: Long,

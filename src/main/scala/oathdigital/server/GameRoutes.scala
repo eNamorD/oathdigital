@@ -20,7 +20,7 @@ import oathdigital.application.{
   GameIntentMapper
 }
 import oathdigital.protocol.projection.{GameProjection, LogPageCodec,
-  LogPageWire}
+  LogPage}
 import oathdigital.model.PlayerId
 
 private[server] object CommandRejectionMessage:
@@ -73,7 +73,7 @@ final class GameServerGateway(
 
   /** `None` when `after` is past the journal's end. */
   def log(gameId: String, requestingPlayer: PlayerId, after: Long)
-      : Either[GameApplicationError, Option[LogPageWire]] =
+      : Either[GameApplicationError, Option[LogPage]] =
     service.history(gameId).flatMap:
       case Some(history) =>
         Right(projector.logPage(gameId, history, after, requestingPlayer))
@@ -140,7 +140,7 @@ final class GameRoutes(
     }
 
   private def completeLog(
-      operation: => Either[GameApplicationError, Option[LogPageWire]]
+      operation: => Either[GameApplicationError, Option[LogPage]]
   ): Route = onComplete(Future(operation)(using blockingExecutionContext)):
     case Success(Right(Some(page))) => complete(HttpResponse(StatusCodes.OK,
       entity = HttpEntity(ContentTypes.`application/json`,

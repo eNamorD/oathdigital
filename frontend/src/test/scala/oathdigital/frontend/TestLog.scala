@@ -1,25 +1,25 @@
 package oathdigital.frontend
 
-import oathdigital.protocol.projection.{LogEntryWire, LogSectionWire,
-  LogSpanWire, LogTakenBackWire}
+import oathdigital.protocol.projection.{LogEntry, LogKind, LogSection,
+  LogSpan, LogTakenBack}
 import org.scalajs.dom
 import scala.scalajs.js
 
 /** Builders for the log lines and the content box the log suites draw. */
 private[frontend] object TestLog:
-  /** A log entry with every field named at the call. */
-  def entry(sequence: Long, kind: String, depth: Int,
-      spans: Vector[LogSpanWire], section: Option[LogSectionWire] = None,
-      takenBack: Option[LogTakenBackWire] = None): LogEntryWire =
-    LogEntryWire(sequence = sequence, ordinal = 0, kind = kind, depth = depth,
-      spans = spans, section = section, takenBack = takenBack)
+  /** A log entry with every field named at the call. Its depth is its
+    * kind's. */
+  def entry(sequence: Long, kind: LogKind, spans: Vector[LogSpan],
+      section: Option[LogSection] = None,
+      takenBack: Option[LogTakenBack] = None): LogEntry =
+    LogEntry(sequence = sequence, ordinal = 0, kind = kind, spans = spans,
+      section = section, takenBack = takenBack)
 
   /** A log entry that reads `text` as one plain span. */
-  def textEntry(sequence: Long, kind: String, depth: Int, text: String,
-      section: Option[LogSectionWire] = None,
-      takenBack: Option[LogTakenBackWire] = None): LogEntryWire =
-    entry(sequence, kind, depth, Vector(LogSpanWire("text", text)), section,
-      takenBack)
+  def textEntry(sequence: Long, kind: LogKind, text: String,
+      section: Option[LogSection] = None,
+      takenBack: Option[LogTakenBack] = None): LogEntry =
+    entry(sequence, kind, Vector(LogSpan.Text(text)), section, takenBack)
 
   /** A content box jsdom gives a size: `height` tall, `scrolled` from the
     * top, holding `total` pixels. `scrollTop` is a plain writable property
