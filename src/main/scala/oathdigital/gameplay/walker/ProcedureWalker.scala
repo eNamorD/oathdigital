@@ -446,8 +446,8 @@ object ProcedureWalker:
     * ([[narrowAt]]). A required decision with nothing left rejects the
     * command, and an optional choose-many with nothing left is passed
     * without asking; a choose-one passed when empty parks on its Continue
-    * screen ([[EmptyChoices]]). A search's walk does not park at a decision it reaches: it asks
-    * whether some answer leads on ([[reach]]).
+    * screen ([[EmptyChoices]]). A search's walk does not park at a
+    * decision it reaches: it asks whether some answer leads on ([[reach]]).
     */
   private def runLeaf(leaf: LeafOperation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
@@ -479,7 +479,11 @@ object ProcedureWalker:
     * parks on its Continue screen (catalog batch 8, slice 10, part 2b). */
   private def narrowAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Option[Decide]] =
-    if !ctx.powers.probing then Right(Some(decide))
+    if !ctx.powers.probing then Right(Some(
+      // Unsearched, only a choose-one declared with nothing to choose is
+      // its Continue screen.
+      if decide.passWhenEmpty && WalkerSearch.choosable(decide).isEmpty
+      then EmptyChoices.offered(decide, Map.empty, Map.empty) else decide))
     else WalkerSearch.narrow(decide, verdict(decide, ctx, path)) match
       case Left(refused) =>
         val asks = asksAt(decide, ctx, path) ++ operationAsksAt(decide, ctx,

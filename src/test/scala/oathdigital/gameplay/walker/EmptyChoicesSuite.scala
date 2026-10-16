@@ -100,3 +100,22 @@ class EmptyChoicesSuite extends munit.FunSuite:
       pickRefusing(Set(left, right)))
     val (_, outer) = parkedAt(tree)
     assertEquals(outer.options, Vector(DecisionOption.Button(go, "Go")))
+
+  test("on the Continue screen an option it shows unavailable is refused"):
+    val tree = Sequence(pickRefusing(Set(left, right)))
+    val (pending, _) = parkedAt(tree)
+    assert(ProcedureWalker.resolve(ready, tree, pending, Answered(pick,
+      DecisionAnswer.ChooseOneAnswer(left), p1), powers).isLeft)
+
+  test("an unsearched walk shows Continue for a question declared empty"):
+    val tree = Sequence(pickRefusing(Set.empty, Vector.empty))
+    val quiet = powers.quiet
+    val pending = accepted(ProcedureWalker.advance(ready, tree, None,
+      quiet)) match
+      case WalkerOutcome.Parked(at, _) => at
+      case other => fail(s"the walk did not park: $other")
+    present(ProcedureWalker.parkedDecide(ready, tree, pending, quiet),
+      "the parked decision").query match
+      case one: DecisionQuery.ChooseOne => assertEquals(one.options,
+        Vector(DecisionOption.Button(Decide.Pass, "Continue")))
+      case other => fail(s"expected a choose-one, got $other")

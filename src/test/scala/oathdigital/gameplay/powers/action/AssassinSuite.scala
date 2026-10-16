@@ -94,6 +94,11 @@ class AssassinSuite extends munit.FunSuite:
       .adviser(p1, assassin).favor(p1, 1).ready
     val asked = accepted(use(ready, power, source))
     assert(awaits(asked, Assassin.decisionId))
+    // Locked refuses the discard, which the walker cannot word.
+    val row = queryOf(asked, p1).toVector.flatMap(_.offeredOptions)
+      .find(_.id == assassin.value)
+    assertEquals(row.map(_.state), Some("unavailable"))
+    assertEquals(row.flatMap(_.reason), Some("Cannot be chosen now"))
     val done = accepted(continuedPast(asked, Assassin.decisionId))
     assert(backToActing(done))
     assertEquals(Look(after(done)).advisers(p1), Vector[CardId](assassin))
