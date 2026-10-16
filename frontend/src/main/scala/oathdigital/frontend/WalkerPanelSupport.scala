@@ -44,14 +44,14 @@ private[frontend] object WalkerPanelSupport:
     * already says the target.
     *
     * The faces arrive as wire keys, so each one is said as the word
-    * `DieFace` prints it -- "two swords and a skull", not
+    * `DieFace` carries -- "two swords and a skull", not
     * "two-swords-skull". An unknown key stays itself, as it does on a chip.
     */
   private[frontend] def rollOutcomeSummary(outcome: WalkerRollOutcomeState): String =
     val total =
       if outcome.pool == "recover" then s"${outcome.score} shields so far"
       else s"${poolLabel(outcome.pool)} ${outcome.score}"
-    s"Rolled ${outcome.faces.map(DieFace.name).mkString(", ")} -- $total" +
+    s"Rolled ${outcome.faces.map(DieFaceChip.name).mkString(", ")} -- $total" +
       outcome.target.fold("")(target => s" (need $target)") +
       outcome.detail.map(", " + _).mkString + "."
 

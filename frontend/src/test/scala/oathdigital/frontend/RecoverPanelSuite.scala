@@ -70,7 +70,7 @@ class RecoverPanelSuite extends munit.FunSuite:
     assertEquals(all(panel, ".walker-roll-totals").map(_.textContent),
       Vector("Shields 3 · need 4"))
     assertEquals(all(panel, ".walker-roll-faces").map(_.getAttribute("aria-label")),
-      Vector("Rolled one shield, two shields -- 3 shields so far (need 4)."))
+      Vector("Rolled shield, two shields -- 3 shields so far (need 4)."))
     assertEquals(all(panel, ".walker-roll-faces .die-faces").size, 1)
 
   test("before the first roll, Recover shows the target and no dice"):

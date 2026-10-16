@@ -24,7 +24,7 @@ class WalkerDecisionDraftSuite extends FunSuite:
       WalkerRollOutcomeState("campaign.attack",
         Vector("two-swords-skull", "one-sword"), 3, None,
         Vector("1 skull loss"))),
-      "Rolled two swords and a skull, one sword -- Attack 3, 1 skull loss.")
+      "Rolled two swords and a skull, sword -- Attack 3, 1 skull loss.")
 
   test("a face the client does not know is said as the key it arrived as"):
     assertEquals(WalkerPanelSupport.rollOutcomeSummary(
