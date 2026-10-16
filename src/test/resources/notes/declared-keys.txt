@@ -55,6 +55,7 @@ denizen.book-burning none = {0} had no secret to burn.
 denizen.call-for-help discarded = Revealed and discarded {0}.
 denizen.call-for-help none = Nothing was revealed.
 denizen.call-for-help revealed = Revealed and discarded {0}, and gained {1}.
+denizen.captains campaign-at = Campaign at {0}.
 denizen.chaos-cult took = {0} took {1} from {2}.
 denizen.charlatan burned = Burned {0} from the {1}.
 denizen.charlatan none = The {0} had no secret to burn.

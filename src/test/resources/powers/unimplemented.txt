@@ -3,7 +3,6 @@ denizen.ancient-pact
 denizen.autumn-wind
 denizen.bewitch
 denizen.bracken
-denizen.captains
 denizen.council-arbiter
 denizen.council-seat
 denizen.deed-writer

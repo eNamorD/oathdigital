@@ -23,14 +23,6 @@ object PalanquinCard extends Denizen(DenizenId("107"), "Palanquin", Suit.Order) 
       "travel to that site, spending no Supply.")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object CaptainsCard extends Denizen(DenizenId("115"), "Captains", Suit.Order) with SiteOnly:
-  val power = PrintedPower(PowerId("denizen.captains"),
-    persistent = false, cost = Cost(favor = 1),
-    text = "**ACTION:** Campaign at any site you rule. Act as if your " +
-      "pawn is there. Spend no Supply and add your warbands there " +
-      "to your force.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object CouncilSeatCard extends Denizen(DenizenId("123"), "Council Seat", Suit.Order) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.council-seat"),
     persistent = true, cost = Cost.free,

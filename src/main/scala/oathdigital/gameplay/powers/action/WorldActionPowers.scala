@@ -22,4 +22,5 @@ object WorldActionPowers:
       Vector(RovingTerror.forCatalog(catalog)) ++
       Vector(GiantPython.forCatalog(catalog)) ++
       Vector(SingingMask.forCatalog(catalog)) ++
-      Vector(WildAllies.forCatalog(catalog))
+      Vector(WildAllies.forCatalog(catalog)) ++
+      Vector(Captains.forCatalog(catalog))

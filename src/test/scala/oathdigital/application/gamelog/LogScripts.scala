@@ -13,8 +13,8 @@ import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
-import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
-  Wolves}
+import oathdigital.gameplay.powers.action.{BarbedNet, Captains,
+  CaptainsCard, GamblingHall, Oracle, Wolves}
 import oathdigital.gameplay.powers.cardplay.WildCry
 import oathdigital.gameplay.powers.economy.GolemLegions
 import oathdigital.gameplay.powers.recover.RelicWorship
@@ -516,6 +516,46 @@ object LogScripts:
     val (service, act) = offeredRaidTable("queued-raid", Vector.empty)
     raidAnswers(act).after(takeOffer)
     Script("queued-raid", service, p1)
+
+  /** Captains at Ancient City, where p1 stands and rules with 1 warband;
+    * p1 also rules Deep Woods with `atWoods` warbands, where p2 stands, and
+    * holds `onBoard` on the board. */
+  private def captainsTable(onBoard: Int, atWoods: Int)(
+      using munit.Location): Table =
+    tableWithOnePawnPerSite.denizen(CaptainsCard.id, "Ancient City")
+      .warbandsAt("Ancient City", p1, 1).warbandsAt("Deep Woods", p1, atWoods)
+      .boardWarbands(p1, onBoard).pawn(p2, "Deep Woods").banditsRefilled
+
+  private def captainsAtTheWoods: Step = MenuPlay.start(p1,
+    ActionRef.UsePower(Captains.id),
+    Vector(DecisionOptionRef.Denizen(CaptainsCard.id)))
+
+  private val woodsAnswer: Answers = {
+    case park if park.decisionId == Captains.siteDecisionId =>
+      ChooseOneAnswer(DecisionOptionRef.Site(CatalogNames.site("Deep Woods")))
+  }
+
+  /** p1 uses Captains to Raid p2 at Deep Woods, a site p1 rules away from
+    * p1's pawn, and wins. */
+  def captainsRaidFromARuledSite(using munit.Location): Script =
+    val (service, act) = atTable("captains-raid",
+      captainsTable(onBoard = 3, atWoods = 2), Dice.raid)
+    raidAnswers(act, woodsAnswer).after(captainsAtTheWoods)
+    Script("captains-raid", service, p1)
+
+  /** The same Raid lost: 1 warband on p1's board and 3 at Deep Woods are
+    * committed with hollow swords and no sacrifice, so 2 die, and p1 takes
+    * 1 of them from Deep Woods. */
+  def captainsRaidLostWithASplit(using munit.Location): Script =
+    val (service, act) = atTable("captains-raid-lost",
+      captainsTable(onBoard = 1, atWoods = 3), Dice.blanks)
+    raidAnswers(act, woodsAnswer.orElse {
+      case park if park.decisionId == CampaignIds.sacrifice =>
+        ChooseAmountAnswer(0)
+      case park if park.decisionId == CampaignIds.originDeaths =>
+        ChooseAmountAnswer(1)
+    }).after(captainsAtTheWoods)
+    Script("captains-raid-lost", service, p1)
 
   /** The same with a second Campaign behind the first: p1 takes the first,
     * which runs, and skips the second. */
