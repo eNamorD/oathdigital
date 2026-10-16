@@ -280,6 +280,8 @@ class BackendArchitectureSuite extends munit.FunSuite:
       "shared/src/main/scala/oathdigital/protocol/projection/GameProjectionDto.scala")))
     assert(Files.exists(Paths.get(
       "shared/src/main/scala/oathdigital/protocol/BootstrapProtocolCodec.scala")))
+    assert(Files.exists(Paths.get("shared/src/main/scala/oathdigital/" +
+      "protocol/projection/LogProjectionDtos.scala")))
 
   /** The hard limit docs/architecture/codebase-structure.md sets for a
     * production file, also enforced by scripts/check-architecture.py.

@@ -639,13 +639,16 @@ private[application] final class WalkerDecisionProjector(
     }
 
 private[application] object WalkerDecisionProjector:
-  /** Local duplicate of `WalkerEventCodec`'s (serialization-layer) face
-    * vocabulary: the application layer may not import the serialization
-    * layer (`BackendArchitectureSuite`). `oathdigital.model.DieFace` is
-    * open, so a face family neither pool rolls spells as nothing rather
-    * than as a guess. Held to
-    * `oathdigital.protocol.projection.DieFace`'s keys by a test in
-    * `WalkerDecisionProjectorSuite`.
+  /** The decision wire's face vocabulary. It duplicates
+    * `oathdigital.protocol.projection.DieFace`'s keys, and could read them
+    * instead -- that package is not one this layer is forbidden
+    * (`BackendArchitectureSuite` forbids only `server`, `persistence` and
+    * `serialization`, and this file already imports `projection`). It stays
+    * separate because the decision wire was out of the typed log slice's
+    * scope (2026-09-25-decision-form-tag-separation-decision.md), and a
+    * test in `WalkerDecisionProjectorSuite` holds the two spellings
+    * together per die. `oathdigital.model.DieFace` is open, so a face
+    * family neither pool rolls spells as nothing rather than as a guess.
     */
   private[application] def faceName(value: DieFace): Vector[String] =
     value match

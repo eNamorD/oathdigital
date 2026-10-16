@@ -16,9 +16,9 @@ enum Die(val key: String):
   * with "two swords and a skull", "shield" with "two shields".
   *
   * The decision wire (`WalkerDecisionProjector.faceName`) still spells its
-  * faces itself, because the application layer may not import the
-  * serialization layer; a set-equality test in
-  * `WalkerDecisionProjectorSuite` holds it to this enum's keys.
+  * faces itself -- not because it may not read this enum, but because that
+  * wire was out of the typed log slice's scope. A per-die set-equality test
+  * in `WalkerDecisionProjectorSuite` holds it to these keys meanwhile.
   */
 enum DieFace(val key: String, val word: String, val die: Die):
   case HollowSword extends DieFace("hollow-sword", "hollow sword", Die.Attack)

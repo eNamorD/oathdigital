@@ -16,7 +16,9 @@ import oathdigital.protocol.projection.{Die, DieFace}
   * concern and has no server twin.
   */
 private[frontend] object DieFaceChip:
-  private val symbols = Map(
+  /** Opened to the suite, which holds it to `DieFace.values`: this is
+    * the one face table left that the enum does not generate. */
+  private[frontend] val symbols = Map(
     "hollow-sword" -> Vector("hollow-sword"),
     "one-sword" -> Vector("sword"),
     "two-swords-skull" -> Vector("sword", "sword", "skull"),

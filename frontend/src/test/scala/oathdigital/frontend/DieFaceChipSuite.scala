@@ -72,3 +72,14 @@ class DieFaceChipSuite extends munit.FunSuite:
     assertEquals(row.getAttribute("aria-label"), "shield, blank, doubler")
     assertEquals(all(DieFaceChip.rollKeys(Vector.empty, None), ".die-face"),
       Vector.empty)
+
+  /** The glyph table is the one face table the vocabulary does not
+    * generate, so nothing but this holds it to the seven faces. Without it
+    * an eighth face would reach the pane as its own key in plain text --
+    * the fallback only the decision wire is still meant to reach. Presence,
+    * not glyphs: the blank and the doubler are legitimately empty.
+    */
+  test("every face in the vocabulary has a glyph entry"):
+    val missing = DieFace.values.filterNot(face =>
+      DieFaceChip.symbols.contains(face.key))
+    assertEquals(missing.toVector, Vector.empty)
