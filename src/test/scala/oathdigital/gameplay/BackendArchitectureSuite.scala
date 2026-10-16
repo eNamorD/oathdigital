@@ -331,6 +331,89 @@ class BackendArchitectureSuite extends munit.FunSuite:
       .map(_.toString).sorted
     assertEquals(offenders, Vector.empty)
 
+  // A parked-decision query grows fields: ChooseOne gained confirmVerb and
+  // cost 52 read sites that never read it. A site that wants some fields
+  // binds the subtype and reads them by name; a `_` placeholder in the
+  // pattern is what couples the site to the arity. The two wire-facing
+  // sites below are the exception, and the next test pins them.
+  private val QueryForms = Vector("ChooseOne", "ChooseMany", "ChooseAmount",
+    "Partition", "Distribute", "Negotiate", "Inspect")
+
+  private val QueryHierarchies = Vector("DecisionQuery",
+    "DecisionQueryProjection", "DecisionQueryState")
+
+  /** Every `Hier.Form(...)` argument list that sits in pattern position,
+    * as `path:line -> arguments`. `DecisionQueryState` is an alias for
+    * `DecisionQueryProjection` (frontend.scala:30-31), so both are read.
+    */
+  private def queryPatterns(roots: Vector[Path]): Vector[(String, String)] =
+    // Longest alternative first: `DecisionQuery` is a prefix of the other
+    // two, and `\b` keeps `MyDecisionQuery` out.
+    val opening = ("""\b""" +
+      QueryHierarchies.sortBy(-_.length).mkString("(", "|", ")") +
+      """\.""" + QueryForms.mkString("(", "|", ")") + """\(""").r
+    scalaFilesUnder(roots).flatMap { path =>
+      val text = Files.readString(path)
+      opening.findAllMatchIn(text).flatMap { found =>
+        val before = text.substring(0, found.start)
+        val clause = before.lastIndexOf("case ")
+        val between = if clause < 0 then "" else before.substring(clause)
+        val inPattern = clause >= 0 && between.length <= 200 &&
+          !between.contains("=>") && !between.contains("=")
+        Option.when(inPattern) {
+          var depth = 0
+          var index = found.end - 1
+          val collected = new StringBuilder
+          var done = false
+          while index < text.length && !done do
+            val character = text.charAt(index)
+            if character == '(' then depth += 1
+            else if character == ')' then
+              depth -= 1
+              if depth == 0 then done = true
+            if !done && !(depth == 1 && character == '(') then
+              collected.append(character)
+            index += 1
+          val line = before.count(_ == '\n') + 1
+          s"$path:$line" -> collected.toString
+        }
+      }
+    }
+
+  private def wildcardQueryPatterns(roots: Vector[Path]): Vector[String] =
+    queryPatterns(roots).collect {
+      case (where, arguments) if arguments.split(",")
+        .exists(_.trim == "_") => where
+    }.sorted
+
+  test("a parked-decision query pattern binds no wildcard"):
+    val roots = Vector(Paths.get("src/main/scala"),
+      Paths.get("frontend/src/main/scala"), Paths.get("shared/src/main/scala"),
+      Paths.get("src/test/scala"), Paths.get("frontend/src/test/scala"),
+      Paths.get("shared/src/test/scala"))
+    assertEquals(wildcardQueryPatterns(roots), Vector.empty)
+
+  // The two wire-facing sites are the exception the rule above allows and
+  // this test requires. ActionProjectionCodec binds every field of every
+  // form on the way to and from the wire, and WalkerDecisionProjector
+  // binds every field it carries onto that wire. Their arity coupling is
+  // the only thing that fails the build when a new field reaches neither:
+  // confirmVerb was caught by exactly these two. Converting either to a
+  // typed bind removes a build check; it is not tidying.
+  // DecisionQueries is deliberately absent — accepts must stay blind to
+  // copy (Decisions.scala:435-438).
+  private val PinnedQueryReaders = Vector(
+    "shared/src/main/scala/oathdigital/protocol/projection/" +
+      "ActionProjectionCodec.scala",
+    "src/main/scala/oathdigital/application/WalkerDecisionProjector.scala")
+
+  test("the wire-facing query patterns stay fully bound"):
+    val roots = PinnedQueryReaders.map(Paths.get(_))
+    val patterns = queryPatterns(roots)
+    assert(patterns.sizeIs >= 12,
+      s"expected the pinned readers' patterns, found ${patterns.size}")
+    assertEquals(wildcardQueryPatterns(roots), Vector.empty)
+
   test("inner production packages do not import outer adapters"):
     val constraints = Vector(
       Paths.get("src/main/scala/oathdigital/model") -> Vector(
