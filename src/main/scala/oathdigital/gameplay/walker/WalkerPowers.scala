@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.powerresolver.{ContributingPower, ModifierPicks,
-  PowerWindowIndex}
+  PowerUseRestriction, PowerWindowIndex}
 import oathdigital.model.{Answered, OperationRestriction, PowerId,
   PowerResolution}
 
@@ -49,6 +49,11 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
     restrictionSet.active(powers.flatMap(_.operationRestrictions),
       modifiers.filterNot(id => powers.exists(power =>
         power.id == id && power.discardsItself)))
+
+  /** The power-use restrictions these powers declare (catalog batch 8,
+    * slice 10). */
+  lazy val useRestrictions: Vector[PowerUseRestriction] =
+    powers.flatMap(_.powerUseRestrictions)
 
   /** The verdicts this instance's searches have found (see [[SearchMemo]]). */
   private[walker] lazy val searchMemo: SearchMemo = new SearchMemo

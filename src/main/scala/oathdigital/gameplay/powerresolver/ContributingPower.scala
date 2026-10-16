@@ -195,6 +195,16 @@ trait ContributingPower extends NotingPower:
     * split (global operation restrictions design). Unlike a `Restriction`, it
     * hooks no window. None by default. */
   def operationRestrictions: Vector[OperationRestriction] = Vector.empty
+  /** The rules this power holds over other powers' uses (catalog batch 8,
+    * slice 10). The engine reads them without naming them. None by
+    * default. */
+  def powerUseRestrictions: Vector[PowerUseRestriction] = Vector.empty
+  /** This power's use at `ctx`, as the power-use restrictions judge it.
+    * `None` for a power nobody uses: a game rule, or a lasting limit
+    * printed under a phase power's id. A player-selected power is judged
+    * at its pick. An automatic one is judged where its effect runs, in
+    * part 2's `AutomaticUse` node, and Keep where its window folds. */
+  def use(ctx: PowerCtx): Option[PowerUse] = None
   /** Whether this selected power discards its own card before its action
     * ends, so the active-modifier rule must not hold that card in play. No by
     * default. */

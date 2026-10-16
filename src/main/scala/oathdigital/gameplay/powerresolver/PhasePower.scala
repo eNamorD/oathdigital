@@ -26,10 +26,18 @@ trait PhasePower extends NotingPower:
     * a banner source: banners have no costs.
     */
   def cost: Cost = Cost.free
+  /** Whether using the power costs a secret (catalog batch 8, slice 10):
+    * its cost has a secret or a burnt secret. A power that pays X secrets
+    * from its tree overrides it. */
+  def costsSecret: Boolean = cost.secret > 0 || cost.secretBurnt > 0
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation]
 
-final case class PhasePowers(powers: Vector[PhasePower]):
+/** `useRestrictions` are the power-use restrictions the walker powers
+  * declare (catalog batch 8, slice 10), so a phase power is judged by the
+  * same rules a walker power is. */
+final case class PhasePowers(powers: Vector[PhasePower],
+    useRestrictions: Vector[PowerUseRestriction] = Vector.empty):
   def find(id: PowerId): Option[PhasePower] = powers.find(_.id == id)
 object PhasePowers:
   val empty: PhasePowers = PhasePowers(Vector.empty)
