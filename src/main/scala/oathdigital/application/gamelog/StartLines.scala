@@ -16,6 +16,11 @@ import LogSpan.Text
   * say, one line with a Campaign's kind and defender and the modifiers the
   * player chose.
   *
+  * Which procedures have a tag, where each tag posts and what its opening
+  * line says are declarations, so they live in the registry
+  * ([[ProcedureLog]]); this class assembles the tag from the entry it is
+  * given and holds the anchors and the opening the entries name.
+  *
   * `resolutions` is each walker power's resolution: a power that resolves
   * automatically is not a choice, so it is not named. `picks` reads the
   * modifiers picked in a run's answers, in pick order.
@@ -25,18 +30,21 @@ private[gamelog] final class StartLines(words: LogWords,
     picks: Vector[Answered] => Vector[PowerId]):
 
   def start(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
+      viewer: Option[PlayerId], log: ProcedureLog): Vector[Posted] =
     if run.started.nonEmpty then Vector.empty
-    else opening(journal, run, at).toVector.flatMap { (named, said) =>
-      val chosen = modifiers(journal, run, at, viewer)
-      val line =
-        if said.isEmpty then Option.when(chosen.nonEmpty)(Text("With ") +: chosen)
-        else Some(said ++ (if chosen.isEmpty then Vector.empty
-          else Text(" with ") +: chosen))
-      Posted(LogKind.Section, Text(named) +:
-        (queuedBy(journal, run, at, viewer) ++ cost(journal, run, at))) +:
-        line.toVector.map(Posted(LogKind.Action, _))
-    }
+    else log.tag.filter(_ => log.anchor(journal, run, at)).toVector
+      .flatMap { named =>
+        val said = log.opening(journal, run, at, viewer)
+        val chosen = modifiers(journal, run, at, viewer)
+        val line =
+          if said.isEmpty then
+            Option.when(chosen.nonEmpty)(Text("With ") +: chosen)
+          else Some(said ++ (if chosen.isEmpty then Vector.empty
+            else Text(" with ") +: chosen))
+        Posted(LogKind.Section, Text(named) +:
+          (queuedBy(journal, run, at, viewer) ++ cost(journal, run, at))) +:
+          line.toVector.map(Posted(LogKind.Action, _))
+      }
 
   /** " · Knights Errant" when the run was started from the queue: its
     * `ProcedureDequeued` is in the run's first segment. */
@@ -49,86 +57,55 @@ private[gamelog] final class StartLines(words: LogWords,
           journal.readyBefore(run.first).toVector, viewer)))
 
   /** Recover spends Supply again each time the player continues rolling. */
-  def continued(journal: LogJournal, run: Run, at: Int): Option[Posted] =
-    run.procedure match
-      case ActionRef.Recover
-          if run.started.exists(_ != journal.segmentEnd(at)) =>
-        val spent = journal.supplySpent(at, run.actor)
-        Option.when(spent > 0)(Posted(LogKind.Action,
-          Vector(Text("Continued"), LogSpan.Cost(spent))))
-      case _ => None
+  def continuedRecover(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Option[Posted] =
+    if !run.started.exists(_ != journal.segmentEnd(at)) then None
+    else
+      val spent = journal.supplySpent(at, run.actor)
+      Option.when(spent > 0)(Posted(LogKind.Action,
+        Vector(Text("Continued"), LogSpan.Cost(spent))))
 
-  /** The tag's name and what its line says beyond the modifiers, but only at
-    * the tag's anchor: the run's first event, except Muster and Trade (their
-    * cost step, after the source decision), Recover (the step that opens its
-    * dice pool, after its modifier decision), Travel (its first step after the
-    * destination decision), Search (its first step once no more modifiers
-    * can be picked), the facedown-adviser play (its adviser's pick) and
-    * Campaign (the first event by which kind and defender are both
-    * settled, or its completion). */
-  private def opening(journal: LogJournal, run: Run, at: Int)
-      : Option[(String, Vector[LogSpan])] =
-    val completing = journal.event(at).isInstanceOf[WalkerCompleted]
-    run.procedure match
-      // A Campaign that ended before its kind was settled is tagged where it
-      // completes.
-      case ActionRef.Campaign =>
-        campaign(journal, run, at).orElse(Option.when(completing)(Vector.empty))
-          .map(said => ("Campaign", said))
-      case ActionRef.Muster | ActionRef.Trade =>
-        name(run.procedure).filter(_ =>
-          paysCost(journal, run, at) || completing)
-          .map(named => (named, Vector.empty))
-      // The step that opens Recover's dice pool: the first of the Recover
-      // itself, after its modifier decision.
-      case ActionRef.Recover =>
-        name(run.procedure).filter(_ =>
-          opensDicePool(journal, at) || completing)
-          .map(named => (named, Vector.empty))
-      // The first step that does anything after the source or destination
-      // is picked: a toll, a modifier's payment, the Supply, the draw or the
-      // move.
-      // A pick's payment does not count: the tag waits until no more picks
-      // can follow, so that it names them all.
-      case ActionRef.Travel | ActionRef.Search =>
-        name(run.procedure).filter(_ =>
-          (journal.ops(at).nonEmpty &&
-            ModifierPicks.settled(journal.answers(run, at))) || completing)
-          .map(named => (named, Vector.empty))
-      // The adviser's pick: every modifier is picked by then.
-      case ActionRef.PlayFacedownAdviser =>
-        name(run.procedure).filter(_ => completing ||
-          (journal.event(at) match
-            case WalkerStepRecorded(_, ChoicePayload(id, _, _), _, _) =>
-              id == CardPlayProcedure.facedownAdviserDecisionId
-            case _ => false))
-          .map(named => (named, Vector.empty))
-      case other =>
-        name(other).filter(_ => at == run.first)
-          .map(named => (named, Vector.empty))
+  private def completing(journal: LogJournal, at: Int): Boolean =
+    journal.event(at).isInstanceOf[WalkerCompleted]
 
-  /** Whether `procedure` opens with a tag, so its power lines wait for it. */
-  def opens(procedure: ProcedureRef): Boolean = name(procedure).nonEmpty
+  /** Muster and Trade: their cost step, after the source decision. */
+  val paysCost: Anchor = (journal, run, at) =>
+    paysCostAt(journal, run, at) || completing(journal, at)
 
-  private[gamelog] def name(procedure: ProcedureRef): Option[String] =
-    procedure match
-      case ActionRef.Search => Some("Search")
-      case ActionRef.PlayFacedownAdviser => Some("Play facedown adviser")
-      case ActionRef.Recover => Some("Recover")
-      case ActionRef.Forge => Some("Forge")
-      case ActionRef.Travel => Some("Travel")
-      case ActionRef.Muster => Some("Muster")
-      case ActionRef.Trade => Some("Trade")
-      case ActionRef.Challenge => Some("Challenge")
-      case ActionRef.Campaign => Some("Campaign")
-      // No modifier window, so no tag.
-      case ActionRef.TakeWealth | ActionRef.PlaceBannerResource |
-          ActionRef.Negotiation | ActionRef.PeekSiteRelics |
-          ActionRef.RevealOwnedRelic | ActionRef.MoveWarbands |
-          _: ActionRef.UsePower => None
-      case _: PhaseTransitionRef | _: TriggeredProcedureRef => None
+  /** Recover: the step that opens its dice pool, after its modifier
+    * decision. */
+  val opensDicePool: Anchor = (journal, run, at) =>
+    opensDicePoolAt(journal, at) || completing(journal, at)
 
-  private def paysCost(journal: LogJournal, run: Run, at: Int): Boolean =
+  /** Travel and Search: the first step that does anything after the source
+    * or destination is picked — a toll, a modifier's payment, the Supply,
+    * the draw or the move. A pick's payment does not count: the tag waits
+    * until no more picks can follow, so that it names them all. */
+  val picksSettled: Anchor = (journal, run, at) =>
+    (journal.ops(at).nonEmpty &&
+      ModifierPicks.settled(journal.answers(run, at))) ||
+      completing(journal, at)
+
+  /** The facedown adviser's pick: every modifier is picked by then. */
+  val adviserPicked: Anchor = (journal, run, at) =>
+    completing(journal, at) || (journal.event(at) match
+      case WalkerStepRecorded(_, ChoicePayload(id, _, _), _, _) =>
+        id == CardPlayProcedure.facedownAdviserDecisionId
+      case _ => false)
+
+  /** Campaign: the first event by which kind and defender are both settled.
+    * A Campaign that ended before its kind was settled is tagged where it
+    * completes, with an empty opening. */
+  val campaignSettled: Anchor = (journal, run, at) =>
+    campaign(journal, run, at).nonEmpty || completing(journal, at)
+
+  /** Campaign's kind and defender, or nothing when the Campaign completed
+    * before they were settled. Read twice per tagged event, once by
+    * [[campaignSettled]] and once here; both reads are pure. */
+  val campaignWords: Opening = (journal, run, at, _) =>
+    campaign(journal, run, at).getOrElse(Vector.empty)
+
+  private def paysCostAt(journal: LogJournal, run: Run, at: Int): Boolean =
     journal.ops(at).exists {
       case OpStep(SpendSupply(player, _, _), _, _) => player == run.actor
       case OpStep(Move(Piece.Favor(_) | Piece.Secrets(_),
@@ -138,7 +115,7 @@ private[gamelog] final class StartLines(words: LogWords,
       case _ => false
     }
 
-  private def opensDicePool(journal: LogJournal, at: Int): Boolean =
+  private def opensDicePoolAt(journal: LogJournal, at: Int): Boolean =
     journal.ops(at).exists {
       case OpStep(pool: ModifyDicePool, _, _) =>
         pool.pool == RecoverProcedure.recoverPool
@@ -154,12 +131,12 @@ private[gamelog] final class StartLines(words: LogWords,
     journal.readyAfter(at).flatMap(ready => for
       kind <- CampaignSetup.kindOf(ready, run.actor, pending)
       defender <- CampaignSetup.defenderOf(ready, run.actor, pending, kind)
-    yield campaignWords(kind, defender)).orElse(journal.ops(at).collectFirst {
+    yield campaignLine(kind, defender)).orElse(journal.ops(at).collectFirst {
       case OpStep(RecordCampaignResult(result), _, _) =>
-        campaignWords(result.kind, result.defender)
+        campaignLine(result.kind, result.defender)
     })
 
-  private def campaignWords(kind: CampaignKind, defender: CampaignDefender)
+  private def campaignLine(kind: CampaignKind, defender: CampaignDefender)
       : Vector[LogSpan] =
     val named = kind match
       case CampaignKind.Raid => "Raid"

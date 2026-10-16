@@ -93,7 +93,7 @@ lines and still defines `NarratedIds`.
   `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`, including commits
   made by a subagent — the plan's trailer overrides the subagent's own.
 
-## Four resolutions the spec left open
+## Six resolutions the spec left open
 
 Record these; a reviewer will ask.
 

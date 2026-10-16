@@ -10,8 +10,8 @@ import oathdigital.gameplay.walker.{FollowUpSkipped,
   FollowUpSupplyWaiver, PowerNoted, ProcedureDequeued, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.protocol.projection.{LogEntry, LogKind, LogSpan,
-  LogTakenBack}
+import oathdigital.protocol.projection.{LogEntry, LogKind, LogSection,
+  LogSpan, LogTakenBack}
 import LogSpan.Text
 
 /** The game log: a pure function of the scanned journal prefix and the
@@ -37,6 +37,9 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val choices = new ChoiceWords(words,
     new WalkerDecisionProjector(catalog, presentation))
   private val actions = new ActionLines(words, choices, catalog)
+  // Built after `starts`: the table holds references to its rules, and
+  // `entries` is built eagerly. Task 2 adds `actions` here.
+  private[gamelog] val procedures = new ProcedureLogs(starts)
   private val details = new DetailLines(words, choices, wordings.narrated)
   private val events = new EventLines(words)
   private val notes = new PowerLines(words, wordings)
@@ -193,7 +196,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         (Vector(Posted(LogKind.Action,
           entry.source.toVector.flatMap(words.source(_,
             journal.readyBefore(at).toVector, viewer)) ++
-            Vector(Text(s": ${starts.name(entry.procedure)
+            Vector(Text(s": ${procedures.of(entry.procedure).tag
               .getOrElse(entry.procedure.key)} skipped.")))), run)
       case _: WalkerEvent => (Vector.empty, run)
 
@@ -208,17 +211,23 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     yield Run(procedure, ready.game.current.turn.activePlayer, at, None)) match
       case None => (Vector.empty, None)
       case Some(run) =>
-        val start = starts.start(journal, run, at, viewer)
+        val log = procedures.of(run.procedure)
+        val start = starts.start(journal, run, at, viewer, log)
         val begun = if start.isEmpty then run
           else run.copy(started = Some(journal.segmentEnd(at)))
-        val section = LogSections.forRun(journal, begun)
+        // Which runs are sections (log action sections design, "Where a
+        // section comes from"): every top-level action is one. Wake's Take
+        // Wealth, phase transitions and triggered procedures are not actions
+        // a reader looks for, so their lines stand outside any band.
+        val section = Option.when(log.isSection)(
+          LogSection(journal.sequence(begun.first), begun.procedure.key))
         val lines = start ++
           (if start.isEmpty then Vector.empty
             else notes.held(journal, begun, at, viewer)) ++
-          starts.continued(journal, begun, at).toVector ++
+          log.continued(journal, begun, at, viewer).toVector ++
           actions.lines(journal, begun, at, viewer) ++
           details.lines(journal, begun, at, viewer) ++
-          notes.own(journal, begun, at, starts.opens(begun.procedure), viewer)
+          notes.own(journal, begun, at, log.tag.nonEmpty, viewer)
         // A headline the run posts (a turn or phase change) is in no section.
         val posted = lines.map(_.copy(section = section)) ++
           headlines(journal, at)
