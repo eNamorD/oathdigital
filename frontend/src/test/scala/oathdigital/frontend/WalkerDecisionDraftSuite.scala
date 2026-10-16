@@ -18,12 +18,17 @@ class WalkerDecisionDraftSuite extends FunSuite:
     assertEquals(WalkerPanelSupport.rollOutcomeSummary(
       WalkerRollOutcomeState("recover", Vector("two-shields", "doubler"), 4,
         Some(4))),
-      "Rolled two-shields, doubler -- 4 shields so far (need 4).")
+      "Rolled two shields, doubler -- 4 shields so far (need 4).")
     assertEquals(WalkerPanelSupport.rollOutcomeSummary(
       WalkerRollOutcomeState("campaign.attack",
         Vector("two-swords-skull", "one-sword"), 3, None,
         Vector("1 skull loss"))),
-      "Rolled two-swords-skull, one-sword -- Attack 3, 1 skull loss.")
+      "Rolled two swords and a skull, one sword -- Attack 3, 1 skull loss.")
+
+  test("a face the client does not know is said as the key it arrived as"):
+    assertEquals(WalkerPanelSupport.rollOutcomeSummary(
+      WalkerRollOutcomeState("recover", Vector("three-moons"), 0, Some(4))),
+      "Rolled three-moons -- 0 shields so far (need 4).")
 
   private def forgeItem(index: Int): String =
     WalkerPartitionDraft.itemId(ForgeFixture.query.options(index))
