@@ -1,6 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.operations.OperationConsent
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -107,8 +108,52 @@ class OperationAsksSuite extends munit.FunSuite:
     // nothing to offer, as without the search's reasons.
     val ready = musterAtAncientCity(beside = false)
     val tree = accepted(MusterProcedure.build(catalog, ready, p1))
-    assert(ProcedureWalker.advance(ready, tree, None, WalkerPowers(Vector(
-      favorOnAlchemistBannedBy(None)))).isLeft)
+    ProcedureWalker.advance(ready, tree, None, WalkerPowers(Vector(
+        favorOnAlchemistBannedBy(None)))) match
+      case Left(OathViolation.WaivableOperationRejected("test-ban", _, _)) =>
+      case other => fail(s"expected the ban's rejection, got $other")
+
+  test("a search reaching a decision with only plain options does not " +
+      "offer the answer that leads there"):
+    // Going on leads to a choice of Alchemist alone, whose payment nobody
+    // may be asked about; stopping leads nowhere.
+    val goOn = DecisionOptionRef.Button("go-on")
+    val stop = DecisionOptionRef.Button("stop")
+    val alchemistOnly = Decide("test.inner", p1, DecisionQuery.ChooseOne(
+      Vector(DecisionOption.Denizen(alchemistRef))))
+    val payOntoAlchemist = PayCost(p1, Location.OnCard(alchemist),
+      Cost(favor = 1))
+    val tree = Sequence(
+      Decide("test.outer", p1, DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Button(goOn, "Go on"),
+        DecisionOption.Button(stop, "Stop")))),
+      Branch((_, pending) =>
+        if pending.answered.exists(_.answer ==
+            DecisionAnswer.ChooseOneAnswer(goOn))
+        then Vector(alchemistOnly, payOntoAlchemist)
+        else Vector.empty))
+    val ready = musterAtAncientCity(beside = false)
+    val powers = WalkerPowers(Vector(favorOnAlchemistBannedBy(None)))
+    val pending = Outcomes.parked(ProcedureWalker.advance(ready, tree, None,
+      powers)).tree
+    val options = present(ProcedureWalker.parkedDecide(ready, tree, pending,
+      powers), "the outer decision").query match
+      case one: DecisionQuery.ChooseOne => one.options
+      case other => fail(s"expected a choose-one, got $other")
+    assert(!options.find(_.ref == goOn).exists(_.available), options.toString)
+    assert(options.find(_.ref == stop).exists(_.available), options.toString)
+
+  test("the plain reason names a refusal nobody may be asked about"):
+    // The first refusal is askable of p2; the second names nobody.
+    val other = PowerId("test.other")
+    def refusal(power: PowerId, granter: Option[PlayerId]): OperationReason =
+      OperationReason(power.value, "refused", OperationReasonKind.Impossible,
+        Some(OperationWaiver(power, granter, ConsentKey(power, p1,
+          "power.use", alchemistRef), asked(alchemistSource),
+          said(alchemistSource))))
+    assertEquals(OperationConsent.shown(musterAtAncientCity(), p1, Vector(
+      refusal(ban, Some(p2)), refusal(other, None))),
+      Some(OptionReason.Noted(other, said(alchemistSource))))
 
   test("a decision whose every option is askable still parks"):
     assertEquals(sourceOptions(musterAtAncientCity(beside = false),

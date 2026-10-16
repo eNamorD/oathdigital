@@ -53,12 +53,18 @@ object OperationConsent:
     }
 
   /** How an option whose plan only `refusals` stop is shown: askable when
-    * [[ask]] finds an ask, else unavailable with the first refusal's plain
-    * reason, when every refusal is one a grant would lift (catalog batch 8,
-    * slice 10). `None` when some refusal has no waiver. */
+    * [[ask]] finds an ask, else unavailable with the plain reason of the
+    * first refusal nobody may be asked about, when every refusal is one a
+    * grant would lift (catalog batch 8, slice 10). `None` when some refusal
+    * has no waiver. */
   def shown(ready: ReadyGame, actor: PlayerId,
       refusals: Vector[OperationReason]): Option[OptionReason] =
     val waivers = refusals.flatMap(_.waiver)
+    val now = ConsentTurn.of(ready)
+    def unaskable(waiver: OperationWaiver): Boolean =
+      !waiver.granter.exists(_ != actor) || ready.consent.remembered(
+        waiver.covers, now).contains(ConsentAnswer.Refused)
     if refusals.isEmpty || waivers.size < refusals.size then None
-    else ask(ready, actor, refusals).orElse(waivers.headOption.map(first =>
-      OptionReason.Noted(first.power, first.plain)))
+    else ask(ready, actor, refusals).orElse(waivers.find(unaskable)
+      .orElse(waivers.headOption).map(blocker =>
+        OptionReason.Noted(blocker.power, blocker.plain)))
