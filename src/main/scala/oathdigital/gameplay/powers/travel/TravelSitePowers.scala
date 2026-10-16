@@ -98,7 +98,7 @@ private[travel] object TravelRoute:
   def pawnMove(operation: Operation): Option[PawnMove] =
     Operation.flatten(operation).collectFirst:
       case Move(Piece.Pawn(player), PositionedLocation(Location.Site(source), _, _),
-          PositionedLocation(Location.Site(destination), _, _), _) =>
+          PositionedLocation(Location.Site(destination), _, _), _, _) =>
         PawnMove(player, source, destination)
 
   /** `operations` with `payments` just before the pawn's move: after the
@@ -107,7 +107,7 @@ private[travel] object TravelRoute:
   def beforeMove(operations: Vector[Operation], payments: Vector[Operation])
       : Vector[Operation] =
     val (cost, move) = operations.span:
-      case Move(Piece.Pawn(_), _, _, _) => false
+      case Move(Piece.Pawn(_), _, _, _, _) => false
       case _ => true
     cost ++ payments ++ move
 

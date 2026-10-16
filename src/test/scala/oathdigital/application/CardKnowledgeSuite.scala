@@ -35,7 +35,8 @@ class CardKnowledgeSuite extends munit.FunSuite:
 
   private val taken = Move(Piece.Card(relic),
     PositionedLocation(Location.Site(site)),
-    PositionedLocation(Location.PlayArea(owner)), Some(Orientation.FaceDown))
+    PositionedLocation(Location.PlayArea(owner)), Some(Orientation.FaceDown),
+    by = Some(owner))
 
   test("a player who gives a face-down relic away still knows it"):
     val handedOver = run(taken, Give(Piece.Card(relic), owner,

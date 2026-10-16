@@ -123,7 +123,7 @@ case object VowOfWandering extends ContributingPower:
   private def places(ready: ReadyGame, holder: PlayerId, step: Operation)
       : Boolean = step match
     case Move(Piece.Warbands(kind, _), from,
-        PositionedLocation(Location.Site(_), _, _), _) =>
+        PositionedLocation(Location.Site(_), _, _), _, _) =>
       from.location == Location.PlayArea(holder) ||
         holdersKind(ready, holder, kind)
     case _ => false

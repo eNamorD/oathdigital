@@ -19,7 +19,7 @@ private[application] object OperationDetails:
     case Gain.Warbands(_, _, amount) => s"+$amount warbands"
     case Gain.Favor(_, _, amount) => s"+$amount favor"
     case Gain.Secrets(_, amount) => s"+$amount secrets"
-    case Move(piece, from, to, _) if fromBank(from.location) &&
+    case Move(piece, from, to, _, _) if fromBank(from.location) &&
         toPlayArea(to.location) => piece match
       case Piece.Warbands(_, amount) => s"+$amount warbands"
       case Piece.Favor(amount) => s"+$amount favor"

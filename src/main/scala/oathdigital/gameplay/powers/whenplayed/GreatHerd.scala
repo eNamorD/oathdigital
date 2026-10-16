@@ -45,7 +45,8 @@ final case class GreatHerd private (catalog: ExecutableCatalog)
           found.map(_.option) :+ DecisionOption.Button(keep, "Keep Great Herd"),
           heading = Some("Great Herd: swap it with a Nomad card at another " +
             "site?"))),
-        BuildOps((ready, pending) => swap(ready, pending), required = true),
+        BuildOps((ready, pending) => swap(ready, actor, pending),
+          required = true),
         Note(id, swappedNote(_, actor)))))
 
   /** The faceup Nomad denizens and ruined Nomad edifices at every other
@@ -66,21 +67,23 @@ final case class GreatHerd private (catalog: ExecutableCatalog)
   private def nomad(card: CardId): Boolean =
     catalog.suitOf(card).contains(Suit.Nomad)
 
-  private def swap(ready: ReadyGame, pending: PendingTree)
+  private def swap(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     PowerAnswers.one(pending, decisionId) match
       case Some(`keep`) => Right(Vector.empty)
-      case Some(ref) => swapWith(ready, ref).toRight(OathViolation
+      case Some(ref) => swapWith(ready, actor, ref).toRight(OathViolation
         .InvalidEventOrder(s"${ref.wireId} is not a Nomad card Great Herd " +
           "can swap with"))
       case None => Left(PowerAnswers.missing(decisionId))
 
-  private def swapWith(ready: ReadyGame, ref: DecisionOptionRef)
+  private def swapWith(ready: ReadyGame, actor: PlayerId,
+      ref: DecisionOptionRef)
       : Option[Vector[CoreOperation]] = for
     here <- SiteRulers.siteOf(ready, cardId)
     chosen <- candidates(ready).find(_.option.ref == ref)
   yield Vector(Swap(cardId, PositionedLocation(Location.Site(here)),
-    chosen.card, PositionedLocation(Location.Site(chosen.site))))
+    chosen.card, PositionedLocation(Location.Site(chosen.site)),
+    by = Some(actor)))
 
   /** Written only when the chosen card now stands where Great Herd stood. */
   private def swappedNote(states: NoteStates, actor: PlayerId)

@@ -117,7 +117,7 @@ object PricedOptions:
         total.copy(supply = total.supply + amount)
       case (total, Move(piece,
           PositionedLocation(Location.PlayArea(player), _, _),
-          PositionedLocation(to, _, _), _)) if player == actor =>
+          PositionedLocation(to, _, _), _, _)) if player == actor =>
         val burnt = to == Location.SharedBank
         piece match
           case Piece.Favor(amount) if burnt =>

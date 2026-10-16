@@ -163,7 +163,8 @@ class OperationExecutorSuite extends munit.FunSuite:
     val tokenLoss = Move(
       Piece.Card(siteDenizen.id),
       PositionedLocation(Location.Site(sites.head)),
-      PositionedLocation(Location.Hand(playerId))
+      PositionedLocation(Location.Hand(playerId)),
+      by = Some(playerId)
     )
     assert(rejected(executor.execute(ready, tokenLoss))
       .isInstanceOf[OperationError.ConflictingDeltas])
@@ -222,7 +223,8 @@ class OperationExecutorSuite extends munit.FunSuite:
     val ambiguous = Move(
       Piece.Card(siteDenizen.id),
       PositionedLocation(Location.Site(sites.head)),
-      PositionedLocation(Location.Atlas)
+      PositionedLocation(Location.Atlas),
+      by = Some(playerId)
     )
     assertEquals(rejectionCode(ready, ambiguous), "ambiguous-location")
 
@@ -260,7 +262,8 @@ class OperationExecutorSuite extends munit.FunSuite:
       siteRelic.id,
       PositionedLocation(Location.Site(sites(1))),
       heldRelic.id,
-      PositionedLocation(Location.PlayArea(blueId))
+      PositionedLocation(Location.PlayArea(blueId)),
+      by = Some(blueId)
     )
     val swapped = accepted(executor.execute(ready, swap))
     assert(swapped.game.current.map.sites(sites(1)).relics

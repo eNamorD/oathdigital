@@ -71,4 +71,4 @@ private[powers] final class SiteSlotMoves(catalog: ExecutableCatalog,
           required = true).map(Vector(_)))
     yield discard :+ Move(Piece.Card(mover),
       PositionedLocation(Location.Site(here)),
-      PositionedLocation(Location.Site(move.site)))
+      PositionedLocation(Location.Site(move.site)), by = Some(actor))

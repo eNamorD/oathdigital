@@ -29,11 +29,11 @@ private[operations] object BoardControlOperations:
     )
     val (reasons, _) = leaves.foldLeft[(Vector[OperationError],
       MovedPieces)]((Vector.empty, MovedPieces(pawnSites, bannerHolders))):
-      case ((result, state), Move(Piece.Pawn(player), from, to, _)) =>
+      case ((result, state), Move(Piece.Pawn(player), from, to, _, _)) =>
         val (violations, updated) =
           pawnMoveViolation(ready, player, from.location, to.location, state)
         (result ++ violations, updated)
-      case ((result, state), Move(Piece.Banner(banner), from, to, _)) =>
+      case ((result, state), Move(Piece.Banner(banner), from, to, _, _)) =>
         val (violations, updated) =
           bannerMoveViolation(ready, banner, from.location, to.location, state)
         (result ++ violations, updated)
@@ -109,9 +109,9 @@ private[operations] object BoardControlOperations:
       leaves: Vector[Operation]
   ): Either[OperationError, ReadyGame] =
     leaves.foldLeft[Either[OperationError, ReadyGame]](Right(ready)):
-      case (result, Move(Piece.Pawn(player), from, to, _)) =>
+      case (result, Move(Piece.Pawn(player), from, to, _, _)) =>
         result.flatMap(movePawn(_, player, from.location, to.location))
-      case (result, Move(Piece.Banner(banner), from, to, _)) =>
+      case (result, Move(Piece.Banner(banner), from, to, _, _)) =>
         result.flatMap(moveBanner(_, banner, from.location, to.location))
       case (result, _) => result
 

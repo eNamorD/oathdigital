@@ -82,7 +82,7 @@ final class SiteRelicTake(power: PowerId, decisionId: String, heading: String,
       yield Vector[CoreOperation](Move(Piece.Card(relic),
         PositionedLocation(Location.Site(site)),
         PositionedLocation(Location.PlayArea(actor)),
-        resultingOrientation = Some(Orientation.FaceDown)))
+        resultingOrientation = Some(Orientation.FaceDown), by = Some(actor)))
     case _ => Right(Vector.empty)
 
   /** The relic the take step gave the player. */

@@ -159,7 +159,7 @@ private[gamelog] final class CampaignLines(words: LogWords,
         val placed = ops.collect {
           case OpStep(Move(Piece.Warbands(_, count),
               PositionedLocation(Location.PlayArea(player), _, _),
-              PositionedLocation(Location.Site(site), _, _), _), _, _)
+              PositionedLocation(Location.Site(site), _, _), _, _), _, _)
               if player == result.attacker =>
             Vector(Text(s"$count ${plural(count, "warband", "warbands")} on "),
               words.site(site))
@@ -186,7 +186,7 @@ private[gamelog] final class CampaignLines(words: LogWords,
     val returned = ops.collect {
       case OpStep(Move(Piece.Warbands(_, count),
           PositionedLocation(Location.WarbandBank(_), _, _),
-          PositionedLocation(place, _, _), _), _, _) if from(place) => count
+          PositionedLocation(place, _, _), _, _), _, _) if from(place) => count
     }.sum
     val lost = killed - returned
     val burned = ops.collect {
@@ -197,17 +197,19 @@ private[gamelog] final class CampaignLines(words: LogWords,
     }.sum
     val discarded = ops.collect {
       case OpStep(Move(Piece.Card(id), PositionedLocation(place, _, _),
-          PositionedLocation(Location.RegionalDiscard(_), _, _), _), before, after)
+          PositionedLocation(Location.RegionalDiscard(_), _, _),
+          _, _), before, after)
           if from(place) => words.card(id, before, after, viewer)
     }
     val setAside = ops.collect {
       case OpStep(Move(Piece.Card(id), PositionedLocation(place, _, _),
-          PositionedLocation(Location.SetAsideRelics, _, _), _), before, after)
+          PositionedLocation(Location.SetAsideRelics, _, _),
+          _, _), before, after)
           if from(place) => words.card(id, before, after, viewer)
     }
     val sent = ops.collect {
       case OpStep(Move(Piece.Pawn(player), _,
-          PositionedLocation(Location.Site(site), _, _), _), _, _)
+          PositionedLocation(Location.Site(site), _, _), _, _), _, _)
           if owner.contains(player) => site
     }.lastOption
     val parts = Vector(

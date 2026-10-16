@@ -95,6 +95,6 @@ case object BrassArmyMoves extends ExecutedTrigger:
 
   private def moved(executed: Vector[CoreOperation], holder: PlayerId)
       : Boolean = executed.exists {
-    case Move(Piece.Pawn(player), _, _, _) => player == holder
+    case Move(Piece.Pawn(player), _, _, _, _) => player == holder
     case _ => false
   }

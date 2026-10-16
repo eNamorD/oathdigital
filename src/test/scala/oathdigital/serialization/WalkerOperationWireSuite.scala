@@ -55,6 +55,28 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       OperationPolicy.Permissive, Vector.empty)(Right(_))).state
     assertEquals(replayed.game.current.temporaryHands(actor), Vector.empty)
 
+  test("a move names its mover on the wire, and a site card's move " +
+      "without one does not decode"):
+    val move = Move(Piece.Card(RelicId("R1")),
+      PositionedLocation(Location.Site(SiteId("site"))),
+      PositionedLocation(Location.PlayArea(Table.p1)),
+      resultingOrientation = Some(Orientation.FaceDown), by = Some(Table.p1))
+    val event = recordedOperation("recover", move)
+    val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    val stripped = ujson.read(ujson.write(encoded))
+    stripped("payload")("ops")(0).obj.remove("by")
+    assert(GameEventWire.decode(stripped).isLeft)
+
+  test("a swap names its mover on the wire"):
+    val swap = Swap(DenizenId("D1"),
+      PositionedLocation(Location.Site(SiteId("here"))), DenizenId("D2"),
+      PositionedLocation(Location.Site(SiteId("there"))),
+      by = Some(Table.p1))
+    val event = recordedOperation("swap", swap)
+    val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+
   test("walker delta events round-trip independent semantic facts"):
     val player = PlayerId("red")
     val pool = PoolKey("recover")
@@ -63,7 +85,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val move = Move(Piece.Card(relic),
       PositionedLocation(Location.Site(site)),
       PositionedLocation(Location.PlayArea(player)),
-      resultingOrientation = Some(Orientation.FaceDown))
+      resultingOrientation = Some(Orientation.FaceDown), by = Some(player))
     val events = Vector[OathEvent](
       WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.DicePoolModified(pool, 2)),

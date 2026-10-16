@@ -133,7 +133,7 @@ private[gamelog] final class StartLines(words: LogWords,
       case OpStep(SpendSupply(player, _, _), _, _) => player == run.actor
       case OpStep(Move(Piece.Favor(_) | Piece.Secrets(_),
           PositionedLocation(Location.PlayArea(player), _, _),
-          PositionedLocation(Location.OnCard(_), _, _), _), _, _) =>
+          PositionedLocation(Location.OnCard(_), _, _), _, _), _, _) =>
         player == run.actor
       case _ => false
     }

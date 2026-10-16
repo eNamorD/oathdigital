@@ -129,7 +129,7 @@ case object PeaceEnvoy extends BattlePlan:
           PositionedLocation(Location.PlayArea(_), _, _)) => Vector.empty
       case move @ Move(Piece.Warbands(kind, _),
           PositionedLocation(Location.WarbandBank(_), _, _),
-          PositionedLocation(Location.PlayArea(_), _, _), None) =>
+          PositionedLocation(Location.PlayArea(_), _, _), None, _) =>
         Vector(move.copy(piece = Piece.Warbands(kind, atTargets)))
       case other => Vector(other)
     }

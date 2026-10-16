@@ -91,11 +91,12 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "orientation" -> orientationKey(orientation))
       case Reveal(card, at) => ujson.Obj("kind" -> "reveal",
         "card" -> encodeCardRef(card), "at" -> encodeLocation(at))
-      case Swap(firstCard, firstLocation, secondCard, secondLocation) =>
-        ujson.Obj("kind" -> "swap", "firstCard" -> encodeCardRef(firstCard),
+      case Swap(firstCard, firstLocation, secondCard, secondLocation, by) =>
+        withMover(ujson.Obj("kind" -> "swap",
+          "firstCard" -> encodeCardRef(firstCard),
           "firstLocation" -> encodePositionedLocation(firstLocation),
           "secondCard" -> encodeCardRef(secondCard),
-          "secondLocation" -> encodePositionedLocation(secondLocation))
+          "secondLocation" -> encodePositionedLocation(secondLocation)), by)
       case Shuffle(pile, order) =>
         val shuffled = ujson.Obj("kind" -> "shuffle",
           "pile" -> encodeSearchSource(pile))
@@ -103,15 +104,32 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
           shuffled("order") = ujson.Arr.from(cards.map(encodeWorldCardId)))
         shuffled
 
+  /** `encoded`, with `"by"` when the move names its mover. Written only
+    * when present, so a move without one encodes as before. */
+  private def withMover(encoded: ujson.Obj, by: Option[PlayerId]): ujson.Obj =
+    by.foreach(player => encoded("by") = player.value)
+    encoded
+
+  /** The mover a move or swap names, if any. */
+  private def decodeMover(value: ujson.Value): Option[PlayerId] =
+    value.obj.get("by").map(by => PlayerId(by.str))
+
+  /** A card moved from a site names who moves it. Refused here, so the
+    * model's `require` never throws while decoding. */
+  private def requireMover(piece: Piece, from: PositionedLocation,
+      by: Option[PlayerId], path: String): Either[WireError, Unit] =
+    Either.cond(by.isDefined || !Move.fromSite(piece, from), (),
+      InvalidValue(path, "a card moved from a site names who moves it"))
+
   private def encodePieceOperation(operation: PieceOperation): ujson.Value =
     operation match
-      case Move(piece, from, to, orientation) => ujson.Obj(
+      case Move(piece, from, to, orientation, by) => withMover(ujson.Obj(
         "kind" -> "move",
         "piece" -> encodePiece(piece),
         "from" -> encodePositionedLocation(from),
         "to" -> encodePositionedLocation(to),
         "resultingOrientation" -> orientation.fold[ujson.Value](ujson.Null)(
-          value => ujson.Str(orientationKey(value))))
+          value => ujson.Str(orientationKey(value)))), by)
       case Take(piece, player, from, to, sourcePosition, _, leaving,
           sourceSide) =>
         // Written only when present, so a Take without it encodes as before.
@@ -343,7 +361,10 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         InvalidValue(path, "swap requires two different cards"))
       _ <- Either.cond(firstLocation != secondLocation, (),
         InvalidValue(path, "swap requires two different locations"))
-    yield Swap(firstCard, firstLocation, secondCard, secondLocation)
+      by = decodeMover(value)
+      _ <- requireMover(Piece.Card(firstCard), firstLocation, by, path)
+      _ <- requireMover(Piece.Card(secondCard), secondLocation, by, path)
+    yield Swap(firstCard, firstLocation, secondCard, secondLocation, by)
     case "shuffle" => for
       pile <- decodeSearchSource(value("pile"), s"$path.pile")
       order <- decodeShuffleOrder(value, path)
@@ -374,7 +395,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         case ujson.Null => Right(None)
         case other => orientationFromKey(other.str,
           s"$path.resultingOrientation").map(Some(_))
-    yield Move(piece, from, to, orientation)
+      by = decodeMover(value)
+      _ <- requireMover(piece, from, by, path)
+    yield Move(piece, from, to, orientation, by)
     case "take" => for
       piece <- decodePiece(value("piece"), s"$path.piece")
       from <- decodeLocation(value("from"), s"$path.from")

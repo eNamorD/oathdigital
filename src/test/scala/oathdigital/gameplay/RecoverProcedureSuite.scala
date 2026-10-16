@@ -166,7 +166,7 @@ class RecoverProcedureSuite extends munit.FunSuite
       Piece.Card(relic),
       PositionedLocation(Location.Site(recoverSite)),
       PositionedLocation(Location.PlayArea(actor)),
-      resultingOrientation = Some(Orientation.FaceDown))))
+      resultingOrientation = Some(Orientation.FaceDown), by = Some(actor))))
 
   test("multi-roll success: a failed roll parks Continue/Stop; Continue rolls " +
       "again and the cumulative score reaches the difficulty"):

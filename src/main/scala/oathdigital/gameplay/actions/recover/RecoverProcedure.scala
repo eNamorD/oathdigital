@@ -193,7 +193,8 @@ object RecoverProcedure:
             Piece.Card(relicId),
             PositionedLocation(Location.Site(siteId)),
             PositionedLocation(Location.PlayArea(actor)),
-            resultingOrientation = Some(Orientation.FaceDown))))
+            resultingOrientation = Some(Orientation.FaceDown),
+            by = Some(actor))))
         case _ => Left(OathViolation.InvalidEventOrder(
           "no recovered relic answer is recorded"))
       }, window = Some(PowerWindow.RecoverAfterRelic))

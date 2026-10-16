@@ -47,11 +47,11 @@ private[gameplay] object OperationApplication:
   ): Vector[OperationError] =
     val leaves = Operation.flatten(operation)
     val favorMoves = leaves.collect:
-      case move @ Move(_: Piece.Favor, _, _, _) => move
+      case move @ Move(_: Piece.Favor, _, _, _, _) => move
     val secretMoves = leaves.collect:
-      case move @ Move(_: Piece.Secrets, _, _, _) => move
+      case move @ Move(_: Piece.Secrets, _, _, _, _) => move
     val warbandMoves = leaves.collect:
-      case move @ Move(_: Piece.Warbands, _, _, _) => move
+      case move @ Move(_: Piece.Warbands, _, _, _, _) => move
     val (secretReasons, plannedSecrets) =
       ResourceOperations.planSecrets(ready, secretMoves)
 

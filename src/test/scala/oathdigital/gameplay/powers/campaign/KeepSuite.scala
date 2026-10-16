@@ -89,7 +89,7 @@ class KeepSuite extends munit.FunSuite:
     assertEquals(Look(done.state).player(b.rival).pawnSite, Some(b.origin))
     assertEquals(Look(done.state).player(b.rival).board.favor, 5)
     val pawnMoves = done.ops.collect {
-      case move @ Move(Piece.Pawn(_), _, _, _) => move }
+      case move @ Move(Piece.Pawn(_), _, _, _, _) => move }
     assertEquals(pawnMoves, Vector.empty)
     parked.assertResumed(done.state, Phase.Act, b.actor)
     assertEquals(said(KeepRule, done.events),

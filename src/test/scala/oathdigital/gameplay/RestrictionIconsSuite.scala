@@ -44,7 +44,8 @@ class RestrictionIconsSuite extends munit.FunSuite:
     val ready = adviserOnlyHeld
     assertEquals(Vector[CoreOperation](
       Move(Piece.Card(adviserOnly), mine, atHome),
-      Swap(adviserOnly, mine, plainCard, atHome)).map(refusal(ready, _)),
+      Swap(adviserOnly, mine, plainCard, atHome, by = Some(p1)))
+      .map(refusal(ready, _)),
       Vector.fill(2)(Some("restriction-icon")))
 
   test("a site-only card cannot be taken, moved or swapped into advisers " +
@@ -53,13 +54,15 @@ class RestrictionIconsSuite extends munit.FunSuite:
     assertEquals(Vector[CoreOperation](
       Take(Piece.Card(siteOnly), p1, Location.Site(home),
         Location.PlayArea(p1)),
-      Move(Piece.Card(siteOnly), atHome, mine),
-      Swap(siteOnly, atHome, plainCard, mine)).map(refusal(ready, _)),
+      Move(Piece.Card(siteOnly), atHome, mine, by = Some(p1)),
+      Swap(siteOnly, atHome, plainCard, mine, by = Some(p1)))
+      .map(refusal(ready, _)),
       Vector.fill(3)(Some("restriction-icon")))
 
   test("a site-only card that lands facedown passes, as Horned Mask takes it"):
     assertEquals(refusal(siteOnlyAtHome, Move(Piece.Card(siteOnly), atHome,
-      mine, resultingOrientation = Some(Orientation.FaceDown))), None)
+      mine, resultingOrientation = Some(Orientation.FaceDown),
+      by = Some(p1))), None)
 
   test("a facedown adviser has no restrictions"):
     val ready = Table.start.adviser(p1, siteOnly, facedown = true).ready
@@ -77,7 +80,7 @@ class RestrictionIconsSuite extends munit.FunSuite:
     val elsewhere =
       PositionedLocation(Location.Site(CatalogNames.site("Broken Peaks")))
     assertEquals(refusal(siteOnlyAtHome,
-      Move(Piece.Card(siteOnly), atHome, elsewhere)), None)
+      Move(Piece.Card(siteOnly), atHome, elsewhere, by = Some(p1))), None)
     val plain = Table.start.adviser(p1, plainCard).ready
     assertEquals(refusal(plain, Move(Piece.Card(plainCard), mine, atHome)),
       None)

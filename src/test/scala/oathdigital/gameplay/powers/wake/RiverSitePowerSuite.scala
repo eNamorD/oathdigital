@@ -72,7 +72,7 @@ class RiverSitePowerSuite extends munit.FunSuite:
     assertEquals(Look(placed).player(actor).pawnSite, Some(riverbank))
     assertEquals(Look(placed).supply(actor), Look(ready).supply(actor))
     val moves = ops(placement.events).collect {
-      case move @ Move(Piece.Pawn(_), _, _, _) => move }
+      case move @ Move(Piece.Pawn(_), _, _, _, _) => move }
     assertEquals(moves, Vector(Move(Piece.Pawn(actor),
       PositionedLocation(Location.Site(ancientCity)),
       PositionedLocation(Location.Site(riverbank)))))

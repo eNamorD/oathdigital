@@ -22,7 +22,7 @@ private[operations] object OperationStateWrites:
 
   def cardTransfers(leaves: Vector[Operation]): Vector[CardTransfer] =
     leaves.collect:
-      case Move(piece: Piece.Card, from, to, orientation) =>
+      case Move(piece: Piece.Card, from, to, orientation, _) =>
         CardTransfer(piece, from, to, orientation)
       case bury: Bury => CardTransfer(
         Piece.Card(bury.card.id),

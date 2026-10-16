@@ -79,7 +79,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
   private def take(steps: Steps): Int = steps.indexWhere(_.event.event match
     case step: WalkerStepRecorded => step.ops.exists {
       case Move(Piece.Favor(_), PositionedLocation(Location.FavorBank(_), _, _),
-          _, _) => true
+          _, _, _) => true
       case _ => false
     }
     case _ => false)
@@ -373,7 +373,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val steps = withoutNotes(script.history.steps)
     val placed = steps.indexWhere(_.event.event match
       case step: WalkerStepRecorded => step.ops.exists {
-        case Move(Piece.Pawn(_), _, _, _) => true
+        case Move(Piece.Pawn(_), _, _, _, _) => true
         case _ => false
       }
       case _ => false)

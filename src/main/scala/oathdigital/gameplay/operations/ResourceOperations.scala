@@ -62,10 +62,10 @@ private[operations] object ResourceOperations:
   def countedDestinationViolations(ready: ReadyGame,
       leaves: Vector[Operation]): Vector[OperationError] =
     leaves.flatMap:
-      case Move(piece: Piece.Counted, _, to, _)
+      case Move(piece: Piece.Counted, _, to, _, _)
           if piece.isInstanceOf[Piece.Favor] &&
             to.location == Location.SharedBank => Vector.empty
-      case Move(piece: Piece.Counted, _, to, _) =>
+      case Move(piece: Piece.Counted, _, to, _, _) =>
         quantity(ready, piece, to.location).left.toOption.toVector
       case _ => Vector.empty
 
@@ -150,11 +150,11 @@ private[operations] object ResourceOperations:
       leaves: Vector[Operation]
   ): Either[OperationError, ReadyGame] =
     val favorMoves = leaves.collect:
-      case move @ Move(_: Piece.Favor, _, _, _) => move
+      case move @ Move(_: Piece.Favor, _, _, _, _) => move
     val secretMoves = leaves.collect:
-      case move @ Move(_: Piece.Secrets, _, _, _) => move
+      case move @ Move(_: Piece.Secrets, _, _, _, _) => move
     val warbandMoves = leaves.collect:
-      case move @ Move(_: Piece.Warbands, _, _, _) => move
+      case move @ Move(_: Piece.Warbands, _, _, _, _) => move
     for
       plannedSecrets <- OperationSecretPlanner.plan(ready, secretMoves)
       withoutFavor <- favorMoves.foldLeft[Either[OperationError, ReadyGame]](

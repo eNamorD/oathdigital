@@ -34,7 +34,7 @@ object DeltaMeaning:
         SupplySpent(player, amount)
       case Vector(Move(Piece.Card(relic: RelicId),
           PositionedLocation(Location.Site(site), _, _),
-          PositionedLocation(Location.PlayArea(player), _, _), _)) =>
+          PositionedLocation(Location.PlayArea(player), _, _), _, _)) =>
         RelicAcquired(player, relic, site)
       case _ => OperationApplied(fallback)
 

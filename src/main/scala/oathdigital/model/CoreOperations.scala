@@ -73,12 +73,17 @@ final case class PositionedLocation(
   require(side.isEmpty || location.isInstanceOf[Location.PlayArea],
     "only secrets on a board have a side to move from")
 
-/** Changes a piece's location or role within one play area. */
+/** Changes a piece's location or role within one play area. `by` is the
+  * player who moves it, where a rule names one (catalog batch 8, slice 11):
+  * a restriction that holds against some players only reads it off the
+  * operation tree. A card moved from a site always names one.
+  */
 final case class Move(
     piece: Piece,
     from: PositionedLocation,
     to: PositionedLocation,
-    resultingOrientation: Option[Orientation] = None)
+    resultingOrientation: Option[Orientation] = None,
+    by: Option[PlayerId] = None)
     extends PrimitiveOperation:
   require(from != to || (resultingOrientation.isDefined &&
       piece.isInstanceOf[Piece.Card] &&
@@ -90,6 +95,15 @@ final case class Move(
   require(from.side.isEmpty || piece.isInstanceOf[Piece.Secrets],
     "only secrets have a side")
   require(to.side.isEmpty, "a move names the side it takes, not lands on")
+  require(by.isDefined || !Move.fromSite(piece, from),
+    "a card moved from a site names who moves it")
+
+object Move:
+  /** Whether `piece` is a card leaving a site: a move that must name its
+    * mover. */
+  def fromSite(piece: Piece, from: PositionedLocation): Boolean =
+    piece.isInstanceOf[Piece.Card] &&
+      from.location.isInstanceOf[Location.Site]
 
 /** Looks at a card's front without changing its orientation or location. */
 final case class Peek(viewer: PlayerId, card: CardId,
@@ -194,14 +208,14 @@ object Discard:
     require(secrets >= 0, "discarded secrets must be non-negative")
 
     override val children: Vector[Operation] =
-      discardWorld(card, from, to) ++
+      discardWorld(card, from, to, Some(actingPlayer)) ++
         returnedResources(card, suit, favor, secrets, actingPlayer)
 
   /** Visions carry no resources but otherwise use world-card discard rules. */
   final case class Vision(card: VisionId, from: PositionedLocation,
       to: Region, override val required: Boolean = false) extends Discard:
     override val children: Vector[Operation] =
-      discardWorld(card, from, to)
+      discardWorld(card, from, to, None)
 
   /** Only a ruined edifice can be discarded; intact edifices are locked. */
   final case class RuinedEdifice(card: EdificeId, from: PositionedLocation,
@@ -214,7 +228,7 @@ object Discard:
     override val children: Vector[Operation] = Vector(Move(
       Piece.Card(card), from,
       PositionedLocation(Location.Deck(CardDeck.Edifice),
-        StackPosition.Bottom))) ++
+        StackPosition.Bottom), by = Some(actingPlayer))) ++
       returnedResources(card, suit, favor, secrets, actingPlayer)
 
   /** Sets a relic aside until Chronicle and takes its secrets facedown. */
@@ -224,14 +238,16 @@ object Discard:
 
     override val children: Vector[Operation] = Vector(Move(
       Piece.Card(card), from,
-      PositionedLocation(Location.SetAsideRelics))) ++
+      PositionedLocation(Location.SetAsideRelics),
+      by = Some(actingPlayer))) ++
       returnedSecrets(card, secrets, actingPlayer)
 
   private def discardWorld(card: WorldCardId, from: PositionedLocation,
-      destination: Region): Vector[Operation] = Vector(Move(
-    Piece.Card(card), from,
-    PositionedLocation(Location.RegionalDiscard(destination),
-      StackPosition.Top), resultingOrientation = Some(Orientation.FaceDown)))
+      destination: Region, by: Option[PlayerId]): Vector[Operation] =
+    Vector(Move(Piece.Card(card), from,
+      PositionedLocation(Location.RegionalDiscard(destination),
+        StackPosition.Top), resultingOrientation = Some(Orientation.FaceDown),
+      by = by))
 
   // The suit fallback is never reached with a positive favor: positiveMove
   // returns empty for zero and Bury.standard requires the suit.
@@ -324,7 +340,8 @@ final case class Give(piece: Piece, giver: PlayerId,
     extends CoreOperation:
   require(Location.ownedBy(from, giver),
     "give source must belong to the giving player")
-  val move: Move = Move(piece, PositionedLocation(from), PositionedLocation(to))
+  val move: Move = Move(piece, PositionedLocation(from),
+    PositionedLocation(to), by = Some(giver))
   override val children: Vector[Operation] = Vector(move)
 
 /** A typed payment: `favor`/`secret` are placed at a destination card,
@@ -441,18 +458,20 @@ final case class Sacrifice(player: PlayerId,
   private val kill = Kill(warbands, from)
   override val children: Vector[Operation] = kill.children
 
-/** Swaps two cards by moving each one to the other's location. */
+/** Swaps two cards by moving each one to the other's location. `by` is the
+  * player who swaps them. */
 final case class Swap(firstCard: CardId, firstLocation: PositionedLocation,
-    secondCard: CardId, secondLocation: PositionedLocation)
+    secondCard: CardId, secondLocation: PositionedLocation,
+    by: Option[PlayerId] = None)
     extends CoreOperation:
   require(firstCard != secondCard, "swap requires two different cards")
   require(firstLocation != secondLocation,
     "swap requires two different locations")
 
   val first: Move =
-    Move(Piece.Card(firstCard), firstLocation, secondLocation)
+    Move(Piece.Card(firstCard), firstLocation, secondLocation, by = by)
   val second: Move =
-    Move(Piece.Card(secondCard), secondLocation, firstLocation)
+    Move(Piece.Card(secondCard), secondLocation, firstLocation, by = by)
   override val children: Vector[Operation] = Vector(first, second)
   override val simultaneous: Boolean = true
 
@@ -477,7 +496,7 @@ final case class Take(piece: Piece, player: PlayerId,
   require(Location.ownedBy(to, player),
     "take destination must belong to the taking player")
   val move: Move = Move(piece, PositionedLocation(from, sourcePosition,
-    sourceSide), PositionedLocation(to))
+    sourceSide), PositionedLocation(to), by = Some(player))
   override val children: Vector[Operation] = leaving :+ move
 
 // ---------------------------------------------------------------------------

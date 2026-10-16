@@ -60,7 +60,8 @@ final case class MovingMarket private (catalog: ExecutableCatalog)
         slots.map(DecisionOption.SiteSlot(_)) :+
           DecisionOption.Button(skip, "Skip"),
         heading = Some("Moving Market: move it to another site?"))),
-      BuildOps((live, answered) => move(live, answered), required = true),
+      BuildOps((live, answered) => move(live, actor, answered),
+        required = true),
       BuildOps((live, answered) => gain(live, actor, answered)),
       Note(id, movedNote(_, actor))))
 
@@ -75,7 +76,7 @@ final case class MovingMarket private (catalog: ExecutableCatalog)
         SiteRoom.emptySlots(catalog, ready, site)
           .map(DecisionOptionRef.SiteSlot(site, _))))
 
-  private def move(ready: ReadyGame, pending: PendingTree)
+  private def move(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     PowerAnswers.one(pending, decisionId) match
       case Some(`skip`) => Right(Vector.empty)
@@ -84,7 +85,8 @@ final case class MovingMarket private (catalog: ExecutableCatalog)
           if openSlots(ready).contains(slot)
         yield Vector[CoreOperation](Move(Piece.Card(cardId),
           PositionedLocation(Location.Site(here)),
-          PositionedLocation(Location.Site(slot.site))))).toRight(
+          PositionedLocation(Location.Site(slot.site)),
+          by = Some(actor)))).toRight(
         OathViolation.InvalidEventOrder(
           s"${slot.wireId} is not an empty slot Moving Market can move to"))
       case Some(other) => Left(OathViolation.InvalidEventOrder(

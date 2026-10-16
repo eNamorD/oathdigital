@@ -16,7 +16,7 @@ private[gameplay] object StateBasedOperationPolicy extends OperationPolicy:
             StackPosition.Unspecified, _),
           PositionedLocation(Location.Site(site), StackPosition.Unspecified, _),
           None
-      ) => ready.game.current.map.inPlay.contains(site) &&
+      , _) => ready.game.current.map.inPlay.contains(site) &&
         ready.game.current.map.sites.get(site).exists(
           _.forces == SiteForces.Empty)
       case _ => false

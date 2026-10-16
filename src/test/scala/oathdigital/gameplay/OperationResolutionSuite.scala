@@ -40,7 +40,7 @@ class OperationResolutionSuite extends munit.FunSuite:
         OperationReasonKind.Impossible))))
     val wrongCard = Move(Piece.Card(worldDenizen),
       PositionedLocation(Location.Site(sites.head)),
-      PositionedLocation(Location.Hand(playerId)))
+      PositionedLocation(Location.Hand(playerId)), by = Some(playerId))
     assertEquals(OperationResolution.resolve(ready, wrongCard,
       OperationPolicy.Permissive, Vector.empty),
       Left(OathViolation.CoreOperationRejected("missing-piece",

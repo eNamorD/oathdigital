@@ -74,7 +74,7 @@ class MagicCarpetSuite extends munit.FunSuite:
     val Placed(_, placed) = placedAt(staged, "Ancient City")
     assert(awaits(placed, MagicCarpet.fateDecisionId))
     assert(!ops(placed.events).exists {
-      case Move(Piece.Pawn(_), _, _, _) => true
+      case Move(Piece.Pawn(_), _, _, _, _) => true
       case _ => false
     })
     assertEquals(Look(ready(placed.state)).pawn(actor),

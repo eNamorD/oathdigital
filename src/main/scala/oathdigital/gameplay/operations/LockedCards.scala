@@ -22,7 +22,7 @@ final case class LockedCards(cards: Set[CardId]) extends OperationRestriction:
   /** The cards `operation` moves or flips. */
   private def touched(operation: CoreOperation): Vector[CardId] =
     Operation.flatten(operation).collect {
-      case Move(Piece.Card(moved), _, _, _) => moved
+      case Move(Piece.Card(moved), _, _, _, _) => moved
       case Flip(flipped, _, _) => flipped
     }
 

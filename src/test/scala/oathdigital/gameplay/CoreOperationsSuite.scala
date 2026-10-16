@@ -27,11 +27,13 @@ class CoreOperationsSuite extends munit.FunSuite:
     val firstLocation = PositionedLocation(redArea)
     val secondLocation = PositionedLocation(site)
 
-    val swap = Swap(first, firstLocation, second, secondLocation)
+    val swap = Swap(first, firstLocation, second, secondLocation,
+      by = Some(red))
 
     assertEquals(Operation.flatten(swap), Vector(
-      Move(Piece.Card(first), firstLocation, secondLocation),
-      Move(Piece.Card(second), secondLocation, firstLocation)))
+      Move(Piece.Card(first), firstLocation, secondLocation, by = Some(red)),
+      Move(Piece.Card(second), secondLocation, firstLocation,
+        by = Some(red))))
     assert(swap.simultaneous)
 
   test("Bury is a distinct primitive with the matching deck bottom"):
@@ -61,7 +63,8 @@ class CoreOperationsSuite extends munit.FunSuite:
     assertEquals(Operation.flatten(discard), Vector(
       Move(Piece.Card(card), PositionedLocation(site),
         PositionedLocation(Location.RegionalDiscard(Region.Provinces),
-          StackPosition.Top), resultingOrientation = Some(Orientation.FaceDown)),
+          StackPosition.Top), resultingOrientation = Some(Orientation.FaceDown),
+        by = Some(red)),
       Move(Piece.Favor(2),
         PositionedLocation(Location.OnCard(card)),
         PositionedLocation(Location.FavorBank(Suit.Order))),
@@ -121,7 +124,8 @@ class CoreOperationsSuite extends munit.FunSuite:
       PositionedLocation(site), Location.SharedBank,
       Orientation.FaceUp))
     intercept[IllegalArgumentException](Swap(DenizenId("denizen:one"),
-      PositionedLocation(site), RelicId("relic:one"), PositionedLocation(site)))
+      PositionedLocation(site), RelicId("relic:one"), PositionedLocation(site),
+      by = Some(red)))
     intercept[IllegalArgumentException](Move(Piece.Favor(1),
       PositionedLocation(redArea), PositionedLocation(blueArea),
       resultingOrientation = Some(Orientation.FaceDown)))
@@ -149,10 +153,12 @@ class CoreOperationsSuite extends munit.FunSuite:
     val relic = RelicId("relic:root")
     val exile = ForceKind.Exile(LineageId("red-lineage"))
     val from = PositionedLocation(site)
+    // A Vision and a played card never leave a site.
+    val inHand = PositionedLocation(Location.Hand(red))
 
     val operations = Vector[CoreOperation](
       Burn.favor(1, from, None),
-      Discard.Vision(VisionId("vision:root"), from, Region.Cradle),
+      Discard.Vision(VisionId("vision:root"), inHand, Region.Cradle),
       Discard.RuinedEdifice(EdificeId("edifice:root"), from, Suit.Order,
         favor = 1, secrets = 1, red),
       Discard.Relic(relic, from, secrets = 1, red),
@@ -164,12 +170,12 @@ class CoreOperationsSuite extends munit.FunSuite:
       Gain.Warbands(red, exile, 1),
       Give(Piece.Favor(1), red, redArea, blueArea),
       Kill(Piece.Warbands(exile, 1), from),
-      Play(card, from, redArea, Orientation.FaceDown),
+      Play(card, inHand, redArea, Orientation.FaceDown),
       Replace(Piece.Warbands(exile, 1),
         Piece.Warbands(ForceKind.Imperial, 1), from),
       Reveal(card, site),
       Sacrifice(red, Piece.Warbands(exile, 1), from),
-      Swap(card, from, relic, PositionedLocation(redArea)),
+      Swap(card, from, relic, PositionedLocation(redArea), by = Some(red)),
       Take(Piece.Card(card), red, site, redArea)
     )
 
@@ -185,7 +191,8 @@ class CoreOperationsSuite extends munit.FunSuite:
       case value: Discard.RuinedEdifice => Operation.flatten(value)
     }.get, Vector(
       Move(Piece.Card(EdificeId("edifice:root")), from,
-        PositionedLocation(Location.Deck(CardDeck.Edifice), StackPosition.Bottom)),
+        PositionedLocation(Location.Deck(CardDeck.Edifice), StackPosition.Bottom),
+        by = Some(red)),
       Move(Piece.Favor(1), PositionedLocation(Location.OnCard(
         EdificeId("edifice:root"))),
         PositionedLocation(Location.FavorBank(Suit.Order))),

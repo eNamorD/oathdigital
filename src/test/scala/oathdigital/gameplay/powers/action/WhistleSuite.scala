@@ -63,7 +63,7 @@ class WhistleSuite extends munit.FunSuite:
     assertEquals(Look(after).player(actor).board.faceUpSecrets, 1)
     assertEquals(Look(after).pawn(p3), CatalogNames.site("Ancient City"))
     assert(!ops(done.events).exists {
-      case Move(Piece.Pawn(_), _, _, _) => true
+      case Move(Piece.Pawn(_), _, _, _, _) => true
       case _ => false
     })
     assert(!usableIds(after).contains(Whistle.id),

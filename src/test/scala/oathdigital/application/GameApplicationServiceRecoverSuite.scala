@@ -140,7 +140,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       Move(Piece.Card(relic),
         PositionedLocation(Location.Site(recoverSite)),
         PositionedLocation(Location.PlayArea(actor)),
-        resultingOrientation = Some(Orientation.FaceDown))))
+        resultingOrientation = Some(Orientation.FaceDown), by = Some(actor))))
     assertEquals((started.events ++ finished.events).collect {
       case WalkerStepRecorded(_, DeltaRecorded(semantic), _, _)
           if !semantic.isInstanceOf[OperationApplied] => semantic

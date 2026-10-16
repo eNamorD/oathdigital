@@ -30,7 +30,8 @@ object OperationRun:
     * card to be missing afterwards only if a declared operation removed it.
     */
   def boxed(executed: Vector[CoreOperation]): Set[CardId] = executed.collect {
-    case Move(Piece.Card(id), _, to, _) if to.location == Location.SharedBank =>
+    case Move(Piece.Card(id), _, to, _, _)
+        if to.location == Location.SharedBank =>
       id
   }.toSet
 

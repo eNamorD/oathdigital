@@ -188,5 +188,5 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     }.flatten
     assertEquals(recorded, Vector(
       Move(Piece.Favor(1), PositionedLocation(Location.Site(home)),
-        PositionedLocation(Location.PlayArea(actor))),
+        PositionedLocation(Location.PlayArea(actor)), by = Some(actor)),
       RecordPowerUse(TakeWealthLimit.useRef(home))))

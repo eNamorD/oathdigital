@@ -12,7 +12,7 @@ class ExecutedTriggersSuite extends munit.FunSuite:
   /** Whether `executed` moves the fixture actor's pawn. */
   private def movesThePawn(executed: Vector[CoreOperation]): Boolean =
     executed.exists {
-      case Move(Piece.Pawn(player), _, _, _) => player == actor
+      case Move(Piece.Pawn(player), _, _, _, _) => player == actor
       case _ => false
     }
 

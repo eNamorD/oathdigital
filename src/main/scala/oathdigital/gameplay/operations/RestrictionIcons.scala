@@ -23,7 +23,7 @@ final case class RestrictionIcons(adviserOnly: Set[CardId],
   override def reason(ready: ReadyGame,
       operation: CoreOperation): Option[OperationReason] =
     Operation.flatten(operation).iterator.collect {
-      case move @ Move(Piece.Card(card), from, to, _)
+      case move @ Move(Piece.Card(card), from, to, _, _)
           if from.location != to.location &&
             OperationRestrictions.inPlay(from.location) => (move, card)
     }.flatMap((move, card) => refusal(ready, move, card)).nextOption()

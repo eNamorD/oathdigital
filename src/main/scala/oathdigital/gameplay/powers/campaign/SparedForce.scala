@@ -88,7 +88,7 @@ private[campaign] object SparedForce:
       case CampaignPlanSide.Defender => Vector.empty
     case move @ Move(Piece.Warbands(`kind`, _),
         PositionedLocation(Location.WarbandBank(_), _, _),
-        PositionedLocation(Location.PlayArea(`user`), _, _), None) =>
+        PositionedLocation(Location.PlayArea(`user`), _, _), None, _) =>
       Vector(move.copy(piece = Piece.Warbands(kind, atTargets)))
     case other => Vector(other)
 

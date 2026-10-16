@@ -41,7 +41,7 @@ case object GrandScepter extends OperationRestriction:
       OperationReasonKind.Impossible))
 
   private def removes(step: Operation): Boolean = step match
-    case Move(Piece.Card(moved), from, to, _) if moved == relic =>
+    case Move(Piece.Card(moved), from, to, _, _) if moved == relic =>
       OperationRestrictions.inPlay(from.location) &&
         !OperationRestrictions.inPlay(to.location)
     case Bury(BuryableCard.Relic(buried), _, _) => buried == relic
