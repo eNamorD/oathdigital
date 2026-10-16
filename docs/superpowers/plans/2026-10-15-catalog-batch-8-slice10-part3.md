@@ -212,7 +212,10 @@ In `RovingTerror.scala`:
     empty = false)
   ```
 
-- `ask` reads `slots.options(ready, actor)`, keeps its rule that it asks only when some option may be chosen, and uses the heading "Roving Terror: move to which slot?".
+- `ask` reads `slots.options(ready, actor)` and always builds its
+  `passWhenEmpty` question, as part 2b left it: with nothing that may be
+  chosen the engine shows its Continue screen. It uses the heading
+  "Roving Terror: move to which slot?".
 - `replace` finds the move with `slots.chosen(ready, ref)`, rejecting an unknown slot with `InvalidEventOrder(s"${ref.wireId} is not a slot Roving Terror can move to")`, and returns `slots.operations(ready, actor, move)`.
 - `replacedNote` reads the move from the state before the step:
 
@@ -429,7 +432,7 @@ final case class GiantPython private (catalog: ExecutableCatalog)
       required = true),
     Note(this.id, movedNote(_, source), covers = true))))
 
-  /** No answer means the question passed, and Giant Python stays. */
+  /** No answer means Continue was pressed, and Giant Python stays. */
   private def move(ready: ReadyGame, actor: PlayerId,
       pending: PendingTree): Either[OathViolation, Vector[CoreOperation]] =
     PowerAnswers.one(pending, decisionId) match

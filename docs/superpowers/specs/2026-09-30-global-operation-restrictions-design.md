@@ -170,12 +170,16 @@ reach, computed only when the player reaches it.
 - **Atomic batches.** A `BuildOps` marked `required` runs whole or rejects,
   so a refused operation inside it fails the path instead of being skipped.
 - **Empty choices.** A choose-one `Decide` marked `passWhenEmpty` is passed
-  when the search leaves it no option, as an empty optional choose-many is,
-  instead of failing the path. The walk passes it without asking, and a
-  search passes it too. With one option left it still parks: the player sees
-  the one option and confirms it. Fae Merchant is the first user: it offers
-  every relic held, the search hides the Grand Scepter, and with only the
-  scepter held and an empty relic deck it asks nothing and puts nothing back.
+  by a search when no option is left, as an empty optional choose-many is,
+  instead of failing the path. The live walk parks it instead: every option
+  is shown unavailable with its reason, or "Cannot be chosen now" when the
+  walk has none, under the heading "Nothing to choose", with one Continue
+  button (`Decide.Pass`) that passes it (catalog batch 8, slice 10, part
+  2b). A power reads Continue as no answer. With one option left it parks
+  as any decision does: the player sees the one option and confirms it.
+  Fae Merchant is the first user: it offers every relic held, the search
+  hides the Grand Scepter, and with only the scepter held and an empty
+  relic deck it shows Continue and puts nothing back.
 - **Phase powers.** A phase power's use is offered only when the same dry run
   a start runs accepts it.
 - **Memo.** A verdict asked from the live walk is kept on its `WalkerPowers`

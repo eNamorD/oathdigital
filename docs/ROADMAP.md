@@ -136,7 +136,7 @@ this order. Each slice gets its own plan.
 - [x] **9. Darkest Secret lens:** Yew Staff.
 - [ ] **10. Power-use restrictions:** Spell Breaker, Forest Council, City
   Wall, Giant Python. Parts 1 and 2 (Spell Breaker, Forest Council, City
-  Wall) are done; part 3 (Giant Python) is next.
+  Wall) are done; part 2b (an empty choice shows Continue) is done; part 3 (Giant Python) is next.
 - [ ] **10b. The ruler's choice over refused automatic powers.** Slice 10
   refuses an enemy's automatic non-persistent power (When Played, Tyrant,
   Hospitality, Hunger and the like) silently. With this item, such a power

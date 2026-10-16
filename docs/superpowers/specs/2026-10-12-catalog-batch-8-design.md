@@ -586,6 +586,15 @@ consent, and wraps Hunger.
   under an enemy's Forest Council, does not start: it is shown unavailable
   with its generic reason, as an unexplained placement refusal is. City
   Wall cannot cause it, since a Forge's site is its actor's.
+- **An empty choice shows Continue** (part 2b). A question passed when
+  empty is no longer passed silently. With nothing that may be chosen it
+  shows each candidate unavailable with its reason and one Continue
+  button, which passes it. An askable candidate still asks, so a ruler's
+  grant opens it, and after a refusal Continue remains. A power with no
+  candidate at all asks too, so its player sees that nothing can be done.
+  The cost stays paid and nothing happens, as before; the menus do not
+  change. This closes the gap where such a question passed before its
+  player could ask.
 - **When an automatic power is judged** (part 2). An automatic power is
   judged where its effect runs, inside an `AutomaticUse` node, against the
   state when the walk reaches it. Tyrant's kill runs after the pawn moves,
