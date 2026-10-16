@@ -1,23 +1,10 @@
 package oathdigital.catalog.holding
 
-import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower,
-  SiteOnly}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.model.{Cost, DenizenId, PowerId, Suit}
 
 // Generated from the retired runtime JSON (card classes slice 1).
 // Hand-edited from here on; a card moves out when it is implemented.
-
-object GiantPythonCard extends Denizen(DenizenId("186"), "Giant Python", Suit.Beast) with SiteOnly:
-  val action = PrintedPower(PowerId("denizen.giant-python.action"),
-    persistent = false, cost = Cost(secret = 1),
-    text = "**ACTION:** If you hold the Darkest Secret, move Giant " +
-      "Python to another site, and you may discard a card there " +
-      "first.")
-  val restriction = PrintedPower(PowerId("denizen.giant-python.restriction"),
-    persistent = true, cost = Cost.free,
-    text = "Other cards at this site **cannot** be used for " +
-      "non-persistent powers or placing [favor] / [secret].")
-  val powers: Vector[PrintedPower] = Vector(action, restriction)
 
 object NewGrowthCard extends Denizen(DenizenId("188"), "New Growth", Suit.Beast):
   val power = PrintedPower(PowerId("denizen.new-growth"),
