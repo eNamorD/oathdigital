@@ -732,3 +732,16 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(projectorFor(tree).project(context).flatMap(_.query)
       .map(_.offeredOptions.map(_.id)),
       Some(Vector(siteRef("Dunes").wireId)))
+
+  /** The decision wire keeps its own face table
+    * (`WalkerDecisionProjector.faceName`), because the application layer may
+    * not import the serialization layer and widening the typed log slice to
+    * a second wire was not in it. A test holds the two together instead of a
+    * shared constant: a failure names the divergence and leaves the fix to a
+    * human (2026-09-25-decision-form-tag-separation-decision.md).
+    */
+  test("the decision wire spells every face exactly as the shared vocabulary"):
+    val projected = (AttackDieFace.values ++ DefenseDieFace.values)
+      .flatMap(WalkerDecisionProjector.faceName).toSet
+    assertEquals(projected,
+      oathdigital.protocol.projection.DieFace.values.map(_.key).toSet)

@@ -631,29 +631,33 @@ private[application] final class WalkerDecisionProjector(
       val outcome = ready.game.current.rollOutcomes.get(feedback.pool)
       WalkerRollOutcomeProjection(
         pool = feedback.pool.value,
-        faces = outcome.fold(Vector.empty[DieFace])(_.faces).flatMap(faceName),
+        faces = outcome.fold(Vector.empty[DieFace])(_.faces)
+          .flatMap(WalkerDecisionProjector.faceName),
         score = outcome.fold(0)(_.score),
         target = feedback.target,
         detail = feedback.detail)
     }
 
-  /** Local duplicate of `WalkerEventCodec`'s (serialization-layer) face
-    * vocabulary: the application layer may not import the serialization layer
-    * (`BackendArchitectureSuite`), and the game log's `LogWords.dice` follows the
-    * same precedent. `DieFace` is open, so a face family
-    * neither pool rolls spells as nothing rather than as a guess.
-    */
-  private def faceName(value: DieFace): Vector[String] = value match
-    case DefenseDieFace.Blank => Vector("blank")
-    case DefenseDieFace.OneShield => Vector("one-shield")
-    case DefenseDieFace.TwoShields => Vector("two-shields")
-    case DefenseDieFace.Doubler => Vector("doubler")
-    case AttackDieFace.HollowSword => Vector("hollow-sword")
-    case AttackDieFace.OneSword => Vector("one-sword")
-    case AttackDieFace.TwoSwordsSkull => Vector("two-swords-skull")
-    case _ => Vector.empty
-
 private[application] object WalkerDecisionProjector:
+  /** Local duplicate of `WalkerEventCodec`'s (serialization-layer) face
+    * vocabulary: the application layer may not import the serialization
+    * layer (`BackendArchitectureSuite`). `oathdigital.model.DieFace` is
+    * open, so a face family neither pool rolls spells as nothing rather
+    * than as a guess. Held to
+    * `oathdigital.protocol.projection.DieFace`'s keys by a test in
+    * `WalkerDecisionProjectorSuite`.
+    */
+  private[application] def faceName(value: DieFace): Vector[String] =
+    value match
+      case DefenseDieFace.Blank => Vector("blank")
+      case DefenseDieFace.OneShield => Vector("one-shield")
+      case DefenseDieFace.TwoShields => Vector("two-shields")
+      case DefenseDieFace.Doubler => Vector("doubler")
+      case AttackDieFace.HollowSword => Vector("hollow-sword")
+      case AttackDieFace.OneSword => Vector("one-sword")
+      case AttackDieFace.TwoSwordsSkull => Vector("two-swords-skull")
+      case _ => Vector.empty
+
   /** How this projector obtains the tree it resolves a parked position
     * against -- the projection-side twin of `OathRules.WalkerTreeSource`,
     * and injectable for the same reason that one is.
