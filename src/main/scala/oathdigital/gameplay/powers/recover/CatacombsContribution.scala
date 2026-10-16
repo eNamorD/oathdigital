@@ -33,6 +33,14 @@ final case class CatacombsContribution private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
   override def selectionCard: Option[CardId] = Some(cardId)
+  /** Its use at its selection window: its pick pays one secret onto its
+    * card (catalog batch 8, slice 10). */
+  override def use(ctx: PowerCtx): Option[PowerUse] =
+    for
+      _ <- SelectedModifier.selectionAction(ctx.window)
+      printed <- catalog.printedPower(id)
+    yield PowerUse.of(ctx.activePlayer, printed, cardId, secret = true,
+      places = true)
   override def selectionWindows: Set[PowerWindow] =
     Set(PowerWindow.RecoverModifierSelection)
   // Stable across the action: card presence, never the relic/secrets spent.

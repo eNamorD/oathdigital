@@ -1,6 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, ModifierHost,
   ModifierPicks, OfferReason, PowerCtx}
 import oathdigital.model._
@@ -40,7 +41,7 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
     val picked = ModifierPicks.picks(pass.powers.pool, pass.answered).toSet
     val listed = candidates(pass).filterNot(power => picked(power.id))
       .flatMap(option(pass, _))
-    val asks = listed.exists(_.available) ||
+    val asks = listed.exists(option => option.available || option.askable) ||
       (picked.nonEmpty && listed.nonEmpty)
     if !asks && !pass.resuming then Vector.empty
     else Vector(
@@ -65,7 +66,7 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
   yield
     val ctx = PowerCtx(pass.state, actor, power.source, modifierWindow,
       Vector.empty, this, None, pass.answered)
-    power.offerReason(ctx) match
+    val offered = power.offerReason(ctx) match
       case Some(OfferReason.Unavailable(reason)) => unavailable(shown, reason)
       case judged =>
         val priced = WalkerSimulation.applies(paying(power), pass.state,
@@ -79,6 +80,20 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
           case Some(OfferReason.Warned(reason)) if priced.available =>
             DecisionOption.Warned(priced, OptionReason.Written(reason))
           case _ => priced
+    refusedUse(pass, power, ctx).filter(_ => offered.available)
+      .fold(offered)(DecisionOption.Unavailable(shown, _))
+
+  /** Why a power-use restriction refuses the pick (catalog batch 8, slice
+    * 10), for a pick that could otherwise be made: a refusal over a pick
+    * that cannot be made anyway would ask a ruler for nothing. */
+  private def refusedUse(pass: ModifierChoice.Pass, power: ContributingPower,
+      ctx: PowerCtx): Option[OptionReason] =
+    power.use(ctx).flatMap { use =>
+      val refused = PowerUseRules.refusals(pass.state, use,
+        pass.powers.useRestrictions)
+      Option.when(refused.nonEmpty)(PowerUseRules.shown(pass.state, actor,
+        refused, use.consent))
+    }
 
   /** The pick's payment, onto its card, required. */
   private def paying(power: ContributingPower): Operation =

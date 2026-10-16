@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  ModifierPicks, PowerCtx}
+  ModifierPicks, PowerCtx, PowerUse}
 import oathdigital.model._
 
 /** A power the player picks for a major action in the walk's modifier
@@ -56,6 +56,18 @@ trait SelectedModifier extends ContributingPower:
   def appliesAt(ctx: PowerCtx): Boolean = true
 
   override def selectionCard: Option[CardId] = Some(cardId)
+
+  /** Its use at a modifier-selection window: by the actor, from its card,
+    * costing a secret when its printed cost or its `cost` has one. Inside
+    * a Campaign nobody may be asked (consent design, ruling 2). */
+  override def use(ctx: PowerCtx): Option[PowerUse] =
+    for
+      _ <- SelectedModifier.selectionAction(ctx.window)
+      printed <- catalog.printedPower(id)
+    yield PowerUse.of(ctx.activePlayer, printed, cardId,
+      secret = cost.secret > 0 || cost.secretBurnt > 0,
+      consent = ctx.window != PowerWindow.CampaignModifierSelection,
+      places = cost.favor > 0 || cost.secret > 0)
   override def selectionWindows: Set[PowerWindow] =
     actions.map(SelectedModifier.selectionWindow)
 
