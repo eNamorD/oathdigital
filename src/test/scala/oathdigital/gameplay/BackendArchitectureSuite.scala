@@ -380,10 +380,15 @@ class BackendArchitectureSuite extends munit.FunSuite:
       }
     }
 
+  /** A `_` anywhere in the argument text, nested or not: `Some(_)` couples
+    * a site to a field as much as a bare `_` does. `_.x` and `_*` are not
+    * placeholders. */
+  private val Placeholder = """(?<![\w])_(?![\w.*])""".r
+
   private def wildcardQueryPatterns(roots: Vector[Path]): Vector[String] =
     queryPatterns(roots).collect {
-      case (where, arguments) if arguments.split(",")
-        .exists(_.trim == "_") => where
+      case (where, arguments) if Placeholder.findFirstIn(arguments).nonEmpty =>
+        where
     }.sorted
 
   test("a parked-decision query pattern binds no wildcard"):
