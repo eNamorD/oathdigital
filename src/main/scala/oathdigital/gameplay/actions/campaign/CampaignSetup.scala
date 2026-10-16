@@ -158,6 +158,18 @@ object CampaignSetup:
         }).map(CampaignDefender.Player(_))
     })
 
+  /** This Campaign's kind and defender at one point of its run: the pair
+    * pinned when the pools were gathered, else the pair the answers so far
+    * and the board settle. `None` until both are settled, and once the
+    * attacker skipped. One name for a read that three callers used to
+    * compose by hand.
+    */
+  def declaredAt(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
+      : Option[(CampaignKind, CampaignDefender)] = for
+    kind <- kindOf(ready, actor, pending)
+    defender <- defenderOf(ready, actor, pending, kind)
+  yield (kind, defender)
+
   /** The pool that pins the kind and the defender, written when the pools are
     * gathered, before any battle plan. The live board names them only until
     * then: a plan can change it, as Wrestlers empties the origin by
@@ -197,9 +209,8 @@ object CampaignSetup:
   /** The complete setup, once the force is answered. */
   def setup(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Option[CampaignSetup] = for
-    kind <- kindOf(ready, actor, pending)
+    (kind, defender) <- declaredAt(ready, actor, pending)
     origin <- originOf(ready, actor)
-    defender <- defenderOf(ready, actor, pending, kind)
     force <- CampaignAnswers.force(pending)
   yield
     val picked = CampaignAnswers.targets(pending)

@@ -5,16 +5,8 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.dice.{DiceThrow, RerollChoice}
-import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
-  PlaceBannerResourceProcedure}
-import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
-import oathdigital.gameplay.actions.forge.ForgeProcedure
-import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.actions.search.SearchProcedure
-import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.powerresolver.ModifierPicks
-import oathdigital.gameplay.walker.{ChoicePayload, FollowUpOffer, RollPayload,
+import oathdigital.gameplay.walker.{ChoicePayload, RollPayload,
   WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer}
@@ -27,10 +19,10 @@ import oathdigital.protocol.projection.{LogKind, LogSpan}
   * power's decision in `narrated`, whose answer the power's notes tell.
   */
 private[gamelog] final class DetailLines(words: LogWords,
-    choices: ChoiceWords, narrated: Set[String]):
+    choices: ChoiceWords, narratedByPowers: Set[String]):
   def lines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    decision(journal, run, at, viewer) ++ (if journal.covered(at) then
+      viewer: Option[PlayerId], log: ProcedureLog): Vector[Posted] =
+    decision(journal, run, at, viewer, log) ++ (if journal.covered(at) then
       Vector.empty else roll(journal, at) ++ deltas(journal, run, at, viewer))
 
   private def roll(journal: LogJournal, at: Int): Vector[Posted] =
@@ -51,9 +43,11 @@ private[gamelog] final class DetailLines(words: LogWords,
       Vector(LogSpan.Text("Rolled "), dice) ++ DetailLines.forPool(pool)))
 
   private def decision(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] = journal.event(at) match
+      viewer: Option[PlayerId], log: ProcedureLog): Vector[Posted] =
+    journal.event(at) match
     case WalkerStepRecorded(_, ChoicePayload(id, answer, by), _, _)
-        if !DetailLines.narrated(id) && !narrated(id) =>
+        if !log.narrates(id) && !DetailLines.crossCutting(id) &&
+          !narratedByPowers(id) =>
       val refs = answer match
         // Pressing Done after looking at cards is not a choice (N5).
         case ChooseOneAnswer(DecisionQuery.Inspect.Done) => Vector.empty
@@ -201,36 +195,16 @@ private[gamelog] object DetailLines:
     case composite => composite.children.collect {
       case child: CoreOperation => child }.flatMap(parts)
 
-  /** Decisions other lines tell: Setup's own lines, Card Play's placement
-    * line and the follow-up discard of a Replace site slot, the
-    * facedown-adviser pick, which the played adviser's line names, every
-    * Campaign and Negotiation line, each action line that names its
-    * choice, the modifier decision, which the start line names, and the
-    * follow-up offer, which the queued action's tag or the Skip line tells,
-    * and the phase menus, whose pick starts a walk that tells it, and the
-    * reroll decisions, which the reroll's own lines tell. */
-  private val NarratedPrefixes = Vector("setup.", ActionLines.PlacePrefix,
-    "cardplay.discard.", "campaign.", "negotiation.", "travel.")
-  private val NarratedIds = Set(FollowUpOffer.decisionId,
-    PhaseMenu.decisionId,
-    SearchProcedure.sourceDecisionId,
-    SearchProcedure.cardDecisionId,
-    CardPlayProcedure.facedownAdviserDecisionId,
-    RecoverProcedure.choiceDecisionId, RecoverProcedure.relicDecisionId,
-    MusterProcedure.decisionId, TradeProcedure.decisionId,
-    ForgeProcedure.assignmentDecisionId, ChallengeProcedure.bannerDecisionId,
-    ChallengeProcedure.amountDecisionId,
-    PlaceBannerResourceProcedure.bannerDecisionId,
-    PlaceBannerResourceProcedure.amountDecisionId,
-    OathkeeperProcedure.recipientDecisionId)
-
   def forPool(pool: PoolKey): Vector[LogSpan] =
     if pool == CampaignIds.attackPool then Vector(LogSpan.Text(" for the attack"))
     else if pool == CampaignIds.defensePool then
       Vector(LogSpan.Text(" for the defense"))
     else Vector.empty
 
-  def narrated(decisionId: String): Boolean =
-    NarratedIds(decisionId) || ModifierPicks.isDecision(decisionId) ||
-      RerollChoice.isDecision(decisionId) ||
-      NarratedPrefixes.exists(decisionId.startsWith)
+  /** The decisions any procedure may ask, told by the lines of whatever
+    * asked them: a modifier pick, which the start line names, and a reroll
+    * choice, which the reroll's own lines tell. Both are computed from the
+    * id by the layer that owns the decision, so neither can silently miss
+    * one and neither keys on a procedure. */
+  def crossCutting(decisionId: String): Boolean =
+    ModifierPicks.isDecision(decisionId) || RerollChoice.isDecision(decisionId)

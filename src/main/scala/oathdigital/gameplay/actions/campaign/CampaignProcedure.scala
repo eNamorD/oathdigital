@@ -193,8 +193,7 @@ object CampaignProcedure:
   private def targetsStep(catalog: ExecutableCatalog, actor: PlayerId)
       : Operation = Branch((ready, pending) =>
     (for
-      kind <- CampaignSetup.kindOf(ready, actor, pending)
-      defender <- CampaignSetup.defenderOf(ready, actor, pending, kind)
+      (kind, defender) <- CampaignSetup.declaredAt(ready, actor, pending)
       origin <- CampaignSetup.originOf(ready, actor)
       options = CampaignSetup.targetOptions(ready, actor, kind, defender)
       if options.nonEmpty
