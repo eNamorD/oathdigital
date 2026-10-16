@@ -236,7 +236,8 @@ class OperationRestrictionsSuite extends munit.FunSuite:
     val byEnemy = discard(plainCard, Location.Site(hallSite), actor = p2)
     assertEquals(waiverOf(hallRuledByP1, byEnemy), Some(OperationWaiver(
       HallOfMinisters.id, Some(p1), coversPlainCard,
-      HallOfMinisters.noDiscardConsent(HallOfMinisters.source))))
+      HallOfMinisters.noDiscardConsent(HallOfMinisters.source),
+      HallOfMinisters.noDiscard(HallOfMinisters.source))))
 
   test("under bandit rule the Hall's refusal names nobody to ask"):
     val banditHall = Table.start.edifice(hall, EdificeSide.Intact,

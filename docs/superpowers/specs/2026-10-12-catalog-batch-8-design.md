@@ -577,10 +577,12 @@ consent, and wraps Hunger.
   Ministers is askable the same way. A placement that no choose-one offers
   is refused without a question: Forge's partition, Whispering Leaves' and
   Dissent's gifts.
-- **An unexplained placement refusal** (part 2). Under bandits, a source
-  card whose placement is refused is left out of its question, not shown
-  with a reason. The walker cannot word an operation refusal that nobody
-  may waive. This is a known gap.
+- **A placement nobody may waive** (part 2). Under bandits, or once the
+  ruler refused it this turn, a source card whose placement is refused is
+  shown unavailable with its card's plain reason, beside the cards that may
+  be chosen. A decision with no card left to choose is not asked. The Hall
+  of Ministers' protected cards read the same way: "Hall of Ministers:
+  Cannot discard cards from its ruler's sites."
 - **A Forge that cannot place** (part 2). Forge's start gate does not read
   the placement bans, and the walker does not search a partition. So a
   Forge whose three empty denizens include a Beast card, under an enemy's

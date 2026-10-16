@@ -45,6 +45,10 @@ case object HallOfMinisters extends OperationRestriction:
   /** The keys this rule owns. An operation restriction is not a power,
     * so `RuleNotes` declares it for the formatter. */
   val notes: NoteSet = NoteSet.unowned("HallOfMinisters")
+  /** "Cannot discard cards from its ruler's sites.": the reason of an
+    * option nobody may be asked about. */
+  val noDiscard: NoteKey = notes.key("no-discard", Vector(NotePart.Text(
+    "Cannot discard cards from its ruler's sites.")))
   val noDiscardConsent: NoteKey = notes.key("no-discard-consent", Vector(
     NotePart.Text("Cannot discard cards from its ruler's sites without " +
       "ruler's consent.")))
@@ -68,7 +72,7 @@ case object HallOfMinisters extends OperationRestriction:
         s"cards at site ${site.value} cannot be discarded by ${actor.value}",
         OperationReasonKind.Impossible, Some(OperationWaiver(id,
           granter(ready), ConsentKey(id, actor, discardKey, card),
-          noDiscardConsent(source))))
+          noDiscardConsent(source), noDiscard(source))))
     }
 
   /** The player who rules the intact Hall, who may consent; `None` when

@@ -64,6 +64,17 @@ class CityWallSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(wrestlers))))
     assertEquals(ban.reason(wallAtAncientCity(pawnAt = woods), pay), None)
 
+  test("under bandits the placing ban names nobody, and its plain reason"):
+    // A Muster's sources stand at the musterer's site, every one of which
+    // City Wall refuses, so no question shows this reason beside a card
+    // that may be chosen: the refusal itself is pinned.
+    val ban = CityWall.operationRestrictions.head
+    val pay = PayCost(p1, Location.OnCard(wrestlers), Cost(favor = 1))
+    val waiver = ban.reason(wallAtAncientCity(ruled = _.bandits(home, 2)),
+      pay).flatMap(_.waiver)
+    assertEquals(waiver.map(_.granter), Some(None))
+    assertEquals(waiver.map(_.plain), Some(CityWall.placingPlain(source)))
+
   // ---- the paths ---------------------------------------------------------
 
   private val terror = CatalogNames.denizen("Roving Terror")

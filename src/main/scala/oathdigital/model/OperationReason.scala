@@ -15,9 +15,11 @@ final case class OperationReason(code: String, detail: String,
   * slice 3). `power` names the restriction. `granter` is the player who may
   * consent, `None` when bandits, the Empire or nobody rules it. `covers` is
   * the key a grant or a refusal is remembered under. `note` is the hover
-  * reason of an option its granter may be asked about. */
+  * reason of an option its granter may be asked about, and `plain` the
+  * reason of one nobody may be asked about: no granter, the asker the
+  * granter, or a refusal this turn (catalog batch 8, slice 10). */
 final case class OperationWaiver(power: PowerId, granter: Option[PlayerId],
-    covers: ConsentKey, note: PowerNote)
+    covers: ConsentKey, note: PowerNote, plain: PowerNote)
 
 /** Extension seam for per-query contextual restrictions beyond the static
   * allowlist. Restrictions report typed rule impossibility or invalidity.

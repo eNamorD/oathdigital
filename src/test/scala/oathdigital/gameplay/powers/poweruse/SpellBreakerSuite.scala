@@ -47,7 +47,8 @@ class SpellBreakerSuite extends munit.FunSuite:
     val refusal = SpellBreaker.refusal(
       breakerAtDeepWoods(_.bandits(woods, 2)), secretUse(p1))
     assertEquals(refusal.map(_.power), Some(SpellBreaker.id))
-    assertEquals(refusal.flatMap(_.reason.waiver), None)
+    // Its waiver names nobody, so the refusal shows its plain reason.
+    assertEquals(refusal.flatMap(_.reason.waiver).map(_.granter), Some(None))
 
   test("at an unruled site it refuses nobody"):
     assertEquals(SpellBreaker.refusal(breakerAtDeepWoods(identity),

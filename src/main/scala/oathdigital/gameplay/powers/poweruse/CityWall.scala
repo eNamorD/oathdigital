@@ -88,4 +88,4 @@ case object CityWall extends ContributingPower with PowerUseRestriction:
         walledIn(ready, placed._1).map(ruler => RulerBans.reason(id,
           CityWallCard.id, ruler, placed._1, ConsentKey(id, placed._1,
             PowerUseRules.useKey, PowerUseRules.cardRef(placed._2)),
-          placingAsked, "city-wall-placing")))
+          placingPlain, placingAsked, "city-wall-placing")))

@@ -31,17 +31,18 @@ private[powers] object RulerBans:
       requester: PlayerId, covers: ConsentKey, plain: NoteKey,
       asked: NoteKey, code: String): PowerUseRefusal =
     PowerUseRefusal(power, plain(PowerSourceRef.Card(card)),
-      reason(power, card, ruler, requester, covers, asked, code))
+      reason(power, card, ruler, requester, covers, plain, asked, code))
 
   /** `power`'s refusal of `requester` on the operation path, waivable by a
-    * player ruler under `covers`. */
+    * player ruler under `covers`. Under bandits its waiver names nobody, so
+    * an option it hides shows `plain`. */
   def reason(power: PowerId, card: DenizenId, ruler: SiteRuler,
-      requester: PlayerId, covers: ConsentKey, asked: NoteKey, code: String)
-      : OperationReason =
+      requester: PlayerId, covers: ConsentKey, plain: NoteKey,
+      asked: NoteKey, code: String): OperationReason =
     val granter = ruler match
       case SiteRuler.Player(player) => Some(player)
       case _ => None
+    val source = PowerSourceRef.Card(card)
     OperationReason(code, s"${power.value} refuses ${requester.value}",
-      OperationReasonKind.Impossible, granter.map(player =>
-        OperationWaiver(power, Some(player), covers,
-          asked(PowerSourceRef.Card(card)))))
+      OperationReasonKind.Impossible, Some(OperationWaiver(power, granter,
+        covers, asked(source), plain(source))))

@@ -22,6 +22,13 @@ class OperationAsksSuite extends munit.FunSuite:
   private val notes = NoteSet(ban)
   private val asked = notes.key("asked",
     Vector(NotePart.Text("Ask first.")))
+  private val said = notes.key("said",
+    Vector(NotePart.Text("No favor here.")))
+  private val alchemistSource = PowerSourceRef.Card(alchemist)
+  /** Alchemist shown with the ban's plain reason. */
+  private val alchemistPlain = DecisionOption.Unavailable(
+    DecisionOption.Denizen(alchemistRef),
+    OptionReason.Noted(ban, said(alchemistSource)))
 
   /** A power whose operation restriction refuses any payment onto
     * Alchemist, waivable by `granter` under `covers`. */
@@ -37,7 +44,8 @@ class OperationAsksSuite extends munit.FunSuite:
           case pay: PayCost if pay.placedAt == Location.OnCard(alchemist) =>
             Some(OperationReason("test-ban", "no favor on Alchemist",
               OperationReasonKind.Impossible, Some(OperationWaiver(ban,
-                granter, covers, asked(PowerSourceRef.Card(alchemist))))))
+                granter, covers, asked(alchemistSource),
+                said(alchemistSource)))))
           case _ => None)
 
   /** p1 at Ancient City with Alchemist and, when `beside`, Wrestlers to
@@ -81,18 +89,26 @@ class OperationAsksSuite extends munit.FunSuite:
           Vector(ConsentAsk(p2, Vector(ban))), Vector(covers))),
       DecisionOption.Denizen(wrestlersRef)))
 
-  test("with nobody to grant it, the card is left out"):
+  test("with nobody to grant it, the card shows its plain reason"):
     assertEquals(sourceOptions(musterAtAncientCity(),
       favorOnAlchemistBannedBy(None)),
-      Vector(DecisionOption.Denizen(wrestlersRef)))
+      Vector(alchemistPlain, DecisionOption.Denizen(wrestlersRef)))
 
-  test("a refusal remembered this turn leaves the card out"):
+  test("a refusal remembered this turn shows the plain reason"):
     val ready = musterAtAncientCity()
     val refused = ready.copy(consent = ConsentState(
       answers = Map(covers -> ConsentAnswer.Refused),
       turn = Some(ConsentTurn.of(ready))))
     assertEquals(sourceOptions(refused, favorOnAlchemistBannedBy(Some(p2))),
-      Vector(DecisionOption.Denizen(wrestlersRef)))
+      Vector(alchemistPlain, DecisionOption.Denizen(wrestlersRef)))
+
+  test("a required decision whose only option is plain is not kept"):
+    // Nothing can be chosen and nobody may be asked: the Muster has
+    // nothing to offer, as without the search's reasons.
+    val ready = musterAtAncientCity(beside = false)
+    val tree = accepted(MusterProcedure.build(catalog, ready, p1))
+    assert(ProcedureWalker.advance(ready, tree, None, WalkerPowers(Vector(
+      favorOnAlchemistBannedBy(None)))).isLeft)
 
   test("a decision whose every option is askable still parks"):
     assertEquals(sourceOptions(musterAtAncientCity(beside = false),

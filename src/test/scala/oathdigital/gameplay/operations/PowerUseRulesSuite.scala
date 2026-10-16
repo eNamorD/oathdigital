@@ -31,7 +31,7 @@ class PowerUseRulesSuite extends munit.FunSuite:
         Some(PowerUseRefusal(ruled, plain(source), OperationReason(
           "test-ban", "banned", OperationReasonKind.Impossible,
           granter.map(player => OperationWaiver(ruled, Some(player),
-            covers, asked(source))))))
+            covers, asked(source), plain(source))))))
 
   private val quiet: ReadyGame = Table.start.ready
 

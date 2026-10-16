@@ -108,9 +108,13 @@ class ForestCouncilSuite extends munit.FunSuite:
     assertEquals(Look(musteredFrom(granted, errandBoyRef)).tokensOn(errandBoy),
       Tokens(1, 0))
 
-  test("under bandits the Beast source is left out, as nobody may grant it"):
+  test("under bandits the Beast source shows the plain reason, as nobody " +
+      "may grant it"):
     val options = musterSources(councilAtDeepWoods(_.bandits(woods, 2)))
-    assert(!options.exists(_.ref == errandBoyRef), options.toString)
+    assertEquals(options.find(_.ref == errandBoyRef), Some(
+      DecisionOption.Unavailable(DecisionOption.Denizen(errandBoyRef),
+        OptionReason.Noted(ForestCouncil.id,
+          ForestCouncil.placingPlain(source)))))
     assert(options.exists(_.ref == DecisionOptionRef.Denizen(wrestlers)))
 
   test("the phase menu asks the ruler about an enemy's Beast ACTION, whose " +
