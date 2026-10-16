@@ -9,8 +9,12 @@ import oathdigital.model._
 private[campaign] object CampaignOutcome:
   def steps(ready: ReadyGame, catalog: ExecutableCatalog, actor: PlayerId,
       result: CampaignResult): Vector[Operation] =
-    val losses: Operation = Sequence(Vector[Operation](BuildOps((ready, _) =>
-      CampaignBattle.losses(ready, result))), Some(PowerWindow.CampaignLosses))
+    val losses: Operation = Sequence(
+      CampaignBattle.originDeathsStep(catalog, actor, result,
+        CampaignBattle.attackerSpared(ready)) :+
+        BuildOps((ready, pending) =>
+          CampaignBattle.losses(ready, result, pending)),
+      Some(PowerWindow.CampaignLosses))
     val resolution: Vector[Operation] =
       if !result.attackerWins then Vector.empty
       else result.kind match

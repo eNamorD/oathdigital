@@ -16,8 +16,11 @@ object CampaignIds:
   val relocation = "campaign.relocation"
   /** Which of a defender's forces pays a plan's warband sacrifice. */
   val planSacrifice = "campaign.plan-sacrifice"
+  /** How many of the attacker's dead come from a queued origin. */
+  val originDeaths = "campaign.origin-deaths"
   val all: Set[String] = Set(kind, defender, targets, force, attackerPlan,
-    defenderPlan, sacrifice, placement, relocation, planSacrifice)
+    defenderPlan, sacrifice, placement, relocation, planSacrifice,
+    originDeaths)
 
   /** The decision a side's plan window asks. */
   def planDecision(side: CampaignPlanSide): String = side match
@@ -31,6 +34,12 @@ object CampaignIds:
     * applied (Zealots); one while the pool is absent. It is never rolled,
     * and it is cleared with the others when the Campaign ends. */
   val sacrificeWorth: PoolKey = PoolKey("campaign.sacrifice-worth")
+
+  /** Recorded by an attacker's plan that spares a defeated force
+    * (Billowing Fog, Traveling Doctor): the losses then kill only the
+    * skulls and the sacrifices. It is never rolled, and it is cleared with
+    * the others when the Campaign ends. */
+  val attackerSpared: PoolKey = PoolKey("campaign.attacker-spared")
 
   val SupplyCost = 2
 
@@ -86,6 +95,16 @@ object CampaignSetup:
   yield state.forces match
     case SiteForces.Occupied(`kind`, count) => count
     case _ => 0).getOrElse(0)
+
+  /** The origin's warbands and the board's, when a queued origin's
+    * warbands joined the force: what the result records. */
+  def originForce(ready: ReadyGame, actor: PlayerId): Option[OriginForce] =
+    for
+      site <- queuedOrigin(ready, actor)
+      atSite = atOrigin(ready, actor)
+      if atSite > 0
+      player <- playerOf(ready, actor)
+    yield OriginForce(site, atSite, player.board.warbands)
 
   /** Who rules `site` as a Campaign defender. `None` when the site is
     * unruled, Imperial or its rule is corrupt.
@@ -278,6 +297,10 @@ object CampaignAnswers:
 
   def force(pending: PendingTree): Option[Int] =
     latest(pending, CampaignIds.force).collect:
+      case DecisionAnswer.ChooseAmountAnswer(amount) => amount
+
+  def originDeaths(pending: PendingTree): Option[Int] =
+    latest(pending, CampaignIds.originDeaths).collect:
       case DecisionAnswer.ChooseAmountAnswer(amount) => amount
 
   def sacrificed(pending: PendingTree): Int =

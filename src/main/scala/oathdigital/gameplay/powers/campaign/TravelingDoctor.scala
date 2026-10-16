@@ -38,7 +38,7 @@ final case class TravelingDoctor private (catalog: ExecutableCatalog)
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Traveling Doctor: if defeated, kill no warbands in your force, then " +
-        "discard it", Vector.empty, Vector.empty))
+        "discard it", Vector.empty, SparedForce.effects(context.side)))
 
   override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
     PowerWindow.CampaignLosses -> ((ctx, use, losses) =>

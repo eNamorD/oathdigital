@@ -154,6 +154,12 @@ final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
 /** An offer with the power that made it. */
 final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)
 
+/** Where a Campaign's force stood when its result was recorded, for a
+  * Campaign with a queued origin whose warbands joined it (catalog batch
+  * 8, slice 13): the actor's warbands at the origin and on their board.
+  * The losses split the dead between the two. */
+final case class OriginForce(site: SiteId, atSite: Int, onBoard: Int)
+
 /** The public, durable record of one Campaign's battle: written by
   * `RecordCampaignResult` when the outcome is known, projected to every viewer,
   * and replaced by the next Campaign. Everything in it is public: dice are
@@ -168,6 +174,8 @@ final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)
   * with Zealots.
   * A plan that decides the battle (Peace Envoy) sets it whatever the
   * scores, with nothing rolled.
+  * `originForce` records where the force stood when a queued origin's
+  * warbands joined it, so the losses split the dead between board and site.
   */
 final case class CampaignResult(
     attacker: PlayerId,
@@ -183,6 +191,7 @@ final case class CampaignResult(
     defenseFaces: Vector[DefenseDieFace],
     defenseScore: Int,
     attackerWins: Boolean,
-    sacrificeWorth: Int = 1
+    sacrificeWorth: Int = 1,
+    originForce: Option[OriginForce] = None
 ):
   def attackTotal: Int = attackScore + sacrificed * sacrificeWorth

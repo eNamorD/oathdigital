@@ -151,26 +151,72 @@ object CampaignBattle:
       setup.raidTargets, setup.force, attackFacesOf(ready), attackScore,
       attack.fold(0)(_.skulls), sacrificed,
       defense.toVector.flatMap(_.faces.collect { case face: DefenseDieFace => face }),
-      defenseScore, attackScore + sacrificed * worth > defenseScore, worth)
+      defenseScore, attackScore + sacrificed * worth > defenseScore, worth,
+      CampaignSetup.originForce(ready, setup.actor))
+
+  /** Whether an attacker's plan spared a defeated force. */
+  def attackerSpared(ready: ReadyGame): Boolean =
+    ready.game.current.rollPools.contains(CampaignIds.attackerSpared)
+
+  /** The attacker's dead: the skull and sacrifice losses, plus half the
+    * survivors on a defeat unless a plan spared them. */
+  def attackerDeaths(result: CampaignResult, spared: Boolean): Int =
+    val survivors = result.force - result.skullLosses - result.sacrificed
+    result.skullLosses + result.sacrificed +
+      (if result.attackerWins || spared then 0 else survivors / 2)
+
+  /** How many of `deaths` may come from the origin: at least what the
+    * board cannot hold, at most what the site holds. A toll beyond both
+    * takes all the site holds. */
+  def originDeathRange(origin: OriginForce, deaths: Int): (Int, Int) =
+    val most = math.min(deaths, origin.atSite)
+    (math.min(math.max(0, deaths - origin.onBoard), most), most)
+
+  /** The question that splits the attacker's dead, asked only when the
+    * split is a real choice. Read from the durable result, so the step
+    * keeps its place when the losses have changed the board. */
+  def originDeathsStep(catalog: ExecutableCatalog, actor: PlayerId,
+      result: CampaignResult, spared: Boolean): Vector[Operation] =
+    val deaths = attackerDeaths(result, spared)
+    result.originForce.toVector.flatMap { origin =>
+      val (least, most) = originDeathRange(origin, deaths)
+      val name = catalog.site(origin.site).fold(origin.site.value)(_.name)
+      val dead = if deaths == 1 then "warband" else "warbands"
+      Option.when(least < most)(Decide(CampaignIds.originDeaths, actor,
+        DecisionQuery.ChooseAmount(least, most, Some(s"Choose how many of " +
+          s"the $deaths dead $dead come from $name"), "Choose",
+          suggested = Some(least)))).toVector
+    }
 
   /** Step 8: kill the defeated warbands. Attacker deaths are the skull and
-    * sacrifice losses, plus half the survivors on a defeat; on a victory every
-    * warband at every target dies, a player defender's survivors return from
-    * the supply to their board, and a Raid defender loses half its board.
+    * sacrifice losses, plus half the survivors on a defeat unless a plan
+    * spared them; with a queued origin's warbands in the force, the answer
+    * to the split says how many die there. On a victory every warband at
+    * every target dies, a player defender's survivors return from the
+    * supply to their board, and a Raid defender loses half its board.
     */
-  def losses(ready: ReadyGame, result: CampaignResult)
+  def losses(ready: ReadyGame, result: CampaignResult, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     val current = ready.game.current
     current.players.find(_.player == result.attacker).toRight(
       OathViolation.InvalidEventOrder("the Campaign's attacker is not in the game"))
       .map { attacker =>
-        val survivors = result.force - result.skullLosses - result.sacrificed
-        val deaths = result.skullLosses + result.sacrificed +
-          (if result.attackerWins then 0 else survivors / 2)
-        val own: Vector[CoreOperation] = Option.when(deaths > 0)(Kill(
-          Piece.Warbands(ForceKind.Exile(attacker.lineage), deaths),
-          PositionedLocation(Location.PlayArea(result.attacker)))).toVector
-        own ++ (if !result.attackerWins then Vector.empty
+        val deaths = attackerDeaths(result, attackerSpared(ready))
+        val kind = ForceKind.Exile(attacker.lineage)
+        val fromSite = result.originForce.fold(0) { origin =>
+          val (least, most) = originDeathRange(origin, deaths)
+          CampaignAnswers.originDeaths(pending)
+            .filter(n => n >= least && n <= most).getOrElse(least)
+        }
+        val board: Vector[CoreOperation] =
+          Option.when(deaths - fromSite > 0)(Kill(
+            Piece.Warbands(kind, deaths - fromSite),
+            PositionedLocation(Location.PlayArea(result.attacker)))).toVector
+        val site: Vector[CoreOperation] = result.originForce
+          .filter(_ => fromSite > 0).toVector.map(origin => Kill(
+            Piece.Warbands(kind, fromSite),
+            PositionedLocation(Location.Site(origin.site))))
+        board ++ site ++ (if !result.attackerWins then Vector.empty
           else result.kind match {
             case CampaignKind.Conquest => conquestLosses(ready, result)
             case CampaignKind.Raid => raidBoardLosses(ready, result)
