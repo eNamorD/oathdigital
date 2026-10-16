@@ -226,7 +226,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
             else notes.held(journal, begun, at, viewer)) ++
           log.continued(journal, begun, at, viewer).toVector ++
           log.lines(journal, begun, at, viewer) ++
-          details.lines(journal, begun, at, viewer) ++
+          details.lines(journal, begun, at, viewer, log) ++
           notes.own(journal, begun, at, log.tag.nonEmpty, viewer)
         // A headline the run posts (a turn or phase change) is in no section.
         val posted = lines.map(_.copy(section = section)) ++
