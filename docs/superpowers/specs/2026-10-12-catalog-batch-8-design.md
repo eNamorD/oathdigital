@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 10 are done. The per-card
+**Status:** designed 2026-10-12. Slices 1 to 11 are done. The per-card
 rulings are in
 [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
