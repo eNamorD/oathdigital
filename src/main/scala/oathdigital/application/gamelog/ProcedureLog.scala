@@ -208,8 +208,10 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
     // the relic, but the pick is a question the reader saw asked.
     case ActionRef.RevealOwnedRelic => ProcedureLog(tag = None,
       lines = ActionLineSource.Notes())
+    // The direction pick keeps its own "Chose ..." line, as the relic pick
+    // above does.
     case ActionRef.MoveWarbands => ProcedureLog(tag = None,
-      lines = ActionLineSource.Rule(actions.warbandLines))
+      lines = ActionLineSource.Notes())
     // A power that plays a card as if searched (Oracle) posts where the card
     // went, as a Search does, and tells the same card-play decisions.
     case ActionRef.UsePower(power) => ProcedureLog(tag = None,

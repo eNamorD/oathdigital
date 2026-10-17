@@ -2,6 +2,7 @@ package oathdigital.gameplay.actions.minor
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
 import oathdigital.model.OathViolation.{InvalidEventOrder,
@@ -45,6 +46,19 @@ object MinorActionProcedures:
   val revealed: NoteKey = revealNotes.key("revealed", Vector(
     NotePart.Text("Revealed "), NotePart.Arg(0)))
   def revealKeys: Vector[NoteKey] = revealNotes.declared
+
+  private val moveNotes = NoteSet(ProcedureNotes.id(ActionRef.MoveWarbands))
+  /** "Moved 2 warbands to Broken Peaks". */
+  val movedToSite: NoteKey = moveNotes.key("moved-to-site", Vector(
+    NotePart.Text("Moved "), NotePart.Arg(0), NotePart.Text(" "),
+    NotePart.Plural(0, "warband", "warbands"), NotePart.Text(" to "),
+    NotePart.Arg(1)))
+  /** "Moved 1 warband from Broken Peaks". */
+  val movedFromSite: NoteKey = moveNotes.key("moved-from-site", Vector(
+    NotePart.Text("Moved "), NotePart.Arg(0), NotePart.Text(" "),
+    NotePart.Plural(0, "warband", "warbands"), NotePart.Text(" from "),
+    NotePart.Arg(1)))
+  def moveKeys: Vector[NoteKey] = moveNotes.declared
 
   val buildPeek: Build = (_, ready, actor, args) =>
     for
@@ -158,7 +172,24 @@ object MinorActionProcedures:
               DecisionAnswer.ChooseAmountAnswer(value), _) => value
         }
         operation <- move(live, actor, picked, amount)
-      yield operation).toVector), required = true)))
+      yield operation).toVector), required = true),
+      // After the move, so `previous` is the move and the note reads how
+      // many warbands actually travelled rather than the amount answered.
+      Note(ProcedureNotes.id(ActionRef.MoveWarbands), movedNote(actor))))
+
+  /** How many warbands moved, and the site they moved to or from. The count
+    * is the change in the actor's own board bank: moving to the site empties
+    * it, moving to the board fills it. Nothing moved writes nothing. */
+  private def movedNote(actor: PlayerId)(states: NoteStates)
+      : Option[PowerNote] = for
+    step <- states.previous
+    way <- chosenWay(states.answered)
+    change = NoteSupport.warbands(step, actor)
+    moved = if way == toSite then -change else change
+    if moved > 0
+    site <- sitedPawn(step._1, actor).map(_._1)
+  yield (if way == toSite then movedToSite else movedFromSite)
+    .sourceless(NoteArg.Number(moved), NoteArg.Site(site))
 
   private def way(ready: ReadyGame, actor: PlayerId,
       ref: DecisionOptionRef.Button, label: String): DecisionOption =

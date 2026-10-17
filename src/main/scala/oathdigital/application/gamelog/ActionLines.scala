@@ -104,22 +104,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       viewer: Option[PlayerId]): Vector[Posted] =
     campaigns.lines(journal, run, at, viewer)
 
-  def warbandLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    journal.ops(at).collect {
-      case OpStep(Move(Piece.Warbands(_, count),
-          PositionedLocation(Location.PlayArea(_), _, _),
-          PositionedLocation(Location.Site(site), _, _), _, _), _, _) =>
-        action(Vector(Text(s"Moved $count " +
-          s"${plural(count, "warband", "warbands")} to "), words.site(site)))
-      case OpStep(Move(Piece.Warbands(_, count),
-          PositionedLocation(Location.Site(site), _, _),
-          PositionedLocation(Location.PlayArea(_), _, _), _, _), _, _) =>
-        action(Vector(Text(s"Moved $count " +
-          s"${plural(count, "warband", "warbands")} from "),
-          words.site(site)))
-    }
-
   def negotiationLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     negotiations.lines(journal, run, at, viewer)

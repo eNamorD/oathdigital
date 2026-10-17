@@ -71,4 +71,5 @@ object ProcedureNotes:
         PlaceBannerResourceProcedure.noteKeys
       case ActionRef.PeekSiteRelics => MinorActionProcedures.peekKeys
       case ActionRef.RevealOwnedRelic => MinorActionProcedures.revealKeys
+      case ActionRef.MoveWarbands => MinorActionProcedures.moveKeys
       case _ => Vector.empty
