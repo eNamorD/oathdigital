@@ -150,7 +150,10 @@ object ChallengeProcedure:
         // note reads what actually left the play area rather than the
         // amount answered. The holder is read here, before the take moves
         // the banner, which is the holder the deleted rule read off the
-        // recorded `Take`.
+        // recorded `Take`. No power contributes at `ChallengePlacement`; a
+        // first one that inserted a leaf between the payment and the note
+        // would leave the note reading its step instead, so it must append
+        // or the note must read the state as Travel's does.
         Note(ProcedureNotes.id(ActionRef.Challenge), tookNote(actor, banner,
           BannerRules.holder(ready.game.current, banner))),
         custody(ready, actor, banner)), Some(PowerWindow.ChallengePlacement))))

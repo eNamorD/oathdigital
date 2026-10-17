@@ -114,15 +114,17 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // the Act menu parks: 1 GameStarted, 10 parks (3 decisions per seat and
     // the Act menu), 17 steps and 2 completions (Setup's and the first
     // Wake's) make 30. Each of the 9 answers opens its command batch with a
-    // `CommandAccepted`, so 39.
-    assertEquals(reloaded.nextSequence, 39L)
+    // `CommandAccepted`, so 39. Setup journals its own Game Log lines, two
+    // per seat -- the pawn and the kept adviser, nobody having a card to
+    // reveal -- so 45.
+    assertEquals(reloaded.nextSequence, 45L)
     val records = loaded(repository.load("game-v2")).records
-    assertEquals(records.size, 39)
+    assertEquals(records.size, 45)
     val eventType = (record: String) => ujson.read(record)("eventType").str
     assertEquals(records.groupMapReduce(eventType)(_ => 1)(_ + _),
       Map("setup.game-started" -> 1, "walker.parked" -> 10,
         "walker.step-recorded" -> 17, "walker.completed" -> 2,
-        "undo.command-accepted" -> 9))
+        "walker.power-noted" -> 6, "undo.command-accepted" -> 9))
     assert(records.forall(record =>
       ujson.read(record)("formatVersion").num.toInt ==
         GameEventWire.FormatVersion))

@@ -10,6 +10,7 @@ import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.model._
 import oathdigital.protocol.projection.{LogKind, LogSpan}
 import oathdigital.testkit.CatalogNames
@@ -169,3 +170,18 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
       NegotiationProcedure.negotiated), LogKind.Action)
     assertEquals(kindOf(ActionRef.Negotiation, NegotiationProcedure.ended),
       LogKind.Action)
+
+  test("a card revealed in Setup reads as the rule wrote it"):
+    assertEquals(spoken(TriggeredProcedureRef.Setup,
+        SetupProcedure.revealedCard, NoteArg.Player(rival),
+        NoteArg.Card(birdsong)),
+      Vector[LogSpan](words.player(rival), Text(" revealed "),
+        Text("a Denizen")))
+
+  test("Setup's kept and revealed lines post at Decision, its pawn at Action"):
+    assertEquals(kindOf(TriggeredProcedureRef.Setup,
+      SetupProcedure.placedPawn), LogKind.Action)
+    assertEquals(kindOf(TriggeredProcedureRef.Setup,
+      SetupProcedure.keptAdviser), LogKind.Decision)
+    assertEquals(kindOf(TriggeredProcedureRef.Setup,
+      SetupProcedure.revealedCard), LogKind.Decision)

@@ -21,12 +21,7 @@ import LogSpan.Text
 private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
     catalog: ExecutableCatalog):
   import ActionLines._
-  private val setup = new SetupLines(words)
   private val campaigns = new CampaignLines(words, choices, catalog)
-
-  def setupLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    setup.lines(journal, at, viewer)
 
   def searchLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =

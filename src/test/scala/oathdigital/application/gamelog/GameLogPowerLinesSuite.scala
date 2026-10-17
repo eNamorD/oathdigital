@@ -369,9 +369,11 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       CardPlayRules.discardFirst.name), Some(CardPlayRules.discardFirst.template))
 
   test("a setup note posts under the Setup headline, among the setup lines"):
-    // `woken` replays Setup: the Setup headline and its lines are the subject.
+    // `woken` replays Setup: the Setup headline and its lines are the
+    // subject. Setup's own lines are notes now, so the script's notes stay:
+    // stripping them would leave nothing for this note to post among.
     val script = woken
-    val steps = withoutNotes(script.history.steps)
+    val steps = script.history.steps
     val placed = steps.indexWhere(_.event.event match
       case step: WalkerStepRecorded => step.ops.exists {
         case Move(Piece.Pawn(_), _, _, _, _) => true
@@ -384,7 +386,11 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val line = all.indexWhere(
       _.endsWith(s"${playerLabel(script.actor)} said 2 favor."))
     assert(all.indexOf("Setup") < line && line < all.indexOf("Round 1"), all)
-    assert(all.take(line).exists(_.contains(" placed pawn at ")), all)
+    // Setup's own lines are notes too, and the pawn's posts at its own
+    // event after the step this note was inserted behind, so the inserted
+    // line reads first among them rather than after the first pawn line.
+    assert(all.slice(line + 1, all.indexOf("Round 1"))
+      .exists(_.contains(" placed pawn at ")), all)
     assertPrefixStable(noted)
 
   test("a power that names its notes' source reads under that name, not its site"):

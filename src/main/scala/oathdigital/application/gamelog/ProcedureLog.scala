@@ -11,6 +11,7 @@ import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.phases.PhaseMenu
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.walker.FollowUpOffer
 import oathdigital.model._
 import oathdigital.protocol.projection.{LogKind, LogSpan}
@@ -247,9 +248,13 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       narrated = Vector(Told(OathkeeperProcedure.recipientDecisionId,
         Some(OathkeeperProcedure.passedToPlayer))),
       isSection = false)
-    // Setup's own lines tell every decision it asks.
+    // Setup's own lines tell every decision it asks. Setup has no turn, so
+    // the kept and revealed lines post as decisions, which is where the
+    // rules they replaced posted them.
     case TriggeredProcedureRef.Setup => ProcedureLog(tag = None,
-      lines = ActionLineSource.Rule(actions.setupLines),
+      lines = ActionLineSource.Notes(Map(
+        SetupProcedure.keptAdviser -> LogKind.Decision,
+        SetupProcedure.revealedCard -> LogKind.Decision)),
       narratedPrefixes = Vector("setup."), isSection = false)
     // One decision id serves the Wake, Rest and Act menus, so all three
     // declare it.

@@ -9,6 +9,7 @@ import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.model.{ActionRef, NoteKey, PhaseTransitionRef, PowerId,
   ProcedureRef, TriggeredProcedureRef}
@@ -79,4 +80,5 @@ object ProcedureNotes:
       case ActionRef.MoveWarbands => MinorActionProcedures.moveKeys
       case PhaseTransitionRef.FinishRest => FinishRestProcedure.noteKeys
       case TriggeredProcedureRef.Oathkeeper => OathkeeperProcedure.noteKeys
+      case TriggeredProcedureRef.Setup => SetupProcedure.noteKeys
       case _ => Vector.empty

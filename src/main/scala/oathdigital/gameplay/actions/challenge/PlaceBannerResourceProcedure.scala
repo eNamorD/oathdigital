@@ -77,7 +77,10 @@ object PlaceBannerResourceProcedure:
       PositionedLocation(Location.OnBanner(banner))),
       // Directly after the move, so `previous` is the move and the note
       // reads what actually left the play area rather than the amount
-      // answered.
+      // answered. No power contributes at
+      // `PowerWindow.PlaceBannerResourcePlacement`; a first one that
+      // inserted a leaf between the move and the note would leave the note
+      // reading its step instead, so it must append.
       Note(ProcedureNotes.id(ActionRef.PlaceBannerResource),
         placedNote(actor, banner))),
       Some(PowerWindow.PlaceBannerResourcePlacement)))).getOrElse(

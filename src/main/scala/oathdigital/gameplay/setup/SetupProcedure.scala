@@ -1,6 +1,7 @@
 package oathdigital.gameplay.setup
 
 import oathdigital.catalog.{ExecutableCatalog, SiteOnly}
+import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.model._
 import oathdigital.model.OathViolation._
 
@@ -44,6 +45,17 @@ import oathdigital.model.OathViolation._
 object SetupProcedure:
   val adviserKeepKey: String = "keep"
   val adviserDiscardKey: String = "discard"
+
+  private val notes = NoteSet(ProcedureNotes.id(TriggeredProcedureRef.Setup))
+  /** "p2 placed pawn at Ancient City". Setup has no turn yet, so every line
+    * names its player. */
+  val placedPawn: NoteKey = notes.key("placed-pawn", Vector(
+    NotePart.Arg(0), NotePart.Text(" placed pawn at "), NotePart.Arg(1)))
+  val keptAdviser: NoteKey = notes.key("kept-adviser", Vector(
+    NotePart.Arg(0), NotePart.Text(" kept "), NotePart.Arg(1)))
+  val revealedCard: NoteKey = notes.key("revealed-card", Vector(
+    NotePart.Arg(0), NotePart.Text(" revealed "), NotePart.Arg(1)))
+  def noteKeys: Vector[NoteKey] = notes.declared
 
   def pawnDecisionId(player: PlayerId): String =
     s"setup.pawn-placement.${player.value}"
@@ -109,6 +121,13 @@ object SetupProcedure:
           confirmVerb = Some("Start at"))),
       BuildOps(placePawn(participant.playerId, pawnId),
         window = Some(PowerWindow.SetupPawnPlaced)),
+      // Each note follows the node whose effect it states. The pawn's
+      // arrival is read off the live state rather than off the step before
+      // the note: a setup power appending a leaf at `SetupPawnPlaced` would
+      // reset `NoteStates.previous`, and this player's pawn site is settled
+      // either way, since the next participant has not placed yet.
+      Note(ProcedureNotes.id(TriggeredProcedureRef.Setup),
+        placedPawnNote(participant.playerId)),
       Decide(adviserId, participant.playerId,
         DecisionQuery.Partition(
           Vector(DecisionSection(adviserKeepKey, "Keep", 1, Some(1)),
@@ -116,7 +135,31 @@ object SetupProcedure:
           handOptions, heading = Some("Choose your starting adviser"),
           confirmLabel = Some("Confirm Adviser"))),
       BuildOps(chooseAdviser(participant.playerId, adviserId)),
+      Note(ProcedureNotes.id(TriggeredProcedureRef.Setup),
+        keptAdviserNote(participant.playerId, adviserId)),
       revealCards(catalog, participant.playerId)))
+
+  /** Where `player`'s pawn stands once it has been placed. */
+  private def placedPawnNote(player: PlayerId)(states: NoteStates)
+      : Option[PowerNote] = pawnSiteOf(states.now, player).map(site =>
+    placedPawn.sourceless(NoteArg.Player(player), NoteArg.Site(site)))
+
+  private def pawnSiteOf(ready: ReadyGame, player: PlayerId): Option[SiteId] =
+    ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
+
+  /** The adviser the answer kept. `adviserSelection` takes a `PendingTree`
+    * and a note has only `states.answered`, so this reads the placements
+    * directly rather than rebuilding a tree to borrow it. */
+  private def keptAdviserNote(player: PlayerId, decisionId: String)(
+      states: NoteStates): Option[PowerNote] =
+    states.answered.collectFirst {
+      case Answered(`decisionId`, DecisionAnswer.PartitionAnswer(placements), _) =>
+        placements.collect {
+          case DecisionPlacement(DecisionOptionRef.Denizen(id),
+              `adviserKeepKey`) => id
+        }
+    }.flatMap(_.headOption).map(kept =>
+      keptAdviser.sourceless(NoteArg.Player(player), NoteArg.Card(kept)))
 
   private def revealCards(catalog: ExecutableCatalog, player: PlayerId)
       : Operation =
@@ -129,23 +172,40 @@ object SetupProcedure:
           options, heading = Some("Reveal cards"),
           confirm = Some(CountedConfirm("Reveal", "card", "cards",
             Some("Reveal nothing"))))),
-        BuildOps(reveal(player, decisionId))))
+        BuildOps(reveal(player, decisionId)),
+        // One line per card, as the rule posted one per recorded `Reveal`.
+        // A second `Branch`, because the answer this reads does not exist
+        // when the branch above is walked.
+        Branch((live, pending) =>
+          revealed(live, player, decisionId, pending.answered).map(card =>
+            Note(ProcedureNotes.id(TriggeredProcedureRef.Setup),
+              _ => Some(revealedCard.sourceless(NoteArg.Player(player),
+                NoteArg.Card(card))))))))
+
+  /** The cards `player`'s reveal answer names, by slot. The one definition
+    * the operations and the lines both read. */
+  private def revealed(ready: ReadyGame, player: PlayerId, decisionId: String,
+      answered: Vector[Answered]): Vector[CardId] =
+    val held = ready.game.current.players.find(_.player == player)
+    answered.collectFirst {
+      case Answered(`decisionId`, DecisionAnswer.ChooseManyAnswer(selected), _) =>
+        selected.flatMap {
+          case DecisionOptionRef.AdviserSlot(_, slot) =>
+            held.flatMap(_.advisers.lift(slot)).map(_.id: CardId)
+          case DecisionOptionRef.RelicSlot(_, slot) =>
+            held.flatMap(_.relics.lift(slot)).map(_.id: CardId)
+          case _ => None
+        }
+    }.getOrElse(Vector.empty)
 
   private def reveal(player: PlayerId, decisionId: String)
       : (ReadyGame, PendingTree) => Either[OathViolation, Vector[CoreOperation]] =
     (ready, pending) =>
-      val held = ready.game.current.players.find(_.player == player)
-      pending.answered.find(_.decisionId == decisionId).map(_.answer) match
-        case Some(DecisionAnswer.ChooseManyAnswer(selected)) =>
-          Right(selected.flatMap {
-            case DecisionOptionRef.AdviserSlot(_, slot) =>
-              held.flatMap(_.advisers.lift(slot)).map(_.id)
-            case DecisionOptionRef.RelicSlot(_, slot) =>
-              held.flatMap(_.relics.lift(slot)).map(_.id)
-            case _ => None
-          }.map(card => Reveal(card, Location.PlayArea(player))))
-        case _ => Left(InvalidEventOrder(
-          s"no reveal answer is recorded for $decisionId"))
+      if pending.answered.exists(_.decisionId == decisionId) then
+        Right(revealed(ready, player, decisionId, pending.answered)
+          .map(card => Reveal(card, Location.PlayArea(player))))
+      else Left(InvalidEventOrder(
+        s"no reveal answer is recorded for $decisionId"))
 
   private def placePawn(player: PlayerId, decisionId: String)
       : (ReadyGame, PendingTree) => Either[OathViolation, Vector[CoreOperation]] =
