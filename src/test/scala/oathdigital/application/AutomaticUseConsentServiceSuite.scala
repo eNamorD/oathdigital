@@ -96,8 +96,24 @@ class AutomaticUseConsentServiceSuite extends munit.FunSuite:
       GameCommand.SetConsentPreference(p2, CityWall.id, p1,
         ConsentSetting.Never)))
     val travelled = travelling(service, set.nextSequence, coast)
+    assertEquals(travelled.events.collect {
+      case OathEvent.ConsentRequested(request) => request.use
+      case OathEvent.ConsentAnswered(granter, granted) => (granter, granted)
+    }, Vector(Some(ConsentUse(TyrantCard.id, p1)), (p2, false)))
     assertEquals(readyAfter(travelled).consent.pending, None)
     assertEquals(coastWarbands(travelled), 2)
+
+  test("the power's user cannot answer its step themselves"):
+    val (service, _) = ConsentFixture.service(tyrantBesideAWalledCoast)
+    val waiting = travelling(service, 0L, coast)
+    val withdrawn = accepted(service.handle(gameId, waiting.nextSequence,
+      GameCommand.Undo(p1)))
+    assertEquals(service.handle(gameId, withdrawn.nextSequence,
+      GameCommand.ResolveWalker(p1, TreeDecision(
+        PowerUseStep.decisionId(Tyrant.id), DecisionAnswer.ChooseOneAnswer(
+          PowerUseStep.skip)))), Left(GameApplicationError.CommandRejected(
+            OathViolation.ConsentUnavailable("the refusing cards' rulers " +
+              "decide whether this power works"))))
 
   test("a deactivation remembered this turn applies to a later Travel " +
       "there without asking"):

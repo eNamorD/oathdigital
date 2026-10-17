@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.search.SearchProcedure
+import oathdigital.gameplay.powerresolver.PowerUseStep
 import oathdigital.gameplay.powers.{ConsentPowers, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
@@ -449,6 +450,12 @@ final class GameApplicationService(
       // run to the consent desk instead.
       case OathState.Ready(ready) if ready.consent.pending.nonEmpty =>
         Left(OathViolation.ConsentPending)
+      // Only the refusing cards' rulers answer an automatic power's step,
+      // through consent (automatic power consent design). Its owner never
+      // does, even should a park at the step lack its request.
+      case _ if answersPowerUseStep(command) =>
+        Left(OathViolation.ConsentUnavailable(
+          "the refusing cards' rulers decide whether this power works"))
       case OathState.Ready(ready)
           if (ready.game.current.walkerPending.nonEmpty ||
             ready.game.current.walkerProcedure.nonEmpty) &&
@@ -456,6 +463,12 @@ final class GameApplicationService(
         Left(OathViolation.InvalidEventOrder(
           "a walker procedure is pending; only walker resume commands are legal"))
       case _ => applyUnblockedCommand(state, command, nextSequence)
+
+  private def answersPowerUseStep(command: GameCommand): Boolean =
+    command match
+      case GameCommand.ResolveWalker(_, decision) =>
+        PowerUseStep.isDecision(decision.decisionId)
+      case _ => false
 
   private def applyUnblockedCommand(
       state: OathState,
