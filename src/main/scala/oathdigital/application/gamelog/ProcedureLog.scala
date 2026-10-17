@@ -142,9 +142,9 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       anchor = starts.picksSettled,
       narratedPrefixes = Vector("travel."))
     case ActionRef.Muster => ProcedureLog(tag = Some("Muster"),
-      lines = ActionLineSource.Rule(actions.musterLines),
-      anchor = starts.paysCost,
-      narrated = Vector(Told(MusterProcedure.decisionId)))
+      lines = ActionLineSource.Notes, anchor = starts.paysCost,
+      narrated = Vector(Told(MusterProcedure.decisionId,
+        Some(MusterProcedure.mustered))))
     case ActionRef.Trade => ProcedureLog(tag = Some("Trade"),
       lines = ActionLineSource.Rule(actions.tradeLines),
       anchor = starts.paysCost,

@@ -93,9 +93,16 @@ These were settled while designing and bind the rest of this document.
    `narrated: Vector[Told]`, `Told(decision: String, by: NoteKey)`, on the
    entry. Deleting the key fails compilation. The policy stays in
    `application`, because "no Chose line for this decision" is layout.
-6. **Byte-identical, no exceptions.** Every migration commit leaves the
-   golden files unchanged. A wording improvement inside a migration makes the
-   golden diff mean two things at once.
+6. **The rendered line is identical, and only the sequence may move.** A
+   migration commit leaves every golden entry's spans, kind, depth and
+   section byte-identical. What it may change is the entry's `sequence` and
+   `ordinal`, because the journal gained the note event the entry is now
+   posted at, and a procedure cannot journal a note without the journal
+   gaining an event. Amended from "byte-identical, no exceptions" when
+   Muster's migration proved that unsatisfiable: the Muster line read
+   exactly as before and moved from sequence 10 to 11. A wording improvement
+   inside a migration is still forbidden; it would make the golden diff mean
+   two things at once.
 7. **Three new argument kinds and no more.** `Players`, `Clauses` over a
    closed `NoteClause` sum, and Conquest's placements. A fourth is a spec
    amendment, not a judgement call made mid-plan.
@@ -327,7 +334,11 @@ a strictly smaller surface after slice 4.
 
 ## Tests
 
-**Golden files are the per-migration proof.** `LogScripts` builds every
+**Golden files are the per-migration proof**, read under ruling 6: a
+migration's diff is a shifted sequence number on the migrated line and
+nothing else. A changed span, kind, depth or section is a defect, and a
+shift on a line the migration did not touch is a defect too.
+`LogScripts` builds every
 journal by real play through `GameApplicationService` on every run — "no
 stored game is a fixture" — so a migrated procedure's script produces a
 journal containing the note. `GoldenLog.render` records sequence, ordinal,

@@ -226,6 +226,7 @@ class GameLogPropertiesSuite extends munit.FunSuite:
       case (key, ActionLineSource.Silent(reason)) => key -> reason
     }
     assert(silent.forall(_._2.nonEmpty), s"a silent procedure says why: $silent")
+    // Rises by one with every procedure the migration moves.
     assertEquals(ProcedureRef.all.count(
-      logs.of(_).lines == ActionLineSource.Notes), 0,
-      "no procedure journals its own notes yet")
+      logs.of(_).lines == ActionLineSource.Notes), 1,
+      "Muster journals its own notes")

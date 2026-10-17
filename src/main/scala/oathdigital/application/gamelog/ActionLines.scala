@@ -3,7 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
+import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
@@ -59,23 +59,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       viewer: Option[PlayerId]): Vector[Posted] =
     search(journal, run, at, viewer) ++
       playedAdviser(journal, run, at, viewer)
-
-  /** A power's covering line restates a gain of its own, such as a vow's
-    * warbands after the Muster's. */
-  def musterLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    if journal.covered(at) then Vector.empty
-    else journal.ops(at).collect {
-      case OpStep(Move(Piece.Warbands(_, count),
-          PositionedLocation(Location.WarbandBank(_), _, _),
-          PositionedLocation(Location.PlayArea(taker), _, _),
-          _, _), before, after)
-          if taker == run.actor =>
-        action(Vector(Text(
-          s"Mustered $count ${plural(count, "warband", "warbands")} with ")) ++
-          source(journal, run, at, MusterProcedure.decisionId, before, after,
-            viewer))
-    }
 
   def tradeLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =

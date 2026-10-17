@@ -1,10 +1,12 @@
 package oathdigital.application.gamelog
 
 import oathdigital.gameplay.ModifierPlay
+import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.search.NewGrowth
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.protocol.projection.{LogKind, LogSpan}
@@ -61,6 +63,15 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val mine = lines(golemMuster, None)
     // 1, plus 1 for Golem Legions, a faceup Arcane adviser.
     assert(mine.contains("Mustered 2 warbands with Golem Legions"), mine)
+
+  test("the Muster line is the procedure's own note, not an inferred line"):
+    val script = golemMuster
+    val noted = script.history.steps.map(_.event.event).collect {
+      case PowerNoted(power, note, _)
+          if power == ProcedureNotes.id(ActionRef.Muster) => note.key
+    }
+    assertEquals(noted, Vector("mustered"))
+    assert(lines(script, None).contains("Mustered 2 warbands with Golem Legions"))
 
   test("Trade: the tag waits for the cost, then says what it bought"):
     val script = trade

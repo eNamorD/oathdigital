@@ -1,6 +1,7 @@
 package oathdigital.gameplay.actions
 
-import oathdigital.model.{NoteKey, PowerId, ProcedureRef}
+import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.model.{ActionRef, NoteKey, PowerId, ProcedureRef}
 
 /** The procedures that write their own Game Log lines (procedures journal
   * their own notes design, "ProcedureNotes"): each procedure's id and the
@@ -36,4 +37,5 @@ object ProcedureNotes:
     * `ProcedureRef.all`. */
   private def keys(procedure: ProcedureRef): Vector[NoteKey] =
     procedure match
+      case ActionRef.Muster => MusterProcedure.noteKeys
       case _ => Vector.empty

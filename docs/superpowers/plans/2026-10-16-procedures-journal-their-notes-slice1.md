@@ -36,10 +36,14 @@ names it produces are fixed.
   `NotePart` / `NoteArg` and never `LogSpan` or `LogKind`.
 - **`model` may not import `application`, `gameplay`, `persistence`,
   `serialization` or `server`.**
-- **Golden logs must be byte-identical at every commit in this plan.** Run
+- **Golden logs: the rendered line never changes, the sequence may.** Run
   `./sbtw "testOnly oathdigital.application.gamelog.GameLogGoldenSuite"`.
-  Never set `GAMELOG_GOLDEN=write` in this slice: a rewritten golden is the
-  failure this plan is designed to detect.
+  Tasks 1 to 7 leave the files untouched. Task 8 shifts the Muster entry's
+  sequence number, and nothing else, because the journal gains the note
+  event the entry is posted at — see ruling 6, amended when this task proved
+  the original wording unsatisfiable. Set `GAMELOG_GOLDEN=write` only there,
+  and read the `git diff` line by line: a changed span, kind, depth or
+  section is a defect.
 - **A template must not introduce a typed span where the line writes plain
   text today.** `GoldenLog.render` prints `LogSpan.Text` as its bare string
   and `LogSpan.Amount` as `[amount:2 warbands]`. Today's Muster line is one
@@ -1136,9 +1140,13 @@ Run: `./sbtw "testOnly oathdigital.application.gamelog.GameLogActionLineSuite"`
 Expected: PASS
 
 Run: `./sbtw "testOnly oathdigital.application.gamelog.GameLogGoldenSuite"`
-Expected: PASS. **If a golden differs, the migration changed a line — fix the
-template, never the golden.** Read the diff: a `[amount:…]` where text was
-means the template used `NoteArg.Amount` instead of `Number` plus `Plural`.
+Expected: the `muster` golden fails on the entry's sequence number alone —
+`10.0 action 1 muster@4 | Mustered 1 warband with [card:E26|Hiding Place]`
+becomes `11.0 ...`, with the spans, kind, depth and section unchanged.
+Rewrite the two files with `GAMELOG_GOLDEN=write` and check `git diff` shows
+only that. **If a span differs, the migration changed a line — fix the
+template, never the golden.** A `[amount:…]` where text was means the
+template used `NoteArg.Amount` instead of `Number` plus `Plural`.
 
 - [ ] **Step 9: Update the declared-keys snapshot**
 
@@ -1177,8 +1185,9 @@ git commit -m "feat(gamelog): Muster journals its own line"
 
 - `ActionLines.musterLines` does not exist.
 - `ProcedureLog.of(ActionRef.Muster).lines == ActionLineSource.Notes`.
-- Every golden log under `src/test/resources/gamelog` is byte-identical to
-  its state at the start of this plan.
+- Every golden log under `src/test/resources/gamelog` is unchanged except
+  `muster.actor.log` and `muster.other.log`, each differing only in the
+  Muster entry's sequence number.
 - `src/test/resources/notes/declared-keys.txt` has exactly one new line.
 - `./sbtw "test" "frontend/test" "frontend/fastLinkJS"` exits 0 and
   `python3 scripts/check-architecture.py` exits 0.

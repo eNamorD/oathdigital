@@ -48,7 +48,12 @@ private[economy] object EconomyTree:
       yields: (PlayerId, MusterSource, Int, ForceKind) => Option[CoreOperation],
       /** What the player selected when the action started, which the
         * modifier decision names. */
-      selection: Vector[DecisionOptionRef] = Vector.empty)
+      selection: Vector[DecisionOptionRef] = Vector.empty,
+      /** The line this action writes at its gain, if it writes one: the
+        * note's id and a builder that reads the resolved source. The tree
+        * places the leaf; the procedure owns the words. */
+      note: Option[(PowerId, (NoteStates, MusterSource) => Option[PowerNote])] =
+        None)
 
   /** Fresh start: the lifecycle gate, a pawn site, a resolvable ruler for
     * every site.
@@ -124,7 +129,9 @@ private[economy] object EconomyTree:
       PayCost(actor, Location.OnCard(source.card), kind.payment),
       SpendSupply(actor, 1)), Some(kind.cost)),
     Sequence(kind.yields(actor, source,
-      MusterSource.matching(catalog, ready, actor, source.suit), force).toVector,
+      MusterSource.matching(catalog, ready, actor, source.suit), force)
+        .toVector ++
+      kind.note.toVector.map((id, build) => Note(id, build(_, source))),
       Some(kind.gain)))
 
   private def answered(pending: PendingTree, decisionId: String)

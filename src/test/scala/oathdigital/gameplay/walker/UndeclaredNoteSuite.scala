@@ -5,6 +5,7 @@ import oathdigital.gameplay.powers.campaign.{WarningSignals,
   WarningSignalsCard}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.model.{ActionRef, NoteArg, PlayerId, PowerId, PowerNote,
   PowerSourceRef}
 
@@ -64,12 +65,24 @@ class UndeclaredNoteSuite extends munit.FunSuite:
       "build.sbt must set -Doathdigital.notes.strict=true for the test " +
         "scope, or an undeclared note passes every suite silently")
 
-  test("a procedure that declares no key yet is refused its note"):
+  test("a procedure is held to its declared keys like a power"):
     val muster = ProcedureNotes.id(ActionRef.Muster)
     assert(DeclaredNotes.of(catalog).knows(muster),
-      "a procedure is covered by the union even before it declares a key")
-    val note = PowerNote(None, "mustered", Vector.empty)
-    val thrown = intercept[AssertionError](
-      NoteCheck.journal(declared, muster, note, covers = false))
+      "a procedure is covered by the union")
+    val declaredKey = PowerNote(None, MusterProcedure.mustered.name,
+      Vector.empty)
+    assertEquals(NoteCheck.journal(declared, muster, declaredKey,
+      covers = false).map(_.note), Some(declaredKey))
+    val thrown = intercept[AssertionError](NoteCheck.journal(declared, muster,
+      PowerNote(None, "invented", Vector.empty), covers = false))
     assert(thrown.getMessage.contains("procedure.muster"), thrown.getMessage)
-    assert(thrown.getMessage.contains("mustered"), thrown.getMessage)
+    assert(thrown.getMessage.contains("invented"), thrown.getMessage)
+
+  test("a procedure that has not migrated writes no note at all"):
+    val travel = ProcedureNotes.id(ActionRef.Travel)
+    assert(DeclaredNotes.of(catalog).knows(travel),
+      "an unmigrated procedure is covered by the union, so it is refused " +
+        "rather than unrecognised")
+    val thrown = intercept[AssertionError](NoteCheck.journal(declared, travel,
+      PowerNote(None, "travelled", Vector.empty), covers = false))
+    assert(thrown.getMessage.contains("procedure.travel"), thrown.getMessage)
