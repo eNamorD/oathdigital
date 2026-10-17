@@ -113,8 +113,8 @@ object QueuedStart:
     val before = PricedOptions.spent(past.operations, actor)
     past.at match
       case Some((state, pending))
-          if WalkerProcedureRegistry.gatesStart(entry.procedure,
-            state) =>
+          if WalkerProcedureRegistry.requiresPlayableOption(
+            entry.procedure) =>
         WalkerSimulation.previewParked(state, tree, pending, powers,
             followUp = true).flatMap { options =>
           val ways = options.collect {

@@ -568,10 +568,11 @@ object WalkerProcedureRegistry:
   def optionPricing(procedure: ProcedureRef): Option[OptionPricing] =
     lookup(procedure, entries).toOption.flatMap(_.optionPricing)
 
-  /** Whether a start of `procedure` on `state` passes the playable-option
-    * gate. A queued entry whose start arguments answer the decision the
-    * gate previews has nothing to gate on, and may run operations before
-    * any decision it parks on (catalog batch 8, slice 15). */
+  /** Whether the driver's playable-option gate applies to a start of
+    * `procedure` on `state`. A queued entry whose start arguments answer
+    * the decision the gate previews has nothing to gate on, and may run
+    * operations before any decision it parks on (catalog batch 8, slice
+    * 15). The start preview still previews where such a walk parks. */
   def gatesStart(procedure: ProcedureRef, state: ReadyGame): Boolean =
     requiresPlayableOption(procedure) && queuedAnswers(state).isEmpty
 

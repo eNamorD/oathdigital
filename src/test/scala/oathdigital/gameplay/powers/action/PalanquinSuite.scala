@@ -128,6 +128,9 @@ class PalanquinSuite extends munit.FunSuite:
     assertEquals(decide.decisionId, BrassArmyMoves.decisionId)
     assertEquals(decide.owner, p1)
     assertEquals(Look(Outcomes.ready(placed.state)).pawn(p2), cradlePlains)
+    val flipped = accepted(ActPowerHarness.answer(rules, placed.state,
+      BrassArmyMoves.decisionId, BrassArmyMoves.flip))
+    assertEquals(Look(Outcomes.ready(flipped.state)).pawn(p2), coast)
 
   test("Brass Army asks the target after their own move"):
     val ready = palanquinWithP2Beside(_.relic(p2,
