@@ -4,7 +4,8 @@ import oathdigital.gameplay.powers.{DeclaredNotes, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.campaign.{WarningSignals,
   WarningSignalsCard}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.model.{NoteArg, PlayerId, PowerId, PowerNote,
+import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.model.{ActionRef, NoteArg, PlayerId, PowerId, PowerNote,
   PowerSourceRef}
 
 /** A note whose key no power declares has no wording, so the Game Log would
@@ -62,3 +63,13 @@ class UndeclaredNoteSuite extends munit.FunSuite:
     assert(NoteCheck.strictByDefault,
       "build.sbt must set -Doathdigital.notes.strict=true for the test " +
         "scope, or an undeclared note passes every suite silently")
+
+  test("a procedure that declares no key yet is refused its note"):
+    val muster = ProcedureNotes.id(ActionRef.Muster)
+    assert(DeclaredNotes.of(catalog).knows(muster),
+      "a procedure is covered by the union even before it declares a key")
+    val note = PowerNote(None, "mustered", Vector.empty)
+    val thrown = intercept[AssertionError](
+      NoteCheck.journal(declared, muster, note, covers = false))
+    assert(thrown.getMessage.contains("procedure.muster"), thrown.getMessage)
+    assert(thrown.getMessage.contains("mustered"), thrown.getMessage)

@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
@@ -130,3 +131,28 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
       PowerSourceRef.of(DecisionOptionRef.Banner(Banner.DarkestSecret)),
       Some(PowerSourceRef.Banner(Banner.DarkestSecret)))
     assertEquals(PowerSourceRef.of(DecisionOptionRef.Button("b")), None)
+
+  // A procedure's note travels the same path as a power's, with no source
+  // and an id built from the procedure (procedures journal their own notes
+  // design). These pin the two guarantees its line depends on.
+  private val muster = ProcedureNotes.id(ActionRef.Muster)
+  private def mustered(count: Int): Note = Note(muster,
+    _ => Some(PowerNote(None, "mustered", Vector(NoteArg.Number(count)))))
+  private def musterNoted(count: Int) = PowerNoted(muster,
+    PowerNote(None, "mustered", Vector(NoteArg.Number(count))), covers = false)
+
+  test("a resumed command journals a procedure's note once"):
+    val tree = Sequence(Vector[Operation](ask, mustered(2)))
+    val WalkerOutcome.Parked(pending, first) =
+      parked(ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty))
+    assertEquals(notes(first), Vector.empty)
+    val second = finished(ProcedureWalker.resolve(ready, tree, pending, yes,
+      WalkerPowers.empty)).events
+    assertEquals(notes(second), Vector(musterNoted(2)))
+
+  test("a procedure's note in a branch that does not run journals nothing"):
+    val tree = Branch((state, _) =>
+      if state.game.current.rollPools.contains(pool) then Vector(mustered(2))
+      else Vector(ModifyDicePool(pool, 1)))
+    assertEquals(notes(finished(ProcedureWalker.advance(ready, tree, None,
+      WalkerPowers.empty)).events), Vector.empty)
