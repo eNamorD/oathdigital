@@ -145,12 +145,12 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // Wake ends in the same command: the action boundary's marker, then its
     // phase-change step and completion follow, and the Act menu parks. The
     // Wake menu's pick adds its recorded answer, its queue step, its
-    // completion and the dequeue. With the batch's opening `CommandAccepted`,
-    // the stream holds twelve events.
-    assertEquals(wealth.nextSequence, 12L)
+    // completion and the dequeue. With the batch's opening `CommandAccepted`
+    // and Take Wealth's own Game Log note, the stream holds thirteen events.
+    assertEquals(wealth.nextSequence, 13L)
     assertEquals(
       service.handle("game-wake", 0L, MenuPlay.starting(active, PhaseTransitionRef.EndWake)),
-      Left(GameApplicationError.StaleClientPosition(0L, 12L)))
+      Left(GameApplicationError.StaleClientPosition(0L, 13L)))
     val reloaded = loaded(replayingSecond(service, repository)
       .load("game-wake"))
     val after = Outcomes.ready(reloaded.state)
@@ -162,7 +162,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       "the replayed journal must restore the use limit it recorded")
     val records = loaded(repository.load("game-wake")).records
     assertEquals(records.map(record =>
-      ujson.read(record)("formatVersion").num.toInt), Vector.fill(12)(1))
+      ujson.read(record)("formatVersion").num.toInt), Vector.fill(13)(1))
     // The Wake menu's pick is journaled first (its answer, the queued
     // procedure, its completion and the dequeue). Ending Wake is a walker
     // procedure too (batch-1 Task 7), so the Wake phase journals nothing of
@@ -173,7 +173,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       Vector("undo.command-accepted", "walker.step-recorded",
         "walker.step-recorded", "walker.completed",
         "walker.procedure-dequeued", "walker.step-recorded",
-        "walker.step-recorded", "walker.completed",
+        "walker.power-noted", "walker.step-recorded", "walker.completed",
         "walker.action-boundary-ran", "walker.step-recorded",
         "walker.completed", "walker.parked"))
 

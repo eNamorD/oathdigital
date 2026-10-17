@@ -1,5 +1,5 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Wake
-5.0 action 1 | Took 1 favor from [site:site:ancient-city|Ancient City]
-9.0 phase 0 | Act
+6.0 action 1 | Took 1 favor from [site:site:ancient-city|Ancient City]
+10.0 phase 0 | Act

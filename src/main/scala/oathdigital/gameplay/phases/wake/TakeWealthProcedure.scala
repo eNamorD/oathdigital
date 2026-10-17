@@ -1,6 +1,8 @@
 package oathdigital.gameplay.phases.wake
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.model._
 
@@ -31,6 +33,14 @@ import oathdigital.model._
   * hide it from anything that reads the tree.
   */
 object TakeWealthProcedure:
+  private val notes = NoteSet(ProcedureNotes.id(ActionRef.TakeWealth))
+  /** "Took 1 favor from Broken Peaks". A Take Wealth takes exactly one, so
+    * the count is printed rather than carried. */
+  val tookFavor: NoteKey = notes.key("took-favor", Vector(
+    NotePart.Text("Took 1 favor from "), NotePart.Arg(0)))
+  val tookSecret: NoteKey = notes.key("took-secret", Vector(
+    NotePart.Text("Took 1 secret from "), NotePart.Arg(0)))
+  def noteKeys: Vector[NoteKey] = notes.declared
 
   /** Fresh start and resume build the same tree. Take Wealth declares no
     * `Decide` and no `Roll`, so it finishes inside the command that starts it
@@ -99,8 +109,25 @@ object TakeWealthProcedure:
       resource: WakeResource): Operation = Sequence(Vector(
     Take(piece(resource), actor, Location.Site(site),
       Location.PlayArea(actor)),
+    // Directly after the take, so `previous` is the take: a take a power
+    // emptied moves nothing and writes no line, as the rule this replaced
+    // wrote none without a recorded `Move`. The use record follows, and a
+    // `Note` is not a leaf, so placing it here changes nothing else.
+    Note(ProcedureNotes.id(ActionRef.TakeWealth),
+      tookNote(actor, resource, site)),
     RecordPowerUse(TakeWealthLimit.useRef(site))),
     Some(PowerWindow.WakeTakeWealth))
+
+  private def tookNote(actor: PlayerId, resource: WakeResource, site: SiteId)(
+      states: NoteStates): Option[PowerNote] =
+    states.previous.map(step => resource match
+      case WakeResource.Favor => NoteSupport.favor(step, actor)
+      case WakeResource.Secret => NoteSupport.secrets(step, actor))
+      .filter(_ > 0).map(_ => key(resource).sourceless(NoteArg.Site(site)))
+
+  private def key(resource: WakeResource): NoteKey = resource match
+    case WakeResource.Favor => tookFavor
+    case WakeResource.Secret => tookSecret
 
   private def piece(resource: WakeResource): Piece = resource match
     case WakeResource.Favor => Piece.Favor(1)

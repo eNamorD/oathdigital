@@ -2,6 +2,7 @@ package oathdigital.gameplay.actions
 
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.model.{ActionRef, NoteKey, PowerId, ProcedureRef}
 
 /** The procedures that write their own Game Log lines (procedures journal
@@ -59,4 +60,5 @@ object ProcedureNotes:
     procedure match
       case ActionRef.Muster => MusterProcedure.noteKeys
       case ActionRef.Travel => TravelProcedure.noteKeys
+      case ActionRef.TakeWealth => TakeWealthProcedure.noteKeys
       case _ => Vector.empty

@@ -7,6 +7,7 @@ import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
@@ -169,14 +170,19 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
       }
     }
 
-  test("the declared tree is the take and its use record under one window"):
+  test("the declared tree is the take, its line and its use record under one window"):
     val ready = wake(favor = 1, secrets = 1)
-    assertEquals(TakeWealthProcedure.build(catalog, ready, actor,
-      favorArg), Right(Sequence(Vector(
-        Take(Piece.Favor(1), actor, Location.Site(home),
-          Location.PlayArea(actor)),
-        RecordPowerUse(TakeWealthLimit.useRef(home))),
-      Some(PowerWindow.WakeTakeWealth))))
+    // The `Note` holds a closure, so it is matched by shape rather than
+    // compared: two builds of the same tree carry two distinct functions.
+    val built = TakeWealthProcedure.build(catalog, ready, actor, favorArg)
+    built match
+      case Right(Sequence(Vector(take, note: Note, used),
+          Some(PowerWindow.WakeTakeWealth))) =>
+        assertEquals(take, Take(Piece.Favor(1), actor, Location.Site(home),
+          Location.PlayArea(actor)))
+        assertEquals(note.power, ProcedureNotes.id(ActionRef.TakeWealth))
+        assertEquals(used, RecordPowerUse(TakeWealthLimit.useRef(home)))
+      case other => fail(s"not the declared Take Wealth tree: $other")
 
   test("the recorded operations are the resource move and the use record"):
     val ready = wake(favor = 1, secrets = 1)

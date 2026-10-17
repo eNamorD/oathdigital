@@ -77,16 +77,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
     else journal.readyBefore(at).toVector.map(ready =>
       traded(journal, run, at, "no secrets", ready, ready, viewer))
 
-  def takeWealthLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    journal.ops(at).collect {
-      case OpStep(Move(piece, PositionedLocation(Location.Site(site), _, _),
-          PositionedLocation(Location.PlayArea(taker), _, _), _, _), _, _)
-          if taker == run.actor && resource(piece).nonEmpty =>
-        action(Vector(Text(s"Took ${resource(piece)} from "),
-          words.site(site)))
-    }
-
   def recoverLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     val actor = run.actor

@@ -2,9 +2,11 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.protocol.projection.{LogKind, LogSpan}
+import LogSpan.Text
 
 /** What a migrated procedure's line reads, on the branches no golden script
   * exercises, and at which kind it posts (procedures journal their own notes
@@ -49,3 +51,10 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
   test("a count of one reads singular"):
     assertEquals(said(ActionRef.Muster, MusterProcedure.mustered,
       NoteArg.Number(1)), "Mustered 1 warband with ")
+
+  private val brokenPeaks = SiteId("site:broken-peaks")
+
+  test("Take Wealth of a secret reads as the rule wrote it"):
+    assertEquals(spoken(ActionRef.TakeWealth, TakeWealthProcedure.tookSecret,
+        NoteArg.Site(brokenPeaks)),
+      Vector[LogSpan](Text("Took 1 secret from "), words.site(brokenPeaks)))

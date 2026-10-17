@@ -187,7 +187,7 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       narratedPrefixes = Vector("campaign."))
     // Wake's own action: its lines stand outside any band.
     case ActionRef.TakeWealth => ProcedureLog(tag = None,
-      lines = ActionLineSource.Rule(actions.takeWealthLines), isSection = false)
+      lines = ActionLineSource.Notes(), isSection = false)
     // No modifier window, so no tag.
     case ActionRef.PlaceBannerResource => ProcedureLog(tag = None,
       lines = ActionLineSource.Rule(actions.bannerLines),
