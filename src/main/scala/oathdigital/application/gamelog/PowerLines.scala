@@ -39,15 +39,23 @@ private[gamelog] final class PowerLines(words: LogWords,
       yield Posted(kind(run, power, note), spans)
     case _ => None
 
-  /** "{source}: {sentence}" for `note`, its cards judged at `seen`, or
-    * `None` when `power` declares no template for the note's key.
+  /** "{source}: {sentence}" for `note`, its cards judged at `seen`, or the
+    * sentence alone when the note has no source, or `None` when `power`
+    * declares no template for the note's key.
     */
   def spoken(power: PowerId, note: PowerNote, seen: Vector[ReadyGame],
       viewer: Option[PlayerId]): Option[Vector[LogSpan]] =
     wordings.template(power, note.key).map(template =>
-      wordings.source(power).fold(words.source(note.source, seen, viewer))(
-        named => Vector(Text(named))) ++
-        (Text(": ") +: sentence(template, note.args, seen, viewer)))
+      prefix(power, note, seen, viewer) ++
+        sentence(template, note.args, seen, viewer))
+
+  /** "{source}: " for a power's or a game rule's line, and nothing for a
+    * procedure's, which starts with its sentence. */
+  private def prefix(power: PowerId, note: PowerNote, seen: Vector[ReadyGame],
+      viewer: Option[PlayerId]): Vector[LogSpan] =
+    note.source.toVector.flatMap(source =>
+      wordings.source(power).fold(words.source(source, seen, viewer))(
+        named => Vector(Text(named))) :+ Text(": "))
 
   /** The states before `at` that a note's cards are judged at: its action's
     * start, and the step it restates, the last step before it. A generic

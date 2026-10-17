@@ -20,7 +20,7 @@ class BurnTakesSuite extends munit.FunSuite:
         line(burner, amount)))
 
   private def line(burner: PlayerId, amount: Int): PowerNote =
-    PowerNote(PowerSourceRef.Site(SiteId("test")), "took",
+    PowerNote(Some(PowerSourceRef.Site(SiteId("test"))), "took",
       Vector(NoteArg.Player(burner), NoteArg.Number(amount)))
 
   private val powers = WalkerPowers(Vector(TakesOthersBurnsForP1))

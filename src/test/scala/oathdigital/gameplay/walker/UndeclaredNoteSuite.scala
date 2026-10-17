@@ -16,14 +16,14 @@ class UndeclaredNoteSuite extends munit.FunSuite:
   private val source = PowerSourceRef.Card(WarningSignalsCard.id)
 
   test("a declared key is journaled"):
-    val note = PowerNote(source, "redistributed",
+    val note = PowerNote(Some(source), "redistributed",
       Vector(NoteArg.Player(PlayerId("red"))))
     assertEquals(
       NoteCheck.journal(declared, power, note, covers = false).map(_.note),
       Some(note))
 
   test("an undeclared key is refused, and the failure names both"):
-    val note = PowerNote(source, "nonesuch", Vector.empty)
+    val note = PowerNote(Some(source), "nonesuch", Vector.empty)
     val thrown = intercept[AssertionError](
       NoteCheck.journal(declared, power, note, covers = false))
     assert(thrown.getMessage.contains("denizen.warning-signals"),
@@ -31,14 +31,14 @@ class UndeclaredNoteSuite extends munit.FunSuite:
     assert(thrown.getMessage.contains("nonesuch"), thrown.getMessage)
 
   test("without the strict property the note is dropped, not thrown"):
-    val note = PowerNote(source, "nonesuch", Vector.empty)
+    val note = PowerNote(Some(source), "nonesuch", Vector.empty)
     assertEquals(
       NoteCheck.journal(declared, power, note, covers = false, strict = false),
       None)
 
   test("a power the catalogs never heard of writes what it likes"):
     val invented = PowerId("denizen.nonesuch")
-    val note = PowerNote(source, "whatever", Vector.empty)
+    val note = PowerNote(Some(source), "whatever", Vector.empty)
     assert(!DeclaredNotes.of(catalog).knows(invented))
     assertEquals(
       NoteCheck.journal(declared, invented, note, covers = false).map(_.note),
@@ -50,10 +50,10 @@ class UndeclaredNoteSuite extends munit.FunSuite:
       .getOrElse(fail("no catalog power declares an empty key set"))
     assert(DeclaredNotes.of(catalog).knows(quiet))
     intercept[AssertionError](NoteCheck.journal(declared, quiet,
-      PowerNote(source, "whatever", Vector.empty), covers = false))
+      PowerNote(Some(source), "whatever", Vector.empty), covers = false))
 
   test("powers with no catalog behind them declare nothing and are not checked"):
-    val note = PowerNote(source, "nonesuch", Vector.empty)
+    val note = PowerNote(Some(source), "nonesuch", Vector.empty)
     assertEquals(
       NoteCheck.journal(None, power, note, covers = false).map(_.note),
       Some(note))

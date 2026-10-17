@@ -8,8 +8,8 @@ import oathdigital.testkit.Unwrap.accepted
   * note with a bad source, unit or amount is refused. */
 class PowerNoteWireSuite extends munit.FunSuite:
   private def noteEvent(source: PowerSourceRef, args: NoteArg*): PowerNoted =
-    PowerNoted(PowerId("test.power"), PowerNote(source, "used", args.toVector),
-      covers = true)
+    PowerNoted(PowerId("test.power"),
+      PowerNote(Some(source), "used", args.toVector), covers = true)
 
   test("a power note round trips with every argument kind"):
     val event = noteEvent(PowerSourceRef.Card(DenizenId("denizen")),
@@ -69,3 +69,18 @@ class PowerNoteWireSuite extends munit.FunSuite:
       note => note("args")(0)("value") = -1,
       WireError.InvalidValue("$.payload.note.args[0].value",
         "must not be negative"))
+
+  test("a note with no source round trips and writes no source field"):
+    val event = PowerNoted(PowerId("procedure.muster"),
+      PowerNote(None, "mustered", Vector(NoteArg.Number(2))), covers = false)
+    val encoded = accepted(GameEventWire.encodeEvent("notes", 0, event))
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    assert(!ujson.read(encoded)("payload")("note").obj.contains("source"),
+      s"a sourceless note writes no source field: $encoded")
+
+  test("a note recorded with a source still decodes as one"):
+    val event = noteEvent(PowerSourceRef.Card(DenizenId("denizen")))
+    val encoded = accepted(GameEventWire.encodeEvent("notes", 0, event))
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    assertEquals(event.note.source,
+      Some(PowerSourceRef.Card(DenizenId("denizen"))))

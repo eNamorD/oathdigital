@@ -118,9 +118,13 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown walker step payload '$other'"))
 
-  private def encodeNote(note: PowerNote): ujson.Value = ujson.Obj(
-    "source" -> encodePowerSource(note.source), "key" -> note.key,
-    "args" -> ujson.Arr.from(note.args.map(encodeNoteArg)))
+  /** A procedure's note has no source and writes no `source` field. */
+  private def encodeNote(note: PowerNote): ujson.Value =
+    val fields = ujson.Obj("key" -> note.key,
+      "args" -> ujson.Arr.from(note.args.map(encodeNoteArg)))
+    note.source.foreach(source =>
+      fields("source") = encodePowerSource(source))
+    fields
 
   private def encodeNoteArg(arg: NoteArg): ujson.Value = arg match
     case NoteArg.Player(id) => ujson.Obj("kind" -> "player", "playerId" -> id.value)
@@ -153,7 +157,10 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
 
   private def decodeNote(value: ujson.Value,
       path: String): Either[WireError, PowerNote] = for
-    source <- decodePowerSource(value("source"), s"$path.source")
+    source <- value.obj.get("source") match
+      case None => Right(None)
+      case Some(field) =>
+        decodePowerSource(field, s"$path.source").map(Some.apply)
     args <- traverse(value("args").arr.zipWithIndex.toVector):
       case (arg, index) => decodeNoteArg(arg, s"$path.args[$index]")
   yield PowerNote(source, value("key").str, args)

@@ -25,7 +25,8 @@ class AutomaticUseSuite extends munit.FunSuite:
       Vector(this)
     def refusal(ready: ReadyGame, use: PowerUse): Option[PowerUseRefusal] =
       Option.when(use.power == automatic && Look(ready).favor(p1) == 0)(
-        PowerUseRefusal(id, PowerNote(PowerSourceRef.Card(card), "refused",
+        PowerUseRefusal(id,
+          PowerNote(Some(PowerSourceRef.Card(card)), "refused",
           Vector.empty), OperationReason("test-refused", "no favor",
           OperationReasonKind.Impossible)))
 

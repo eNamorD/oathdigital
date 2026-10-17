@@ -82,7 +82,7 @@ class PowerNoteHideSuite extends munit.FunSuite:
     assertEquals(notes(events), Vector.empty)
     assertEquals(offered(tree, pending, powers), Vector[DecisionOption](
       DecisionOption.Unavailable(button("yes"), OptionReason.Noted(forbidder,
-        PowerNote(hideSource, "forbade", Vector.empty))),
+        PowerNote(Some(hideSource), "forbade", Vector.empty))),
       button("no")))
     val WalkerOutcome.Finished(_, answered) = finished(ProcedureWalker.resolve(
       ready, tree, pending, Answered("ask", DecisionAnswer.ChooseOneAnswer(

@@ -174,7 +174,8 @@ class ModifierChoiceSuite extends munit.FunSuite:
     val forbids = OptionRestriction(
       (_, ref) => Option.when(ref == DecisionOptionRef.Denizen(beta))(
         OathViolation.InvalidEventOrder("not with alpha")),
-      note = (_, _) => Some(PowerNote(PowerSourceRef.Card(alpha), "barred",
+      note = (_, _) =>
+        Some(PowerNote(Some(PowerSourceRef.Card(alpha)), "barred",
         Vector.empty)))
     val restricting = Stand("a", alpha,
       effects = Map(window -> Vector(forbids)))
@@ -184,7 +185,7 @@ class ModifierChoiceSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(alpha))
     assertEquals(options(picked, on, walked), Vector(start,
       DecisionOption.Unavailable(card(beta), OptionReason.Noted(
-        restricting.id, PowerNote(PowerSourceRef.Card(alpha), "barred",
+        restricting.id, PowerNote(Some(PowerSourceRef.Card(alpha)), "barred",
           Vector.empty)))))
 
   test("Start says why the action cannot go on, and a pick that makes it " +

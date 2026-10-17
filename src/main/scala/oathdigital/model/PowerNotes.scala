@@ -1,11 +1,13 @@
 package oathdigital.model
 
-/** What one power says about its own effect, for the Game Log (power log
-  * lines design, section 1). `source` is the card, site or banner the line
-  * starts with. `key` picks the power's template. `args` are typed
+/** What one power, game rule or procedure says about its own effect, for
+  * the Game Log (power log lines design, section 1; procedures journal their
+  * own notes design, ruling 1). `source` is the card, site or banner the line
+  * starts with, and is absent for a procedure's own line, which starts with
+  * its sentence. `key` picks the writer's template. `args` are typed
   * references, never text, so a card still passes the log's knowledge rule.
   */
-final case class PowerNote(source: PowerSourceRef, key: String,
+final case class PowerNote(source: Option[PowerSourceRef], key: String,
     args: Vector[NoteArg])
 
 sealed trait NoteArg extends Product with Serializable
@@ -58,7 +60,11 @@ enum NotePart:
 final case class NoteKey private[model] (name: String,
     template: Vector[NotePart]):
   def apply(source: PowerSourceRef, args: NoteArg*): PowerNote =
-    PowerNote(source, name, args.toVector)
+    PowerNote(Some(source), name, args.toVector)
+  /** A line that starts with its sentence rather than a source: a
+    * procedure's own. */
+  def sourceless(args: NoteArg*): PowerNote =
+    PowerNote(None, name, args.toVector)
 object NoteKey:
   /** A phase power's own line, which replaces "Used {card}". */
   val Used: String = "used"

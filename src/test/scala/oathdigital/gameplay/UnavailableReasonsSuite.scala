@@ -56,7 +56,7 @@ class UnavailableReasonsSuite extends munit.FunSuite:
       } then Vector(Sequence(Vector.empty, Some(nested))) else Vector.empty)))
     assertEquals(asked(tree, powers), DecisionQuery.ChooseOne(Vector(
       DecisionOption.Unavailable(button("yes"), OptionReason.Noted(forbidder,
-        PowerNote(hideSource, "forbade", Vector.empty))), button("no"))))
+        PowerNote(Some(hideSource), "forbade", Vector.empty))), button("no"))))
     val pending = parked(ProcedureWalker.advance(ready, tree, None, powers)).tree
     assertEquals(ProcedureWalker.resolve(ready, tree, pending,
       Answered("ask", DecisionAnswer.ChooseOneAnswer(

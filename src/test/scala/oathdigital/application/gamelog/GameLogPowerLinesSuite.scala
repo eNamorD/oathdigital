@@ -173,7 +173,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
   test("a note no power words posts nothing"):
     val steps = silverTongueSteps
     val unknown = PowerNoted(PowerId("test.unknown"),
-      PowerNote(card, "said", Vector.empty), covers = false)
+      PowerNote(Some(card), "said", Vector.empty), covers = false)
     assertEquals(lines(inserted(steps, take(steps), unknown)), lines(steps))
 
   test("a card its viewer may not identify is not named to them"):

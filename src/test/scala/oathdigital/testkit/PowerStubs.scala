@@ -62,7 +62,8 @@ object PowerStubs:
     OathViolation.InvalidEventOrder("hidden by test")
 
   /** The note a hiding stub writes for each option it hides. */
-  def hidNote(ref: DecisionOptionRef): PowerNote = PowerNote(hideSource, "hid",
+  def hidNote(ref: DecisionOptionRef): PowerNote =
+    PowerNote(Some(hideSource), "hid",
     ref match
       case DecisionOptionRef.Site(site) => Vector(NoteArg.Site(site))
       case _ => Vector.empty)
@@ -85,4 +86,4 @@ object PowerStubs:
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(hook -> Vector(Restriction((_, _) => Some(hiddenByTest),
-        (_, _) => Some(PowerNote(hideSource, "forbade", Vector.empty)))))
+        (_, _) => Some(PowerNote(Some(hideSource), "forbade", Vector.empty)))))

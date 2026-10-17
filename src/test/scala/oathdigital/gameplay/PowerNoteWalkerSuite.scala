@@ -14,7 +14,7 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
   private val power = PowerId("test.noting")
   private val source = PowerSourceRef.Site(SiteId("test-site"))
   private val pool = PoolKey("test-pool")
-  private def said(word: String) = PowerNote(source, word, Vector.empty)
+  private def said(word: String) = PowerNote(Some(source), word, Vector.empty)
   private def note(word: String): Note = Note(power, _ => Some(said(word)))
   private def noted(word: String) =
     PowerNoted(power, said(word), covers = false)
