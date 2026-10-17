@@ -10,7 +10,8 @@ import oathdigital.model._
 private[gamelog] final case class OpStep(operation: CoreOperation,
     before: ReadyGame, after: ReadyGame)
 
-/** A walker run in progress: its procedure, whose action it is, the index of
+/** A walker run in progress: its procedure, whose action it is (the walk's
+  * actor: a dequeued entry's actor, else the turn's player), the index of
   * its first event, and -- once posted -- the segment end of its start line.
   */
 private[gamelog] final case class Run(procedure: ProcedureRef, actor: PlayerId,

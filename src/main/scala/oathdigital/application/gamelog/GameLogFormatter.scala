@@ -193,12 +193,25 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         walker(journal, run, at, viewer)
       // Outside any run; `formatLive` files it in the latest section.
       case FollowUpSkipped(entry) =>
+        val before = journal.readyBefore(at)
+        val offTurn = before.exists(
+          _.game.current.turn.activePlayer != entry.actor)
+        val named = procedures.of(entry.procedure).tag
+          .getOrElse(entry.procedure.key)
         (Vector(Posted(LogKind.Action,
           entry.source.toVector.flatMap(words.source(_,
-            journal.readyBefore(at).toVector, viewer)) ++
-            Vector(Text(s": ${procedures.of(entry.procedure).tag
-              .getOrElse(entry.procedure.key)} skipped.")))), run)
+            before.toVector, viewer)) ++
+            (if offTurn then Vector(Text(s": $named skipped by "),
+              words.player(entry.actor), Text("."))
+            else Vector(Text(s": $named skipped."))))), run)
       case _: WalkerEvent => (Vector.empty, run)
+
+  /** The actor of the entry a run was started from: its `ProcedureDequeued`
+    * is in the run's first segment. A walk with no entry is the turn's
+    * player's. */
+  private def dequeuedActor(journal: LogJournal, at: Int): Option[PlayerId] =
+    (at to journal.segmentEnd(at)).iterator.map(journal.event)
+      .collectFirst { case ProcedureDequeued(entry) => entry.actor }
 
   /** Lines for one event of a walker run. A run begins at the first walker
     * event after the previous run completed, and its procedure is read from
@@ -208,7 +221,8 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     current.orElse(for
       procedure <- journal.procedureAt(at)
       ready <- journal.readyBefore(at)
-    yield Run(procedure, ready.game.current.turn.activePlayer, at, None)) match
+    yield Run(procedure, dequeuedActor(journal, at)
+      .getOrElse(ready.game.current.turn.activePlayer), at, None)) match
       case None => (Vector.empty, None)
       case Some(run) =>
         val log = procedures.of(run.procedure)
