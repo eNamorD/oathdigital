@@ -315,6 +315,21 @@ one.
   target is empty, or a bank with no stock. The game should warn the player
   before they commit, without refusing the choice. Recorded while designing
   Catalog batch 2.
+- [ ] **Improve the Game Log lines the wording ledger collects.** The
+  procedures-journal-their-notes migration forbids wording changes inside a
+  migration commit, so a golden diff means one thing. The lines it passes
+  over are listed in
+  `docs/superpowers/specs/2026-10-16-game-log-wording-ledger.md`, each with
+  where it is built and why it is worth a second look. Recorded in the
+  procedures journal their own notes design of 2026-10-16.
+- [ ] **Rename the `Power*` note family.** `PowerNote`, `PowerNoted` and
+  `PowerLines` are named for one of three emitters: powers, printed rules
+  and, after the migration above, procedures. The `PowerId` key already
+  holds `rule.homeland-discard` and will hold `procedure.muster`. Rename the
+  Scala types only; the wire tag `walker.power-noted` must stay, because
+  changing it would make an openable game fail to load. Roughly 368
+  construction sites, no behaviour change. Recorded in the procedures
+  journal their own notes design of 2026-10-16.
 
 ### Powers-related deferred items
 
