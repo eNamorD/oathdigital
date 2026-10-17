@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
@@ -227,6 +228,14 @@ class GameLogPropertiesSuite extends munit.FunSuite:
     }
     assert(silent.forall(_._2.nonEmpty), s"a silent procedure says why: $silent")
     // Rises by one with every procedure the migration moves.
-    assertEquals(ProcedureRef.all.count(
-      logs.of(_).lines == ActionLineSource.Notes), 1,
-      "Muster journals its own notes")
+    val noting = ProcedureRef.all.filter(
+      logs.of(_).lines == ActionLineSource.Notes)
+    assertEquals(noting.map(_.key), Vector("muster"))
+    // A procedure can be marked `Notes` while declaring none, and then its
+    // line vanishes with nothing said: `NoteCheck` refuses a note whose key
+    // is undeclared. Tie the two together here, since nothing else does.
+    val keyless = noting.filter(procedure =>
+      !ProcedureNotes.all.exists((id, keys) =>
+        id == ProcedureNotes.id(procedure) && keys.nonEmpty))
+    assertEquals(keyless.map(_.key), Vector.empty,
+      "a procedure that journals its own notes declares at least one key")

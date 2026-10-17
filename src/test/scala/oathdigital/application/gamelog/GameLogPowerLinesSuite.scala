@@ -541,21 +541,9 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val note = saying(Table.p1, NoteArg.Number(1))
     assertEquals(ours(inserted(steps, take(steps), note, note)).size, 1)
 
-  test("a covering note after a note covers it, and a plain one does not"):
-    val steps = silverTongueSteps
-    val at = take(steps)
-    def covered(events: PowerNoted*): Boolean =
-      val noted = inserted(steps, at, events*)
-      new LogJournal(noted).covered(noted.indexWhere(_.event.event match
-        case PowerNoted(`musterId`, _, _) => true
-        case _ => false))
-    assert(covered(musterNote(2), musterNote(2, covers = true)),
-      "a covering note that follows a note covers it")
-    assert(!covered(musterNote(2), musterNote(3)),
-      "a plain note that follows a note does not cover it")
-
-  test("a covered procedure note posts nothing"):
+  test("a covering note does not suppress a procedure note"):
     val steps = silverTongueSteps
     val at = take(steps)
     assertEquals(procedureLines(inserted(steps, at, musterNote(2),
-      musterNote(3, covers = true))).map(text), Vector("Mustered 3 warbands"))
+      musterNote(3, covers = true))).map(text),
+      Vector("Mustered 2 warbands", "Mustered 3 warbands"))

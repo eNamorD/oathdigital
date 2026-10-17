@@ -141,6 +141,17 @@ loading. `FormatVersion` does not move.
 A new object in `gameplay`, beside `RuleNotes`, in the shape `PrintedRule`
 set: one list, read by every registry that keys a note source by id.
 
+Its `all`, and the `ids` set derived from it, are **`lazy`**, and that is not
+a style choice. This object and every migrated procedure refer to each other:
+the procedure builds its `NoteSet` from `ProcedureNotes.id`, and
+`ProcedureNotes` reads the procedure's `noteKeys`. Eager, whichever of the two
+a program touched first won, and touching the procedure first read its
+`NoteSet` before its own initialiser had assigned it — a
+`NullPointerException` at class initialisation, not a test failure, reproduced
+during slice 1 by a driver naming `MusterProcedure.decisionId` before anything
+else. `id` is a `def` over no state for the same reason. Every slice that adds
+a procedure inherits this constraint.
+
 ```scala
 object ProcedureNotes:
   def id(procedure: ProcedureRef): PowerId =
@@ -187,18 +198,29 @@ argument kind is a decode error.
 
 ### `covered` and `repeated`
 
-`LogJournal.covered(index)` answers only for a `WalkerStepRecorded`: it asks
-whether a covering note follows the step. `ActionLines.musterLines` opens
-with `if journal.covered(at)` so that a vow's warband note suppresses the
-Muster line. Once the Muster line is itself a note, that is note-covers-note,
-which `covered` cannot express. It is extended to answer for a `PowerNoted`
-as well.
+**Amended during slice 1, against the code.** This section first said
+`LogJournal.covered` must be extended to answer for a `PowerNoted`, because
+`ActionLines.musterLines` opened with `if journal.covered(at)` and a vow's
+warband note suppressed the Muster line. That reading of the guard was
+wrong. Vow of Beastkin and Vow of Wandering gain through `ExtraWarbands`,
+whose warbands also move from a bank into the play area and so also matched
+`musterLines`' own pattern; the guard existed to stop that *second inferred
+line* at the vow's step. Once the line is a note there is no second inferred
+line, and nothing to suppress.
+
+So `covered` is left exactly as it was, answering only for a step, and a
+procedure's note is never suppressed by a covering note. Extending it would
+have been a new rule for all eighteen procedures rather than the existing one
+carried over, and it would have deleted Trade's line in slice 3:
+`MountedLibrary` writes a `covers = true` note into the same `TradeGain`
+window where `TradeProcedure`'s note will sit, and no script or golden covers
+Mounted Library, so nothing would have caught it.
 
 `PowerLines.repeated` drops a note identical to an earlier one in the same
 run. Its reason is the hide hook, which fires once per hidden option — the
 Circlet of Command hiding three relics reads once. Procedures have no hide
 hook, and two identical procedure notes in one run are a real event. Procedure
-notes are exempt.
+notes are exempt. This half of the ruling stands.
 
 ### Where a shared builder's keys live
 

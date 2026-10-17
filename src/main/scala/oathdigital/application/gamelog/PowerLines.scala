@@ -68,15 +68,22 @@ private[gamelog] final class PowerLines(words: LogWords,
     journal.readyBefore(run.first).toVector ++
       restated.toVector.flatMap(journal.readyBefore)
 
-  /** Whether the note at `at` posts at all. A procedure's own note is the
-    * line its action would otherwise infer, so it answers the two questions
-    * that line answered: a covering note restates it, and two identical ones
-    * in a run are two real effects. A power's note keeps the drop the hide
-    * hook needs, which fires once per hidden option. */
+  /** Whether the note at `at` posts at all. The identical-note drop exists
+    * for the hide hook, which fires once per hidden option; a procedure has
+    * no hide hook, and two identical procedure notes in one run are two
+    * real effects, so a procedure's note always posts.
+    *
+    * It is deliberately not suppressed by a covering note. Of the lines
+    * this migration replaces, only Muster's consulted `covered`, and it did
+    * so on the *step* index, to stop a vow's own warband gain matching the
+    * Muster pattern a second time -- a second inferred line, which no
+    * longer exists. Suppressing a procedure's note when a power's covering
+    * note follows it would be a new rule for all eighteen, and it would
+    * delete Trade's line, because Mounted Library writes a covering note
+    * into the same gain window. */
   private def posts(journal: LogJournal, run: Run, at: Int, power: PowerId,
       note: PowerNote): Boolean =
-    if ProcedureNotes.writes(power) then !journal.covered(at)
-    else !repeated(journal, run, at, power, note)
+    ProcedureNotes.writes(power) || !repeated(journal, run, at, power, note)
 
   /** A procedure's own note is its action's line, as is a phase power's
     * `used` note or a variant of it. */

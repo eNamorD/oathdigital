@@ -65,13 +65,13 @@ private[gamelog] final class LogJournal(
       case PowerNoted(`power`, note, _) => NoteKey.isUse(note.key)
       case _ => false)
 
-  /** Whether a covering note restates the step or note at `index`.
+  /** Whether a covering note restates the step at `index`: one follows it
+    * in its segment before the next step.
     *
-    * A step is covered by any covering note that follows it in its segment
-    * before the next step. A note is covered only by the very next note or
-    * step, and only when that is a covering note: a covering note restates
-    * what comes immediately before it, so of two notes in a row only the
-    * second is covered by the note that covers it. */
+    * A note is never covered. A covering note drops the generic lines of
+    * the step it restates, and a procedure's own note is not a generic
+    * line; see `PowerLines.posts` for why answering this for a note would
+    * be a new rule rather than the existing one extended. */
   def covered(index: Int): Boolean = event(index) match
     case _: WalkerStepRecorded =>
       (index + 1 to segmentEnd(index)).iterator.map(event)
@@ -80,11 +80,6 @@ private[gamelog] final class LogJournal(
           case noted: PowerNoted => noted.covers
           case _ => false
         }
-    case _: PowerNoted =>
-      (index + 1 to segmentEnd(index)).iterator.map(event).collectFirst {
-        case noted: PowerNoted => noted.covers
-        case _: WalkerStepRecorded => false
-      }.getOrElse(false)
     case _ => false
 
   /** Every operation of `run` from its first event through `at`. */

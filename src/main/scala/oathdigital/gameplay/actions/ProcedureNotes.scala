@@ -13,17 +13,26 @@ import oathdigital.model.{ActionRef, NoteKey, PowerId, ProcedureRef}
   * it cannot drift from the key a section is written under.
   */
 object ProcedureNotes:
+  /** A `def` over no state, so a procedure may call it while its own
+    * object is still initialising. */
   def id(procedure: ProcedureRef): PowerId =
     PowerId(s"procedure.${procedure.key}")
 
   /** Every procedure, with the keys it writes. A procedure that has not
     * migrated writes none and its line still comes from `ProcedureLog`;
     * listing it anyway means the declared-set union covers it, so a note it
-    * is not entitled to write is refused rather than unrecognised. */
-  val all: Vector[(PowerId, Vector[NoteKey])] =
+    * is not entitled to write is refused rather than unrecognised.
+    *
+    * `lazy`, with `ids` below, because this object and every migrated
+    * procedure refer to each other: the procedure builds its `NoteSet` from
+    * `id`, and `keys` reads the procedure's `noteKeys`. Eager, whichever of
+    * the two a program touched first won, and touching the procedure first
+    * read its `NoteSet` before its initialiser had assigned it, which is a
+    * `NullPointerException` at class initialisation, not a test failure. */
+  lazy val all: Vector[(PowerId, Vector[NoteKey])] =
     ProcedureRef.all.map(procedure => id(procedure) -> keys(procedure))
 
-  private val ids: Set[PowerId] = all.map(_._1).toSet
+  private lazy val ids: Set[PowerId] = all.map(_._1).toSet
 
   /** Whether `power` is a procedure's id rather than a power's or a game
     * rule's. The Game Log asks this, and not whether a note has a source:
