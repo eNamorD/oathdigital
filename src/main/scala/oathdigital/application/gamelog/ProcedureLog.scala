@@ -177,8 +177,10 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       lines = ActionLineSource.Rule(actions.tradeLines),
       anchor = starts.paysCost,
       narrated = Vector(Told(TradeProcedure.decisionId)))
+    // The take line tells both decisions, in one of four wordings, so no
+    // single key names them.
     case ActionRef.Challenge => ProcedureLog(tag = Some("Challenge"),
-      lines = ActionLineSource.Rule(actions.challengeLines),
+      lines = ActionLineSource.Notes(),
       narrated = Vector(Told(ChallengeProcedure.bannerDecisionId),
         Told(ChallengeProcedure.amountDecisionId)))
     // Every Campaign line tells its own decision.

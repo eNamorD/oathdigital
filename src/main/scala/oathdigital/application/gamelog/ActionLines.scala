@@ -104,20 +104,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       viewer: Option[PlayerId]): Vector[Posted] =
     campaigns.lines(journal, run, at, viewer)
 
-  def challengeLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    journal.ops(at).collect {
-      case OpStep(Move(Piece.Banner(banner), PositionedLocation(from, _, _),
-          PositionedLocation(Location.PlayArea(taker), _, _), _, _), _, _)
-          if taker == run.actor =>
-        val holder = from match
-          case Location.PlayArea(player) => words.player(player)
-          case _ => Text("the bank")
-        action(Vector(Text("Took "), words.banner(banner), Text(" from "),
-          holder) ++ paidOnto(journal, run, at, banner).toVector.map(paid =>
-            Text(s" with $paid")))
-    }
-
   def bannerLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     journal.ops(at).collect {
@@ -308,15 +294,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
     }.contains(true)
 
   /** What the challenger put on the banner, earlier in the run. */
-  private def paidOnto(journal: LogJournal, run: Run, at: Int, banner: Banner)
-      : Option[String] =
-    journal.runOps(run, at).collectFirst {
-      case (_, OpStep(Move(piece, PositionedLocation(Location.PlayArea(giver), _, _),
-          PositionedLocation(Location.OnBanner(onto), _, _), _, _), _, _))
-          if giver == run.actor && onto == banner && resource(piece).nonEmpty =>
-        resource(piece)
-    }
-
   /** "Used {card}" at the first step recording one of the power's own
     * effects: a step that is not only the payment onto its card or to the
     * bank, and not only the use record. At completion if it recorded none. */

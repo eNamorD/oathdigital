@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.gameplay.actions.challenge.ChallengeProcedure
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
@@ -76,3 +77,30 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
         NoteArg.Cards(Vector(mercenaries))),
       Vector[LogSpan](Text("Placed favor on "), Text("2 Denizens"),
         Text(" and secrets on "), Text("a Denizen")))
+
+  private val rival = PlayerId("p2")
+
+  test("a Challenge against a holder reads as the rule wrote it"):
+    assertEquals(spoken(ActionRef.Challenge,
+        ChallengeProcedure.tookFromPlayerWithFavor,
+        NoteArg.Banner(Banner.PeoplesFavor), NoteArg.Player(rival),
+        NoteArg.Number(2)),
+      Vector[LogSpan](Text("Took "), words.banner(Banner.PeoplesFavor),
+        Text(" from "), words.player(rival), Text(" with "), Text("2"),
+        Text(" favor")))
+
+  test("a Challenge for Darkest Secret counts secrets"):
+    assertEquals(spoken(ActionRef.Challenge,
+        ChallengeProcedure.tookFromBankWithSecrets,
+        NoteArg.Banner(Banner.DarkestSecret), NoteArg.Number(2)),
+      Vector[LogSpan](Text("Took "), words.banner(Banner.DarkestSecret),
+        Text(" from the bank with "), Text("2"), Text(" "), Text("secrets")))
+
+  test("a Challenge for one secret says secret"):
+    assertEquals(spoken(ActionRef.Challenge,
+        ChallengeProcedure.tookFromPlayerWithSecrets,
+        NoteArg.Banner(Banner.DarkestSecret), NoteArg.Player(rival),
+        NoteArg.Number(1)),
+      Vector[LogSpan](Text("Took "), words.banner(Banner.DarkestSecret),
+        Text(" from "), words.player(rival), Text(" with "), Text("1"),
+        Text(" "), Text("secret")))

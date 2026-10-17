@@ -1,7 +1,8 @@
 package oathdigital.gameplay.actions.challenge
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.BannerRules
+import oathdigital.gameplay.actions.{BannerRules, ProcedureNotes}
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.walker.ModifierChoice
 import oathdigital.model._
 
@@ -21,6 +22,29 @@ object ChallengeProcedure:
 
   /** "Start Challenge": the modifier decision's button. */
   val startLabel: String = "Start Challenge"
+
+  private val notes = NoteSet(ProcedureNotes.id(ActionRef.Challenge))
+  /** "Took People's Favor from p2 with 2 favor". Favor never pluralises;
+    * secrets do, which is why the unit is in the template and not an
+    * argument. */
+  val tookFromPlayerWithFavor: NoteKey = notes.key("took-from-player-favor",
+    Vector(NotePart.Text("Took "), NotePart.Arg(0), NotePart.Text(" from "),
+      NotePart.Arg(1), NotePart.Text(" with "), NotePart.Arg(2),
+      NotePart.Text(" favor")))
+  val tookFromBankWithFavor: NoteKey = notes.key("took-from-bank-favor",
+    Vector(NotePart.Text("Took "), NotePart.Arg(0),
+      NotePart.Text(" from the bank with "), NotePart.Arg(1),
+      NotePart.Text(" favor")))
+  val tookFromPlayerWithSecrets: NoteKey = notes.key(
+    "took-from-player-secrets",
+    Vector(NotePart.Text("Took "), NotePart.Arg(0), NotePart.Text(" from "),
+      NotePart.Arg(1), NotePart.Text(" with "), NotePart.Arg(2),
+      NotePart.Text(" "), NotePart.Plural(2, "secret", "secrets")))
+  val tookFromBankWithSecrets: NoteKey = notes.key("took-from-bank-secrets",
+    Vector(NotePart.Text("Took "), NotePart.Arg(0),
+      NotePart.Text(" from the bank with "), NotePart.Arg(1),
+      NotePart.Text(" "), NotePart.Plural(1, "secret", "secrets")))
+  def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
@@ -122,10 +146,38 @@ object ChallengeProcedure:
       Sequence(ChallengeRibbon.steps(actor, banner),
         Some(PowerWindow.ChallengeRibbon)),
       Sequence(Vector[Operation](payment(actor, banner, amount),
+        // Directly after the payment, so `previous` is the payment and the
+        // note reads what actually left the play area rather than the
+        // amount answered. The holder is read here, before the take moves
+        // the banner, which is the holder the deleted rule read off the
+        // recorded `Take`.
+        Note(ProcedureNotes.id(ActionRef.Challenge), tookNote(actor, banner,
+          BannerRules.holder(ready.game.current, banner))),
         custody(ready, actor, banner)), Some(PowerWindow.ChallengePlacement))))
       .getOrElse(Vector[Operation](BuildOps((_, _) => Left(
         OathViolation.InvalidEventOrder(
           "Challenge reached its effects without a banner and an amount")))))
+
+  /** What the challenger put on the banner, in the step before the note,
+    * and who held it. Nothing paid writes nothing. */
+  private def tookNote(actor: PlayerId, banner: Banner,
+      holder: Option[PlayerId])(states: NoteStates): Option[PowerNote] =
+    states.previous.map(step => banner match
+      case Banner.PeoplesFavor => -NoteSupport.favor(step, actor)
+      case Banner.DarkestSecret => -NoteSupport.secrets(step, actor))
+      .filter(_ > 0).map(paid => holder match
+        case Some(rival) => fromPlayer(banner).sourceless(
+          NoteArg.Banner(banner), NoteArg.Player(rival), NoteArg.Number(paid))
+        case None => fromBank(banner).sourceless(
+          NoteArg.Banner(banner), NoteArg.Number(paid)))
+
+  private def fromPlayer(banner: Banner): NoteKey = banner match
+    case Banner.PeoplesFavor => tookFromPlayerWithFavor
+    case Banner.DarkestSecret => tookFromPlayerWithSecrets
+
+  private def fromBank(banner: Banner): NoteKey = banner match
+    case Banner.PeoplesFavor => tookFromBankWithFavor
+    case Banner.DarkestSecret => tookFromBankWithSecrets
 
   private def payment(actor: PlayerId, banner: Banner, amount: Int): Operation =
     Move(banner match {
