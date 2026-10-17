@@ -163,8 +163,9 @@ the entry's actor; a menu start still requires the turn's player.
 - A queued entry may name its `sender`, the player whose power sent its
   actor (catalog batch 8, slice 15). A waivable restriction the sender could
   waive does not block the walk. A power's queued Travel may carry its
-  destination as its one start argument, and then asks no destination
-  question (Palanquin).
+  destination as its first start argument, and then asks no destination
+  question (Palanquin). A later argument is for the sender's own rules: a
+  waived toll's free option.
 
 ## Decisions beyond the design
 

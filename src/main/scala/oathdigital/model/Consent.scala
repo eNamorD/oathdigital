@@ -183,8 +183,9 @@ final case class ConsentState(
             Some(updated), turn = Some(now)))
         else Right(copy(pending = Some(updated)))
 
-  /** The requester takes their unanswered request back; nothing is
-    * remembered (ruling 14). */
+  /** The requester takes their unanswered request back; no grant is
+    * remembered (ruling 14). An alternative's refusal given before it
+    * stays. */
   def withdrawn(requester: PlayerId): Either[OathViolation, ConsentState] =
     if pending.exists(_.requester == requester) then Right(copy(pending = None))
     else Left(OathViolation.InvalidEventOrder(

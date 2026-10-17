@@ -216,8 +216,10 @@ The approved changes outside `gameplay/powers/`:
   the turn's player. A power's queued Campaign may name its defender as its
   one start argument (`CampaignSetup.queuedDefender`).
 - **A Travel sent to a site** (slice 15). A power's queued Travel `Run`
-  may carry its destination as its one start argument, and then asks no
-  destination question. Its entry names its `sender`: a waivable
+  may carry its destination as its first start argument, and then asks no
+  destination question. A later argument is for the sender's own rules
+  (Palanquin's waived toll), and a start's arguments must equal its
+  entry's, so a client cannot add one. Its entry names its `sender`: a waivable
   restriction the sender could waive does not block it, and the queued
   destination counts as its actor's answer, so a grant of it lets the
   restriction through. `QueuedStarts.consent` tells a power which grants a

@@ -100,7 +100,9 @@ final case class TollRoads private (catalog: ExecutableCatalog)
           DecisionOptionRef.Site(route.destination)))
 
   /** Whether the entry carries the free option after its destination: the
-    * sender ruling Toll Roads waived the toll. */
+    * sender ruling Toll Roads waived the toll. The entry runs at the front
+    * of the queue, right after the sender's walk, and a start's arguments
+    * must equal its entry's, so the sender still rules it. */
   private def waivedBySender(ready: ReadyGame, route: TravelRoute.PawnMove)
       : Boolean = ready.game.current.walkerEntry.exists(
     _.startArgs.contains(TollRoads.free(route.destination)))

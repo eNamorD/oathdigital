@@ -431,6 +431,8 @@ the breach, so there is no special path.
   the others stay asked; the request is refused once every alternative has
   refused. A required ask beside the alternatives must still grant, and
   its refusal settles the whole request. A request asks each granter once.
+  A grant is remembered only once its request settles granted; a refusal,
+  a refused settle or a withdrawal leaves only refusals behind.
 - **`RequestConsent`'s `granters`** names the alternatives to ask; empty
   asks them all. A narrowed request keeps the required asks and the named
   alternatives, and covers only their keys.

@@ -676,8 +676,10 @@ The shared rules:
     the target's consent, or "Waive the toll". Option labels cannot name a
     player, so the ask's hover names the target.
   - **Inside the sent Travel** no toll question is asked. If the target
-    agreed, they pay; otherwise the toll was waived, and the line reads
-    "{Blue} paid nothing, with {Red}'s consent."
+    agreed, they pay, unless the user, ruling Toll Roads, waived it; the
+    queued entry then carries the toll's free option after the site.
+    Otherwise the toll was waived, and the line reads "{Blue} paid
+    nothing, with {Red}'s consent."
   - **One granter, two grants.** A player asked for a restriction's waiver
     who also rules the Toll Roads that charges the target answers for both,
     and the target is not asked.
