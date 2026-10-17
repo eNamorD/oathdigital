@@ -104,17 +104,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       viewer: Option[PlayerId]): Vector[Posted] =
     campaigns.lines(journal, run, at, viewer)
 
-  def bannerLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    journal.ops(at).collect {
-      case OpStep(Move(piece,
-          PositionedLocation(Location.PlayArea(giver), _, _),
-          PositionedLocation(Location.OnBanner(banner), _, _), _, _), _, _)
-          if giver == run.actor && resource(piece).nonEmpty =>
-        action(Vector(Text(s"Placed ${resource(piece)} on "),
-          words.banner(banner)))
-    }
-
   /** The minor actions post their legacy lines, now as action lines. */
   def peekLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =

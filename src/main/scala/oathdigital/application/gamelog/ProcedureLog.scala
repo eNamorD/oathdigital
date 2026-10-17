@@ -192,9 +192,10 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
     // Wake's own action: its lines stand outside any band.
     case ActionRef.TakeWealth => ProcedureLog(tag = None,
       lines = ActionLineSource.Notes(), isSection = false)
-    // No modifier window, so no tag.
+    // No modifier window, so no tag. The placement line tells both
+    // decisions, in one of two wordings, so no single key names them.
     case ActionRef.PlaceBannerResource => ProcedureLog(tag = None,
-      lines = ActionLineSource.Rule(actions.bannerLines),
+      lines = ActionLineSource.Notes(),
       narrated = Vector(Told(PlaceBannerResourceProcedure.bannerDecisionId),
         Told(PlaceBannerResourceProcedure.amountDecisionId)))
     // Every Negotiation line tells its own decision.

@@ -1,7 +1,8 @@
 package oathdigital.gameplay.actions.challenge
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.BannerRules
+import oathdigital.gameplay.actions.{BannerRules, ProcedureNotes}
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 /** Place Banner Resource on the walker: the holder of a banner moves favor or
@@ -11,6 +12,17 @@ import oathdigital.model._
 object PlaceBannerResourceProcedure:
   val bannerDecisionId: String = "place-banner-resource.banner"
   val amountDecisionId: String = "place-banner-resource.amount"
+
+  private val notes = NoteSet(ProcedureNotes.id(ActionRef.PlaceBannerResource))
+  /** "Placed 1 favor on People's Favor". */
+  val placedFavor: NoteKey = notes.key("placed-favor", Vector(
+    NotePart.Text("Placed "), NotePart.Arg(0), NotePart.Text(" favor on "),
+    NotePart.Arg(1)))
+  val placedSecrets: NoteKey = notes.key("placed-secrets", Vector(
+    NotePart.Text("Placed "), NotePart.Arg(0), NotePart.Text(" "),
+    NotePart.Plural(0, "secret", "secrets"), NotePart.Text(" on "),
+    NotePart.Arg(1)))
+  def noteKeys: Vector[NoteKey] = notes.declared
 
   /** The amount question's own copy: the banner as it is printed, and the
     * one resource that banner takes.
@@ -62,10 +74,30 @@ object PlaceBannerResourceProcedure:
       case Banner.PeoplesFavor => Piece.Favor(amount)
       case Banner.DarkestSecret => Piece.Secrets(amount)
     }, PositionedLocation(Location.PlayArea(actor)),
-      PositionedLocation(Location.OnBanner(banner)))),
+      PositionedLocation(Location.OnBanner(banner))),
+      // Directly after the move, so `previous` is the move and the note
+      // reads what actually left the play area rather than the amount
+      // answered.
+      Note(ProcedureNotes.id(ActionRef.PlaceBannerResource),
+        placedNote(actor, banner))),
       Some(PowerWindow.PlaceBannerResourcePlacement)))).getOrElse(
       Vector[Operation](BuildOps((_, _) => Left(OathViolation.InvalidEventOrder(
         "Place Banner Resource reached its move without a banner and an amount")))))
+
+  /** What reached the banner in the step before the note. Nothing placed
+    * writes nothing, as the rule this replaced wrote none without a
+    * recorded `Move` onto the banner. */
+  private def placedNote(actor: PlayerId, banner: Banner)(states: NoteStates)
+      : Option[PowerNote] =
+    states.previous.map(step => banner match
+      case Banner.PeoplesFavor => -NoteSupport.favor(step, actor)
+      case Banner.DarkestSecret => -NoteSupport.secrets(step, actor))
+      .filter(_ > 0).map(placed => key(banner).sourceless(
+        NoteArg.Number(placed), NoteArg.Banner(banner)))
+
+  private def key(banner: Banner): NoteKey = banner match
+    case Banner.PeoplesFavor => placedFavor
+    case Banner.DarkestSecret => placedSecrets
 
   private def amountDecision(ready: ReadyGame, actor: PlayerId,
       banner: Banner): Operation =

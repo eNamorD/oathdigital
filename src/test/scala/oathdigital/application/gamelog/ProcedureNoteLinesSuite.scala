@@ -1,7 +1,8 @@
 package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.ProcedureNotes
-import oathdigital.gameplay.actions.challenge.ChallengeProcedure
+import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
+  PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
@@ -104,3 +105,10 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
       Vector[LogSpan](Text("Took "), words.banner(Banner.DarkestSecret),
         Text(" from "), words.player(rival), Text(" with "), Text("1"),
         Text(" "), Text("secret")))
+
+  test("placing secrets on a banner reads as the rule wrote it"):
+    assertEquals(spoken(ActionRef.PlaceBannerResource,
+        PlaceBannerResourceProcedure.placedSecrets, NoteArg.Number(2),
+        NoteArg.Banner(Banner.DarkestSecret)),
+      Vector[LogSpan](Text("Placed "), Text("2"), Text(" "), Text("secrets"),
+        Text(" on "), words.banner(Banner.DarkestSecret)))
