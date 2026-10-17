@@ -1,9 +1,10 @@
 package oathdigital.gameplay.powers
 
 import java.nio.file.{Files, Path, Paths}
-import oathdigital.gameplay.actions.RuleNotes
+import oathdigital.gameplay.actions.{ProcedureNotes, RuleNotes}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.model.{NoteKey, NotePart, PowerId}
+import oathdigital.model.{ActionRef, NoteKey, NotePart, PowerId,
+  ProcedureRef}
 
 /** Every power's declared note keys and their wordings, exactly. Note keys
   * are journaled in `PowerNoted` events and the log looks a saved game's
@@ -74,3 +75,15 @@ class DeclaredNoteKeysSuite extends munit.FunSuite:
       assertEquals(each.size, 1,
         s"${id.value} declares different notes in each catalog: " +
           each.map(_.mkString("[", ", ", "]")).mkString(" vs "))
+
+  test("every procedure reaches the declared union under its derived id"):
+    val muster = ProcedureNotes.id(ActionRef.Muster)
+    assertEquals(muster, PowerId("procedure.muster"))
+    assert(ProcedureNotes.writes(muster),
+      "the registry knows an id it built itself")
+    assert(!ProcedureNotes.writes(PowerId("denizen.wolves")),
+      "a power is not a procedure")
+    val union = DeclaredNotes.of(catalog)
+    ProcedureRef.all.foreach: procedure =>
+      assert(union.knows(ProcedureNotes.id(procedure)),
+        s"the union covers ${procedure.key}")

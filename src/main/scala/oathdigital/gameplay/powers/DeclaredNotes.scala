@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.RuleNotes
+import oathdigital.gameplay.actions.{ProcedureNotes, RuleNotes}
 import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.model.{NoteKey, PowerId}
 
@@ -29,13 +29,14 @@ object DeclaredNotes:
   def of(catalog: ExecutableCatalog): DeclaredNotes =
     of(WalkerPowerCatalog.contributing(catalog), catalog)
 
-  /** The union over `walkers` and `catalog`'s phase powers and game rules.
+  /** The union over `walkers` and `catalog`'s phase powers, game rules and
+    * procedures.
     * The walker powers are taken as given, so that `WalkerPowerCatalog` can
     * build the union for the `WalkerPowers` it is building. */
   private[powers] def of(walkers: Vector[ContributingPower],
       catalog: ExecutableCatalog): DeclaredNotes = new DeclaredNotes(
     (walkers.map(power => power.id -> power.noteKeys) ++
       PhasePowerCatalog.default(catalog).powers.map(power =>
-        power.id -> power.noteKeys) ++ RuleNotes.all)
+        power.id -> power.noteKeys) ++ RuleNotes.all ++ ProcedureNotes.all)
       .groupMapReduce(_._1)(_._2)(_ ++ _)
       .view.mapValues(_.distinctBy(_.name)).toMap)
