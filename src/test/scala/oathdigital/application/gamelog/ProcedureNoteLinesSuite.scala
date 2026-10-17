@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
+import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -112,3 +113,14 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
         NoteArg.Banner(Banner.DarkestSecret)),
       Vector[LogSpan](Text("Placed "), Text("2"), Text(" "), Text("secrets"),
         Text(" on "), words.banner(Banner.DarkestSecret)))
+
+  test("the Oathkeeper passing to the bank reads as the rule wrote it"):
+    assertEquals(spoken(TriggeredProcedureRef.Oathkeeper,
+        OathkeeperProcedure.passedToBank),
+      Vector[LogSpan](Text("Oathkeeper passed to the bank")))
+
+  test("an Oathkeeper line posts at Trigger, not Action"):
+    assertEquals(kindOf(TriggeredProcedureRef.Oathkeeper,
+      OathkeeperProcedure.passedToPlayer), LogKind.Trigger)
+    assertEquals(kindOf(TriggeredProcedureRef.Oathkeeper,
+      OathkeeperProcedure.passedToBank), LogKind.Trigger)

@@ -224,9 +224,16 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
           "the phase changes show in the lines around them"))
     case PhaseTransitionRef.FinishRest => ProcedureLog(tag = None,
       lines = ActionLineSource.Rule(actions.finishRestLines), isSection = false)
+    // A title change is a trigger, not an action: the lines stand outside
+    // any band and read at the kind the rule they replaced posted at. The
+    // recipient decision is asked only in the Choose branch, which always
+    // sets a player, so `passedToPlayer` is the one key that tells it.
     case TriggeredProcedureRef.Oathkeeper => ProcedureLog(tag = None,
-      lines = ActionLineSource.Rule(actions.oathkeeperLines),
-      narrated = Vector(Told(OathkeeperProcedure.recipientDecisionId)),
+      lines = ActionLineSource.Notes(Map(
+        OathkeeperProcedure.passedToPlayer -> LogKind.Trigger,
+        OathkeeperProcedure.passedToBank -> LogKind.Trigger)),
+      narrated = Vector(Told(OathkeeperProcedure.recipientDecisionId,
+        Some(OathkeeperProcedure.passedToPlayer))),
       isSection = false)
     // Setup's own lines tell every decision it asks.
     case TriggeredProcedureRef.Setup => ProcedureLog(tag = None,

@@ -6,8 +6,10 @@ import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.minor.MinorActionProcedures
 import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
-import oathdigital.model.{ActionRef, NoteKey, PowerId, ProcedureRef}
+import oathdigital.model.{ActionRef, NoteKey, PowerId, ProcedureRef,
+  TriggeredProcedureRef}
 
 /** The procedures that write their own Game Log lines (procedures journal
   * their own notes design, "ProcedureNotes"): each procedure's id and the
@@ -72,4 +74,5 @@ object ProcedureNotes:
       case ActionRef.PeekSiteRelics => MinorActionProcedures.peekKeys
       case ActionRef.RevealOwnedRelic => MinorActionProcedures.revealKeys
       case ActionRef.MoveWarbands => MinorActionProcedures.moveKeys
+      case TriggeredProcedureRef.Oathkeeper => OathkeeperProcedure.noteKeys
       case _ => Vector.empty

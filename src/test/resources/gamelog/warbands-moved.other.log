@@ -3,6 +3,6 @@
 0.2 phase 0 | Act
 7.0 decision 1 move-warbands@4 | Chose To your site
 12.0 action 1 move-warbands@4 | Moved 2 warbands to [site:site:broken-peaks|Broken Peaks]
-15.0 trigger 1 | Oathkeeper passed to [player:p1|p1]
-25.0 decision 1 move-warbands@22 | Chose To your board
-30.0 action 1 move-warbands@22 | Moved 1 warband from [site:site:broken-peaks|Broken Peaks]
+16.0 trigger 1 | Oathkeeper passed to [player:p1|p1]
+26.0 decision 1 move-warbands@23 | Chose To your board
+31.0 action 1 move-warbands@23 | Moved 1 warband from [site:site:broken-peaks|Broken Peaks]

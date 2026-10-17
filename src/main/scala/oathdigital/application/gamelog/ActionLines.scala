@@ -25,14 +25,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
   private val campaigns = new CampaignLines(words, choices, catalog)
   private val negotiations = new NegotiationLines(words)
 
-  def oathkeeperLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    journal.ops(at).collect {
-      case OpStep(SetOathkeeper(holder), _, _) =>
-        Posted(LogKind.Trigger, Vector(Text("Oathkeeper passed to "),
-          holder.fold[LogSpan](Text("the bank"))(words.player)))
-    }
-
   def finishRestLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     journal.ops(at).collect {
