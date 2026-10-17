@@ -197,6 +197,7 @@ denizen.moving-market moved.only = Moved it to {0}.
 denizen.oracle used = {0} drew {1} from the world deck.
 denizen.oracle used.none = The world deck held no Vision.
 denizen.outriders ignored = Skulls ignored.
+denizen.palanquin used = Moved to {0}; {1} travels there.
 denizen.peace-envoy decided = The battle is decided.
 denizen.peace-envoy gave = Gave {0} to {1}.
 denizen.peace-envoy gave-off-turn = {0} gave {1} to {2}.

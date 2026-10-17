@@ -326,12 +326,13 @@ private[gameplay] trait OathRulesWalker:
     * start when its first decision offers no option its own answer would
     * accept, before anything is persisted. The decision must be the first
     * thing the tree does, because the preview answers it against the state
-    * before the start.
+    * before the start. A queued entry whose start arguments answer that
+    * decision skips the gate (`WalkerProcedureRegistry.gatesStart`).
     */
   private def requirePlayableOption(procedure: ProcedureRef, ready: ReadyGame,
       tree: Operation, outcome: WalkerOutcome, powers: WalkerPowers)
       : Either[OathViolation, Unit] =
-    if !WalkerProcedureRegistry.requiresPlayableOption(procedure) then Right(())
+    if !WalkerProcedureRegistry.gatesStart(procedure, ready) then Right(())
     else outcome match
       case WalkerOutcome.Parked(pending, events) =>
         if events.exists {

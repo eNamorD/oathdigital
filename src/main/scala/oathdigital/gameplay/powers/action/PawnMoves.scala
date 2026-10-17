@@ -14,6 +14,10 @@ object PawnMoves:
     PowerAccess.pawnSite(ready, player).toRight(OathViolation.InvalidEventOrder(
       s"${player.value} has no pawn on the map"))
 
+  /** The menu's reason when no other player at the site is a valid target
+    * (catalog batch 8, slice 15): Palanquin and Ward of Silence. */
+  val noValidEnemyPawn: String = "No valid enemy pawn"
+
   /** Every site in play except `site`, in map order. */
   def sitesOtherThan(ready: ReadyGame, site: SiteId): Vector[SiteId] =
     ready.game.current.map.inPlay.filter(_ != site)
