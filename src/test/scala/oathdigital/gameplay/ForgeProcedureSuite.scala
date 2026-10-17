@@ -100,8 +100,10 @@ class ForgeProcedureSuite extends munit.FunSuite
   private def expectFinished(outcome: Either[OathViolation, WalkerOutcome])
       : ForgeFinished =
     val finished = Outcomes.finished(outcome)
+    // The two trailing `Note` leaves journal `PowerNoted`, which is the
+    // Game Log's business and not this suite's: only the recorded steps are.
     ForgeFinished(finished.treeless,
-      finished.events.map(as[WalkerStepRecorded](_)))
+      finished.events.collect { case step: WalkerStepRecorded => step })
 
   /** The walk parked on the assignment decision: the park, the state at the
     * park, and the steps recorded on the way. */
@@ -300,7 +302,9 @@ class ForgeProcedureSuite extends munit.FunSuite
       assertEquals(tree.children(1).children.collect {
         case branch: Branch => branch }, Vector.empty,
         s"a ${f.cost} Forge must declare no decision branch")
-      assertEquals(tree.children(1).children.size, 2)
+      // The supply payment, the node that pays and forges, and the two
+      // Game Log notes behind it.
+      assertEquals(tree.children(1).children.size, 4)
 
       // One command: no park, no answer, and the determined split applied.
       val finished = expectFinished(

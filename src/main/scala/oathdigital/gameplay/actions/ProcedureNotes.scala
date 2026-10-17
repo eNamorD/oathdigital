@@ -1,6 +1,7 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.model.{ActionRef, NoteKey, PowerId, ProcedureRef}
@@ -61,4 +62,5 @@ object ProcedureNotes:
       case ActionRef.Muster => MusterProcedure.noteKeys
       case ActionRef.Travel => TravelProcedure.noteKeys
       case ActionRef.TakeWealth => TakeWealthProcedure.noteKeys
+      case ActionRef.Forge => ForgeProcedure.noteKeys
       case _ => Vector.empty

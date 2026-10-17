@@ -2,5 +2,5 @@
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
 4.0 section 1 forge@4 | Forge[cost:1 Supply]
-6.0 action 1 forge@4 | Placed favor on [card:179|Threatening Roar], [card:183|Mushrooms] and [card:12|Mercenaries]
-6.1 action 1 forge@4 | Forged [card:R09|Dowsing Sticks]
+7.0 action 1 forge@4 | Placed favor on [card:179|Threatening Roar], [card:183|Mushrooms] and [card:12|Mercenaries]
+8.0 action 1 forge@4 | Forged [card:R09|Dowsing Sticks]

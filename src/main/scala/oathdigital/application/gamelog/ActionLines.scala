@@ -100,31 +100,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       else Vector.empty
     taken ++ failed
 
-  def forgeLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    val paid = journal.ops(at).collect {
-      case OpStep(PayCost(_, Location.OnCard(card), cost, _, _, _),
-          before, after) => (card, cost, before, after)
-    }
-    val favor = paid.collect { case (card, cost, before, after)
-      if cost.favor > 0 => words.card(card, before, after, viewer) }
-    val secret = paid.collect { case (card, cost, before, after)
-      if cost.secret > 0 => words.card(card, before, after, viewer) }
-    val halves = Vector(
-      Option.when(favor.nonEmpty)(Text("favor on ") +: words.cards(favor)),
-      Option.when(secret.nonEmpty)(Text("secrets on ") +: words.cards(secret))
-    ).flatten
-    val payment = if halves.isEmpty then Vector.empty
-      else Vector(action(Text("Placed ") +: LogWords.join(halves)))
-    val made = journal.ops(at).collect {
-      case OpStep(Play(relic: RelicId,
-          PositionedLocation(Location.Deck(CardDeck.Relic), _, _), _, _, _),
-          before, after) =>
-        action(Vector(Text("Forged ")) ++
-          words.one(words.card(relic, before, after, viewer)))
-    }
-    payment ++ made
-
   def campaignLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     campaigns.lines(journal, run, at, viewer)

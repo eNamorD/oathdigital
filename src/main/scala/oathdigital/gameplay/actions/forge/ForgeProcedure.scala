@@ -1,7 +1,8 @@
 package oathdigital.gameplay.actions.forge
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.ForgeRules
+import oathdigital.gameplay.actions.{ForgeRules, ProcedureNotes}
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.walker.ModifierChoice
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.PartitionAnswer
@@ -69,6 +70,59 @@ import oathdigital.model.DecisionAnswer.PartitionAnswer
   */
 object ForgeProcedure:
   val assignmentDecisionId: String = "forge.assignment"
+
+  private val notes = NoteSet(ProcedureNotes.id(ActionRef.Forge))
+  /** "Placed favor on Threatening Roar, Mushrooms and Mercenaries". */
+  val paidFavor: NoteKey = notes.key("paid-favor", Vector(
+    NotePart.Text("Placed favor on "), NotePart.Arg(0)))
+  val paidSecrets: NoteKey = notes.key("paid-secrets", Vector(
+    NotePart.Text("Placed secrets on "), NotePart.Arg(0)))
+  /** A site printing both resources: the two halves as `LogWords.join`
+    * joined them, "Placed favor on A and B and secrets on C". */
+  val paidBoth: NoteKey = notes.key("paid-both", Vector(
+    NotePart.Text("Placed favor on "), NotePart.Arg(0),
+    NotePart.Text(" and secrets on "), NotePart.Arg(1)))
+  val forged: NoteKey = notes.key("forged", Vector(
+    NotePart.Text("Forged "), NotePart.Arg(0)))
+  def noteKeys: Vector[NoteKey] = notes.declared
+
+  /** What the Forge placed, read the way the node that placed it read it:
+    * the answered split for a site printing both resources, and every
+    * eligible target at the state before the payment for a site printing
+    * one. Nothing placed writes nothing. */
+  private def paidNote(actor: PlayerId, cost: Tokens)(states: NoteStates)
+      : Option[PowerNote] = states.previous.flatMap { (before, _) =>
+    val (favor, secrets) =
+      if parks(cost) then answeredSplit(states.answered)
+      else
+        val targets = eligibleTargets(before, actor).map(_.denizenId: CardId)
+        if cost.favor > 0 then (targets, Vector.empty) else (Vector.empty, targets)
+    if favor.nonEmpty && secrets.nonEmpty then
+      Some(paidBoth.sourceless(NoteArg.Cards(favor), NoteArg.Cards(secrets)))
+    else if favor.nonEmpty then Some(paidFavor.sourceless(NoteArg.Cards(favor)))
+    else if secrets.nonEmpty then
+      Some(paidSecrets.sourceless(NoteArg.Cards(secrets)))
+    else None
+  }
+
+  /** The assignment answer's denizens, by section. */
+  private def answeredSplit(answered: Vector[Answered])
+      : (Vector[CardId], Vector[CardId]) =
+    val placements = answered.collectFirst {
+      case Answered(`assignmentDecisionId`, PartitionAnswer(values), _) => values
+    }.getOrElse(Vector.empty)
+    def section(key: String): Vector[CardId] = placements.collect {
+      case DecisionPlacement(DecisionOptionRef.Denizen(id), `key`) => id
+    }
+    (section(favorSectionKey), section(secretSectionKey))
+
+  /** The relic that reached the actor in the step before the note. A Forge
+    * whose `Play` a power removed writes no line, as the rule this replaced
+    * wrote none without a recorded play off the relic deck. */
+  private def forgedNote(actor: PlayerId)(states: NoteStates)
+      : Option[PowerNote] = states.previous
+    .flatMap(NoteSupport.relicsGained(_, actor).headOption)
+    .map(relic => forged.sourceless(NoteArg.Card(relic)))
 
   /** Forge spends exactly one Supply to start, whatever the printed cost. */
   private val supplyCost: Int = 1
@@ -288,8 +342,15 @@ object ForgeProcedure:
       PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
       Location.PlayArea(actor), Orientation.FaceDown))
 
+    // Both notes follow the node that paid and forged, and a `Note` is not
+    // a leaf, so both read that node as `previous`. The payment line comes
+    // first, as it does today.
+    val paid = Note(ProcedureNotes.id(ActionRef.Forge), paidNote(actor, cost))
+    val made = Note(ProcedureNotes.id(ActionRef.Forge), forgedNote(actor))
+
     val nodes: Vector[Operation] =
-      if parks(cost) then Vector(paySupply, assignmentDecide, forgeRelic)
-      else Vector(paySupply, forgeRelic)
+      if parks(cost) then
+        Vector(paySupply, assignmentDecide, forgeRelic, paid, made)
+      else Vector(paySupply, forgeRelic, paid, made)
 
     Sequence(nodes).copy(window = Some(PowerWindow.ForgeActionEligibility))

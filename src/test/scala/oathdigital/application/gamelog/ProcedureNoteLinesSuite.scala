@@ -2,10 +2,12 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.protocol.projection.{LogKind, LogSpan}
+import oathdigital.testkit.CatalogNames
 import LogSpan.Text
 
 /** What a migrated procedure's line reads, on the branches no golden script
@@ -58,3 +60,19 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
     assertEquals(spoken(ActionRef.TakeWealth, TakeWealthProcedure.tookSecret,
         NoteArg.Site(brokenPeaks)),
       Vector[LogSpan](Text("Took 1 secret from "), words.site(brokenPeaks)))
+
+  private val roar: CardId = CatalogNames.denizen("Threatening Roar")
+  private val mushrooms: CardId = CatalogNames.denizen("Mushrooms")
+  private val mercenaries: CardId = CatalogNames.denizen("Mercenaries")
+
+  test("a Forge paying secrets only reads as the rule wrote it"):
+    assertEquals(spoken(ActionRef.Forge, ForgeProcedure.paidSecrets,
+        NoteArg.Cards(Vector(roar, mushrooms, mercenaries))),
+      Vector[LogSpan](Text("Placed secrets on "), Text("3 Denizens")))
+
+  test("a Forge paying both joins the halves as the rule joined them"):
+    assertEquals(spoken(ActionRef.Forge, ForgeProcedure.paidBoth,
+        NoteArg.Cards(Vector(roar, mushrooms)),
+        NoteArg.Cards(Vector(mercenaries))),
+      Vector[LogSpan](Text("Placed favor on "), Text("2 Denizens"),
+        Text(" and secrets on "), Text("a Denizen")))

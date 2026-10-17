@@ -158,8 +158,10 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       anchor = starts.opensDicePool, continued = starts.continuedRecover,
       narrated = Vector(Told(RecoverProcedure.choiceDecisionId),
         Told(RecoverProcedure.relicDecisionId)))
+    // The payment line tells the assignment, in one of three wordings, so
+    // no single key names it.
     case ActionRef.Forge => ProcedureLog(tag = Some("Forge"),
-      lines = ActionLineSource.Rule(actions.forgeLines),
+      lines = ActionLineSource.Notes(),
       narrated = Vector(Told(ForgeProcedure.assignmentDecisionId)))
     // The Travel line names the destination, and a travel power's own line
     // names what it was asked.
