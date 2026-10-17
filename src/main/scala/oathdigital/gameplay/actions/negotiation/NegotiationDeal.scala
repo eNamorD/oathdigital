@@ -38,16 +38,23 @@ object NegotiationDeal:
           other.player
       })
 
+  /** The players the actor chose, in the order the answer named them, or
+    * the one eligible candidate when the choice was omitted. The Game Log's
+    * opening line names them in this order. */
+  def chosen(state: ReadyGame, actor: PlayerId,
+      pending: PendingTree): Vector[PlayerId] =
+    pending.answered.reverse.collectFirst {
+      case Answered(`negotiatorsDecisionId`, ChooseManyAnswer(selected), _) =>
+        selected.collect { case DecisionOptionRef.Player(id) => id }
+    }.getOrElse(eligible(state, actor))
+
   /** Actor first, then the chosen players in table order. With no recorded
     * negotiator answer the one eligible candidate is the negotiator: the
     * tree omits the choice when there is only one.
     */
   def participants(state: ReadyGame, actor: PlayerId,
       pending: PendingTree): Vector[PlayerId] =
-    val picked = pending.answered.reverse.collectFirst {
-      case Answered(`negotiatorsDecisionId`, ChooseManyAnswer(selected), _) =>
-        selected.collect { case DecisionOptionRef.Player(id) => id }
-    }.getOrElse(eligible(state, actor)).toSet
+    val picked = chosen(state, actor, pending).toSet
     actor +: state.game.current.players.map(_.player).filter(picked)
 
   def fold(participants: Vector[PlayerId],

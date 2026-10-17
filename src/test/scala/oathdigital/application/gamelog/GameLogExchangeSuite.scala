@@ -39,20 +39,24 @@ class GameLogExchangeSuite extends munit.FunSuite:
       s"${playerLabel(script.actor)} gave 1 favor to ${playerLabel(partner)}"),
       lines(script))
 
-  test("a disclosed adviser is named to its owner and recipient, by slot to others"):
+  /** A bystander reads the disclosed card as its back, not by its slot.
+    * The rule this line replaced read it through `LogWords.slotted` and
+    * wrote "facedown adviser (slot 1)"; a note's card word has no slot
+    * fallback, which slice 2 accepted and the wording ledger records under
+    * "A facedown card's slot, in a negotiation only". */
+  test("a disclosed adviser is named to its owner and recipient, a back to others"):
     val script = negotiationDisclosed
     val shown = (viewer: Option[PlayerId]) =>
       val all = texts(format(script, viewer))
       all.find(_.contains(" showed ")).getOrElse(
         fail(s"no disclosure line for $viewer in $all"))
     assert(shown(None).startsWith(playerLabel(partner)), shown(None))
-    // Birdsong is p2's only adviser, so it is slot 1.
+    // Birdsong is p2's only adviser, so the slot wording would be slot 1.
     assert(!shown(Some(script.actor)).endsWith("(slot 1)"),
       shown(Some(script.actor)))
     assert(!shown(Some(partner)).endsWith("(slot 1)"), shown(Some(partner)))
     val (giver, recipient) = (playerLabel(partner), playerLabel(script.actor))
-    assertEquals(shown(Some(bystander)),
-      s"$giver showed $recipient facedown adviser (slot 1)")
+    assertEquals(shown(Some(bystander)), s"$giver showed $recipient a Denizen")
 
   test("a used power is named by its source card, once"):
     val all = texts(formatWithoutNotes(silverTongue, None).filter(_.depth == 1))

@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
+import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
@@ -129,3 +130,42 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
   test("a Finish Rest line posts at Delta, not Action"):
     assertEquals(kindOf(PhaseTransitionRef.FinishRest,
       FinishRestProcedure.supplyIncreased), LogKind.Delta)
+
+  private val stickyFire: CardId = CatalogNames.relic("Sticky Fire")
+  private val birdsong: CardId = CatalogNames.denizen("Birdsong")
+
+  test("a relic given in a negotiation reads as the rule wrote it"):
+    assertEquals(spoken(ActionRef.Negotiation, NegotiationProcedure.gaveCard,
+        NoteArg.Player(PlayerId("p1")), NoteArg.Card(stickyFire),
+        NoteArg.Player(rival)),
+      Vector[LogSpan](words.player(PlayerId("p1")), Text(" gave "),
+        Text("a Relic"), Text(" to "), words.player(rival)))
+
+  test("a site relic shown in a negotiation reads as the rule wrote it"):
+    assertEquals(spoken(ActionRef.Negotiation, NegotiationProcedure.wasShown,
+        NoteArg.Player(rival), NoteArg.Card(stickyFire),
+        NoteArg.Site(brokenPeaks)),
+      Vector[LogSpan](words.player(rival), Text(" was shown "),
+        Text("a Relic"), Text(" at "), words.site(brokenPeaks)))
+
+  // Accepted in slice 2 (design, "Two things slice 4 must settle first"):
+  // the deleted rule read this card through `LogWords.slotted` and wrote
+  // "facedown adviser (slot 1)". A note's card word has no slot fallback.
+  test("a disclosed card a viewer cannot identify reads as its back"):
+    assertEquals(spoken(ActionRef.Negotiation, NegotiationProcedure.showed,
+        NoteArg.Player(rival), NoteArg.Player(PlayerId("p1")),
+        NoteArg.Card(birdsong)),
+      Vector[LogSpan](words.player(rival), Text(" showed "),
+        words.player(PlayerId("p1")), Text(" "), Text("a Denizen")))
+
+  test("every Negotiation settlement line posts at Delta"):
+    Vector(NegotiationProcedure.gaveFavor, NegotiationProcedure.gaveCard,
+      NegotiationProcedure.showed, NegotiationProcedure.wasShown).foreach(key =>
+        assertEquals(kindOf(ActionRef.Negotiation, key), LogKind.Delta,
+          s"${key.name}"))
+
+  test("a Negotiation's opening lines post at Action"):
+    assertEquals(kindOf(ActionRef.Negotiation,
+      NegotiationProcedure.negotiated), LogKind.Action)
+    assertEquals(kindOf(ActionRef.Negotiation, NegotiationProcedure.ended),
+      LogKind.Action)

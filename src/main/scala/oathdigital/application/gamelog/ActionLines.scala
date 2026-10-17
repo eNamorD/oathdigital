@@ -23,7 +23,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
   import ActionLines._
   private val setup = new SetupLines(words)
   private val campaigns = new CampaignLines(words, choices, catalog)
-  private val negotiations = new NegotiationLines(words)
 
   def setupLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
@@ -86,10 +85,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
   def campaignLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     campaigns.lines(journal, run, at, viewer)
-
-  def negotiationLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    negotiations.lines(journal, run, at, viewer)
 
   /** Only a run that answered a placement decision has a played-card line. */
   def usePowerLines(power: PowerId)(journal: LogJournal, run: Run, at: Int,

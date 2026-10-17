@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.minor.MinorActionProcedures
+import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
@@ -72,6 +73,7 @@ object ProcedureNotes:
       case ActionRef.Challenge => ChallengeProcedure.noteKeys
       case ActionRef.PlaceBannerResource =>
         PlaceBannerResourceProcedure.noteKeys
+      case ActionRef.Negotiation => NegotiationProcedure.noteKeys
       case ActionRef.PeekSiteRelics => MinorActionProcedures.peekKeys
       case ActionRef.RevealOwnedRelic => MinorActionProcedures.revealKeys
       case ActionRef.MoveWarbands => MinorActionProcedures.moveKeys

@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
+import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
@@ -199,9 +200,15 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       lines = ActionLineSource.Notes(),
       narrated = Vector(Told(PlaceBannerResourceProcedure.bannerDecisionId),
         Told(PlaceBannerResourceProcedure.amountDecisionId)))
-    // Every Negotiation line tells its own decision.
+    // Every Negotiation line tells its own decision. The settlement lines
+    // are deltas, as the rules they replaced were; the opening line is the
+    // action's.
     case ActionRef.Negotiation => ProcedureLog(tag = None,
-      lines = ActionLineSource.Rule(actions.negotiationLines),
+      lines = ActionLineSource.Notes(Map(
+        NegotiationProcedure.gaveFavor -> LogKind.Delta,
+        NegotiationProcedure.gaveCard -> LogKind.Delta,
+        NegotiationProcedure.showed -> LogKind.Delta,
+        NegotiationProcedure.wasShown -> LogKind.Delta)),
       narratedPrefixes = Vector("negotiation."))
     case ActionRef.PeekSiteRelics => ProcedureLog(tag = None,
       lines = ActionLineSource.Notes())
