@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is under way: slices 1 to 14 are done, and item 10b is next.
+**Phase - Catalog batch 8** is under way: slices 1 to 15 are done, and item 10b is next.
 
 ## Next
 
@@ -170,7 +170,9 @@ this order. Each slice gets its own plan.
   `PowerCtx.activePlayer` hold the walk's actor since slice 14: a queued
   entry's actor, else the turn's player. Rename both to `actor`, across
   about 105 files. Recorded while planning slice 14 on 2026-10-16.
-- [ ] **15. Palanquin.**
+- [x] **15. Palanquin.**
+
+Only items 10b, 13b, 13c and 14b of catalog batch 8 remain open.
 
 ### Phase - Catalog batch - engine-blocked
 

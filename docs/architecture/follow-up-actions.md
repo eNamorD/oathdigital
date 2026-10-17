@@ -160,6 +160,11 @@ the entry's actor; a menu start still requires the turn's player.
 - Sneak Attack queues its `Offer` at the front, naming the earlier attacker
   as the declared defender in its start arguments.
 - A defender's Second Wind queues its Travel and Campaign at the back.
+- A queued entry may name its `sender`, the player whose power sent its
+  actor (catalog batch 8, slice 15). A waivable restriction the sender could
+  waive does not block the walk. A power's queued Travel may carry its
+  destination as its one start argument, and then asks no destination
+  question (Palanquin).
 
 ## Decisions beyond the design
 
