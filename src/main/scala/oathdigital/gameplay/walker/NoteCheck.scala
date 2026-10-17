@@ -40,8 +40,8 @@ private[walker] object NoteCheck:
         !union.knows(power) || union.declares(power, note.key)) then
       Some(PowerNoted(power, note, covers))
     else
-      val message = s"${power.value} wrote the undeclared note ${note.key} " +
-        s"from ${note.source}"
+      val message = s"${power.value} wrote the undeclared note ${note.key}" +
+        note.source.fold("")(source => s" from $source")
       if strict then throw new AssertionError(message)
       logger.error(message)
       None
