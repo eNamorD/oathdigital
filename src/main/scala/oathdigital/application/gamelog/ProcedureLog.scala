@@ -52,11 +52,13 @@ private[gamelog] enum ActionLineSource:
   case Silent(reason: String)
 
 /** A decision whose answer another line already tells, and the note key that
-  * tells it (procedures journal their own notes design, ruling 5). A
-  * migrated procedure names its key, so deleting the key fails compilation
-  * here rather than leaving a narration that suppresses a "Chose ..." line
-  * with nothing in its place. A procedure whose line is still a rule has no
-  * key to name. */
+  * tells it (procedures journal their own notes design, ruling 5).
+  *
+  * What naming the key buys, exactly: deleting or renaming the key breaks
+  * this reference, so the entry cannot outlive it. That the named key is one
+  * the procedure declares is not something the compiler can see, and is
+  * asserted by `GameLogPropertiesSuite` instead. A procedure whose line is
+  * still a rule has no key to name. */
 private[gamelog] final case class Told(decision: String,
     by: Option[NoteKey] = None)
 

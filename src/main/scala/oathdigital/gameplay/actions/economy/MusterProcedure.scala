@@ -2,6 +2,7 @@ package oathdigital.gameplay.actions.economy
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 /** Muster on the walker: pay one favor on a card at the pawn site and one
@@ -40,14 +41,9 @@ object MusterProcedure:
     * `Move` out of a warband bank. */
   private def musteredNote(actor: PlayerId, states: NoteStates,
       source: MusterSource): Option[PowerNote] =
-    states.previous.flatMap: (before, after) =>
-      val gained = warbands(after, actor) - warbands(before, actor)
-      Option.when(gained > 0)(mustered.sourceless(
+    states.previous.map(NoteSupport.warbands(_, actor))
+      .filter(_ > 0).map(gained => mustered.sourceless(
         NoteArg.Number(gained), NoteArg.Card(source.card)))
-
-  private def warbands(ready: ReadyGame, actor: PlayerId): Int =
-    ready.game.current.players.find(_.player == actor)
-      .fold(0)(_.board.warbands)
 
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] =

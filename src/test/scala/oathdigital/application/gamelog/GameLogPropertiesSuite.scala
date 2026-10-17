@@ -239,3 +239,12 @@ class GameLogPropertiesSuite extends munit.FunSuite:
         id == ProcedureNotes.id(procedure) && keys.nonEmpty))
     assertEquals(keyless.map(_.key), Vector.empty,
       "a procedure that journals its own notes declares at least one key")
+    // And a narration that names a key names one of that procedure's own:
+    // the compiler sees only that the symbol exists.
+    val borrowed = ProcedureRef.all.flatMap(procedure =>
+      logs.of(procedure).narrated.flatMap(_.by).collect {
+        case key if !ProcedureNotes.all.exists((id, keys) =>
+          id == ProcedureNotes.id(procedure) && keys.contains(key)) =>
+          s"${procedure.key} narrates with ${key.name}, which it does not declare"
+      })
+    assertEquals(borrowed, Vector.empty[String])
