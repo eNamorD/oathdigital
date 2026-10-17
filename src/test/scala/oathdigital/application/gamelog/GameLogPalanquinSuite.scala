@@ -23,5 +23,7 @@ class GameLogPalanquinSuite extends munit.FunSuite:
       _.startsWith(s"${playerLabel(p2)} · Travel · Palanquin"))
     assert(tag >= 0, all)
     val after = all.drop(tag + 1)
-    assert(after.exists(_.contains("Buried Giant")), after)
+    // The sent Travel journals its own line, as a picked one does
+    // (procedures journal their own notes design, slice 2).
+    assert(after.contains("Travelled to Buried Giant"), after)
     assert(!after.exists(_.startsWith(playerLabel(p2))), after)

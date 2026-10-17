@@ -174,9 +174,9 @@ object TravelProcedure:
         Some(PowerWindow.TravelCost)),
       // Outside the cost window and after it. Every Travel power finds the
       // route by flattening that window to its `Move`, so a note inside it
-      // would be a child those powers rewrite; and reading the arrival off
-      // the step means a power that rerouted the pawn is named correctly
-      // rather than by the destination this tree closed over.
+      // would be a child those powers rewrite. What the note reads is the
+      // arrival in the live state, not the step before it: see
+      // `travelledNote`.
       Note(ProcedureNotes.id(ActionRef.Travel),
         travelledNote(actor, source))),
       Some(PowerWindow.TravelActionEligibility))
