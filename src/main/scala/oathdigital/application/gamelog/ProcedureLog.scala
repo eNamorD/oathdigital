@@ -39,8 +39,26 @@ private[gamelog] object Opening:
 private[gamelog] object Continued:
   val none: Continued = (_, _, _, _) => None
 
-private[gamelog] object ActionLine:
-  val none: ActionLine = (_, _, _, _) => Vector.empty
+/** Where a procedure's action line comes from (procedures journal their own
+  * notes design, ruling 4). One `none` meant two things, "posts nothing" and
+  * "posts from its own notes", so a procedure whose notes went missing read
+  * as correct. */
+private[gamelog] enum ActionLineSource:
+  /** A rule in `ActionLines` that reads the journal. */
+  case Rule(lines: ActionLine)
+  /** The procedure journals its own notes, which `PowerLines` posts. */
+  case Notes
+  /** The procedure posts no action line, and says why. */
+  case Silent(reason: String)
+
+/** A decision whose answer another line already tells, and the note key that
+  * tells it (procedures journal their own notes design, ruling 5). A
+  * migrated procedure names its key, so deleting the key fails compilation
+  * here rather than leaving a narration that suppresses a "Chose ..." line
+  * with nothing in its place. A procedure whose line is still a rule has no
+  * key to name. */
+private[gamelog] final case class Told(decision: String,
+    by: Option[NoteKey] = None)
 
 /** What one procedure declares to the game log: its tag and where the tag
   * posts, what its opening line says, the line it repeats when the player
@@ -51,11 +69,11 @@ private[gamelog] object ActionLine:
   */
 private[gamelog] final case class ProcedureLog(
     tag: Option[String],
-    lines: ActionLine,
+    lines: ActionLineSource,
     anchor: Anchor = Anchor.AtFirstEvent,
     opening: Opening = Opening.none,
     continued: Continued = Continued.none,
-    narrated: Set[String] = Set.empty,
+    narrated: Vector[Told] = Vector.empty,
     narratedPrefixes: Vector[String] = Vector.empty,
     isSection: Boolean = true):
 
@@ -64,7 +82,8 @@ private[gamelog] final case class ProcedureLog(
     * that ask the same decision each declare it: the compiler holds every
     * entry to stating its own narration, so nothing can drift. */
   def narrates(decisionId: String): Boolean =
-    narrated(decisionId) || narratedPrefixes.exists(decisionId.startsWith)
+    narrated.exists(_.decision == decisionId) ||
+      narratedPrefixes.exists(decisionId.startsWith)
 
 /** Every procedure's log lines, in one table.
   *
@@ -91,96 +110,107 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
     // discard of a Replace site slot is told by the note of the power that
     // permitted it.
     case ActionRef.Search => ProcedureLog(tag = Some("Search"),
-      lines = actions.searchLines, anchor = starts.picksSettled,
-      narrated = Set(SearchProcedure.sourceDecisionId,
-        SearchProcedure.cardDecisionId),
+      lines = ActionLineSource.Rule(actions.searchLines),
+      anchor = starts.picksSettled,
+      narrated = Vector(Told(SearchProcedure.sourceDecisionId),
+        Told(SearchProcedure.cardDecisionId)),
       narratedPrefixes = Vector(ActionLines.PlacePrefix,
         "cardplay.discard."))
     // The played adviser's line names the facedown pick.
     case ActionRef.PlayFacedownAdviser =>
       ProcedureLog(tag = Some("Play facedown adviser"),
-        lines = actions.playedAdviser, anchor = starts.adviserPicked,
-        narrated = Set(CardPlayProcedure.facedownAdviserDecisionId),
+        lines = ActionLineSource.Rule(actions.playedAdviser),
+        anchor = starts.adviserPicked,
+        narrated = Vector(Told(CardPlayProcedure.facedownAdviserDecisionId)),
         narratedPrefixes = Vector(ActionLines.PlacePrefix,
           "cardplay.discard."))
     // The Recover lines name the relic taken and the site, so the choice
     // and the relic pick are told. The same holds of every row below that
     // names a decision: its own action line says what was chosen.
     case ActionRef.Recover => ProcedureLog(tag = Some("Recover"),
-      lines = actions.recoverLines, anchor = starts.opensDicePool,
-      continued = starts.continuedRecover,
-      narrated = Set(RecoverProcedure.choiceDecisionId,
-        RecoverProcedure.relicDecisionId))
+      lines = ActionLineSource.Rule(actions.recoverLines),
+      anchor = starts.opensDicePool, continued = starts.continuedRecover,
+      narrated = Vector(Told(RecoverProcedure.choiceDecisionId),
+        Told(RecoverProcedure.relicDecisionId)))
     case ActionRef.Forge => ProcedureLog(tag = Some("Forge"),
-      lines = actions.forgeLines,
-      narrated = Set(ForgeProcedure.assignmentDecisionId))
+      lines = ActionLineSource.Rule(actions.forgeLines),
+      narrated = Vector(Told(ForgeProcedure.assignmentDecisionId)))
     // The Travel line names the destination, and a travel power's own line
     // names what it was asked.
     case ActionRef.Travel => ProcedureLog(tag = Some("Travel"),
-      lines = actions.travelLines, anchor = starts.picksSettled,
+      lines = ActionLineSource.Rule(actions.travelLines),
+      anchor = starts.picksSettled,
       narratedPrefixes = Vector("travel."))
     case ActionRef.Muster => ProcedureLog(tag = Some("Muster"),
-      lines = actions.musterLines, anchor = starts.paysCost,
-      narrated = Set(MusterProcedure.decisionId))
+      lines = ActionLineSource.Rule(actions.musterLines),
+      anchor = starts.paysCost,
+      narrated = Vector(Told(MusterProcedure.decisionId)))
     case ActionRef.Trade => ProcedureLog(tag = Some("Trade"),
-      lines = actions.tradeLines, anchor = starts.paysCost,
-      narrated = Set(TradeProcedure.decisionId))
+      lines = ActionLineSource.Rule(actions.tradeLines),
+      anchor = starts.paysCost,
+      narrated = Vector(Told(TradeProcedure.decisionId)))
     case ActionRef.Challenge => ProcedureLog(tag = Some("Challenge"),
-      lines = actions.challengeLines,
-      narrated = Set(ChallengeProcedure.bannerDecisionId,
-        ChallengeProcedure.amountDecisionId))
+      lines = ActionLineSource.Rule(actions.challengeLines),
+      narrated = Vector(Told(ChallengeProcedure.bannerDecisionId),
+        Told(ChallengeProcedure.amountDecisionId)))
     // Every Campaign line tells its own decision.
     case ActionRef.Campaign => ProcedureLog(tag = Some("Campaign"),
-      lines = actions.campaignLines, anchor = starts.campaignSettled,
+      lines = ActionLineSource.Rule(actions.campaignLines),
+      anchor = starts.campaignSettled,
       opening = starts.campaignWords,
       narratedPrefixes = Vector("campaign."))
     // Wake's own action: its lines stand outside any band.
     case ActionRef.TakeWealth => ProcedureLog(tag = None,
-      lines = actions.takeWealthLines, isSection = false)
+      lines = ActionLineSource.Rule(actions.takeWealthLines), isSection = false)
     // No modifier window, so no tag.
     case ActionRef.PlaceBannerResource => ProcedureLog(tag = None,
-      lines = actions.bannerLines,
-      narrated = Set(PlaceBannerResourceProcedure.bannerDecisionId,
-        PlaceBannerResourceProcedure.amountDecisionId))
+      lines = ActionLineSource.Rule(actions.bannerLines),
+      narrated = Vector(Told(PlaceBannerResourceProcedure.bannerDecisionId),
+        Told(PlaceBannerResourceProcedure.amountDecisionId)))
     // Every Negotiation line tells its own decision.
     case ActionRef.Negotiation => ProcedureLog(tag = None,
-      lines = actions.negotiationLines,
+      lines = ActionLineSource.Rule(actions.negotiationLines),
       narratedPrefixes = Vector("negotiation."))
     case ActionRef.PeekSiteRelics => ProcedureLog(tag = None,
-      lines = actions.peekLines)
+      lines = ActionLineSource.Rule(actions.peekLines))
     case ActionRef.RevealOwnedRelic => ProcedureLog(tag = None,
-      lines = actions.revealLines)
+      lines = ActionLineSource.Rule(actions.revealLines))
     case ActionRef.MoveWarbands => ProcedureLog(tag = None,
-      lines = actions.warbandLines)
+      lines = ActionLineSource.Rule(actions.warbandLines))
     // A power that plays a card as if searched (Oracle) posts where the card
     // went, as a Search does, and tells the same card-play decisions.
     case ActionRef.UsePower(power) => ProcedureLog(tag = None,
-      lines = actions.usePowerLines(power),
+      lines = ActionLineSource.Rule(actions.usePowerLines(power)),
       narratedPrefixes = Vector(ActionLines.PlacePrefix,
         "cardplay.discard."))
-    // The phase changes show in the lines around them.
     case PhaseTransitionRef.EndWake | PhaseTransitionRef.BeginRest =>
-      ProcedureLog(tag = None, lines = ActionLine.none, isSection = false)
+      ProcedureLog(tag = None, isSection = false,
+        lines = ActionLineSource.Silent(
+          "the phase changes show in the lines around them"))
     case PhaseTransitionRef.FinishRest => ProcedureLog(tag = None,
-      lines = actions.finishRestLines, isSection = false)
+      lines = ActionLineSource.Rule(actions.finishRestLines), isSection = false)
     case TriggeredProcedureRef.Oathkeeper => ProcedureLog(tag = None,
-      lines = actions.oathkeeperLines,
-      narrated = Set(OathkeeperProcedure.recipientDecisionId),
+      lines = ActionLineSource.Rule(actions.oathkeeperLines),
+      narrated = Vector(Told(OathkeeperProcedure.recipientDecisionId)),
       isSection = false)
     // Setup's own lines tell every decision it asks.
     case TriggeredProcedureRef.Setup => ProcedureLog(tag = None,
-      lines = actions.setupLines, narratedPrefixes = Vector("setup."),
-      isSection = false)
+      lines = ActionLineSource.Rule(actions.setupLines),
+      narratedPrefixes = Vector("setup."), isSection = false)
     // One decision id serves the Wake, Rest and Act menus, so all three
-    // declare it. A pick starts its own walk, which tells it.
+    // declare it.
     case TriggeredProcedureRef.WakeMenu | TriggeredProcedureRef.RestMenu |
         TriggeredProcedureRef.ActMenu =>
-      ProcedureLog(tag = None, lines = ActionLine.none,
-        narrated = Set(PhaseMenu.decisionId), isSection = false)
-    // Each forced power writes its own lines, and narrates nothing here.
+      ProcedureLog(tag = None, isSection = false,
+        narrated = Vector(Told(PhaseMenu.decisionId)),
+        lines = ActionLineSource.Silent(
+          "a pick starts its own walk, which writes the lines"))
     case TriggeredProcedureRef.ForcedWake =>
-      ProcedureLog(tag = None, lines = ActionLine.none, isSection = false)
-    // The queued action's tag, or the Skip line, tells the offer's answer.
+      ProcedureLog(tag = None, isSection = false,
+        lines = ActionLineSource.Silent(
+          "each forced power writes its own lines, and narrates nothing here"))
     case TriggeredProcedureRef.FollowUpOffer =>
-      ProcedureLog(tag = None, lines = ActionLine.none,
-        narrated = Set(FollowUpOffer.decisionId), isSection = false)
+      ProcedureLog(tag = None, isSection = false,
+        narrated = Vector(Told(FollowUpOffer.decisionId)),
+        lines = ActionLineSource.Silent(
+          "the queued action's tag, or the Skip line, tells its answer"))

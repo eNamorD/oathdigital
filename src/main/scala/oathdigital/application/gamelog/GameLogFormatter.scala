@@ -225,7 +225,13 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
           (if start.isEmpty then Vector.empty
             else notes.held(journal, begun, at, viewer)) ++
           log.continued(journal, begun, at, viewer).toVector ++
-          log.lines(journal, begun, at, viewer) ++
+          (log.lines match
+            case ActionLineSource.Rule(lines) =>
+              lines(journal, begun, at, viewer)
+            // A procedure's own line arrives as its note, through
+            // `PowerLines`, and a silent procedure posts none.
+            case ActionLineSource.Notes | ActionLineSource.Silent(_) =>
+              Vector.empty) ++
           details.lines(journal, begun, at, viewer, log) ++
           notes.own(journal, begun, at, log.tag.nonEmpty, viewer)
         // A headline the run posts (a turn or phase change) is in no section.

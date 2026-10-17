@@ -195,7 +195,7 @@ class GameLogPropertiesSuite extends munit.FunSuite:
     val exercised = scripts.flatMap(asked).map((procedure, id, _) =>
       procedure -> id).toSet
     val idle = ProcedureRef.all.flatMap(procedure =>
-      formatter.procedures.of(procedure).narrated.toVector.sorted
+      formatter.procedures.of(procedure).narrated.map(_.decision).sorted
         .filterNot(id => exercised((procedure, id)))
         .map(id => s"[narration] ${procedure.key} declares $id, and no " +
           "script answers it with an option that would post a line"))
@@ -215,3 +215,17 @@ class GameLogPropertiesSuite extends munit.FunSuite:
       case OathState.Ready(ready) => CardIndex.from(ready.game).toOption
         .flatMap(_.ids.find(_.value == value))
     }.flatten
+
+  /** Every procedure says which of three things it is, so a procedure that
+    * journals its own notes is not read as one that posts nothing
+    * (procedures journal their own notes design, ruling 4). */
+  test("every procedure states whether its line is a rule, its notes or absent"):
+    val logs = formatter.procedures
+    val silent = ProcedureRef.all.map(procedure =>
+      procedure.key -> logs.of(procedure).lines).collect {
+      case (key, ActionLineSource.Silent(reason)) => key -> reason
+    }
+    assert(silent.forall(_._2.nonEmpty), s"a silent procedure says why: $silent")
+    assertEquals(ProcedureRef.all.count(
+      logs.of(_).lines == ActionLineSource.Notes), 0,
+      "no procedure journals its own notes yet")
