@@ -25,15 +25,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
   private val campaigns = new CampaignLines(words, choices, catalog)
   private val negotiations = new NegotiationLines(words)
 
-  def finishRestLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    journal.ops(at).collect {
-      case OpStep(GainSupply(player, _), before, after) =>
-        Posted(LogKind.Delta, Vector(Text(
-          s"Increased supply from ${LogJournal.supply(before, player)} " +
-            s"to ${LogJournal.supply(after, player)}")))
-    }
-
   def setupLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     setup.lines(journal, at, viewer)

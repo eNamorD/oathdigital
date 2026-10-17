@@ -2,7 +2,9 @@ package oathdigital.gameplay.phases.rest
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathViolation._
+import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.phases.RestCleanup
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 
@@ -26,6 +28,14 @@ object FinishRestProcedure:
     SupplyRefreshBand(InclusiveIntRange(4, 8), 5),
     SupplyRefreshBand(InclusiveIntRange(0, 3), 4)))
 
+  private val notes = NoteSet(ProcedureNotes.id(PhaseTransitionRef.FinishRest))
+  /** "Increased supply from 5 to 7". Both numbers are plain, as the rule
+    * this replaced wrote them into one `Text` span. */
+  val supplyIncreased: NoteKey = notes.key("supply-increased", Vector(
+    NotePart.Text("Increased supply from "), NotePart.Arg(0),
+    NotePart.Text(" to "), NotePart.Arg(1)))
+  def noteKeys: Vector[NoteKey] = notes.declared
+
   def gate(catalog: ExecutableCatalog, ready: ReadyGame,
       player: PlayerId): Either[OathViolation, ReadyGame] =
     val current = ready.game.current
@@ -44,7 +54,23 @@ object FinishRestProcedure:
     BuildOps((state, _) => RestCleanup.operations(catalog, state, player),
       window = Some(PowerWindow.RestReturnFavor)),
     BuildOps((state, _) => supplyRefresh(state, player)),
+    // Between the refresh and the hand-over, so `previous` is the refresh.
+    // The rule this replaced matched only a `GainSupply`, so a refresh that
+    // spent Supply posted nothing; requiring a rise reads the same.
+    Note(ProcedureNotes.id(PhaseTransitionRef.FinishRest),
+      supplyNote(player)),
     BuildOps((state, _) => beginNextTurn(state, player))))
+
+  private def supplyNote(resting: PlayerId)(states: NoteStates)
+      : Option[PowerNote] = states.previous.flatMap { (before, after) =>
+    val was = supplyOf(before, resting)
+    val now = supplyOf(after, resting)
+    Option.when(now > was)(supplyIncreased.sourceless(
+      NoteArg.Number(was), NoteArg.Number(now)))
+  }
+
+  private def supplyOf(ready: ReadyGame, player: PlayerId): Int =
+    NoteSupport.board(ready, player).fold(0)(_.supply.supply)
 
   /** The warbands the resting player's own bank holds right now -- the one
     * count both the Supply band and its preview are read from, so neither

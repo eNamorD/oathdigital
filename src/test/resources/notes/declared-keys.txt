@@ -376,6 +376,7 @@ procedure.challenge took-from-bank-favor = Took {0} from the bank with {1} favor
 procedure.challenge took-from-bank-secrets = Took {0} from the bank with {1} {1?secret|secrets}
 procedure.challenge took-from-player-favor = Took {0} from {1} with {2} favor
 procedure.challenge took-from-player-secrets = Took {0} from {1} with {2} {2?secret|secrets}
+procedure.finish-rest supply-increased = Increased supply from {0} to {1}
 procedure.forge forged = Forged {0}
 procedure.forge paid-both = Placed favor on {0} and secrets on {1}
 procedure.forge paid-favor = Placed favor on {0}

@@ -8,6 +8,7 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.walker.FollowUpOffer
 import oathdigital.model._
@@ -222,8 +223,12 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       ProcedureLog(tag = None, isSection = false,
         lines = ActionLineSource.Silent(
           "the phase changes show in the lines around them"))
+    // A Supply refresh is a delta, not an action, and stands outside any
+    // band as the rule it replaced did.
     case PhaseTransitionRef.FinishRest => ProcedureLog(tag = None,
-      lines = ActionLineSource.Rule(actions.finishRestLines), isSection = false)
+      lines = ActionLineSource.Notes(Map(
+        FinishRestProcedure.supplyIncreased -> LogKind.Delta)),
+      isSection = false)
     // A title change is a trigger, not an action: the lines stand outside
     // any band and read at the kind the rule they replaced posted at. The
     // recipient decision is asked only in the Choose branch, which always

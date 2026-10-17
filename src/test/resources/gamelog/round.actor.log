@@ -6,19 +6,19 @@
 16.0 section 1 travel@12 | Travel[cost:2 Supply]
 18.0 action 1 travel@12 | Travelled to [site:site:broken-peaks|Broken Peaks]
 27.0 phase 0 | Rest
-29.0 delta 1 | Increased supply from 5 to 7
-30.0 turn 0 | [player:p2|p2]'s turn
-30.1 phase 0 | Wake
-32.0 action 1 | Nothing happened in Wake
-32.1 phase 0 | Act
-40.0 phase 0 | Rest
-42.0 turn 0 | [player:p3|p3]'s turn
-42.1 phase 0 | Wake
-44.0 action 1 | Nothing happened in Wake
-44.1 phase 0 | Act
-52.0 phase 0 | Rest
-56.0 round 0 | Round 2
-56.1 turn 0 | [player:p1|p1]'s turn
-56.2 phase 0 | Wake
-57.0 action 1 | Nothing happened in Wake
-57.1 phase 0 | Act
+30.0 delta 1 | Increased supply from 5 to 7
+31.0 turn 0 | [player:p2|p2]'s turn
+31.1 phase 0 | Wake
+33.0 action 1 | Nothing happened in Wake
+33.1 phase 0 | Act
+41.0 phase 0 | Rest
+43.0 turn 0 | [player:p3|p3]'s turn
+43.1 phase 0 | Wake
+45.0 action 1 | Nothing happened in Wake
+45.1 phase 0 | Act
+53.0 phase 0 | Rest
+57.0 round 0 | Round 2
+57.1 turn 0 | [player:p1|p1]'s turn
+57.2 phase 0 | Wake
+58.0 action 1 | Nothing happened in Wake
+58.1 phase 0 | Act

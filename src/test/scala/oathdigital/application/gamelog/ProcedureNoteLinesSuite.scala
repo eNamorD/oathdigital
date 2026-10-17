@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -124,3 +125,7 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
       OathkeeperProcedure.passedToPlayer), LogKind.Trigger)
     assertEquals(kindOf(TriggeredProcedureRef.Oathkeeper,
       OathkeeperProcedure.passedToBank), LogKind.Trigger)
+
+  test("a Finish Rest line posts at Delta, not Action"):
+    assertEquals(kindOf(PhaseTransitionRef.FinishRest,
+      FinishRestProcedure.supplyIncreased), LogKind.Delta)
