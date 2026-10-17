@@ -135,13 +135,20 @@ object TravelProcedure:
       // would be a child those powers rewrite; and reading the arrival off
       // the step means a power that rerouted the pawn is named correctly
       // rather than by the destination this tree closed over.
-      Note(ProcedureNotes.id(ActionRef.Travel), travelledNote(actor))),
+      Note(ProcedureNotes.id(ActionRef.Travel),
+        travelledNote(actor, source))),
       Some(PowerWindow.TravelActionEligibility))
 
-  /** Where the pawn arrived in the step before the note. A Travel whose
-    * `Move` a power removed writes no line, as the rule this replaced wrote
-    * none without a recorded pawn move. */
-  private def travelledNote(actor: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = states.previous.flatMap: (before, after) =>
-    actorSite(after, actor).filterNot(actorSite(before, actor).contains)
+  /** Where the pawn stands once the cost window has run, when that is not
+    * where it started. Read against the source rather than off
+    * `states.previous`: four Travel powers append a leaf after the `Move`
+    * inside the cost window, and every leaf resets `previous`, so a note
+    * reading the last step would see the pawn already arrived and write
+    * nothing. Reading the arrival from the state still names a power that
+    * rerouted the pawn correctly, and a Travel whose `Move` a power removed
+    * writes no line, as the rule this replaced wrote none without a
+    * recorded pawn move. */
+  private def travelledNote(actor: PlayerId, source: SiteId)(
+      states: NoteStates): Option[PowerNote] =
+    actorSite(states.now, actor).filterNot(_ == source)
       .map(arrived => travelled.sourceless(NoteArg.Site(arrived)))

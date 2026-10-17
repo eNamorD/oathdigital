@@ -89,7 +89,13 @@ object ForgeProcedure:
   /** What the Forge placed, read the way the node that placed it read it:
     * the answered split for a site printing both resources, and every
     * eligible target at the state before the payment for a site printing
-    * one. Nothing placed writes nothing. */
+    * one. Nothing placed writes nothing.
+    *
+    * This names what the Forge asked for, not what the pipeline executed.
+    * The two cannot differ today -- `determinedPayments` refuses a site
+    * whose targets do not match the printed cost, and the answered split is
+    * validated against the declared options -- but a permissive pipeline
+    * could one day drop a `PayCost` the note still names. */
   private def paidNote(actor: PlayerId, cost: Tokens)(states: NoteStates)
       : Option[PowerNote] = states.previous.flatMap { (before, _) =>
     val (favor, secrets) =
@@ -118,7 +124,10 @@ object ForgeProcedure:
 
   /** The relic that reached the actor in the step before the note. A Forge
     * whose `Play` a power removed writes no line, as the rule this replaced
-    * wrote none without a recorded play off the relic deck. */
+    * wrote none without a recorded play off the relic deck. The rule
+    * matched the play off the relic deck itself; this matches any relic the
+    * actor gained in that batch, which is the same relic while the batch is
+    * the one `BuildOps` that forges. */
   private def forgedNote(actor: PlayerId)(states: NoteStates)
       : Option[PowerNote] = states.previous
     .flatMap(NoteSupport.relicsGained(_, actor).headOption)

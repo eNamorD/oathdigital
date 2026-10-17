@@ -181,6 +181,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
         assertEquals(take, Take(Piece.Favor(1), actor, Location.Site(home),
           Location.PlayArea(actor)))
         assertEquals(note.power, ProcedureNotes.id(ActionRef.TakeWealth))
+        assertEquals(note.covers, false, "a procedure's line covers nothing")
         assertEquals(used, RecordPowerUse(TakeWealthLimit.useRef(home)))
       case other => fail(s"not the declared Take Wealth tree: $other")
 
