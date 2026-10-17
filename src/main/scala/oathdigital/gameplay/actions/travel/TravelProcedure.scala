@@ -25,7 +25,9 @@ import oathdigital.model._
   *
   * **The destination is a decision.** A power that cares which site was
   * picked acts inside the walk and may ask its own question (Way Station).
-  * The start carries no selection.
+  * A menu start carries no selection. A power's queued Travel may carry its
+  * destination as its one start argument, and then asks nothing: the route
+  * to that site runs after the modifiers (catalog batch 8, slice 15).
   *
   * **The windows sit inside the `Branch`.** Every Travel power finds the
   * route by flattening its windowed node to the `Move`, and a `Branch`
@@ -54,7 +56,7 @@ object TravelProcedure:
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for
-    _ <- noSelection(args)
+    _ <- startArgs(state, activePlayer, args)
     source <- actorSite(state, activePlayer).toRight(
       OathViolation.PawnSiteMissing(activePlayer))
   yield tree(catalog, state, activePlayer, source)
@@ -65,7 +67,7 @@ object TravelProcedure:
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for
-    _ <- noSelection(args)
+    _ <- startArgs(state, activePlayer, args)
     source <- sourceOf(state.game.current.walkerStartFacts)
   yield tree(catalog, state, activePlayer, source)
 
@@ -77,9 +79,39 @@ object TravelProcedure:
   def actorSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
     state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
 
-  private def noSelection(args: Vector[DecisionOptionRef])
-      : Either[OathViolation, Unit] = Either.cond(args.isEmpty, (),
-    OathViolation.InvalidEventOrder("travel takes no start selection"))
+  /** The destination a power's queued Travel names, while that Travel's
+    * walk runs for `actor` (catalog batch 8, slice 15): its first start
+    * argument, a site. Any argument after it is for the sending power's
+    * own rules to read. Only a `Run` entry with a source carries one; a
+    * menu Travel never does. */
+  def queuedDestination(state: ReadyGame, actor: PlayerId): Option[SiteId] =
+    state.game.current.walkerEntry.filter(entry =>
+      entry.procedure == ActionRef.Travel && entry.actor == actor &&
+        entry.source.nonEmpty && entry.kind == QueueKind.Run)
+      .flatMap(_.startArgs match
+        case DecisionOptionRef.Site(site) +: _ => Some(site)
+        case _ => None)
+
+  /** The queued destination as its actor's answer to the destination
+    * decision, which the walk does not ask. A waivable restriction finds a
+    * grant under it as it finds one under a destination the actor picked. */
+  def queuedAnswers(state: ReadyGame): Vector[Answered] =
+    state.game.current.walkerEntry.toVector.flatMap(entry =>
+      queuedDestination(state, entry.actor).map(site => Answered(
+        destinationDecisionId,
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site)),
+        entry.actor)))
+
+  private def startArgs(state: ReadyGame, actor: PlayerId,
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Unit] =
+    args match
+      case Vector() => Right(())
+      case DecisionOptionRef.Site(site) +: _
+          if queuedDestination(state, actor).contains(site) &&
+            state.game.current.walkerEntry.exists(_.startArgs == args) =>
+        Right(())
+      case _ => Left(OathViolation.InvalidEventOrder(
+        "travel takes no start selection but a power's queued destination"))
 
   private def sourceOf(facts: Vector[DecisionOptionRef])
       : Either[OathViolation, SiteId] = facts match
@@ -102,23 +134,33 @@ object TravelProcedure:
       PowerWindow.TravelModifierSelection, rest, startLabel,
       Some(TravelOptions.priced)), rest))
 
-  /** The destination pick and the route to it. */
+  /** The destination pick and the route to it, or only the route to a
+    * queued destination. */
   private def journey(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId, source: SiteId): Operation =
+    queuedDestination(state, actor).fold(picked(catalog, state, actor,
+      source))(destination => route(catalog, actor, source, destination))
+
+  private def picked(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId, source: SiteId): Operation =
     val pick = Decide(destinationDecisionId, actor, DecisionQuery.ChooseOne(
       state.game.current.map.inPlay.filter(_ != source).map(site =>
         DecisionOption.Site(DecisionOptionRef.Site(site))),
       heading = Some(heading), confirmVerb = Some("Travel to")))
-    val route = Branch((current, pending) =>
-      pending.answered.collectFirst {
-        case Answered(`destinationDecisionId`,
-            DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site)), _) =>
-          site
-      }.toVector.map(destination =>
-        TravelRules.cost(catalog, current, source, destination).fold(
-          error => BuildOps((_, _) => Left(error)),
-          base => routeTree(actor, source, destination, base))))
-    Sequence(Vector(pick, route))
+    val chosen = Branch((_, pending) => pending.answered.collectFirst {
+      case Answered(`destinationDecisionId`,
+          DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site)), _) =>
+        site
+    }.toVector.map(route(catalog, actor, source, _)))
+    Sequence(Vector(pick, chosen))
+
+  /** The route to `destination`, priced on the state it is reached in. The
+    * windows sit inside its `Branch`, as the class doc says. */
+  private def route(catalog: ExecutableCatalog, actor: PlayerId,
+      source: SiteId, destination: SiteId): Operation =
+    Branch((current, _) => Vector(TravelRules.cost(catalog, current, source,
+      destination).fold(error => BuildOps((_, _) => Left(error)),
+      base => routeTree(actor, source, destination, base))))
 
   /** Closes only over command-stable actor, route, and printed base. */
   private def routeTree(actor: PlayerId, source: SiteId, destination: SiteId,

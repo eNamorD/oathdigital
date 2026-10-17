@@ -150,13 +150,22 @@ another action must also:
   the waiver they pay nothing, so `StartLines.opening` would post the tag at
   completion.
 
-## Sneak Attack hook
+## Off-turn actors
 
-Sneak Attack will queue a Campaign for a player who is not the active
-player. `QueuedProcedure.actor` and the offer's owner are the hooks.
-Campaign powers still read `ctx.activePlayer` as the attacker, and
-modifiers are selected only on turn, so the off-turn actor is still to be
-built.
+A queued entry's actor owns its walk (`CurrentGameState.walkActor`, catalog
+batch 8, slice 14), so `ctx.activePlayer` is that actor even on another
+player's turn, and they pick their own modifiers. A queued start accepts
+the entry's actor; a menu start still requires the turn's player.
+
+- Sneak Attack queues its `Offer` at the front, naming the earlier attacker
+  as the declared defender in its start arguments.
+- A defender's Second Wind queues its Travel and Campaign at the back.
+- A queued entry may name its `sender`, the player whose power sent its
+  actor (catalog batch 8, slice 15). A waivable restriction the sender could
+  waive does not block the walk. A power's queued Travel may carry its
+  destination as its first start argument, and then asks no destination
+  question (Palanquin). A later argument is for the sender's own rules: a
+  waived toll's free option.
 
 ## Decisions beyond the design
 

@@ -25,13 +25,27 @@ private[gamelog] final class ConsentLines(words: LogWords,
       def line(spans: Vector[LogSpan]) =
         Vector(Posted(LogKind.Decision, spans))
       journal.event(at) match
-        case ConsentRequested(request) => line(
-          (Text("Asked ") +: LogWords.join(request.asks.map(ask =>
-            Vector(words.player(ask.granter))))) ++
-          (Text(" for consent to ignore ") +:
-            named(request.asks.flatMap(_.powers).distinct)) ++
-          (Text(" and select ") +: choices.option(request.target, before,
-            after, viewer)) :+ Text("."))
+        case ConsentRequested(request) =>
+          // A payer is asked to pay and travel; every other ask, to ignore
+          // (catalog batch 8, slice 15).
+          val (paying, ignoring) = request.asks.partition(ask =>
+            ask.powers.forall(powers.paying))
+          val ignored = Option.when(ignoring.nonEmpty)(
+            (Text("Asked ") +: LogWords.join(ignoring.map(ask =>
+              Vector(words.player(ask.granter))))) ++
+            (Text(" for consent to ignore ") +:
+              named(ignoring.flatMap(_.powers).distinct)) ++
+            (Text(" and select ") +: choices.option(request.target, before,
+              after, viewer)) :+ Text("."))
+          val paid = paying.map(ask =>
+            (Vector(Text("Asked "), words.player(ask.granter),
+              Text(" for consent to pay ")) ++ named(ask.powers) ++
+            (Text(" and travel to ") +: choices.option(
+              request.keysOf(ask).collectFirst {
+                case ConsentKey(_, _, _, site: DecisionOptionRef.Site) =>
+                  site }.getOrElse(request.target),
+              before, after, viewer))) :+ Text("."))
+          (ignored.toVector ++ paid).flatMap(line)
         case ConsentAnswered(granter, granted) => line(Vector(
           words.player(granter),
           Text(if granted then " gave consent." else " gave no consent.")))

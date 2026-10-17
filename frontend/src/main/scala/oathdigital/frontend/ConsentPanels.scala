@@ -10,17 +10,25 @@ private[frontend] object ConsentPanels:
   private val answers = Vector("Never Allow" -> "never", "No" -> "no",
     "Yes" -> "yes", "Always Allow" -> "always")
 
-  /** "Give Blue consent to ignore Narrow Pass and select Deep Woods?" */
+  /** "Give Blue consent to ignore Narrow Pass and select Deep Woods?", or
+    * for a payer, "Blue wants to send you to Coast. Consent to pay Toll
+    * Roads and travel to Coast?" (catalog batch 8, slice 15). */
   def prompt(value: GameProjection, asked: ConsentPromptState): String =
-    s"Give ${ConsentAsking.name(value, asked.requesterPlayerId)} consent to " +
-      s"ignore ${ConsentAsking.listed(asked.powers)} and select " +
+    val requester = ConsentAsking.name(value, asked.requesterPlayerId)
+    val powers = ConsentAsking.listed(asked.powers)
+    if asked.paying then
+      s"$requester wants to send you to ${asked.target}. Consent to pay " +
+        s"$powers and travel to ${asked.target}?"
+    else s"Give $requester consent to ignore $powers and select " +
       s"${asked.target}?"
 
-  /** "Waiting for Red's consent…" */
+  /** "Waiting for Red's consent…", or "Waiting for Blue's or Red's
+    * consent…" while any one of them will do. */
   def waiting(value: GameProjection, wait: ConsentWaitingState): String =
     val names = wait.granterPlayerIds.map(id =>
       s"${ConsentAsking.name(value, id)}'s")
-    s"Waiting for ${names.mkString(" and ")} consent…"
+    s"Waiting for ${names.mkString(if wait.either then " or " else " and ")}" +
+      " consent…"
 
   /** The prompt, when the viewer is asked. */
   def render(value: GameProjection, canControl: Boolean, panel: dom.Element,

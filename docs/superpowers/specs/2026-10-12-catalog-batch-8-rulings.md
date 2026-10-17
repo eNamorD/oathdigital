@@ -567,30 +567,146 @@ The shared rules:
 
 ## Slice 14: Off-turn actor
 
+Ruled 2026-10-16. A walk started from a queue entry belongs to that
+entry's actor, who may be off turn. Every other walk belongs to the turn's
+player.
+
 - **98 Sneak Attack.** "After another player's campaign, you may campaign,
   spending no Supply, if you declare them as the defender."
-  - It is offered after every effect and follow-up of the other player's
-    Campaign has resolved.
-  - With several holders, each is offered in turn order, starting after the
-    attacker.
-  - The Campaign is the holder's, off turn: they choose modifiers and plans
-    as the attacker, and the earlier attacker is the defender.
+  - It is offered first, at the end of the other player's Campaign: its
+    `Offer` goes to the front of the queue. The Campaign's other
+    follow-ups, Second Wind's on either side, go to the back, and run after
+    it whether it is taken or skipped. Taking it puts the Campaign `Run` at
+    the front, as every taken offer does.
+  - A Campaign that recorded a result triggers it. A Campaign skipped, or
+    ended with nothing to attack (Vow of Union), does not. The holder is
+    not that Campaign's attacker: they may be its defender or uninvolved.
+    An off-turn Campaign counts, so a defender's Second Wind Campaign is
+    another player's Campaign.
+  - The entry's one start argument names the earlier attacker as the
+    declared defender. Only kinds where that player defends are legal: a
+    Conquest of a site they rule, or a Raid of their pawn there. The
+    defender question offers only them, and a Conquest's extra targets are
+    sites they rule. The argument is accepted only from a queue entry with
+    a source, as slice 13's origin is.
+  - The offer is queued only when the holder has a legal kind against the
+    earlier attacker. A start that a restriction refuses (Vow of Peace)
+    still shows Take unavailable with its reason.
+  - The Campaign is the holder's, off turn: they choose their own
+    modifiers and plans as the attacker.
+  - Sneak Attack is a single card, so the earlier "several holders, in
+    turn order" cannot arise, and is dropped.
 - **16 Second Wind** (defender side). "[secret] [favor-burnt] After you're
   victorious, you may travel and then may campaign, spending no Supply for
   either."
-  - A victorious defender is offered it too. Their Travel and Campaign run
-    off turn, after the attacker's follow-ups.
+  - The plan is offered on both sides. A winning player-defender gets
+    Travel, then Campaign, as `Offer` entries at the back, spending no
+    Supply. A Bandit defender gets nothing.
+  - The defender pays off turn: the secret flips facedown and the favor
+    burns. A chain still ends only when the cost cannot be paid.
+
+The shared rules:
+
+- **Starts.** A queued start accepts its entry's actor as the requester. A
+  menu start still requires the turn's player.
+- **Off-turn costs** settle off turn, since it is another player's turn:
+  favor to the bank, secrets flip facedown. Placements and Vow of
+  Wandering's Imperial warbands stay on the turn's player.
+- **Special Envoy off turn** waives the Supply, and does not end the Act
+  Phase: it is not the traveller's Act Phase.
+- **Modifiers off turn.** The off-turn actor picks their own Campaign and
+  Travel modifiers and battle plans. Spiteful Mirror's per-turn uses are
+  not reachable, since only Campaign and Travel run off turn.
+- **Lines.** A run's actor is the actor of its dequeued entry, and the
+  lines inside omit that actor as on-turn lines do. When the run's actor
+  is not the turn's player, the tag starts with their name: "Blue ·
+  Campaign · Sneak Attack". A skipped offer whose actor is not the turn's
+  player reads "Sneak Attack: Campaign skipped by Blue."
+- **Client and undo.** No change. The client already shows a decision's
+  controls to its owner, the HUD stays on the turn's player, and issuer
+  gating already stops the turn's player undoing an off-turn actor's
+  answers.
 
 ## Slice 15: Palanquin
 
 - **107 Palanquin.** "[favor] ACTION: Choose a player whose pawn is at your
   site. Put your pawn on a site that they can travel to. Make them travel to
-  that site, spending no Supply."
-  - The destinations are the sites the target could legally travel to.
-  - The user's pawn is placed there; then the target travels there, off
-    turn.
-  - The target owns every decision in that Travel. Their restrictions,
-    consent and after-travel powers apply (Hospitality, Tyrant, Brass Army),
-    and only the Supply cost is waived.
-  - Toll Roads: the target must consent to pay its ruler. If they refuse,
-    that destination is invalid.
+  that site, spending no Supply." Ruled by the product owner on 2026-10-16.
+  - **The target** is another player whose pawn is at the user's site. The
+    user cannot choose themselves.
+  - **Destinations** are every site but the user's, in map order. Each is
+    judged by previewing the target's queued Travel. A site that Travel
+    refuses is unavailable with its reason: "Cannot travel to other sites
+    in the region" for a Narrow Pass, the start's own text when it has
+    one, else "Cannot travel there now".
+  - **The fixed destination.** The target's Travel goes to the chosen site
+    and asks no destination question. Its modifiers, costs and
+    after-travel powers are the target's (Hospitality, Tyrant, Brass Army,
+    Grasping Vines). Only the Supply is waived.
+  - **Order.** The target, the destination, the toll question when the
+    user rules Toll Roads, then the user's pawn is placed at the
+    destination (a placement, so Brass Army asks the user at once), and
+    the target's Travel is queued as a `Run` at the front.
+  - **When it is usable.** A target who can reach no site, directly or by
+    consent, is unavailable with "Cannot travel anywhere now". With no such
+    target, the Act menu shows "No valid enemy pawn". Ward of Silence shows
+    the same reason when nobody at the site has a faceup secret, and keeps
+    "Nothing to do now" when its card cannot take a secret.
+  - **The sender.** A queued walk names the player whose power sent it. A
+    restriction that would block it, and that the sender could waive, does
+    not block it: a Narrow Pass the user rules lets the target through. A
+    pay-or-ask step inside the walk is still the traveller's to answer.
+  - **Waivable restrictions** on the target's Travel (Narrow Pass, and any
+    later tree-level waivable restriction on a Travel) make the destination
+    askable. The asks go to their granters, on the user's behalf. The grant
+    is remembered under the key the target's own Travel checks: the
+    target's answer of that site to the destination decision.
+  - **Toll Roads ruled by another player.** This ruling began as "the
+    target must consent to pay its ruler"; the product owner widened it on
+    2026-10-16 so the ruler may waive the toll instead. A destination where
+    Toll Roads would charge the target is askable two ways, the target
+    agreeing to pay or the ruler waiving it, and the user may ask either
+    player or both. A target with no favor cannot be asked. A refusal
+    stands for the turn.
+  - **Toll Roads ruled by bandits.** Only the target is asked, to burn 1
+    favor. With no favor the destination is unavailable: "{Blue} has no
+    favor for it."
+  - **The user rules Toll Roads.** The destination is available, and a
+    question of the user's follows the pick: "Take 1 favor", which needs
+    the target's consent, or "Waive the toll". Option labels cannot name a
+    player, so the ask's hover names the target.
+  - **Inside the sent Travel** no toll question is asked. If the target
+    agreed, they pay, unless the user, ruling Toll Roads, waived it; the
+    queued entry then carries the toll's free option after the site.
+    Otherwise the toll was waived, and the line reads "{Blue} paid
+    nothing, with {Red}'s consent."
+  - **One granter, two grants.** A player asked for a restriction's waiver
+    who also rules the Toll Roads that charges the target answers for both,
+    and the target is not asked.
+  - **Settling an either-or request.** The first alternative to grant
+    settles it, and the other prompts close. An alternative's refusal
+    leaves the others open, and the request is refused once every
+    alternative refuses. A required ask must still grant, and its refusal
+    settles the whole request.
+  - **Wording.** Hovers carry the card's name: "Toll Roads: {Blue} must
+    agree to give 1 favor to {Red}, or {Red} must waive it."; "Toll Roads:
+    {Red} must waive it." with no favor; "Toll Roads: {Blue} must agree to
+    give 1 favor to {Red}." after the ruler refused; "Toll Roads: {Blue}
+    must agree to burn 1 favor." under bandits. Refusals read "{Blue}
+    refused.", "{Red} refused to waive it." or "{Blue} refused, and {Red}
+    refused to waive it." The target's prompt reads "{Green} wants to send
+    you to {Coast}. Consent to pay Toll Roads and travel to {Coast}?"; the
+    ruler's keeps "Give {Green} consent to ignore Toll Roads and select
+    {Coast}?". The log writes "Asked {Blue} for consent to pay Toll Roads
+    and travel to {Coast}." for the target and keeps the ignore line for
+    every other ask.
+  - **Preferences.** The ruler's Toll Roads preference applies to their
+    ask. The target's agreement belongs to no card's ruler, so no
+    preference applies, and the target is always asked by hand.
+  - **The Game Log.** Palanquin's run reads "Moved to {Coast}; {Blue}
+    travels there." The target's run is tagged "{Blue} · Travel ·
+    Palanquin".
+  - **Client.** An askable option with alternatives opens a choice: one
+    button per alternative, then "Ask both" (or "Ask all" past two), and
+    Cancel. The requester waits with "Waiting for {Blue}'s or {Red}'s
+    consent…" while only alternatives are open.

@@ -19,7 +19,8 @@ private[protocol] object CommandIntentDecoders:
       yield ResolveWalker(id, payload)
     case "requestConsent" =>
       for
-        _ <- exact(value, Set("type", "decisionId", "target"), path)
+        _ <- exact(value, Set("type", "decisionId", "target", "granters"),
+          path)
         id <- string(value, "decisionId", path)
         target <- field(value, "target", path).flatMap(raw =>
           CommandNestedCodecs.decodeStartArgsWire(ujson.Arr(raw),
@@ -28,7 +29,9 @@ private[protocol] object CommandIntentDecoders:
             case Vector(one) => Right(one)
             case _ => Left(InvalidValue(s"$path.target",
               "expected one consent target"))
-      yield RequestConsent(id, target)
+        granters <- value.value.get("granters").fold(
+          Right(Vector.empty))(strings(_, s"$path.granters"))
+      yield RequestConsent(id, target, granters)
     case "answerConsent" => one(value, path, "choice")(AnswerConsent.apply)
     case "setConsentPreference" =>
       for

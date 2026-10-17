@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.operations.{OperationRestrictions, WaivableRule}
 import oathdigital.gameplay.powerresolver.{ContributingPower,
   OptionRestriction, Restriction, Waiver}
+import oathdigital.gameplay.powers.travel.TollRoads
 import oathdigital.model.{PlayerId, PowerId, PowerSourceRef, ReadyGame}
 
 /** The waivable powers (consent design, "Powers declare waivability"): every
@@ -14,7 +15,8 @@ import oathdigital.model.{PlayerId, PowerId, PowerSourceRef, ReadyGame}
   * `default` takes from the waivable `OperationRestrictions.printedRules`. The
   * grid, the stale-preference check and the log all look a power up here. */
 final class ConsentPowers(powers: Vector[ContributingPower],
-    operations: Vector[(PowerId, Waiver)] = Vector.empty):
+    operations: Vector[(PowerId, Waiver)] = Vector.empty,
+    payments: Vector[(PowerId, Waiver)] = Vector.empty):
   private val waivers: Map[PowerId, Waiver] = (for
     power <- powers
     waiver <- power.contributions.values.flatten.collectFirst {
@@ -22,7 +24,14 @@ final class ConsentPowers(powers: Vector[ContributingPower],
       case OptionRestriction(_, _, Some(waiver)) => waiver }
       .orElse(power.powerUseRestrictions.iterator.map(_.waiver)
         .collectFirst { case Some(waiver) => waiver })
-  yield power.id -> waiver).toMap ++ operations
+  yield power.id -> waiver).toMap ++ operations ++ payments
+  private val paid: Set[PowerId] = payments.map(_._1).toSet
+
+  /** Whether `power` is a player's agreement to pay rather than a ruler's
+    * waiver (catalog batch 8, slice 15): its prompt and log line say
+    * "pay". A payment has no granter, so no grid lists it and no
+    * preference is set on it. */
+  def paying(power: PowerId): Boolean = paid(power)
 
   def waiver(power: PowerId): Option[Waiver] = waivers.get(power)
 
@@ -42,4 +51,5 @@ object ConsentPowers:
     new ConsentPowers(WalkerPowerCatalog.default(catalog).powers,
       OperationRestrictions.printedRules.collect { case rule: WaivableRule =>
         rule.id -> Waiver(rule.granter, rule.source,
-          (_, _) => rule.consentNote(rule.source)) })
+          (_, _) => rule.consentNote(rule.source)) },
+      payments = Vector(TollRoads.payerWaiver))

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.powerresolver.PhasePowers
+import oathdigital.gameplay.powerresolver.{PhasePowers, QueuedStarts}
 import oathdigital.model._
 
 /** Whether a queued entry would start now, and what it would cost
@@ -11,10 +11,8 @@ import oathdigital.model._
   * persisted. An option shown available is a start the driver accepts.
   *
   * It builds through the production registry, so a suite that injects its
-  * own tree source into `OathRules` does not reach it. It does not check that
-  * the entry's actor is the active player, which the start does: until an
-  * off-turn actor exists (Sneak Attack), every entry's actor is the active
-  * player.
+  * own tree source into `OathRules` does not reach it. The simulated walk is
+  * the entry's actor's, since `startingFrom` sets `walkerEntry`.
   */
 object QueuedStart:
   /** What a start costs its actor by its cheapest way, `least`, and by every
@@ -44,6 +42,38 @@ object QueuedStart:
       past <- WalkerSimulation.started(tree, state, powers)
       cost <- costOf(entry, tree, past, powers)
     yield cost
+
+  /** `refusal`, and for a start only waivable restrictions refuse, the
+    * grants that would let it start (catalog batch 8, slice 15). Each grant
+    * is keyed on the entry's queued answer, so the started walk finds it,
+    * and the start is tried again with every one of them supposed, as the
+    * look-ahead tries a grant before it offers to ask (consent design,
+    * ruling 8). */
+  def consent(catalog: ExecutableCatalog, ready: ReadyGame,
+      entry: QueuedProcedure, powers: WalkerPowers,
+      phasePowers: PhasePowers): QueuedStarts.Verdict =
+    priced(catalog, ready, entry, powers, phasePowers) match
+      case Right(_) => QueuedStarts.Verdict.Starts
+      case Left(violation) =>
+        val state = startingFrom(ready, entry)
+        val waiting = for
+          answer <- WalkerProcedureRegistry.queuedAnswers(state).headOption
+          ref <- answer.answer match
+            case DecisionAnswer.ChooseOneAnswer(ref) => Some(ref)
+            case _ => None
+          tree <- WalkerProcedureRegistry.build(entry.procedure, catalog,
+            state, entry.actor, entry.startArgs, phasePowers,
+            walkerPowers = powers).toOption
+          breaches <- WalkerPowerGather.waivableBreaches(tree, state,
+            entry.actor, powers, Vector(answer), Some(entry.procedure), ref)
+          needed = breaches.map(breach => QueuedStarts.Needed(breach.power,
+            breach.granter, ConsentKey(breach.power, answer.by,
+              answer.decisionId, ref), breach.asked, breach.plain))
+          supposed = ready.copy(consent = ready.consent.granting(
+            needed.map(_.key), ConsentTurn.of(ready)))
+          if priced(catalog, supposed, entry, powers, phasePowers).isRight
+        yield QueuedStarts.Verdict.Waiting(needed)
+        waiting.getOrElse(QueuedStarts.Verdict.Refused(violation))
 
   /** "Needs 2 Supply; you have 1", or the same for favor or secrets, when
     * the start would open with the actor's Supply raised to the track's

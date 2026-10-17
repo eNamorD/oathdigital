@@ -18,9 +18,12 @@ object GameIntent:
   final case class ResolveWalker(decisionId: String,
       payload: DecisionAnswerWire) extends GameIntent
   /** Asks the rulers of the powers blocking `target` at the parked
-    * `decisionId` for consent to choose it (consent design). */
+    * `decisionId` for consent to choose it (consent design). `granters`
+    * names the alternatives to ask; empty asks them all (catalog batch 8,
+    * slice 15). */
   final case class RequestConsent(decisionId: String,
-      target: WalkerStartArgWire) extends GameIntent
+      target: WalkerStartArgWire, granters: Vector[String] = Vector.empty)
+      extends GameIntent
   /** Answers the consent request waiting on the sender: `never`, `no`,
     * `yes` or `always`. */
   final case class AnswerConsent(choice: String) extends GameIntent

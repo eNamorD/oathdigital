@@ -41,8 +41,8 @@ private[gamelog] final class StartLines(words: LogWords,
             Option.when(chosen.nonEmpty)(Text("With ") +: chosen)
           else Some(said ++ (if chosen.isEmpty then Vector.empty
             else Text(" with ") +: chosen))
-        Posted(LogKind.Section, Text(named) +:
-          (queuedBy(journal, run, at, viewer) ++ cost(journal, run, at))) +:
+        Posted(LogKind.Section, offTurn(journal, run) ++ (Text(named) +:
+          (queuedBy(journal, run, at, viewer) ++ cost(journal, run, at)))) +:
           line.toVector.map(Posted(LogKind.Action, _))
       }
 
@@ -55,6 +55,14 @@ private[gamelog] final class StartLines(words: LogWords,
       .toVector.flatMap(entry => entry.source.toVector.flatMap(source =>
         Text(" · ") +: words.source(source,
           journal.readyBefore(run.first).toVector, viewer)))
+
+  /** "Blue · " when the run's actor is not the turn's player (catalog
+    * batch 8, slice 14, ruling 12): the only place an off-turn walk names
+    * its actor. */
+  private def offTurn(journal: LogJournal, run: Run): Vector[LogSpan] =
+    journal.readyBefore(run.first).filter(
+      _.game.current.turn.activePlayer != run.actor).toVector
+      .flatMap(_ => Vector(words.player(run.actor), Text(" · ")))
 
   /** Recover spends Supply again each time the player continues rolling. */
   def continuedRecover(journal: LogJournal, run: Run, at: Int,

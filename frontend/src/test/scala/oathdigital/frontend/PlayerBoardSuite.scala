@@ -201,6 +201,8 @@ class PlayerBoardSuite extends munit.FunSuite:
       case CardInspection.Request.Cards(title, _, _) => opened = opened :+ title
       case CardInspection.Request.Confirm(question, _, _) =>
         opened = opened :+ question
+      case CardInspection.Request.Choices(question, _, _) =>
+        opened = opened :+ question
       case CardInspection.Request.Power(title, _, _, _) =>
         opened = opened :+ title
       case CardInspection.Request.RuledCard(card, _, _) =>

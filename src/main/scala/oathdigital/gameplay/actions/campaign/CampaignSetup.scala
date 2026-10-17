@@ -67,16 +67,31 @@ object CampaignSetup:
   private def playerOf(ready: ReadyGame, id: PlayerId): Option[PlayerState] =
     ready.game.current.players.find(_.player == id)
 
+  /** The `Run` entry a power queued for this Campaign's walk, while it
+    * runs for `actor`. A menu Campaign has none. */
+  private def queuedRun(ready: ReadyGame, actor: PlayerId)
+      : Option[QueuedProcedure] =
+    ready.game.current.walkerEntry.filter(entry =>
+      entry.procedure == ActionRef.Campaign && entry.actor == actor &&
+        entry.source.nonEmpty && entry.kind == QueueKind.Run)
+
   /** The origin a power's queued Campaign names, while that Campaign's
     * walk runs for `actor` (catalog batch 8, slice 13): its one start
     * argument, a site. Only a `Run` entry with a source carries one; a menu
     * Campaign never does. */
   def queuedOrigin(ready: ReadyGame, actor: PlayerId): Option[SiteId] =
-    ready.game.current.walkerEntry.filter(entry =>
-      entry.procedure == ActionRef.Campaign && entry.actor == actor &&
-        entry.source.nonEmpty && entry.kind == QueueKind.Run)
-      .flatMap(_.startArgs match
+    queuedRun(ready, actor).flatMap(_.startArgs match
       case Vector(DecisionOptionRef.Site(site)) => Some(site)
+      case _ => None)
+
+  /** The defender a power's queued Campaign declares, while that
+    * Campaign's walk runs for `actor` (catalog batch 8, slice 14): Sneak
+    * Attack's earlier attacker, its one start argument. Only that player
+    * may defend: the Conquest needs them ruling the origin, and the Raid
+    * needs their pawn there. */
+  def queuedDefender(ready: ReadyGame, actor: PlayerId): Option[PlayerId] =
+    queuedRun(ready, actor).flatMap(_.startArgs match
+      case Vector(DecisionOptionRef.Player(player)) => Some(player)
       case _ => None)
 
   /** Where `actor` campaigns from: a queued origin, else their pawn site.
@@ -122,11 +137,29 @@ object CampaignSetup:
       : Option[CampaignDefender] =
     originOf(ready, actor).flatMap(defenderAt(ready, _))
       .filterNot(_ == CampaignDefender.Player(actor))
+      .filter(defender => queuedDefender(ready, actor)
+        .forall(player => defender == CampaignDefender.Player(player)))
 
   def raidDefenders(ready: ReadyGame, actor: PlayerId): Vector[PlayerId] =
     originOf(ready, actor).toVector.flatMap(site =>
       ready.game.current.players.filter(p => p.player != actor &&
-        p.pawnSite.contains(site)).map(_.player))
+        p.pawnSite.contains(site) &&
+        queuedDefender(ready, actor).forall(_ == p.player)).map(_.player))
+
+  /** The kinds `actor` could campaign with against `defender` from their
+    * own pawn site, with no Campaign of theirs under way: whether Sneak
+    * Attack's Campaign has a target (catalog batch 8, slice 14, ruling 9).
+    * In Conquest order, then Raid. */
+  def kindsAgainst(ready: ReadyGame, actor: PlayerId, defender: PlayerId)
+      : Vector[CampaignKind] =
+    val site = playerOf(ready, actor).flatMap(_.pawnSite)
+    Vector(
+      Option.when(site.flatMap(defenderAt(ready, _))
+          .contains(CampaignDefender.Player(defender)))(
+        CampaignKind.Conquest: CampaignKind),
+      Option.when(site.exists(at => playerOf(ready, defender)
+          .exists(_.pawnSite.contains(at))))(
+        CampaignKind.Raid: CampaignKind)).flatten
 
   def legalKinds(ready: ReadyGame, actor: PlayerId): Vector[CampaignKind] =
     Vector(

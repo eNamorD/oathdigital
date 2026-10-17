@@ -3,8 +3,9 @@ package oathdigital.gameplay.walker
 import oathdigital.model.{Answered, OathEvent, Operation, PlayerId, ReadyGame}
 
 /** Command-local walk state: the state threaded through executed deltas,
-  * the events recorded so far, the acting player, and every decision
-  * already answered during this action.
+  * the events recorded so far, the walk's actor
+  * (`CurrentGameState.walkActor`), and every decision already answered
+  * during this action.
   */
 private[walker] final case class WalkCtx(
     state: ReadyGame,

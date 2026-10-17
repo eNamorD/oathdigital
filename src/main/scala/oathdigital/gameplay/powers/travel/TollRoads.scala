@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
-import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
+import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
+  PowerCtx, Transform, Waiver}
 import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport, PayOrAsk, RulerToll}
 import oathdigital.model._
 
@@ -30,6 +31,12 @@ object TollRoadsCard extends Denizen(DenizenId("118"), "Toll Roads", Suit.Order)
   * The payment writes "{Red} paid 1 favor to {Blue}.", or "{Red} burned 1
   * favor." when bandits rule, read from the payment's step. Travelling free
   * writes "{Red} paid nothing, with {Blue}'s consent."
+  *
+  * A Travel another player's power sent to its site (catalog batch 8,
+  * slice 15) asks nothing: the sender settled the toll before sending it
+  * (`TollRoads.sending`). The traveller pays if they agreed to
+  * (`TollRoads.payerKey`); otherwise the ruler waived it. Under bandits the
+  * favor is burnt, as for any Travel.
   */
 final case class TollRoads private (catalog: ExecutableCatalog)
     extends ContributingPower:
@@ -58,13 +65,20 @@ final case class TollRoads private (catalog: ExecutableCatalog)
   private def charged(ctx: PowerCtx, operations: Vector[Operation])
       : Option[Vector[Operation]] = for
     route <- TravelRoute.pawnMove(ctx.operation)
-    ruler <- SiteRulers.rulerOfCard(ctx.state, cardId)
-    if SiteRule.enemies(ruler, SiteRuler.Player(route.player))
-    if SiteRulers.rulerOf(ctx.state, route.destination).contains(ruler)
+    ruler <- TollRoads.owed(ctx.state, route.player, route.destination)
   yield
     val paid = Vector(payment(route.player, ruler),
       Note(id, paidNote(route.player, ruler)))
     ruler match
+      case SiteRuler.Player(owner) if sent(ctx.state, route) =>
+        // A sent Travel asks nothing (catalog batch 8, slice 15, ruling
+        // 11): its sender settled the toll before sending it. A sender who
+        // rules Toll Roads and waived it says so in the entry.
+        if agreed(ctx.state, route) && !waivedBySender(ctx.state, route)
+        then TravelRoute.beforeMove(operations, paid)
+        else TravelRoute.beforeMove(operations, Vector(Note(id, _ =>
+          Some(TollRoads.waived(PowerSourceRef.Card(cardId),
+            NoteArg.Player(route.player), NoteArg.Player(owner))))))
       case SiteRuler.Player(owner) =>
         TollRoads.step.question(route.player, route.destination.value,
           "Toll Roads: give 1 favor to travel there?",
@@ -76,6 +90,28 @@ final case class TollRoads private (catalog: ExecutableCatalog)
               PowerSourceRef.Card(cardId), NoteArg.Player(route.player),
               NoteArg.Player(owner))))))))
       case _ => TravelRoute.beforeMove(operations, paid)
+
+  /** Whether this Travel was sent to its destination by another player's
+    * power. */
+  private def sent(ready: ReadyGame, route: TravelRoute.PawnMove): Boolean =
+    ready.game.current.walkerEntry.exists(entry =>
+      entry.procedure == ActionRef.Travel && entry.actor == route.player &&
+        entry.sender.nonEmpty && entry.startArgs.headOption.contains(
+          DecisionOptionRef.Site(route.destination)))
+
+  /** Whether the entry carries the free option after its destination: the
+    * sender ruling Toll Roads waived the toll. The entry runs at the front
+    * of the queue, right after the sender's walk, and a start's arguments
+    * must equal its entry's, so the sender still rules it. */
+  private def waivedBySender(ready: ReadyGame, route: TravelRoute.PawnMove)
+      : Boolean = ready.game.current.walkerEntry.exists(
+    _.startArgs.contains(TollRoads.free(route.destination)))
+
+  private def agreed(ready: ReadyGame, route: TravelRoute.PawnMove)
+      : Boolean =
+    ready.consent.answer(TollRoads.payerKey(route.player, route.destination),
+      Some(route.player), ConsentTurn.of(ready))
+      .contains(ConsentAnswer.Granted)
 
   private def payment(traveller: PlayerId, ruler: SiteRuler): CoreOperation =
     ruler match
@@ -132,6 +168,144 @@ object TollRoads:
   /** The free option of a Travel to `destination`. */
   def free(destination: SiteId): DecisionOptionRef.Button =
     PayOrAsk.free(destination.value)
+
+  /** "{Blue} must agree to give {1 favor} to {Red}, or {Red} must waive
+    * it." */
+  val sentEither: NoteKey = notes.key("sent-either", Vector(NotePart.Arg(0),
+    NotePart.Text(" must agree to give "), NotePart.Arg(1),
+    NotePart.Text(" to "), NotePart.Arg(2), NotePart.Text(", or "),
+    NotePart.Arg(2), NotePart.Text(" must waive it.")))
+  /** "{Blue} must agree to give {1 favor} to {Red}." */
+  val sentPayer: NoteKey = notes.key("sent-payer", Vector(NotePart.Arg(0),
+    NotePart.Text(" must agree to give "), NotePart.Arg(1),
+    NotePart.Text(" to "), NotePart.Arg(2), NotePart.Text(".")))
+  /** "{Blue} must agree to burn {1 favor}." */
+  val sentBurn: NoteKey = notes.key("sent-burn", Vector(NotePart.Arg(0),
+    NotePart.Text(" must agree to burn "), NotePart.Arg(1),
+    NotePart.Text(".")))
+  /** "{Red} must waive it." */
+  val sentWaiver: NoteKey = notes.key("sent-waiver", Vector(NotePart.Arg(0),
+    NotePart.Text(" must waive it.")))
+  /** "{Blue} refused." */
+  val sentRefused: NoteKey = notes.key("sent-refused", Vector(
+    NotePart.Arg(0), NotePart.Text(" refused.")))
+  /** "{Red} refused to waive it." */
+  val sentWaiveRefused: NoteKey = notes.key("sent-waive-refused", Vector(
+    NotePart.Arg(0), NotePart.Text(" refused to waive it.")))
+  /** "{Blue} refused, and {Red} refused to waive it." */
+  val sentBothRefused: NoteKey = notes.key("sent-both-refused", Vector(
+    NotePart.Arg(0), NotePart.Text(" refused, and "), NotePart.Arg(1),
+    NotePart.Text(" refused to waive it.")))
+  /** "{Blue} has no favor for it." */
+  val sentNoFavor: NoteKey = notes.key("sent-no-favor", Vector(
+    NotePart.Arg(0), NotePart.Text(" has no favor for it.")))
+  /** "The traveller may agree to pay." */
+  val payerAsked: NoteKey = notes.key("payer-asked", Vector(NotePart.Text(
+    "The traveller may agree to pay.")))
+
+  /** Who a Travel by `traveller` to `destination` owes Toll Roads to, if
+    * anyone: its ruler, when the traveller is their enemy and the ruler
+    * rules the destination. */
+  def owed(ready: ReadyGame, traveller: PlayerId, destination: SiteId)
+      : Option[SiteRuler] = for
+    ruler <- SiteRulers.rulerOfCard(ready, TollRoadsCard.id)
+    if SiteRule.enemies(ruler, SiteRuler.Player(traveller))
+    if SiteRulers.rulerOf(ready, destination).contains(ruler)
+  yield ruler
+
+  /** The traveller's own agreement to pay, which a sent Travel asks of them
+    * (catalog batch 8, slice 15). It belongs to no card's ruler, so no
+    * preference is ever set on it. */
+  val payerId: PowerId = PowerId("denizen.toll-roads.payer")
+
+  /** `traveller` agreed to pay to reach `destination`. */
+  def payerKey(traveller: PlayerId, destination: SiteId): ConsentKey =
+    ConsentKey(payerId, traveller, decisionId,
+      DecisionOptionRef.Site(destination))
+
+  /** The ruler let `traveller` reach `destination` free: the key of the
+    * free option of `traveller`'s own toll step there. */
+  def freeKey(traveller: PlayerId, destination: SiteId): ConsentKey =
+    ConsentKey(id, traveller, decisionId, free(destination))
+
+  /** The payer's entry for the consent registry: named for Toll Roads,
+    * with nobody who rules it. */
+  val payerWaiver: (PowerId, Waiver) = payerId -> Waiver(_ => None,
+    PowerSourceRef.Card(TollRoadsCard.id), (_, _) => payerAsked(
+      PowerSourceRef.Card(TollRoadsCard.id)))
+
+  /** What a Travel `sender` sends `traveller` on to `destination` waits on
+    * for Toll Roads. */
+  enum Sending:
+    /** Nothing is owed. */
+    case NotOwed
+    /** The sender rules Toll Roads: they choose to take or waive. */
+    case SenderRules
+    /** The traveller agreed to pay, or the ruler waived it. */
+    case Settled
+    /** Any one of `alternatives` would settle it. */
+    case Asks(alternatives: Vector[Alternative], hover: PowerNote)
+    /** Nobody may settle it. */
+    case Barred(reason: PowerNote)
+
+  /** One way to settle it: `granter` consenting to `power` under `key`. */
+  final case class Alternative(granter: PlayerId, power: PowerId,
+      key: ConsentKey)
+
+  /** Whether `traveller` holds the favor the toll takes. */
+  def canPay(ready: ReadyGame, traveller: PlayerId): Boolean =
+    ready.game.current.players.find(_.player == traveller)
+      .fold(0)(_.board.favor) >= Favor
+
+  def sending(ready: ReadyGame, traveller: PlayerId, destination: SiteId,
+      sender: PlayerId): Sending =
+    owed(ready, traveller, destination) match
+      case None => Sending.NotOwed
+      case Some(SiteRuler.Player(owner)) if owner == sender =>
+        Sending.SenderRules
+      case Some(ruler) =>
+        val turn = ConsentTurn.of(ready)
+        val owner = ruler match
+          case SiteRuler.Player(player) => Some(player)
+          case _ => None
+        val pays = ready.consent.answer(payerKey(traveller, destination),
+          Some(traveller), turn)
+        val waives = owner.flatMap(by => ready.consent.answer(
+          freeKey(traveller, destination), Some(by), turn))
+        if pays.contains(ConsentAnswer.Granted) ||
+            waives.contains(ConsentAnswer.Granted) then Sending.Settled
+        else unsettled(traveller, destination, owner,
+          canPay(ready, traveller), pays, waives)
+
+  /** Who may still settle an unsettled toll, and how it is worded. */
+  private def unsettled(traveller: PlayerId, destination: SiteId,
+      owner: Option[PlayerId], favor: Boolean,
+      pays: Option[ConsentAnswer], waives: Option[ConsentAnswer]): Sending =
+    val card = PowerSourceRef.Card(TollRoadsCard.id)
+    val payer = Option.when(favor && !pays.contains(ConsentAnswer.Refused))(
+      Alternative(traveller, payerId, payerKey(traveller, destination)))
+    val waiver = owner.filterNot(_ => waives.contains(ConsentAnswer.Refused))
+      .map(by => Alternative(by, id, freeKey(traveller, destination)))
+    val them = NoteArg.Player(traveller)
+    val amount = NoteArg.Amount(Favor, NoteUnit.Favor)
+    (payer, waiver, owner) match
+      case (Some(_), Some(_), Some(by)) => Sending.Asks(
+        Vector(payer, waiver).flatten,
+        sentEither(card, them, amount, NoteArg.Player(by)))
+      case (Some(_), None, Some(by)) => Sending.Asks(payer.toVector,
+        sentPayer(card, them, amount, NoteArg.Player(by)))
+      case (Some(_), _, None) => Sending.Asks(payer.toVector,
+        sentBurn(card, them, amount))
+      case (None, Some(_), Some(by)) => Sending.Asks(waiver.toVector,
+        sentWaiver(card, NoteArg.Player(by)))
+      case (_, _, Some(by)) if pays.contains(ConsentAnswer.Refused) &&
+          waives.contains(ConsentAnswer.Refused) =>
+        Sending.Barred(sentBothRefused(card, them, NoteArg.Player(by)))
+      case (_, _, Some(by)) =>
+        Sending.Barred(sentWaiveRefused(card, NoteArg.Player(by)))
+      case _ if pays.contains(ConsentAnswer.Refused) =>
+        Sending.Barred(sentRefused(card, them))
+      case _ => Sending.Barred(sentNoFavor(card, them))
 
   def forCatalog(catalog: ExecutableCatalog): TollRoads =
     new TollRoads(catalog)

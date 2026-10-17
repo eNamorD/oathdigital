@@ -81,7 +81,7 @@ object ProcedureWalker:
       dice: WalkerDice = WalkerDice.unavailable,
       seed: Vector[Answered] = Vector.empty)
       : Either[OathViolation, WalkerOutcome] =
-    val activePlayer = state.game.current.turn.activePlayer
+    val activePlayer = state.game.current.walkActor
     val answered = pending.fold(seed)(_.answered)
     val cursor: Option[Vector[String]] = pending.map(_.at)
     // The stored pending tree is navigation state passed by parameter; a
@@ -115,7 +115,7 @@ object ProcedureWalker:
       : Either[OathViolation, WalkerOutcome] =
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered,
+      state.game.current.walkActor, pending.answered,
       powers.withAnswers(pending.answered), dice,
       state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
@@ -141,7 +141,7 @@ object ProcedureWalker:
       : Either[OathViolation, WalkerOutcome] =
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered,
+      state.game.current.walkActor, pending.answered,
       powers.withAnswers(pending.answered), dice,
       state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), AnswerResume(answer), WalkerHooks.none)
@@ -211,8 +211,8 @@ object ProcedureWalker:
     openDecisions(state, action, pending, powers, probing).headOption
 
   /** Who a parked position waits on, as one player: a parked `Decide`'s
-    * primary owner, read off the rebuilt and transformed node, or the active
-    * player for a parked `Roll`.
+    * primary owner, read off the rebuilt and transformed node, or the walk's
+    * actor for a parked `Roll`.
     * Never stored -- a power that changes an owner changes this answer on the
     * next command, and authorization and projection both read it (Task 5).
     *
@@ -223,10 +223,10 @@ object ProcedureWalker:
       powers: WalkerPowers): Option[PlayerId] =
     parkedDecide(state, action, pending, powers, probing = false).map(_.owner)
       .orElse(parkedRoll(state, action, pending, powers).map(_ =>
-        state.game.current.turn.activePlayer))
+        state.game.current.walkActor))
 
   /** Everyone who may answer the parked position: the owners and co-owners of
-    * its open decisions, or the active player for a parked `Roll`. Skips the
+    * its open decisions, or the walk's actor for a parked `Roll`. Skips the
     * restriction look-ahead for the same reason [[awaitedPlayer]] does: an
     * owner set never depends on which options are hidden.
     */
@@ -235,7 +235,7 @@ object ProcedureWalker:
     val open = openDecisions(state, action, pending, powers, probing = false)
     if open.nonEmpty then open.flatMap(_.owners).toSet
     else parkedRoll(state, action, pending, powers)
-      .map(_ => Set(state.game.current.turn.activePlayer)).getOrElse(Set.empty)
+      .map(_ => Set(state.game.current.walkActor)).getOrElse(Set.empty)
 
   // --------------------------------------------------------------------------
   // Walking core
@@ -476,9 +476,10 @@ object ProcedureWalker:
     * catalog batch 8, slice 10), or it shows their plain reason when nobody
     * may be asked. A required decision with nothing left is kept when an
     * askable option remains, as the search kept it ([[reach]]): its player
-    * may ask. A plain reason alone keeps nothing, since nothing then can be
-    * answered. A choose-one passed when empty with nothing left parks on
-    * its Continue screen (catalog batch 8, slice 10, part 2b). */
+    * may ask, or when its builder declared an askable option (catalog
+    * batch 8, slice 15). A plain reason alone keeps nothing, since nothing
+    * then can be answered. A choose-one passed when empty with nothing left
+    * parks on its Continue screen (catalog batch 8, slice 10, part 2b). */
   private def narrowAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Option[Decide]] =
     if !ctx.powers.probing then Right(Some(
@@ -488,8 +489,9 @@ object ProcedureWalker:
       then EmptyChoices.offered(decide, Map.empty, Map.empty) else decide))
     else WalkerSearch.narrow(decide, verdict(decide, ctx, path)) match
       case Left(refused) =>
-        val asks = asksAt(decide, ctx, path) ++ operationAsksAt(decide, ctx,
-          path, WalkerSearch.choosable(decide))
+        val asks = declaredAt(decide, ctx, path) ++
+          asksAt(decide, ctx, path) ++ operationAsksAt(decide, ctx, path,
+            WalkerSearch.choosable(decide))
         if !asks.values.exists(askable) then Left(refused)
         else Right(Some(WalkerSearch.reasoned(WalkerSearch.narrowed(decide,
           _ => false, asks.get).getOrElse(decide), asks)))
@@ -518,15 +520,18 @@ object ProcedureWalker:
     * visit does, and the first visit tries the other answers. A decision no
     * answer leads on from is still a stop when one of its options may be
     * asked about and a grant would open it: a payer who cannot pay may ask
-    * to go on free (consent slice 4), or an option only waivable operation
-    * refusals hide may be asked about (catalog batch 8, slice 10). */
+    * to go on free (consent slice 4), an option only waivable operation
+    * refusals hide may be asked about (catalog batch 8, slice 10), or the
+    * decision's builder declared an askable option (slice 15). */
   private def reach(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Step] =
     if ctx.visited((path, ctx.state)) then Right(Stopped(ctx))
     else WalkerSearch.reach(decide, verdict(decide, ctx, path)) match
       case Left(refused) =>
-        if asksAt(decide, ctx, path).nonEmpty || operationAsksAt(decide, ctx,
-            path, WalkerSearch.choosable(decide)).values.exists(askable) then
+        if declaredAt(decide, ctx, path).nonEmpty ||
+            asksAt(decide, ctx, path).nonEmpty || operationAsksAt(decide,
+            ctx, path, WalkerSearch.choosable(decide)).values
+            .exists(askable) then
           Right(Stopped(ctx))
         else Left(refused)
       case Right(WalkerSearch.Reach.Skipped) => Right(Done(ctx))
@@ -539,6 +544,12 @@ object ProcedureWalker:
     WalkerPowerGather.optionAsks(decide, ctx.state, ctx.activePlayer,
       ctx.powers, path, ctx.procedure, ctx.answered,
       grantable(decide, ctx, path)).toMap
+
+  /** The asks `decide` declares itself, kept where a grant would open
+    * their option ([[OperationAsks.declared]]). */
+  private def declaredAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
+      : Map[DecisionOptionRef, OptionReason] = OperationAsks.declared(decide,
+    ctx.state, state => verdict(decide, ctx.copy(state = state), path))
 
   private def askable(reason: OptionReason): Boolean =
     reason.isInstanceOf[OptionReason.Askable]
@@ -605,7 +616,7 @@ object ProcedureWalker:
   private[walker] def narrowParked(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers, decide: Decide): Decide =
     val ctx = WalkCtx(strip(state), Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered,
+      state.game.current.walkActor, pending.answered,
       powers.withAnswers(pending.answered), WalkerDice.placeholder,
       state.game.current.walkerProcedure, action)
     narrowAt(decide, ctx, pending.at).toOption.flatten.getOrElse(decide)

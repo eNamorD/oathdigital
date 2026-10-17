@@ -10,7 +10,8 @@ import oathdigital.gameplay.walker.{OptionWarnings, ProcedureWalker,
   WalkerPowers, WalkerProcedureRegistry, WalkerSimulation}
 import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
-  ConsentAskProjection, CountedConfirmProjection, DecisionOptionProjection, DecisionQueryProjection,
+  ConsentAlternativeProjection, ConsentAskProjection,
+  CountedConfirmProjection, DecisionOptionProjection, DecisionQueryProjection,
   DecisionSectionProjection, DecisionSlotProjection, DecisionSummaryProjection,
   DecisionTallyProjection, DecisionTallyValueProjection,
   WalkerDecisionProjection, WalkerRollOutcomeProjection,
@@ -47,8 +48,9 @@ private[application] final class WalkerDecisionProjector(
     phasePowers: PhasePowers = PhasePowers.empty):
   private val deals = new NegotiationDealProjector(presentation)
   private lazy val reasons = new gamelog.NoteReasons(catalog, presentation)
+  private lazy val consentPowers = ConsentPowers.default(catalog)
   private lazy val consentNames = new ConsentNames(presentation,
-    ConsentPowers.default(catalog))
+    consentPowers)
 
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
     this(catalog, presentation, WalkerPowerCatalog.default(catalog),
@@ -61,7 +63,7 @@ private[application] final class WalkerDecisionProjector(
       pending <- context.current.walkerPending
       procedure <- context.current.walkerProcedure
       tree <- rebuild(context.ready, procedure,
-        context.current.turn.activePlayer,
+        context.current.walkActor,
         context.current.walkerStartArgs).toOption
       // The modifiers picked in the walk join, so their warnings show.
       powers = WalkerPowers.selected(walkerPowerCatalog, Vector.empty)
@@ -83,7 +85,7 @@ private[application] final class WalkerDecisionProjector(
     for
       pending <- current.walkerPending
       procedure <- current.walkerProcedure
-      tree <- rebuild(ready, procedure, current.turn.activePlayer,
+      tree <- rebuild(ready, procedure, current.walkActor,
         current.walkerStartArgs).toOption
       decide <- ProcedureWalker.parkedDecide(ready, tree, pending,
         WalkerPowers.selected(walkerPowerCatalog, Vector.empty),
@@ -360,8 +362,7 @@ private[application] final class WalkerDecisionProjector(
           reason @ OptionReason.Askable(_, _, asks, _)) =>
         optionProjection(ready, viewer, index, inner, details).map(_.copy(
           state = "askable", reason = Some(reasonText(ready, viewer, reason)),
-          consent = Some(ConsentAskProjection(asks.map(_.granter.value),
-            asks.flatMap(_.powers).distinct.map(consentNames.power)))))
+          consent = Some(askProjection(asks))))
       case DecisionOption.Unavailable(inner, reason) => optionProjection(ready,
         viewer, index, inner, details).map(_.copy(state = "unavailable",
           reason = Some(reasonText(ready, viewer, reason))))
@@ -461,6 +462,18 @@ private[application] final class WalkerDecisionProjector(
       // from it, so the label says neither.
       case DecisionOption.DiscardPile(pile) =>
         row(SearchSource.name(SearchSource.RegionalDiscard(pile.region)))
+
+  /** Whom an askable option asks: its required asks to ignore a power,
+    * each alternative on its own, and each required ask to pay on its own
+    * (catalog batch 8, slice 15). */
+  private def askProjection(asks: Vector[ConsentAsk]): ConsentAskProjection =
+    def paying(ask: ConsentAsk) = ask.powers.forall(consentPowers.paying)
+    def one(ask: ConsentAsk) = ConsentAlternativeProjection(
+      ask.granter.value, ask.powers.map(consentNames.power), paying(ask))
+    val (payers, ignoring) = asks.filterNot(_.alternative).partition(paying)
+    ConsentAskProjection(ignoring.map(_.granter.value),
+      ignoring.flatMap(_.powers).distinct.map(consentNames.power),
+      asks.filter(_.alternative).map(one), payers.map(one))
 
   /** A Replace option's label: the card it discards, and where the played
     * card goes. */

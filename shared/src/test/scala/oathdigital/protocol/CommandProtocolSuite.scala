@@ -32,6 +32,8 @@ class CommandProtocolSuite extends munit.FunSuite:
     ResolveWalker("negotiation.deal", DecisionAnswerWire.DeclineDealWire),
     RequestConsent("travel.destination", WalkerStartArgWire("site",
       "site:deep-woods")),
+    RequestConsent("travel.destination", WalkerStartArgWire("site", "coast"),
+      Vector("p2")),
     AnswerConsent("always"),
     SetConsentPreference("site.narrow-pass.pass", "blue", "case-by-case")
   )
@@ -52,6 +54,12 @@ class CommandProtocolSuite extends munit.FunSuite:
       assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(request)),
         Right(request), intent.toString)
     }
+
+  test("a consent request without granters writes none"):
+    val request = ActorlessCommandRequest(0L, RequestConsent(
+      "travel.destination", WalkerStartArgWire("site", "coast")))
+    assert(!ActorlessCommandCodec.encode(request).toString
+      .contains("granters"))
 
   test("actor injection is rejected at command identity fields"):
     Vector("playerId", "actor", "actorId", "actorPlayerId").foreach { field =>

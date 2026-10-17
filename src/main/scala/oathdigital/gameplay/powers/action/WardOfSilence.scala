@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.operations.Costs
+import oathdigital.gameplay.powerresolver.QueuedStarts
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
@@ -25,9 +26,10 @@ object WardOfSilenceCard extends Denizen(DenizenId("202"), "Ward of Silence",
   * batch.
   *
   * It is usable when its card could take one secret (a faceup secret, and
-  * the empty-card rule, which a free printed cost does not check) and
-  * another player at the site has a faceup secret. Otherwise the Act menu
-  * shows it unavailable with "Nothing to do now".
+  * the empty-card rule, which a free printed cost does not check);
+  * otherwise the Act menu shows it unavailable with "Nothing to do now".
+  * With nobody else at the site holding a faceup secret, the menu reads
+  * "No valid enemy pawn" (catalog batch 8, slice 15).
   *
   * Its line is the action's: "Flipped {2 secrets} on {Blue}'s board
   * facedown." It narrates both questions.
@@ -52,7 +54,12 @@ case object WardOfSilence extends PaidAction(WardOfSilenceCard.power):
   override def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean =
     Costs.affordable(ready, player, Location.OnCard(cardId),
-      Cost(secret = 1)) && targets(ready, player).exists(faceUp(_) > 0)
+      Cost(secret = 1))
+
+  override def refusal(ready: ReadyGame, player: PlayerId,
+      source: DecisionOptionRef, starts: QueuedStarts): Option[String] =
+    Option.unless(targets(ready, player).exists(faceUp(_) > 0))(
+      PawnMoves.noValidEnemyPawn)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

@@ -421,6 +421,36 @@ the breach, so there is no special path.
   - Preferences cleared: "Red's consent preferences for Narrow Pass were
     reset."
 
+### Alternatives (catalog batch 8, slice 15)
+
+- **An alternative ask** (`ConsentAsk.alternative`) is one of several, any
+  of whose grant will do. Palanquin asks Toll Roads this way: the target
+  agreeing to pay, or the ruler waiving the toll.
+- **Settling.** The first alternative to grant settles the alternatives,
+  and the other prompts close. An alternative's refusal is remembered and
+  the others stay asked; the request is refused once every alternative has
+  refused. A required ask beside the alternatives must still grant, and
+  its refusal settles the whole request. A request asks each granter once.
+  A grant is remembered only once its request settles granted; a refusal,
+  a refused settle or a withdrawal leaves only refusals behind.
+- **`RequestConsent`'s `granters`** names the alternatives to ask; empty
+  asks them all. A narrowed request keeps the required asks and the named
+  alternatives, and covers only their keys.
+- **Client.** An askable option with alternatives opens a choice: "Ask
+  Blue", "Ask Red", then "Ask both" (or "Ask all" past two), and Cancel.
+  Its question reads "Ask Blue to pay for Toll Roads or Red to waive it?".
+  The requester waits with "Waiting for Blue's or Red's consent…" while
+  only alternatives are open.
+- **A payer ask** is a player's agreement to pay rather than a ruler's
+  waiver (`ConsentPowers.paying`). Its prompt reads "Green wants to send
+  you to Coast. Consent to pay Toll Roads and travel to Coast?", and its
+  log line "Asked Blue for consent to pay Toll Roads and travel to
+  Coast." When it is not an alternative, the requester's confirmation
+  reads "Ask Blue to pay for Toll Roads?", after any ask to ignore: "Ask
+  Red for consent to ignore Narrow Pass and Blue to pay for Toll Roads?".
+  It belongs to no card's ruler, so no preference applies to it and it is
+  always answered by hand.
+
 ## Testing
 
 - **Fold:** every consent event; undo putting `ConsentState` back on the

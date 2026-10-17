@@ -24,7 +24,8 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * (defense dice for targeted relics), Unstable Summon (an amount asked when
   * applied), Arcane Armor (defense dice set before the roll), Mountain Giant
   * (an amount asked when applied, and a discard at the end on three),
-  * Herald (a favor after another player's Campaign) and Vow of Union
+  * Herald (a favor after another player's Campaign), Sneak Attack (a
+  * Campaign offered back against its attacker) and Vow of Union
   * (warbands moved at the start of any Campaign) and Keep (a Raid's defeat
   * replaced). Each names its card, so all are always present.
   */
@@ -65,5 +66,6 @@ object PlanRules:
       Vector(SaltTheEarth.forCatalog(catalog)) ++
       Vector(SealingWard.forCatalog(catalog)) ++
       Vector(Herald.forCatalog(catalog)) ++
+      Vector(SneakAttack.forCatalog(catalog)) ++
       Vector(VowOfUnion) ++
       Vector(KeepRule)

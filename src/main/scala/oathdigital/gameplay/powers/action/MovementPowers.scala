@@ -9,4 +9,5 @@ import oathdigital.gameplay.powerresolver.PhasePower
   */
 object MovementPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
-    Vector[PhasePower](Whistle, MagicCarpet, new BrassHorse(catalog))
+    Vector[PhasePower](Whistle, MagicCarpet, new BrassHorse(catalog),
+      Palanquin)

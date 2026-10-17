@@ -18,9 +18,9 @@ object GameIntentMapper:
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
-      case Intent.RequestConsent(id, target) =>
+      case Intent.RequestConsent(id, target, granters) =>
         optionRef(target.optionKind, target.optionId, "$.intent.target")
-          .map(actor.requestConsent(id, _))
+          .map(actor.requestConsent(id, _, granters.map(PlayerId(_))))
       case Intent.AnswerConsent(value) => ConsentChoice.fromKey(value)
         .toRight(GameIntentMappingFailure("$.intent.choice",
           s"invalid consent choice '$value'")).map(actor.answerConsent)

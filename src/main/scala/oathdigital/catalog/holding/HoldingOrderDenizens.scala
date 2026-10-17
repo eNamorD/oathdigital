@@ -15,14 +15,6 @@ object MartialCultureCard extends Denizen(DenizenId("10"), "Martial Culture", Su
       "Phase._")
   val powers: Vector[PrintedPower] = Vector(power)
 
-object PalanquinCard extends Denizen(DenizenId("107"), "Palanquin", Suit.Order) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.palanquin"),
-    persistent = false, cost = Cost(favor = 1),
-    text = "**ACTION:** Choose a player whose pawn is at your site. Put " +
-      "your pawn on a site that they can travel to. Make them " +
-      "travel to that site, spending no Supply.")
-  val powers: Vector[PrintedPower] = Vector(power)
-
 object CouncilSeatCard extends Denizen(DenizenId("123"), "Council Seat", Suit.Order) with Locked with AdviserOnly:
   val power = PrintedPower(PowerId("denizen.council-seat"),
     persistent = true, cost = Cost.free,

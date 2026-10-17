@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Cost, DecisionOptionRef, OathViolation, Operation,
-  PlayerId, PowerId, PowerTiming, QueuedProcedure, ReadyGame}
+import oathdigital.model.{ConsentKey, Cost, DecisionOptionRef, OathViolation,
+  Operation, PlayerId, PowerId, PowerNote, PowerTiming, QueuedProcedure,
+  ReadyGame}
 
 /** Whether a procedure a phase power would queue starts now, and why not
   * (catalog batch 8, slice 13): the start check the driver runs, which the
@@ -11,9 +12,29 @@ trait QueuedStarts:
   def refusal(ready: ReadyGame, entry: QueuedProcedure)
       : Option[OathViolation]
 
+  /** Whether the entry would start, and when only waivable restrictions
+    * refuse it, the grants that would let it start (catalog batch 8, slice
+    * 15). By default what `refusal` says, with nothing to ask. */
+  def consent(ready: ReadyGame, entry: QueuedProcedure)
+      : QueuedStarts.Verdict =
+    refusal(ready, entry).fold(QueuedStarts.Verdict.Starts)(
+      QueuedStarts.Verdict.Refused(_))
+
 object QueuedStarts:
   /** No engine behind it: every start is taken to be accepted. */
   val unchecked: QueuedStarts = (_, _) => None
+
+  /** One grant a refused start waits on: `granter` consenting to `power`,
+    * remembered under `key`, the key the started walk looks it up under.
+    * `asked` is the reason while it may be asked; `plain` the reason once
+    * it was refused. */
+  final case class Needed(power: PowerId, granter: PlayerId,
+      key: ConsentKey, asked: PowerNote, plain: Option[PowerNote])
+
+  enum Verdict:
+    case Starts
+    case Waiting(needed: Vector[Needed])
+    case Refused(violation: OathViolation)
 
 /** A WAKE, ACTION or REST power a player uses as an action.
   *

@@ -111,11 +111,10 @@ class WardOfSilenceSuite extends munit.FunSuite:
         s"Flipped 2 secrets on ${p2.value}'s board facedown.",
         covers = false)))
 
-  test("it is unavailable without a faceup secret, with nobody at the " +
-      "site holding one, or while its card holds a secret"):
+  test("it is unavailable without a faceup secret of its own, or while " +
+      "its card holds a secret"):
     val unusable = Vector(
       wardHeldWithP2AndP3AtTheSite(own = 0),
-      wardHeldWithP2AndP3AtTheSite(targetFaceUp = 0),
       Table.from(wardHeldWithP2AndP3AtTheSite()).tokens(ward, secrets = 1)
         .ready)
     unusable.foreach { ready =>
@@ -123,3 +122,8 @@ class WardOfSilenceSuite extends munit.FunSuite:
       assertEquals(menuReason(ready),
         Some(OptionReason.Written("Nothing to do now")))
     }
+
+  test("with nobody at the site holding a faceup secret, the menu says no " +
+      "valid enemy pawn"):
+    assertEquals(menuReason(wardHeldWithP2AndP3AtTheSite(targetFaceUp = 0)),
+      Some(OptionReason.Written(PawnMoves.noValidEnemyPawn)))

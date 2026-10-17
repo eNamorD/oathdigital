@@ -14,13 +14,11 @@ denizen.magicians-code
 denizen.martial-culture
 denizen.master-of-disguise
 denizen.naysayers
-denizen.palanquin
 denizen.pilgrimage
 denizen.relic-hunter
 denizen.reliquary-raid
 denizen.royal-ambitions
 denizen.search-party
-denizen.sneak-attack
 denizen.the-gathering
 denizen.tracker
 denizen.traveling-negotiator

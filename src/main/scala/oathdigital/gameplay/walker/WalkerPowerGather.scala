@@ -3,7 +3,7 @@ package oathdigital.gameplay.walker
 import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, RerollHost, Restriction, Waiver}
 import oathdigital.model.PowerResolution
-import oathdigital.model.{Answered, AutomaticUse, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, OfferedReroll, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerWindow, LeafOperation, ProcedureRef, ReadyGame}
+import oathdigital.model.{Answered, AutomaticUse, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, OfferedReroll, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerNote, PowerWindow, LeafOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -357,20 +357,53 @@ private[walker] object WalkerPowerGather:
   /** Whether a remembered grant drops `power`'s breach (consent design, "One
     * ledger check"): the restriction is waivable, and a decision of this
     * walk was answered with an option its answerer was granted this turn.
-    * Every caller of the tree check passes through here, so the walk, the
-    * search and the previews agree. */
+    * A queued entry's start arguments count as answers, by the procedure
+    * that reads them. A walk sent by the restriction's granter is not
+    * blocked by it (catalog batch 8, slice 15). Every caller of the tree
+    * check passes through here, so the walk, the search and the previews
+    * agree. */
   private def waived(power: PowerId, restriction: Restriction,
       ctx: PowerCtx): Boolean =
     restriction.waiver.exists { waiver =>
       val turn = ConsentTurn.of(ctx.state)
       val granter = waiver.granter(ctx.state)
-      ctx.answered.exists:
+      val sent = granter.exists(by => ctx.state.game.current.walkerEntry
+        .exists(_.sender.contains(by)))
+      sent || (ctx.answered ++ WalkerProcedureRegistry.queuedAnswers(
+          ctx.state)).exists:
         case Answered(decisionId, DecisionAnswer.ChooseOneAnswer(target),
             by) =>
           ctx.state.consent.answer(ConsentKey(power, by, decisionId,
             target), granter, turn).contains(ConsentAnswer.Granted)
         case _ => false
     }
+
+  /** A breach a grant would lift: its power, the player who may grant it,
+    * and its reasons for the option asked about. */
+  final case class WaivableBreach(power: PowerId, granter: PlayerId,
+      asked: PowerNote, plain: Option[PowerNote])
+
+  /** The tree-level restrictions that refuse `root` with `answered`, when
+    * every one of them may be waived by a player (catalog batch 8, slice
+    * 15). `None` when nothing refuses, or when any refusal has no granter.
+    * `ref` is the option the grants would be asked about. */
+  def waivableBreaches(root: Operation, state: ReadyGame,
+      activePlayer: PlayerId, powers: WalkerPowers,
+      answered: Vector[Answered], procedure: Option[ProcedureRef],
+      ref: DecisionOptionRef): Option[Vector[WaivableBreach]] =
+    if !powers.hasRestrictions then None
+    else
+      val seen = state.updateCurrent(_.copy(walkerPending = None,
+        walkerProcedure = procedure))
+      val found = attributed(root, powers.quiet, seen, activePlayer,
+        answered)._1
+      val waivable = found.map(breach => for
+        waiver <- breach.restriction.waiver
+        granter <- waiver.granter(breach.ctx.state)
+      yield WaivableBreach(breach.power, granter,
+        waiver.note(breach.ctx, ref), breach.restriction.note(breach.ctx, ref)))
+      Option.when(found.nonEmpty && waivable.forall(_.nonEmpty))(
+        waivable.flatten.distinctBy(_.power))
 
   /** The tree-level `Restriction` violations of `root` with `answered`,
     * against the state as the walk sees it: no pending tree, the walk's
@@ -524,7 +557,7 @@ private[walker] object WalkerPowerGather:
     for
       index <- segment.toIntOption if index >= 0 && index < triggers.size
       tree <- triggers(index).onExecuted(ExecutedTriggers.batch(
-        state.game.current.turn.activePlayer, state))
+        state.game.current.walkActor, state))
       found <- resolveAt(state, pending, powers, tree, rest,
         consumed :+ segment, Set.empty)
     yield found
@@ -542,7 +575,7 @@ private[walker] object WalkerPowerGather:
   private def foldedChildrenAt(state: ReadyGame, pending: PendingTree,
       powers: WalkerPowers, node: Operation, path: Vector[String],
       gathered: Set[PowerWindow]): (Vector[Operation], Set[PowerWindow]) =
-    val activePlayer = state.game.current.turn.activePlayer
+    val activePlayer = state.game.current.walkActor
     node match
       case branch: Branch =>
         val selected = branch.select(state, pending.copy(at = path))

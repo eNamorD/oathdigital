@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 13 are done. The per-card
+**Status:** designed 2026-10-12. Slices 1 to 15 are done. The per-card
 rulings are in
 [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
@@ -209,12 +209,22 @@ The approved changes outside `gameplay/powers/`:
   losses split the dead between board and site, asking when the split is a
   choice. A phase power checks whether a procedure it would queue starts
   through `QueuedStarts`, which the engine fills in.
-- **An off-turn actor** (slice 14). `WalkCtx.activePlayer` comes from the
-  queue entry's actor, not the turn. The starts that require the active
-  player accept a queued actor, and Campaign powers that read
-  `ctx.activePlayer` as the attacker read the Campaign's attacker instead.
-- **A queued Travel's destination** (slice 15). A queued Travel may carry a
-  destination in its start arguments, and its actor may be another player.
+- **An off-turn actor** (slice 14). A walk started from a queue entry
+  belongs to the entry's actor (`CurrentGameState.walkActor`), which
+  `WalkCtx.activePlayer` and `PowerCtx.activePlayer` hold. A queued start
+  accepts that actor. Cost settlement, placements, menus and the HUD stay on
+  the turn's player. A power's queued Campaign may name its defender as its
+  one start argument (`CampaignSetup.queuedDefender`).
+- **A Travel sent to a site** (slice 15). A power's queued Travel `Run`
+  may carry its destination as its first start argument, and then asks no
+  destination question. A later argument is for the sender's own rules
+  (Palanquin's waived toll), and a start's arguments must equal its
+  entry's, so a client cannot add one. Its entry names its `sender`: a waivable
+  restriction the sender could waive does not block it, and the queued
+  destination counts as its actor's answer, so a grant of it lets the
+  restriction through. `QueuedStarts.consent` tells a power which grants a
+  queued start waits on. A consent ask may be one of several alternatives,
+  any of whose grant settles the request.
 
 The serialization codec gains `SetOathkeeperGoal`, a burn's actor, a
 site relic slot, and the origin and destination start arguments. A play's
@@ -680,8 +690,10 @@ physical pawn does not move.
 ## Slice 14: Off-turn actor
 
 - **Sneak Attack** offers its holder a Campaign, spending no Supply, after
-  every effect and follow-up of another player's Campaign, with that player
-  declared the defender. `CampaignSetup.pin` fixes the defender.
+  another player's Campaign that recorded a result, with that player
+  declared the defender. The entry's start argument fixes the defender.
+  It is offered before the Campaign's other follow-ups: its offer goes to
+  the front of the queue, and theirs to the back.
 - **Second Wind** is offered to a victorious defender too. The defender's
   Travel and Campaign run off turn, after the attacker's follow-ups.
 
@@ -690,6 +702,13 @@ physical pawn does not move.
 Palanquin's ACTION moves its user's pawn to a site the chosen player could
 travel to, then queues a Travel for that player to the same site, spending
 no Supply. The target is the Travel's actor and owns its decisions.
+
+A destination that waits on consent is askable. Where Toll Roads would
+charge the target, the user may ask the target to pay or its ruler to
+waive the toll, or both; when the user rules Toll Roads, they choose to
+take the favor or waive it. A destination behind a ruled Narrow Pass is
+asked of the Pass's ruler, and a Pass the user rules lets the target
+through.
 
 ## Seams used for the first time
 
@@ -723,7 +742,8 @@ product owner.
 - Slices that add an operation or start argument test a replayed game
   reaching the same state.
 - Slice 14 tests Sneak Attack after a Campaign with and without follow-ups,
-  two holders in turn order, and a Second Wind defender; slice 15 tests
-  Palanquin with Toll Roads refused and accepted, and with Hospitality and
-  Brass Army on the target.
+  before Second Wind's follow-ups, and a Second Wind defender; slice 15 tests
+  Palanquin with Toll Roads refused and accepted, with Hospitality and
+  Brass Army on the target, and with a Narrow Pass asked and the user's own
+  Pass.
 - The verification gate is the roadmap's standing rule.

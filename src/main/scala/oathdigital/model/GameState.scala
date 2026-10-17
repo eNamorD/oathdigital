@@ -109,15 +109,17 @@ object PowerSourceRef:
     case _ => None
 
 /** A procedure the walker runs as its own walk once the current one ends
-  * (walker-driven game loop design, "The queue"). `actor` owns the walk: the
-  * one place an off-turn actor (Sneak Attack) will differ from the active
-  * player. `startArgs` are what a start would carry. `source` is the power
-  * that queued it, which the Game Log credits; an entry with a source is a
-  * follow-up, whose walk spends no Supply. A `Run` starts at once; an
-  * `Offer` asks its actor first, with Skip. */
+  * (walker-driven game loop design, "The queue"). `actor` owns the walk
+  * (`CurrentGameState.walkActor`), and may be off turn. `startArgs` are what
+  * a start would carry. `source` is the power that queued it, which the
+  * Game Log credits; an entry with a source is a follow-up, whose walk
+  * spends no Supply. `sender` is the player whose power sent `actor` on it
+  * (catalog batch 8, slice 15): a restriction they could waive does not
+  * block the walk. A `Run` starts at once; an `Offer` asks its actor first,
+  * with Skip. */
 final case class QueuedProcedure(actor: PlayerId, procedure: StartableRef,
     startArgs: Vector[DecisionOptionRef], source: Option[PowerSourceRef],
-    kind: QueueKind)
+    kind: QueueKind, sender: Option[PlayerId] = None)
 
 enum QueueKind:
   case Run, Offer
@@ -206,7 +208,12 @@ final case class CurrentGameState(
     // rebuilds it from the recorded `Defer`s, and the walker and
     // `WalkerCompleted` clear it with the dice pools. Never projected.
     walkerDeferred: Map[DeferralKey, Vector[CoreOperation]] = Map.empty
-)
+):
+  /** The player the current walk belongs to (catalog batch 8, slice 14):
+    * the actor of the queue entry it was started from, else the turn's
+    * player. A queued walk's actor may be off turn (Sneak Attack, a
+    * defender's Second Wind). */
+  def walkActor: PlayerId = walkerEntry.fold(turn.activePlayer)(_.actor)
 
 final case class OathGame(
     campaign: CampaignState,

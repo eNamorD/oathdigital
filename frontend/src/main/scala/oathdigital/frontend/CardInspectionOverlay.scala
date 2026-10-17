@@ -110,6 +110,28 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     // The safe answer first: Enter on arrival asks nobody.
     no.focus()
 
+  /** A question with one button per choice, then Cancel (catalog batch 8,
+    * slice 15): a choice closes the overlay and runs; Cancel only closes
+    * it. */
+  def showChoices(question: String, choices: Vector[(String, () => Unit)],
+      origin: dom.html.Element): Unit =
+    clear()
+    node.setAttribute("aria-label", question)
+    val panel = element("div", "card-overlay-details overlay-confirm")
+    panel.appendChild(text("p", "overlay-question", question))
+    choices.foreach { (label, run) =>
+      val choice = button(label, "overlay-confirm-choice")
+      choice.onclick = _ => { hide(); run() }
+      panel.appendChild(choice)
+    }
+    val cancel = button("Cancel", "overlay-confirm-no")
+    cancel.onclick = _ => hide()
+    panel.appendChild(cancel)
+    body.appendChild(panel)
+    open(origin)
+    // The safe answer first: Enter on arrival asks nobody.
+    cancel.focus()
+
   private def clear(): Unit =
     while body.firstChild != null do body.removeChild(body.firstChild)
 

@@ -61,7 +61,8 @@ object CampaignProcedure:
     Sequence(Vector(ModifierChoice.loop(actor,
       PowerWindow.CampaignModifierSelection, rest, startLabel), rest))
 
-  /** None, or the one site a power's queued entry names as its origin. */
+  /** None, or the one site or player a power's queued entry names: its
+    * origin, or its declared defender. */
   private def startArgs(state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Unit] =
     args match
@@ -69,9 +70,12 @@ object CampaignProcedure:
       case Vector(DecisionOptionRef.Site(site))
           if CampaignSetup.queuedOrigin(state, actor).contains(site) =>
         Right(())
+      case Vector(DecisionOptionRef.Player(player))
+          if CampaignSetup.queuedDefender(state, actor).contains(player) =>
+        Right(())
       case _ => Left(OathViolation.InvalidEventOrder(
         s"walker procedure ${ActionRef.Campaign.key} takes no start " +
-          "selection but a power's queued origin, got " +
+          "selection but a power's queued origin or defender, got " +
           args.map(_.kind).mkString(", ")))
 
   private def battle(catalog: ExecutableCatalog, state: ReadyGame,

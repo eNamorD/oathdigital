@@ -32,9 +32,12 @@ object GameCommand:
   final case class SetConsentPreference(granter: PlayerId, power: PowerId,
       requester: PlayerId, setting: ConsentSetting) extends ConsentCommand
   /** `requester` asks the rulers of the powers blocking `target` at the
-    * parked `decisionId` for consent to choose it. */
+    * parked `decisionId` for consent to choose it. `granters` names the
+    * alternatives to ask; empty asks them all (catalog batch 8, slice
+    * 15). */
   final case class RequestConsent(requester: PlayerId, decisionId: String,
-      target: DecisionOptionRef) extends ConsentCommand
+      target: DecisionOptionRef, granters: Vector[PlayerId] = Vector.empty)
+      extends ConsentCommand
   /** `granter` answers the request waiting on them. */
   final case class AnswerConsent(granter: PlayerId, choice: ConsentChoice)
       extends ConsentCommand

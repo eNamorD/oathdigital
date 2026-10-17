@@ -53,7 +53,8 @@ private[serialization] trait FollowUpWire:
       "kind" -> (entry.kind match
         case QueueKind.Run => "run"
         case QueueKind.Offer => "offer")) ++
-      entry.source.map(source => "source" -> encodePowerSource(source))
+      entry.source.map(source => "source" -> encodePowerSource(source)) ++
+      entry.sender.map(sender => "senderId" -> ujson.Str(sender.value))
     ujson.Obj.from(fields)
 
   protected final def decodeQueued(value: ujson.Value,
@@ -76,4 +77,5 @@ private[serialization] trait FollowUpWire:
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown queue kind '$other'"))
   yield QueuedProcedure(PlayerId(value("actorId").str), startable,
-    startArgs, source, kind)
+    startArgs, source, kind,
+    value.obj.get("senderId").map(raw => PlayerId(raw.str)))

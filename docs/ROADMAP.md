@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is under way: slices 1 to 13 are done, and item 10b is next.
+**Phase - Catalog batch 8** is under way: slices 1 to 15 are done, and item 10b is next.
 
 ## Next
 
@@ -165,8 +165,14 @@ this order. Each slice gets its own plan.
   answers, which a power-use restriction is not handed. With this item, a
   player trading as if at City Wall's site is walled in for that Trade.
   Recorded while planning slice 13 on 2026-10-16.
-- [ ] **14. Off-turn actor:** Sneak Attack, Second Wind for a defender.
-- [ ] **15. Palanquin.**
+- [x] **14. Off-turn actor:** Sneak Attack, Second Wind for a defender.
+- [ ] **14b. Rename the walk's actor.** `WalkCtx.activePlayer` and
+  `PowerCtx.activePlayer` hold the walk's actor since slice 14: a queued
+  entry's actor, else the turn's player. Rename both to `actor`, across
+  about 105 files. Recorded while planning slice 14 on 2026-10-16.
+- [x] **15. Palanquin.**
+
+Only items 10b, 13b, 13c and 14b of catalog batch 8 remain open.
 
 ### Phase - Catalog batch - engine-blocked
 
@@ -199,8 +205,9 @@ belongs with another phase.
   warband store), and False Prophet.
   False Prophet is the only card that plays a card outside the active
   player's turn: its holder plays the Vision when another player's action
-  discards it. It needs batch 8's off-turn actor. Card play assumes the
-  player is the walk's `ctx.activePlayer`
+  discards it. Batch 8's off-turn actor (slice 14) lets a queued walk
+  belong to another player, so only the player-aware card play is left.
+  Card play assumes the player is the walk's `ctx.activePlayer`
   (the `SearchPlayAdviser` transforms, such as `HolderAdviserLimit`, Pied
   Piper and Lost Tapestry, and the `ActionCardPlayedFaceup` readers, such as
   Book Binders, Secret Police and Conspiracy). So the play must either run
