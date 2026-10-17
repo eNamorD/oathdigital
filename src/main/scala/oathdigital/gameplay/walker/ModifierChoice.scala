@@ -167,7 +167,7 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
   private def explained(state: ReadyGame, powers: WalkerPowers,
       answered: Vector[Answered]): Option[String] = for
     pricing <- explain
-    pending <- ProcedureWalker.advance(state, rest, None, powers,
+    pending <- ProcedureWalker.advance(state, rest, None, powers.previewed,
         seed = answered).toOption
       .collect { case WalkerOutcome.Parked(at, _) => at }
     decide <- ProcedureWalker.parkedDecide(state, rest, pending, powers,

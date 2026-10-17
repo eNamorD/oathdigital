@@ -164,11 +164,14 @@ final case class Branch(select: (ReadyGame, PendingTree) => Vector[Operation])
   override val children: Vector[Operation] = Vector.empty
 
 /** An automatic power's effect, judged where the walk reaches it (catalog
-  * batch 8, slice 10): the walker runs `effect` when no power-use
-  * restriction refuses `user` using `power` from `card`, and nothing
-  * otherwise. Like a `Branch`, it has no static children: a resume cursor
-  * addresses the vector the walker resolved. The engine judges it without
-  * naming the power. */
+  * batch 8, slice 10; automatic power consent design): the walker runs
+  * `effect` when no power-use restriction refuses `user` using `power`
+  * from `card`; runs nothing when a restriction nobody may waive refuses
+  * it; and otherwise first asks the refusing cards' rulers, through a
+  * hidden step, whether it works. `effect` is built live, when the walk
+  * reaches it. Like a `Branch`, it has no static children: a resume
+  * cursor addresses the vector the walker resolved. The engine judges it
+  * without naming the power. */
 final case class AutomaticUse(user: PlayerId, power: PowerId, card: CardId,
     effect: (ReadyGame, PendingTree) => Vector[Operation]) extends Operation:
   override val children: Vector[Operation] = Vector.empty

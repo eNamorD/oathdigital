@@ -148,25 +148,26 @@ class ForestCouncilSuite extends munit.FunSuite:
         assertEquals(ask.power, ForestCouncil.id)
       case other => fail(s"expected an askable option, got $other")
 
-  test("an enemy's Beast When Played power does not fire"):
+  test("an enemy's Beast When Played power does not fire under a bandit " +
+      "Forest Council"):
     // Threatening Roar, played as p1's adviser, would discard Errand Boy,
     // a Beast card at p1's site. Forest Council stands outside p1's
     // region, where the Roar does not reach.
     import WhenPlayedHarness.{awaySite, homeSite, p1AtHomeSite}
     val roar = WhenPlayedHarness.registered[ThreateningRoar]
-    def errandBoyStays(rulerOfCouncil: PlayerId): Boolean =
-      val ready = p1AtHomeSite.adviser(p1, roar.cardId)
-        .denizen(errandBoy, at = homeSite).denizen(council, at = awaySite)
-        .warbandsAt(awaySite, rulerOfCouncil, 1).ready
+    def errandBoyStays(ruled: Table => Table): Boolean =
+      val ready = ruled(p1AtHomeSite.adviser(p1, roar.cardId)
+        .denizen(errandBoy, at = homeSite).denizen(council, at = awaySite))
+        .ready
       val done = Outcomes.finished(WhenPlayedHarness.playBeside(ready, roar,
         roar.cardId, power))
       Look(done.treeless).cardsAt(homeSite).contains(errandBoy)
-    assert(errandBoyStays(rulerOfCouncil = p2))
+    assert(errandBoyStays(_.bandits(awaySite, 1)))
     // Its ruler's own Roar fires.
-    assert(!errandBoyStays(rulerOfCouncil = p1))
+    assert(!errandBoyStays(_.warbandsAt(awaySite, p1, 1)))
 
-  test("an enemy's Vow of Beastkin adds no warband, and its source limit " +
-      "still holds"):
+  test("an enemy's Vow of Beastkin adds no warband under a bandit Forest " +
+      "Council, and its source limit still holds"):
     // The Vow's extra warband is a use, and Forest Council refuses it. Its
     // source limit is a restriction, not a use, so it holds: Tyrant, an
     // Order adviser, makes Wrestlers (Order) a legal source. Wrestlers is
@@ -178,7 +179,7 @@ class ForestCouncilSuite extends munit.FunSuite:
         .denizen(wrestlers, at = home).adviser(p1, vow).adviser(p1, tyrant)
         .favor(p1, 4).supply(p1, 7).boardWarbands(p1, 3)
       (if withCouncil then base.denizen(council, at = woods)
-        .warbandsAt(woods, p2, 1) else base).ready
+        .bandits(woods, 1) else base).ready
     def mustered(ready: ReadyGame): Int =
       Look(musteredFrom(ready, DecisionOptionRef.Denizen(wrestlers)))
         .boardWarbands(p1)

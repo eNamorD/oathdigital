@@ -33,6 +33,10 @@ import scala.collection.mutable
   * `preview` and `previewParked` extend the same idea to a tree that parks
   * on a `ChooseOne`: they answer each option against the tree and report
   * what that answer would record.
+  *
+  * Every walk here uses `WalkerPowers.previewed`: an automatic use waiting
+  * on its rulers is walked as if they let it work (automatic power consent
+  * design, "Search and previews").
   */
 object WalkerSimulation:
 
@@ -53,11 +57,11 @@ object WalkerSimulation:
   def run(tree: Operation, state: ReadyGame,
       powers: WalkerPowers): Either[OathViolation, Vector[CoreOperation]] =
     guarded:
-      ProcedureWalker.restrictionViolations(tree, powers, state,
+      ProcedureWalker.restrictionViolations(tree, powers.previewed, state,
         state.game.current.walkActor)
         .headOption.toLeft(())
-        .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
-          WalkerDice.placeholder))
+        .flatMap(_ => ProcedureWalker.advance(state, tree, None,
+          powers.previewed, WalkerDice.placeholder))
         .flatMap:
           case WalkerOutcome.Finished(_, events) =>
             Right(recordedOperations(events))
@@ -73,7 +77,7 @@ object WalkerSimulation:
     */
   def applies(tree: Operation, state: ReadyGame,
       powers: WalkerPowers): Either[OathViolation, Vector[CoreOperation]] =
-    guarded(ProcedureWalker.advance(state, tree, None, powers,
+    guarded(ProcedureWalker.advance(state, tree, None, powers.previewed,
       WalkerDice.placeholder).map {
         case WalkerOutcome.Finished(_, events) => recordedOperations(events)
         case WalkerOutcome.Parked(_, events) => recordedOperations(events)
@@ -86,11 +90,11 @@ object WalkerSimulation:
   def refusal(tree: Operation, state: ReadyGame, powers: WalkerPowers,
       answered: Vector[Answered] = Vector.empty): Option[OathViolation] =
     guarded {
-      ProcedureWalker.restrictionViolations(tree, powers, state,
+      ProcedureWalker.restrictionViolations(tree, powers.previewed, state,
         state.game.current.walkActor, answered)
         .headOption.toLeft(())
-        .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
-          WalkerDice.placeholder, answered))
+        .flatMap(_ => ProcedureWalker.advance(state, tree, None,
+          powers.previewed, WalkerDice.placeholder, answered))
     }.left.toOption
 
   /** Where a start's walk is once it is past its modifier decision: the
@@ -111,11 +115,11 @@ object WalkerSimulation:
   def started(tree: Operation, state: ReadyGame, powers: WalkerPowers)
       : Either[OathViolation, Started] = guarded:
     val tried = mutable.Set.empty[Set[DecisionOptionRef]]
-    ProcedureWalker.restrictionViolations(tree, powers, state,
+    ProcedureWalker.restrictionViolations(tree, powers.previewed, state,
       state.game.current.walkActor)
       .headOption.toLeft(())
-      .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
-        WalkerDice.placeholder))
+      .flatMap(_ => ProcedureWalker.advance(state, tree, None,
+        powers.previewed, WalkerDice.placeholder))
       .flatMap(reached(state, tree, None, Vector.empty, powers,
         picked = false, tried))
 
@@ -155,7 +159,7 @@ object WalkerSimulation:
     def answering(option: DecisionOption) =
       ProcedureWalker.resolve(state, tree, pending, Answered(
           decide.decisionId, DecisionAnswer.ChooseOneAnswer(option.ref),
-          decide.owner), powers, WalkerDice.placeholder)
+          decide.owner), powers.previewed, WalkerDice.placeholder)
         .flatMap(reached(state, tree, Some(pending), before, powers,
           picked = option.ref != ModifierPicks.start, tried))
     // "Start" available yet refused: its own violation says why, where the
@@ -196,11 +200,11 @@ object WalkerSimulation:
       answered: Vector[Answered] = Vector.empty)
       : Either[OathViolation, Vector[PreviewedOption]] =
     guarded:
-      ProcedureWalker.restrictionViolations(tree, powers, state,
+      ProcedureWalker.restrictionViolations(tree, powers.previewed, state,
         state.game.current.walkActor, answered)
         .headOption.toLeft(())
-        .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
-          WalkerDice.placeholder, answered))
+        .flatMap(_ => ProcedureWalker.advance(state, tree, None,
+          powers.previewed, WalkerDice.placeholder, answered))
         .flatMap:
           case WalkerOutcome.Parked(pending, events)
               if recordedOperations(events).isEmpty =>
@@ -251,7 +255,7 @@ object WalkerSimulation:
       followUp: Boolean): Either[OathViolation, PreviewOutcome] = guarded:
     ProcedureWalker.resolve(state, tree, pending,
       Answered(decide.decisionId, DecisionAnswer.ChooseOneAnswer(option.ref),
-        decide.owner), powers, WalkerDice.placeholder).map:
+        decide.owner), powers.previewed, WalkerDice.placeholder).map:
       case WalkerOutcome.Finished(_, events) =>
         PreviewOutcome(recordedOperations(events), complete = true)
       case WalkerOutcome.Parked(next, events) =>
