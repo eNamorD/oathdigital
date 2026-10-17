@@ -353,7 +353,9 @@
   cannot place [favor] / [secret] on cards or use non-persistent powers."
   While an enemy's pawn is at City Wall's site, the enemy cannot place favor
   or secrets on any card or use any non-persistent power, wherever the card
-  is. The ruler may consent outside a Campaign.
+  is. The ruler may consent outside a Campaign. Where the enemy is, is
+  where they act from: a queued Campaign's origin counts (slice 13). Small
+  Friends' as-if Trade site is ROADMAP item 13c.
 - **186 Giant Python.** "[secret] ACTION: If you hold the Darkest Secret,
   move Giant Python to another site, and you may discard a card there
   first." and "Other cards at this site cannot be used for non-persistent
@@ -492,17 +494,76 @@ The shared rules:
 
 ## Slice 13: Campaign from another site
 
+Ruled 2026-10-16. Each card is an ACTION that pays its cost, asks for a
+site, and queues a Campaign `Run` at the front of the queue. The site is
+the Campaign's origin and the card its source, so the Campaign spends no
+Supply. The Campaign asks its modifier decision as any Campaign does. It
+takes a site start argument only from an entry with a source, so a menu
+Campaign cannot fake an origin.
+
 - **198 Wild Allies.** "[secret] ACTION: Campaign at any site with a
   [suit-beast] card. Act as if your pawn is there. Spend no Supply and add
   your warbands there to your force."
-  - The chosen site is the Campaign's origin for its targets and its force,
-    and the user's warbands there join the force. No Supply is spent.
-  - The physical pawn does not move. In a Raid from the origin, the
-    defender at the target is relocated as usual.
+  - Its sites hold a faceup denizen, or an edifice, whose effective suit is
+    Beast. Relics do not count. The pawn site counts.
+  - With no site where a Campaign could start, the ACTION is unavailable:
+    "No site with a Beast card where a Campaign could start".
 - **115 Captains.** "[favor] ACTION: Campaign at any site you rule. Act as
   if your pawn is there. Spend no Supply and add your warbands there to
-  your force." As Wild Allies, at a site the user rules when the action is
-  used.
+  your force."
+  - Its sites are the ones its user rules as a player. Empire sites do not
+    count, as with every other power. The pawn site counts, and its
+    warbands then join the force.
+  - With no site where a Campaign could start, the ACTION is unavailable:
+    "No site you rule where a Campaign could start".
+
+The shared rules:
+
+- **The site question** lists the qualifying sites in map order. A site
+  where the queued Campaign's start would be refused is unavailable, with
+  the refusal's reason, by the same start check the menu runs.
+- **"Act as if your pawn is there."**
+  - Every read of the attacker's own pawn site during the Campaign walk
+    reads the origin: the targets, the Raid's defenders, Fortress notes,
+    the Narrow Pass, Peace Envoy, Signal Trees, Vow of Union, a plan's
+    discard pile and City Wall. Reads of other players' pawns do not
+    change.
+  - The physical pawn does not move. Later walks read the real pawn site,
+    including Second Wind's Travel and Campaign and a Knights Errant
+    Campaign.
+  - City Wall walls in an attacker campaigning from its site, and not one
+    who stands there but campaigns from elsewhere.
+  - Using Wild Allies or Captains is itself a non-persistent power, judged
+    where the pawn stands. An enemy whose pawn is at City Wall's site
+    cannot use either without the ruler's consent.
+- **The force.** The force question asks 0 to B+S, where B is the
+  attacker's warbands on their board and S their warbands at the origin.
+  It is headed "Commit warbands to the Campaign: 0 to N (B on your board,
+  S at {site}), each adds one attack die", and suggests the whole N. With
+  no warbands at the origin, the heading is the usual one.
+- **Deaths.** The joined warbands stay at the site. Of D deaths, the
+  site's share runs from max(0, D−B) to min(D, S).
+  - When that range holds more than one value, the attacker answers
+    "Choose how many of the D dead warbands come from {site}", a choice of
+    amount that suggests the least from the site. Otherwise the one value
+    applies without a question.
+  - The question is asked once, at the kill step. When ROADMAP item 13b
+    moves each kill to its moment, this question moves with it.
+- **Loss powers.**
+  - Billowing Fog and Traveling Doctor, chosen by the attacker, spare a
+    defeated force's half: only the skulls and the sacrifices die. Peace
+    Envoy kills none. Each records the spare when chosen, so the split
+    asks only over the dead that really die.
+  - Bear Traps kills a board warband only when one stands outside the
+    force: board plus origin warbands exceed the force, and the board holds
+    one.
+  - Hospital and Cursed Cauldron count both kills.
+  - Sticky Fire, used by a defender who wins, kills the attacker's whole
+    board and every warband of theirs at the origin, since those joined
+    the force (ruled 2026-10-16). Its line counts both.
+- **Lines.** The ACTION writes "Campaign at {site}." The Campaign's start
+  line is unchanged ("Raid against … · Wild Allies"). The losses line
+  counts the attacker's dead at the origin.
 
 ## Slice 14: Off-turn actor
 

@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignIds}
+import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignIds,
+  CampaignSetup}
 import oathdigital.gameplay.powerresolver.{OptionRestriction, PowerCtx}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
@@ -88,7 +89,10 @@ case object PeaceEnvoy extends BattlePlan:
         case Some((user, enemy)) => offer.copy(effects = Vector(
           CampaignPlanEffect.Run(Vector(
             gift(user, enemy, favor(context.ready, user)),
-            giftNote(context.side, user, enemy)))))
+            giftNote(context.side, user, enemy),
+            // Nothing is rolled and the losses kill nothing, so the
+            // attacker's dead are none, at the origin too (slice 13).
+            ModifyDicePool(CampaignIds.attackerSpared, 1)))))
         case None => offer.copy(withheld =
           Some(OptionReason.Written(PeaceEnvoy.Apart)))
     }
@@ -154,12 +158,14 @@ case object PeaceEnvoy extends BattlePlan:
     for
       user <- context.user
       other <- enemy
-      site <- pawnSite(context.ready, user)
-      if pawnSite(context.ready, other).contains(site)
+      site <- standingSite(context.ready, user)
+      if standingSite(context.ready, other).contains(site)
     yield (user, other)
 
-  private def pawnSite(ready: ReadyGame, player: PlayerId): Option[SiteId] =
-    ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
+  /** Where `player` stands for the Campaign: a queued origin for the
+    * attacker, else the pawn site. */
+  private def standingSite(ready: ReadyGame, player: PlayerId)
+      : Option[SiteId] = CampaignSetup.originOf(ready, player)
 
   private def favor(ready: ReadyGame, player: PlayerId): Int =
     ready.game.current.players.find(_.player == player).fold(0)(_.board.favor)

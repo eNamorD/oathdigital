@@ -62,6 +62,21 @@ class MercenariesSuite extends munit.FunSuite:
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assert(Look(done.state).discardAfter(b.origin).contains(card))
 
+  test("an adviser plan is discarded after the origin's region"):
+    val (base, away) = rivalAloneAtASiteTheActorHolds(board = 5, atSite = 1)
+    val current = base.ready.game.current
+    assertNotEquals(current.map.regionOf(away), current.map.regionOf(
+      base.origin))
+    val b = funded(withAdviser(base, card, Orientation.FaceUp), base.actor, 2)
+    val game = rules(losingDice)
+    val done = committed(game, campaignQueuedFrom(game, b, away,
+        PowerSourceRef.Card(CatalogNames.denizen("Wild Allies"))), b,
+        force = 0, raid = true)
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
+    assertEquals(done.winner, Some(false))
+    assert(Look(done.state).discardAfter(away).contains(card))
+    assert(!Look(done.state).discardAfter(b.origin).contains(card))
+
   test("a card at a site the attacker rules is discarded from the site, to " +
       "the region after the site's own"):
     val base = board(warbands = 5, supply = 7)

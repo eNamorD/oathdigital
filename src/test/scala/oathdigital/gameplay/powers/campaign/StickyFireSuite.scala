@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseAmountAnswer
 import oathdigital.testkit.{CatalogNames, Look}
 
 /** Sticky Fire: when its user wins, they may kill the whole of the enemy's
@@ -123,6 +124,33 @@ class StickyFireSuite extends munit.FunSuite:
     assertEquals(Look(done.state).favor(b.rival), 1)
     assertEquals(Look(done.state).favor(b.actor),
       Look(b.ready).favor(b.actor) + 1)
+
+  test("a defender that wins kills the attacker's warbands at a queued " +
+      "origin too, and the line counts them"):
+    // p1 campaigns from the rival's site, where p1 has 3 warbands, with 1
+    // on the board: two die in the losses, one from each, and the fire
+    // takes the two left at the site.
+    val (base, away) = rivalAloneAtASiteTheActorHolds(board = 1, atSite = 3)
+    val b = favored(withRelicFor(base, base.rival, relic), base.rival, 2)
+    val g = rules(losingDice)
+    val asked = committed(g, campaignQueuedFrom(g, b, away,
+        PowerSourceRef.Card(CatalogNames.denizen("Wild Allies"))), b,
+        force = 4, raid = true)
+      .finishAttackerPlans(b.actor)
+      .pick(b.rival, CampaignIds.defenderPlan, ref).declineSacrifice(b.actor)
+    assertEquals(asked.winner, Some(false))
+    val done = asked.pick(b.rival, decision, StickyFire.yes)
+      .answer(b.actor, CampaignIds.originDeaths, ChooseAmountAnswer(1))
+      .finishPlanWindows
+    assertEquals(Look(done.state).boardWarbands(b.actor), 0)
+    // The emptied site may take bandits back; none of p1's stay there.
+    Look(done.state).forces(away) match
+      case SiteForces.Occupied(kind, _) =>
+        assertNotEquals(kind, Look(done.state).forceKind(b.actor))
+      case SiteForces.Empty => ()
+    assertEquals(said(StickyFire, done.events), Vector(NoteText.Said(
+      "burned", s"Killed 2 ${b.actor.value} warbands, and " +
+        s"${b.actor.value} gained 1 favor.", covers = false)))
 
   // ---- against bandits ----------------------------------------------------
 

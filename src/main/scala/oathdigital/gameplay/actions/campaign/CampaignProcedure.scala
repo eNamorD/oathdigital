@@ -31,7 +31,7 @@ object CampaignProcedure:
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
-    _ <- noStartArgs(args)
+    _ <- startArgs(state, actor, args)
     _ <- afterModifiers(catalog, state, actor)
   yield tree(catalog, state, actor)
 
@@ -43,7 +43,7 @@ object CampaignProcedure:
 
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
-    noStartArgs(args).map(_ => tree(catalog, state, actor))
+    startArgs(state, actor, args).map(_ => tree(catalog, state, actor))
 
   /** The Campaign itself, behind the start's gates. */
   private def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
@@ -61,11 +61,18 @@ object CampaignProcedure:
     Sequence(Vector(ModifierChoice.loop(actor,
       PowerWindow.CampaignModifierSelection, rest, startLabel), rest))
 
-  private def noStartArgs(args: Vector[DecisionOptionRef])
-      : Either[OathViolation, Unit] = Either.cond(args.isEmpty, (),
-    OathViolation.InvalidEventOrder(
-      s"walker procedure ${ActionRef.Campaign.key} takes no start selection, " +
-        s"got ${args.map(_.kind).mkString(", ")}"))
+  /** None, or the one site a power's queued entry names as its origin. */
+  private def startArgs(state: ReadyGame, actor: PlayerId,
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Unit] =
+    args match
+      case Vector() => Right(())
+      case Vector(DecisionOptionRef.Site(site))
+          if CampaignSetup.queuedOrigin(state, actor).contains(site) =>
+        Right(())
+      case _ => Left(OathViolation.InvalidEventOrder(
+        s"walker procedure ${ActionRef.Campaign.key} takes no start " +
+          "selection but a power's queued origin, got " +
+          args.map(_.kind).mkString(", ")))
 
   private def battle(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Operation = Sequence(Vector[Operation](
@@ -74,7 +81,7 @@ object CampaignProcedure:
     Sequence(Vector[Operation](kindStep(actor), defenderStep(actor),
       targetsStep(catalog, actor), endStep(actor)),
       Some(PowerWindow.CampaignBeforeTargets)),
-    forceStep(state, actor),
+    forceStep(catalog, state, actor),
     Sequence(Vector[Operation](BuildOps((ready, pending) =>
       withSetup(ready, actor, pending)(setup => CampaignSetup.pin(setup) +:
         CampaignBattle.gatherPools(catalog, setup)))),
@@ -216,14 +223,21 @@ object CampaignProcedure:
       .getOrElse(Vector.empty))
 
   /** Always asked, even for zero: a Campaign with no force is legal, and the
-    * confirmation states what it commits.
+    * confirmation states what it commits. A queued origin's warbands join
+    * the board's, and the heading names both (slice 13).
     */
-  private def forceStep(state: ReadyGame, actor: PlayerId): Operation =
-    val warbands = state.game.current.players.find(_.player == actor)
+  private def forceStep(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId): Operation =
+    val board = state.game.current.players.find(_.player == actor)
       .fold(0)(_.board.warbands)
+    val atSite = CampaignSetup.atOrigin(state, actor)
+    val warbands = board + atSite
+    val split = CampaignSetup.queuedOrigin(state, actor)
+      .filter(_ => atSite > 0).flatMap(catalog.site).fold("")(site =>
+        s" ($board on your board, $atSite at ${site.name})")
     // Suggests the whole force: committing everything is what an attacker
     // nearly always wants, and holding warbands back is the deliberate act.
     Decide(CampaignIds.force, actor, DecisionQuery.ChooseAmount(0, warbands,
-      Some(s"Commit warbands to the Campaign: 0 to $warbands, each adds one " +
-        "attack die"), "Commit force", suggested = Some(warbands)),
+      Some(s"Commit warbands to the Campaign: 0 to $warbands$split, each " +
+        "adds one attack die"), "Commit force", suggested = Some(warbands)),
       window = Some(PowerWindow.CampaignForceSelection))

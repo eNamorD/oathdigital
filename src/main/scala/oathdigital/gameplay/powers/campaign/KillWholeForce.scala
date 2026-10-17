@@ -8,7 +8,8 @@ import oathdigital.model._
   * its user wins, and Shield Wall kills its own user's when they lose.
   *
   *  - A defeated attacker loses every warband on its board, committed to the
-  *    Campaign or not.
+  *    Campaign or not, and every warband of theirs at a queued origin, whose
+  *    warbands joined the force (catalog batch 8, slice 13).
   *  - A defeated Conquest defender keeps none of the warbands the victory
   *    returned to its board.
   *  - A defeated Raid defender loses every warband left on its board.
@@ -43,10 +44,22 @@ private[campaign] object KillWholeForce:
       case CampaignKind.Raid => killed(ready, defender, board(ready, defender))
     case CampaignDefender.Bandits => Right(Vector.empty)
 
-  /** The defeated attacker's whole board. */
+  /** The defeated attacker's whole board, and their warbands at a queued
+    * origin. */
   def ofAttacker(ready: ReadyGame, result: CampaignResult)
       : Either[OathViolation, Vector[CoreOperation]] =
-    killed(ready, result.attacker, board(ready, result.attacker))
+    killed(ready, result.attacker, board(ready, result.attacker)).flatMap(
+      onBoard => atOrigin(ready, result).map(onBoard ++ _))
+
+  /** The attacker's warbands at the origin, as the losses left them. */
+  private def atOrigin(ready: ReadyGame, result: CampaignResult)
+      : Either[OathViolation, Vector[CoreOperation]] =
+    result.originForce.fold(Right(Vector.empty))(origin =>
+      PlayerFacts.forceKind(ready, result.attacker).map(kind =>
+        ready.game.current.map.sites.get(origin.site).map(_.forces).toVector
+          .collect { case SiteForces.Occupied(`kind`, count) if count > 0 =>
+            Kill(Piece.Warbands(kind, count),
+              PositionedLocation(Location.Site(origin.site))) }))
 
   private def board(ready: ReadyGame, player: PlayerId): Int =
     ready.game.current.players.find(_.player == player)

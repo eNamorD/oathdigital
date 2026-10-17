@@ -36,7 +36,8 @@ case object BillowingFog extends BattlePlan:
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Billowing Fog: if defeated, kill no warbands in your force",
-      Vector(CampaignPlanCost.Secret(BillowingFog.Secret)), Vector.empty))
+      Vector(CampaignPlanCost.Secret(BillowingFog.Secret)),
+      SparedForce.effects(context.side)))
 
   override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
     PowerWindow.CampaignLosses -> ((ctx, use, losses) =>

@@ -91,8 +91,8 @@ sealed abstract class FortressRule extends ContributingPower:
       : Option[PowerNote] =
     CampaignSetup.raidDefenders(ctx.state, ctx.activePlayer) match
       case Vector(defender) => shieldedNote(defender)
-      case _ => pawnSite(ctx.state, ctx.activePlayer).map(site =>
-        FortressRule.allShielded(card, NoteArg.Site(site)))
+      case _ => CampaignSetup.originOf(ctx.state, ctx.activePlayer)
+        .map(site => FortressRule.allShielded(card, NoteArg.Site(site)))
 
   private def defenderNote(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[PowerNote] = ref match

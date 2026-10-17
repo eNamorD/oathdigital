@@ -17,7 +17,9 @@ object BearTrapsCard extends Denizen(DenizenId("3"), "Bear Traps", Suit.Order):
   * It is free, so a bandit defender applies it at a site it rules. It
   * removes one attack die and kills one of the attacker's warbands on their
   * board beyond the committed force, which stays on the board until the
-  * losses. With none beyond the force, nothing dies.
+  * losses. A queued origin's warbands count as the force's first, since
+  * the printed kill reaches only the board. With none beyond the force,
+  * nothing dies.
   *
   * When a warband died it writes "Killed 1 warband on {Red}'s board.".
   */
@@ -43,10 +45,14 @@ case object BearTraps extends BattlePlan:
           Note(id, killedNote(context.setup.actor), covers = true))))))
 
   /** One warband off the attacker's board, when one stands there beyond
-    * the committed force. Read when the walk reaches it. */
+    * the committed force, counting a queued origin's warbands as the
+    * force's (slice 13). Read when the walk reaches it. */
   private def trap(setup: CampaignSetup): Operation =
     BuildOps((ready, _) =>
-      if warbands(ready, setup.actor) <= setup.force then Right(Vector.empty)
+      val board = warbands(ready, setup.actor)
+      val outside = board + CampaignSetup.atOrigin(ready, setup.actor) -
+        setup.force
+      if board == 0 || outside <= 0 then Right(Vector.empty)
       else PlayerFacts.forceKind(ready, setup.actor).map(kind =>
         Vector[CoreOperation](Kill(Piece.Warbands(kind, 1),
           PositionedLocation(Location.PlayArea(setup.actor))))))

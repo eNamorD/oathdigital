@@ -16,8 +16,11 @@ object CampaignIds:
   val relocation = "campaign.relocation"
   /** Which of a defender's forces pays a plan's warband sacrifice. */
   val planSacrifice = "campaign.plan-sacrifice"
+  /** How many of the attacker's dead come from a queued origin. */
+  val originDeaths = "campaign.origin-deaths"
   val all: Set[String] = Set(kind, defender, targets, force, attackerPlan,
-    defenderPlan, sacrifice, placement, relocation, planSacrifice)
+    defenderPlan, sacrifice, placement, relocation, planSacrifice,
+    originDeaths)
 
   /** The decision a side's plan window asks. */
   def planDecision(side: CampaignPlanSide): String = side match
@@ -31,6 +34,12 @@ object CampaignIds:
     * applied (Zealots); one while the pool is absent. It is never rolled,
     * and it is cleared with the others when the Campaign ends. */
   val sacrificeWorth: PoolKey = PoolKey("campaign.sacrifice-worth")
+
+  /** Recorded by an attacker's plan that spares a defeated force
+    * (Billowing Fog, Traveling Doctor), and by Peace Envoy on either side:
+    * the losses then kill only the skulls and the sacrifices. It is never
+    * rolled, and it is cleared with the others when the Campaign ends. */
+  val attackerSpared: PoolKey = PoolKey("campaign.attacker-spared")
 
   val SupplyCost = 2
 
@@ -58,11 +67,45 @@ object CampaignSetup:
   private def playerOf(ready: ReadyGame, id: PlayerId): Option[PlayerState] =
     ready.game.current.players.find(_.player == id)
 
-  /** The actor's pawn site: the mandatory Conquest site, and where a Raid's
-    * defender must stand.
-    */
+  /** The origin a power's queued Campaign names, while that Campaign's
+    * walk runs for `actor` (catalog batch 8, slice 13): its one start
+    * argument, a site. Only a `Run` entry with a source carries one; a menu
+    * Campaign never does. */
+  def queuedOrigin(ready: ReadyGame, actor: PlayerId): Option[SiteId] =
+    ready.game.current.walkerEntry.filter(entry =>
+      entry.procedure == ActionRef.Campaign && entry.actor == actor &&
+        entry.source.nonEmpty && entry.kind == QueueKind.Run)
+      .flatMap(_.startArgs match
+      case Vector(DecisionOptionRef.Site(site)) => Some(site)
+      case _ => None)
+
+  /** Where `actor` campaigns from: a queued origin, else their pawn site.
+    * The mandatory Conquest site, and where a Raid's defender must stand.
+    * For any other player it is their pawn site. */
   def originOf(ready: ReadyGame, actor: PlayerId): Option[SiteId] =
-    playerOf(ready, actor).flatMap(_.pawnSite)
+    queuedOrigin(ready, actor).orElse(playerOf(ready, actor)
+      .flatMap(_.pawnSite))
+
+  /** The actor's warbands at a queued origin, which join the force. A
+    * Campaign from the pawn site adds none. */
+  def atOrigin(ready: ReadyGame, actor: PlayerId): Int = (for
+    site <- queuedOrigin(ready, actor)
+    player <- playerOf(ready, actor)
+    kind <- PlayerForceKind.of(ready, player)
+    state <- ready.game.current.map.sites.get(site)
+  yield state.forces match
+    case SiteForces.Occupied(`kind`, count) => count
+    case _ => 0).getOrElse(0)
+
+  /** The origin's warbands and the board's, when a queued origin's
+    * warbands joined the force: what the result records. */
+  def originForce(ready: ReadyGame, actor: PlayerId): Option[OriginForce] =
+    for
+      site <- queuedOrigin(ready, actor)
+      atSite = atOrigin(ready, actor)
+      if atSite > 0
+      player <- playerOf(ready, actor)
+    yield OriginForce(site, atSite, player.board.warbands)
 
   /** Who rules `site` as a Campaign defender. `None` when the site is
     * unruled, Imperial or its rule is corrupt.
@@ -266,6 +309,10 @@ object CampaignAnswers:
 
   def force(pending: PendingTree): Option[Int] =
     latest(pending, CampaignIds.force).collect:
+      case DecisionAnswer.ChooseAmountAnswer(amount) => amount
+
+  def originDeaths(pending: PendingTree): Option[Int] =
+    latest(pending, CampaignIds.originDeaths).collect:
       case DecisionAnswer.ChooseAmountAnswer(amount) => amount
 
   def sacrificed(pending: PendingTree): Int =

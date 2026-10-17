@@ -4,6 +4,7 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseAmountAnswer
 import oathdigital.testkit.{CatalogNames, Look}
@@ -51,6 +52,34 @@ class BillowingFogSuite extends munit.FunSuite:
       PositionedLocation(Location.PlayArea(b.actor)))))
     assertEquals(Look(done.state).boardWarbands(b.actor), 4)
     assertEquals(said(BillowingFog, done.events), Vector(spared(b.actor)))
+
+  test("under Billowing Fog the origin split asks over the sacrifices only"):
+    val (base, away) = rivalAloneAtASiteTheActorHolds(board = 1,
+      atSite = 3, rivalBoard = 5)
+    val b = withFogFor(base, base.actor)
+    val game = rules(losingDice)
+    val fought = committed(game, campaignQueuedFrom(game, b, away,
+        PowerSourceRef.Card(CatalogNames.denizen("Wild Allies"))), b,
+        force = 4, raid = true)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+      .answer(b.actor, CampaignIds.sacrifice, ChooseAmountAnswer(2))
+      .finishPlanWindows
+    // 2 from the dice and 2 sacrificed do not beat the pawn's two blank
+    // dice and five board warbands. Unspared, the sacrifices and half the
+    // two survivors would die; spared, only the two sacrifices.
+    fought.query(b.actor) match
+      case amount: DecisionQuery.ChooseAmount =>
+        assertEquals((amount.min, amount.max), (1, 2))
+        val name = catalog.site(away).get.name
+        assertEquals(amount.heading, Some("Choose how many of the 2 dead " +
+          s"warbands come from $name"))
+      case other => fail(s"expected the split question, got $other")
+    val done = fought.answer(b.actor, CampaignIds.originDeaths,
+      ChooseAmountAnswer(1))
+    assertEquals(done.winner, Some(false))
+    assertEquals(Look(done.state).boardWarbands(b.actor), 0)
+    assertEquals(Look(done.state).forces(away), SiteForces.Occupied(
+      Look(done.state).forceKind(b.actor), 2))
 
   test("a defeated Conquest defender gets back every warband at the targets"):
     val base = rivalRulesOriginAndHoldsOathkeeper(

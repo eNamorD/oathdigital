@@ -5,9 +5,11 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction}
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, QueuedStart,
+  WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{Outcomes, Table}
+import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{CatalogNames, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -69,6 +71,18 @@ class NarrowPassCampaignConsentSuite extends munit.FunSuite:
       "never consent"):
     assertNotedBy(woods(targetOptions(started(passHeldByBandits))),
       "no-target")
+
+  test("the Narrow Pass judges the region from the origin"):
+    // p1 campaigns from Buried Giant, in the Pass's Provinces, though the
+    // pawn stands in the Cradle: Deep Woods is no longer outside.
+    val entry = QueuedProcedure(p1, ActionRef.Campaign,
+      Vector(DecisionOptionRef.Site(PassMap.buriedGiant)),
+      Some(PowerSourceRef.Card(CatalogNames.denizen("Wild Allies"))),
+      QueueKind.Run)
+    val state = accepted(rules().startWalker(Ready(QueuedStart.startingFrom(
+      passHeldByBandits, entry)), ActionRef.Campaign, p1,
+      entry.startArgs)).state
+    assert(woods(targetOptions(state)).available)
 
   test("a Pass the campaigner rules forbids nothing"):
     val ruled = Table.from(passRuledByP2).warbandsAt(PassMap.pass, p1, 1)

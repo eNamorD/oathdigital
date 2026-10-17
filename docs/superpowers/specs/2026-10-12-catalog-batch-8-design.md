@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 12 are done. The per-card
+**Status:** designed 2026-10-12. Slices 1 to 13 are done. The per-card
 rulings are in
 [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
@@ -201,10 +201,14 @@ The approved changes outside `gameplay/powers/`:
   discard the replaced card" and for one more bury. A site's relics gain
   a positional ref, `DecisionOptionRef.SiteRelicSlot`, and the site
   projection lists them by position.
-- **A queued Campaign's origin** (slice 13). A queued Campaign may carry an
-  origin site in its start arguments. `CampaignSetup.originOf` reads it
-  before the pawn site, and the force rule adds the actor's warbands at the
-  origin.
+- **A queued Campaign's origin** (slice 13). A power's queued Campaign may
+  carry an origin site as its one start argument. `CampaignSetup.originOf`
+  reads it before the pawn site, and so do the powers that read the
+  attacker's pawn during a Campaign. The force question adds the actor's
+  warbands at the origin, the result records them (`OriginForce`), and the
+  losses split the dead between board and site, asking when the split is a
+  choice. A phase power checks whether a procedure it would queue starts
+  through `QueuedStarts`, which the engine fills in.
 - **An off-turn actor** (slice 14). `WalkCtx.activePlayer` comes from the
   queue entry's actor, not the turn. The starts that require the active
   player accept a queued actor, and Campaign powers that read

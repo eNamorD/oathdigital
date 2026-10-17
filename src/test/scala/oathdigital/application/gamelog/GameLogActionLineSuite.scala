@@ -4,12 +4,14 @@ import oathdigital.gameplay.ModifierPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.search.NewGrowth
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.protocol.projection.{LogKind, LogSpan}
 import oathdigital.testkit.{Answers, CatalogNames, MenuPlay, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import LogScripts._
+import CaptainsLogScripts._
 
 class GameLogActionLineSuite extends munit.FunSuite:
   private def lines(script: Script, viewer: Option[PlayerId]): Vector[String] =
@@ -163,3 +165,18 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val script = facedownAdviserToAnotherSite
     assert(lines(script, None).exists(_.matches(
       "^Played .+ to Deep Woods$")), lines(script, None))
+
+  test("Captains: the use names the site, and the Campaign's lines follow " +
+      "as any queued Raid's"):
+    val all = texts(format(captainsRaidFromARuledSite, None))
+    val woods = CatalogNames.site("Deep Woods")
+    assert(all.contains(
+      s"Captains: Campaign at ${catalog.site(woods).get.name}."), all)
+    val start = all.indexWhere(_ == "Campaign · Captains")
+    assert(start >= 0, all)
+    assert(all(start + 1).startsWith("Raid against "), all(start + 1))
+
+  test("Captains: a lost Raid counts the dead at the site it campaigned " +
+      "from"):
+    val all = texts(format(captainsRaidLostWithASplit, None))
+    assert(all.exists(_.toLowerCase.contains("lost 2 warbands")), all)

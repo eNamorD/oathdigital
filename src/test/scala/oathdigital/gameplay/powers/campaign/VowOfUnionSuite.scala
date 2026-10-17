@@ -122,6 +122,23 @@ class VowOfUnionSuite extends munit.FunSuite:
       ChooseAmountAnswer(4))
     assert(!awaits(committed, b.actor, CampaignIds.force))
 
+  test("an attacker holding the Vow gathers from the origin's region"):
+    // p1 rules Buried Giant, in the Provinces, and campaigns from there;
+    // the pawn stands in the Cradle, where p1 rules nothing.
+    val (base, away) = rivalAloneAtASiteTheActorHolds(board = 1, atSite = 3)
+    assertEquals(away, buriedGiant)
+    val b = withAdviser(base, vow, Orientation.FaceUp)
+    val started = campaignQueuedFrom(game, b, away,
+      PowerSourceRef.Card(CatalogNames.denizen("Wild Allies")))
+    val asked = Run(game, started, started.events)
+    assert(awaits(asked, b.actor, VowOfUnion.directionDecisionId))
+    val way = asked.pick(b.actor, VowOfUnion.directionDecisionId,
+      VowOfUnion.toBoard)
+    assertEquals(way.query(b.actor), DecisionQuery.Distribute.exactly(
+      Vector(slotOpeningOn(DecisionOptionRef.Player(b.actor), 1, 4, 1),
+        slotOpeningOn(DecisionOptionRef.Site(away), 0, 3, 3)),
+      4, Some(toBoardHeading), "Move warbands"))
+
   test("an off-turn holder moves warbands from their board to their " +
       "sites, and no site may lose any"):
     val b = bystanderHoldsVowRulingTwoSites()

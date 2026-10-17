@@ -25,7 +25,8 @@ object StickyFireCard extends Relic(RelicId("R01"), "Sticky Fire", value = 3, de
   *  - after a Raid won by the attacker, every warband left on the defender's
   *    board dies, not half;
   *  - after a defense won by the defender, every warband on the attacker's board
-  *    dies, committed to the Campaign or not.
+  *    dies, committed to the Campaign or not, and every warband of theirs at a
+  *    queued origin (slice 13).
   *
   * The kills are `KillWholeForce`'s, which Shield Wall shares.
   *
@@ -84,7 +85,7 @@ case object StickyFire extends BattlePlan:
       loser <- loserOf(side, result)
       if NoteSupport.answer(states, StickyFire.decisionId).contains(StickyFire.yes)
       step <- states.previous
-      killed = -NoteSupport.warbands(step, loser)
+      killed = -NoteSupport.warbands(step, loser) + atOrigin(step, result)
       gift = NoteSupport.favor(step, loser)
       note <- (killed > 0, gift > 0) match
         case (true, true) => Some(StickyFire.burned(card, NoteArg.Number(killed),
@@ -95,6 +96,17 @@ case object StickyFire extends BattlePlan:
           NoteArg.Amount(gift, NoteUnit.Favor)))
         case _ => None
     yield note
+
+  /** The warbands the step killed at a queued origin: only the attacker's
+    * stand there. */
+  private def atOrigin(step: (ReadyGame, ReadyGame), result: CampaignResult)
+      : Int = result.originForce.fold(0) { origin =>
+    def count(ready: ReadyGame) = ready.game.current.map.sites
+      .get(origin.site).fold(0)(_.forces match
+        case SiteForces.Occupied(_, n) => n
+        case SiteForces.Empty => 0)
+    count(step._1) - count(step._2)
+  }
 
   /** The player the user beat; bandits are no player. */
   private def loserOf(side: CampaignPlanSide, result: CampaignResult)

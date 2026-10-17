@@ -38,6 +38,31 @@ class BearTrapsSuite extends munit.FunSuite:
       "killed", s"Killed 1 warband on ${b.actor.value}'s board.",
       covers = true)))
 
+  test("Bear Traps kills a board warband the force does not need, " +
+      "counting the origin's"):
+    // p1 rules the rival's site with 2 warbands and holds 1 on the board;
+    // a force of 2 leaves the board's warband outside it.
+    val (base, away) = rivalAloneAtASiteTheActorHolds(board = 1, atSite = 2)
+    val b = withAdviserFor(base, base.rival, card, Orientation.FaceUp)
+    val game = rules(losingDice)
+    val run = committed(game, campaignQueuedFrom(game, b, away,
+      PowerSourceRef.Card(CatalogNames.denizen("Wild Allies"))), b,
+      force = 2, raid = true).finishAttackerPlans(b.actor)
+    val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
+    assert(picked.since(run).contains(killedFrom(b, b.actor)))
+    assertEquals(Look(picked.state).boardWarbands(b.actor), 0)
+
+  test("with every warband on the board and at the origin committed " +
+      "nothing dies"):
+    val (base, away) = rivalAloneAtASiteTheActorHolds(board = 1, atSite = 2)
+    val b = withAdviserFor(base, base.rival, card, Orientation.FaceUp)
+    val game = rules(losingDice)
+    val run = committed(game, campaignQueuedFrom(game, b, away,
+      PowerSourceRef.Card(CatalogNames.denizen("Wild Allies"))), b,
+      force = 3, raid = true).finishAttackerPlans(b.actor)
+    val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
+    assertEquals(Look(picked.state).boardWarbands(b.actor), 1)
+
   test("with every warband committed nothing dies"):
     val b = defender
     val run = commit(rules(losingDice), b, 5)

@@ -33,7 +33,10 @@ private[serialization] trait CampaignResultCodec:
         ujson.Str(encodeDefenseFace(face)))),
       "defenseScore" -> result.defenseScore,
       "attackerWins" -> result.attackerWins,
-      "sacrificeWorth" -> result.sacrificeWorth)
+      "sacrificeWorth" -> result.sacrificeWorth,
+      "originForce" -> result.originForce.fold[ujson.Value](ujson.Null)(
+        origin => ujson.Obj("site" -> origin.site.value,
+          "atSite" -> origin.atSite, "onBoard" -> origin.onBoard)))
 
   protected final def decodeCampaignResult(value: ujson.Value, path: String)
       : Either[WireError, CampaignResult] = try
@@ -61,7 +64,11 @@ private[serialization] trait CampaignResultCodec:
       value("sacrificed").num.toInt, defenseFaces,
       value("defenseScore").num.toInt, value("attackerWins").bool,
       // A result recorded before the worth existed reads one.
-      value.obj.get("sacrificeWorth").fold(1)(_.num.toInt))
+      value.obj.get("sacrificeWorth").fold(1)(_.num.toInt),
+      value("originForce") match
+        case ujson.Null => None
+        case origin => Some(OriginForce(SiteId(origin("site").str),
+          origin("atSite").num.toInt, origin("onBoard").num.toInt)))
   catch
     case NonFatal(error) => Left(InvalidValue(path,
       Option(error.getMessage).getOrElse("invalid Campaign result")))

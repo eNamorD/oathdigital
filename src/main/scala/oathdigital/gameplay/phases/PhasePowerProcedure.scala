@@ -5,7 +5,8 @@ import oathdigital.gameplay.{IndexedRuleSource, PowerAccess, RuleSourceIndex}
 import oathdigital.gameplay.operations.{Costs, PowerUseRules}
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers, PowerUse,
-  PowerUseRefusal, PowerUseRestriction}
+  PowerUseRefusal, PowerUseRestriction, QueuedStarts}
+import oathdigital.gameplay.walker.{QueuedStart, WalkerPowers}
 import oathdigital.model._
 
 /** Use Power (rest-walker spec, Phase powers).
@@ -79,7 +80,8 @@ object PhasePowerProcedure:
 
   def check(catalog: ExecutableCatalog, ready: ReadyGame, requester: PlayerId,
       power: PhasePower, source: DecisionOptionRef,
-      restrictions: Vector[PowerUseRestriction] = Vector.empty)
+      restrictions: Vector[PowerUseRestriction] = Vector.empty,
+      starts: QueuedStarts = QueuedStarts.unchecked)
       : Either[OathViolation, PowerSourceRef] =
     val current = ready.game.current
     val active = current.turn.activePlayer
@@ -109,29 +111,40 @@ object PhasePowerProcedure:
       _ <- Either.cond(power.usable(ready, active, source), (),
         InvalidEventOrder(s"${power.id.value} has nothing to do from " +
           s"${source.kind}/${source.wireId}"))
+      _ <- power.refusal(ready, active, source, starts)
+        .toLeft(()).left.map(OathViolation.StartUnavailable(_))
     yield found
 
-  def build(id: PowerId, powers: PhasePowers)(catalog: ExecutableCatalog,
-      ready: ReadyGame, player: PlayerId, args: Vector[DecisionOptionRef])
-      : Either[OathViolation, Operation] = for
-    power <- find(id, powers)
-    source <- single(id, args)
-    found <- check(catalog, ready, player, power, source,
-      powers.useRestrictions)
-    tree <- power.build(ready, player, source)
-  yield assemble(catalog, power, player, found, tree)
+  def build(id: PowerId, powers: PhasePowers, walkerPowers: WalkerPowers)(
+      catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
+    val starts = startsFor(catalog, powers, walkerPowers)
+    for
+      power <- find(id, powers)
+      source <- single(id, args)
+      found <- check(catalog, ready, player, power, source,
+        powers.useRestrictions, starts)
+      tree <- power.build(ready, player, source, starts)
+    yield assemble(catalog, power, player, found, tree)
 
   /** Resume skips the gate: the walker is pending and the use is not yet
     * recorded, so only the tree is rebuilt.
     */
-  def rebuild(id: PowerId, powers: PhasePowers)(catalog: ExecutableCatalog,
-      ready: ReadyGame, player: PlayerId, args: Vector[DecisionOptionRef])
-      : Either[OathViolation, Operation] = for
-    power <- find(id, powers)
-    source <- single(id, args)
-    found <- sourceOf(source)
-    tree <- power.build(ready, player, source)
-  yield assemble(catalog, power, player, found, tree)
+  def rebuild(id: PowerId, powers: PhasePowers, walkerPowers: WalkerPowers)(
+      catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
+    val starts = startsFor(catalog, powers, walkerPowers)
+    for
+      power <- find(id, powers)
+      source <- single(id, args)
+      found <- sourceOf(source)
+      tree <- power.build(ready, player, source, starts)
+    yield assemble(catalog, power, player, found, tree)
+
+  /** The driver's start check, for a power that queues a procedure. */
+  private def startsFor(catalog: ExecutableCatalog, phasePowers: PhasePowers,
+      walkerPowers: WalkerPowers): QueuedStarts = (ready, entry) =>
+    QueuedStart.refusal(catalog, ready, entry, walkerPowers, phasePowers)
 
   private def assemble(catalog: ExecutableCatalog, power: PhasePower,
       player: PlayerId, source: PowerSourceRef, tree: Operation): Operation =

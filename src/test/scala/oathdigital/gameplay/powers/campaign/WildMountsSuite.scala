@@ -21,7 +21,9 @@ class WildMountsSuite extends munit.FunSuite:
   private val mountedPatrol = CatalogNames.denizen("Mounted Patrol")
   private val warningSignals = CatalogNames.denizen("Warning Signals")
   private val bracken = planlessCard("Bracken")
-  private val wildAllies = planlessCard("Wild Allies")
+  /** A Beast card whose one power is an ACTION, so it offers no battle
+    * plan. */
+  private val wildAllies = CatalogNames.denizen("Wild Allies")
   private val autumnWind = planlessCard("Autumn Wind")
 
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(

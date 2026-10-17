@@ -52,3 +52,13 @@ class CampaignResultCodecSuite extends munit.FunSuite:
     val older = encoded
     older("payload")("ops")(0)("result").obj.remove("sacrificeWorth")
     assertEquals(GameEventWire.decode(older), GameEventWire.decode(encoded))
+
+  private val fromOrigin = raid.copy(originForce =
+    Some(OriginForce(SiteId("site:a"), atSite = 2, onBoard = 1)))
+
+  test("a result with an origin's force round trips through the wire"):
+    val events = Vector(recordedOperation("campaign",
+      RecordCampaignResult(fromOrigin)))
+    val encoded = encodedStreamThatRoundTrips("campaign-origin", events)
+    assertEquals(ujson.read(encoded).arr.head("payload")("ops")(0)(
+      "result")("originForce")("atSite").num.toInt, 2)

@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
+import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx}
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
@@ -9,7 +10,10 @@ import oathdigital.model._
   * force." It acts only when its user is a player and was defeated.
   *
   *  - A defeated attacker still loses its skulls and its sacrifice, but not
-  *    half of what survived.
+  *    half of what survived. Choosing the plan records the spare
+  *    (`CampaignIds.attackerSpared`), which the losses read, so the split
+  *    of the dead between board and a queued origin asks over only what
+  *    really dies (slice 13).
   *  - A defeated Conquest defender's target warbands all die and all return
   *    to its board, not half of them.
   *  - A defeated Raid defender loses no warband from its board.
@@ -33,6 +37,14 @@ private[campaign] object SparedForce:
   /** "{Blue}'s force was spared." */
   val spared: NoteKey = notes.key("spared", Vector(NotePart.Arg(0),
     NotePart.Text("'s force was spared.")))
+
+  /** What choosing the plan does at once: on the attacker's side it
+    * records the spare, which the losses read (slice 13). */
+  def effects(side: CampaignPlanSide): Vector[CampaignPlanEffect] =
+    side match
+      case CampaignPlanSide.Attacker => Vector(CampaignPlanEffect.Run(
+        Vector(ModifyDicePool(CampaignIds.attackerSpared, 1))))
+      case CampaignPlanSide.Defender => Vector.empty
 
   /** The powers that kill all of a defeated force, by id, so that no plan
     * object depends on another at initialisation. */
@@ -79,12 +91,10 @@ private[campaign] object SparedForce:
   private def kept(side: CampaignPlanSide, user: PlayerId, kind: ForceKind,
       result: CampaignResult, atTargets: Int)(operation: CoreOperation)
       : Vector[CoreOperation] = operation match
-    case kill @ Kill(Piece.Warbands(`kind`, count),
+    // The losses already left out the attacker's spared half.
+    case kill @ Kill(Piece.Warbands(`kind`, _),
         PositionedLocation(Location.PlayArea(`user`), _, _)) => side match
-      case CampaignPlanSide.Attacker =>
-        val toll = math.min(count, result.skullLosses + result.sacrificed)
-        if toll > 0 then Vector(kill.copy(warbands = Piece.Warbands(kind, toll)))
-        else Vector.empty
+      case CampaignPlanSide.Attacker => Vector(kill)
       case CampaignPlanSide.Defender => Vector.empty
     case move @ Move(Piece.Warbands(`kind`, _),
         PositionedLocation(Location.WarbandBank(_), _, _),

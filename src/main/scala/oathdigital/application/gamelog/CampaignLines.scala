@@ -178,10 +178,18 @@ private[gamelog] final class CampaignLines(words: LogWords,
       case CampaignDefender.Bandits => None
     def from(location: Location) = owner.exists(player =>
       location == Location.PlayArea(player))
+    // A site kill is the defender's in a Conquest, at its targets, and the
+    // attacker's in a Raid, at a queued origin (slice 13).
+    def fromSite(location: Location) = location match
+      case Location.Site(site) => result.kind match
+        case CampaignKind.Conquest => loser == result.defender
+        case CampaignKind.Raid =>
+          loser == CampaignDefender.Player(result.attacker) &&
+            result.originForce.exists(_.site == site)
+      case _ => false
     val killed = ops.collect {
-      case OpStep(Kill(Piece.Warbands(_, count), PositionedLocation(place, _, _)),
-          _, _) if from(place) || (loser == result.defender &&
-            place.isInstanceOf[Location.Site]) => count
+      case OpStep(Kill(Piece.Warbands(_, count), PositionedLocation(place, _,
+          _)), _, _) if from(place) || fromSite(place) => count
     }.sum
     val returned = ops.collect {
       case OpStep(Move(Piece.Warbands(_, count),
