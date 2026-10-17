@@ -48,8 +48,9 @@ private[application] final class WalkerDecisionProjector(
     phasePowers: PhasePowers = PhasePowers.empty):
   private val deals = new NegotiationDealProjector(presentation)
   private lazy val reasons = new gamelog.NoteReasons(catalog, presentation)
+  private lazy val consentPowers = ConsentPowers.default(catalog)
   private lazy val consentNames = new ConsentNames(presentation,
-    ConsentPowers.default(catalog))
+    consentPowers)
 
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
     this(catalog, presentation, WalkerPowerCatalog.default(catalog),
@@ -470,7 +471,7 @@ private[application] final class WalkerDecisionProjector(
       required.flatMap(_.powers).distinct.map(consentNames.power),
       asks.filter(_.alternative).map(ask => ConsentAlternativeProjection(
         ask.granter.value, ask.powers.map(consentNames.power),
-        paying = false)))
+        paying = ask.powers.forall(consentPowers.paying))))
 
   /** A Replace option's label: the card it discards, and where the played
     * card goes. */

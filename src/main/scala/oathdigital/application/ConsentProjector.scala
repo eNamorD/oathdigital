@@ -40,8 +40,16 @@ private[application] final class ConsentProjector(
       waiting <- request
       viewer <- context.viewer
       ask <- waiting.open.find(_.granter == viewer)
-    yield ConsentPromptProjection(waiting.requester.value,
-      ask.powers.map(names.power), target(context, waiting))
+    yield
+      // A payer is asked to travel to the site their key names (catalog
+      // batch 8, slice 15).
+      val paying = ask.powers.forall(powers.paying)
+      val site = Option.when(paying)(waiting.keysOf(ask).collectFirst {
+        case ConsentKey(_, _, _, DecisionOptionRef.Site(site)) => site })
+        .flatten
+      ConsentPromptProjection(waiting.requester.value,
+        ask.powers.map(names.power), site.fold(target(context, waiting))(
+          presentation.siteLabel), paying)
     projection.copy(
       walkerDecision =
         if requesting.nonEmpty then None else projection.walkerDecision,

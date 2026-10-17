@@ -20,9 +20,10 @@ final case class ConsentWaitingProjection(granterPlayerIds: Vector[String],
     either: Boolean = false)
 
 /** An asked granter's prompt: who asks, about which of the granter's own
-  * powers, for which option. */
+  * powers, for which option. `paying` when the granter is asked to pay
+  * and travel there rather than to waive (catalog batch 8, slice 15). */
 final case class ConsentPromptProjection(requesterPlayerId: String,
-    powers: Vector[String], target: String)
+    powers: Vector[String], target: String, paying: Boolean = false)
 
 /** A waivable power the viewer rules, with their setting for each other
   * player: `never`, `case-by-case` or `always`. Only ever the viewer's own

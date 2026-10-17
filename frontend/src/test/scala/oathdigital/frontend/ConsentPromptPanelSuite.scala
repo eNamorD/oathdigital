@@ -69,3 +69,11 @@ class ConsentPromptPanelSuite extends munit.FunSuite:
     assertEquals(all(panel, ".walker-waiting").map(_.textContent),
       Vector("Waiting for Red's consent…"))
     assertEquals(all(panel, ".consent-prompt"), Vector.empty)
+
+  test("a payer reads where they are sent, and what they pay"):
+    val paying = table.copy(consentPrompt = Some(ConsentPromptState("blue",
+      Vector("Toll Roads"), "Coast", paying = true)))
+    val panel = pane(paying, "red", new RecordingControls())
+    assertEquals(panel.querySelector(".consent-question").textContent,
+      "Blue wants to send you to Coast. Consent to pay Toll Roads and " +
+        "travel to Coast?")

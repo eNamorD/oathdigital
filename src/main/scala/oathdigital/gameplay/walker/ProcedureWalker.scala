@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, AutomaticUse, Branch, Burn, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PayCost, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, LeafOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, TakeDeferred, WalkerEvent}
+import oathdigital.model.{Answered, AutomaticUse, Branch, Burn, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PayCost, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, LeafOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, TakeDeferred, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -476,9 +476,10 @@ object ProcedureWalker:
     * catalog batch 8, slice 10), or it shows their plain reason when nobody
     * may be asked. A required decision with nothing left is kept when an
     * askable option remains, as the search kept it ([[reach]]): its player
-    * may ask. A plain reason alone keeps nothing, since nothing then can be
-    * answered. A choose-one passed when empty with nothing left parks on
-    * its Continue screen (catalog batch 8, slice 10, part 2b). */
+    * may ask, or when its builder declared an askable option (catalog
+    * batch 8, slice 15). A plain reason alone keeps nothing, since nothing
+    * then can be answered. A choose-one passed when empty with nothing left
+    * parks on its Continue screen (catalog batch 8, slice 10, part 2b). */
   private def narrowAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Option[Decide]] =
     if !ctx.powers.probing then Right(Some(
@@ -488,8 +489,8 @@ object ProcedureWalker:
       then EmptyChoices.offered(decide, Map.empty, Map.empty) else decide))
     else WalkerSearch.narrow(decide, verdict(decide, ctx, path)) match
       case Left(refused) =>
-        val asks = asksAt(decide, ctx, path) ++ operationAsksAt(decide, ctx,
-          path, WalkerSearch.choosable(decide))
+        val asks = declaredAsks(decide) ++ asksAt(decide, ctx, path) ++
+          operationAsksAt(decide, ctx, path, WalkerSearch.choosable(decide))
         if !asks.values.exists(askable) then Left(refused)
         else Right(Some(WalkerSearch.reasoned(WalkerSearch.narrowed(decide,
           _ => false, asks.get).getOrElse(decide), asks)))
@@ -518,15 +519,17 @@ object ProcedureWalker:
     * visit does, and the first visit tries the other answers. A decision no
     * answer leads on from is still a stop when one of its options may be
     * asked about and a grant would open it: a payer who cannot pay may ask
-    * to go on free (consent slice 4), or an option only waivable operation
-    * refusals hide may be asked about (catalog batch 8, slice 10). */
+    * to go on free (consent slice 4), an option only waivable operation
+    * refusals hide may be asked about (catalog batch 8, slice 10), or the
+    * decision's builder declared an askable option (slice 15). */
   private def reach(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Step] =
     if ctx.visited((path, ctx.state)) then Right(Stopped(ctx))
     else WalkerSearch.reach(decide, verdict(decide, ctx, path)) match
       case Left(refused) =>
-        if asksAt(decide, ctx, path).nonEmpty || operationAsksAt(decide, ctx,
-            path, WalkerSearch.choosable(decide)).values.exists(askable) then
+        if declaredAsks(decide).nonEmpty || asksAt(decide, ctx, path)
+            .nonEmpty || operationAsksAt(decide, ctx, path,
+            WalkerSearch.choosable(decide)).values.exists(askable) then
           Right(Stopped(ctx))
         else Left(refused)
       case Right(WalkerSearch.Reach.Skipped) => Right(Done(ctx))
@@ -539,6 +542,16 @@ object ProcedureWalker:
     WalkerPowerGather.optionAsks(decide, ctx.state, ctx.activePlayer,
       ctx.powers, path, ctx.procedure, ctx.answered,
       grantable(decide, ctx, path)).toMap
+
+  /** The options `decide` itself declares askable: a power that builds
+    * its own consent asks has already judged that the grants would open
+    * them (catalog batch 8, slice 15). */
+  private def declaredAsks(decide: Decide)
+      : Map[DecisionOptionRef, OptionReason] = decide.query match
+    case one: DecisionQuery.ChooseOne => one.options.collect {
+      case DecisionOption.Unavailable(option, ask: OptionReason.Askable) =>
+        option.ref -> (ask: OptionReason) }.toMap
+    case _ => Map.empty
 
   private def askable(reason: OptionReason): Boolean =
     reason.isInstanceOf[OptionReason.Askable]
