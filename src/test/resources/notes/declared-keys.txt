@@ -373,6 +373,7 @@ edifice.e28.intact shielded = {0} cannot be targeted.
 edifice.e28.ruined all-shielded = No player at {0} can be targeted.
 edifice.e28.ruined shielded = {0} cannot be targeted.
 procedure.muster mustered = Mustered {0} {0?warband|warbands} with {1}
+procedure.travel travelled = Travelled to {0}
 relic.amber-flame used = {0} burned {1} from {2}'s {3}.
 relic.amber-flame used.empty = {0}'s {1} held nothing to burn.
 relic.amber-flame used.none = No player at the site held a banner.

@@ -138,18 +138,20 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
     assertEquals(parked.events.map(_.productPrefix), Vector(
       "WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted",
       "ProcedureDequeued", "WalkerParked"))
-    assertEquals(stored.nextSequence, 13L)
+    assertEquals(stored.nextSequence, 14L)
     // The destination's pick ends the Travel, and the Act menu parks again.
+    // The Travel's own Game Log line is the `PowerNoted` between the pawn
+    // move and the completion.
     assertEquals(traveled.events.map(_.productPrefix), Vector(
       "WalkerStepRecorded", "WalkerStepRecorded", "WalkerStepRecorded",
-      "WalkerCompleted", "ActionBoundaryRan", "WalkerParked"))
+      "PowerNoted", "WalkerCompleted", "ActionBoundaryRan", "WalkerParked"))
     // Nothing is left parked once the destination is picked, but the menu.
     assertEquals(MenuPlay.pendingBeyondMenu(after), None)
     assertEquals(MenuPlay.procedureBeyondMenu(after), None)
     val types = loaded(repository.load("game-travel")).records
-      .takeRight(6).map(ujson.read(_)("eventType").str)
+      .takeRight(7).map(ujson.read(_)("eventType").str)
     assertEquals(types, Vector("walker.step-recorded", "walker.step-recorded",
-      "walker.step-recorded", "walker.completed",
+      "walker.step-recorded", "walker.power-noted", "walker.completed",
       "walker.action-boundary-ran", "walker.parked"))
 
   /** An off-turn Oathkeeper tie, reached and resolved entirely through

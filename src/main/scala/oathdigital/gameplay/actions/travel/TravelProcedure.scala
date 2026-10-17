@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.travel
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.TravelRules
+import oathdigital.gameplay.actions.{ProcedureNotes, TravelRules}
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers}
 import oathdigital.model._
 
@@ -44,6 +44,12 @@ object TravelProcedure:
   val destinationDecisionId: String = "travel.destination"
   private val heading = "Choose a Travel destination"
   private val startLabel = "Start Travel"
+
+  private val notes = NoteSet(ProcedureNotes.id(ActionRef.Travel))
+  /** "Travelled to Broken Peaks". */
+  val travelled: NoteKey = notes.key("travelled", Vector(
+    NotePart.Text("Travelled to "), NotePart.Arg(0)))
+  def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef])
@@ -123,5 +129,19 @@ object TravelProcedure:
         Move(Piece.Pawn(actor),
           PositionedLocation(Location.Site(source)),
           PositionedLocation(Location.Site(destination)))),
-        Some(PowerWindow.TravelCost))),
+        Some(PowerWindow.TravelCost)),
+      // Outside the cost window and after it. Every Travel power finds the
+      // route by flattening that window to its `Move`, so a note inside it
+      // would be a child those powers rewrite; and reading the arrival off
+      // the step means a power that rerouted the pawn is named correctly
+      // rather than by the destination this tree closed over.
+      Note(ProcedureNotes.id(ActionRef.Travel), travelledNote(actor))),
       Some(PowerWindow.TravelActionEligibility))
+
+  /** Where the pawn arrived in the step before the note. A Travel whose
+    * `Move` a power removed writes no line, as the rule this replaced wrote
+    * none without a recorded pawn move. */
+  private def travelledNote(actor: PlayerId)(states: NoteStates)
+      : Option[PowerNote] = states.previous.flatMap: (before, after) =>
+    actorSite(after, actor).filterNot(actorSite(before, actor).contains)
+      .map(arrived => travelled.sourceless(NoteArg.Site(arrived)))

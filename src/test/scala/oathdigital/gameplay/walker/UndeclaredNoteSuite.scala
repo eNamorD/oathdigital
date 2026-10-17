@@ -79,10 +79,10 @@ class UndeclaredNoteSuite extends munit.FunSuite:
     assert(thrown.getMessage.contains("invented"), thrown.getMessage)
 
   test("a procedure that has not migrated writes no note at all"):
-    val travel = ProcedureNotes.id(ActionRef.Travel)
-    assert(DeclaredNotes.of(catalog).knows(travel),
+    val campaign = ProcedureNotes.id(ActionRef.Campaign)
+    assert(DeclaredNotes.of(catalog).knows(campaign),
       "an unmigrated procedure is covered by the union, so it is refused " +
         "rather than unrecognised")
-    val thrown = intercept[AssertionError](NoteCheck.journal(declared, travel,
-      PowerNote(None, "travelled", Vector.empty), covers = false))
-    assert(thrown.getMessage.contains("procedure.travel"), thrown.getMessage)
+    val thrown = intercept[AssertionError](NoteCheck.journal(declared, campaign,
+      PowerNote(None, "campaigned", Vector.empty), covers = false))
+    assert(thrown.getMessage.contains("procedure.campaign"), thrown.getMessage)

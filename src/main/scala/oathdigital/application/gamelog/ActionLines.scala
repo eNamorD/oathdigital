@@ -25,15 +25,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
   private val campaigns = new CampaignLines(words, choices, catalog)
   private val negotiations = new NegotiationLines(words)
 
-  def travelLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    journal.ops(at).collect {
-      case OpStep(Move(Piece.Pawn(mover), _,
-          PositionedLocation(Location.Site(to), _, _), _, _), _, _)
-          if mover == run.actor =>
-        action(Vector(Text("Travelled to "), words.site(to)))
-    }
-
   def oathkeeperLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     journal.ops(at).collect {

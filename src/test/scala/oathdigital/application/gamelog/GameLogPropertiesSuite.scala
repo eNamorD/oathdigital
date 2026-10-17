@@ -230,7 +230,7 @@ class GameLogPropertiesSuite extends munit.FunSuite:
     // Rises by one with every procedure the migration moves.
     val noting = ProcedureRef.all.filter(
       logs.of(_).lines.isInstanceOf[ActionLineSource.Notes])
-    assertEquals(noting.map(_.key), Vector("muster"))
+    assertEquals(noting.map(_.key), Vector("travel", "muster"))
     // A procedure can be marked `Notes` while declaring none, and then its
     // line vanishes with nothing said: `NoteCheck` refuses a note whose key
     // is undeclared. Tie the two together here, since nothing else does.

@@ -164,7 +164,7 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
     // The Travel line names the destination, and a travel power's own line
     // names what it was asked.
     case ActionRef.Travel => ProcedureLog(tag = Some("Travel"),
-      lines = ActionLineSource.Rule(actions.travelLines),
+      lines = ActionLineSource.Notes(),
       anchor = starts.picksSettled,
       narratedPrefixes = Vector("travel."))
     case ActionRef.Muster => ProcedureLog(tag = Some("Muster"),
