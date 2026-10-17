@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.powers.OathkeeperGoalChoice
 import oathdigital.gameplay.walker.{PowerNoted, WalkerStepRecorded}
 import oathdigital.model._
@@ -32,7 +33,7 @@ private[gamelog] final class PowerLines(words: LogWords,
 
   private def line(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Option[Posted] = journal.event(at) match
-    case PowerNoted(power, note, _) if !repeated(journal, run, at, power, note) =>
+    case PowerNoted(power, note, _) if posts(journal, run, at, power, note) =>
       for
         after <- journal.readyAfter(at)
         spans <- spoken(power, note, states(journal, run, at) :+ after, viewer)
@@ -67,10 +68,21 @@ private[gamelog] final class PowerLines(words: LogWords,
     journal.readyBefore(run.first).toVector ++
       restated.toVector.flatMap(journal.readyBefore)
 
-  /** A phase power's own `used` note, or a variant of it, is its action's
-    * line. */
+  /** Whether the note at `at` posts at all. A procedure's own note is the
+    * line its action would otherwise infer, so it answers the two questions
+    * that line answered: a covering note restates it, and two identical ones
+    * in a run are two real effects. A power's note keeps the drop the hide
+    * hook needs, which fires once per hidden option. */
+  private def posts(journal: LogJournal, run: Run, at: Int, power: PowerId,
+      note: PowerNote): Boolean =
+    if ProcedureNotes.writes(power) then !journal.covered(at)
+    else !repeated(journal, run, at, power, note)
+
+  /** A procedure's own note is its action's line, as is a phase power's
+    * `used` note or a variant of it. */
   private def kind(run: Run, power: PowerId, note: PowerNote): LogKind =
-    if NoteKey.isUse(note.key) && run.procedure == ActionRef.UsePower(power)
+    if ProcedureNotes.writes(power) then LogKind.Action
+    else if NoteKey.isUse(note.key) && run.procedure == ActionRef.UsePower(power)
     then LogKind.Action
     else LogKind.Trigger
 

@@ -1,7 +1,8 @@
 package oathdigital.application.gamelog
 
 import oathdigital.engine.ReplayStep
-import oathdigital.gameplay.actions.{CardPlayRules, RuleNotes, VisionRules}
+import oathdigital.gameplay.actions.{CardPlayRules, ProcedureNotes,
+  RuleNotes, VisionRules}
 import oathdigital.gameplay.powers.action.{DreamThief, GamblingHall, MagicCarpet,
   QuickExit, Wolves}
 import oathdigital.gameplay.powers.rest.SilverTongue
@@ -502,3 +503,59 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
           assertEquals(named, viewer == script.actor, shown(at).spans.toString)
         }
       }
+
+  /** A procedure's own id and key, registered the way a power's test keys
+    * are: `ProcedureNotes` declares no keys until a procedure migrates. */
+  private val musterId = ProcedureNotes.id(ActionRef.Muster)
+  private val mustered = testNotes.key("mustered", Vector(
+    NotePart.Text("Mustered "), NotePart.Arg(0), NotePart.Text(" "),
+    NotePart.Plural(0, "warband", "warbands")))
+  private val withProcedure = new GameLogFormatter(catalog, presentation,
+    NoteWordings.default(catalog) ++
+      NoteWordings.of(power, Vector(said, took, counted, none)) ++
+      NoteWordings.of(musterId, Vector(mustered)))
+
+  private def musterNote(count: Int, covers: Boolean = false): PowerNoted =
+    PowerNoted(musterId, PowerNote(None, "mustered",
+      Vector(NoteArg.Number(count))), covers)
+
+  private def procedureLines(steps: Steps): Vector[LogEntry] =
+    withProcedure.format(steps, None).filter(entry =>
+      text(entry).startsWith("Mustered "))
+
+  test("a procedure note is an action line with no source prefix"):
+    val steps = silverTongueSteps
+    val posted = procedureLines(inserted(steps, take(steps), musterNote(2)))
+    assertEquals(posted.map(text), Vector("Mustered 2 warbands"))
+    assertEquals(posted.map(_.kind), Vector(LogKind.Action))
+
+  test("two identical procedure notes in one run both post"):
+    val steps = silverTongueSteps
+    val posted = procedureLines(
+      inserted(steps, take(steps), musterNote(1), musterNote(1)))
+    assertEquals(posted.map(text),
+      Vector("Mustered 1 warband", "Mustered 1 warband"))
+
+  test("two identical power notes in one run post once"):
+    val steps = silverTongueSteps
+    val note = saying(Table.p1, NoteArg.Number(1))
+    assertEquals(ours(inserted(steps, take(steps), note, note)).size, 1)
+
+  test("a covering note after a note covers it, and a plain one does not"):
+    val steps = silverTongueSteps
+    val at = take(steps)
+    def covered(events: PowerNoted*): Boolean =
+      val noted = inserted(steps, at, events*)
+      new LogJournal(noted).covered(noted.indexWhere(_.event.event match
+        case PowerNoted(`musterId`, _, _) => true
+        case _ => false))
+    assert(covered(musterNote(2), musterNote(2, covers = true)),
+      "a covering note that follows a note covers it")
+    assert(!covered(musterNote(2), musterNote(3)),
+      "a plain note that follows a note does not cover it")
+
+  test("a covered procedure note posts nothing"):
+    val steps = silverTongueSteps
+    val at = take(steps)
+    assertEquals(procedureLines(inserted(steps, at, musterNote(2),
+      musterNote(3, covers = true))).map(text), Vector("Mustered 3 warbands"))
