@@ -386,9 +386,13 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val line = all.indexWhere(
       _.endsWith(s"${playerLabel(script.actor)} said 2 favor."))
     assert(all.indexOf("Setup") < line && line < all.indexOf("Round 1"), all)
-    // Setup's own lines are notes too, and the pawn's posts at its own
-    // event after the step this note was inserted behind, so the inserted
-    // line reads first among them rather than after the first pawn line.
+    // Setup's own lines are notes too. This note is inserted straight
+    // behind the step that moved the pawn, which is earlier than any real
+    // power's note can land -- a power hooked at `SetupPawnPlaced` appends
+    // to the window's children, after the pawn's own note -- so it reads
+    // first among the setup lines here. What this test pins is the
+    // headline it files under; `GreatForgeRulesSuite` pins the order a
+    // real power's line takes against the pawn's.
     assert(all.slice(line + 1, all.indexOf("Round 1"))
       .exists(_.contains(" placed pawn at ")), all)
     assertPrefixStable(noted)

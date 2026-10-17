@@ -95,6 +95,12 @@ object NegotiationProcedure:
         // The settlement's lines, in the order `settle` applies them:
         // disclosures first, then transfers. A refused settlement fails the
         // command, so nothing is journaled and no note is reached.
+        //
+        // They state the agreement rather than the journal: the deleted
+        // rule read the executed operations, these are derived from the
+        // same `DealState` the settling node is. No power contributes at
+        // `NegotiationSettlement`; a first one that removed an operation
+        // would leave its line standing, so it must not.
         val settlement: Vector[Operation] =
           if !deal.agreed then Vector.empty
           else BuildOps((state, _) => NegotiationDeal.settle(state, deal),

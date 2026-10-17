@@ -50,7 +50,7 @@ work, not the finding.
   during it. Note that no golden script covers the attacker-loses branch
   today, so nothing would fail if it were missed.
 
-- **`SetupLines.scala:16` — "{Blue} placed pawn at {site}".** Missing
+- **`SetupProcedure.placedPawn` — "{Blue} placed pawn at {site}".** Missing
   article. Every other line in the module writes a determiner.
 
 - **`StartLines.scala:66` — "Continued" with a bare cost span.** Recover's

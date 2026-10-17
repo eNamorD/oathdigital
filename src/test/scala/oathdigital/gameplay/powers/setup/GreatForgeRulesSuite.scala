@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.setup
 
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure, SetupWalkDriver}
-import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.gameplay.walker.{PowerNoted, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Table}
 import oathdigital.testkit.Unwrap.accepted
@@ -86,3 +87,16 @@ class GreatForgeRulesSuite extends munit.FunSuite:
       Vector(NoteText.Said("discarded",
         s"Discarded ${cradleRelics.map(_.value).mkString(", ")}.",
         covers = false)))
+
+  /** A power hooked at `SetupPawnPlaced` appends its leaves to the node the
+    * window hangs on, so the pawn's own line must be inside that node: a
+    * sibling after it would read second, and the rule this line replaced
+    * read first. */
+  test("the pawn's own line comes before the edifice's"):
+    val staged = stagedAt(EdificeSide.Intact)
+    val written = events(staged).collect {
+      case PowerNoted(power, note, _) => s"${power.value}/${note.key}"
+    }
+    assertEquals(written.take(2), Vector(
+      s"${ProcedureNotes.id(TriggeredProcedureRef.Setup).value}/placed-pawn",
+      s"${great.id.value}/${NoteKey.Used}"))

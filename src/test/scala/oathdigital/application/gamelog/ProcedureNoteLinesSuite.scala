@@ -185,3 +185,11 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
       SetupProcedure.keptAdviser), LogKind.Decision)
     assertEquals(kindOf(TriggeredProcedureRef.Setup,
       SetupProcedure.revealedCard), LogKind.Decision)
+
+  test("a Negotiation with two partners joins them"):
+    val third = PlayerId("p3")
+    assertEquals(spoken(ActionRef.Negotiation,
+        NegotiationProcedure.negotiated,
+        NoteArg.Players(Vector(rival, third))),
+      Vector[LogSpan](Text("Negotiated with "), words.player(rival),
+        Text(" and "), words.player(third)))
