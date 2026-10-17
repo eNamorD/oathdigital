@@ -109,6 +109,8 @@ final class GameApplicationService(
   private val presentation = new GamePresentationProjector(catalog)
   private val journalFold = new JournalFold(rules.evolve)
   private val consent = new ConsentDesk(rules, ConsentPowers.default(catalog))
+  private val coupling = new UndoCoupling(state =>
+    rules.powerUseStep(state).nonEmpty)
   private val log = new gamelog.GameLogFormatter(catalog, presentation)
 
   /** Derives a validated initial journal and state without accessing storage. */
@@ -196,7 +198,12 @@ final class GameApplicationService(
       : Either[GameApplicationError, GameAccepted] =
     command match
       // The requester's Undo withdraws an unanswered request (ruling 14).
+      // The issuer's Undo withdraws an automatic power's request and takes
+      // back the batch that walked to its step (automatic power consent
+      // design, ruling 9).
       case GameCommand.Undo(actor) => consent.pending(journal.state) match
+        case Some(request) if request.use.nonEmpty =>
+          withdrawUse(gameId, journal, request, actor, expected, nextSequence)
         case Some(_) => consentBatch(gameId, journal,
           consent.withdraw(journal.state, actor), expected, nextSequence)
         case None => takeBack(gameId, journal, actor, expected, nextSequence)
@@ -216,6 +223,20 @@ final class GameApplicationService(
         consentBatch(gameId, journal, consent.setPreference(journal.state,
           granter, power, requester, setting), expected, nextSequence)
       case _ => handleAgainst(gameId, journal, command, expected, nextSequence)
+
+  /** Withdraws `request`, about an automatic power, and takes back what
+    * walked to its step, in one append. Only that batch's issuer may, and
+    * not when a barrier keeps it off the stack. */
+  private def withdrawUse(gameId: String, journal: FoldedJournal,
+      request: ConsentRequest, actor: PlayerId, expected: ExpectedStream,
+      nextSequence: Long): Either[GameApplicationError, GameAccepted] =
+    coupling.undoing(journal).filter(_.forall(_.issuer == actor)) match
+      case None => Left(CommandRejected(OathViolation.ConsentPending))
+      case Some(chain) =>
+        val events = OathEvent.ConsentRequestWithdrawn(request.requester) +:
+          chain.map(batch =>
+            OathEvent.StepTakenBack(batch.from, batch.until, actor))
+        appendBatch(gameId, journal, events, events, expected, nextSequence)
 
   /** A consent command's events, appended as one batch. Any batch opening
     * among them is left out of the reported events, as it is for every
@@ -249,11 +270,22 @@ final class GameApplicationService(
       .map(_.spans.map(_.text).mkString)
     UndoStep(batch.issuer, batch.from, batch.until, note)
 
+  /** The Undo a journal offers: its chain's issuer and whole range, named
+    * by the batch at its bottom, which walked to any step. */
+  private def offeredUndo(journal: FoldedJournal): Option[UndoStep] =
+    coupling.undoing(journal).map(chain =>
+      offered(journal, chain.last).copy(until = chain.head.until))
+
+  /** The Redo a journal offers, named by the chain's first batch. */
+  private def offeredRedo(journal: FoldedJournal): Option[UndoStep] =
+    coupling.redoing(journal).map(chain =>
+      offered(journal, chain.head).copy(until = chain.last.until))
+
   private def loadedFrom(journal: FoldedJournal, nextSequence: Long)
       : LoadedGame =
     LoadedGame(journal.state, nextSequence,
-      undo = journal.undoable.map(offered(journal, _)),
-      redo = journal.redoable.map(offered(journal, _)),
+      undo = offeredUndo(journal),
+      redo = offeredRedo(journal),
       logRevision = journal.logRevision)
 
   private def decodeRecords(
@@ -304,36 +336,48 @@ final class GameApplicationService(
         expected, nextSequence)
     yield accepted
 
-  /** Appends the marker that takes back the latest live batch, and returns
-    * the state before it (undo design, "Commands and authorization").
-    * Nothing runs in the rules engine. */
+  /** Appends the markers that take back the latest live batches, and
+    * returns the state before them (undo design, "Commands and
+    * authorization"): one batch, or a coupled chain that ends at an
+    * automatic power's step ([[UndoCoupling]]). Nothing runs in the rules
+    * engine. */
   private def takeBack(gameId: String, journal: FoldedJournal,
       actor: PlayerId, expected: ExpectedStream, nextSequence: Long)
       : Either[GameApplicationError, GameAccepted] =
     for
-      batch <- journal.undoable.toRight(
+      chain <- coupling.undoing(journal).toRight(
         CommandRejected(OathViolation.NothingToUndo))
-      _ <- Either.cond(batch.issuer == actor, (),
-        CommandRejected(OathViolation.UndoNotIssuer(actor, batch.issuer)))
-      marker = OathEvent.StepTakenBack(batch.from, batch.until, actor)
-      accepted <- appendBatch(gameId, journal, Vector(marker), Vector(marker),
-        expected, nextSequence)
+      _ <- chain.find(_.issuer != actor).fold[Either[GameApplicationError,
+        Unit]](Right(()))(batch => Left(CommandRejected(
+          OathViolation.UndoNotIssuer(actor, batch.issuer))))
+      markers = chain.map(batch =>
+        OathEvent.StepTakenBack(batch.from, batch.until, actor))
+      accepted <- appendBatch(gameId, journal, markers, markers, expected,
+        nextSequence)
     yield accepted
 
-  /** Appends the marker that restores the batch most recently taken back,
-    * and returns the state after it (undo design, "Redo"). Nothing runs in
+  /** Appends the markers that restore the batches most recently taken
+    * back, and returns the state after them (undo design, "Redo"): one
+    * batch, or a coupled chain ([[UndoCoupling]]). A Redo that ends at an
+    * automatic power's step asks its rulers again. Nothing else runs in
     * the rules engine. */
   private def restore(gameId: String, journal: FoldedJournal,
       actor: PlayerId, expected: ExpectedStream, nextSequence: Long)
       : Either[GameApplicationError, GameAccepted] =
     for
-      batch <- journal.redoable.toRight(
+      chain <- coupling.redoing(journal).toRight(
         CommandRejected(OathViolation.NothingToRedo))
-      _ <- Either.cond(batch.issuer == actor, (),
-        CommandRejected(OathViolation.RedoNotIssuer(actor, batch.issuer)))
-      marker = OathEvent.StepRestored(batch.from, batch.until, actor)
-      accepted <- appendBatch(gameId, journal, Vector(marker), Vector(marker),
-        expected, nextSequence)
+      _ <- chain.find(_.issuer != actor).fold[Either[GameApplicationError,
+        Unit]](Right(()))(batch => Left(CommandRejected(
+          OathViolation.RedoNotIssuer(actor, batch.issuer))))
+      markers = chain.map(batch =>
+        OathEvent.StepRestored(batch.from, batch.until, actor))
+      restored <- extended(journal, markers, nextSequence)
+      reopened <- consent.opened(restored.state, actor)
+        .left.map(CommandRejected.apply)
+      events = markers ++ reopened
+      accepted <- appendBatch(gameId, journal, events, events.filterNot(
+        _.isInstanceOf[OathEvent.CommandAccepted]), expected, nextSequence)
     yield accepted
 
   /** Appends `appended`, then any stale-preference clearing it leaves
@@ -361,8 +405,8 @@ final class GameApplicationService(
             if first == nextSequence && count == records.size =>
           Right(GameAccepted(folded.state, reported ++ clearing,
             nextSequence + count,
-            undo = folded.undoable.map(offered(folded, _)),
-            redo = folded.redoable.map(offered(folded, _)),
+            undo = offeredUndo(folded),
+            redo = offeredRedo(folded),
             logRevision = folded.logRevision))
         case StreamAlreadyExists => Left(DuplicateGame(gameId))
         case RepositoryAppendResult.StreamNotFound =>

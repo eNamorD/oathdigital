@@ -48,13 +48,18 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
       val context = ScopedProjectionContext(ready, requestingPlayer)
       val waiting = ready.consent.pending
       // While a request waits, its requester's Undo withdraws it, and nobody
-      // else undoes or redoes past it (consent design, plan decision 7).
-      val withdraws = waiting.exists(request =>
+      // else undoes or redoes past it (consent design, plan decision 7). An
+      // automatic power's request is withdrawn by the issuer of the batch
+      // that walked to its step, whose Undo takes that batch back too
+      // (automatic power consent design, ruling 9).
+      val walked = waiting.exists(_.use.nonEmpty)
+      val withdraws = !walked && waiting.exists(request =>
         requestingPlayer.contains(request.requester))
       consent.applied(context, readyProjection(gameId, loaded.nextSequence,
         context).copy(
         undo = if withdraws then
             Some(StepOfferProjection(ConsentProjector.withdrawNote))
+          else if walked then offer(loaded.undo, requestingPlayer, "Undo")
           else if waiting.nonEmpty then None
           else offer(loaded.undo, requestingPlayer, "Undo"),
         redo = if waiting.nonEmpty then None

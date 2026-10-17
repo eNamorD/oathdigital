@@ -226,7 +226,13 @@ private[gameplay] trait OathRulesWalker:
   /** The automatic use whose power-use step the walk is parked at, if it
     * is (automatic power consent design, "Reaching the step"). */
   def powerUseStep(state: OathState): Option[AutomaticUse] =
-    walkerResumeContext(state).toOption.flatMap {
+    val atSlot = state match
+      case Ready(ready) => ready.game.current.walkerPending
+        .exists(_.at.lastOption.contains(ParkedUses.Slot))
+      case _ => false
+    // Most parks are elsewhere, so their tree is not rebuilt.
+    if !atSlot then None
+    else walkerResumeContext(state).toOption.flatMap {
       case (ready, _, tree, pending, powers, _) =>
         walkerCall(Right(ParkedUses.of(ready, tree, pending, powers)))
           .toOption.flatten
