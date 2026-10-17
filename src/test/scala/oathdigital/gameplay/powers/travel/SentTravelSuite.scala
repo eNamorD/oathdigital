@@ -22,6 +22,8 @@ class SentTravelSuite extends munit.FunSuite:
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
   private val palanquin = PowerSourceRef.Card(DenizenId("107"))
   private val dunes = DecisionOptionRef.Site(provincePlains)
+  private val passBlocked = OathViolation.TravelPassBlocked(pass,
+    provincePlains)
 
   /** p2's Travel to `site`, sent by p1 with Palanquin as its source. */
   private def p2SentTo(site: SiteId): QueuedProcedure =
@@ -65,15 +67,17 @@ class SentTravelSuite extends munit.FunSuite:
   test("a site start argument without a matching queued entry is refused"):
     val refused = rejected(rules.startWalker(Ready(p2BesideP1()),
       ActionRef.Travel, p1, Vector(DecisionOptionRef.Site(coast))))
-    assert(refused.isInstanceOf[OathViolation.InvalidEventOrder],
-      refused.toString)
+    assertEquals(refused, OathViolation.InvalidEventOrder(
+      "travel takes no start selection but a power's queued destination"))
 
   test("a bandit-held Narrow Pass refuses a sent Travel into its region"):
-    assert(startRefusal(p2BesideP1(), p2SentTo(provincePlains)).nonEmpty)
+    assertEquals(startRefusal(p2BesideP1(), p2SentTo(provincePlains)),
+      Some(passBlocked))
 
   test("the Pass ruler's grant of the queued destination lets it through"):
     val ready = p2BesideP1(passHolder = Some(p3))
-    assert(startRefusal(ready, p2SentTo(provincePlains)).nonEmpty)
+    assertEquals(startRefusal(ready, p2SentTo(provincePlains)),
+      Some(passBlocked))
     val granted = p3GrantedDunesToP2(ready)
     assertEquals(startRefusal(granted, p2SentTo(provincePlains)), None)
     val done = accepted(startedFromTheQueue(granted, p2SentTo(provincePlains)))
@@ -82,8 +86,8 @@ class SentTravelSuite extends munit.FunSuite:
   test("the sender's own Narrow Pass does not block it, another's does"):
     val ready = p2BesideP1(passHolder = Some(p1))
     assertEquals(startRefusal(ready, p2SentTo(provincePlains)), None)
-    assert(startRefusal(ready,
-      p2SentTo(provincePlains).copy(sender = None)).nonEmpty)
+    assertEquals(startRefusal(ready,
+      p2SentTo(provincePlains).copy(sender = Some(p3))), Some(passBlocked))
 
   test("a sent entry's sender survives the wire"):
     assertWireRoundTrips(Vector(ProcedureDequeued(p2SentTo(coast))))
