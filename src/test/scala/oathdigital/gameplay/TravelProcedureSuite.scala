@@ -264,8 +264,12 @@ class TravelProcedureSuite extends munit.FunSuite:
     val pending = PendingTree(Vector("1", "1"), Vector(Answered(
       TravelProcedure.destinationDecisionId, TravelPlay.destination(coast),
       actor)))
+    // The chosen destination's branch selects the route's own branch,
+    // which prices it on the state it is reached in.
     val selected = rebuilt.children(1).children(1) match
-      case branch: Branch => branch.select(moved, pending)
+      case branch: Branch => branch.select(moved, pending).flatMap:
+        case route: Branch => route.select(moved, pending)
+        case other => Vector(other)
       case other => fail(s"not the route branch: $other")
     assertEquals(selected.flatMap(Operation.flatten).collect {
       case Move(Piece.Pawn(_), PositionedLocation(Location.Site(from), _, _),
@@ -276,7 +280,8 @@ class TravelProcedureSuite extends munit.FunSuite:
     val ready = travelBoard(supply = 7)
     assertEquals(rejected(TravelProcedure.build(catalog, ready, actor,
       Vector(DecisionOptionRef.Site(coast)))),
-      InvalidEventOrder("travel takes no start selection"))
+      InvalidEventOrder(
+        "travel takes no start selection but a power's queued destination"))
     assertEquals(rejected(TravelProcedure.rebuild(catalog, ready, actor,
       Vector.empty)), InvalidEventOrder(
       "a resumed Travel needs its source site as its one start fact"))

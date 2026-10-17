@@ -7,7 +7,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureDequeued, QueuedStart}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{Look, Outcomes}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, rejected}
@@ -20,7 +20,8 @@ class SentTravelSuite extends munit.FunSuite:
 
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
-  private val palanquin = PowerSourceRef.Card(DenizenId("107"))
+  private val palanquin =
+    PowerSourceRef.Card(CatalogNames.denizen("Palanquin"))
   private val dunes = DecisionOptionRef.Site(provincePlains)
   private val passBlocked = OathViolation.TravelPassBlocked(pass,
     provincePlains)
