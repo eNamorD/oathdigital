@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.powerresolver.PhasePowers
+import oathdigital.gameplay.powerresolver.{PhasePowers, QueuedStarts}
 import oathdigital.model._
 
 /** Whether a queued entry would start now, and what it would cost
@@ -42,6 +42,38 @@ object QueuedStart:
       past <- WalkerSimulation.started(tree, state, powers)
       cost <- costOf(entry, tree, past, powers)
     yield cost
+
+  /** `refusal`, and for a start only waivable restrictions refuse, the
+    * grants that would let it start (catalog batch 8, slice 15). Each grant
+    * is keyed on the entry's queued answer, so the started walk finds it,
+    * and the start is tried again with every one of them supposed, as the
+    * look-ahead tries a grant before it offers to ask (consent design,
+    * ruling 8). */
+  def consent(catalog: ExecutableCatalog, ready: ReadyGame,
+      entry: QueuedProcedure, powers: WalkerPowers,
+      phasePowers: PhasePowers): QueuedStarts.Verdict =
+    priced(catalog, ready, entry, powers, phasePowers) match
+      case Right(_) => QueuedStarts.Verdict.Starts
+      case Left(violation) =>
+        val state = startingFrom(ready, entry)
+        val waiting = for
+          answer <- WalkerProcedureRegistry.queuedAnswers(state).headOption
+          ref <- answer.answer match
+            case DecisionAnswer.ChooseOneAnswer(ref) => Some(ref)
+            case _ => None
+          tree <- WalkerProcedureRegistry.build(entry.procedure, catalog,
+            state, entry.actor, entry.startArgs, phasePowers,
+            walkerPowers = powers).toOption
+          breaches <- WalkerPowerGather.waivableBreaches(tree, state,
+            entry.actor, powers, Vector(answer), Some(entry.procedure), ref)
+          needed = breaches.map(breach => QueuedStarts.Needed(breach.power,
+            breach.granter, ConsentKey(breach.power, answer.by,
+              answer.decisionId, ref), breach.asked, breach.plain))
+          supposed = ready.copy(consent = ready.consent.granting(
+            needed.map(_.key), ConsentTurn.of(ready)))
+          if priced(catalog, supposed, entry, powers, phasePowers).isRight
+        yield QueuedStarts.Verdict.Waiting(needed)
+        waiting.getOrElse(QueuedStarts.Verdict.Refused(violation))
 
   /** "Needs 2 Supply; you have 1", or the same for favor or secrets, when
     * the start would open with the actor's Supply raised to the track's

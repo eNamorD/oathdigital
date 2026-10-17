@@ -148,18 +148,31 @@ object PhasePowerProcedure:
     * park. A start check is a pure function of the state its start runs
     * on, which names the entry, so each answer is kept for the life of the
     * tree, keyed by that state by value, as `SearchMemo` keys a state. Two
-    * states that differ only in the open walk share it. */
+    * states that differ only in the open walk share it. The consent
+    * verdict is kept the same way. */
   private def startsFor(catalog: ExecutableCatalog, phasePowers: PhasePowers,
       walkerPowers: WalkerPowers): QueuedStarts =
-    val known = new java.util.concurrent.ConcurrentHashMap[ReadyGame,
+    val refusals = new java.util.concurrent.ConcurrentHashMap[ReadyGame,
       Option[OathViolation]]
-    (ready, entry) =>
-      val key = QueuedStart.startingFrom(ready, entry)
+    val verdicts = new java.util.concurrent.ConcurrentHashMap[ReadyGame,
+      QueuedStarts.Verdict]
+    def kept[A](known: java.util.concurrent.ConcurrentHashMap[ReadyGame, A],
+        key: ReadyGame)(found: => A): A =
       Option(known.get(key)).getOrElse:
-        val found = QueuedStart.refusal(catalog, ready, entry, walkerPowers,
-          phasePowers)
-        known.put(key, found)
-        found
+        val value = found
+        known.put(key, value)
+        value
+    new QueuedStarts:
+      def refusal(ready: ReadyGame, entry: QueuedProcedure)
+          : Option[OathViolation] =
+        kept(refusals, QueuedStart.startingFrom(ready, entry))(
+          QueuedStart.refusal(catalog, ready, entry, walkerPowers,
+            phasePowers))
+      override def consent(ready: ReadyGame, entry: QueuedProcedure)
+          : QueuedStarts.Verdict =
+        kept(verdicts, QueuedStart.startingFrom(ready, entry))(
+          QueuedStart.consent(catalog, ready, entry, walkerPowers,
+            phasePowers))
 
   private def assemble(catalog: ExecutableCatalog, power: PhasePower,
       player: PlayerId, source: PowerSourceRef, tree: Operation): Operation =
