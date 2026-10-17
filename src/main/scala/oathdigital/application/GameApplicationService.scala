@@ -279,6 +279,9 @@ final class GameApplicationService(
     yield envelopes.map(envelope =>
       RecordedEvent(envelope.sequence, envelope.event)).toVector
 
+  /** Runs `command` and appends its batch. A walk that parks at an
+    * automatic power's step opens its request in the same append
+    * (automatic power consent design, "Reaching the step"). */
   private def handleAgainst(
       gameId: String,
       journal: FoldedJournal,
@@ -289,10 +292,15 @@ final class GameApplicationService(
     for
       transition <- applyCommand(journal.state, command, nextSequence)
         .left.map(CommandRejected.apply)
-      appended = GameCommand.issuer(command)
-        .map(OathEvent.CommandAccepted(_)).toVector ++
-        transition.events
-      accepted <- appendBatch(gameId, journal, appended, transition.events,
+      issuer = GameCommand.issuer(command)
+      opened <- issuer.fold[Either[OathViolation, Vector[OathEvent]]](
+          Right(Vector.empty))(consent.opened(transition.state, _))
+        .left.map(CommandRejected.apply)
+      appended = issuer.map(OathEvent.CommandAccepted(_)).toVector ++
+        transition.events ++ opened
+      accepted <- appendBatch(gameId, journal, appended,
+        transition.events ++ opened.filterNot(
+          _.isInstanceOf[OathEvent.CommandAccepted]),
         expected, nextSequence)
     yield accepted
 

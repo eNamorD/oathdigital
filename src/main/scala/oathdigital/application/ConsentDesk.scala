@@ -1,6 +1,7 @@
 package oathdigital.application
 
 import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.powerresolver.PowerUseStep
 import oathdigital.gameplay.powers.ConsentPowers
 import oathdigital.model._
 import oathdigital.model.OathEvent.{CommandAccepted, ConsentAnswered,
@@ -9,7 +10,9 @@ import oathdigital.model.OathEvent.{CommandAccepted, ConsentAnswered,
 
 /** The consent commands (consent design, "Commands"). Each answers with the
   * events to append as one batch, or why it cannot run. Consent events open
-  * no command batch, so nothing here is undoable. */
+  * no command batch, so nothing here is undoable, except the batch that
+  * answers a parked decision, which a settled request opens for its
+  * requester, or for the issuer of an automatic power's request. */
 private[application] final class ConsentDesk(rules: OathRules,
     powers: ConsentPowers):
   private type Result = Either[OathViolation, Vector[OathEvent]]
@@ -53,6 +56,26 @@ private[application] final class ConsentDesk(rules: OathRules,
       ConsentRequested(request) +: automatic(ready.consent, request))
   yield events
 
+  /** The request a walk parked at an automatic power's step opens
+    * (automatic power consent design, "Reaching the step"), with the
+    * answers the granters' preferences give and what they settle.
+    * `issuer` opened the batch that walked there. Nothing when the walk is
+    * not parked at a step, or a request already waits. */
+  def opened(state: OathState, issuer: PlayerId): Result =
+    rules.powerUseStep(state).filter(_ => pending(state).isEmpty) match
+      case None => Right(Vector.empty)
+      case Some(use) =>
+        val decisionId = PowerUseStep.decisionId(use.power)
+        for
+          ready <- playing(state)
+          ask <- rules.consentAsk(state, use.user, decisionId,
+            PowerUseStep.use)
+          request = ConsentRequest(use.user, decisionId, PowerUseStep.use,
+            ask.asks, ask.covers, Some(ConsentUse(use.card, issuer)))
+          events <- settled(state,
+            ConsentRequested(request) +: automatic(ready.consent, request))
+        yield events
+
   /** The asks a request sends: all of them, or the required ones and the
     * alternatives whose granter `granters` names (catalog batch 8, slice
     * 15). A request that keeps a single alternative leaves it marked, and
@@ -74,7 +97,10 @@ private[application] final class ConsentDesk(rules: OathRules,
   /** `granter`'s answer. Never Allow and Always Allow also set their
     * preference for the requester on every power of their ask, after the
     * answer and anything it settles, so the requester's log reads a manual
-    * Always as it reads a Yes: the answer comes right after the question. */
+    * Always as it reads a Yes: the answer comes right after the question.
+    * For a request about an automatic power, they come before the step's
+    * answer, so a second step the walk reaches in the same command is
+    * answered by them (automatic power consent design). */
   def answer(state: OathState, granter: PlayerId, choice: ConsentChoice)
       : Result = for
     ready <- playing(state)
@@ -85,8 +111,9 @@ private[application] final class ConsentDesk(rules: OathRules,
         s"${granter.value} has not been asked for consent"))
     preferences = choice.setting.toVector.flatMap(setting => ask.powers.map(
       ConsentPreferenceSet(granter, _, request.requester, setting)))
-    events <- settled(state, Vector(ConsentAnswered(granter, choice.granted)))
-  yield events ++ preferences
+    events <- settled(state, Vector(ConsentAnswered(granter,
+      choice.granted)), preferences)
+  yield events
 
   /** The requester's Undo while their request waits (ruling 14). Anyone
     * else's Undo waits for the answer. */
@@ -140,28 +167,47 @@ private[application] final class ConsentDesk(rules: OathRules,
       case (done, _) => done
     }._2
 
-  /** `events`, followed, when their last answer completes the request with
-    * every ask granted at a choose-one, by the requester's answer to the
-    * parked decision. That answer is the requester's command batch, though
-    * the granter's command produced it, so the requester can undo the move
-    * (consent design, "Settling"). At a choose-many, the grant only opens
-    * the option, and the requester goes on choosing (slice 2). */
-  private def settled(state: OathState, events: Vector[OathEvent]): Result =
+  /** `events`, followed by what their last answer settles.
+    *
+    *  - A request about an automatic power, settled either way: `first`,
+    *    then the issuer's batch answering the step `use` on a grant or
+    *    `skip` on a refusal (automatic power consent design, "Settling").
+    *  - Any other request, granted at a choose-one: the requester's answer
+    *    to the parked decision. That answer is the requester's command
+    *    batch, though the granter's command produced it, so the requester
+    *    can undo the move (consent design, "Settling"). At a choose-many,
+    *    the grant only opens the option, and the requester goes on
+    *    choosing (slice 2). `first` follows everything.
+    *
+    * A resumed walk that parks at another step opens its request. */
+  private def settled(state: OathState, events: Vector[OathEvent],
+      first: Vector[OathEvent] = Vector.empty): Result =
     folded(state, events).flatMap { after =>
       val request = events.collectFirst { case ConsentRequested(opened) =>
         opened }.orElse(pending(state))
-      val granted = pending(after).isEmpty && (events.lastOption match
-        case Some(ConsentAnswered(_, true)) => true
-        case _ => false)
-      request.filter(_ => granted) match
-        case Some(done) if rules.grantAnswers(after, done.requester,
+      val last = events.lastOption.collect {
+        case ConsentAnswered(_, granted) => granted }
+      request.filter(_ => pending(after).isEmpty).zip(last) match
+        case Some((done, granted)) if done.use.nonEmpty =>
+          val issuer = done.use.fold(done.requester)(_.issuer)
+          folded(after, first).flatMap(prepared => resumed(prepared, done,
+            if granted then PowerUseStep.use else PowerUseStep.skip, issuer))
+            .map(events ++ first ++ _)
+        case Some((done, true)) if rules.grantAnswers(after, done.requester,
             done.decisionId) =>
-          rules.resolveWalker(after, done.requester, done.decisionId,
-            DecisionAnswer.ChooseOneAnswer(done.target))
-          .map(answered =>
-            events ++ (CommandAccepted(done.requester) +: answered.events))
-        case _ => Right(events)
+          resumed(after, done, done.target, done.requester)
+            .map(events ++ _ ++ first)
+        case _ => Right(events ++ first)
     }
+
+  /** `issuer`'s batch answering `done`'s parked decision with `answer` as
+    * its requester, then the request of any step the walk parks at next. */
+  private def resumed(state: OathState, done: ConsentRequest,
+      answer: DecisionOptionRef, issuer: PlayerId): Result = for
+    answered <- rules.resolveWalker(state, done.requester, done.decisionId,
+      DecisionAnswer.ChooseOneAnswer(answer))
+    next <- opened(answered.state, issuer)
+  yield (CommandAccepted(issuer) +: answered.events) ++ next
 
   private def folded(state: OathState, events: Vector[OathEvent])
       : Either[OathViolation, OathState] =

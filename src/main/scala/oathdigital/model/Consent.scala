@@ -68,9 +68,19 @@ final case class ConsentKey(power: PowerId, requester: PlayerId,
 final case class ConsentAsk(granter: PlayerId, powers: Vector[PowerId],
     answer: Option[Boolean] = None, alternative: Boolean = false)
 
+/** The automatic power a request is about (automatic power consent
+  * design): the used card, and the player whose batch walked to its
+  * step, who opens the answer's batch and may withdraw. */
+final case class ConsentUse(card: CardId, issuer: PlayerId)
+
+/** `requester` asking the `asks`' granters to open `target` at their parked
+  * `decisionId`. `use` is set when the walk opened the request at an
+  * automatic power's step: its decision is the step, its target the step's
+  * `use`, and its answer answers the step. */
 final case class ConsentRequest(requester: PlayerId, decisionId: String,
     target: DecisionOptionRef, asks: Vector[ConsentAsk],
-    covers: Vector[ConsentKey] = Vector.empty):
+    covers: Vector[ConsentKey] = Vector.empty,
+    use: Option[ConsentUse] = None):
   /** Every key the request settles: what it covers when it names any (an
     * operation restriction's grant, slice 3), else each asked power for this
     * option. */
