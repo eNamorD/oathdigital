@@ -244,8 +244,8 @@ class AutomaticUseSuite extends munit.FunSuite:
     assertEquals(ParkedUses.of(p1Holding(1), asking,
       parkedAt(p1Holding(1), asking, askable), askable), None)
 
-  test("a decision before the step keeps every option: the search walks " +
-      "on through the step"):
+  test("a decision before the step keeps every option: the search counts " +
+      "the step as answerable"):
     val pick = Decide("test.pick", p1, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Button(DecisionOptionRef.Button("a"), "A"),
       DecisionOption.Button(DecisionOptionRef.Button("b"), "B"))))
