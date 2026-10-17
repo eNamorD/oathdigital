@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 13 are done. The per-card
+**Status:** designed 2026-10-12. Slices 1 to 14 are done. The per-card
 rulings are in
 [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
@@ -209,10 +209,12 @@ The approved changes outside `gameplay/powers/`:
   losses split the dead between board and site, asking when the split is a
   choice. A phase power checks whether a procedure it would queue starts
   through `QueuedStarts`, which the engine fills in.
-- **An off-turn actor** (slice 14). `WalkCtx.activePlayer` comes from the
-  queue entry's actor, not the turn. The starts that require the active
-  player accept a queued actor, and Campaign powers that read
-  `ctx.activePlayer` as the attacker read the Campaign's attacker instead.
+- **An off-turn actor** (slice 14). A walk started from a queue entry
+  belongs to the entry's actor (`CurrentGameState.walkActor`), which
+  `WalkCtx.activePlayer` and `PowerCtx.activePlayer` hold. A queued start
+  accepts that actor. Cost settlement, placements, menus and the HUD stay on
+  the turn's player. A power's queued Campaign may name its defender as its
+  one start argument (`CampaignSetup.queuedDefender`).
 - **A queued Travel's destination** (slice 15). A queued Travel may carry a
   destination in its start arguments, and its actor may be another player.
 
@@ -680,8 +682,10 @@ physical pawn does not move.
 ## Slice 14: Off-turn actor
 
 - **Sneak Attack** offers its holder a Campaign, spending no Supply, after
-  every effect and follow-up of another player's Campaign, with that player
-  declared the defender. `CampaignSetup.pin` fixes the defender.
+  another player's Campaign that recorded a result, with that player
+  declared the defender. The entry's start argument fixes the defender.
+  It is offered before the Campaign's other follow-ups: its offer goes to
+  the front of the queue, and theirs to the back.
 - **Second Wind** is offered to a victorious defender too. The defender's
   Travel and Campaign run off turn, after the attacker's follow-ups.
 
@@ -723,7 +727,7 @@ product owner.
 - Slices that add an operation or start argument test a replayed game
   reaching the same state.
 - Slice 14 tests Sneak Attack after a Campaign with and without follow-ups,
-  two holders in turn order, and a Second Wind defender; slice 15 tests
+  before Second Wind's follow-ups, and a Second Wind defender; slice 15 tests
   Palanquin with Toll Roads refused and accepted, and with Hospitality and
   Brass Army on the target.
 - The verification gate is the roadmap's standing rule.

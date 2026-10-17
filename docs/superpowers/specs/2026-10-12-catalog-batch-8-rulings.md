@@ -567,19 +567,65 @@ The shared rules:
 
 ## Slice 14: Off-turn actor
 
+Ruled 2026-10-16. A walk started from a queue entry belongs to that
+entry's actor, who may be off turn. Every other walk belongs to the turn's
+player.
+
 - **98 Sneak Attack.** "After another player's campaign, you may campaign,
   spending no Supply, if you declare them as the defender."
-  - It is offered after every effect and follow-up of the other player's
-    Campaign has resolved.
-  - With several holders, each is offered in turn order, starting after the
-    attacker.
-  - The Campaign is the holder's, off turn: they choose modifiers and plans
-    as the attacker, and the earlier attacker is the defender.
+  - It is offered first, at the end of the other player's Campaign: its
+    `Offer` goes to the front of the queue. The Campaign's other
+    follow-ups, Second Wind's on either side, go to the back, and run after
+    it whether it is taken or skipped. Taking it puts the Campaign `Run` at
+    the front, as every taken offer does.
+  - A Campaign that recorded a result triggers it. A Campaign skipped, or
+    ended with nothing to attack (Vow of Union), does not. The holder is
+    not that Campaign's attacker: they may be its defender or uninvolved.
+    An off-turn Campaign counts, so a defender's Second Wind Campaign is
+    another player's Campaign.
+  - The entry's one start argument names the earlier attacker as the
+    declared defender. Only kinds where that player defends are legal: a
+    Conquest of a site they rule, or a Raid of their pawn there. The
+    defender question offers only them, and a Conquest's extra targets are
+    sites they rule. The argument is accepted only from a queue entry with
+    a source, as slice 13's origin is.
+  - The offer is queued only when the holder has a legal kind against the
+    earlier attacker. A start that a restriction refuses (Vow of Peace)
+    still shows Take unavailable with its reason.
+  - The Campaign is the holder's, off turn: they choose their own
+    modifiers and plans as the attacker.
+  - Sneak Attack is a single card, so the earlier "several holders, in
+    turn order" cannot arise, and is dropped.
 - **16 Second Wind** (defender side). "[secret] [favor-burnt] After you're
   victorious, you may travel and then may campaign, spending no Supply for
   either."
-  - A victorious defender is offered it too. Their Travel and Campaign run
-    off turn, after the attacker's follow-ups.
+  - The plan is offered on both sides. A winning player-defender gets
+    Travel, then Campaign, as `Offer` entries at the back, spending no
+    Supply. A Bandit defender gets nothing.
+  - The defender pays off turn: the secret flips facedown and the favor
+    burns. A chain still ends only when the cost cannot be paid.
+
+The shared rules:
+
+- **Starts.** A queued start accepts its entry's actor as the requester. A
+  menu start still requires the turn's player.
+- **Off-turn costs** settle off turn, since it is another player's turn:
+  favor to the bank, secrets flip facedown. Placements and Vow of
+  Wandering's Imperial warbands stay on the turn's player.
+- **Special Envoy off turn** waives the Supply, and does not end the Act
+  Phase: it is not the traveller's Act Phase.
+- **Modifiers off turn.** The off-turn actor picks their own Campaign and
+  Travel modifiers and battle plans. Spiteful Mirror's per-turn uses are
+  not reachable, since only Campaign and Travel run off turn.
+- **Lines.** A run's actor is the actor of its dequeued entry, and the
+  lines inside omit that actor as on-turn lines do. When the run's actor
+  is not the turn's player, the tag starts with their name: "Blue ·
+  Campaign · Sneak Attack". A skipped offer whose actor is not the turn's
+  player reads "Sneak Attack: Campaign skipped by Blue."
+- **Client and undo.** No change. The client already shows a decision's
+  controls to its owner, the HUD stays on the turn's player, and issuer
+  gating already stops the turn's player undoing an off-turn actor's
+  answers.
 
 ## Slice 15: Palanquin
 
