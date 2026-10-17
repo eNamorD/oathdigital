@@ -1,7 +1,7 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 15 are done. The per-card
-rulings are in
+**Status:** designed 2026-10-12. Slices 1 to 15 and item 10b are done.
+The per-card rulings are in
 [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
 **Builds on** [Catalog batch 5](2026-10-08-catalog-batch-5-design.md),
@@ -554,10 +554,10 @@ Only the powers the rulings appendix lists as used are wrapped: WHEN PLAYED
 of Beastkin and Vow of Wandering's Muster, which append their extra
 warbands instead of rewriting the Muster's gain. Keep, which replaces a
 Raid's consequences, is judged where its window folds. Hunger's forced
-Wake is left out where it is due. Slice 10 refuses silently; roadmap item
+Wake is left out where it is due. Slice 10 refused silently. Roadmap item
 10b ([automatic power consent design](2026-10-15-automatic-power-consent-design.md))
-adds the waivable branch, where the refusing card's ruler decides through
-consent, and wraps Hunger.
+added the waivable branch, where the refusing card's ruler decides through
+consent, and wrapped Hunger.
 
 ### Plan-time rulings
 
@@ -638,12 +638,12 @@ consent, and wraps Hunger.
   make is askable of the ruler: the phase menu, the modifier picker, the
   placements and the rerolls. Inside a Campaign (its modifiers, its battle
   plans and the rerolls of its dice) nobody is asked.
-- **A refused automatic power** does not apply. Nobody is asked and no
-  line is written. It is judged where its effect runs: Tyrant arriving at
-  City Wall's site is refused. The roadmap's item 10b replaces this: the
-  restriction's ruler chooses, each time, whether to deactivate the power
-  ("Use City Wall to deactivate Tyrant?"), and the power's user is not
-  asked.
+- **A refused automatic power** is judged where its effect runs: Tyrant
+  arriving at City Wall's site is refused. Refused by a restriction nobody
+  may waive, it does not apply, nobody is asked and no line is written.
+  Refused only waivably, the refusing card's ruler chooses, each time,
+  whether to deactivate it ("Use City Wall to deactivate Blue's
+  Tyrant?"), and the power's user is not asked (item 10b).
 - **Hover reasons**, in the consent design's format:
   - "Spell Breaker: Cannot use powers that cost secrets."
   - "Forest Council: Cannot use non-persistent powers of Beast cards." and

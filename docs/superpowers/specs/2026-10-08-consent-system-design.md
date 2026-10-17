@@ -451,6 +451,38 @@ the breach, so there is no special path.
   It belongs to no card's ruler, so no preference applies to it and it is
   always answered by hand.
 
+### Automatic powers (catalog batch 8, item 10b)
+
+The [automatic power consent design](2026-10-15-automatic-power-consent-design.md)
+has the whole of it; this is its share of the consent system.
+
+- **The hidden step.** An automatic power refused only by waivable
+  restrictions waits at a power-use step before its effect. The power's
+  user owns the step but is never shown it or asked. Its `use` option is
+  askable of the refusing cards' rulers; its `skip` option deactivates the
+  power.
+- **The walk opens the request.** A command whose walk parks at a step
+  opens its request in the same append, keyed as a chosen use is.
+  `ConsentRequest.use` (`ConsentUse`) names the used card and the issuer
+  of the batch that walked there. Preferences answer it at once, as for
+  any request.
+- **Settling.** A grant answers the step `use`, and a refusal answers it
+  `skip`, in a batch the issuer opens. The resumed walk may reach another
+  step, which opens the next request. A manual Never or Always sets its
+  preference before the step is answered.
+- **Undo.** Undo and Redo never stop at a position parked at an unanswered
+  step: the answer's batch goes back, or is restored, with the batch that
+  walked to the step. While the request waits, only the issuer's Undo
+  withdraws it, and it takes that batch back too. A chain that needs a
+  barrier batch (Hunger's forced Wake) cannot be undone. Redo that ends at
+  a step asks its rulers again.
+- **Wording.** The ruler reads "Use City Wall to deactivate Blue's
+  Tyrant?" with Always deactivate, Deactivate, Let it work and Always let
+  it work. The user reads "Waiting for Red's decision on Tyrant…".
+- **Preferences.** The grid is unchanged. A ruler's setting for a player
+  on City Wall covers that player's automatic powers as it covers their
+  chosen ones.
+
 ## Testing
 
 - **Fold:** every consent event; undo putting `ConsentState` back on the

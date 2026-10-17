@@ -391,9 +391,37 @@
     and the edifice setup rules during Setup.
   - A refusal is judged when the power's effect would run. Tyrant arriving
     at City Wall's site is refused.
-  - Slice 10 refuses an automatic power silently. Roadmap item 10b lets the
-    refusing card's ruler decide through consent
-    ([design](2026-10-15-automatic-power-consent-design.md)).
+  - Slice 10 refused an automatic power silently. The rulings below come
+    from the [automatic power consent
+    design](2026-10-15-automatic-power-consent-design.md) (its rulings 2 to
+    9). Roadmap item 10b implemented them on 2026-10-17.
+  - The ruler decides. Spell Breaker, Forest Council and City Wall do not
+    refuse an enemy's automatic power outright. The refusing card's ruler
+    decides each time: consent lets the power work, and a refusal
+    deactivates it. The power's user is never asked.
+  - A refusal is judged where the effect runs, against the state at that
+    point.
+  - Nobody is asked, and the power is deactivated with no line, when a
+    refusing card is ruled by the bandits or by nobody, when the use
+    happens inside a Campaign action (Keep), or when any refusal on the use
+    is not waivable.
+  - An answer lasts the turn. It is remembered for the refusing power, the
+    user and the used power's card, it covers every later use of that
+    card's power by that user that turn, and it survives undo.
+  - When refusing cards with different rulers fall on one use, every ruler
+    is asked at once and the first deactivation settles it. One ruler of
+    several refusing cards gets one prompt naming all of them.
+  - Edifice setup rules are never refused during Setup.
+  - A used power's effect, or its absence, never makes the rest of the
+    action unfinishable.
+  - While a request waits, the player whose command walked to the power's
+    step may press Undo, which withdraws the request and takes that command
+    back. On their own Travel that is the user. On an off-turn Travel, such
+    as Palanquin's, it is the player who sent it.
+  - Log lines: "City Wall: {Red} decides whether {Tyrant} works.", "{Red}
+    deactivated {Tyrant} with {City Wall}.", "{Red} let {Tyrant} work." and,
+    for a refusal remembered this turn, "City Wall: {Tyrant} stays
+    deactivated."
 
 ## Slice 11: Actor-aware lock
 

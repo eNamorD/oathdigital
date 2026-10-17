@@ -2049,7 +2049,7 @@ Set its Status to "designed 2026-10-15; done 2026-10-17". Add a section "Departu
 
 - [ ] **Step 3: Update the batch 8 design**
 
-In the slice 10 section, replace "Slice 10 refuses silently; roadmap item 10b ([automatic power consent design](…)) adds the waivable branch, where the refusing card's ruler decides through consent, and wraps Hunger." with "Slice 10 refused silently. Roadmap item 10b (the same link) added the waivable branch, where the refusing card's ruler decides through consent, and wrapped Hunger." In "Plan-time rulings", rewrite "A refused automatic power" to say what holds now: refused by a restriction nobody may waive, it does not apply and writes no line; refused only waivably, the refusing card's ruler decides.
+In the slice 10 section, replace "Slice 10 refuses silently; roadmap item 10b ([automatic power consent design](../specs/2026-10-15-automatic-power-consent-design.md)) adds the waivable branch, where the refusing card's ruler decides through consent, and wraps Hunger." with "Slice 10 refused silently. Roadmap item 10b (the same link) added the waivable branch, where the refusing card's ruler decides through consent, and wrapped Hunger." In "Plan-time rulings", rewrite "A refused automatic power" to say what holds now: refused by a restriction nobody may waive, it does not apply and writes no line; refused only waivably, the refusing card's ruler decides.
 
 Set the Status line to "Slices 1 to 15 and item 10b are done."
 

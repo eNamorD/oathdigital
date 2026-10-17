@@ -1,6 +1,6 @@
 # Consent for refused automatic powers
 
-**Status:** designed 2026-10-15. It covers roadmap item **10b. Consent for
+**Status:** designed 2026-10-15; done 2026-10-17. It covers roadmap item **10b. Consent for
 refused automatic powers** under **Phase - Catalog batch 8**. It depends on
 slice 10 of [catalog batch 8](2026-10-12-catalog-batch-8-design.md), which
 lands the `AutomaticUse` node with silent refusal (see "Slice 10's share"
@@ -300,7 +300,8 @@ Not wrapped:
 - **Answers:** "{Red} deactivated {Tyrant} with {City Wall}." and "{Red}
   let {Tyrant} work." With several of one granter's cards, the deactivation
   line names them all ("with City Wall and Forest Council").
-- **Remembered refusal:** "{Tyrant} stays deactivated by {City Wall}."
+- **Remembered refusal:** "{City Wall}: {Tyrant} stays deactivated." It is
+  a power line, so it starts with its source, as every power line does.
 - **Withdrawal:** the request line is struck through, as today.
 - Private preference lines are unchanged.
 - A deactivated power writes none of its own lines. Hunger's "No adviser
@@ -360,3 +361,39 @@ The roadmap item is marked done after slice 2.
   Hospitality on one Travel to City Wall's site prompt twice; preferences
   cut the repeats.
 - Filtering edifice rules when exploration folds `WhenExplored` (ruling 7).
+
+## Departures
+
+Item 10b was planned after slices 10 to 15 had landed. These choices fit
+the code as it then stood.
+
+1. **The step declares its ask.** Spell Breaker, Forest Council and City
+   Wall contribute no option restriction at the step. The step's builder
+   words its `use` option as askable from the refusals, as Palanquin's
+   destination does (slice 15). The step has no window. Keys, granters and
+   preferences are as designed.
+2. **A remembered answer is not journaled as a step answer.** With a
+   remembered grant, a remembered refusal or a preview, the node builds no
+   step. A parked step exists only while a request waits.
+3. **The node always has two children**, a slot and a body, when it is
+   allowed or waivable, and none when it is refused unasked. A resume
+   inside the effect is never confused with a resume at the step.
+4. **The request carries `ConsentUse(card, issuer)`**: the used card, which
+   words the prompt and the log, and the issuer of the batch that walked to
+   the step, who opens the answer's batch and may withdraw.
+5. **The answer's batch is opened by the issuer**, not the requester, so a
+   coupled undo takes back batches of one issuer. On a player's own Travel
+   the two are the same player.
+6. **Barriers.** When the batch that walked to the step is a barrier
+   (Hunger's forced Wake follows a turn change), nobody may withdraw the
+   request or undo its answer. Undo takes back a coupled chain whole or not
+   at all.
+7. **Redo after a withdrawal asks the rulers again**, with the same
+   automatic answers from preferences.
+8. **A manual Never or Always on an automatic power's request** sets the
+   preference before the walk resumes, so a second step the same command
+   reaches is answered by it at once.
+9. **"Stays deactivated" reads as a power line**, "City Wall: Tyrant stays
+   deactivated.", under a key the three cards share.
+10. **Previews** walk with the powers marked as previewing. An unanswered
+    step is walked as `use`, so a preview never parks there.
