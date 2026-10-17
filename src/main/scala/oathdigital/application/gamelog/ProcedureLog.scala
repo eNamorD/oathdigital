@@ -203,7 +203,7 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       lines = ActionLineSource.Rule(actions.negotiationLines),
       narratedPrefixes = Vector("negotiation."))
     case ActionRef.PeekSiteRelics => ProcedureLog(tag = None,
-      lines = ActionLineSource.Rule(actions.peekLines))
+      lines = ActionLineSource.Notes())
     case ActionRef.RevealOwnedRelic => ProcedureLog(tag = None,
       lines = ActionLineSource.Rule(actions.revealLines))
     case ActionRef.MoveWarbands => ProcedureLog(tag = None,

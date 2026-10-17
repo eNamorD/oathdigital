@@ -1,6 +1,7 @@
 package oathdigital.gameplay.actions.minor
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.powers.economy.VowOfWandering
 import oathdigital.model._
 import oathdigital.model.OathViolation.{InvalidEventOrder,
@@ -26,6 +27,17 @@ object MinorActionProcedures:
   val amountDecisionId: String = "minor.warbands-amount"
   val toSite: DecisionOptionRef.Button = DecisionOptionRef.Button("to-site")
   val toBoard: DecisionOptionRef.Button = DecisionOptionRef.Button("to-board")
+
+  /** One set per procedure, because each is held to its own declared keys.
+    * `NoteSet` is read through a `def`, so these are plain `val`s. */
+  private val peekNotes = NoteSet(ProcedureNotes.id(ActionRef.PeekSiteRelics))
+  /** "Peeked at Sticky Fire at Broken Peaks". A site holds at most two
+    * relics, so the list stays the inline phrase and never becomes a
+    * `Cards` span. */
+  val peeked: NoteKey = peekNotes.key("peeked", Vector(
+    NotePart.Text("Peeked at "), NotePart.Arg(0), NotePart.Text(" at "),
+    NotePart.Arg(1)))
+  def peekKeys: Vector[NoteKey] = peekNotes.declared
 
   val buildPeek: Build = (_, ready, actor, args) =>
     for
@@ -62,10 +74,24 @@ object MinorActionProcedures:
 
   /** Every relic at the pawn's site, peeked at. */
   private def peekTree(actor: PlayerId): Operation =
-    Sequence(Vector(BuildOps((live, _) =>
-      Right(sitedPawn(live, actor).toVector.flatMap { (siteId, site) =>
-        site.relics.map(relic => Peek(actor, relic.id, Location.Site(siteId)))
-      }), required = true)))
+    Sequence(Vector(
+      BuildOps((live, _) =>
+        Right(sitedPawn(live, actor).toVector.flatMap { (siteId, site) =>
+          site.relics.map(relic => Peek(actor, relic.id, Location.Site(siteId)))
+        }), required = true),
+      // After the peeks, so `previous` is the step that peeked; the relics
+      // are read at the state before it, which is where the deleted rule
+      // read them off the recorded `Peek` operations.
+      Note(ProcedureNotes.id(ActionRef.PeekSiteRelics), peekedNote(actor))))
+
+  /** The relics at the pawn's site before the peek. A site with none writes
+    * no line, as the rule this replaced posted none without a recorded
+    * `Peek`. */
+  private def peekedNote(actor: PlayerId)(states: NoteStates)
+      : Option[PowerNote] = states.previous.flatMap((before, _) =>
+    sitedPawn(before, actor).filter(_._2.relics.nonEmpty).map:
+      (siteId, site) => peeked.sourceless(
+        NoteArg.Cards(site.relics.map(_.id: CardId)), NoteArg.Site(siteId)))
 
   /** The relic to reveal, then its reveal. */
   private def revealTree(ready: ReadyGame, actor: PlayerId): Operation =

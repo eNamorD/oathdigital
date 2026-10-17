@@ -1,4 +1,4 @@
 0.0 round 0 | Round 1
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-5.0 action 1 peek-site-relics@4 | Peeked at a Relic at [site:site:broken-peaks|Broken Peaks]
+6.0 action 1 peek-site-relics@4 | Peeked at a Relic at [site:site:broken-peaks|Broken Peaks]

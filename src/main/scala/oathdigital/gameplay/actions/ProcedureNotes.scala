@@ -4,6 +4,7 @@ import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
+import oathdigital.gameplay.actions.minor.MinorActionProcedures
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.model.{ActionRef, NoteKey, PowerId, ProcedureRef}
@@ -68,4 +69,5 @@ object ProcedureNotes:
       case ActionRef.Challenge => ChallengeProcedure.noteKeys
       case ActionRef.PlaceBannerResource =>
         PlaceBannerResourceProcedure.noteKeys
+      case ActionRef.PeekSiteRelics => MinorActionProcedures.peekKeys
       case _ => Vector.empty

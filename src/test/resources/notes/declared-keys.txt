@@ -381,6 +381,7 @@ procedure.forge paid-both = Placed favor on {0} and secrets on {1}
 procedure.forge paid-favor = Placed favor on {0}
 procedure.forge paid-secrets = Placed secrets on {0}
 procedure.muster mustered = Mustered {0} {0?warband|warbands} with {1}
+procedure.peek-site-relics peeked = Peeked at {0} at {1}
 procedure.place-banner-resource placed-favor = Placed {0} favor on {1}
 procedure.place-banner-resource placed-secrets = Placed {0} {0?secret|secrets} on {1}
 procedure.take-wealth took-favor = Took 1 favor from {0}

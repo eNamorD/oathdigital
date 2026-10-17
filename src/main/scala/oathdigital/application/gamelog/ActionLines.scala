@@ -104,17 +104,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       viewer: Option[PlayerId]): Vector[Posted] =
     campaigns.lines(journal, run, at, viewer)
 
-  /** The minor actions post their legacy lines, now as action lines. */
-  def peekLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    val peeked = journal.ops(at).collect {
-      case OpStep(Peek(_, relic, Location.Site(site)), before, after) =>
-        site -> words.card(relic, before, after, viewer)
-    }
-    peeked.headOption.toVector.map((site, _) => action(
-      Vector(Text("Peeked at ")) ++ words.cards(peeked.map(_._2)) ++
-        Vector(Text(" at "), words.site(site))))
-
   def revealLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     journal.ops(at).collect {
@@ -282,7 +271,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
           ChooseOneAnswer(DecisionOptionRef.Button(key)), _) => key == "stop"
     }.contains(true)
 
-  /** What the challenger put on the banner, earlier in the run. */
   /** "Used {card}" at the first step recording one of the power's own
     * effects: a step that is not only the payment onto its card or to the
     * bank, and not only the use record. At completion if it recorded none. */
