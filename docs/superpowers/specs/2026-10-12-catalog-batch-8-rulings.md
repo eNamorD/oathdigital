@@ -558,6 +558,9 @@ The shared rules:
     force: board plus origin warbands exceed the force, and the board holds
     one.
   - Hospital and Cursed Cauldron count both kills.
+  - Sticky Fire, used by a defender who wins, kills the attacker's whole
+    board and every warband of theirs at the origin, since those joined
+    the force (ruled 2026-10-16). Its line counts both.
 - **Lines.** The ACTION writes "Campaign at {site}." The Campaign's start
   line is unchanged ("Raid against … · Wild Allies"). The losses line
   counts the attacker's dead at the origin.
