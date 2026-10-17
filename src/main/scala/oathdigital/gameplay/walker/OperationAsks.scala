@@ -49,3 +49,26 @@ private[walker] object OperationAsks:
     val found = met(Vector.empty, 0)
     if found.isEmpty then None
     else OperationConsent.shown(state, decide.owner, found)
+
+  /** The options `decide` itself declares askable whose grants would open
+    * them: a builder that words its own consent asks (catalog batch 8,
+    * slice 15) is held to the check the look-ahead makes before it offers
+    * an ask (consent design, ruling 8). */
+  def declared(decide: Decide, state: ReadyGame,
+      verdict: ReadyGame => DecisionAnswer => Either[OathViolation, Unit])
+      : Map[DecisionOptionRef, OptionReason] = decide.query match
+    case one: DecisionQuery.ChooseOne => one.options.collect {
+      case DecisionOption.Unavailable(option, ask: OptionReason.Askable)
+          if opens(decide, state, option.ref, ask, verdict) =>
+        option.ref -> (ask: OptionReason) }.toMap
+    case _ => Map.empty
+
+  private def opens(decide: Decide, state: ReadyGame, ref: DecisionOptionRef,
+      ask: OptionReason.Askable,
+      verdict: ReadyGame => DecisionAnswer => Either[OathViolation, Unit])
+      : Boolean =
+    val keys = if ask.covers.nonEmpty then ask.covers
+      else ask.asks.flatMap(_.powers).map(ConsentKey(_, decide.owner,
+        decide.decisionId, ref))
+    verdict(state.copy(consent = state.consent.granting(keys,
+      ConsentTurn.of(state))))(DecisionAnswer.ChooseOneAnswer(ref)).isRight

@@ -93,11 +93,14 @@ case object Palanquin extends PaidAction(PalanquinCard.power):
     Option.unless(targetOptions(ready, player, starts).exists(_.available))(
       PawnMoves.noValidEnemyPawn)
 
-  /** The target's queued Travel to `site`, sent by `user`. */
-  def entry(user: PlayerId, target: PlayerId, site: SiteId)
-      : QueuedProcedure =
+  /** The target's queued Travel to `site`, sent by `user`. When the user
+    * ruling Toll Roads waived its toll, the entry carries the toll's free
+    * option after the site, which the Travel's toll reads. */
+  def entry(user: PlayerId, target: PlayerId, site: SiteId,
+      waived: Boolean = false): QueuedProcedure =
     QueuedProcedure(target, ActionRef.Travel,
-      Vector(DecisionOptionRef.Site(site)),
+      DecisionOptionRef.Site(site) +: Option.when(waived)(
+        TollRoads.free(site)).toVector,
       Some(PowerSourceRef.Card(cardId)), QueueKind.Run, sender = Some(user))
 
   /** The other players at `user`'s site, one who can reach no site
@@ -239,6 +242,7 @@ case object Palanquin extends PaidAction(PalanquinCard.power):
     (chosenTarget(pending), PowerAnswers.one(pending,
         destinationDecisionId)) match
       case (Some(target), Some(DecisionOptionRef.Site(site))) =>
+        val waived = PowerAnswers.one(pending, tollDecisionId).contains(waive)
         PawnMoves.relocate(ready, user, site).map(moves => moves :+
-          QueueProcedure(entry(user, target, site), atFront = true))
+          QueueProcedure(entry(user, target, site, waived), atFront = true))
       case _ => Right(Vector.empty)

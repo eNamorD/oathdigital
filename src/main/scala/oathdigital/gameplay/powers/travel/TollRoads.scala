@@ -72,9 +72,10 @@ final case class TollRoads private (catalog: ExecutableCatalog)
     ruler match
       case SiteRuler.Player(owner) if sent(ctx.state, route) =>
         // A sent Travel asks nothing (catalog batch 8, slice 15, ruling
-        // 11): its sender settled the toll before sending it.
-        if agreed(ctx.state, route) then TravelRoute.beforeMove(operations,
-          paid)
+        // 11): its sender settled the toll before sending it. A sender who
+        // rules Toll Roads and waived it says so in the entry.
+        if agreed(ctx.state, route) && !waivedBySender(ctx.state, route)
+        then TravelRoute.beforeMove(operations, paid)
         else TravelRoute.beforeMove(operations, Vector(Note(id, _ =>
           Some(TollRoads.waived(PowerSourceRef.Card(cardId),
             NoteArg.Player(route.player), NoteArg.Player(owner))))))
@@ -95,8 +96,14 @@ final case class TollRoads private (catalog: ExecutableCatalog)
   private def sent(ready: ReadyGame, route: TravelRoute.PawnMove): Boolean =
     ready.game.current.walkerEntry.exists(entry =>
       entry.procedure == ActionRef.Travel && entry.actor == route.player &&
-        entry.sender.nonEmpty &&
-        entry.startArgs == Vector(DecisionOptionRef.Site(route.destination)))
+        entry.sender.nonEmpty && entry.startArgs.headOption.contains(
+          DecisionOptionRef.Site(route.destination)))
+
+  /** Whether the entry carries the free option after its destination: the
+    * sender ruling Toll Roads waived the toll. */
+  private def waivedBySender(ready: ReadyGame, route: TravelRoute.PawnMove)
+      : Boolean = ready.game.current.walkerEntry.exists(
+    _.startArgs.contains(TollRoads.free(route.destination)))
 
   private def agreed(ready: ReadyGame, route: TravelRoute.PawnMove)
       : Boolean =

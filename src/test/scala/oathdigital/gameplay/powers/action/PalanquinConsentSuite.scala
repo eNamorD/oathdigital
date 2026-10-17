@@ -169,3 +169,18 @@ class PalanquinConsentSuite extends munit.FunSuite:
     assertEquals(ask.covers, Vector(ConsentKey(NarrowPassSite.pass, p3,
       TravelProcedure.destinationDecisionId, dunes),
       TollRoads.freeKey(p3, provincePlains)))
+
+  test("the user's waive keeps the target's favor, even after they agreed " +
+      "to pay; their take charges it"):
+    val ready = remembering(tolledWithP3Beside(p1),
+      TollRoads.payerKey(p3, coast) -> ConsentAnswer.Granted.by(p3))
+    val picked = sentToTheCoast(ready)
+    def answered(choice: DecisionOptionRef) = Look(Outcomes.ready(accepted(
+      ActPowerHarness.answer(rules, picked.state, Palanquin.tollDecisionId,
+        choice)).state))
+    val waived = answered(Palanquin.waive)
+    assertEquals(waived.pawn(p3), coast)
+    assertEquals(waived.favor(p3), 1)
+    val taken = answered(Palanquin.take)
+    assertEquals(taken.pawn(p3), coast)
+    assertEquals(taken.favor(p3), 0)

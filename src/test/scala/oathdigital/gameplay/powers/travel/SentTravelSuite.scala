@@ -92,3 +92,11 @@ class SentTravelSuite extends munit.FunSuite:
 
   test("a sent entry's sender survives the wire"):
     assertWireRoundTrips(Vector(ProcedureDequeued(p2SentTo(coast))))
+
+  test("an entry carrying a toll's free option after its site survives " +
+      "the wire, and still walks to the site"):
+    val waived = p2SentTo(coast).copy(startArgs =
+      p2SentTo(coast).startArgs :+ TollRoads.free(coast))
+    assertWireRoundTrips(Vector(ProcedureDequeued(waived)))
+    val done = accepted(startedFromTheQueue(p2BesideP1(), waived))
+    assertEquals(Look(Outcomes.ready(done.state)).pawn(p2), coast)

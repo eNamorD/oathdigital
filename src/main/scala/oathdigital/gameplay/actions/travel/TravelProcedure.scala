@@ -74,15 +74,16 @@ object TravelProcedure:
     state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
 
   /** The destination a power's queued Travel names, while that Travel's
-    * walk runs for `actor` (catalog batch 8, slice 15): its one start
-    * argument, a site. Only a `Run` entry with a source carries one; a menu
-    * Travel never does. */
+    * walk runs for `actor` (catalog batch 8, slice 15): its first start
+    * argument, a site. Any argument after it is for the sending power's
+    * own rules to read. Only a `Run` entry with a source carries one; a
+    * menu Travel never does. */
   def queuedDestination(state: ReadyGame, actor: PlayerId): Option[SiteId] =
     state.game.current.walkerEntry.filter(entry =>
       entry.procedure == ActionRef.Travel && entry.actor == actor &&
         entry.source.nonEmpty && entry.kind == QueueKind.Run)
       .flatMap(_.startArgs match
-        case Vector(DecisionOptionRef.Site(site)) => Some(site)
+        case DecisionOptionRef.Site(site) +: _ => Some(site)
         case _ => None)
 
   /** The queued destination as its actor's answer to the destination
@@ -99,8 +100,10 @@ object TravelProcedure:
       args: Vector[DecisionOptionRef]): Either[OathViolation, Unit] =
     args match
       case Vector() => Right(())
-      case Vector(DecisionOptionRef.Site(site))
-          if queuedDestination(state, actor).contains(site) => Right(())
+      case DecisionOptionRef.Site(site) +: _
+          if queuedDestination(state, actor).contains(site) &&
+            state.game.current.walkerEntry.exists(_.startArgs == args) =>
+        Right(())
       case _ => Left(OathViolation.InvalidEventOrder(
         "travel takes no start selection but a power's queued destination"))
 

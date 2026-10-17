@@ -41,7 +41,9 @@ private[gamelog] final class ConsentLines(words: LogWords,
             (Vector(Text("Asked "), words.player(ask.granter),
               Text(" for consent to pay ")) ++ named(ask.powers) ++
             (Text(" and travel to ") +: choices.option(
-              request.keysOf(ask).headOption.fold(request.target)(_.target),
+              request.keysOf(ask).collectFirst {
+                case ConsentKey(_, _, _, site: DecisionOptionRef.Site) =>
+                  site }.getOrElse(request.target),
               before, after, viewer))) :+ Text("."))
           (ignored.toVector ++ paid).flatMap(line)
         case ConsentAnswered(granter, granted) => line(Vector(

@@ -182,3 +182,18 @@ class ConsentStateSuite extends munit.FunSuite:
     val clash = eitherRedOrGreen.copy(asks =
       ConsentAsk(red, Vector(pass)) +: eitherRedOrGreen.asks)
     assert(ConsentState().requested(clash).isLeft)
+
+  test("a required grant is not remembered while alternatives are open, " +
+      "nor once the request is withdrawn"):
+    val yellow = PlayerId("yellow")
+    val withPass = eitherRedOrGreen.copy(
+      asks = ConsentAsk(yellow, Vector(pass)) +: eitherRedOrGreen.asks,
+      covers = eitherRedOrGreen.covers :+ key(pass))
+    val asked = accepted(ConsentState().requested(withPass))
+    val passed = accepted(asked.answered(yellow, granted = true, turn))
+    val refused = accepted(passed.answered(red, granted = false, turn))
+    assertEquals(refused.answer(key(pass), Some(yellow), turn), None)
+    assertEquals(refused.answer(key(payer), Some(red), turn),
+      Some(ConsentAnswer.Refused))
+    val withdrawn = accepted(refused.withdrawn(blue))
+    assertEquals(withdrawn.answer(key(pass), Some(yellow), turn), None)

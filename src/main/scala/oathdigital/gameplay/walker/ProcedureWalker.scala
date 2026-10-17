@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationResolution
-import oathdigital.model.{Answered, AutomaticUse, Branch, Burn, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PayCost, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, LeafOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, TakeDeferred, WalkerEvent}
+import oathdigital.model.{Answered, AutomaticUse, Branch, Burn, BuildOps, ConsentKey, ConsentTurn, CoreOperation, Decide, DecisionAnswer, DecisionOptionRef, DieFace, EndWalk, Note, NoteStates, OathState, OathViolation, Operation, OptionReason, PayCost, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, LeafOperation, ReadyGame, Repeat, Reroll, Roll, RollMode, Shuffle, TakeDeferred, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -489,8 +489,9 @@ object ProcedureWalker:
       then EmptyChoices.offered(decide, Map.empty, Map.empty) else decide))
     else WalkerSearch.narrow(decide, verdict(decide, ctx, path)) match
       case Left(refused) =>
-        val asks = declaredAsks(decide) ++ asksAt(decide, ctx, path) ++
-          operationAsksAt(decide, ctx, path, WalkerSearch.choosable(decide))
+        val asks = declaredAt(decide, ctx, path) ++
+          asksAt(decide, ctx, path) ++ operationAsksAt(decide, ctx, path,
+            WalkerSearch.choosable(decide))
         if !asks.values.exists(askable) then Left(refused)
         else Right(Some(WalkerSearch.reasoned(WalkerSearch.narrowed(decide,
           _ => false, asks.get).getOrElse(decide), asks)))
@@ -527,9 +528,10 @@ object ProcedureWalker:
     if ctx.visited((path, ctx.state)) then Right(Stopped(ctx))
     else WalkerSearch.reach(decide, verdict(decide, ctx, path)) match
       case Left(refused) =>
-        if declaredAsks(decide).nonEmpty || asksAt(decide, ctx, path)
-            .nonEmpty || operationAsksAt(decide, ctx, path,
-            WalkerSearch.choosable(decide)).values.exists(askable) then
+        if declaredAt(decide, ctx, path).nonEmpty ||
+            asksAt(decide, ctx, path).nonEmpty || operationAsksAt(decide,
+            ctx, path, WalkerSearch.choosable(decide)).values
+            .exists(askable) then
           Right(Stopped(ctx))
         else Left(refused)
       case Right(WalkerSearch.Reach.Skipped) => Right(Done(ctx))
@@ -543,15 +545,11 @@ object ProcedureWalker:
       ctx.powers, path, ctx.procedure, ctx.answered,
       grantable(decide, ctx, path)).toMap
 
-  /** The options `decide` itself declares askable: a power that builds
-    * its own consent asks has already judged that the grants would open
-    * them (catalog batch 8, slice 15). */
-  private def declaredAsks(decide: Decide)
-      : Map[DecisionOptionRef, OptionReason] = decide.query match
-    case one: DecisionQuery.ChooseOne => one.options.collect {
-      case DecisionOption.Unavailable(option, ask: OptionReason.Askable) =>
-        option.ref -> (ask: OptionReason) }.toMap
-    case _ => Map.empty
+  /** The asks `decide` declares itself, kept where a grant would open
+    * their option ([[OperationAsks.declared]]). */
+  private def declaredAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
+      : Map[DecisionOptionRef, OptionReason] = OperationAsks.declared(decide,
+    ctx.state, state => verdict(decide, ctx.copy(state = state), path))
 
   private def askable(reason: OptionReason): Boolean =
     reason.isInstanceOf[OptionReason.Askable]

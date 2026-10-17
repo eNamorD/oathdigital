@@ -179,7 +179,7 @@ final case class ConsentState(
         else if updated.granted || updated.refused then
           Right(settledBy(updated, now))
         else if !granted then Right(copy(
-          answers = answersAt(now) ++ answersOf(updated), pending =
+          answers = answersAt(now) ++ answersOf(refusals(updated)), pending =
             Some(updated), turn = Some(now)))
         else Right(copy(pending = Some(updated)))
 
@@ -219,13 +219,20 @@ final case class ConsentState(
       request.keysOf(ask).map(_ -> (if grant then ConsentAnswer.Granted
         else ConsentAnswer.Refused).by(ask.granter))))
 
-  /** The request settled: each answered ask's keys remembered as answered,
-    * and nothing waiting. With no alternatives, every key is granted by
-    * the ask whose powers hold its power (`requested` checks there is
-    * one). */
+  /** `request` with only its refused asks: a grant is remembered only once
+    * the request settles granted, so a withdrawal or a refusal never leaves
+    * one behind (ruling 14). */
+  private def refusals(request: ConsentRequest): ConsentRequest =
+    request.copy(asks = request.asks.filter(_.answer.contains(false)))
+
+  /** The request settled: granted, each answered ask's keys remembered as
+    * answered (with no alternatives, every key granted by the ask whose
+    * powers hold its power, which `requested` checks there is); refused,
+    * each refusal's keys. Nothing is left waiting. */
   private def settledBy(request: ConsentRequest, now: ConsentTurn)
       : ConsentState =
-    copy(answers = answersAt(now) ++ answersOf(request), pending = None,
+    val kept = if request.granted then request else refusals(request)
+    copy(answers = answersAt(now) ++ answersOf(kept), pending = None,
       turn = Some(now))
 
   /** Every key `request` settles, refused by `refuser`: their refusal
