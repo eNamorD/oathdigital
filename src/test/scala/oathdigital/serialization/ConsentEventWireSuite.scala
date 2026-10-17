@@ -51,3 +51,13 @@ class ConsentEventWireSuite extends munit.FunSuite:
     assertEquals(roundTrip(covered), Right(covered))
     assertEquals(GameEventWire.encodeEvent("g", 0L, ConsentRequested(request))
       .map(_("payload").obj.contains("covers")), Right(false))
+
+  test("an alternative ask round-trips, and a plain ask writes no " +
+      "alternative"):
+    val either = ConsentRequested(request.copy(asks = Vector(
+      ConsentAsk(p2, Vector(pass), alternative = true),
+      ConsentAsk(PlayerId("p3"), Vector(PowerId("test.ruler")),
+        alternative = true))))
+    assertEquals(roundTrip(either), Right(either))
+    assertEquals(GameEventWire.encodeEvent("g", 0L, ConsentRequested(request))
+      .map(_("payload")("asks")(0).obj.contains("alternative")), Right(false))

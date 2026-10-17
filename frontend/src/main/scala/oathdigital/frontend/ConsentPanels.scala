@@ -16,11 +16,13 @@ private[frontend] object ConsentPanels:
       s"ignore ${ConsentAsking.listed(asked.powers)} and select " +
       s"${asked.target}?"
 
-  /** "Waiting for Red's consent…" */
+  /** "Waiting for Red's consent…", or "Waiting for Blue's or Red's
+    * consent…" while any one of them will do. */
   def waiting(value: GameProjection, wait: ConsentWaitingState): String =
     val names = wait.granterPlayerIds.map(id =>
       s"${ConsentAsking.name(value, id)}'s")
-    s"Waiting for ${names.mkString(" and ")} consent…"
+    s"Waiting for ${names.mkString(if wait.either then " or " else " and ")}" +
+      " consent…"
 
   /** The prompt, when the viewer is asked. */
   def render(value: GameProjection, canControl: Boolean, panel: dom.Element,

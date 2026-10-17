@@ -138,3 +138,58 @@ class ConsentAskingSuite extends munit.FunSuite:
     val draft = BoardSelectionDraft(BoardSelectionContext("g", "blue", 1L),
       "campaign.targets", targets, Vector.empty)
     assertEquals(draft.click(woods).keys, Vector.empty)
+
+  /** An ask any one of whose two granters will do: Red agreeing to pay
+    * Toll Roads, or Blue waiving it. */
+  private val eitherRedOrBlue = ConsentAskState(Vector.empty, Vector.empty,
+    Vector(ConsentAlternativeState("red", Vector("Toll Roads"),
+      paying = true),
+      ConsentAlternativeState("blue", Vector("Toll Roads"), paying = false)))
+
+  test("an ask with alternatives offers one button each, then both"):
+    val choices = ConsentAsking.choices(table, eitherRedOrBlue)
+    assertEquals(choices.map(_.label), Vector("Ask Red", "Ask Blue",
+      "Ask both"))
+    assertEquals(choices.map(_.granters),
+      Vector(Vector("red"), Vector("blue"), Vector.empty))
+    assertEquals(ConsentAsking.question(table, eitherRedOrBlue),
+      "Ask Red or Blue for consent to ignore Toll Roads?")
+
+  test("an askable option with alternatives asks whom, and sends that " +
+      "choice"):
+    val ui = new RecordingControls()
+    ConsentAsking.asker("travel.destination", table, canControl = true, ui)(
+      woods.copy(consent = Some(eitherRedOrBlue)),
+      dom.document.createElement("button").asInstanceOf[dom.html.Element])
+    val choices = opened match
+      case Vector(found: CardInspection.Request.Choices) => found.choices
+      case other => fail(s"expected one choice dialog, got $other")
+    assertEquals(choices.map(_._1), Vector("Ask Red", "Ask Blue", "Ask both"))
+    choices(1)._2()
+    assertEquals(ui.submitted, Vector(requested.copy(granters =
+      Vector("blue"))))
+
+  test("the overlay's choices each run and close; Cancel only closes"):
+    val root = dom.document.createElement("div")
+    dom.document.body.appendChild(root)
+    val overlay = new CardInspectionOverlay(root)
+    val opener = dom.document.createElement("button")
+      .asInstanceOf[dom.html.Element]
+    dom.document.body.appendChild(opener)
+    var ran = Vector.empty[String]
+    overlay.showChoices("Ask whom?", Vector("Ask Red" -> (() => ran :+= "red"),
+      "Ask Blue" -> (() => ran :+= "blue")), opener)
+    val buttons = root.querySelectorAll(".overlay-confirm-choice")
+    assertEquals(buttons.length, 2)
+    buttons(1).asInstanceOf[dom.html.Button].click()
+    assert(!overlay.isOpen)
+    assertEquals(ran, Vector("blue"))
+    overlay.showChoices("Ask whom?", Vector("Ask Red" -> (() => ran :+= "red")),
+      opener)
+    root.querySelector(".overlay-confirm-no").asInstanceOf[dom.html.Button]
+      .click()
+    assert(!overlay.isOpen)
+    assertEquals(ran, Vector("blue"))
+    overlay.dispose()
+    root.remove()
+    opener.remove()

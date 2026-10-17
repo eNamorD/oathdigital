@@ -131,3 +131,54 @@ class ConsentStateSuite extends munit.FunSuite:
     assertEquals(ConsentSetting.fromKey("case-by-case"),
       Some(ConsentSetting.CaseByCase))
     assertEquals(ConsentChoice.fromKey("maybe"), None)
+
+  private val payer = PowerId("test.payer")
+  private val ruler = PowerId("test.ruler")
+
+  /** Blue asks red or green about the two ways past a toll on the woods:
+    * red agreeing to pay, or green waiving it. */
+  private def eitherRedOrGreen: ConsentRequest =
+    request(ConsentAsk(red, Vector(payer), alternative = true),
+      ConsentAsk(green, Vector(ruler), alternative = true))
+      .copy(covers = Vector(key(payer), key(ruler)))
+
+  test("one alternative's grant settles the request, granting only its " +
+      "keys"):
+    val asked = accepted(ConsentState().requested(eitherRedOrGreen))
+    val done = accepted(asked.answered(green, granted = true, turn))
+    assertEquals(done.pending, None)
+    assertEquals(done.answer(key(ruler), Some(green), turn),
+      Some(ConsentAnswer.Granted))
+    assertEquals(done.answer(key(payer), Some(red), turn), None)
+
+  test("one alternative's refusal leaves the others asked"):
+    val asked = accepted(ConsentState().requested(eitherRedOrGreen))
+    val refused = accepted(asked.answered(red, granted = false, turn))
+    assertEquals(refused.pending.map(_.open.map(_.granter)),
+      Some(Vector(green)))
+    assertEquals(refused.answer(key(payer), Some(red), turn),
+      Some(ConsentAnswer.Refused))
+
+  test("every alternative refused settles it refused"):
+    val asked = accepted(ConsentState().requested(eitherRedOrGreen))
+    val done = for
+      one <- asked.answered(red, granted = false, turn)
+      both <- one.answered(green, granted = false, turn)
+    yield both
+    assertEquals(done.map(_.pending), Right(None))
+    assertEquals(done.toOption.flatMap(_.answer(key(ruler), Some(green),
+      turn)), Some(ConsentAnswer.Refused))
+
+  test("a required ask still has to grant beside the alternatives"):
+    val yellow = PlayerId("yellow")
+    val withPass = eitherRedOrGreen.copy(
+      asks = ConsentAsk(yellow, Vector(pass)) +: eitherRedOrGreen.asks,
+      covers = eitherRedOrGreen.covers :+ key(pass))
+    val asked = accepted(ConsentState().requested(withPass))
+    val one = accepted(asked.answered(red, granted = true, turn))
+    assertEquals(one.pending.map(_.open.map(_.granter)), Some(Vector(yellow)))
+
+  test("an alternative may not share a required ask's granter"):
+    val clash = eitherRedOrGreen.copy(asks =
+      ConsentAsk(red, Vector(pass)) +: eitherRedOrGreen.asks)
+    assert(ConsentState().requested(clash).isLeft)

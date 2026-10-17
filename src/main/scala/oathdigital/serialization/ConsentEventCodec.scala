@@ -22,9 +22,14 @@ private[serialization] trait ConsentEventCodec { this: GameEventJsonSupport =>
           "requester" -> request.requester.value,
           "decisionId" -> request.decisionId,
           "target" -> DecisionAnswerCodec.encodeRef(request.target),
-          "asks" -> ujson.Arr.from(request.asks.map(ask => ujson.Obj(
-            "granter" -> ask.granter.value,
-            "powers" -> stringArray(ask.powers.map(_.value))))))
+          "asks" -> ujson.Arr.from(request.asks.map { ask =>
+            val encoded = ujson.Obj(
+              "granter" -> ask.granter.value,
+              "powers" -> stringArray(ask.powers.map(_.value)))
+            // Written only when set (catalog batch 8, slice 15).
+            if ask.alternative then encoded("alternative") = true
+            encoded
+          }))
         // Written only when set, so a request from before slice 3 reads
         // back as it was written.
         if request.covers.nonEmpty then
@@ -68,7 +73,8 @@ private[serialization] trait ConsentEventCodec { this: GameEventJsonSupport =>
             payload("decisionId").str, target,
             payload("asks").arr.toVector.map(ask => ConsentAsk(
               PlayerId(ask("granter").str),
-              ask("powers").arr.toVector.map(power => PowerId(power.str)))),
+              ask("powers").arr.toVector.map(power => PowerId(power.str)),
+              alternative = ask.obj.get("alternative").exists(_.bool))),
             covered))
         case ConsentAnsweredType =>
           Right(ConsentAnswered(player("granter"), payload("granted").bool))

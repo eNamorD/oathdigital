@@ -27,6 +27,11 @@ private[frontend] object CardInspection:
       * "Frontend"). */
     final case class Confirm(question: String, confirm: () => Unit,
         origin: dom.html.Element) extends Request
+    /** A question with one button per choice, then Cancel (catalog batch
+      * 8, slice 15). */
+    final case class Choices(question: String,
+        choices: Vector[(String, () => Unit)], origin: dom.html.Element)
+        extends Request
     /** A power's printed text, with the viewer's consent preferences for it
       * when they rule it (consent design, user story step 7). */
     final case class Power(title: String, lines: Vector[String],
@@ -56,6 +61,10 @@ private[frontend] object CardInspection:
   def openConfirm(question: String, confirm: () => Unit,
       origin: dom.html.Element): Unit =
     handler.foreach(_(Request.Confirm(question, confirm, origin)))
+
+  def openChoices(question: String, choices: Vector[(String, () => Unit)],
+      origin: dom.html.Element): Unit =
+    handler.foreach(_(Request.Choices(question, choices, origin)))
 
   def openPower(title: String, lines: Vector[String],
       grid: Option[ConsentGrid], origin: dom.html.Element): Unit =

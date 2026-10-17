@@ -10,9 +10,11 @@ private[protocol] object CommandIntentCodec:
     case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)
     case ResolveWalker(id, payload) => tagged("resolveWalker", "decisionId" -> id,
       "payload" -> CommandNestedCodecs.encodeDecisionAnswerWire(payload))
-    case RequestConsent(id, target) => tagged("requestConsent",
-      "decisionId" -> id,
-      "target" -> CommandNestedCodecs.encodeStartArgWire(target))
+    case RequestConsent(id, target, granters) => tagged("requestConsent",
+      Vector[(String, ujson.Value)]("decisionId" -> id,
+        "target" -> CommandNestedCodecs.encodeStartArgWire(target)) ++
+        Option.when(granters.nonEmpty)(
+          "granters" -> ujson.Arr.from(granters.map(ujson.Str(_))))*)
     case AnswerConsent(choice) => tagged("answerConsent", "choice" -> choice)
     case SetConsentPreference(power, requester, setting) =>
       tagged("setConsentPreference", "powerId" -> power,

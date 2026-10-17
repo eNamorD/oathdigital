@@ -45,8 +45,13 @@ private[application] final class ConsentProjector(
     projection.copy(
       walkerDecision =
         if requesting.nonEmpty then None else projection.walkerDecision,
-      consentWaiting = requesting.map(waiting =>
-        ConsentWaitingProjection(waiting.open.map(_.granter.value))),
+      consentWaiting = requesting.map { waiting =>
+        val open = waiting.open
+        // "A's or B's" while only alternatives wait (catalog batch 8,
+        // slice 15).
+        ConsentWaitingProjection(open.map(_.granter.value),
+          either = open.size > 1 && open.forall(_.alternative))
+      },
       consentPrompt = prompt,
       consentPreferences = context.viewer.toVector.flatMap(
         preferences(ready, _)))

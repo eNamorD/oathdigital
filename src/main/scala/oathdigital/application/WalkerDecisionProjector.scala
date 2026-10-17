@@ -10,7 +10,8 @@ import oathdigital.gameplay.walker.{OptionWarnings, ProcedureWalker,
   WalkerPowers, WalkerProcedureRegistry, WalkerSimulation}
 import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
-  ConsentAskProjection, CountedConfirmProjection, DecisionOptionProjection, DecisionQueryProjection,
+  ConsentAlternativeProjection, ConsentAskProjection,
+  CountedConfirmProjection, DecisionOptionProjection, DecisionQueryProjection,
   DecisionSectionProjection, DecisionSlotProjection, DecisionSummaryProjection,
   DecisionTallyProjection, DecisionTallyValueProjection,
   WalkerDecisionProjection, WalkerRollOutcomeProjection,
@@ -360,8 +361,7 @@ private[application] final class WalkerDecisionProjector(
           reason @ OptionReason.Askable(_, _, asks, _)) =>
         optionProjection(ready, viewer, index, inner, details).map(_.copy(
           state = "askable", reason = Some(reasonText(ready, viewer, reason)),
-          consent = Some(ConsentAskProjection(asks.map(_.granter.value),
-            asks.flatMap(_.powers).distinct.map(consentNames.power)))))
+          consent = Some(askProjection(asks))))
       case DecisionOption.Unavailable(inner, reason) => optionProjection(ready,
         viewer, index, inner, details).map(_.copy(state = "unavailable",
           reason = Some(reasonText(ready, viewer, reason))))
@@ -461,6 +461,16 @@ private[application] final class WalkerDecisionProjector(
       // from it, so the label says neither.
       case DecisionOption.DiscardPile(pile) =>
         row(SearchSource.name(SearchSource.RegionalDiscard(pile.region)))
+
+  /** Whom an askable option asks: its required asks, then each
+    * alternative on its own (catalog batch 8, slice 15). */
+  private def askProjection(asks: Vector[ConsentAsk]): ConsentAskProjection =
+    val required = asks.filterNot(_.alternative)
+    ConsentAskProjection(required.map(_.granter.value),
+      required.flatMap(_.powers).distinct.map(consentNames.power),
+      asks.filter(_.alternative).map(ask => ConsentAlternativeProjection(
+        ask.granter.value, ask.powers.map(consentNames.power),
+        paying = false)))
 
   /** A Replace option's label: the card it discards, and where the played
     * card goes. */

@@ -17,17 +17,50 @@ private[frontend] object ConsentAsking:
     case Vector(only) => only
     case _ => s"${words.init.mkString(", ")} and ${words.last}"
 
-  /** "Ask Red for consent to ignore Narrow Pass?" */
+  /** "Ask Red for consent to ignore Narrow Pass?", or with alternatives,
+    * "Ask Blue or Red for consent to ignore Toll Roads?": the required
+    * granters, then the alternatives joined by "or". */
   def question(value: GameProjection, ask: ConsentAskState): String =
-    s"Ask ${listed(ask.granterPlayerIds.map(name(value, _)))} for consent " +
-      s"to ignore ${listed(ask.powers)}?"
+    val alternatives = ask.alternatives.map(alt => name(value,
+      alt.granterPlayerId))
+    val asked = ask.granterPlayerIds.map(name(value, _)) ++
+      Option.when(alternatives.nonEmpty)(alternatives.mkString(" or "))
+    val powers = (ask.powers ++ ask.alternatives.flatMap(_.powers)).distinct
+    s"Ask ${listed(asked)} for consent to ignore ${listed(powers)}?"
+
+  /** One way to ask: its button, and the alternatives' granters it sends
+    * (empty for every ask). */
+  final case class AskChoice(label: String, granters: Vector[String])
+
+  /** "Ask Blue", "Ask Red", then "Ask both", or "Ask all" past two: one
+    * per alternative, each with the required granters too (catalog batch
+    * 8, slice 15). Empty without alternatives. */
+  def choices(value: GameProjection, ask: ConsentAskState)
+      : Vector[AskChoice] =
+    if ask.alternatives.isEmpty then Vector.empty
+    else
+      val required = ask.granterPlayerIds
+      val one = ask.alternatives.map(alt => AskChoice(
+        s"Ask ${listed((required :+ alt.granterPlayerId).map(name(value, _)))}",
+        Vector(alt.granterPlayerId)))
+      val all = AskChoice(if required.isEmpty && ask.alternatives.size == 2
+        then "Ask both" else "Ask all", Vector.empty)
+      if ask.alternatives.size > 1 then one :+ all else one
 
   /** What choosing an askable option of `decisionId` does: the
-    * confirmation, whose Yes sends the request. Without control, nothing. */
+    * confirmation, whose Yes sends the request, or with alternatives a
+    * choice of whom to ask. Without control, nothing. */
   def asker(decisionId: String, value: GameProjection, canControl: Boolean,
       controls: TableControls): (DecisionOptionState, dom.html.Element) => Unit =
     (option, origin) =>
-      if canControl then option.consent.foreach(ask =>
-        CardInspection.openConfirm(question(value, ask), () =>
+      if canControl then option.consent.foreach { ask =>
+        def send(granters: Vector[String]): Unit =
           controls.submitCommand(GameCommand.RequestConsent(decisionId,
-            WalkerStartArgWire(option.kind, option.id))), origin))
+            WalkerStartArgWire(option.kind, option.id), granters))
+        choices(value, ask) match
+          case Vector() => CardInspection.openConfirm(question(value, ask),
+            () => send(Vector.empty), origin)
+          case found => CardInspection.openChoices(question(value, ask),
+            found.map(choice => choice.label -> (() =>
+              send(choice.granters))), origin)
+      }

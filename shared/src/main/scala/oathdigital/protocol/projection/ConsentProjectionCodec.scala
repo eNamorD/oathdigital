@@ -3,27 +3,49 @@ package oathdigital.protocol.projection
 import ProjectionCodecSupport._
 
 private[projection] object ConsentProjectionCodec:
-  def encodeAsk(value: ConsentAskProjection): ujson.Value = ujson.Obj(
-    "granterPlayerIds" -> encoded(value.granterPlayerIds)(ujson.Str(_)),
-    "powers" -> encoded(value.powers)(ujson.Str(_)))
+  def encodeAsk(value: ConsentAskProjection): ujson.Value =
+    val row = ujson.Obj(
+      "granterPlayerIds" -> encoded(value.granterPlayerIds)(ujson.Str(_)),
+      "powers" -> encoded(value.powers)(ujson.Str(_)))
+    // Written only when set (catalog batch 8, slice 15).
+    if value.alternatives.nonEmpty then
+      row("alternatives") = encoded(value.alternatives)(alternative =>
+        ujson.Obj("granterPlayerId" -> alternative.granterPlayerId,
+          "powers" -> encoded(alternative.powers)(ujson.Str(_)),
+          "paying" -> alternative.paying))
+    row
 
   def decodeAsk(raw: ujson.Value, path: String)
       : Result[ConsentAskProjection] = for
     row <- obj(raw, path)
-    _ <- exact(row, Set("granterPlayerIds", "powers"), path)
+    _ <- exact(row, Set("granterPlayerIds", "powers", "alternatives"), path)
     granters <- strings(row, "granterPlayerIds", path)
     powers <- strings(row, "powers", path)
-  yield ConsentAskProjection(granters, powers)
+    alternativeRaws <- default(row, "alternatives", path,
+      Vector.empty[ujson.Value])(array)
+    alternatives <- traverse(alternativeRaws, s"$path.alternatives") {
+      (entryRaw, child) => for
+        entry <- obj(entryRaw, child)
+        _ <- exact(entry, Set("granterPlayerId", "powers", "paying"), child)
+        granter <- string(entry, "granterPlayerId", child)
+        powers <- strings(entry, "powers", child)
+        paying <- bool(entry, "paying", child)
+      yield ConsentAlternativeProjection(granter, powers, paying) }
+  yield ConsentAskProjection(granters, powers, alternatives)
 
-  def encodeWaiting(value: ConsentWaitingProjection): ujson.Value = ujson.Obj(
-    "granterPlayerIds" -> encoded(value.granterPlayerIds)(ujson.Str(_)))
+  def encodeWaiting(value: ConsentWaitingProjection): ujson.Value =
+    val row = ujson.Obj(
+      "granterPlayerIds" -> encoded(value.granterPlayerIds)(ujson.Str(_)))
+    if value.either then row("either") = true
+    row
 
   def decodeWaiting(raw: ujson.Value, path: String)
       : Result[ConsentWaitingProjection] = for
     row <- obj(raw, path)
-    _ <- exact(row, Set("granterPlayerIds"), path)
+    _ <- exact(row, Set("granterPlayerIds", "either"), path)
     granters <- strings(row, "granterPlayerIds", path)
-  yield ConsentWaitingProjection(granters)
+    either <- boolOr(row, "either", path, false)
+  yield ConsentWaitingProjection(granters, either)
 
   def encodePrompt(value: ConsentPromptProjection): ujson.Value = ujson.Obj(
     "requesterPlayerId" -> value.requesterPlayerId,

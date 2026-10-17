@@ -36,18 +36,40 @@ private[application] final class ConsentDesk(rules: OathRules,
 
   /** Asks the rulers of the waivable powers blocking `target` (consent
     * design, "Commands"), answering at once for each granter whose
-    * preferences decide (ruling 10). */
+    * preferences decide (ruling 10). `granters` narrows the alternatives
+    * asked; empty asks them all. */
   def request(state: OathState, requester: PlayerId, decisionId: String,
-      target: DecisionOptionRef): Result = for
+      target: DecisionOptionRef, granters: Vector[PlayerId] = Vector.empty)
+      : Result = for
     ready <- playing(state)
     _ <- Either.cond(ready.consent.pending.isEmpty, (),
       OathViolation.ConsentPending)
     ask <- rules.consentAsk(state, requester, decisionId, target)
-    request = ConsentRequest(requester, decisionId, target, ask.asks,
-      ask.covers)
+    asks <- chosen(ask.asks, granters)
+    covers = ask.covers.filter(key =>
+      asks.exists(_.powers.contains(key.power)))
+    request = ConsentRequest(requester, decisionId, target, asks, covers)
     events <- settled(state,
       ConsentRequested(request) +: automatic(ready.consent, request))
   yield events
+
+  /** The asks a request sends: all of them, or the required ones and the
+    * alternatives whose granter `granters` names (catalog batch 8, slice
+    * 15). A request that keeps a single alternative leaves it marked, and
+    * it settles alone. */
+  private def chosen(asks: Vector[ConsentAsk], granters: Vector[PlayerId])
+      : Either[OathViolation, Vector[ConsentAsk]] =
+    if granters.isEmpty then Right(asks)
+    else
+      val kept = asks.filter(ask => !ask.alternative ||
+        granters.contains(ask.granter))
+      val unknown = granters.filterNot(by => asks.exists(_.granter == by))
+      if unknown.nonEmpty then Left(OathViolation.ConsentUnavailable(
+        s"${unknown.map(_.value).mkString(", ")} would not be asked"))
+      else if asks.exists(_.alternative) && !kept.exists(_.alternative) then
+        Left(OathViolation.ConsentUnavailable(
+          "ask at least one of the players who could consent"))
+      else Right(kept)
 
   /** `granter`'s answer. Never Allow and Always Allow also set their
     * preference for the requester on every power of their ask, after the
@@ -88,8 +110,10 @@ private[application] final class ConsentDesk(rules: OathRules,
 
   /** The answers the granters' preferences give, in ask order (ruling 10):
     * Never on any of a granter's powers refuses, Always on all of them
-    * grants. The first refusal settles the request, so nothing follows it.
-    */
+    * grants. They are kept until the request settles, so nothing follows
+    * the answer that settles it: a required ask's Never settles it, while
+    * an alternative's Never refuses only that alternative (catalog batch
+    * 8, slice 15). */
   private def automatic(consent: ConsentState, request: ConsentRequest)
       : Vector[OathEvent] =
     val answers = request.asks.flatMap { ask =>
@@ -101,9 +125,20 @@ private[application] final class ConsentDesk(rules: OathRules,
         Some(ConsentAnswered(ask.granter, granted = true))
       else None
     }
-    answers.indexWhere(!_.granted) match
-      case -1 => answers
-      case refusal => answers.take(refusal + 1)
+    answers.foldLeft((Option(request), Vector.empty[ConsentAnswered])) {
+      case ((Some(open), kept), answer)
+          if open.open.exists(_.granter == answer.granter) =>
+        val next = open.copy(asks = open.asks.map(ask =>
+          if ask.granter == answer.granter then
+            ask.copy(answer = Some(answer.granted))
+          else ask))
+        val required = !open.asks.exists(ask =>
+          ask.granter == answer.granter && ask.alternative)
+        val over = next.granted || next.refused ||
+          (required && !answer.granted)
+        (Option.unless(over)(next), kept :+ answer)
+      case (done, _) => done
+    }._2
 
   /** `events`, followed, when their last answer completes the request with
     * every ask granted at a choose-one, by the requester's answer to the

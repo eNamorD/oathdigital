@@ -204,9 +204,10 @@ final class GameApplicationService(
         if consent.pending(journal.state).nonEmpty then
           Left(CommandRejected(OathViolation.ConsentPending))
         else restore(gameId, journal, actor, expected, nextSequence)
-      case GameCommand.RequestConsent(requester, decisionId, target) =>
+      case GameCommand.RequestConsent(requester, decisionId, target,
+          granters) =>
         consentBatch(gameId, journal, consent.request(journal.state,
-          requester, decisionId, target), expected, nextSequence)
+          requester, decisionId, target, granters), expected, nextSequence)
       case GameCommand.AnswerConsent(granter, choice) =>
         consentBatch(gameId, journal, consent.answer(journal.state, granter,
           choice), expected, nextSequence)

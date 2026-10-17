@@ -33,6 +33,9 @@ type DecisionOptionState = protocol.projection.DecisionOptionProjection
 val DecisionOptionState = protocol.projection.DecisionOptionProjection
 type ConsentAskState = protocol.projection.ConsentAskProjection
 val ConsentAskState = protocol.projection.ConsentAskProjection
+type ConsentAlternativeState =
+  protocol.projection.ConsentAlternativeProjection
+val ConsentAlternativeState = protocol.projection.ConsentAlternativeProjection
 type ConsentPromptState = protocol.projection.ConsentPromptProjection
 val ConsentPromptState = protocol.projection.ConsentPromptProjection
 type ConsentWaitingState = protocol.projection.ConsentWaitingProjection

@@ -58,9 +58,9 @@ final case class AuthorizedPlayer private[application] (
 
   def resolveWalker(treeDecision: TreeDecision): GameCommand =
     GameCommand.ResolveWalker(access.playerId, treeDecision)
-  def requestConsent(decisionId: String, target: DecisionOptionRef)
-      : GameCommand =
-    GameCommand.RequestConsent(access.playerId, decisionId, target)
+  def requestConsent(decisionId: String, target: DecisionOptionRef,
+      granters: Vector[PlayerId] = Vector.empty): GameCommand =
+    GameCommand.RequestConsent(access.playerId, decisionId, target, granters)
   def answerConsent(choice: ConsentChoice): GameCommand =
     GameCommand.AnswerConsent(access.playerId, choice)
   def setConsentPreference(power: PowerId, requester: PlayerId,
