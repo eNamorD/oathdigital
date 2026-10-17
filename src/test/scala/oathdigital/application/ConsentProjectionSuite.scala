@@ -1,6 +1,7 @@
 package oathdigital.application
 
-import oathdigital.gameplay.powers.travel.NarrowPassSite
+import oathdigital.gameplay.powers.poweruse.CityWall
+import oathdigital.gameplay.powers.travel.{NarrowPassSite, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.protocol.projection._
@@ -18,6 +19,20 @@ class ConsentProjectionSuite extends munit.FunSuite:
 
   private def view(at: GameAccepted, viewer: PlayerId): GameProjection =
     projector.project(gameId, at.loaded, viewer)
+
+  /** p1 holds Tyrant faceup at the Cradle's plains; City Wall stands at
+    * the coast, which p2 rules with 2 warbands. */
+  private val tyrantBesideAWalledCoast: ReadyGame =
+    TravelFixture.on(TravelFixture.board(supply = 7))(_
+      .adviser(p1, "Tyrant")
+      .denizen(CatalogNames.denizen("City Wall"), at = TravelFixture.coast)
+      .warbandsAt(TravelFixture.coast, p2, 2))
+
+  /** p1 travels to the walled coast at `sequence`; the pick's batch. */
+  private def travelledToTheWalledCoast(service: GameApplicationService,
+      sequence: Long)(using munit.Location): GameAccepted =
+    ParkedServiceFixture.travelTo(service, gameId, sequence, p1,
+      TravelFixture.coast).picked
 
   private def dunesRow(at: GameAccepted)(using munit.Location)
       : DecisionOptionProjection =
@@ -120,3 +135,31 @@ class ConsentProjectionSuite extends munit.FunSuite:
     assertEquals(projector.project(gameId, LoadedGame(OathState.Ready(ready),
       0L), p2).consentPreferences.map(entry => (entry.powerId, entry.cardId)),
       Vector(("denizen.secret-police", Some(police.value))))
+
+  test("City Wall's ruler is asked whether to deactivate the traveller's " +
+      "Tyrant, and the traveller waits on that decision"):
+    val (service, _) = ConsentFixture.service(tyrantBesideAWalledCoast)
+    val waiting = travelledToTheWalledCoast(service, 0L)
+    val prompt = present(view(waiting, p2).consentPrompt, "p2's prompt")
+    assertEquals((prompt.requesterPlayerId, prompt.powers, prompt.use),
+      ("p1", Vector("City Wall"), Some("Tyrant")))
+    assertEquals(view(waiting, p1).consentWaiting, Some(
+      ConsentWaitingProjection(Vector("p2"), use = Some("Tyrant"))))
+
+  test("the traveller's view cannot tell an automatic deactivation, or " +
+      "an automatic grant, from a manual one"):
+    for (choice, setting) <- Vector(
+        (ConsentChoice.No, ConsentSetting.Never),
+        (ConsentChoice.Yes, ConsentSetting.Always)) do
+      val (manualService, _) = ConsentFixture.service(
+        tyrantBesideAWalledCoast)
+      val manual = accepted(manualService.handle(gameId,
+        travelledToTheWalledCoast(manualService, 0L).nextSequence,
+        GameCommand.AnswerConsent(p2, choice)))
+      val (autoService, _) = ConsentFixture.service(tyrantBesideAWalledCoast)
+      val set = accepted(autoService.handle(gameId, 0L,
+        GameCommand.SetConsentPreference(p2, CityWall.id, p1, setting)))
+      val automatic = travelledToTheWalledCoast(autoService,
+        set.nextSequence)
+      assertEquals(view(automatic, p1).copy(nextSequence = 0L),
+        view(manual, p1).copy(nextSequence = 0L))
