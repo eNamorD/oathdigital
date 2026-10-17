@@ -229,6 +229,40 @@ Campaign tree applies those losses and knows their counts at the point it
 applies them, so the procedure carries the numbers into the clauses rather
 than re-reading the journal for them.
 
+### Two things slice 4 must settle first
+
+Both were found while reviewing slice 1, against the code rather than
+against this document, and neither is solvable inside ruling 7's closed
+argument vocabulary.
+
+**The actor-loser line is capitalised, and a clause list cannot be.**
+`CampaignLines.losses` builds its subject from the loser: a named player, or
+"The bandits ", or — when the loser is the run's own actor — nothing, and
+then it capitalises the first clause by hand: "Lost 2 warbands and was sent
+to Broken Peaks" against "Blue lost 2 warbands and ...". `NoteArg.Clauses`
+renders through `LogWords.join` from inside the template, so no
+`NotePart.Text` can reach the first clause's leading letter, and the clause
+set is variable, which is why `Clauses` exists at all. Ruling 8 forbids
+growing `NotePart` to fix it.
+
+The current golden scripts exercise only the defender-loses branch, so slice
+4's golden diff would be clean while the attacker-loses rendering silently
+lost its capital. The ledger's "capitalisation dance" entry already asks
+whether the subject should simply always be named. **That wording question is
+resolved before slice 4 starts, not during it**: if the subject is always
+named, the clause list never leads a sentence and the problem is gone.
+
+**A clause's cards are judged at a different state set.** `CampaignLines`
+names each discarded or set-aside card with `words.card(id, before, after,
+viewer)` — the before and after of that one `Move`. A note's cards go
+through `words.seen(id, seen, viewer)`, where `seen` is the action's start,
+the restated step's before-state and the state after the note. A card a
+viewer could identify only at the instant of the move reads as its back in
+the note, and a card's label is taken at the state after the note rather
+than after its own operation. The paths the current goldens cover coincide,
+so slice 4 must either show the two agree for Campaign's cards or say which
+one is right.
+
 ## Journals
 
 The guarantee, stated exactly, because the slogan around it is looser than

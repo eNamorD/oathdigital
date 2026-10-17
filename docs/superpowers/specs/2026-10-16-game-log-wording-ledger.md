@@ -43,6 +43,13 @@ work, not the finding.
   as two different kinds of sentence depending on who is reading. Worth
   deciding whether the subject should simply always be named.
 
+  **Blocks slice 4 of the procedures-journal-their-notes migration**, which
+  cannot reproduce the capitalised form: `NoteArg.Clauses` renders a
+  variable clause list through `LogWords.join`, so no template text reaches
+  the first clause's leading letter. Decide this one before that slice, not
+  during it. Note that no golden script covers the attacker-loses branch
+  today, so nothing would fail if it were missed.
+
 - **`SetupLines.scala:16` — "{Blue} placed pawn at {site}".** Missing
   article. Every other line in the module writes a determiner.
 
