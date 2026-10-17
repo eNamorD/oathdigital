@@ -1,10 +1,12 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.CampaignFixture.{board, on, withEnemyAtOrigin}
+import oathdigital.gameplay.CampaignFixture.{actorRules, board, on,
+  withEnemyAtOrigin}
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignSetup}
+import oathdigital.gameplay.walker.QueuedStart
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Table}
 
 class CampaignSetupSuite extends munit.FunSuite:
   private def pending(answers: (String, DecisionAnswer)*) = PendingTree(
@@ -95,3 +97,39 @@ class CampaignSetupSuite extends munit.FunSuite:
     val skipped = pending(CampaignIds.kind ->
       ChooseOneAnswer(CampaignIds.skip))
     assertEquals(CampaignSetup.declaredAt(b.ready, b.actor, skipped), None)
+
+  test("a queued defender limits the Raid candidates and the Conquest to " +
+      "that player"):
+    // p1 at the bandit-ruled origin with p2 and p3 both there.
+    val apart = board(warbands = 3, supply = 7)
+    val b = on(withEnemyAtOrigin(apart))(_.pawn(Table.p3, at = apart.origin))
+    val entry = QueuedProcedure(b.actor, ActionRef.Campaign,
+      Vector(DecisionOptionRef.Player(b.rival)),
+      Some(PowerSourceRef.Card(CatalogNames.denizen("Sneak Attack"))),
+      QueueKind.Run)
+    val dequeued = QueuedStart.startingFrom(b.ready, entry)
+    assertEquals(CampaignSetup.raidDefenders(b.ready, b.actor),
+      Vector(b.rival, b.bystander))
+    assertEquals(CampaignSetup.queuedDefender(dequeued, b.actor),
+      Some(b.rival))
+    assertEquals(CampaignSetup.raidDefenders(dequeued, b.actor),
+      Vector(b.rival))
+    // The bandits rule the origin, so no Conquest is against the rival.
+    assertEquals(CampaignSetup.legalKinds(dequeued, b.actor),
+      Vector(CampaignKind.Raid))
+
+  test("a menu Campaign has no queued defender"):
+    val b = withEnemyAtOrigin(board(warbands = 3, supply = 7))
+    assertEquals(CampaignSetup.queuedDefender(b.ready, b.actor), None)
+
+  test("the kinds against a player, with no Campaign under way"):
+    val b = withEnemyAtOrigin(board(warbands = 3, supply = 7))
+    // The rival shares the origin with p1, and the bandits rule it.
+    assertEquals(CampaignSetup.kindsAgainst(b.ready, b.rival, b.actor),
+      Vector(CampaignKind.Raid))
+    val ruled = actorRules(b, b.origin)
+    assertEquals(CampaignSetup.kindsAgainst(ruled.ready, b.rival, b.actor),
+      Vector(CampaignKind.Conquest, CampaignKind.Raid))
+    val apart = board(warbands = 3, supply = 7)
+    assertEquals(CampaignSetup.kindsAgainst(apart.ready, apart.rival,
+      apart.actor), Vector.empty)

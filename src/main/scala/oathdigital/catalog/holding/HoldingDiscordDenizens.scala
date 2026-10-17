@@ -44,10 +44,3 @@ object RoyalAmbitionsCard extends Denizen(DenizenId("88"), "Royal Ambitions", Su
       "become a Citizen. _Follow the steps in the rules and end " +
       "your Act Phase._")
   val powers: Vector[PrintedPower] = Vector(power)
-
-object SneakAttackCard extends Denizen(DenizenId("98"), "Sneak Attack", Suit.Discord) with AdviserOnly:
-  val power = PrintedPower(PowerId("denizen.sneak-attack"),
-    persistent = true, cost = Cost.free,
-    text = "After another player's campaign, you may campaign, spending " +
-      "no Supply, if you declare them as the defender.")
-  val powers: Vector[PrintedPower] = Vector(power)

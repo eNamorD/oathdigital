@@ -20,7 +20,6 @@ denizen.relic-hunter
 denizen.reliquary-raid
 denizen.royal-ambitions
 denizen.search-party
-denizen.sneak-attack
 denizen.the-gathering
 denizen.tracker
 denizen.traveling-negotiator
