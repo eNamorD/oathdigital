@@ -193,3 +193,14 @@ class ConsentAskingSuite extends munit.FunSuite:
     overlay.dispose()
     root.remove()
     opener.remove()
+
+  test("a granter asked to pay is asked to pay, after any ask to ignore"):
+    val payer = ConsentAlternativeState("red", Vector("Toll Roads"),
+      paying = true)
+    assertEquals(ConsentAsking.question(table, ConsentAskState(Vector.empty,
+      Vector.empty, payers = Vector(payer))),
+      "Ask Red to pay for Toll Roads?")
+    assertEquals(ConsentAsking.question(table, ConsentAskState(
+      Vector("blue"), Vector("Narrow Pass"), payers = Vector(payer))),
+      "Ask Blue for consent to ignore Narrow Pass and Red to pay for Toll " +
+        "Roads?")

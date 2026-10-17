@@ -463,15 +463,17 @@ private[application] final class WalkerDecisionProjector(
       case DecisionOption.DiscardPile(pile) =>
         row(SearchSource.name(SearchSource.RegionalDiscard(pile.region)))
 
-  /** Whom an askable option asks: its required asks, then each
-    * alternative on its own (catalog batch 8, slice 15). */
+  /** Whom an askable option asks: its required asks to ignore a power,
+    * each alternative on its own, and each required ask to pay on its own
+    * (catalog batch 8, slice 15). */
   private def askProjection(asks: Vector[ConsentAsk]): ConsentAskProjection =
-    val required = asks.filterNot(_.alternative)
-    ConsentAskProjection(required.map(_.granter.value),
-      required.flatMap(_.powers).distinct.map(consentNames.power),
-      asks.filter(_.alternative).map(ask => ConsentAlternativeProjection(
-        ask.granter.value, ask.powers.map(consentNames.power),
-        paying = ask.powers.forall(consentPowers.paying))))
+    def paying(ask: ConsentAsk) = ask.powers.forall(consentPowers.paying)
+    def one(ask: ConsentAsk) = ConsentAlternativeProjection(
+      ask.granter.value, ask.powers.map(consentNames.power), paying(ask))
+    val (payers, ignoring) = asks.filterNot(_.alternative).partition(paying)
+    ConsentAskProjection(ignoring.map(_.granter.value),
+      ignoring.flatMap(_.powers).distinct.map(consentNames.power),
+      asks.filter(_.alternative).map(one), payers.map(one))
 
   /** A Replace option's label: the card it discards, and where the played
     * card goes. */

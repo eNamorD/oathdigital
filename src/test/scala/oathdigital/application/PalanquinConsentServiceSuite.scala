@@ -6,7 +6,7 @@ import oathdigital.gameplay.powers.travel.TravelFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.protocol.projection._
-import oathdigital.testkit.{Look, MenuPlay, Outcomes}
+import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -64,6 +64,19 @@ class PalanquinConsentServiceSuite extends munit.FunSuite:
           paying = true),
         ConsentAlternativeProjection("p2", Vector("Toll Roads"),
           paying = false)))))
+
+  test("under bandits the target alone is asked, as a payer"):
+    val bandits = TravelFixture.on(TravelFixture.board())(_
+      .adviser(p1, PalanquinCard.id).favor(p1, 1)
+      .pawn(p3, TravelFixture.cradlePlains).favor(p3, 1)
+      .denizen(CatalogNames.denizen("Toll Roads"),
+        at = TravelFixture.provincePlains)
+      .bandits(TravelFixture.provincePlains, 1).bandits(coast, 1))
+    val (service, _) = ConsentFixture.service(bandits)
+    assertEquals(coastRow(atTheDestination(service)).consent,
+      Some(ConsentAskProjection(Vector.empty, Vector.empty, payers = Vector(
+        ConsentAlternativeProjection("p3", Vector("Toll Roads"),
+          paying = true)))))
 
   test("asking only the target prompts them to pay and travel"):
     val (service, _) = ConsentFixture.service(p3BesideP1UnderTheToll)

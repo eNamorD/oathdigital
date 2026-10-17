@@ -9,29 +9,37 @@ private[projection] object ConsentProjectionCodec:
       "powers" -> encoded(value.powers)(ujson.Str(_)))
     // Written only when set (catalog batch 8, slice 15).
     if value.alternatives.nonEmpty then
-      row("alternatives") = encoded(value.alternatives)(alternative =>
-        ujson.Obj("granterPlayerId" -> alternative.granterPlayerId,
-          "powers" -> encoded(alternative.powers)(ujson.Str(_)),
-          "paying" -> alternative.paying))
+      row("alternatives") = encoded(value.alternatives)(encodeOne)
+    if value.payers.nonEmpty then row("payers") = encoded(value.payers)(
+      encodeOne)
     row
+
+  private def encodeOne(ask: ConsentAlternativeProjection): ujson.Value =
+    ujson.Obj("granterPlayerId" -> ask.granterPlayerId,
+      "powers" -> encoded(ask.powers)(ujson.Str(_)), "paying" -> ask.paying)
+
+  private def decodeOnes(row: ujson.Obj, name: String, path: String)
+      : Result[Vector[ConsentAlternativeProjection]] = for
+    raws <- default(row, name, path, Vector.empty[ujson.Value])(array)
+    ones <- traverse(raws, s"$path.$name") { (entryRaw, child) => for
+      entry <- obj(entryRaw, child)
+      _ <- exact(entry, Set("granterPlayerId", "powers", "paying"), child)
+      granter <- string(entry, "granterPlayerId", child)
+      powers <- strings(entry, "powers", child)
+      paying <- bool(entry, "paying", child)
+    yield ConsentAlternativeProjection(granter, powers, paying) }
+  yield ones
 
   def decodeAsk(raw: ujson.Value, path: String)
       : Result[ConsentAskProjection] = for
     row <- obj(raw, path)
-    _ <- exact(row, Set("granterPlayerIds", "powers", "alternatives"), path)
+    _ <- exact(row, Set("granterPlayerIds", "powers", "alternatives",
+      "payers"), path)
     granters <- strings(row, "granterPlayerIds", path)
     powers <- strings(row, "powers", path)
-    alternativeRaws <- default(row, "alternatives", path,
-      Vector.empty[ujson.Value])(array)
-    alternatives <- traverse(alternativeRaws, s"$path.alternatives") {
-      (entryRaw, child) => for
-        entry <- obj(entryRaw, child)
-        _ <- exact(entry, Set("granterPlayerId", "powers", "paying"), child)
-        granter <- string(entry, "granterPlayerId", child)
-        powers <- strings(entry, "powers", child)
-        paying <- bool(entry, "paying", child)
-      yield ConsentAlternativeProjection(granter, powers, paying) }
-  yield ConsentAskProjection(granters, powers, alternatives)
+    alternatives <- decodeOnes(row, "alternatives", path)
+    payers <- decodeOnes(row, "payers", path)
+  yield ConsentAskProjection(granters, powers, alternatives, payers)
 
   def encodeWaiting(value: ConsentWaitingProjection): ujson.Value =
     val row = ujson.Obj(

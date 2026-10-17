@@ -19,14 +19,21 @@ private[frontend] object ConsentAsking:
 
   /** "Ask Red for consent to ignore Narrow Pass?", or with alternatives,
     * "Ask Blue or Red for consent to ignore Toll Roads?": the required
-    * granters, then the alternatives joined by "or". */
+    * granters, then the alternatives joined by "or". A granter asked to pay
+    * reads "Ask Blue to pay for Toll Roads?", after any ask to ignore. */
   def question(value: GameProjection, ask: ConsentAskState): String =
     val alternatives = ask.alternatives.map(alt => name(value,
       alt.granterPlayerId))
     val asked = ask.granterPlayerIds.map(name(value, _)) ++
       Option.when(alternatives.nonEmpty)(alternatives.mkString(" or "))
     val powers = (ask.powers ++ ask.alternatives.flatMap(_.powers)).distinct
-    s"Ask ${listed(asked)} for consent to ignore ${listed(powers)}?"
+    val ignoring = Option.when(asked.nonEmpty)(
+      s"${listed(asked)} for consent to ignore ${listed(powers)}")
+    // "Blue to pay for Toll Roads" (catalog batch 8, slice 15).
+    val payers = ask.payers.map(payer => name(value, payer.granterPlayerId))
+    val paying = Option.when(payers.nonEmpty)(s"${listed(payers)} to pay " +
+      s"for ${listed(ask.payers.flatMap(_.powers).distinct)}")
+    s"Ask ${listed(ignoring.toVector ++ paying)}?"
 
   /** One way to ask: its button, and the alternatives' granters it sends
     * (empty for every ask). */
@@ -39,7 +46,8 @@ private[frontend] object ConsentAsking:
       : Vector[AskChoice] =
     if ask.alternatives.isEmpty then Vector.empty
     else
-      val required = ask.granterPlayerIds
+      val required = ask.granterPlayerIds ++
+        ask.payers.map(_.granterPlayerId)
       val one = ask.alternatives.map(alt => AskChoice(
         s"Ask ${listed((required :+ alt.granterPlayerId).map(name(value, _)))}",
         Vector(alt.granterPlayerId)))

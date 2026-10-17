@@ -3,13 +3,15 @@ package oathdigital.protocol.projection
 /** Whom an askable option would ask, and about which powers, for the
   * client to word its confirmation (consent design, "Projection"). Player
   * ids: the client words their display names. `granterPlayerIds` and
-  * `powers` are the required asks; `alternatives` the asks any one of
-  * which will do (catalog batch 8, slice 15). */
+  * `powers` are the required asks to ignore a power; `payers` the required
+  * asks to pay; `alternatives` the asks any one of which will do (catalog
+  * batch 8, slice 15). */
 final case class ConsentAskProjection(granterPlayerIds: Vector[String],
     powers: Vector[String],
-    alternatives: Vector[ConsentAlternativeProjection] = Vector.empty)
+    alternatives: Vector[ConsentAlternativeProjection] = Vector.empty,
+    payers: Vector[ConsentAlternativeProjection] = Vector.empty)
 
-/** One alternative ask: its granter, its powers, and whether the granter
+/** One ask on its own: its granter, its powers, and whether the granter
   * is asked to pay rather than to waive. */
 final case class ConsentAlternativeProjection(granterPlayerId: String,
     powers: Vector[String], paying: Boolean)

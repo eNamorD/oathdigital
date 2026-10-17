@@ -444,8 +444,11 @@ the breach, so there is no special path.
   waiver (`ConsentPowers.paying`). Its prompt reads "Green wants to send
   you to Coast. Consent to pay Toll Roads and travel to Coast?", and its
   log line "Asked Blue for consent to pay Toll Roads and travel to
-  Coast." It belongs to no card's ruler, so no preference applies to it
-  and it is always answered by hand.
+  Coast." When it is not an alternative, the requester's confirmation
+  reads "Ask Blue to pay for Toll Roads?", after any ask to ignore: "Ask
+  Red for consent to ignore Narrow Pass and Blue to pay for Toll Roads?".
+  It belongs to no card's ruler, so no preference applies to it and it is
+  always answered by hand.
 
 ## Testing
 
