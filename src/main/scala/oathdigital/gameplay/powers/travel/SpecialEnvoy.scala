@@ -20,6 +20,10 @@ object SpecialEnvoyCard extends Denizen(DenizenId("158"), "Special Envoy", Suit.
   * `EnterPhase(Rest)` comes after Dragonskin Drum's gain and Tyrant's kill.
   * Its line, "The Act Phase ended.", always follows. The waiver writes no
   * line: the start line's cost span shows it.
+  *
+  * Off turn (a defender's Second Wind Travel) it only waives the Supply: it
+  * is not the traveller's Act Phase to end (catalog batch 8, slice 14,
+  * ruling 5).
   */
 final case class SpecialEnvoy private (catalog: ExecutableCatalog)
     extends SelectedModifier:
@@ -31,10 +35,12 @@ final case class SpecialEnvoy private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      SupplyStrip(ctx, ctx.activePlayer, operations) ++ Vector(
-        EnterPhase(Phase.Rest),
-        Note(id, _ => Some(SpecialEnvoy.ended(
-          PowerSourceRef.Card(cardId))))))))
+      SupplyStrip(ctx, ctx.activePlayer, operations) ++ (
+        if ctx.activePlayer != ctx.state.game.current.turn.activePlayer
+        then Vector.empty
+        else Vector(EnterPhase(Phase.Rest),
+          Note(id, _ => Some(SpecialEnvoy.ended(
+            PowerSourceRef.Card(cardId)))))))))
 
   override def appliesAt(ctx: PowerCtx): Boolean =
     TravelRoute.pawnMove(ctx.operation).nonEmpty

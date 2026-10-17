@@ -59,7 +59,7 @@ object ParkedNode:
                 s"a walker is pending at '$at' but no walkerProcedure is " +
                   "recorded")
               tree <- WalkerProcedureRegistry.rebuild(procedure, catalog,
-                  ready, current.turn.activePlayer, current.walkerStartArgs,
+                  ready, current.walkActor, current.walkerStartArgs,
                   phasePowers, walkerPowers =
                     WalkerPowers.selected(walkerPowers, Vector.empty))
                 .left.map(violation =>

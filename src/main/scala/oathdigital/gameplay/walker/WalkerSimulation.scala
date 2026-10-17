@@ -54,7 +54,7 @@ object WalkerSimulation:
       powers: WalkerPowers): Either[OathViolation, Vector[CoreOperation]] =
     guarded:
       ProcedureWalker.restrictionViolations(tree, powers, state,
-        state.game.current.turn.activePlayer)
+        state.game.current.walkActor)
         .headOption.toLeft(())
         .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
           WalkerDice.placeholder))
@@ -87,7 +87,7 @@ object WalkerSimulation:
       answered: Vector[Answered] = Vector.empty): Option[OathViolation] =
     guarded {
       ProcedureWalker.restrictionViolations(tree, powers, state,
-        state.game.current.turn.activePlayer, answered)
+        state.game.current.walkActor, answered)
         .headOption.toLeft(())
         .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
           WalkerDice.placeholder, answered))
@@ -112,7 +112,7 @@ object WalkerSimulation:
       : Either[OathViolation, Started] = guarded:
     val tried = mutable.Set.empty[Set[DecisionOptionRef]]
     ProcedureWalker.restrictionViolations(tree, powers, state,
-      state.game.current.turn.activePlayer)
+      state.game.current.walkActor)
       .headOption.toLeft(())
       .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
         WalkerDice.placeholder))
@@ -197,7 +197,7 @@ object WalkerSimulation:
       : Either[OathViolation, Vector[PreviewedOption]] =
     guarded:
       ProcedureWalker.restrictionViolations(tree, powers, state,
-        state.game.current.turn.activePlayer, answered)
+        state.game.current.walkActor, answered)
         .headOption.toLeft(())
         .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
           WalkerDice.placeholder, answered))

@@ -8,9 +8,10 @@ import oathdigital.model.{Answered, CampaignPlanOffer, CardId, CoreOperation, De
   */
 final case class PowerCtx(
     state: ReadyGame,
-    /** The player whose procedure is running -- the traveller, the recoverer,
-      * the taker. Not the power's activator (only the active player selects
-      * powers) and not a parked decision's owner, which a contribution hooked
+    /** The player whose procedure is running: the walk's actor
+      * (`CurrentGameState.walkActor`), the traveller, the recoverer, the
+      * attacker. Off turn for a queued walk whose entry names another
+      * player. Not a parked decision's owner, which a contribution hooked
       * on a `Decide` reads from `operation`.
       */
     activePlayer: PlayerId,

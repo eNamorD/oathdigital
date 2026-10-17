@@ -81,7 +81,7 @@ object ProcedureWalker:
       dice: WalkerDice = WalkerDice.unavailable,
       seed: Vector[Answered] = Vector.empty)
       : Either[OathViolation, WalkerOutcome] =
-    val activePlayer = state.game.current.turn.activePlayer
+    val activePlayer = state.game.current.walkActor
     val answered = pending.fold(seed)(_.answered)
     val cursor: Option[Vector[String]] = pending.map(_.at)
     // The stored pending tree is navigation state passed by parameter; a
@@ -115,7 +115,7 @@ object ProcedureWalker:
       : Either[OathViolation, WalkerOutcome] =
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered,
+      state.game.current.walkActor, pending.answered,
       powers.withAnswers(pending.answered), dice,
       state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
@@ -141,7 +141,7 @@ object ProcedureWalker:
       : Either[OathViolation, WalkerOutcome] =
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered,
+      state.game.current.walkActor, pending.answered,
       powers.withAnswers(pending.answered), dice,
       state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), AnswerResume(answer), WalkerHooks.none)
@@ -211,8 +211,8 @@ object ProcedureWalker:
     openDecisions(state, action, pending, powers, probing).headOption
 
   /** Who a parked position waits on, as one player: a parked `Decide`'s
-    * primary owner, read off the rebuilt and transformed node, or the active
-    * player for a parked `Roll`.
+    * primary owner, read off the rebuilt and transformed node, or the walk's
+    * actor for a parked `Roll`.
     * Never stored -- a power that changes an owner changes this answer on the
     * next command, and authorization and projection both read it (Task 5).
     *
@@ -223,10 +223,10 @@ object ProcedureWalker:
       powers: WalkerPowers): Option[PlayerId] =
     parkedDecide(state, action, pending, powers, probing = false).map(_.owner)
       .orElse(parkedRoll(state, action, pending, powers).map(_ =>
-        state.game.current.turn.activePlayer))
+        state.game.current.walkActor))
 
   /** Everyone who may answer the parked position: the owners and co-owners of
-    * its open decisions, or the active player for a parked `Roll`. Skips the
+    * its open decisions, or the walk's actor for a parked `Roll`. Skips the
     * restriction look-ahead for the same reason [[awaitedPlayer]] does: an
     * owner set never depends on which options are hidden.
     */
@@ -235,7 +235,7 @@ object ProcedureWalker:
     val open = openDecisions(state, action, pending, powers, probing = false)
     if open.nonEmpty then open.flatMap(_.owners).toSet
     else parkedRoll(state, action, pending, powers)
-      .map(_ => Set(state.game.current.turn.activePlayer)).getOrElse(Set.empty)
+      .map(_ => Set(state.game.current.walkActor)).getOrElse(Set.empty)
 
   // --------------------------------------------------------------------------
   // Walking core
@@ -605,7 +605,7 @@ object ProcedureWalker:
   private[walker] def narrowParked(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers, decide: Decide): Decide =
     val ctx = WalkCtx(strip(state), Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered,
+      state.game.current.walkActor, pending.answered,
       powers.withAnswers(pending.answered), WalkerDice.placeholder,
       state.game.current.walkerProcedure, action)
     narrowAt(decide, ctx, pending.at).toOption.flatten.getOrElse(decide)

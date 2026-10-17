@@ -61,10 +61,10 @@ private[gameplay] trait OathRulesWalker:
       procedure: StartableRef, requester: PlayerId,
       startArgs: Vector[DecisionOptionRef])
       : Either[OathViolation, OathTransition] =
-    val activePlayer = ready.game.current.turn.activePlayer
+    val activePlayer = ready.game.current.walkActor
     def run =
       for
-        _ <- requireActivePlayer(ready, requester)
+        _ <- requireWalkActor(ready, requester)
         powers = walkerPowers
         tree <- buildWalker(procedure, ready, activePlayer, startArgs,
           starting = true)
@@ -109,7 +109,7 @@ private[gameplay] trait OathRulesWalker:
         Left(InvalidEventOrder(s"cannot start ${procedure.key}: another " +
           "procedure is already pending"))
       case Ready(ready) =>
-        val activePlayer = ready.game.current.turn.activePlayer
+        val activePlayer = ready.game.current.walkActor
         val powers = walkerPowers
         for
           tree <- buildWalker(procedure, ready, activePlayer, Vector.empty,
@@ -178,7 +178,7 @@ private[gameplay] trait OathRulesWalker:
         val recorded = Answered(decisionId, answer, by = requester)
         walkerCall(ProcedureWalker.resolve(ready, tree, pending, recorded,
           powers, walkerDice)).flatMap(outcome => checkRestrictions(tree,
-          powers, ready, ready.game.current.turn.activePlayer,
+          powers, ready, ready.game.current.walkActor,
           pending.answered :+ recorded).map(_ => outcome))
           .flatMap(walkerTransition(state, procedure, tree, _, powers,
             startArgs, ready.game.current.walkerStartFacts))
@@ -233,15 +233,15 @@ private[gameplay] trait OathRulesWalker:
   /** Validates and derives the action tree once, then asks the application for
     * exactly the parked pool's authoritative number of faces.
     *
-    * `requester` is bound by the transport and must be the active player. A
-    * roll park is always the active player's, so that check needs no tree and
+    * `requester` is bound by the transport and must be the walk's actor. A
+    * roll park is always the walk actor's, so that check needs no tree and
     * runs before the rebuild, whose own failures (a restriction, a moved
     * position) would otherwise answer an intruder first.
     */
   def rollWalkerPrepared(state: OathState, requester: PlayerId, pool: PoolKey)(
       prepareFaces: Int => Either[OathViolation, Vector[DieFace]])
       : Either[OathViolation, OathTransition] = (state match {
-      case Ready(ready) => requireActivePlayer(ready, requester)
+      case Ready(ready) => requireWalkActor(ready, requester)
       case _ => Right(())
     }).flatMap(_ => resumeWalker(state) {
       case (ready, procedure, tree, pending, powers, startArgs) =>
@@ -259,15 +259,16 @@ private[gameplay] trait OathRulesWalker:
       yield transition
     })
 
-  /** Rejects a requester who is not the active player. Starting a procedure
-    * and rolling at its park are the active player's alone, so neither check
-    * needs the tree.
+  /** Rejects a requester who is not the walk's actor: the turn's player,
+    * or a dequeued entry's actor (catalog batch 8, slice 14, ruling 2).
+    * Starting a procedure and rolling at its park are the actor's alone,
+    * so neither check needs the tree. A menu start has no entry until the
+    * menu queues it, so it still requires the turn's player.
     */
-  private def requireActivePlayer(ready: ReadyGame, requester: PlayerId)
+  private def requireWalkActor(ready: ReadyGame, requester: PlayerId)
       : Either[OathViolation, Unit] =
-    val activePlayer = ready.game.current.turn.activePlayer
-    Either.cond(requester == activePlayer, (),
-      WrongPlayer(activePlayer, requester))
+    val actor = ready.game.current.walkActor
+    Either.cond(requester == actor, (), WrongPlayer(actor, requester))
 
   private def resumeWalker(state: OathState)(run: (ReadyGame,
       ProcedureRef, Operation, PendingTree, WalkerPowers,
@@ -291,7 +292,7 @@ private[gameplay] trait OathRulesWalker:
         // No phase gate: only resume commands are accepted while a walker is
         // pending, so nothing else can change the phase, and the procedure's
         // own build passed its phase gates at start.
-        activePlayer = ready.game.current.turn.activePlayer
+        activePlayer = ready.game.current.walkActor
         startArgs = ready.game.current.walkerStartArgs
         tree <- buildWalker(procedure, ready, activePlayer, startArgs,
           starting = false)

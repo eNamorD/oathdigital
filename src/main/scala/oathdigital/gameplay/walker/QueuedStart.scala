@@ -11,10 +11,8 @@ import oathdigital.model._
   * persisted. An option shown available is a start the driver accepts.
   *
   * It builds through the production registry, so a suite that injects its
-  * own tree source into `OathRules` does not reach it. It does not check that
-  * the entry's actor is the active player, which the start does: until an
-  * off-turn actor exists (Sneak Attack), every entry's actor is the active
-  * player.
+  * own tree source into `OathRules` does not reach it. The simulated walk is
+  * the entry's actor's, since `startingFrom` sets `walkerEntry`.
   */
 object QueuedStart:
   /** What a start costs its actor by its cheapest way, `least`, and by every

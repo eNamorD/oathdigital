@@ -20,7 +20,8 @@ final case class Answered(decisionId: String, answer: DecisionAnswer,
   *
   * Pending stores ONLY a pointer into the action: the stable node-id chain
   * `at` and the decisions already `answered`. The player the procedure
-  * belongs to is always `turn.activePlayer`; nothing a walk does changes it.
+  * belongs to is `CurrentGameState.walkActor`: the entry's actor of a queued
+  * walk, else `turn.activePlayer`. Nothing a walk does changes it.
   * The action tree is derived per command and never stored in state. The walker
   * context is rebuilt from state at each command — so this type stays a pure
   * model value with no dependency on the gameplay operation ADT (see the

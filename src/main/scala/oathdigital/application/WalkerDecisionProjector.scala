@@ -61,7 +61,7 @@ private[application] final class WalkerDecisionProjector(
       pending <- context.current.walkerPending
       procedure <- context.current.walkerProcedure
       tree <- rebuild(context.ready, procedure,
-        context.current.turn.activePlayer,
+        context.current.walkActor,
         context.current.walkerStartArgs).toOption
       // The modifiers picked in the walk join, so their warnings show.
       powers = WalkerPowers.selected(walkerPowerCatalog, Vector.empty)
@@ -83,7 +83,7 @@ private[application] final class WalkerDecisionProjector(
     for
       pending <- current.walkerPending
       procedure <- current.walkerProcedure
-      tree <- rebuild(ready, procedure, current.turn.activePlayer,
+      tree <- rebuild(ready, procedure, current.walkActor,
         current.walkerStartArgs).toOption
       decide <- ProcedureWalker.parkedDecide(ready, tree, pending,
         WalkerPowers.selected(walkerPowerCatalog, Vector.empty),

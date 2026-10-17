@@ -524,7 +524,7 @@ private[walker] object WalkerPowerGather:
     for
       index <- segment.toIntOption if index >= 0 && index < triggers.size
       tree <- triggers(index).onExecuted(ExecutedTriggers.batch(
-        state.game.current.turn.activePlayer, state))
+        state.game.current.walkActor, state))
       found <- resolveAt(state, pending, powers, tree, rest,
         consumed :+ segment, Set.empty)
     yield found
@@ -542,7 +542,7 @@ private[walker] object WalkerPowerGather:
   private def foldedChildrenAt(state: ReadyGame, pending: PendingTree,
       powers: WalkerPowers, node: Operation, path: Vector[String],
       gathered: Set[PowerWindow]): (Vector[Operation], Set[PowerWindow]) =
-    val activePlayer = state.game.current.turn.activePlayer
+    val activePlayer = state.game.current.walkActor
     node match
       case branch: Branch =>
         val selected = branch.select(state, pending.copy(at = path))
