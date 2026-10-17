@@ -39,6 +39,13 @@ object MinorActionProcedures:
     NotePart.Arg(1)))
   def peekKeys: Vector[NoteKey] = peekNotes.declared
 
+  private val revealNotes =
+    NoteSet(ProcedureNotes.id(ActionRef.RevealOwnedRelic))
+  /** "Revealed Sticky Fire". */
+  val revealed: NoteKey = revealNotes.key("revealed", Vector(
+    NotePart.Text("Revealed "), NotePart.Arg(0)))
+  def revealKeys: Vector[NoteKey] = revealNotes.declared
+
   val buildPeek: Build = (_, ready, actor, args) =>
     for
       _ <- started(ready, actor, args, ActionRef.PeekSiteRelics)
@@ -105,7 +112,30 @@ object MinorActionProcedures:
         case Answered(`relicDecisionId`, DecisionAnswer.ChooseOneAnswer(
             DecisionOptionRef.Relic(id)), _) =>
           Reveal(id, Location.PlayArea(actor))
-      }.toVector), required = true)))
+      }.toVector), required = true),
+      // After the reveal, so `previous` is the step that turned the relic:
+      // a reveal a power removed turns nothing and writes no line, as the
+      // rule this replaced posted none without a recorded `Reveal`. This
+      // tree carries no window, so no power can append a leaf between the
+      // reveal and the note and leave it reading someone else's step.
+      Note(ProcedureNotes.id(ActionRef.RevealOwnedRelic),
+        revealedNote(actor))))
+
+  private def revealedNote(actor: PlayerId)(states: NoteStates)
+      : Option[PowerNote] = for
+    (before, after) <- states.previous
+    relic <- states.answered.collectFirst {
+      case Answered(`relicDecisionId`, DecisionAnswer.ChooseOneAnswer(
+          DecisionOptionRef.Relic(id)), _) => id
+    }
+    if faceup(after, actor, relic) && !faceup(before, actor, relic)
+  yield revealed.sourceless(NoteArg.Card(relic))
+
+  private def faceup(ready: ReadyGame, actor: PlayerId,
+      relic: RelicId): Boolean =
+    ready.game.current.players.find(_.player == actor).exists(
+      _.relics.exists(held => held.id == relic &&
+        held.orientation == Orientation.FaceUp))
 
   /** The way, then how many, then the move. */
   private def moveTree(ready: ReadyGame, actor: PlayerId): Operation =

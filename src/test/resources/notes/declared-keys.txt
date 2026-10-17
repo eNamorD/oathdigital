@@ -384,6 +384,7 @@ procedure.muster mustered = Mustered {0} {0?warband|warbands} with {1}
 procedure.peek-site-relics peeked = Peeked at {0} at {1}
 procedure.place-banner-resource placed-favor = Placed {0} favor on {1}
 procedure.place-banner-resource placed-secrets = Placed {0} {0?secret|secrets} on {1}
+procedure.reveal-owned-relic revealed = Revealed {0}
 procedure.take-wealth took-favor = Took 1 favor from {0}
 procedure.take-wealth took-secret = Took 1 secret from {0}
 procedure.travel travelled = Travelled to {0}

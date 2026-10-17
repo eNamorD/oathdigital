@@ -104,15 +104,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       viewer: Option[PlayerId]): Vector[Posted] =
     campaigns.lines(journal, run, at, viewer)
 
-  def revealLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    journal.ops(at).collect {
-      case OpStep(Reveal(relic, Location.PlayArea(owner)), before, after)
-          if owner == run.actor =>
-        action(Text("Revealed ") +:
-          words.one(words.card(relic, before, after, viewer)))
-    }
-
   def warbandLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     journal.ops(at).collect {

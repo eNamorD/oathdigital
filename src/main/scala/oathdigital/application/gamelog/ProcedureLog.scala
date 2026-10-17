@@ -204,8 +204,10 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       narratedPrefixes = Vector("negotiation."))
     case ActionRef.PeekSiteRelics => ProcedureLog(tag = None,
       lines = ActionLineSource.Notes())
+    // The relic pick keeps its own "Chose ..." line: the reveal line names
+    // the relic, but the pick is a question the reader saw asked.
     case ActionRef.RevealOwnedRelic => ProcedureLog(tag = None,
-      lines = ActionLineSource.Rule(actions.revealLines))
+      lines = ActionLineSource.Notes())
     case ActionRef.MoveWarbands => ProcedureLog(tag = None,
       lines = ActionLineSource.Rule(actions.warbandLines))
     // A power that plays a card as if searched (Oracle) posts where the card

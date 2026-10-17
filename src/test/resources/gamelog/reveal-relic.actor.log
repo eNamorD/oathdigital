@@ -5,4 +5,4 @@
 7.0 roll 1 recover@4 | Rolled [dice:defense two-shields two-shields|two shields, two shields]
 11.0 action 1 recover@4 | Recovered [card:R01|Sticky Fire] at [site:site:broken-peaks|Broken Peaks]
 22.0 decision 1 reveal-owned-relic@19 | Chose [card:R01|Sticky Fire]
-23.0 action 1 reveal-owned-relic@19 | Revealed [card:R01|Sticky Fire]
+24.0 action 1 reveal-owned-relic@19 | Revealed [card:R01|Sticky Fire]

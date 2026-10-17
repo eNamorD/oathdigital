@@ -70,4 +70,5 @@ object ProcedureNotes:
       case ActionRef.PlaceBannerResource =>
         PlaceBannerResourceProcedure.noteKeys
       case ActionRef.PeekSiteRelics => MinorActionProcedures.peekKeys
+      case ActionRef.RevealOwnedRelic => MinorActionProcedures.revealKeys
       case _ => Vector.empty

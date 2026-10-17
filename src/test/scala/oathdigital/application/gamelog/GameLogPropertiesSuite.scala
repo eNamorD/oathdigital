@@ -232,7 +232,8 @@ class GameLogPropertiesSuite extends munit.FunSuite:
       logs.of(_).lines.isInstanceOf[ActionLineSource.Notes])
     assertEquals(noting.map(_.key),
       Vector("forge", "travel", "take-wealth",
-        "muster", "challenge", "place-banner-resource", "peek-site-relics"))
+        "muster", "challenge", "place-banner-resource", "peek-site-relics",
+        "reveal-owned-relic"))
     // A procedure can be marked `Notes` while declaring none, and then its
     // line vanishes with nothing said: `NoteCheck` refuses a note whose key
     // is undeclared. Tie the two together here, since nothing else does.
