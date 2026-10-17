@@ -118,9 +118,14 @@ class CampaignSetupSuite extends munit.FunSuite:
     assertEquals(CampaignSetup.legalKinds(dequeued, b.actor),
       Vector(CampaignKind.Raid))
 
-  test("a menu Campaign has no queued defender"):
+  test("a menu Campaign cannot declare a defender"):
     val b = withEnemyAtOrigin(board(warbands = 3, supply = 7))
     assertEquals(CampaignSetup.queuedDefender(b.ready, b.actor), None)
+    val declared = CampaignFixture.rules().startWalker(
+      OathState.Ready(b.ready), ActionRef.Campaign, b.actor,
+      Vector(DecisionOptionRef.Player(b.rival)))
+    assert(declared.left.exists(_.toString.contains(
+      "but a power's queued origin or defender")), declared)
 
   test("the kinds against a player, with no Campaign under way"):
     val b = withEnemyAtOrigin(board(warbands = 3, supply = 7))

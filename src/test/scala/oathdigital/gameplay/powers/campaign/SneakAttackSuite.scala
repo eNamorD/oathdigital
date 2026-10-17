@@ -34,7 +34,7 @@ class SneakAttackSuite extends munit.FunSuite:
       Vector(DecisionOptionRef.Player(attacker)), Some(source),
       QueueKind.Offer)
 
-  private def ownedSecondWind(b: Board, action: ActionRef): QueuedProcedure =
+  private def p1SecondWindOffer(b: Board, action: ActionRef): QueuedProcedure =
     QueuedProcedure(b.actor, action, Vector.empty,
       Some(PowerSourceRef.Card(secondWind)), QueueKind.Offer)
 
@@ -91,11 +91,18 @@ class SneakAttackSuite extends munit.FunSuite:
     assertEquals(FollowUpPlay.offered(won.state),
       Some(sneakOffer(b.rival, b.actor)))
     assertEquals(ready(won.state).game.current.queue,
-      Vector(ownedSecondWind(b, ActionRef.Travel),
-        ownedSecondWind(b, ActionRef.Campaign)))
+      Vector(p1SecondWindOffer(b, ActionRef.Travel),
+        p1SecondWindOffer(b, ActionRef.Campaign)))
     val skipped = accepted(FollowUpPlay.skipped(game, won.state, b.rival))
     assertEquals(FollowUpPlay.offered(skipped.state),
-      Some(ownedSecondWind(b, ActionRef.Travel)))
+      Some(p1SecondWindOffer(b, ActionRef.Travel)))
+    // Taken, the Sneak Attack Campaign runs first, and Second Wind's offers
+    // wait behind it.
+    val taken = accepted(FollowUpPlay.taken(game, won.state, b.rival))
+    assertEquals(ready(taken.state).game.current.walkActor, b.rival)
+    assertEquals(ready(taken.state).game.current.queue,
+      Vector(p1SecondWindOffer(b, ActionRef.Travel),
+        p1SecondWindOffer(b, ActionRef.Campaign)))
 
   test("no offer when the holder cannot campaign against the attacker"):
     // The rival stands apart from p1, at a site nobody rules.
@@ -164,13 +171,17 @@ class SneakAttackSuite extends munit.FunSuite:
     // p3 holds Vow of Union and rules Broken Peaks, in their region; the
     // rival holds Sneak Attack at the origin. p3 moves Broken Peaks'
     // warbands to their board, and p1 then skips the Campaign. The walk
-    // ends before the root's trailing Branch, so nothing is offered.
+    // ends before the root's trailing Branch, so nothing is offered, even
+    // though an earlier Campaign of p1's left its result behind.
     val brokenPeaks = CatalogNames.site("Broken Peaks")
     val base = rivalHoldsSneakAttackAtTheOrigin
+    val game = rules(winningDice)
+    val earlier = commit(game, base, 4).finishPlanWindows.result
+    assertEquals(earlier.attacker, base.actor)
     val b = on(withAdviserFor(base, base.bystander,
         CatalogNames.denizen("Vow of Union"), Orientation.FaceUp))(
-      _.warbandsAt(brokenPeaks, base.bystander, 2))
-    val game = rules(winningDice)
+      _.warbandsAt(brokenPeaks, base.bystander, 2).update(_.updateCurrent(
+        _.copy(lastCampaignResult = Some(earlier)))))
     val started = game.startWalker(OathState.Ready(b.ready),
       ActionRef.Campaign, b.actor).fold(e => fail(s"no start: $e"), identity)
     val moved = Run(game, started, started.events)
@@ -180,7 +191,8 @@ class SneakAttackSuite extends munit.FunSuite:
           DistributeAmount(DecisionOptionRef.Site(brokenPeaks), 0))))
     val skipped = moved.pick(b.actor, CampaignIds.kind, CampaignIds.skip)
     assertEquals(FollowUpPlay.offered(skipped.state), None)
-    assertEquals(ready(skipped.state).game.current.lastCampaignResult, None)
+    assertEquals(ready(skipped.state).game.current.lastCampaignResult,
+      Some(earlier))
 
   test("a replayed Sneak Attack Campaign reaches the same state"):
     val b = rivalHoldsSneakAttackAtTheOrigin

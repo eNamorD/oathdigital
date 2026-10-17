@@ -20,6 +20,7 @@ class GameLogOffTurnSuite extends munit.FunSuite:
   test("an off-turn Campaign's lines omit its attacker"):
     val all = lines(sneakAttackTaken)
     val tag = all.indexWhere(_.contains(" · Campaign · Sneak Attack"))
+    assert(tag >= 0, all)
     val after = all.drop(tag + 1)
     assert(after.exists(_.startsWith("Raid against ")), after)
     assert(!after.exists(_.startsWith(playerLabel(p2))), after)
