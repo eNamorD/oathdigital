@@ -141,10 +141,25 @@ object PhasePowerProcedure:
       tree <- power.build(ready, player, source, starts)
     yield assemble(catalog, power, player, found, tree)
 
-  /** The driver's start check, for a power that queues a procedure. */
+  /** The driver's start check, for a power that queues a procedure. One
+    * build asks it of the same state again and again: the use's check, then
+    * every walk of the tree, which resolves the power's question once for
+    * the restriction pass, once as it walks and again on each read of the
+    * park. A start check is a pure function of the state its start runs
+    * on, which names the entry, so each answer is kept for the life of the
+    * tree, keyed by that state by value, as `SearchMemo` keys a state. Two
+    * states that differ only in the open walk share it. */
   private def startsFor(catalog: ExecutableCatalog, phasePowers: PhasePowers,
-      walkerPowers: WalkerPowers): QueuedStarts = (ready, entry) =>
-    QueuedStart.refusal(catalog, ready, entry, walkerPowers, phasePowers)
+      walkerPowers: WalkerPowers): QueuedStarts =
+    val known = new java.util.concurrent.ConcurrentHashMap[ReadyGame,
+      Option[OathViolation]]
+    (ready, entry) =>
+      val key = QueuedStart.startingFrom(ready, entry)
+      Option(known.get(key)).getOrElse:
+        val found = QueuedStart.refusal(catalog, ready, entry, walkerPowers,
+          phasePowers)
+        known.put(key, found)
+        found
 
   private def assemble(catalog: ExecutableCatalog, power: PhasePower,
       player: PlayerId, source: PowerSourceRef, tree: Operation): Operation =

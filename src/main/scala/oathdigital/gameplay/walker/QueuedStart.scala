@@ -48,13 +48,16 @@ object QueuedStart:
   /** "Needs 2 Supply; you have 1", or the same for favor or secrets, when
     * the start would open with the actor's Supply raised to the track's
     * maximum, then also their favor and secrets raised: a refusal carries no
-    * amount. */
+    * amount. It is asked of a start `priced` refused, so a raise that
+    * changes nothing, as for an actor whose Supply is full, is refused
+    * again without pricing it. */
   def needs(catalog: ExecutableCatalog, ready: ReadyGame,
       entry: QueuedProcedure, powers: WalkerPowers,
       phasePowers: PhasePowers): Option[String] =
-    def lifted(resources: Boolean) = priced(catalog,
-      PricedOptions.lift(ready, entry.actor, resources), entry, powers,
-      phasePowers).toOption
+    def lifted(resources: Boolean) =
+      val state = PricedOptions.lift(ready, entry.actor, resources)
+      Option.when(state != ready)(priced(catalog, state, entry, powers,
+        phasePowers).toOption).flatten
     for
       board <- ready.game.current.players.find(_.player == entry.actor)
         .map(_.board)
