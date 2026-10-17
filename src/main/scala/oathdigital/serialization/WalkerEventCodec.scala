@@ -147,6 +147,25 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case NoteArg.Goal(goal) => ujson.Obj("kind" -> "goal", "goal" -> goal.key)
     case NoteArg.Dice(faces) => ujson.Obj("kind" -> "dice",
       "faces" -> ujson.Arr.from(faces.map(encodeDieFace)))
+    case NoteArg.Players(ids) => ujson.Obj("kind" -> "players",
+      "playerIds" -> ujson.Arr.from(ids.map(_.value)))
+    case NoteArg.Clauses(parts) => ujson.Obj("kind" -> "clauses",
+      "clauses" -> ujson.Arr.from(parts.map(encodeNoteClause)))
+    case NoteArg.Placements(entries) => ujson.Obj("kind" -> "placements",
+      "placements" -> ujson.Arr.from(entries.map((count, site) =>
+        ujson.Obj("count" -> count, "siteId" -> site.value))))
+
+  private def encodeNoteClause(clause: NoteClause): ujson.Value = clause match
+    case NoteClause.LostWarbands(count) =>
+      ujson.Obj("kind" -> "lost-warbands", "count" -> count)
+    case NoteClause.BurnedFavor(count) =>
+      ujson.Obj("kind" -> "burned-favor", "count" -> count)
+    case NoteClause.Discarded(ids) => ujson.Obj("kind" -> "discarded",
+      "cards" -> ujson.Arr.from(ids.map(encodeCardId)))
+    case NoteClause.SetAside(ids) => ujson.Obj("kind" -> "set-aside",
+      "cards" -> ujson.Arr.from(ids.map(encodeCardId)))
+    case NoteClause.SentTo(site) =>
+      ujson.Obj("kind" -> "sent-to", "siteId" -> site.value)
 
   private def decodePowerNoted(value: ujson.Value,
       path: String): Either[WireError, OathEvent] = try for
@@ -197,8 +216,36 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case "goal" => OathkeeperGoal.all.find(_.key == value("goal").str)
       .toRight(InvalidValue(s"$path.goal", "unknown Oathkeeper goal"))
       .map(NoteArg.Goal.apply)
+    case "players" => Right(NoteArg.Players(
+      value("playerIds").arr.toVector.map(id => PlayerId(id.str))))
+    case "clauses" => traverse(value("clauses").arr.zipWithIndex.toVector)({
+      case (clause, index) =>
+        decodeNoteClause(clause, s"$path.clauses[$index]") })
+      .map(NoteArg.Clauses.apply)
+    case "placements" =>
+      traverse(value("placements").arr.zipWithIndex.toVector)({
+        case (entry, index) =>
+          decodeCount(entry("count"), s"$path.placements[$index].count")
+            .map(_ -> SiteId(entry("siteId").str)) })
+        .map(NoteArg.Placements.apply)
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown note argument '$other'"))
+
+  private def decodeNoteClause(value: ujson.Value, path: String)
+      : Either[WireError, NoteClause] = value("kind").str match
+    case "lost-warbands" => decodeCount(value("count"), s"$path.count")
+      .map(NoteClause.LostWarbands.apply)
+    case "burned-favor" => decodeCount(value("count"), s"$path.count")
+      .map(NoteClause.BurnedFavor.apply)
+    case "discarded" => traverse(value("cards").arr.zipWithIndex.toVector)({
+      case (card, index) => decodeCardId(card, s"$path.cards[$index]") })
+      .map(NoteClause.Discarded.apply)
+    case "set-aside" => traverse(value("cards").arr.zipWithIndex.toVector)({
+      case (card, index) => decodeCardId(card, s"$path.cards[$index]") })
+      .map(NoteClause.SetAside.apply)
+    case "sent-to" => Right(NoteClause.SentTo(SiteId(value("siteId").str)))
+    case other => Left(InvalidValue(s"$path.kind",
+      s"unknown note clause '$other'"))
 
   private def decodeCount(value: ujson.Value, path: String)
       : Either[WireError, Int] = decodeSignedInt(value, path).flatMap(count =>

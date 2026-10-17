@@ -48,3 +48,16 @@ object NoteText:
     case NoteArg.RegionName(region) => region.toString
     case NoteArg.SuitName(suit) => suit.toString
     case NoteArg.Goal(goal) => OathkeeperGoalChoice.named(goal)
+    case NoteArg.Players(ids) => ids.map(_.value).mkString(", ")
+    case NoteArg.Clauses(parts) => parts.map(clause).mkString(", ")
+    case NoteArg.Placements(entries) => entries.map((count, site) =>
+      s"$count on ${site.value}").mkString(", ")
+
+  private def clause(part: NoteClause): String = part match
+    case NoteClause.LostWarbands(count) => s"lost $count warbands"
+    case NoteClause.BurnedFavor(count) => s"burned $count favor"
+    case NoteClause.Discarded(ids) =>
+      s"discarded ${ids.map(_.value).mkString(", ")}"
+    case NoteClause.SetAside(ids) =>
+      s"set aside ${ids.map(_.value).mkString(", ")}"
+    case NoteClause.SentTo(site) => s"was sent to ${site.value}"

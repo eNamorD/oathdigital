@@ -84,3 +84,40 @@ class PowerNoteWireSuite extends munit.FunSuite:
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
     assertEquals(event.note.source,
       Some(PowerSourceRef.Card(DenizenId("denizen"))))
+
+  test("the players, clauses and placements arguments round trip"):
+    val event = noteEvent(PowerSourceRef.Site(SiteId("s1")),
+      NoteArg.Players(Vector(PlayerId("p1"), PlayerId("p2"))),
+      NoteArg.Players(Vector.empty),
+      NoteArg.Clauses(Vector(NoteClause.LostWarbands(2),
+        NoteClause.BurnedFavor(1),
+        NoteClause.Discarded(Vector(DenizenId("denizen"), RelicId("r1"))),
+        NoteClause.SetAside(Vector(RelicId("r2"))),
+        NoteClause.SentTo(SiteId("s2")))),
+      NoteArg.Placements(Vector(2 -> SiteId("s1"), 1 -> SiteId("s2"))))
+    val encoded = accepted(GameEventWire.encodeEvent("notes", 0, event))
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+
+  test("an unknown note clause is refused"):
+    val event = noteEvent(PowerSourceRef.Site(SiteId("s1")),
+      NoteArg.Clauses(Vector(NoteClause.BurnedFavor(1))))
+    val encoded = ujson.read(accepted(
+      GameEventWire.encodeEvent("notes", 0, event)))
+    encoded("payload")("note")("args")(0)("clauses")(0)("kind") = "weather"
+    assertEquals(GameEventWire.decode(encoded), Left(WireError.InvalidValue(
+      "$.payload.note.args[0].clauses[0].kind", "unknown note clause 'weather'")))
+
+  test("a negative clause or placement count is refused"):
+    def refused(arg: NoteArg, edit: ujson.Value => Unit,
+        path: String): Unit =
+      val encoded = ujson.read(accepted(GameEventWire.encodeEvent("notes", 0,
+        noteEvent(PowerSourceRef.Site(SiteId("s1")), arg))))
+      edit(encoded("payload")("note")("args")(0))
+      assertEquals(GameEventWire.decode(encoded), Left(
+        WireError.InvalidValue(path, "must not be negative")))
+    refused(NoteArg.Clauses(Vector(NoteClause.LostWarbands(2))),
+      arg => arg("clauses")(0)("count") = -1,
+      "$.payload.note.args[0].clauses[0].count")
+    refused(NoteArg.Placements(Vector(2 -> SiteId("s1"))),
+      arg => arg("placements")(0)("count") = -1,
+      "$.payload.note.args[0].placements[0].count")

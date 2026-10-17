@@ -36,6 +36,25 @@ object NoteArg:
   final case class SuitName(suit: Suit) extends NoteArg
   /** An Oathkeeper goal in a sentence, "Protection" or "the People". */
   final case class Goal(goal: OathkeeperGoal) extends NoteArg
+  /** Several players as one phrase, "Blue and Red". */
+  final case class Players(ids: Vector[PlayerId]) extends NoteArg
+  /** Several clauses as one phrase, "lost 2 warbands, burned 1 favor and
+    * was sent to the Mine". The joining is the Game Log's. */
+  final case class Clauses(parts: Vector[NoteClause]) extends NoteArg
+  /** Warbands placed by site, "2 warbands on the Mine and 1 warband on the
+    * Standing Stones". */
+  final case class Placements(entries: Vector[(Int, SiteId)]) extends NoteArg
+
+/** One clause of a joined note sentence (procedures journal their own notes
+  * design, "Campaign"). Closed, because each case is something the rules do
+  * and the Game Log has one way of saying each. */
+sealed trait NoteClause extends Product with Serializable
+object NoteClause:
+  final case class LostWarbands(count: Int) extends NoteClause
+  final case class BurnedFavor(count: Int) extends NoteClause
+  final case class Discarded(ids: Vector[CardId]) extends NoteClause
+  final case class SetAside(ids: Vector[CardId]) extends NoteClause
+  final case class SentTo(site: SiteId) extends NoteClause
 
 /** `key` is the wire spelling. */
 enum NoteUnit(val key: String, val one: String, val many: String):
