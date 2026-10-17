@@ -42,7 +42,8 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private[gamelog] val procedures = new ProcedureLogs(starts, actions)
   private val details = new DetailLines(words, choices, wordings.narrated)
   private val events = new EventLines(words)
-  private val notes = new PowerLines(words, wordings)
+  private val notes = new PowerLines(words, wordings,
+    procedures.noteKind)
   private val takenBack = new TakenBackGroups(words)
   private val consent = new ConsentLines(words, choices,
     ConsentPowers.default(catalog))
@@ -230,7 +231,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
               lines(journal, begun, at, viewer)
             // A procedure's own line arrives as its note, through
             // `PowerLines`, and a silent procedure posts none.
-            case ActionLineSource.Notes | ActionLineSource.Silent(_) =>
+            case ActionLineSource.Notes(_) | ActionLineSource.Silent(_) =>
               Vector.empty) ++
           details.lines(journal, begun, at, viewer, log) ++
           notes.own(journal, begun, at, log.tag.nonEmpty, viewer)

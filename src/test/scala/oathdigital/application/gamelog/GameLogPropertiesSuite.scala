@@ -229,7 +229,7 @@ class GameLogPropertiesSuite extends munit.FunSuite:
     assert(silent.forall(_._2.nonEmpty), s"a silent procedure says why: $silent")
     // Rises by one with every procedure the migration moves.
     val noting = ProcedureRef.all.filter(
-      logs.of(_).lines == ActionLineSource.Notes)
+      logs.of(_).lines.isInstanceOf[ActionLineSource.Notes])
     assertEquals(noting.map(_.key), Vector("muster"))
     // A procedure can be marked `Notes` while declaring none, and then its
     // line vanishes with nothing said: `NoteCheck` refuses a note whose key

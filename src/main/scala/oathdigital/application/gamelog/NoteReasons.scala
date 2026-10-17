@@ -15,8 +15,10 @@ private[application] final class NoteReasons(catalog: ExecutableCatalog,
       presentation: GamePresentationProjector) =
     this(catalog, presentation, NoteWordings.default(catalog))
 
+  // A reason is one sentence, never an entry, so `spoken` is all this asks
+  // of `PowerLines` and no note's kind is ever looked up.
   private val lines = new PowerLines(new LogWords(catalog, presentation),
-    wordings)
+    wordings, NoteKinds.unasked)
 
   def text(power: PowerId, note: PowerNote, ready: ReadyGame,
       viewer: Option[PlayerId]): Option[String] =

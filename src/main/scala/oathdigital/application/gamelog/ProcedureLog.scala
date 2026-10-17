@@ -11,7 +11,7 @@ import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.walker.FollowUpOffer
 import oathdigital.model._
-import oathdigital.protocol.projection.LogSpan
+import oathdigital.protocol.projection.{LogKind, LogSpan}
 
 /** Whether the tag posts at this event: the anchor each procedure declares
   * (log action sections design, "The tag entry"). */
@@ -28,6 +28,15 @@ private[gamelog] type Continued =
 /** The action line a procedure posts, at the event its facts complete. */
 private[gamelog] type ActionLine =
   (LogJournal, Run, Int, Option[PlayerId]) => Vector[Posted]
+
+/** The kind a procedure's note posts at, by the procedure and the note's
+  * key: `ProcedureLogs.noteKind`, as a function, so a caller that only
+  * words a note need not build the whole table. */
+private[gamelog] type NoteKinds = (ProcedureRef, String) => LogKind
+
+private[gamelog] object NoteKinds:
+  /** For a caller that words a note and never posts it, so never asks. */
+  val unasked: NoteKinds = (_, _) => LogKind.Action
 
 private[gamelog] object Anchor:
   /** The run's first event, where a procedure declares no later anchor. */
@@ -46,8 +55,11 @@ private[gamelog] object Continued:
 private[gamelog] enum ActionLineSource:
   /** A rule in `ActionLines` that reads the journal. */
   case Rule(lines: ActionLine)
-  /** The procedure journals its own notes, which `PowerLines` posts. */
-  case Notes
+  /** The procedure journals its own notes, which `PowerLines` posts. Each
+    * posts at `LogKind.Action` unless `kinds` names another for its key: a
+    * kind is layout, so it is declared here and never beside the procedure
+    * (procedures journal their own notes design, ruling 2). */
+  case Notes(kinds: Map[NoteKey, LogKind] = Map.empty)
   /** The procedure posts no action line, and says why. */
   case Silent(reason: String)
 
@@ -87,6 +99,14 @@ private[gamelog] final case class ProcedureLog(
     narrated.exists(_.decision == decisionId) ||
       narratedPrefixes.exists(decisionId.startsWith)
 
+  /** The kind the note named `key` posts at. A procedure whose line is still
+    * a rule answers `Action`, which nothing asks it for. */
+  def noteKind(key: String): LogKind = lines match
+    case ActionLineSource.Notes(kinds) => kinds.collectFirst {
+      case (declared, kind) if declared.name == key => kind
+    }.getOrElse(LogKind.Action)
+    case _ => LogKind.Action
+
 /** Every procedure's log lines, in one table.
   *
   * `rules` is an exhaustive match over the sealed `ProcedureRef` hierarchy,
@@ -106,6 +126,10 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
 
   def of(procedure: ProcedureRef): ProcedureLog =
     entries.getOrElse(procedure, rules(procedure))
+
+  /** The kind `procedure`'s note named `key` posts at, as a `NoteKinds`. */
+  def noteKind(procedure: ProcedureRef, key: String): LogKind =
+    of(procedure).noteKind(key)
 
   private def rules(procedure: ProcedureRef): ProcedureLog = procedure match
     // Card Play's placement line names the card it placed; the follow-up
@@ -144,7 +168,7 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       anchor = starts.picksSettled,
       narratedPrefixes = Vector("travel."))
     case ActionRef.Muster => ProcedureLog(tag = Some("Muster"),
-      lines = ActionLineSource.Notes, anchor = starts.paysCost,
+      lines = ActionLineSource.Notes(), anchor = starts.paysCost,
       narrated = Vector(Told(MusterProcedure.decisionId,
         Some(MusterProcedure.mustered))))
     case ActionRef.Trade => ProcedureLog(tag = Some("Trade"),

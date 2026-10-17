@@ -32,12 +32,22 @@ object ProcedureNotes:
   lazy val all: Vector[(PowerId, Vector[NoteKey])] =
     ProcedureRef.all.map(procedure => id(procedure) -> keys(procedure))
 
-  private lazy val ids: Set[PowerId] = all.map(_._1).toSet
+  /** Every procedure by the id `id` builds for it, so a note's id names the
+    * procedure that wrote it. The Game Log needs the procedure and not just
+    * the fact that one wrote the note, because the kind a note posts at is
+    * declared on the procedure's registry entry.
+    *
+    * `lazy` for the same reason `all` is. */
+  private lazy val byId: Map[PowerId, ProcedureRef] =
+    ProcedureRef.all.map(procedure => id(procedure) -> procedure).toMap
 
   /** Whether `power` is a procedure's id rather than a power's or a game
     * rule's. The Game Log asks this, and not whether a note has a source:
     * the source is optional on a type powers also use. */
-  def writes(power: PowerId): Boolean = ids.contains(power)
+  def writes(power: PowerId): Boolean = byId.contains(power)
+
+  /** The procedure `power` is the id of, if it is one. */
+  def procedureOf(power: PowerId): Option[ProcedureRef] = byId.get(power)
 
   /** The keys a procedure writes. A procedure joins this match with its own
     * `NoteSet` in the slice that migrates it. No exhaustive match here:

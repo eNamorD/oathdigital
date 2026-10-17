@@ -176,8 +176,15 @@ also use, and the first power that wants a sourceless note would otherwise
 silently become an action line. Not `run.procedure` either: a queued
 follow-up can run one procedure's note under another's run.
 
-A procedure note renders at `LogKind.Action`. `PowerLines.kind` grows one
-arm beside the `NoteKey.isUse` arm it already has.
+A procedure note renders at the kind its `ProcedureLog` entry declares,
+`LogKind.Action` by default. **Amended during slice 2**, which found that
+four of its twelve procedures post at another kind — Oathkeeper at
+`Trigger`, Finish Rest at `Delta`, Setup at `Action` and `Decision`,
+Negotiation at `Action` and `Delta` — so a single hardcoded `Action` could
+not satisfy ruling 6. `ActionLineSource.Notes` carries a
+`Map[NoteKey, LogKind]`, which keeps the kind in `application` exactly where
+ruling 2 puts it. `PowerLines` looks the entry up through
+`ProcedureNotes.procedureOf(power)`, not `run.procedure`.
 
 ### Three argument kinds
 
@@ -291,6 +298,18 @@ the note, and a card's label is taken at the state after the note rather
 than after its own operation. The paths the current goldens cover coincide,
 so slice 4 must either show the two agree for Campaign's cards or say which
 one is right.
+
+**A card in a slotted row reads as its back, not its slot.**
+`LogWords.slotted` names a card the viewer cannot identify by its 1-based
+slot — "facedown adviser (slot 2)" — where every other card word says "a
+Denizen". Two callers have it: Negotiation's disclosure and gift lines, and
+`ChoiceWords`' description of a parked adviser choice, which stays.
+`NoteArg.Card` renders through `seen`, so Negotiation's two lines lose the
+slot for a viewer who is not a party to the deal. **Accepted during slice
+2** rather than paid for with a fifth argument kind: both negotiation
+goldens name the card for both viewers, so no golden moves, and the ledger
+carries the question of whether the slot should be every card line's
+fallback or none's.
 
 ## Journals
 

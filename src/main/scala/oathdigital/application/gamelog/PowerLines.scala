@@ -18,7 +18,7 @@ import LogSpan.Text
   * every viewer receives the same entries.
   */
 private[gamelog] final class PowerLines(words: LogWords,
-    wordings: NoteWordings):
+    wordings: NoteWordings, kinds: NoteKinds):
 
   /** The notes of `run` before `at`, held for the start line `at` posts. */
   def held(journal: LogJournal, run: Run, at: Int,
@@ -85,13 +85,19 @@ private[gamelog] final class PowerLines(words: LogWords,
       note: PowerNote): Boolean =
     ProcedureNotes.writes(power) || !repeated(journal, run, at, power, note)
 
-  /** A procedure's own note is its action's line, as is a phase power's
-    * `used` note or a variant of it. */
+  /** A procedure's own note is its action's line at the kind its registry
+    * entry declares, and a phase power's `used` note, or a variant of it, is
+    * its action's line.
+    *
+    * The procedure is read from the note's id, never from `run.procedure`: a
+    * queued follow-up can run one procedure's note under another's run. */
   private def kind(run: Run, power: PowerId, note: PowerNote): LogKind =
-    if ProcedureNotes.writes(power) then LogKind.Action
-    else if NoteKey.isUse(note.key) && run.procedure == ActionRef.UsePower(power)
-    then LogKind.Action
-    else LogKind.Trigger
+    ProcedureNotes.procedureOf(power) match
+      case Some(procedure) => kinds(procedure, note.key)
+      case None =>
+        if NoteKey.isUse(note.key) && run.procedure == ActionRef.UsePower(power)
+        then LogKind.Action
+        else LogKind.Trigger
 
   private def repeated(journal: LogJournal, run: Run, at: Int, power: PowerId,
       note: PowerNote): Boolean =

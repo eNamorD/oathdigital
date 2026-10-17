@@ -60,3 +60,18 @@ work, not the finding.
 ## Fixed
 
 _(none yet)_
+
+## A facedown card's slot, in a negotiation only
+
+`LogWords.slotted` (`LogWords.scala:62-76`) names a card the viewer cannot
+identify by its row and 1-based slot, "facedown adviser (slot 2)". Nothing
+else in the Game Log does: every other card word falls back to "a Denizen".
+Slice 2 migrated Negotiation's two card lines to `NoteArg.Card` and so
+dropped the slot for a viewer outside the deal. `slotted` keeps its other
+caller, `ChoiceWords.scala:34`, which describes a parked adviser choice, so
+the slot survives in one place and not the other.
+
+The question is which fallback is right everywhere. A slot tells a reader
+*which* of a player's facedown advisers moved, which a count does not; it
+also leaks a position the deal's parties may not have shown. Decide it once
+and apply it to every card line, not to one procedure and one choice.
