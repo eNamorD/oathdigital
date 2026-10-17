@@ -74,3 +74,24 @@ class CampaignSetupSuite extends munit.FunSuite:
   test("there is no setup before the force is answered"):
     val b = board(warbands = 5, supply = 7)
     assertEquals(CampaignSetup.setup(b.ready, b.actor, pending()), None)
+
+  test("the declared pair is the only legal kind and its defender"):
+    // Two bandits rule the actor's site and no rival pawn stands there, so
+    // only a Conquest is legal and its defender settles with no answer.
+    val b = board(warbands = 5, supply = 7)
+    assertEquals(CampaignSetup.declaredAt(b.ready, b.actor, pending()),
+      Some((CampaignKind.Conquest, CampaignDefender.Bandits)))
+
+  test("the declared pair follows the answered kind to the raided player"):
+    // The rival joins the actor at the origin, so a Raid is legal too; the
+    // answer picks it and the defender is the pawn standing there.
+    val b = withEnemyAtOrigin(board(warbands = 5, supply = 7))
+    assertEquals(CampaignSetup.declaredAt(b.ready, b.actor, pending(
+      CampaignIds.kind -> ChooseOneAnswer(DecisionOptionRef.Button("raid")))),
+      Some((CampaignKind.Raid, CampaignDefender.Player(b.rival))))
+
+  test("no pair is declared once the attacker skipped"):
+    val b = board(warbands = 5, supply = 7)
+    val skipped = pending(CampaignIds.kind ->
+      ChooseOneAnswer(CampaignIds.skip))
+    assertEquals(CampaignSetup.declaredAt(b.ready, b.actor, skipped), None)

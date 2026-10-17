@@ -1,7 +1,10 @@
 package oathdigital.application.gamelog
 
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked}
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
+  WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer}
 import oathdigital.protocol.projection.{LogKind, LogSpan}
 import oathdigital.testkit.Unwrap.{accepted, present}
 import LogScripts._
@@ -124,6 +127,79 @@ class GameLogPropertiesSuite extends munit.FunSuite:
     val expected = ProcedureRef.all.map(_.key).toSet
     assertEquals(expected -- keys, Set.empty[String])
     assert(keys.exists(_.startsWith("use-power:")), keys)
+
+  /** Every decision a script asks, with the procedure whose run asked it and
+    * the sequence of the step that answered it. A run begins at the first
+    * walker event after the previous completion, as the formatter reads it.
+    * A step voided by an undo still belongs to its procedure, so taking it
+    * in only widens the check. Answers that name no option post no line
+    * either way, so they are left out. */
+  private def asked(script: Script): Vector[(ProcedureRef, String, Long)] =
+    val journal = new LogJournal(script.history.steps)
+    (0 until journal.size).foldLeft((Option.empty[ProcedureRef],
+        Vector.empty[(ProcedureRef, String, Long)])) {
+      case ((current, found), at) =>
+        val procedure = current.orElse(journal.procedureAt(at))
+        val more = (journal.event(at), procedure) match
+          case (WalkerStepRecorded(_, ChoicePayload(id, answer, _), _, _),
+              Some(ref)) if namesAnOption(answer) =>
+            Vector((ref, id, journal.sequence(at)))
+          case _ => Vector.empty
+        val next = journal.event(at) match
+          case _: WalkerCompleted => None
+          case _ => procedure
+        (next, found ++ more)
+    }._2
+
+  /** Whether an answer names an option, as `DetailLines.decision` reads it:
+    * Done and Continue are not choices, and an empty choose-many is not one
+    * either. */
+  private def namesAnOption(answer: DecisionAnswer): Boolean = answer match
+    case ChooseOneAnswer(DecisionQuery.Inspect.Done) => false
+    case ChooseOneAnswer(Decide.Pass) => false
+    case ChooseOneAnswer(_) => true
+    case ChooseManyAnswer(selected) => selected.nonEmpty
+    case _ => false
+
+  /** Nothing a run asks goes untold. A decision either posts its own
+    * "Chose ..." line, or something declares that another line tells its
+    * answer: the procedure's own entry, one of the two cross-cutting
+    * predicates, or a power's note. What this catches is a line that
+    * disappears with nothing claiming to tell it, named by procedure and
+    * decision id rather than as a diff in a golden log.
+    *
+    * The opposite mistake -- an entry that forgets a narration -- posts the
+    * stray "Chose ..." line instead of hiding it, so it is accounted for
+    * here and caught by the tag-order property above and by the golden
+    * logs. This property does not stand in for them. */
+  test("every decision a script asks is told by some line"):
+    val byPowers = NoteWordings.default(catalog).narrated
+    val unaccounted = scripts.flatMap { script =>
+      val decided = formatter.format(script.history.steps, None)
+        .filter(_.kind == LogKind.Decision).map(_.sequence).toSet
+      asked(script).collect {
+        case (procedure, id, sequence) if !decided(sequence) &&
+            !formatter.procedures.of(procedure).narrates(id) &&
+            !DetailLines.crossCutting(id) && !byPowers(id) =>
+          s"${script.name}: ${procedure.key} asks $id, and no line tells it"
+      }
+    }.distinct
+    assertEquals(unaccounted, Vector.empty[String])
+
+  /** A declaration no script exercises is reported, not asserted: an exact
+    * set would make every new script a two-file edit, which is the cost the
+    * registry exists to cut. A decision whose answer names no option, such
+    * as an amount or a partition, is not exercised here however often a
+    * script asks it: no line is posted for it either way. */
+  test("declared narrations no script exercises are reported"):
+    val exercised = scripts.flatMap(asked).map((procedure, id, _) =>
+      procedure -> id).toSet
+    val idle = ProcedureRef.all.flatMap(procedure =>
+      formatter.procedures.of(procedure).narrated.toVector.sorted
+        .filterNot(id => exercised((procedure, id)))
+        .map(id => s"[narration] ${procedure.key} declares $id, and no " +
+          "script answers it with an option that would post a line"))
+    if idle.nonEmpty then println(idle.mkString("\n"))
 
   /** A segment ends at a park or a completion: one command's append. */
   private def closes(event: OathEvent): Boolean = event match
