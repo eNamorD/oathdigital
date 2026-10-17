@@ -61,7 +61,11 @@ These were settled while designing and bind the rest of this document.
    cost change stays in the start line's cost span.
 2. **Every line starts with the source's name.** A line reads
    "{Card}: {Sentence}". The formatter adds the name as a card or site chip.
-   The power writes only the sentence.
+   The power writes only the sentence. Amended by the
+   [procedures journal their own notes design](2026-10-16-procedures-journal-their-notes-design.md):
+   a note's source is optional, and a note with none renders its sentence
+   alone, at `LogKind.Action`. That design also adds three argument kinds to
+   the `NoteArg` table in section 1.
 3. **Blocked actions get no line.** A Restriction that stops a whole action
    before it starts (Vow of Peace's first sentence, the Fortress's Raid-only
    block) leaves the log untouched. Nothing happened. Explaining a missing

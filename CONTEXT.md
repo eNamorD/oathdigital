@@ -75,29 +75,42 @@ _Avoid_: pending selection, staged choice, highlighted site
 ### Note
 
 **Note**:
-One line of the Game Log in which a power says what its own effect did:
-"Warning Signals: Blue redistributed their warbands." It is never text. It
-is a source, a key and typed arguments, so a card it names still passes the
-log's knowledge rule.
+One line of the Game Log in which a power, a game rule or a procedure says
+what its own effect did: "Warning Signals: Blue redistributed their
+warbands.", or "Mustered 2 warbands with Hearth" from the Muster procedure,
+which writes no source. It is never text. It is an optional source, a key
+and typed arguments, so a card it names still passes the log's knowledge
+rule.
 _Avoid_: log message, power text, log entry
 
 **Note key**:
-One line a power can write: its name and the wording that renders it. The
-name is the wire spelling, journaled in `PowerNoted`, so a saved game's
-notes stay readable only while their keys keep their names.
+One line a power, a game rule or a procedure can write: its name and the
+wording that renders it. The name is the wire spelling, journaled in
+`PowerNoted`, so a saved game's notes stay readable only while their keys
+keep their names.
 _Avoid_: note id, message key, line type
 
 **Wording**:
 The sentence a note key renders, as alternating text and argument slots. A
-key carries its own; the Game Log holds no sentence a key does not.
+key carries its own, wherever it is declared: beside a power, beside a game
+rule, or beside a procedure. The Game Log holds no sentence a key does not.
 _Avoid_: template string, note text, format
 
 **Declared set**:
-Every key a power may write. A power owns a key it defines itself, and
-borrows one defined in another object, which it must declare too. A note
-whose key is outside the writing power's declared set has no wording to
-render.
+Every key a power, a game rule or a procedure may write. Each owns a key it
+defines itself, and borrows one defined in another object, which it must
+declare too. A note whose key is outside its writer's declared set has no
+wording to render.
 _Avoid_: key list, note registry, declared keys list
+
+**Note boundary**:
+The line between what a procedure may declare and what the Game Log keeps. A
+procedure declares what it did: a note key, its wording and typed
+arguments, all `model` types. It never names how the line is laid out, so
+not the kind, the depth, the section, the tag's anchor, the placement
+order, covering, or whether a decision is narrated. Those live in
+`application/gamelog`.
+_Avoid_: layer rule, log boundary, gameplay/application split
 
 ### Consent
 

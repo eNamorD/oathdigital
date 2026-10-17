@@ -105,7 +105,10 @@ These were settled while designing and bind the rest of this document.
    re-open the hole this design exists to close, one layer further in.
 3. **The log stays in `application`.** No log vocabulary moves to `gameplay`.
    It would compile and break no import rule, which is what makes it easy to
-   do by accident.
+   do by accident. Amended within its own scope by the
+   [procedures journal their own notes design](2026-10-16-procedures-journal-their-notes-design.md),
+   whose ruling 2 states the line it draws instead. That design is the
+   "separate candidate" this document's "Out of scope" section names.
 4. **Nothing new is journaled.** No new event, no new durable field, no
    replay-time validation. The replay posture decision of 2026-09-24 stands
    untouched.
@@ -295,7 +298,10 @@ Settled with the product owner while designing, in order:
 - Narration is derived from the entries, not moved onto the procedures.
   Moving a `narrated` flag onto a procedure would put log vocabulary into
   `gameplay`; deriving it keeps the concern where it belongs and matches the
-  registry's own construction.
+  registry's own construction. Still true after the
+  [procedures journal their own notes design](2026-10-16-procedures-journal-their-notes-design.md):
+  narration stays on the entry, and pairs each decision with the note key
+  that tells it.
 - The entry holds function references, not rule bodies. A new procedure
   therefore costs two files, the table and the file holding its body, and the
   design claims that rather than a bare "one file".

@@ -260,6 +260,11 @@ place banner resource, use power) do not.
 
 ### Action lines
 
+> For every procedure migrated by the
+> [procedures journal their own notes design](2026-10-16-procedures-journal-their-notes-design.md),
+> the rules below describe where a note is placed, not how a line is
+> inferred. The lines themselves are unchanged.
+
 Posted at the event named in the last column. The subject is omitted under
 the actor's own turn.
 
