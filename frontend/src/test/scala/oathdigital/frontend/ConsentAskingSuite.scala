@@ -153,7 +153,7 @@ class ConsentAskingSuite extends munit.FunSuite:
     assertEquals(choices.map(_.granters),
       Vector(Vector("red"), Vector("blue"), Vector.empty))
     assertEquals(ConsentAsking.question(table, eitherRedOrBlue),
-      "Ask Red or Blue for consent to ignore Toll Roads?")
+      "Ask Red to pay for Toll Roads or Blue to waive it?")
 
   test("an askable option with alternatives asks whom, and sends that " +
       "choice"):

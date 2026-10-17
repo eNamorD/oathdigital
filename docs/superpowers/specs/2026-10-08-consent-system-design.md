@@ -438,6 +438,7 @@ the breach, so there is no special path.
   alternatives, and covers only their keys.
 - **Client.** An askable option with alternatives opens a choice: "Ask
   Blue", "Ask Red", then "Ask both" (or "Ask all" past two), and Cancel.
+  Its question reads "Ask Blue to pay for Toll Roads or Red to waive it?".
   The requester waits with "Waiting for Blue's or Red's consent…" while
   only alternatives are open.
 - **A payer ask** is a player's agreement to pay rather than a ruler's

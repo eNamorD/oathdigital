@@ -17,23 +17,36 @@ private[frontend] object ConsentAsking:
     case Vector(only) => only
     case _ => s"${words.init.mkString(", ")} and ${words.last}"
 
-  /** "Ask Red for consent to ignore Narrow Pass?", or with alternatives,
-    * "Ask Blue or Red for consent to ignore Toll Roads?": the required
-    * granters, then the alternatives joined by "or". A granter asked to pay
-    * reads "Ask Blue to pay for Toll Roads?", after any ask to ignore. */
+  /** "Ask Red for consent to ignore Narrow Pass?". A granter asked to pay
+    * reads "Ask Blue to pay for Toll Roads?", and alternatives are joined
+    * by "or": "Ask Blue to pay for Toll Roads or Red to waive it?" (catalog
+    * batch 8, slice 15). The asks to ignore come first, then the payers,
+    * then the alternatives. */
   def question(value: GameProjection, ask: ConsentAskState): String =
-    val alternatives = ask.alternatives.map(alt => name(value,
-      alt.granterPlayerId))
-    val asked = ask.granterPlayerIds.map(name(value, _)) ++
-      Option.when(alternatives.nonEmpty)(alternatives.mkString(" or "))
-    val powers = (ask.powers ++ ask.alternatives.flatMap(_.powers)).distinct
-    val ignoring = Option.when(asked.nonEmpty)(
-      s"${listed(asked)} for consent to ignore ${listed(powers)}")
-    // "Blue to pay for Toll Roads" (catalog batch 8, slice 15).
+    val ignoring = Option.when(ask.granterPlayerIds.nonEmpty)(
+      s"${listed(ask.granterPlayerIds.map(name(value, _)))} for consent " +
+        s"to ignore ${listed(ask.powers)}")
     val payers = ask.payers.map(payer => name(value, payer.granterPlayerId))
     val paying = Option.when(payers.nonEmpty)(s"${listed(payers)} to pay " +
       s"for ${listed(ask.payers.flatMap(_.powers).distinct)}")
-    s"Ask ${listed(ignoring.toVector ++ paying)}?"
+    val either = Option.when(ask.alternatives.nonEmpty)(
+      eitherOf(value, ask.alternatives))
+    s"Ask ${listed(ignoring.toVector ++ paying ++ either)}?"
+
+  /** "Blue to pay for Toll Roads or Red to waive it": each alternative's
+    * granter and what they are asked, its powers "it" once already named. */
+  private def eitherOf(value: GameProjection,
+      alternatives: Vector[ConsentAlternativeState]): String =
+    val start = (Vector.empty[String], Option.empty[Vector[String]])
+    alternatives.foldLeft(start) {
+      case ((parts, named), alt) =>
+        val powers = if named.contains(alt.powers) then "it"
+          else listed(alt.powers)
+        val verb = if alt.paying then s"to pay for $powers"
+          else s"to waive $powers"
+        (parts :+ s"${name(value, alt.granterPlayerId)} $verb",
+          Some(alt.powers))
+    }._1.mkString(" or ")
 
   /** One way to ask: its button, and the alternatives' granters it sends
     * (empty for every ask). */
