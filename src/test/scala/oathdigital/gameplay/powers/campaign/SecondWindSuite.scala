@@ -1,10 +1,12 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
-import oathdigital.gameplay.FollowUpPlay
+import oathdigital.gameplay.{FollowUpPlay, OathRules}
 import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.{CatalogNames, Look}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -23,6 +25,26 @@ class SecondWindSuite extends munit.FunSuite:
     val base = withEnemyAtOrigin(board(warbands = 5, supply = 7))
     on(withAdviserFor(base, base.actor, card, Orientation.FaceUp))(
       _.secrets(base.actor, faceUp = payments).favor(base.actor, payments))
+
+  /** The rival rules the origin with 2 warbands and holds Second Wind
+    * faceup, with one faceup secret and one favor to pay for it. p1 can
+    * only conquer the rival there. */
+  private def defenderHolding: Board =
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
+      _.secrets(base.rival, faceUp = 1).favor(base.rival, 1))
+
+  private def owedTo(player: PlayerId, action: ActionRef): QueuedProcedure =
+    QueuedProcedure(player, action, Vector.empty,
+      Some(PowerSourceRef.Card(card)), QueueKind.Offer)
+
+  /** p1 attacks with `force`; the rival picks Second Wind as the
+    * defender's plan, then every window is finished. */
+  private def defendedWithSecondWind(game: OathRules, b: Board,
+      force: Int): Run =
+    commit(game, b, force).finishAttackerPlans(b.actor)
+      .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
 
   private def owed(b: Board, action: ActionRef): QueuedProcedure =
     QueuedProcedure(b.actor, action, Vector.empty,
@@ -64,13 +86,52 @@ class SecondWindSuite extends munit.FunSuite:
     assertEquals(Look(ready(chosen.state)).faceUpSecrets(b.actor), 0)
     assertEquals(Look(ready(chosen.state)).favor(b.actor), 0)
 
-  test("a defender is not offered it"):
-    val base = rivalRulesOriginAndHoldsOathkeeper(
-      board(warbands = 5, supply = 7))
-    val b = withAdviserFor(base, base.rival, card, Orientation.FaceUp)
-    val run = commit(rules(winningDice), b, 2)
+  test("a defender is offered it"):
+    val b = defenderHolding
+    val run = commit(rules(losingDice), b, 2).finishAttackerPlans(b.actor)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
-    assert(!run.offered(b.rival).contains(ref))
+    assert(run.offered(b.rival).contains(ref))
+
+  test("a winning defender is owed a Travel, then a Campaign"):
+    val b = defenderHolding
+    val held = defendedWithSecondWind(rules(losingDice), b, 2)
+    assertEquals(held.winner, Some(false))
+    assertEquals(followUps(held), Vector(owedTo(b.rival, ActionRef.Travel),
+      owedTo(b.rival, ActionRef.Campaign)))
+
+  test("a beaten defender is owed nothing"):
+    val b = defenderHolding
+    val beaten = defendedWithSecondWind(rules(winningDice), b, 5)
+    assertEquals(beaten.winner, Some(true))
+    assertEquals(followUps(beaten), Vector.empty)
+
+  test("the defender pays off turn: the secret flips facedown and a " +
+      "favor burns"):
+    val b = defenderHolding
+    val chosen = commit(rules(losingDice), b, 2).finishAttackerPlans(b.actor)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
+    val after = Look(ready(chosen.state))
+    assertEquals(after.faceUpSecrets(b.rival), 0)
+    assertEquals(after.faceDownSecrets(b.rival),
+      Look(b.ready).faceDownSecrets(b.rival) + 1)
+    assertEquals(after.favor(b.rival), 0)
+
+  test("the defender walks the Travel off turn, then is offered the " +
+      "Campaign"):
+    val b = defenderHolding
+    val game = rules(losingDice)
+    val held = defendedWithSecondWind(game, b, 2)
+    val taken = accepted(FollowUpPlay.taken(game, held.state, b.rival))
+    val to = Look(ready(taken.state)).pawn(b.actor)
+    val travelled = accepted(game.resolveWalker(taken.state, b.rival,
+      TravelProcedure.destinationDecisionId,
+      ChooseOneAnswer(DecisionOptionRef.Site(to))))
+    val after = ready(travelled.state)
+    assertEquals(Look(after).pawn(b.rival), to)
+    assertEquals(Look(after).supply(b.rival), Look(b.ready).supply(b.rival))
+    assertEquals(Look(after).active, b.actor)
+    assertEquals(FollowUpPlay.offered(travelled.state),
+      Some(owedTo(b.rival, ActionRef.Campaign)))
 
   test("skipping the Travel still offers the Campaign"):
     val b = holding()
