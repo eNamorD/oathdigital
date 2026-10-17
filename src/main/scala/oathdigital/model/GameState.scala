@@ -110,13 +110,16 @@ object PowerSourceRef:
 
 /** A procedure the walker runs as its own walk once the current one ends
   * (walker-driven game loop design, "The queue"). `actor` owns the walk
-  * (`CurrentGameState.walkActor`), and may be off turn. `startArgs` are what a start would carry. `source` is the power
-  * that queued it, which the Game Log credits; an entry with a source is a
-  * follow-up, whose walk spends no Supply. A `Run` starts at once; an
-  * `Offer` asks its actor first, with Skip. */
+  * (`CurrentGameState.walkActor`), and may be off turn. `startArgs` are what
+  * a start would carry. `source` is the power that queued it, which the
+  * Game Log credits; an entry with a source is a follow-up, whose walk
+  * spends no Supply. `sender` is the player whose power sent `actor` on it
+  * (catalog batch 8, slice 15): a restriction they could waive does not
+  * block the walk. A `Run` starts at once; an `Offer` asks its actor first,
+  * with Skip. */
 final case class QueuedProcedure(actor: PlayerId, procedure: StartableRef,
     startArgs: Vector[DecisionOptionRef], source: Option[PowerSourceRef],
-    kind: QueueKind)
+    kind: QueueKind, sender: Option[PlayerId] = None)
 
 enum QueueKind:
   case Run, Offer

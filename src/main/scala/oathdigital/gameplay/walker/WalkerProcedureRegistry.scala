@@ -18,7 +18,7 @@ import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure
 import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
-import oathdigital.model.{ActionRef, Decide, DecisionOption, DecisionOptionRef, ActionKind, OathViolation, Operation, PendingTree, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
+import oathdigital.model.{ActionRef, Answered, Decide, DecisionOption, DecisionOptionRef, ActionKind, OathViolation, Operation, PendingTree, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions
   * (Task 8; re-keyed by [[oathdigital.model.ProcedureRef]] family at Task 4). Before this,
@@ -567,6 +567,14 @@ object WalkerProcedureRegistry:
   /** How `procedure` prices the options of a parked decision, if it does. */
   def optionPricing(procedure: ProcedureRef): Option[OptionPricing] =
     lookup(procedure, entries).toOption.flatMap(_.optionPricing)
+
+  /** The answers a queued entry's start arguments stand for, by the
+    * procedure the open walk's entry names (catalog batch 8, slice 15):
+    * a queued Travel's destination. */
+  def queuedAnswers(state: ReadyGame): Vector[Answered] =
+    state.game.current.walkerEntry.map(_.procedure) match
+      case Some(ActionRef.Travel) => TravelProcedure.queuedAnswers(state)
+      case _ => Vector.empty
 
   /** The start facts `procedure` derives at a fresh start, empty for one that
     * declares none. */

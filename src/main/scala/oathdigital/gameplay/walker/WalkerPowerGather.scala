@@ -357,14 +357,20 @@ private[walker] object WalkerPowerGather:
   /** Whether a remembered grant drops `power`'s breach (consent design, "One
     * ledger check"): the restriction is waivable, and a decision of this
     * walk was answered with an option its answerer was granted this turn.
-    * Every caller of the tree check passes through here, so the walk, the
-    * search and the previews agree. */
+    * A queued entry's start arguments count as answers, by the procedure
+    * that reads them. A walk sent by the restriction's granter is not
+    * blocked by it (catalog batch 8, slice 15). Every caller of the tree
+    * check passes through here, so the walk, the search and the previews
+    * agree. */
   private def waived(power: PowerId, restriction: Restriction,
       ctx: PowerCtx): Boolean =
     restriction.waiver.exists { waiver =>
       val turn = ConsentTurn.of(ctx.state)
       val granter = waiver.granter(ctx.state)
-      ctx.answered.exists:
+      val sent = granter.exists(by => ctx.state.game.current.walkerEntry
+        .exists(_.sender.contains(by)))
+      sent || (ctx.answered ++ WalkerProcedureRegistry.queuedAnswers(
+          ctx.state)).exists:
         case Answered(decisionId, DecisionAnswer.ChooseOneAnswer(target),
             by) =>
           ctx.state.consent.answer(ConsentKey(power, by, decisionId,
