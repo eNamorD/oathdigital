@@ -37,8 +37,11 @@ final case class TheOldOak private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeGain -> Vector(Transform((ctx, operations) =>
       OperationRewrite.ops(ctx, operations)((_, _) => {
+        // The record comes first: a leaf after the gain would stand
+        // between it and the Trade's own note, which restates the leaf
+        // before it (`TradeProcedure.tradedNote`).
         case gain @ Gain.Secrets(player, _) if player == ctx.activePlayer =>
-          Vector(gain, Defer(TheOldOak.deferred, Vector(gain)))
+          Vector(Defer(TheOldOak.deferred, Vector(gain)), gain)
       }) :+ bonus(ctx.activePlayer))))
 
   /** One more secret, when the Trade's gain was recorded and its source was

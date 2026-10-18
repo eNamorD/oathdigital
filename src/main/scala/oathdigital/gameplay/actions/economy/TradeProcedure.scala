@@ -69,11 +69,14 @@ object TradeProcedure:
     * gain a power removed reads zero.
     *
     * `EconomyTree.afterSource` places this leaf last in the gain window, so
-    * `previous` is the gain. Every `TradeGain` power appends — The Old Oak's
-    * bonus secret, Mounted Library's doubling, Secret Signal's extra favor —
-    * so each lands after this note and the note still reads the Trade's own
-    * gain. A power that prepended would make the note read another
-    * operation's delta, exactly as `EconomyTree` says of Muster.
+    * `previous` is the gain. The Old Oak's bonus secret, Mounted Library's
+    * doubling and Secret Signal's extra favor each land after this note, so
+    * the note still reads the Trade's own gain. All three also record the
+    * gain as it runs, by rewriting it in place: each holds its `Defer`
+    * before the gain for that reason, since a bookkeeping leaf after the
+    * gain would be what this reads instead, and it moves no resource, so
+    * the line would say the Trade gained nothing
+    * (`TradeGainNoteSuite`).
     *
     * A Trade for secrets with no matching adviser requests no gain at all,
     * so the window holds only this note and `previous` is the cost: the

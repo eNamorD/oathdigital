@@ -47,8 +47,9 @@ final case class SecretSignal private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeGain -> Vector(Transform((ctx, operations) =>
       OperationRewrite.ops(ctx, operations)((_, _) => {
+        // The record comes first, for the reason The Old Oak's does.
         case gain @ Gain.Favor(player, _, _) if player == ctx.activePlayer =>
-          Vector(gain, Defer(TradeFavor.key, Vector(gain)))
+          Vector(Defer(TradeFavor.key, Vector(gain)), gain)
       }))),
     PowerWindow.TradeActionEligibility -> Vector(Transform((ctx, children) =>
       children :+ extra(ctx.activePlayer), FoldPhase.Late)))

@@ -134,7 +134,10 @@ private[economy] object EconomyTree:
       // Last in the window, so the note's `previous` is the gain. Every
       // `MusterGain` power appends, so this holds; a power that prepended
       // would make the note read another operation's delta, and nothing
-      // would say so.
+      // would say so. Three `TradeGain` powers rewrite the gain in place
+      // to record it, which puts a second leaf in the gain's position:
+      // each holds its `Defer` before the gain so the gain is still the
+      // last leaf here (`TradeGainNoteSuite`).
       kind.note.toVector.map((id, build) => Note(id, build(_, source))),
       Some(kind.gain)))
 

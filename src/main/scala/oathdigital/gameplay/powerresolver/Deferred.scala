@@ -6,8 +6,12 @@ import oathdigital.model.{Branch, CoreOperation, DeferralKey, Operation,
 /** Reads and resolves the ops a power holds with `Defer` (operation rewrite
   * design, "Deferral"). A power holds an op by matching it with
   * `OperationRewrite.ops` and returning `Defer(key, Vector(op))`, so that it
-  * does not run. It records one by returning `op` and then `Defer(key,
-  * Vector(op))`. A later step resolves what is held, in the same action.
+  * does not run. It records one by returning `Defer(key, Vector(op))` and
+  * then `op`: the record holds the operation itself, not its result, so
+  * either order records the same thing, and recording first leaves the
+  * operation as the last leaf its own node ran — which a `Note` placed
+  * after it restates (`TradeProcedure.tradedNote`). A later step resolves
+  * what is held, in the same action.
   */
 object Deferred:
   /** The ops held under `key`, oldest first. */

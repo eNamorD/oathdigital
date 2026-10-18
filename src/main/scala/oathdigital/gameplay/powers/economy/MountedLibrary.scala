@@ -53,8 +53,9 @@ final case class MountedLibrary private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeGain -> Vector(Transform((ctx, operations) =>
       OperationRewrite.ops(ctx, operations)((_, _) => {
+        // The record comes first, for the reason The Old Oak's does.
         case gain @ Gain.Secrets(player, _) if player == ctx.activePlayer =>
-          Vector(gain, Defer(deferred, Vector(gain)))
+          Vector(Defer(deferred, Vector(gain)), gain)
       }) :+ double(ctx.activePlayer), FoldPhase.Late)),
     PowerWindow.TradeActionEligibility -> Vector(Transform((ctx, children) =>
       children ++ Vector(discard(ctx.activePlayer),
