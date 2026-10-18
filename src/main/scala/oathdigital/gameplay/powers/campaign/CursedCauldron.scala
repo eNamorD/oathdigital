@@ -17,8 +17,9 @@ object CursedCauldronCard extends Relic(RelicId("R02"), "Cursed Cauldron", value
   *
   * Free; the relic must be faceup in its user's play area, so bandits never
   * use it. Once chosen, it counts the kills of its enemy's warbands with the
-  * shared loss counter (`LossRewrite.counted`), in the plans applied after it
-  * and in the losses, the kills Sticky Fire and Shield Wall add there
+  * shared loss counter (`LossRewrite.counted`), in the plans applied after
+  * it, in the skull and sacrifice losses (item 13b), whether or not its user
+  * wins, and in the losses, the kills Sticky Fire and Shield Wall add there
   * included. The count is net:
   *
   *  - a Conquest defender's returned warbands did not die, so they come back
@@ -61,6 +62,10 @@ case object CursedCauldron extends BattlePlan:
 
   override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
     PowerWindow.CampaignPlanApplication -> ((ctx, use, children) =>
+      counted(ctx, use, children, returns = false)),
+    PowerWindow.CampaignSkullLosses -> ((ctx, use, children) =>
+      counted(ctx, use, children, returns = false)),
+    PowerWindow.CampaignSacrificeLosses -> ((ctx, use, children) =>
       counted(ctx, use, children, returns = false)),
     PowerWindow.CampaignLosses -> ((ctx, use, losses) => (for
       user <- use.user

@@ -16,23 +16,27 @@ object CarefulPlansCard extends Denizen(DenizenId("254"), "Careful Plans",
   * roll their defense dice before the attacker rolls their attack dice."
   *
   * One favor is placed onto the card. Its rewrite at the Campaign's root
-  * folds `Late`, chosen or not, and finds the battle's five steps by the
-  * windows of the two result steps: the attack roll, the attack result and
-  * the sacrifice, then the defense roll and the defense result. It puts
-  * them in one `Branch`, so the root keeps the same shape on every fold,
-  * and the branch reads at walk time whether the plan was chosen. When it
-  * was, the defense roll and its result come first, so the sacrifice is
-  * decided with both rolls known. The defense result adds the defender's
-  * force in either order. A root of any other shape is left as it is.
+  * folds `Late`, chosen or not, and finds the battle's seven steps by the
+  * windows of the two result steps: the attack roll, the attack result, the
+  * skull losses, the sacrifice and the sacrifice losses, then the defense
+  * roll and the defense result. It puts them in one `Branch`, so the root
+  * keeps the same shape on every fold, and the branch reads at walk time
+  * whether the plan was chosen. When it was, the defense roll and its
+  * result come first, so the sacrifice is decided with both rolls known.
+  * The skull losses still die right after the attack result, and the
+  * sacrifice right after it is chosen. The defense result adds the
+  * defender's force in either order. A root of any other shape is left as
+  * it is.
   *
   * It writes no line of its own.
   */
 case object CarefulPlans extends BattlePlan:
   val cardId: DenizenId = CarefulPlansCard.id
   val id: PowerId = CarefulPlansCard.power.id
-  /** The attack roll, the attack result and the sacrifice, which come
-    * before the defense roll and its result. */
-  private val AttackSteps = 3
+  /** The attack roll, the attack result, the skull losses, the sacrifice
+    * and the sacrifice losses, which come before the defense roll and its
+    * result. */
+  private val AttackSteps = 5
 
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)

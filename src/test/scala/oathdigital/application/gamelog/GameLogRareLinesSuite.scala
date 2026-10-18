@@ -125,6 +125,23 @@ class GameLogRareLinesSuite extends munit.FunSuite:
     assert(lines.contains("The bandits win!"), lines)
     assert(lines.contains("Lost 2 warbands"), lines)
 
+  test("a defeated attacker's loss line counts only the half killed at the " +
+      "losses"):
+    val result = CampaignResult(actor, CampaignKind.Conquest,
+      CampaignDefender.Bandits, targetSites = Vector(site),
+      raidTargets = Vector.empty, force = 4, attackFaces = Vector.empty,
+      attackScore = 3, skullLosses = 1, sacrificed = 1,
+      defenseFaces = Vector.empty, defenseScore = 6, attackerWins = false)
+    val one = Kill(Piece.Warbands(ForceKind.Exile(lineage(actor)), 1),
+      PositionedLocation(Location.PlayArea(actor)))
+    // The skull and the sacrifice died before the result was recorded.
+    val lines = posted(ActionRef.Campaign, one, one,
+      RecordCampaignResult(result), one)
+    assert(lines.contains("Lost 1 warband"), lines)
+    val spared = posted(ActionRef.Campaign, one, one,
+      RecordCampaignResult(result))
+    assert(!spared.exists(_.startsWith("Lost ")), spared)
+
   test("dice read as their faces' rulebook names, and no dice or mixed dice " +
       "read as nothing"):
     assertEquals(LogWords.dice(Vector(AttackDieFace.HollowSword,

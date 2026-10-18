@@ -45,6 +45,24 @@ class WeepingBannerSuite extends munit.FunSuite:
       facedown + 1)
     assertEquals(said(WeepingBanner, done.events), Vector.empty)
 
+  test("the four warbands die at the attack result, before the defense roll"):
+    val b = defender
+    val done = commit(rules(dice(skulls(4), shields)), b, 4)
+      .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
+    val killed = Kill(Piece.Warbands(
+      ForceKind.Exile(b.player(b.actor).lineage), 4),
+      PositionedLocation(Location.PlayArea(b.actor)))
+    assert(killedBeforeTheDefenseRoll(done.events, killed), done.events)
+
+  test("with an odd force the cap kills every warband at the attack result"):
+    val b = defender
+    val done = commit(rules(dice(skulls(3), shields)), b, 3)
+      .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
+    val killed = Kill(Piece.Warbands(
+      ForceKind.Exile(b.player(b.actor).lineage), 3),
+      PositionedLocation(Location.PlayArea(b.actor)))
+    assert(killedBeforeTheDefenseRoll(done.events, killed), done.events)
+
   test("with an odd force the last warband dies and its skull scores " +
       "nothing"):
     val b = defender

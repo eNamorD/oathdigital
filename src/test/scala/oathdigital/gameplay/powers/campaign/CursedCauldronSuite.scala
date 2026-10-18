@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseAmountAnswer
 import oathdigital.testkit.{CatalogNames, Look}
 
 /** Cursed Cauldron: a victorious user gains a warband per enemy warband that
@@ -50,6 +51,29 @@ class CursedCauldronSuite extends munit.FunSuite:
     assertEquals(done.winner, Some(false))
     assertEquals(Look(done.state).boardWarbands(b.rival), before + 2)
     assertEquals(said(CursedCauldron, done.events), Vector(gained(b.rival, 2)))
+
+  test("a victorious defender gains for the attacker's skull and sacrifice " +
+      "too"):
+    val base = rivalRulesOriginAndHoldsOathkeeper(
+      board(warbands = 5, supply = 7))
+    val b = withRelicFor(base, base.rival, relic)
+    val before = b.player(b.rival).board.warbands
+    // A paid skull and three hollow swords make 3, and a sacrifice 4,
+    // against two double shields and the rival's two warbands at the
+    // origin.
+    val game = rules(dice(AttackDieFace.TwoSwordsSkull +:
+      Vector.fill(3)(AttackDieFace.HollowSword),
+      Vector.fill(2)(DefenseDieFace.TwoShields)))
+    val done = commit(game, b, 4)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
+      .finishDefenderPlans(b.rival)
+      .answer(b.actor, CampaignIds.sacrifice, ChooseAmountAnswer(1))
+      .finishPlanWindows
+    // The skull, the sacrifice and half the two survivors died.
+    assertEquals(done.winner, Some(false))
+    assertEquals(Look(done.state).boardWarbands(b.rival), before + 3)
+    assertEquals(said(CursedCauldron, done.events),
+      Vector(gained(b.rival, 3)))
 
   test("a defeated user gains nothing"):
     val base = board(warbands = 5, supply = 7)

@@ -29,7 +29,13 @@ Sequence(
   defender battle plans                   -- CampaignDefenderBattlePlans
   Roll(campaign.attack, Automatic)        -- CampaignAttackRoll
   CampaignAttackResult                    -- capped attack written as a roll outcome
+  Sequence(CampaignSkullLosses,           -- the skull losses die
+    Decide(campaign.skull-origin-deaths)  -- only with a queued origin and a real split
+    BuildOps(kill))
   Decide(campaign.sacrifice)              -- omitted when nothing survives the skulls
+  Sequence(CampaignSacrificeLosses,       -- the sacrificed warbands die
+    Decide(campaign.sacrifice-origin-deaths)
+    BuildOps(kill))
   Roll(campaign.defense, Automatic)       -- CampaignDefenseRoll
   CampaignDefenseResult                   -- dice score plus the defender's force
   Sequence(CampaignAfterOutcome, RecordCampaignResult)
@@ -38,11 +44,12 @@ Sequence(
     victory: Conquest placement, or Raid transfer and relocation)
 ```
 
-Careful Plans' rewrite at `CampaignActionEligibility` puts the five steps from
+Careful Plans' rewrite at `CampaignActionEligibility` puts the seven steps from
 the attack roll to the defense result in one `Branch`, whether or not the plan
 is in play, so the root keeps one shape on every fold. When the attacker chose
 it, the branch walks the defense roll and its result first; the sacrifice still
-follows the attack roll.
+follows the attack roll, the skull losses still die right after the attack
+result, and the sacrificed warbands right after the sacrifice.
 
 - **Ending early.** The last before-targets step runs `EndWalk` when no kind
   is settled, which ends the walk there: no force, no dice, no result and no
@@ -103,7 +110,7 @@ follows the attack roll.
   attack and the skull loss are drawn beside it as a roll outcome.
 - **Defense and the victor.** The defense roll is automatic. The recorded defense
   is the dice score plus the defender's force (the warbands at every target, or a
-  Raid defender's board), written before any warband dies, so the victor is read
+  Raid defender's board), written before any defender warband dies, so the victor is read
   from recorded outcomes only. Attack after the sacrifice must strictly exceed
   defense.
 - **Result.** `RecordCampaignResult` writes the public `CampaignResult`. It is the
@@ -115,11 +122,17 @@ follows the attack roll.
 
 ## Losses and resolution
 
-Nothing leaves the board before `CampaignLosses`. The attacker loses the skull and
-sacrifice losses, plus half the survivors, rounded down, on a defeat. On a
-victory every warband at every target dies. A player defender keeps half the
-killed force, rounded up, returned from the supply to their board. Losses are
-plain operations in a named window, not a policy registry.
+The attacker's dead die at three moments. The skull losses die in
+`CampaignSkullLosses`, right after the attack result has its final count.
+The sacrificed warbands die in `CampaignSacrificeLosses`, right after the
+sacrifice and before the defense roll. `CampaignLosses` kills half the
+survivors, rounded down, on a defeat, and the defender's dead. With a queued
+origin's warbands in the force, each kill asks its own split question over
+the board and the site as that kill finds them ([catalog batch 8, item
+13b](../superpowers/specs/2026-10-17-campaign-kills-at-their-moment-design.md)).
+On a victory every warband at every target dies. A player defender keeps
+half the killed force, rounded up, returned from the supply to their board.
+Losses are plain operations in named windows, not a policy registry.
 
 **Conquest placement.** `campaign.placement` is a `ChooseAmount` for one target
 and a `Distribute` with `minTotal = 0` and `maxTotal = survivors` for several. Placed

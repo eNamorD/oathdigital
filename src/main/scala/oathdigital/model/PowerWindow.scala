@@ -103,8 +103,15 @@ object PowerWindow:
     val key = "campaign.attack-roll"
   case object CampaignAttackResult extends CampaignWindow:
     val key = "campaign.attack-result"
+  /** The attack's skull losses die, right after the attack result has
+    * its final count (catalog batch 8, item 13b). */
+  case object CampaignSkullLosses extends CampaignWindow:
+    val key = "campaign.skull-losses"
   case object CampaignSacrificeSelection extends CampaignWindow:
     val key = "campaign.sacrifice-selection"
+  /** The sacrificed warbands die, before the defense roll (item 13b). */
+  case object CampaignSacrificeLosses extends CampaignWindow:
+    val key = "campaign.sacrifice-losses"
   case object CampaignDefenseRoll extends CampaignWindow:
     val key = "campaign.defense-roll"
   case object CampaignDefenseResult extends CampaignWindow:

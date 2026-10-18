@@ -8,6 +8,8 @@ import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds,
   CampaignSetup}
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.campaign.PlanDriver.{
+  killedBeforeTheDefenseRoll}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   RollPayload, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
@@ -331,6 +333,19 @@ class CampaignProcedureSuite extends munit.FunSuite:
 
   private def result(state: OathState): CampaignResult =
     present(ready(state).game.current.lastCampaignResult, "a Campaign result")
+
+  /** The size of each kill of `player`'s board warbands in `events`. */
+  private def boardKills(events: Vector[OathEvent], player: PlayerId)
+      : Vector[Int] = ops(events).collect {
+    case Kill(Piece.Warbands(_, count),
+        PositionedLocation(Location.PlayArea(`player`), _, _)) => count
+  }
+
+  /** `count` of `b`'s actor's board warbands, killed. */
+  private def actorBoardKill(b: Board, count: Int): CoreOperation =
+    Kill(Piece.Warbands(ForceKind.Exile(b.player(b.actor).lineage), count),
+      PositionedLocation(Location.PlayArea(b.actor)))
+
   private def isAutomaticRoll(pool: PoolKey)(event: OathEvent): Boolean =
     event match
       case step: WalkerStepRecorded => step.payload match
@@ -356,8 +371,9 @@ class CampaignProcedureSuite extends munit.FunSuite:
       skullLosses = 0, sacrificed = 0, defenseFaces = blanks(b),
       defenseScore = 2, attackerWins = true))
     // The defense score is the origin's 2 bandits; the blank dice add nothing.
-    // The board is untouched until the losses: the bandits are gone, the
-    // committed force is still on p1's board of 5, and nothing is placed yet.
+    // With no skull and no sacrifice, the board is untouched until the
+    // losses: the bandits are gone, the committed force is still on p1's
+    // board of 5, and nothing is placed yet.
     assertEquals(Look(sacrificed.state).boardWarbands(b.actor), 5)
     val placed = resolved(game, sacrificed, CampaignIds.placement,
       ChooseAmountAnswer(3))
@@ -420,6 +436,58 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(parkedDecision(b, start).query,
       DecisionQuery.ChooseAmount(0, 1, Some(CampaignBattle.sacrificeHeading(1)),
         "Sacrifice"))
+
+  test("a skull's warband dies at the attack result, before the sacrifice " +
+      "is asked"):
+    val b = board(warbands = 5, supply = 7)
+    val faces = Vector(AttackDieFace.TwoSwordsSkull, AttackDieFace.OneSword)
+    val game = rules(CampaignFixture.dice(faces, blanks(b)))
+    val start = committed(game, b, 2)
+    parked.assertParked(start.state, ActionRef.Campaign, CampaignIds.sacrifice,
+      b.actor)
+    assertEquals(boardKills(start.events, b.actor), Vector(1))
+    assertEquals(Look(start.state).boardWarbands(b.actor), 4)
+
+  test("a sacrificed warband dies before the defense is rolled"):
+    val b = board(warbands = 5, supply = 7)
+    val game = rules(CampaignFixture.dice(sword(2), blanks(b)))
+    val start = committed(game, b, 2)
+    val won = resolved(game, start, CampaignIds.sacrifice,
+      ChooseAmountAnswer(1))
+    assert(killedBeforeTheDefenseRoll(won.events, actorBoardKill(b, 1)),
+      won.events)
+
+  test("a defeat kills only half the survivors at the losses"):
+    val b = board(warbands = 5, supply = 7)
+    // A paid skull and three hollow swords make 3, against two double
+    // shields and the origin's two bandits.
+    val faces = AttackDieFace.TwoSwordsSkull +:
+      Vector.fill(3)(AttackDieFace.HollowSword)
+    val game = rules(CampaignFixture.dice(faces,
+      Vector.fill(printed(b))(DefenseDieFace.TwoShields)))
+    val start = committed(game, b, 4)
+    assertEquals(Look(start.state).boardWarbands(b.actor), 4)
+    val done = resolved(game, start, CampaignIds.sacrifice,
+      ChooseAmountAnswer(0))
+    assertEquals(result(done.state).attackerWins, false)
+    // Three survive the skull; half of them, rounded down, die.
+    assertEquals(boardKills(done.events, b.actor), Vector(1))
+    assertEquals(Look(done.state).boardWarbands(b.actor), 3)
+
+  test("a victory kills only the skull and the sacrifice"):
+    val b = board(warbands = 5, supply = 7)
+    val faces = Vector(AttackDieFace.TwoSwordsSkull, AttackDieFace.OneSword,
+      AttackDieFace.OneSword)
+    val game = rules(CampaignFixture.dice(faces, blanks(b)))
+    val start = committed(game, b, 3)
+    val won = resolved(game, start, CampaignIds.sacrifice,
+      ChooseAmountAnswer(1))
+    assertEquals(result(won.state).attackerWins, true)
+    parked.assertParked(won.state, ActionRef.Campaign, CampaignIds.placement,
+      b.actor)
+    assertEquals(boardKills(start.events, b.actor), Vector(1))
+    assertEquals(boardKills(won.events, b.actor), Vector(1))
+    assertEquals(Look(won.state).boardWarbands(b.actor), 3)
 
   test("zero force asks no sacrifice, and the attacker loses with nothing to " +
       "kill"):

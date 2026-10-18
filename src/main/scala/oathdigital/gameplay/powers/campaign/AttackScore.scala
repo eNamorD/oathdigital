@@ -43,6 +43,12 @@ final case class AttackChange(ref: DecisionOptionRef, side: CampaignPlanSide,
   * writes first.
   */
 object AttackScore:
+  /** The skull faces the attack counts: each two-swords-and-skull face
+    * rolled, twice with Lancers. */
+  def skullFaces(faces: Vector[AttackDieFace], rules: AttackRules): Int =
+    faces.count(_ == AttackDieFace.TwoSwordsSkull) *
+      (if rules.doubled then 2 else 1)
+
   /** The attack's score and the skulls it loses, in that order. The
     * sacrifice is added later and is never doubled. */
   def of(faces: Vector[AttackDieFace], force: Int, rules: AttackRules)
@@ -50,7 +56,7 @@ object AttackScore:
     val times = if rules.doubled then 2 else 1
     def count(face: AttackDieFace): Int = faces.count(_ == face) * times
     val hollow = count(AttackDieFace.HollowSword)
-    val skulls = count(AttackDieFace.TwoSwordsSkull)
+    val skulls = skullFaces(faces, rules)
     val lost =
       if rules.skullsIgnored then 0
       else math.min(skulls * rules.skullKills, force)

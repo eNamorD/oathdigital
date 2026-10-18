@@ -104,6 +104,45 @@ class GameLogCampaignSuite extends munit.FunSuite:
       .filter(_.startsWith("Attack: "))
     assertEquals(attacks, Vector("Attack: 8"))
 
+  test("the attack line counts the skull faces, and the kills when they " +
+      "differ"):
+    assertEquals(CampaignLines.attack(5, skulls = 0, kills = 0), "Attack: 5")
+    assertEquals(CampaignLines.attack(5, skulls = 1, kills = 1),
+      "Attack: 5 with 1 skull")
+    assertEquals(CampaignLines.attack(6, skulls = 2, kills = 4),
+      "Attack: 6 with 2 skulls, killing 4 warbands")
+    assertEquals(CampaignLines.attack(4, skulls = 4, kills = 2),
+      "Attack: 4 with 4 skulls, killing 2 warbands")
+    // Ignored skulls kill nothing, and the line names none.
+    assertEquals(CampaignLines.attack(8, skulls = 2, kills = 0), "Attack: 8")
+
+  test("two skull faces that kill four warbands read as killing four"):
+    // The attack result's write stands in for Weeping Banner's, under which
+    // each skull kills two.
+    val script = recordedEventsBoard
+    val steps = script.history.steps
+    val faces = Vector[AttackDieFace](AttackDieFace.TwoSwordsSkull,
+      AttackDieFace.TwoSwordsSkull, AttackDieFace.OneSword,
+      AttackDieFace.OneSword)
+    /** The state the attack result starts from, with `faces` rolled. */
+    def attackRolled(state: OathState): OathState = state match
+      case OathState.Ready(ready) => OathState.Ready(
+        ready.updateCurrent(current => current.copy(rollOutcomes =
+          current.rollOutcomes.updated(CampaignIds.attackPool, RollOutcome(
+            CampaignIds.attackPool, faces.size, faces, skulls = 0,
+            score = 0)))))
+      case other => other
+    val tail = Vector[OathEvent](
+      WalkerStepRecorded("attack-result", WalkerStepPayload.DeltaRecorded(
+        DeltaMeaning.OperationApplied("attack")), Vector(
+          ModifyRollOutcome(CampaignIds.attackPool, Some(4), Some(6))),
+        Vector.empty),
+      WalkerCompleted(ActionRef.Campaign))
+    val attacks = texts(formatAppended(script, tail,
+        stateBefore = attackRolled).filter(_.sequence >= steps.size))
+      .filter(_.startsWith("Attack: "))
+    assertEquals(attacks, Vector("Attack: 6 with 2 skulls, killing 4 warbands"))
+
   test("a sacrifice line counts what each warband adds"):
     val script = recordedEventsBoard
     val steps = script.history.steps

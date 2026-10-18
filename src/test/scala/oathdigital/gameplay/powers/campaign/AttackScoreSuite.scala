@@ -101,3 +101,11 @@ class AttackScoreSuite extends munit.FunSuite:
       score = 1 + 4, lost = 3)
     assertScores(faces, 3, chosen(banner, attacker("Outriders")))(
       score = 1 + 4, lost = 0)
+
+  test("the skull faces count each skull rolled, twice when doubled"):
+    val faces = Vector(TwoSwordsSkull, OneSword, TwoSwordsSkull)
+    assertEquals(AttackScore.skullFaces(faces, AttackRules()), 2)
+    assertEquals(AttackScore.skullFaces(faces, AttackRules(doubled = true)),
+      4)
+    assertEquals(AttackScore.skullFaces(faces, AttackRules(skullKills = 2)),
+      2)

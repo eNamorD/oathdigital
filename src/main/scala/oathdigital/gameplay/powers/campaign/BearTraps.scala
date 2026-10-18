@@ -16,10 +16,10 @@ object BearTrapsCard extends Denizen(DenizenId("3"), "Bear Traps", Suit.Order):
   *
   * It is free, so a bandit defender applies it at a site it rules. It
   * removes one attack die and kills one of the attacker's warbands on their
-  * board beyond the committed force, which stays on the board until the
-  * losses. A queued origin's warbands count as the force's first, since
-  * the printed kill reaches only the board. With none beyond the force,
-  * nothing dies.
+  * board beyond the committed force, which is still on the board at plan
+  * time, before any roll. A queued origin's warbands count as the force's
+  * first, since the printed kill reaches only the board. With none beyond
+  * the force, nothing dies.
   *
   * When a warband died it writes "Killed 1 warband on {Red}'s board.".
   */

@@ -16,11 +16,15 @@ object CampaignIds:
   val relocation = "campaign.relocation"
   /** Which of a defender's forces pays a plan's warband sacrifice. */
   val planSacrifice = "campaign.plan-sacrifice"
-  /** How many of the attacker's dead come from a queued origin. */
+  /** How many of the skull losses die at a queued origin. */
+  val skullOriginDeaths = "campaign.skull-origin-deaths"
+  /** How many of the sacrificed warbands die at a queued origin. */
+  val sacrificeOriginDeaths = "campaign.sacrifice-origin-deaths"
+  /** How many of the defeat's half die at a queued origin. */
   val originDeaths = "campaign.origin-deaths"
   val all: Set[String] = Set(kind, defender, targets, force, attackerPlan,
     defenderPlan, sacrifice, placement, relocation, planSacrifice,
-    originDeaths)
+    skullOriginDeaths, sacrificeOriginDeaths, originDeaths)
 
   /** The decision a side's plan window asks. */
   def planDecision(side: CampaignPlanSide): String = side match
@@ -37,7 +41,7 @@ object CampaignIds:
 
   /** Recorded by an attacker's plan that spares a defeated force
     * (Billowing Fog, Traveling Doctor), and by Peace Envoy on either side:
-    * the losses then kill only the skulls and the sacrifices. It is never
+    * the losses then kill none of the attacker's force. It is never
     * rolled, and it is cleared with the others when the Campaign ends. */
   val attackerSpared: PoolKey = PoolKey("campaign.attacker-spared")
 
@@ -112,8 +116,9 @@ object CampaignSetup:
     case SiteForces.Occupied(`kind`, count) => count
     case _ => 0).getOrElse(0)
 
-  /** The origin's warbands and the board's, when a queued origin's
-    * warbands joined the force: what the result records. */
+  /** The origin's warbands and the board's as they stand, when a queued
+    * origin's warbands joined the force: what each early kill splits over,
+    * and what the result records for the losses. */
   def originForce(ready: ReadyGame, actor: PlayerId): Option[OriginForce] =
     for
       site <- queuedOrigin(ready, actor)
@@ -344,8 +349,9 @@ object CampaignAnswers:
     latest(pending, CampaignIds.force).collect:
       case DecisionAnswer.ChooseAmountAnswer(amount) => amount
 
-  def originDeaths(pending: PendingTree): Option[Int] =
-    latest(pending, CampaignIds.originDeaths).collect:
+  /** The answer to one of the origin split questions, `id`. */
+  def originDeaths(pending: PendingTree, id: String): Option[Int] =
+    latest(pending, id).collect:
       case DecisionAnswer.ChooseAmountAnswer(amount) => amount
 
   def sacrificed(pending: PendingTree): Int =

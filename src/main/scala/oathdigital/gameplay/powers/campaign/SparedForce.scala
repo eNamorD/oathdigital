@@ -9,11 +9,11 @@ import oathdigital.model._
   * kill no warbands in your force. Ignore powers that kill all of your
   * force." It acts only when its user is a player and was defeated.
   *
-  *  - A defeated attacker still loses its skulls and its sacrifice, but not
-  *    half of what survived. Choosing the plan records the spare
+  *  - A defeated attacker still loses its skulls and its sacrifice, which
+  *    die in their own windows before the losses (item 13b), but not half
+  *    of what survived. Choosing the plan records the spare
   *    (`CampaignIds.attackerSpared`), which the losses read, so the split
-  *    of the dead between board and a queued origin asks over only what
-  *    really dies (slice 13).
+  *    of the half between board and a queued origin is never asked.
   *  - A defeated Conquest defender's target warbands all die and all return
   *    to its board, not half of them.
   *  - A defeated Raid defender loses no warband from its board.

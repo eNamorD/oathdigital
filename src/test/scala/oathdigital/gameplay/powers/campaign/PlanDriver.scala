@@ -8,7 +8,7 @@ import oathdigital.gameplay.powers.{NoteText, PowerImplementationStatus,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
-  WalkerDice, WalkerPowers, WalkerStepRecorded}
+  RollPayload, WalkerDice, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
@@ -65,6 +65,17 @@ object PlanDriver:
   def awaits(run: Run, who: PlayerId, id: String): Boolean =
     run.parkedHere.parkedDecision(run.state).exists(facts =>
       facts.decision == id && facts.awaiting == who)
+
+  /** Whether `kill` was recorded in `events` before the defense pool was
+    * rolled there. */
+  def killedBeforeTheDefenseRoll(events: Vector[OathEvent],
+      kill: CoreOperation): Boolean =
+    val steps = events.collect { case step: WalkerStepRecorded => step }
+    val killed = steps.indexWhere(_.ops.contains(kill))
+    val rolled = steps.indexWhere(_.payload match
+      case RollPayload(pool, _, _) => pool == CampaignIds.defensePool
+      case _ => false)
+    killed >= 0 && rolled > killed
 
   /** A Campaign in progress: the transition it reached and every event so far.
     * `powers` are the walker powers `game` was built with, which the parked

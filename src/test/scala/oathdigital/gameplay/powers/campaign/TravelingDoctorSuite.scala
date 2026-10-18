@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseAmountAnswer
 import oathdigital.testkit.{CatalogNames, Look}
 
 /** Traveling Doctor: Billowing Fog's rule, free, and discarded after a
@@ -29,6 +30,23 @@ class TravelingDoctorSuite extends munit.FunSuite:
     assertEquals(done.winner, Some(false))
     assertEquals(Look(done.state).player(b.actor).board.warbands, 5)
     assert(Look(done.state).inRegionalDiscard(card))
+    assertEquals(lines(done), Vector(NoteText.Said("spared",
+      s"${b.actor.value}'s force was spared.", covers = false), discarded))
+
+  test("a defeated attacker loses its skull and its sacrifice, and only " +
+      "the half is spared"):
+    val base = board(warbands = 5, supply = 7)
+    val b = withAdviser(base, card, Orientation.FaceUp)
+    val game = rules(dice(AttackDieFace.TwoSwordsSkull +:
+      Vector.fill(3)(AttackDieFace.HollowSword),
+      Vector.fill(2)(DefenseDieFace.TwoShields)))
+    val done = commit(game, b, 4)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+      .finishAttackerPlans(b.actor)
+      .answer(b.actor, CampaignIds.sacrifice, ChooseAmountAnswer(1))
+      .finishPlanWindows
+    assertEquals(done.winner, Some(false))
+    assertEquals(Look(done.state).player(b.actor).board.warbands, 3)
     assertEquals(lines(done), Vector(NoteText.Said("spared",
       s"${b.actor.value}'s force was spared.", covers = false), discarded))
 

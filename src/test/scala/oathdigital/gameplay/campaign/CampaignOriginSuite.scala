@@ -130,8 +130,53 @@ class CampaignOriginSuite extends munit.FunSuite:
     assertEquals(done.winner, Some(false))
     assertEquals(warbandsAt(done, away), 2)
 
-  test("the result records the origin's warbands and the board's before " +
-      "any dies"):
+  test("each kill asks its own split, over the board and site the earlier " +
+      "kills left"):
+    // Two on the board and four at the site commit six. A paid skull and
+    // five hollow swords make 4, and a sacrifice 5, against two double
+    // shields and the rival's three board warbands: a defeat.
+    val (b, away) = rivalAloneAtASiteTheActorHolds(board = 2, atSite = 4)
+    val attack = AttackDieFace.TwoSwordsSkull +:
+      Vector.fill(5)(AttackDieFace.HollowSword)
+    val game = rules(dice(attack, Vector.fill(2)(DefenseDieFace.TwoShields)))
+    val name = catalog.site(away).get.name
+    def assertSplitAsked(run: Run, id: String, least: Int, most: Int,
+        dead: Int): Unit =
+      assertEquals(parkedDecision(run), Some(id))
+      run.query(b.actor) match
+        case amount: DecisionQuery.ChooseAmount =>
+          assertEquals((amount.min, amount.max, amount.suggested),
+            (least, most, Some(least)))
+          val noun = if dead == 1 then "warband" else "warbands"
+          assertEquals(amount.heading, Some(s"Choose how many of the " +
+            s"$dead dead $noun come from $name"))
+        case other => fail(s"expected the $id question, got $other")
+    val skulled = committed(game, campaignQueuedFrom(game, b, away, source),
+      b, force = 6, raid = true).finishPlanWindows
+    // The skull's one warband: from the board (2) or the site (4).
+    assertSplitAsked(skulled, CampaignIds.skullOriginDeaths, 0, 1, 1)
+    val sacrificing = skulled.answer(b.actor, CampaignIds.skullOriginDeaths,
+      ChooseAmountAnswer(1))
+    assertEquals(warbandsAt(sacrificing, away), 3)
+    val sacrificed = sacrificing.answer(b.actor, CampaignIds.sacrifice,
+      ChooseAmountAnswer(1))
+    // The sacrifice's one warband, over the board's 2 and the site's 3.
+    assertSplitAsked(sacrificed, CampaignIds.sacrificeOriginDeaths, 0, 1, 1)
+    val fought = sacrificed.answer(b.actor, CampaignIds.sacrificeOriginDeaths,
+      ChooseAmountAnswer(0))
+    assertEquals(fought.winner, Some(false))
+    assertEquals(fought.result.originForce,
+      Some(OriginForce(away, atSite = 3, onBoard = 1)))
+    // Half the four survivors: the board holds only one, so one or two
+    // come from the site.
+    assertSplitAsked(fought, CampaignIds.originDeaths, 1, 2, 2)
+    val done = fought.answer(b.actor, CampaignIds.originDeaths,
+      ChooseAmountAnswer(2))
+    assertEquals(Look(done.state).boardWarbands(b.actor), 1)
+    assertEquals(warbandsAt(done, away), 1)
+
+  test("the result records the origin's warbands and the board's as the " +
+      "losses find them"):
     val (b, away) = rivalAloneAtASiteTheActorHolds(board = 1, atSite = 3)
     val game = rules(winningDice)
     val done = committed(game, campaignQueuedFrom(game, b, away, source),

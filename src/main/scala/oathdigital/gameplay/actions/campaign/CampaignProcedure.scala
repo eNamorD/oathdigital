@@ -7,15 +7,21 @@ import oathdigital.model._
 
 /** Campaign on the walker, in the rulebook's order: choose the kind and the
   * targets, commit force and gather both dice pools, use battle plans, roll
-  * the attack, sacrifice, roll the defense, declare the victor, kill the
-  * defeated warbands, resolve the victory.
+  * the attack and kill its skull losses, sacrifice and kill the sacrificed,
+  * roll the defense, declare the victor, kill the defeated warbands, resolve
+  * the victory.
   *
-  * Each early decision is built when reached from live state that nothing
-  * before it has changed, plus the answers. Gathering the pools pins the kind
-  * and the defender (`CampaignSetup.pin`), because the battle plans that
-  * follow may change who rules the targets. After the losses run, every later
-  * step reads the durable `CampaignResult` and the answers instead, because
-  * the losses change the board.
+  * Each early decision is built when reached from live state, plus the
+  * answers; before the skull losses, nothing has changed that state.
+  * Gathering the pools pins the kind and the defender
+  * (`CampaignSetup.pin`), because the battle plans that follow may change
+  * who rules the targets. After the losses run, every later step reads the
+  * durable `CampaignResult` and the answers instead, because the losses
+  * change the board.
+  *
+  * The skull and sacrifice losses die in their own windows, before the
+  * defense roll (catalog batch 8, item 13b). Each asks its origin split
+  * over the board as that kill finds it.
   *
   * A Campaign ends before its force is committed when the attacker skips it
   * or nothing is left to attack (`endStep`).
@@ -98,7 +104,15 @@ object CampaignProcedure:
       withSetup(ready, actor, pending)(setup =>
         CampaignBattle.attackResultOps(ready, setup)))),
       Some(PowerWindow.CampaignAttackResult)),
+    Sequence(CampaignBattle.earlyKill(catalog, actor,
+      CampaignIds.skullOriginDeaths,
+      (ready, _) => CampaignBattle.skullDeaths(ready)),
+      Some(PowerWindow.CampaignSkullLosses)),
     sacrificeStep(actor),
+    Sequence(CampaignBattle.earlyKill(catalog, actor,
+      CampaignIds.sacrificeOriginDeaths,
+      (_, pending) => CampaignAnswers.sacrificed(pending)),
+      Some(PowerWindow.CampaignSacrificeLosses)),
     Branch((ready, pending) => Vector(RollStep(CampaignIds.defensePool,
       DiceSpec(DiceKind.Defense), CampaignSetup.setup(ready, actor, pending)
         .map(_.defender).collect { case CampaignDefender.Player(player) =>

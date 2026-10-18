@@ -26,9 +26,13 @@ object HospitalCard extends Denizen(DenizenId("149"), "Hospital", Suit.Hearth) w
   *  - the sacrifice of a plan its user applies afterwards, such as Wrestlers'
   *    (`CampaignPlanApplication`); a plan applied before Hospital was chosen
   *    has already killed its warband;
-  *  - every kill in the losses (`CampaignLosses`), including the kills
-  *    Sticky Fire and Shield Wall add there, so Hospital folds at priority 2,
-  *    after them and after Billowing Fog's and Traveling Doctor's changes.
+  *  - the skull and sacrifice losses, which die in their own windows
+  *    (`CampaignSkullLosses`, `CampaignSacrificeLosses`) before the
+  *    outcome (item 13b);
+  *  - every kill in the losses (`CampaignLosses`): the defeat's half and
+  *    the defender's dead, including the kills Sticky Fire and Shield Wall
+  *    add there, so Hospital folds at priority 2, after them and after
+  *    Billowing Fog's and Traveling Doctor's changes.
   *    A Conquest defender's returned half comes back out of the count,
   *    because those warbands did not stay dead.
   *
@@ -82,6 +86,8 @@ case object Hospital extends BattlePlan:
 
   override def wrapping: Map[PowerWindow, BattlePlan.Wrap] = Map(
     PowerWindow.CampaignPlanApplication -> counted(returns = false),
+    PowerWindow.CampaignSkullLosses -> counted(returns = false),
+    PowerWindow.CampaignSacrificeLosses -> counted(returns = false),
     PowerWindow.CampaignLosses -> counted(returns = true))
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(

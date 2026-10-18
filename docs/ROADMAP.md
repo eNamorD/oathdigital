@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is under way: slices 1 to 15 and item 10b are done.
+**Phase - Catalog batch 8** is under way: slices 1 to 15 and items 10b and 13b are done.
 
 ## Next
 
@@ -147,18 +147,14 @@ this order. Each slice gets its own plan.
 - [x] **11. Actor-aware lock:** Ancient Bloodline.
 - [x] **12. Card play at another site:** Baron, New Growth, Forest Warden.
 - [x] **13. Campaign from another site:** Wild Allies, Captains.
-- [ ] **13b. Campaign kills at their moment.** A Campaign now kills the
-  attacker's dead in one `Kill` at the kill step: the skull losses, the
-  sacrifices and half the survivors on a defeat, summed. The rules kill
-  each as it happens. The skull losses die at the attack result, the
-  sacrifices when they are chosen, and the defeat's half at the kill step.
-  Board-reading plans such as Bear Traps then see the right board. The loss
-  powers that rewrite or count the batched kill (Billowing Fog, Traveling
-  Doctor, Peace Envoy, Hospital, Cursed Cauldron, Spared Force) move with
-  it. Slice 13's single split question ("how many of the dead come from
-  {site}") then becomes one question at each kill. This item needs its own
-  design, since it changes existing cards' outcomes. Recorded while
-  planning slice 13 on 2026-10-16.
+- [x] **13b. Campaign kills at their moment.** A Campaign kills the
+  attacker's skull losses at the attack result, the sacrifices when they
+  are chosen, and the defeat's half at the kill step, each with its own
+  origin split question. Hospital and Cursed Cauldron count every kill, and
+  the attack line counts the skull faces and the warbands they kill.
+  Design: [Campaign kills at their moment](superpowers/specs/2026-10-17-campaign-kills-at-their-moment-design.md).
+  Bear Traps applies at plan time, before any roll, so the move never
+  changed what it sees; the claim that it would was mistaken.
 - [ ] **13c. City Wall reads an as-if Trade site.** City Wall's "while at
   this site" counts the site a player acts from. Slice 13 gives it a queued
   Campaign's origin. Small Friends' as-if Trade site lives only in the walk's
@@ -172,7 +168,7 @@ this order. Each slice gets its own plan.
   about 105 files. Recorded while planning slice 14 on 2026-10-16.
 - [x] **15. Palanquin.**
 
-Only items 13b, 13c and 14b of catalog batch 8 remain open.
+Only items 13c and 14b of catalog batch 8 remain open.
 
 ### Phase - Catalog batch - engine-blocked
 
