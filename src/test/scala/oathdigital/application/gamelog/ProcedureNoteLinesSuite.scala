@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.gameplay.actions.campaign.CampaignNotes
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
@@ -254,10 +255,94 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
     assertEquals(said(ActionRef.Search, SearchProcedure.drewFromDeck,
       NoteArg.Cards(six)), "Drew 6 cards from the World Deck")
 
-  // TODO(slice 4 task 3): uncomment once CampaignNotes declares its keys.
-  // test("a things argument joins sites, a pawn, a card and a banner"):
-  //   assertEquals(spoken(ActionRef.Campaign, CampaignNotes.targets,
-  //       NoteArg.Things(Vector(NoteThing.Site(brokenPeaks),
-  //         NoteThing.Pawn(PlayerId("p2")), NoteThing.Card(RelicId("r1")),
-  //         NoteThing.Banner(Banner.DarkestSecret)))).map(_.text).mkString,
-  //     "Targets: Broken Peaks, p2's pawn, a Relic and Darkest Secret")
+  /** A relic named rather than spelled by id, which renders as its back
+    * here, with no state behind it. `birdsong` above is the denizen. */
+  private val wine: CardId = CatalogNames.relic("Wine of Welcome")
+
+  test("a things argument joins sites, a pawn, a card and a banner"):
+    assertEquals(spoken(ActionRef.Campaign, CampaignNotes.targets,
+        NoteArg.Things(Vector(NoteThing.Site(brokenPeaks),
+          NoteThing.Pawn(PlayerId("p2")), NoteThing.Card(wine),
+          NoteThing.Banner(Banner.DarkestSecret)))).map(_.text).mkString,
+      "Targets: Broken Peaks, p2's pawn, a Relic and Darkest Secret")
+
+  test("Campaign's pool, roll and sacrifice lines read as the rule wrote " +
+      "them"):
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.pools,
+      NoteArg.Number(3), NoteArg.Number(2)),
+      "Attack Pool: 3, Defense Pool: 2")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.attack,
+      NoteArg.Number(5)), "Attack: 5")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.attackWithSkulls,
+      NoteArg.Number(5), NoteArg.Number(1)), "Attack: 5 with 1 skull")
+    assertEquals(said(ActionRef.Campaign,
+      CampaignNotes.attackWithSkullKills, NoteArg.Number(6),
+      NoteArg.Number(2), NoteArg.Number(4)),
+      "Attack: 6 with 2 skulls, killing 4 warbands")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.defense,
+      NoteArg.Number(3)), "Defense: 3")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.sacrificed,
+      NoteArg.Number(1), NoteArg.Number(4)),
+      "Sacrificed 1 warband for an attack of 4")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.sacrificed,
+      NoteArg.Number(3), NoteArg.Number(6)),
+      "Sacrificed 3 warbands for an attack of 6")
+
+  test("Campaign's loss lines name the loser, except the actor"):
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.lost,
+      NoteArg.Number(2)), "Lost 2 warbands")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.lost,
+      NoteArg.Number(1)), "Lost 1 warband")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.playerLost,
+      NoteArg.Player(PlayerId("p2")), NoteArg.Number(1)),
+      "p2 lost 1 warband")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.banditsLost,
+      NoteArg.Number(3)), "The bandits lost 3 warbands")
+
+  test("a defeated Raid defender's clauses read in the rule's order"):
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.defenderLost,
+      NoteArg.Player(PlayerId("p2")), NoteArg.Clauses(Vector(
+        NoteClause.BurnedFavor(1),
+        NoteClause.Discarded(Vector(birdsong)),
+        NoteClause.SetAside(Vector(wine))))),
+      "p2 burned 1 favor, discarded a Denizen and set aside a Relic")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.sentTo,
+      NoteArg.Player(PlayerId("p2")), NoteArg.Site(brokenPeaks)),
+      "p2 was sent to Broken Peaks")
+
+  test("Campaign's winner, spoils, placement and plan lines"):
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.playerWins,
+      NoteArg.Player(PlayerId("p1"))), "p1 wins!")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.banditsWin),
+      "The bandits win!")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.took,
+      NoteArg.Things(Vector(NoteThing.Banner(Banner.DarkestSecret))),
+      NoteArg.Player(PlayerId("p2"))),
+      "Took Darkest Secret from p2")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.placed,
+      NoteArg.Placements(Vector(2 -> brokenPeaks))),
+      "Placed 2 warbands on Broken Peaks")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.placed,
+      NoteArg.Placements(Vector(1 -> brokenPeaks))),
+      "Placed 1 warband on Broken Peaks")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.activatedPlan,
+      NoteArg.Card(birdsong)), "Activated a Denizen")
+    assertEquals(said(ActionRef.Campaign,
+      CampaignNotes.playerActivatedPlan, NoteArg.Player(PlayerId("p2")),
+      NoteArg.Card(birdsong)), "p2 activated a Denizen")
+    assertEquals(said(ActionRef.Campaign,
+      CampaignNotes.banditsActivatedPlan, NoteArg.Card(birdsong)),
+      "The bandits activated a Denizen")
+    assertEquals(said(ActionRef.Campaign,
+      CampaignNotes.activatedOathkeeperTitle,
+      NoteArg.Player(PlayerId("p2"))),
+      "p2 activated the Oathkeeper title")
+    assertEquals(said(ActionRef.Campaign,
+      CampaignNotes.activatedUsurperTitle, NoteArg.Player(PlayerId("p2"))),
+      "p2 activated the Usurper title")
+
+  test("a Campaign that ended before its battle says why"):
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.skipped),
+      "Skipped the Campaign.")
+    assertEquals(said(ActionRef.Campaign, CampaignNotes.nothingToAttack),
+      "Nothing left to attack: the Campaign ended.")

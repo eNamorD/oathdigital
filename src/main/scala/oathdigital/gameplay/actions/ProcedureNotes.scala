@@ -1,5 +1,6 @@
 package oathdigital.gameplay.actions
 
+import oathdigital.gameplay.actions.campaign.CampaignNotes
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
@@ -70,6 +71,7 @@ object ProcedureNotes:
     * `ProcedureRef.all`. */
   private def keys(procedure: ProcedureRef): Vector[NoteKey] =
     procedure match
+      case ActionRef.Campaign => CampaignNotes.noteKeys
       case ActionRef.Muster => MusterProcedure.noteKeys
       case ActionRef.Trade => TradeProcedure.noteKeys
       case ActionRef.Recover => RecoverProcedure.noteKeys
