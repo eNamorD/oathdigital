@@ -3,7 +3,6 @@ package oathdigital.application.gamelog
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepPayload, WalkerStepRecorded}
@@ -26,29 +25,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       viewer: Option[PlayerId]): Vector[Posted] =
     search(journal, run, at, viewer) ++
       playedAdviser(journal, run, at, viewer)
-
-  def recoverLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    val actor = run.actor
-    val taken = journal.ops(at).collect {
-      case OpStep(Move(Piece.Card(relic: RelicId),
-          PositionedLocation(Location.Site(site), _, _),
-          PositionedLocation(Location.PlayArea(taker), _, _),
-          _, _), before, after)
-          if taker == actor =>
-        action(Vector(Text("Recovered ")) ++
-          words.one(words.card(relic, before, after, viewer)) ++
-          Vector(Text(" at "), words.site(site)))
-    }
-    // A Recover that succeeds with no relic to take posts nothing.
-    val failed =
-      if journal.event(at).isInstanceOf[WalkerCompleted] &&
-          stopped(journal, run, at) then
-        journal.readyBefore(run.first).flatMap(LogJournal.pawnSite(_, actor))
-          .toVector.map(site =>
-            action(Vector(Text("Failed to recover at "), words.site(site))))
-      else Vector.empty
-    taken ++ failed
 
   def campaignLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
@@ -166,13 +142,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
         action(Vector(Text("Revealed ")) ++ named)
       case _ => action(Vector(Text("Played ")) ++ named ++
         Vector(Text(" as an adviser")))
-
-  /** The last continue-or-stop answer was "stop". */
-  private def stopped(journal: LogJournal, run: Run, at: Int): Boolean =
-    journal.answers(run, at).reverse.collectFirst {
-      case Answered(RecoverProcedure.choiceDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Button(key)), _) => key == "stop"
-    }.contains(true)
 
   /** "Used {card}" at the first step recording one of the power's own
     * effects: a step that is not only the payment onto its card or to the

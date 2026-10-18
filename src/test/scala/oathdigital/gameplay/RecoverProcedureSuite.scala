@@ -4,7 +4,7 @@ import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.WalkerDiceFixture.scripted
-import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
+import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerPowers, WalkerStepPayload,
   WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{RelicAcquired, SupplySpent}
@@ -40,8 +40,16 @@ class RecoverProcedureSuite extends munit.FunSuite
   private def recoverBoard: Table = Table.start.pawn(actor, at = recoverSite)
     .relicAt(relic, at = recoverSite)
 
-  private def recordedSteps(events: Vector[OathEvent])
-      : Vector[WalkerStepRecorded] = events.map(as[WalkerStepRecorded](_))
+  /** The steps a walk recorded, without the `PowerNoted` events its `Note`
+    * leaves journal: a note changes no state and is the Game Log's
+    * business, not this suite's. Each caller states how many lines the walk
+    * journals, so a line that stops being journaled does not pass
+    * unnoticed. */
+  private def recordedSteps(events: Vector[OathEvent], notes: Int = 0)(
+      using munit.Location): Vector[WalkerStepRecorded] =
+    assertEquals(events.count(_.isInstanceOf[PowerNoted]), notes,
+      s"the walk journals $notes of its own lines: $events")
+    events.collect { case step: WalkerStepRecorded => step }
 
   /** Folds a Parked command's recorded events into the caller's state,
     * mirroring journal replay: RollPayload events re-derive and merge the
@@ -143,7 +151,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     // `RecoverCost` window ("1.0.0.0"), and the roll heading its roll step
     // ("1.0.1.0.0", one level deeper again in its `RecoverRoll` window);
     // nothing else in the tree shifts.
-    val steps = recordedSteps(relicWalk.events ++ resolved.events)
+    val steps = recordedSteps(relicWalk.events ++ resolved.events, notes = 1)
     assertEquals(steps.size, 5)
     assertEquals(steps.map(_.nodeId),
       Vector("0.0", "1.0.0.0", "1.0.1.0.0", "2.0", "2.1.0"))
@@ -246,13 +254,14 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(finalState.game.current.walkerPending, None)
     assertEquals(finalState.game.current.rollPools,
       Map.empty[PoolKey, DicePoolState])
-    // The answer alone.
-    assertEquals(stopEvents.size, 1)
-    assertEquals(recordedSteps(stopEvents).head.payload,
+    // The answer, then the line naming the abandoned Recover.
+    assertEquals(stopEvents.size, 2)
+    val stopSteps = recordedSteps(stopEvents, notes = 1)
+    assertEquals(stopSteps.size, 1)
+    assertEquals(stopSteps.head.payload,
       ChoicePayload(RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor))
-    assertEquals(recordedSteps(stopEvents).head.ops,
-      Vector.empty[CoreOperation])
+    assertEquals(stopSteps.head.ops, Vector.empty[CoreOperation])
 
   test("an unaffordable Continue is not offered, and the pipeline rejects " +
       "it when probing is off"):
@@ -486,5 +495,15 @@ class RecoverProcedureSuite extends munit.FunSuite
       Vector(Some(PowerWindow.RecoverBeforeFirstRoll)),
       "the head ModifyDicePool must carry RecoverBeforeFirstRoll")
     assertEquals(windowed.collect { case node: BuildOps => node.window },
-      Vector(Some(PowerWindow.RecoverAfterRelic)),
-      "exactly the relic-moving BuildOps must carry RecoverAfterRelic")
+      Vector.empty,
+      "the relic-moving BuildOps carries no window of its own")
+    // The relic move and the recovered line are one windowed node, so a
+    // power hooked at `RecoverAfterRelic` appends after both: outside that
+    // node the note would read after the power's leaves, and a line one of
+    // them posted would precede the line saying what was recovered
+    // (`RelicWorshipLogSuite`).
+    assertEquals(windowed.collect {
+      case Sequence(children, Some(PowerWindow.RecoverAfterRelic)) =>
+        children.map(_.getClass.getSimpleName)
+    }, Vector(Vector("BuildOps", "Note")),
+      s"RecoverAfterRelic must window the move and its note: $windowed")

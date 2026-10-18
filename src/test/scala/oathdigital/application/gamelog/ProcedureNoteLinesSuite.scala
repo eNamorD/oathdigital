@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
+import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
@@ -211,3 +212,9 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
   test("a Trade for favor that gained none says no favor"):
     assertEquals(said(ActionRef.Trade, TradeProcedure.tradedForNoFavor,
       NoteArg.Card(roar)), "Traded with a Denizen for no favor")
+
+  test("both Recover lines post at Action"):
+    assertEquals(kindOf(ActionRef.Recover, RecoverProcedure.recovered),
+      LogKind.Action)
+    assertEquals(kindOf(ActionRef.Recover, RecoverProcedure.failed),
+      LogKind.Action)

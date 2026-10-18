@@ -153,14 +153,17 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
         narrated = Vector(Told(CardPlayProcedure.facedownAdviserDecisionId)),
         narratedPrefixes = Vector(ActionLines.PlacePrefix,
           "cardplay.discard."))
-    // The Recover lines name the relic taken and the site, so the choice
-    // and the relic pick are told. The same holds of every row below that
-    // names a decision: its own action line says what was chosen.
+    // The relic pick is told by the recovered line, which names the relic.
+    // The continue-or-stop answer is told by the band's own "Continued"
+    // line and, for a stop, by the failed line, so no single key tells it.
+    // The same holds of every row below that names a decision: its own
+    // action line says what was chosen.
     case ActionRef.Recover => ProcedureLog(tag = Some("Recover"),
-      lines = ActionLineSource.Rule(actions.recoverLines),
+      lines = ActionLineSource.Notes(),
       anchor = starts.opensDicePool, continued = starts.continuedRecover,
       narrated = Vector(Told(RecoverProcedure.choiceDecisionId),
-        Told(RecoverProcedure.relicDecisionId)))
+        Told(RecoverProcedure.relicDecisionId,
+          Some(RecoverProcedure.recovered))))
     // The payment line tells the assignment, in one of three wordings, so
     // no single key names it.
     case ActionRef.Forge => ProcedureLog(tag = Some("Forge"),

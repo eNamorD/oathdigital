@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.recover
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.RecoverRules
+import oathdigital.gameplay.actions.{ProcedureNotes, RecoverRules}
 import oathdigital.gameplay.actions.cardplay.CardSlots
 import oathdigital.gameplay.actions.dice.RollStep
 import oathdigital.gameplay.powerresolver.ModifierPicks
@@ -26,8 +26,10 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   *       )),
   *     Branch(if success ->
   *       Vector(Decide("recover.relic"),
-  *         BuildOps(move chosen relic facedown)), // window = RecoverAfterRelic
-  *       else Vector.empty)))                 // stopped: ends with no relic
+  *         Sequence(BuildOps(move chosen relic facedown),
+  *           Note(recovered))),              // window = RecoverAfterRelic
+  *       else if stopped -> Vector(Note(failed)),
+  *       else Vector.empty)))                 // succeeded with no relic
   * }}}
   *
   * Descriptions of PowerWindows:
@@ -80,6 +82,18 @@ object RecoverProcedure:
   val decisionPrefix: String = "recover."
 
   private val supplyCost: Int = 1
+
+  private val notes = NoteSet(ProcedureNotes.id(ActionRef.Recover))
+  /** "Recovered Sticky Fire at Broken Peaks". */
+  val recovered: NoteKey = notes.key("recovered", Vector(
+    NotePart.Text("Recovered "), NotePart.Arg(0), NotePart.Text(" at "),
+    NotePart.Arg(1)))
+  /** "Failed to recover at Broken Peaks": the player answered Stop. A
+    * Recover that succeeded with no relic to take writes nothing, as the
+    * rule this replaced wrote nothing. */
+  val failed: NoteKey = notes.key("failed", Vector(
+    NotePart.Text("Failed to recover at "), NotePart.Arg(0)))
+  def noteKeys: Vector[NoteKey] = notes.declared
 
   /** Every park of a Recover but its modifier decision shows the same
     * thing: the pool rolled so far and the site's difficulty, which is worth
@@ -199,7 +213,23 @@ object RecoverProcedure:
           Right(Vector[CoreOperation](relicMove(relicId)))
         case _ => Left(OathViolation.InvalidEventOrder(
           "no recovered relic answer is recorded"))
-      }, window = Some(PowerWindow.RecoverAfterRelic))
+      })
+
+    /** The relic taken and the site it came from. Reads the relic decision's
+      * answer and the site this tree closed over, never `previous`, so a
+      * leaf a power appends into the window cannot move what it reads. */
+    val recoveredNote = Note(ProcedureNotes.id(ActionRef.Recover), states =>
+      states.answered.reverse.collectFirst {
+        case Answered(`relicDecisionId`,
+            ChooseOneAnswer(DecisionOptionRef.Relic(relicId)), _) => relicId
+      }.map(relic => recovered.sourceless(NoteArg.Card(relic),
+        NoteArg.Site(siteId))))
+
+    /** "Failed to recover at Broken Peaks", read from the same `stopped`
+      * the `Repeat` guard reads, so the line and the loop's own exit agree
+      * on what ended the Recover. */
+    val failedNote = Note(ProcedureNotes.id(ActionRef.Recover),
+      _ => Some(failed.sourceless(NoteArg.Site(siteId))))
 
     // Payment precedes Roll so OperationPipeline rejects insufficient supply
     // before randomness is requested.
@@ -226,7 +256,9 @@ object RecoverProcedure:
     // absent from the rebuilt query, so the answer naming it is rejected.
     // Each relic is judged as card play judges a slot, so a relic Ancient
     // Bloodline locks is askable of its holder.
-    val afterLoop = Branch((ready, _) => {
+    // A Recover the player stopped declares its own line in the third
+    // branch, which is the only place the abandoned Recover is named.
+    val afterLoop = Branch((ready, pending) => {
       val relics = actorFacedownRelics(ready, actor)
       if succeeded(ready) && relics.nonEmpty then
         Vector(Decide(
@@ -237,7 +269,14 @@ object RecoverProcedure:
               DecisionOption.Relic(DecisionOptionRef.Relic(relic.id)),
               Right(Vector(relicMove(relic.id))))),
             heading = Some("Take a relic"), confirmVerb = Some("Take"))),
-          moveRelic)
+          // The move and its line in one windowed node: a power hooked at
+          // `RecoverAfterRelic` appends to the node the window names, so a
+          // note outside it would read after that power's leaves and a line
+          // one of them posted would precede the line saying what was
+          // recovered (`RelicWorshipLogSuite`).
+          Sequence(Vector(moveRelic, recoveredNote),
+            Some(PowerWindow.RecoverAfterRelic)))
+      else if stopped(pending) then Vector(failedNote)
       else Vector.empty
     })
 
