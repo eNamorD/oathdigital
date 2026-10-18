@@ -139,17 +139,25 @@ private[gamelog] final class PowerLines(words: LogWords,
       (count, site) => Vector(Text(s"$count " +
         s"${ActionLines.plural(count, "warband", "warbands")} on "),
         words.site(site))))
+    case NoteArg.Things(items) => LogWords.join(items.map(thing(_, seen,
+      viewer)))
+
+  /** One item of a joined list, worded as the line that joined them by hand
+    * worded it. */
+  private def thing(item: NoteThing, seen: Vector[ReadyGame],
+      viewer: Option[PlayerId]): Vector[LogSpan] = item match
+    case NoteThing.Site(id) => Vector(words.site(id))
+    case NoteThing.Pawn(player) =>
+      Vector(words.player(player), Text("'s pawn"))
+    case NoteThing.Card(id) => words.one(words.seen(id, seen, viewer))
+    case NoteThing.Banner(banner) => Vector(words.banner(banner))
 
   /** One clause of a joined sentence, worded as the line that joined them
     * by hand worded it. */
   private def clause(part: NoteClause, seen: Vector[ReadyGame],
       viewer: Option[PlayerId]): Vector[LogSpan] = part match
-    case NoteClause.LostWarbands(count) => Vector(Text(s"lost $count " +
-      ActionLines.plural(count, "warband", "warbands")))
     case NoteClause.BurnedFavor(count) => Vector(Text(s"burned $count favor"))
     case NoteClause.Discarded(ids) =>
       Text("discarded ") +: words.cards(ids.map(words.seen(_, seen, viewer)))
     case NoteClause.SetAside(ids) =>
       Text("set aside ") +: words.cards(ids.map(words.seen(_, seen, viewer)))
-    case NoteClause.SentTo(site) =>
-      Vector(Text("was sent to "), words.site(site))

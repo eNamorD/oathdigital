@@ -44,17 +44,31 @@ object NoteArg:
   /** Warbands placed by site, "2 warbands on the Mine and 1 warband on the
     * Standing Stones". */
   final case class Placements(entries: Vector[(Int, SiteId)]) extends NoteArg
+  /** Several references of different kinds as one joined phrase, "Broken
+    * Peaks, Blue's pawn, Wine of Welcome and the People's Favor": a
+    * Campaign's targets, and a won Raid's spoils. The joining is the Game
+    * Log's. */
+  final case class Things(items: Vector[NoteThing]) extends NoteArg
 
 /** One clause of a joined note sentence (procedures journal their own notes
   * design, "Campaign"). Closed, because each case is something the rules do
   * and the Game Log has one way of saying each. */
 sealed trait NoteClause extends Product with Serializable
 object NoteClause:
-  final case class LostWarbands(count: Int) extends NoteClause
   final case class BurnedFavor(count: Int) extends NoteClause
   final case class Discarded(ids: Vector[CardId]) extends NoteClause
   final case class SetAside(ids: Vector[CardId]) extends NoteClause
-  final case class SentTo(site: SiteId) extends NoteClause
+
+/** One item of a joined list of references (procedures journal their own
+  * notes design, "Campaign"). Closed, because each case is something the
+  * rules name and the Game Log has one way of naming each. */
+sealed trait NoteThing extends Product with Serializable
+object NoteThing:
+  final case class Site(id: SiteId) extends NoteThing
+  /** A player's pawn, "Blue's pawn". */
+  final case class Pawn(player: PlayerId) extends NoteThing
+  final case class Card(id: CardId) extends NoteThing
+  final case class Banner(banner: oathdigital.model.Banner) extends NoteThing
 
 /** `key` is the wire spelling. */
 enum NoteUnit(val key: String, val one: String, val many: String):

@@ -94,14 +94,27 @@ class PowerNoteWireSuite extends munit.FunSuite:
     val event = noteEvent(PowerSourceRef.Site(SiteId("s1")),
       NoteArg.Players(Vector(PlayerId("p1"), PlayerId("p2"))),
       NoteArg.Players(Vector.empty),
-      NoteArg.Clauses(Vector(NoteClause.LostWarbands(2),
-        NoteClause.BurnedFavor(1),
+      NoteArg.Clauses(Vector(NoteClause.BurnedFavor(1),
         NoteClause.Discarded(Vector(DenizenId("denizen"), RelicId("r1"))),
-        NoteClause.SetAside(Vector(RelicId("r2"))),
-        NoteClause.SentTo(SiteId("s2")))),
+        NoteClause.SetAside(Vector(RelicId("r2"))))),
       NoteArg.Placements(Vector(2 -> SiteId("s1"), 1 -> SiteId("s2"))))
     val encoded = accepted(GameEventWire.encodeEvent("notes", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+
+  test("the things argument round trips, and an unknown thing is refused"):
+    val event = noteEvent(PowerSourceRef.Site(SiteId("s1")),
+      NoteArg.Things(Vector(NoteThing.Site(SiteId("s2")),
+        NoteThing.Pawn(PlayerId("p2")),
+        NoteThing.Card(RelicId("r1")),
+        NoteThing.Banner(Banner.PeoplesFavor))),
+      NoteArg.Things(Vector.empty))
+    val encoded = accepted(GameEventWire.encodeEvent("notes", 0, event))
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    val broken = ujson.read(encoded)
+    broken("payload")("note")("args")(0)("things")(0)("kind") = "weather"
+    assertEquals(GameEventWire.decode(broken), Left(WireError.InvalidValue(
+      "$.payload.note.args[0].things[0].kind",
+      "unknown note thing 'weather'")))
 
   test("an unknown note clause is refused"):
     val event = noteEvent(PowerSourceRef.Site(SiteId("s1")),
@@ -120,7 +133,7 @@ class PowerNoteWireSuite extends munit.FunSuite:
       edit(encoded("payload")("note")("args")(0))
       assertEquals(GameEventWire.decode(encoded), Left(
         WireError.InvalidValue(path, "must not be negative")))
-    refused(NoteArg.Clauses(Vector(NoteClause.LostWarbands(2))),
+    refused(NoteArg.Clauses(Vector(NoteClause.BurnedFavor(1))),
       arg => arg("clauses")(0)("count") = -1,
       "$.payload.note.args[0].clauses[0].count")
     refused(NoteArg.Placements(Vector(2 -> SiteId("s1"))),

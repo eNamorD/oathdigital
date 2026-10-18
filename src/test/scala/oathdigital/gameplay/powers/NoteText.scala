@@ -52,12 +52,17 @@ object NoteText:
     case NoteArg.Clauses(parts) => parts.map(clause).mkString(", ")
     case NoteArg.Placements(entries) => entries.map((count, site) =>
       s"$count on ${site.value}").mkString(", ")
+    case NoteArg.Things(items) => items.map(thing).mkString(", ")
 
   private def clause(part: NoteClause): String = part match
-    case NoteClause.LostWarbands(count) => s"lost $count warbands"
     case NoteClause.BurnedFavor(count) => s"burned $count favor"
     case NoteClause.Discarded(ids) =>
       s"discarded ${ids.map(_.value).mkString(", ")}"
     case NoteClause.SetAside(ids) =>
       s"set aside ${ids.map(_.value).mkString(", ")}"
-    case NoteClause.SentTo(site) => s"was sent to ${site.value}"
+
+  private def thing(item: NoteThing): String = item match
+    case NoteThing.Site(id) => id.value
+    case NoteThing.Pawn(player) => s"${player.value}'s pawn"
+    case NoteThing.Card(id) => id.value
+    case NoteThing.Banner(banner) => BannerRules.displayName(banner)

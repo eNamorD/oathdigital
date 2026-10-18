@@ -253,3 +253,11 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
       mercenaries)
     assertEquals(said(ActionRef.Search, SearchProcedure.drewFromDeck,
       NoteArg.Cards(six)), "Drew 6 cards from the World Deck")
+
+  // TODO(slice 4 task 3): uncomment once CampaignNotes declares its keys.
+  // test("a things argument joins sites, a pawn, a card and a banner"):
+  //   assertEquals(spoken(ActionRef.Campaign, CampaignNotes.targets,
+  //       NoteArg.Things(Vector(NoteThing.Site(brokenPeaks),
+  //         NoteThing.Pawn(PlayerId("p2")), NoteThing.Card(RelicId("r1")),
+  //         NoteThing.Banner(Banner.DarkestSecret)))).map(_.text).mkString,
+  //     "Targets: Broken Peaks, p2's pawn, a Relic and Darkest Secret")

@@ -154,18 +154,26 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case NoteArg.Placements(entries) => ujson.Obj("kind" -> "placements",
       "placements" -> ujson.Arr.from(entries.map((count, site) =>
         ujson.Obj("count" -> count, "siteId" -> site.value))))
+    case NoteArg.Things(items) => ujson.Obj("kind" -> "things",
+      "things" -> ujson.Arr.from(items.map(encodeNoteThing)))
+
+  private def encodeNoteThing(thing: NoteThing): ujson.Value = thing match
+    case NoteThing.Site(id) => ujson.Obj("kind" -> "site",
+      "siteId" -> id.value)
+    case NoteThing.Pawn(player) => ujson.Obj("kind" -> "pawn",
+      "playerId" -> player.value)
+    case NoteThing.Card(id) => ujson.Obj("kind" -> "card",
+      "card" -> encodeCardId(id))
+    case NoteThing.Banner(banner) => ujson.Obj("kind" -> "banner",
+      "bannerKey" -> banner.key)
 
   private def encodeNoteClause(clause: NoteClause): ujson.Value = clause match
-    case NoteClause.LostWarbands(count) =>
-      ujson.Obj("kind" -> "lost-warbands", "count" -> count)
     case NoteClause.BurnedFavor(count) =>
       ujson.Obj("kind" -> "burned-favor", "count" -> count)
     case NoteClause.Discarded(ids) => ujson.Obj("kind" -> "discarded",
       "cards" -> ujson.Arr.from(ids.map(encodeCardId)))
     case NoteClause.SetAside(ids) => ujson.Obj("kind" -> "set-aside",
       "cards" -> ujson.Arr.from(ids.map(encodeCardId)))
-    case NoteClause.SentTo(site) =>
-      ujson.Obj("kind" -> "sent-to", "siteId" -> site.value)
 
   private def decodePowerNoted(value: ujson.Value,
       path: String): Either[WireError, OathEvent] = try for
@@ -228,13 +236,26 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
           decodeCount(entry("count"), s"$path.placements[$index].count")
             .map(_ -> SiteId(entry("siteId").str)) })
         .map(NoteArg.Placements.apply)
+    case "things" => traverse(value("things").arr.zipWithIndex.toVector)({
+      case (thing, index) =>
+        decodeNoteThing(thing, s"$path.things[$index]") })
+      .map(NoteArg.Things.apply)
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown note argument '$other'"))
 
+  private def decodeNoteThing(value: ujson.Value, path: String)
+      : Either[WireError, NoteThing] = value("kind").str match
+    case "site" => Right(NoteThing.Site(SiteId(value("siteId").str)))
+    case "pawn" => Right(NoteThing.Pawn(PlayerId(value("playerId").str)))
+    case "card" => decodeCardId(value("card"), s"$path.card")
+      .map(NoteThing.Card.apply)
+    case "banner" => decodeBanner(value("bannerKey").str, s"$path.bannerKey")
+      .map(NoteThing.Banner.apply)
+    case other => Left(InvalidValue(s"$path.kind",
+      s"unknown note thing '$other'"))
+
   private def decodeNoteClause(value: ujson.Value, path: String)
       : Either[WireError, NoteClause] = value("kind").str match
-    case "lost-warbands" => decodeCount(value("count"), s"$path.count")
-      .map(NoteClause.LostWarbands.apply)
     case "burned-favor" => decodeCount(value("count"), s"$path.count")
       .map(NoteClause.BurnedFavor.apply)
     case "discarded" => traverse(value("cards").arr.zipWithIndex.toVector)({
@@ -243,7 +264,6 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case "set-aside" => traverse(value("cards").arr.zipWithIndex.toVector)({
       case (card, index) => decodeCardId(card, s"$path.cards[$index]") })
       .map(NoteClause.SetAside.apply)
-    case "sent-to" => Right(NoteClause.SentTo(SiteId(value("siteId").str)))
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown note clause '$other'"))
 
