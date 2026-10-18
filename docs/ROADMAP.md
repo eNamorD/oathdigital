@@ -43,11 +43,11 @@ Left behind by earlier phases:
   `catalog: ExecutableCatalog` constructor parameter (power classes, the
   projectors, the Game Log and the Campaign plan files), and many
   `forCatalog(catalog)` constructors thread it, often only to pass it on.
-  Remove each parameter and constructor as its power is touched.
+  Sweep them out; a standing rule stops new ones.
 - [ ] **Migrate `CatalogNames` to card objects.** Test files look
   cards up by name through `CatalogNames` (the test readability sweep of
-  2026-10-02 moved numeric ids onto it). Move them to direct object
-  references such as `AlchemistCard`.
+  2026-10-02 moved numeric ids onto it). Sweep them to direct object
+  references such as `AlchemistCard`; a standing rule stops new uses.
 
 Left behind by the
 [Travel destination work](superpowers/specs/2026-10-07-travel-destination-walker-design.md):
@@ -84,6 +84,17 @@ Left behind by the
 Left behind by the
 [consent work](superpowers/specs/2026-10-08-consent-system-design.md):
 
+- [ ] **Arranged-start event for game save and load.** A journal must begin
+  with `GameStarted`, and no codec exists for a full `ReadyGame`. A journaled
+  event that carries a whole arranged position (players, sites, decks, banks,
+  turn, walker state) would let a stream begin mid-game: loading a saved game,
+  scenarios, tutorials, and bug reproductions from a pasted position. It needs
+  a `ReadyGame` wire codec, a game-log line, projection handling, and a
+  decision on who may start one. The test-only replay origin from the service
+  and log start-state project (2026-09-28) is the seam it would grow from.
+  Recorded in the
+  [service log start states design](superpowers/specs/2026-09-28-service-log-start-states-design.md).
+  The consent play-test below needs it.
 - [ ] **Play-test consent in a browser.** The amber destination, campaign
   target, faceup Vision, Hall-protected card and free option of a toll, the confirmation, the
   ruler's prompt, automatic answers, the preferences grid and withdrawing
@@ -92,18 +103,18 @@ Left behind by the
   arranged start.
 
 Left behind by
-[catalog batch 7](superpowers/specs/2026-10-09-catalog-batch-7-design.md):
+[catalog batch 7](superpowers/specs/2026-10-09-catalog-batch-7-design.md) and
+[catalog batch 8](superpowers/specs/2026-10-12-catalog-batch-8-design.md):
 
-- [ ] **Play-test the Campaign dice in a browser.** The reroll decision
-  after each roll, Silver Charm's choice of earlier dice, the amount
-  questions of Arcane Armor, Unstable Summon and Mountain Giant, the
+- [ ] **Play-test catalog batches 7 and 8 in a browser.** Batch 7: the
+  reroll decision after each roll, Silver Charm's choice of earlier dice, the
+  amount questions of Arcane Armor, Unstable Summon and Mountain Giant, the
   defense rolling first under Careful Plans, Zealots' warning on its option
-  and Signal Trees' revealed cards are covered by server tests only.
-
-### Phase - Board decision follow-ups
-
-- Add reasons to the remaining option builders as playtests find options
-  that people wonder about.
+  and Signal Trees' revealed cards. Batch 8: a ruler's prompt to deactivate
+  an automatic power, Palanquin's target, toll and Pass question, the
+  either-or and payer confirmations, Small Friends' site question, Sneak
+  Attack's off-turn offer and True Oath's goal choice. All are covered by
+  server tests only.
 
 ### Phase - Campaign battle summary
 
@@ -125,10 +136,6 @@ Cards that need an engine change first, grouped by the missing mechanism.
 left these out: each costs a slice or more per card, or belongs with another
 phase.
 
-- **Negotiation:** The Gathering and Whispering Stone need a nested
-  Negotiation with its own participants. Council Arbiter, Deed Writer and
-  Traveling Negotiator widen who may negotiate and what a deal may hold.
-  They belong with **Phase - Negotiation terms and promises**.
 - **Search Party:** a card played after its WHEN PLAYED, as if searched.
   Nested inside the WHEN PLAYED, the played card fires neither its own WHEN
   PLAYED nor the card-play triggers (`WalkerHooks.gathered` is keyed by
@@ -198,6 +205,11 @@ banners, remote and private Negotiation, a registry of term kinds, and
 eligibility powers. Record ignored Negotiation rules per participant rather
 than for the actor only. Citizenship offers belong to the Empire phase.
 
+- [ ] **Negotiation cards.** The Gathering and Whispering Stone need a nested
+  Negotiation with its own participants. Council Arbiter, Deed Writer and
+  Traveling Negotiator widen who may negotiate and what a deal may hold.
+  Catalog batch 8 left them for this phase.
+
 ### Phase - Chronicle steps
 
 After the all-Exile alpha, implement the Chronicle and persistent campaign:
@@ -212,6 +224,9 @@ continuation, and campaign browsing.
 - [ ] **Chronicle import and export.** The Chronicle string codec for the TTS
   format, including the sections that format has not defined yet.
 - [ ] **Foundations.**
+- [ ] **The Grand Council and Festival banner faces.** Legacies that set
+  Foundation V or VI turn the banners to these faces. Their ids are in
+  `RuleSourceIndex`, and the faces have no behaviour.
 - [ ] **Legacies.**
 - [ ] **Eras.**
 
@@ -289,6 +304,10 @@ one.
 
 ### Powers-related deferred items
 
+- [ ] **Reasons on the remaining options.** Add hover reasons to the option
+  builders that still lack them, as playtests find options people wonder
+  about. Left by the
+  [board decisions design](superpowers/specs/2026-10-03-board-decisions-design.md).
 - [ ] **Town Meeting's ruling.** Town Meeting splits its favor across the
   banks, as Alchemist does, but its text may mean one bank for all, as
   Fabled Feast's does. The
@@ -306,8 +325,6 @@ one.
   `WalkerDecisionProjector.waiting` reads only a parked decision's heading and
   Negotiation query, which the look-ahead never narrows, so its second
   `parkedDecide` could skip the look-ahead like the other identity-only callers.
-- [ ] **The Grand Council and Festival banner faces.** They are listed
-  as synthetic ids in the reviewed catalog and have no behaviour.
 - [ ] **Mercenaries' player-chosen sign.** Mercenaries adds attack dice
   when its user attacks and removes defense dice from the attacker when it
   defends. The card lets the player choose the sign, and the plan fixes it by side.
@@ -319,10 +336,6 @@ one.
   shows in the journal as a dice-pool change and suites that count a Campaign's
   `ModifyDicePool` operations see it. A dedicated recorded operation would say
   what happened.
-- [ ] **A public view of a revealed temporary hand.** The Truthful Harp
-  reveals the cards it draws by recording a `Peek` for every other player. No
-  operation reveals a card in a temporary hand and the hand is projected to its
-  owner only, so no view shows the reveal to the other players yet.
 - [ ] **A board slot for distributions and Sticky Fire without a choice.**
   Warning Signals names the defender's board by a player option in its distribution, which
   the panel shows as a player name, and Sticky Fire asks its question even when a yes
@@ -388,15 +401,6 @@ one.
   suit and restriction icons on card faces.
 - [ ] **L4 — Saved-game browser and replay navigation** (campaign-continuity
   phase)
-- [ ] **Arranged-start event for game save and load.** A journal must begin
-  with `GameStarted`, and no codec exists for a full `ReadyGame`. A journaled
-  event that carries a whole arranged position (players, sites, decks, banks,
-  turn, walker state) would let a stream begin mid-game: loading a saved game,
-  scenarios, tutorials, and bug reproductions from a pasted position. It needs
-  a `ReadyGame` wire codec, a game-log line, projection handling, and a
-  decision on who may start one. The test-only replay origin from the service
-  and log start-state project (2026-09-28) is the seam it would grow from.
-  Recorded in that project's design.
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
 - [ ] **L6 — Incremental implementation of remaining phases and rules** (tracked
   in the phased sequence above; the next denizens and relics come
@@ -429,6 +433,10 @@ one.
 
 ## Standing rules
 
+- New code reads cards from their card objects. A new class takes no
+  `catalog: ExecutableCatalog` parameter and adds no `forCatalog`
+  constructor only to pass the catalog on, and a new test names cards by
+  their card objects, not through `CatalogNames`.
 - The verification gate is the complete JVM and Scala.js suites, the optimized
   Scala.js linker, the card catalog suite, the architecture and documentation-link
   checks, and diff validation.
