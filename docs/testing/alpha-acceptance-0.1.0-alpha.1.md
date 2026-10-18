@@ -9,7 +9,38 @@ session are marked *host check*.
 
 This record covers the Universal `.tgz` archive over a private LAN and behind a
 local HTTPS proxy. It does not cover OCI images, GitHub Actions, GHCR, or the
-GitHub prerelease; those remain open in the [roadmap](../ROADMAP.md).
+GitHub prerelease; those remain open in the [roadmap](../ROADMAP.md). The
+bundled archives were not part of this run; see
+[Bundled archive checks](#bundled-archive-checks).
+
+## Recorded automated evidence (not manual acceptance)
+
+At commit `5b817f65e13c9561b597c743e746c749c84fa3e3`
+(`build: prepare gated multiarchitecture alpha releases`), Task 2 ran the
+following locally on macOS arm64 with Temurin Java `21.0.12.1+1-LTS`, Node
+`v24.19.0`, and `OATH_RELEASE_VERSION=0.1.0-alpha.1`:
+
+```sh
+export JAVA_HOME='/tmp/oath-release-java21.xc372r/jdk-21.0.12.1+1/Contents/Home'
+export PATH="$JAVA_HOME/bin:/Users/alex/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH"
+export OATH_RELEASE_VERSION=0.1.0-alpha.1
+./sbtw verifyReleaseVersion test frontend/test verifyPackageMappings Universal/packageBin Universal/packageZipTarball Docker/stage
+```
+
+The command exited 0: **563 JVM tests** (67 XML suites) and **137 frontend
+tests** (9 XML suites), all with zero failures and zero errors. It produced
+`oathdigital-0.1.0-alpha.1.zip` (SHA-256
+`4bd90e5f1e2416ab4fc63ae13ab3ceb407d46f67b225288e0776779678e7369e`) and
+`oathdigital-0.1.0-alpha.1.tgz` (SHA-256
+`0fba4eb5841c54f36a31c9677f6cb9a5efeacda6f5f539c57399cf022baa7c00`). Each
+archive was extracted into its own temporary directory and passed
+`sh scripts/smoke-packaged-distribution.sh <extracted-root> 18080` using that
+Java 21 runtime. Both smokes observed readiness, frontend assets, three private
+seats, a command, seat restoration across restart, database close, and shutdown.
+
+These are not the archives tested below, which were rebuilt at a later commit.
+This is automated archive evidence only. It does not satisfy any LAN,
+browser, proxy, TLS, or publication row below.
 
 ## Build and environment
 
@@ -30,10 +61,10 @@ GitHub prerelease; those remain open in the [roadmap](../ROADMAP.md).
 | Machines and network are separate | Yes. Machine A is `192.168.1.193`. The proxy access log shows Machine B's traffic from `192.168.1.64`, with Windows Chrome 153 and Firefox 155 user agents. |
 | Operator, date, time zone | Roman (operator sign-off pending, see Result); 2026-09-21; PDT |
 
-Automated evidence for this artifact (563 JVM tests, 137 frontend tests, and the
-Universal smoke) was recorded earlier in the
-[template's automated-evidence section](../operations/alpha-acceptance.md#recorded-automated-evidence-not-manual-acceptance)
-at commit `5b817f6`. After the `main` merge, the commit above passed 1516 JVM
+Automated evidence for an earlier build of this version (563 JVM tests, 137
+frontend tests, and the Universal smoke) is recorded
+[above](#recorded-automated-evidence-not-manual-acceptance), at commit
+`5b817f6`. After the `main` merge, the commit above passed 1516 JVM
 tests and 210 frontend tests, `verifyReleaseVersion`, and `verifyPackageMappings`,
 and the extracted `.tgz` passed `scripts/smoke-packaged-distribution.sh` (host
 check).
@@ -86,6 +117,23 @@ the proxy) were used.
 - **Not inspected:** no CDN, WAF, error-reporting agent, or hosting dashboard was in the path. Machine B's browser history necessarily holds the seat links.
 - **Observation:** NGINX warned twice that a game projection response was buffered to a temporary file under `tls/tmp/proxy`. The warnings contain no code. The files hold private game views on disk until NGINX removes them.
 
+## Bundled archive checks
+
+The `0.1.0-alpha.1` run did not exercise a bundled archive. Rows 17, 18 and
+20 were walked through on macOS arm64 the next day, on the
+`0.1.0-SNAPSHOT` archive built at commit `3e77e65`, not on an
+`0.1.0-alpha.1` artifact. The [checkpoint record](bundled-launch-macos-arm64-2026-09-22.md)
+holds the details.
+
+| # | Check | Result | Notes |
+| --- | --- | --- | --- |
+| 17 | Download the archive with a browser and extract it with the OS's own tool. | PASS (macOS arm64, checkpoint) | Archive Utility extracted it with no prompt. Windows, Linux: UNEXECUTED. |
+| 18 | Double-click Start. Record the exact Gatekeeper or SmartScreen steps needed. | PASS (macOS arm64, checkpoint) | Required Privacy & Security › Open Anyway, then a Downloads-folder access prompt; found and fixed a gap where Gatekeeper approval did not cascade to `bin/oathdigital`. Windows, Linux: UNEXECUTED. |
+| 19 | Record the firewall prompt and the choice made (private networks only). | UNEXECUTED | |
+| 20 | The window shows the banner; the browser opens the game-creation page at the banner address. | PASS (macOS arm64, checkpoint) | Windows, Linux: UNEXECUTED. |
+| 21 | Create a game on the host; a second machine joins using a seat link with the banner address and completes a turn. | UNEXECUTED | |
+| 22 | Close the Start window (Windows: close the console window). The next start restores the game, and the log from the first run ends with `Oath Digital database closed`. | UNEXECUTED | |
+
 ## Browser observations
 
 Observations from the rows above. "Not recorded" means the operator did not report that combination separately.
@@ -129,7 +177,7 @@ is not changed by this record.
 
 | Field | Recorded value |
 | --- | --- |
-| Overall status | PASS for rows 1–16 with the conditions above. Row 15 passes only with the `/s/` error-log mitigation. |
+| Overall status | PASS for rows 1–16 with the conditions above. Row 15 passes only with the `/s/` error-log mitigation. Rows 17–22 were not part of this run. |
 | Failed or blocked row numbers | None |
 | Raw evidence location | On Machine A, not in the repository: `~/OathDigitalData/accept-1.server.log`, `~/OathDigitalData/accept-tls-1.server.log`, and `~/OathDigitalData/tls/logs/` (NGINX access and error logs). Journals: `~/OathDigitalData/accept-1` and `~/OathDigitalData/accept-tls-1`. |
 | Seat-code redaction reviewed | Reviewed by Claude with `grep` over each log named above; the operator has not independently reviewed the logs. |

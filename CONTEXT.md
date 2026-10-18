@@ -178,10 +178,13 @@ _Avoid_: toll prompt, consent step
 ### Action pane
 
 **Act-action control**:
-A control offered to a viewer for starting a major or minor action, listed by
-the projection as legal for them. It starts an action; it never answers a
-parked decision.
-_Avoid_: button, action button, command
+An option of the Act menu that starts one major or minor action, from the
+engine's `ActOffers` list. It shows its price as a badge when it can start,
+or is withheld with its reason when it cannot. Picking it answers the Act
+menu and queues that action. A phase power's source and End Act and Rest
+are options of the same menu, but they are not act-action controls.
+_Avoid_: button, action button, command, action control (a separate
+per-action button, which no longer exists)
 
 ### Table session
 

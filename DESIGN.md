@@ -366,9 +366,11 @@ Georgia without competing.
 or offline: one variable woff2 (latin, weights 200 to 800, OFL, in
 `frontend/fonts`) declared by the stylesheet with `font-display: swap` and
 preloaded by both index pages, served at `/assets/fonts/` in production. The
-system uses two of its weights: 400 for reading and 700 for everything
-bold, headings, labels, counts and names alike. Nothing asks for 750, 800
-or 900.
+system uses four of its weights. 400 is for reading. 600 is for the player
+title pill alone. 700 is for everything bold, headings, labels, counts and
+names alike. 800 is for the small marks on a board option and the board
+decision's Confirm: the pick and lock mark, the inspect button, the Replace
+badge and the Confirm button itself. Nothing asks for any other weight.
 
 ### Hierarchy
 - **Display** (400, 2.5rem, Georgia): the page `h1` on the host page.

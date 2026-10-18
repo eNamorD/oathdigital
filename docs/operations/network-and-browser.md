@@ -8,20 +8,21 @@ passwords, remote administration, or protection against malicious players.
 
 Browser support remains provisional until each release is manually accepted.
 Automated HTTP smoke tests do not establish browser compatibility. A build's own
-[acceptance record](../testing/alpha-acceptance-0.1.0-alpha.1.md) holds the exact
+[acceptance record](../testing/alpha-acceptance-0.1.0-alpha.2.md) holds the exact
 tested browser, version, and OS; this table only summarizes the latest tested
-build. It is not a durable compatibility promise for later builds.
+build. `0.1.0-alpha.3` shipped without a manual run. The table is not a durable
+compatibility promise for later builds.
 
-| Browser family | Status as of `0.1.0-alpha.1` (2026-09-21) |
+| Browser family | Status as of `0.1.0-alpha.2` (2026-09-23) |
 | --- | --- |
-| Chromium-based desktop browsers | Tested: Chrome 153.0.8010.48, Windows |
-| Firefox desktop | Tested: Firefox 155.0.1, macOS and Windows |
-| Safari desktop | Tested: Safari 26.6.2, macOS |
+| Chromium-based desktop browsers | Tested: Chromium 152.0.7977.130 in an embedded browser pane, macOS; Chrome 153.0.0.0, Windows 11 Pro |
+| Firefox desktop | Untested for this build (passed on `0.1.0-alpha.1`: Firefox 155.0.1, macOS and Windows) |
+| Safari desktop | Untested for this build (passed on `0.1.0-alpha.1`: Safari 26.6.2, macOS) |
 | Safari mobile | Untested for this build |
 | Mobile Chromium-based browsers | Untested for this build |
 
 Record exact browser names, versions, operating systems, and results in the
-[alpha acceptance record](alpha-acceptance.md). Do not convert this table to a
+build's copy of the [alpha acceptance record](alpha-acceptance.md). Do not convert this table to a
 support claim without observed per-build evidence.
 
 The server exchanges `/s/{seat-code}` for an `HttpOnly`, `SameSite=Lax` cookie

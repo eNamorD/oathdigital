@@ -8,28 +8,8 @@ dated evidence and operator initials.
 
 ## Recorded automated evidence (not manual acceptance)
 
-At commit `5b817f65e13c9561b597c743e746c749c84fa3e3`
-(`build: prepare gated multiarchitecture alpha releases`), Task 2 ran the
-following locally on macOS arm64 with Temurin Java `21.0.12.1+1-LTS`, Node
-`v24.19.0`, and `OATH_RELEASE_VERSION=0.1.0-alpha.1`:
-
-```sh
-export JAVA_HOME='/tmp/oath-release-java21.xc372r/jdk-21.0.12.1+1/Contents/Home'
-export PATH="$JAVA_HOME/bin:/Users/alex/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH"
-export OATH_RELEASE_VERSION=0.1.0-alpha.1
-./sbtw verifyReleaseVersion test frontend/test verifyPackageMappings Universal/packageBin Universal/packageZipTarball Docker/stage
-```
-
-The command exited 0: **563 JVM tests** (67 XML suites) and **137 frontend
-tests** (9 XML suites), all with zero failures and zero errors. It produced
-`oathdigital-0.1.0-alpha.1.zip` (SHA-256
-`4bd90e5f1e2416ab4fc63ae13ab3ceb407d46f67b225288e0776779678e7369e`) and
-`oathdigital-0.1.0-alpha.1.tgz` (SHA-256
-`0fba4eb5841c54f36a31c9677f6cb9a5efeacda6f5f539c57399cf022baa7c00`). Each
-archive was extracted into its own temporary directory and passed
-`sh scripts/smoke-packaged-distribution.sh <extracted-root> 18080` using that
-Java 21 runtime. Both smokes observed readiness, frontend assets, three private
-seats, a command, seat restoration across restart, database close, and shutdown.
+UNEXECUTED — not recorded. Record the commit, toolchain, exact command, test
+counts, and each archive's SHA-256 and smoke result for the candidate build.
 
 This is automated archive evidence only. It does not satisfy any LAN,
 browser, proxy, TLS, or publication row below.
@@ -89,10 +69,10 @@ build ships. Use a machine without Java 21 on `PATH` where possible.
 
 | # | Check | Result | Notes |
 | --- | --- | --- | --- |
-| 17 | Download the archive with a browser and extract it with the OS's own tool. | PASS (macOS arm64) | See [checkpoint record](../testing/bundled-launch-macos-arm64-2026-09-22.md). Windows, Linux: UNEXECUTED. |
-| 18 | Double-click Start. Record the exact Gatekeeper or SmartScreen steps needed. | PASS (macOS arm64) | Required Privacy & Security › Open Anyway, then a Downloads-folder access prompt; found and fixed a gap where Gatekeeper approval did not cascade to `bin/oathdigital`. Windows, Linux: UNEXECUTED. |
+| 17 | Download the archive with a browser and extract it with the OS's own tool. | UNEXECUTED | |
+| 18 | Double-click Start. Record the exact Gatekeeper or SmartScreen steps needed. | UNEXECUTED | |
 | 19 | Record the firewall prompt and the choice made (private networks only). | UNEXECUTED | |
-| 20 | The window shows the banner; the browser opens the game-creation page at the banner address. | PASS (macOS arm64) | Windows, Linux: UNEXECUTED. |
+| 20 | The window shows the banner; the browser opens the game-creation page at the banner address. | UNEXECUTED | |
 | 21 | Create a game on the host; a second machine joins using a seat link with the banner address and completes a turn. | UNEXECUTED | |
 | 22 | Close the Start window (Windows: close the console window). The next start restores the game, and the log from the first run ends with `Oath Digital database closed`. | UNEXECUTED | |
 
