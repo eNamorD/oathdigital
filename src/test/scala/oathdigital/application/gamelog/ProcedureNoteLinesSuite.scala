@@ -2,6 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
@@ -231,3 +232,24 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
       CardPlayProcedure.playedAsAdviser).foreach(key =>
         assertEquals(kindOf(ActionRef.PlayFacedownAdviser, key),
           LogKind.Action, key.name))
+
+  test("a Search of a discard pile names the pile"):
+    assertEquals(said(ActionRef.Search, SearchProcedure.drewFromDiscard,
+      NoteArg.Cards(Vector(roar)), NoteArg.RegionName(Region.Cradle)),
+      "Drew a Denizen from the Cradle discard")
+
+  // Six drawn cards is reachable: 3 printed, +1 Augury, +2 Truthful Harp.
+  // The rule this replaced called `LogWords.cards` at any length and wrote
+  // "6 Denizens"; a note's `Cards` argument goes through `LogWords.listed`,
+  // which above `LogWords.Inline` (5) writes "6 cards" when the viewer
+  // identifies none of them and a `LogSpan.Cards` span when it identifies
+  // some. Recorded in the wording ledger.
+  private val faeMerchant: CardId = CatalogNames.denizen("Fae Merchant")
+  private val secondChance: CardId = CatalogNames.denizen("Second Chance")
+  private val piedPiper: CardId = CatalogNames.denizen("Pied Piper")
+
+  test("a draw above five cards is counted, not listed by its backs"):
+    val six = Vector(roar, faeMerchant, secondChance, piedPiper, mushrooms,
+      mercenaries)
+    assertEquals(said(ActionRef.Search, SearchProcedure.drewFromDeck,
+      NoteArg.Cards(six)), "Drew 6 cards from the World Deck")

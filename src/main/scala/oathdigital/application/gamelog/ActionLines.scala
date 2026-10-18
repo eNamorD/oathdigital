@@ -1,27 +1,26 @@
 package oathdigital.application.gamelog
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.PartitionAnswer
 import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
-/** The action line each procedure posts, at the event its facts complete
-  * (spec, "Action lines"). A rule reads the event being formatted and the
-  * run's events before it; a name alone may come from later in the same
-  * segment. The subject is omitted: it is the actor's own action.
+/** The two action lines still inferred from the journal rather than
+  * journaled by the procedure that caused them: Campaign's lines, and the
+  * "Used {card}" fallback for a power that writes no `used` note of its
+  * own. Every other procedure now writes its own (procedures journal their
+  * own notes design; Campaign is slice 4).
+  *
+  * A rule reads the event being formatted and the run's events before it;
+  * a name alone may come from later in the same segment. The subject is
+  * omitted: it is the actor's own action.
   */
 private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
     catalog: ExecutableCatalog):
   import ActionLines._
   private val campaigns = new CampaignLines(words, choices, catalog)
-
-  def searchLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    search(journal, run, at, viewer)
 
   def campaignLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
@@ -33,66 +32,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       viewer: Option[PlayerId]): Vector[Posted] =
     usedPower(journal, run, at, power,
       journal.event(at).isInstanceOf[WalkerCompleted], viewer)
-
-  /** "Drew {cards} from the {source} and kept {cards}", at the keep/discard
-    * answer, or at completion when only one card was drawn or none was
-    * kept ("kept none"). Each card is
-    * judged where its draw took it from and put it. Painted Trumpet draws
-    * with one `Draw` per pile, read together ([[drawnFrom]]). */
-  private def search(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    val draws = journal.runOps(run, at).collect {
-      case (_, OpStep(draw: Draw, before, after)) => draw -> draw.cards.map(
-        card => card -> words.card(card, before, after, viewer))
-    }
-    Option.when(draws.nonEmpty)(
-      (draws.flatMap(_._2), drawnFrom(draws.map(_._1))))
-      .toVector.flatMap { case (drawn, from) =>
-        val kept: Option[Vector[CardId]] = journal.event(at) match
-          case WalkerStepRecorded(_, ChoicePayload(
-              SearchProcedure.cardDecisionId, PartitionAnswer(placements), _),
-              _, _) =>
-            Some(placements.collect {
-              case DecisionPlacement(ref, SearchProcedure.keepKey) => ref
-            }.flatMap(worldCard))
-          // One card drawn: its placement answer completes the line, so the
-          // line precedes the placement line it leads to.
-          case WalkerStepRecorded(_, ChoicePayload(id, _, _), _, _)
-              if drawn.size == 1 && id.startsWith(PlacePrefix) =>
-            Some(drawn.map(_._1))
-          // Nothing kept: every drawn card went to a discard pile, and
-          // nothing was asked (Spinning Bee drew no match).
-          case _: WalkerCompleted if !journal.answers(run, at).exists(
-              answer => answer.decisionId == SearchProcedure.cardDecisionId ||
-                answer.decisionId.startsWith(PlacePrefix)) &&
-              journal.readyAfter(at).exists(after => drawn.forall(
-                (card, _) => inDiscardPile(after, card))) =>
-            Some(Vector.empty)
-          case _: WalkerCompleted if drawn.size == 1 && !journal.answers(run,
-              at).exists(_.decisionId.startsWith(PlacePrefix)) =>
-            Some(drawn.map(_._1))
-          case _ => None
-        kept.toVector.map(ids => action(Vector(Text("Drew ")) ++
-          words.cards(drawn.map(_._2)) ++
-          Vector(Text(s" from $from and kept ")) ++
-          (if ids.isEmpty then Vector(Text("none"))
-          else words.cards(ids.flatMap(id =>
-            drawn.find(_._1 == id).map(_._2))))))
-      }
-
-  /** Where a Search drew from: "the World Deck", "the bottom of the Cradle
-    * discard", or "each discard pile" for Painted Trumpet's draw of every
-    * pile's top card. */
-  private def drawnFrom(draws: Vector[Draw]): String = draws match
-    case Vector(draw) if draw.position == StackPosition.Bottom =>
-      s"the bottom of ${sourceName(draw.source)}"
-    case Vector(draw) => sourceName(draw.source)
-    case _ => "each discard pile"
-
-  /** Whether `card` lies in a regional discard pile in `ready`. */
-  private def inDiscardPile(ready: ReadyGame, card: CardId): Boolean =
-    Region.all.exists(region =>
-      ready.game.current.commonCards.discard(region).contains(card))
 
   /** "Used {card}" at the first step recording one of the power's own
     * effects: a step that is not only the payment onto its card or to the

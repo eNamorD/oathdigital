@@ -34,7 +34,11 @@ object SpinningBeeCard extends Denizen(DenizenId("232"), "Spinning Bee", Suit.He
   *    not keep. Nothing is kept.
   *
   * Its line, "Drawing from the Cradle discard until Hearth card is drawn",
-  * comes before the draw.
+  * comes before the draw, and a second line names what a no-match draw
+  * discarded. The Search's own lines cannot say that: this power empties
+  * the hand inside the draw's own window, so by the time the Search's draw
+  * line runs there is nothing in it (procedures journal their own notes,
+  * slice 3 plan-time ruling 5).
   */
 final case class SpinningBee private (catalog: ExecutableCatalog)
     extends SelectedModifier:
@@ -66,7 +70,8 @@ final case class SpinningBee private (catalog: ExecutableCatalog)
           Vector(line(ctx.activePlayer),
             node.copy(build = (ready, pending) => node.build(ready, pending)
               .flatMap(throughMatch(ready, pending))),
-            discardedUnlessMatched(ctx.activePlayer))
+            discardedUnlessMatched(ctx.activePlayer),
+            discardedLine(ctx.activePlayer))
         case other => Vector(other)
       })))
 
@@ -126,6 +131,27 @@ final case class SpinningBee private (catalog: ExecutableCatalog)
         case _ => Right(Vector.empty)
     })
 
+  /** The actor's temporary hand in `ready`. */
+  private def hand(ready: ReadyGame, actor: PlayerId): Vector[WorldCardId] =
+    ready.game.current.temporaryHands.getOrElse(actor, Vector.empty)
+
+  /** What the no-match draw discarded, read as the hand the discard step
+    * emptied. A matched draw leaves the hand untouched, so
+    * `discardedUnlessMatched` runs and changes nothing, the step gives the
+    * same non-empty hand twice, and this writes nothing; only a hand that
+    * went from full to empty is the no-match case.
+    *
+    * This is the one note in slice 3 that reads `previous` by design: the
+    * leaf it restates is the one this power placed immediately before it,
+    * in a vector this power controls, so nothing can come between them. */
+  private def discardedLine(actor: PlayerId): Note = Note(id, states =>
+    states.previous
+      .collect { case (before, after) if hand(after, actor).isEmpty =>
+        hand(before, actor) }
+      .filter(_.nonEmpty)
+      .map(drawn => SpinningBee.drewNone(PowerSourceRef.Card(cardId),
+        NoteArg.Cards(drawn))))
+
   /** "Drawing from the Cradle discard until Hearth card is drawn". */
   private def line(actor: PlayerId): Note = Note(id, states => for
     suit <- SpinningBee.declared(states.answered)
@@ -151,6 +177,11 @@ object SpinningBee:
     NotePart.Text("Drawing from the "), NotePart.Arg(0),
     NotePart.Text(" discard until "), NotePart.Arg(1),
     NotePart.Text(" card is drawn")))
+  /** "Spinning Bee: Drew Homesteaders, Wrestlers and Defame, and discarded
+    * them all". */
+  val drewNone: NoteKey = notes.key("drew-none", Vector(
+    NotePart.Text("Drew "), NotePart.Arg(0),
+    NotePart.Text(", and discarded them all")))
 
   /** "Declare a suit", asked of `actor`: the six favor banks, in suit
     * order. */

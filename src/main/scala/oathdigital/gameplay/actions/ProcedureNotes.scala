@@ -8,6 +8,7 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.minor.MinorActionProcedures
 import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
@@ -73,6 +74,7 @@ object ProcedureNotes:
       case ActionRef.Trade => TradeProcedure.noteKeys
       case ActionRef.Recover => RecoverProcedure.noteKeys
       case ActionRef.PlayFacedownAdviser => CardPlayProcedure.noteKeys
+      case ActionRef.Search => SearchProcedure.noteKeys
       case ActionRef.Travel => TravelProcedure.noteKeys
       case ActionRef.TakeWealth => TakeWealthProcedure.noteKeys
       case ActionRef.Forge => ForgeProcedure.noteKeys

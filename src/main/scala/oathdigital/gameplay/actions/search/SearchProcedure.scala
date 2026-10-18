@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.search
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.{CardPlay, SearchRules}
+import oathdigital.gameplay.actions.{CardPlay, ProcedureNotes, SearchRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerPowers}
@@ -19,7 +19,8 @@ import oathdigital.model._
   *                                      // (Spinning Bee replaces it, and
   *                                      // the actor's own pile is searched)
   *   Branch { after the answer:
-  *     Sequence(cost, draw, query, placement) })
+  *     Sequence(cost, draw, Note(drew), query, Note(kept),
+  *       placement) })
   *                                    // window = SearchActionEligibility;
   *                                    // query's window = SearchKeep
   * }}}
@@ -44,6 +45,66 @@ object SearchProcedure:
   val discardKey: String = "discard"
   private val heading = "Choose a Search source"
   private val startLabel = "Start Search"
+
+  private val notes = NoteSet(ProcedureNotes.id(ActionRef.Search))
+  /** "Drew Threatening Roar, Fae Merchant and Second Chance from the World
+    * Deck". */
+  val drewFromDeck: NoteKey = notes.key("drew-from-deck", Vector(
+    NotePart.Text("Drew "), NotePart.Arg(0),
+    NotePart.Text(" from the World Deck")))
+  /** "Drew Threatening Roar from the Cradle discard". A separate key rather
+    * than a `Pile` argument: `SearchSource.name` words a pile as "Cradle
+    * discard pile", and this line says "the Cradle discard". */
+  val drewFromDiscard: NoteKey = notes.key("drew-from-discard", Vector(
+    NotePart.Text("Drew "), NotePart.Arg(0), NotePart.Text(" from the "),
+    NotePart.Arg(1), NotePart.Text(" discard")))
+  /** "Kept Threatening Roar", or both cards when Land Warden kept two. */
+  val keptCards: NoteKey = notes.key("kept", Vector(
+    NotePart.Text("Kept "), NotePart.Arg(0)))
+  def noteKeys: Vector[NoteKey] = notes.declared
+
+  /** The actor's temporary hand: the cards a Search has drawn and not yet
+    * placed. */
+  private def hand(ready: ReadyGame, actor: PlayerId): Vector[WorldCardId] =
+    ready.game.current.temporaryHands.getOrElse(actor, Vector.empty)
+
+  /** "Drew … from the World Deck", at the draw. The cards are read from the
+    * live temporary hand and not from `previous`: Truthful Harp and
+    * Spinning Bee each append a leaf inside `SearchBeforeDraw`, and every
+    * leaf resets `previous`, which is what broke Travel and Setup in
+    * slice 2. The pile is the one the Search picked; a power that drew from
+    * the other end of it, or from every pile, says so in its own line
+    * (slice 3 plan-time ruling 5).
+    *
+    * Spinning Bee's no-match draw discards the whole hand inside that same
+    * window, so the hand is empty here and this writes nothing: Bee's own
+    * line names what it drew and discarded.
+    */
+  private def drewNote(actor: PlayerId, source: SearchSource)(
+      states: NoteStates): Option[PowerNote] =
+    val drawn = hand(states.now, actor)
+    Option.when(drawn.nonEmpty)(source match
+      case SearchSource.WorldDeck =>
+        drewFromDeck.sourceless(NoteArg.Cards(drawn))
+      case SearchSource.RegionalDiscard(region) =>
+        drewFromDiscard.sourceless(NoteArg.Cards(drawn),
+          NoteArg.RegionName(region)))
+
+  /** "Kept Threatening Roar", after the keep question and before the
+    * placement, where the hand still holds every drawn card. The kept cards
+    * come from the keep answer when one was asked, and are the one card
+    * drawn when nothing was asked. Nothing held means Spinning Bee drew no
+    * match and discarded them all, and Bee's own line says so. */
+  private def keptNote(actor: PlayerId)(states: NoteStates)
+      : Option[PowerNote] =
+    val held = hand(states.now, actor)
+    val keeps = kept(states.answered)
+    val chosen: Vector[WorldCardId] =
+      if keeps.nonEmpty then keeps
+      else if held.sizeIs == 1 then held
+      else Vector.empty
+    Option.when(chosen.nonEmpty)(keptCards.sourceless(
+      NoteArg.Cards(chosen)))
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
@@ -189,7 +250,19 @@ object SearchProcedure:
       }
     })
 
-    Sequence(Vector(cost, draw, query, placement),
+    // The two lines the Search writes itself sit beside the nodes whose
+    // facts they state (`drewNote`, `keptNote`): the draw line after the
+    // draw, where the hand and the picked pile are both live, and the keep
+    // line after the question and before the placement, where the hand
+    // still holds every drawn card. Truthful Harp's and Spinning Bee's
+    // lines are inserted at the draw's own position, so they still precede
+    // the draw line; `HuntingParty`, the only other
+    // `SearchActionEligibility` contributor, appends after `placement`.
+    Sequence(Vector(cost, draw,
+      Note(ProcedureNotes.id(ActionRef.Search), drewNote(actor, source)),
+      query,
+      Note(ProcedureNotes.id(ActionRef.Search), keptNote(actor)),
+      placement),
       Some(PowerWindow.SearchActionEligibility))
 
   private def option(card: WorldCardId): DecisionOption = card match
@@ -215,8 +288,8 @@ object SearchProcedure:
   private def selectedCards(ready: ReadyGame, pending: PendingTree,
       actor: PlayerId): Vector[WorldCardId] =
     answered(pending).fold {
-      val hand = ready.game.current.temporaryHands.getOrElse(actor, Vector.empty)
-      if hand.nonEmpty then hand
+      val held = hand(ready, actor)
+      if held.nonEmpty then held
       else CardPlayProcedure.placedCard(pending).toVector
     }(_.flatMap(value => card(value.option)))
 

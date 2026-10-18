@@ -45,16 +45,22 @@ class GameLogSearchKeepSuite extends munit.FunSuite:
       "Spinning Bee: Drawing from the Cradle discard until Order card is drawn")
     val drew = lines.indexWhere(_.startsWith("Drew "))
     assert(bee >= 0 && drew > bee, lines)
-    assert(lines(drew).contains(" from the Cradle discard and kept "),
-      lines(drew))
+    assert(lines(drew).endsWith(" from the Cradle discard"), lines(drew))
+    assert(lines.exists(_.startsWith("Kept ")), lines)
     // The suit is told by Bee's line, not as a favor bank pick.
     assert(!lines.exists(_.contains(" bank")), lines)
 
-  test("Spinning Bee with no match: drew the pile and kept none"):
+  // This power discards the whole hand inside the draw's own window, so by
+  // the time the Search's draw line runs there is nothing in the hand and
+  // neither of the Search's own lines is written: Bee's own second line is
+  // the only thing that says what happened (slice 3 plan-time ruling 5).
+  test("Spinning Bee with no match: its line names what it discarded"):
     val lines = searchLines("spinning-bee-none", besideBee,
       Vector(SpinningBee.id), declaring(Suit.Nomad))
-    val drew = lineStarting(lines, "Drew ")
-    assert(drew.endsWith(" from the Cradle discard and kept none"), drew)
+    assert(lines.exists(line => line.startsWith("Spinning Bee: Drew ") &&
+      line.endsWith(", and discarded them all")), lines)
+    assert(!lines.exists(_.startsWith("Drew ")), lines)
+    assert(!lines.exists(_.startsWith("Kept ")), lines)
 
   test("Land Warden: kept two, then a line for each play"):
     val drawn = Vector("Threatening Roar", "Fae Merchant", "Second Chance")
@@ -70,9 +76,7 @@ class GameLogSearchKeepSuite extends munit.FunSuite:
     val lines = searchLines("land-warden", Table.start
       .pawn(p1, "Ancient City").adviser(p1, "Land Warden")
       .worldDeckTop(drawn*), Vector(LandWarden.id), keepFirstTwo)
-    val drew = lineStarting(lines, "Drew ")
-    assert(drew.endsWith(" and kept Threatening Roar and Fae Merchant"),
-      drew)
+    assert(lines.contains("Kept Threatening Roar and Fae Merchant"), lines)
     // By default the first goes to the discard pile, its first option.
     // Land Warden then leaves the second only the site.
     assert(lines.contains(

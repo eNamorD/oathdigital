@@ -21,8 +21,13 @@ object WineOfWelcomeCard extends Relic(RelicId("R33"), "Wine of Welcome", value 
   *
   * While it is picked, each discard pile stays choosable, warned that it
   * needs the world deck. It is warned while Mushrooms is picked, which
-  * makes the world deck unavailable. It writes no line: the start line
-  * names it, and the Search line says the cards came from the bottom.
+  * makes the world deck unavailable.
+  *
+  * Its line, "Drawing from the bottom of the World Deck", comes before the
+  * draw. The Search's own line names the pile but cannot say which end the
+  * draw took, because that is this power's rewrite of the draw operation
+  * and a note cannot read an operation (procedures journal their own notes,
+  * slice 3 plan-time ruling 5).
   */
 final case class WineOfWelcome private (catalog: ExecutableCatalog)
     extends SelectedModifier:
@@ -30,11 +35,14 @@ final case class WineOfWelcome private (catalog: ExecutableCatalog)
   def id: PowerId = WineOfWelcome.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
   override def priority: Int = BottomDraw.Priority
+  override def noteKeys: Vector[NoteKey] = WineOfWelcome.noteKeys
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchBeforeDraw -> Vector(Transform((_, operations) =>
-      BottomDraw.reshaped(operations, SearchRules.DrawSize,
-        _ == SearchSource.WorldDeck))))
+      Note(id, _ => Some(WineOfWelcome.drawing(
+        PowerSourceRef.Card(cardId)))) +:
+        BottomDraw.reshaped(operations, SearchRules.DrawSize,
+          _ == SearchSource.WorldDeck))))
 
   override def warning(decide: Decide, option: DecisionOptionRef)
       : Option[OptionReason] = option match
@@ -49,6 +57,13 @@ final case class WineOfWelcome private (catalog: ExecutableCatalog)
 
 object WineOfWelcome:
   val id: PowerId = WineOfWelcomeCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  /** "Wine of Welcome: Drawing from the bottom of the World Deck", before
+    * the draw, as Spinning Bee's line is. The pile is always the world
+    * deck, so the line takes no argument. */
+  val drawing: NoteKey = notes.key("drawing", Vector(
+    NotePart.Text("Drawing from the bottom of the World Deck")))
   val discardWarning: String = "Wine of Welcome needs the world deck"
   /** Both Wine of Welcome's and Mushrooms' warning, whichever is picked
     * first. */

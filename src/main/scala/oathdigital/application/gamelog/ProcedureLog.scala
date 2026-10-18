@@ -135,14 +135,16 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
     of(procedure).noteKind(key)
 
   private def rules(procedure: ProcedureRef): ProcedureLog = procedure match
-    // Card Play's placement line names the card it placed; the follow-up
-    // discard of a Replace site slot is told by the note of the power that
-    // permitted it.
+    // Two keys word the draw line, one per pile kind, so no single key
+    // tells the source decision. Card Play's placement line names the card
+    // it placed; the follow-up discard of a Replace site slot is told by
+    // the note of the power that permitted it.
     case ActionRef.Search => ProcedureLog(tag = Some("Search"),
-      lines = ActionLineSource.Rule(actions.searchLines),
+      lines = ActionLineSource.Notes(),
       anchor = starts.picksSettled,
       narrated = Vector(Told(SearchProcedure.sourceDecisionId),
-        Told(SearchProcedure.cardDecisionId)),
+        Told(SearchProcedure.cardDecisionId,
+          Some(SearchProcedure.keptCards))),
       narratedPrefixes = Vector(ActionLines.PlacePrefix,
         "cardplay.discard."))
     // The played card's line names the facedown pick. Five keys word it —

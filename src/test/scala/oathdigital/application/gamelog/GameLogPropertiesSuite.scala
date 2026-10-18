@@ -231,7 +231,7 @@ class GameLogPropertiesSuite extends munit.FunSuite:
     val noting = ProcedureRef.all.filter(
       logs.of(_).lines.isInstanceOf[ActionLineSource.Notes])
     assertEquals(noting.map(_.key),
-      Vector("play-facedown-adviser", "recover", "forge", "travel",
+      Vector("search", "play-facedown-adviser", "recover", "forge", "travel",
         "take-wealth",
         "muster", "trade", "challenge", "place-banner-resource",
         "negotiation", "peek-site-relics", "reveal-owned-relic",

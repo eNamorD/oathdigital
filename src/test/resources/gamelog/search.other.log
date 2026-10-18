@@ -2,6 +2,7 @@
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
 8.0 section 1 search@4 | Search[cost:2 Supply]
-12.0 action 1 search@4 | Drew 3 Denizens from the World Deck and kept a Denizen
-13.0 delta 1 search@4 | Discarded 2 Denizens to the Provinces discard
-18.0 action 1 search@4 | Discarded a Denizen to the Provinces discard
+10.0 action 1 search@4 | Drew 3 Denizens from the World Deck
+14.0 action 1 search@4 | Kept a Denizen
+15.0 delta 1 search@4 | Discarded 2 Denizens to the Provinces discard
+20.0 action 1 search@4 | Discarded a Denizen to the Provinces discard

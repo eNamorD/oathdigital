@@ -2,10 +2,11 @@ package oathdigital.gameplay.powers.search
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower,
   SiteOnly}
+import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.operations.SupplyStrip
 import oathdigital.gameplay.powerresolver.{Contribution, ModifierPicks,
   OfferReason, PowerCtx, Transform}
-import oathdigital.gameplay.powers.SelectedModifier
+import oathdigital.gameplay.powers.{PowerAnswers, SelectedModifier}
 import oathdigital.model._
 
 object MushroomsCard extends Denizen(DenizenId("183"), "Mushrooms", Suit.Beast) with SiteOnly:
@@ -29,8 +30,11 @@ object MushroomsCard extends Denizen(DenizenId("183"), "Mushrooms", Suit.Beast) 
   *  - It cannot be picked with Painted Trumpet, and is warned while Wine
   *    of Welcome is picked, which then does nothing.
   *
-  * It writes no line: the start line names it, and the Search line says
-  * the card came from the bottom.
+  * Its line, "Drawing one card from the bottom of the Cradle discard",
+  * comes before the draw. The Search's own line names the pile but cannot
+  * say which end the draw took, because that is this power's rewrite of
+  * the draw operation and a note cannot read an operation (procedures
+  * journal their own notes, slice 3 plan-time ruling 5).
   */
 final case class Mushrooms private (catalog: ExecutableCatalog)
     extends SelectedModifier:
@@ -39,6 +43,7 @@ final case class Mushrooms private (catalog: ExecutableCatalog)
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
   override def cost: Cost = Cost(secret = Mushrooms.Secrets)
   override def priority: Int = BottomDraw.Priority
+  override def noteKeys: Vector[NoteKey] = Mushrooms.noteKeys
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchSourceSelection -> Vector(Transform((ctx, operations) =>
@@ -47,8 +52,21 @@ final case class Mushrooms private (catalog: ExecutableCatalog)
     PowerWindow.SearchCost -> Vector(Transform((ctx, operations) =>
       SupplyStrip(ctx, ctx.activePlayer, operations))),
     PowerWindow.SearchBeforeDraw -> Vector(Transform((_, operations) =>
-      BottomDraw.reshaped(operations, Mushrooms.Cards,
+      line +: BottomDraw.reshaped(operations, Mushrooms.Cards,
         _.isInstanceOf[SearchSource.RegionalDiscard]))))
+
+  /** The pile the source decision picked, when it picked a discard pile:
+    * the actor's own, or another region's that Observatory or Errand Boy
+    * offered. The world deck is unavailable while this is picked, so the
+    * answer is always a discard pile and this always writes its line. */
+  private def line: Operation = Note(id, states =>
+    PowerAnswers.one(PendingTree(Vector.empty, states.answered),
+      SearchProcedure.sourceDecisionId)
+      .flatMap(SearchSource.fromRef).collect {
+        case SearchSource.RegionalDiscard(region) =>
+          Mushrooms.drawing(PowerSourceRef.Card(cardId),
+            NoteArg.RegionName(region))
+      })
 
   override def offerReason(ctx: PowerCtx): Option[OfferReason] =
     if ModifierPicks.isPicked(ctx.answered, ctx.window,
@@ -59,6 +77,13 @@ final case class Mushrooms private (catalog: ExecutableCatalog)
 
 object Mushrooms:
   val id: PowerId = MushroomsCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  /** "Mushrooms: Drawing one card from the bottom of the Cradle
+    * discard". */
+  val drawing: NoteKey = notes.key("drawing", Vector(
+    NotePart.Text("Drawing one card from the bottom of the "),
+    NotePart.Arg(0), NotePart.Text(" discard")))
   val Secrets: Int = 1
   /** The cards it draws, before any draw extension. */
   val Cards: Int = 1

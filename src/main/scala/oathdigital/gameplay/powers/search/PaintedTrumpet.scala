@@ -26,8 +26,13 @@ object PaintedTrumpetCard extends Relic(RelicId("R23"), "Painted Trumpet", value
   * Harp still reveals the cards drawn.
   *
   * A Search of the world deck is unchanged, and the world deck is warned
-  * while it is picked. It cannot be picked with Mushrooms. It writes no
-  * line: the Search line says the cards came from each discard pile.
+  * while it is picked. It cannot be picked with Mushrooms.
+  *
+  * Its line, "Drawing the top card of each discard pile instead", comes
+  * before the draw, and only when the rewrite applies. The Search's own
+  * line names the pile the player picked, which is the pile the Search was
+  * priced at; this line says the cards came from all of them (procedures
+  * journal their own notes, slice 3 plan-time ruling 5).
   */
 final case class PaintedTrumpet private (catalog: ExecutableCatalog)
     extends SelectedModifier:
@@ -35,10 +40,11 @@ final case class PaintedTrumpet private (catalog: ExecutableCatalog)
   def id: PowerId = PaintedTrumpet.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
   override def priority: Int = PaintedTrumpet.Priority
+  override def noteKeys: Vector[NoteKey] = PaintedTrumpet.noteKeys
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchBeforeDraw -> Vector(Transform((ctx, operations) =>
-      operations.map {
+      line +: operations.map {
         case node: BuildOps
             if node.window.contains(PowerWindow.SearchBeforeDraw) =>
           node.copy(build = (ready, pending) => picked(pending) match {
@@ -61,6 +67,15 @@ final case class PaintedTrumpet private (catalog: ExecutableCatalog)
       MushroomsCard.id))(OfferReason.Unavailable(
       PaintedTrumpet.notWithMushrooms))
 
+  /** The line, written exactly when the rewrite below applies: it reads
+    * the same `picked` the rewrite reads, so a Search of the world deck,
+    * which this power leaves alone, says nothing. */
+  private def line: Operation = Note(id, states =>
+    picked(PendingTree(Vector.empty, states.answered)).collect {
+      case _: SearchSource.RegionalDiscard =>
+        PaintedTrumpet.drawing(PowerSourceRef.Card(cardId))
+    })
+
   /** The pile the source decision picked. */
   private def picked(pending: PendingTree): Option[SearchSource] =
     PowerAnswers.one(pending, SearchProcedure.sourceDecisionId)
@@ -78,6 +93,12 @@ final case class PaintedTrumpet private (catalog: ExecutableCatalog)
 
 object PaintedTrumpet:
   val id: PowerId = PaintedTrumpetCard.power.id
+  private val notes = NoteSet(id)
+  def noteKeys: Vector[NoteKey] = notes.declared
+  /** "Painted Trumpet: Drawing the top card of each discard pile
+    * instead". */
+  val drawing: NoteKey = notes.key("drawing", Vector(
+    NotePart.Text("Drawing the top card of each discard pile instead")))
   /** After the draw extensions, which fold at 0, so that nothing modifies
     * its draw. */
   val Priority: Int = 1

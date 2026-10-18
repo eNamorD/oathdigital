@@ -238,6 +238,43 @@ note key is one more parameter of the same sort: `MusterProcedure` owns its
 `tradedNothing`; `EconomyTree` places the leaf and owns none of the words.
 `MinorActionProcedures` does the same for its three.
 
+### Search's line could not be one note
+
+**Amended during slice 3, against this document.** The slices list said
+Search's three fallback shapes disappear like the others'. They do, but the
+line itself cannot be a note: it needs the kept set (in `answered`), the
+drawn set (in state) and the `from {pile}` phrase (in the `Draw` operation as
+powers rewrote it), and the keep answer arrives in a different walker command
+than the draw, so `previous` is gone and only `states.now` survives. Spinning
+Bee empties the hand inside `SearchBeforeDraw`, so even that is empty there.
+
+Slice 3 splits the line — `Drew {cards} from {pile}` at the draw, `Kept
+{cards}` at the keep answer — and moves the bottom-draw, each-pile and
+no-match phrases into Wine of Welcome, Mushrooms, Painted Trumpet and
+Spinning Bee, each of which now writes its own line where it previously
+relied on Search's. This is the one deliberate exception to ruling 6 in the
+whole migration, and it is confined to one commit.
+
+### A note after an operation reads the leaf before it, whatever that is
+
+**Amended during slice 3, against the code.** "Where a shared builder's keys
+live" says `EconomyTree` places the note last in the gain window so that
+`previous` is the gain, and that holds for Muster, whose every `MusterGain`
+power appends. Three `TradeGain` powers — The Old Oak, Mounted Library,
+Secret Signal — instead rewrite the gain in place to record it, returning the
+gain and a `Defer` where the gain stood. The `Defer` ran after the gain and
+moves no resource, so the note restated it and the Trade's line said the
+Trade gained nothing however much it gained.
+
+No placement fixes this: `OperationRewrite.ops` descends a `Sequence`, so
+nesting the gain and the note together does not keep a splice out, and the
+amount that arrived cannot be read any other way inside `NoteStates`. The
+three powers now hold their `Defer` before the gain — the record holds the
+operation and not its result, so either order records the same thing — and
+`Deferred`'s own documentation says where a recording power puts it.
+`TradeGainNoteSuite` pins one line per power, so the next spliced leaf fails
+a test rather than a reading.
+
 ## Campaign
 
 Campaign is the only procedure whose line the mechanism could not express.
@@ -429,7 +466,10 @@ survives while its `Note` leaf is removed.
    Trade's completion fallback, Recover's failure branch, the played
    adviser's "no delta intervened" guard. Each guess disappears rather than
    moving. The played adviser's note lands in `CardPlayProcedure`.
-   *Proves:* golden byte-identical.
+   *Proves:* golden byte-identical, **except** Search's own line, which
+   splits in two and moves three phrases into the powers that cause them
+   ("Search's line could not be one note" above). Trade, Recover and the
+   played adviser are byte-identical.
 4. **Campaign, then the deletion.** Campaign alone in its own commit, because
    it is the only one carrying an argument kind nothing else uses and its
    golden diff must not be confusable. Then one commit deleting

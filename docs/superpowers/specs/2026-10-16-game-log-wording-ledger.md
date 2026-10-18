@@ -90,3 +90,42 @@ Library's doubling — posted a second `Traded with …` line. A probe run at
 plan time measured it: a Trade for secrets on The Old Oak, with a beast
 adviser held, posted two identical `Traded with The Old Oak for 1 secret`
 lines. The note posts once, naming what the Trade itself gained.
+
+## Search's one line became two, and its draw powers speak for themselves
+
+`ActionLines.search` wrote `Drew {cards} from {pile} and kept {cards}` as one
+line, from the journal. A note cannot: the kept set is in the action's
+answers, the drawn set is in state, and the pile phrase was read off the
+`Draw` operation **as powers had rewritten it**. The keep answer arrives in a
+different walker command than the draw, so nothing can see all three at once
+(procedures journal their own notes, slice 3 plan-time ruling 1).
+
+The line is now two — `Drew {cards} from {pile}` at the draw, `Kept {cards}`
+at the keep answer — and the three phrases the rule read off the operation
+are lines of the powers that cause them (ruling 5):
+
+- **Wine of Welcome** — "Drawing from the bottom of the World Deck".
+- **Mushrooms** — "Drawing one card from the bottom of the {region} discard".
+- **Painted Trumpet** — "Drawing the top card of each discard pile instead".
+- **Spinning Bee** gains a second line, "Drew {cards}, and discarded them
+  all", for its no-match draw. That is the one case where neither of
+  Search's own lines is written at all: this power empties the temporary
+  hand inside the draw's own window.
+
+Each of the first three replaces a phrase the Search line used to carry, so
+nothing is lost; Painted Trumpet's line corrects the pile the Search line
+names, which is the pile the Search was priced at rather than the piles drawn
+from.
+
+### A Search above five cards is counted, not listed
+
+The rule called `LogWords.cards` at any length. A note's `Cards` argument
+goes through `LogWords.listed`, which above `LogWords.Inline` (5) writes
+`6 cards` when the viewer identifies none of them, and a `LogSpan.Cards` span
+when it identifies some. Six drawn cards is reachable — three printed, one
+more from Augury, two more from Truthful Harp — so a Search that large now
+reads `Drew 6 cards from the World Deck` for a viewer who sees only backs,
+where the rule wrote `Drew 6 Denizens`. `ProcedureNoteLinesSuite` pins the
+all-backs branch; the actor's own view of six takes `listed`'s span branch,
+which needs a script with both draw extensions picked and is recorded here
+rather than tested.
