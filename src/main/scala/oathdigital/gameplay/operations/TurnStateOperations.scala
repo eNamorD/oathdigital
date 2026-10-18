@@ -123,6 +123,11 @@ private[operations] object TurnStateOperations:
     ready.updateCurrent(current =>
       current.copy(walkerDeferred = current.walkerDeferred - key))
 
+  /** Records the site the walk's actor acts as if at; the walker clears it
+    * when the walk ends. */
+  def actAsIf(ready: ReadyGame, site: SiteId): ReadyGame =
+    ready.updateCurrent(_.copy(walkerAsIfSite = Some(site)))
+
   /** A write, not an advance: which phase may follow which belongs to the
     * procedure that declared the operation, and is deliberately not restated
     * here. The one thing this does reject is a transition to the phase the
