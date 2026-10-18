@@ -13,7 +13,7 @@ import LogScripts._
 /** What holds for every script (spec, "Testing"). The scripts are built once
   * per run of this suite. */
 class GameLogPropertiesSuite extends munit.FunSuite:
-  private lazy val scripts = LogScripts.all
+  private lazy val scripts = GoldenScripts.all
 
   private def viewers(script: Script): Vector[Option[PlayerId]] =
     None +: script.players.map(Some(_))

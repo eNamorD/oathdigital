@@ -1,7 +1,8 @@
 package oathdigital.application.gamelog
 
 import java.nio.file.{Files, Path, Paths}
-import LogScripts._
+import GoldenScripts.named
+import LogScripts.format
 
 /** The exact log of every script, for its actor and for one other seat
   * (spec, "Golden tests"). `GAMELOG_GOLDEN=write` rewrites the files

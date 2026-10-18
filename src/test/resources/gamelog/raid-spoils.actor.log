@@ -1,0 +1,15 @@
+0.0 round 0 | Round 1
+0.1 turn 0 | [player:p1|p1]'s turn
+0.2 phase 0 | Act
+8.0 section 1 campaign@4 | Campaign[cost:2 Supply]
+8.1 action 1 campaign@4 | Raid against [player:p2|p2]
+14.0 decision 1 campaign@4 | Targets: [player:p2|p2]'s pawn, [card:R33|Wine of Welcome] and People's Favor
+14.1 delta 1 campaign@4 | Attack Pool: 3, Defense Pool: 6
+16.0 roll 1 campaign@4 | Rolled [dice:attack one-sword one-sword one-sword|sword, sword, sword] for the attack
+17.0 roll 1 campaign@4 | Attack: 3
+20.0 decision 1 campaign@4 | Sacrificed 3 warbands for an attack of 6
+22.0 roll 1 campaign@4 | Rolled [dice:defense blank blank blank blank blank blank|blank, blank, blank, blank, blank, blank] for the defense
+23.0 roll 1 campaign@4 | Defense: 3
+24.0 action 1 campaign@4 | [player:p1|p1] wins!
+32.0 delta 1 campaign@4 | Took [card:R33|Wine of Welcome] and People's Favor from [player:p2|p2]
+32.1 delta 1 campaign@4 | [player:p2|p2] lost 1 warband, burned 1 favor, discarded a Denizen and was sent to [site:site:broken-peaks|Broken Peaks]

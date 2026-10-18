@@ -797,4 +797,3 @@ object LogScripts:
     "heirloom-kept" -> (() => heirloomKept),
     "heirloom-returned" -> (() => heirloomReturned))
 
-  def all: Vector[Script] = named.map(_._2())
