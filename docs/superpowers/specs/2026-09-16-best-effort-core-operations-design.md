@@ -1,6 +1,6 @@
 # Best-Effort Core Operations
 
-> Status: approved in-chat design, awaiting review of this written spec. This is a prerequisite to [Search on the Procedure Walker](2026-09-16-search-walker-design.md). No production implementation is authorized by this document alone.
+> Status: approved design; implemented 2026-09-16. This is a prerequisite to [Search on the Procedure Walker](2026-09-16-search-walker-design.md).
 
 ## Goal and boundary
 

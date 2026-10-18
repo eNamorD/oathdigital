@@ -1,6 +1,7 @@
 # Board Decisions
 
-**Status:** designed 2026-10-03. Spec 1 of two. It replaces the target
+**Status:** designed 2026-10-03; done (plan 2026-10-04-board-decisions). Spec 1 of
+two. It replaces the target
 selection item of **Phase - Campaign UI** and lays the ground for spec 2,
 walker-native card play through card slots, which replaces **Phase - Card
 play UI**.

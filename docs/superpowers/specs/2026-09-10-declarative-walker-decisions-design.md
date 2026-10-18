@@ -1,5 +1,7 @@
 # Declarative Walker Decisions Design
 
+**Status:** implemented 2026-09-11.
+
 ## Goal
 
 Make the transformed `Decide` operation the single authoritative source for

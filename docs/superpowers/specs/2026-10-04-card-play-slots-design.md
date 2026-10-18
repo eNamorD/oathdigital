@@ -1,6 +1,7 @@
 # Card Play Through Card Slots
 
-**Status:** designed 2026-10-04. Spec 2 of board decisions. It builds on the
+**Status:** designed 2026-10-04; done 2026-10-05. Spec 2 of board
+decisions. It builds on the
 [board decisions spec](2026-10-03-board-decisions-design.md) and replaces
 **Phase - Card play UI** and the Powers-related deferred item
 **walker-native card play through card slots**.

@@ -1,6 +1,8 @@
 # Card Classes Design
 
-Date: 2026-10-01. Phase: **Phase - Card classes** in `docs/ROADMAP.md`.
+Date: 2026-10-01. Phase: **Phase - Card classes**, since removed from
+`docs/ROADMAP.md`. Status: implemented 2026-10-01 in four slices; the
+roadmap's "Shrink cached catalog fields" holds what is left.
 
 ## Goal
 

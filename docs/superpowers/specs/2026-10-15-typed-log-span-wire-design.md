@@ -4,8 +4,8 @@
 > (candidate E, "Type the log's span wire"). It gives the game log's wire types
 > the treatment the [typed decision form](2026-09-25-typed-decision-form-design.md)
 > gave the projection's question half, and supersedes the "Wire contract"
-> section of the [game log design](2026-09-25-game-log-design.md). No
-> implementation is authorized by this document alone; a plan follows it.
+> section of the [game log design](2026-09-25-game-log-design.md). It was
+> implemented 2026-10-15.
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) and the game log design define
 **entry**, **headline**, **line**, **span** and **viewer**.

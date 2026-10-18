@@ -1,6 +1,6 @@
 # Operation Algebra Depth: Generic Walker Vocabulary Apart from Oath's Operations
 
-**Status:** designed 2026-10-14. Not built.
+**Status:** designed and implemented 2026-10-14, both slices.
 
 ## Goal
 

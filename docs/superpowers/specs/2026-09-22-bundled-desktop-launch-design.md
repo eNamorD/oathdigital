@@ -1,7 +1,7 @@
 # Bundled runtime and desktop launch — design
 
 Date: 2026-09-22
-Status: approved design, not yet planned or implemented
+Status: approved design; implemented 2026-09-22 and shipped in 0.1.0-alpha.2
 
 ## Goal
 

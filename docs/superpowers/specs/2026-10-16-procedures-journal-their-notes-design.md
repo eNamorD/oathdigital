@@ -7,8 +7,8 @@
 > [power log lines design](2026-09-26-power-log-lines-design.md)'s ruling 2
 > and its `PowerNote` definition. It stands on the
 > [replay posture decision](2026-09-24-replay-posture-decision.md) without
-> changing it. No implementation is authorized by this document alone; a plan
-> follows it.
+> changing it. Slices 1 to 4 landed by
+> 2026-10-17.
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **note**, **note key**,
 **wording** and **declared set**. This design widens the first three from

@@ -1,9 +1,8 @@
 # Operation Family Consolidation
 
-> Status: approved in conversation on 2026-09-24. This is a behavior-preserving
+> Status: approved in conversation on 2026-09-24; implemented 2026-09-24. This is a behavior-preserving
 > ownership refactor of `gameplay/operations`. Its one deliberate replay change
 > is recorded in the [replay posture decision](2026-09-24-replay-posture-decision.md).
-> No production implementation is authorized by this document alone.
 
 ## Purpose
 

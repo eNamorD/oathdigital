@@ -1,6 +1,6 @@
 # Chronicle and Randomized Setup
 
-> Status: design approved 2026-09-21. Not yet planned. Each slice below gets its own implementation plan.
+> Status: design approved 2026-09-21. Implemented 2026-09-22 in three slices, each with its own plan. Its follow-ups are in the roadmap's Setup deferred items and Phase - Chronicle steps.
 
 ## Goal and scope
 

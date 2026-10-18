@@ -1,7 +1,8 @@
 # Catalog Batch 2: Cards, Engine Additions and Slicing
 
-**Status:** designed 2026-09-26. Implementation starts after the
-[Power log lines](2026-09-26-power-log-lines-design.md) phase merges its
+**Status:** designed 2026-09-26; every slice landed by 2026-09-27. Implementation
+started after the
+[Power log lines](2026-09-26-power-log-lines-design.md) phase merged its
 `Note` mechanism, so every card in this batch writes its log line in the task
 that implements it. The per-card rulings are in
 [the rulings appendix](2026-09-26-catalog-batch-2-rulings.md).

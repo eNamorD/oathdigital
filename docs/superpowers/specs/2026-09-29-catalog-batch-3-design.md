@@ -1,8 +1,9 @@
 # Catalog Batch 3: Cards Without Engine Changes
 
-**Status:** designed 2026-09-29. Implementation starts after the
+**Status:** designed 2026-09-29; every slice landed by 2026-10-01. Implementation
+started after the
 [Global operation restrictions](2026-09-30-global-operation-restrictions-design.md)
-phase, which it depends on. The per-card rulings are in
+phase, which it depended on. The per-card rulings are in
 [the rulings appendix](2026-09-29-catalog-batch-3-rulings.md).
 
 **Builds on** [Powers batch 1](2026-09-20-powers-design.md) and

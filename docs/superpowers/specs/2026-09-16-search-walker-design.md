@@ -1,6 +1,6 @@
 # Search on the Procedure Walker
 
-> Status: approved design. Extends the [procedure walker design](2026-09-05-procedure-walker-design.md), [declarative decisions design](2026-09-10-declarative-walker-decisions-design.md), and [Rest and phase powers design](2026-09-13-rest-walker-and-phase-powers-design.md). Requires the [best-effort core operations design](2026-09-16-best-effort-core-operations-design.md) before implementation. No implementation is authorized by this document alone.
+> Status: approved design; implemented 2026-09-17, when legacy Search was retired. Extends the [procedure walker design](2026-09-05-procedure-walker-design.md), [declarative decisions design](2026-09-10-declarative-walker-decisions-design.md), and [Rest and phase powers design](2026-09-13-rest-walker-and-phase-powers-design.md). Requires the [best-effort core operations design](2026-09-16-best-effort-core-operations-design.md) before implementation.
 
 ## Goal and scope
 

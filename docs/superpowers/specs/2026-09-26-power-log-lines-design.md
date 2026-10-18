@@ -1,8 +1,9 @@
 # Power Log Lines
 
-**Status:** designed 2026-09-26. Starts after
+**Status:** designed 2026-09-26; slices 1 to 5 landed by 2026-09-27. It
+started after
 [Rule gaps in implemented cards](2026-09-26-rule-gaps-in-implemented-cards-design.md)
-merges: it needs that phase's Restriction look-ahead and the Transform that
+merged: it needed that phase's Restriction look-ahead and the Transform that
 removes Vow of Peace's sacrifice decision.
 
 **Slice 1 (2026-09-26):** the mechanism, with Vow of Peace and Gambling Hall

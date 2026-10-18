@@ -1,6 +1,6 @@
 # Game Situations
 
-Status: design approved in conversation on 2026-09-25. This is a behaviour-preserving test-architecture slice; it changes no production code except one contained extraction in the test tree's dependency, `ParkedDecisionAssertions`, which is itself a test module.
+Status: design approved in conversation on 2026-09-25; implemented 2026-09-25. This is a behaviour-preserving test-architecture slice; it changes no production code except one contained extraction in the test tree's dependency, `ParkedDecisionAssertions`, which is itself a test module.
 
 ## Purpose
 

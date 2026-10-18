@@ -1,6 +1,6 @@
 # Test speed: engine hot paths
 
-Date: 2026-10-07. Status: approved design.
+Date: 2026-10-07. Status: approved design; implemented 2026-10-07.
 
 This is the fifth and last of the test-suite improvement projects from the
 2026-09-27 test audit. The first four are merged:

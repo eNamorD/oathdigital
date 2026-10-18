@@ -1,6 +1,6 @@
 # Walker Legal-Action Projection Consolidation
 
-Status: approved in conversation on 2026-09-17. This is a behavior-preserving architecture slice.
+Status: approved in conversation on 2026-09-17; implemented 2026-09-17. The walker game loop removed the legal controls it consolidated on 2026-10-10. This is a behavior-preserving architecture slice.
 
 ## Purpose
 

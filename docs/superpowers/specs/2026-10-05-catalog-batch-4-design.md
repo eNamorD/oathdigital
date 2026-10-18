@@ -1,6 +1,7 @@
 # Catalog Batch 4: The Verified Cards
 
-**Status:** designed 2026-10-05. The per-card rulings are in
+**Status:** designed 2026-10-05; every slice landed by 2026-10-07. The
+per-card rulings are in
 [the rulings appendix](2026-10-05-catalog-batch-4-rulings.md).
 
 **Builds on** [Powers batch 1](2026-09-20-powers-design.md),

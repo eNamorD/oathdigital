@@ -1,6 +1,7 @@
 # Catalog Batch 7: Campaign Dice
 
-**Status:** designed 2026-10-09. Slices 1 to 4 are done; each slice's
+**Status:** designed 2026-10-09. Slices 1 to 4 are done, and the batch landed
+on 2026-10-10; each slice's
 plan-time rulings are under it. The per-card
 rulings are in
 [the rulings appendix](2026-10-09-catalog-batch-7-rulings.md).

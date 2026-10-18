@@ -1,6 +1,6 @@
 # Game Log Action Sections
 
-**Status:** designed 2026-10-05. It answers the last item of **Phase -
+**Status:** designed and implemented 2026-10-05. It answers the last item of **Phase -
 Campaign UI** ("Results: make it clear what a Campaign's battle did") and
 closes that phase. The battle summary the playtest also asked about is
 deferred to a new **Phase - Campaign battle summary**.

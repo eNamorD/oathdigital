@@ -4,8 +4,8 @@
 > ("Derive noteKeys", rated Strong) against the code as it stands at
 > `3dcbfd9a`. It settles how a power's note keys stop being a hand-written
 > list and start being derived from the keys themselves, what happens when a
-> key still escapes, and the order the change lands in. No implementation is
-> authorized by this document alone; a plan follows it. It amends neither the
+> key still escapes, and the order the change lands in. It was implemented on
+> 2026-10-14. It amends neither the
 > 2026-09-25 game log design nor the 2026-09-26 power log lines design: the
 > wire format, the wording rules and the placement rules are unchanged.
 

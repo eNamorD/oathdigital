@@ -8,8 +8,8 @@
 > inside the [Game Log design](2026-09-25-game-log-design.md) and extends
 > nothing it decided. It honours the
 > [replay posture decision](2026-09-24-replay-posture-decision.md): nothing new
-> is journaled and no validation runs on load. No implementation is authorized
-> by this document alone; a plan follows it.
+> is journaled and no validation runs on load. It was implemented
+> 2026-10-16.
 
 ## Why now
 

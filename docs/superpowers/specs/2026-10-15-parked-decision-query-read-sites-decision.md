@@ -4,9 +4,8 @@
 > where it was candidate D ("Stop positional parked-decision queries"). The
 > review rated D **Strong** on a premise that does not hold; this document
 > records the corrected premise, re-rates the slice to **housekeeping**, and
-> settles the shape of the fix. It supersedes D's proposed direction. No
-> implementation is authorized by this document alone; the migration and the
-> check are planned separately.
+> settles the shape of the fix. It supersedes D's proposed direction. The migration and
+> the check landed 2026-10-15.
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **parked decision**,
 **form**, **surface** and **answered options**. The three-table form/answer tag

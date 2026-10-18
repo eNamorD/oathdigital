@@ -1,8 +1,8 @@
 # Follow-up Actions
 
-**Status:** designed 2026-10-08. It takes the roadmap's **Phase - Follow-up
+**Status:** designed and implemented 2026-10-08. It takes the roadmap's **Phase - Follow-up
 actions**, without Search Party (its own spec) and without Sneak Attack (needs
-an off-turn actor).
+an off-turn actor). Sneak Attack landed later, in catalog batch 8 slice 14.
 
 **Amended 2026-10-09** by the
 [walker-driven game loop](2026-10-09-walker-game-loop-design.md), slice 1:

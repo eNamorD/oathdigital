@@ -7,8 +7,8 @@
 > second amendment replaces action headlines with lines posted once their
 > facts are complete. It covers the server-side formatter, the state change it
 > needs, the wire contract, the seat routes, and the pane and overlay that read
-> them. No implementation is authorized by this document alone; a plan follows
-> it. Amended 2026-09-26 by the second slice's plan and its delivery: rolls
+> them. It was built in three slices, all landed on
+> 2026-09-26. Amended 2026-09-26 by the second slice's plan and its delivery: rolls
 > are drawn as dice, and the wording and anchors that slice fixed are
 > recorded under "Resolved decisions". Amended 2026-09-26 by the third
 > slice's plan: where the marker, the divider and the overlay's position come

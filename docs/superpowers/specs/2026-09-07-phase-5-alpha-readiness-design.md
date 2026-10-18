@@ -1,6 +1,6 @@
 # Phase 5: All-Exile Alpha Readiness
 
-> Status: approved design. This specification starts the project-roadmap Phase 5 work in parallel with Phase 3. It does not depend on Phase 4 action history.
+> Status: approved design; implemented, and 0.1.0-alpha.2 and alpha.3 shipped. Open follow-ups are under the roadmap's Phase - All-Exile alpha readiness. This specification starts the project-roadmap Phase 5 work in parallel with Phase 3. It does not depend on Phase 4 action history.
 
 ## Goal
 

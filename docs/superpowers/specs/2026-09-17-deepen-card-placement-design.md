@@ -1,6 +1,6 @@
 # Deepen Card Placement
 
-Status: design approved in conversation on 2026-09-17; written spec awaiting review.
+Status: design approved in conversation on 2026-09-17; implemented 2026-09-17.
 
 ## Purpose
 
