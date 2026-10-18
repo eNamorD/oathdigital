@@ -223,24 +223,23 @@ git commit -m "refactor(batch8): powers read ctx.actor directly" \
 
 **Files:**
 - Modify: `docs/architecture/follow-up-actions.md` ("Off-turn actors": `ctx.activePlayer` becomes `ctx.actor`).
-- Modify: `docs/ROADMAP.md` (item 14b).
+- Modify: `docs/ROADMAP.md` (closes catalog batch 8).
+- Modify: `docs/superpowers/specs/2026-10-12-catalog-batch-8-design.md` (status line).
 
 - [ ] **Step 1: Update the architecture doc**
 
 In "Off-turn actors", change `` `ctx.activePlayer` is that actor`` to `` `ctx.actor` is that actor``.
 
-- [ ] **Step 2: Check item 14b off in the ROADMAP**
+- [ ] **Step 2: Close catalog batch 8 in the ROADMAP**
 
-Replace the open entry with:
+14b is the batch's last open item. Close the batch as batch 7 was closed
+(`b4cf692d`):
 
-```markdown
-- [x] **14b. Rename the walk's actor.** `PowerCtx` and `WalkCtx` name the
-  walk's actor `actor`, and so do the walker's locals and the procedure
-  builders' parameters. The turn's player keeps `activePlayer`.
-  Plan: [item 14b](superpowers/plans/2026-10-18-catalog-batch-8-item14b.md).
-```
-
-Replace "Only item 14b of catalog batch 8 remains open." with "Catalog batch 8 is complete." In the phase's status line, add 14b to the done items.
+- Delete the whole "Phase - Catalog batch 8" section.
+- In "Now", replace the batch 8 status line with "Catalog batch 8 landed
+  on 2026-10-18: its design records every slice and item.", linking the
+  design.
+- In the batch 8 design's status line, add 14b to the done items.
 
 - [ ] **Step 3: Check the docs**
 

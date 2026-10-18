@@ -153,7 +153,7 @@ another action must also:
 ## Off-turn actors
 
 A queued entry's actor owns its walk (`CurrentGameState.walkActor`, catalog
-batch 8, slice 14), so `ctx.activePlayer` is that actor even on another
+batch 8, slice 14), so `ctx.actor` is that actor even on another
 player's turn, and they pick their own modifiers. A queued start accepts
 the entry's actor; a menu start still requires the turn's player.
 

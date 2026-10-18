@@ -12,7 +12,9 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is under way: slices 1 to 15 and items 10b, 13b and 13c are done.
+Catalog batch 8 landed on 2026-10-18: its
+[design](superpowers/specs/2026-10-12-catalog-batch-8-design.md) records
+every slice and item.
 
 ## Next
 
@@ -116,59 +118,6 @@ did":
   totals and the winner. It is not always visible.
 - [ ] The same summary filling in while a Campaign runs: the dice on each
   side as battle plans are chosen, and the sacrificed warbands.
-
-### Phase - Catalog batch 8
-
-[Design](superpowers/specs/2026-10-12-catalog-batch-8-design.md) and
-[rulings](superpowers/specs/2026-10-12-catalog-batch-8-rulings.md), approved
-2026-10-12: 30 engine-blocked cards in 15 slices, one mechanism each, in
-this order. Each slice gets its own plan.
-
-- [x] **1. No new engine:** Ward of Silence, Hospitality, Vow of Wisdom.
-- [x] **2. Oathkeeper goal:** True Oath, The Red Seer.
-- [x] **3. Warbands at a Campaign's start:** Vow of Union.
-- [x] **4. A Raid's defeat replaced:** Keep.
-- [x] **5. Burns taken:** Vow of Silence, Vow of Division.
-- [x] **6. Operation triggers:** Secret Testament, Brass Army.
-- [x] **7. Trade at another site:** Small Friends, Friendly Familiar, Secret
-  Signal.
-- [x] **8. Effective suit:** Pledge to Discord, Spiteful Mirror.
-- [x] **9. Darkest Secret lens:** Yew Staff.
-- [x] **10. Power-use restrictions:** Spell Breaker, Forest Council, City
-  Wall, Giant Python.
-- [x] **10b. The ruler's choice over refused automatic powers.** Slice 10
-  refuses an enemy's automatic non-persistent power (When Played, Tyrant,
-  Hospitality, Hunger and the like) silently. With this item, such a power
-  refused only by waivable restrictions asks the refusing card's ruler
-  through consent, worded "Use City Wall to deactivate Blue's Tyrant?". The
-  power's user is not asked, since many of these powers carry a penalty its
-  user would gladly lose. Design:
-  [automatic power consent](superpowers/specs/2026-10-15-automatic-power-consent-design.md).
-- [x] **11. Actor-aware lock:** Ancient Bloodline.
-- [x] **12. Card play at another site:** Baron, New Growth, Forest Warden.
-- [x] **13. Campaign from another site:** Wild Allies, Captains.
-- [x] **13b. Campaign kills at their moment.** A Campaign kills the
-  attacker's skull losses at the attack result, the sacrifices when they
-  are chosen, and the defeat's half at the kill step, each with its own
-  origin split question. Hospital and Cursed Cauldron count every kill, and
-  the attack line counts the skull faces and the warbands they kill.
-  Design: [Campaign kills at their moment](superpowers/specs/2026-10-17-campaign-kills-at-their-moment-design.md).
-  Bear Traps applies at plan time, before any roll, so the move never
-  changed what it sees; the claim that it would was mistaken.
-- [x] **13c. City Wall reads an as-if Trade site.** Small Friends' and
-  Friendly Familiar's site answer is recorded as state for the rest of the
-  Trade, and every rule that read it from the answers reads the state.
-  City Wall walls in a player trading as if at its site, and not one whose
-  pawn stands there but who trades as if elsewhere.
-  Design: [City Wall reads an as-if Trade site](superpowers/specs/2026-10-17-city-wall-as-if-site-design.md).
-- [x] **14. Off-turn actor:** Sneak Attack, Second Wind for a defender.
-- [ ] **14b. Rename the walk's actor.** `WalkCtx.activePlayer` and
-  `PowerCtx.activePlayer` hold the walk's actor since slice 14: a queued
-  entry's actor, else the turn's player. Rename both to `actor`, across
-  about 105 files. Recorded while planning slice 14 on 2026-10-16.
-- [x] **15. Palanquin.**
-
-Only item 14b of catalog batch 8 remains open.
 
 ### Phase - Catalog batch - engine-blocked
 
