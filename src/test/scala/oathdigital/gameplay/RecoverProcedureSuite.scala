@@ -212,8 +212,12 @@ class RecoverProcedureSuite extends munit.FunSuite
 
     val answer = Answered(RecoverProcedure.relicDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Relic(relic)), actor)
-    val finalState = Outcomes.finished(ProcedureWalker.resolve(stateAtRelic,
-      tree, relicWalk.tree, answer, noPowers)).treeless
+    val taking = Outcomes.finished(ProcedureWalker.resolve(stateAtRelic,
+      tree, relicWalk.tree, answer, noPowers))
+    val finalState = taking.treeless
+    // The take journals the recovered line, in the command that takes it.
+    assertEquals(recordedSteps(taking.events, notes = 1).map(_.nodeId),
+      Vector("2.0", "2.1.0"))
 
     assertEquals(Look(finalState).supply(actor), SupplyTrack.Maximum - 2)
     assertEquals(finalState.game.current.rollOutcomes(pool).score,
@@ -343,6 +347,9 @@ class RecoverProcedureSuite extends munit.FunSuite
       case step: WalkerStepRecorded if step.payload.isInstanceOf[ChoicePayload] =>
         step
     }, Vector.empty)
+    // Nothing recovered and nothing stopped, so neither Recover line is
+    // journaled: the rule this replaced posted nothing here either.
+    recordedSteps(finalEvents, notes = 0)
     assertEquals(RecoverProcedure.actorFacedownRelics(finalState, actor),
       Vector.empty)
 
