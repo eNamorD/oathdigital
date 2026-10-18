@@ -17,15 +17,20 @@ final case class ConsentAlternativeProjection(granterPlayerId: String,
     powers: Vector[String], paying: Boolean)
 
 /** The requester's own view of their waiting request: who has not yet
-  * answered. `either` when any one of them will do. */
+  * answered. `either` when any one of them will do. `use` is the card
+  * whose automatic power the rulers decide on (catalog batch 8, item
+  * 10b). */
 final case class ConsentWaitingProjection(granterPlayerIds: Vector[String],
-    either: Boolean = false)
+    either: Boolean = false, use: Option[String] = None)
 
 /** An asked granter's prompt: who asks, about which of the granter's own
   * powers, for which option. `paying` when the granter is asked to pay
-  * and travel there rather than to waive (catalog batch 8, slice 15). */
+  * and travel there rather than to waive (catalog batch 8, slice 15).
+  * `use` is the card whose automatic power the ruler decides on (catalog
+  * batch 8, item 10b). */
 final case class ConsentPromptProjection(requesterPlayerId: String,
-    powers: Vector[String], target: String, paying: Boolean = false)
+    powers: Vector[String], target: String, paying: Boolean = false,
+    use: Option[String] = None)
 
 /** A waivable power the viewer rules, with their setting for each other
   * player: `never`, `case-by-case` or `always`. Only ever the viewer's own

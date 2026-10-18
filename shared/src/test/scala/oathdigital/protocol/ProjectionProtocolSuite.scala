@@ -90,9 +90,10 @@ class ProjectionProtocolSuite extends munit.FunSuite:
 
   test("the consent parts of a projection round-trip"):
     assertRoundTrips(projection.copy(
-      consentWaiting = Some(ConsentWaitingProjection(Vector("p2"))),
+      consentWaiting = Some(ConsentWaitingProjection(Vector("p2"),
+        use = Some("Tyrant"))),
       consentPrompt = Some(ConsentPromptProjection("p1",
-        Vector("Narrow Pass"), "Dunes")),
+        Vector("Narrow Pass"), "Dunes", use = Some("Tyrant"))),
       consentPreferences = Vector(ConsentPreferencesProjection(
         "site.narrow-pass.pass", "Narrow Pass",
         Vector(ConsentPreferenceRowProjection("p1", "always"))),

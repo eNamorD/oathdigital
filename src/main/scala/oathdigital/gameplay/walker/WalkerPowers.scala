@@ -32,7 +32,12 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
       * refuse a note no power declared. `WalkerPowerCatalog` supplies it;
       * a `WalkerPowers` assembled from hand-made powers has no catalog
       * behind it and declares nothing, so its notes are not checked. */
-    declared: Option[oathdigital.gameplay.powers.DeclaredNotes] = None):
+    declared: Option[oathdigital.gameplay.powers.DeclaredNotes] = None,
+    /** Set for a preview or a simulation (automatic power consent design,
+      * "Search and previews"): an automatic use that waits on its rulers
+      * is walked as if they let it work, so the walk never parks at its
+      * step. */
+    previewing: Boolean = false):
   /** These powers indexed by the windows they hook, built once per instance
     * (see [[PowerWindowIndex]]). */
   lazy val windowIndex: PowerWindowIndex = PowerWindowIndex.of(powers)
@@ -71,6 +76,11 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
     * restrictions once. */
   lazy val quiet: WalkerPowers =
     if probing then copy(probing = false) else this
+
+  /** These powers for a preview or a simulation ([[previewing]]). It is
+    * built once per instance, as [[quiet]] is. */
+  lazy val previewed: WalkerPowers =
+    if previewing then this else copy(previewing = true)
 
   /** These powers with the modifiers picked in `answered` added (modifier
     * walker design, "Active powers"). Picks are only ever added: a dry run

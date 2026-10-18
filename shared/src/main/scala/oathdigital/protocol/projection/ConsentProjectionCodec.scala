@@ -45,15 +45,17 @@ private[projection] object ConsentProjectionCodec:
     val row = ujson.Obj(
       "granterPlayerIds" -> encoded(value.granterPlayerIds)(ujson.Str(_)))
     if value.either then row("either") = true
+    value.use.foreach(row("use") = _)
     row
 
   def decodeWaiting(raw: ujson.Value, path: String)
       : Result[ConsentWaitingProjection] = for
     row <- obj(raw, path)
-    _ <- exact(row, Set("granterPlayerIds", "either"), path)
+    _ <- exact(row, Set("granterPlayerIds", "either", "use"), path)
     granters <- strings(row, "granterPlayerIds", path)
     either <- boolOr(row, "either", path, false)
-  yield ConsentWaitingProjection(granters, either)
+    use <- optionalAbsent(row, "use", path)(string)
+  yield ConsentWaitingProjection(granters, either, use)
 
   def encodePrompt(value: ConsentPromptProjection): ujson.Value =
     val row = ujson.Obj(
@@ -61,18 +63,20 @@ private[projection] object ConsentProjectionCodec:
       "powers" -> encoded(value.powers)(ujson.Str(_)),
       "target" -> value.target)
     if value.paying then row("paying") = true
+    value.use.foreach(row("use") = _)
     row
 
   def decodePrompt(raw: ujson.Value, path: String)
       : Result[ConsentPromptProjection] = for
     row <- obj(raw, path)
-    _ <- exact(row, Set("requesterPlayerId", "powers", "target", "paying"),
-      path)
+    _ <- exact(row, Set("requesterPlayerId", "powers", "target", "paying",
+      "use"), path)
     requester <- string(row, "requesterPlayerId", path)
     powers <- strings(row, "powers", path)
     target <- string(row, "target", path)
     paying <- boolOr(row, "paying", path, false)
-  yield ConsentPromptProjection(requester, powers, target, paying)
+    use <- optionalAbsent(row, "use", path)(string)
+  yield ConsentPromptProjection(requester, powers, target, paying, use)
 
   def encodePreferences(value: ConsentPreferencesProjection): ujson.Value =
     ujson.Obj("powerId" -> value.powerId, "power" -> value.power,

@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is under way: slices 1 to 15 are done, and item 10b is next.
+**Phase - Catalog batch 8** is under way: slices 1 to 15 and item 10b are done.
 
 ## Next
 
@@ -136,7 +136,7 @@ this order. Each slice gets its own plan.
 - [x] **9. Darkest Secret lens:** Yew Staff.
 - [x] **10. Power-use restrictions:** Spell Breaker, Forest Council, City
   Wall, Giant Python.
-- [ ] **10b. The ruler's choice over refused automatic powers.** Slice 10
+- [x] **10b. The ruler's choice over refused automatic powers.** Slice 10
   refuses an enemy's automatic non-persistent power (When Played, Tyrant,
   Hospitality, Hunger and the like) silently. With this item, such a power
   refused only by waivable restrictions asks the refusing card's ruler
@@ -172,7 +172,7 @@ this order. Each slice gets its own plan.
   about 105 files. Recorded while planning slice 14 on 2026-10-16.
 - [x] **15. Palanquin.**
 
-Only items 10b, 13b, 13c and 14b of catalog batch 8 remain open.
+Only items 13b, 13c and 14b of catalog batch 8 remain open.
 
 ### Phase - Catalog batch - engine-blocked
 

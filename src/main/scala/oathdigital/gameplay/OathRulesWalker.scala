@@ -5,7 +5,7 @@ import oathdigital.engine.EventEvolution
 import oathdigital.model._
 import oathdigital.gameplay.powerresolver.{ContributingPower, PhasePowers}
 import oathdigital.gameplay.walker.{FollowUpOffer, FollowUpSkipped,
-  ModifierOffers, ProcedureWalker, WalkerCompleted,
+  ModifierOffers, ParkedUses, ProcedureWalker, WalkerCompleted,
   WalkerDice, WalkerOutcome, WalkerParked, WalkerPowers,
   WalkerProcedureRegistry, WalkerSimulation, WalkerStepRecorded}
 import oathdigital.model.OathState._
@@ -222,6 +222,21 @@ private[gameplay] trait OathRulesWalker:
     parked.toOption.flatten.exists(decide =>
       decide.decisionId == decisionId && decide.owner == requester &&
         decide.query.isInstanceOf[DecisionQuery.ChooseOne])
+
+  /** The automatic use whose power-use step the walk is parked at, if it
+    * is (automatic power consent design, "Reaching the step"). */
+  def powerUseStep(state: OathState): Option[AutomaticUse] =
+    val atSlot = state match
+      case Ready(ready) => ready.game.current.walkerPending
+        .exists(_.at.lastOption.contains(ParkedUses.Slot))
+      case _ => false
+    // Most parks are elsewhere, so their tree is not rebuilt.
+    if !atSlot then None
+    else walkerResumeContext(state).toOption.flatMap {
+      case (ready, _, tree, pending, powers, _) =>
+        walkerCall(Right(ParkedUses.of(ready, tree, pending, powers)))
+          .toOption.flatten
+    }
 
   /** The options of a choose-one or a choose-many, as offered. */
   private def offered(decide: Decide): Vector[DecisionOption] =

@@ -12,10 +12,12 @@ object AppendedAutomaticUses:
   final case class Named(user: PlayerId, power: PowerId, card: CardId)
 
   /** Each `AutomaticUse` that `power`'s transforms at `window` append to
-    * `operation`'s children, folded for `actor` on an empty table. A
-    * windowed leaf folds itself, as the walker folds it. */
-  def at(power: ContributingPower, window: PowerWindow, operation: Operation,
-      actor: PlayerId = Table.p1): Vector[Named] =
+    * `operation`'s children, folded for `actor` on an empty table, for a
+    * suite that walks them. A windowed leaf folds itself, as the walker
+    * folds it. */
+  def nodes(power: ContributingPower, window: PowerWindow,
+      operation: Operation, actor: PlayerId = Table.p1)
+      : Vector[AutomaticUse] =
     val ctx = PowerCtx(Table.start.ready, actor, power.source, window,
       Vector.empty, operation)
     val children = operation match
@@ -25,5 +27,10 @@ object AppendedAutomaticUses:
       .collect { case transform: Transform => transform }
       .foldLeft(children)((ops, transform) => transform.fn(ctx, ops))
       .drop(children.size)
-      .collect { case AutomaticUse(user, used, card, _) =>
-        Named(user, used, card) }
+      .collect { case use: AutomaticUse => use }
+
+  /** Each appended node's user, power and card. */
+  def at(power: ContributingPower, window: PowerWindow, operation: Operation,
+      actor: PlayerId = Table.p1): Vector[Named] =
+    nodes(power, window, operation, actor).map(use =>
+      Named(use.user, use.power, use.card))

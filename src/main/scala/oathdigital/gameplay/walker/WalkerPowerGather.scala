@@ -328,7 +328,7 @@ private[walker] object WalkerPowerGather:
           state.game.current.walkerProcedure, answered)._1)
         case use: AutomaticUse => descend(AutomaticUses.children(use, state,
           PendingTree(at = path, answered = answered), powers,
-          inside = false))
+          cursor = None))
         case _ => descend(applyWindow(node.window, node, state,
           activePlayer, powers, path, node.children,
           state.game.current.walkerProcedure, answered)._1)
@@ -527,6 +527,13 @@ private[walker] object WalkerPowerGather:
           pending, picked, decide)
         case other => other
 
+  /** The node `pending.at` addresses itself, unnarrowed: what a caller
+    * reads when it needs the composite around a parked leaf. */
+  def nodeAt(state: ReadyGame, action: Operation, pending: PendingTree,
+      powers: WalkerPowers): Option[Operation] =
+    resolveAt(state, pending, powers.withAnswers(pending.answered), action,
+      pending.at, Vector.empty, Set.empty)
+
   private def resolveAt(state: ReadyGame, pending: PendingTree,
       powers: WalkerPowers, node: Operation, remaining: Vector[String],
       consumed: Vector[String], gathered: Set[PowerWindow]): Option[Operation] =
@@ -540,7 +547,7 @@ private[walker] object WalkerPowerGather:
           followUpAt(state, pending, powers, segment, remaining.tail, consumed)
         case _ => segment.toIntOption.flatMap { index =>
           val (children, nextGathered) = foldedChildrenAt(state, pending,
-            powers, node, consumed, gathered)
+            powers, node, consumed, gathered, remaining)
           if index >= 0 && index < children.size then
             resolveAt(state, pending, powers, children(index), remaining.tail,
               consumed :+ segment, nextGathered)
@@ -574,7 +581,8 @@ private[walker] object WalkerPowerGather:
     */
   private def foldedChildrenAt(state: ReadyGame, pending: PendingTree,
       powers: WalkerPowers, node: Operation, path: Vector[String],
-      gathered: Set[PowerWindow]): (Vector[Operation], Set[PowerWindow]) =
+      gathered: Set[PowerWindow], remaining: Vector[String])
+      : (Vector[Operation], Set[PowerWindow]) =
     val activePlayer = state.game.current.walkActor
     node match
       case branch: Branch =>
@@ -583,10 +591,11 @@ private[walker] object WalkerPowerGather:
           activePlayer, powers, path, selected, state.game.current.walkerProcedure,
           pending.answered, resuming = true)
         (folded, gathered)
-      // Navigation descends into the node only toward a park inside it.
+      // Navigation descends into the node toward a park: at its step, or
+      // inside its effect.
       case use: AutomaticUse =>
         (AutomaticUses.children(use, state, pending.copy(at = path), powers,
-          inside = true), gathered)
+          Some(remaining)), gathered)
       case leaf: LeafOperation =>
         leaf.window match
           case Some(w) if !gathered.contains(w) =>

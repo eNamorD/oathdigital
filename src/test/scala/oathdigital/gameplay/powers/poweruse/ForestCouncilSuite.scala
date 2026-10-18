@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.poweruse
 
 import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.PowerUse
 import oathdigital.gameplay.powers.action.RovingTerror
 import oathdigital.gameplay.powers.WalkerPowerCatalog
@@ -8,7 +9,8 @@ import oathdigital.gameplay.powers.economy.VowOfBeastkin
 import oathdigital.gameplay.powers.whenplayed.{ThreateningRoar,
   WhenPlayedHarness}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
+  WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
@@ -148,25 +150,26 @@ class ForestCouncilSuite extends munit.FunSuite:
         assertEquals(ask.power, ForestCouncil.id)
       case other => fail(s"expected an askable option, got $other")
 
-  test("an enemy's Beast When Played power does not fire"):
+  test("an enemy's Beast When Played power does not fire under a bandit " +
+      "Forest Council"):
     // Threatening Roar, played as p1's adviser, would discard Errand Boy,
     // a Beast card at p1's site. Forest Council stands outside p1's
     // region, where the Roar does not reach.
     import WhenPlayedHarness.{awaySite, homeSite, p1AtHomeSite}
     val roar = WhenPlayedHarness.registered[ThreateningRoar]
-    def errandBoyStays(rulerOfCouncil: PlayerId): Boolean =
-      val ready = p1AtHomeSite.adviser(p1, roar.cardId)
-        .denizen(errandBoy, at = homeSite).denizen(council, at = awaySite)
-        .warbandsAt(awaySite, rulerOfCouncil, 1).ready
+    def errandBoyStays(ruled: Table => Table): Boolean =
+      val ready = ruled(p1AtHomeSite.adviser(p1, roar.cardId)
+        .denizen(errandBoy, at = homeSite).denizen(council, at = awaySite))
+        .ready
       val done = Outcomes.finished(WhenPlayedHarness.playBeside(ready, roar,
         roar.cardId, power))
       Look(done.treeless).cardsAt(homeSite).contains(errandBoy)
-    assert(errandBoyStays(rulerOfCouncil = p2))
+    assert(errandBoyStays(_.bandits(awaySite, 1)))
     // Its ruler's own Roar fires.
-    assert(!errandBoyStays(rulerOfCouncil = p1))
+    assert(!errandBoyStays(_.warbandsAt(awaySite, p1, 1)))
 
-  test("an enemy's Vow of Beastkin adds no warband, and its source limit " +
-      "still holds"):
+  test("an enemy's Vow of Beastkin adds no warband under a bandit Forest " +
+      "Council, and its source limit still holds"):
     // The Vow's extra warband is a use, and Forest Council refuses it. Its
     // source limit is a restriction, not a use, so it holds: Tyrant, an
     // Order adviser, makes Wrestlers (Order) a legal source. Wrestlers is
@@ -178,12 +181,61 @@ class ForestCouncilSuite extends munit.FunSuite:
         .denizen(wrestlers, at = home).adviser(p1, vow).adviser(p1, tyrant)
         .favor(p1, 4).supply(p1, 7).boardWarbands(p1, 3)
       (if withCouncil then base.denizen(council, at = woods)
-        .warbandsAt(woods, p2, 1) else base).ready
+        .bandits(woods, 1) else base).ready
     def mustered(ready: ReadyGame): Int =
       Look(musteredFrom(ready, DecisionOptionRef.Denizen(wrestlers)))
         .boardWarbands(p1)
     assertEquals(mustered(board(withCouncil = true)),
       mustered(board(withCouncil = false)) - VowOfBeastkin.Warbands)
+
+  /** `ready` with p2's `answer` on p1's use of `card` remembered this
+    * turn, against Forest Council. */
+  private def rememberingP2sAnswerOn(ready: ReadyGame, card: DenizenId,
+      answer: ConsentAnswer): ReadyGame = ready.copy(consent = ConsentState(
+    answers = Map(ConsentKey(ForestCouncil.id, p1, PowerUseRules.useKey,
+      DecisionOptionRef.Denizen(card)) -> answer.by(p2)),
+    turn = Some(ConsentTurn.of(ready))))
+
+  test("an enemy's Beast When Played power waits on Forest Council's " +
+      "ruler, whose remembered answer decides it"):
+    import WhenPlayedHarness.{awaySite, homeSite, p1AtHomeSite}
+    val roar = WhenPlayedHarness.registered[ThreateningRoar]
+    val councilRuledByP2 = p1AtHomeSite.adviser(p1, roar.cardId)
+      .denizen(errandBoy, at = homeSite).denizen(council, at = awaySite)
+      .warbandsAt(awaySite, p2, 1).ready
+    def played(ready: ReadyGame) =
+      accepted(WhenPlayedHarness.playBeside(ready, roar, roar.cardId, power))
+    played(councilRuledByP2) match
+      case WalkerOutcome.Parked(pending, _) =>
+        assertEquals(pending.answered, Vector.empty)
+        assertEquals(pending.at.lastOption, Some("0"))
+      case other => fail(s"the walk did not park at the step: $other")
+    def errandBoyStays(answer: ConsentAnswer): Boolean =
+      played(rememberingP2sAnswerOn(councilRuledByP2, roar.cardId,
+        answer)) match
+        case WalkerOutcome.Finished(end, _) =>
+          Look(end).cardsAt(homeSite).contains(errandBoy)
+        case other => fail(s"the walk did not finish: $other")
+    assert(errandBoyStays(ConsentAnswer.Refused))
+    assert(!errandBoyStays(ConsentAnswer.Granted))
+
+  test("an enemy's Vow of Beastkin adds its warband once Forest Council's " +
+      "ruler lets it work"):
+    val vow = CatalogNames.denizen("Vow of Beastkin")
+    val tyrant = CatalogNames.denizen("Tyrant")
+    val musterer = Table.start.turn(p1, Phase.Act).pawn(p1, at = home)
+      .denizen(wrestlers, at = home).adviser(p1, vow).adviser(p1, tyrant)
+      .favor(p1, 4).supply(p1, 7).boardWarbands(p1, 3)
+    val councilRuledByP2 = musterer.denizen(council, at = woods)
+      .warbandsAt(woods, p2, 1).ready
+    def mustered(ready: ReadyGame): Int =
+      Look(musteredFrom(ready, DecisionOptionRef.Denizen(wrestlers)))
+        .boardWarbands(p1)
+    val free = mustered(musterer.ready)
+    assertEquals(mustered(rememberingP2sAnswerOn(councilRuledByP2, vow,
+      ConsentAnswer.Granted)), free)
+    assertEquals(mustered(rememberingP2sAnswerOn(councilRuledByP2, vow,
+      ConsentAnswer.Refused)), free - VowOfBeastkin.Warbands)
 
   /** Every production walker power, as a command with no modifiers picked
     * gets them. */

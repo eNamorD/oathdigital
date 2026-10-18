@@ -20,6 +20,14 @@ class ConsentPromptPanelSuite extends munit.FunSuite:
       "Deep Woods")))
   private val waiting = table.copy(
     consentWaiting = Some(ConsentWaitingState(Vector("red"))))
+  /** Red rules City Wall, and decides on Blue's Tyrant. */
+  private val deactivating = table.copy(
+    walkerWaiting = Some(WalkerWaitingProjection("blue", None)),
+    consentPrompt = Some(ConsentPromptState("blue", Vector("City Wall"),
+      "Let it work", use = Some("Tyrant"))))
+  /** Blue waits on Red's decision on Tyrant. */
+  private val deciding = table.copy(consentWaiting = Some(
+    ConsentWaitingState(Vector("red"), use = Some("Tyrant"))))
 
   private def pane(value: GameProjection, viewer: String,
       ui: RecordingControls, canControl: Boolean = true): dom.Element =
@@ -77,3 +85,25 @@ class ConsentPromptPanelSuite extends munit.FunSuite:
     assertEquals(panel.querySelector(".consent-question").textContent,
       "Blue wants to send you to Coast. Consent to pay Toll Roads and " +
         "travel to Coast?")
+
+  test("the ruler is asked whether to deactivate the power, with four " +
+      "answers in its own words"):
+    val panel = pane(deactivating, "red", new RecordingControls())
+    assertEquals(panel.querySelector(".consent-question").textContent,
+      "Use City Wall to deactivate Blue's Tyrant?")
+    assertEquals(all(panel, ".consent-answer").map(_.textContent),
+      Vector("Always deactivate", "Deactivate", "Let it work",
+        "Always let it work"))
+
+  test("its answers send never, no, yes and always"):
+    val ui = new RecordingControls()
+    val panel = pane(deactivating, "red", ui)
+    all(panel, ".consent-answer").foreach(_.asInstanceOf[dom.html.Button]
+      .click())
+    assertEquals(ui.submitted, Vector("never", "no", "yes", "always")
+      .map(Intent.AnswerConsent(_)))
+
+  test("the user waits on the ruler's decision on the power"):
+    val panel = pane(deciding, "blue", new RecordingControls())
+    assertEquals(all(panel, ".walker-waiting").map(_.textContent),
+      Vector("Waiting for Red's decision on Tyrant…"))

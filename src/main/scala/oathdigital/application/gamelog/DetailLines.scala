@@ -5,7 +5,7 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.dice.{DiceThrow, RerollChoice}
-import oathdigital.gameplay.powerresolver.ModifierPicks
+import oathdigital.gameplay.powerresolver.{ModifierPicks, PowerUseStep}
 import oathdigital.gameplay.walker.{ChoicePayload, RollPayload,
   WalkerStepRecorded}
 import oathdigital.model._
@@ -202,9 +202,12 @@ private[gamelog] object DetailLines:
     else Vector.empty
 
   /** The decisions any procedure may ask, told by the lines of whatever
-    * asked them: a modifier pick, which the start line names, and a reroll
-    * choice, which the reroll's own lines tell. Both are computed from the
-    * id by the layer that owns the decision, so neither can silently miss
-    * one and neither keys on a procedure. */
+    * asked them: a modifier pick, which the start line names; a reroll
+    * choice, which the reroll's own lines tell; and an automatic power's
+    * step, which the consent lines tell. Each is computed from the id by
+    * the layer that owns the decision, so none can silently miss one and
+    * none keys on a procedure. */
   def crossCutting(decisionId: String): Boolean =
-    ModifierPicks.isDecision(decisionId) || RerollChoice.isDecision(decisionId)
+    ModifierPicks.isDecision(decisionId) ||
+      RerollChoice.isDecision(decisionId) ||
+      PowerUseStep.isDecision(decisionId)

@@ -38,6 +38,9 @@ private[serialization] trait ConsentEventCodec { this: GameEventJsonSupport =>
               "requester" -> key.requester.value,
               "decisionId" -> key.decisionId,
               "target" -> DecisionAnswerCodec.encodeRef(key.target))))
+        // Written only when set (catalog batch 8, item 10b).
+        request.use.foreach(use => encoded("use") = ujson.Obj(
+          "card" -> encodeCardId(use.card), "issuer" -> use.issuer.value))
         encoded
       case ConsentAnswered(granter, granted) =>
         ujson.Obj("granter" -> granter.value, "granted" -> granted)
@@ -63,19 +66,24 @@ private[serialization] trait ConsentEventCodec { this: GameEventJsonSupport =>
           yield keys :+ ConsentKey(PowerId(key("powerId").str),
             PlayerId(key("requester").str), key("decisionId").str, target)
         })
+    def use: Either[WireError, Option[ConsentUse]] =
+      payload.obj.get("use").fold[Either[WireError, Option[ConsentUse]]](
+        Right(None))(raw => decodeCardId(raw("card"), s"$path.use.card")
+        .map(card => Some(ConsentUse(card, PlayerId(raw("issuer").str)))))
     val decoder: PartialFunction[String, Either[WireError, OathEvent]] =
         case ConsentRequestedType =>
           for
             target <- DecisionAnswerCodec.decodeRef(payload("target"),
               s"$path.target")
             covered <- covers
+            used <- use
           yield ConsentRequested(ConsentRequest(player("requester"),
             payload("decisionId").str, target,
             payload("asks").arr.toVector.map(ask => ConsentAsk(
               PlayerId(ask("granter").str),
               ask("powers").arr.toVector.map(power => PowerId(power.str)),
               alternative = ask.obj.get("alternative").exists(_.bool))),
-            covered))
+            covered, used))
         case ConsentAnsweredType =>
           Right(ConsentAnswered(player("granter"), payload("granted").bool))
         case ConsentRequestWithdrawnType =>

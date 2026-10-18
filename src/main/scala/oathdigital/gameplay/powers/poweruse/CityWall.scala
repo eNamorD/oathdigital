@@ -5,7 +5,7 @@ import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  PowerUse, PowerUseRefusal, PowerUseRestriction, Waiver}
+  PowerUse, PowerUseRefusal, PowerUseRestriction, PowerUseStep, Waiver}
 import oathdigital.model._
 
 object CityWallCard extends Denizen(DenizenId("252"), "City Wall", Suit.Order) with SiteOnly:
@@ -49,6 +49,9 @@ case object CityWall extends ContributingPower with PowerUseRestriction:
   val placingAsked: NoteKey = notes.key("no-placing-here-consent", Vector(
     NotePart.Text("Cannot place favor or secrets on cards while at its " +
       "site without ruler's consent.")))
+
+  /** "{card} stays deactivated." (automatic power consent design). */
+  val staysDeactivated: NoteKey = notes.borrow(PowerUseStep.staysDeactivated)
 
   override def powerUseRestrictions: Vector[PowerUseRestriction] =
     Vector(this)

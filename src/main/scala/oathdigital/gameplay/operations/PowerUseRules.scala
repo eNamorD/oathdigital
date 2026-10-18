@@ -32,14 +32,29 @@ object PowerUseRules:
     case id: EdificeId => Some(DecisionOptionRef.Edifice(id))
     case _ => None
 
+  /** Every refusal `restrictions` give `use`, whatever consent was given:
+    * what an automatic use is shaped by, so a grant or a refusal never
+    * changes its shape (automatic power consent design, "The
+    * `AutomaticUse` node"). */
+  def raised(ready: ReadyGame, use: PowerUse,
+      restrictions: Vector[PowerUseRestriction]): Vector[PowerUseRefusal] =
+    restrictions.flatMap(_.refusal(ready, use))
+
   /** Every refusal `restrictions` give `use`, less those a grant
     * remembered this turn lifts. */
   def refusals(ready: ReadyGame, use: PowerUse,
       restrictions: Vector[PowerUseRestriction]): Vector[PowerUseRefusal] =
-    restrictions.flatMap(_.refusal(ready, use)).filterNot(refusal =>
+    raised(ready, use, restrictions).filterNot(refusal =>
       refusal.reason.waiver.exists(waiver => ready.consent.answer(
         waiver.covers, waiver.granter, ConsentTurn.of(ready))
         .contains(ConsentAnswer.Granted)))
+
+  /** Whether consent may lift every one of `refusals` of `use`: the use
+    * may be asked about, and each refusal names a player other than its
+    * user who may waive it (consent design, rulings 1, 2, 4 and 5). */
+  def waivable(use: PowerUse, refusals: Vector[PowerUseRefusal]): Boolean =
+    use.consent && refusals.forall(_.reason.waiver.exists(
+      _.granter.exists(_ != use.user)))
 
   /** How an option for a use `refusals` stop is shown: askable of its
     * granters when `consent` allows it and consent may lift every refusal

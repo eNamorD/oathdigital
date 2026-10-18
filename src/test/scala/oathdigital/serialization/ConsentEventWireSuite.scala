@@ -61,3 +61,11 @@ class ConsentEventWireSuite extends munit.FunSuite:
     assertEquals(roundTrip(either), Right(either))
     assertEquals(GameEventWire.encodeEvent("g", 0L, ConsentRequested(request))
       .map(_("payload")("asks")(0).obj.contains("alternative")), Right(false))
+
+  test("an automatic power's use round-trips, and a request without one " +
+      "writes none"):
+    val used = ConsentRequested(request.copy(
+      use = Some(ConsentUse(CatalogNames.denizen("Tyrant"), p1))))
+    assertEquals(roundTrip(used), Right(used))
+    assertEquals(GameEventWire.encodeEvent("g", 0L, ConsentRequested(request))
+      .map(_("payload").obj.contains("use")), Right(false))

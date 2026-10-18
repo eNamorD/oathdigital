@@ -49,7 +49,7 @@ private[application] final class ConsentProjector(
         .flatten
       ConsentPromptProjection(waiting.requester.value,
         ask.powers.map(names.power), site.fold(target(context, waiting))(
-          presentation.siteLabel), paying)
+          presentation.siteLabel), paying, waiting.use.map(used))
     projection.copy(
       walkerDecision =
         if requesting.nonEmpty then None else projection.walkerDecision,
@@ -58,7 +58,8 @@ private[application] final class ConsentProjector(
         // "A's or B's" while only alternatives wait (catalog batch 8,
         // slice 15).
         ConsentWaitingProjection(open.map(_.granter.value),
-          either = open.size > 1 && open.forall(_.alternative))
+          either = open.size > 1 && open.forall(_.alternative),
+          use = waiting.use.map(used))
       },
       consentPrompt = prompt,
       consentPreferences = context.viewer.toVector.flatMap(
@@ -90,6 +91,11 @@ private[application] final class ConsentProjector(
     option.flatMap(decisions.optionProjection(context.ready, context.viewer,
         context.ready.game.cardIndex.toOption, _))
       .fold(ref.wireId)(_.label)
+
+  /** The name of the card whose automatic power a request is about, as
+    * the panels write it (catalog batch 8, item 10b). */
+  private def used(use: ConsentUse): String =
+    presentation.cardDetails(use.card, None, hidden = false).name
 
   /** The options of a choose-one or a choose-many, as offered. */
   private def offered(decide: Decide): Vector[DecisionOption] =

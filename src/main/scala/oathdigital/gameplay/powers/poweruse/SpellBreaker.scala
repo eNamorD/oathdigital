@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.poweruse
 import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  PowerUse, PowerUseRefusal, PowerUseRestriction, Waiver}
+  PowerUse, PowerUseRefusal, PowerUseRestriction, PowerUseStep, Waiver}
 import oathdigital.model._
 
 object SpellBreakerCard extends Denizen(DenizenId("162"), "Spell Breaker", Suit.Nomad) with SiteOnly:
@@ -37,6 +37,9 @@ case object SpellBreaker extends ContributingPower with PowerUseRestriction:
   val asked: NoteKey = notes.key("no-secret-powers-consent", Vector(
     NotePart.Text("Cannot use powers that cost secrets without ruler's " +
       "consent.")))
+
+  /** "{card} stays deactivated." (automatic power consent design). */
+  val staysDeactivated: NoteKey = notes.borrow(PowerUseStep.staysDeactivated)
 
   def refusal(ready: ReadyGame, use: PowerUse): Option[PowerUseRefusal] =
     for

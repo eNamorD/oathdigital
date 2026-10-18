@@ -5,7 +5,7 @@ import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower,
 import oathdigital.gameplay.EffectiveSuit
 import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  PowerUse, PowerUseRefusal, PowerUseRestriction, Waiver}
+  PowerUse, PowerUseRefusal, PowerUseRestriction, PowerUseStep, Waiver}
 import oathdigital.model._
 
 object ForestCouncilCard extends Denizen(DenizenId("194"), "Forest Council", Suit.Beast) with SiteOnly:
@@ -96,6 +96,9 @@ object ForestCouncil:
   val placingAsked: NoteKey = notes.key("no-beast-placing-consent", Vector(
     NotePart.Text("Cannot place favor or secrets on Beast cards without " +
       "ruler's consent.")))
+
+  /** "{card} stays deactivated." (automatic power consent design). */
+  val staysDeactivated: NoteKey = notes.borrow(PowerUseStep.staysDeactivated)
 
   def forCatalog(catalog: ExecutableCatalog): ForestCouncil =
     new ForestCouncil(catalog)

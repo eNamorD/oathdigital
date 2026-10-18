@@ -7,12 +7,12 @@ import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.phases.wake.ForcedWakeProcedure
-import oathdigital.gameplay.powerresolver.PowerUse
+import oathdigital.gameplay.powerresolver.{PowerUse, PowerUseStep}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.powers.action.RovingTerror
 import oathdigital.gameplay.powers.campaign.PlanDriver
-import oathdigital.gameplay.powers.travel.TravelFixture
+import oathdigital.gameplay.powers.travel.{TravelFixture, Tyrant}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
@@ -233,14 +233,21 @@ class CityWallSuite extends munit.FunSuite:
     TravelFixture.on(TravelFixture.board(supply = 7))(table =>
       steps(table.adviser(PowerFixture.actor, "Tyrant")))
 
-  test("Tyrant arriving at its site, ruled by an enemy, kills nothing"):
+  test("Tyrant arriving at its site under bandits kills nothing"):
     import TravelFixture.coast
-    val ready = holdingTyrant(_.denizen(wall, at = coast)
-      .warbandsAt(coast, p2, 2))
+    val ready = holdingTyrant(_.denizen(wall, at = coast).bandits(coast, 2))
     val done = Outcomes.ready(accepted(TravelFixture.travel(ready, coast))
       .state)
     assertEquals(Look(done).forces(coast),
-      SiteForces.Occupied(Look(done).forceKind(p2), 2))
+      SiteForces.Occupied(ForceKind.Bandit, 2))
+
+  test("Tyrant arriving at its site, ruled by an enemy, waits at its step"):
+    import TravelFixture.coast
+    val ready = holdingTyrant(_.denizen(wall, at = coast)
+      .warbandsAt(coast, p2, 2))
+    val travelled = accepted(TravelFixture.travel(ready, coast))
+    assertEquals(TravelFixture.parkedDecision(travelled.state).decisionId,
+      PowerUseStep.decisionId(Tyrant.id))
 
   test("Tyrant leaving its site kills at the destination"):
     import TravelFixture.{coast, cradlePlains}
@@ -251,16 +258,16 @@ class CityWallSuite extends munit.FunSuite:
     assertEquals(Look(done).forces(coast),
       SiteForces.Occupied(Look(done).forceKind(p2), 1))
 
-  test("Hunger is not forced on its holder at its site, ruled by an enemy"):
+  test("Hunger at its site is still due when an enemy rules it, for the " +
+      "ruler to decide, and not under bandits"):
     // p2 holds Hunger faceup and Wrestlers at Broken Peaks, as
-    // `HungerSuite` stages it; City Wall stands there, ruled by p1.
+    // `HungerSuite` stages it; City Wall stands there.
     val peaks = CatalogNames.site("Broken Peaks")
     def holding(steps: Table => Table): ReadyGame =
       steps(Table.start.adviser(p2, "Hunger").adviser(p2, "Wrestlers")
-        .pawn(p2, at = peaks)).ready
+        .pawn(p2, at = peaks).denizen(wall, at = peaks)).ready
     val phasePowers = PhasePowerCatalog.default(catalog)
     def forced(ready: ReadyGame) =
       ForcedWakeProcedure.due(catalog, ready, p2, phasePowers)
-    assert(forced(holding(identity)).nonEmpty)
-    assertEquals(forced(holding(_.denizen(wall, at = peaks)
-      .warbandsAt(peaks, p1, 1))), Vector.empty)
+    assert(forced(holding(_.warbandsAt(peaks, p1, 1))).nonEmpty)
+    assertEquals(forced(holding(_.bandits(peaks, 1))), Vector.empty)
