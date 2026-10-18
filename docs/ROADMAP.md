@@ -34,20 +34,17 @@ From the playtest of 2026-10-01:
   does not loop back. Have them reload with the cache disabled and open
   `/health/ready` in a private window, then check the port forward and the
   host firewall.
-- [ ] **Review the phase menu buttons.** The playtest found the old Act
-  buttons unresponsive, and some appeared for things the player did not
-  expect. The walker-driven game loop replaced them with one grouped menu
-  panel per phase; check it in the next playtest.
 
 Left behind by earlier phases:
 
-- [ ] **Shrink cached catalog fields.** Card classes made powers read
-  their cards from card objects, yet 99 classes still take a
+- [ ] **Shrink cached catalog fields.**
+  [Card classes](superpowers/specs/2026-10-01-card-classes-design.md) made powers
+  read their cards from card objects, yet many classes still take a
   `catalog: ExecutableCatalog` constructor parameter (power classes, the
-  projectors, the Game Log and the Campaign plan files), and 88
-  `forCatalog(catalog)` constructors thread it, many only to pass it on.
+  projectors, the Game Log and the Campaign plan files), and many
+  `forCatalog(catalog)` constructors thread it, often only to pass it on.
   Remove each parameter and constructor as its power is touched.
-- [ ] **Migrate `CatalogNames` to card objects.** 264 test files look
+- [ ] **Migrate `CatalogNames` to card objects.** Test files look
   cards up by name through `CatalogNames` (the test readability sweep of
   2026-10-02 moved numeric ids onto it). Move them to direct object
   references such as `AlchemistCard`.
@@ -80,7 +77,9 @@ Left behind by the
 - [ ] **Play-test the phase menus in a browser.** The Wake, Act and Rest
   menus, their price badges and hover reasons, a source with two powers of
   one phase, Undo back to a menu and the minor actions on the walker are
-  covered by tests only.
+  covered by tests only. They replaced the Act buttons that the playtest of
+  2026-10-01 found unresponsive, or showing for things the player did not
+  expect.
 
 Left behind by the
 [consent work](superpowers/specs/2026-10-08-consent-system-design.md):
@@ -122,8 +121,9 @@ did":
 ### Phase - Catalog batch - engine-blocked
 
 Cards that need an engine change first, grouped by the missing mechanism.
-Catalog batch 8 left these out: each costs a slice or more per card, or
-belongs with another phase.
+[Catalog batch 8](superpowers/specs/2026-10-12-catalog-batch-8-design.md#out-of-scope)
+left these out: each costs a slice or more per card, or belongs with another
+phase.
 
 - **Negotiation:** The Gathering and Whispering Stone need a nested
   Negotiation with its own participants. Council Arbiter, Deed Writer and
@@ -150,9 +150,9 @@ belongs with another phase.
   warband store), and False Prophet.
   False Prophet is the only card that plays a card outside the active
   player's turn: its holder plays the Vision when another player's action
-  discards it. Batch 8's off-turn actor (slice 14) lets a queued walk
-  belong to another player, so only the player-aware card play is left.
-  Card play assumes the player is the walk's `ctx.activePlayer`
+  discards it. The off-turn actor of catalog batch 8, slice 14, lets a
+  queued walk belong to another player, so only the player-aware card play
+  is left. Card play assumes the player is the walk's actor, `ctx.actor`
   (the `SearchPlayAdviser` transforms, such as `HolderAdviserLimit`, Pied
   Piper and Lost Tapestry, and the `ActionCardPlayedFaceup` readers, such as
   Book Binders, Secret Police and Conspiracy). So the play must either run
@@ -170,7 +170,8 @@ without one. Deferred findings and requested UI changes are in the
 
 - [ ] **Unanswered off-turn decisions.** A parked decision blocks every
   command until its owner answers. There are no timeouts, forfeits or host
-  resolution. Recorded in the walker ownership and phases design.
+  resolution. Recorded in the
+  [walker ownership and phases design](superpowers/specs/2026-09-12-walker-ownership-and-phases-design.md).
 - [ ] **Reconnection UX.** After a client loses its connection it should
   retry with exponential backoff and show a **Try Again** button. Recorded
   in the Phase 5 follow-ups.
@@ -219,7 +220,8 @@ continuation, and campaign browsing.
 After the Chronicle steps phase, implement Chancellor/Citizen roles, Imperial
 forces, Grand Scepter and Reliquary behavior, Citizenship through Negotiation,
 Successor goals, forced and self-exile, Imperial setup/turn/end rules, and the
-remaining production authentication work needed for broader hosting.
+remaining production authentication work needed for broader hosting. Empire
+defenders in a Campaign are not modelled either.
 
 ### Phase - Gameplay completeness gate
 
@@ -247,7 +249,8 @@ one.
   `PlayerState.revealedVision` into a collection across card play, projection,
   Vision victory, the frontend and the save format. E08 never appears in
   generated games, since the Nomad homeland becomes E06. Do it when E08 can
-  appear. Recorded in the rule gaps design of 2026-09-26.
+  appear. Recorded in the
+  [rule gaps design](superpowers/specs/2026-09-26-rule-gaps-in-implemented-cards-design.md).
 
 ### Game Log deferred items
 
@@ -255,11 +258,11 @@ one.
   The Game Log posts a line only once its facts are complete, so an action
   that is still parked says nothing about its choices so far. The table's
   "Waiting on player" message is the place to show that progress. Recorded in
-  the Game Log design of 2026-09-26.
+  the [Game Log design](superpowers/specs/2026-09-25-game-log-design.md).
 - [ ] **Game Log features the design left out.** Click-to-highlight,
   filters and search, timestamps, a server-side read marker, failed victory
   checks and negotiation proposals. Replay navigation is **L4**. Recorded in
-  the Game Log design of 2026-09-26.
+  the [Game Log design](superpowers/specs/2026-09-25-game-log-design.md).
 - [ ] **Warn before a choice that has no effect.** The rules let a
   player pay for a power or pick an option that then does nothing: a
   modifier selected for an action it will not change (Cup of Plenty,
@@ -268,12 +271,12 @@ one.
   before they commit, without refusing the choice. Recorded while designing
   Catalog batch 2.
 - [ ] **Improve the Game Log lines the wording ledger collects.** The
-  procedures-journal-their-notes migration forbids wording changes inside a
-  migration commit, so a golden diff means one thing. The lines it passes
-  over are listed in
-  `docs/superpowers/specs/2026-10-16-game-log-wording-ledger.md`, each with
-  where it is built and why it is worth a second look. Recorded in the
-  procedures journal their own notes design of 2026-10-16.
+  procedures-journal-their-notes migration, done 2026-10-17, kept wording
+  fixed inside its commits, so a golden diff meant one thing. The lines it
+  passed over are listed in the
+  [wording ledger](superpowers/specs/2026-10-16-game-log-wording-ledger.md), each
+  with where it is built and why it is worth a second look. Recorded in the
+  [procedures journal their own notes design](superpowers/specs/2026-10-16-procedures-journal-their-notes-design.md).
 - [ ] **A card play's line before the lines its own batch causes.**
   `WalkerSteps.recordBatch` runs `AdviserArrivalPass.after` and an executed
   trigger's follow-up inside the play's own leaf, so a power whose effect
@@ -292,14 +295,7 @@ one.
   [catalog batch 3 rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md)
   leave it unresolved. A product-owner answer settles it; one bank would
   reuse Fabled Feast's question.
-- [ ] **Plan-restricting powers, Bag of Siegeworks and Empire defenders.**
-  Powers that restrict which plans a side may choose get their hook in Catalog
-  batch 6. Bag of Siegeworks has a reviewed-catalog entry
-  in `CampaignPowers` and no plan. Empire defenders are not modelled. The reviewed
-  catalog's entries for Outriders, Brass Army and Watchdog are inert since slice
-  3b and go with the reviewed catalog.
-- [ ] **Walker follow-ups.** Make the Recover roll automatic like the
-  others. Audit the first-game rules the walker actions
+- [ ] **Walker follow-ups.** Audit the first-game rules the walker actions
   dropped as gates (exile-only roles, unaltered Foundations, inactive legacies).
   Add the remaining attacker, defender and bandit battle plan families,
   non-deterministic loss choices, and the additional Raid, victory, defeat and
@@ -337,17 +333,18 @@ one.
 
 - [ ] **Move Campaign's pinned facts onto start facts.**
   `CampaignSetup.pinned` stores the Campaign's kind and defender as sentinel
-  `ModifyDicePool` operations; start facts (travel destination design,
+  `ModifyDicePool` operations; start facts
+  ([travel destination design](superpowers/specs/2026-10-07-travel-destination-walker-design.md),
   ruling 6) are the durable place for them.
 - [ ] **One seam for "who may veto an operation".** `OperationPolicy`
-  (an exact-shape allowlist, used by `StateBasedOperationPolicy` and
-  `MinorActionOperationPolicy` on the legacy-event paths) and
-  `OperationRestriction` (contextual reasons from powers) answer the same
-  question through two interfaces. Migrating the two policies onto
-  `OperationRestriction` would leave one seam, but it reorders precedence on
-  the legacy-event path (allowlist reasons come before shape reasons today)
-  and needs its own preservation argument. Recorded during the operation
-  family consolidation of 2026-09-24.
+  (an exact-shape allowlist, used by `StateBasedOperationPolicy` for
+  state-based events) and `OperationRestriction` (contextual reasons from
+  powers) answer the same question through two interfaces. Migrating the
+  policy onto `OperationRestriction` would leave one seam, but it reorders
+  precedence on the state-based path (allowlist reasons come before shape
+  reasons today) and needs its own preservation argument. Recorded during the
+  [operation family consolidation](superpowers/specs/2026-09-24-operation-family-consolidation-design.md)
+  of 2026-09-24.
 - [ ] **Key `CardKnowledge` by card id.** Knowledge is stored per
   place: `siteRelics` by viewer and site, `heldRelics` and `advisers` by
   viewer, and an owner's knowledge is implicit in `identifiesCard`. The Game
@@ -355,16 +352,17 @@ one.
   lose a card's name when it moves) by copying knowledge as cards move. A
   single map from card id to the players who know it would make "knowledge
   follows the card" structural instead of maintained per move. Recorded in
-  the Game Log design of 2026-09-26.
+  the [Game Log design](superpowers/specs/2026-09-25-game-log-design.md).
 - [ ] **Retire the reviewed-catalog machinery.**
-  `ReviewedPowerInspector` and `PowerRuntime` are still used by 8 main files,
+  `ReviewedPowerInspector` and `PowerRuntime` are still used by 6 main files,
   the six stub objects (`ActionPowers`, `MusterPowers`, `RestPowers`,
   `NegotiationPowers`, `CampaignPowers`, `RecoverPowers`) remain,
   and `IndexedRuleSource.handlerIds`, a temporary compatibility projection, is
   used only by tests. Move the remaining users onto the executable catalog and
   delete the reviewed catalog.
 - [ ] **Decide whether to keep `DeltaMeaning`.** Nothing reads it.
-  The retention decision of 2026-09-24 said to revisit it once the action
+  The [retention decision](superpowers/specs/2026-09-24-delta-meaning-retention-decision.md)
+  of 2026-09-24 said to revisit it once the action
   history was designed, and the Game Log does not use it.
 - [ ] **Frontend and protocol clean-up.** Decision option kinds are
   bare string literals in the frontend, and the id grammars (`stableKey`,
@@ -412,10 +410,11 @@ one.
     when it advanced. See the
     [Phase 5 follow-ups](operations/phase-5-follow-ups.md#snapshot-polling-sends-a-full-projection-on-every-tick).
 - [ ] **Table UI rework.** Rework the layout of player areas and sites, and
-  port the map to haunt-roll-fail's canvas approach. Recorded in the card
-  shape and inspection design. The playtest of 2026-10-01 asks whether the
-  whole table, not only the map, should move to an HTML5 canvas.
-- [ ] **Clicking a banner shows its details.** Dark Revolution and The
+  port the map to haunt-roll-fail's canvas approach. Recorded in the
+  [card shape and inspection design](superpowers/specs/2026-09-22-card-shape-and-inspection-design.md).
+  The playtest of 2026-10-01 asks whether the whole table, not only the map,
+  should move to an HTML5 canvas.
+- [ ] **Clicking a banner shows its details.** Darkest Secret and The
   People's Favor are clickable like other cards, opening their details.
 - [ ] **Match the map's aspect ratio to the physical board.** The rendered
   map's proportions differ from the actual game map's.
