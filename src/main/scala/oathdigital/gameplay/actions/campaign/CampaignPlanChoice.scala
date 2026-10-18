@@ -64,7 +64,10 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
         offered.offer.withheld.isEmpty)
       .map(applicationOf(setup, _))
       .filter(application => pass.applies(application).isRight)
-    applied.find(_.offered.offer.alone).fold(applied)(Vector(_))
+    val chosen = applied.find(_.offered.offer.alone).fold(applied)(Vector(_))
+    chosen.flatMap(application => Vector[Operation](
+      CampaignNotes.leaf(CampaignNotes.banditActivationNote(
+        application.offered.offer.source)), application))
 
   private def userPass(setup: CampaignSetup, user: PlayerId,
       offers: Vector[OfferedPlan], pending: PendingTree, pass: OfferHost.Pass)
@@ -93,7 +96,10 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
         case None => Vector.empty
         case Some(ref) => offers.find(offered =>
           CampaignPlans.refOf(offered.offer.source) == ref) match {
-          case Some(offered) => Vector(applicationOf(setup, offered))
+          case Some(offered) => Vector[Operation](
+            CampaignNotes.leaf(CampaignNotes.activationNote(
+              offered.offer.source, user, actor)),
+            applicationOf(setup, offered))
           case None => Vector(BuildOps((_, _) => Left(
             OathViolation.InvalidEventOrder(
               "a chosen Campaign battle plan is no longer available"))))

@@ -4,12 +4,12 @@
 10.0 action 1 use-power:denizen.captains@4 | [card:115|Captains]: Campaign at [site:site:deep-woods|Deep Woods].
 12.0 section 1 campaign@12 | Campaign · [card:115|Captains]
 12.1 action 1 campaign@12 | Raid against [player:p2|p2]
-15.0 decision 1 campaign@12 | Targets: [player:p2|p2]'s pawn
-15.1 delta 1 campaign@12 | Attack Pool: 4, Defense Pool: 2
-17.0 roll 1 campaign@12 | Rolled [dice:attack hollow-sword hollow-sword hollow-sword hollow-sword|hollow sword, hollow sword, hollow sword, hollow sword] for the attack
-18.0 roll 1 campaign@12 | Attack: 2
-22.0 roll 1 campaign@12 | Rolled [dice:defense blank blank|blank, blank] for the defense
-23.0 roll 1 campaign@12 | Defense: 3
-24.0 action 1 campaign@12 | [player:p2|p2] wins!
-29.0 delta 1 campaign@12 | Lost 2 warbands
-32.0 trigger 1 | Oathkeeper passed to [player:p1|p1]
+16.0 decision 1 campaign@12 | Targets: [player:p2|p2]'s pawn
+17.0 delta 1 campaign@12 | Attack Pool: 4, Defense Pool: 2
+19.0 roll 1 campaign@12 | Rolled [dice:attack hollow-sword hollow-sword hollow-sword hollow-sword|hollow sword, hollow sword, hollow sword, hollow sword] for the attack
+21.0 roll 1 campaign@12 | Attack: 2
+25.0 roll 1 campaign@12 | Rolled [dice:defense blank blank|blank, blank] for the defense
+27.0 roll 1 campaign@12 | Defense: 3
+29.0 action 1 campaign@12 | [player:p2|p2] wins!
+34.0 delta 1 campaign@12 | Lost 2 warbands
+38.0 trigger 1 | Oathkeeper passed to [player:p1|p1]

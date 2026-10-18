@@ -86,8 +86,13 @@ class VowOfPeaceSuite extends munit.FunSuite:
         ForceKind.Exile(b.player(b.rival).lineage), 1),
         PositionedLocation(Location.Site(b.origin)))))
 
+  /** Vow of Peace's own notes. The Campaign journals its own lines too
+    * (procedures journal their own notes design, slice 4), and this suite
+    * is about the one power. */
   private def notes(run: Run): Vector[PowerNoted] =
-    run.finishPlanWindows.events.collect { case noted: PowerNoted => noted }
+    run.finishPlanWindows.events.collect {
+      case noted: PowerNoted if noted.power == VowOfPeaceContribution.id =>
+        noted }
 
   test("the removed sacrifice decision leaves a note naming the defender"):
     val b = defendedBy(

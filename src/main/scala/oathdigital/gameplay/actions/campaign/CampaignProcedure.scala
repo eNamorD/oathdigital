@@ -92,6 +92,8 @@ object CampaignProcedure:
       targetsStep(catalog, actor), endStep(actor)),
       Some(PowerWindow.CampaignBeforeTargets)),
     forceStep(catalog, state, actor),
+    CampaignNotes.leaf(CampaignNotes.targetsNote(actor)),
+    CampaignNotes.leaf(CampaignNotes.poolsNote(catalog, actor)),
     Sequence(Vector[Operation](BuildOps((ready, pending) =>
       withSetup(ready, actor, pending)(setup => CampaignSetup.pin(setup) +:
         CampaignBattle.gatherPools(catalog, setup)))),
@@ -104,6 +106,7 @@ object CampaignProcedure:
       withSetup(ready, actor, pending)(setup =>
         CampaignBattle.attackResultOps(ready, setup)))),
       Some(PowerWindow.CampaignAttackResult)),
+    CampaignNotes.leaf(CampaignNotes.attackNote(actor)),
     Sequence(CampaignBattle.earlyKill(catalog, actor,
       CampaignIds.skullOriginDeaths,
       (ready, _) => CampaignBattle.skullDeaths(ready)),
@@ -121,10 +124,12 @@ object CampaignProcedure:
       withSetup(ready, actor, pending)(setup =>
         CampaignBattle.defenseResultOps(ready, setup)))),
       Some(PowerWindow.CampaignDefenseResult)),
+    CampaignNotes.leaf(CampaignNotes.defenseNote),
     Sequence(Vector[Operation](BuildOps((ready, pending) =>
       withSetup(ready, actor, pending)(setup => Vector(RecordCampaignResult(
         CampaignBattle.result(ready, setup, pending)))))),
       Some(PowerWindow.CampaignAfterOutcome)),
+    CampaignNotes.leaf(CampaignNotes.winnerNote),
     outcomeStep(catalog, actor)),
     Some(PowerWindow.CampaignActionEligibility))
 
@@ -162,7 +167,8 @@ object CampaignProcedure:
           DecisionQuery.ChooseAmount(0, max,
             Some(CampaignBattle.sacrificeHeading(max,
               CampaignBattle.sacrificeWorth(ready))), "Sacrifice"),
-          window = Some(PowerWindow.CampaignSacrificeSelection)))
+          window = Some(PowerWindow.CampaignSacrificeSelection)),
+          CampaignNotes.leaf(CampaignNotes.sacrificedNote))
       }.getOrElse(Vector.empty))
 
   /** Read from the durable result, never from the board: this is selected
@@ -195,7 +201,8 @@ object CampaignProcedure:
   private def endStep(actor: PlayerId): Operation =
     Branch((ready, pending) =>
       if CampaignSetup.kindOf(ready, actor, pending).isEmpty then
-        Vector(EndWalk)
+        Vector[Operation](CampaignNotes.leaf(CampaignNotes.endedNote),
+          EndWalk)
       else Vector.empty)
 
   /** A Raid only, and only when several enemy pawns stand here. */

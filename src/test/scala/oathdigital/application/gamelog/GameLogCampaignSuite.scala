@@ -1,12 +1,9 @@
 package oathdigital.application.gamelog
 
-import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
-import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
-  WalkerCompleted, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
-import oathdigital.testkit.CatalogNames
-import oathdigital.testkit.Table.p2
+import oathdigital.testkit.Table.{p2, p3}
+import CampaignLogScripts.{banditPlanApplied, defenderChoseAPlan,
+  raidUnderOutriders}
 import LogScripts._
 
 class GameLogCampaignSuite extends munit.FunSuite:
@@ -39,135 +36,46 @@ class GameLogCampaignSuite extends munit.FunSuite:
     assertEquals(found, found.sorted)
     assert(all.exists(_.endsWith(" for the attack")), all)
     assert(all.exists(_.endsWith(" for the defense")), all)
-    // Half of a one-warband board is none, so "lost" may be absent; the
-    // relocation never is.
+    // The loss sentence is three sentences now, one per node that applies
+    // its clauses (slice 4). Half of a one-warband board is none, so
+    // "lost" may be absent; the relocation never is, and it is last.
     assert(all.last.startsWith(s"${playerLabel(defender)} ") &&
       all.last.contains(" was sent to "), all)
+    assert(!all.last.contains(" lost "), all.last)
 
-  test("a battle plan answer names who activated it; a flipped plan card names itself"):
-    val script = recordedEventsBoard
-    val steps = script.history.steps
-    // The board's p2 holds Birdsong facedown; it defends with it as a plan.
-    val defender = p2
-    val plan = CatalogNames.denizen("Birdsong")
-    val tail = Vector[OathEvent](
-      WalkerStepRecorded("plan", ChoicePayload(CampaignIds.defenderPlan,
-        ChooseOneAnswer(DecisionOptionRef.Denizen(plan)), defender),
-        Vector.empty, Vector.empty),
-      WalkerStepRecorded("reveal", WalkerStepPayload.DeltaRecorded(
-        DeltaMeaning.OperationApplied("reveal")), Vector(Move(Piece.Card(plan),
-          PositionedLocation(Location.PlayArea(defender)),
-          PositionedLocation(Location.PlayArea(defender)),
-          Some(Orientation.FaceUp))), Vector.empty),
-      WalkerCompleted(ActionRef.Campaign))
-    val entries = formatAppended(script, tail)
-    val shown = texts(entries.filter(_.sequence >= steps.size))
-    assert(shown.contains(s"${playerLabel(defender)} activated a Denizen"),
-      shown)
-    val revealedPrefix = s"${playerLabel(defender)} revealed "
-    assert(shown.exists(line => line.startsWith(revealedPrefix)
-      && line != s"${playerLabel(defender)} revealed a Denizen"), shown)
+  test("a plan a defender chose names the defender, and a bandit's names " +
+      "the bandits"):
+    val chosen = lines(defenderChoseAPlan)
+    assert(chosen.exists(line =>
+      line == s"${playerLabel(p2)} activated Towering Rampart"), chosen)
+    val bandits = lines(banditPlanApplied)
+    assert(bandits.contains("The bandits activated Towering Rampart"),
+      bandits)
 
-  test("a plan the bandits apply is named like any other activation"):
-    val script = recordedEventsBoard
-    val steps = script.history.steps
-    // The board's ruined Hiding Place at Deep Woods, a site card, which is
-    // what a bandit plan's source is.
-    val edifice = CatalogNames.edifice("Hiding Place")
-    val tail = Vector[OathEvent](
-      WalkerStepRecorded("bandit-plan", WalkerStepPayload.DeltaRecorded(
-        DeltaMeaning.OperationApplied("plan")), Vector(ModifyDicePool(
-          CampaignPlans.appliedMarker(DecisionOptionRef.Edifice(edifice)), 1)),
-        Vector.empty),
-      WalkerCompleted(ActionRef.Campaign))
-    val entries = formatAppended(script, tail)
-    val shown = texts(entries.filter(_.sequence >= steps.size))
-    // A site card is public, so even an observer reads its name.
-    assert(shown.exists(line => line.startsWith("The bandits activated ") &&
-      !line.endsWith("Edifice") && !line.endsWith("Denizen") &&
-      !line.contains("campaign.plan-applied")), shown)
+  test("a total a plan rewrites is told once, after the plan's own line"):
+    val all = lines(raidUnderOutriders)
+    val ignored = all.indexOf("Outriders: Skulls ignored.")
+    val attacks = all.zipWithIndex.filter(_._1.startsWith("Attack: "))
+    assertEquals(attacks.size, 1, all)
+    assert(ignored >= 0 && attacks.head._2 > ignored, all)
 
-  test("a total a plan rewrites in the same segment is told once, as rewritten"):
-    // Outriders ignores the skulls: it writes the attack again after the cap.
-    // Only the board's last state is read.
-    val script = recordedEventsBoard
-    val steps = script.history.steps
-    val tail = Vector[OathEvent](
-      WalkerStepRecorded("attack-result", WalkerStepPayload.DeltaRecorded(
-        DeltaMeaning.OperationApplied("attack")), Vector(
-          ModifyRollOutcome(CampaignIds.attackPool, Some(2), Some(6)),
-          ModifyRollOutcome(CampaignIds.attackPool, Some(0), Some(8))),
-        Vector.empty),
-      WalkerCompleted(ActionRef.Campaign))
-    val entries = formatAppended(script, tail)
-    val attacks = texts(entries.filter(_.sequence >= steps.size))
-      .filter(_.startsWith("Attack: "))
-    assertEquals(attacks, Vector("Attack: 8"))
-
-  test("the attack line counts the skull faces, and the kills when they " +
-      "differ"):
-    assertEquals(CampaignLines.attack(5, skulls = 0, kills = 0), "Attack: 5")
-    assertEquals(CampaignLines.attack(5, skulls = 1, kills = 1),
-      "Attack: 5 with 1 skull")
-    assertEquals(CampaignLines.attack(6, skulls = 2, kills = 4),
-      "Attack: 6 with 2 skulls, killing 4 warbands")
-    assertEquals(CampaignLines.attack(4, skulls = 4, kills = 2),
-      "Attack: 4 with 4 skulls, killing 2 warbands")
-    // Ignored skulls kill nothing, and the line names none.
-    assertEquals(CampaignLines.attack(8, skulls = 2, kills = 0), "Attack: 8")
-
-  test("two skull faces that kill four warbands read as killing four"):
-    // The attack result's write stands in for Weeping Banner's, under which
-    // each skull kills two.
-    val script = recordedEventsBoard
-    val steps = script.history.steps
-    val faces = Vector[AttackDieFace](AttackDieFace.TwoSwordsSkull,
-      AttackDieFace.TwoSwordsSkull, AttackDieFace.OneSword,
-      AttackDieFace.OneSword)
-    /** The state the attack result starts from, with `faces` rolled. */
-    def attackRolled(state: OathState): OathState = state match
-      case OathState.Ready(ready) => OathState.Ready(
-        ready.updateCurrent(current => current.copy(rollOutcomes =
-          current.rollOutcomes.updated(CampaignIds.attackPool, RollOutcome(
-            CampaignIds.attackPool, faces.size, faces, skulls = 0,
-            score = 0)))))
-      case other => other
-    val tail = Vector[OathEvent](
-      WalkerStepRecorded("attack-result", WalkerStepPayload.DeltaRecorded(
-        DeltaMeaning.OperationApplied("attack")), Vector(
-          ModifyRollOutcome(CampaignIds.attackPool, Some(4), Some(6))),
-        Vector.empty),
-      WalkerCompleted(ActionRef.Campaign))
-    val attacks = texts(formatAppended(script, tail,
-        stateBefore = attackRolled).filter(_.sequence >= steps.size))
-      .filter(_.startsWith("Attack: "))
-    assertEquals(attacks, Vector("Attack: 6 with 2 skulls, killing 4 warbands"))
-
-  test("a sacrifice line counts what each warband adds"):
-    val script = recordedEventsBoard
-    val steps = script.history.steps
-    /** The state the sacrifice starts from, with `worth` recorded by a
-      * plan, as Zealots records it. */
-    def worthRecorded(worth: Option[Int])(state: OathState): OathState =
-      (worth, state) match
-        case (Some(count), OathState.Ready(ready)) => OathState.Ready(
-          ready.updateCurrent(current => current.copy(rollPools =
-            current.rollPools.updated(CampaignIds.sacrificeWorth,
-              DicePoolState(count)))))
-        case _ => state
-    def sacrificeLine(worth: Option[Int]): String =
-      val tail = Vector[OathEvent](
-        WalkerStepRecorded("sacrifice", ChoicePayload(CampaignIds.sacrifice,
-          ChooseAmountAnswer(2), script.actor), Vector.empty, Vector.empty),
-        WalkerCompleted(ActionRef.Campaign))
-      texts(formatAppended(script, tail, stateBefore = worthRecorded(worth))
-        .filter(_.sequence >= steps.size)).find(_.startsWith("Sacrificed ")).get
-    def attackOf(line: String): Int = line.split(' ').last.toInt
-    val plain = sacrificeLine(None)
-    val zealous = sacrificeLine(Some(3))
-    assert(plain.startsWith("Sacrificed 2 warbands for an attack of "), plain)
-    // Each of the two warbands adds three, not one.
-    assertEquals(attackOf(zealous) - attackOf(plain), 4)
+  // The rule named a discarded card at the before and after of its own
+  // Move; the note names it at the action's start, the restated leaf's
+  // before-state and the state after the note. The two state sets must
+  // agree for Campaign's cards, or the difference belongs in the ledger
+  // (slice 4 plan-time question 7).
+  test("a defeated Raid defender's cards read the same for every seat"):
+    val script = CampaignLogScripts.raidTakingRelicAndBanner
+    val forDefender = lines(script, Some(p2))
+    val forAttacker = lines(script, Some(script.actor))
+    val forThird = lines(script, Some(p3))
+    def clause(from: Vector[String]): String =
+      from.find(_.contains(" burned ")).getOrElse(fail(s"no clause: $from"))
+    // The defender's own facedown adviser is named to them and to nobody
+    // else, which is the one difference the visibility rule makes.
+    assert(clause(forDefender).contains("Birdsong"), forDefender)
+    assertEquals(clause(forAttacker), clause(forThird))
+    assert(clause(forAttacker).contains("a Denizen"), forAttacker)
 
   test("under Careful Plans the defense is rolled and told before the " +
       "attack"):
@@ -186,3 +94,13 @@ class GameLogCampaignSuite extends munit.FunSuite:
       "Attack: 3",
       "Sacrificed 3 warbands for an attack of 6",
       s"${playerLabel(script.actor)} wins!"))
+
+  // The loss note sits inside the losses node, right after the leaf that
+  // applies the Campaign's own kills, so a power that appends more kills
+  // in the same window (Sticky Fire) is not what it reads. Moving the
+  // note after the node makes this count the burn instead.
+  test("a Campaign's loss line counts its own kills, not a power's"):
+    val all = lines(CampaignLogScripts.raidBurningWhatIsLeft)
+    assert(all.contains(s"${playerLabel(p2)} lost 2 warbands"), all)
+    assert(all.exists(line => line.startsWith("Sticky Fire: Killed 3 ")),
+      all)

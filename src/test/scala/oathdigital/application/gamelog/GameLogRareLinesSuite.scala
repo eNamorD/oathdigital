@@ -87,61 +87,6 @@ class GameLogRareLinesSuite extends munit.FunSuite:
     assert(lines.contains("Discarded a Vision to the Hinterland discard"),
       lines)
 
-  test("a won Raid tells what was taken, then what the defender lost"):
-    // The log reads the result's attacker, kind, defender and winner; the
-    // scores only record the battle.
-    val result = CampaignResult(actor, CampaignKind.Raid,
-      CampaignDefender.Player(other), targetSites = Vector.empty,
-      raidTargets = Vector(CampaignRaidTarget.Pawn(other)), force = 2,
-      attackFaces = Vector.empty, attackScore = 2, skullLosses = 0,
-      sacrificed = 0, defenseFaces = Vector.empty, defenseScore = 1,
-      attackerWins = true)
-    val lines = posted(ActionRef.Campaign, RecordCampaignResult(result),
-      Take(Piece.Card(relic), actor, Location.PlayArea(other),
-        Location.PlayArea(actor)),
-      Take(Piece.Banner(Banner.DarkestSecret), actor, Location.PlayArea(other),
-        Location.PlayArea(actor)),
-      Kill(Piece.Warbands(ForceKind.Exile(lineage(other)), 2),
-        PositionedLocation(Location.PlayArea(other))),
-      Burn.favor(1, PositionedLocation(Location.PlayArea(other)), None),
-      Move(Piece.Card(relic), PositionedLocation(Location.PlayArea(other)),
-        PositionedLocation(Location.SetAsideRelics)))
-    assert(lines.exists(line => line.startsWith("Took ") &&
-      line.endsWith(s" and Darkest Secret from ${playerLabel(other)}")), lines)
-    assert(lines.contains(s"${playerLabel(other)} lost 2 warbands, " +
-      "burned 1 favor and set aside a Relic"), lines)
-
-  test("a defeated attacker's loss line has no subject and the bandits win"):
-    // The log reads the result's kind, defender and winner; the scores only
-    // record the battle.
-    val result = CampaignResult(actor, CampaignKind.Conquest,
-      CampaignDefender.Bandits, targetSites = Vector(site),
-      raidTargets = Vector.empty, force = 3, attackFaces = Vector.empty,
-      attackScore = 1, skullLosses = 0, sacrificed = 0,
-      defenseFaces = Vector.empty, defenseScore = 4, attackerWins = false)
-    val lines = posted(ActionRef.Campaign, RecordCampaignResult(result),
-      Kill(Piece.Warbands(ForceKind.Exile(lineage(actor)), 2),
-        PositionedLocation(Location.PlayArea(actor))))
-    assert(lines.contains("The bandits win!"), lines)
-    assert(lines.contains("Lost 2 warbands"), lines)
-
-  test("a defeated attacker's loss line counts only the half killed at the " +
-      "losses"):
-    val result = CampaignResult(actor, CampaignKind.Conquest,
-      CampaignDefender.Bandits, targetSites = Vector(site),
-      raidTargets = Vector.empty, force = 4, attackFaces = Vector.empty,
-      attackScore = 3, skullLosses = 1, sacrificed = 1,
-      defenseFaces = Vector.empty, defenseScore = 6, attackerWins = false)
-    val one = Kill(Piece.Warbands(ForceKind.Exile(lineage(actor)), 1),
-      PositionedLocation(Location.PlayArea(actor)))
-    // The skull and the sacrifice died before the result was recorded.
-    val lines = posted(ActionRef.Campaign, one, one,
-      RecordCampaignResult(result), one)
-    assert(lines.contains("Lost 1 warband"), lines)
-    val spared = posted(ActionRef.Campaign, one, one,
-      RecordCampaignResult(result))
-    assert(!spared.exists(_.startsWith("Lost ")), spared)
-
   test("dice read as their faces' rulebook names, and no dice or mixed dice " +
       "read as nothing"):
     assertEquals(LogWords.dice(Vector(AttackDieFace.HollowSword,

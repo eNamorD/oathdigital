@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.gameplay.actions.campaign.CampaignNotes
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
@@ -196,8 +197,34 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       narrated = Vector(Told(ChallengeProcedure.bannerDecisionId),
         Told(ChallengeProcedure.amountDecisionId)))
     // Every Campaign line tells its own decision.
+    // Every Campaign line tells its own decision. The kinds are the ones
+    // the rules posted at: the targets, the plan activations and the
+    // sacrifice are decisions, the two totals are rolls, and what the
+    // outcome applies is a delta. The winner's line is the action's, which
+    // is the default.
     case ActionRef.Campaign => ProcedureLog(tag = Some("Campaign"),
-      lines = ActionLineSource.Rule(actions.campaignLines),
+      lines = ActionLineSource.Notes(Map(
+        CampaignNotes.targets -> LogKind.Decision,
+        CampaignNotes.activatedPlan -> LogKind.Decision,
+        CampaignNotes.playerActivatedPlan -> LogKind.Decision,
+        CampaignNotes.banditsActivatedPlan -> LogKind.Decision,
+        CampaignNotes.activatedOathkeeperTitle -> LogKind.Decision,
+        CampaignNotes.activatedUsurperTitle -> LogKind.Decision,
+        CampaignNotes.sacrificed -> LogKind.Decision,
+        CampaignNotes.pools -> LogKind.Delta,
+        CampaignNotes.attack -> LogKind.Roll,
+        CampaignNotes.attackWithSkulls -> LogKind.Roll,
+        CampaignNotes.attackWithSkullKills -> LogKind.Roll,
+        CampaignNotes.defense -> LogKind.Roll,
+        CampaignNotes.took -> LogKind.Delta,
+        CampaignNotes.placed -> LogKind.Delta,
+        CampaignNotes.lost -> LogKind.Delta,
+        CampaignNotes.playerLost -> LogKind.Delta,
+        CampaignNotes.banditsLost -> LogKind.Delta,
+        CampaignNotes.defenderLost -> LogKind.Delta,
+        CampaignNotes.sentTo -> LogKind.Delta,
+        CampaignNotes.skipped -> LogKind.Delta,
+        CampaignNotes.nothingToAttack -> LogKind.Delta)),
       anchor = starts.campaignSettled,
       opening = starts.campaignWords,
       narratedPrefixes = Vector("campaign."))

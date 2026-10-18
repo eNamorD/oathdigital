@@ -36,7 +36,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     ModifierPicks.picks(walkerPowers, _))
   private val choices = new ChoiceWords(words,
     new WalkerDecisionProjector(catalog, presentation))
-  private val actions = new ActionLines(words, choices, catalog)
+  private val actions = new ActionLines(words)
   // Built after `starts` and `actions`: the table holds references to their
   // rules, and `entries` is built eagerly.
   private[gamelog] val procedures = new ProcedureLogs(starts, actions)

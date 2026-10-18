@@ -11,7 +11,8 @@ private[campaign] object CampaignConquest:
     if survivors <= 0 then Vector.empty
     else Vector(Sequence(Vector[Operation](
       Decide(CampaignIds.placement, actor, query(result, survivors)),
-      BuildOps((ready, pending) => placements(ready, actor, result, pending))),
+      BuildOps((ready, pending) => placements(ready, actor, result, pending)),
+      CampaignNotes.leaf(CampaignNotes.placementNote)),
       Some(PowerWindow.CampaignPlacement)))
 
   private def query(result: CampaignResult, survivors: Int): DecisionQuery =

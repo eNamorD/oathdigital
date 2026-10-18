@@ -242,7 +242,7 @@ class GameLogPropertiesSuite extends munit.FunSuite:
       Vector("search", "play-facedown-adviser", "recover", "forge", "travel",
         "take-wealth",
         "muster", "trade", "challenge", "place-banner-resource",
-        "negotiation", "peek-site-relics", "reveal-owned-relic",
+        "negotiation", "campaign", "peek-site-relics", "reveal-owned-relic",
         "move-warbands", "finish-rest", "oathkeeper", "setup"))
     // A procedure can be marked `Notes` while declaring none, and then its
     // line vanishes with nothing said: `NoteCheck` refuses a note whose key

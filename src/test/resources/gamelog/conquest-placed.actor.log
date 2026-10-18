@@ -3,13 +3,13 @@
 0.2 phase 0 | Act
 4.0 section 1 campaign@4 | Campaign[cost:2 Supply]
 4.1 action 1 campaign@4 | Conquest against the bandits
-11.0 decision 1 campaign@4 | Targets: [site:site:ancient-city|Ancient City]
-11.1 delta 1 campaign@4 | Attack Pool: 4, Defense Pool: 2
-13.0 roll 1 campaign@4 | Rolled [dice:attack one-sword one-sword one-sword one-sword|sword, sword, sword, sword] for the attack
-14.0 roll 1 campaign@4 | Attack: 4
-18.0 roll 1 campaign@4 | Rolled [dice:defense blank blank|blank, blank] for the defense
-19.0 roll 1 campaign@4 | Defense: 3
-20.0 action 1 campaign@4 | [player:p1|p1] wins!
-26.0 delta 1 campaign@4 | Placed 2 warbands on [site:site:ancient-city|Ancient City]
-26.1 delta 1 campaign@4 | The bandits lost 3 warbands
-29.0 trigger 1 | Oathkeeper passed to [player:p1|p1]
+12.0 decision 1 campaign@4 | Targets: [site:site:ancient-city|Ancient City]
+13.0 delta 1 campaign@4 | Attack Pool: 4, Defense Pool: 2
+15.0 roll 1 campaign@4 | Rolled [dice:attack one-sword one-sword one-sword one-sword|sword, sword, sword, sword] for the attack
+17.0 roll 1 campaign@4 | Attack: 4
+21.0 roll 1 campaign@4 | Rolled [dice:defense blank blank|blank, blank] for the defense
+23.0 roll 1 campaign@4 | Defense: 3
+25.0 action 1 campaign@4 | [player:p1|p1] wins!
+27.0 delta 1 campaign@4 | The bandits lost 3 warbands
+32.0 delta 1 campaign@4 | Placed 2 warbands on [site:site:ancient-city|Ancient City]
+36.0 trigger 1 | Oathkeeper passed to [player:p1|p1]

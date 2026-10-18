@@ -4,14 +4,15 @@
 10.0 action 1 use-power:denizen.captains@4 | [card:115|Captains]: Campaign at [site:site:deep-woods|Deep Woods].
 12.0 section 1 campaign@12 | Campaign · [card:115|Captains]
 12.1 action 1 campaign@12 | Raid against [player:p2|p2]
-15.0 decision 1 campaign@12 | Targets: [player:p2|p2]'s pawn
-15.1 delta 1 campaign@12 | Attack Pool: 5, Defense Pool: 2
-17.0 roll 1 campaign@12 | Rolled [dice:attack one-sword one-sword one-sword one-sword one-sword|sword, sword, sword, sword, sword] for the attack
-18.0 roll 1 campaign@12 | Attack: 5
-21.0 decision 1 campaign@12 | Sacrificed 5 warbands for an attack of 10
-23.0 roll 1 campaign@12 | Rolled [dice:defense blank blank|blank, blank] for the defense
-24.0 roll 1 campaign@12 | Defense: 3
-25.0 action 1 campaign@12 | [player:p1|p1] wins!
-31.0 delta 1 campaign@12 | [player:p2|p2] lost 1 warband and was sent to [site:site:ancient-city|Ancient City]
-33.0 trigger 1 | Bandits returned to [site:site:deep-woods|Deep Woods]
-35.0 trigger 1 | Oathkeeper passed to [player:p1|p1]
+16.0 decision 1 campaign@12 | Targets: [player:p2|p2]'s pawn
+17.0 delta 1 campaign@12 | Attack Pool: 5, Defense Pool: 2
+19.0 roll 1 campaign@12 | Rolled [dice:attack one-sword one-sword one-sword one-sword one-sword|sword, sword, sword, sword, sword] for the attack
+21.0 roll 1 campaign@12 | Attack: 5
+25.0 decision 1 campaign@12 | Sacrificed 5 warbands for an attack of 10
+27.0 roll 1 campaign@12 | Rolled [dice:defense blank blank|blank, blank] for the defense
+29.0 roll 1 campaign@12 | Defense: 3
+31.0 action 1 campaign@12 | [player:p1|p1] wins!
+33.0 delta 1 campaign@12 | [player:p2|p2] lost 1 warband
+38.0 delta 1 campaign@12 | [player:p2|p2] was sent to [site:site:ancient-city|Ancient City]
+41.0 trigger 1 | Bandits returned to [site:site:deep-woods|Deep Woods]
+43.0 trigger 1 | Oathkeeper passed to [player:p1|p1]

@@ -1,30 +1,22 @@
 package oathdigital.application.gamelog
 
-import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
-/** The two action lines still inferred from the journal rather than
-  * journaled by the procedure that caused them: Campaign's lines, and the
-  * "Used {card}" fallback for a power that writes no `used` note of its
-  * own. Every other procedure now writes its own (procedures journal their
-  * own notes design; Campaign is slice 4).
+/** The one action line still inferred from the journal rather than
+  * journaled by the procedure that caused it: the "Used {card}" fallback
+  * for a power that writes no `used` note of its own. Every procedure now
+  * writes its own (procedures journal their own notes design).
   *
   * A rule reads the event being formatted and the run's events before it;
   * a name alone may come from later in the same segment. The subject is
   * omitted: it is the actor's own action.
   */
-private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
-    catalog: ExecutableCatalog):
+private[gamelog] final class ActionLines(words: LogWords):
   import ActionLines._
-  private val campaigns = new CampaignLines(words, choices, catalog)
-
-  def campaignLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    campaigns.lines(journal, run, at, viewer)
 
   /** The "Used {card}" fallback, for a power that writes no `used` note of
     * its own. */

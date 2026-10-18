@@ -13,8 +13,10 @@ private[campaign] object CampaignRaid:
     case CampaignDefender.Player(defender) => Vector(
       Sequence(Vector[Operation](
         BuildOps((state, _) => takes(state, result)),
+        CampaignNotes.leaf(CampaignNotes.spoilsNote),
         Sequence(Vector[Operation](
-          BuildOps((state, _) => consequences(state, result))),
+          BuildOps((state, _) => consequences(state, result)),
+          CampaignNotes.leaf(CampaignNotes.consequenceNote)),
           Some(PowerWindow.CampaignRaidConsequences))),
         Some(PowerWindow.CampaignRaidTransfer)),
       Sequence(Vector[Operation](
@@ -23,7 +25,8 @@ private[campaign] object CampaignRaid:
             DecisionOption.Site(DecisionOptionRef.Site(site))),
           heading = Some("Move the defeated pawn to another site"),
           confirmVerb = Some("Move pawn to"))),
-        BuildOps((state, pending) => relocate(state, defender, pending))),
+        BuildOps((state, pending) => relocate(state, defender, pending)),
+        CampaignNotes.leaf(CampaignNotes.relocationNote)),
         Some(PowerWindow.CampaignRaidRelocation)))
     case CampaignDefender.Bandits => Vector.empty
 

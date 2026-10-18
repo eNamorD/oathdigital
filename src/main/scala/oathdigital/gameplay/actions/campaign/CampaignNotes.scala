@@ -29,6 +29,10 @@ object CampaignNotes:
   private val notes = NoteSet(ProcedureNotes.id(ActionRef.Campaign))
   def noteKeys: Vector[NoteKey] = notes.declared
 
+  /** A note leaf of the Campaign's own id, for the files that place one. */
+  def leaf(build: NoteStates => Option[PowerNote]): Note =
+    Note(ProcedureNotes.id(ActionRef.Campaign), build)
+
   /** "Targets: Broken Peaks and the Mine", or a Raid's pawn, relics and
     * banners. */
   val targets: NoteKey = notes.key("targets", Vector(
@@ -319,13 +323,15 @@ object CampaignNotes:
 
   /** Every warband of `kind` the owner holds: their board, and every site.
     * The warband bank is not counted, so a warband returned from the
-    * supply comes back out of the loss. */
+    * supply comes back out of the loss. The sites are read through an
+    * iterator: mapping `sites.keys`, which is a `Set`, would collapse two
+    * sites holding the same number into one. */
   private def forceHeld(ready: ReadyGame, owner: Option[PlayerId],
       kind: ForceKind): Int =
     val onBoard = owner.flatMap(player => ready.game.current.players
       .find(_.player == player)).fold(0)(_.board.warbands)
-    onBoard + ready.game.current.map.sites.keys
-      .map(atSite(ready, _, kind)).sum
+    onBoard + ready.game.current.map.sites.valuesIterator.map(_.forces)
+      .collect { case SiteForces.Occupied(`kind`, count) => count }.sum
 
   private def atSite(ready: ReadyGame, site: SiteId, kind: ForceKind): Int =
     ready.game.current.map.sites.get(site).map(_.forces).collect {

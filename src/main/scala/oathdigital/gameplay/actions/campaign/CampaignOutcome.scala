@@ -12,9 +12,10 @@ private[campaign] object CampaignOutcome:
       result: CampaignResult): Vector[Operation] =
     val losses: Operation = Sequence(
       CampaignBattle.originDeathsStep(catalog, actor, result,
-        CampaignBattle.attackerSpared(ready)) :+
-        BuildOps((ready, pending) =>
-          CampaignBattle.losses(ready, result, pending)),
+        CampaignBattle.attackerSpared(ready)) ++ Vector[Operation](
+          BuildOps((ready, pending) =>
+            CampaignBattle.losses(ready, result, pending)),
+          CampaignNotes.leaf(CampaignNotes.lossNote)),
       Some(PowerWindow.CampaignLosses))
     val resolution: Vector[Operation] =
       if !result.attackerWins then Vector.empty
