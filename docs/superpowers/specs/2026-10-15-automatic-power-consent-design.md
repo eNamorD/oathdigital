@@ -299,7 +299,9 @@ Not wrapped:
   {Green} decide whether {Tyrant} works."
 - **Answers:** "{Red} deactivated {Tyrant} with {City Wall}." and "{Red}
   let {Tyrant} work." With several of one granter's cards, the deactivation
-  line names them all ("with City Wall and Forest Council").
+  line names them all ("with City Wall and Forest Council"). A grant that
+  leaves other rulers still to answer reads "{Red} would let {Tyrant}
+  work.", since another ruler may yet deactivate it (item 10b).
 - **Remembered refusal:** "{City Wall}: {Tyrant} stays deactivated." It is
   a power line, so it starts with its source, as every power line does.
 - **Withdrawal:** the request line is struck through, as today.
@@ -393,7 +395,11 @@ the code as it then stood.
 8. **A manual Never or Always on an automatic power's request** sets the
    preference before the walk resumes, so a second step the same command
    reaches is answered by it at once.
-9. **"Stays deactivated" reads as a power line**, "City Wall: Tyrant stays
+9. **A grant before the request settles** reads "{Red} would let {Tyrant}
+   work.", so the log never says a power worked that another ruler then
+   deactivated. Granters are named even when on turn, as every consent
+   answer line names its granter.
+10. **"Stays deactivated" reads as a power line**, "City Wall: Tyrant stays
    deactivated.", under a key the three cards share.
-10. **Previews** walk with the powers marked as previewing. An unanswered
+11. **Previews** walk with the powers marked as previewing. An unanswered
     step is walked as `use`, so a preview never parks there.

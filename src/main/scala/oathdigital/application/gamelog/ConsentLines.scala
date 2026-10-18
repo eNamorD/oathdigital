@@ -70,10 +70,13 @@ private[gamelog] final class ConsentLines(words: LogWords,
         case ConsentAnswered(granter, granted) =>
           before.consent.pending.filter(_.use.nonEmpty) match
             // "{Red} let {Tyrant} work." or "{Red} deactivated {Tyrant}
-            // with {City Wall}."
+            // with {City Wall}." A grant that leaves other rulers to
+            // answer has not let the power work yet: "{Red} would let
+            // {Tyrant} work."
             case Some(request) => line(
-              if granted then ((words.player(granter) +: Text(" let ") +:
-                used(request)) :+ Text(" work."))
+              if granted then ((words.player(granter) +: Text(
+                if after.consent.pending.isEmpty then " let "
+                else " would let ") +: used(request)) :+ Text(" work."))
               else ((words.player(granter) +: Text(" deactivated ") +:
                 used(request)) ++ (Text(" with ") +: named(request.asks
                   .filter(_.granter == granter).flatMap(_.powers)))) :+

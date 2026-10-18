@@ -25,7 +25,7 @@ class AutomaticUseStepWiringSuite extends munit.FunSuite:
   private val refusingSource = PowerSourceRef.Card(refusingCard)
 
   /** The key p3's answer on `use` is remembered under. */
-  private def keyOf(use: AutomaticUse): ConsentKey = ConsentKey(
+  private def p3sAnswerKeyOn(use: AutomaticUse): ConsentKey = ConsentKey(
     RefusesEveryUseUnlessP3Consents.id, use.user, PowerUseRules.useKey,
     PowerUseRules.target(PowerUse.automatic(use.user, use.power, use.card)))
 
@@ -98,7 +98,7 @@ class AutomaticUseStepWiringSuite extends munit.FunSuite:
         operation).headOption, s"$name's node")
       val start = Table.start.ready
       val refused = start.copy(consent = ConsentState(answers = Map(
-        keyOf(use) -> ConsentAnswer.Refused.by(p3)),
+        p3sAnswerKeyOn(use) -> ConsentAnswer.Refused.by(p3)),
         turn = Some(ConsentTurn.of(start))))
       accepted(ProcedureWalker.advance(refused,
           Sequence(Vector[Operation](use)), None, refusing)) match

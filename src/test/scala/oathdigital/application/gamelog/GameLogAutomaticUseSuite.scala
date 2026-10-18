@@ -2,6 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.application.{ConsentFixture, GameAccepted,
   GameApplicationService, GameCommand, ParkedServiceFixture}
+import oathdigital.gameplay.powers.poweruse.CityWall
 import oathdigital.gameplay.powers.travel.TravelFixture
 import oathdigital.model._
 import oathdigital.testkit.CatalogNames
@@ -76,3 +77,14 @@ class GameLogAutomaticUseSuite extends munit.FunSuite:
     assert(lines.contains("City Wall: Tyrant stays deactivated."), lines)
     assertEquals(lines.count(_ == "City Wall: p2 decides whether Tyrant " +
       "works."), 1)
+
+  test("a preference's automatic answer reads as a manual one"):
+    val (service, _) = ConsentFixture.service(tyrantBesideAWalledCoast)
+    val set = accepted(service.handle(gameId, 0L,
+      GameCommand.SetConsentPreference(p2, CityWall.id, p1,
+        ConsentSetting.Never)))
+    travelling(service, set.nextSequence, coast)
+    val lines = p1sLog(service)
+    assert(lines.contains("City Wall: p2 decides whether Tyrant works."),
+      lines)
+    assert(lines.contains("p2 deactivated Tyrant with City Wall."), lines)

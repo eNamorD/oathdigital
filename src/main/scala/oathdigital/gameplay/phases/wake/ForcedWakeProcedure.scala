@@ -10,7 +10,7 @@ import oathdigital.model._
 /** Forced Wake steps (catalog batch 2, N8).
   *
   * {{{
-  * Sequence(power1.build(...), power2.build(...), ...)
+  * Sequence(AutomaticUse(power1.build(...)), AutomaticUse(...), ...)
   * }}}
   *
   * Every forced WAKE power the waking player can access, in catalog order,
@@ -44,8 +44,8 @@ object ForcedWakeProcedure:
   /** Whether `power` from `source` is refused by a restriction nobody may
     * waive. Such a power is deactivated unasked and is not due. One that
     * only waivable restrictions refuse is due, and its node asks the
-    * refusing cards' rulers (automatic power consent design). Raw
-    * refusals are read, so a grant or a refusal never changes what is
+    * refusing cards' rulers (automatic power consent design). For a card,
+    * raw refusals are read, so a grant or a refusal never changes what is
     * due between the walk and its resume. */
   private def deactivatedUnasked(catalog: ExecutableCatalog,
       ready: ReadyGame, player: PlayerId, power: PhasePower,

@@ -83,6 +83,19 @@ class HungerConsentServiceSuite extends munit.FunSuite:
     assert(lines.contains("p3 deactivated Hunger with Forest Council."),
       lines)
 
+  test("a grant beside another ruler's deactivation would have let Hunger " +
+      "work, and did not"):
+    val (service, _) = ConsentFixture.service(hungerUnder(peaksRuler = p1,
+      woodsRuler = p3))
+    val waiting = rested(service)
+    answering(service, answering(service, waiting, ConsentChoice.Yes,
+      granter = p1), ConsentChoice.No, granter = p3)
+    val lines = log(service, p2)
+    assert(lines.contains("p1 would let Hunger work."), lines)
+    assert(!lines.contains("p1 let Hunger work."), lines)
+    assert(lines.contains("p3 deactivated Hunger with Forest Council."),
+      lines)
+
   test("one ruler of both cards is asked once, about both"):
     val (service, _) = ConsentFixture.service(hungerUnder(peaksRuler = p1,
       woodsRuler = p1))
@@ -90,6 +103,15 @@ class HungerConsentServiceSuite extends munit.FunSuite:
       "the request")
     assertEquals(request.asks.map(ask => ask.granter -> ask.powers.toSet),
       Vector(p1 -> Set(CityWall.id, ForestCouncil.id)))
+
+  test("one ruler's deactivation names every card of theirs that refused"):
+    val (service, _) = ConsentFixture.service(hungerUnder(peaksRuler = p1,
+      woodsRuler = p1))
+    answering(service, rested(service), ConsentChoice.No, granter = p1)
+    val lines = log(service, p2)
+    assert(lines.exists(line => line.startsWith("p1 deactivated Hunger " +
+      "with ") && line.contains("City Wall") &&
+      line.contains("Forest Council")), lines)
 
   test("when every ruler lets Hunger work, its holder is asked whom to " +
       "bury"):

@@ -419,7 +419,9 @@
     back. On their own Travel that is the user. On an off-turn Travel, such
     as Palanquin's, it is the player who sent it.
   - Log lines: "City Wall: {Red} decides whether {Tyrant} works.", "{Red}
-    deactivated {Tyrant} with {City Wall}.", "{Red} let {Tyrant} work." and,
+    deactivated {Tyrant} with {City Wall}.", "{Red} let {Tyrant} work."
+    ("{Red} would let {Tyrant} work." while other rulers have yet to
+    answer) and,
     for a refusal remembered this turn, "City Wall: {Tyrant} stays
     deactivated."
 

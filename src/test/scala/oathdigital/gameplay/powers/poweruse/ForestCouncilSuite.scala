@@ -205,7 +205,11 @@ class ForestCouncilSuite extends munit.FunSuite:
       .warbandsAt(awaySite, p2, 1).ready
     def played(ready: ReadyGame) =
       accepted(WhenPlayedHarness.playBeside(ready, roar, roar.cardId, power))
-    assert(played(councilRuledByP2).isInstanceOf[WalkerOutcome.Parked])
+    played(councilRuledByP2) match
+      case WalkerOutcome.Parked(pending, _) =>
+        assertEquals(pending.answered, Vector.empty)
+        assertEquals(pending.at.lastOption, Some("0"))
+      case other => fail(s"the walk did not park at the step: $other")
     def errandBoyStays(answer: ConsentAnswer): Boolean =
       played(rememberingP2sAnswerOn(councilRuledByP2, roar.cardId,
         answer)) match
