@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseAmountAnswer
 import oathdigital.testkit.{CatalogNames, Look}
 
 /** Hospital: once chosen, each of its user's warbands the Campaign kills is
@@ -55,6 +56,27 @@ class HospitalSuite extends munit.FunSuite:
       SiteForces.Occupied(kind(b, b.actor), 4))
     assertEquals(Look(done.state).player(b.actor).board.warbands, 3)
     assertEquals(lines(done), Vector(placed(2, b.actor, hospitalSite)))
+
+  test("a defeated attacker's skull and sacrifice are saved with the half"):
+    val base = board(warbands = 5, supply = 7)
+    val b = hospitalFor(base, base.actor, hospitalSite)
+    // A paid skull and three hollow swords make 3, and a sacrifice 4,
+    // against two double shields and the origin's two bandits.
+    val game = rules(dice(AttackDieFace.TwoSwordsSkull +:
+      Vector.fill(3)(AttackDieFace.HollowSword),
+      Vector.fill(2)(DefenseDieFace.TwoShields)))
+    val done = commit(game, b, 4)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+      .finishAttackerPlans(b.actor)
+      .answer(b.actor, CampaignIds.sacrifice, ChooseAmountAnswer(1))
+      .finishPlanWindows
+    assertEquals(done.winner, Some(false))
+    // The skull, the sacrifice and half the two survivors die, and all
+    // three come back to Hospital's site.
+    assertEquals(Look(done.state).player(b.actor).board.warbands, 2)
+    assertEquals(Look(done.state).forces(hospitalSite),
+      SiteForces.Occupied(kind(b, b.actor), 5))
+    assertEquals(lines(done), Vector(placed(3, b.actor, hospitalSite)))
 
   test("a defeated defender keeps the returned half on its board, and the " +
       "rest go to Hospital's site"):
