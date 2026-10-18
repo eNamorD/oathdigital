@@ -89,6 +89,10 @@ surviving force. A Conquest defender's target warbands are all killed and
 half, rounded up, return to their board. A Raid defender loses half their
 board.
 
+Since catalog batch 8 item 13b, each dies at its moment: the skulls at
+the attack result, the sacrifice when chosen and the half at the losses
+([design](2026-10-17-campaign-kills-at-their-moment-design.md)).
+
 Loss powers fold in this order: Shield Wall's "kill all" first, then Billowing
 Fog and Traveling Doctor, which ignore it and Sticky Fire's kill, then
 Hospital, which still saves warbands from Shield Wall's kill.

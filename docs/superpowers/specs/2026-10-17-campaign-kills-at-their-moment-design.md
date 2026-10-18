@@ -1,6 +1,6 @@
 # Campaign kills at their moment
 
-**Status:** designed 2026-10-17. It covers roadmap item **13b. Campaign
+**Status:** designed 2026-10-17; done 2026-10-17. It covers roadmap item **13b. Campaign
 kills at their moment** under **Phase - Catalog batch 8**. It builds on
 slice 13 of [catalog batch 8](2026-10-12-catalog-batch-8-design.md) (Wild
 Allies and Captains), whose origin split question it moves, and on the
@@ -154,8 +154,9 @@ Old replays need no support.
 - **Weeping Banner.** Two skull faces against its holder kill four
   warbands at `CampaignSkullLosses`, and the attack line reads "with 2
   skulls, killing 4 warbands".
-- **The force cap.** Three skull faces against a force of two kill two,
-  and the line says so.
+- **The force cap.** Under Weeping Banner, two skulls against a force of
+  three kill three at the attack result, and the line wording for a capped
+  kill is tested directly.
 - **Careful Plans.** With the defense first, the skull kill still follows
   the attack result.
 - **Origin split.** With Wild Allies or Captains, each kill whose range
@@ -188,3 +189,22 @@ Old replays need no support.
   surviving force" gains a note that each dies at its moment since 13b.
 - [Roadmap](../../ROADMAP.md): 13b links this design, its Bear Traps
   claim is corrected, and it is marked done when the plan lands.
+
+## Departures
+
+The implementation departs from this design in three places.
+
+1. **The force cap.** The test "three skull faces against a force of two
+   kill two" cannot be rolled: the attack pool holds one die per committed
+   warband. The cap shows only when each skull kills more than one warband
+   (Weeping Banner) or counts twice (Lancers). The suites test Weeping
+   Banner with an odd force, and test the line's wording for a capped kill
+   directly.
+2. **`originDeathRange` keeps its signature.** It takes an `OriginForce`,
+   which already carries B (`onBoard`) and S (`atSite`). The early kills
+   build that value from the live board with `CampaignSetup.originForce`,
+   and the losses read it from the result.
+3. **`CampaignResult.originForce` is recorded after the early kills.** The
+   field is unchanged, but it now means "the board and the origin as the
+   losses find them". When the early kills empty the origin, the field is
+   `None`, and the half dies from the board.

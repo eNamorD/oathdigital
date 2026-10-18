@@ -577,8 +577,10 @@ The shared rules:
     "Choose how many of the D dead warbands come from {site}", a choice of
     amount that suggests the least from the site. Otherwise the one value
     applies without a question.
-  - The question is asked once, at the kill step. When ROADMAP item 13b
-    moves each kill to its moment, this question moves with it.
+  - Each kill asks its own question, over the board and the site as that
+    kill finds them: the skull losses at the attack result, the sacrifices
+    when chosen, and the defeat's half at the kill step
+    ([item 13b](2026-10-17-campaign-kills-at-their-moment-design.md)).
 - **Loss powers.**
   - Billowing Fog and Traveling Doctor, chosen by the attacker, spare a
     defeated force's half: only the skulls and the sacrifices die. Peace
