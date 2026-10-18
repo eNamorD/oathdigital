@@ -3,6 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignBattle,
   CampaignIds, CampaignPlans, CampaignSetup}
+import oathdigital.gameplay.powers.campaign.AttackScore
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerStepRecorded}
 import oathdigital.model._
@@ -12,12 +13,14 @@ import ActionLines.{action, plural}
 import LogSpan.Text
 
 /** Every Campaign line after the start line (spec, "Campaign"), each posted
-  * where its facts complete. The rolls themselves are detail lines. */
+  * where its facts complete. The rolls themselves are detail lines, and the
+  * attack line counts the skull faces and, when they differ, the warbands
+  * they kill (item 13b). */
 private[gamelog] final class CampaignLines(words: LogWords,
     choices: ChoiceWords, catalog: ExecutableCatalog):
   def lines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
-    answered(journal, run, at, viewer) ++ recorded(journal, at, viewer) ++
+    answered(journal, run, at, viewer) ++ recorded(journal, run, at, viewer) ++
       closing(journal, run, at, viewer)
 
   /** Targets and pools at the force answer; a battle plan at its choice; a
@@ -70,8 +73,8 @@ private[gamelog] final class CampaignLines(words: LogWords,
 
   /** The two totals as the result windows write them, each plan the bandits
     * applied, and the winner. */
-  private def recorded(journal: LogJournal, at: Int, viewer: Option[PlayerId])
-      : Vector[Posted] =
+  private def recorded(journal: LogJournal, run: Run, at: Int,
+      viewer: Option[PlayerId]): Vector[Posted] =
     val ops = journal.ops(at)
     val later = (at + 1 to journal.segmentEnd(at)).toVector.flatMap(journal.ops)
     // A plan that rewrites a total after the skull cap (Outriders) writes the
@@ -87,12 +90,16 @@ private[gamelog] final class CampaignLines(words: LogWords,
         Posted(LogKind.Decision, Text("The bandits activated ") +:
           choices.option(CampaignPlans.markedRef(pool).get, before, after,
             viewer))
-      case (OpStep(ModifyRollOutcome(CampaignIds.attackPool, skulls,
-          Some(score)), _, _), index)
+      case (OpStep(ModifyRollOutcome(CampaignIds.attackPool, _,
+          Some(score)), _, after), index)
           if !rewritten(index, CampaignIds.attackPool) =>
-        val paid = skulls.filter(_ > 0).fold("")(count =>
-          s" with $count ${plural(count, "skull", "skulls")}")
-        Posted(LogKind.Roll, Vector(Text(s"Attack: $score$paid")))
+        val kills = after.game.current.rollOutcomes
+          .get(CampaignIds.attackPool).fold(0)(_.skulls)
+        val skulls = AttackScore.skullFaces(
+          CampaignBattle.attackFacesOf(after), AttackScore.rules(after,
+            PendingTree(Vector.empty, journal.answers(run, at)), run.actor))
+        Posted(LogKind.Roll, Vector(Text(
+          CampaignLines.attack(score, skulls, kills))))
       case (OpStep(ModifyRollOutcome(CampaignIds.defensePool, _, Some(score)),
           _, _), index) if !rewritten(index, CampaignIds.defensePool) =>
         Posted(LogKind.Roll, Vector(Text(s"Defense: $score")))
@@ -241,3 +248,16 @@ private[gamelog] final class CampaignLines(words: LogWords,
         case Text(first) +: rest => Text(first.capitalize) +: rest
         case other => other
       Vector(Posted(LogKind.Delta, spans))
+
+private[gamelog] object CampaignLines:
+  /** "Attack: 5", "Attack: 5 with 2 skulls" or, when the skulls kill
+    * another number of warbands, "Attack: 5 with 2 skulls, killing 4
+    * warbands". A roll whose skulls kill nothing names none. */
+  def attack(score: Int, skulls: Int, kills: Int): String =
+    if kills == 0 then s"Attack: $score"
+    else
+      val killing =
+        if kills == skulls then ""
+        else s", killing $kills ${plural(kills, "warband", "warbands")}"
+      s"Attack: $score with $skulls ${plural(skulls, "skull", "skulls")}" +
+        killing
