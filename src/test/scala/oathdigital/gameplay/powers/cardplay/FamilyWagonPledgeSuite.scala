@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -36,6 +38,11 @@ class FamilyWagonPledgeSuite extends munit.FunSuite:
   private def wagonLines(events: Vector[OathEvent]): Vector[String] =
     NoteText.said(FamilyWagon.id, power.noteKeys, events).map(_.key)
 
+  /** The lines the card play itself wrote, by key. */
+  private def playLines(events: Vector[OathEvent]): Vector[String] =
+    NoteText.said(ProcedureNotes.id(ActionRef.PlayFacedownAdviser),
+      CardPlayProcedure.noteKeys, events).map(_.key)
+
   test("the Order adviser goes at once; the Nomads are sorted, and those " +
       "buried before Pledge return their favor to the Discord bank"):
     val ready = Table.from(pledgedWith(elders, rainBoots, wrestlers))
@@ -56,6 +63,13 @@ class FamilyWagonPledgeSuite extends munit.FunSuite:
       ready.banks.favor.getOrElse(Suit.Discord, 0) + 1)
     assertEquals(wagonLines(played.events ++ done.events),
       Vector("buried", "buried"))
+    // The play's own line survives the park. This power's follow-up walks
+    // under the play leaf's own path, so the park ends the command before
+    // the line's leaf is reached and only the resumed shape can write it
+    // (procedures journal their own notes, slice 3). Exactly once, in the
+    // resuming command.
+    assertEquals(playLines(played.events), Vector.empty)
+    assertEquals(playLines(done.events), Vector("played-as-adviser"))
 
   test("with no Nomad beside Pledge, nothing is asked and every other " +
       "adviser is buried at once"):
@@ -63,6 +77,7 @@ class FamilyWagonPledgeSuite extends munit.FunSuite:
     assertEquals(Look(SearchFixture.after(played)).advisers(actor),
       Vector[CardId](wagon))
     assertEquals(wagonLines(played.events), Vector("buried"))
+    assertEquals(playLines(played.events), Vector("played-as-adviser"))
 
   test("the heading speaks to the holder, or names them as its holder"):
     assertEquals(SuitOnlyAdvisers.pledgeHeading("Family Wagon", Suit.Nomad,

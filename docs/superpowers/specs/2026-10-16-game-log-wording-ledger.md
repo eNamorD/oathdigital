@@ -129,3 +129,25 @@ where the rule wrote `Drew 6 Denizens`. `ProcedureNoteLinesSuite` pins the
 all-backs branch; the actor's own view of six takes `listed`'s span branch,
 which needs a script with both draw extensions picked and is recorded here
 rather than tested.
+
+## A card play's line now follows the lines its own batch caused
+
+`ActionLines.playedAdviser` anchored "Played {card} …" on the play's own
+recorded batch, and its `!(index + 1 until at).exists(isDelta)` guard kept a
+later delta from taking the line. The note sits after the play leaf instead,
+and `WalkerSteps.recordBatch` runs `AdviserArrivalPass.after` and any
+executed trigger's follow-up **inside** that leaf's own execution. So a power
+whose effect fires during the play writes its line first and the play's line
+reads second, where it used to read first.
+
+The only such power today is `SuitOnlyAdvisers` (Family Wagon, Vow of Union):
+"Family Wagon: Buried Wrestlers." now precedes "Played Family Wagon as an
+adviser". No golden covers it, which is why the slice's golden proof did not
+show it.
+
+Putting the line back in front needs it journaled inside the play's own
+batch, and a `Note` is not a `CoreOperation`; the alternative — reading the
+destination before the play — is the inference this slice deleted, since the
+regional pile a discard reaches is decided by `CardPlay.operations`. Decide
+whether the old order is worth a mechanism change before slice 4 folds these
+files together.

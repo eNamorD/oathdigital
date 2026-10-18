@@ -431,20 +431,27 @@ object CardPlayProcedure:
     * the play, so neither runs again, and nothing addresses inside the
     * follow-ups' place.
     *
-    * The play's own line is left out here for the same reason the play is:
-    * the walk resumes past both, so the line is already journaled and
-    * re-running the leaf would write it twice. The two shapes differ only
-    * by that trailing child, so no path into the follow-ups shifts. */
+    * The play's own line is here, as the same trailing child: the play's
+    * batch can park inside itself, because an executed trigger's follow-up
+    * walks under the play leaf's own path (Family Wagon beside Pledge to
+    * Discord), and that park ends the command before the line's leaf is
+    * reached. The resuming command takes this shape, so the line is
+    * written here or not at all. It cannot be written twice: a park in the
+    * hook resumes past this node's children, and a park inside the play
+    * re-enters at the play leaf, which reaches the line exactly once. */
   private def settled(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
       ref: DecisionOptionRef): Vector[Operation] =
     playedAs(ref).flatMap(way => siteOf(ref)
         .map(SearchPlacement.Site(_, None)).orElse(placementOf(way)))
         .toVector.flatMap { placement =>
-      // The play's shape as `played` built it, lines then play, so a path
-      // into a follow-up after the play finds it.
+      // The play's shape as `played` built it, lines then play then the
+      // play's own line, so a path into a follow-up after the play finds
+      // it.
       val play = Sequence(Vector(Sequence(Vector.empty),
         BuildOps((_, _) => Left(OathViolation.InvalidSearchPlacement(
-          "the card has already been played")))))
+          "the card has already been played"))),
+        Note(ProcedureNotes.id(ActionRef.PlayFacedownAdviser),
+          playedNote(card, ref))))
       Vector(noFollowUp, play) ++ hook(ready, actor, card, placement)
     }
 
