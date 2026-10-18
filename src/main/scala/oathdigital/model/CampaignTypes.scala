@@ -154,10 +154,11 @@ final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
 /** An offer with the power that made it. */
 final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)
 
-/** Where a Campaign's force stood when its result was recorded, for a
-  * Campaign with a queued origin whose warbands joined it (catalog batch
-  * 8, slice 13): the actor's warbands at the origin and on their board.
-  * The losses split the dead between the two. */
+/** Where a Campaign's force stands, for a Campaign with a queued origin
+  * whose warbands joined it (catalog batch 8, slice 13): the actor's
+  * warbands at the origin and on their board. Each kill splits its dead
+  * between the two, and the result records them as the losses find them
+  * (item 13b). */
 final case class OriginForce(site: SiteId, atSite: Int, onBoard: Int)
 
 /** The public, durable record of one Campaign's battle: written by

@@ -11,12 +11,13 @@ import oathdigital.model._
   * roll the defense, declare the victor, kill the defeated warbands, resolve
   * the victory.
   *
-  * Each early decision is built when reached from live state that nothing
-  * before it has changed, plus the answers. Gathering the pools pins the kind
-  * and the defender (`CampaignSetup.pin`), because the battle plans that
-  * follow may change who rules the targets. After the losses run, every later
-  * step reads the durable `CampaignResult` and the answers instead, because
-  * the losses change the board.
+  * Each early decision is built when reached from live state, plus the
+  * answers; before the skull losses, nothing has changed that state.
+  * Gathering the pools pins the kind and the defender
+  * (`CampaignSetup.pin`), because the battle plans that follow may change
+  * who rules the targets. After the losses run, every later step reads the
+  * durable `CampaignResult` and the answers instead, because the losses
+  * change the board.
   *
   * The skull and sacrifice losses die in their own windows, before the
   * defense roll (catalog batch 8, item 13b). Each asks its origin split

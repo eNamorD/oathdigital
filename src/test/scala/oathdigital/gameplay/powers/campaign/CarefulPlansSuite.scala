@@ -64,10 +64,16 @@ class CarefulPlansSuite extends munit.FunSuite:
     val asked = commit(game, b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishAttackerPlans(b.actor)
+    val one = Kill(Piece.Warbands(
+      ForceKind.Exile(b.player(b.actor).lineage), 1),
+      PositionedLocation(Location.PlayArea(b.actor)))
     assert(awaits(asked, b.actor, CampaignIds.sacrifice))
+    assertEquals(asked.ops.count(_ == one), 1)
     assertEquals(Look(asked.state).boardWarbands(b.actor), 4)
     val done = asked.answer(b.actor, CampaignIds.sacrifice,
       ChooseAmountAnswer(1))
+    // The sacrifice dies by itself; the victory kills no attacker.
+    assertEquals(done.ops.count(_ == one), 2)
     assertEquals(Look(done.state).boardWarbands(b.actor), 3)
 
   test("unchosen, the attack rolls first"):

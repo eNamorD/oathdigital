@@ -64,14 +64,11 @@ class CursedCauldronSuite extends munit.FunSuite:
     val game = rules(dice(AttackDieFace.TwoSwordsSkull +:
       Vector.fill(3)(AttackDieFace.HollowSword),
       Vector.fill(2)(DefenseDieFace.TwoShields)))
-    val picked = commit(game, b, 4)
+    val done = commit(game, b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
-    val planned =
-      if awaits(picked, b.rival, CampaignIds.defenderPlan) then
-        picked.finishDefenderPlans(b.rival)
-      else picked
-    val done = planned.answer(b.actor, CampaignIds.sacrifice,
-      ChooseAmountAnswer(1)).finishPlanWindows
+      .finishDefenderPlans(b.rival)
+      .answer(b.actor, CampaignIds.sacrifice, ChooseAmountAnswer(1))
+      .finishPlanWindows
     // The skull, the sacrifice and half the two survivors died.
     assertEquals(done.winner, Some(false))
     assertEquals(Look(done.state).boardWarbands(b.rival), before + 3)

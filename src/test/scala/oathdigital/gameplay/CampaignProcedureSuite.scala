@@ -345,6 +345,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
   private def actorBoardKill(b: Board, count: Int): CoreOperation =
     Kill(Piece.Warbands(ForceKind.Exile(b.player(b.actor).lineage), count),
       PositionedLocation(Location.PlayArea(b.actor)))
+
   private def isAutomaticRoll(pool: PoolKey)(event: OathEvent): Boolean =
     event match
       case step: WalkerStepRecorded => step.payload match

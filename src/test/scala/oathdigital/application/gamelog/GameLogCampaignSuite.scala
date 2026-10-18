@@ -116,7 +116,9 @@ class GameLogCampaignSuite extends munit.FunSuite:
     // Ignored skulls kill nothing, and the line names none.
     assertEquals(CampaignLines.attack(8, skulls = 2, kills = 0), "Attack: 8")
 
-  test("under Weeping Banner two skulls read as killing four warbands"):
+  test("two skull faces that kill four warbands read as killing four"):
+    // The attack result's write stands in for Weeping Banner's, under which
+    // each skull kills two.
     val script = recordedEventsBoard
     val steps = script.history.steps
     val faces = Vector[AttackDieFace](AttackDieFace.TwoSwordsSkull,

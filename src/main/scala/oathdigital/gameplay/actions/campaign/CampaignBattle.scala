@@ -137,8 +137,8 @@ object CampaignBattle:
     case other => other.toString
 
   /** The durable record of this battle, built from the recorded outcomes and
-    * the answers, after the skull and sacrifice losses and before the
-    * losses.
+    * the answers, after the skull and sacrifice losses and before
+    * `CampaignLosses`.
     */
   def result(ready: ReadyGame, setup: CampaignSetup, pending: PendingTree)
       : CampaignResult =

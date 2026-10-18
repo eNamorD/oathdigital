@@ -140,7 +140,8 @@ class CampaignOriginSuite extends munit.FunSuite:
       Vector.fill(5)(AttackDieFace.HollowSword)
     val game = rules(dice(attack, Vector.fill(2)(DefenseDieFace.TwoShields)))
     val name = catalog.site(away).get.name
-    def asks(run: Run, id: String, least: Int, most: Int, dead: Int): Unit =
+    def assertSplitAsked(run: Run, id: String, least: Int, most: Int,
+        dead: Int): Unit =
       assertEquals(parkedDecision(run), Some(id))
       run.query(b.actor) match
         case amount: DecisionQuery.ChooseAmount =>
@@ -153,14 +154,14 @@ class CampaignOriginSuite extends munit.FunSuite:
     val skulled = committed(game, campaignQueuedFrom(game, b, away, source),
       b, force = 6, raid = true).finishPlanWindows
     // The skull's one warband: from the board (2) or the site (4).
-    asks(skulled, CampaignIds.skullOriginDeaths, 0, 1, 1)
+    assertSplitAsked(skulled, CampaignIds.skullOriginDeaths, 0, 1, 1)
     val sacrificing = skulled.answer(b.actor, CampaignIds.skullOriginDeaths,
       ChooseAmountAnswer(1))
     assertEquals(warbandsAt(sacrificing, away), 3)
     val sacrificed = sacrificing.answer(b.actor, CampaignIds.sacrifice,
       ChooseAmountAnswer(1))
     // The sacrifice's one warband, over the board's 2 and the site's 3.
-    asks(sacrificed, CampaignIds.sacrificeOriginDeaths, 0, 1, 1)
+    assertSplitAsked(sacrificed, CampaignIds.sacrificeOriginDeaths, 0, 1, 1)
     val fought = sacrificed.answer(b.actor, CampaignIds.sacrificeOriginDeaths,
       ChooseAmountAnswer(0))
     assertEquals(fought.winner, Some(false))
@@ -168,7 +169,7 @@ class CampaignOriginSuite extends munit.FunSuite:
       Some(OriginForce(away, atSite = 3, onBoard = 1)))
     // Half the four survivors: the board holds only one, so one or two
     // come from the site.
-    asks(fought, CampaignIds.originDeaths, 1, 2, 2)
+    assertSplitAsked(fought, CampaignIds.originDeaths, 1, 2, 2)
     val done = fought.answer(b.actor, CampaignIds.originDeaths,
       ChooseAmountAnswer(2))
     assertEquals(Look(done.state).boardWarbands(b.actor), 1)
