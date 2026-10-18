@@ -71,7 +71,10 @@ decisions
 `2026-09-25-decision-form-tag-separation-decision.md`) are settled and this
 design does not reopen them. Nothing here changes what is recorded, what a
 recorded delta means, or how a decision's form is tagged. The wire format is
-unchanged in every slice.
+unchanged in every slice. (Amended 2026-10-18: the delta-meaning retention
+decision has since been closed and reversed, and `DeltaMeaning` is removed.
+Nothing in this design depended on it; the statement above records only that
+this work left it alone.)
 
 ## Measurements
 

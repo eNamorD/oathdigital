@@ -54,7 +54,12 @@ Engine changes stop after the walker lands.
 5. **Journal = semantic events + recorded ops (J1/E1).** Each hookable node
    that runs emits one semantic event whose payload describes the game meaning
    and whose recorded payload includes the final operation batch (and faces /
-   choices). One command may append several node events atomically, as today.
+   choices). (Amended 2026-10-18: a delta step's payload no longer describes
+   the meaning. `DeltaMeaning` was removed once the game log chose to read
+   the operations; see `2026-09-24-delta-meaning-retention-decision.md`.
+   `WalkerStepPayload.DeltaRecorded` marks the step as a delta and its `ops`
+   say what happened. A roll's and a choice's payloads still carry their
+   faces and answers, which no operation records.) One command may append several node events atomically, as today.
    Replay applies recorded ops only: powers, transforms, and the validator do
    not re-run. Replay therefore tolerates power/engine code changes; drift
    checks (recompute vs recorded) move to dev/test suites. Tampered ops are not
