@@ -1,5 +1,6 @@
 package oathdigital.gameplay.actions
 
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
@@ -71,6 +72,7 @@ object ProcedureNotes:
       case ActionRef.Muster => MusterProcedure.noteKeys
       case ActionRef.Trade => TradeProcedure.noteKeys
       case ActionRef.Recover => RecoverProcedure.noteKeys
+      case ActionRef.PlayFacedownAdviser => CardPlayProcedure.noteKeys
       case ActionRef.Travel => TravelProcedure.noteKeys
       case ActionRef.TakeWealth => TakeWealthProcedure.noteKeys
       case ActionRef.Forge => ForgeProcedure.noteKeys

@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
@@ -218,3 +219,15 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
       LogKind.Action)
     assertEquals(kindOf(ActionRef.Recover, RecoverProcedure.failed),
       LogKind.Action)
+
+  test("a discard that reached no regional pile names no pile"):
+    assertEquals(said(ActionRef.PlayFacedownAdviser,
+      CardPlayProcedure.discarded, NoteArg.Card(birdsong)),
+      "Discarded a Denizen")
+
+  test("every card-play line posts at Action, under whichever procedure"):
+    Vector(CardPlayProcedure.discardedTo, CardPlayProcedure.discarded,
+      CardPlayProcedure.playedAtSite, CardPlayProcedure.revealedVision,
+      CardPlayProcedure.playedAsAdviser).foreach(key =>
+        assertEquals(kindOf(ActionRef.PlayFacedownAdviser, key),
+          LogKind.Action, key.name))

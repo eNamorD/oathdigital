@@ -1,13 +1,11 @@
 package oathdigital.application.gamelog
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
+import oathdigital.model.DecisionAnswer.PartitionAnswer
 import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
@@ -23,19 +21,18 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
 
   def searchLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
-    search(journal, run, at, viewer) ++
-      playedAdviser(journal, run, at, viewer)
+    search(journal, run, at, viewer)
 
   def campaignLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     campaigns.lines(journal, run, at, viewer)
 
-  /** Only a run that answered a placement decision has a played-card line. */
+  /** The "Used {card}" fallback, for a power that writes no `used` note of
+    * its own. */
   def usePowerLines(power: PowerId)(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     usedPower(journal, run, at, power,
-      journal.event(at).isInstanceOf[WalkerCompleted], viewer) ++
-      playedAdviser(journal, run, at, viewer)
+      journal.event(at).isInstanceOf[WalkerCompleted], viewer)
 
   /** "Drew {cards} from the {source} and kept {cards}", at the keep/discard
     * answer, or at completion when only one card was drawn or none was
@@ -96,52 +93,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
   private def inDiscardPile(ready: ReadyGame, card: CardId): Boolean =
     Region.all.exists(region =>
       ready.game.current.commonCards.discard(region).contains(card))
-
-  /** Where the played card went, at the first batch after the placement
-    * answer. */
-  def playedAdviser(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    journal.event(at) match
-      case WalkerStepRecorded(_, _: WalkerStepPayload.DeltaRecorded, _, _) =>
-        val placed = (run.first until at).reverse.map(index =>
-          index -> journal.event(index)).collectFirst {
-          case (index, WalkerStepRecorded(_, ChoicePayload(id,
-              ChooseOneAnswer(ref), _), _, _))
-              if id.startsWith(PlacePrefix) &&
-                CardPlayProcedure.playedAs(ref).nonEmpty =>
-            (index, id.stripPrefix(PlacePrefix), ref)
-        }.filter { case (index, _, _) =>
-          !(index + 1 until at).exists(between => isDelta(journal.event(between)))
-        }
-        (for
-          (_, subject, ref) <- placed
-          card <- subjectCard(subject)
-          way <- CardPlayProcedure.playedAs(ref)
-          before <- journal.readyBefore(at)
-          after <- journal.readyAfter(at)
-        yield played(card, way, ref, before, after, viewer)).toVector
-      case _ => Vector.empty
-
-  private def played(card: CardId, way: PlayedAs, ref: DecisionOptionRef,
-      before: ReadyGame, after: ReadyGame, viewer: Option[PlayerId]): Posted =
-    val named = words.one(words.card(card, before, after, viewer))
-    way match
-      // Named with its pile, as every other discard line is.
-      case PlayedAs.Discarded => action(Vector(Text("Discarded ")) ++ named ++
-        after.game.cardIndex.toOption.flatMap(_.get(card))
-          .map(_.location.container).collect {
-            case CardContainer.RegionalDiscard(region) =>
-              Text(s" to the ${region.key.capitalize} discard")
-          }.toVector)
-      case PlayedAs.AtSite => action(Vector(Text("Played ")) ++ named ++
-        CardPlayProcedure.siteOf(ref).toVector.flatMap(site =>
-          Vector(Text(" to "), words.site(site))))
-      // A Vision played faceup takes the revealed Vision slot, not an
-      // adviser's.
-      case PlayedAs.Faceup if card.isInstanceOf[VisionId] =>
-        action(Vector(Text("Revealed ")) ++ named)
-      case _ => action(Vector(Text("Played ")) ++ named ++
-        Vector(Text(" as an adviser")))
 
   /** "Used {card}" at the first step recording one of the power's own
     * effects: a step that is not only the payment onto its card or to the

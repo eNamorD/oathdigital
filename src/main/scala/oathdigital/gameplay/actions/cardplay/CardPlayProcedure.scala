@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.{CardPlay, CardPlayRules}
+import oathdigital.gameplay.actions.{CardPlay, CardPlayRules, ProcedureNotes}
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.walker.ModifierChoice
 import oathdigital.model._
@@ -62,6 +62,63 @@ object CardPlayProcedure:
   /** The facedown-adviser play's first decision: which facedown adviser to
     * play, answered on the actor's board. */
   val facedownAdviserDecisionId: String = "cardplay.facedown-adviser"
+
+  /** The lines a card play writes about itself. A card play is an embedded
+    * subtree, not a `ProcedureRef`, so it has no registry entry of its own
+    * and no kind: these keys are owned by the facedown-adviser action's id
+    * wherever the play runs — a Search, that action, or a power's own play —
+    * and all three resolve their kind from that one entry, which is
+    * `Action` (procedures journal their own notes design, slice 3 plan-time
+    * ruling 2). The id is never rendered. */
+  private val notes = NoteSet(ProcedureNotes.id(ActionRef.PlayFacedownAdviser))
+  /** "Discarded Tinker to the Provinces discard": named with its pile, as
+    * every other discard line is. */
+  val discardedTo: NoteKey = notes.key("discarded-to", Vector(
+    NotePart.Text("Discarded "), NotePart.Arg(0), NotePart.Text(" to the "),
+    NotePart.Arg(1), NotePart.Text(" discard")))
+  /** "Discarded Tinker", when the card came to rest outside any regional
+    * pile. The rule this replaced appended nothing in that case. */
+  val discarded: NoteKey = notes.key("discarded", Vector(
+    NotePart.Text("Discarded "), NotePart.Arg(0)))
+  /** "Played Fae Merchant to Ancient City". */
+  val playedAtSite: NoteKey = notes.key("played-at-site", Vector(
+    NotePart.Text("Played "), NotePart.Arg(0), NotePart.Text(" to "),
+    NotePart.Arg(1)))
+  /** "Revealed Vision of Sanctuary": a Vision played faceup takes the
+    * revealed Vision slot, not an adviser's. */
+  val revealedVision: NoteKey = notes.key("revealed-vision", Vector(
+    NotePart.Text("Revealed "), NotePart.Arg(0)))
+  /** "Played Family Heirloom as an adviser". */
+  val playedAsAdviser: NoteKey = notes.key("played-as-adviser", Vector(
+    NotePart.Text("Played "), NotePart.Arg(0),
+    NotePart.Text(" as an adviser")))
+  def noteKeys: Vector[NoteKey] = notes.declared
+
+  /** Where the card went. The placement is the slot the player answered, so
+    * this says what the play did rather than reading back from a recorded
+    * batch and guessing which one was the play's. The pile comes from the
+    * live state after the play, never from `previous`: the credits node and
+    * the play's own operations both run before this leaf. */
+  private def playedNote(card: WorldCardId, ref: DecisionOptionRef)(
+      states: NoteStates): Option[PowerNote] = playedAs(ref).flatMap {
+    case PlayedAs.Discarded => Some(discardPile(states.now, card).fold(
+      discarded.sourceless(NoteArg.Card(card)))(region =>
+        discardedTo.sourceless(NoteArg.Card(card),
+          NoteArg.RegionName(region))))
+    case PlayedAs.AtSite => siteOf(ref).map(site =>
+      playedAtSite.sourceless(NoteArg.Card(card), NoteArg.Site(site)))
+    case PlayedAs.Faceup if card.isInstanceOf[VisionId] =>
+      Some(revealedVision.sourceless(NoteArg.Card(card)))
+    case _ => Some(playedAsAdviser.sourceless(NoteArg.Card(card)))
+  }
+
+  /** The regional pile `card` lies in, when it lies in one. */
+  private def discardPile(ready: ReadyGame, card: WorldCardId)
+      : Option[Region] =
+    ready.game.cardIndex.toOption.flatMap(_.get(card))
+      .map(_.location.container).collect {
+        case CardContainer.RegionalDiscard(region) => region
+      }
 
   def buildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, args: Vector[DecisionOptionRef])
@@ -342,6 +399,8 @@ object CardPlayProcedure:
     // play's own node so the hook keeps its place. They sit in a node of
     // their own, so the play is always the node's second child, as in
     // `settled`: a trigger's follow-up after the play is addressed under it.
+    // The play's own line follows it as a third child, which no path
+    // addresses into.
     val play = Branch((_, pending) => {
       val extra = discarded(pending)
       val buried =
@@ -357,7 +416,9 @@ object CardPlayProcedure:
       credited match
         case Left(error) => Vector(Sequence(Vector.empty),
           BuildOps((_, _) => Left(error)))
-        case Right(notes) => Vector(Sequence(notes), apply)
+        case Right(credits) => Vector(Sequence(credits), apply,
+          Note(ProcedureNotes.id(ActionRef.PlayFacedownAdviser),
+            playedNote(card, slot.ref)))
     })
     Vector(followUp, play) ++ hook(ready, actor, card, slot.placement)
 
@@ -368,7 +429,12 @@ object CardPlayProcedure:
     * place, left empty, then the play and the hook at the positions the
     * live shape gives them. A resumed walk starts past the decisions and
     * the play, so neither runs again, and nothing addresses inside the
-    * follow-ups' place. */
+    * follow-ups' place.
+    *
+    * The play's own line is left out here for the same reason the play is:
+    * the walk resumes past both, so the line is already journaled and
+    * re-running the leaf would write it twice. The two shapes differ only
+    * by that trailing child, so no path into the follow-ups shifts. */
   private def settled(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
       ref: DecisionOptionRef): Vector[Operation] =
     playedAs(ref).flatMap(way => siteOf(ref)

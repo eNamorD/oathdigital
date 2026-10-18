@@ -145,10 +145,12 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
         Told(SearchProcedure.cardDecisionId)),
       narratedPrefixes = Vector(ActionLines.PlacePrefix,
         "cardplay.discard."))
-    // The played adviser's line names the facedown pick.
+    // The played card's line names the facedown pick. Five keys word it —
+    // a discard with or without a pile, a play to a site, a revealed
+    // Vision, an adviser — so no single key tells the decision.
     case ActionRef.PlayFacedownAdviser =>
       ProcedureLog(tag = Some("Play facedown adviser"),
-        lines = ActionLineSource.Rule(actions.playedAdviser),
+        lines = ActionLineSource.Notes(),
         anchor = starts.adviserPicked,
         narrated = Vector(Told(CardPlayProcedure.facedownAdviserDecisionId)),
         narratedPrefixes = Vector(ActionLines.PlacePrefix,
