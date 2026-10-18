@@ -53,7 +53,26 @@ class BillowingFogSuite extends munit.FunSuite:
     assertEquals(Look(done.state).boardWarbands(b.actor), 4)
     assertEquals(said(BillowingFog, done.events), Vector(spared(b.actor)))
 
-  test("under Billowing Fog the origin split asks over the sacrifices only"):
+  test("a defeated attacker loses its skull and its sacrifice, and only " +
+      "the half is spared"):
+    val base = board(warbands = 5, supply = 7)
+    val b = withFogFor(base, base.actor)
+    // A paid skull and three hollow swords make 3, and a sacrifice 4,
+    // against two double shields and the origin's two bandits.
+    val game = rules(dice(AttackDieFace.TwoSwordsSkull +:
+      Vector.fill(3)(AttackDieFace.HollowSword),
+      Vector.fill(2)(DefenseDieFace.TwoShields)))
+    val done = commit(game, b, 4)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+      .finishAttackerPlans(b.actor)
+      .answer(b.actor, CampaignIds.sacrifice, ChooseAmountAnswer(1))
+      .finishPlanWindows
+    assertEquals(done.winner, Some(false))
+    assertEquals(Look(done.state).boardWarbands(b.actor), 3)
+    assertEquals(said(BillowingFog, done.events), Vector(spared(b.actor)))
+
+  test("under Billowing Fog only the sacrifice's split is asked, at the " +
+      "sacrifice"):
     val (base, away) = rivalAloneAtASiteTheActorHolds(board = 1,
       atSite = 3, rivalBoard = 5)
     val b = withFogFor(base, base.actor)
@@ -63,10 +82,9 @@ class BillowingFogSuite extends munit.FunSuite:
         force = 4, raid = true)
       .pick(b.actor, CampaignIds.attackerPlan, ref)
       .answer(b.actor, CampaignIds.sacrifice, ChooseAmountAnswer(2))
-      .finishPlanWindows
-    // 2 from the dice and 2 sacrificed do not beat the pawn's two blank
-    // dice and five board warbands. Unspared, the sacrifices and half the
-    // two survivors would die; spared, only the two sacrifices.
+    // The two sacrifices die now, before the defense roll: the board
+    // holds one, so one or two come from the site.
+    assert(awaits(fought, b.actor, CampaignIds.sacrificeOriginDeaths))
     fought.query(b.actor) match
       case amount: DecisionQuery.ChooseAmount =>
         assertEquals((amount.min, amount.max), (1, 2))
@@ -74,9 +92,12 @@ class BillowingFogSuite extends munit.FunSuite:
         assertEquals(amount.heading, Some("Choose how many of the 2 dead " +
           s"warbands come from $name"))
       case other => fail(s"expected the split question, got $other")
-    val done = fought.answer(b.actor, CampaignIds.originDeaths,
-      ChooseAmountAnswer(1))
+    // 2 from the dice and 2 sacrificed do not beat the pawn's two blank
+    // dice and five board warbands. The spared half asks nothing.
+    val done = fought.answer(b.actor, CampaignIds.sacrificeOriginDeaths,
+      ChooseAmountAnswer(1)).finishPlanWindows
     assertEquals(done.winner, Some(false))
+    assert(!awaits(done, b.actor, CampaignIds.originDeaths))
     assertEquals(Look(done.state).boardWarbands(b.actor), 0)
     assertEquals(Look(done.state).forces(away), SiteForces.Occupied(
       Look(done.state).forceKind(b.actor), 2))

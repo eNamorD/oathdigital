@@ -57,6 +57,19 @@ class CarefulPlansSuite extends munit.FunSuite:
     assertEquals(done.result.attackTotal, 4)
     assertEquals(said(CarefulPlans, done.events), Vector.empty)
 
+  test("chosen, the skull's warband dies once the attack is rolled, and the " +
+      "sacrifice before the losses"):
+    val b = attacker(favor = 1)
+    val game = rules(scripted(defenseFaces, attackFaces))
+    val asked = commit(game, b, 2)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+      .finishAttackerPlans(b.actor)
+    assert(awaits(asked, b.actor, CampaignIds.sacrifice))
+    assertEquals(Look(asked.state).boardWarbands(b.actor), 4)
+    val done = asked.answer(b.actor, CampaignIds.sacrifice,
+      ChooseAmountAnswer(1))
+    assertEquals(Look(done.state).boardWarbands(b.actor), 3)
+
   test("unchosen, the attack rolls first"):
     val b = attacker(favor = 1)
     val game = rules(scripted(attackFaces, defenseFaces))

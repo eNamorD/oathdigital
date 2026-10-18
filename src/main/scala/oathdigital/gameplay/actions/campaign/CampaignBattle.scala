@@ -102,7 +102,8 @@ object CampaignBattle:
       case _ => 0
 
   /** The defense is the dice score plus the defender's force. It is written
-    * here, before any warband dies, so the victor never reads the board.
+    * here, before any defender warband dies, so the victor never reads the
+    * board.
     */
   def defenseResultOps(ready: ReadyGame, setup: CampaignSetup)
       : Vector[CoreOperation] =
@@ -136,7 +137,8 @@ object CampaignBattle:
     case other => other.toString
 
   /** The durable record of this battle, built from the recorded outcomes and
-    * the answers, before any warband dies.
+    * the answers, after the skull and sacrifice losses and before the
+    * losses.
     */
   def result(ready: ReadyGame, setup: CampaignSetup, pending: PendingTree)
       : CampaignResult =
@@ -158,12 +160,18 @@ object CampaignBattle:
   def attackerSpared(ready: ReadyGame): Boolean =
     ready.game.current.rollPools.contains(CampaignIds.attackerSpared)
 
-  /** The attacker's dead: the skull and sacrifice losses, plus half the
-    * survivors on a defeat unless a plan spared them. */
+  /** The skull losses, which die at the attack result: the attack's final
+    * count, after every plan in the attack result window rewrote it. */
+  def skullDeaths(ready: ReadyGame): Int =
+    ready.game.current.rollOutcomes.get(CampaignIds.attackPool)
+      .fold(0)(_.skulls)
+
+  /** The attacker's dead at the losses: half the survivors, rounded down,
+    * on a defeat, unless a plan spared them. The skull and sacrifice
+    * losses died in their own windows (item 13b). */
   def attackerDeaths(result: CampaignResult, spared: Boolean): Int =
     val survivors = result.force - result.skullLosses - result.sacrificed
-    result.skullLosses + result.sacrificed +
-      (if result.attackerWins || spared then 0 else survivors / 2)
+    if result.attackerWins || spared then 0 else survivors / 2
 
   /** How many of `deaths` may come from the origin: at least what the
     * board cannot hold, at most what the site holds. A toll beyond both
@@ -172,57 +180,83 @@ object CampaignBattle:
     val most = math.min(deaths, origin.atSite)
     (math.min(math.max(0, deaths - origin.onBoard), most), most)
 
-  /** The question that splits the attacker's dead, asked only when the
-    * split is a real choice. Read from the durable result, so the step
-    * keeps its place when the losses have changed the board. */
-  def originDeathsStep(catalog: ExecutableCatalog, actor: PlayerId,
-      result: CampaignResult, spared: Boolean): Vector[Operation] =
-    val deaths = attackerDeaths(result, spared)
-    result.originForce.toVector.flatMap { origin =>
-      val (least, most) = originDeathRange(origin, deaths)
-      val name = catalog.site(origin.site).fold(origin.site.value)(_.name)
+  /** The question `id` that splits `deaths` of the attacker's dead between
+    * their board and a queued origin standing as `origin`, asked only when
+    * the split is a real choice. */
+  def originSplit(catalog: ExecutableCatalog, actor: PlayerId, id: String,
+      origin: Option[OriginForce], deaths: Int): Vector[Operation] =
+    origin.toVector.flatMap { at =>
+      val (least, most) = originDeathRange(at, deaths)
+      val name = catalog.site(at.site).fold(at.site.value)(_.name)
       val dead = if deaths == 1 then "warband" else "warbands"
-      Option.when(least < most)(Decide(CampaignIds.originDeaths, actor,
+      Option.when(least < most)(Decide(id, actor,
         DecisionQuery.ChooseAmount(least, most, Some(s"Choose how many of " +
           s"the $deaths dead $dead come from $name"), "Choose",
           suggested = Some(least)))).toVector
     }
 
-  /** Step 8: kill the defeated warbands. Attacker deaths are the skull and
-    * sacrifice losses, plus half the survivors on a defeat unless a plan
-    * spared them; with a queued origin's warbands in the force, the answer
-    * to the split says how many die there. On a victory every warband at
-    * every target dies, a player defender's survivors return from the
-    * supply to their board, and a Raid defender loses half its board.
+  /** The kill of `deaths` of the attacker's warbands: as many at the origin
+    * as the answer to `id` says, within the range, else the least, and the
+    * rest from the board. */
+  def attackerKills(ready: ReadyGame, attacker: PlayerId, id: String,
+      origin: Option[OriginForce], deaths: Int, pending: PendingTree)
+      : Either[OathViolation, Vector[CoreOperation]] =
+    ready.game.current.players.find(_.player == attacker).toRight(
+      OathViolation.InvalidEventOrder(
+        "the Campaign's attacker is not in the game")).map { player =>
+      val kind = PlayerForceKind.of(ready, player)
+        .getOrElse(ForceKind.Exile(player.lineage))
+      val fromSite = origin.fold(0) { at =>
+        val (least, most) = originDeathRange(at, deaths)
+        CampaignAnswers.originDeaths(pending, id)
+          .filter(n => n >= least && n <= most).getOrElse(least)
+      }
+      val board: Vector[CoreOperation] =
+        Option.when(deaths - fromSite > 0)(Kill(
+          Piece.Warbands(kind, deaths - fromSite),
+          PositionedLocation(Location.PlayArea(attacker)))).toVector
+      val site: Vector[CoreOperation] = origin.filter(_ => fromSite > 0)
+        .toVector.map(at => Kill(Piece.Warbands(kind, fromSite),
+          PositionedLocation(Location.Site(at.site))))
+      board ++ site
+    }
+
+  /** A kill of the attacker's force in its own window, before the outcome:
+    * the split question `id` over the board and the origin as they stand,
+    * then the kill. Nothing runs between the two, so both read the same
+    * board, and a resume never selects the question again once the kill
+    * has run. `deaths` reads the walk. */
+  def earlyKill(catalog: ExecutableCatalog, actor: PlayerId, id: String,
+      deaths: (ReadyGame, PendingTree) => Int): Vector[Operation] = Vector(
+    Branch((ready, pending) => originSplit(catalog, actor, id,
+      CampaignSetup.originForce(ready, actor), deaths(ready, pending))),
+    BuildOps((ready, pending) => attackerKills(ready, actor, id,
+      CampaignSetup.originForce(ready, actor), deaths(ready, pending),
+      pending)))
+
+  /** The split of the defeat's half, read from the durable result, so the
+    * step keeps its place when the losses have changed the board. */
+  def originDeathsStep(catalog: ExecutableCatalog, actor: PlayerId,
+      result: CampaignResult, spared: Boolean): Vector[Operation] =
+    originSplit(catalog, actor, CampaignIds.originDeaths, result.originForce,
+      attackerDeaths(result, spared))
+
+  /** Step 8: kill the defeated warbands. The attacker loses half the
+    * survivors on a defeat unless a plan spared them, split by the answer
+    * to `originDeaths` when a queued origin's warbands are in the force.
+    * On a victory every warband at every target dies, a player defender's
+    * survivors return from the supply to their board, and a Raid defender
+    * loses half its board.
     */
   def losses(ready: ReadyGame, result: CampaignResult, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
-    val current = ready.game.current
-    current.players.find(_.player == result.attacker).toRight(
-      OathViolation.InvalidEventOrder("the Campaign's attacker is not in the game"))
-      .map { attacker =>
-        val deaths = attackerDeaths(result, attackerSpared(ready))
-        val kind = PlayerForceKind.of(ready, attacker)
-          .getOrElse(ForceKind.Exile(attacker.lineage))
-        val fromSite = result.originForce.fold(0) { origin =>
-          val (least, most) = originDeathRange(origin, deaths)
-          CampaignAnswers.originDeaths(pending)
-            .filter(n => n >= least && n <= most).getOrElse(least)
-        }
-        val board: Vector[CoreOperation] =
-          Option.when(deaths - fromSite > 0)(Kill(
-            Piece.Warbands(kind, deaths - fromSite),
-            PositionedLocation(Location.PlayArea(result.attacker)))).toVector
-        val site: Vector[CoreOperation] = result.originForce
-          .filter(_ => fromSite > 0).toVector.map(origin => Kill(
-            Piece.Warbands(kind, fromSite),
-            PositionedLocation(Location.Site(origin.site))))
-        board ++ site ++ (if !result.attackerWins then Vector.empty
-          else result.kind match {
-            case CampaignKind.Conquest => conquestLosses(ready, result)
-            case CampaignKind.Raid => raidBoardLosses(ready, result)
-          })
-      }
+    attackerKills(ready, result.attacker, CampaignIds.originDeaths,
+      result.originForce, attackerDeaths(result, attackerSpared(ready)),
+      pending).map(_ ++ (if !result.attackerWins then Vector.empty
+        else result.kind match {
+          case CampaignKind.Conquest => conquestLosses(ready, result)
+          case CampaignKind.Raid => raidBoardLosses(ready, result)
+        }))
 
   private def conquestLosses(ready: ReadyGame, result: CampaignResult)
       : Vector[CoreOperation] =

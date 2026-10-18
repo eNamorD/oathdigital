@@ -174,8 +174,10 @@ final case class OriginForce(site: SiteId, atSite: Int, onBoard: Int)
   * with Zealots.
   * A plan that decides the battle (Peace Envoy) sets it whatever the
   * scores, with nothing rolled.
-  * `originForce` records where the force stood when a queued origin's
-  * warbands joined it, so the losses split the dead between board and site.
+  * `originForce` records the board and the queued origin as the losses find
+  * them, after the skull and sacrifice losses died, so the losses split the
+  * defeat's half between them. It is `None` once no warband of the force is
+  * left at the origin.
   */
 final case class CampaignResult(
     attacker: PlayerId,
