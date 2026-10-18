@@ -58,15 +58,14 @@ case object SaladDays extends WhenPlayedPower:
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     Vector(Branch((live, _) =>
       val banks = stocked(live)
       if banks.isEmpty then Vector(Note(id, _ =>
         Some(empty(PowerSourceRef.Card(cardId)))))
       else if banks.size <= Banks then Vector(BuildOps((ready, _) =>
-        Right(gains(actor, stocked(ready)))))
+        Right(gains(ctx.actor, stocked(ready)))))
       else Vector(
-        Decide(decisionId, actor, DecisionQuery.ChooseMany(Banks, Banks,
+        Decide(decisionId, ctx.actor, DecisionQuery.ChooseMany(Banks, Banks,
           banks.map(suit => DecisionOption.FavorBank(
             DecisionOptionRef.FavorBank(suit))),
           heading = Some("Salad Days: choose three banks to gain 1 favor " +
@@ -74,4 +73,4 @@ case object SaladDays extends WhenPlayedPower:
           confirm = Some(CountedConfirm("Gain favor from", "bank",
             "banks")))),
         BuildOps((ready, pending) => chosen(ready, pending)
-          .map(gains(actor, _))))))
+          .map(gains(ctx.actor, _))))))

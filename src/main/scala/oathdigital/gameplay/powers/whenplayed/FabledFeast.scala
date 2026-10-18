@@ -33,18 +33,17 @@ final case class FabledFeast private (catalog: ExecutableCatalog)
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     val source = PowerSourceRef.Card(cardId)
     Vector(Branch((live, _) =>
-      val count = RuledCards.count(catalog, live, SiteRuler.Player(actor),
+      val count = RuledCards.count(catalog, live, SiteRuler.Player(ctx.actor),
         Suit.Hearth)
       val banks = stocked(live)
       if count == 0 then Vector(Note(id, _ =>
-        Some(none(source, NoteArg.Player(actor)))))
+        Some(none(source, NoteArg.Player(ctx.actor)))))
       else if banks.isEmpty then Vector(Note(id, _ => Some(empty(source))))
-      else ask(actor, banks, count) ++ Vector(
-        BuildOps((ready, pending) => take(ready, actor, pending, count)),
-        Note(id, NoteSupport.gainedFromNote(took, source, actor),
+      else ask(ctx.actor, banks, count) ++ Vector(
+        BuildOps((ready, pending) => take(ready, ctx.actor, pending, count)),
+        Note(id, NoteSupport.gainedFromNote(took, source, ctx.actor),
           covers = true))))
 
 object FabledFeast:

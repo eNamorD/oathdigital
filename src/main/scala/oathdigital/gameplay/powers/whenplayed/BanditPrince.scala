@@ -91,19 +91,18 @@ case object BanditPrince extends WhenPlayedPower:
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     Vector(Branch((live, _) =>
       val sites = banditSites(live)
-      val banked = bank(live, actor)
+      val banked = bank(live, ctx.actor)
       val fits = sites.filter(bandits(live, _) <= banked)
       def ref(site: SiteId) = DecisionOptionRef.Site(site)
       if sites.isEmpty then Vector(Note(id, _ =>
         Some(none(PowerSourceRef.Card(cardId)))))
-      else if VowOfWandering.holds(live, actor) then Vector(Note(id, _ =>
+      else if VowOfWandering.holds(live, ctx.actor) then Vector(Note(id, _ =>
         Some(VowOfWandering.forbidden(PowerSourceRef.Card(cardId)))))
       else if fits.isEmpty then Vector.empty
       else Vector(
-        Decide(decisionId, actor, DecisionQuery.ChooseMany(0, fits.size,
+        Decide(decisionId, ctx.actor, DecisionQuery.ChooseMany(0, fits.size,
           sites.map(site =>
             if fits.contains(site) then DecisionOption.Site(ref(site))
             else DecisionOption.Unavailable(DecisionOption.Site(ref(site)),
@@ -117,9 +116,9 @@ case object BanditPrince extends WhenPlayedPower:
             "sites")),
           confirm = Some(CountedConfirm("Replace bandits at", "site", "sites",
             Some("Replace none"))))),
-        BuildOps((ready, pending) => replace(ready, actor, pending)),
+        BuildOps((ready, pending) => replace(ready, ctx.actor, pending)),
         Branch((_, pending) => chosen(pending).map(site =>
-          Note(id, replacedNote(_, actor, site), covers = true))))))
+          Note(id, replacedNote(_, ctx.actor, site), covers = true))))))
 
   /** Why a site's bandits alone are more than the bank holds. */
   private def needs(count: Int, banked: Int): String =

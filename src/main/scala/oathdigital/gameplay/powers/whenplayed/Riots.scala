@@ -34,13 +34,12 @@ final case class Riots private (catalog: ExecutableCatalog)
   private val region = new RegionDiscard(catalog, _ => true)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     Vector(Branch((live, _) =>
-      val found = region.targets(live, actor)
+      val found = region.targets(live, ctx.actor)
       Vector(
-        BuildOps((ready, _) => region.discards(ready, actor)),
+        BuildOps((ready, _) => region.discards(ready, ctx.actor)),
         Note(id, RegionDiscard.said(cardId, found), covers = true),
-        BuildOps((ready, _) => Right(burn(ready, found, actor))),
+        BuildOps((ready, _) => Right(burn(ready, found, ctx.actor))),
         Note(id, burnedNote(_, found)))))
 
   /** What the burn step took from the banner, or that it held none. Nothing

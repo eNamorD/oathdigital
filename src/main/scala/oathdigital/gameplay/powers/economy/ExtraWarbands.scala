@@ -28,11 +28,10 @@ private[economy] object ExtraWarbands:
     * no such gain. A Muster's gain window holds one gain. */
   def appended(ctx: PowerCtx, power: PowerId, card: DenizenId, extra: Int,
       operations: Vector[Operation]): Vector[Operation] =
-    val actor = ctx.actor
-    operations.iterator.flatMap(gainKind(_, actor)).nextOption()
-      .fold(operations)(kind => operations :+ AutomaticUse(actor, power,
-        card, (_, _) => Vector(Gain.Warbands(actor, kind, extra),
-          Note(power, line(_, card, actor, extra), covers = true))))
+    operations.iterator.flatMap(gainKind(_, ctx.actor)).nextOption()
+      .fold(operations)(kind => operations :+ AutomaticUse(ctx.actor, power,
+        card, (_, _) => Vector(Gain.Warbands(ctx.actor, kind, extra),
+          Note(power, line(_, card, ctx.actor, extra), covers = true))))
 
   /** The force kind of `actor`'s warband gain in `node`, when it holds
     * one. */

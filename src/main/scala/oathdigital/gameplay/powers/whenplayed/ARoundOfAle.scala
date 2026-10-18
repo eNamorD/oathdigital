@@ -33,10 +33,9 @@ final case class ARoundOfAle private (catalog: ExecutableCatalog)
   override def noteKeys: Vector[NoteKey] = ARoundOfAle.noteKeys
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     Vector(
       Note(id, _ => Some(cleanup(PowerSourceRef.Card(cardId)))),
-      BuildOps((ready, _) => RestCleanup.operations(catalog, ready, actor)))
+      BuildOps((ready, _) => RestCleanup.operations(catalog, ready, ctx.actor)))
 
 object ARoundOfAle:
   val id: PowerId = ARoundOfAleCard.power.id

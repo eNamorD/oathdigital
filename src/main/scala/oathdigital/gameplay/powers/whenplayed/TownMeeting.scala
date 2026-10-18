@@ -36,20 +36,19 @@ final case class TownMeeting private (catalog: ExecutableCatalog)
   private val banks = new FavorSplit(decisionId, Suit.all, "Take favor")
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     val source = PowerSourceRef.Card(cardId)
     Vector(Branch((live, _) =>
-      val count = RuledCards.count(catalog, live, SiteRuler.Player(actor),
+      val count = RuledCards.count(catalog, live, SiteRuler.Player(ctx.actor),
         Suit.Hearth)
       if count == 0 then Vector(Note(id, _ =>
-        Some(none(source, NoteArg.Player(actor)))))
+        Some(none(source, NoteArg.Player(ctx.actor)))))
       else if banks.stocked(live).isEmpty then
         Vector(Note(id, _ => Some(empty(source))))
-      else banks.ask(live, actor, count,
+      else banks.ask(live, ctx.actor, count,
           s"Town Meeting: take $count favor from any banks") ++ Vector(
         BuildOps((ready, pending) => banks.split(ready, pending, count).map(
-          _.map { case (suit, n) => Gain.Favor(actor, suit, n) })),
-        Note(id, NoteSupport.gainedNote(gained, source, actor,
+          _.map { case (suit, n) => Gain.Favor(ctx.actor, suit, n) })),
+        Note(id, NoteSupport.gainedNote(gained, source, ctx.actor,
           NoteUnit.Favor, NoteSupport.favor)))))
 
 object TownMeeting:

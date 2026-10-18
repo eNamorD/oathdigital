@@ -35,19 +35,18 @@ final case class GreatHerd private (catalog: ExecutableCatalog)
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     Vector(Branch((live, _) =>
       val found = candidates(live)
       if found.isEmpty then Vector(Note(id, _ =>
         Some(none(PowerSourceRef.Card(cardId)))))
       else Vector(
-        Decide(decisionId, actor, DecisionQuery.ChooseOne(
+        Decide(decisionId, ctx.actor, DecisionQuery.ChooseOne(
           found.map(_.option) :+ DecisionOption.Button(keep, "Keep Great Herd"),
           heading = Some("Great Herd: swap it with a Nomad card at another " +
             "site?"))),
-        BuildOps((ready, pending) => swap(ready, actor, pending),
+        BuildOps((ready, pending) => swap(ready, ctx.actor, pending),
           required = true),
-        Note(id, swappedNote(_, actor)))))
+        Note(id, swappedNote(_, ctx.actor)))))
 
   /** The faceup Nomad denizens and ruined Nomad edifices at every other
     * site in play, in map order. */

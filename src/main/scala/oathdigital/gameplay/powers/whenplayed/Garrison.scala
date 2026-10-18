@@ -82,13 +82,12 @@ case object Garrison extends WhenPlayedPower:
     VowOfWandering.holds(ready, actor) && ruled(ready, actor).nonEmpty
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     Vector(
-      BuildOps((ready, _) => gain(ready, actor)),
+      BuildOps((ready, _) => gain(ready, ctx.actor)),
       Branch((ready, _) =>
-        if barred(ready, actor) then Vector(Note(id, _ =>
+        if barred(ready, ctx.actor) then Vector(Note(id, _ =>
           Some(VowOfWandering.forbidden(PowerSourceRef.Card(cardId)))))
-        else ask(ready, actor)),
+        else ask(ready, ctx.actor)),
       BuildOps((ready, pending) =>
-        if barred(ready, actor) then Right(Vector.empty)
-        else place(ready, actor, pending)))
+        if barred(ready, ctx.actor) then Right(Vector.empty)
+        else place(ready, ctx.actor, pending)))

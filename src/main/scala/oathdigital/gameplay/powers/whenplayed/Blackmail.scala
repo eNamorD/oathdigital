@@ -45,11 +45,10 @@ final case class Blackmail private (catalog: ExecutableCatalog)
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     Vector(
-      Branch((live, _) => askRelic(live, actor)),
-      Branch((live, pending) => askHolder(live, actor, pending)),
-      Branch((live, pending) => settle(live, actor, pending)))
+      Branch((live, _) => askRelic(live, ctx.actor)),
+      Branch((live, pending) => askHolder(live, ctx.actor, pending)),
+      Branch((live, pending) => settle(live, ctx.actor, pending)))
 
   /** One relic the actor may choose: its holder, its slot and its state. */
   private final case class Target(owner: PlayerId, slot: Int,

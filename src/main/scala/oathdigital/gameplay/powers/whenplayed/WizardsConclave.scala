@@ -42,9 +42,8 @@ final case class WizardsConclave private (catalog: ExecutableCatalog)
   private val banner = NoteArg.Banner(Banner.DarkestSecret)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     Vector(
-      Branch((live, _) => ask(live, actor)),
+      Branch((live, _) => ask(live, ctx.actor)),
       Branch((live, pending) => award(live, pending)))
 
   /** The players ruling the most Arcane cards, in seat order: every player

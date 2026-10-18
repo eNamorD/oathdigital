@@ -46,12 +46,11 @@ final case class TrueOath private (catalog: ExecutableCatalog)
       .count(_ != cardId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     Vector(Branch((live, _) =>
-      if others(live, actor) < Others then
+      if others(live, ctx.actor) < Others then
         Vector(Note(id, _ => Some(unmet(cardSource))))
       else Vector(
-        Decide(decisionId, actor, DecisionQuery.ChooseOne(
+        Decide(decisionId, ctx.actor, DecisionQuery.ChooseOne(
           OathkeeperGoalChoice.options(live, Map.empty) :+
             DecisionOption.Button(keep, "Keep the current goal"),
           heading = Some("True Oath: you may change the Oathkeeper goal"))),

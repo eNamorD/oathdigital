@@ -33,9 +33,8 @@ final case class AnimalHost private (catalog: ExecutableCatalog)
   override def noteKeys: Vector[NoteKey] = AnimalHost.noteKeys
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
-    Vector(BuildOps((ready, _) => gain(ready, actor)),
-      Note(id, gainedNote(_, actor)))
+    Vector(BuildOps((ready, _) => gain(ready, ctx.actor)),
+      Note(id, gainedNote(_, ctx.actor)))
 
   private def gain(ready: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =

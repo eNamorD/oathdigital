@@ -45,14 +45,13 @@ final case class CallForHelp private (catalog: ExecutableCatalog)
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.actor
     Vector(
       Repeat((_, pending) => drawing(pending.answered),
         Sequence(Vector[Operation](
-          Branch((live, pending) => askAmount(live, actor, pending)),
-          BuildOps((live, pending) => Right(draw(live, actor, pending))),
-          Note(id, drawnNote(_, actor), covers = true),
-          Branch((live, pending) => askContinue(live, actor, pending))))),
+          Branch((live, pending) => askAmount(live, ctx.actor, pending)),
+          BuildOps((live, pending) => Right(draw(live, ctx.actor, pending))),
+          Note(id, drawnNote(_, ctx.actor), covers = true),
+          Branch((live, pending) => askContinue(live, ctx.actor, pending))))),
       Note(id, nothingNote))
 
   /** Each pass's amount, in order. */

@@ -73,10 +73,9 @@ trait ActingSite extends SelectedModifier:
     * actor does not rule. */
   private def pickedAtPawnSite(ctx: PowerCtx): Boolean =
     val ready = ctx.state
-    val actor = ctx.actor
     val picked = ModifierPicks.cards(ctx.answered).toSet
-    PowerAccess.pawnSite(ready, actor)
-      .filterNot(PowerAccess.ruledSites(ready, actor))
+    PowerAccess.pawnSite(ready, ctx.actor)
+      .filterNot(PowerAccess.ruledSites(ready, ctx.actor))
       .flatMap(ready.game.current.map.sites.get)
       .exists(_.denizens.exists(card => picked(card.id)))
 
