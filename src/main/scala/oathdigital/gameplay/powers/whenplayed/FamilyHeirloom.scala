@@ -70,7 +70,7 @@ case object FamilyHeirloom extends WhenPlayedPower:
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(Repeat(
       (ready, pending) => !asked(pending) &&
         ready.game.current.commonCards.relicDeck.nonEmpty,

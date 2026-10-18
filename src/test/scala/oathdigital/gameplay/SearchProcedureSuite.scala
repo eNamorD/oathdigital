@@ -147,7 +147,7 @@ class SearchProcedureSuite extends munit.FunSuite:
     val settlePower = PowerStubs.ContributingStub(
       PowerId("test.search-settle"),
       Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform(
-        (ctx, children) => children :+ Decide(settleDecision, ctx.activePlayer,
+        (ctx, children) => children :+ Decide(settleDecision, ctx.actor,
           DecisionQuery.ChooseOne(Vector(DecisionOption.Button(
             DecisionOptionRef.Button("ok"), "OK"))))))))
     val withPower = new OathRules(catalog,
@@ -183,7 +183,7 @@ class SearchProcedureSuite extends munit.FunSuite:
     val afterDecision = "test.after-follow-up"
     val afterPlay = PowerStubs.ContributingStub(PowerId("test.after-follow-up"),
       Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform(
-        (ctx, children) => children :+ Decide(afterDecision, ctx.activePlayer,
+        (ctx, children) => children :+ Decide(afterDecision, ctx.actor,
           DecisionQuery.ChooseOne(Vector(DecisionOption.Button(
             DecisionOptionRef.Button("ok"), "OK"))))))))
     val powers = WalkerPowers(Vector(twoPermissions, afterPlay))

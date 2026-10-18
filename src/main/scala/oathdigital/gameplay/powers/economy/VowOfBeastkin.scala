@@ -45,7 +45,7 @@ final case class VowOfBeastkin private (catalog: ExecutableCatalog)
         operations))))
 
   override def applicable(ctx: PowerCtx): Boolean =
-    holds(ctx.state, ctx.activePlayer)
+    holds(ctx.state, ctx.actor)
 
   private def holds(ready: ReadyGame, player: PlayerId): Boolean =
     ready.game.current.players.find(_.player == player).exists(_.advisers.exists {
@@ -59,8 +59,8 @@ final case class VowOfBeastkin private (catalog: ExecutableCatalog)
       : Option[OathViolation] = for
     card <- cardOf(ref)
     suit <- EffectiveSuit.traded(catalog, ctx.state, ctx.answered, ref)
-    if MusterSource.matching(catalog, ctx.state, ctx.activePlayer, suit) == 0
-    site <- PowerAccess.pawnSite(ctx.state, ctx.activePlayer)
+    if MusterSource.matching(catalog, ctx.state, ctx.actor, suit) == 0
+    site <- PowerAccess.pawnSite(ctx.state, ctx.actor)
   yield OathViolation.EconomyCardUnavailable(site, card)
 
   private def cardOf(ref: DecisionOptionRef): Option[CardId] = ref match

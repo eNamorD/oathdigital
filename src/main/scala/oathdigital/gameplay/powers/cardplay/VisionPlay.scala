@@ -5,7 +5,7 @@ import oathdigital.model._
 
 /** Reads a faceup Vision play off the card-play hook
   * (`ActionCardPlayedFaceup`), for the cards that forbid or reward one. The
-  * player is the one whose action runs, `ctx.activePlayer`.
+  * player is the one whose action runs, `ctx.actor`.
   */
 private[cardplay] object VisionPlay:
 
@@ -21,7 +21,7 @@ private[cardplay] object VisionPlay:
     * because the state has changed since.
     */
   def pending(ctx: PowerCtx): Option[VisionId] =
-    played(ctx).filter(held(ctx.state, ctx.activePlayer, _))
+    played(ctx).filter(held(ctx.state, ctx.actor, _))
 
   def forbidden(card: String): OathViolation =
     OathViolation.InvalidSearchPlacement(s"$card forbids playing a Vision faceup")

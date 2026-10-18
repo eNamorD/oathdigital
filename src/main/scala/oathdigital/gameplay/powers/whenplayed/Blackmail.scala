@@ -45,7 +45,7 @@ final case class Blackmail private (catalog: ExecutableCatalog)
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(
       Branch((live, _) => askRelic(live, actor)),
       Branch((live, pending) => askHolder(live, actor, pending)),

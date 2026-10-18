@@ -35,8 +35,8 @@ final case class SpecialEnvoy private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      SupplyStrip(ctx, ctx.activePlayer, operations) ++ (
-        if ctx.activePlayer != ctx.state.game.current.turn.activePlayer
+      SupplyStrip(ctx, ctx.actor, operations) ++ (
+        if ctx.actor != ctx.state.game.current.turn.activePlayer
         then Vector.empty
         else Vector(EnterPhase(Phase.Rest),
           Note(id, _ => Some(SpecialEnvoy.ended(

@@ -38,7 +38,7 @@ case object VowOfWanderingMuster extends ContributingPower:
       ExtraWarbands.appended(ctx, id, cardId, Warbands, operations))))
 
   override def applicable(ctx: PowerCtx): Boolean =
-    VowOfWandering.holds(ctx.state, ctx.activePlayer)
+    VowOfWandering.holds(ctx.state, ctx.actor)
 
 /** Vow of Wandering (card 247, adviser-only, locked), a persistent rule of a
   * faceup adviser: "You cannot place warbands on sites."
@@ -90,7 +90,7 @@ case object VowOfWandering extends ContributingPower:
       }))))
 
   override def applicable(ctx: PowerCtx): Boolean =
-    holds(ctx.state, ctx.activePlayer)
+    holds(ctx.state, ctx.actor)
 
   override def operationRestrictions: Vector[OperationRestriction] =
     Vector(placing)

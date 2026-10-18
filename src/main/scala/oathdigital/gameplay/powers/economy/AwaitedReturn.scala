@@ -35,9 +35,9 @@ final case class AwaitedReturn private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeCost -> Vector(Transform((ctx, operations) =>
-      SupplyStrip(ctx, ctx.activePlayer, operations) ++ Vector(
-        sacrifice(ctx.activePlayer),
-        Note(id, sacrificedNote(_, ctx.activePlayer))))))
+      SupplyStrip(ctx, ctx.actor, operations) ++ Vector(
+        sacrifice(ctx.actor),
+        Note(id, sacrificedNote(_, ctx.actor))))))
 
   /** Selectable only with a warband on the board to sacrifice. */
   override def selectable(ready: ReadyGame, actor: PlayerId): Boolean =

@@ -29,7 +29,7 @@ final case class VillageIdiot private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterGain -> Vector(Transform((ctx, operations) =>
-      operations :+ favor(ctx.activePlayer))))
+      operations :+ favor(ctx.actor))))
 
   private def favor(actor: PlayerId): Operation = BuildOps((_, pending) =>
     Right(if PowerAnswers.one(pending, MusterProcedure.decisionId)

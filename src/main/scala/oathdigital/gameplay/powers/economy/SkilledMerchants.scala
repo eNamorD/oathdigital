@@ -32,7 +32,7 @@ final case class SkilledMerchants private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeSourceSelection -> Vector(Transform((ctx, operations) =>
       EconomySources.widened(ctx, operations,
-        EconomySources.inPawnRegion(catalog, ctx.state, ctx.activePlayer)))))
+        EconomySources.inPawnRegion(catalog, ctx.state, ctx.actor)))))
 
 object SkilledMerchants:
   val id: PowerId = SkilledMerchantsCard.power.id

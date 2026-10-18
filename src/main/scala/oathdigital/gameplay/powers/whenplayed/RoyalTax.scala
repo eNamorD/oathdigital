@@ -57,7 +57,7 @@ case object RoyalTax extends WhenPlayedPower:
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(Branch((live, _) =>
       val found = targets(live, actor)
       if found.isEmpty then Vector(Note(id, _ => Some(none(cardSource))))

@@ -33,7 +33,7 @@ final case class ErrandBoy private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchSourceSelection -> Vector(Transform((ctx, operations) =>
-      SearchProcedure.actorRegion(ctx.state, ctx.activePlayer)
+      SearchProcedure.actorRegion(ctx.state, ctx.actor)
         .fold(_ => operations, offered(ctx, operations, _)))))
 
   /** The other regions' piles added, and the sources it leaves alone

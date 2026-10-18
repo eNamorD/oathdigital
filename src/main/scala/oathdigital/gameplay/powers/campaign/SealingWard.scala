@@ -38,7 +38,7 @@ final case class SealingWard private (catalog: ExecutableCatalog)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignGatherPools -> Vector(Transform((ctx, children) =>
-      children :+ Branch(added(ctx.activePlayer)))))
+      children :+ Branch(added(ctx.actor)))))
 
   /** The dice and their line, or nothing when no relic of the holder is
     * targeted. */

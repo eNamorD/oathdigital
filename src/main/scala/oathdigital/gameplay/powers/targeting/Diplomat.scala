@@ -74,24 +74,24 @@ final case class Diplomat private (catalog: ExecutableCatalog)
   private def kindGuard(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = ref match
     case DecisionOptionRef.Button("conquest")
-        if blocked(ctx.state, ctx.activePlayer, CampaignKind.Conquest) =>
+        if blocked(ctx.state, ctx.actor, CampaignKind.Conquest) =>
       Some(refused("Diplomat protects the defender of this Conquest"))
     case DecisionOptionRef.Button("raid")
-        if blocked(ctx.state, ctx.activePlayer, CampaignKind.Raid) =>
+        if blocked(ctx.state, ctx.actor, CampaignKind.Raid) =>
       Some(refused("Diplomat protects every player a Raid could target"))
     case _ => None
 
   private def defenderGuard(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = ref match
     case DecisionOptionRef.Player(defender)
-        if protects(ctx.state, ctx.activePlayer).contains(defender) =>
+        if protects(ctx.state, ctx.actor).contains(defender) =>
       Some(refused(s"Diplomat protects ${defender.value} from a Raid"))
     case _ => None
 
   private def startGuard(ctx: PowerCtx): Option[OathViolation] =
-    val kinds = CampaignSetup.legalKinds(ctx.state, ctx.activePlayer)
+    val kinds = CampaignSetup.legalKinds(ctx.state, ctx.actor)
     Option.when(!FortressRule.underway(ctx.state) && kinds.nonEmpty &&
-      kinds.forall(blocked(ctx.state, ctx.activePlayer, _)))(
+      kinds.forall(blocked(ctx.state, ctx.actor, _)))(
       refused("Diplomat protects every defender this Campaign could have"))
 
 object Diplomat:

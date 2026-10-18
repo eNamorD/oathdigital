@@ -26,7 +26,7 @@ final case class HuntingParty private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchActionEligibility -> Vector(Transform((ctx, children) =>
-      children :+ HuntingParty.queued(ctx.activePlayer, cardId))))
+      children :+ HuntingParty.queued(ctx.actor, cardId))))
 
   override def warning(decide: Decide, option: DecisionOptionRef)
       : Option[OptionReason] = option match

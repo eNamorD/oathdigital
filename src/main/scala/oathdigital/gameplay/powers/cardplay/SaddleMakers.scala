@@ -54,7 +54,7 @@ final case class SaddleMakers private (catalog: ExecutableCatalog)
         for
           suit <- EffectiveSuit.of(catalog, ctx.state, card)
             .filter(SaddleMakers.Suits)
-          holder <- holderOf(ctx.state).filter(_ != ctx.activePlayer)
+          holder <- holderOf(ctx.state).filter(_ != ctx.actor)
         yield Vector[Operation](Gain.Favor(holder, suit, SaddleMakers.Favor),
           Note(id, NoteSupport.gainedFromNote(SaddleMakers.gained,
             PowerSourceRef.Card(cardId), holder), covers = true))

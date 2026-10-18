@@ -35,7 +35,7 @@ case object InitiationRite extends ContributingPower:
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterCost -> Vector(Transform((ctx, operations) =>
       OperationRewrite.ops(ctx, operations)((_, _) => {
-        case pay: PayCost if pay.player == ctx.activePlayer &&
+        case pay: PayCost if pay.player == ctx.actor &&
             pay.cost.favor > 0 =>
           Vector(pay.copy(cost = pay.cost.copy(favor = 0,
             secret = pay.cost.secret + pay.cost.favor)))
@@ -43,7 +43,7 @@ case object InitiationRite extends ContributingPower:
 
   /** The acting player holds this card as a faceup adviser. */
   override def applicable(ctx: PowerCtx): Boolean =
-    ctx.state.game.current.players.find(_.player == ctx.activePlayer)
+    ctx.state.game.current.players.find(_.player == ctx.actor)
       .exists(_.advisers.exists {
         case DenizenState(card, Orientation.FaceUp, _) => card == cardId
         case _ => false

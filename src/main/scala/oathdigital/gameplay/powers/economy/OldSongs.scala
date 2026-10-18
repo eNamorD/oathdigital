@@ -34,7 +34,7 @@ final case class OldSongs private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeSourceSelection -> Vector(Transform((ctx, operations) =>
       EconomySources.exempted(ctx, operations, ref =>
-        MusterSource.cardOf(ctx.state, ctx.activePlayer, ref)
+        MusterSource.cardOf(ctx.state, ctx.actor, ref)
           .exists(_.tokens == OldSongs.OneSecret)))),
     PowerWindow.TradeCost -> Vector(Transform((ctx, operations) =>
       EconomySources.intoOccupied(ctx, operations,

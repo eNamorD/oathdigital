@@ -33,7 +33,7 @@ final case class HolderAdviserLimit(cardId: DenizenId, limit: Int):
   val contribution: Contribution = Transform((ctx, children) =>
     ctx.operation match {
       case tree: CardPlayProcedure.PlacementTree
-          if tree.card == cardId || holds(ctx.state, ctx.activePlayer) =>
+          if tree.card == cardId || holds(ctx.state, ctx.actor) =>
         tree.adjust(children)(_.limitWhileFaceUp(cardId, limit))
       case _ => children
     })

@@ -132,7 +132,7 @@ object PlanContext:
     case PowerWindow.CampaignDefenderBattlePlans =>
       Some(CampaignPlanSide.Defender)
     case _ => None
-  }).flatMap(side => CampaignSetup.setup(ctx.state, ctx.activePlayer,
+  }).flatMap(side => CampaignSetup.setup(ctx.state, ctx.actor,
     PendingTree(ctx.nodePath, ctx.answered)).map(PlanContext(ctx.state, _, side)))
 
 /** A plan that was used, as a later window sees it. `result` is the Campaign's

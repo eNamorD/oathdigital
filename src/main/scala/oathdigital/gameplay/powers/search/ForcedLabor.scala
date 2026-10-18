@@ -50,10 +50,10 @@ final case class ForcedLabor private (catalog: ExecutableCatalog)
   /** `operations` with what this Search owes, if it owes anything. */
   private def charged(ctx: PowerCtx, operations: Vector[Operation])
       : Option[Vector[Operation]] = for
-    ruler <- RulerToll.enemyRuler(ctx.state, cardId, ctx.activePlayer)
-    site <- PowerAccess.pawnSite(ctx.state, ctx.activePlayer)
+    ruler <- RulerToll.enemyRuler(ctx.state, cardId, ctx.actor)
+    site <- PowerAccess.pawnSite(ctx.state, ctx.actor)
     if SiteRulers.rulerOf(ctx.state, site).contains(ruler)
-  yield RulerToll.owed(ForcedLabor.step, ctx.state, ctx.activePlayer, ruler,
+  yield RulerToll.owed(ForcedLabor.step, ctx.state, ctx.actor, ruler,
     operations, site.value, "Forced Labor: give 1 favor to search here?",
     "Search without paying")
 

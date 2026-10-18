@@ -54,7 +54,7 @@ private[economy] object EconomySources:
     * window reads the same site. */
   def relocated(catalog: ExecutableCatalog, ctx: PowerCtx,
       operations: Vector[Operation]): Vector[Operation] =
-    PowerAccess.asIfSite(ctx.state, ctx.activePlayer).fold(operations)(site =>
+    PowerAccess.asIfSite(ctx.state, ctx.actor).fold(operations)(site =>
       withOptions(ctx, operations)(_ =>
         cardsAt(catalog, ctx.state, site).map(MusterSource.offered)))
 
@@ -83,7 +83,7 @@ private[economy] object EconomySources:
     PowerAnswers.last(ctx.answered, decisionId).flatMap(idOf) match
       case None => operations
       case Some(card) => OperationRewrite.ops(ctx, operations)((_, _) => {
-        case pay: PayCost if pay.player == ctx.activePlayer &&
+        case pay: PayCost if pay.player == ctx.actor &&
             pay.placedAt == Location.OnCard(card) =>
           Vector(pay.copy(intoOccupied = true))
       })

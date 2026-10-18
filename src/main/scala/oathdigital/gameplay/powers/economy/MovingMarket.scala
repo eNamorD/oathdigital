@@ -49,7 +49,7 @@ final case class MovingMarket private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeActionEligibility -> Vector(Transform((ctx, children) =>
-      children :+ offer(ctx.activePlayer))))
+      children :+ offer(ctx.actor))))
 
   private def offer(actor: PlayerId): Operation = Branch((ready, pending) =>
     val slots =

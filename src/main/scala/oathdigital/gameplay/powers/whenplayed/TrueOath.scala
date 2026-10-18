@@ -46,7 +46,7 @@ final case class TrueOath private (catalog: ExecutableCatalog)
       .count(_ != cardId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(Branch((live, _) =>
       if others(live, actor) < Others then
         Vector(Note(id, _ => Some(unmet(cardSource))))

@@ -38,13 +38,13 @@ case object VowOfWisdom extends ContributingPower:
       OperationRewrite.ops(ctx, children)((_, _) => {
         case play @ Play(_, _, Location.Site(_), _, _) =>
           Vector[CoreOperation](play,
-            Gain.Secrets(ctx.activePlayer, Secrets))
-        case Gain.Favor(player, _, _) if player == ctx.activePlayer =>
+            Gain.Secrets(ctx.actor, Secrets))
+        case Gain.Favor(player, _, _) if player == ctx.actor =>
           Vector.empty
       }))))
 
   override def applicable(ctx: PowerCtx): Boolean =
-    ctx.state.game.current.players.find(_.player == ctx.activePlayer)
+    ctx.state.game.current.players.find(_.player == ctx.actor)
       .exists(_.advisers.exists {
         case DenizenState(card, Orientation.FaceUp, _) => card == cardId
         case _ => false

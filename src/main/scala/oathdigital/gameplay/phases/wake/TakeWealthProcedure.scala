@@ -47,17 +47,17 @@ object TakeWealthProcedure:
     * and a resume never reaches this; the pair is kept identical rather than
     * one of them left to guess (Travel's case, for the same reason).
     */
-  def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
+  def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     resource <- resourceOf(args)
-    site <- state.game.current.players.find(_.player == activePlayer)
-      .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(activePlayer))
+    site <- state.game.current.players.find(_.player == actor)
+      .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(actor))
     tokens <- state.game.current.map.sites.get(site).map(_.tokens)
       .toRight(OathViolation.SiteNotInPlay(site))
-    _ <- noEnemyPawn(state, activePlayer, site)
+    _ <- noEnemyPawn(state, actor, site)
     _ <- Either.cond(available(tokens, resource), (),
       OathViolation.ResourceUnavailable(site, resource))
-  yield tree(activePlayer, site, resource)
+  yield tree(actor, site, resource)
 
   /** The start selection naming `resource`, and the inverse of `resourceOf`.
     *

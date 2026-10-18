@@ -64,7 +64,7 @@ trait SelectedModifier extends ContributingPower:
     for
       _ <- SelectedModifier.selectionAction(ctx.window)
       printed <- catalog.printedPower(id)
-    yield PowerUse.of(ctx.activePlayer, printed, cardId,
+    yield PowerUse.of(ctx.actor, printed, cardId,
       secret = cost.secret > 0 || cost.secretBurnt > 0,
       consent = ctx.window != PowerWindow.CampaignModifierSelection,
       places = cost.favor > 0 || cost.secret > 0)
@@ -78,7 +78,7 @@ trait SelectedModifier extends ContributingPower:
     SelectedModifier.selectionAction(ctx.window) match
       case Some(action) => actions(action) &&
         (ModifierPicks.isPicked(ctx.answered, ctx.window, cardId) ||
-          selectable(ctx.state, ctx.activePlayer))
+          selectable(ctx.state, ctx.actor))
       case None => appliesAt(ctx)
 
   /** The player may use the card, from where they act

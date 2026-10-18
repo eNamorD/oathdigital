@@ -57,7 +57,7 @@ private[campaign] object SparedForce:
       : Boolean =
     ctx.window == PowerWindow.CampaignLosses && killAll(other.id) &&
       PlanUse.chosen(ctx.state, PendingTree(ctx.nodePath, ctx.answered),
-        ctx.activePlayer, plan.cardRef, plan.sides, afterOutcome = true)
+        ctx.actor, plan.cardRef, plan.sides, afterOutcome = true)
         .flatMap(defeated).nonEmpty
 
   /** The losses without the defeat's toll on the user's force, then the

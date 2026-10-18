@@ -43,13 +43,13 @@ final case class Curfew private (catalog: ExecutableCatalog)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeCost -> Vector(Transform((ctx, operations) =>
-      RulerToll.enemyRuler(ctx.state, cardId, ctx.activePlayer)
-        .fold(operations)(charged(ctx.activePlayer, _, operations)))),
+      RulerToll.enemyRuler(ctx.state, cardId, ctx.actor)
+        .fold(operations)(charged(ctx.actor, _, operations)))),
     PowerWindow.PayOrAsk -> Vector(Curfew.step.restriction))
 
   override def applicable(ctx: PowerCtx): Boolean =
     if ctx.window == PowerWindow.PayOrAsk then Curfew.step.asking(ctx)
-    else RulerToll.enemyRuler(ctx.state, cardId, ctx.activePlayer).nonEmpty
+    else RulerToll.enemyRuler(ctx.state, cardId, ctx.actor).nonEmpty
 
   /** `operations` with what a Trade with a card `ruler` rules owes, read
     * against the Trade's source when it runs: the step first and its outcome

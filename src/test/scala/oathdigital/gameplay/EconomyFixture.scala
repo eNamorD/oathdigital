@@ -33,7 +33,7 @@ object EconomyFixture:
     def source: RuleSourceRef = RuleSourceRef.Banner("test")
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(PowerWindow.MusterGain -> Vector(Transform((ctx, operations) =>
-        Decide(AskAtGain.decisionId, ctx.activePlayer,
+        Decide(AskAtGain.decisionId, ctx.actor,
           DecisionQuery.ChooseOne(Vector(
             DecisionOption.Button(AskAtGain.go, "Go")))) +: operations)))
 

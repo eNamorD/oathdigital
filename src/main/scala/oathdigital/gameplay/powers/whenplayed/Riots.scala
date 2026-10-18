@@ -34,7 +34,7 @@ final case class Riots private (catalog: ExecutableCatalog)
   private val region = new RegionDiscard(catalog, _ => true)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(Branch((live, _) =>
       val found = region.targets(live, actor)
       Vector(

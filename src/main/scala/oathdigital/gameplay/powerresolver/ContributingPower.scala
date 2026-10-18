@@ -14,7 +14,7 @@ final case class PowerCtx(
       * player. Not a parked decision's owner, which a contribution hooked
       * on a `Decide` reads from `operation`.
       */
-    activePlayer: PlayerId,
+    actor: PlayerId,
     source: RuleSourceRef,
     window: PowerWindow,
     nodePath: Vector[String],

@@ -50,7 +50,7 @@ final case class Mushrooms private (catalog: ExecutableCatalog)
       SearchSources.withheld(ctx, operations,
         _ == SearchSource.ref(SearchSource.WorldDeck), Mushrooms.worldDeck))),
     PowerWindow.SearchCost -> Vector(Transform((ctx, operations) =>
-      SupplyStrip(ctx, ctx.activePlayer, operations))),
+      SupplyStrip(ctx, ctx.actor, operations))),
     PowerWindow.SearchBeforeDraw -> Vector(Transform((_, operations) =>
       line +: BottomDraw.reshaped(operations, Mushrooms.Cards,
         _.isInstanceOf[SearchSource.RegionalDiscard]))))

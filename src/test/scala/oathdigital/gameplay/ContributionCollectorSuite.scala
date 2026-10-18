@@ -15,7 +15,7 @@ class ContributionCollectorSuite extends munit.FunSuite:
   private def ctxFor(power: ContributingPower, window: PowerWindow): PowerCtx =
     PowerCtx(
       state = ready,
-      activePlayer = ready.game.current.turn.activePlayer,
+      actor = ready.game.current.turn.activePlayer,
       source = power.source,
       window = window,
       nodePath = Vector("root"),

@@ -48,11 +48,11 @@ final case class SecretSignal private (catalog: ExecutableCatalog)
     PowerWindow.TradeGain -> Vector(Transform((ctx, operations) =>
       OperationRewrite.ops(ctx, operations)((_, _) => {
         // The record comes first, for the reason The Old Oak's does.
-        case gain @ Gain.Favor(player, _, _) if player == ctx.activePlayer =>
+        case gain @ Gain.Favor(player, _, _) if player == ctx.actor =>
           Vector(Defer(TradeFavor.key, Vector(gain)), gain)
       }))),
     PowerWindow.TradeActionEligibility -> Vector(Transform((ctx, children) =>
-      children :+ extra(ctx.activePlayer), FoldPhase.Late)))
+      children :+ extra(ctx.actor), FoldPhase.Late)))
 
   override def offerReason(ctx: PowerCtx): Option[OfferReason] =
     ctx.operation match

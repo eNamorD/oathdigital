@@ -42,7 +42,7 @@ final case class TwinBrother private (catalog: ExecutableCatalog)
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(Branch((live, _) =>
       val found = candidates(live, actor)
       if found.isEmpty then Vector.empty

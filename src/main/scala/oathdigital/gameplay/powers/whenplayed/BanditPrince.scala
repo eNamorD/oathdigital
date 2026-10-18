@@ -91,7 +91,7 @@ case object BanditPrince extends WhenPlayedPower:
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(Branch((live, _) =>
       val sites = banditSites(live)
       val banked = bank(live, actor)

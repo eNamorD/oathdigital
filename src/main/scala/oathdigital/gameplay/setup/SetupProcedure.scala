@@ -64,7 +64,7 @@ object SetupProcedure:
   def revealDecisionId(player: PlayerId): String =
     s"setup.reveal.${player.value}"
 
-  def build(catalog: ExecutableCatalog, ready: ReadyGame, activePlayer: PlayerId,
+  def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
     Either.cond(args.isEmpty, (),
       InvalidEventOrder("Setup selects nothing")).map(_ => tree(catalog, ready))

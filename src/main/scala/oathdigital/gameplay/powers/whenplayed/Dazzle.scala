@@ -32,7 +32,7 @@ final case class Dazzle private (catalog: ExecutableCatalog)
   private val region = new RegionDiscard(catalog, Dazzle.suits)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    region.effect(id, cardId, ctx.activePlayer)
+    region.effect(id, cardId, ctx.actor)
 
 object Dazzle:
   val id: PowerId = DazzleCard.power.id

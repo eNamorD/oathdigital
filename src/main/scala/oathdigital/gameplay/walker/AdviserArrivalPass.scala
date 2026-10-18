@@ -22,7 +22,7 @@ private[walker] object AdviserArrivalPass:
     * follow-ups of the leaf's arrivals run. */
   def after(before: ReadyGame, ran: WalkCtx, nodeId: String)
       : Either[OathViolation, WalkCtx] =
-    val arrived = AdviserArrivals.between(ran.activePlayer, before, ran.state)
+    val arrived = AdviserArrivals.between(ran.actor, before, ran.state)
     if arrived.arrivals.isEmpty then Right(ran)
     else ran.powers.powers.sortBy(ContributingPower.sortKey)
       .foldLeft[Either[OathViolation, WalkCtx]](Right(ran)) {

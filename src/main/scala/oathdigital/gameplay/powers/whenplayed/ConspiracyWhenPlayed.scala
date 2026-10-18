@@ -52,13 +52,13 @@ case object ConspiracyWhenPlayed extends ContributingPower:
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
-      children :+ AutomaticUse(ctx.activePlayer, id, VisionRules.Conspiracy,
-        (_, _) => targetDecision(ctx.state, ctx.activePlayer) :+
+      children :+ AutomaticUse(ctx.actor, id, VisionRules.Conspiracy,
+        (_, _) => targetDecision(ctx.state, ctx.actor) :+
           BuildOps((ready, pending) =>
-            taken(ready, ctx.activePlayer, pending)) :+
-          Note(id, seizedNote(ctx.activePlayer))) :+
+            taken(ready, ctx.actor, pending)) :+
+          Note(id, seizedNote(ctx.actor))) :+
         BuildOps((ready, _) =>
-          Right(Vector(removal(ready, ctx.activePlayer)))))))
+          Right(Vector(removal(ready, ctx.actor)))))))
 
   /** What the take moved to the actor, and from whom. */
   private def seizedNote(actor: PlayerId)(states: NoteStates)

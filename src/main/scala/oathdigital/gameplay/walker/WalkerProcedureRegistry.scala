@@ -180,10 +180,10 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Recover),
       rollDecisionId = Some(RecoverProcedure.rollDecisionId),
       modifierWindow = Some(PowerWindow.RecoverModifierSelection),
-      build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Recover,
-        args).flatMap(_ => RecoverProcedure.build(catalog, state, activePlayer)),
-      rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Recover,
-        args).flatMap(_ => RecoverProcedure.rebuild(catalog, state, activePlayer)),
+      build = (catalog, state, actor, args) => noStartArgs(ActionRef.Recover,
+        args).flatMap(_ => RecoverProcedure.build(catalog, state, actor)),
+      rebuild = (catalog, state, actor, args) => noStartArgs(ActionRef.Recover,
+        args).flatMap(_ => RecoverProcedure.rebuild(catalog, state, actor)),
       rollFeedback = RecoverProcedure.rollFeedback),
 
     /** Batch-1 Task 3. Forge has no `Roll` node, so `rollDecisionId` is
@@ -193,10 +193,10 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Forge),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.ForgeModifierSelection),
-      build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
-        args).flatMap(_ => ForgeProcedure.build(catalog, state, activePlayer)),
-      rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
-        args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, activePlayer))),
+      build = (catalog, state, actor, args) => noStartArgs(ActionRef.Forge,
+        args).flatMap(_ => ForgeProcedure.build(catalog, state, actor)),
+      rebuild = (catalog, state, actor, args) => noStartArgs(ActionRef.Forge,
+        args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, actor))),
 
     /** Travel asks for its modifiers, then parks on its destination (travel
       * destination design; modifier walker design). Nothing runs before
@@ -224,10 +224,10 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Muster),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.MusterModifierSelection),
-      build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
-        args).flatMap(_ => MusterProcedure.build(catalog, state, activePlayer)),
-      rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
-        args).flatMap(_ => MusterProcedure.rebuild(catalog, state, activePlayer)),
+      build = (catalog, state, actor, args) => noStartArgs(ActionRef.Muster,
+        args).flatMap(_ => MusterProcedure.build(catalog, state, actor)),
+      rebuild = (catalog, state, actor, args) => noStartArgs(ActionRef.Muster,
+        args).flatMap(_ => MusterProcedure.rebuild(catalog, state, actor)),
       requiresPlayableOption = true),
 
     ActionRef.Trade -> Entry(
@@ -402,14 +402,14 @@ object WalkerProcedureRegistry:
     * `lookup` as an extracted stand-in.
     */
   def build(procedure: ProcedureRef, catalog: ExecutableCatalog,
-      state: ReadyGame, activePlayer: PlayerId,
+      state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef] = Vector.empty,
       phasePowers: PhasePowers = PhasePowers.empty,
       registrations: Map[ProcedureRef, Entry] = entries,
       walkerPowers: WalkerPowers = WalkerPowers.empty)
       : Either[OathViolation, Operation] =
     lookup(procedure, registrations, phasePowers, walkerPowers).flatMap(
-      _.build(catalog, state, activePlayer, args))
+      _.build(catalog, state, actor, args))
 
   /** Rebuilds `procedure`'s tree to resume an already-started walker
     * position. Start-only gates do not re-run.
@@ -418,14 +418,14 @@ object WalkerProcedureRegistry:
     * `build`'s doc for why.
     */
   def rebuild(procedure: ProcedureRef, catalog: ExecutableCatalog,
-      state: ReadyGame, activePlayer: PlayerId,
+      state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef] = Vector.empty,
       phasePowers: PhasePowers = PhasePowers.empty,
       registrations: Map[ProcedureRef, Entry] = entries,
       walkerPowers: WalkerPowers = WalkerPowers.empty)
       : Either[OathViolation, Operation] =
     lookup(procedure, registrations, phasePowers, walkerPowers).flatMap(
-      _.rebuild(catalog, state, activePlayer, args))
+      _.rebuild(catalog, state, actor, args))
 
   /** Every `UsePower` shares one entry shape, built for its id. A parked
     * decision inside the power is a generic power decision, so the registry

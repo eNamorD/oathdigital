@@ -28,9 +28,9 @@ final case class DragonskinDrum private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      operations :+ gain(ctx.activePlayer) :+ Note(id,
+      operations :+ gain(ctx.actor) :+ Note(id,
         NoteSupport.gainedNote(DragonskinDrum.gained,
-          PowerSourceRef.Card(cardId), ctx.activePlayer, NoteUnit.Warband,
+          PowerSourceRef.Card(cardId), ctx.actor, NoteUnit.Warband,
           NoteSupport.warbands)))))
 
   override def appliesAt(ctx: PowerCtx): Boolean =

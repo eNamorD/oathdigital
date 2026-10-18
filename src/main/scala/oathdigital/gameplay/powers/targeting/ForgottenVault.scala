@@ -53,7 +53,7 @@ final case class ForgottenVault private (catalog: ExecutableCatalog)
   private def protectedRuler(ctx: PowerCtx): Option[PlayerId] =
     SiteRulers.rulerOfCard(ctx.state, cardId).collect {
       case ruler @ SiteRuler.Player(owner)
-          if SiteRule.enemies(ruler, SiteRuler.Player(ctx.activePlayer)) => owner
+          if SiteRule.enemies(ruler, SiteRuler.Player(ctx.actor)) => owner
     }
 
   /** Whether `ref` names a relic the protected ruler holds. */

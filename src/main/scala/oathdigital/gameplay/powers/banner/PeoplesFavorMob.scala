@@ -25,7 +25,7 @@ object PeoplesFavorMob extends ContributingPower:
   /** The player plays a card while holding the banner, Mob face up. */
   override def applicable(ctx: PowerCtx): Boolean =
     val favor = ctx.state.game.current.banners.peoplesFavor
-    favor.active == PeoplesFavorFace.Mob && favor.holder.contains(ctx.activePlayer)
+    favor.active == PeoplesFavorFace.Mob && favor.holder.contains(ctx.actor)
 
   private val notes = NoteSet(id)
   notes.include(CardPlayRules.notes)

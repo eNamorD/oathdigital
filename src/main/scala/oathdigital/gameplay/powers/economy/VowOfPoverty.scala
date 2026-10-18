@@ -54,7 +54,7 @@ case object VowOfPoverty extends PhasePower with ContributingPower:
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TradeGain -> Vector(Restriction((ctx, _) =>
-      Option.when(holds(ctx.state, ctx.activePlayer) && gainsFavor(ctx))(
+      Option.when(holds(ctx.state, ctx.actor) && gainsFavor(ctx))(
         OathViolation.NoPlayableOption(ActionRef.Trade.key)))))
 
   def usable(ready: ReadyGame, player: PlayerId,
@@ -73,7 +73,7 @@ case object VowOfPoverty extends PhasePower with ContributingPower:
   /** Whether the hooked gain node gives the trader favor. */
   private def gainsFavor(ctx: PowerCtx): Boolean =
     ctx.operation.children.exists {
-      case Gain.Favor(player, _, _) => player == ctx.activePlayer
+      case Gain.Favor(player, _, _) => player == ctx.actor
       case _ => false
     }
 

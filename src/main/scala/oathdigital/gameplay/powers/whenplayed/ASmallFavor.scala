@@ -20,5 +20,5 @@ case object ASmallFavor extends WhenPlayedPower:
   val Warbands: Int = 4
 
   def effect(ctx: PowerCtx): Vector[Operation] = Vector(BuildOps((ready, _) =>
-    PlayerFacts.forceKind(ready, ctx.activePlayer).map(kind => Vector(
-      Gain.Warbands(ctx.activePlayer, kind, ASmallFavor.Warbands)))))
+    PlayerFacts.forceKind(ready, ctx.actor).map(kind => Vector(
+      Gain.Warbands(ctx.actor, kind, ASmallFavor.Warbands)))))

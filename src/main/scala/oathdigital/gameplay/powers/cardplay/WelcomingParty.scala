@@ -35,7 +35,7 @@ final case class WelcomingParty private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
-      children :+ Gain.Favor(ctx.activePlayer, Suit.Hearth,
+      children :+ Gain.Favor(ctx.actor, Suit.Hearth,
         WelcomingParty.Favor))))
 
   override def appliesAt(ctx: PowerCtx): Boolean = ctx.operation match

@@ -10,7 +10,7 @@ import oathdigital.model.{Answered, OathEvent, Operation, PlayerId, ReadyGame}
 private[walker] final case class WalkCtx(
     state: ReadyGame,
     events: Vector[OathEvent],
-    activePlayer: PlayerId,
+    actor: PlayerId,
     answered: Vector[Answered],
     powers: WalkerPowers,
     dice: WalkerDice,

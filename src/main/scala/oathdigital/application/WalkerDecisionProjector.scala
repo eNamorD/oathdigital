@@ -133,8 +133,8 @@ private[application] final class WalkerDecisionProjector(
       })
 
   private def rebuild(ready: ReadyGame, procedure: ProcedureRef,
-      activePlayer: PlayerId, args: Vector[DecisionOptionRef]) =
-    tree(procedure, ready, activePlayer, args)
+      actor: PlayerId, args: Vector[DecisionOptionRef]) =
+    tree(procedure, ready, actor, args)
 
   private def tree(procedure: ProcedureRef, ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]) = procedure match

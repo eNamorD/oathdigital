@@ -58,7 +58,7 @@ case object PiedPiper extends PaidAction(PiedPiperCard.power)
       ctx.operation match {
         case tree: CardPlayProcedure.PlacementTree
             if tree.card == PiedPiperCard.id ||
-              holds(ctx.state, ctx.activePlayer) =>
+              holds(ctx.state, ctx.actor) =>
           tree.adjust(children)(_.ignoreLimit(
             AdviserFace(PiedPiperCard.id, Orientation.FaceUp)))
         case _ => children

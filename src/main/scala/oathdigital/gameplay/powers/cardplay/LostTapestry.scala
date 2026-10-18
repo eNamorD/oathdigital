@@ -32,13 +32,13 @@ case object LostTapestry extends ContributingPower:
     PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
       ctx.operation match {
         case tree: CardPlayProcedure.PlacementTree
-            if holds(ctx.state, ctx.activePlayer) =>
+            if holds(ctx.state, ctx.actor) =>
           val played = tree.card match
             case vision: VisionId =>
               Vector(AdviserFace(vision, Orientation.FaceDown))
             case _ => Vector.empty
           tree.adjust(children)(rules =>
-            (ignored(ctx.state, ctx.activePlayer) ++ played)
+            (ignored(ctx.state, ctx.actor) ++ played)
               .foldLeft(rules)(_.ignoreLimit(_)))
         case _ => children
       })))

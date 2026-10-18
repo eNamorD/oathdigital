@@ -33,7 +33,7 @@ final case class AnimalHost private (catalog: ExecutableCatalog)
   override def noteKeys: Vector[NoteKey] = AnimalHost.noteKeys
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(BuildOps((ready, _) => gain(ready, actor)),
       Note(id, gainedNote(_, actor)))
 

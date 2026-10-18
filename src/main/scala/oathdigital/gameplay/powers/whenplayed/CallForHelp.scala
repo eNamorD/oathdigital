@@ -45,7 +45,7 @@ final case class CallForHelp private (catalog: ExecutableCatalog)
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(
       Repeat((_, pending) => drawing(pending.answered),
         Sequence(Vector[Operation](

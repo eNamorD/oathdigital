@@ -36,7 +36,7 @@ final case class TownMeeting private (catalog: ExecutableCatalog)
   private val banks = new FavorSplit(decisionId, Suit.all, "Take favor")
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     val source = PowerSourceRef.Card(cardId)
     Vector(Branch((live, _) =>
       val count = RuledCards.count(catalog, live, SiteRuler.Player(actor),

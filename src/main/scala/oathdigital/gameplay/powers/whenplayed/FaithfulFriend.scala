@@ -19,4 +19,4 @@ case object FaithfulFriend extends WhenPlayedPower:
   val Supply: Int = 4
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    Vector(GainSupply(ctx.activePlayer, FaithfulFriend.Supply))
+    Vector(GainSupply(ctx.actor, FaithfulFriend.Supply))

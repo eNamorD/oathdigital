@@ -30,7 +30,7 @@ final case class WildCry private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
-      children ++ effects(ctx.activePlayer))))
+      children ++ effects(ctx.actor))))
 
   override def appliesAt(ctx: PowerCtx): Boolean = ctx.operation match
     case CardPlayedFaceup(card: DenizenId, _) =>

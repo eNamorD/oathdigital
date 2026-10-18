@@ -59,7 +59,7 @@ case object SecretTestament extends ContributingPower:
           DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Banner(chosen)),
           _) => chosen }
     holder <- BannerRules.holder(ctx.state.game.current, banner)
-    if holder != ctx.activePlayer && holderOf(ctx.state).contains(holder)
+    if holder != ctx.actor && holderOf(ctx.state).contains(holder)
   yield (banner, holder)
 
   /** Every favor or secret on `banner`, moved to `holder`. */

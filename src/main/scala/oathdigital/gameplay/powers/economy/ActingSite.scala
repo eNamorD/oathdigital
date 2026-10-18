@@ -48,10 +48,10 @@ trait ActingSite extends SelectedModifier:
 
   final override def offerReason(ctx: PowerCtx): Option[OfferReason] =
     val reason =
-      if PowerAccess.asIfSite(ctx.state, ctx.activePlayer).nonEmpty then
+      if PowerAccess.asIfSite(ctx.state, ctx.actor).nonEmpty then
         Some(ActingSite.elsewhere)
       else if pickedAtPawnSite(ctx) then Some(ActingSite.pickedHere)
-      else Option.when(sites(ctx.state, ctx.activePlayer).isEmpty)(noSite)
+      else Option.when(sites(ctx.state, ctx.actor).isEmpty)(noSite)
     reason.map(OfferReason.Unavailable(_))
 
   /** The site question, then the answer recorded as state, then the line.
@@ -73,7 +73,7 @@ trait ActingSite extends SelectedModifier:
     * actor does not rule. */
   private def pickedAtPawnSite(ctx: PowerCtx): Boolean =
     val ready = ctx.state
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     val picked = ModifierPicks.cards(ctx.answered).toSet
     PowerAccess.pawnSite(ready, actor)
       .filterNot(PowerAccess.ruledSites(ready, actor))

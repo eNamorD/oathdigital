@@ -33,5 +33,5 @@ trait WhenPlayedPower extends ContributingPower:
 
   final def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
-      children :+ AutomaticUse(ctx.activePlayer, id, cardId,
+      children :+ AutomaticUse(ctx.actor, id, cardId,
         (_, _) => effect(ctx)))))

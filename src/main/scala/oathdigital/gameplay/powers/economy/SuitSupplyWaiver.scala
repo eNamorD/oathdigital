@@ -29,7 +29,7 @@ private[economy] object SuitSupplyWaiver:
       : Map[PowerWindow, Vector[Contribution]] = Map(
     window -> Vector(Transform((ctx, operations) =>
       OperationRewrite.nodes(ctx, operations)((_, _) => {
-        case pay @ SpendSupply(player, _, _) if player == ctx.activePlayer =>
+        case pay @ SpendSupply(player, _, _) if player == ctx.actor =>
           Vector(unlessFree(pay, decisionId, catalog, free))
       }))))
 

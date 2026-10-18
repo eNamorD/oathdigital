@@ -88,7 +88,7 @@ case object KeyToTheCity extends WhenPlayedPower:
   private def cardSource: PowerSourceRef = PowerSourceRef.Card(cardId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(Branch((live, _) =>
       SiteRulers.siteOf(live, cardId).toVector.flatMap(steps(live, actor, _))))
 

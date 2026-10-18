@@ -133,24 +133,24 @@ object RecoverProcedure:
   val startLabel: String = "Start Recover"
 
   def build(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId)
+      actor: PlayerId)
       : Either[OathViolation, Operation] = for
-    built <- rebuild(catalog, state, activePlayer)
+    built <- rebuild(catalog, state, actor)
   yield built
 
   /** The Recover itself, after its modifier decision, behind the start's
     * gates. */
   def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId): Either[OathViolation, Operation] = for
-    rest <- recoveryAt(catalog, state, activePlayer)
+      actor: PlayerId): Either[OathViolation, Operation] = for
+    rest <- recoveryAt(catalog, state, actor)
   yield rest
 
   /** Rebuilds the same command-local tree for an already-started Recover:
     * the modifier decision, then the Recover. */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId): Either[OathViolation, Operation] =
-    recoveryAt(catalog, state, activePlayer).map(rest =>
-      Sequence(Vector(ModifierChoice.loop(activePlayer,
+      actor: PlayerId): Either[OathViolation, Operation] =
+    recoveryAt(catalog, state, actor).map(rest =>
+      Sequence(Vector(ModifierChoice.loop(actor,
         PowerWindow.RecoverModifierSelection, rest, startLabel), rest)))
 
   /** The Recover at the actor's site, which must have a Recover

@@ -85,7 +85,7 @@ case object VowOfUnion extends ContributingPower:
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignBeforeTargets -> Vector(Transform((ctx, children) =>
-      start(ctx.activePlayer) +: children)))
+      start(ctx.actor) +: children)))
 
   private def start(attacker: PlayerId): Operation = Branch((ready, _) =>
     holderOf(ready).toVector.flatMap(direction(ready, attacker, _)))

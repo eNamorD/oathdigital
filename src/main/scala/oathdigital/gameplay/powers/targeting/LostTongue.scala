@@ -50,7 +50,7 @@ final case class LostTongue private (catalog: ExecutableCatalog)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignTargetSelection -> Vector(OptionRestriction(guard,
-      (ctx, _) => protectedHolder(ctx.state, ctx.activePlayer).map(owner =>
+      (ctx, _) => protectedHolder(ctx.state, ctx.actor).map(owner =>
         LostTongue.shielded(PowerSourceRef.Card(cardId),
           NoteArg.Player(owner))))),
     PowerWindow.ConspiracyTargetSelection -> Vector(Transform((ctx, operations) =>
@@ -85,7 +85,7 @@ final case class LostTongue private (catalog: ExecutableCatalog)
   /** Whether `ref` names a relic or banner of the protected holder. */
   private def shields(ctx: PowerCtx, ref: DecisionOptionRef): Boolean =
     val current = ctx.state.game.current
-    protectedHolder(ctx.state, ctx.activePlayer).exists(owner => ref match
+    protectedHolder(ctx.state, ctx.actor).exists(owner => ref match
       case DecisionOptionRef.Banner(banner) =>
         BannerRules.holder(current, banner).contains(owner)
       case DecisionOptionRef.Relic(relic) => current.players.exists(p =>

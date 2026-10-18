@@ -45,9 +45,9 @@ final case class MasterAtArms private (catalog: ExecutableCatalog)
   private def offer(ctx: PowerCtx): Option[RerollOffer] =
     RerollChoice.throwOf(ctx).filter(rolled =>
       rolled.pool == CampaignIds.attackPool &&
-        rolled.roller == ctx.activePlayer &&
+        rolled.roller == ctx.actor &&
         PlanUse.chosen(ctx.state, PendingTree(ctx.nodePath, ctx.answered),
-          ctx.activePlayer, cardRef, sides, afterOutcome = false).nonEmpty)
+          ctx.actor, cardRef, sides, afterOutcome = false).nonEmpty)
       .map(rolled => MasterAtArms.hollow(rolled) match
         case Vector() => RerollOffer(cardId, None, Vector.empty,
           Some(OptionReason.Written(MasterAtArms.noHollowSword)))

@@ -53,7 +53,7 @@ case object CarefulPlans extends BattlePlan:
 
   override def rewrites: Map[PowerWindow, Transform] = Map(
     PowerWindow.CampaignActionEligibility -> Transform((ctx, children) =>
-      reordered(ctx.activePlayer, children)))
+      reordered(ctx.actor, children)))
 
   /** `children`, with the battle's steps in one branch. */
   private def reordered(actor: PlayerId, children: Vector[Operation])

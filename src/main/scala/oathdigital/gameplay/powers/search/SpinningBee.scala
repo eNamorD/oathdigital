@@ -61,24 +61,24 @@ final case class SpinningBee private (catalog: ExecutableCatalog)
       OperationRewrite.nodes(ctx, operations)((_, _) => {
         case decide: Decide
             if decide.decisionId == SearchProcedure.sourceDecisionId =>
-          Vector(SpinningBee.declaration(ctx.activePlayer))
+          Vector(SpinningBee.declaration(ctx.actor))
       }))),
     PowerWindow.SearchBeforeDraw -> Vector(Transform((ctx, operations) =>
       operations.flatMap {
         case node: BuildOps
             if node.window.contains(PowerWindow.SearchBeforeDraw) =>
-          Vector(line(ctx.activePlayer),
+          Vector(line(ctx.actor),
             node.copy(build = (ready, pending) => node.build(ready, pending)
               .flatMap(throughMatch(ready, pending))),
-            discardedUnlessMatched(ctx.activePlayer),
-            discardedLine(ctx.activePlayer))
+            discardedUnlessMatched(ctx.actor),
+            discardedLine(ctx.actor))
         case other => Vector(other)
       })))
 
   override def offerReason(ctx: PowerCtx): Option[OfferReason] =
     if ModifierPicks.cards(ctx.answered).nonEmpty then
       Some(OfferReason.Unavailable(SpinningBee.notWithOthers))
-    else SearchProcedure.actorRegion(ctx.state, ctx.activePlayer).toOption
+    else SearchProcedure.actorRegion(ctx.state, ctx.actor).toOption
       .map(SearchSource.RegionalDiscard(_))
       .filter(SearchRules.pile(ctx.state, _).isEmpty)
       .map(pile => OfferReason.Unavailable(

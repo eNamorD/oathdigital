@@ -27,7 +27,7 @@ final case class KnightsErrant private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterActionEligibility -> Vector(Transform((ctx, children) =>
-      children :+ QueueProcedure(QueuedProcedure(ctx.activePlayer,
+      children :+ QueueProcedure(QueuedProcedure(ctx.actor,
         ActionRef.Campaign, Vector.empty, Some(PowerSourceRef.Card(cardId)),
         QueueKind.Offer)))))
 

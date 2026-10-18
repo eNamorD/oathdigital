@@ -49,7 +49,7 @@ final case class PaintedTrumpet private (catalog: ExecutableCatalog)
             if node.window.contains(PowerWindow.SearchBeforeDraw) =>
           node.copy(build = (ready, pending) => picked(pending) match {
             case Some(pile: SearchSource.RegionalDiscard) =>
-              tops(ready, ctx.activePlayer, pile)
+              tops(ready, ctx.actor, pile)
             case _ => node.build(ready, pending)
           })
         case other => other

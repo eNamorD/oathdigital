@@ -42,7 +42,7 @@ final case class SilverCharm private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.RecoverRoll -> Vector(Transform((ctx, operations) =>
-      choice(ctx.activePlayer) +: operations :+ reroll)))
+      choice(ctx.actor) +: operations :+ reroll)))
 
   /** Which earlier dice to reroll, on a payment after the first. */
   private def choice(actor: PlayerId): Operation = Branch((ready, _) =>

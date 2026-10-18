@@ -30,7 +30,7 @@ final case class ThreateningRoar private (catalog: ExecutableCatalog)
   private val region = new RegionDiscard(catalog, ThreateningRoar.suits)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    region.effect(id, cardId, ctx.activePlayer)
+    region.effect(id, cardId, ctx.actor)
 
 object ThreateningRoar:
   val id: PowerId = ThreateningRoarCard.power.id

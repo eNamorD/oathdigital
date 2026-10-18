@@ -40,9 +40,9 @@ final case class TheOldOak private (catalog: ExecutableCatalog)
         // The record comes first: a leaf after the gain would stand
         // between it and the Trade's own note, which restates the leaf
         // before it (`TradeProcedure.tradedNote`).
-        case gain @ Gain.Secrets(player, _) if player == ctx.activePlayer =>
+        case gain @ Gain.Secrets(player, _) if player == ctx.actor =>
           Vector(Defer(TheOldOak.deferred, Vector(gain)), gain)
-      }) :+ bonus(ctx.activePlayer))))
+      }) :+ bonus(ctx.actor))))
 
   /** One more secret, when the Trade's gain was recorded and its source was
     * The Old Oak. */

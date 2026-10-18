@@ -43,7 +43,7 @@ final case class SneakAttack private (catalog: ExecutableCatalog)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignActionEligibility -> Vector(Transform((ctx, children) =>
-      children :+ offer(ctx.activePlayer))))
+      children :+ offer(ctx.actor))))
 
   private def offer(actor: PlayerId): Operation = Branch((ready, _) => (for
     result <- ready.game.current.lastCampaignResult

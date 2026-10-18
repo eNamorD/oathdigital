@@ -38,7 +38,7 @@ final case class Disciples private (catalog: ExecutableCatalog)
     PowerWindow.SearchCost -> Vector(Transform((ctx, operations) =>
       OperationRewrite.ops(ctx, operations)((ready, _) => {
         case pay @ SpendSupply(player, amount, _)
-            if player == ctx.activePlayer && amount > Disciples.Supply &&
+            if player == ctx.actor && amount > Disciples.Supply &&
               CardPowerBanners.holdsDarkestSecret(ready, player) =>
           Vector(pay.copy(amount = Disciples.Supply))
       }))))

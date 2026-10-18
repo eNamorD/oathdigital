@@ -26,9 +26,9 @@ class CardPlayHooksSuite extends munit.FunSuite:
     def source: RuleSourceRef = RuleSourceRef.GameRule(probeId.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
       PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, ops) =>
-        ops :+ GainSupply(ctx.activePlayer, 1))),
+        ops :+ GainSupply(ctx.actor, 1))),
       PowerWindow.ActionCardPlayedFacedown -> Vector(Transform((ctx, ops) =>
-        ops :+ GainSupply(ctx.activePlayer, 2))))
+        ops :+ GainSupply(ctx.actor, 2))))
   private val powers = WalkerPowers(Vector(probe))
   private val startSupply = 3
   private val actor = Table.p1

@@ -54,22 +54,22 @@ object TravelProcedure:
   def noteKeys: Vector[NoteKey] = notes.declared
 
   def build(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId, args: Vector[DecisionOptionRef])
+      actor: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for
-    _ <- startArgs(state, activePlayer, args)
-    source <- actorSite(state, activePlayer).toRight(
-      OathViolation.PawnSiteMissing(activePlayer))
-  yield tree(catalog, state, activePlayer, source)
+    _ <- startArgs(state, actor, args)
+    source <- actorSite(state, actor).toRight(
+      OathViolation.PawnSiteMissing(actor))
+  yield tree(catalog, state, actor, source)
 
   /** Resume rebuilds what the start built, from the source the start
     * stored. Once the pawn has moved the destination decision lists other
     * sites, but the walk is past it by then. */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId, args: Vector[DecisionOptionRef])
+      actor: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for
-    _ <- startArgs(state, activePlayer, args)
+    _ <- startArgs(state, actor, args)
     source <- sourceOf(state.game.current.walkerStartFacts)
-  yield tree(catalog, state, activePlayer, source)
+  yield tree(catalog, state, actor, source)
 
   /** The source site, the one fact a resumed Travel cannot read back. */
   def startFacts(catalog: ExecutableCatalog, state: ReadyGame,

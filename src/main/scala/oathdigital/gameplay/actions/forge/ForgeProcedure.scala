@@ -168,11 +168,11 @@ object ForgeProcedure:
     * a finished game itself (Task 8), so every action start must refuse one.
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId): Either[OathViolation, Operation] = for
-    player <- actorState(state, activePlayer)
-    siteId <- player.pawnSite.toRight(OathViolation.PawnSiteMissing(activePlayer))
+      actor: PlayerId): Either[OathViolation, Operation] = for
+    player <- actorState(state, actor)
+    siteId <- player.pawnSite.toRight(OathViolation.PawnSiteMissing(actor))
     facts <- ForgeRules.validate(catalog, state, player, siteId)
-  yield tree(activePlayer, facts._2)
+  yield tree(actor, facts._2)
 
   /** Rebuilds the same command-local tree for an already-started Forge.
     *
@@ -185,11 +185,11 @@ object ForgeProcedure:
     * cost the decision's section minima come from.
     */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId): Either[OathViolation, Operation] = for
-    siteId <- actorSite(state, activePlayer).toRight(
-      OathViolation.PawnSiteMissing(activePlayer))
+      actor: PlayerId): Either[OathViolation, Operation] = for
+    siteId <- actorSite(state, actor).toRight(
+      OathViolation.PawnSiteMissing(actor))
     cost <- printedCost(catalog, siteId)
-  yield tree(activePlayer, cost)
+  yield tree(actor, cost)
 
   private def actorState(state: ReadyGame,
       actor: PlayerId): Either[OathViolation, PlayerState] =

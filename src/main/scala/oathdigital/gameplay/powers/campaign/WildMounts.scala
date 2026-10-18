@@ -59,8 +59,8 @@ final case class WildMounts private (catalog: ExecutableCatalog)
 
   override def rewrites: Map[PowerWindow, Transform] = Map(
     PowerWindow.CampaignActionEligibility -> Transform((ctx, children) =>
-      OperationRewrite.ops(ctx, children)(swappable(ctx.activePlayer)) :+
-        Deferred.resolve(WildMounts.deferred)(swap(ctx.activePlayer))))
+      OperationRewrite.ops(ctx, children)(swappable(ctx.actor)) :+
+        Deferred.resolve(WildMounts.deferred)(swap(ctx.actor))))
 
   /** The plan, when it was used in this Campaign. */
   private def used(ready: ReadyGame, pending: PendingTree, actor: PlayerId)

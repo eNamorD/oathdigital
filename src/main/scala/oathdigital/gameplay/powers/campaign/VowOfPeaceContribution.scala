@@ -64,13 +64,13 @@ case object VowOfPeaceContribution extends ContributingPower:
     })
 
   private def blocked(ctx: PowerCtx): Option[OathViolation] =
-    Option.when(holds(ctx.state, ctx.activePlayer))(
+    Option.when(holds(ctx.state, ctx.actor))(
       OathViolation.CampaignUnavailable(
         "Vow of Peace prevents its ruler from campaigning"))
 
   /** This Campaign's defender, when that defender holds the Vow faceup. */
   private def protectedDefender(ctx: PowerCtx): Option[PlayerId] =
-    CampaignSetup.setup(ctx.state, ctx.activePlayer,
+    CampaignSetup.setup(ctx.state, ctx.actor,
       PendingTree(ctx.nodePath, ctx.answered)).flatMap(_.defender match
         case CampaignDefender.Player(player) if holds(ctx.state, player) =>
           Some(player)

@@ -31,7 +31,7 @@ final case class RelicWorship private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.RecoverAfterRelic -> Vector(Transform((ctx, operations) =>
-      operations :+ GainSupply(ctx.activePlayer, RelicWorship.Supply))))
+      operations :+ GainSupply(ctx.actor, RelicWorship.Supply))))
 
 object RelicWorship:
   val id: PowerId = RelicWorshipCard.power.id

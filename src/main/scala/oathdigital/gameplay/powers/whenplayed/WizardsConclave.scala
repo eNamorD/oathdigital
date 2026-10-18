@@ -42,7 +42,7 @@ final case class WizardsConclave private (catalog: ExecutableCatalog)
   private val banner = NoteArg.Banner(Banner.DarkestSecret)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     Vector(
       Branch((live, _) => ask(live, actor)),
       Branch((live, pending) => award(live, pending)))

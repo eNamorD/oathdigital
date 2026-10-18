@@ -39,7 +39,7 @@ final case class CatacombsContribution private (catalog: ExecutableCatalog)
     for
       _ <- SelectedModifier.selectionAction(ctx.window)
       printed <- catalog.printedPower(id)
-    yield PowerUse.of(ctx.activePlayer, printed, cardId, secret = true,
+    yield PowerUse.of(ctx.actor, printed, cardId, secret = true,
       places = true)
   override def selectionWindows: Set[PowerWindow] =
     Set(PowerWindow.RecoverModifierSelection)
@@ -48,9 +48,9 @@ final case class CatacombsContribution private (catalog: ExecutableCatalog)
   override def applicable(ctx: PowerCtx): Boolean =
     SelectedModifier.selectionAction(ctx.window).forall(
       _ == MajorActionType.Recover) &&
-      PowerAccess.locate(ctx.state, ctx.activePlayer, cardId).isDefined
+      PowerAccess.locate(ctx.state, ctx.actor, cardId).isDefined
   override def offerReason(ctx: PowerCtx): Option[OfferReason] =
-    placement(ctx.state, ctx.activePlayer).left.toOption.collect {
+    placement(ctx.state, ctx.actor).left.toOption.collect {
       case OathViolation.RecoverUnavailable(reason) =>
         OfferReason.Unavailable(reason)
     }
@@ -59,7 +59,7 @@ final case class CatacombsContribution private (catalog: ExecutableCatalog)
     Vector(Costs.onCard(actor, cardId, Cost(secret = 1), catalog))
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.RecoverActionEligibility -> Vector(
-      Transform((ctx, ops) => place(ctx.activePlayer) +: ops)))
+      Transform((ctx, ops) => place(ctx.actor) +: ops)))
 
   private def place(actor: PlayerId): Operation = BuildOps((ready, _) =>
     placement(ready, actor).map((siteId, relic) => Vector[CoreOperation](

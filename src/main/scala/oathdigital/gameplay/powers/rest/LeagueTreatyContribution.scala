@@ -38,7 +38,7 @@ final case class LeagueTreatyContribution private (catalog: ExecutableCatalog)
   override def noteKeys: Vector[NoteKey] = LeagueTreatyContribution.noteKeys
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.RestReturnFavor -> Vector(Transform((ctx, ops) =>
-      treaty(ctx.state).fold(ops)(inserted(ctx.state, ctx.activePlayer, _) ++ ops))))
+      treaty(ctx.state).fold(ops)(inserted(ctx.state, ctx.actor, _) ++ ops))))
 
   /** One region card holding favor, in map site order then site card order. */
   private final case class Holding(card: CardId, suit: Suit, favor: Int)

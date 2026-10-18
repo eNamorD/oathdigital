@@ -109,7 +109,7 @@ case object VowOfSilence extends BurnVow:
   private def guard(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = ref match
     case DecisionOptionRef.Banner(Banner.DarkestSecret)
-        if holderOf(ctx.state).contains(ctx.activePlayer) =>
+        if holderOf(ctx.state).contains(ctx.actor) =>
       Some(OathViolation.StartUnavailable(
         "Vow of Silence prevents you from challenging the Darkest Secret"))
     case _ => None
@@ -142,6 +142,6 @@ case object VowOfDivision extends BurnVow:
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ChallengeActionEligibility -> Vector(Restriction((ctx, _) =>
-      Option.when(holderOf(ctx.state).contains(ctx.activePlayer))(
+      Option.when(holderOf(ctx.state).contains(ctx.actor))(
         OathViolation.StartUnavailable(
           "Vow of Division prevents you from challenging")))))

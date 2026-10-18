@@ -37,8 +37,8 @@ final case class TruthfulHarp private (catalog: ExecutableCatalog)
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchBeforeDraw -> Vector(Transform((ctx, operations) =>
       DrawExtension.extend(operations, TruthfulHarp.More) :+
-        reveal(ctx.activePlayer) :+
-        Note(id, revealNote(ctx.activePlayer), covers = true))))
+        reveal(ctx.actor) :+
+        Note(id, revealNote(ctx.actor), covers = true))))
 
   /** The hand the reveal showed. */
   private def revealNote(actor: PlayerId)(states: NoteStates)

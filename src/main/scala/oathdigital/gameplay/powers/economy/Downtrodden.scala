@@ -33,7 +33,7 @@ final case class Downtrodden private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterGain -> Vector(Transform((ctx, operations) =>
-      operations :+ bonus(ctx.activePlayer))))
+      operations :+ bonus(ctx.actor))))
 
   private def bonus(actor: PlayerId): Operation = BuildOps((ready, pending) =>
     if suitOf(ready, pending).exists(Downtrodden.least(ready, _)) then

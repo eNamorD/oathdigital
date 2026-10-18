@@ -65,7 +65,7 @@ trait SuitOnlyAdvisers extends ExecutedTrigger:
     PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
       ctx.operation match {
         case tree: CardPlayProcedure.PlacementTree
-            if tree.card == cardId || holds(ctx.state, ctx.activePlayer) =>
+            if tree.card == cardId || holds(ctx.state, ctx.actor) =>
           tree.adjust(children)(rules => playRules(rules).noteAdviserPlay(
             AdviserPlayNote(OptionReason.Written(buryWarning),
               (after, played) => after.contains(faceUp) && !kept(played))))

@@ -54,11 +54,11 @@ final case class MountedLibrary private (catalog: ExecutableCatalog)
     PowerWindow.TradeGain -> Vector(Transform((ctx, operations) =>
       OperationRewrite.ops(ctx, operations)((_, _) => {
         // The record comes first, for the reason The Old Oak's does.
-        case gain @ Gain.Secrets(player, _) if player == ctx.activePlayer =>
+        case gain @ Gain.Secrets(player, _) if player == ctx.actor =>
           Vector(Defer(deferred, Vector(gain)), gain)
-      }) :+ double(ctx.activePlayer), FoldPhase.Late)),
+      }) :+ double(ctx.actor), FoldPhase.Late)),
     PowerWindow.TradeActionEligibility -> Vector(Transform((ctx, children) =>
-      children ++ Vector(discard(ctx.activePlayer),
+      children ++ Vector(discard(ctx.actor),
         Note(id, discardedNote, covers = true)), FoldPhase.Late)))
 
   /** As many secrets again as the Trade gained, then its line, which covers

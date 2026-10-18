@@ -34,7 +34,7 @@ object OathkeeperProcedure:
     NotePart.Text("Oathkeeper passed to the bank")))
   def noteKeys: Vector[NoteKey] = notes.declared
 
-  def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
+  def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- Either.cond(args.isEmpty, (), OathViolation.InvalidEventOrder(
       "the Oathkeeper procedure selects nothing, got " +

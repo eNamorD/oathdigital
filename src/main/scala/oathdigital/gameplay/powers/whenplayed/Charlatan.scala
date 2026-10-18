@@ -45,7 +45,7 @@ case object Charlatan extends WhenPlayedPower:
   override def noteKeys: Vector[NoteKey] = notes.declared
 
   def effect(ctx: PowerCtx): Vector[Operation] = Vector(
-    BuildOps((ready, _) => Right(burn(ready, ctx.activePlayer))),
+    BuildOps((ready, _) => Right(burn(ready, ctx.actor))),
     Note(id, burnedNote))
 
   /** What the burn step took from the banner. */

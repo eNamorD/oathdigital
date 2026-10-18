@@ -61,24 +61,24 @@ private[gameplay] trait OathRulesWalker:
       procedure: StartableRef, requester: PlayerId,
       startArgs: Vector[DecisionOptionRef])
       : Either[OathViolation, OathTransition] =
-    val activePlayer = ready.game.current.walkActor
+    val actor = ready.game.current.walkActor
     def run =
       for
         _ <- requireWalkActor(ready, requester)
         powers = walkerPowers
-        tree <- buildWalker(procedure, ready, activePlayer, startArgs,
+        tree <- buildWalker(procedure, ready, actor, startArgs,
           starting = true)
-        _ <- checkRestrictions(tree, powers, ready, activePlayer)
+        _ <- checkRestrictions(tree, powers, ready, actor)
         outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
           powers, walkerDice))
         _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
         transition <- walkerTransition(state, procedure, tree,
           outcome, powers, startArgs,
           WalkerProcedureRegistry.startFacts(procedure, catalog, ready,
-            activePlayer))
+            actor))
       yield transition
     WalkerProcedureRegistry.fallbackKind(procedure).flatMap:
-      case Some(kind) => withFallback(state, activePlayer, kind)(run)
+      case Some(kind) => withFallback(state, actor, kind)(run)
       case None => run
 
   /** Starts a dequeued `Run` entry for its actor, on the state its
@@ -109,12 +109,12 @@ private[gameplay] trait OathRulesWalker:
         Left(InvalidEventOrder(s"cannot start ${procedure.key}: another " +
           "procedure is already pending"))
       case Ready(ready) =>
-        val activePlayer = ready.game.current.walkActor
+        val actor = ready.game.current.walkActor
         val powers = walkerPowers
         for
-          tree <- buildWalker(procedure, ready, activePlayer, Vector.empty,
+          tree <- buildWalker(procedure, ready, actor, Vector.empty,
             starting = true)
-          _ <- checkRestrictions(tree, powers, ready, activePlayer)
+          _ <- checkRestrictions(tree, powers, ready, actor)
           outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None, powers,
             walkerDice))
           started <- walkerTransition(transition.state, procedure, tree,
@@ -307,12 +307,12 @@ private[gameplay] trait OathRulesWalker:
         // No phase gate: only resume commands are accepted while a walker is
         // pending, so nothing else can change the phase, and the procedure's
         // own build passed its phase gates at start.
-        activePlayer = ready.game.current.walkActor
+        actor = ready.game.current.walkActor
         startArgs = ready.game.current.walkerStartArgs
-        tree <- buildWalker(procedure, ready, activePlayer, startArgs,
+        tree <- buildWalker(procedure, ready, actor, startArgs,
           starting = false)
         powers = walkerPowers
-        _ <- checkRestrictions(tree, powers, ready, activePlayer,
+        _ <- checkRestrictions(tree, powers, ready, actor,
           pending.answered)
       yield (ready, procedure, tree, pending, powers, startArgs)
     case _ => Left(GameNotStarted)

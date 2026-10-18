@@ -57,8 +57,8 @@ case object Tyrant extends ContributingPower:
             Note(id, killedNote(_, route.destination))))))))
 
   override def applicable(ctx: PowerCtx): Boolean =
-    holds(ctx.state, ctx.activePlayer) &&
-      TravelRoute.pawnMove(ctx.operation).exists(_.player == ctx.activePlayer)
+    holds(ctx.state, ctx.actor) &&
+      TravelRoute.pawnMove(ctx.operation).exists(_.player == ctx.actor)
 
   private def holds(ready: ReadyGame, player: PlayerId): Boolean =
     ready.game.current.players.find(_.player == player).exists(_.advisers.exists {

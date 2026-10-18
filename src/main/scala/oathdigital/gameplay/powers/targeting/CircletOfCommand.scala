@@ -66,7 +66,7 @@ final case class CircletOfCommand private (catalog: ExecutableCatalog)
     val current = ctx.state.game.current
     val faceupHolder = holder(ctx.state)
     def held(owner: PlayerId): Boolean = faceupHolder.contains(owner) &&
-      owner != ctx.activePlayer
+      owner != ctx.actor
     ref match
       case DecisionOptionRef.Banner(banner) =>
         BannerRules.holder(current, banner).exists(held)

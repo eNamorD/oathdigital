@@ -89,9 +89,9 @@ sealed abstract class FortressRule extends ContributingPower:
     * site when it protects several. */
   private def kindNote(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[LogNote] =
-    CampaignSetup.raidDefenders(ctx.state, ctx.activePlayer) match
+    CampaignSetup.raidDefenders(ctx.state, ctx.actor) match
       case Vector(defender) => shieldedNote(defender)
-      case _ => CampaignSetup.originOf(ctx.state, ctx.activePlayer)
+      case _ => CampaignSetup.originOf(ctx.state, ctx.actor)
         .map(site => FortressRule.allShielded(card, NoteArg.Site(site)))
 
   private def defenderNote(ctx: PowerCtx, ref: DecisionOptionRef)
@@ -128,28 +128,28 @@ sealed abstract class FortressRule extends ContributingPower:
   private def kindGuard(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = ref match
     case DecisionOptionRef.Button("raid")
-        if raidBlocked(ctx.state, ctx.activePlayer) =>
+        if raidBlocked(ctx.state, ctx.actor) =>
       Some(blocked("a Fortress protects every player a Raid could target"))
     case _ => None
 
   private def defenderGuard(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = ref match
     case DecisionOptionRef.Player(defender)
-        if shields(ctx.state, ctx.activePlayer, defender) =>
+        if shields(ctx.state, ctx.actor, defender) =>
       Some(blocked(s"a Fortress protects ${defender.value} from a Raid"))
     case _ => None
 
   private def startGuard(ctx: PowerCtx): Option[OathViolation] =
     Option.when(!FortressRule.underway(ctx.state) &&
-      CampaignSetup.legalKinds(ctx.state, ctx.activePlayer) ==
-        Vector(CampaignKind.Raid) && raidBlocked(ctx.state, ctx.activePlayer))(
+      CampaignSetup.legalKinds(ctx.state, ctx.actor) ==
+        Vector(CampaignKind.Raid) && raidBlocked(ctx.state, ctx.actor))(
       blocked("a Fortress protects every player a Raid could target"))
 
   private def bannerGuard(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = ref match
     case DecisionOptionRef.Banner(banner)
         if BannerRules.holder(ctx.state.game.current, banner)
-          .exists(shields(ctx.state, ctx.activePlayer, _)) =>
+          .exists(shields(ctx.state, ctx.actor, _)) =>
       Some(OathViolation.InvalidEventOrder(
         s"a Fortress protects the holder of ${banner.key} from a Challenge"))
     case _ => None

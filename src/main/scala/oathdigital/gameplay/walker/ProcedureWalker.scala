@@ -81,14 +81,14 @@ object ProcedureWalker:
       dice: WalkerDice = WalkerDice.unavailable,
       seed: Vector[Answered] = Vector.empty)
       : Either[OathViolation, WalkerOutcome] =
-    val activePlayer = state.game.current.walkActor
+    val actor = state.game.current.walkActor
     val answered = pending.fold(seed)(_.answered)
     val cursor: Option[Vector[String]] = pending.map(_.at)
     // The stored pending tree is navigation state passed by parameter; a
     // running walk must not carry it inside CurrentGameState, so clear the
     // stored field before executing deltas.
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered,
+    walk(action, WalkCtx(base, Vector.empty, actor, answered,
       powers.withAnswers(answered), dice,
       state.game.current.walkerProcedure, action),
       Vector.empty, cursor, PlainResume, WalkerHooks.none).flatMap(toOutcome)
@@ -154,10 +154,10 @@ object ProcedureWalker:
     * traversal (split out to keep this file under the project's line bound).
     */
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
-      state: ReadyGame, activePlayer: PlayerId,
+      state: ReadyGame, actor: PlayerId,
       answered: Vector[oathdigital.model.Answered] = Vector.empty)
       : Vector[OathViolation] = WalkerPowerGather.restrictionViolations(tree,
-    powers, state, activePlayer, answered)
+    powers, state, actor, answered)
 
   /** When `pending` parks on a `Roll` node of `action`, reports the node's
     * `pool` and the face count that node requires (read from
@@ -323,7 +323,7 @@ object ProcedureWalker:
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] =
     val (folded, order) = WalkerPowerGather.applyWindow(window, operation,
-      ctx.state, ctx.activePlayer,
+      ctx.state, ctx.actor,
       if ctx.searching then ctx.powers.quiet else ctx.powers, path, children,
       ctx.procedure, ctx.answered, cursor.isDefined)
     walkChildren(folded, ctx, path, cursor, resume, hooks.withOrder(order))
@@ -505,7 +505,7 @@ object ProcedureWalker:
           val hidden = WalkerSearch.choosable(decide).filterNot(kept)
           operationAsksAt(decide, ctx, path, hidden) ++
             WalkerPowerGather.lookAheadNoted(ctx.root, decide, cut,
-              ctx.state, ctx.activePlayer, ctx.powers, ctx.answered,
+              ctx.state, ctx.actor, ctx.powers, ctx.answered,
               ctx.procedure, grantable(decide, ctx, path)).toMap
         narrowed match
           case Some(_) => Right(Some(WalkerSearch.reasoned(
@@ -541,7 +541,7 @@ object ProcedureWalker:
     * would open its option. */
   private def asksAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Map[DecisionOptionRef, OptionReason] =
-    WalkerPowerGather.optionAsks(decide, ctx.state, ctx.activePlayer,
+    WalkerPowerGather.optionAsks(decide, ctx.state, ctx.actor,
       ctx.powers, path, ctx.procedure, ctx.answered,
       grantable(decide, ctx, path)).toMap
 
@@ -570,12 +570,12 @@ object ProcedureWalker:
   private def verdict(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : DecisionAnswer => Either[OathViolation, Unit] =
     lazy val baseline = WalkerPowerGather.breaches(ctx.root, ctx.state,
-      ctx.activePlayer, ctx.powers, ctx.answered, ctx.procedure).toSet
+      ctx.actor, ctx.powers, ctx.answered, ctx.procedure).toSet
     val searching = ctx.copy(events = Vector.empty, searching = true,
       visited = ctx.visited + ((path, ctx.state)))
     def reached(answer: DecisionAnswer): Either[OathViolation, Unit] =
       val hypothetical = Answered(decide.decisionId, answer, decide.owner)
-      WalkerPowerGather.breaches(ctx.root, ctx.state, ctx.activePlayer,
+      WalkerPowerGather.breaches(ctx.root, ctx.state, ctx.actor,
           ctx.powers, ctx.answered :+ hypothetical, ctx.procedure)
         .find(!baseline(_)).toLeft(())
         .flatMap(_ => searched(walk(ctx.root, searching, Vector.empty,
@@ -585,7 +585,7 @@ object ProcedureWalker:
     if ctx.searching then reached
     else
       val base = new SearchMemo.Base(ctx.root, path, ctx.state, ctx.answered,
-        ctx.procedure, ctx.activePlayer, decide.decisionId, decide.owner)
+        ctx.procedure, ctx.actor, decide.decisionId, decide.owner)
       answer => ctx.powers.searchMemo.verdict(base, answer)(reached(answer))
 
   /** Whether a grant of `powers` on `ref` would leave some path from it to a

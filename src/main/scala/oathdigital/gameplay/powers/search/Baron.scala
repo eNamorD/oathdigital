@@ -42,7 +42,7 @@ final case class Baron private (catalog: ExecutableCatalog)
     PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
       ctx.operation match
         case tree: CardPlayProcedure.PlacementTree =>
-          val ruled = Baron.ruledBy(ctx.activePlayer)
+          val ruled = Baron.ruledBy(ctx.actor)
           tree.adjust(children)(_.openSites(PlaySites(ruled))
             .permitSiteDiscard(DiscardPermission.lined(id,
               PowerSourceRef.Card(cardId), appliesAt = ruled)))

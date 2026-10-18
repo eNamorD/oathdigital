@@ -101,12 +101,12 @@ trait BattlePlan extends ContributingPower:
     val afterwards: Map[PowerWindow, Vector[Contribution]] = later.map:
       case (window, build) => window -> Vector[Contribution](Transform(
         (ctx, children) => children :+ Branch((ready, pending) =>
-          PlanUse.chosen(ready, pending, ctx.activePlayer, cardRef, sides,
+          PlanUse.chosen(ready, pending, ctx.actor, cardRef, sides,
             BattlePlan.outcomeKnown(window)).fold(Vector.empty[Operation])(build))))
     val around: Map[PowerWindow, Vector[Contribution]] = wrapping.map:
       case (window, wrap) => window -> Vector[Contribution](Transform(
         (ctx, children) => PlanUse.chosen(ctx.state, PendingTree(ctx.nodePath,
-          ctx.answered), ctx.activePlayer, cardRef, sides,
+          ctx.answered), ctx.actor, cardRef, sides,
           BattlePlan.outcomeKnown(window)).fold(children)(
             wrap(ctx, _, children))))
     (offers.keySet ++ afterwards.keySet ++ around.keySet ++ rewrites.keySet ++

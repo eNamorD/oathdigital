@@ -53,7 +53,7 @@ private[walker] object WalkerPowerGather:
     */
   def applyWindow(window: Option[PowerWindow], operation: Operation,
       state: ReadyGame,
-      activePlayer: PlayerId, powers: WalkerPowers, path: Vector[String],
+      actor: PlayerId, powers: WalkerPowers, path: Vector[String],
       ops: Vector[Operation], procedure: Option[oathdigital.model.ProcedureRef],
       answered: Vector[Answered] = Vector.empty, resuming: Boolean = false)
       : (Vector[Operation], Vector[PowerId]) =
@@ -63,7 +63,7 @@ private[walker] object WalkerPowerGather:
         val byId: Map[PowerId, ContributingPower] =
           powers.powers.map(power => power.id -> power).toMap
         def ctxFor(power: ContributingPower): PowerCtx =
-          PowerCtx(state, activePlayer, power.source, w, path, operation,
+          PowerCtx(state, actor, power.source, w, path, operation,
             procedure, answered)
         /** Why `power` may not be used here, when a power-use restriction
           * refuses it (catalog batch 8, slice 10). */
@@ -214,7 +214,7 @@ private[walker] object WalkerPowerGather:
     * option every one of whose blocks is waivable (ruling 8) becomes askable
     * when `grantable` says a grant would open it. Empty for any other query
     * and for a decision with no window of its own. */
-  def optionAsks(decide: Decide, state: ReadyGame, activePlayer: PlayerId,
+  def optionAsks(decide: Decide, state: ReadyGame, actor: PlayerId,
       powers: WalkerPowers, path: Vector[String],
       procedure: Option[ProcedureRef], answered: Vector[Answered],
       grantable: (DecisionOptionRef, Vector[PowerId]) => Boolean)
@@ -224,7 +224,7 @@ private[walker] object WalkerPowerGather:
         val byId: Map[PowerId, ContributingPower] =
           powers.powers.map(power => power.id -> power).toMap
         def ctxFor(power: ContributingPower): PowerCtx =
-          PowerCtx(state, activePlayer, power.source, window, path, decide,
+          PowerCtx(state, actor, power.source, window, path, decide,
             procedure, answered)
         val forbids = forbidding(decide, ContributionCollector.gather(window,
           powers.windowIndex, ctxFor, power =>
@@ -291,16 +291,16 @@ private[walker] object WalkerPowerGather:
     * decision could never be answered.
     */
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
-      state: ReadyGame, activePlayer: PlayerId,
+      state: ReadyGame, actor: PlayerId,
       answered: Vector[Answered] = Vector.empty): Vector[OathViolation] =
     val (rejected, emptied) = attributed(tree, powers.withAnswers(answered),
-      state, activePlayer, answered)
+      state, actor, answered)
     rejected.map(_.violation) ++ emptied
 
   /** [[restrictionViolations]], keeping who rejected: the restrictions'
     * violations with their power, and the emptied decisions. */
   private def attributed(tree: Operation, powers: WalkerPowers,
-      state: ReadyGame, activePlayer: PlayerId, answered: Vector[Answered])
+      state: ReadyGame, actor: PlayerId, answered: Vector[Answered])
       : (Vector[Attributed], Vector[OathViolation]) =
     val byId: Map[PowerId, ContributingPower] =
       powers.powers.map(power => power.id -> power).toMap
@@ -309,7 +309,7 @@ private[walker] object WalkerPowerGather:
       */
     def ctxFor(window: PowerWindow, path: Vector[String], operation: Operation)
         : ContributingPower => PowerCtx =
-      power => PowerCtx(state, activePlayer, power.source, window, path,
+      power => PowerCtx(state, actor, power.source, window, path,
         operation, state.game.current.walkerProcedure, answered)
     def windowsIn(node: Operation, path: Vector[String])
         : Vector[(PowerWindow, Vector[String], Operation)] =
@@ -323,14 +323,14 @@ private[walker] object WalkerPowerGather:
         // recurse forever, so leaves never contribute nested windows.
         case _: LeafOperation => Vector.empty
         case branch: Branch => descend(applyWindow(branch.window, branch,
-          state, activePlayer, powers, path, branch.select(state,
+          state, actor, powers, path, branch.select(state,
             PendingTree(at = path, answered = answered)),
           state.game.current.walkerProcedure, answered)._1)
         case use: AutomaticUse => descend(AutomaticUses.children(use, state,
           PendingTree(at = path, answered = answered), powers,
           cursor = None))
         case _ => descend(applyWindow(node.window, node, state,
-          activePlayer, powers, path, node.children,
+          actor, powers, path, node.children,
           state.game.current.walkerProcedure, answered)._1)
       own ++ nested
     val windows = windowsIn(tree, Vector.empty)
@@ -388,14 +388,14 @@ private[walker] object WalkerPowerGather:
     * 15). `None` when nothing refuses, or when any refusal has no granter.
     * `ref` is the option the grants would be asked about. */
   def waivableBreaches(root: Operation, state: ReadyGame,
-      activePlayer: PlayerId, powers: WalkerPowers,
+      actor: PlayerId, powers: WalkerPowers,
       answered: Vector[Answered], procedure: Option[ProcedureRef],
       ref: DecisionOptionRef): Option[Vector[WaivableBreach]] =
     if !powers.hasRestrictions then None
     else
       val seen = state.updateCurrent(_.copy(walkerPending = None,
         walkerProcedure = procedure))
-      val found = attributed(root, powers.quiet, seen, activePlayer,
+      val found = attributed(root, powers.quiet, seen, actor,
         answered)._1
       val waivable = found.map(breach => for
         waiver <- breach.restriction.waiver
@@ -410,13 +410,13 @@ private[walker] object WalkerPowerGather:
     * procedure. Empty without a power that restricts. The traversal runs on
     * the quiet powers, so a dry run inside it never searches.
     */
-  def breaches(root: Operation, state: ReadyGame, activePlayer: PlayerId,
+  def breaches(root: Operation, state: ReadyGame, actor: PlayerId,
       powers: WalkerPowers, answered: Vector[Answered],
       procedure: Option[ProcedureRef]): Vector[OathViolation] =
     if !powers.hasRestrictions then Vector.empty
     else restrictionViolations(root, powers.quiet, state.updateCurrent(
       _.copy(walkerPending = None, walkerProcedure = procedure)),
-      activePlayer, answered)
+      actor, answered)
 
   /** Why each option `narrowed` no longer offers is hidden, read from the
     * restrictions whose violation answering it would add. It is askable
@@ -428,7 +428,7 @@ private[walker] object WalkerPowerGather:
     * option.
     */
   def lookAheadNoted(root: Operation, decide: Decide, narrowed: Decide,
-      state: ReadyGame, activePlayer: PlayerId, powers: WalkerPowers,
+      state: ReadyGame, actor: PlayerId, powers: WalkerPowers,
       answered: Vector[Answered], procedure: Option[ProcedureRef],
       grantable: (DecisionOptionRef, Vector[PowerId]) => Boolean)
       : Vector[(DecisionOptionRef, OptionReason)] =
@@ -440,7 +440,7 @@ private[walker] object WalkerPowerGather:
       val seen = state.updateCurrent(_.copy(walkerPending = None,
         walkerProcedure = procedure))
       def found(answers: Vector[Answered]): Vector[Attributed] =
-        attributed(root, quiet, seen, activePlayer, answers)._1
+        attributed(root, quiet, seen, actor, answers)._1
       val baseline = found(answered).map(_.violation).toSet
       hidden.flatMap { ref =>
         val answer = decide.query match
@@ -583,12 +583,12 @@ private[walker] object WalkerPowerGather:
       powers: WalkerPowers, node: Operation, path: Vector[String],
       gathered: Set[PowerWindow], remaining: Vector[String])
       : (Vector[Operation], Set[PowerWindow]) =
-    val activePlayer = state.game.current.walkActor
+    val actor = state.game.current.walkActor
     node match
       case branch: Branch =>
         val selected = branch.select(state, pending.copy(at = path))
         val (folded, _) = applyWindow(branch.window, branch, state,
-          activePlayer, powers, path, selected, state.game.current.walkerProcedure,
+          actor, powers, path, selected, state.game.current.walkerProcedure,
           pending.answered, resuming = true)
         (folded, gathered)
       // Navigation descends into the node toward a park: at its step, or
@@ -600,14 +600,14 @@ private[walker] object WalkerPowerGather:
         leaf.window match
           case Some(w) if !gathered.contains(w) =>
             val (folded, _) = applyWindow(Some(w), leaf, state,
-              activePlayer, powers, path, Vector(leaf),
+              actor, powers, path, Vector(leaf),
               state.game.current.walkerProcedure, pending.answered,
               resuming = true)
             (folded, gathered + w)
           case _ => (leaf.children, gathered)
       case composite =>
         val (folded, _) = applyWindow(composite.window, composite, state,
-          activePlayer, powers, path, composite.children,
+          actor, powers, path, composite.children,
           state.game.current.walkerProcedure, pending.answered, resuming = true)
         (folded, gathered)
 

@@ -118,7 +118,7 @@ private[travel] object TravelRoute:
       (rewrite: Int => Int): Vector[Operation] =
     OperationRewrite.ops(ctx, operations)((_, _) => {
       case payment @ SpendSupply(player, amount, _)
-          if player == ctx.activePlayer =>
+          if player == ctx.actor =>
         Vector(payment.copy(amount = rewrite(amount)))
     })
 
@@ -218,7 +218,7 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
       val current = ctx.state.game.current
       val map = current.map
       val outside = for
-        pawn <- CampaignSetup.originOf(ctx.state, ctx.activePlayer)
+        pawn <- CampaignSetup.originOf(ctx.state, ctx.actor)
         pawnRegion <- map.regionOf(pawn)
         targetRegion <- map.regionOf(target)
         passRegion <- map.regionOf(site)
@@ -226,7 +226,7 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
         target != site
       val ruledByActor = map.sites.get(site).exists(pass =>
         SiteRule.ruler(pass.forces, current.players) match {
-          case Right(SiteRuler.Player(player)) => player == ctx.activePlayer
+          case Right(SiteRuler.Player(player)) => player == ctx.actor
           case _ => false
         })
       Option.when(outside.contains(true) && !ruledByActor)(

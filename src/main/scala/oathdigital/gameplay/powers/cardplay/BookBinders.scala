@@ -61,7 +61,7 @@ final case class BookBinders private (catalog: ExecutableCatalog)
     */
   private def reward(ctx: PowerCtx): Option[Operation] = for
     vision <- VisionPlay.played(ctx)
-    holder <- holderOf(ctx.state).filter(_ != ctx.activePlayer)
+    holder <- holderOf(ctx.state).filter(_ != ctx.actor)
   yield
     val decisionId = BookBinders.decisionId(ctx.state, holder, vision)
     Branch((state, _) => {

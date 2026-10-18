@@ -33,7 +33,7 @@ final case class FabledFeast private (catalog: ExecutableCatalog)
   override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
+    val actor = ctx.actor
     val source = PowerSourceRef.Card(cardId)
     Vector(Branch((live, _) =>
       val count = RuledCards.count(catalog, live, SiteRuler.Player(actor),

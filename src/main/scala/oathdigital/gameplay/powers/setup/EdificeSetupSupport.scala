@@ -27,9 +27,9 @@ object EdificeSetupSupport:
     * after that player's own pawn `Decide`, with nothing else answered in
     * between.
     *
-    * `ctx.activePlayer` is NOT this: it stays `ready.setup.firstPlayer` for
+    * `ctx.actor` is NOT this: it stays `ready.setup.firstPlayer` for
     * the whole Setup walk (`PowerCtx`'s own doc, "not a parked decision's
-    * owner"), so a power that placed the actor from `ctx.activePlayer`
+    * owner"), so a power that placed the actor from `ctx.actor`
     * would attribute every player's placement to the first player alone.
     */
   def pawnPlacement(ctx: PowerCtx): Option[(PlayerId, SiteId)] =

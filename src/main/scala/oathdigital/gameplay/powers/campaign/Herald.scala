@@ -46,7 +46,7 @@ final case class Herald private (catalog: ExecutableCatalog)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignActionEligibility -> Vector(Transform((ctx, children) =>
-      children :+ reward(ctx.activePlayer))))
+      children :+ reward(ctx.actor))))
 
   private def reward(actor: PlayerId): Operation = Branch((ready, _) => (for
     result <- ready.game.current.lastCampaignResult
