@@ -12,7 +12,7 @@ specs.
 **Phase - Cleanup tasks** holds what finished phases left behind, bugs and
 small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
 dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-**Phase - Catalog batch 8** is under way: slices 1 to 15 and items 10b and 13b are done.
+**Phase - Catalog batch 8** is under way: slices 1 to 15 and items 10b, 13b and 13c are done.
 
 ## Next
 
@@ -155,12 +155,12 @@ this order. Each slice gets its own plan.
   Design: [Campaign kills at their moment](superpowers/specs/2026-10-17-campaign-kills-at-their-moment-design.md).
   Bear Traps applies at plan time, before any roll, so the move never
   changed what it sees; the claim that it would was mistaken.
-- [ ] **13c. City Wall reads an as-if Trade site.** City Wall's "while at
-  this site" counts the site a player acts from. Slice 13 gives it a queued
-  Campaign's origin. Small Friends' as-if Trade site lives only in the walk's
-  answers, which a power-use restriction is not handed. With this item, a
-  player trading as if at City Wall's site is walled in for that Trade.
-  Recorded while planning slice 13 on 2026-10-16.
+- [x] **13c. City Wall reads an as-if Trade site.** Small Friends' and
+  Friendly Familiar's site answer is recorded as state for the rest of the
+  Trade, and every rule that read it from the answers reads the state.
+  City Wall walls in a player trading as if at its site, and not one whose
+  pawn stands there but who trades as if elsewhere.
+  Design: [City Wall reads an as-if Trade site](superpowers/specs/2026-10-17-city-wall-as-if-site-design.md).
 - [x] **14. Off-turn actor:** Sneak Attack, Second Wind for a defender.
 - [ ] **14b. Rename the walk's actor.** `WalkCtx.activePlayer` and
   `PowerCtx.activePlayer` hold the walk's actor since slice 14: a queued
@@ -168,7 +168,7 @@ this order. Each slice gets its own plan.
   about 105 files. Recorded while planning slice 14 on 2026-10-16.
 - [x] **15. Palanquin.**
 
-Only items 13c and 14b of catalog batch 8 remain open.
+Only item 14b of catalog batch 8 remains open.
 
 ### Phase - Catalog batch - engine-blocked
 
