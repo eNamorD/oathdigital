@@ -40,11 +40,9 @@ final case class SpitefulMirror private (catalog: ExecutableCatalog)
     PowerWindow.MusterCost -> Vector(Transform((_, children) =>
       line(MusterProcedure.decisionId) +: children)))
 
-  override def selectable(ready: ReadyGame, actor: PlayerId,
-      answered: Vector[Answered]): Boolean =
-    if used(ready) then
-      PowerAccess.locate(ready, actor, cardId, answered).isDefined
-    else super.selectable(ready, actor, answered)
+  override def selectable(ready: ReadyGame, actor: PlayerId): Boolean =
+    if used(ready) then PowerAccess.locate(ready, actor, cardId).isDefined
+    else super.selectable(ready, actor)
 
   override def selectionPayments(ready: ReadyGame, actor: PlayerId)
       : Vector[CoreOperation] =

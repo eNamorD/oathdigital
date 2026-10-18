@@ -17,10 +17,12 @@ import oathdigital.model._
   * is a separate, older rule and is deliberately not changed here.
   *
   * A modifier may make its user act as if their pawn stood at another site
-  * for the rest of the action ([[asIfDecision]]). That site then takes the
-  * pawn site's place for `locate`, read from the walk's answers. Ruled
-  * sites and the play area stay usable; the physical pawn site does not,
-  * unless the player rules it.
+  * for the rest of the action ([[asIfDecision]]). `ActAsIf` records the
+  * answer as walker scratch (`CurrentGameState.walkerAsIfSite`), and the
+  * walk's end clears it. For the walk's actor, that site then takes the
+  * pawn site's place for `locate` ([[presentSite]]). Ruled sites and the
+  * play area stay usable; the physical pawn site does not, unless the
+  * player rules it.
   */
 private[gameplay] object PowerAccess:
   sealed trait Held extends Product with Serializable
@@ -39,27 +41,26 @@ private[gameplay] object PowerAccess:
 
   /** The decision a modifier asks to name the site its user acts as if at
     * for the rest of the action. Only one such modifier is picked per
-    * action, so the walk holds at most one answer. */
+    * action. `ActAsIf` records its answer as state. */
   val asIfDecision: String = "modifier.as-if-site"
 
-  /** The site the walk's answers say the actor acts as if at, if any. */
-  def asIfSite(answered: Vector[Answered]): Option[SiteId] =
-    answered.reverseIterator.collectFirst:
-      case Answered(`asIfDecision`, DecisionAnswer.ChooseOneAnswer(
-          DecisionOptionRef.Site(site)), _) => site
+  /** The site `actor` acts as if at for the rest of the walk, if any. Only
+    * the walk's actor acts from it; every other player acts from their
+    * pawn (catalog batch 8, item 13c). */
+  def asIfSite(ready: ReadyGame, actor: PlayerId): Option[SiteId] =
+    val current = ready.game.current
+    current.walkerAsIfSite.filter(_ => current.walkActor == actor)
 
   /** Where the actor acts from: the as-if site, else the pawn site. */
-  def presentSite(ready: ReadyGame, actor: PlayerId,
-      answered: Vector[Answered]): Option[SiteId] =
-    asIfSite(answered).orElse(pawnSite(ready, actor))
+  def presentSite(ready: ReadyGame, actor: PlayerId): Option[SiteId] =
+    asIfSite(ready, actor).orElse(pawnSite(ready, actor))
 
-  private def usableSites(ready: ReadyGame, actor: PlayerId,
-      answered: Vector[Answered]): Set[SiteId] =
-    ruledSites(ready, actor) ++ presentSite(ready, actor, answered)
+  private def usableSites(ready: ReadyGame, actor: PlayerId): Set[SiteId] =
+    ruledSites(ready, actor) ++ presentSite(ready, actor)
 
   def accessible(ref: RuleSourceRef, face: RuleSourceFace, ready: ReadyGame,
       actor: PlayerId, facedownAdviser: Boolean = false): Boolean =
-    lazy val sites = usableSites(ready, actor, Vector.empty)
+    lazy val sites = usableSites(ready, actor)
     ref match
       case RuleSourceRef.Site(id) => pawnSite(ready, actor).contains(id)
       case RuleSourceRef.SiteCard(id, _) =>
@@ -82,14 +83,14 @@ private[gameplay] object PowerAccess:
       case _ => false
 
   /** Where `card` is, if `actor` may use it. A site card or edifice at a
-    * usable site is `AtSite`. A faceup adviser or relic in the actor's play
-    * area is `InPlayArea`. `answered` are the walk's answers, which may
-    * place the actor at an as-if site.
+    * usable site is `AtSite`: a site the actor rules, or the one they act
+    * from ([[presentSite]]). A faceup adviser or relic in the actor's play
+    * area is `InPlayArea`.
     */
-  def locate(ready: ReadyGame, actor: PlayerId, card: CardId,
-      answered: Vector[Answered] = Vector.empty): Option[Held] =
+  def locate(ready: ReadyGame, actor: PlayerId, card: CardId)
+      : Option[Held] =
     val current = ready.game.current
-    val atSite = usableSites(ready, actor, answered).toVector
+    val atSite = usableSites(ready, actor).toVector
       .sortBy(_.value).collectFirst:
       case id if current.map.sites.get(id).exists(_.denizens.exists {
         case d: DenizenState => d.id == card && d.orientation == Orientation.FaceUp

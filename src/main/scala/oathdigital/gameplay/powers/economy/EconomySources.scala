@@ -26,16 +26,14 @@ private[economy] object EconomySources:
         .filterNot(option => offered(option.ref))
     }
 
-  /** Every card with a suit at the sites in play in the region of `actor`'s
-    * pawn, or of the site the walk's answers place them at, that site
-    * included, in map then site order. A card without a suit is no source,
-    * as at the pawn site. */
+  /** Every card with a suit at the sites in play in the region of the site
+    * `actor` acts from ([[PowerAccess.presentSite]]), that site included,
+    * in map then site order. A card without a suit is no source, as at the
+    * pawn site. */
   def inPawnRegion(catalog: ExecutableCatalog, ready: ReadyGame,
-      actor: PlayerId, answered: Vector[Answered])
-      : Vector[SiteDenizenState] =
+      actor: PlayerId): Vector[SiteDenizenState] =
     val map = ready.game.current.map
-    val region = PowerAccess.presentSite(ready, actor, answered)
-      .flatMap(map.regionOf)
+    val region = PowerAccess.presentSite(ready, actor).flatMap(map.regionOf)
     map.inPlay.filter(site => region.exists(map.regionOf(site).contains))
       .flatMap(site => cardsAt(catalog, ready, site))
 
@@ -50,11 +48,13 @@ private[economy] object EconomySources:
   val RelocationPriority: Int = -1
 
   /** `operations` with each source decision's options replaced by the
-    * cards at the site the walk's answers place the actor at, offered as
-    * the pawn site's are. Unchanged without such a site. */
+    * cards at the site the actor acts as if at, offered as the pawn site's
+    * are. Unchanged without such a site. The site is set before this
+    * window is first folded and never changes after, so every fold of the
+    * window reads the same site. */
   def relocated(catalog: ExecutableCatalog, ctx: PowerCtx,
       operations: Vector[Operation]): Vector[Operation] =
-    PowerAccess.asIfSite(ctx.answered).fold(operations)(site =>
+    PowerAccess.asIfSite(ctx.state, ctx.activePlayer).fold(operations)(site =>
       withOptions(ctx, operations)(_ =>
         cardsAt(catalog, ctx.state, site).map(MusterSource.offered)))
 
