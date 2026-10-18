@@ -106,6 +106,16 @@ These were settled while designing and bind the rest of this document.
 7. **Three new argument kinds and no more.** `Players`, `Clauses` over a
    closed `NoteClause` sum, and Conquest's placements. A fourth is a spec
    amendment, not a judgement call made mid-plan.
+
+   **Amended in slice 4: a fourth kind.** Two Campaign lines join a
+   variable list whose items are of different kinds — "Targets: " joins
+   sites, or a pawn, relics and banners, and a won Raid's "Took … from
+   {Blue}" joins relics and banners. No kind held a mixed list and ruling
+   8 forbids a template that joins, so `NoteArg.Things` over a closed
+   `NoteThing` sum (`Site`, `Pawn`, `Card`, `Banner`) serves both. In the
+   same slice `NoteClause` lost `LostWarbands` and `SentTo`, which the
+   loss split made unreachable: the vocabulary grew by one kind and shrank
+   by two cases.
 8. **`NotePart` stays flat.** No conditionals, no joins. A conditional
    template language is a second rendering engine every power author would
    have to learn.
@@ -194,8 +204,12 @@ ruling 2 puts it. `PowerLines` looks the entry up through
 | `Clauses(parts)` | one joined phrase of clauses | Campaign's losses |
 | `Placements(entries)` | "2 warbands on Mine and 1 warband on Standing Stones" | a Conquest's gains |
 
-`NoteClause` is a closed sum in `model`: `LostWarbands(n)`,
-`BurnedFavor(n)`, `Discarded(cards)`, `SetAside(cards)`, `SentTo(site)`.
+`NoteClause` is a closed sum in `model`. Slice 1 gave it five cases;
+slice 4's loss split left three, `BurnedFavor(n)`, `Discarded(cards)` and
+`SetAside(cards)`, and added a fourth argument kind beside the three
+above: `Things(items)` over a closed `NoteThing` sum, one joined phrase of
+references of different kinds, for a Campaign's targets and a won Raid's
+spoils.
 `PowerLines.argument` renders each through the `LogWords.join` the line uses
 today, so the joining stays in `application` where ruling 2 puts it.
 
@@ -302,6 +316,35 @@ Campaign tree applies those losses and knows their counts at the point it
 applies them, so the procedure carries the numbers into the clauses rather
 than re-reading the journal for them.
 
+### The loss sentence could not be one note
+
+`CampaignLines.losses` joined up to five clauses, and the three nodes that
+apply them are three different nodes: the warband kills in
+`CampaignLosses`, the burn, the discards and the set-asides in
+`CampaignRaidConsequences`, and the pawn in `CampaignRaidRelocation`.
+`NoteStates` reaches one leaf, so one note cannot span them. Slice 4
+writes three sentences, each in its own node with its own subject: "{Blue}
+lost 1 warband", "{Blue} burned 1 favor and discarded Tinker", "{Blue} was
+sent to the Mine".
+
+Every clause is read from the step the note restates, never computed from
+the board. Four powers rewrite the Campaign's own loss operations before
+they run — Billowing Fog, Traveling Doctor and Peace Envoy through
+`SparedForce.spare`, and `Keep` replaces the Raid's consequences outright
+— so the Campaign's own arithmetic would state numbers that did not
+happen.
+
+Placing each note inside its windowed node buys one thing back:
+`Keep`'s `Transform` replaces that node's children, and the note goes with
+the operations it restates, which is what `journal.covered` did for the
+joined sentence.
+
+Two of the order changes follow from the nodes rather than from the
+wording. A Raid's warband line now reads before the spoils line, and a
+Conquest's loss line before its placement line, because the losses node
+runs before the Raid's transfer and the Conquest's placement. Both are in
+the ledger.
+
 ### Two things slice 4 must settle first
 
 Both were found while reviewing slice 1, against the code rather than
@@ -320,10 +363,16 @@ growing `NotePart` to fix it.
 
 The current golden scripts exercise only the defender-loses branch, so slice
 4's golden diff would be clean while the attacker-loses rendering silently
-lost its capital. The ledger's "capitalisation dance" entry already asks
-whether the subject should simply always be named. **That wording question is
-resolved before slice 4 starts, not during it**: if the subject is always
-named, the clause list never leads a sentence and the problem is gone.
+lost its capital.
+
+**Answered in slice 4: the blocker dissolved with the split.** Splitting
+the sentence per node leaves the subject-omitted case — the loser is the
+run's own actor — carrying exactly one clause, the warband kills, because
+the burn, the discards and the pawn are a defeated *defender's*. One
+clause is a flat key, `Lost {0} {0?warband|warbands}`, so today's words
+survive and no clause list ever leads a sentence. The ledger's wording
+question, whether the subject should always be named, stays open as an
+improvement rather than a blocker.
 
 **A clause's cards are judged at a different state set.** `CampaignLines`
 names each discarded or set-aside card with `words.card(id, before, after,
@@ -335,6 +384,13 @@ the note, and a card's label is taken at the state after the note rather
 than after its own operation. The paths the current goldens cover coincide,
 so slice 4 must either show the two agree for Campaign's cards or say which
 one is right.
+
+**Answered in slice 4: they agree, by test.** `GameLogCampaignSuite`'s "a
+defeated Raid defender's cards read the same for every seat" reads the
+consequence clause for the defender, the attacker and a third seat of the
+same won Raid. The defender's own facedown adviser is named to them and to
+nobody else, which is the visibility rule working, and the other two seats
+read character for character the same.
 
 **A card in a slotted row reads as its back, not its slot.**
 `LogWords.slotted` names a card the viewer cannot identify by its 1-based
@@ -377,31 +433,37 @@ the replay posture decision refuses on principle.
 
 ## What the four application files become
 
-| File | Now | After |
+| File | At this design's writing | After |
 |---|---|---|
-| `CampaignLines` | 243 | deleted |
-| `NegotiationLines` | 75 | deleted |
-| `SetupLines` | 27 | deleted |
-| `ActionLines` | 484 | deleted; see below |
+| `CampaignLines` | 243 | deleted in slice 4 |
+| `NegotiationLines` | 75 | deleted in slice 2 |
+| `SetupLines` | 27 | deleted in slice 2 |
+| `ActionLines` | 484 | deleted in slice 4's fold; see below |
 
-Three files and 345 lines go outright. `ActionLines`' 484 reduce to roughly
-120 that move rather than vanish, so the module loses about 710 lines net.
+What landed: slice 2 deleted `NegotiationLines` and `SetupLines`, and by
+the time slice 4 began `ActionLines` was down to 109 lines rather than 484
+— slices 2 and 3 took its procedures' rules with them as each procedure
+migrated. Slice 4 deleted `CampaignLines`, and the fold moved what was
+left: `PowerLines` went from 155 to 235 lines, `LogWords` from 169 to 186.
+Four files and 454 lines went outright.
 
-`ActionLines` would keep only `usePowerLines` and its helpers — the
+`ActionLines` kept only `usePowerLines` and its helpers — the
 `"Used {card}"` fallback for a power that wrote no `used` note — plus a
 companion of shared span helpers other files import. That is not "the action
 line each procedure posts", which is what the file is named and documented
 for. `usePowerLines`, `powerSource`, `effect` and `named` fold into
 `PowerLines`, which already owns the power-note path and is 100 lines; the
-companion's `action`, `plural`, `resource`, `PlacePrefix`, `subjectCard`,
-`worldCard`, `isDelta` and `sourceName` move to `LogWords`, where the rest of
-the shared span building lives.
+companion's `plural`, `PlacePrefix` and `subjectCard` move to `LogWords`,
+where the rest of the shared span building lives, and its one-line
+`action` constructor is inlined at its last caller. The other companion
+members the prediction named were gone before the fold, with the rules
+that used them.
 
 The end state is one sentence: powers' lines in `PowerLines`, procedures'
 lines in their own trees, and `ProcedureLog` saying which.
 
-Against the 800-line cap: `PowerLines` goes from 100 to roughly 220,
-`LogWords` from 169 to roughly 210, and every `gameplay` file gains its own
+Against the 800-line cap: `PowerLines` went from 155 to 235, `LogWords`
+from 169 to 186, and every `gameplay` file gains its own
 `NoteSet` and leaves — `CardPlayProcedure`, the largest at 414, takes the
 facedown adviser's keys and stays well inside.
 
@@ -474,11 +536,30 @@ survives while its `Note` leaf is removed.
    it is the only one carrying an argument kind nothing else uses and its
    golden diff must not be confusable. Then one commit deleting
    `CampaignLines`, `NegotiationLines`, `SetupLines` and `ActionLines`, and
-   folding what is left into `PowerLines` and `LogWords`. *Proves:* golden
-   byte-identical across both.
+   folding what is left into `PowerLines` and `LogWords`.
+
+   **What landed: four commits, not two.** The two-commit shape was not
+   available. The missing Campaign goldens had to come first, in their own
+   commit, because four of the six closing lines this slice rewrites — the
+   attacker's loss, a won Raid's spoils, a Conquest victory's placement and
+   the bandits' loss — had no script playing them; `NoteArg.Things` came
+   next, as its own commit, since nothing wrote one yet and no golden could
+   move. And the migration itself **cannot be halved**: while a procedure's
+   entry is a `Rule` the walker refuses a note whose key it has not
+   registered and `ProcedureLog.noteKind` answers `Action` for every key,
+   and once the entry is `Notes` the unplaced half's lines vanish. So the
+   leaves, the registry entry and `CampaignLines`' deletion are one commit,
+   and the fold is the fourth.
+
+   *Proves:* golden byte-identical, **except** the loss sentence, which
+   becomes up to three sentences, one per node that applies its clauses
+   ("The loss sentence could not be one note" above); the two totals, which
+   now read after the line a power in their own result window writes; and
+   the title plan's activation line, which names the title instead of the
+   label its offer authored. Each is in the ledger.
 
 One, twelve, four and one: eighteen procedures, and `usePowerLines` moving
-file in slice 4 without changing.
+file in slice 4's fold without changing.
 
 ## Documents amended
 

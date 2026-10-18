@@ -16,39 +16,45 @@ work, not the finding.
 
 ## Open
 
-- **`ActionLines.scala:104` — "Traded with {card} for no secrets".** The
+- **`TradeProcedure.tradedForNoSecrets` — "Traded with {card} for no
+  secrets".** The
   `bought` slot normally holds a thing gained ("for 2 secrets"), so the
   no-gain case reads as though "no secrets" were the commodity. A Trade that
   yields nothing is a different sentence, not the same sentence with a zero
   in it.
 
-- **`ActionLines.scala:298-299` — "Drew {cards} from {source} and kept
+- **`SearchProcedure.keptCards` — "Drew {cards} from {source} and kept
   none".** "None" after "kept" is terse to the point of ambiguity: it can be
   read as the name of what was kept. The surrounding lines all name a thing.
+  Slice 3 split Search's line in two, and the joined form this quotes went
+  with it: a Search that keeps nothing writes no "Kept" line at all now.
+  The question of how to say "kept nothing" is unchanged and unanswered.
 
-- **`ActionLines.scala:362` — "Played {card} as an adviser".** A card kept
+- **`CardPlayProcedure`'s adviser placement key — "Played {card} as an
+  adviser".** A card kept
   from a Search already has a "kept" line, so the pair reads twice about one
   card. Worth deciding which of the two carries the placement.
 
-- **`CampaignLines.scala:138-139` — "Skipped the Campaign." and "Nothing
-  left to attack: the Campaign ended."** Two outcomes of one branch, written
+- **`CampaignNotes.skipped` and `CampaignNotes.nothingToAttack` —
+  "Skipped the Campaign." and "Nothing left to attack: the Campaign
+  ended."** Two outcomes of one branch, written
   in two registers: the first is an actor's choice, the second a reason and
   an outcome joined by a colon. They post at the same place and should read
   as alternatives.
 
-- **`CampaignLines.losses` — the capitalisation dance.** When the loser is
+- **`CampaignNotes.lost` against `CampaignNotes.playerLost` — the
+  capitalisation dance.** When the loser is
   the acting player the line has no subject, so the first clause is
   capitalised in code: "Lost 2 warbands and burned 1 favor", against "Blue
   lost 2 warbands and burned 1 favor" for anyone else. The same event reads
   as two different kinds of sentence depending on who is reading. Worth
   deciding whether the subject should simply always be named.
 
-  **Blocks slice 4 of the procedures-journal-their-notes migration**, which
-  cannot reproduce the capitalised form: `NoteArg.Clauses` renders a
-  variable clause list through `LogWords.join`, so no template text reaches
-  the first clause's leading letter. Decide this one before that slice, not
-  during it. Note that no golden script covers the attacker-loses branch
-  today, so nothing would fail if it were missed.
+  It no longer blocks slice 4 of the procedures-journal-their-notes
+  migration: splitting the sentence per node leaves the subject-omitted
+  case carrying one clause, so it is a flat key and today's words survive.
+  The question of whether the subject should always be named is open on
+  its own merits.
 
 - **`SetupProcedure.placedPawn` — "{Blue} placed pawn at {site}".** Missing
   article. Every other line in the module writes a determiner.
@@ -56,6 +62,41 @@ work, not the finding.
 - **`StartLines.scala:66` — "Continued" with a bare cost span.** Recover's
   repeat line says the Supply spent and nothing about what was continued. It
   is the only line in the log that is a single word plus a number.
+
+- **`CampaignNotes.activatedOathkeeperTitle` and
+  `CampaignNotes.activatedUsurperTitle` — the title plan's activation line
+  lost its label.** It read "{Blue} activated Oathkeeper title: add 1
+  defense die", the label `TitleDefensePlan` authored for its offer, which
+  the rule rendered through `ChoiceWords.option`. A note's arguments are
+  typed references, never text, so it now reads "{Blue} activated the
+  Oathkeeper title". The dice it adds are told by the Defense total, so
+  nothing the log does not say twice is lost — worth deciding whether the
+  other plan activations should name what the plan does too, since each of
+  them names only its card.
+
+- **`CampaignNotes.attack` and `CampaignNotes.defense` — a Campaign's
+  totals read after the plan that rewrote them.** `CampaignLines.recorded`
+  read forward to `journal.segmentEnd` to suppress a total a plan
+  overwrites, so "Attack: 8" read *before* "Outriders: Skulls ignored.".
+  The note sits after the result window closes, so the plan's own line
+  comes first. Worth deciding which order a reader wants: the number then
+  its reason, or the reason then the number.
+
+- **`CampaignNotes.lost`, `playerLost`, `banditsLost`, `defenderLost` and
+  `sentTo` — a defeated Raid defender's losses read as three sentences.**
+  One joined sentence became "{Blue} lost 1 warband", "{Blue} burned 1
+  favor and discarded Tinker" and "{Blue} was sent to the Mine", because
+  the clauses are applied in three different nodes and a note reaches one
+  leaf. Worth deciding whether three sentences are better read than one; it
+  is no longer a mechanism question.
+
+- **A Campaign's loss lines now come before what the victory gained.** The
+  rule aggregated both at completion and posted the gains first: "Took Wine
+  of Welcome from Blue" then the loss sentence, and "Placed 2 warbands on
+  Ancient City" then "The bandits lost 3 warbands". The notes sit in the
+  nodes that apply each, and the losses node runs before the Raid's
+  transfer and the Conquest's placement, so each loss line now reads first.
+  Worth deciding whether a victory should be told spoils-first.
 
 ## Fixed
 
@@ -148,6 +189,6 @@ show it.
 Putting the line back in front needs it journaled inside the play's own
 batch, and a `Note` is not a `CoreOperation`; the alternative — reading the
 destination before the play — is the inference this slice deleted, since the
-regional pile a discard reaches is decided by `CardPlay.operations`. Decide
-whether the old order is worth a mechanism change before slice 4 folds these
-files together.
+regional pile a discard reaches is decided by `CardPlay.operations`. The
+question is unchanged and is no longer waiting on slice 4: it is a ROADMAP
+task, "A card play's line before the lines its own batch causes".

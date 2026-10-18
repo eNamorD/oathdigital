@@ -325,6 +325,15 @@ one.
   `docs/superpowers/specs/2026-10-16-game-log-wording-ledger.md`, each with
   where it is built and why it is worth a second look. Recorded in the
   procedures journal their own notes design of 2026-10-16.
+- [ ] **A card play's line before the lines its own batch causes.**
+  `WalkerSteps.recordBatch` runs `AdviserArrivalPass.after` and an executed
+  trigger's follow-up inside the play's own leaf, so a power whose effect
+  fires during the play writes its line first and the play's line reads
+  second, where it used to read first. Putting the play's line back in
+  front needs it journaled inside that batch, and a `Note` is not a
+  `CoreOperation`. See the wording ledger, "A card play's line now follows
+  the lines its own batch caused". Recorded in the procedures journal their
+  own notes design of 2026-10-16.
 - [ ] **Rename the `Power*` note family.** `PowerNote`, `PowerNoted` and
   `PowerLines` are named for one of three emitters: powers, printed rules
   and, after the migration above, procedures. The `PowerId` key already
