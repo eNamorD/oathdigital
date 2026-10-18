@@ -5,7 +5,7 @@ import oathdigital.gameplay.actions.SearchRules
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ModifierPicks,
   OfferReason, PowerCtx, Transform}
-import oathdigital.gameplay.powers.SelectedModifier
+import oathdigital.gameplay.powers.{PowerAnswers, SelectedModifier}
 import oathdigital.model._
 
 object WineOfWelcomeCard extends Relic(RelicId("R33"), "Wine of Welcome", value = 7, defense = 1):
@@ -24,10 +24,12 @@ object WineOfWelcomeCard extends Relic(RelicId("R33"), "Wine of Welcome", value 
   * makes the world deck unavailable.
   *
   * Its line, "Drawing from the bottom of the World Deck", comes before the
-  * draw. The Search's own line names the pile but cannot say which end the
-  * draw took, because that is this power's rewrite of the draw operation
-  * and a note cannot read an operation (procedures journal their own notes,
-  * slice 3 plan-time ruling 5).
+  * draw, and only when the draw is the world deck's: a Search of a discard
+  * pile is not reshaped and says nothing. The Search's own line names the
+  * pile but cannot say which end the draw took, because that is this
+  * power's rewrite of the draw operation and a note cannot read an
+  * operation (procedures journal their own notes, slice 3 plan-time
+  * ruling 5).
   */
 final case class WineOfWelcome private (catalog: ExecutableCatalog)
     extends SelectedModifier:
@@ -39,10 +41,18 @@ final case class WineOfWelcome private (catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchBeforeDraw -> Vector(Transform((_, operations) =>
-      Note(id, _ => Some(WineOfWelcome.drawing(
-        PowerSourceRef.Card(cardId)))) +:
-        BottomDraw.reshaped(operations, SearchRules.DrawSize,
-          _ == SearchSource.WorldDeck))))
+      line +: BottomDraw.reshaped(operations, SearchRules.DrawSize,
+        _ == SearchSource.WorldDeck))))
+
+  /** The line, written exactly when the rewrite beside it applies: only a
+    * Search of the world deck is reshaped, and a discard pile stays
+    * choosable while this is picked, merely warned, so a Search of a pile
+    * under this power draws its top as usual and this must say nothing. */
+  private def line: Operation = Note(id, states =>
+    Option.when(PowerAnswers.one(PendingTree(Vector.empty, states.answered),
+        SearchProcedure.sourceDecisionId)
+      .flatMap(SearchSource.fromRef).contains(SearchSource.WorldDeck))(
+        WineOfWelcome.drawing(PowerSourceRef.Card(cardId))))
 
   override def warning(decide: Decide, option: DecisionOptionRef)
       : Option[OptionReason] = option match

@@ -49,7 +49,10 @@ class GameLogSearchDrawSuite extends munit.FunSuite:
       Vector(WineOfWelcome.id), SearchSource.WorldDeck)
     val drew = before(lines,
       "Wine of Welcome: Drawing from the bottom of the World Deck")
-    assert(drew.endsWith(" from the World Deck"), drew)
+    // The bottom three, named, so this still fails if the draw is not
+    // reshaped and only the note fires.
+    assertEquals(drew, "Drew Second Chance, Fae Merchant and Threatening " +
+      "Roar from the World Deck")
 
   test("Mushrooms: its line says the card came from the bottom"):
     val lines = searchLines("mushrooms", Table.start
@@ -68,4 +71,20 @@ class GameLogSearchDrawSuite extends munit.FunSuite:
       Vector(PaintedTrumpet.id), SearchSource.RegionalDiscard(Region.Cradle))
     val drew = before(lines,
       "Painted Trumpet: Drawing the top card of each discard pile instead")
-    assert(drew.endsWith(" from the Cradle discard"), drew)
+    // One card from each pile, so this still fails if the draw is not
+    // reshaped; the Search's line names the pile it was priced at.
+    assertEquals(drew, "Drew Threatening Roar and Fae Merchant from the " +
+      "Cradle discard")
+
+  // Wine of Welcome rewrites a world-deck draw only, so a Search of a
+  // discard pile under it draws the pile's top as usual: its line must not
+  // claim a bottom draw. The pile stays choosable while Wine is picked,
+  // warned (`WineOfWelcomeSuite`), so this is reachable every time.
+  test("Wine of Welcome: no line when the Search took a discard pile"):
+    val lines = searchLines("wine-of-welcome-discard", Table.start
+      .relic(p1, "Wine of Welcome")
+      .discarded(Region.Cradle, "Threatening Roar", "Fae Merchant"),
+      Vector(WineOfWelcome.id), SearchSource.RegionalDiscard(Region.Cradle))
+    assert(!lines.exists(_.contains("Drawing from the bottom")), lines)
+    assert(lineStarting(lines, "Drew ").endsWith(" from the Cradle discard"),
+      lines)

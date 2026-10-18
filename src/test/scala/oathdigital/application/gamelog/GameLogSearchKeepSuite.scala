@@ -76,6 +76,8 @@ class GameLogSearchKeepSuite extends munit.FunSuite:
     val lines = searchLines("land-warden", Table.start
       .pawn(p1, "Ancient City").adviser(p1, "Land Warden")
       .worldDeckTop(drawn*), Vector(LandWarden.id), keepFirstTwo)
+    assert(lineStarting(lines, "Drew ").endsWith(" from the World Deck"),
+      lines)
     assert(lines.contains("Kept Threatening Roar and Fae Merchant"), lines)
     // By default the first goes to the discard pile, its first option.
     // Land Warden then leaves the second only the site.
