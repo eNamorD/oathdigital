@@ -97,22 +97,6 @@ private[gamelog] object ActionLines:
   def plural(count: Int, one: String, many: String): String =
     if count == 1 then one else many
 
-  /** "3 favor", "1 secret", "2 secrets". */
-  def resource(piece: Piece): String = piece match
-    case Piece.Favor(count) => s"$count favor"
-    case Piece.Secrets(count) =>
-      s"$count ${plural(count, "secret", "secrets")}"
-    case _ => ""
-
-  def isTradeGain(actor: PlayerId)(step: OpStep): Boolean = step match
-    case OpStep(Move(Piece.Favor(_), PositionedLocation(Location.FavorBank(_), _, _),
-        PositionedLocation(Location.PlayArea(taker), _, _),
-        _, _), _, _) => taker == actor
-    case OpStep(Move(Piece.Secrets(_), PositionedLocation(Location.SharedBank, _, _),
-        PositionedLocation(Location.PlayArea(taker), _, _),
-        _, _), _, _) => taker == actor
-    case _ => false
-
   /** `CardPlayProcedure`'s placement decision id prefix; the card follows as
     * `{kind}.{id}`, the same spelling `WalkerDecisionProjector.subjectCards`
     * parses. */
@@ -123,17 +107,3 @@ private[gamelog] object ActionLines:
       case Vector("denizen", value) => Some(DenizenId(value))
       case Vector("vision", value) => Some(VisionId(value))
       case _ => None
-
-  def worldCard(ref: DecisionOptionRef): Option[CardId] = ref match
-    case DecisionOptionRef.Denizen(id) => Some(id)
-    case DecisionOptionRef.Vision(id) => Some(id)
-    case _ => None
-
-  def isDelta(event: OathEvent): Boolean = event match
-    case WalkerStepRecorded(_, _: WalkerStepPayload.DeltaRecorded, _, _) => true
-    case _ => false
-
-  def sourceName(location: Location): String = location match
-    case Location.Deck(CardDeck.World) => "the World Deck"
-    case Location.RegionalDiscard(region) => s"the ${region.key.capitalize} discard"
-    case _ => "the deck"

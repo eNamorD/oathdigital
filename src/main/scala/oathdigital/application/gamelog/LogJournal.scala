@@ -112,9 +112,6 @@ private[gamelog] object LogJournal:
     ready.game.current.players.find(_.player == player)
       .fold(0)(_.board.supply.supply)
 
-  def pawnSite(ready: ReadyGame, player: PlayerId): Option[SiteId] =
-    ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
-
   /** A step's batch applied one operation at a time from the state before
     * the step. Replay already applied it whole, so a failure here cannot
     * happen on a journal that loaded; if it did, the rest of the batch keeps
