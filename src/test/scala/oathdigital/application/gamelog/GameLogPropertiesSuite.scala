@@ -10,9 +10,17 @@ import oathdigital.protocol.projection.{LogKind, LogSpan}
 import oathdigital.testkit.Unwrap.{accepted, present}
 import LogScripts._
 
+import scala.concurrent.duration.{Duration, DurationInt}
+
 /** What holds for every script (spec, "Testing"). The scripts are built once
   * per run of this suite. */
 class GameLogPropertiesSuite extends munit.FunSuite:
+  // Prefix stability re-formats every segment boundary of every script,
+  // and the registry now holds thirty-five of them, four of them
+  // Campaigns. It takes about twenty seconds alone and crossed munit's
+  // default thirty under a parallel run.
+  override val munitTimeout: Duration = 3.minutes
+
   private lazy val scripts = GoldenScripts.all
 
   private def viewers(script: Script): Vector[Option[PlayerId]] =
