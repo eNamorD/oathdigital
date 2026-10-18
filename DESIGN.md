@@ -632,7 +632,7 @@ ratio, sized in `ex` from `--card-w: 13ex`.
   "Dazzle" 3.2em at the same six letters. The compact name spans the face
   to its border, never breaks inside a word and never hyphenates: initials
   are the compact face's answer to a word that does not fit. The whole
-  name stays in the button's label and title.
+  name stays in the button's label and hover note.
   Defense, restriction and the unimplemented badge are hidden; tokens stay.
 - **Face-down:** Facedown fill, centered Facedown Letter at 1.9em 700; a
   knowable card adds a Secret pip top-right and reveals a summary on hover or
@@ -810,7 +810,7 @@ the text and card-list overlays: Supply at Rest and the pile's cards.
 - **Don't** add `transition` or `animation`. State changes by color, ring and
   outline only.
 - **Don't** put a resting `box-shadow` on a board piece; only the developer
-  panel lifts and only the card and log overlays scrim.
+  panel and the hover note lift, and only the card and log overlays scrim.
 - **Don't** introduce grey or blue-tinted neutrals, blue-purple gradients,
   glassmorphism or translucent panels.
 - **Don't** add parchment textures, scrollwork, blackletter, bevels, gloss

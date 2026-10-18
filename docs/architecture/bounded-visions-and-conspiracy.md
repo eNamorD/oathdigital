@@ -1,6 +1,7 @@
 > **Note (2026-09-05): implementation form superseded.** Rules content here stays
 > authoritative; the code it describes (bespoke action procedures, power seams,
-> typed-fact vocabularies) is being replaced by the procedure-walker design.
+> typed-fact vocabularies) was replaced by the procedure-walker design, which
+> now runs every action.
 
 # Bounded Visions and Conspiracy
 
@@ -57,10 +58,9 @@ ordered ribbon outcomes; replay recalculates them. These facts use the single
 current pre-release event format, which intentionally has no migration reader.
 
 This slice does not implement altered Foundations, Empire-only Vision rules,
-Vision-changing or reveal-blocking powers, alternate banner faces, or other
-component modifiers. Relevant implemented command paths continue to reject
-unsupported handlers with their stable source identity instead of ignoring
-them.
+Vision-changing powers, alternate banner faces, or other component modifiers.
+Relevant implemented command paths continue to reject unsupported handlers with
+their stable source identity instead of ignoring them.
 
 Three cards forbid a faceup Vision play and one rewards it. Each is a power on
 the card-play hook `ActionCardPlayedFaceup`:

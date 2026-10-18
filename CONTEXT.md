@@ -9,6 +9,19 @@ of the rulebook.
 
 ### Walker
 
+**Actor**:
+The player a walk acts for: the actor of the queued entry it started from,
+else the active player. It may be off turn, as in a queued follow-up such
+as Sneak Attack's. The active player is the turn's player, whoever the walk
+acts for.
+_Avoid_: active player (that is the turn's player)
+
+**Start selection**:
+What the player chose when starting a procedure, such as the resource Trade
+or Take Wealth is for, carried with the procedure from its start. A procedure
+whose choices are all decisions takes none.
+_Avoid_: start argument, start fact (the engine works that out)
+
 **Start fact**:
 Something the engine works out when a procedure starts and keeps until it
 ends, because the walk itself changes it: Travel's starting site, once the
@@ -17,15 +30,16 @@ player chose.
 _Avoid_: start argument (that is the player's selection), pinned value
 
 **Parked decision**:
-A question the procedure walker has stopped on and is waiting for one player
-to answer. At most one is parked per game at a time.
+A question the procedure walker has stopped on and is waiting for its owner
+to answer, or, for a Negotiation deal, any of its co-owners. At most one is
+parked per game at a time.
 _Avoid_: pending decision, walker decision, park
 
 **Phase menu**:
-The parked decision over everything the active player may do now in Wake or
-Rest: each option starts one procedure, and the phase's ending is always the
-last. It is asked only when more than the ending is available; otherwise the
-phase ends by itself.
+The parked decision over everything the active player may do now in Wake,
+Act or Rest: each option starts one procedure, and the phase's ending is
+always the last. The Act menu always asks. The Wake and Rest menus ask only
+when more than the ending is available; otherwise the phase ends by itself.
 _Avoid_: action list, phase controls, wake actions
 
 **Form**:
@@ -39,9 +53,9 @@ _Avoid_: query type, decision type, panel type
 
 **Surface**:
 Where and how a viewer sees a parked decision: as a panel in the action pane,
-or as clickable sites on the world board. A viewer sees at most one surface for
-the parked decision, plus a waiting notice when the decision awaits someone
-else.
+or as clickable options (sites, cards, adviser slots) on the world board. A
+viewer sees at most one surface for the parked decision, plus a waiting notice
+when the decision awaits someone else.
 _Avoid_: panel (a surface is one of the two kinds of panel), view, renderer
 
 **Subject card**:
@@ -67,9 +81,10 @@ Which side of a Campaign a battle plan applies to: attack, defense, or both.
 _Avoid_: badge, chip, colour, red/blue
 
 **Board draft**:
-The site a viewer has picked on the board for the parked decision and not yet
-confirmed. A viewer has at most one, and only for a decision that asks to be
-confirmed.
+The board options (sites, cards, adviser slots) a viewer has picked for the
+parked decision and not yet confirmed, in the order picked. A choose-one
+holds at most one pick. A viewer has at most one draft, and only for a
+decision that asks to be confirmed.
 _Avoid_: pending selection, staged choice, highlighted site
 
 ### Note

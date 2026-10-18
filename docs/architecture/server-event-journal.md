@@ -1,13 +1,14 @@
-> **PARTIALLY SUPERSEDED — replay/command/action-model parts change under the
+> **PARTIALLY SUPERSEDED — replay/command/action-model parts changed under the
 > procedure-walker redesign**: replay applies recorded ops only (no evolve
-> re-derive); the command surface collapses to Start/Resolve/RollSubmitted;
-> `PendingProcedure` becomes a `PendingTree` pointer; dice pools/roll outcomes
-> become state; `usedPowers` tracking stays. Storage/journal/domain-foundation
+> re-derive); the commands are `Begin`, `ResolveWalker`, `RollWalker`, `Undo`,
+> `Redo`, and the consent commands (`application/GameCommands.scala`);
+> `PendingProcedure` became a `PendingTree` pointer; dice pools/roll outcomes
+> became state; `usedPowers` tracking stays. Storage/journal/domain-foundation
 > content here remains valid.
 
 # Server-authoritative event journal
 
-Status: implemented through database schema v3 and event format v1.
+Status: implemented through database schema v4 and event format v1.
 
 ## Authority boundary
 
@@ -19,7 +20,7 @@ events or decide that a command was accepted.
 
 The loaded stream position must equal the client's `expectedNextSequence`
 before domain validation begins. A mismatch returns
-`StaleClientPosition(clientExpected, serverActual)`, even when the command
+`StaleClientPosition(expected, actual)`, even when the command
 would still be legal in the newer state. The client must reload before issuing
 a new command. This protects the asynchronous browser contract independently
 of the repository's second optimistic check, which protects the later
@@ -85,6 +86,10 @@ safely manufacture a synchronizer token, so every pre-v3 session is revoked
 and retains a null digest. V1 and v2 ledgers upgrade through the same contiguous
 migration path; initialization and close/reopen remain idempotent.
 
+Schema version 4 adds `trusted_seats` for trusted-alpha games. Each row keys one
+player seat by the exact 32-byte digest of its seat code, allows one seat per
+`(game_id, player_id)`, and is deleted with its game resource.
+
 ## Transaction and conflict semantics
 
 An append locks the stream row, reads its next sequence, compares
@@ -149,10 +154,10 @@ requires exactly the configured `Origin` and one `X-CSRF-Token` header. The
 header is hashed and compared to the stored digest with a constant-time digest
 comparison before request-body or domain handling; failure is a stable `403`
 and performs no append. GET has no player selector. POST accepts
-`expectedNextSequence` plus an actor-free intent. Card choices use
-`resolveCardDecision` with a decision ID and typed starting-adviser or Search
-resolution. Unknown fields, including `playerId`, are rejected. Membership
-constructs the domain actor, and mutations are attempted once without retry.
+`expectedNextSequence` plus an actor-free intent. Walker decisions use
+`resolveWalker` with a decision ID and a typed answer payload. Unknown fields,
+including `playerId`, are rejected. Membership constructs the domain actor, and
+mutations are attempted once without retry.
 Authenticated bootstrap requires the owner membership and a pre-provisioned
 game resource. Its participant list must exactly match every provisioned
 `player` membership; owner and spectator memberships are never setup seats.
@@ -234,12 +239,13 @@ authoritative first event; neither the plan nor its hidden orders are returned
 by the route. The loopback commands/load/events routes above only continue
 play for a game created that way.
 
-The command route accepts the implemented setup, Wake, Travel, and Search
-intents. Transport-level `begin` and server-prepared Search draws are rejected:
-bootstrap is the only creation path, and hidden outcomes never come from the
-browser. No Scala class names or reflection are part of the protocol.
-Missing/wrong fields report JSON paths, and expected positions must be
-non-negative JSON-safe integers.
+The command route accepts the intents in `CommandIntentDecoders`: `undo`,
+`redo`, `rollWalker`, `resolveWalker`, `requestConsent`, `answerConsent`, and
+`setConsentPreference`. There is no transport-level `begin`, and no intent
+carries dice faces or draws: bootstrap is the only creation path, and hidden
+outcomes never come from the browser. No Scala class names or reflection are
+part of the protocol. Missing/wrong fields report JSON paths, and expected
+positions must be non-negative JSON-safe integers.
 
 Successful POST and GET responses share the player-scoped projection. It never
 contains the authoritative event stream, relic shuffle

@@ -1,7 +1,3 @@
-> **Note (2026-09-05): implementation form superseded.** Rules content here stays
-> authoritative; the code it describes (bespoke action procedures, power seams,
-> typed-fact vocabularies) is being replaced by the procedure-walker design.
-
 # Core minor actions boundary
 
 This slice implements the unmodified first-game procedures from Combined Rulebook p. 27 in `gameplay/actions/minor/MinorActionProcedures.scala`, as walker procedures (`peek-site-relics`, `reveal-owned-relic` and `move-warbands`). They are Act-phase minor actions and cost 0 Supply by default. Every walk resolves atomically and passes through the normal action-boundary evaluation pipeline.

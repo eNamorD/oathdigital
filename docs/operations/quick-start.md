@@ -8,17 +8,18 @@ Send each link only to its intended player and keep a private saved copy.
 ## Easiest: download for your computer
 
 Download the archive for your computer. It includes its own Java, so nothing
-else needs installing:
+else needs installing. `<version>` is the release version, for example
+`0.1.0-alpha.3`:
 
 | Computer | Download |
 | --- | --- |
-| Mac with Apple silicon | `oathdigital-0.1.0-alpha.1-macos-arm64.tgz` |
-| Windows (64-bit Intel or AMD) | `oathdigital-0.1.0-alpha.1-windows-x64.zip` |
-| Linux (64-bit Intel or AMD) | `oathdigital-0.1.0-alpha.1-linux-x64.tgz` |
+| Mac with Apple silicon | `oathdigital-<version>-macos-arm64.tgz` |
+| Windows (64-bit Intel or AMD) | `oathdigital-<version>-windows-x64.zip` |
+| Linux (64-bit Intel or AMD) | `oathdigital-<version>-linux-x64.tgz` |
 
 1. Extract the archive: double-click it on macOS, or right-click and choose
    **Extract All** on Windows. On Linux, extract it with your file manager.
-2. Move the extracted `oathdigital-0.1.0-alpha.1` folder out of Downloads (or
+2. Move the extracted `oathdigital-<version>` folder out of Downloads (or
    Desktop or Documents) into a plain folder such as your home folder or
    `Applications`, for example by dragging it there in Finder or Explorer.
    Starting the server from inside Downloads, Desktop, or Documents makes the
@@ -288,8 +289,10 @@ database.
    another color (`red`, `blue`, `yellow`, `white`, `black`, `pink`, or
    `brown`), up to six players, and **Remove** to drop one. A game needs at
    least two players. Each color is its own lineage.
-3. Optionally edit each player ID. IDs default to the color name, must be
-   unique, and may use letters, digits, `.`, `_`, `:` and `-`.
+3. Optionally edit each player ID. IDs default to the capitalized color name,
+   such as `Red`, and must be unique. An ID starts with a letter or digit, may
+   then use letters, digits, `.`, `_`, `:` and `-`, and is at most 128
+   characters long.
 4. Select **Create game**. The page generates the game ID. The seating order
    and the first player are shuffled when the game starts, along with the sites
    and decks.

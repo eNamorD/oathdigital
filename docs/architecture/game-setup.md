@@ -1,7 +1,3 @@
-> **Note (2026-09-05): implementation form superseded.** Rules content here stays
-> authoritative; the code it describes (bespoke action procedures, power seams,
-> typed-fact vocabularies) is being replaced by the procedure-walker design.
-
 # First-game setup
 
 Status: implemented and replay-tested, reviewed September 2026 (Chronicle

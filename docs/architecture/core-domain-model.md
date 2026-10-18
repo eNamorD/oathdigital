@@ -1,8 +1,9 @@
-> **PARTIALLY SUPERSEDED — replay/command/action-model parts change under the
+> **PARTIALLY SUPERSEDED — replay/command/action-model parts changed under the
 > procedure-walker redesign**: replay applies recorded ops only (no evolve
-> re-derive); the command surface collapses to Start/Resolve/RollSubmitted;
-> `PendingProcedure` becomes a `PendingTree` pointer; dice pools/roll outcomes
-> become state; `usedPowers` tracking stays. Storage/journal/domain-foundation
+> re-derive); the commands are `Begin`, `ResolveWalker`, `RollWalker`, `Undo`,
+> `Redo`, and the consent commands (`application/GameCommands.scala`);
+> `PendingProcedure` became a `PendingTree` pointer; dice pools/roll outcomes
+> became state; `usedPowers` tracking stays. Storage/journal/domain-foundation
 > content here remains valid.
 
 # Core domain model

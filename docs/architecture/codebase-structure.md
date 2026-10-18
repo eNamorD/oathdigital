@@ -1,6 +1,8 @@
-> **PARTIALLY SUPERSEDED — module layout will change under the procedure-walker
-> redesign**: per-action procedures and power seams collapse into Operation
-> trees + a walker. Ownership and dependency-direction principles remain valid.
+> **PARTIALLY SUPERSEDED — module layout changed under the procedure-walker
+> redesign**: each action and phase is now a declared `Operation` tree that the
+> generic walker (`gameplay/walker/`) runs, and powers contribute at power
+> windows. Ownership and dependency-direction principles remain valid; some
+> per-module detail below predates the walker.
 
 # Codebase structure
 

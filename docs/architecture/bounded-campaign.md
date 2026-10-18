@@ -7,8 +7,9 @@
 
 Campaign implements the Combined Rulebook and New Foundations procedure for
 Conquest against bandits or a player, and Raid against a co-located player. It
-costs 2 Supply and is started by the active player from the Act menu.
-Every later choice is a parked walker decision answered with `ResolveWalker`.
+costs 2 Supply. The active player starts it from the Act menu, or a power
+queues it as a follow-up, whose actor may be off turn (Sneak Attack). Every
+later choice is a parked walker decision answered with `ResolveWalker`.
 
 ## Procedure
 
@@ -58,8 +59,8 @@ result, and the sacrificed warbands right after the sacrifice.
   the Skip by recording the marker pool `campaign.skip-offered` (Vow of Union
   does so when it moved a warband); the kind question is then asked even with
   one legal kind. The Supply stays spent.
-- **Start.** A start is refused unless the actor is in Act
-  and at least one kind is legal. Conquest is legal when the actor's pawn
+- **Start.** A start is refused unless at least one kind is legal; the
+  procedure does not check the phase. Conquest is legal when the actor's pawn
   site is ruled by Bandits or by another player. Raid is legal when another
   player's pawn stands at the actor's site. Supply is not a gate: `SpendSupply`
   owns it, so a start with too little Supply fails at the first step before
@@ -165,8 +166,10 @@ receives the durable recipient decision before normal Act controls resume.
   its Travel restriction. It removes another site in the Pass's region from the
   targets when the actor's pawn is outside that region and the actor does not rule
   the Pass. The check is per candidate site, the Pass itself stays targetable, and
-  only site options are considered. "Consent of the Pass's ruler" is approximated
-  as ruling the Pass. Real consent, separate from Negotiation, is deferred.
+  only site options are considered. The Pass's ruler is never blocked. Anyone else
+  may ask that ruler for consent: the restriction carries a waiver, worded
+  `NarrowPassSitePower.noTargetConsent` (consent design,
+  `docs/superpowers/specs/2026-10-08-consent-system-design.md`).
 - `OptionRestriction` is the general channel for a power that forbids a choice. The
   walker removes the forbidden options in the window fold, so the projector, the
   answer check and simulation all see the filtered set. An optional decision left
@@ -217,10 +220,10 @@ finishes by itself when no plan is left.
 
 ## Deferred
 
-- All rolls become automatic (Recover still parks on its roll).
-- Real consent for the Pass, and a consent system in general.
 - The first-game rule audit behind the dropped gates.
 - Further optional attacker, defender and deterministic bandit plan families,
   non-deterministic loss choices, and the additional Raid, victory, defeat and
   `At End` handlers. The timing windows exist and no behavior is inferred for them.
-- An action-history feed. The durable `lastCampaignResult` is the interim.
+- A battle summary in the Game Log, tracked as ROADMAP "Phase - Campaign battle
+  summary". The durable `lastCampaignResult` stays, for the powers that read
+  the last result.

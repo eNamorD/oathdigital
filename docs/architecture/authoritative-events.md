@@ -1,8 +1,9 @@
-> **PARTIALLY SUPERSEDED — replay/command/action-model parts change under the
+> **PARTIALLY SUPERSEDED — replay/command/action-model parts changed under the
 > procedure-walker redesign**: replay applies recorded ops only (no evolve
-> re-derive); the command surface collapses to Start/Resolve/RollSubmitted;
-> `PendingProcedure` becomes a `PendingTree` pointer; dice pools/roll outcomes
-> become state; `usedPowers` tracking stays. Storage/journal/domain-foundation
+> re-derive); the commands are `Begin`, `ResolveWalker`, `RollWalker`, `Undo`,
+> `Redo`, and the consent commands (`application/GameCommands.scala`);
+> `PendingProcedure` became a `PendingTree` pointer; dice pools/roll outcomes
+> became state; `usedPowers` tracking stays. Storage/journal/domain-foundation
 > content here remains valid.
 
 # Authoritative domain events
@@ -26,8 +27,13 @@ atomic expected-position append.
 `GameEventWire` owns one pre-release envelope format (`formatVersion = 1`)
 for setup and gameplay. It delegates explicit payload cases to cohesive codecs:
 
-- `LifecycleEventCodec` for setup, Wake, Rest, and lifecycle facts;
-- `EndingEventCodec` for title, Vision, round, and victory facts.
+- `LifecycleEventCodec` for `GameStarted` and `IgnoredRulesRecorded`;
+- `EndingEventCodec` for bandit refill, round, War Exhaustion, Usurper, and
+  Vision victory facts;
+- `WalkerEventCodec` for walker steps, parks, completions, queued procedures,
+  action boundaries, and log notes;
+- `UndoEventCodec` for `CommandAccepted`, `StepTakenBack`, and `StepRestored`;
+- `ConsentEventCodec` for consent requests, answers, and preferences.
 
 Readers reject unknown discriminators, malformed values,
 unsafe/non-contiguous sequences, and stream identity changes. No Scala class
@@ -42,21 +48,19 @@ Envelopes carry no catalog reference; stored events that still contain a
 
 Events record accepted facts needed for deterministic replay:
 
-- Search start records the application-prepared draw; completion records the
-  exact ordered player decision.
-- Recover and Campaign both record each answer as a walker `ChoicePayload`
-  step, each roll as a `RollPayload` step marked `automatic`, and every other
+- Search, Recover, Campaign, Forge, Challenge, banners, minor actions, and
+  Visions record each answer as a walker `ChoicePayload` step and every other
   step as recorded core operations, including Campaign's
-  `RecordCampaignResult`. Neither has events of its own.
+  `RecordCampaignResult`. Recover's and Campaign's rolls are `RollPayload`
+  steps marked `automatic`. None of these actions has events of its own.
 - Catacombs records its relic placement and its payment as the operations of
   the one walker step its contribution produces, attributed to the power that
   produced it. Those payment and placement operations are internal composition
   values, not independently injectable `OathEvent` cases.
-- Forge records the prepared relic transfer and exact assignments.
-- Challenge, banners, minor actions, Visions, and endings record their
-  authoritative choices and terminal facts. Negotiation records each answer
-  (proposed terms, accept, decline) as a walker `ChoicePayload` step and its
-  settlement as the step's core operations; it has no events of its own.
+- Endings record their terminal facts as their own events. Negotiation
+  records each answer (proposed terms, accept, decline) as a walker
+  `ChoicePayload` step and its settlement as the step's core operations; it
+  has no events of its own.
 - War Exhaustion records the canonical random-fallback candidate order and
   selected winner when deterministic title/Vision rules do not decide it.
 - Every command batch but Begin's opens with `CommandAccepted`, naming the

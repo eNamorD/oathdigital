@@ -1,6 +1,7 @@
 > **Note (2026-09-05): implementation form superseded.** Rules content here stays
 > authoritative; the code it describes (bespoke action procedures, power seams,
-> typed-fact vocabularies) is being replaced by the procedure-walker design.
+> typed-fact vocabularies) was replaced by the procedure-walker design, which
+> now runs every action.
 
 # Fixed all-Exile round endings
 
@@ -25,8 +26,9 @@ advisers, held relics, and deduplicated pawn/ruled site cards. Every Rest
 completion derives one immutable cleanup plan from that physical source set.
 Favor on denizens/edifices returns by printed suit,
 secrets from those cards and held relics return to the player, relic favor is
-left in place, and facedown board secrets flip faceup. Command handling and
-replay derive the same plan before validating and evolving `RestCompleted`.
+left in place, and facedown board secrets flip faceup. Rest runs as the Begin
+Rest and Finish Rest walker procedures. Finish Rest's cleanup step derives the
+plan when it runs and records it as that step's core operations.
 
 `PlayerSecretSummary` is derived rather than stored: available means faceup
 board secrets, facedown means facedown board secrets, committed means secrets

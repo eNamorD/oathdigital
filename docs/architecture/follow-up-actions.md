@@ -15,8 +15,9 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
 - `QueuedProcedure(actor, procedure, startArgs, source, kind)`
   (`model/GameState.scala`) is one queued entry. `kind` is `Run`, which the
   driver starts at once, or `Offer`, which asks its actor first. `source` is
-  the power that queued it, which the Game Log credits. `actor` is the one
-  place an off-turn actor will differ from the active player.
+  the power that queued it, which the Game Log credits. `actor` may differ
+  from the active player; that actor then owns the walk (see
+  [Off-turn actors](#off-turn-actors)).
 - `CurrentGameState.queue` is the queue, oldest first. It outlives walks and
   phases. `walkerEntry` is the entry the current walk was started from. It
   is walker scratch, which `WalkerCompleted` clears.
@@ -58,9 +59,9 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
 - Skip is an answer. `walkerTransition` writes `FollowUpSkipped(entry)`
   before `WalkerCompleted`. There is no Skip command and no service gate:
   the parked offer already holds back every other command.
-- `OathLifecycle.validateAct` skips its Act-phase check while `walkerEntry`
-  is set. A Special Envoy Travel that enters Rest still lets the next queued
-  Campaign start.
+- No procedure checks the phase. Every start is a queued entry, a menu pick
+  or a follow-up, and `QueuedStart` decides whether it starts. A Special
+  Envoy Travel that enters Rest still lets the next queued Campaign start.
 - The action boundary and the automatic End Wake and Finish Rest wait while
   anything is queued.
 
@@ -128,16 +129,14 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
 - **Hunting Party** (`powers/search/HuntingParty.scala`) queues a Campaign
   after a Search of the world deck. While it is selected, a discard pile
   warns "Hunting Party needs the world deck".
-- **Second Wind** (`powers/campaign/SecondWind.scala`) is an attacker's
-  battle plan. Once the Campaign is won, its `later` step at the root queues
-  a Travel and then a Campaign.
+- **Second Wind** (`powers/campaign/SecondWind.scala`) is a battle plan for
+  either side. Once its user wins the Campaign, its `later` step at the root
+  queues a Travel and then a Campaign.
   - The two entries are independent: skipping the Travel still offers the
     Campaign.
   - A plan's cost may be paid onto a card that already holds tokens, so the
     taken Campaign offers it again. A chain ends only when its cost cannot
     be paid.
-  - A defender is not offered it: a winning defender would be owed actions
-    off turn, which waits for the off-turn actor.
 
 ## Queueing another action
 
@@ -176,7 +175,7 @@ the entry's actor; a menu start still requires the turn's player.
 - Recover pays at `RecoverCost`.
 - The Campaign reason is the restriction's own text.
 - The offer is a walker decision, not a panel (walker-driven game loop, slice 1).
-- Second Wind is an attacker-only battle plan, not a start modifier.
+- Second Wind is a battle plan for either side, not a start modifier.
 - The warning hook is `Warned`, `ContributingPower.warning` and
   `OptionWarnings`.
 - There is no journal version bump.
