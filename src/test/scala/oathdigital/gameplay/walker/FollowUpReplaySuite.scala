@@ -1,6 +1,5 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.walker.DeltaMeaning.OperationApplied
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
@@ -26,7 +25,7 @@ class FollowUpReplaySuite extends munit.FunSuite:
       queue = entries.toVector))).state
 
   test("queueing appends to the back of the queue"):
-    val step = WalkerStepRecorded("0", DeltaRecorded(OperationApplied("queue")),
+    val step = WalkerStepRecorded("0", DeltaRecorded,
       Vector(QueueProcedure(travel)), Vector.empty)
     assertEquals(ProcedureWalker.applyRecorded(queued(campaign), step)
       .map(current(_).queue), Right(Vector(campaign, travel)))

@@ -190,7 +190,7 @@ private[gamelog] final class NoteLines(words: LogWords,
 
   private def effect(journal: LogJournal, run: Run, index: Int): Boolean =
     journal.event(index) match
-      case WalkerStepRecorded(_, _: WalkerStepPayload.DeltaRecorded, ops, _) =>
+      case WalkerStepRecorded(_, WalkerStepPayload.DeltaRecorded, ops, _) =>
         !ops.forall {
           case RecordPowerUse(_) => true
           case QueueProcedure(_, _) => true

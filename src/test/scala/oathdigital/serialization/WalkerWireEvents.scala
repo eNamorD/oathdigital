@@ -1,19 +1,17 @@
 package oathdigital.serialization
 
 import oathdigital.engine.RecordedEvent
-import oathdigital.gameplay.walker.{DeltaMeaning, WalkerStepPayload,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.Unwrap.accepted
 
 /** The recorded walker events and event streams the wire suites write and
   * read back. */
 object WalkerWireEvents:
-  /** The walker step at path "0" that records `operation` as applied, under
-    * the delta `label`. */
-  def recordedOperation(label: String, operation: CoreOperation): OathEvent =
-    WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
-      DeltaMeaning.OperationApplied(label)), Vector(operation), Vector.empty)
+  /** The walker step at path "0" that records `operation` as applied. */
+  def recordedOperation(operation: CoreOperation): OathEvent =
+    WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded,
+      Vector(operation), Vector.empty)
 
   /** `events` written as one stream of game `label`, numbered from 0. Fails
     * with the WireError if the codec refuses to write it. */

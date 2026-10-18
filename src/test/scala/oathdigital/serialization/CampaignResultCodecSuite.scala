@@ -26,7 +26,7 @@ class CampaignResultCodecSuite extends munit.FunSuite:
 
   test("a recorded Campaign result round trips through the wire for both kinds"):
     val events = Vector(conquest, raid, empty).map(result =>
-      recordedOperation("campaign", RecordCampaignResult(result)))
+      recordedOperation(RecordCampaignResult(result)))
     val encoded = encodedStreamThatRoundTrips("campaign-result", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("kind").str).toVector.distinct,
@@ -34,7 +34,7 @@ class CampaignResultCodecSuite extends munit.FunSuite:
 
   test("a malformed recorded result is a typed decode failure, not an exception"):
     val encoded = accepted(GameEventWire.encodeEvent("campaign-result", 0,
-      recordedOperation("campaign", RecordCampaignResult(conquest))))
+      recordedOperation(RecordCampaignResult(conquest))))
     val json = ujson.read(encoded)
     json("payload")("ops")(0)("result")("attackFaces") = ujson.Arr("not-a-face")
     assertEquals(GameEventWire.decode(json), Left(WireError.InvalidValue(
@@ -44,11 +44,11 @@ class CampaignResultCodecSuite extends munit.FunSuite:
   test("the sacrifice's worth round trips, and a record without it reads " +
       "one"):
     encodedStreamThatRoundTrips("campaign-result-worth", Vector(
-      recordedOperation("campaign",
-        RecordCampaignResult(conquest.copy(sacrificeWorth = 3)))))
+      recordedOperation(RecordCampaignResult(
+        conquest.copy(sacrificeWorth = 3)))))
     def encoded = ujson.read(accepted(GameEventWire.encodeEvent(
       "campaign-result", 0,
-      recordedOperation("campaign", RecordCampaignResult(conquest)))))
+      recordedOperation(RecordCampaignResult(conquest)))))
     val older = encoded
     older("payload")("ops")(0)("result").obj.remove("sacrificeWorth")
     assertEquals(GameEventWire.decode(older), GameEventWire.decode(encoded))
@@ -57,8 +57,7 @@ class CampaignResultCodecSuite extends munit.FunSuite:
     Some(OriginForce(SiteId("site:a"), atSite = 2, onBoard = 1)))
 
   test("a result with an origin's force round trips through the wire"):
-    val events = Vector(recordedOperation("campaign",
-      RecordCampaignResult(fromOrigin)))
+    val events = Vector(recordedOperation(RecordCampaignResult(fromOrigin)))
     val encoded = encodedStreamThatRoundTrips("campaign-origin", events)
     assertEquals(ujson.read(encoded).arr.head("payload")("ops")(0)(
       "result")("originForce")("atSite").num.toInt, 2)

@@ -21,8 +21,7 @@ class WalkerReplayGuardSuite extends munit.FunSuite:
     PositionedLocation(Location.RegionalDiscard(Region.Cradle), position))
 
   private def step(operation: CoreOperation) = WalkerStepRecorded("0",
-    DeltaRecorded(DeltaMeaning.OperationApplied("discard")), Vector(operation),
-    Vector.empty)
+    DeltaRecorded, Vector(operation), Vector.empty)
 
   test("a recorded discard with a stack position replays"):
     val replayed = ProcedureWalker.applyRecorded(OathState.Ready(held),

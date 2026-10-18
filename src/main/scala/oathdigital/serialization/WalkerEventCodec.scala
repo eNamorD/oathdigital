@@ -4,10 +4,7 @@ import scala.util.control.NonFatal
 
 import oathdigital.gameplay.walker.{ActionBoundaryRan, ChoicePayload,
   FollowUpSkipped, LogNoted, ProcedureDequeued, RollPayload,
-  WalkerCompleted, DeltaMeaning, WalkerParked, WalkerStepPayload,
-  WalkerStepRecorded}
-import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
-  OperationApplied, RelicAcquired, SupplySpent}
+  WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 
 /** Wire vocabulary for generic walker journal facts. */
@@ -88,8 +85,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
 
   private def encodeStepPayload(payload: WalkerStepPayload): ujson.Value =
     payload match
-      case WalkerStepPayload.DeltaRecorded(meaning) =>
-        ujson.Obj("kind" -> "delta", "meaning" -> encodeDeltaMeaning(meaning))
+      case WalkerStepPayload.DeltaRecorded => ujson.Obj("kind" -> "delta")
       case ChoicePayload(decisionId, answer, by) => ujson.Obj(
         "kind" -> "choice", "decisionId" -> decisionId,
         "payload" -> DecisionAnswerCodec.encode(answer),
@@ -106,8 +102,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
   private def decodeStepPayload(value: ujson.Value,
       path: String): Either[WireError, WalkerStepPayload] =
     value("kind").str match
-      case "delta" => decodeDeltaMeaning(value("meaning"), s"$path.meaning")
-        .map(WalkerStepPayload.DeltaRecorded.apply)
+      case "delta" => Right(WalkerStepPayload.DeltaRecorded)
       case "choice" => DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
         .map(ChoicePayload(value("decisionId").str, _,
           PlayerId(value("byPlayerId").str)))
@@ -270,39 +265,6 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
   private def decodeCount(value: ujson.Value, path: String)
       : Either[WireError, Int] = decodeSignedInt(value, path).flatMap(count =>
     Either.cond(count >= 0, count, InvalidValue(path, "must not be negative")))
-
-  private def encodeDeltaMeaning(meaning: DeltaMeaning): ujson.Value =
-    meaning match
-      case DicePoolModified(pool, delta) => ujson.Obj(
-        "kind" -> "dice-pool-modified", "pool" -> pool.value,
-        "delta" -> delta)
-      case SupplySpent(player, amount) => ujson.Obj(
-        "kind" -> "supply-spent", "playerId" -> player.value,
-        "amount" -> amount)
-      case RelicAcquired(player, relic, site) => ujson.Obj(
-        "kind" -> "relic-acquired", "playerId" -> player.value,
-        "relicId" -> relic.value, "siteId" -> site.value)
-      case OperationApplied(label) => ujson.Obj(
-        "kind" -> "operation-applied", "label" -> label)
-
-  private def decodeDeltaMeaning(value: ujson.Value,
-      path: String): Either[WireError, DeltaMeaning] = value("kind").str match
-    case "dice-pool-modified" =>
-      decodeSignedInt(value("delta"), s"$path.delta").map(delta =>
-        DicePoolModified(PoolKey(value("pool").str), delta))
-    case "supply-spent" =>
-      decodeSignedInt(value("amount"), s"$path.amount").flatMap { amount =>
-        if amount > 0 then Right(SupplySpent(
-          PlayerId(value("playerId").str), amount))
-        else Left(InvalidValue(s"$path.amount", "must be positive"))
-      }
-    case "relic-acquired" => Right(RelicAcquired(
-      PlayerId(value("playerId").str), RelicId(value("relicId").str),
-      SiteId(value("siteId").str)))
-    case "operation-applied" =>
-      Right(OperationApplied(value("label").str))
-    case other => Left(InvalidValue(s"$path.kind",
-      s"unknown walker delta meaning '$other'"))
 
   private def decodeStepRecorded(value: ujson.Value,
       path: String): Either[WireError, OathEvent] = try for

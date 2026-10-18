@@ -2,7 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning, RollPayload,
+import oathdigital.gameplay.walker.{ChoicePayload, RollPayload,
   WalkerCompleted, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
@@ -37,7 +37,7 @@ class GameLogRerollSuite extends munit.FunSuite:
       ChooseOneAnswer(answer), by), Vector.empty, Vector.empty))
 
   private def rerollStep: OathEvent = WalkerStepRecorded("reroll",
-    WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("reroll")),
+    WalkerStepPayload.DeltaRecorded,
     Vector(Reroll(pool, Vector(0, 1), Some(Vector(TwoShields, TwoShields)))),
     Vector.empty)
 

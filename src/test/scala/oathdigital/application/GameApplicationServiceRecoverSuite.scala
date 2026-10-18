@@ -7,10 +7,6 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
   WalkerStepRecorded}
 import oathdigital.gameplay.ModifierPlay
-import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
-import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
-  OperationApplied,
-  RelicAcquired, SupplySpent}
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
@@ -141,13 +137,6 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
         PositionedLocation(Location.Site(recoverSite)),
         PositionedLocation(Location.PlayArea(actor)),
         resultingOrientation = Some(Orientation.FaceDown), by = Some(actor))))
-    assertEquals((started.events ++ finished.events).collect {
-      case WalkerStepRecorded(_, DeltaRecorded(semantic), _, _)
-          if !semantic.isInstanceOf[OperationApplied] => semantic
-    }, Vector(
-      DicePoolModified(RecoverProcedure.recoverPool, 2),
-      SupplySpent(actor, 1),
-      RelicAcquired(actor, relic, recoverSite)))
 
   test("walker Continue answer and the roll it buys survive reload"):
     val dice = new Dice.CountingDefense(

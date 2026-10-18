@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, Location, ModifyDicePool, Move, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, LogNote, ProcedureRef, QueuedProcedure, RelicId, SiteId, SpendSupply, WalkerEvent}
+import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, LogNote, ProcedureRef, QueuedProcedure, WalkerEvent}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -10,38 +10,12 @@ import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptio
   */
 trait WalkerStepPayload extends Product with Serializable
 
-/** Semantic description of one executed delta node. Recorded operations are
-  * the replay authority; this value independently describes what happened for
-  * logs, projections, and audit consumers.
-  */
-sealed trait DeltaMeaning extends Product with Serializable
-object DeltaMeaning:
-  final case class DicePoolModified(pool: PoolKey, delta: Int)
-      extends DeltaMeaning
-  final case class SupplySpent(player: PlayerId, amount: Int)
-      extends DeltaMeaning
-  final case class RelicAcquired(player: PlayerId, relic: RelicId,
-      site: SiteId) extends DeltaMeaning
-  final case class OperationApplied(label: String) extends DeltaMeaning
-
-  /** What an executed batch means, for logs and projections: the single
-    * operations they name, or `fallback` for anything else. */
-  def of(ops: Vector[CoreOperation], fallback: String): DeltaMeaning =
-    ops match
-      case Vector(ModifyDicePool(pool, delta, _)) =>
-        DicePoolModified(pool, delta)
-      case Vector(SpendSupply(player, amount, _)) =>
-        SupplySpent(player, amount)
-      case Vector(Move(Piece.Card(relic: RelicId),
-          PositionedLocation(Location.Site(site), _, _),
-          PositionedLocation(Location.PlayArea(player), _, _), _, _)) =>
-        RelicAcquired(player, relic, site)
-      case _ => OperationApplied(fallback)
-
 object WalkerStepPayload:
-  /** Semantic fact for an executed delta node. */
-  final case class DeltaRecorded(meaning: DeltaMeaning)
-      extends WalkerStepPayload
+  /** Marks a step that executed a batch of operations, as opposed to a
+    * resolved choice or a submitted roll. It carries nothing: the step's
+    * `ops` are both the replay authority and the only description of what
+    * happened, and every reader works from them. */
+  case object DeltaRecorded extends WalkerStepPayload
 
 /** Records a resolved parked decision (Task 5 ruling 5.3). The step's `ops`
   * stay empty: appending the answer to `pending.answered` is a state write

@@ -22,7 +22,7 @@ enum Step:
     * For arranging a board real play would take too long to reach, never
     * for a rule under test.
     */
-  case Arrange(ops: Vector[CoreOperation], label: String = "arrange")
+  case Arrange(ops: Vector[CoreOperation])
   /** Starts `procedure` as `player`: picks its option from the parked phase
     * menu, or, on a table where no menu is parked, starts it through the
     * rules (walker-driven game loop design, slice 4, plan-time ruling 11).

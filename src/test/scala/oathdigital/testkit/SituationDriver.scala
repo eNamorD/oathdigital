@@ -8,7 +8,6 @@ import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.gameplay.walker.DeltaMeaning.OperationApplied
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.{WalkerDice, WalkerPowers,
   WalkerStepRecorded}
@@ -127,10 +126,9 @@ object SituationDriver:
       .toRight(s"no menu lists ${procedure.key}")
       .map(MenuPlay.picking(player, _))
 
-  private def arranging(ops: Vector[CoreOperation], label: String)
+  private def arranging(ops: Vector[CoreOperation])
       : WalkerStepRecorded =
-    WalkerStepRecorded("0", DeltaRecorded(OperationApplied(label)), ops,
-      Vector.empty)
+    WalkerStepRecorded("0", DeltaRecorded, ops, Vector.empty)
 
   /** Calls `OathRules` directly, accepting exactly the commands
     * `GameApplicationService.applyCommand` accepts and dispatching them the
@@ -161,8 +159,8 @@ object SituationDriver:
       case Step.Command(command) => transition(from.state, command)
         .left.map(_.toString).map(result => advanced(from, result.state,
           result.events, opening(command)))
-      case Step.Arrange(ops, label) =>
-        val event = arranging(ops, label)
+      case Step.Arrange(ops) =>
+        val event = arranging(ops)
         rules.evolve(from.state, event).left.map(_.toString)
           .map(advanced(from, _, Vector(event), Vector.empty))
       case Step.Start(player, procedure, args) =>
@@ -234,8 +232,8 @@ object SituationDriver:
           procedure.key)
         else picking(player, procedure, args).flatMap(command =>
           apply(from, Step.Command(command)))
-      case Step.Arrange(ops, label) =>
-        val event = arranging(ops, label)
+      case Step.Arrange(ops) =>
+        val event = arranging(ops)
         // A situation begun at a Table has no stream until its first record.
         val expected = if from.nextSequence == 0L then
           ExpectedStream.MustNotExist

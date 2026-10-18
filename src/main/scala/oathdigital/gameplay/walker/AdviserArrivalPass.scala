@@ -44,8 +44,7 @@ private[walker] object AdviserArrivalPass:
     ran.map { updated =>
       val step = Option.when(updated.executed.nonEmpty)(WalkerStepRecorded(
         nodeId = nodeId,
-        payload = WalkerStepPayload.DeltaRecorded(
-          DeltaMeaning.of(updated.executed, label)),
+        payload = WalkerStepPayload.DeltaRecorded,
         ops = updated.executed,
         contributions = Vector(power)))
       val note = followUp.note.build(NoteStates(updated.state,
@@ -56,4 +55,3 @@ private[walker] object AdviserArrivalPass:
     }
 
   /** The fallback name of a follow-up's step. */
-  private val label = "AdviserArrival"

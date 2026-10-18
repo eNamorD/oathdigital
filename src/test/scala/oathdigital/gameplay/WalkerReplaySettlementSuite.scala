@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.walker.{DeltaMeaning, ProcedureWalker,
-  WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerStepPayload,
+  WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Table}
 import oathdigital.testkit.Table.{p1, p2}
@@ -28,8 +28,7 @@ class WalkerReplaySettlementSuite extends munit.FunSuite:
 
   private def replay(pay: PayCost): ReadyGame = ProcedureWalker.applyRecorded(
     Ready(arranged), WalkerStepRecorded("0",
-      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("PayCost")),
-      Vector(pay),
+      WalkerStepPayload.DeltaRecorded, Vector(pay),
       Vector.empty)) match
     case Right(Ready(state)) => state
     case other => fail(s"the recorded payment must replay, got $other")
