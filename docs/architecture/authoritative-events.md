@@ -1,20 +1,13 @@
-> **PARTIALLY SUPERSEDED — replay/command/action-model parts changed under the
-> procedure-walker redesign**: replay applies recorded ops only (no evolve
-> re-derive); the commands are `Begin`, `ResolveWalker`, `RollWalker`, `Undo`,
-> `Redo`, and the consent commands (`application/GameCommands.scala`);
-> `PendingProcedure` became a `PendingTree` pointer; dice pools/roll outcomes
-> became state; `usedPowers` tracking stays. Storage/journal/domain-foundation
-> content here remains valid.
-
 # Authoritative domain events
 
 Status: accepted, reviewed August 2026.
 
 Commands are transient requests. Accepted gameplay emits domain events, and
-those events are the single durable game history. Deterministic event evolution
-reconstructs state. `EventReplayEngine` is generic replay machinery, not an
-alternative authority. Snapshots, if introduced, are discardable caches rebuilt
-from the stream.
+those events are the single durable game history. The application's
+`JournalFold` reconstructs state by folding every event through
+`OathRules.evolve`. `EventReplayEngine` (`engine`) is generic replay machinery
+used by tests, not an alternative authority. Snapshots, if introduced, are
+discardable caches rebuilt from the stream.
 
 ## Current event boundary
 
@@ -48,19 +41,20 @@ Envelopes carry no catalog reference; stored events that still contain a
 
 Events record accepted facts needed for deterministic replay:
 
-- Search, Recover, Campaign, Forge, Challenge, banners, minor actions, and
-  Visions record each answer as a walker `ChoicePayload` step and every other
-  step as recorded core operations, including Campaign's
-  `RecordCampaignResult`. Recover's and Campaign's rolls are `RollPayload`
-  steps marked `automatic`. None of these actions has events of its own.
+- Every action, Wake, Rest, Setup and every triggered procedure runs on the
+  procedure walker. Each answer is a walker `ChoicePayload` step and every
+  other step is recorded core operations, including Campaign's
+  `RecordCampaignResult`. A roll is a `RollPayload` step carrying its faces;
+  one the walker rolled itself is marked `automatic`. No action has events of
+  its own.
 - Catacombs records its relic placement and its payment as the operations of
   the one walker step its contribution produces, attributed to the power that
   produced it. Those payment and placement operations are internal composition
   values, not independently injectable `OathEvent` cases.
-- Endings record their terminal facts as their own events. Negotiation
-  records each answer (proposed terms, accept, decline) as a walker
-  `ChoicePayload` step and its settlement as the step's core operations; it
-  has no events of its own.
+- Negotiation records each answer (proposed terms, accept, decline) as a
+  `ChoicePayload` step and its settlement as that step's core operations.
+- State-based facts record themselves as their own events: bandit refill,
+  Usurper flip and victory, Vision victory, round end, and War Exhaustion.
 - War Exhaustion records the canonical random-fallback candidate order and
   selected winner when deterministic title/Vision rules do not decide it.
 - Every command batch but Begin's opens with `CommandAccepted`, naming the
@@ -71,9 +65,11 @@ Events record accepted facts needed for deterministic replay:
   or restores on a marker (undo design,
   `docs/superpowers/specs/2026-10-06-undo-design.md`).
 
-Replay never rerolls or redraws. It derives deterministic facts again and
-rejects tampering. Privileged events may contain hidden information and are not
-ordinary player projection data.
+Replay never rerolls, redraws or walks a procedure tree. It applies each walker
+step's recorded operations, answers and roll faces as they are. It recomputes
+only the state-based facts above (`StateBasedEvaluation.evolve`) and rejects a
+recorded fact that differs from the recomputed one. Privileged events may
+contain hidden information and are not ordinary player projection data.
 
 Reviewed pre-alpha fallback decisions are also authoritative facts.
 `IgnoredRulesRecorded` stores stable source identity, handler, action, timing,

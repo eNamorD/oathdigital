@@ -1,17 +1,10 @@
-> **PARTIALLY SUPERSEDED — replay/command/action-model parts changed under the
-> procedure-walker redesign**: replay applies recorded ops only (no evolve
-> re-derive); the commands are `Begin`, `ResolveWalker`, `RollWalker`, `Undo`,
-> `Redo`, and the consent commands (`application/GameCommands.scala`);
-> `PendingProcedure` became a `PendingTree` pointer; dice pools/roll outcomes
-> became state; `usedPowers` tracking stays. Storage/journal/domain-foundation
-> content here remains valid.
-
 # Event-store application service boundary
 
 `GameApplicationService` coordinates transient commands, deterministic rules,
 versioned event serialization, and durable storage. It loads the authoritative
-stream, decodes and replays it, handles exactly one command, encodes every
-emitted domain event, and requests one atomic append.
+stream, decodes it, replays it through `JournalFold`, handles exactly one
+command (`GameCommands.scala`), encodes every emitted domain event, and
+requests one atomic append.
 
 `EventStreamRepository` is deliberately storage-neutral. Records are serialized
 wire values, so an adapter does not depend on Scala event classes. A database

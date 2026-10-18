@@ -1,9 +1,6 @@
-> **Note (2026-09-19): ported to the procedure walker.** Campaign, Conquest and
-> Raid, now runs as `ActionRef.Campaign` on the generic walker. The legacy
-> `PendingProcedure` path, its seven commands, its seven events and the legacy
-> `pending` slot are deleted.
-
 # Campaign
+
+Design: [campaign walker design](../superpowers/specs/2026-09-19-campaign-walker-design.md)
 
 Campaign implements the Combined Rulebook and New Foundations procedure for
 Conquest against bandits or a player, and Raid against a co-located player. It
@@ -14,7 +11,9 @@ later choice is a parked walker decision answered with `ResolveWalker`.
 ## Procedure
 
 `CampaignProcedure` (`gameplay/actions/campaign/`) builds one tree in rulebook
-order. Its root window is `CampaignActionEligibility`.
+order. It opens with the modifier decision (`CampaignModifierSelection`),
+which asks nothing while no power selects there. The Campaign itself follows,
+under the window `CampaignActionEligibility`:
 
 ```
 Sequence(
@@ -91,9 +90,14 @@ result, and the sacrificed warbands right after the sacrifice.
   nothing, and the loop ends. A player defender owns the defender window. A bandit defender applies
   every cost-free plan of a site Bandits rule that no power makes unpayable, without choosing, and
   records each in a pool marker so a later window can read it. A facedown adviser is revealed when
-  it is used. The plans are `BattlePlan` powers registered through `BattlePlans`: `TitleDefensePlan`
-  (one defense die for an Oathkeeper, two for a Usurper), `Outriders` (ignore all skulls),
-  `BrassArmy` (a secret for four attack dice) and `Watchdog` (one defense die at a Cradle target).
+  it is used. Each plan is a `BattlePlan` power. Its `plan` returns a `CampaignPlanOffer`
+  (source, label, costs and effects) for the side asking, and the trait hooks it as an
+  `Offer` at that side's plan window. There are about 70: one per battle-plan card, plus
+  `TitleDefensePlan` (one defense die for an Oathkeeper, two for a Usurper), which no card
+  prints. `WalkerPowerCatalog` registers them in groups: `BattlePlans`, `SimplePlans`,
+  `PlanRules`, `PlanRestrictions` and `PlanRewrites`. `CampaignPlans` holds what the plan
+  window and the plans share: who uses a plan, how its source is named in a decision, and
+  the order the offers are listed in.
   A plan its user can pay for may carry a warning (`CampaignPlanOffer.warning`), shown in the
   option's warning state while it stays choosable (Zealots, whose condition fails).
 - **Attack.** The roll is automatic. A skull removes one force warband and its two
@@ -140,12 +144,14 @@ and a `Distribute` with `minTotal = 0` and `maxTotal = survivors` for several. P
 survivors move from the board onto the targets. Unplaced survivors stay on the
 board. The decision is omitted when nothing survives.
 
-**Raid resolution.** In the printed order, as one recorded batch: targeted faceup
-relics and banners transfer; People's Favor returns one unit at a time to the
-least-filled, leftmost-on-tie favor bank; the exact number of Darkest Secret
-resources burns; ordinary facedown advisers append to the Raid site's next-region
-discard, facedown; the Conspiracy returns to the box; facedown relics are set aside
-for the Chronicle; half the defender's favor, rounded down, burns. Half the
+**Raid resolution.** In the printed order, in the `CampaignRaidTransfer` window.
+First the takes: targeted faceup relics, then banners. A banner's resources
+leave with it: People's Favor returns one unit at a time to the least-filled,
+leftmost-on-tie favor bank, and the exact number of Darkest Secret resources
+burns. Then the consequences, in their own `CampaignRaidConsequences` window:
+ordinary facedown advisers go facedown on the next-region discard, facedown
+relics are set aside for the Chronicle, half the defender's favor, rounded
+down, burns, and a facedown Conspiracy returns to the box. Half the
 defender's board warbands, rounded down, died in the losses. The attacker then
 answers `campaign.relocation`, a choice of every other in-play site, and the
 defender's pawn moves. This relocation is not Travel.
@@ -183,8 +189,8 @@ receives the durable recipient decision before normal Act controls resume.
 
 Unsupported handlers are ignored, not blocking: the Mountain and Plains Campaign
 effects and the unsupported Raid and player-defender powers do not stop a Campaign.
-Bag of Siegeworks, Weeping Banner and Peace Envoy, once listed here, are battle
-plans now. The start records what the
+Bag of Siegeworks, Weeping Banner and Peace Envoy are battle plans. The start
+records what the
 reviewed power catalog lists at the Campaign modifier window through
 `IgnoredRulesRecorded` under `ActionKind.Campaign`. Today that list is empty:
 Bag of Siegeworks is a player-selected plan at the battle-plan window, and the
@@ -194,33 +200,33 @@ mechanics from rules text.
 ## Visibility
 
 The defender's plan decision is shown only to the defender. The attacker and every
-other viewer see the generic waiting notice. Dice are public, so the last Campaign's
-result is public: both dice sets, both totals, the victor and the targets, drawn for
-every viewer. A Raid's targets are a pawn, faceup relics and banners. Hidden
-discarded identities and the relocation controls are never projected to anyone but
-the deciding player. The panels are the generic walker panels for `ChooseOne`,
+other viewer see the generic waiting notice. Dice are public. A decision about a roll
+draws that roll beside it: the attack roll at the sacrifice, the defense roll at placement
+and relocation. The last Campaign's result stays in state as `lastCampaignResult`, which
+Keep, Herald and Sneak Attack read; no panel draws it. A Raid's targets are a pawn,
+faceup relics and banners. Hidden discarded identities and the relocation controls are
+never projected to anyone but the deciding player. The panels are the generic walker panels for `ChooseOne`,
 `ChooseMany`, `ChooseAmount` and `Distribute`.
 
 ## Journal
 
 Each answer is a `WalkerStepRecorded` carrying a `ChoicePayload`. Each automatic roll
 is a `RollPayload` with `automatic = true`, which replay applies without asking the
-dice source. The recorded result carries the key `attackerWins`, so a journal recorded
-before that name cannot be read. Every other step is a recorded operation batch, including
+dice source. The recorded result carries the key `attackerWins`. Every other step is a recorded operation batch, including
 `RecordCampaignResult`. A plan's payment is recorded as the requested `PayCost`, and replay
-settles it again when its payer is not the active player. The seven legacy Campaign events
-no longer exist, and journals are forward-only.
+settles it again when its payer is not the active player. Campaign has no events
+of its own.
 
-## Rule changes from the legacy Campaign
+## Scope
 
-The first-game gates (exile-only roles, unaltered Foundations, inactive legacies) do
-not exist here; the audit of the rules they stood for is deferred. There is no
-cancel after the start. An unsupported handler no longer blocks. A plan window
-finishes by itself when no plan is left.
+Campaign has no first-game gates: it does not check roles, Foundation faces or
+legacies, and the audit of the rules such gates would stand for is deferred.
+There is no cancel after the start. An unsupported handler does not block. A
+plan window finishes by itself when no plan is left.
 
 ## Deferred
 
-- The first-game rule audit behind the dropped gates.
+- The first-game rule audit (roles, Foundation faces, legacies).
 - Further optional attacker, defender and deterministic bandit plan families,
   non-deterministic loss choices, and the additional Raid, victory, defeat and
   `At End` handlers. The timing windows exist and no behavior is inferred for them.

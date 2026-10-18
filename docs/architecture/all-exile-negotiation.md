@@ -1,8 +1,6 @@
-> **Note (2026-09-19): ported to the procedure walker.** Negotiation now runs as
-> `ActionRef.Negotiation` on the generic walker. The legacy `PendingProcedure`
-> path, its four commands and its five events are deleted.
-
 # Negotiation
+
+Design: [negotiation walker design](../superpowers/specs/2026-09-19-negotiation-walker-design.md)
 
 Negotiation implements the Combined Rulebook page 27 and New Foundations page 15 procedure. It is a persistent 0-Supply minor action started by the active player with one or more co-located players, and it takes no start selection.
 
@@ -48,7 +46,7 @@ Owners get the full deal with editing inputs, computed from their own bounds. Ev
 
 ## Journal
 
-Each answer is a `WalkerStepRecorded` carrying a `ChoicePayload`. The five legacy Negotiation events no longer exist, and journals are forward-only.
+Each answer is a `WalkerStepRecorded` carrying a `ChoicePayload`. Negotiation has no events of its own.
 
 ## Deferred
 

@@ -1,40 +1,59 @@
-> **Note (2026-09-05): implementation form superseded.** Rules content here stays
-> authoritative; the code it describes (bespoke action procedures, power seams,
-> typed-fact vocabularies) was replaced by the procedure-walker design, which
-> now runs every action.
-
 # Bounded banners and Challenge
+
+Design: [challenge walker design](../superpowers/specs/2026-09-19-challenge-walker-design.md)
 
 This slice implements Combined Rulebook pp. 26 and 32 and New Foundations
 pp. 12 and 15 for the fixed first-game banner faces: Mob and Wandering Flame.
-The typed face identities remain in state, but altered faces and mutable
-Foundation selection are explicit unsupported boundaries.
+The face identities are typed state. The Grand Council and Festival faces have
+no implemented power: `RuleSourceIndex` lists their handler ids, and they are
+ignored and recorded like any other unimplemented power.
 
-`BannerRules` owns holder/resource lookup, faceup-only comparison inputs,
-least-stocked favor banks and sites, and ordered resource distribution. Mob
-Challenge and Campaign Raid share the deterministic one-at-a-time favor helper,
-including the printed leftmost tied-bank rule. Only Wandering Flame site ties
-create owner-scoped decisions. The aggregate never derives behavior from
-component `rulesText`.
+`BannerRules` owns holder and resource lookup, the faceup-only comparison
+input (favor, or faceup secrets only), least-stocked favor banks and sites,
+and the one-at-a-time favor return. The People's Favor ribbon, Campaign Raid
+and Conspiracy share that favor return (`raidFavorReturn`), including the
+printed leftmost tied-bank rule. Only Wandering Flame site ties create a
+player decision. Nothing derives behaviour from component `rulesText`.
 
-Challenge begins as a normal Act major action and records the prior holder,
-prior resources, exact 1-Supply cost, and any forced ribbon prefix. Each tie
-choice is an authoritative event. The old banner holder and resources remain
-unchanged until the ribbon is complete and the challenger supplies a finite
-replacement amount strictly greater than the prior amount. Completion then
-applies the ribbon movements, resource payment, holder transfer, and new banner
-resources atomically. Replay recalculates eligibility, forced distributions,
-tie legality, payment, and every recorded terminal fact.
+## Challenge
 
-The Mob and Wandering Flame resource-placement powers are typed 0-Supply minor
-actions. They require the active holder, a positive finite amount, and use only
-favor or faceup secrets from that player's board. Altered faces, roles outside
-the bounded first-game Exile state, active legacies, and changed handler
-vocabularies fail through `UnsupportedBannerState`.
+Challenge is a normal Act major action and runs as the `ChallengeProcedure`
+walker tree. Its start gates refuse any face other than Mob and Wandering
+Flame (`UnsupportedBannerState`) and a start with no legal banner. A banner is
+legal when the actor does not hold it, its holder (if any) shares the actor's
+site, and the actor has strictly more relevant faceup resources than the
+banner holds.
+
+The walk opens with the modifier decision, spends exactly 1 Supply, then asks
+for the banner and for a replacement amount strictly greater than the prior
+amount. Both answers come before any resource moves. The ribbon then returns
+the banner's resources (`ChallengeRibbon`):
+
+- People's Favor returns every favor to the least-favor banks, leftmost first.
+- Darkest Secret first gives the previous holder their retained half, then
+  places the rest on the least-stocked sites one pass at a time. When fewer
+  secrets remain than tied sites, the challenger picks which sites.
+
+Last, the challenger pays the amount onto the banner and takes it by a
+required `Take`. Each answer is a recorded walker step and every effect is
+recorded core operations, so replay applies them without re-deriving them.
+
+## Banner resources and face powers
+
+Place Banner Resource (`PlaceBannerResourceProcedure`) is a 0-Supply minor
+action for a banner's holder. It moves a positive amount of favor or faceup
+secrets from the holder's own board onto the banner.
+
+The Mob face is a contribution (`PeoplesFavorMob`): when its holder plays a
+card to a site, they may first discard a card there. The Wandering Flame face
+has two free, unlimited actions (`WanderingFlameMove`, `WanderingFlamePlace`):
+move the pawn to another site with a secret on it, or place a faceup secret on
+the pawn's site. `BannerFacePowers` registers them.
+
+## Visibility
 
 Banner faces, holders, and resource totals are public projections. Challenge
-decisions, their legal bank/site choices, replacement bounds, and controls are
-visible only to the authenticated decision owner. Authenticated HTTP intents do
-not accept a player identifier; development commands retain the loopback actor
-selector check. The Scala.js client reuses board targeting for declaration and
-narrow bank/site/amount controls for the pending procedure.
+decisions, their legal bank and site choices, and the amount bounds are
+visible only to the decision owner. Authenticated HTTP intents do not accept a
+player identifier; development commands keep the loopback actor selector
+check.

@@ -1,9 +1,3 @@
-> **PARTIALLY SUPERSEDED — module layout changed under the procedure-walker
-> redesign**: each action and phase is now a declared `Operation` tree that the
-> generic walker (`gameplay/walker/`) runs, and powers contribute at power
-> windows. Ownership and dependency-direction principles remain valid; some
-> per-module detail below predates the walker.
-
 # Codebase structure
 
 Oath Digital is a modular monolith. Packages are ownership boundaries inside
@@ -31,7 +25,9 @@ model/engine -> no outer adapter packages
   production `ExecutableCatalog` are in `gameplay/cards/NewFoundations.scala`.
 - `oathdigital.engine` owns generic event evolution and replay machinery.
 - `oathdigital.gameplay` owns legality, procedures, and deterministic
-  evolution over the model's events and operations. `actions`, `phases`, and `setup` group cohesive behavior.
+  evolution over the model's events and operations. `walker` runs every
+  procedure's `Operation` tree. `actions`, `phases` and `setup` hold the
+  procedures, and `powers` holds the card powers that contribute to them.
 - `oathdigital.application` owns orchestration and ports. It loads/replays,
   obtains server-owned random outcomes, appends events, authorizes scopes, maps
   intents, and builds redacted projections.
@@ -45,15 +41,16 @@ model/engine -> no outer adapter packages
 ## Grouping and size
 
 Group code by one reason to change. Keep a procedure and its legality/evolution
-together; group small power handlers by action or timing window. Do not create
-one file per case class, card, or event. Split orchestration, codecs, projection,
-or rendering when distinct responsibilities emerge.
+together. Do not create one file per case class or event. Split orchestration,
+codecs, projection, or rendering when distinct responsibilities emerge.
 
-Individual powers declare focused inspectors and callbacks through shared
-handler factories. Do not add per-power `PowerHandler` subclasses. Generic
-factories own routing metadata and mismatch plumbing; action/phase modules own
-procedure lifecycle, while power definitions own only applicability and
-power-specific mechanics.
+Most cards with an implemented power have their own file under
+`gameplay/powers/`, grouped by timing (`action`, `rest`, `wake`, `economy` and
+so on), with the typed card object and the power object side by side. Cards
+with no implemented power share the `catalog/holding/` files by kind. A power
+owns only applicability and power-specific mechanics: the contributions it
+makes at power windows, or a phase power's `usable` check and `build` tree.
+The walker owns procedure lifecycle, window folding and recording.
 
 Production Scala files must remain at or below 800 lines. Around 500 meaningful
 lines is a cohesion review point, not an automatic target. The deterministic
@@ -80,8 +77,9 @@ python3 scripts/check-architecture.py
 ## Shared protocol and adapter ports
 
 Shared protocol types are wire DTOs, not domain authority. The server derives
-the actor from a development selector or authenticated membership, maps the
-actorless intent to `application.GameCommand`, and invokes gameplay. Projection
+the actor from a development selector, an authenticated membership or a
+trusted-alpha seat cookie, maps the actorless intent to
+`application.GameCommand`, and invokes gameplay. Projection
 DTOs are assembled by application collaborators and decoded by the frontend.
 
 Application-owned interfaces include `EventStreamRepository`,
@@ -94,23 +92,52 @@ gameplay.
 
 ### Action or phase
 
-1. Add the domain command/event/pending state in the gameplay-owned vocabulary.
-2. Implement legality and evolution in the cohesive `actions` or `phases`
-   module and route it through `OathRules`.
-3. If randomness is required, add or reuse an application-owned port and record
-   the prepared result in an event.
-4. Map the actorless shared intent in application code.
-5. Project legal controls by calling gameplay APIs; render only those controls.
-6. Add command, replay, redaction, codec, route, and Scala.js tests as relevant.
+1. Add a case object to `ActionRef` in `model/ProcedureRef.scala` and list it
+   in `ActionRef.all`. A phase change is a `PhaseTransitionRef` instead, and a
+   procedure the engine starts on its own is a `TriggeredProcedureRef`.
+2. Write the procedure object in its `actions` or `phases` package, as
+   `ForgeProcedure` does. Its `build` and `rebuild` take the catalog, the
+   state and the actor, and return the `Operation` tree (`Sequence`,
+   `Decide`, `BuildOps`, `Branch`, `Repeat` and the other model nodes).
+   `build` runs the start gates. `rebuild` reconstructs a started tree from
+   state without them. Read targets from state, not from the tree's closure.
+   Put a `PowerWindow` on each node where powers may contribute.
+3. Register both functions in `WalkerProcedureRegistry.entries`. The `Entry`
+   also names the `ActionKind` whose ignored rules the start records, the
+   modifier window, and the optional roll, start-fact and pricing hooks.
+4. Offer it. An Act action joins `ActOffers.all` with its label, and
+   `ActOffers.reason` words why it cannot start. `PhaseMenu` builds the menu
+   from these offers and prices each option.
+5. Add no command or event. The generic `ResolveWalker` answers every parked
+   decision, `RollWalker` rolls a parked `Roll` through an application-owned
+   port, and each step is journaled as a `WalkerStepRecorded`.
+6. Write the Game Log lines as notes. Declare the keys in a `NoteSet` named
+   by `ProcedureNotes.id`, expose them as `noteKeys`, and list them in
+   `ProcedureNotes`. Add the procedure's entry to `ProcedureLogs` in
+   `application/gamelog/ProcedureLog.scala`: its tag,
+   `ActionLineSource.Notes()`, and the decisions its lines already tell.
+7. Add build, answer, replay, Game Log and projection tests as relevant. The
+   projection needs no new code: `WalkerDecisionProjector` shows the parked
+   decision.
 
 ### Power
 
-1. Verify the catalog handler ID and source.
-2. Ensure `RuleSourceIndex` exposes the factual source and inventory coverage
-   includes the handler.
-3. Register explicit typed behavior in the owning action/timing registry.
-4. Reject relevant unsupported handlers; never infer from labels or rules text.
-5. Test activation, ordering, replay, and inactive/facedown behavior.
+1. Verify the catalog handler ID and its `RuleSourceIndex` source.
+2. Move the card object out of `catalog/holding/` into the power's file. Keep
+   its `PrintedPower`, and keep the card listed in
+   `gameplay/cards/NewFoundations.scala`.
+3. Write the power. A `ContributingPower` declares `contributions` by
+   `PowerWindow`: `Transform`, `Restriction`, `OptionRestriction`, `Offer` or
+   `OfferReroll`. A `PhasePower` is a WAKE, ACTION or REST power used as an
+   action.
+4. Register it in `WalkerPowerCatalog` or `PhasePowerCatalog`, or both.
+   Registration marks the handler implemented (`PowerImplementationStatus`).
+5. Declare its Game Log keys as `noteKeys`. `DeclaredNotes` refuses a note
+   no power declared.
+6. Never infer mechanics from labels or rules text. An applicable handler
+   with no registered power is ignored and recorded through
+   `IgnoredRulesRecorded`, not blocking.
+7. Test activation, ordering, replay, and inactive/facedown behavior.
 
 ### Projection
 

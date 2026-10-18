@@ -36,12 +36,10 @@ import oathdigital.gameplay.walker.WalkerPowers
   * until an action declares `PowerWindow.WakeTakeWealth` (batch-1 Task 7),
   * since discovery keeps only powers that hook the window being gathered.
   * League Treaty is inert until Finish Rest walks its `RestReturnFavor` window.
-  * Silver Tongue's, Insomnia's and Assassin's adviser limits are inert until
-  * Search walks `SearchPlayAdviser`. Lost Tapestry's and Pied Piper's
-  * exemptions are inert until Search walks `SearchPlayAdviser` too. Family
-  * Wagon's lifted limit and note are inert until Search walks
-  * `SearchPlayAdviser` too, and its bury runs from the walker's arrival
-  * pass.
+  * Silver Tongue's, Insomnia's and Assassin's adviser limits, Lost
+  * Tapestry's and Pied Piper's exemptions, and Family Wagon's lifted limit
+  * and note are inert until a card play walks `SearchPlayAdviser`. Family
+  * Wagon's bury runs from the walker's arrival pass.
   * Conspiracy's power carries no catalog id (a Vision has no catalog powers),
   * so like Take Wealth's limit it is always present and inert until a card
   * play runs `ActionCardPlayedFaceup` for Conspiracy.

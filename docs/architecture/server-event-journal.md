@@ -1,11 +1,3 @@
-> **PARTIALLY SUPERSEDED — replay/command/action-model parts changed under the
-> procedure-walker redesign**: replay applies recorded ops only (no evolve
-> re-derive); the commands are `Begin`, `ResolveWalker`, `RollWalker`, `Undo`,
-> `Redo`, and the consent commands (`application/GameCommands.scala`);
-> `PendingProcedure` became a `PendingTree` pointer; dice pools/roll outcomes
-> became state; `usedPowers` tracking stays. Storage/journal/domain-foundation
-> content here remains valid.
-
 # Server-authoritative event journal
 
 Status: implemented through database schema v4 and event format v1.
@@ -13,8 +5,10 @@ Status: implemented through database schema v4 and event format v1.
 ## Authority boundary
 
 The JVM server is the sole production command authority. Network and UI inputs
-are transient requests. `GameApplicationService` loads and replays the
-authoritative stream, validates one typed command through `OathRules`, and
+are transient requests. `GameApplicationService` loads the authoritative
+stream, replays it through `JournalFold`, validates one typed command
+(`Begin`, `ResolveWalker`, `RollWalker`, `Undo`, `Redo` or a consent command)
+through `OathRules`, and
 appends only emitted versioned domain-event envelopes. Clients never append
 events or decide that a command was accepted.
 
@@ -126,8 +120,7 @@ The optional `DevelopmentIdentityShim` is a separately named test/manual
 authenticator for the `X-Oath-Dev-User` header. Configuration returns no shim
 unless explicitly enabled, and enabling it revalidates that the already
 validated bind host is `127.0.0.1`, `localhost`, or `::1`. It is not an OIDC or
-production session path. Existing `/api/dev` routes are not changed in this
-slice.
+production session path.
 
 The separately mountable authenticated game transport is:
 
@@ -135,11 +128,15 @@ The separately mountable authenticated game transport is:
 - `POST /api/authenticated/first-games/{gameId}/commands`; and
 - `POST /api/authenticated/first-games/{gameId}/bootstrap`.
 
-`OathServer` mounts this transport only when both
-`oathdigital.sessionCookieName` and `oathdigital.publicOrigin` are explicitly
-configured. Without both, only the existing development transport is mounted;
-partial configuration fails startup. The server remains loopback-only in this
-slice even when authenticated routes are mounted.
+In development mode, `OathServer` mounts this transport only when both
+`--session-cookie-name` and `--authenticated-public-origin` are configured
+(or `OATH_SESSION_COOKIE_NAME` and `OATH_AUTHENTICATED_PUBLIC_ORIGIN`).
+Without both, only the existing development transport is mounted; partial
+configuration fails startup. Development mode is loopback-only even when
+authenticated routes are mounted. Trusted-alpha mode ignores both options and
+serves seat routes instead; hosting it is covered in
+[quick-start.md](../operations/quick-start.md) and
+[configuration.md](../operations/configuration.md).
 
 Every operation authenticates before membership lookup. The HTTP authenticator
 accepts only a 43-128 character base64url-shaped raw session cookie, hashes it
@@ -164,11 +161,12 @@ game resource. Its participant list must exactly match every provisioned
 The request selects only participant order, lineage, color, and first player.
 The server derives every hidden site, deck, denizen, and relic ordering from the
 executable catalog (built into the server) and creates the event stream once. The current membership
-model deliberately does not let the owner also occupy a player seat. The
-existing `/api/dev` API and bootstrap creation remain unchanged.
+model deliberately does not let the owner also occupy a player seat.
 
-This slice deliberately has no login, logout, session issuance, cookie-setting,
-OIDC redirect/callback, or refresh endpoint. Tests provision digests directly.
+The authenticated transport has no login, logout, session issuance,
+cookie-setting, OIDC redirect/callback, or refresh endpoint. Tests provision
+digests directly. Trusted-alpha seat cookies belong to the separate seat
+routes.
 Cookie flags and lifecycle belong to the later issuance boundary.
 
 ## Run and shutdown
@@ -179,14 +177,14 @@ Start the server with a database path:
 ./sbtw 'runMain oathdigital.server.OathServer --database-path var/oathdigital'
 ```
 
-The default bind address is `127.0.0.1:8080`; override it with JVM properties
-`oathdigital.host` and `oathdigital.port`. HSQLDB creates several files using
+The default bind address is `127.0.0.1:8080`; override it with `--host` and
+`--port` (or `OATH_HOST` and `OATH_PORT`). HSQLDB creates several files using
 the supplied path prefix. Use a durable local directory in production.
 
 For seeded-session testing, configure both
-`oathdigital.sessionCookieName=oath_session` and an exact origin such as
-`oathdigital.publicOrigin=http://127.0.0.1:8080`. This does not issue a session
-or relax the loopback binding gate.
+`--session-cookie-name oath_session` and an exact origin such as
+`--authenticated-public-origin http://127.0.0.1:8080`. This does not issue a
+session or relax the loopback binding gate.
 
 Akka Coordinated Shutdown first unbinds HTTP and then closes the application
 runtime. `HsqldbDatabaseOwner` owns one Hikari datasource and Slick database,
@@ -230,7 +228,7 @@ It returns raw authoritative envelopes and warns that hidden outcomes may be
 present. It is not mounted by authenticated routes and its data never enters an
 ordinary game projection.
 
-Games are no longer created through this loopback API. The development start
+Games are not created through this loopback API. The development start
 page creates them the same way trusted-alpha does, through `POST /games`
 (`TrustedSeatRoutes`), which derives the hidden plan from a random Chronicle
 and shuffled seating (`GeneratedFirstGamePlanFactory`) and submits it through
@@ -249,9 +247,9 @@ positions must be non-negative JSON-safe integers.
 
 Successful POST and GET responses share the player-scoped projection. It never
 contains the authoritative event stream, relic shuffle
-order, world-deck order, or another player's adviser alternatives. The private
-adviser list is populated only when the selected player is the active adviser
-chooser. This is privacy shaping for development, not a security boundary.
+order, world-deck order, or another player's private decision options: a
+parked walker decision's options are projected only to its owner. This is
+privacy shaping for development, not a security boundary.
 
 Malformed JSON is `400`, missing streams are `404`, stale client/repository
 position conflicts and duplicate creation are `409`, and domain command
@@ -270,8 +268,9 @@ Open `http://127.0.0.1:8080/`. The server serves `frontend/index.html`, styles,
 and the generated Scala.js files from `frontend/`, so no development CORS
 permission is required.
 
-Because these routes are unauthenticated, `OathServer` refuses to install them
-on anything except `127.0.0.1`, `localhost`, or `::1`; wildcard and non-loopback
-host overrides fail startup. Real authentication, authorization, game
-membership checks, and a production transport are available only through the
-separately mounted authenticated routes; `/api/dev` remains loopback-only.
+Because these routes are unauthenticated, development mode refuses any host
+except `127.0.0.1`, `localhost`, or `::1`; wildcard and non-loopback host
+overrides fail startup. Trusted-alpha mode never mounts `/api/dev`. For hosting
+beyond loopback, see [quick-start.md](../operations/quick-start.md),
+[configuration.md](../operations/configuration.md) and
+[network-and-browser.md](../operations/network-and-browser.md).

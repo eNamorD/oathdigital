@@ -1,195 +1,177 @@
-> **OUTDATED — engine redesign superseded.** The forward architecture is the
-> procedure-walker design: actions become `Operation` trees, a generic walker
-> executes them, powers are contributors (`Transform`/`Restriction`), replay
-> applies recorded ops only. This file is a historical record of the
-> pre-walker design/code.
+# Power resolution
 
-# Typed rule resolution
+Every card power that runs is a typed Scala object. Catalog `rulesText` is
+documentation and is never executed. Gameplay code must not read `rulesText`
+or printed power `.text`; `scripts/check-architecture.py` enforces this.
 
-Oath Digital executes component powers through explicit typed Scala behavior.
-Catalog handler IDs select registered behavior; catalog `rulesText` is
-documentation and is never an executable language.
+Design history: [powers design](../superpowers/specs/2026-09-20-powers-design.md),
+[global operation restrictions](../superpowers/specs/2026-09-30-global-operation-restrictions-design.md),
+[operation rewrite](../superpowers/specs/2026-10-09-operation-rewrite-design.md),
+[consent system](../superpowers/specs/2026-10-08-consent-system-design.md)
+and [automatic power consent](../superpowers/specs/2026-10-15-automatic-power-consent-design.md).
 
-## Facts, inventory, and activation
+## Sources and access
 
-`RuleSourceIndex` is the factual inventory for the current game. It emits
-stable `RuleSourceRef` identities for sites, site cards and edifice faces,
-advisers, relics, banners, Foundations, legacies, and game rules together with
-their declared handler IDs and state.
+`RuleSourceIndex.enumerate` lists the factual sources in a `ReadyGame`: site
+cards and edifice faces, advisers, relics, banners, Foundations, legacies and
+game rules. Each `IndexedRuleSource` carries a stable `RuleSourceRef` and the
+power ids printed on it. `CatalogHandlerInventory.handlerIds` is the full
+power id vocabulary of a catalog.
 
-`CatalogHandlerInventory` independently enumerates the complete catalog
-handler vocabulary (`handlerIds`). Bounded modules classify the handlers they
-reach through explicit registries and exact-ID sets.
+`PowerAccess` is the rulebook's access rule. A player may use a power on a
+card at their pawn's site, at a site they rule, or in their play area. A
+modifier may make the actor act as if their pawn stood at another site for
+the rest of the action. Every contribution's `applicable` and every phase
+power reads this one rule.
 
-A command/query chooses which factual sources are active and relevant. Facedown,
-remote, inaccessible, or wrong-window sources remain factual but are activated
-only when the printed rule permits it. Relevant missing behavior produces a
-typed unsupported violation with handler and source identity.
+## Kinds of power
 
-## Registries and ordering
+There are three kinds:
 
-`model/RuleSources.scala` defines the shared source/activation/query/outcome
-vocabulary, and `gameplay/RuleResolution.scala` holds the registry and
-deterministic ordering. Small generic modifiers use explicit registries.
-Action-specific systems may own narrower registries:
-Campaign plans author side/window-scoped options in
-`gameplay/actions/campaign/CampaignPlans.scala`; other bounded actions use exact-ID
-classifications beside their rule modules.
+- A `ContributingPower` (`gameplay/powerresolver/ContributingPower.scala`)
+  hooks power windows inside a walked tree. `WalkerPowerCatalog.default`
+  lists the production ones.
+- A `PhasePower` (`gameplay/powerresolver/PhasePower.scala`) is a WAKE,
+  ACTION or REST power a player uses as an action from the phase menu. Its
+  `build` returns the tree the walker runs. The engine checks access,
+  once-per-turn use and the cost. `PhasePowerCatalog.default` lists them.
+- A `PrintedRule` (`gameplay/operations/PrintedRule.scala`) is a printed
+  power enforced as an operation restriction, with no walker or phase power:
+  the Hall of Ministers, Ancient Bloodline and the Grand Scepter.
+  `OperationRestrictions.printedRules` lists them.
 
-Order is explicit: priority, stable source key, then handler ID unless the
-owning procedure defines a stricter printed order.
+Power code lives under `gameplay/powers/`, grouped by action or timing
+(`search/`, `campaign/`, `cardplay/`, `rest/`, and so on), never one package
+per card.
 
-Terrain travel no longer runs through a rule registry (Phase 4): the
-travel path was cost-only with zero core-operation coupling, so it migrated
-onto power windows. Terrain site powers under
-`gameplay/powers/travel/TravelCostWindow.scala` declare their typed terrain
-kind, and each kind owns its single canonical cost fact (Coast replaces with 1,
-Island adds 2, Mountain adds 1). The window fold computes the route (coast
-route, Island/Mountain destination modifiers) from those facts. A generic
-`SuppressionRegistry` is the registered ignore surface for future multi-power
-windows: coast powers register "on a coast route I ignore Island/Mountain/Pass",
-wiring tests exercise it with real ids, and today's one-terrain-power-per-site
-fold already implements the ignore in its coast-route branch. Narrow Pass is a
-power holding a restriction body evaluated by Travel legality against a
-simulated pawn move; the old registry is deleted, and Wake take-wealth rules
-live under `gameplay/phases/TakeWealthRules.scala`.
+## Windows and contributions
 
-Typed outcomes may allow or block, or report an unsupported relevant handler.
-They are not generic scripts; reserved effect forms reject until both a
-registered handler and a window-specific executor exist. The retired
-`ModifyCost`/`RequireDecision`/`PostActionEffect` outcome forms were removed
-with the travel registry path in Phase 4 — cost modification now runs through
-typed power contributions instead of typed-rule outcomes.
+A tree node may carry a `PowerWindow`. When the walker reaches the node,
+`WalkerPowerGather.applyWindow` gathers the window's contributions with
+`ContributionCollector.gather`:
 
-## Commands, projection, and replay
+1. `PowerWindowIndex` finds the powers whose `contributions` name the window.
+2. Each power's `applicable` is asked with its `PowerCtx`.
+3. A power whose use a power-use restriction refuses keeps only its offers
+   and rerolls, which its host shows as withheld.
+4. Powers that another power `ignores` are dropped.
+5. The rest are ordered by their earliest `FoldPhase`, then by
+   `ContributingPower.sortKey`: priority, the source's stable key, then the
+   power id.
 
-A phase menu prices and judges each option with the same dry run its start
-performs, so what the projection offers is what a command accepts.
-Events record the fully resolved durable facts. Replay resolves the same
-sources/handlers again and rejects changed source, order, cost, decision, or
-resource result. The frontend receives only shared projection DTOs and never
-runs the registry.
+`PowerCtx` is what a contribution reads: `state`, `actor` (the player whose
+procedure is running, which can differ from a parked decision's owner),
+`source`, `window`, `nodePath`, the hooked `operation`, the `procedure` and
+the decisions `answered` so far.
 
-Campaign defender decisions can belong to a non-active player. Bandit choices
-use a deterministic policy only for cost-free, choice-free registered options;
-other relevant handlers are ignored rather than blocking (see
-`docs/architecture/bounded-campaign.md`).
+A contribution is one of:
 
-A power can forbid a choice as well as a whole action. `OptionRestriction` is the
-third contribution kind beside `Transform` and `Restriction`: hooked at a `Decide`
-window, it is applied once in the window fold, so the projector, the answer check
-and simulation all see the filtered options. Narrow Pass uses it at
-`CampaignTargetSelection`. Campaign adds the windows `CampaignCost`,
-`CampaignKindSelection`, `CampaignDefenderSelection`, `CampaignTargetSelection`,
-`CampaignForceSelection`, `CampaignGatherPools`, `CampaignAttackRoll`,
-`CampaignAttackResult`, `CampaignSacrificeSelection`, `CampaignDefenseRoll`,
-`CampaignDefenseResult`, `CampaignLosses`, `CampaignPlacement`,
-`CampaignRaidTransfer` and `CampaignRaidRelocation`, all audited vocabulary that
-only Vow of Peace and Narrow Pass use so far.
+- `Transform` rewrites the hooked node's children, never the whole tree.
+  Transforms fold in `FoldPhase.Normal`, then `FoldPhase.Late`.
+  `OperationRewrite` finds and replaces operations by what they are.
+- `Restriction` checks the whole action tree and returns a violation to
+  refuse the action.
+- `OptionRestriction` forbids single options of the `Decide` it hooks.
+- `Offer` and `OfferReroll` offer a battle plan or a reroll to an
+  `OfferHost` or `RerollHost` node.
 
-A `Restriction` also hides options. Before the walker offers a decision it
-probes each option: it appends a hypothetical answer and runs the restriction
-traversal over the tree those answers derive
-(`WalkerPowerGather.probe`). An option whose answer adds a violation the
-answers so far do not already produce is not offered, in the walk, in
-`accepts`, in the projector and in `WalkerSimulation`. `ChooseOne` and
-`ChooseMany` are probed per option and `ChooseAmount` per value; a range with
-a gap is left whole. A required decision left with nothing rejects the action,
-so its menu option is shown unavailable. The probe's own traversal does not probe
-(`WalkerPowers.probing`), and it runs only when some power contributes a
-`Restriction`. The answer-time check stays as a backstop. So a "cannot" card
-needs only a `Restriction`, even when the window it checks exists only after
-the answer, as a card-play hook does.
+A power may also declare `operationRestrictions`, which hook no window and
+hold on every walker step, and `powerUseRestrictions`, which judge other
+powers' uses. `ExecutedTrigger`, `onArrival` and `takesBurn` let a power react
+to executed operations, arriving advisers and burns. `Deferred` lets a power
+hold an operation and resolve it later in the same action.
 
-A `Transform` that adds nodes after its hooked node must add the same number
-of nodes whatever its own effects do to the state, because the walk refolds
-the window on every command and a later sibling contribution at that window
-is addressed by index, not by identity. Wrap the state-dependent piece in a
-`Branch` instead, as Book Binders and Vow of Obedience's REST do: the branch
-itself is one node, however many children its own `select` produces.
+Contribution functions must be pure functions of the state they are handed.
+The walker rebuilds the tree and refolds every window on every command, and a
+parked position is a path of child indexes. So a `Transform` that adds nodes
+must add the same number whatever the state is. Put a state-dependent part in
+a `Branch`, which is one node however many children it selects, as Book
+Binders does.
 
-## Window-driven power runtime
+## Modifiers
 
-`PowerRegistry` and `PowerResolver` keep four concepts separate: factual sources
-discovered by `RuleSourceIndex`, precise procedure windows, implemented typed
-handlers, and reviewed powers that the pre-alpha deliberately ignores. Reviewed
-definitions live under `gameplay/powers`. Optional unimplemented
-handlers are neither options nor blockers, and reached mandatory/triggered
-handlers emit durable `IgnoredRulesRecorded` diagnostics.
+A power with `PowerResolution.PlayerSelected` is a modifier. Each action that
+takes modifiers starts with a `ModifierChoice` loop at its modifier-selection
+window, such as `SearchModifierSelection`. The power declares
+`selectionWindows`, `selectionPayments` (paid at the pick), `offerReason`
+(unavailable or warned, given the picks so far) and `selectionQuestions`.
+Picked modifiers join the walk's `WalkerPowers`.
 
-Actorless preview requests contain the expected journal position, base action
-parameters, and ordered source/handler references. Preview is stateless and
-does not create pending state or events. The final command carries the same
-order and the application service revalidates it against the newly loaded
-authoritative state. Empty option sets skip the modifier stage; the frontend
-selection model nevertheless preserves click order, keyboard reordering, and
-clears stale drafts when context, candidates, or preview identity changes.
+## Restriction look-ahead
 
-The runtime is connected to Search, Campaign, Muster, Trade, Forge,
-Recover, and Challenge plus Wake, Rest, card-play, and post-action windows;
-reviewed Negotiation definitions are indexed at the `NegotiationOffer` window,
-so an unsupported `When Negotiating` handler is recorded as ignored rather than
-blocking the action. It does not
-replace action ownership: Travel cost resolves through the TravelCost window
-fold (typed terrain facts + suppression), Campaign runs its battle-plan
-windows on the walker with the plan registry as the option source, and Economy target choice remains
-an explicit confirm.
-`PowerRuntime` translates precise resolver results into the current command and
-durable-event shapes. The legacy central classification switch has been removed;
-stable request and diagnostic protocol labels live separately in
-`RuleFallbackProtocol`. No component effect or universal effect language is
-introduced by this layer, and modifier metadata remains descriptive only.
+The walker never offers an option from which the action cannot end legally.
+Before a `Decide` parks, it walks a copy of the state from each answer
+(`WalkerSearch.narrow`, called by `ProcedureWalker`). An option survives when
+some path from it reaches the end of the action with every required operation
+accepted and no `Restriction` violated. A required decision with nothing left
+refuses the action, so its menu option shows as unavailable. The search stops
+at any operation that would reveal hidden information
+(`HiddenOutcomes.hides`: rolls, draws, shuffles, peeks and reveals) and
+counts that path as legal. `SearchMemo` caches verdicts per `WalkerPowers`
+instance.
+`WalkerPowers.quiet` turns the search off inside a search.
 
-### Compact handler declarations
+`OptionRestriction`s apply in the window fold itself
+(`WalkerPowerGather.restrictOptions`). The walk, the answer check, the
+projector and `WalkerSimulation` therefore all see the same options. A hidden
+option shows the reason its restriction's `note` gives;
+`WalkerPowerGather.lookAheadNoted` finds that reason for an option the
+look-ahead hid.
 
-Power definitions use immutable function bundles rather than bespoke handler
-classes. `PowerInspector.partial` turns a focused context pattern into a total
-inspector whose unmatched facts are safely inapplicable. `PowerHandlers`
-supplies automatic and player-selected declarations; procedure-specific
-factories add typed preparation and replay callbacks only where needed.
+## Consent waivers
 
-Operation-backed power events still record concrete outcomes. During replay,
-the owning adapter reconstructs the canonical typed operation sequence,
-compares it with the recorded payload, and applies it in order. This removes
-dispatch and mismatch boilerplate without turning operations into independent
-events or a generic effects language.
+A restriction on enemies of a power's ruler may carry a `Waiver`. Its
+`granter` is the ruler, or nobody when bandits or the Empire rule. The ruler
+may consent to lift the restriction for one decision and option, keyed by
+`ConsentKey` and remembered for the turn. `ConsentedRestriction` reads the
+same ledger for operation restrictions, and a `WaivableRule` is a printed
+rule that can be waived this way. An automatic power use that its rulers
+may refuse waits at a `PowerUseStep` (`walker/AutomaticUses.scala`).
 
-This borrows HRF's useful compact behavior-registration style, but not its
-mutable expansion dispatcher. HRF commonly routes recorded actions through a
-large expansion pattern match and checks persistent effects directly inside
-base procedures. Oath Digital retains precise windows, procedure ownership,
-server-authored events, and replay validation instead.
+`ConsentPowers` lists every waivable power for the consent grid, the
+preference check and the Game Log. Consent commands go to the application's
+`ConsentDesk`, not to the rules. Their events evolve through
+`gameplay/consent/ConsentEvolution.scala`.
 
-Catacombs is the first executable vertical slice. Its Recover-owned inspector
-checks the precise site card, pawn, secret, empty relic slot, Recover Difficulty,
-Supply, and relic-deck facts. The selected invocation is revalidated before
-randomness is prepared; one command atomically appends a power-owned activation
-event that spends the secret and places the recorded top relic facedown, followed
-by the ordinary `RecoverRolled` event that pays Supply, records defense dice, and
-creates the normal pending procedure. All later retry, success, hidden choice,
-and transfer behavior continues through the existing Recover procedure.
+## Unimplemented powers
 
-League Treaty is the corresponding Rest-owned slice. At the precise
-`RestReturnFavor` window its handler inspects a faceup site source, current site
-ruler, Rest actor, regional favor-bearing cards, and legal favor banks. The
-ruler—not necessarily the active Rest player—owns the optional decision.
-Resolution revalidates every source and amount, moves favor atomically, records
-typed events, and returns control to ordered Rest hooks before ordinary cleanup.
-Facedown site relics are addressed by site slot, so neither projection nor
-transport exposes their identity. `RestPowerIntegration` owns resolver ordering
-and continuation; the registered typed handler owns only League Treaty's
-decision payload, concrete events, validation, and state effect. `RestPowers`
-remains a reviewed registry and contains no procedure lifecycle or state mutation.
+A power the code does not implement is ignored and recorded. It never fails
+or blocks a command.
+
+`ReviewedPowerCatalog` holds the reviewed inventories (`ActionPowers`,
+`CampaignPowers`, `RestPowers` and the others in `gameplay/powers/`). They
+name each reviewed power with the window where it would act and whether it
+is implemented. `PowerImplementationStatus` counts a power as implemented
+when `WalkerPowerCatalog`, `PhasePowerCatalog` or
+`OperationRestrictions.printedRules` covers it. The UI's unimplemented-card marker reads the same status.
+
+`PowerRuntime.ignored` runs at fixed points: an action's start (the
+registry entry's `fallbackKind`), a faceup card play (`WhenPlayed`), Wake's
+start and the action boundary. An applicable automatic power that is not
+implemented becomes an `IgnoredRuleDiagnostic`. `OathRules`,
+`OathRulesWalker` and `OathDriver` append the diagnostics in one
+`IgnoredRulesRecorded` event. An
+unimplemented player-selected power is simply not offered. Replay recomputes
+the diagnostics and rejects an event that does not match.
+
+A power id that the catalog inventory does not list is a catalog error
+(`UnsupportedRuleCatalog`), not an unimplemented power.
+
+## Replay
+
+`WalkerPowers` is built for live commands only. Replay applies the recorded
+operations and never gathers powers or folds windows again. Each
+`WalkerStepRecorded` carries the `contributions` order its node used.
 
 ## Adding a power
 
-1. Verify the exact catalog handler and printed source.
-2. Confirm `RuleSourceIndex` exposes the needed factual state and
-   `CatalogHandlerInventory` covers the family.
-3. Declare automatic or selected windows with `PowerHandlers`; reuse one
-   focused inspector when applicability is identical across windows.
-4. Use the owning procedure's functional adapter for preparation and replay.
-   Compose recorded semantic operations only when they represent the effect
-   honestly; keep specialized decision reducers explicit.
-5. Reuse the owning legality/evolution path for commands and projection.
-6. Test ordering, inactive sources, replay tampering, and unsupported inventory.
+1. Verify the catalog power id and its printed source.
+2. Confirm `RuleSourceIndex` exposes the state the power reads.
+3. Declare it as a named object in the family package under
+   `gameplay/powers/`, as a `ContributingPower`, a `PhasePower`, or a
+   `PrintedRule`, and add it to its catalog.
+4. Read access through `PowerAccess`. Express effects as core operations;
+   never edit owned state directly.
+5. Remove its reviewed stub, or let `PowerImplementationStatus` cover it, so
+   no stale diagnostic is recorded.
+6. Test ordering, inactive and facedown sources, the look-ahead, and replay.

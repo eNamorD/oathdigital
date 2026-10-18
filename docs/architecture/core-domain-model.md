@@ -1,11 +1,3 @@
-> **PARTIALLY SUPERSEDED — replay/command/action-model parts changed under the
-> procedure-walker redesign**: replay applies recorded ops only (no evolve
-> re-derive); the commands are `Begin`, `ResolveWalker`, `RollWalker`, `Undo`,
-> `Redo`, and the consent commands (`application/GameCommands.scala`);
-> `PendingProcedure` became a `PendingTree` pointer; dice pools/roll outcomes
-> became state; `usedPowers` tracking stays. Storage/journal/domain-foundation
-> content here remains valid.
-
 # Core domain model
 
 Status: accepted foundation, reviewed August 2026.
@@ -17,10 +9,14 @@ a gameplay-rules specification.
 
 - `oathdigital.model` owns immutable game and campaign state, typed component
   identities, container-owned card state, derived card locations, and
-  aggregate validation.
-- `oathdigital.engine` owns the deterministic transition and journal
-  abstractions. Concrete Oath commands, events, continuations, and rules do not
-  belong in the state model.
+  aggregate validation. That state includes the walker's durable position
+  (`PendingTree`), dice pools and roll outcomes (`rollPools`,
+  `rollOutcomes`), and used-power tracking (`usedPowers`). The event
+  vocabulary (`OathEvent`, `GameEventProtocol.scala`) lives here too.
+- `oathdigital.engine` owns only generic replay abstractions
+  (`EventReplayEngine`). Commands live in `application` (`GameCommands.scala`:
+  `Begin`, `ResolveWalker`, `RollWalker`, `Undo`, `Redo` and the consent
+  commands), and rules live in `gameplay`.
 - The frontend consumes projections. Its presentation IDs and image
   references are not domain identities and never become authoritative state.
 - The Scala card catalog (`catalog/Cards.scala`, `catalog/holding/`, and the
@@ -95,8 +91,10 @@ The identity, Atlas, Supply, banner, card-location, map-region, player/lineage,
 campaign/current-game, and projection decisions above are accepted. The
 Scala card catalog is authoritative for its inventory, printed
 identities, reviewed text, restrictions, and stable handler keys. Catalog
-validity does not imply that every handler has executable behavior;
-unsupported relevant powers must fail explicitly.
+validity does not imply that every handler has executable behavior. An
+applicable power the engine does not implement is ignored, not blocking: the
+procedure start, Wake, card play or action boundary that reaches its timing
+records it through `IgnoredRulesRecorded`.
 
 The following remain rules-dependent and are not foundation invariants:
 

@@ -76,10 +76,9 @@ Plan: [follow-up actions plan](../superpowers/plans/2026-10-08-follow-up-actions
 - It waives Supply only. Recover pays at `RecoverCost`, a window around the
   Supply each roll costs.
 - The waiver strips through `gameplay/operations/SupplyStrip.scala`. Every
-  unconditional Supply strip now uses `SupplyStrip`: News from Afar,
-  Awaited Return, and the free-Travel powers, which used
-  `TravelPayments.withoutSupply`. `SupplyStrip` also filters the payments a
-  `BuildOps` builds.
+  unconditional Supply strip uses `SupplyStrip`: News from Afar, Awaited
+  Return, and the free-Travel powers. `SupplyStrip` also filters the
+  payments a `BuildOps` builds.
 - The economy's by-suit waiver (Cup of Plenty, Animal Playmates, Birdsong)
   decides from the answered card at run time, so it stays separate as
   `SuitSupplyWaiver`.
