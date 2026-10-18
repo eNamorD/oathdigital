@@ -1,8 +1,14 @@
 # Delta Meaning Retention: A Write-Only Journal Field Kept on Purpose
 
-> Status: decision recorded 2026-09-24 from an architecture review. It records
-> why `DeltaMeaning` is not deleted, so a later review does not re-propose it.
-> No implementation is authorized by this document alone.
+> Status: superseded 2026-10-18. The revisit condition this record set has
+> been met and the decision reversed: `DeltaMeaning` is removed. Read
+> "Closure" at the foot of this file before acting on anything above it. The
+> rest of the document is kept as the record of why retention was right in
+> September, not as current guidance.
+>
+> Original status: decision recorded 2026-09-24 from an architecture review.
+> It records why `DeltaMeaning` is not deleted, so a later review does not
+> re-propose it. No implementation is authorized by this document alone.
 
 ## Decision
 
@@ -62,3 +68,45 @@ the recorded operations express only positionally.
 - `WalkerStepPayload.DeltaRecorded` stays regardless of the outcome above. It
   is a live discriminator in `WalkerReplay`, whose delta arm requires recorded
   operations while the roll and choice arms require none.
+
+## Closure (2026-10-18)
+
+The revisit condition above is met. The player-facing action history was
+designed as the game log (`2026-09-25-game-log-design.md`) and shipped, and it
+reads the recorded operations. Under this record's own terms that makes the
+field deletable, and it is now deleted: `DeltaMeaning`, its four cases, its
+`of` derivation and both codec arms are gone, and
+`WalkerStepPayload.DeltaRecorded` survives as a fieldless discriminator.
+
+Each of the three reasons for retention expired:
+
+- **A named future reader.** The game log's design settles the opposite:
+  "The formatter reads operations, not `DeltaMeaning`" (that design, under
+  "Reading the journal"). The consumer this record was holding the field for
+  declined it, on the ground that `OperationApplied` falls back to a class
+  name for every batch that is not one of three shapes, which is too little
+  to narrate from. No other consumer was named then or exists now: on
+  2026-10-13 the field had zero production readers, and the five main-source
+  sites that match `DeltaRecorded` match it as a type only.
+- **Already on disk.** The standing rule since 2026-10-13 is that a wire
+  change need not keep old journals decodable. The cost this record weighed
+  is one the project no longer pays. As it happens no journal breaks either:
+  `decodeStepPayload` reads named keys, so a stored `meaning` key is ignored
+  rather than rejected. No tolerant decode arm was added; there is simply no
+  check to fail.
+- **Assertions with no replacement.** This was true when written and is false
+  now. Both semantic assertions sit beside an `ops` assertion of the same
+  fact: `RecoverProcedureSuite` asserts `SupplySpent(actor, 1)` and then
+  `ops == Vector(SpendSupply(actor, 1))`, and the same pairing for the relic
+  `Move`; `GameApplicationServiceRecoverSuite` asserts the three meanings
+  directly below asserting the three operations in the same order. The
+  duplicate assertions were deleted and the operation assertions kept, so no
+  coverage was lost.
+
+The cost of keeping it had meanwhile grown: thirteen test files and every new
+walker plan had to construct a value nothing read.
+
+This question is now closed in both directions. A later review should not
+re-propose deleting the field, which no longer exists, and should not
+reinstate it on the strength of the September reasoning above without a
+consumer that will read it.

@@ -106,6 +106,12 @@ to an operation's class name for every batch that is not a dice-pool change, a
 supply spend, or a relic acquisition (`ProcedureWalker.deltaMeaning`), which is
 too little to narrate from. The field stays as it is; its retention is a
 separate decision under the replay posture, not part of this feature.
+(Amended 2026-10-18: that decision has since been taken. This choice was the
+condition the [retention
+record](2026-09-24-delta-meaning-retention-decision.md) set for revisiting the
+field, so `DeltaMeaning` was removed; see that record's "Closure".
+`WalkerStepPayload.DeltaRecorded` remains as a fieldless discriminator, which
+is all the formatter ever matched on.)
 
 ### Output
 
@@ -643,7 +649,9 @@ Out of scope, on purpose:
   check would need a new event. The roadmap's "victory checks" is met by the
   victory headlines.
 - Negotiation proposals and counter-proposals.
-- Removing `DeltaMeaning`.
+- Removing `DeltaMeaning`. (Amended 2026-10-18: out of scope for this slice,
+  and done afterwards as its own change once this design's choice to read
+  operations met the retention record's revisit condition.)
 - Re-keying `CardKnowledge` by card id (a roadmap follow-up).
 
 Untouched: the Actions pane except the campaign result panel's removal, the

@@ -373,10 +373,6 @@ one.
   and `IndexedRuleSource.handlerIds`, a temporary compatibility projection, is
   used only by tests. Move the remaining users onto the executable catalog and
   delete the reviewed catalog.
-- [ ] **Decide whether to keep `DeltaMeaning`.** Nothing reads it.
-  The [retention decision](superpowers/specs/2026-09-24-delta-meaning-retention-decision.md)
-  of 2026-09-24 said to revisit it once the action
-  history was designed, and the Game Log does not use it.
 - [ ] **Frontend and protocol clean-up.** Decision option kinds are
   bare string literals in the frontend, and the id grammars (`stableKey`,
   decision-id prefixes) have no shared home. The projection has no protocol
