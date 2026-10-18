@@ -24,9 +24,9 @@ import oathdigital.model._
   * its two children whatever is listed.
   *
   * A pick pays, then asks the picked power's own questions
-  * (`selectionQuestions`), inside the pass's second child. The walk's
-  * answers reach every judgement of the next pass: which cards the actor
-  * may use, and the dry runs of "Start".
+  * (`selectionQuestions`), inside the pass's second child. The next pass is
+  * judged on the state those leave: which cards the actor may use, and the
+  * dry runs of "Start", which also start with the walk's answers.
   */
 final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
     rest: Operation, startLabel: String,
@@ -54,8 +54,7 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
     power.resolution == PowerResolution.PlayerSelected &&
       power.selectionWindows(modifierWindow) &&
       power.selectionCard.exists(card =>
-        PowerAccess.locate(pass.state, actor, card, pass.answered)
-          .isDefined))
+        PowerAccess.locate(pass.state, actor, card).isDefined))
     .sortBy(ContributingPower.sortKey)
 
   private def option(pass: ModifierChoice.Pass, power: ContributingPower)

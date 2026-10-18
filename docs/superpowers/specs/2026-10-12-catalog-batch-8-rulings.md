@@ -354,8 +354,10 @@
   While an enemy's pawn is at City Wall's site, the enemy cannot place favor
   or secrets on any card or use any non-persistent power, wherever the card
   is. The ruler may consent outside a Campaign. Where the enemy is, is
-  where they act from: a queued Campaign's origin counts (slice 13). Small
-  Friends' as-if Trade site is ROADMAP item 13c.
+  where they act from: a queued Campaign's origin counts (slice 13). So
+  does an as-if Trade site, for the walk's actor, from the site answer to
+  the end of the Trade; it replaces the pawn site ([item
+  13c](2026-10-17-city-wall-as-if-site-design.md)).
 - **186 Giant Python.** "[secret] ACTION: If you hold the Darkest Secret,
   move Giant Python to another site, and you may discard a card there
   first." and "Other cards at this site cannot be used for non-persistent

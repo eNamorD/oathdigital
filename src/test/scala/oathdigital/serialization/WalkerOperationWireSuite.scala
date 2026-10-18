@@ -481,3 +481,11 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       recordedOperation("held", Defer(key, held))))
     assertEquals(ujson.read(deferral)("payload")("ops")(0)("kind").str,
       "defer")
+
+  test("an as-if site round trips"):
+    val event = recordedOperation("acting",
+      ActAsIf(CatalogNames.site("Deep Woods")))
+    val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    assertEquals(ujson.read(encoded)("payload")("ops")(0)("kind").str,
+      "act-as-if")

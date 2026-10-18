@@ -159,6 +159,7 @@ private[walker] object WalkerReplay:
               case _ => ready.game.current.boundaryDue,
             rollPools = Map.empty,
             walkerDeferred = Map.empty,
+            walkerAsIfSite = None,
             rollOutcomes = Map.empty)))
 
       case ActionBoundaryRan =>

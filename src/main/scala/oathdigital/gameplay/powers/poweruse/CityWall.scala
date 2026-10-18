@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.poweruse
 
 import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
-import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.{PowerAccess, SiteRulers}
 import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
@@ -24,8 +24,10 @@ object CityWallCard extends Denizen(DenizenId("252"), "City Wall", Suit.Order) w
   * site cannot use a non-persistent power from any card, a use whose cost
   * places on its card ([[Placements.byUse]]), or place on any card
   * ([[Placements.onto]]). The site is the one the player acts from: a
-  * queued Campaign's origin for its attacker (slice 13), else the pawn
-  * site. Small Friends' as-if Trade site does not count yet (ROADMAP 13c).
+  * Trade's as-if site for the walk's actor, from the site answer to the
+  * end of the Trade (item 13c), else a queued Campaign's origin for its
+  * attacker (slice 13), else the pawn site. A player acting as if
+  * elsewhere is not walled in by their pawn.
   * A player ruler may consent outside a Campaign. It writes no line.
   */
 case object CityWall extends ContributingPower with PowerUseRestriction:
@@ -60,13 +62,15 @@ case object CityWall extends ContributingPower with PowerUseRestriction:
   override val waiver: Option[Waiver] =
     Some(RulerBans.waiver(CityWallCard.id, useAsked))
 
-  /** City Wall's ruler, when `player` is their enemy and stands at its
-    * site. */
+  /** City Wall's ruler, when `player` is their enemy and acts from its
+    * site. A Trade never has a queued origin, so the order of the two
+    * readers does not matter. */
   private def walledIn(ready: ReadyGame, player: PlayerId)
       : Option[SiteRuler] =
     for
       site <- SiteRulers.siteOf(ready, CityWallCard.id)
-      if CampaignSetup.originOf(ready, player).contains(site)
+      if PowerAccess.asIfSite(ready, player)
+        .orElse(CampaignSetup.originOf(ready, player)).contains(site)
       ruler <- RulerBans.ruler(ready, CityWallCard.id)
       if RulerBans.enemy(ruler, player)
     yield ruler

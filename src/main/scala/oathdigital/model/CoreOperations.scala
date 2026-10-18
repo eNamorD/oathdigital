@@ -687,6 +687,14 @@ final case class Defer(key: DeferralKey, ops: Vector[CoreOperation])
   * changes nothing. It writes no Game Log line. */
 final case class TakeDeferred(key: DeferralKey) extends PrimitiveOperation
 
+/** Records that the walk's actor acts as if their pawn were at `site` for
+  * the rest of the walk, in `CurrentGameState.walkerAsIfSite` (catalog
+  * batch 8, item 13c). The walker clears it when the walk ends. The journal
+  * records it, so a game reloaded from its events holds the same site. It
+  * moves no pawn and writes no Game Log line.
+  */
+final case class ActAsIf(site: SiteId) extends PrimitiveOperation
+
 /** Semantic window for a card played faceup, to a site or as a faceup
   * adviser. Powers supply its children; no hook is a delta.
   */

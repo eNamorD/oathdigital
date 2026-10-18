@@ -3,19 +3,23 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.{Contribution, ModifierPicks,
   OfferReason, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{NoteSupport, SelectedModifier}
+import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers,
+  SelectedModifier}
 import oathdigital.model._
 
 /** What Small Friends and Friendly Familiar share (catalog batch 8, slice
   * 7): a Trade modifier that, once picked and paid for, asks which site its
   * user acts as if at for the rest of the Trade
-  * ([[PowerAccess.asIfDecision]]).
+  * ([[PowerAccess.asIfDecision]]), and records the answer as state with
+  * `ActAsIf` (item 13c).
   *
-  * The site then takes the pawn site's place: later passes of the modifier
-  * decision offer its cards' modifiers, and the Trade's source options are
-  * its cards ([[EconomySources.relocated]]), rewritten before the powers
-  * that add cards. The question offers only sites other than the pawn site,
-  * and has no Skip.
+  * The site then takes the pawn site's place wherever a rule reads where
+  * the player acts from ([[PowerAccess.asIfSite]]): later passes of the
+  * modifier decision offer its cards' modifiers, City Wall walls the player
+  * in there, and the Trade's source options are its cards
+  * ([[EconomySources.relocated]]), rewritten before the powers that add
+  * cards. The question offers only sites other than the pawn site, and has
+  * no Skip.
   *
   * Unavailable, in this order: once the other card acts at another site;
   * once a picked modifier's card stands at the unruled pawn site, since the
@@ -44,18 +48,25 @@ trait ActingSite extends SelectedModifier:
 
   final override def offerReason(ctx: PowerCtx): Option[OfferReason] =
     val reason =
-      if PowerAccess.asIfSite(ctx.answered).nonEmpty then
+      if PowerAccess.asIfSite(ctx.state, ctx.activePlayer).nonEmpty then
         Some(ActingSite.elsewhere)
       else if pickedAtPawnSite(ctx) then Some(ActingSite.pickedHere)
       else Option.when(sites(ctx.state, ctx.activePlayer).isEmpty)(noSite)
     reason.map(OfferReason.Unavailable(_))
 
+  /** The site question, then the answer recorded as state, then the line.
+    * The pick and its payment come before the question, so they are judged
+    * at the pawn site. */
   final override def selectionQuestions(ready: ReadyGame, actor: PlayerId)
       : Vector[Operation] = Vector(
     Decide(PowerAccess.asIfDecision, actor, DecisionQuery.ChooseOne(
       sites(ready, actor).map(site =>
         DecisionOption.Site(DecisionOptionRef.Site(site))),
       heading = Some(heading))),
+    BuildOps((_, tree) => Right(PowerAnswers.last(tree.answered,
+      PowerAccess.asIfDecision).toVector.collect {
+      case DecisionOptionRef.Site(site) => ActAsIf(site)
+    })),
     Note(id, actedNote))
 
   /** Whether a modifier already picked stands at the pawn site, which the

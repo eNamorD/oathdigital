@@ -40,9 +40,8 @@ final case class AwaitedReturn private (catalog: ExecutableCatalog)
         Note(id, sacrificedNote(_, ctx.activePlayer))))))
 
   /** Selectable only with a warband on the board to sacrifice. */
-  override def selectable(ready: ReadyGame, actor: PlayerId,
-      answered: Vector[Answered]): Boolean =
-    super.selectable(ready, actor, answered) &&
+  override def selectable(ready: ReadyGame, actor: PlayerId): Boolean =
+    super.selectable(ready, actor) &&
       PlayerFacts.player(ready, actor).exists(_.board.warbands > 0)
 
   private def sacrifice(actor: PlayerId): Operation =

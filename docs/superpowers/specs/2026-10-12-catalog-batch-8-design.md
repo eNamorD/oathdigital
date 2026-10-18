@@ -1,6 +1,6 @@
 # Catalog Batch 8: Engine Seams
 
-**Status:** designed 2026-10-12. Slices 1 to 15 and items 10b and 13b are done.
+**Status:** designed 2026-10-12. Slices 1 to 15 and items 10b, 13b and 13c are done.
 The per-card rulings are in
 [the rulings appendix](2026-10-12-catalog-batch-8-rulings.md).
 
@@ -114,17 +114,19 @@ The approved changes outside `gameplay/powers/`:
   loop, in the same pass, after its payment
   (`ContributingPower.selectionQuestions`). Small Friends and Friendly
   Familiar ask for a site under one shared decision,
-  `PowerAccess.asIfDecision`. `PowerAccess.locate` reads the walk's
-  answers: the as-if site replaces the pawn site in `usableSites`. Ruled
-  sites and the player's advisers and relics stay usable; the physical
-  pawn site does not, unless the player rules it. `ModifierChoice` passes
-  its answers to `locate`, and `SelectedModifier.selectable` and its
-  overrides receive them. `EconomySources.relocated`, a sibling of
+  `PowerAccess.asIfDecision`. The answer is recorded as state,
+  `CurrentGameState.walkerAsIfSite`, by `ActAsIf`, and the walk's end
+  clears it ([item 13c](2026-10-17-city-wall-as-if-site-design.md)).
+  `PowerAccess.locate` reads it: the as-if site replaces the pawn site in
+  `usableSites`. Ruled sites and the player's advisers and relics stay
+  usable; the physical pawn site does not, unless the player rules it.
+  `EconomySources.relocated`, a sibling of
   `widened`, replaces the Trade source options with the new site's cards.
 - **"Start" judged with the walk's answers** (slice 7, approved
   2026-10-14). The dry runs that judge a modifier pass's "Start" begin
   with the pass's answers (`ProcedureWalker.advance`'s `seed`), so they see
-  the as-if site as the walk will.
+  the as-if site as the walk will. Since item 13c they read the site from
+  the pass's state, and still start with the answers.
 - **The modifier decision names its start selection** (slice 7, added at
   plan time). `ModifierChoice` is a `ModifierHost`, which carries what the
   player selected when the action started, so a modifier judged there can
@@ -632,7 +634,9 @@ consent, and wrapped Hunger.
 - **Enemies.** Every other player is an enemy of a player ruler. At a site
   bandits rule, every player is an enemy and nobody may consent. At an
   unruled site, or one the Empire rules, nobody is restricted. City Wall's
-  "while at this site" reads the physical pawn, not an as-if site.
+  "while at this site" reads where the player acts from: a Trade's as-if
+  site, a queued Campaign's origin, else the pawn ([item
+  13c](2026-10-17-city-wall-as-if-site-design.md)).
 - **Consent.** Spell Breaker, Forest Council and City Wall are waivable;
   Giant Python is not ("Other cards"). Outside a Campaign every refusal they
   make is askable of the ruler: the phase menu, the modifier picker, the

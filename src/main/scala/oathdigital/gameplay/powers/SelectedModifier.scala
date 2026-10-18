@@ -78,14 +78,13 @@ trait SelectedModifier extends ContributingPower:
     SelectedModifier.selectionAction(ctx.window) match
       case Some(action) => actions(action) &&
         (ModifierPicks.isPicked(ctx.answered, ctx.window, cardId) ||
-          selectable(ctx.state, ctx.activePlayer, ctx.answered))
+          selectable(ctx.state, ctx.activePlayer))
       case None => appliesAt(ctx)
 
-  /** The player may use the card, from where the walk's answers place them,
-    * and can pay for it. */
-  def selectable(ready: ReadyGame, actor: PlayerId,
-      answered: Vector[Answered]): Boolean =
-    PowerAccess.locate(ready, actor, cardId, answered).isDefined &&
+  /** The player may use the card, from where they act
+    * ([[PowerAccess.locate]]), and can pay for it. */
+  def selectable(ready: ReadyGame, actor: PlayerId): Boolean =
+    PowerAccess.locate(ready, actor, cardId).isDefined &&
       Costs.affordable(ready, actor, Location.OnCard(cardId), cost)
 
   /** The pick's payment: the `cost`, onto the card. A modifier whose price

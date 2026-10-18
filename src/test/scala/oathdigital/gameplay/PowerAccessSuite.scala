@@ -104,26 +104,34 @@ class PowerAccessSuite extends munit.FunSuite:
   /** A plain Order denizen, at the pawn site. */
   private val wrestlers = CatalogNames.denizen("Wrestlers")
 
-  /** The walk's answer that `actor` acts as if at `site`. */
-  private def actingAt(site: SiteId): Vector[Answered] = Vector(Answered(
-    PowerAccess.asIfDecision,
-    DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site)), actor))
+  /** `state` with `actor`, the walk's actor on their own turn, acting as if
+    * at `site`, as `ActAsIf` leaves it. */
+  private def actingAt(state: ReadyGame, site: SiteId): ReadyGame =
+    state.updateCurrent(_.copy(walkerAsIfSite = Some(site)))
 
   test("an as-if site takes the pawn site's place: its cards are usable " +
       "and the pawn site's are not"):
-    val state = Table.start.pawn(actor, at = home)
+    val state = Table.start.turn(actor, Phase.Act).pawn(actor, at = home)
       .denizen(wrestlers, at = home).denizen(card, at = far).ready
-    assertEquals(PowerAccess.locate(state, actor, card, actingAt(far)),
+    val acting = actingAt(state, far)
+    assertEquals(PowerAccess.locate(acting, actor, card),
       Some(PowerAccess.Held.AtSite(far)))
-    assertEquals(PowerAccess.locate(state, actor, wrestlers, actingAt(far)),
-      None)
-    // Without the answer, the pawn site's card is usable as before.
+    assertEquals(PowerAccess.locate(acting, actor, wrestlers), None)
+    // Without an as-if site, the pawn site's card is usable as before.
     assertEquals(PowerAccess.locate(state, actor, wrestlers),
       Some(PowerAccess.Held.AtSite(home)))
 
   test("a pawn site the actor rules stays usable beside an as-if site"):
-    val state = Table.start.pawn(actor, at = home)
-      .warbandsAt(home, actor, 1).denizen(wrestlers, at = home)
-      .denizen(card, at = far).ready
-    assertEquals(PowerAccess.locate(state, actor, wrestlers, actingAt(far)),
+    val state = actingAt(Table.start.turn(actor, Phase.Act)
+      .pawn(actor, at = home).warbandsAt(home, actor, 1)
+      .denizen(wrestlers, at = home).denizen(card, at = far).ready, far)
+    assertEquals(PowerAccess.locate(state, actor, wrestlers),
       Some(PowerAccess.Held.AtSite(home)))
+
+  test("an as-if site is the walk's actor's only"):
+    val state = actingAt(Table.start.turn(actor, Phase.Act)
+      .pawn(actor, at = home).pawn(other, at = home)
+      .denizen(card, at = far).ready, far)
+    assertEquals(PowerAccess.presentSite(state, actor), Some(far))
+    assertEquals(PowerAccess.presentSite(state, other), Some(home))
+    assertEquals(PowerAccess.locate(state, other, card), None)

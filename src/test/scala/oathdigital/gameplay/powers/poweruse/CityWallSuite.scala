@@ -1,13 +1,15 @@
 package oathdigital.gameplay.powers.poweruse
 
-import oathdigital.gameplay.{CampaignFixture, OathRules}
+import oathdigital.gameplay.{CampaignFixture, OathRules, PowerAccess}
 import oathdigital.gameplay.WalkerDiceFixture.scripted
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.phases.wake.ForcedWakeProcedure
-import oathdigital.gameplay.powerresolver.{PowerUse, PowerUseStep}
+import oathdigital.gameplay.powerresolver.{ModifierPicks, PowerUse,
+  PowerUseStep}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.powers.action.RovingTerror
@@ -16,9 +18,10 @@ import oathdigital.gameplay.powers.travel.{TravelFixture, Tyrant}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes,
-  ParkedNode, PhasePowerHarness, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, MenuPlay,
+  Outcomes, ParkedNode, PhasePowerHarness, PowerRules, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -227,6 +230,123 @@ class CityWallSuite extends munit.FunSuite:
     assert(PlanDriver.awaits(run, b.actor, CampaignIds.attackerPlan))
     assert(run.offered(b.actor).contains(DecisionOptionRef.Denizen(
       CatalogNames.denizen("Fire Talkers"))))
+
+  // ---- an as-if Trade site (item 13c) ------------------------------------
+
+  private val friends = CatalogNames.denizen("Small Friends")
+  private val library = CatalogNames.denizen("Map Library")
+  /** A plain Beast denizen, so Small Friends may act as if at its site. */
+  private val errandBoy = CatalogNames.denizen("Errand Boy")
+  private val tradeRules = PowerRules.withWalkerPowers
+  private val tradeModifiers =
+    ModifierPicks.decisionId(PowerWindow.TradeModifierSelection)
+
+  /** `ready` after `ActAsIf(site)` ran through the pipeline, as the walk's
+    * site answer leaves it. */
+  private def afterActingAsIfAt(ready: ReadyGame, site: SiteId): ReadyGame =
+    accepted(OperationPipeline.run(ready, Vector(ActAsIf(site)),
+      OperationPolicy.Permissive, Vector.empty)(Right(_))).state
+
+  /** p1's Act holding Small Friends, with p1's pawn at `pawnAt` and City
+    * Wall at Ancient City, which `ruled` gives its ruler (p2 by default).
+    * Errand Boy, a Beast card, and Map Library stand at `libraryAt`. */
+  private def smallFriendsAndMapLibraryAt(libraryAt: SiteId, pawnAt: SiteId,
+      ruled: Table => Table = _.warbandsAt(home, p2, 1)): ReadyGame =
+    ruled(Table.start.turn(p1, Phase.Act).pawn(p1, at = pawnAt)
+      .adviser(p1, friends).denizen(wall, at = home)
+      .denizen(errandBoy, at = libraryAt).denizen(library, at = libraryAt))
+      .ready
+
+  /** p1 starts a Trade for favor, parked on the modifier decision. */
+  private def tradeForFavorBegun(ready: ReadyGame): OathTransition =
+    accepted(MenuPlay.started(tradeRules, Ready(ready), p1, ActionRef.Trade,
+      Vector(DecisionOptionRef.Button("favor"))))
+
+  /** `from`, then p1's answer `ref` at `decisionId`; the events run from
+    * the Trade's start. */
+  private def answeredWith(from: OathTransition, decisionId: String,
+      ref: DecisionOptionRef): OathTransition =
+    val next = accepted(tradeRules.resolveWalker(from.state, p1, decisionId,
+      ChooseOneAnswer(ref)))
+    next.copy(events = from.events ++ next.events)
+
+  /** p1's Trade for favor in `ready` with Small Friends picked and acting
+    * as if at `site`, parked on the next modifier pass. */
+  private def tradingAsIfAt(ready: ReadyGame, site: SiteId): OathTransition =
+    answeredWith(answeredWith(tradeForFavorBegun(ready), tradeModifiers,
+      DecisionOptionRef.Denizen(friends)), PowerAccess.asIfDecision,
+      DecisionOptionRef.Site(site))
+
+  /** Map Library's state and reason at the parked modifier pass. */
+  private def mapLibraryOffer(at: OathTransition)
+      : Option[(String, Option[String])] =
+    PhasePowerHarness.queryOf(at, p1).flatMap(_.offeredOptions
+      .find(_.id == library.value)
+      .map(option => option.state -> option.reason))
+
+  test("an enemy trading as if at its site is asked before a later " +
+      "non-persistent modifier there"):
+    val acting = tradingAsIfAt(smallFriendsAndMapLibraryAt(home,
+      pawnAt = woods), home)
+    assertEquals(mapLibraryOffer(acting).map(_._1), Some("askable"))
+
+  test("where nobody may be asked, Small Friends is not offered toward its " +
+      "site, since that Trade would place a secret on a card"):
+    // Wrestlers at the pawn site lets the Trade start without Small Friends.
+    def offered(ruled: Table => Table): Option[Vector[String]] =
+      PhasePowerHarness.queryOf(tradeForFavorBegun(
+        smallFriendsAndMapLibraryAt(home, pawnAt = woods,
+          ruled = steps => ruled(steps).denizen(wrestlers, at = woods))), p1)
+        .map(_.offeredOptions.map(_.id))
+    assertEquals(offered(_.warbandsAt(home, p2, 1)),
+      Some(Vector(ModifierPicks.start.key, friends.value)))
+    assertEquals(offered(_.bandits(home, 2)),
+      Some(Vector(ModifierPicks.start.key)))
+
+  test("an enemy acting as if at its site is refused a payment onto any " +
+      "card"):
+    // Every selected modifier is non-persistent, so a pick shows the use
+    // reason first; the placing ban is pinned on the payment itself.
+    val ban = CityWall.operationRestrictions.head
+    val pay = PayCost(p1, Location.OnCard(wrestlers), Cost(favor = 1))
+    val away = wallAtAncientCity(pawnAt = woods)
+    assertEquals(ban.reason(away, pay), None)
+    assert(ban.reason(afterActingAsIfAt(away, home), pay).nonEmpty)
+
+  test("once the walk ends, the enemy acts from their pawn again"):
+    val away = wallAtAncientCity(pawnAt = woods)
+    assert(CityWall.refusal(afterActingAsIfAt(away, home),
+      nonPersistentUse).nonEmpty)
+    val done = Outcomes.finished(ProcedureWalker.advance(away,
+      ActAsIf(home), None, everyPower))
+    assertEquals(CityWall.refusal(done.treeless, nonPersistentUse), None)
+
+  test("an enemy at its site who trades as if elsewhere is not walled in " +
+      "for the rest of that Trade"):
+    val ready = smallFriendsAndMapLibraryAt(woods, pawnAt = home)
+    // p2 lets p1 use Small Friends at City Wall's site.
+    val granted = ready.copy(consent = ConsentState().granting(Vector(
+      ConsentKey(CityWall.id, p1, "power.use",
+        DecisionOptionRef.Denizen(friends))), ConsentTurn.of(ready)))
+    val acting = tradingAsIfAt(granted, woods)
+    assertEquals(mapLibraryOffer(acting), Some("available" -> None))
+
+  test("only the walk's actor acts from the as-if site"):
+    // Bandits rule City Wall's site, so p2 is an enemy too.
+    val ready = afterActingAsIfAt(Table.start.turn(p1, Phase.Act)
+      .pawn(p1, at = woods).pawn(p2, at = woods).denizen(wall, at = home)
+      .bandits(home, 2).ready, home)
+    assert(CityWall.refusal(ready, nonPersistentUse).nonEmpty)
+    assertEquals(CityWall.refusal(ready, nonPersistentUse.copy(user = p2)),
+      None)
+
+  test("a game parked after the site answer and rebuilt from its events " +
+      "keeps the enemy walled in"):
+    val ready = smallFriendsAndMapLibraryAt(home, pawnAt = woods)
+    val acting = tradingAsIfAt(ready, home)
+    val rebuilt = ActPowerHarness.replayed(tradeRules, ready, acting.events)
+    assertEquals(rebuilt.game.current.walkerAsIfSite, Some(home))
+    assert(CityWall.refusal(rebuilt, nonPersistentUse).nonEmpty)
 
   /** The actor holding Tyrant at Buried Giant, laid out by `steps`. */
   private def holdingTyrant(steps: Table => Table): ReadyGame =

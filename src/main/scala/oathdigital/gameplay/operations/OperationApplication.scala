@@ -209,6 +209,8 @@ private[gameplay] object OperationApplication:
         result.map(TurnStateOperations.defer(_, key, ops))
       case (result, TakeDeferred(key)) =>
         result.map(TurnStateOperations.takeDeferred(_, key))
+      case (result, ActAsIf(site)) =>
+        result.map(TurnStateOperations.actAsIf(_, site))
       case (result, EnterPhase(phase)) =>
         result.flatMap(TurnStateOperations.enterPhase(_, phase))
       case (result, SetOathkeeper(holder)) =>

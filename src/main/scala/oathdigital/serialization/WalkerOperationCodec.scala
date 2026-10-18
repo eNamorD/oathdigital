@@ -41,7 +41,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
   private type TurnOperation = AdvanceVisionsDrawn.type | BeginTurn | EnterPhase |
     SetOathkeeper | SetOathkeeperGoal | RecordPowerUse | RecordCampaignResult |
     ModifyDicePool | Roll | ModifyRollOutcome | Reroll | SetDieFaces |
-    QueueProcedure | Defer | TakeDeferred
+    QueueProcedure | Defer | TakeDeferred | ActAsIf
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match
@@ -255,6 +255,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "key" -> key.value, "ops" -> ujson.Arr.from(ops.map(encodeOperation)))
       case TakeDeferred(key) => ujson.Obj("kind" -> "take-deferred",
         "key" -> key.value)
+      case ActAsIf(site) => ujson.Obj("kind" -> "act-as-if",
+        "siteId" -> site.value)
 
   private def encodePowerTiming(timing: PowerTiming): String = timing match
     case PowerTiming.Wake => "wake"
@@ -543,3 +545,4 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         .map(Defer(DeferralKey(value("key").str), _))
     case "take-deferred" =>
       Right(TakeDeferred(DeferralKey(value("key").str)))
+    case "act-as-if" => Right(ActAsIf(SiteId(value("siteId").str)))

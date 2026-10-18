@@ -89,11 +89,15 @@ class SmallFriendsSuite extends munit.FunSuite:
     val ready = withBeastCardAway.ready
     // No other modifier to pick, so the Trade starts by itself.
     val acting = actingAt(tradeBegun(ready), away)
+    assertEquals(Outcomes.ready(acting.state).game.current.walkerAsIfSite,
+      Some(away))
     assertEquals(PhasePowerHarness.offered(acting, p1),
       Some(Vector("denizen" -> errandBoy.value)))
     val done = answeredWith(acting, TradeProcedure.decisionId,
       DecisionOptionRef.Denizen(errandBoy))
     val end = Look(done.state)
+    assertEquals(Outcomes.ready(done.state).game.current.walkerAsIfSite,
+      None)
     assertEquals(end.tokensOn(errandBoy), Tokens(0, 1))
     // 1, and 1 more for Small Friends, a faceup Beast adviser.
     assertEquals(end.favor(p1), Look(ready).favor(p1) + 2)

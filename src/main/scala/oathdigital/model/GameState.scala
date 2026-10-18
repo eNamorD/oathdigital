@@ -207,7 +207,13 @@ final case class CurrentGameState(
     // (operation rewrite design, "Deferral"). Walker scratch: replay
     // rebuilds it from the recorded `Defer`s, and the walker and
     // `WalkerCompleted` clear it with the dice pools. Never projected.
-    walkerDeferred: Map[DeferralKey, Vector[CoreOperation]] = Map.empty
+    walkerDeferred: Map[DeferralKey, Vector[CoreOperation]] = Map.empty,
+    // The site the walk's actor acts as if their pawn were at, for the rest
+    // of the walk (catalog batch 8, item 13c). Walker scratch, set by
+    // `ActAsIf`: replay rebuilds it from the recorded `ActAsIf`, and the
+    // walker and `WalkerCompleted` clear it with the dice pools. Never
+    // projected.
+    walkerAsIfSite: Option[SiteId] = None
 ):
   /** The player the current walk belongs to (catalog batch 8, slice 14):
     * the actor of the queue entry it was started from, else the turn's

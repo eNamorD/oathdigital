@@ -1,6 +1,6 @@
 # City Wall reads an as-if Trade site
 
-**Status:** designed 2026-10-17. It covers roadmap item **13c. City Wall
+**Status:** designed 2026-10-17; done 2026-10-17. It covers roadmap item **13c. City Wall
 reads an as-if Trade site** under **Phase - Catalog batch 8**. It builds on
 slice 7 of [catalog batch 8](2026-10-12-catalog-batch-8-design.md) (Trade
 at another site), slice 10 (power-use restrictions) and slice 13 (a queued
@@ -122,3 +122,27 @@ exist.
 - `PowerAccess` and `ActingSite` docs say the site is state.
 - ROADMAP: 13c checked with a link here; "Only item 14b of catalog batch 8
   remains open."
+
+## Departures
+
+Settled while planning and building, 2026-10-17.
+
+1. **Test 1, where nobody may be asked.** A Trade places a secret on its
+   source card, so at a site bandits rule, no Trade acting as if at City
+   Wall's site can end legally. The lazy pruning drops Small Friends from
+   the first pass, and the later modifier pass is never reached. The test
+   pins that pruning instead: with a source at the pawn site, Small Friends
+   is offered when a player rules City Wall's site and not offered under
+   bandits.
+2. **Test 2, the placing ban.** Every selected modifier is non-persistent
+   (`CatalogResolution.of`), so City Wall gives the use reason for a
+   modifier pick before the placing reason, and no pick can show the
+   placing ban. The test pins the placing ban on a payment onto a card
+   while acting as if at City Wall's site.
+3. **Test 3, after the Trade.** Tested at the walker: a walk that runs
+   `ActAsIf` and ends leaves no as-if site, so nothing is refused.
+   `ActAsIfSuite` also pins that `WalkerCompleted` clears the field on
+   replay.
+4. **Test 5, another player.** Tested directly against `CityWall.refusal`.
+   No Trade path judges another player's use while the actor acts as if at
+   another site.
