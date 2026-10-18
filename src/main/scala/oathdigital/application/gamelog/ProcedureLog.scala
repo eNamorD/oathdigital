@@ -57,7 +57,8 @@ private[gamelog] object Continued:
   * "posts from its own notes", so a procedure whose notes went missing read
   * as correct. */
 private[gamelog] enum ActionLineSource:
-  /** A rule in `ActionLines` that reads the journal. */
+  /** A rule that reads the journal. Only `ActionRef.UsePower` still has
+    * one: `PowerLines.usePowerLines`. */
   case Rule(lines: ActionLine)
   /** The procedure journals its own notes, which `PowerLines` posts. Each
     * posts at `LogKind.Action` unless `kinds` names another for its key: a
@@ -82,8 +83,8 @@ private[gamelog] final case class Told(decision: String,
   * posts, what its opening line says, the line it repeats when the player
   * pays again, and whether its run draws a section band. Apart from the tag,
   * which is the name the log prints, every member is a declaration rather
-  * than a wording: the rules themselves stay in `StartLines`, `ActionLines`
-  * and their helpers, and an entry names them.
+  * than a wording: the rules themselves stay in `StartLines`,
+  * `PowerLines` and their helpers, and an entry names them.
   */
 private[gamelog] final case class ProcedureLog(
     tag: Option[String],
@@ -123,8 +124,12 @@ private[gamelog] final case class ProcedureLog(
   * `ActionRef.UsePower` is parameterized, so `ProcedureRef.all` does not list
   * it and `of` builds its entry from the same match on demand.
   */
+/** `notes` is by-name because `PowerLines` is built from this table's own
+  * `noteKind`. Nothing forces it during construction: `entries` is built
+  * from `ProcedureRef.all`, which does not list the parameterized
+  * `ActionRef.UsePower`, and that is the only arm that reads it. */
 private[gamelog] final class ProcedureLogs(starts: StartLines,
-    actions: ActionLines):
+    notes: => PowerLines):
   private val entries: Map[ProcedureRef, ProcedureLog] =
     ProcedureRef.all.map(procedure => procedure -> rules(procedure)).toMap
 
@@ -146,7 +151,7 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       narrated = Vector(Told(SearchProcedure.sourceDecisionId),
         Told(SearchProcedure.cardDecisionId,
           Some(SearchProcedure.keptCards))),
-      narratedPrefixes = Vector(ActionLines.PlacePrefix,
+      narratedPrefixes = Vector(LogWords.PlacePrefix,
         "cardplay.discard."))
     // The played card's line names the facedown pick. Five keys word it —
     // a discard with or without a pile, a play to a site, a revealed
@@ -156,7 +161,7 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
         lines = ActionLineSource.Notes(),
         anchor = starts.adviserPicked,
         narrated = Vector(Told(CardPlayProcedure.facedownAdviserDecisionId)),
-        narratedPrefixes = Vector(ActionLines.PlacePrefix,
+        narratedPrefixes = Vector(LogWords.PlacePrefix,
           "cardplay.discard."))
     // The relic pick is told by the recovered line, which names the relic.
     // The continue-or-stop answer is told by the band's own "Continued"
@@ -260,8 +265,8 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
     // A power that plays a card as if searched (Oracle) posts where the card
     // went, as a Search does, and tells the same card-play decisions.
     case ActionRef.UsePower(power) => ProcedureLog(tag = None,
-      lines = ActionLineSource.Rule(actions.usePowerLines(power)),
-      narratedPrefixes = Vector(ActionLines.PlacePrefix,
+      lines = ActionLineSource.Rule(notes.usePowerLines(power)),
+      narratedPrefixes = Vector(LogWords.PlacePrefix,
         "cardplay.discard."))
     case PhaseTransitionRef.EndWake | PhaseTransitionRef.BeginRest =>
       ProcedureLog(tag = None, isSection = false,

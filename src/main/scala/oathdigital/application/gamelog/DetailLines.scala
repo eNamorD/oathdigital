@@ -103,7 +103,7 @@ private[gamelog] final class DetailLines(words: LogWords,
     def gainedSecrets(player: PlayerId, amount: Int) =
       if run.procedure == ActionRef.Trade && player == actor then Vector.empty
       else line(words.subject(player, actor, "gained") :+ LogSpan.Text(
-        s"$amount ${ActionLines.plural(amount, "secret", "secrets")}"))
+        s"$amount ${LogWords.plural(amount, "secret", "secrets")}"))
     operation match
       case Gain.Favor(player, suit, amount) => gainedFavor(player, suit, amount)
       case Move(Piece.Favor(amount),
@@ -150,7 +150,7 @@ private[gamelog] final class DetailLines(words: LogWords,
     * ("1 of Blue's warbands"), and bandits are bandits. */
   private def whose(kind: ForceKind, amount: Int, actor: PlayerId,
       ready: ReadyGame): Vector[LogSpan] =
-    val noun = ActionLines.plural(amount, "warband", "warbands")
+    val noun = LogWords.plural(amount, "warband", "warbands")
     kind match
       case ForceKind.Exile(lineage) => ready.game.current.players
           .find(_.lineage == lineage).map(_.player).filter(_ != actor) match
@@ -160,7 +160,7 @@ private[gamelog] final class DetailLines(words: LogWords,
         case None => Vector(LogSpan.Text(noun))
       case ForceKind.Imperial => Vector(LogSpan.Text(s"Imperial $noun"))
       case ForceKind.Bandit =>
-        Vector(LogSpan.Text(ActionLines.plural(amount, "bandit", "bandits")))
+        Vector(LogSpan.Text(LogWords.plural(amount, "bandit", "bandits")))
 
   private def faceDown(ready: ReadyGame, id: CardId): Boolean =
     ready.game.cardIndex.toOption.flatMap(_.get(id))
@@ -174,9 +174,9 @@ private[gamelog] final class DetailLines(words: LogWords,
       : Option[CardId] =
     journal.answers(run, at).reverse.collectFirst {
       case Answered(id, ChooseOneAnswer(ref), _)
-          if id.startsWith(ActionLines.PlacePrefix) &&
+          if id.startsWith(LogWords.PlacePrefix) &&
             CardPlayProcedure.playedAs(ref).contains(way) =>
-        ActionLines.subjectCard(id.stripPrefix(ActionLines.PlacePrefix))
+        LogWords.subjectCard(id.stripPrefix(LogWords.PlacePrefix))
     }.flatten
 
 private[gamelog] object DetailLines:

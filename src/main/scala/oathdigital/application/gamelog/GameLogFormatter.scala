@@ -36,14 +36,15 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     ModifierPicks.picks(walkerPowers, _))
   private val choices = new ChoiceWords(words,
     new WalkerDecisionProjector(catalog, presentation))
-  private val actions = new ActionLines(words)
-  // Built after `starts` and `actions`: the table holds references to their
-  // rules, and `entries` is built eagerly.
-  private[gamelog] val procedures = new ProcedureLogs(starts, actions)
+  // `procedures` is built first and takes `notes` by name: the table's
+  // UsePower arm reads the power-note path, and `PowerLines` reads the
+  // table's own `noteKind`.
+  private[gamelog] val procedures: ProcedureLogs =
+    new ProcedureLogs(starts, notes)
+  private val notes: PowerLines = new PowerLines(words, wordings,
+    procedures.noteKind)
   private val details = new DetailLines(words, choices, wordings.narrated)
   private val events = new EventLines(words)
-  private val notes = new PowerLines(words, wordings,
-    procedures.noteKind)
   private val takenBack = new TakenBackGroups(words)
   private val consent = new ConsentLines(words, choices,
     ConsentPowers.default(catalog))

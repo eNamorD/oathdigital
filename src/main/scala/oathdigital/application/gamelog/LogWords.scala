@@ -159,6 +159,23 @@ private[gamelog] object LogWords:
   def plural(kind: String): String =
     if kind == "Legacy" then "Legacies" else s"${kind}s"
 
+  /** `one` for a count of one, `many` otherwise. The overload above takes
+    * a card kind and pluralises it; this one picks between two words a
+    * line already has. */
+  def plural(count: Int, one: String, many: String): String =
+    if count == 1 then one else many
+
+  /** `CardPlayProcedure`'s placement decision id prefix; the card follows
+    * as `{kind}.{id}`, the same spelling
+    * `WalkerDecisionProjector.subjectCards` parses. */
+  val PlacePrefix = "cardplay.place."
+
+  def subjectCard(subject: String): Option[CardId] =
+    subject.split("\\.", 2).toVector match
+      case Vector("denizen", value) => Some(DenizenId(value))
+      case Vector("vision", value) => Some(VisionId(value))
+      case _ => None
+
   /** "A", "A and B", "A, B and C". */
   def join(items: Vector[Vector[LogSpan]]): Vector[LogSpan] = items match
     case Vector() => Vector.empty

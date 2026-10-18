@@ -316,7 +316,7 @@ object LogScripts:
     val (service, acted) = atTable(name, tableWithOnePawnPerSite
       .adviser(p1, conclave, facedown = true).banditsRefilled)
     val act = placement.fold(acted)(way => acted.withAnswers {
-      case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
+      case park if park.decisionId.startsWith(LogWords.PlacePrefix) =>
         ChooseOneAnswer(PlacementPicks.pick(park.decide, way))
     })
     start(act, ActionRef.PlayFacedownAdviser)
@@ -714,7 +714,7 @@ object LogScripts:
       .denizen("Oracle", "Ancient City").secrets(p1, faceUp = 3)
       .worldDeckTop(VisionRules.Sanctuary).banditsRefilled)
     act.withAnswers {
-      case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
+      case park if park.decisionId.startsWith(LogWords.PlacePrefix) =>
         ChooseOneAnswer(PlacementPicks.pick(park.decide, placement))
     }.after(MenuPlay.start(p1, ActionRef.UsePower(Oracle.id), Vector(DecisionOptionRef.Denizen(card))))
     Script(name, service, p1)
@@ -758,7 +758,7 @@ object LogScripts:
       .adviser(p1, "Family Heirloom", facedown = true)
       .relicDeckTop("Dowsing Sticks").banditsRefilled)
     act.withAnswers {
-      case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
+      case park if park.decisionId.startsWith(LogWords.PlacePrefix) =>
         ChooseOneAnswer(PlacementPicks.pick(park.decide, PlayedAs.Faceup))
       case park if park.decisionId == FamilyHeirloom.decisionId =>
         ChooseOneAnswer(choice)
