@@ -176,8 +176,10 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
       lines = ActionLineSource.Notes(), anchor = starts.paysCost,
       narrated = Vector(Told(MusterProcedure.decisionId,
         Some(MusterProcedure.mustered))))
+    // Four keys word this line — favor or secrets, some or none — so no
+    // single key tells the source decision.
     case ActionRef.Trade => ProcedureLog(tag = Some("Trade"),
-      lines = ActionLineSource.Rule(actions.tradeLines),
+      lines = ActionLineSource.Notes(),
       anchor = starts.paysCost,
       narrated = Vector(Told(TradeProcedure.decisionId)))
     // The take line tells both decisions, in one of four wordings, so no

@@ -3,7 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
-import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
@@ -193,3 +193,21 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
         NoteArg.Players(Vector(rival, third))),
       Vector[LogSpan](Text("Negotiated with "), words.player(rival),
         Text(" and "), words.player(third)))
+
+  test("a Trade for favor reads as the rule wrote it"):
+    assertEquals(spoken(ActionRef.Trade, TradeProcedure.tradedForFavor,
+        NoteArg.Card(roar), NoteArg.Number(3)),
+      Vector[LogSpan](Text("Traded with "), Text("a Denizen"),
+        Text(" for "), Text("3"), Text(" favor")))
+
+  test("a Trade for one secret says secret"):
+    assertEquals(said(ActionRef.Trade, TradeProcedure.tradedForSecrets,
+      NoteArg.Card(roar), NoteArg.Number(1)),
+      "Traded with a Denizen for 1 secret")
+
+  // The rule this replaced wrote "for no secrets" here whichever resource
+  // the Trade was for; nothing covered it (slice 3 plan-time ruling 3, and
+  // the wording ledger).
+  test("a Trade for favor that gained none says no favor"):
+    assertEquals(said(ActionRef.Trade, TradeProcedure.tradedForNoFavor,
+      NoteArg.Card(roar)), "Traded with a Denizen for no favor")

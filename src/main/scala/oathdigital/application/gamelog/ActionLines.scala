@@ -3,7 +3,6 @@ package oathdigital.application.gamelog
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
-import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
@@ -27,32 +26,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       viewer: Option[PlayerId]): Vector[Posted] =
     search(journal, run, at, viewer) ++
       playedAdviser(journal, run, at, viewer)
-
-  def tradeLines(journal: LogJournal, run: Run, at: Int,
-      viewer: Option[PlayerId]): Vector[Posted] =
-    val actor = run.actor
-    val gained = journal.ops(at).collect {
-      case OpStep(Move(piece @ Piece.Favor(_),
-          PositionedLocation(Location.FavorBank(_), _, _),
-          PositionedLocation(Location.PlayArea(taker), _, _),
-          _, _), before, after)
-          if taker == actor =>
-        traded(journal, run, at, resource(piece), before, after, viewer)
-      case OpStep(Move(piece @ Piece.Secrets(_),
-          PositionedLocation(Location.SharedBank, _, _),
-          PositionedLocation(Location.PlayArea(taker), _, _),
-          _, _), before, after)
-          if taker == actor =>
-        traded(journal, run, at, resource(piece), before, after, viewer)
-    }
-    // Trading favor for secrets with no matching adviser gains nothing: the
-    // line is posted at completion instead.
-    val gainedEarlier = (run.first until at).exists(index =>
-      journal.ops(index).exists(isTradeGain(actor)))
-    if gained.nonEmpty || gainedEarlier ||
-        !journal.event(at).isInstanceOf[WalkerCompleted] then gained
-    else journal.readyBefore(at).toVector.map(ready =>
-      traded(journal, run, at, "no secrets", ready, ready, viewer))
 
   def recoverLines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
@@ -87,24 +60,6 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
     usedPower(journal, run, at, power,
       journal.event(at).isInstanceOf[WalkerCompleted], viewer) ++
       playedAdviser(journal, run, at, viewer)
-
-  /** The card an economy action's source decision chose. */
-  private def source(journal: LogJournal, run: Run, at: Int,
-      decisionId: String, before: ReadyGame, after: ReadyGame,
-      viewer: Option[PlayerId]): Vector[LogSpan] =
-    journal.answers(run, at).collectFirst {
-      case Answered(`decisionId`, ChooseOneAnswer(DecisionOptionRef.Denizen(id)), _) =>
-        id: CardId
-      case Answered(`decisionId`, ChooseOneAnswer(DecisionOptionRef.Edifice(id)), _) =>
-        id: CardId
-    }.fold(Vector.empty[LogSpan])(card =>
-      words.one(words.card(card, before, after, viewer)))
-
-  private def traded(journal: LogJournal, run: Run, at: Int, bought: String,
-      before: ReadyGame, after: ReadyGame, viewer: Option[PlayerId]): Posted =
-    action(Vector(Text("Traded with ")) ++ source(journal, run, at,
-      TradeProcedure.decisionId, before, after, viewer) ++
-      Vector(Text(s" for $bought")))
 
   /** "Drew {cards} from the {source} and kept {cards}", at the keep/discard
     * answer, or at completion when only one card was drawn or none was

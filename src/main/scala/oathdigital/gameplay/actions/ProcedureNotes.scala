@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions
 
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
-import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.minor.MinorActionProcedures
 import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
@@ -68,6 +68,7 @@ object ProcedureNotes:
   private def keys(procedure: ProcedureRef): Vector[NoteKey] =
     procedure match
       case ActionRef.Muster => MusterProcedure.noteKeys
+      case ActionRef.Trade => TradeProcedure.noteKeys
       case ActionRef.Travel => TravelProcedure.noteKeys
       case ActionRef.TakeWealth => TakeWealthProcedure.noteKeys
       case ActionRef.Forge => ForgeProcedure.noteKeys

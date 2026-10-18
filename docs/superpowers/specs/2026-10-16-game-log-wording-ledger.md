@@ -75,3 +75,18 @@ The question is which fallback is right everywhere. A slot tells a reader
 *which* of a player's facedown advisers moved, which a count does not; it
 also leaks a position the deal's parties may not have shown. Decide it once
 and apply it to every card line, not to one procedure and one choice.
+
+## A Trade that gained nothing names the right resource
+
+`ActionLines.tradeLines` posted its completion fallback with the literal
+`"no secrets"`, so a Trade **for favor** whose suit bank was empty read
+`Traded with Hiding Place for no secrets`. No test or golden covered the
+branch. `TradeProcedure.tradedForNoFavor` now reads `… for no favor`
+(procedures journal their own notes, slice 3 plan-time ruling 3).
+
+The same rule matched every bank-to-player move in the event it formatted, so
+a Trade a power gained again on — The Old Oak's bonus secret, Mounted
+Library's doubling — posted a second `Traded with …` line. A probe run at
+plan time measured it: a Trade for secrets on The Old Oak, with a beast
+adviser held, posted two identical `Traded with The Old Oak for 1 secret`
+lines. The note posts once, naming what the Trade itself gained.
