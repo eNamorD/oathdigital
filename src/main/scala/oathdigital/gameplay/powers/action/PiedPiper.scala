@@ -116,7 +116,7 @@ case object PiedPiper extends PaidAction(PiedPiperCard.power)
         Location.PlayArea(receiver.player), Location.PlayArea(actor)))
 
   private def ledNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).flatMap(card =>
       NoteSupport.answer(states, decisionId).collect {
         case DecisionOptionRef.Player(receiver) =>

@@ -38,7 +38,7 @@ final case class CrystalVial(catalog: ExecutableCatalog)
 
   /** The chosen card, read where it stood before the bury step. */
   private def buriedNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     step <- states.previous
     ref <- NoteSupport.answer(states, decisionId)

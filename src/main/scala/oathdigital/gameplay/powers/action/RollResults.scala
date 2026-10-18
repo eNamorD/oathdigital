@@ -29,7 +29,7 @@ private[action] object RollResults:
 
   /** The roll `pool` recorded, restated with its total. */
   def rollNote(source: DecisionOptionRef, player: PlayerId, pool: PoolKey)(
-      states: NoteStates): Option[PowerNote] = for
+      states: NoteStates): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     outcome <- states.now.game.current.rollOutcomes.get(pool)
   yield rolled(card, NoteArg.Player(player), NoteArg.Dice(outcome.faces),

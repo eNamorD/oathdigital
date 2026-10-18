@@ -6,7 +6,7 @@ import oathdigital.gameplay.powers.campaign.{WarningSignals,
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.actions.economy.MusterProcedure
-import oathdigital.model.{ActionRef, NoteArg, PlayerId, PowerId, PowerNote,
+import oathdigital.model.{ActionRef, NoteArg, PlayerId, PowerId, LogNote,
   PowerSourceRef}
 
 /** A note whose key no power declares has no wording, so the Game Log would
@@ -18,14 +18,14 @@ class UndeclaredNoteSuite extends munit.FunSuite:
   private val source = PowerSourceRef.Card(WarningSignalsCard.id)
 
   test("a declared key is journaled"):
-    val note = PowerNote(Some(source), "redistributed",
+    val note = LogNote(Some(source), "redistributed",
       Vector(NoteArg.Player(PlayerId("red"))))
     assertEquals(
       NoteCheck.journal(declared, power, note, covers = false).map(_.note),
       Some(note))
 
   test("an undeclared key is refused, and the failure names both"):
-    val note = PowerNote(Some(source), "nonesuch", Vector.empty)
+    val note = LogNote(Some(source), "nonesuch", Vector.empty)
     val thrown = intercept[AssertionError](
       NoteCheck.journal(declared, power, note, covers = false))
     assert(thrown.getMessage.contains("denizen.warning-signals"),
@@ -33,14 +33,14 @@ class UndeclaredNoteSuite extends munit.FunSuite:
     assert(thrown.getMessage.contains("nonesuch"), thrown.getMessage)
 
   test("without the strict property the note is dropped, not thrown"):
-    val note = PowerNote(Some(source), "nonesuch", Vector.empty)
+    val note = LogNote(Some(source), "nonesuch", Vector.empty)
     assertEquals(
       NoteCheck.journal(declared, power, note, covers = false, strict = false),
       None)
 
   test("a power the catalogs never heard of writes what it likes"):
     val invented = PowerId("denizen.nonesuch")
-    val note = PowerNote(Some(source), "whatever", Vector.empty)
+    val note = LogNote(Some(source), "whatever", Vector.empty)
     assert(!DeclaredNotes.of(catalog).knows(invented))
     assertEquals(
       NoteCheck.journal(declared, invented, note, covers = false).map(_.note),
@@ -52,10 +52,10 @@ class UndeclaredNoteSuite extends munit.FunSuite:
       .getOrElse(fail("no catalog power declares an empty key set"))
     assert(DeclaredNotes.of(catalog).knows(quiet))
     intercept[AssertionError](NoteCheck.journal(declared, quiet,
-      PowerNote(Some(source), "whatever", Vector.empty), covers = false))
+      LogNote(Some(source), "whatever", Vector.empty), covers = false))
 
   test("powers with no catalog behind them declare nothing and are not checked"):
-    val note = PowerNote(Some(source), "nonesuch", Vector.empty)
+    val note = LogNote(Some(source), "nonesuch", Vector.empty)
     assertEquals(
       NoteCheck.journal(None, power, note, covers = false).map(_.note),
       Some(note))
@@ -69,12 +69,12 @@ class UndeclaredNoteSuite extends munit.FunSuite:
     val muster = ProcedureNotes.id(ActionRef.Muster)
     assert(DeclaredNotes.of(catalog).knows(muster),
       "a procedure is covered by the union")
-    val declaredKey = PowerNote(None, MusterProcedure.mustered.name,
+    val declaredKey = LogNote(None, MusterProcedure.mustered.name,
       Vector.empty)
     assertEquals(NoteCheck.journal(declared, muster, declaredKey,
       covers = false).map(_.note), Some(declaredKey))
     val thrown = intercept[AssertionError](NoteCheck.journal(declared, muster,
-      PowerNote(None, "invented", Vector.empty), covers = false))
+      LogNote(None, "invented", Vector.empty), covers = false))
     assert(thrown.getMessage.contains("procedure.muster"), thrown.getMessage)
     assert(thrown.getMessage.contains("invented"), thrown.getMessage)
 
@@ -84,5 +84,5 @@ class UndeclaredNoteSuite extends munit.FunSuite:
       "an unmigrated procedure is covered by the union, so it is refused " +
         "rather than unrecognised")
     val thrown = intercept[AssertionError](NoteCheck.journal(declared, campaign,
-      PowerNote(None, "campaigned", Vector.empty), covers = false))
+      LogNote(None, "campaigned", Vector.empty), covers = false))
     assert(thrown.getMessage.contains("procedure.campaign"), thrown.getMessage)

@@ -334,14 +334,6 @@ one.
   `CoreOperation`. See the wording ledger, "A card play's line now follows
   the lines its own batch caused". Recorded in the procedures journal their
   own notes design of 2026-10-16.
-- [ ] **Rename the `Power*` note family.** `PowerNote`, `PowerNoted` and
-  `PowerLines` are named for one of three emitters: powers, printed rules
-  and, after the migration above, procedures. The `PowerId` key already
-  holds `rule.homeland-discard` and will hold `procedure.muster`. Rename the
-  Scala types only; the wire tag `walker.power-noted` must stay, because
-  changing it would make an openable game fail to load. Roughly 368
-  construction sites, no behaviour change. Recorded in the procedures
-  journal their own notes design of 2026-10-16.
 
 ### Powers-related deferred items
 

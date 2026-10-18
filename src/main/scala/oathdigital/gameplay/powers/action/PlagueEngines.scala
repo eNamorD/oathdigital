@@ -54,7 +54,7 @@ case object PlagueEngines extends PaidAction(PlagueEnginesCard.power):
 
   /** What `payer` gave in the step before the note. */
   private def paidNote(states: NoteStates, payer: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     step <- states.previous
     gave = -NoteSupport.favor(step, payer)
@@ -64,7 +64,7 @@ case object PlagueEngines extends PaidAction(PlagueEnginesCard.power):
 
   /** The line when the Arcane bank gained nothing in the step before it. */
   private def nobodyNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     if states.previous.forall((before, after) =>
       after.banks.favor.getOrElse(Suit.Arcane, 0) <=

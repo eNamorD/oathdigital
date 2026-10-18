@@ -67,7 +67,7 @@ case object QuickExit extends PaidAction(QuickExitCard.power):
             "elsewhere"))))
 
   private def nobodyNote(ready: ReadyGame, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     site <- PowerAccess.pawnSite(ready, actor)
   yield nobody(card, NoteArg.Site(site))
@@ -100,7 +100,7 @@ case object QuickExit extends PaidAction(QuickExitCard.power):
   /** Where the chosen pawn stands now. No answer means nobody was at the
     * site, whose line the first `Branch` already wrote. */
   private def placedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     case DecisionOptionRef.Player(target) <-
       NoteSupport.answer(states, targetDecisionId)

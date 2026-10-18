@@ -66,7 +66,7 @@ case object BanditChief extends WhenPlayedPower:
 
   /** The warbands of `kind` the step before killed at `site`, and whose. */
   private def killedNote(states: NoteStates, site: SiteId, kind: ForceKind)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     (before, after) <- states.previous
     lost = held(before, site, kind) - held(after, site, kind)
     if lost > 0

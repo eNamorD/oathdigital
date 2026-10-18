@@ -63,7 +63,7 @@ final case class TamingCharm private (catalog: ExecutableCatalog)
   yield Gain.Favor(player, suit, take)).toVector
 
   private def tamedNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).flatMap(card =>
       NoteSupport.answer(states, decisionId).flatMap(cards.cardOf) match
         case Some(chosen) => Some(line(states, card, player, chosen))
@@ -76,7 +76,7 @@ final case class TamingCharm private (catalog: ExecutableCatalog)
   /** The favor the player gained in the step before the note: the gain's,
     * or none when the empty bank skipped it. */
   private def line(states: NoteStates, card: PowerSourceRef, player: PlayerId,
-      chosen: CardId): PowerNote =
+      chosen: CardId): LogNote =
     val favor = states.previous.fold(0)(NoteSupport.favor(_, player))
     catalog.suitOf(chosen).filter(_ => favor > 0) match
       case Some(suit) => gained(card, NoteArg.Player(player),

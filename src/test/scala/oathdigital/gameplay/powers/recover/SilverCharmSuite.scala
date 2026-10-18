@@ -7,7 +7,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.powerresolver.ModifierPicks
-import oathdigital.gameplay.walker.{PowerNoted, WalkerDice,
+import oathdigital.gameplay.walker.{LogNoted, WalkerDice,
   WalkerProcedureRegistry, WalkerRollFeedback, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer}
@@ -63,7 +63,7 @@ class SilverCharmSuite extends munit.FunSuite:
   /** What each of Silver Charm's notes names, and whether it covers. */
   private def silverCharmNotes(events: Vector[OathEvent])
       : Vector[(Vector[NoteArg], Boolean)] = events.collect {
-    case PowerNoted(SilverCharm.id, note, covers) => (note.args, covers)
+    case LogNoted(SilverCharm.id, note, covers) => (note.args, covers)
   }
 
   test("its text reads [defense-die], where the card misprints " +

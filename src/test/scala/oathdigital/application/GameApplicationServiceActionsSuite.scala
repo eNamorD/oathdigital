@@ -140,11 +140,11 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
       "ProcedureDequeued", "WalkerParked"))
     assertEquals(stored.nextSequence, 14L)
     // The destination's pick ends the Travel, and the Act menu parks again.
-    // The Travel's own Game Log line is the `PowerNoted` between the pawn
+    // The Travel's own Game Log line is the `LogNoted` between the pawn
     // move and the completion.
     assertEquals(traveled.events.map(_.productPrefix), Vector(
       "WalkerStepRecorded", "WalkerStepRecorded", "WalkerStepRecorded",
-      "PowerNoted", "WalkerCompleted", "ActionBoundaryRan", "WalkerParked"))
+      "LogNoted", "WalkerCompleted", "ActionBoundaryRan", "WalkerParked"))
     // Nothing is left parked once the destination is picked, but the menu.
     assertEquals(MenuPlay.pendingBeyondMenu(after), None)
     assertEquals(MenuPlay.procedureBeyondMenu(after), None)

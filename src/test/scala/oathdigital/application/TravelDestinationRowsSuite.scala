@@ -113,7 +113,7 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
     val started = accepted(rules.startWalker(Ready(ready), ActionRef.Travel,
       actor, Vector.empty))
     assert(!started.events.exists(_.isInstanceOf[
-      oathdigital.gameplay.walker.PowerNoted]))
+      oathdigital.gameplay.walker.LogNoted]))
 
   test("a destination both blocked and unaffordable gives the block"):
     // Dunes costs 2 from the Cradle, and Narrow Pass blocks it.

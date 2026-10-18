@@ -40,7 +40,7 @@ object MusterProcedure:
     * and writes no line, as the rule this replaced wrote none without a
     * `Move` out of a warband bank. */
   private def musteredNote(actor: PlayerId, states: NoteStates,
-      source: MusterSource): Option[PowerNote] =
+      source: MusterSource): Option[LogNote] =
     states.previous.map(NoteSupport.warbands(_, actor))
       .filter(_ > 0).map(gained => mustered.sourceless(
         NoteArg.Number(gained), NoteArg.Card(source.card)))

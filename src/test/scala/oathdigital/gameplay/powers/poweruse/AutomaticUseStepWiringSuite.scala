@@ -10,7 +10,7 @@ import oathdigital.gameplay.powers.travel.{Hospitality, Tyrant}
 import oathdigital.gameplay.powers.whenplayed.{ConspiracyWhenPlayed,
   ThreateningRoar, ThreateningRoarCard}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedUses, PowerNoted, ProcedureWalker,
+import oathdigital.gameplay.walker.{ParkedUses, LogNoted, ProcedureWalker,
   WalkerOutcome, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{AppendedAutomaticUses, CatalogNames, Table}
@@ -37,7 +37,7 @@ class AutomaticUseStepWiringSuite extends munit.FunSuite:
     def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
     override def powerUseRestrictions: Vector[PowerUseRestriction] =
       Vector(this)
-    private val note = PowerNote(Some(refusingSource), "refused",
+    private val note = LogNote(Some(refusingSource), "refused",
       Vector.empty)
     def refusal(ready: ReadyGame, use: PowerUse): Option[PowerUseRefusal] =
       Some(PowerUseRefusal(id, note, OperationReason("test-refused",
@@ -103,7 +103,7 @@ class AutomaticUseStepWiringSuite extends munit.FunSuite:
       accepted(ProcedureWalker.advance(refused,
           Sequence(Vector[Operation](use)), None, refusing)) match
         case WalkerOutcome.Finished(_, events) =>
-          assertEquals(events.collect { case PowerNoted(_, note, _) =>
+          assertEquals(events.collect { case LogNoted(_, note, _) =>
             note }, Vector(PowerUseStep.staysDeactivated(refusingSource,
               NoteArg.Card(use.card))))
         case other => fail(s"the walk did not finish: $other")

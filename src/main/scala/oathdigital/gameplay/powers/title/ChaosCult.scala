@@ -64,7 +64,7 @@ case object ChaosCult extends ContributingPower:
 
   /** What the holder gained in the take step, from the new Oathkeeper. */
   private def tookNote(holder: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     amount = NoteSupport.favor(step, holder)
     if amount > 0

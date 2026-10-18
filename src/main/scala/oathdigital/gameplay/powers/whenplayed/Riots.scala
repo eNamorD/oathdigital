@@ -46,7 +46,7 @@ final case class Riots private (catalog: ExecutableCatalog)
   /** What the burn step took from the banner, or that it held none. Nothing
     * when nothing was discarded. */
   private def burnedNote(states: NoteStates, found: Vector[CardId])
-      : Option[PowerNote] =
+      : Option[LogNote] =
     val source = PowerSourceRef.Card(cardId)
     val banner = NoteArg.Banner(Banner.PeoplesFavor)
     val burnt = states.previous.fold(0)((before, after) =>

@@ -94,7 +94,7 @@ final case class SignalTrees private (catalog: ExecutableCatalog)
 
   /** The line, from the pile as the step before found it. */
   private def signalled(user: PlayerId, side: CampaignPlanSide)(
-      states: NoteStates): Option[PowerNote] =
+      states: NoteStates): Option[LogNote] =
     states.previous.map { (before, _) =>
       val cards = drawn(before, user)
       val dice = SignalTrees.PerBeast * beasts(cards)

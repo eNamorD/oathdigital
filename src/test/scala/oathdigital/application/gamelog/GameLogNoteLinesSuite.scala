@@ -8,7 +8,7 @@ import oathdigital.gameplay.powers.action.{DreamThief, GamblingHall, MagicCarpet
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.powers.wake.Hunger
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, WalkerCompleted,
+import oathdigital.gameplay.walker.{ChoicePayload, LogNoted, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.protocol.projection.{LogEntry, LogKind, LogSpan}
@@ -19,14 +19,14 @@ import LogScripts._
 /** Lines powers write about themselves (power log lines design, section 2).
   * The notes are journaled into real scripts, as Silver Tongue's, whose
   * wording this suite supplies. */
-class GameLogPowerLinesSuite extends munit.FunSuite:
+class GameLogNoteLinesSuite extends munit.FunSuite:
   private val silverTongueCard = CatalogNames.denizen("Silver Tongue")
   private type Steps = Vector[ReplayStep[OathState, OathEvent]]
   private val power = SilverTongue.id
   private val card = PowerSourceRef.Card(silverTongueCard)
   /** This suite's own keys: a test declares what it writes,
     * as a power does. */
-  private val testNotes = NoteSet.unowned("GameLogPowerLinesSuite")
+  private val testNotes = NoteSet.unowned("GameLogNoteLinesSuite")
   private val said = testNotes.key("said", Vector(NotePart.Arg(0),
     NotePart.Text(" said "), NotePart.Arg(1), NotePart.Text(".")))
   private val took = testNotes.key(NoteKey.Used, Vector(NotePart.Arg(0),
@@ -85,8 +85,8 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     }
     case _ => false)
 
-  private def saying(actor: PlayerId, arg: NoteArg): PowerNoted =
-    PowerNoted(power, said(card, NoteArg.Player(actor), arg), covers = false)
+  private def saying(actor: PlayerId, arg: NoteArg): LogNoted =
+    LogNoted(power, said(card, NoteArg.Player(actor), arg), covers = false)
 
   private def closes(event: OathEvent): Boolean = event match
     case _: WalkerParked | _: WalkerCompleted => true
@@ -113,7 +113,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
   test("a banner source reads as its banner"):
     val script = silverTongueScript
     val steps = silverTongueSteps
-    val noted = inserted(steps, take(steps), PowerNoted(power,
+    val noted = inserted(steps, take(steps), LogNoted(power,
       said(PowerSourceRef.Banner(Banner.DarkestSecret),
         NoteArg.Player(script.actor), NoteArg.Amount(1, NoteUnit.Secret)),
       covers = false))
@@ -125,7 +125,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val script = silverTongueScript
     val steps = silverTongueSteps
     assert(lines(steps).contains("Used Silver Tongue"), lines(steps))
-    val noted = inserted(steps, take(steps), PowerNoted(power, took(card,
+    val noted = inserted(steps, take(steps), LogNoted(power, took(card,
       NoteArg.Player(script.actor), NoteArg.Amount(1, NoteUnit.Favor)),
       covers = false))
     assert(!lines(noted).exists(_.startsWith("Used ")), lines(noted))
@@ -162,7 +162,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
   test("plurals follow their amount"):
     val script = silverTongueScript
     val steps = silverTongueSteps
-    def counting(count: Int) = PowerNoted(power, counted(card,
+    def counting(count: Int) = LogNoted(power, counted(card,
       NoteArg.Player(script.actor), NoteArg.Number(count),
       NoteArg.Amount(count, NoteUnit.Warband)), covers = false)
     val noted = inserted(steps, take(steps), counting(1), counting(2))
@@ -173,8 +173,8 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note no power words posts nothing"):
     val steps = silverTongueSteps
-    val unknown = PowerNoted(PowerId("test.unknown"),
-      PowerNote(Some(card), "said", Vector.empty), covers = false)
+    val unknown = LogNoted(PowerId("test.unknown"),
+      LogNote(Some(card), "said", Vector.empty), covers = false)
     assertEquals(lines(inserted(steps, take(steps), unknown)), lines(steps))
 
   test("a card its viewer may not identify is not named to them"):
@@ -262,7 +262,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val steps = silverTongueSteps
     val last = Outcomes.ready(steps.last.after)
     assertOwnerHoldsHiddenFacedown(last)
-    val noted = inserted(steps, take(steps), PowerNoted(power,
+    val noted = inserted(steps, take(steps), LogNoted(power,
       said(PowerSourceRef.Card(hiddenAdviser), NoteArg.Player(script.actor),
         NoteArg.Amount(2, NoteUnit.Favor)), covers = false))
     def line(viewer: PlayerId) =
@@ -324,7 +324,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
   test("a variant of a phase power's used note also replaces Used {card}"):
     val steps = silverTongueSteps
     val noted = inserted(steps, take(steps),
-      PowerNoted(power, none(card), covers = false))
+      LogNoted(power, none(card), covers = false))
     assert(!lines(noted).exists(_.startsWith("Used ")), lines(noted))
     val entry = firstSilverTongueLine(ours(noted))
     assertEquals(text(entry), "Silver Tongue: Nothing to take.")
@@ -401,7 +401,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val script = silverTongueScript
     val steps = silverTongueSteps
     val site = CatalogNames.site("Ancient City")
-    val noted = inserted(steps, take(steps), PowerNoted(power, took(
+    val noted = inserted(steps, take(steps), LogNoted(power, took(
       PowerSourceRef.Site(site), NoteArg.Player(script.actor),
       NoteArg.Amount(1, NoteUnit.Favor)), covers = false))
     val named = new GameLogFormatter(catalog, presentation,
@@ -525,8 +525,8 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       NoteWordings.of(power, Vector(said, took, counted, none)) ++
       NoteWordings.of(musterId, Vector(mustered)))
 
-  private def musterNote(count: Int, covers: Boolean = false): PowerNoted =
-    PowerNoted(musterId, PowerNote(None, "mustered",
+  private def musterNote(count: Int, covers: Boolean = false): LogNoted =
+    LogNoted(musterId, LogNote(None, "mustered",
       Vector(NoteArg.Number(count))), covers)
 
   private def procedureLines(steps: Steps): Vector[LogEntry] =
@@ -546,7 +546,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assertEquals(posted.map(text),
       Vector("Mustered 1 warband", "Mustered 1 warband"))
 
-  test("two identical power notes in one run post once"):
+  test("two identical notes in one run post once"):
     val steps = silverTongueSteps
     val note = saying(Table.p1, NoteArg.Number(1))
     assertEquals(ours(inserted(steps, take(steps), note, note)).size, 1)

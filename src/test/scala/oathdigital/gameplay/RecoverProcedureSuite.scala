@@ -4,7 +4,7 @@ import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.WalkerDiceFixture.scripted
-import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, ProcedureWalker,
+import oathdigital.gameplay.walker.{ChoicePayload, LogNoted, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerPowers, WalkerStepPayload,
   WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{RelicAcquired, SupplySpent}
@@ -40,14 +40,14 @@ class RecoverProcedureSuite extends munit.FunSuite
   private def recoverBoard: Table = Table.start.pawn(actor, at = recoverSite)
     .relicAt(relic, at = recoverSite)
 
-  /** The steps a walk recorded, without the `PowerNoted` events its `Note`
+  /** The steps a walk recorded, without the `LogNoted` events its `Note`
     * leaves journal: a note changes no state and is the Game Log's
     * business, not this suite's. Each caller states how many lines the walk
     * journals, so a line that stops being journaled does not pass
     * unnoticed. */
   private def recordedSteps(events: Vector[OathEvent], notes: Int = 0)(
       using munit.Location): Vector[WalkerStepRecorded] =
-    assertEquals(events.count(_.isInstanceOf[PowerNoted]), notes,
+    assertEquals(events.count(_.isInstanceOf[LogNoted]), notes,
       s"the walk journals $notes of its own lines: $events")
     events.collect { case step: WalkerStepRecorded => step }
 

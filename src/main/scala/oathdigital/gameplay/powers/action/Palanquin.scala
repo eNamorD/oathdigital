@@ -161,7 +161,7 @@ case object Palanquin extends PaidAction(PalanquinCard.power):
     * then not asked (ruling 12). `pending` or `alternatives` is not
     * empty. */
   private def askable(pending: Vector[QueuedStarts.Needed],
-      alternatives: Vector[TollRoads.Alternative], hover: Option[PowerNote])
+      alternatives: Vector[TollRoads.Alternative], hover: Option[LogNote])
       : OptionReason.Askable =
     val required = pending.map(_.granter).distinct.map(granter =>
       ConsentAsk(granter, pending.filter(_.granter == granter)

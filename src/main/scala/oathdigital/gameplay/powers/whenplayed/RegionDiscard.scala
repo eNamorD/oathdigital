@@ -108,7 +108,7 @@ private[whenplayed] object RegionDiscard:
   /** "Discarded {cards}." for the cards of `found` that left the sites, or
     * "Nothing was discarded." */
   def said(card: DenizenId, found: Vector[CardId])(states: NoteStates)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     val source = PowerSourceRef.Card(card)
     val left = gone(found, states.now)
     Some(if left.nonEmpty then discarded(source, NoteArg.Cards(left))

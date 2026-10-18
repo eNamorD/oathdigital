@@ -123,7 +123,7 @@ final case class TollRoads private (catalog: ExecutableCatalog)
 
   /** What the payment's step took from the traveller. */
   private def paidNote(traveller: PlayerId, ruler: SiteRuler)(
-      states: NoteStates): Option[PowerNote] = for
+      states: NoteStates): Option[LogNote] = for
     step <- states.previous
     paid = -NoteSupport.favor(step, traveller)
     if paid > 0
@@ -244,9 +244,9 @@ object TollRoads:
     /** The traveller agreed to pay, or the ruler waived it. */
     case Settled
     /** Any one of `alternatives` would settle it. */
-    case Asks(alternatives: Vector[Alternative], hover: PowerNote)
+    case Asks(alternatives: Vector[Alternative], hover: LogNote)
     /** Nobody may settle it. */
-    case Barred(reason: PowerNote)
+    case Barred(reason: LogNote)
 
   /** One way to settle it: `granter` consenting to `power` under `key`. */
   final case class Alternative(granter: PlayerId, power: PowerId,

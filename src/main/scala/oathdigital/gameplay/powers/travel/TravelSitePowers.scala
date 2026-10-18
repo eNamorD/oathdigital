@@ -7,7 +7,7 @@ import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.wake.{HeadwatersSite, TidalMarshesSite}
 import oathdigital.model.{DecisionOptionRef, Location, Move, NoteKey,
   NotePart, NoteSet, OathViolation, Operation, Piece, PlayerId,
-  PositionedLocation, PowerId, PowerNote, PowerSourceRef, PowerWindow,
+  PositionedLocation, PowerId, LogNote, PowerSourceRef, PowerWindow,
   RuleSourceRef, SiteId, SiteRule, SiteRuler, SpendSupply, Tokens}
 
 object BrokenPeaksSite extends Site(SiteId("site:broken-peaks"), "Broken Peaks",
@@ -184,12 +184,12 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
   /** A blocked destination's hover reason (travel destination design,
     * ruling 4). */
   private def travelNote(ctx: PowerCtx, ref: DecisionOptionRef)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     Some(NarrowPassSitePower.noTravel(PowerSourceRef.Site(site)))
 
   /** A hidden target site's hover reason. */
   private def campaignNote(ctx: PowerCtx, ref: DecisionOptionRef)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     Some(NarrowPassSitePower.noTarget(PowerSourceRef.Site(site)))
 
   override def applicable(ctx: PowerCtx): Boolean = ctx.window match

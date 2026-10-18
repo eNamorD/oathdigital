@@ -2,7 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.application.GamePresentationProjector
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.model.{PlayerId, PowerId, PowerNote, ReadyGame}
+import oathdigital.model.{PlayerId, PowerId, LogNote, ReadyGame}
 
 /** A power's note as one line of plain text: the reason an option it hid is
   * not on offer (board decisions design, "Unavailable options"). It is
@@ -16,11 +16,11 @@ private[application] final class NoteReasons(catalog: ExecutableCatalog,
     this(catalog, presentation, NoteWordings.default(catalog))
 
   // A reason is one sentence, never an entry, so `spoken` is all this asks
-  // of `PowerLines` and no note's kind is ever looked up.
-  private val lines = new PowerLines(new LogWords(catalog, presentation),
+  // of `NoteLines` and no note's kind is ever looked up.
+  private val lines = new NoteLines(new LogWords(catalog, presentation),
     wordings, NoteKinds.unasked)
 
-  def text(power: PowerId, note: PowerNote, ready: ReadyGame,
+  def text(power: PowerId, note: LogNote, ready: ReadyGame,
       viewer: Option[PlayerId]): Option[String] =
     lines.spoken(power, note, Vector(ready), viewer)
       .map(_.map(_.text).mkString)

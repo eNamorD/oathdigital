@@ -91,14 +91,14 @@ final case class HonorGuard private (catalog: ExecutableCatalog)
 
   /** The chosen adviser, read where it stood before the bury step. */
   private def buriedNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).flatMap(card =>
       NoteSupport.answer(states, decisionId) match
         case None => Some(spared(card))
         case Some(ref) => buriedLine(states, actor, card, ref))
 
   private def buriedLine(states: NoteStates, actor: PlayerId,
-      card: PowerSourceRef, ref: DecisionOptionRef): Option[PowerNote] = for
+      card: PowerSourceRef, ref: DecisionOptionRef): Option[LogNote] = for
     step <- states.previous
     chosen <- candidates(step._1, actor)
       .find(c => DecisionOptionRef.Denizen(c.card.id) == ref)

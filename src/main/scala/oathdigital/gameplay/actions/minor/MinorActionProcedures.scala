@@ -109,7 +109,7 @@ object MinorActionProcedures:
     * no line, as the rule this replaced posted none without a recorded
     * `Peek`. */
   private def peekedNote(actor: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = states.previous.flatMap((before, _) =>
+      : Option[LogNote] = states.previous.flatMap((before, _) =>
     sitedPawn(before, actor).filter(_._2.relics.nonEmpty).map:
       (siteId, site) => peeked.sourceless(
         NoteArg.Cards(site.relics.map(_.id: CardId)), NoteArg.Site(siteId)))
@@ -136,7 +136,7 @@ object MinorActionProcedures:
         revealedNote(actor))))
 
   private def revealedNote(actor: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     (before, after) <- states.previous
     relic <- states.answered.collectFirst {
       case Answered(`relicDecisionId`, DecisionAnswer.ChooseOneAnswer(
@@ -181,7 +181,7 @@ object MinorActionProcedures:
     * is the change in the actor's own board bank: moving to the site empties
     * it, moving to the board fills it. Nothing moved writes nothing. */
   private def movedNote(actor: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     way <- chosenWay(states.answered)
     change = NoteSupport.warbands(step, actor)

@@ -77,7 +77,7 @@ case object SiegeEngines extends PaidAction(SiegeEnginesCard.power):
 
   /** The warbands the chosen site lost in the kill step, and whose. */
   private def killNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     site <- NoteSupport.answer(states, decisionId).collect {
       case DecisionOptionRef.Site(id) => id }

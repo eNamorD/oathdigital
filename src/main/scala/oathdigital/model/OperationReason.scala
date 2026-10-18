@@ -19,7 +19,7 @@ final case class OperationReason(code: String, detail: String,
   * reason of one nobody may be asked about: no granter, the asker the
   * granter, or a refusal this turn (catalog batch 8, slice 10). */
 final case class OperationWaiver(power: PowerId, granter: Option[PlayerId],
-    covers: ConsentKey, note: PowerNote, plain: PowerNote)
+    covers: ConsentKey, note: LogNote, plain: LogNote)
 
 /** Extension seam for per-query contextual restrictions beyond the static
   * allowlist. Restrictions report typed rule impossibility or invalidity.

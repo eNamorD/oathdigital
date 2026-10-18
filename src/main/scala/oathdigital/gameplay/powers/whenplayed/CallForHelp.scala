@@ -126,7 +126,7 @@ final case class CallForHelp private (catalog: ExecutableCatalog)
   /** The cards the step before drew, read from the pile before it, and the
     * warbands it gave. */
   private def drawnNote(states: NoteStates, actor: PlayerId)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     amount <- amounts(states.answered).lastOption
     if amount > 0
     step <- states.previous
@@ -140,7 +140,7 @@ final case class CallForHelp private (catalog: ExecutableCatalog)
     else discarded(cardSource, cards)
 
   /** "Nothing was revealed." when no pass drew a card. */
-  private def nothingNote(states: NoteStates): Option[PowerNote] =
+  private def nothingNote(states: NoteStates): Option[LogNote] =
     Option.when(amounts(states.answered).sum == 0)(none(cardSource))
 
 object CallForHelp:

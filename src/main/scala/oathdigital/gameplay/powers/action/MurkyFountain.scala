@@ -50,7 +50,7 @@ case object MurkyFountain extends PaidAction(MarbleFountainsCard.ruined.power):
 
   /** The outcome step moved the turn out of the Act phase. */
   private def endNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     step <- states.previous
     if step._1.game.current.turn.phase != step._2.game.current.turn.phase

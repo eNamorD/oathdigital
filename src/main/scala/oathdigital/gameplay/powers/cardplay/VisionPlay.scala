@@ -36,7 +36,7 @@ private[cardplay] object VisionPlay:
 
   /** The hide hook of a rule printed on `card`: the acting player cannot
     * play a Vision faceup. */
-  def note(card: CardId): (PowerCtx, DecisionOptionRef) => Option[PowerNote] =
+  def note(card: CardId): (PowerCtx, DecisionOptionRef) => Option[LogNote] =
     (_, _) => Some(noFaceup(PowerSourceRef.Card(card)))
 
   private def held(ready: ReadyGame, player: PlayerId, card: VisionId): Boolean =

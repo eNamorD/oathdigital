@@ -62,7 +62,7 @@ object FinishRestProcedure:
     BuildOps((state, _) => beginNextTurn(state, player))))
 
   private def supplyNote(resting: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = states.previous.flatMap { (before, after) =>
+      : Option[LogNote] = states.previous.flatMap { (before, after) =>
     val was = supplyOf(before, resting)
     val now = supplyOf(after, resting)
     Option.when(now > was)(supplyIncreased.sourceless(

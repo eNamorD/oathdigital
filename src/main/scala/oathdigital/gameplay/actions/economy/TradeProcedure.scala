@@ -84,7 +84,7 @@ object TradeProcedure:
     * rule wrote at completion.
     */
   private def tradedNote(resource: TradeResource, actor: PlayerId,
-      states: NoteStates, source: MusterSource): Option[PowerNote] =
+      states: NoteStates, source: MusterSource): Option[LogNote] =
     val gained = states.previous.fold(0)(step => resource match
       case TradeResource.Favor => NoteSupport.favor(step, actor)
       case TradeResource.Secret => NoteSupport.secrets(step, actor))

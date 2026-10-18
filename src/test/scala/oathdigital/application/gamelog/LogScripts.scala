@@ -23,7 +23,7 @@ import oathdigital.gameplay.powers.travel.Tents
 import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{FollowUpOffer, PowerNoted, WalkerCompleted}
+import oathdigital.gameplay.walker.{FollowUpOffer, LogNoted, WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
@@ -204,12 +204,12 @@ object LogScripts:
     steps.take(after + 1) ++ added ++ steps.drop(after + 1).map(step =>
       step.copy(event = step.event.copy(index = step.event.index + events.size)))
 
-  /** `steps` without their power notes, renumbered: the journal of a power
+  /** `steps` without their notes, renumbered: the journal of a power
     * that writes no line of its own. Notes change no state, so every other
     * step is unchanged. */
   def withoutNotes(steps: Vector[ReplayStep[OathState, OathEvent]])
       : Vector[ReplayStep[OathState, OathEvent]] =
-    steps.filterNot(_.event.event.isInstanceOf[PowerNoted]).zipWithIndex.map {
+    steps.filterNot(_.event.event.isInstanceOf[LogNoted]).zipWithIndex.map {
       case (step, index) => step.copy(event = step.event.copy(index = index.toLong))
     }
 

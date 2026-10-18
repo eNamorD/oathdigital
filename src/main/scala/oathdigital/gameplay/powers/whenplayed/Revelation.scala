@@ -88,7 +88,7 @@ case object Revelation extends WhenPlayedPower:
   /** The favor `player` lost and the secrets they gained in the step
     * before. */
   private def burnedNote(states: NoteStates, player: PlayerId)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     lost = -NoteSupport.favor(step, player)
     if lost > 0
@@ -97,6 +97,6 @@ case object Revelation extends WhenPlayedPower:
     NoteArg.Amount(NoteSupport.secrets(step, player), NoteUnit.Secret))
 
   /** "Nobody had favor to burn." when nobody was asked. */
-  private def noneNote(states: NoteStates): Option[PowerNote] =
+  private def noneNote(states: NoteStates): Option[LogNote] =
     Option.when(!states.answered.exists(_.decisionId == decisionId))(
       none(cardSource))

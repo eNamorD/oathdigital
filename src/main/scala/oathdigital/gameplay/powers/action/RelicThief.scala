@@ -96,7 +96,7 @@ final case class RelicThief private (catalog: ExecutableCatalog)
   /** Whether the relic changed hands: the player holds it now, taken from
     * whoever held it before the step, or its holder kept it. */
   private def stolenNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).map(card =>
       NoteSupport.answer(states, decisionId) match
         case Some(DecisionOptionRef.Relic(relic)) =>

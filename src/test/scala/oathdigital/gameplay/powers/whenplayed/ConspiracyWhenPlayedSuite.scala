@@ -272,7 +272,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       Vector(this)
     def refusal(ready: ReadyGame, use: PowerUse): Option[PowerUseRefusal] =
       Option.when(use.power == ConspiracyWhenPlayed.id)(PowerUseRefusal(id,
-        PowerNote(Some(PowerSourceRef.Card(conspiracy)), "refused",
+        LogNote(Some(PowerSourceRef.Card(conspiracy)), "refused",
           Vector.empty),
         OperationReason("test-refused", "no Conspiracy",
           OperationReasonKind.Impossible)))

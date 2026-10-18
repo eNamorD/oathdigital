@@ -7,7 +7,7 @@ import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.gameplay.powerresolver.{PhasePowers}
 import oathdigital.gameplay.walker.{ActionBoundaryRan, FollowUpSkipped,
-  PowerNoted, ProcedureDequeued, ProcedureWalker, WalkerCompleted, WalkerDice,
+  LogNoted, ProcedureDequeued, ProcedureWalker, WalkerCompleted, WalkerDice,
   WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
 import oathdigital.gameplay._
 import oathdigital.model.OathEvent._
@@ -65,7 +65,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
-      case event: PowerNoted => ProcedureWalker.applyRecorded(state, event)
+      case event: LogNoted => ProcedureWalker.applyRecorded(state, event)
       case event: ProcedureDequeued =>
         ProcedureWalker.applyRecorded(state, event)
       case ActionBoundaryRan =>

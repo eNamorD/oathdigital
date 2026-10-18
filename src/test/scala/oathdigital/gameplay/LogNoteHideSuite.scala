@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerOutcome,
+import oathdigital.gameplay.walker.{LogNoted, ProcedureWalker, WalkerOutcome,
   WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.Table
@@ -8,7 +8,7 @@ import oathdigital.testkit.Table.p1
 import oathdigital.testkit.PowerStubs.{ActionForbiddingStub, OptionHidingStub, hideSource, hidNote}
 import oathdigital.testkit.Outcomes.{finished, parked}
 
-class PowerNoteHideSuite extends munit.FunSuite:
+class LogNoteHideSuite extends munit.FunSuite:
   private val window = PowerWindow.ChallengeAmountSelection
   /** p1's Act on the quiet table: the walks below ask p1 to decide. */
   private val actor = p1
@@ -19,7 +19,7 @@ class PowerNoteHideSuite extends munit.FunSuite:
       Vector("a", "b", "c").map(id => DecisionOption.Site(site(id)))),
     window = Some(window))))
   private def notes(events: Vector[OathEvent]): Vector[OathEvent] =
-    events.filter(_.isInstanceOf[PowerNoted])
+    events.filter(_.isInstanceOf[LogNoted])
 
   private val hider = PowerId("test.hider")
 
@@ -82,7 +82,7 @@ class PowerNoteHideSuite extends munit.FunSuite:
     assertEquals(notes(events), Vector.empty)
     assertEquals(offered(tree, pending, powers), Vector[DecisionOption](
       DecisionOption.Unavailable(button("yes"), OptionReason.Noted(forbidder,
-        PowerNote(Some(hideSource), "forbade", Vector.empty))),
+        LogNote(Some(hideSource), "forbade", Vector.empty))),
       button("no")))
     val WalkerOutcome.Finished(_, answered) = finished(ProcedureWalker.resolve(
       ready, tree, pending, Answered("ask", DecisionAnswer.ChooseOneAnswer(

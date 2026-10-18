@@ -136,7 +136,7 @@ case object Inquisitor extends PaidAction(InquisitorCard.power):
   /** The guess and whose Vision it was about. It was right when that player
     * held the guessed Vision before the step and not after it. */
   private def guessedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = PowerSourceRef.of(source).map(card =>
+      : Option[LogNote] = PowerSourceRef.of(source).map(card =>
     (NoteSupport.answer(states, visionDecisionId),
         NoteSupport.answer(states, guessDecisionId)) match
       case (Some(DecisionOptionRef.AdviserSlot(owner, _)), Some(answer)) =>

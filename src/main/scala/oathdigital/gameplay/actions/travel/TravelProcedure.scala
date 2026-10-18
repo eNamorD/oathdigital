@@ -191,6 +191,6 @@ object TravelProcedure:
     * writes no line, as the rule this replaced wrote none without a
     * recorded pawn move. */
   private def travelledNote(actor: PlayerId, source: SiteId)(
-      states: NoteStates): Option[PowerNote] =
+      states: NoteStates): Option[LogNote] =
     actorSite(states.now, actor).filterNot(_ == source)
       .map(arrived => travelled.sourceless(NoteArg.Site(arrived)))

@@ -2,13 +2,13 @@ package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.PhasePower
-import oathdigital.gameplay.walker.PowerNoted
+import oathdigital.gameplay.walker.LogNoted
 import oathdigital.model._
 
 /** A phase power's notes as plain sentences, for the card suites (power log
   * lines design, "Tests"). Arguments read plainly: a player, card or site by
   * id, an amount with its unit, a bank by suit, dice by their count. The
-  * formatter's own rendering is tested in `GameLogPowerLinesSuite`. */
+  * formatter's own rendering is tested in `GameLogNoteLinesSuite`. */
 object NoteText:
   final case class Said(key: String, text: String, covers: Boolean)
 
@@ -19,11 +19,11 @@ object NoteText:
   /** The notes the power `id`, declaring `keys`, journaled in `events`. */
   def said(id: PowerId, keys: Vector[NoteKey], events: Vector[OathEvent])
       : Vector[Said] =
-    events.collect { case PowerNoted(`id`, note, covers) =>
+    events.collect { case LogNoted(`id`, note, covers) =>
       Said(note.key, sentence(keys, note), covers) }
 
   /** `note` as the plain sentence its key in `keys` words. */
-  def sentence(keys: Vector[NoteKey], note: PowerNote): String =
+  def sentence(keys: Vector[NoteKey], note: LogNote): String =
     keys.find(_.name == note.key).fold(s"<no template for ${note.key}>")(
       _.template.map {
         case NotePart.Text(words) => words

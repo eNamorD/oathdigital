@@ -71,7 +71,7 @@ object OathkeeperProcedure:
     * the same fact off the state rather than off the operation. The note is
     * the window's own last child, so a power appending to the window runs
     * after it and cannot leave it reading another step. */
-  private def passedNote(states: NoteStates): Option[PowerNote] =
+  private def passedNote(states: NoteStates): Option[LogNote] =
     states.previous.filter((before, after) => holder(before) != holder(after))
       .map((_, after) => holder(after).fold(passedToBank.sourceless())(
         taker => passedToPlayer.sourceless(NoteArg.Player(taker))))

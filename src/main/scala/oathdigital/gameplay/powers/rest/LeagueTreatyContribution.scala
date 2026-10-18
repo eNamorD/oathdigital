@@ -96,7 +96,7 @@ final case class LeagueTreatyContribution private (catalog: ExecutableCatalog)
 
   /** What the moves' step sent to the chosen bank. */
   private def sentNote(ruler: PlayerId, destination: String)(
-      states: NoteStates): Option[PowerNote] = for
+      states: NoteStates): Option[LogNote] = for
     bank <- states.answered.collectFirst {
       case Answered(`destination`, DecisionAnswer.ChooseOneAnswer(
         DecisionOptionRef.FavorBank(suit)), _) => suit }

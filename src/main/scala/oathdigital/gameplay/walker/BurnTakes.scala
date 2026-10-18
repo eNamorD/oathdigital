@@ -27,7 +27,7 @@ private[walker] object BurnTakes:
     /** One line per power, taker and burner, for what `executed` took. A
       * burn of the taker's own board counts in full: nothing moved. */
     def lines(executed: Vector[CoreOperation], actor: PlayerId,
-        declared: Option[DeclaredNotes]): Vector[PowerNoted] =
+        declared: Option[DeclaredNotes]): Vector[LogNoted] =
       val moved = takesIn(executed)
       taken.map(group).distinct.flatMap { key =>
         val claims = taken.filter(group(_) == key)

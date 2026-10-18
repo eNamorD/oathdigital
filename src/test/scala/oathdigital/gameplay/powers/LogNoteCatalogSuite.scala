@@ -5,7 +5,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Every power's declared notes (power log lines design, "Wording"). */
-class PowerNoteCatalogSuite extends munit.FunSuite:
+class LogNoteCatalogSuite extends munit.FunSuite:
   private val declared: Vector[(PowerId, Vector[NoteKey])] =
     WalkerPowerCatalog.default(catalog).powers.map(power =>
       power.id -> power.noteKeys) ++

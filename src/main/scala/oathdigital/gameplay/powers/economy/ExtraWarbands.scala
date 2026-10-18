@@ -45,7 +45,7 @@ private[economy] object ExtraWarbands:
 
   /** What the gain's step added, at most `extra`. */
   private def line(states: NoteStates, card: DenizenId, actor: PlayerId,
-      extra: Int): Option[PowerNote] = for
+      extra: Int): Option[LogNote] = for
     step <- states.previous
     more = math.min(extra, NoteSupport.warbands(step, actor))
     if more > 0

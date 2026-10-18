@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.ProcedureNotes
-import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerOutcome,
+import oathdigital.gameplay.walker.{LogNoted, ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
@@ -10,15 +10,15 @@ import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** The `Note` node (power log lines design, section 1). */
-class PowerNoteWalkerSuite extends munit.FunSuite:
+class LogNoteWalkerSuite extends munit.FunSuite:
   private val actor: PlayerId = playerId
   private val power = PowerId("test.noting")
   private val source = PowerSourceRef.Site(SiteId("test-site"))
   private val pool = PoolKey("test-pool")
-  private def said(word: String) = PowerNote(Some(source), word, Vector.empty)
+  private def said(word: String) = LogNote(Some(source), word, Vector.empty)
   private def note(word: String): Note = Note(power, _ => Some(said(word)))
   private def noted(word: String) =
-    PowerNoted(power, said(word), covers = false)
+    LogNoted(power, said(word), covers = false)
   private def button(key: String) =
     DecisionOption.Button(DecisionOptionRef.Button(key), key)
   private val ask = Decide("ask", actor,
@@ -26,7 +26,7 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
   private val yes = Answered("ask",
     DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("yes")), actor)
   private def notes(events: Vector[OathEvent]): Vector[OathEvent] =
-    events.filter(_.isInstanceOf[PowerNoted])
+    events.filter(_.isInstanceOf[LogNoted])
 
   test("a note is journaled where the walk reaches it, between the steps"):
     val tree = Sequence(Vector[Operation](note("first"),
@@ -34,7 +34,7 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
     ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty) match
       case Right(WalkerOutcome.Finished(_, events)) =>
         assertEquals(events.map {
-          case noted: PowerNoted => noted.note.key
+          case noted: LogNoted => noted.note.key
           case _: WalkerStepRecorded => "step"
           case other => other.toString
         }, Vector("first", "step", "second"))
@@ -137,9 +137,9 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
   // design). These pin the two guarantees its line depends on.
   private val muster = ProcedureNotes.id(ActionRef.Muster)
   private def mustered(count: Int): Note = Note(muster,
-    _ => Some(PowerNote(None, "mustered", Vector(NoteArg.Number(count)))))
-  private def musterNoted(count: Int) = PowerNoted(muster,
-    PowerNote(None, "mustered", Vector(NoteArg.Number(count))), covers = false)
+    _ => Some(LogNote(None, "mustered", Vector(NoteArg.Number(count)))))
+  private def musterNoted(count: Int) = LogNoted(muster,
+    LogNote(None, "mustered", Vector(NoteArg.Number(count))), covers = false)
 
   test("a resumed command journals a procedure's note once"):
     val tree = Sequence(Vector[Operation](ask, mustered(2)))

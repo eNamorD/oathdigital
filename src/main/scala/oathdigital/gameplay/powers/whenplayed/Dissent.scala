@@ -66,7 +66,7 @@ final case class Dissent private (catalog: ExecutableCatalog)
 
   /** The favor `player` lost in the step before. */
   private def placedNote(states: NoteStates, player: PlayerId)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     lost = -NoteSupport.favor(step, player)
     if lost > 0

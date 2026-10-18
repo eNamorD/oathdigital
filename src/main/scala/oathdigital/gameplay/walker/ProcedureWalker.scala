@@ -309,7 +309,7 @@ object ProcedureWalker:
 
   /** Events other than notes: a note changes nothing a guard reads. */
   private def recorded(ctx: WalkCtx): Int =
-    ctx.events.count(!_.isInstanceOf[PowerNoted])
+    ctx.events.count(!_.isInstanceOf[LogNoted])
 
   /** Gathers at `window` (a no-op when `None`) and folds `children` through
     * the gathered transforms, then walks the folded vector child by child --

@@ -4,7 +4,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.action.{Enchantress, PiedPiper}
 import oathdigital.gameplay.powers.wake.HornedMask
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.PowerNoted
+import oathdigital.gameplay.walker.LogNoted
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathState.Ready
@@ -100,5 +100,5 @@ class FamilyWagonArrivalsSuite extends munit.FunSuite:
       "buried.holder", s"${p2.value} buried ${piper.value}.", covers = true)))
     assertEquals(NoteText.said(PiedPiper, done.events).map(_.text), Vector(
       s"Moved to ${p2.value}'s advisers and took 2 favor from them."))
-    assertEquals(done.events.collect { case PowerNoted(id, _, _) => id },
+    assertEquals(done.events.collect { case LogNoted(id, _, _) => id },
       Vector(FamilyWagon.id, PiedPiper.id))

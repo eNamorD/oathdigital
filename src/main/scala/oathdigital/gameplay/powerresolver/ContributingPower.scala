@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Answered, CampaignPlanOffer, CardId, CoreOperation, Decide, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, OfferedReroll, Operation, OperationRestriction, OptionReason, PlayerId, PowerId, PowerNote, PowerResolution, PowerSourceRef, PowerWindow, ProcedureRef, ReadyGame, RerollOffer, RuleSourceRef}
+import oathdigital.model.{Answered, CampaignPlanOffer, CardId, CoreOperation, Decide, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, OfferedReroll, Operation, OperationRestriction, OptionReason, PlayerId, PowerId, LogNote, PowerResolution, PowerSourceRef, PowerWindow, ProcedureRef, ReadyGame, RerollOffer, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -44,7 +44,7 @@ final case class PowerCtx(
 sealed trait Contribution extends Product with Serializable
 object Contribution:
   /** The hide hook of a restriction that writes no Game Log line. */
-  val silent: (PowerCtx, DecisionOptionRef) => Option[PowerNote] = (_, _) => None
+  val silent: (PowerCtx, DecisionOptionRef) => Option[LogNote] = (_, _) => None
 
 /** Rewrites the hooked node's children. Covers must-effects (insert ops),
   * cost changes (modify the pay ops), and reordering (roll order).
@@ -79,7 +79,7 @@ enum FoldPhase:
   */
 final case class Restriction(
     fn: (PowerCtx, Operation) => Option[OathViolation],
-    note: (PowerCtx, DecisionOptionRef) => Option[PowerNote] = Contribution.silent,
+    note: (PowerCtx, DecisionOptionRef) => Option[LogNote] = Contribution.silent,
     waiver: Option[Waiver] = None
 ) extends Contribution
 
@@ -92,7 +92,7 @@ final case class Restriction(
 final case class Waiver(
     granter: ReadyGame => Option[PlayerId],
     source: PowerSourceRef,
-    note: (PowerCtx, DecisionOptionRef) => PowerNote)
+    note: (PowerCtx, DecisionOptionRef) => LogNote)
 
 /** Forbids one option of the `Decide` the window hooks. Called once per offered
   * option in the window fold, before the query is parked, so a forbidden
@@ -108,7 +108,7 @@ final case class Waiver(
   */
 final case class OptionRestriction(
     fn: (PowerCtx, DecisionOptionRef) => Option[OathViolation],
-    note: (PowerCtx, DecisionOptionRef) => Option[PowerNote] = Contribution.silent,
+    note: (PowerCtx, DecisionOptionRef) => Option[LogNote] = Contribution.silent,
     waiver: Option[Waiver] = None
 ) extends Contribution
 

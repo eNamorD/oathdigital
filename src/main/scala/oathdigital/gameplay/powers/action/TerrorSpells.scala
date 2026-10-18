@@ -124,7 +124,7 @@ case object TerrorSpells extends PaidAction(TerrorSpellsCard.power):
   /** The warbands that died in the step before the note; with none, why. A
     * step that killed nothing, such as the cost's, reads as none. */
   private def killNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).map { card =>
       val lost = states.previous.fold(0) { case (before, after) =>
         inPlay(before) - inPlay(after) }

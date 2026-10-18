@@ -55,7 +55,7 @@ case object Bog extends PaidAction(BogCard.power):
       covers = true)))
 
   private def discardNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).flatMap(card =>
       relic.spentRelic(states, player) match
         case Some((spent, _)) => states.previous.map { step =>

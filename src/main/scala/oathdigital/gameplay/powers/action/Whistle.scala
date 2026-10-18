@@ -42,7 +42,7 @@ case object Whistle extends PaidAction(WhistleCard.power):
       s"${other.kind} is not a relic source"))
 
   private def pullNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = PowerSourceRef.of(source).flatMap(card =>
+      : Option[LogNote] = PowerSourceRef.of(source).flatMap(card =>
     NoteSupport.answer(states, decisionId) match
       case Some(DecisionOptionRef.Player(target)) =>
         PawnMoves.pawnSite(states.now, target).toOption.map(site =>

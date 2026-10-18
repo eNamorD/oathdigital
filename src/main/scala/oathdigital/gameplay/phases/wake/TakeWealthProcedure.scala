@@ -119,7 +119,7 @@ object TakeWealthProcedure:
     Some(PowerWindow.WakeTakeWealth))
 
   private def tookNote(actor: PlayerId, resource: WakeResource, site: SiteId)(
-      states: NoteStates): Option[PowerNote] =
+      states: NoteStates): Option[LogNote] =
     states.previous.map(step => resource match
       case WakeResource.Favor => NoteSupport.favor(step, actor)
       case WakeResource.Secret => NoteSupport.secrets(step, actor))

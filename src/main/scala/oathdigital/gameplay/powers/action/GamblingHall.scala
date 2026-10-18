@@ -54,7 +54,7 @@ case object GamblingHall extends PaidAction(GamblingHallCard.power):
 
   /** The favor the take actually moved, read from the step before it. */
   private def gainNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     for
       card <- PowerSourceRef.of(source)
       step <- states.previous

@@ -83,7 +83,7 @@ final case class TwinBrother private (catalog: ExecutableCatalog)
 
   /** Written only when the actor now holds the chosen card. */
   private def swappedNote(actor: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     case DecisionOptionRef.Denizen(target) <-
       NoteSupport.answer(states, decisionId)
     (before, after) <- states.previous

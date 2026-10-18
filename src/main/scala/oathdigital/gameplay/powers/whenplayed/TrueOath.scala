@@ -64,7 +64,7 @@ final case class TrueOath private (catalog: ExecutableCatalog)
       Right(Vector.empty)
     else OathkeeperGoalChoice.set(ready, pending, decisionId, Set.empty)
 
-  private def note(states: NoteStates): Option[PowerNote] =
+  private def note(states: NoteStates): Option[LogNote] =
     OathkeeperGoalChoice.changedNote(states, changed, cardSource).orElse(
       Option.when(NoteSupport.answer(states, decisionId).contains(keep))(
         kept(cardSource)))

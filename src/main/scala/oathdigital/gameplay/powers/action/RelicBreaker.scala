@@ -46,7 +46,7 @@ case object RelicBreaker extends PaidAction(RelicBreakerCard.power):
       covers = true)))
 
   private def buryNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).flatMap(card =>
       relic.spentRelic(states, player) match
         case Some((spent, tokens)) => states.previous.map(step =>

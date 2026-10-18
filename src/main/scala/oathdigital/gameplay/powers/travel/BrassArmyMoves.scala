@@ -82,7 +82,7 @@ case object BrassArmyMoves extends ExecutedTrigger:
 
   /** `own` on the holder's turn, else `named`, naming them. */
   private def line(own: NoteKey, named: NoteKey, actor: PlayerId,
-      holder: PlayerId): PowerNote =
+      holder: PlayerId): LogNote =
     val card = PowerSourceRef.Card(cardId)
     if holder == actor then own(card) else named(card, NoteArg.Player(holder))
 

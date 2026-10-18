@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Piece, PlayerId, PositionedLocation, PowerNote}
+import oathdigital.model.{Piece, PlayerId, PositionedLocation, LogNote}
 
 /** Favor or secrets a player burns: how many, where from, and who burns
   * them (catalog batch 8, "A burn's actor"). A cost's burnt portion is its
@@ -12,4 +12,4 @@ final case class Burnt(resource: Piece.Counted, from: PositionedLocation,
   * `line` words what was taken, given the burner, the count taken and the
   * active player. */
 final case class BurnTake(taker: PlayerId,
-    line: (PlayerId, Int, PlayerId) => PowerNote)
+    line: (PlayerId, Int, PlayerId) => LogNote)

@@ -57,7 +57,7 @@ sealed abstract class BurnVow extends ContributingPower:
   /** What `holder` took from `burner`, naming the holder unless it is
     * their turn. */
   private def line(holder: PlayerId)(burner: PlayerId, amount: Int,
-      actor: PlayerId): PowerNote =
+      actor: PlayerId): LogNote =
     val card = PowerSourceRef.Card(cardId)
     if holder == actor then
       taken(card, NoteArg.Player(burner), NoteArg.Number(amount))
@@ -115,7 +115,7 @@ case object VowOfSilence extends BurnVow:
     case _ => None
 
   private def reason(ctx: PowerCtx, ref: DecisionOptionRef)
-      : Option[PowerNote] = ref match
+      : Option[LogNote] = ref match
     case DecisionOptionRef.Banner(Banner.DarkestSecret) =>
       Some(forbidden(PowerSourceRef.Card(cardId),
         NoteArg.Banner(Banner.DarkestSecret)))

@@ -7,7 +7,7 @@ package oathdigital.model
   * its sentence. `key` picks the writer's template. `args` are typed
   * references, never text, so a card still passes the log's knowledge rule.
   */
-final case class PowerNote(source: Option[PowerSourceRef], key: String,
+final case class LogNote(source: Option[PowerSourceRef], key: String,
     args: Vector[NoteArg])
 
 sealed trait NoteArg extends Product with Serializable
@@ -92,12 +92,12 @@ enum NotePart:
   * through them, so a key never lacks a template. */
 final case class NoteKey private[model] (name: String,
     template: Vector[NotePart]):
-  def apply(source: PowerSourceRef, args: NoteArg*): PowerNote =
-    PowerNote(Some(source), name, args.toVector)
+  def apply(source: PowerSourceRef, args: NoteArg*): LogNote =
+    LogNote(Some(source), name, args.toVector)
   /** A line that starts with its sentence rather than a source: a
     * procedure's own. */
-  def sourceless(args: NoteArg*): PowerNote =
-    PowerNote(None, name, args.toVector)
+  def sourceless(args: NoteArg*): LogNote =
+    LogNote(None, name, args.toVector)
 object NoteKey:
   /** A phase power's own line, which replaces "Used {card}". */
   val Used: String = "used"
@@ -176,10 +176,10 @@ final case class NoteStates(now: ReadyGame,
     previous: Option[(ReadyGame, ReadyGame)], answered: Vector[Answered])
 
 /** A power's line, placed in the tree where its effect happens. The walker
-  * journals it as `PowerNoted` when it reaches this node, unless `build`
+  * journals it as `LogNoted` when it reaches this node, unless `build`
   * returns `None`. It changes no state and is never part of a recorded
   * batch. `covers` drops the generic detail lines of the step before it
   * (power log lines design, "Covering"). */
-final case class Note(power: PowerId, build: NoteStates => Option[PowerNote],
+final case class Note(power: PowerId, build: NoteStates => Option[LogNote],
     covers: Boolean = false) extends Operation:
   val children: Vector[Operation] = Vector.empty

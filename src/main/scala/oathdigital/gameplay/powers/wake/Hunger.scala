@@ -91,7 +91,7 @@ final case class Hunger private (catalog: ExecutableCatalog)
   /** The chosen adviser, read where it stood before the bury step. No
     * answer means nothing could be buried. */
   private def buriedNote(states: NoteStates, holder: PlayerId)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     val card = PowerSourceRef.Card(cardId)
     NoteSupport.answer(states, decisionId) match
       case None => Some(spared(card))

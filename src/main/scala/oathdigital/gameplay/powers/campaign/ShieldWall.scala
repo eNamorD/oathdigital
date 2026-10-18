@@ -59,7 +59,7 @@ case object ShieldWall extends BattlePlan:
 
   /** What the kill took from the user's board, read from its step. */
   private def killedNote(user: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     if NoteSupport.warbands(step, user) < 0
   yield ShieldWall.killed(PowerSourceRef.Card(cardId), NoteArg.Player(user))

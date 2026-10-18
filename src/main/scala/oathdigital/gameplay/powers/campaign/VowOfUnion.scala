@@ -167,7 +167,7 @@ case object VowOfUnion extends ContributingPower:
   /** The warbands the step before moved, by the change on the holder's
     * board: a gain came from the sites, a loss went to them. */
   private def movedNote(states: NoteStates, attacker: PlayerId,
-      holder: PlayerId): Option[PowerNote] = for
+      holder: PlayerId): Option[LogNote] = for
     step <- states.previous
     change = boardWarbands(step._2, holder) - boardWarbands(step._1, holder)
     if change != 0

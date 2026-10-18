@@ -117,7 +117,7 @@ final case class ArmedMob private (catalog: ExecutableCatalog)
 
   /** The card discarded and its owner; with no card chosen, why. */
   private def discardedNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).flatMap(card =>
       NoteSupport.answer(states, decisionId) match
         case Some(DecisionOptionRef.Denizen(chosen)) =>
@@ -127,7 +127,7 @@ final case class ArmedMob private (catalog: ExecutableCatalog)
   /** Why nothing was discarded: no target, a target with nothing to lose,
     * or two such targets. */
   private def unansweredLine(states: NoteStates, actor: PlayerId,
-      card: PowerSourceRef): PowerNote =
+      card: PowerSourceRef): LogNote =
     NoteSupport.answer(states, playerDecisionId) match
       case Some(DecisionOptionRef.Player(chosen)) =>
         bare(card, NoteArg.Player(chosen))
@@ -138,7 +138,7 @@ final case class ArmedMob private (catalog: ExecutableCatalog)
 
   /** The owner is whoever held the card before the discard. */
   private def discardedLine(states: NoteStates, actor: PlayerId,
-      card: PowerSourceRef, chosen: DenizenId): Option[PowerNote] = for
+      card: PowerSourceRef, chosen: DenizenId): Option[LogNote] = for
     step <- states.previous
     owner <- step._1.game.current.players
       .find(_.advisers.exists(_.id == chosen)).map(_.player)

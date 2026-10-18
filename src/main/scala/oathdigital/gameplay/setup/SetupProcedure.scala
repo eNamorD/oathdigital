@@ -145,7 +145,7 @@ object SetupProcedure:
 
   /** Where `player`'s pawn stands once it has been placed. */
   private def placedPawnNote(player: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = pawnSiteOf(states.now, player).map(site =>
+      : Option[LogNote] = pawnSiteOf(states.now, player).map(site =>
     placedPawn.sourceless(NoteArg.Player(player), NoteArg.Site(site)))
 
   private def pawnSiteOf(ready: ReadyGame, player: PlayerId): Option[SiteId] =
@@ -155,7 +155,7 @@ object SetupProcedure:
     * and a note has only `states.answered`, so this reads the placements
     * directly rather than rebuilding a tree to borrow it. */
   private def keptAdviserNote(player: PlayerId, decisionId: String)(
-      states: NoteStates): Option[PowerNote] =
+      states: NoteStates): Option[LogNote] =
     states.answered.collectFirst {
       case Answered(`decisionId`, DecisionAnswer.PartitionAnswer(placements), _) =>
         placements.collect {

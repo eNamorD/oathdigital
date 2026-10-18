@@ -66,7 +66,7 @@ final case class RovingTerror private (catalog: ExecutableCatalog)
   /** The chosen slot, read before the step, once Roving Terror stands at its
     * site. */
   private def replacedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     PowerSourceRef.of(source).map(card => (for
       ref <- NoteSupport.answer(states, decisionId)
       (before, _) <- states.previous

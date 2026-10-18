@@ -55,7 +55,7 @@ final case class GreatFeast private (catalog: ExecutableCatalog)
       Option.when(room > 0)(GainSupply(player, room))
 
   private def feastNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).flatMap(card =>
       NoteSupport.answer(states, decisionId).flatMap(cards.cardOf) match
         case Some(chosen) => Some(feasted(card, NoteArg.Player(player),

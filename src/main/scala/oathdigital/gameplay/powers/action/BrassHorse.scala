@@ -47,7 +47,7 @@ final class BrassHorse(catalog: ExecutableCatalog)
   /** The reveal leaves the pile as it was, so its top card is still the one
     * it revealed. */
   private def revealNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     found <- region(states.now, player).toOption
     shown <- top(states.now, found)

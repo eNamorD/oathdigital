@@ -69,7 +69,7 @@ trait ActingSite extends SelectedModifier:
       .flatMap(ready.game.current.map.sites.get)
       .exists(_.denizens.exists(card => picked(card.id)))
 
-  private def actedNote(states: NoteStates): Option[PowerNote] =
+  private def actedNote(states: NoteStates): Option[LogNote] =
     NoteSupport.answer(states, PowerAccess.asIfDecision).collect {
       case DecisionOptionRef.Site(site) =>
         ActingSite.acted(PowerSourceRef.Card(cardId), NoteArg.Site(site))

@@ -6,7 +6,7 @@ import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.search.NewGrowth
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.PowerNoted
+import oathdigital.gameplay.walker.LogNoted
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.protocol.projection.{LogKind, LogSpan}
@@ -68,7 +68,7 @@ class GameLogActionLineSuite extends munit.FunSuite:
   test("the Muster line is the procedure's own note, not an inferred line"):
     val script = golemMuster
     val noted = script.history.steps.map(_.event.event).collect {
-      case PowerNoted(power, note, _)
+      case LogNoted(power, note, _)
           if power == ProcedureNotes.id(ActionRef.Muster) => note.key
     }
     assertEquals(noted, Vector("mustered"))

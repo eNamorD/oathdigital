@@ -105,7 +105,7 @@ final case class MovingMarket private (catalog: ExecutableCatalog)
   /** Written when the card stands at the chosen slot's site. The favor is
     * read from the gain's step; with none, the line names only the move. */
   private def movedNote(states: NoteStates, actor: PlayerId)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     case slot: DecisionOptionRef.SiteSlot <-
       NoteSupport.answer(states, decisionId)
     if SiteRulers.siteOf(states.now, cardId).contains(slot.site)

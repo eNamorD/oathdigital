@@ -87,7 +87,7 @@ case object AncientBinding extends PaidAction(AncientBindingCard.power):
 
   /** The secrets that left boards and cards in the step before the note. */
   private def burnedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     (before, after) <- states.previous
     count = held(before) - held(after)

@@ -7,7 +7,7 @@ import oathdigital.engine.ReplayStep
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.powers.{ConsentPowers, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.{FollowUpSkipped,
-  FollowUpSupplyWaiver, PowerNoted, ProcedureDequeued, WalkerCompleted,
+  FollowUpSupplyWaiver, LogNoted, ProcedureDequeued, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.protocol.projection.{LogEntry, LogKind, LogSection,
@@ -37,11 +37,11 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val choices = new ChoiceWords(words,
     new WalkerDecisionProjector(catalog, presentation))
   // `procedures` is built first and takes `notes` by name: the table's
-  // UsePower arm reads the power-note path, and `PowerLines` reads the
+  // UsePower arm reads the note path, and `NoteLines` reads the
   // table's own `noteKind`.
   private[gamelog] val procedures: ProcedureLogs =
     new ProcedureLogs(starts, notes)
-  private val notes: PowerLines = new PowerLines(words, wordings,
+  private val notes: NoteLines = new NoteLines(words, wordings,
     procedures.noteKind)
   private val details = new DetailLines(words, choices, wordings.narrated)
   private val events = new EventLines(words)
@@ -191,7 +191,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
       case _: OathEvent.BanditsRefilled | _: OathEvent.UsurperFlipped =>
         (events.lines(journal, at, viewer), run)
       case _: WalkerStepRecorded | _: WalkerParked | _: WalkerCompleted |
-          _: PowerNoted | _: ProcedureDequeued =>
+          _: LogNoted | _: ProcedureDequeued =>
         walker(journal, run, at, viewer)
       // Outside any run; `formatLive` files it in the latest section.
       case FollowUpSkipped(entry) =>
@@ -245,7 +245,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
             case ActionLineSource.Rule(lines) =>
               lines(journal, begun, at, viewer)
             // A procedure's own line arrives as its note, through
-            // `PowerLines`, and a silent procedure posts none.
+            // `NoteLines`, and a silent procedure posts none.
             case ActionLineSource.Notes(_) | ActionLineSource.Silent(_) =>
               Vector.empty) ++
           details.lines(journal, begun, at, viewer, log) ++

@@ -52,7 +52,7 @@ case object MagicCarpet extends PaidAction(MagicCarpetCard.power):
   /** The fate question is not asked when nobody may take the Carpet, and it
     * is then discarded. */
   private def fateNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = PowerSourceRef.of(source).map(card =>
+      : Option[LogNote] = PowerSourceRef.of(source).map(card =>
     NoteSupport.answer(states, fateDecisionId) match
       case Some(DecisionOptionRef.Player(taker)) =>
         givenAway(card, NoteArg.Player(taker))

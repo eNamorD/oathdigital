@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, Location, ModifyDicePool, Move, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerNote, ProcedureRef, QueuedProcedure, RelicId, SiteId, SpendSupply, WalkerEvent}
+import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, Location, ModifyDicePool, Move, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, LogNote, ProcedureRef, QueuedProcedure, RelicId, SiteId, SpendSupply, WalkerEvent}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -131,10 +131,11 @@ final case class FollowUpSkipped(entry: QueuedProcedure) extends WalkerEvent
   * exact. No Game Log line. */
 case object ActionBoundaryRan extends WalkerEvent
 
-/** Audit fact: a power's effect happened here and says so in the Game Log
-  * (power log lines design). Replay applies nothing for it, as it never
-  * reads `WalkerStepRecorded.contributions`. `covers` tells the log to drop
-  * the generic detail lines of the step before it.
+/** Audit fact: a power, printed rule or procedure took effect here and says
+  * so in the Game Log (power log lines design; procedures journal their own
+  * notes design, ruling 1). Replay applies nothing for it, as it never reads
+  * `WalkerStepRecorded.contributions`. `covers` tells the log to drop the
+  * generic detail lines of the step before it.
   */
-final case class PowerNoted(power: PowerId, note: PowerNote, covers: Boolean)
+final case class LogNoted(power: PowerId, note: LogNote, covers: Boolean)
     extends WalkerEvent

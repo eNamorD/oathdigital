@@ -62,7 +62,7 @@ case object ConspiracyWhenPlayed extends ContributingPower:
 
   /** What the take moved to the actor, and from whom. */
   private def seizedNote(actor: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     (what, owner) <- NoteSupport.answer(states, decisionId) match
       case Some(DecisionOptionRef.RelicSlot(owner, _)) =>

@@ -82,25 +82,25 @@ sealed abstract class FortressRule extends ContributingPower:
 
   private def card: PowerSourceRef = PowerSourceRef.Card(fortress)
 
-  private def shieldedNote(player: PlayerId): Option[PowerNote] =
+  private def shieldedNote(player: PlayerId): Option[LogNote] =
     Some(FortressRule.shielded(card, NoteArg.Player(player)))
 
   /** The Raid it hid names the one player it could have targeted, or their
     * site when it protects several. */
   private def kindNote(ctx: PowerCtx, ref: DecisionOptionRef)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     CampaignSetup.raidDefenders(ctx.state, ctx.activePlayer) match
       case Vector(defender) => shieldedNote(defender)
       case _ => CampaignSetup.originOf(ctx.state, ctx.activePlayer)
         .map(site => FortressRule.allShielded(card, NoteArg.Site(site)))
 
   private def defenderNote(ctx: PowerCtx, ref: DecisionOptionRef)
-      : Option[PowerNote] = ref match
+      : Option[LogNote] = ref match
     case DecisionOptionRef.Player(defender) => shieldedNote(defender)
     case _ => None
 
   private def bannerNote(ctx: PowerCtx, ref: DecisionOptionRef)
-      : Option[PowerNote] = ref match
+      : Option[LogNote] = ref match
     case DecisionOptionRef.Banner(banner) =>
       BannerRules.holder(ctx.state.game.current, banner).flatMap(shieldedNote)
     case _ => None

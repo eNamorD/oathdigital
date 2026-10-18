@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.WalkerDiceFixture.scripted
 import oathdigital.gameplay.actions.dice.RerollChoice
 import oathdigital.gameplay.powers.PowerFixture
-import oathdigital.gameplay.walker.PowerNoted
+import oathdigital.gameplay.walker.LogNoted
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
   PhasePowerHarness, Refusals, Table}
@@ -32,8 +32,8 @@ class GamblingHallSuite extends munit.FunSuite:
 
   private val card = PowerSourceRef.Card(hall)
 
-  private def notes(events: Vector[OathEvent]): Vector[PowerNoted] =
-    events.collect { case noted: PowerNoted => noted }
+  private def notes(events: Vector[OathEvent]): Vector[LogNoted] =
+    events.collect { case noted: LogNoted => noted }
 
   test("the bank question says how much the roll won"):
     // The take is not a choice of amount: the power gains the whole total
@@ -117,11 +117,11 @@ class GamblingHallSuite extends munit.FunSuite:
     val done = accepted(answer(rules0, parked.state, GamblingHall.decisionId,
       bank(Suit.Beast)))
     assertEquals(notes(parked.events ++ done.events), Vector(
-      PowerNoted(GamblingHall.id, GamblingHall.rolled(card, NoteArg.Player(actor),
+      LogNoted(GamblingHall.id, GamblingHall.rolled(card, NoteArg.Player(actor),
         NoteArg.Dice(Vector(DefenseDieFace.OneShield, DefenseDieFace.OneShield,
           DefenseDieFace.TwoShields, DefenseDieFace.Blank)),
         NoteArg.Number(4)), covers = true),
-      PowerNoted(GamblingHall.id, GamblingHall.gained(card, NoteArg.Player(actor),
+      LogNoted(GamblingHall.id, GamblingHall.gained(card, NoteArg.Player(actor),
         NoteArg.Amount(4, NoteUnit.Favor), NoteArg.Bank(Suit.Beast)),
         covers = true)))
 

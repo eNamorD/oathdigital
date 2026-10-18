@@ -76,7 +76,7 @@ final case class SecretSignal private (catalog: ExecutableCatalog)
 
   /** The favor the step before gained. */
   private def gainedNote(states: NoteStates, actor: PlayerId)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     amount = NoteSupport.favor(step, actor)
     if amount > 0

@@ -47,7 +47,7 @@ case object ArcaneBrokers extends PaidAction(ArcaneBrokersCard.power):
       covers = true)))
 
   private def discardNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).flatMap(card =>
       relic.spentRelic(states, player) match
         case Some((spent, tokens)) => states.previous.map(step =>

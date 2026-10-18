@@ -3,7 +3,7 @@ package oathdigital.serialization
 import scala.util.control.NonFatal
 
 import oathdigital.gameplay.walker.{ActionBoundaryRan, ChoicePayload,
-  FollowUpSkipped, PowerNoted, ProcedureDequeued, RollPayload,
+  FollowUpSkipped, LogNoted, ProcedureDequeued, RollPayload,
   WalkerCompleted, DeltaMeaning, WalkerParked, WalkerStepPayload,
   WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
@@ -20,7 +20,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case _: WalkerStepRecorded => WalkerStepRecordedType
     case _: WalkerParked => WalkerParkedType
     case _: WalkerCompleted => WalkerCompletedType
-    case _: PowerNoted => PowerNotedType
+    case _: LogNoted => LogNotedType
     case _: ProcedureDequeued => ProcedureDequeuedType
     case _: FollowUpSkipped => FollowUpSkippedType
     case ActionBoundaryRan => ActionBoundaryRanType
@@ -46,7 +46,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
           DecisionAnswerCodec.encodeRef)))
     case WalkerCompleted(procedure) => ujson.Obj(
       "procedure" -> encodeProcedure(procedure))
-    case PowerNoted(power, note, covers) => ujson.Obj(
+    case LogNoted(power, note, covers) => ujson.Obj(
       "powerId" -> power.value, "covers" -> ujson.Bool(covers),
       "note" -> encodeNote(note))
     case ProcedureDequeued(entry) =>
@@ -65,7 +65,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
         procedure <- decodeProcedure(payload("procedure"),
           s"$path.procedure")
       yield WalkerCompleted(procedure)
-      case PowerNotedType => decodePowerNoted(payload, path)
+      case LogNotedType => decodeLogNoted(payload, path)
       case ProcedureDequeuedType =>
         decodeQueued(payload("entry"), s"$path.entry")
           .map(ProcedureDequeued(_))
@@ -119,7 +119,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
         s"unknown walker step payload '$other'"))
 
   /** A procedure's note has no source and writes no `source` field. */
-  private def encodeNote(note: PowerNote): ujson.Value =
+  private def encodeNote(note: LogNote): ujson.Value =
     val fields = ujson.Obj("key" -> note.key,
       "args" -> ujson.Arr.from(note.args.map(encodeNoteArg)))
     note.source.foreach(source =>
@@ -175,22 +175,22 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case NoteClause.SetAside(ids) => ujson.Obj("kind" -> "set-aside",
       "cards" -> ujson.Arr.from(ids.map(encodeCardId)))
 
-  private def decodePowerNoted(value: ujson.Value,
+  private def decodeLogNoted(value: ujson.Value,
       path: String): Either[WireError, OathEvent] = try for
     note <- decodeNote(value("note"), s"$path.note")
-  yield PowerNoted(PowerId(value("powerId").str), note, value("covers").bool)
+  yield LogNoted(PowerId(value("powerId").str), note, value("covers").bool)
   catch { case NonFatal(error) => Left(InvalidValue(path,
-    Option(error.getMessage).getOrElse("invalid power note"))) }
+    Option(error.getMessage).getOrElse("invalid log note"))) }
 
   private def decodeNote(value: ujson.Value,
-      path: String): Either[WireError, PowerNote] = for
+      path: String): Either[WireError, LogNote] = for
     source <- value.obj.get("source") match
       case None => Right(None)
       case Some(field) =>
         decodePowerSource(field, s"$path.source").map(Some.apply)
     args <- traverse(value("args").arr.zipWithIndex.toVector):
       case (arg, index) => decodeNoteArg(arg, s"$path.args[$index]")
-  yield PowerNote(source, value("key").str, args)
+  yield LogNote(source, value("key").str, args)
 
   private def decodeNoteArg(value: ujson.Value,
       path: String): Either[WireError, NoteArg] = value("kind").str match

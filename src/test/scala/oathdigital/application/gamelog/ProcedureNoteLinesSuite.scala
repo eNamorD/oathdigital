@@ -33,7 +33,7 @@ import LogSpan.Text
   */
 class ProcedureNoteLinesSuite extends munit.FunSuite:
   private val words = new LogWords(catalog, LogScripts.presentation)
-  private val lines = new PowerLines(words, NoteWordings.default(catalog),
+  private val lines = new NoteLines(words, NoteWordings.default(catalog),
     LogScripts.formatter.procedures.noteKind)
 
   /** `key`'s sentence, as the Game Log renders it for a procedure's note. */

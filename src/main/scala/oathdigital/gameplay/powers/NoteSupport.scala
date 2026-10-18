@@ -51,14 +51,14 @@ object NoteSupport:
     * gained writes nothing. */
   def gainNote(key: NoteKey, source: DecisionOptionRef, player: PlayerId,
       unit: NoteUnit, read: (Step, PlayerId) => Int)(states: NoteStates)
-      : Option[PowerNote] = PowerSourceRef.of(source).flatMap(card =>
+      : Option[LogNote] = PowerSourceRef.of(source).flatMap(card =>
     gainedNote(key, card, player, unit, read)(states))
 
   /** What `player` gained in the step before the note, by `read`, for a
     * power whose card is `card`. Nothing gained writes nothing. */
   def gainedNote(key: NoteKey, card: PowerSourceRef, player: PlayerId,
       unit: NoteUnit, read: (Step, PlayerId) => Int)(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     amount = read(step, player)
     if amount > 0
@@ -73,7 +73,7 @@ object NoteSupport:
 
   /** The favor `player` took from one bank in the step before the note. */
   def gainedFromNote(key: NoteKey, card: PowerSourceRef, player: PlayerId)(
-      states: NoteStates): Option[PowerNote] = for
+      states: NoteStates): Option[LogNote] = for
     step <- states.previous
     amount = favor(step, player)
     if amount > 0
@@ -90,7 +90,7 @@ object NoteSupport:
 
   /** The warbands `player` lost in the step before the note. */
   def killedNote(key: NoteKey, card: PowerSourceRef, player: PlayerId)(
-      states: NoteStates): Option[PowerNote] = for
+      states: NoteStates): Option[LogNote] = for
     step <- states.previous
     lost = -warbands(step, player)
     if lost > 0
@@ -108,7 +108,7 @@ object NoteSupport:
 
   /** The favor `player` took from one bank in the step before the note. */
   def tookNote(source: DecisionOptionRef, player: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     step <- states.previous
     amount = favor(step, player)

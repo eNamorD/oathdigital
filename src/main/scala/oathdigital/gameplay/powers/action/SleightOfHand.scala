@@ -42,7 +42,7 @@ case object SleightOfHand extends PaidAction(SleightOfHandCard.power):
   /** The question is asked whenever there is a target, so no answer means
     * nobody could be robbed. */
   private def stealNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).flatMap(card =>
       NoteSupport.answer(states, decisionId) match
         case Some(DecisionOptionRef.Player(target)) =>

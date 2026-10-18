@@ -164,7 +164,7 @@ object ChallengeProcedure:
   /** What the challenger put on the banner, in the step before the note,
     * and who held it. Nothing paid writes nothing. */
   private def tookNote(actor: PlayerId, banner: Banner,
-      holder: Option[PlayerId])(states: NoteStates): Option[PowerNote] =
+      holder: Option[PlayerId])(states: NoteStates): Option[LogNote] =
     states.previous.map(step => banner match
       case Banner.PeoplesFavor => -NoteSupport.favor(step, actor)
       case Banner.DarkestSecret => -NoteSupport.secrets(step, actor))

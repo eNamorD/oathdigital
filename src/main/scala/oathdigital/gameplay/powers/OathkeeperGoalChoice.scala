@@ -67,7 +67,7 @@ object OathkeeperGoalChoice:
 
   /** The line for the goal the step before set, if it changed one. */
   def changedNote(states: NoteStates, key: NoteKey,
-      source: PowerSourceRef): Option[PowerNote] = for
+      source: PowerSourceRef): Option[LogNote] = for
     (before, after) <- states.previous
     goal = after.game.campaign.oathkeeperGoal
     if goal != before.game.campaign.oathkeeperGoal

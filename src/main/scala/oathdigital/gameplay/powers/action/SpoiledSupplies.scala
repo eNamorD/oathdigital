@@ -42,7 +42,7 @@ case object SpoiledSupplies extends PaidAction(SpoiledSuppliesCard.power):
 
   /** The Supply `target` lost in the step before the note. */
   private def lostNote(states: NoteStates, target: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     step <- states.previous
     amount = -NoteSupport.supply(step, target)

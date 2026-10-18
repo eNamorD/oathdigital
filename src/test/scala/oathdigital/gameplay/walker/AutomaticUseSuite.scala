@@ -27,7 +27,7 @@ class AutomaticUseSuite extends munit.FunSuite:
     def refusal(ready: ReadyGame, use: PowerUse): Option[PowerUseRefusal] =
       Option.when(use.power == automatic && Look(ready).favor(p1) == 0)(
         PowerUseRefusal(id,
-          PowerNote(Some(PowerSourceRef.Card(card)), "refused",
+          LogNote(Some(PowerSourceRef.Card(card)), "refused",
           Vector.empty), OperationReason("test-refused", "no favor",
           OperationReasonKind.Impossible)))
 
@@ -40,7 +40,7 @@ class AutomaticUseSuite extends munit.FunSuite:
     def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
     override def powerUseRestrictions: Vector[PowerUseRestriction] =
       Vector(this)
-    private val note = PowerNote(Some(PowerSourceRef.Card(card)), "refused",
+    private val note = LogNote(Some(PowerSourceRef.Card(card)), "refused",
       Vector.empty)
     def refusal(ready: ReadyGame, use: PowerUse): Option[PowerUseRefusal] =
       Option.when(use.power == automatic && Look(ready).favor(p1) == 0)(
@@ -186,7 +186,7 @@ class AutomaticUseSuite extends munit.FunSuite:
     val (end, events) = finishedWithEvents(ProcedureWalker.advance(
       p1Holding(0), Sequence(gainsOneFavor), None, both))
     assertEquals(Look(end).favor(p1), 0)
-    assertEquals(events.collect { case noted: PowerNoted => noted },
+    assertEquals(events.collect { case noted: LogNoted => noted },
       Vector.empty)
 
   test("a remembered grant runs the effect without a step"):
@@ -201,7 +201,7 @@ class AutomaticUseSuite extends munit.FunSuite:
       rememberingP2s(p1Holding(0), ConsentAnswer.Refused),
       Sequence(gainsOneFavor), None, askable))
     assertEquals(Look(end).favor(p1), 0)
-    assertEquals(events.collect { case PowerNoted(_, note, _) => note },
+    assertEquals(events.collect { case LogNoted(_, note, _) => note },
       Vector(PowerUseStep.staysDeactivated(PowerSourceRef.Card(card),
         NoteArg.Card(card))))
 

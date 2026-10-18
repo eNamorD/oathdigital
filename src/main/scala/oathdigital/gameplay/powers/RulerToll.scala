@@ -93,7 +93,7 @@ private[powers] object RulerToll:
 
   /** The line, from what the payment's step took from `payer`. */
   def note(card: DenizenId, payer: PlayerId, ruler: SiteRuler)(
-      states: NoteStates): Option[PowerNote] = for
+      states: NoteStates): Option[LogNote] = for
     step <- states.previous
     paid = -NoteSupport.favor(step, payer)
     if paid > 0

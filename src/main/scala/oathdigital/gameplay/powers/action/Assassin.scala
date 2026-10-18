@@ -100,7 +100,7 @@ final case class Assassin private (catalog: ExecutableCatalog)
 
   /** The card discarded and its owner, read before the discard. */
   private def discardedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = PowerSourceRef.of(source).map(card => (for
+      : Option[LogNote] = PowerSourceRef.of(source).map(card => (for
     case DecisionOptionRef.Denizen(chosen) <-
       NoteSupport.answer(states, decisionId)
     (before, _) <- states.previous

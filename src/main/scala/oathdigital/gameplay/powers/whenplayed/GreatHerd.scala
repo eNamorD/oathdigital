@@ -87,7 +87,7 @@ final case class GreatHerd private (catalog: ExecutableCatalog)
 
   /** Written only when the chosen card now stands where Great Herd stood. */
   private def swappedNote(states: NoteStates, actor: PlayerId)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     ref <- NoteSupport.answer(states, decisionId)
     (before, after) <- states.previous
     here <- SiteRulers.siteOf(before, cardId)

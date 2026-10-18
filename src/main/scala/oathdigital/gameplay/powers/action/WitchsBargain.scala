@@ -163,7 +163,7 @@ case object WitchsBargain extends PaidAction(WitchsBargainCard.power):
   /** The exchange the step before restates. Nothing after "Pick a
     * different player" or "Stop". */
   private def exchangeNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     choice <- latest(states.answered)
     other <- partner(states.answered)
@@ -174,7 +174,7 @@ case object WitchsBargain extends PaidAction(WitchsBargainCard.power):
   /** What was given, to whom, and what the player took in `step`. */
   private def restated(card: PowerSourceRef, choice: DecisionOptionRef,
       other: PlayerId, step: NoteSupport.Step, actor: PlayerId)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     if choice == giveSecret then Some(forSecret(card,
       NoteArg.Amount(1, NoteUnit.Secret), NoteArg.Player(other),
       NoteArg.Amount(NoteSupport.favor(step, actor), NoteUnit.Favor)))
@@ -185,7 +185,7 @@ case object WitchsBargain extends PaidAction(WitchsBargainCard.power):
 
   /** "No exchange was made." when no exchange was. */
   private def nothingNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = PowerSourceRef.of(source).filterNot(_ =>
+      : Option[LogNote] = PowerSourceRef.of(source).filterNot(_ =>
     states.answered.exists {
       case Answered(`exchangeDecisionId`, DecisionAnswer.ChooseOneAnswer(ref),
           _) => ref == giveSecret || ref == giveFavor

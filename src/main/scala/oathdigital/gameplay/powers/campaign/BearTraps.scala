@@ -63,7 +63,7 @@ case object BearTraps extends BattlePlan:
 
   /** The line, when the step before killed `attacker`'s warbands. */
   private def killedNote(attacker: PlayerId)(states: NoteStates)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     states.previous.map((before, after) =>
       warbands(before, attacker) - warbands(after, attacker))
       .filter(_ > 0).map(count => BearTraps.killed(

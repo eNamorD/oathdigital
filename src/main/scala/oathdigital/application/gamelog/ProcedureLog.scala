@@ -58,9 +58,9 @@ private[gamelog] object Continued:
   * as correct. */
 private[gamelog] enum ActionLineSource:
   /** A rule that reads the journal. Only `ActionRef.UsePower` still has
-    * one: `PowerLines.usePowerLines`. */
+    * one: `NoteLines.usePowerLines`. */
   case Rule(lines: ActionLine)
-  /** The procedure journals its own notes, which `PowerLines` posts. Each
+  /** The procedure journals its own notes, which `NoteLines` posts. Each
     * posts at `LogKind.Action` unless `kinds` names another for its key: a
     * kind is layout, so it is declared here and never beside the procedure
     * (procedures journal their own notes design, ruling 2). */
@@ -84,7 +84,7 @@ private[gamelog] final case class Told(decision: String,
   * pays again, and whether its run draws a section band. Apart from the tag,
   * which is the name the log prints, every member is a declaration rather
   * than a wording: the rules themselves stay in `StartLines`,
-  * `PowerLines` and their helpers, and an entry names them.
+  * `NoteLines` and their helpers, and an entry names them.
   */
 private[gamelog] final case class ProcedureLog(
     tag: Option[String],
@@ -124,12 +124,12 @@ private[gamelog] final case class ProcedureLog(
   * `ActionRef.UsePower` is parameterized, so `ProcedureRef.all` does not list
   * it and `of` builds its entry from the same match on demand.
   */
-/** `notes` is by-name because `PowerLines` is built from this table's own
+/** `notes` is by-name because `NoteLines` is built from this table's own
   * `noteKind`. Nothing forces it during construction: `entries` is built
   * from `ProcedureRef.all`, which does not list the parameterized
   * `ActionRef.UsePower`, and that is the only arm that reads it. */
 private[gamelog] final class ProcedureLogs(starts: StartLines,
-    notes: => PowerLines):
+    notes: => NoteLines):
   private val entries: Map[ProcedureRef, ProcedureLog] =
     ProcedureRef.all.map(procedure => procedure -> rules(procedure)).toMap
 

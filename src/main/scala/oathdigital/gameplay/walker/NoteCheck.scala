@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.powers.DeclaredNotes
-import oathdigital.model.{PowerId, PowerNote}
+import oathdigital.model.{PowerId, LogNote}
 
 /** Journals a note only if its power declares its key (derive note keys
   * design, decisions 5 and 6). A note with no declared key has no wording,
@@ -34,11 +34,11 @@ private[walker] object NoteCheck:
     sys.props.get("oathdigital.notes.strict").contains("true")
 
   def journal(declared: Option[DeclaredNotes], power: PowerId,
-      note: PowerNote, covers: Boolean, strict: Boolean = strictByDefault)
-      : Option[PowerNoted] =
+      note: LogNote, covers: Boolean, strict: Boolean = strictByDefault)
+      : Option[LogNoted] =
     if declared.forall(union =>
         !union.knows(power) || union.declares(power, note.key)) then
-      Some(PowerNoted(power, note, covers))
+      Some(LogNoted(power, note, covers))
     else
       val message = s"${power.value} wrote the undeclared note ${note.key}" +
         note.source.fold("")(source => s" from $source")

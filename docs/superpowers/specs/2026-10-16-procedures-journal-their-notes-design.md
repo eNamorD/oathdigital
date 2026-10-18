@@ -127,6 +127,12 @@ These were settled while designing and bind the rest of this document.
     proof is an empty golden diff would make every later diff harder to read.
     A ROADMAP task records it.
 
+    **Done after slice 4.** `PowerNote` is `LogNote`, `PowerNoted` is
+    `LogNoted` and `PowerLines` is `NoteLines`, named for the Game Log they
+    write to rather than for one of their three emitters. The wire tag
+    `walker.power-noted` and the payload's `powerId` field keep their
+    spelling, so every saved game still opens.
+
 ## Mechanism
 
 ### The optional source

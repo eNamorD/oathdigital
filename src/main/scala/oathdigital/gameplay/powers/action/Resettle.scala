@@ -92,7 +92,7 @@ final case class Resettle private (catalog: ExecutableCatalog)
   /** The owner is read before the move; written when the adviser now stands
     * at the chosen site. */
   private def movedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     PowerSourceRef.of(source).map(card => (for
       case DecisionOptionRef.Denizen(chosen) <-
         NoteSupport.answer(states, adviserDecisionId)

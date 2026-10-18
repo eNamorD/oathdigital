@@ -111,7 +111,7 @@ case object DreamThief extends PaidAction(DreamThiefCard.power):
   /** The two cards, read where they stood before the swap. No answer means
     * nothing could be swapped, whose line the first `Branch` already wrote. */
   private def swappedNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     firstRef <- NoteSupport.answer(states, firstDecisionId)
     secondRef <- NoteSupport.answer(states, secondDecisionId)

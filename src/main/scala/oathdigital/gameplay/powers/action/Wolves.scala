@@ -41,7 +41,7 @@ case object Wolves extends PaidAction(WolvesCard.power):
 
   /** The warbands the chosen board lost in the kill step. */
   private def killNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     target <- NoteSupport.answer(states, decisionId).collect {
       case DecisionOptionRef.Player(board) => board }

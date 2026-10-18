@@ -46,7 +46,7 @@ final case class ForgottenVault private (catalog: ExecutableCatalog)
     OathViolation.InvalidEventOrder(
       "the Forgotten Vault protects its ruler's relics"))
 
-  private def said(ruler: PlayerId): PowerNote =
+  private def said(ruler: PlayerId): LogNote =
     ForgottenVault.shielded(PowerSourceRef.Card(cardId), NoteArg.Player(ruler))
 
   /** The Vault's ruler, when the acting player is one of their enemies. */

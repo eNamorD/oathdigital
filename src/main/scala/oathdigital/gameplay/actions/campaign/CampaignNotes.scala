@@ -30,7 +30,7 @@ object CampaignNotes:
   def noteKeys: Vector[NoteKey] = notes.declared
 
   /** A note leaf of the Campaign's own id, for the files that place one. */
-  def leaf(build: NoteStates => Option[PowerNote]): Note =
+  def leaf(build: NoteStates => Option[LogNote]): Note =
     Note(ProcedureNotes.id(ActionRef.Campaign), build)
 
   /** "Targets: Broken Peaks and the Mine", or a Raid's pawn, relics and
@@ -135,12 +135,12 @@ object CampaignNotes:
           NoteThing.Banner(banner)
       }
 
-  def targetsNote(actor: PlayerId)(states: NoteStates): Option[PowerNote] =
+  def targetsNote(actor: PlayerId)(states: NoteStates): Option[LogNote] =
     setupOf(states, actor).map(setup =>
       targets.sourceless(NoteArg.Things(targeted(setup))))
 
   def poolsNote(catalog: ExecutableCatalog, actor: PlayerId)(
-      states: NoteStates): Option[PowerNote] =
+      states: NoteStates): Option[LogNote] =
     setupOf(states, actor).map(setup => pools.sourceless(
       NoteArg.Number(setup.force),
       NoteArg.Number(CampaignBattle.printedDefense(catalog, setup))))
@@ -148,7 +148,7 @@ object CampaignNotes:
   /** A plan a player chose, named by its card, or by the title it is
     * printed on no card for. `user` is who chose it. */
   def activationNote(source: CampaignPlanSource, user: PlayerId,
-      actor: PlayerId)(states: NoteStates): Option[PowerNote] =
+      actor: PlayerId)(states: NoteStates): Option[LogNote] =
     CampaignPlans.cardOf(source) match
       case Some(card) => Some(
         if user == actor then activatedPlan.sourceless(NoteArg.Card(card))
@@ -163,14 +163,14 @@ object CampaignNotes:
   /** A plan a bandit defender applied, which is always a card's: the title
     * is a player defender's. */
   def banditActivationNote(source: CampaignPlanSource)(
-      states: NoteStates): Option[PowerNote] =
+      states: NoteStates): Option[LogNote] =
     CampaignPlans.cardOf(source).map(card =>
       banditsActivatedPlan.sourceless(NoteArg.Card(card)))
 
   /** The attack each sacrificed warband bought, as the new total: the
     * sacrifice is added to the recorded attack when the result is built,
     * so the pool still holds the attack before it. */
-  def sacrificedNote(states: NoteStates): Option[PowerNote] =
+  def sacrificedNote(states: NoteStates): Option[LogNote] =
     val count = CampaignAnswers.sacrificed(
       PendingTree(Vector.empty, states.answered))
     Option.when(count > 0)(sacrificed.sourceless(NoteArg.Number(count),
@@ -180,7 +180,7 @@ object CampaignNotes:
   /** The attack as it stands once every plan has scored it, with the skull
     * faces counted as the scoring counts them and, when the skulls killed
     * another number of warbands, that number (batch 8, item 13b). */
-  def attackNote(actor: PlayerId)(states: NoteStates): Option[PowerNote] =
+  def attackNote(actor: PlayerId)(states: NoteStates): Option[LogNote] =
     states.now.game.current.rollOutcomes.get(CampaignIds.attackPool).map {
       outcome =>
         val kills = outcome.skulls
@@ -198,11 +198,11 @@ object CampaignNotes:
 
   /** The defense, which is written even for a pool that never rolled: it
     * is the dice plus the defender's force. */
-  def defenseNote(states: NoteStates): Option[PowerNote] = Some(
+  def defenseNote(states: NoteStates): Option[LogNote] = Some(
     defense.sourceless(NoteArg.Number(
       scoreOf(states.now, CampaignIds.defensePool))))
 
-  def winnerNote(states: NoteStates): Option[PowerNote] =
+  def winnerNote(states: NoteStates): Option[LogNote] =
     resultOf(states).map(result =>
       if result.attackerWins then
         playerWins.sourceless(NoteArg.Player(result.attacker))
@@ -215,7 +215,7 @@ object CampaignNotes:
     * on their board and across the map before and after the leaf. A
     * Conquest defender's returned half comes back into that total, so the
     * count is the net loss the rule's joined clause named. */
-  def lossNote(states: NoteStates): Option[PowerNote] = for
+  def lossNote(states: NoteStates): Option[LogNote] = for
     result <- resultOf(states)
     step <- states.previous
     owner = loserOf(result)
@@ -232,7 +232,7 @@ object CampaignNotes:
   /** What a won Raid took, read as what the attacker gained in the step:
     * the relics first, then the banners, as the takes ran. A take a power
     * refused is not named, because nothing was gained. */
-  def spoilsNote(states: NoteStates): Option[PowerNote] = for
+  def spoilsNote(states: NoteStates): Option[LogNote] = for
     result <- resultOf(states)
     defender <- defenderOf(result)
     step <- states.previous
@@ -243,7 +243,7 @@ object CampaignNotes:
   yield took.sourceless(NoteArg.Things(taken), NoteArg.Player(defender))
 
   /** Where a Conquest victory's survivors went, read per target site. */
-  def placementNote(states: NoteStates): Option[PowerNote] = for
+  def placementNote(states: NoteStates): Option[LogNote] = for
     result <- resultOf(states)
     step <- states.previous
     kind <- forceKindOf(step._1, Some(result.attacker))
@@ -258,7 +258,7 @@ object CampaignNotes:
     * the consequences step: the favor burnt, the cards that left their
     * play area for a discard pile, and the relics set aside. A facedown
     * Conspiracy goes to the box, not a pile, so no clause names it. */
-  def consequenceNote(states: NoteStates): Option[PowerNote] = for
+  def consequenceNote(states: NoteStates): Option[LogNote] = for
     result <- resultOf(states)
     defender <- defenderOf(result)
     step <- states.previous
@@ -287,7 +287,7 @@ object CampaignNotes:
   /** Where a defeated Raid defender's pawn was sent, read from the move
     * itself: a power that ends the Raid instead (Keep) replaces this
     * step's operations and its own line says where the pawn stands. */
-  def relocationNote(states: NoteStates): Option[PowerNote] = for
+  def relocationNote(states: NoteStates): Option[LogNote] = for
     result <- resultOf(states)
     defender <- defenderOf(result)
     step <- states.previous
@@ -296,7 +296,7 @@ object CampaignNotes:
   yield sentTo.sourceless(NoteArg.Player(defender), NoteArg.Site(to))
 
   /** Why a Campaign ended before its force was committed. */
-  def endedNote(states: NoteStates): Option[PowerNote] = Some(
+  def endedNote(states: NoteStates): Option[LogNote] = Some(
     if CampaignAnswers.skipped(PendingTree(Vector.empty, states.answered))
     then skipped.sourceless() else nothingToAttack.sourceless())
 

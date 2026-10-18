@@ -68,7 +68,7 @@ final case class SilverCharm private (catalog: ExecutableCatalog)
 
   /** "Rerolled {the chosen dice}.", read before the reroll changes them. */
   private def named(ready: ReadyGame, chosen: Vector[Int])
-      : Option[PowerNote] =
+      : Option[LogNote] =
     ready.game.current.rollOutcomes.get(RecoverProcedure.recoverPool)
       .map(outcome => SilverCharm.rerolled(PowerSourceRef.Card(cardId),
         NoteArg.Dice(chosen.flatMap(outcome.faces.lift))))

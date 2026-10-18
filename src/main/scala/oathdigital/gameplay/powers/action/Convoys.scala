@@ -78,7 +78,7 @@ case object Convoys extends PaidAction(ConvoysCard.power):
     PositionedLocation(Location.RegionalDiscard(to), StackPosition.Top)))
 
   private def movedNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     to <- home(states.now, actor)
     from <- chosen(states.now, actor, NoteSupport.answer(states, decisionId))

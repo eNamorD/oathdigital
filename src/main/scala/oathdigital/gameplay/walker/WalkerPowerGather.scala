@@ -3,7 +3,7 @@ package oathdigital.gameplay.walker
 import oathdigital.gameplay.operations.PowerUseRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, RerollHost, Restriction, Waiver}
 import oathdigital.model.PowerResolution
-import oathdigital.model.{Answered, AutomaticUse, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, OfferedReroll, Operation, OptionReason, PendingTree, PlayerId, PowerId, PowerNote, PowerWindow, LeafOperation, ProcedureRef, ReadyGame}
+import oathdigital.model.{Answered, AutomaticUse, Branch, ConsentAnswer, ConsentAsk, ConsentKey, ConsentTurn, Decide, DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, OfferedReroll, Operation, OptionReason, PendingTree, PlayerId, PowerId, LogNote, PowerWindow, LeafOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -381,7 +381,7 @@ private[walker] object WalkerPowerGather:
   /** A breach a grant would lift: its power, the player who may grant it,
     * and its reasons for the option asked about. */
   final case class WaivableBreach(power: PowerId, granter: PlayerId,
-      asked: PowerNote, plain: Option[PowerNote])
+      asked: LogNote, plain: Option[LogNote])
 
   /** The tree-level restrictions that refuse `root` with `answered`, when
     * every one of them may be waived by a player (catalog batch 8, slice

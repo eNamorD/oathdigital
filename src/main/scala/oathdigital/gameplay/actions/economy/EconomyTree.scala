@@ -52,7 +52,7 @@ private[economy] object EconomyTree:
       /** The line this action writes at its gain, if it writes one: the
         * note's id and a builder that reads the resolved source. The tree
         * places the leaf; the procedure owns the words. */
-      note: Option[(PowerId, (NoteStates, MusterSource) => Option[PowerNote])] =
+      note: Option[(PowerId, (NoteStates, MusterSource) => Option[LogNote])] =
         None)
 
   /** Fresh start: the lifecycle gate, a pawn site, a resolvable ruler for

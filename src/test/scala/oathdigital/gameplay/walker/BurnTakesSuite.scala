@@ -19,8 +19,8 @@ class BurnTakesSuite extends munit.FunSuite:
       Option.when(burnt.by != p1)(BurnTake(p1, (burner, amount, _) =>
         line(burner, amount)))
 
-  private def line(burner: PlayerId, amount: Int): PowerNote =
-    PowerNote(Some(PowerSourceRef.Site(SiteId("test"))), "took",
+  private def line(burner: PlayerId, amount: Int): LogNote =
+    LogNote(Some(PowerSourceRef.Site(SiteId("test"))), "took",
       Vector(NoteArg.Player(burner), NoteArg.Number(amount)))
 
   private val powers = WalkerPowers(Vector(TakesOthersBurnsForP1))
@@ -41,8 +41,8 @@ class BurnTakesSuite extends munit.FunSuite:
     events.collect { case step: WalkerStepRecorded => step.ops }
 
   /** The test power's lines. */
-  private def lines(events: Vector[OathEvent]): Vector[PowerNote] =
-    events.collect { case PowerNoted(TakesOthersBurnsForP1.id, note, _) =>
+  private def lines(events: Vector[OathEvent]): Vector[LogNote] =
+    events.collect { case LogNoted(TakesOthersBurnsForP1.id, note, _) =>
       note }
 
   test("a batch's burn another player makes becomes a Take to the taker, " +

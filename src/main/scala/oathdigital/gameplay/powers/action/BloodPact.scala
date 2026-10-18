@@ -67,7 +67,7 @@ case object BloodPact extends PaidAction(BloodPactCard.power):
 
   /** The warbands the step before the note took from the board. */
   private def pactNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).map { card =>
       val lost = states.previous.fold(0)(step =>
         -NoteSupport.warbands(step, player))

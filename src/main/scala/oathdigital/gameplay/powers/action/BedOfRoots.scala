@@ -69,7 +69,7 @@ final case class BedOfRoots private (catalog: ExecutableCatalog)
   /** The adviser the step before the note took from the player, read where
     * it stood before. No adviser taken means there was none to bury. */
   private def buriedNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).map(card => (for
       step <- states.previous
       chosen <- candidates(step._1, player).find(before =>

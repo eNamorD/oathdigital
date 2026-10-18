@@ -124,13 +124,13 @@ final case class SingingMask private (catalog: ExecutableCatalog)
 
   /** The move the step before the note made, or that none did. */
   private def movedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = PowerSourceRef.of(source).map(card =>
+      : Option[LogNote] = PowerSourceRef.of(source).map(card =>
     states.previous.flatMap(restated(card, _)).getOrElse(nothing(card)))
 
   /** Favor onto the People's Favor from the bank that lost it, or off it to
     * the bank that gained it. */
   private def restated(card: PowerSourceRef, step: NoteSupport.Step)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     val (before, after) = step
     val change = onBanner(after) - onBanner(before)
     if change > 0 then NoteSupport.bankPaid(step).map(suit => moved(card,

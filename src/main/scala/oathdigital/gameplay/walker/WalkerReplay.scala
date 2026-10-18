@@ -184,7 +184,7 @@ private[walker] object WalkerReplay:
             "a skip does not name the offered entry"))
 
       // An audit fact for the Game Log; replay has nothing to apply.
-      case _: PowerNoted => Right(ready)
+      case _: LogNoted => Right(ready)
       case step: WalkerStepRecorded =>
         invalid(s"unsupported recorded walker payload ${step.payload.productPrefix}")
       case other =>

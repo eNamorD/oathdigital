@@ -53,7 +53,7 @@ final case class MemoryOfNature private (catalog: ExecutableCatalog)
 
   /** What the Beast bank gained in the step before the note. */
   private def movedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = PowerSourceRef.of(source).map { card =>
+      : Option[LogNote] = PowerSourceRef.of(source).map { card =>
     val gained = states.previous.fold(0)((before, after) =>
       after.banks.favor.getOrElse(Suit.Beast, 0) -
         before.banks.favor.getOrElse(Suit.Beast, 0))

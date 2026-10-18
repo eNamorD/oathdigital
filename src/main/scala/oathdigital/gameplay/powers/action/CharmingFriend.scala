@@ -42,7 +42,7 @@ case object CharmingFriend extends PaidAction(CharmingFriendCard.power):
 
   /** No answer means nobody was at the site. */
   private def charmNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).map(card =>
       NoteSupport.answer(states, decisionId) match
         case Some(DecisionOptionRef.Player(target)) =>

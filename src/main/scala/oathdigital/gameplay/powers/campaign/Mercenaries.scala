@@ -53,7 +53,7 @@ final case class Mercenaries private (catalog: ExecutableCatalog)
 
   /** Its line, when the discard's step took the card out of play. */
   private def discardNote(user: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     if inPlay(step._1) && !inPlay(step._2)
   yield Mercenaries.discarded(PowerSourceRef.Card(cardId), NoteArg.Player(user))

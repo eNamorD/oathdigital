@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.walker.{PowerNoted, RollPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{LogNoted, RollPayload, WalkerStepRecorded}
 import oathdigital.model._
 
 /** Test-only scaffolding shared by `RecoverProcedureSuite` and
@@ -29,7 +29,7 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
   protected def foldRecordedOps(state: ReadyGame, events: Vector[OathEvent],
       failureContext: String): ReadyGame =
     // A note changes no state, and replay skips it the same way.
-    events.filterNot(_.isInstanceOf[PowerNoted]).foldLeft(state) { (current, event) =>
+    events.filterNot(_.isInstanceOf[LogNoted]).foldLeft(state) { (current, event) =>
       val step = event match
         case recorded: WalkerStepRecorded => recorded
         case other => self.fail(s"expected a WalkerStepRecorded, got $other")

@@ -5,7 +5,7 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.powerresolver.ModifierPicks
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ChoicePayload, DecisionQueries,
-  PowerNoted, ProcedureWalker, WalkerOutcome, WalkerPowers,
+  LogNoted, ProcedureWalker, WalkerOutcome, WalkerPowers,
   WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model.DecisionAnswer.PartitionAnswer
 import oathdigital.model._
@@ -100,10 +100,10 @@ class ForgeProcedureSuite extends munit.FunSuite
   private def expectFinished(outcome: Either[OathViolation, WalkerOutcome])
       : ForgeFinished =
     val finished = Outcomes.finished(outcome)
-    // The two trailing `Note` leaves journal `PowerNoted`, which is the
+    // The two trailing `Note` leaves journal `LogNoted`, which is the
     // Game Log's business and not this suite's: only the recorded steps are.
     // Both are still counted, so dropping one does not pass unnoticed.
-    assertEquals(finished.events.count(_.isInstanceOf[PowerNoted]), 2,
+    assertEquals(finished.events.count(_.isInstanceOf[LogNoted]), 2,
       s"a finished Forge journals both of its lines: ${finished.events}")
     ForgeFinished(finished.treeless,
       finished.events.collect { case step: WalkerStepRecorded => step })

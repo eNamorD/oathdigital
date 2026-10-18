@@ -84,7 +84,7 @@ case object Tyrant extends ContributingPower:
 
   /** The warbands the step before killed at `site`, and whose. */
   private def killedNote(states: NoteStates, site: SiteId)
-      : Option[PowerNote] = states.previous.flatMap { case (before, after) =>
+      : Option[LogNote] = states.previous.flatMap { case (before, after) =>
     forcesAt(before, site) match
       case SiteForces.Occupied(kind, count) =>
         val lost = count - held(after, site, kind)
@@ -93,7 +93,7 @@ case object Tyrant extends ContributingPower:
   }
 
   private def line(ready: ReadyGame, kind: ForceKind, lost: Int, site: SiteId)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     val card = PowerSourceRef.Card(cardId)
     kind match
       case ForceKind.Bandit => Some(killedBandits(card, NoteArg.Number(lost),

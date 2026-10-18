@@ -16,7 +16,7 @@ private[targeting] object ConspiracyTargets:
   /** `operations` without the options `protects` names, after `power`'s
     * `note` when any was dropped. */
   def narrowed(ctx: PowerCtx, power: PowerId, operations: Vector[Operation],
-      protects: DecisionOptionRef => Boolean, note: => Option[PowerNote])
+      protects: DecisionOptionRef => Boolean, note: => Option[LogNote])
       : Vector[Operation] =
     val kept = OperationRewrite.nodes(ctx, operations)((_, _) => {
       case decide: Decide => decide.query match {

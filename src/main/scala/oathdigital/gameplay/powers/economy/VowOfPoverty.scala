@@ -86,7 +86,7 @@ case object VowOfPoverty extends PhasePower with ContributingPower:
 
   /** The favor `player` took from one bank in the step before the note. */
   private def tookNote(source: DecisionOptionRef, player: PlayerId)(
-      states: NoteStates): Option[PowerNote] = for
+      states: NoteStates): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     step <- states.previous
     amount = NoteSupport.favor(step, player)

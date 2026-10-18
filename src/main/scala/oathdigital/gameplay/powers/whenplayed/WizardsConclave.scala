@@ -88,7 +88,7 @@ final case class WizardsConclave private (catalog: ExecutableCatalog)
 
   /** Whether the winner holds the banner now, or Lost Tongue kept it. */
   private def takenNote(states: NoteStates, taker: PlayerId)
-      : Option[PowerNote] = Some(
+      : Option[LogNote] = Some(
     if BannerRules.holder(states.now.game.current, Banner.DarkestSecret)
         .contains(taker)
     then took(cardSource, NoteArg.Player(taker), banner)

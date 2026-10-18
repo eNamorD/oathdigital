@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powerresolver
 
 import oathdigital.model.{ConsentKey, Cost, DecisionOptionRef, OathViolation,
-  Operation, PlayerId, PowerId, PowerNote, PowerTiming, QueuedProcedure,
+  Operation, PlayerId, PowerId, LogNote, PowerTiming, QueuedProcedure,
   ReadyGame}
 
 /** Whether a procedure a phase power would queue starts now, and why not
@@ -29,7 +29,7 @@ object QueuedStarts:
     * `asked` is the reason while it may be asked; `plain` the reason once
     * it was refused. */
   final case class Needed(power: PowerId, granter: PlayerId,
-      key: ConsentKey, asked: PowerNote, plain: Option[PowerNote])
+      key: ConsentKey, asked: LogNote, plain: Option[LogNote])
 
   enum Verdict:
     case Starts

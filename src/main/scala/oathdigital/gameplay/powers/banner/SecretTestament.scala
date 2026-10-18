@@ -76,7 +76,7 @@ case object SecretTestament extends ContributingPower:
 
   /** What the holder took, read from the banner before the take. */
   private def line(banner: Banner, holder: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     amount = BannerRules.resources(step._1.game.current, banner)
     if amount > 0

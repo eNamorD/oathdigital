@@ -19,7 +19,7 @@ private[action] object BankMoves:
 
   /** The bank that lost favor in the step before the note, how much, and
     * the bank that gained it. Nothing moved writes nothing. */
-  def movedNote(card: PowerSourceRef)(states: NoteStates): Option[PowerNote] =
+  def movedNote(card: PowerSourceRef)(states: NoteStates): Option[LogNote] =
     for
       (before, after) <- states.previous
       from <- Suit.all.find(suit => stock(after, suit) < stock(before, suit))

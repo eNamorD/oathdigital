@@ -49,7 +49,7 @@ case object BoneDice extends PaidAction(BoneDiceCard.power):
   /** The settle step buried the relic. It covers that step, whose only
     * generic line is the Buried line: `GainSupply` posts none. */
   private def buryNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     step <- states.previous
     if NoteSupport.relicsLost(step, player).nonEmpty

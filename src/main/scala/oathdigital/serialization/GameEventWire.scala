@@ -35,7 +35,10 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val WalkerStepRecordedType = "walker.step-recorded"
   val WalkerParkedType = "walker.parked"
   val WalkerCompletedType = "walker.completed"
-  val PowerNotedType = "walker.power-noted"
+  /** The Scala type is `LogNoted`; the wire tag keeps the older `power`
+    * spelling, because changing it would make an openable game fail to
+    * load. */
+  val LogNotedType = "walker.power-noted"
   val ProcedureDequeuedType = "walker.procedure-dequeued"
   val FollowUpSkippedType = "walker.follow-up-skipped"
   val ActionBoundaryRanType = "walker.action-boundary-ran"

@@ -33,7 +33,7 @@ case object WanderingFlamePlace extends PaidAction(
     Note(id, placeNote(_, player, source)))))
 
   private def placeNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     step <- states.previous
     if NoteSupport.secrets(step, player) < 0

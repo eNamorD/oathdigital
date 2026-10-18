@@ -86,7 +86,7 @@ _Avoid_: log message, power text, log entry
 **Note key**:
 One line a power, a game rule or a procedure can write: its name and the
 wording that renders it. The name is the wire spelling, journaled in
-`PowerNoted`, so a saved game's notes stay readable only while their keys
+`LogNoted`, so a saved game's notes stay readable only while their keys
 keep their names.
 _Avoid_: note id, message key, line type
 

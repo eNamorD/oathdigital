@@ -78,7 +78,7 @@ final case class SecondChance private (catalog: ExecutableCatalog)
   /** The player's warband change in the step before the note: the gain's,
     * or nothing when the empty supply skipped it. */
   private def gainNote(states: NoteStates, actor: PlayerId, target: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).map { card =>
       val got = states.previous.fold(0)(NoteSupport.warbands(_, actor))
       if got > 0 then gained(card, NoteArg.Number(Killed),

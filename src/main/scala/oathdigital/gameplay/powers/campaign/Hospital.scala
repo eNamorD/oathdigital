@@ -132,7 +132,7 @@ case object Hospital extends BattlePlan:
 
   /** What the placement just added to Hospital's site. */
   private def placedNote(states: NoteStates, user: PlayerId)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     (before, after) <- states.previous
     site <- SiteRulers.siteOf(after, cardId)
     kind <- PlayerFacts.forceKind(after, user).toOption

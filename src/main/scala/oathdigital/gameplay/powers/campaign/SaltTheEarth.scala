@@ -95,7 +95,7 @@ final case class SaltTheEarth private (catalog: ExecutableCatalog)
 
   /** The cards that left the salted site in the step before. */
   private def buriedNote(targets: Vector[SiteId])(states: NoteStates)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     (before, after) <- states.previous
     site <- targets.find(site => SaltTheEarth.cardsAt(before, site) !=
       SaltTheEarth.cardsAt(after, site))

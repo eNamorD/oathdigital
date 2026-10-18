@@ -110,5 +110,5 @@ case object Levelers extends PaidAction(LevelersCard.power):
   /** The move's line. With every bank empty, the source's `Branch` already
     * wrote the empty line, and no bank changed. */
   private def note(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     PowerSourceRef.of(source).flatMap(BankMoves.movedNote(_)(states))

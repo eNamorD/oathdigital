@@ -50,7 +50,7 @@ case object IvoryEye extends PaidAction(IvoryEyeCard.power):
   /** A peek leaves the adviser where it was, so the answered slot still
     * names it. */
   private def peekNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     ref <- NoteSupport.answer(states, decisionId)
     target <- targets(states.now).find(_.ref == ref)

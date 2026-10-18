@@ -49,7 +49,7 @@ case object Charlatan extends WhenPlayedPower:
     Note(id, burnedNote))
 
   /** What the burn step took from the banner. */
-  private def burnedNote(states: NoteStates): Option[PowerNote] =
+  private def burnedNote(states: NoteStates): Option[LogNote] =
     val source = PowerSourceRef.Card(cardId)
     val banner = NoteArg.Banner(Banner.DarkestSecret)
     val burnt = states.previous.fold(0)((before, after) =>

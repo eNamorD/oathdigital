@@ -71,7 +71,7 @@ final case class Homesteaders private (catalog: ExecutableCatalog)
 
   /** Written when the chosen adviser now stands at the pawn's site. */
   private def movedNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).map(card => (for
       case DecisionOptionRef.Denizen(chosen) <-
         NoteSupport.answer(states, decisionId)

@@ -70,7 +70,7 @@ final case class GiantPython private (catalog: ExecutableCatalog)
   /** The chosen slot, read before the step, once Giant Python stands at
     * its site. */
   private def movedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     for
       card <- PowerSourceRef.of(source)
       ref <- NoteSupport.answer(states, decisionId)

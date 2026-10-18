@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.walker.PowerNoted
+import oathdigital.gameplay.walker.LogNoted
 import oathdigital.model._
 import oathdigital.testkit.CatalogNames
 
@@ -89,16 +89,16 @@ class VowOfPeaceSuite extends munit.FunSuite:
   /** Vow of Peace's own notes. The Campaign journals its own lines too
     * (procedures journal their own notes design, slice 4), and this suite
     * is about the one power. */
-  private def notes(run: Run): Vector[PowerNoted] =
+  private def notes(run: Run): Vector[LogNoted] =
     run.finishPlanWindows.events.collect {
-      case noted: PowerNoted if noted.power == VowOfPeaceContribution.id =>
+      case noted: LogNoted if noted.power == VowOfPeaceContribution.id =>
         noted }
 
   test("the removed sacrifice decision leaves a note naming the defender"):
     val b = defendedBy(
       rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7)),
       Orientation.FaceUp)
-    assertEquals(notes(commit(rules(losingDice), b, 2)), Vector(PowerNoted(
+    assertEquals(notes(commit(rules(losingDice), b, 2)), Vector(LogNoted(
       VowOfPeaceContribution.id, VowOfPeaceContribution.noSacrifice(
         PowerSourceRef.Card(vow), NoteArg.Player(b.rival)),
       covers = false)))

@@ -42,7 +42,7 @@ final case class TruthfulHarp private (catalog: ExecutableCatalog)
 
   /** The hand the reveal showed. */
   private def revealNote(actor: PlayerId)(states: NoteStates)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     val hand = states.now.game.current.temporaryHands
       .getOrElse(actor, Vector.empty)
     Option.when(hand.nonEmpty)(TruthfulHarp.revealed(

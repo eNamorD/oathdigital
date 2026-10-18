@@ -54,7 +54,7 @@ case object FaeMerchant extends PaidAction(FaeMerchantCard.power):
 
   /** The relic the bury took from the player, in place of its Buried line. */
   private def returnNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     step <- states.previous
     relic <- NoteSupport.relicsLost(step, player).headOption

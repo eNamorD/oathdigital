@@ -52,7 +52,7 @@ final case class AwaitedReturn private (catalog: ExecutableCatalog)
         PositionedLocation(Location.PlayArea(actor))))), required = true)
 
   private def sacrificedNote(states: NoteStates, actor: PlayerId)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     lost = -NoteSupport.warbands(step, actor)
     if lost > 0

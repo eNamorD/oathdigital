@@ -113,7 +113,7 @@ final case class Blackmail private (catalog: ExecutableCatalog)
 
   /** The favor the actor gained in the step before. */
   private def paidNote(states: NoteStates, actor: PlayerId, target: Target)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     gained = NoteSupport.favor(step, actor)
     if gained > 0
@@ -122,7 +122,7 @@ final case class Blackmail private (catalog: ExecutableCatalog)
 
   /** That the actor now holds the relic. */
   private def tookNote(states: NoteStates, actor: PlayerId, target: Target)
-      : Option[PowerNote] = Option.when(states.now.game.current.players
+      : Option[LogNote] = Option.when(states.now.game.current.players
     .exists(held => held.player == actor &&
       held.relics.exists(_.id == target.relic.id)))(
     took(cardSource, NoteArg.Card(target.relic.id),

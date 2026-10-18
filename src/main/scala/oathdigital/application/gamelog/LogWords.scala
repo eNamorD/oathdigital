@@ -90,7 +90,7 @@ private[gamelog] final class LogWords(catalog: ExecutableCatalog,
 
   def one(word: CardWord): Vector[LogSpan] = cards(Vector(word))
 
-  /** A power note's card list (catalog batch 2, N5): up to
+  /** A note's card list (catalog batch 2, N5): up to
     * [[LogWords.Inline]] cards as one phrase, as `cards` writes it. More are
     * a `Cards` span a client opens, each card its face or its back, or plain
     * "6 cards" when the viewer may identify none of them. */
@@ -146,7 +146,7 @@ private[gamelog] object LogWords:
     case DefenseDieFace.Doubler => Some(RolledFace.Doubler)
     case _ => None
 
-  /** The most cards a power note names inline (catalog batch 2, N5). */
+  /** The most cards a note names inline (catalog batch 2, N5). */
   val Inline: Int = 5
 
   def backOf(id: CardId): String = id match

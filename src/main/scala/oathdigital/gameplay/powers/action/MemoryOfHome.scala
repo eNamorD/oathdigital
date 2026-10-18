@@ -65,5 +65,5 @@ case object MemoryOfHome extends PaidAction(MemoryOfHomeCard.power):
   /** The move's line. With no stocked bank, the `Branch` already wrote the
     * empty line, and no bank changed. */
   private def note(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     PowerSourceRef.of(source).flatMap(BankMoves.movedNote(_)(states))

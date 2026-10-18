@@ -100,7 +100,7 @@ final case class EmptyGrounds private (catalog: ExecutableCatalog)
   /** The cards Empty Grounds would discard in `before` that no site holds
     * now. */
   private def discardNote(before: ReadyGame, site: SiteId)(
-      states: NoteStates): Option[PowerNote] =
+      states: NoteStates): Option[LogNote] =
     val sites = states.now.game.current.map.sites.values
     val gone = candidates(before, site).map(_._2.id).filterNot(id =>
       sites.exists(_.denizens.exists(_.id == id)))

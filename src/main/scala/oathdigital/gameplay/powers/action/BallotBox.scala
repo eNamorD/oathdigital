@@ -114,7 +114,7 @@ final case class BallotBox private (catalog: ExecutableCatalog)
   }
 
   private def replacedNote(states: NoteStates, site: SiteId, kind: ForceKind,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     val (placed, _) = counts(states, site, kind)
     PowerSourceRef.of(source).filter(_ => placed > 0).map(card =>
       whose(states.now, kind) match
@@ -124,7 +124,7 @@ final case class BallotBox private (catalog: ExecutableCatalog)
           NoteArg.Site(site)))
 
   private def removedNote(states: NoteStates, site: SiteId, kind: ForceKind,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     val (_, killed) = counts(states, site, kind)
     PowerSourceRef.of(source).filter(_ => killed > 0).map(card =>
       whose(states.now, kind) match

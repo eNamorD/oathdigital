@@ -90,7 +90,7 @@ case object BookOfRecords extends PaidAction(BookOfRecordsCard.power):
   /** What the take moved to the actor, from whose banner. No answer means no
     * banner was held at the site, whose line the `Branch` already wrote. */
   private def tookNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     banner <- NoteSupport.answer(states, decisionId).collect {
       case DecisionOptionRef.Banner(chosen) => chosen }

@@ -77,7 +77,7 @@ case object Enchantress extends PaidAction(EnchantressCard.power):
 
   /** The card taken and its owner, read where it stood before the swap. */
   private def swappedNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).map(card => (for
       case DecisionOptionRef.Denizen(target) <-
         NoteSupport.answer(states, decisionId)

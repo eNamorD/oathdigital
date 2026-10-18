@@ -1,7 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.engine.ReplayStep
-import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, ProcedureWalker,
+import oathdigital.gameplay.walker.{ChoicePayload, LogNoted, ProcedureWalker,
   WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 
@@ -63,7 +63,7 @@ private[gamelog] final class LogJournal(
     * `at`'s segment. That line then replaces "Used {card}". */
   def notedUse(run: Run, power: PowerId, at: Int): Boolean =
     (run.first to segmentEnd(at)).exists(index => event(index) match
-      case PowerNoted(`power`, note, _) => NoteKey.isUse(note.key)
+      case LogNoted(`power`, note, _) => NoteKey.isUse(note.key)
       case _ => false)
 
   /** Whether a covering note restates the step at `index`: one follows it
@@ -71,14 +71,14 @@ private[gamelog] final class LogJournal(
     *
     * A note is never covered. A covering note drops the generic lines of
     * the step it restates, and a procedure's own note is not a generic
-    * line; see `PowerLines.posts` for why answering this for a note would
+    * line; see `NoteLines.posts` for why answering this for a note would
     * be a new rule rather than the existing one extended. */
   def covered(index: Int): Boolean = event(index) match
     case _: WalkerStepRecorded =>
       (index + 1 to segmentEnd(index)).iterator.map(event)
         .takeWhile(!_.isInstanceOf[WalkerStepRecorded])
         .exists {
-          case noted: PowerNoted => noted.covers
+          case noted: LogNoted => noted.covers
           case _ => false
         }
     case _ => false

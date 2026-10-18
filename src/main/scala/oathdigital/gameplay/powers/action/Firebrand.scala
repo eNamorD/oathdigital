@@ -88,7 +88,7 @@ case object Firebrand extends PaidAction(FirebrandCard.power):
   /** What the People's Favor gained or lost in the step before the note.
     * No change means nothing was on offer. */
   private def firedNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).map(card => states.previous match
       case Some(step @ (before, after)) =>
         (favorOn(after) - favorOn(before), NoteSupport.bankPaid(step)) match

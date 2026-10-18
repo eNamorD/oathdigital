@@ -80,7 +80,7 @@ case object AmberFlame extends PaidAction(AmberFlameCard.power):
     * is. No answer means no banner was held at the site, whose line the
     * `Branch` already wrote. */
   private def burnedNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     case DecisionOptionRef.Banner(banner) <-
       NoteSupport.answer(states, decisionId)

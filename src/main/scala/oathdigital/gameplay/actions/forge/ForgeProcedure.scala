@@ -97,7 +97,7 @@ object ForgeProcedure:
     * validated against the declared options -- but a permissive pipeline
     * could one day drop a `PayCost` the note still names. */
   private def paidNote(actor: PlayerId, cost: Tokens)(states: NoteStates)
-      : Option[PowerNote] = states.previous.flatMap { (before, _) =>
+      : Option[LogNote] = states.previous.flatMap { (before, _) =>
     val (favor, secrets) =
       if parks(cost) then answeredSplit(states.answered)
       else
@@ -129,7 +129,7 @@ object ForgeProcedure:
     * actor gained in that batch, which is the same relic while the batch is
     * the one `BuildOps` that forges. */
   private def forgedNote(actor: PlayerId)(states: NoteStates)
-      : Option[PowerNote] = states.previous
+      : Option[LogNote] = states.previous
     .flatMap(NoteSupport.relicsGained(_, actor).headOption)
     .map(relic => forged.sourceless(NoteArg.Card(relic)))
 

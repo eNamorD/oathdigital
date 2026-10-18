@@ -361,14 +361,14 @@ final case class OptionPrice(favor: Int = 0, secrets: Int = 0,
 sealed trait OptionReason extends Product with Serializable
 object OptionReason:
   final case class Written(text: String) extends OptionReason
-  final case class Noted(power: PowerId, note: PowerNote) extends OptionReason
+  final case class Noted(power: PowerId, note: LogNote) extends OptionReason
   /** Blocked only by waivable powers whose rulers may be asked (consent
     * design, ruling 8). `power` and `note` are the first such power and its
     * consent-worded reason; `asks` are the granters with their powers.
     * `covers` are the keys a grant is remembered under when they are not
     * the asked option's: an operation restriction's grant covers the
     * operation it refuses (slice 3). */
-  final case class Askable(power: PowerId, note: PowerNote,
+  final case class Askable(power: PowerId, note: LogNote,
       asks: Vector[ConsentAsk], covers: Vector[ConsentKey] = Vector.empty)
       extends OptionReason
 

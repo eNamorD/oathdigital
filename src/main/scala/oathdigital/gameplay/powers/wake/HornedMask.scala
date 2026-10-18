@@ -61,7 +61,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
     * power's first effect, where "Used Horned Mask" has already posted, so
     * the line is then `taken`, a trigger. */
   private def takeNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     denizen <- NoteSupport.answer(states, denizenDecisionId).collect {
       case DecisionOptionRef.Denizen(chosen) => chosen }

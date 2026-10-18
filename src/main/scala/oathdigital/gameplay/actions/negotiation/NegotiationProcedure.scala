@@ -110,14 +110,14 @@ object NegotiationProcedure:
         opening ++ settlement
       })))
 
-  private def endedNote(states: NoteStates): Option[PowerNote] =
+  private def endedNote(states: NoteStates): Option[LogNote] =
     states.answered.reverse.collectFirst {
       case Answered(NegotiationDeal.dealDecisionId, DeclineDeal, by) =>
         ended.sourceless(NoteArg.Player(by))
     }
 
   /** One line per disclosure, in `NegotiationDeal.knowledge`'s order. */
-  private def disclosed(deal: DealState): Vector[PowerNote] =
+  private def disclosed(deal: DealState): Vector[LogNote] =
     deal.participants.flatMap(deal.terms(_).disclosures).map:
       case NegotiationDisclosure(recipient,
           NegotiationDisclosureRef.Adviser(owner, card)) =>
@@ -134,7 +134,7 @@ object NegotiationProcedure:
 
   /** One line per transfer, in `NegotiationDeal.transfers`' order: each
     * author's favor before their relics. */
-  private def transferred(deal: DealState): Vector[PowerNote] =
+  private def transferred(deal: DealState): Vector[LogNote] =
     deal.participants.flatMap(author =>
       deal.terms(author).transfers.flatMap(transfer =>
         Option.when(transfer.favor > 0)(gaveFavor.sourceless(

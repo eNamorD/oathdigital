@@ -35,7 +35,7 @@ case object Storyteller extends PaidAction(StorytellerCard.power):
 
   /** What the Darkest Secret gained in the step before the note. */
   private def placedNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     (before, after) <- states.previous
     gained = BannerRules.resources(after.game.current, Banner.DarkestSecret) -

@@ -78,7 +78,7 @@ final case class MountedLibrary private (catalog: ExecutableCatalog)
 
   /** The secrets the doubling's step gained, when it was the source. */
   private def doubledNote(states: NoteStates, actor: PlayerId)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     step <- states.previous
     if NoteSupport.answer(states, TradeProcedure.decisionId)
       .contains(DecisionOptionRef.Denizen(cardId))
@@ -98,7 +98,7 @@ final case class MountedLibrary private (catalog: ExecutableCatalog)
       case None => Right(Vector.empty))
 
   /** Written when the step before took the card off its site. */
-  private def discardedNote(states: NoteStates): Option[PowerNote] = for
+  private def discardedNote(states: NoteStates): Option[LogNote] = for
     (before, after) <- states.previous
     if SiteRulers.siteOf(before, cardId).nonEmpty &&
       SiteRulers.siteOf(after, cardId).isEmpty

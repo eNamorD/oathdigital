@@ -91,7 +91,7 @@ object PlaceBannerResourceProcedure:
     * writes nothing, as the rule this replaced wrote none without a
     * recorded `Move` onto the banner. */
   private def placedNote(actor: PlayerId, banner: Banner)(states: NoteStates)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     states.previous.map(step => banner match
       case Banner.PeoplesFavor => -NoteSupport.favor(step, actor)
       case Banner.DarkestSecret => -NoteSupport.secrets(step, actor))

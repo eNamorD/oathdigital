@@ -173,7 +173,7 @@ class PeaceEnvoySuite extends munit.FunSuite:
       Some(OptionReason.Written("Needs 3 favor; you have 2")))
 
   test("its reasons read as ruled"):
-    def sentence(note: PowerNote): String =
+    def sentence(note: LogNote): String =
       NoteText.sentence(PeaceEnvoy.noteKeys, note)
     assertEquals(sentence(PeaceEnvoy.notWithOthers(source)),
       "Cannot be used with other battle plans.")

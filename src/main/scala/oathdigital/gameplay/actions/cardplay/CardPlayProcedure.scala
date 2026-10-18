@@ -100,7 +100,7 @@ object CardPlayProcedure:
     * live state after the play, never from `previous`: the credits node and
     * the play's own operations both run before this leaf. */
   private def playedNote(card: WorldCardId, ref: DecisionOptionRef)(
-      states: NoteStates): Option[PowerNote] = playedAs(ref).flatMap {
+      states: NoteStates): Option[LogNote] = playedAs(ref).flatMap {
     case PlayedAs.Discarded => Some(discardPile(states.now, card).fold(
       discarded.sourceless(NoteArg.Card(card)))(region =>
         discardedTo.sourceless(NoteArg.Card(card),

@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.setup
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure, SetupWalkDriver}
 import oathdigital.gameplay.actions.ProcedureNotes
-import oathdigital.gameplay.walker.{PowerNoted, WalkerPowers}
+import oathdigital.gameplay.walker.{LogNoted, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Table}
 import oathdigital.testkit.Unwrap.accepted
@@ -95,7 +95,7 @@ class GreatForgeRulesSuite extends munit.FunSuite:
   test("the pawn's own line comes before the edifice's"):
     val staged = stagedAt(EdificeSide.Intact)
     val written = events(staged).collect {
-      case PowerNoted(power, note, _) => s"${power.value}/${note.key}"
+      case LogNoted(power, note, _) => s"${power.value}/${note.key}"
     }
     assertEquals(written.take(2), Vector(
       s"${ProcedureNotes.id(TriggeredProcedureRef.Setup).value}/placed-pawn",

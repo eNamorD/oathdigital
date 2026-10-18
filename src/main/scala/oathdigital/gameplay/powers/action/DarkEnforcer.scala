@@ -46,7 +46,7 @@ final case class DarkEnforcer private (catalog: ExecutableCatalog)
   /** The cards at the site before the step that are gone after it. None
     * gone names the site. */
   private def discardedNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     site <- PowerAccess.pawnSite(states.now, player)
   yield

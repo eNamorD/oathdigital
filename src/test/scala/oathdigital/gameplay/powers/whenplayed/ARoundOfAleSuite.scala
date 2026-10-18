@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
-import oathdigital.gameplay.walker.{PowerNoted, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{LogNoted, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
   Table}
@@ -47,7 +47,7 @@ class ARoundOfAleSuite extends munit.FunSuite:
     val done = Outcomes.finished(fire(ready, power, atHome))
     assertEquals(said(power, done.events), Vector(cleanupLine))
     // The cleanup is the walk's last step, and the line comes before it.
-    val notedAt = done.events.indexWhere(_.isInstanceOf[PowerNoted])
+    val notedAt = done.events.indexWhere(_.isInstanceOf[LogNoted])
     val cleanedAt =
       done.events.lastIndexWhere(_.isInstanceOf[WalkerStepRecorded])
     assert(notedAt >= 0 && notedAt < cleanedAt, done.events.toString)

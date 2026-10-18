@@ -43,7 +43,7 @@ final case class CircletOfCommand private (catalog: ExecutableCatalog)
       Vector(OptionRestriction(guard, (ctx, _) => note(ctx))))
 
   /** The line naming the holder whose things it protects. */
-  private def note(ctx: PowerCtx): Option[PowerNote] =
+  private def note(ctx: PowerCtx): Option[LogNote] =
     holder(ctx.state).map(owner => CircletOfCommand.shielded(
       PowerSourceRef.Card(cardId), NoteArg.Player(owner)))
 

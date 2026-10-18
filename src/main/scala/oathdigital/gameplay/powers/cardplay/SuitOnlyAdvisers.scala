@@ -195,7 +195,7 @@ trait SuitOnlyAdvisers extends ExecutedTrigger:
         from, None, favor = 0, secrets = 0, actor)
 
   private def line(holder: PlayerId, actor: PlayerId, cards: Vector[CardId])
-      : PowerNote =
+      : LogNote =
     val card = PowerSourceRef.Card(cardId)
     if holder == actor then SuitOnlyAdvisers.buried(card, NoteArg.Cards(cards))
     else SuitOnlyAdvisers.buriedByHolder(card, NoteArg.Player(holder),

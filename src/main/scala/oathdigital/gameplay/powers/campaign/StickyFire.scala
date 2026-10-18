@@ -79,7 +79,7 @@ case object StickyFire extends BattlePlan:
 
   /** What the burn did to the loser, read from its step. */
   private def burnNote(side: CampaignPlanSide, result: CampaignResult)(
-      states: NoteStates): Option[PowerNote] =
+      states: NoteStates): Option[LogNote] =
     val card = PowerSourceRef.Card(relicId)
     for
       loser <- loserOf(side, result)

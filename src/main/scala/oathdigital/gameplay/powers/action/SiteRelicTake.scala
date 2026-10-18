@@ -91,7 +91,7 @@ final class SiteRelicTake(power: PowerId, decisionId: String, heading: String,
 
   /** The relic the take step gave the player. */
   private def tookNote(states: NoteStates, actor: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] = for
+      source: DecisionOptionRef): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     step <- states.previous
     relic <- NoteSupport.relicsGained(step, actor).headOption

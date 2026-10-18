@@ -7,7 +7,7 @@ import oathdigital.model.{ActionRef, NoteKey, NotePart, PowerId,
   ProcedureRef}
 
 /** Every power's declared note keys and their wordings, exactly. Note keys
-  * are journaled in `PowerNoted` events and the log looks a saved game's
+  * are journaled in `LogNoted` events and the log looks a saved game's
   * wording up by key, so a renamed or dropped key orphans the notes of
   * saved games. This fixture is the one place that says what the whole
   * catalog declares, and the one proof that moving a declaration moves

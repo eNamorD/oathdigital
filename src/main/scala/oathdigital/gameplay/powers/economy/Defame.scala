@@ -76,7 +76,7 @@ final case class Defame private (catalog: ExecutableCatalog)
       case None => Left(PowerAnswers.missing(decisionId))
 
   /** The favor the burn's step took from the chosen board. */
-  private def burnedNote(states: NoteStates): Option[PowerNote] = for
+  private def burnedNote(states: NoteStates): Option[LogNote] = for
     case DecisionOptionRef.Player(target) <-
       NoteSupport.answer(states, decisionId)
     step <- states.previous

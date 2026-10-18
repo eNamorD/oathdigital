@@ -113,7 +113,7 @@ case object KeyToTheCity extends WhenPlayedPower:
 
   /** The warbands the kill step took from the site. */
   private def killedNote(states: NoteStates, site: SiteId)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     (before, after) <- states.previous
     case SiteForces.Occupied(kind, count) <- forcesAt(before, site)
     lost = count - held(after, site, kind)
@@ -121,14 +121,14 @@ case object KeyToTheCity extends WhenPlayedPower:
   yield killedLine(before, kind, lost, site)
 
   private def killedLine(ready: ReadyGame, kind: ForceKind, lost: Int,
-      site: SiteId): PowerNote = owner(ready, kind) match
+      site: SiteId): LogNote = owner(ready, kind) match
     case Some(player) => killed(cardSource, NoteArg.Number(lost),
       NoteArg.Player(player), NoteArg.Site(site))
     case None => bandits(cardSource, NoteArg.Number(lost), NoteArg.Site(site))
 
   /** The actor's warbands the place step put at the site. */
   private def placedNote(states: NoteStates, actor: PlayerId, site: SiteId)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     if VowOfWandering.holds(states.now, actor) then None
     else PlayerFacts.forceKind(states.now, actor).toOption.map { kind =>
       val moved = states.previous.fold(0)((before, after) =>

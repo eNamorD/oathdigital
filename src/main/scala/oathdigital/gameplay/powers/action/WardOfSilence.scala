@@ -130,7 +130,7 @@ case object WardOfSilence extends PaidAction(WardOfSilenceCard.power):
 
   /** The secrets the step before flipped on the target's board. */
   private def flippedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     target <- NoteSupport.answer(states, targetDecisionId).collect {
       case DecisionOptionRef.Player(player) => player }

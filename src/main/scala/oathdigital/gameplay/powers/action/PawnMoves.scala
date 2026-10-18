@@ -60,7 +60,7 @@ object PawnMoves:
 
   /** Where `player`'s pawn stands after the power placed it. */
   def placedNote(key: NoteKey, source: DecisionOptionRef, player: PlayerId)(
-      states: NoteStates): Option[PowerNote] = for
+      states: NoteStates): Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     site <- PowerAccess.pawnSite(states.now, player)
   yield key(card, NoteArg.Player(player), NoteArg.Site(site))

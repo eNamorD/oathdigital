@@ -81,7 +81,7 @@ object SearchProcedure:
     * line names what it drew and discarded.
     */
   private def drewNote(actor: PlayerId, source: SearchSource)(
-      states: NoteStates): Option[PowerNote] =
+      states: NoteStates): Option[LogNote] =
     val drawn = hand(states.now, actor)
     Option.when(drawn.nonEmpty)(source match
       case SearchSource.WorldDeck =>
@@ -96,7 +96,7 @@ object SearchProcedure:
     * drawn when nothing was asked. Nothing held means Spinning Bee drew no
     * match and discarded them all, and Bee's own line says so. */
   private def keptNote(actor: PlayerId)(states: NoteStates)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     val held = hand(states.now, actor)
     val keeps = kept(states.answered)
     val chosen: Vector[WorldCardId] =

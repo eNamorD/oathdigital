@@ -74,7 +74,7 @@ case object WhisperingLeaves extends PaidAction(WhisperingLeavesCard.power):
   /** The favor the chosen player lost in the step before the note. With
     * nothing to give no step ran, and the step before changed no favor. */
   private def placedNote(states: NoteStates, source: DecisionOptionRef)
-      : Option[PowerNote] = for
+      : Option[LogNote] = for
     card <- PowerSourceRef.of(source)
     case DecisionOptionRef.Player(target) <-
       NoteSupport.answer(states, decisionId)

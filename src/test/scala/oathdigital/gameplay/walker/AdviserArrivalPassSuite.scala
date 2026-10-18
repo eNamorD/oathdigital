@@ -63,7 +63,7 @@ class AdviserArrivalPassSuite extends munit.FunSuite:
   /** The arguments of every line `power` journaled in `events`. */
   private def heardBy(power: ContributingPower, events: Vector[OathEvent])
       : Vector[NoteArg] = events.collect {
-    case PowerNoted(id, note, _) if id == power.id => note.args }.flatten
+    case LogNoted(id, note, _) if id == power.id => note.args }.flatten
 
   test("an adviser new to a player is an arrival; the rule's follow-up runs " +
       "as its own step at the leaf's node, credited to it, with its line " +
@@ -77,7 +77,7 @@ class AdviserArrivalPassSuite extends munit.FunSuite:
     assertEquals(steps.map(_.nodeId), Vector("0", "0"))
     assertEquals(steps.map(_.contributions),
       Vector(Vector.empty, Vector(buriesP1Arrivals.id)))
-    assert(done.events.lastOption.exists(_.isInstanceOf[PowerNoted]),
+    assert(done.events.lastOption.exists(_.isInstanceOf[LogNoted]),
       done.events.toString)
     assertEquals(heardBy(buriesP1Arrivals, done.events),
       Vector(NoteArg.Cards(Vector(wrestlers))))

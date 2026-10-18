@@ -58,7 +58,7 @@ final case class AnimalHost private (catalog: ExecutableCatalog)
 
   /** The warbands the gain step added to the actor's board. */
   private def gainedNote(states: NoteStates, actor: PlayerId)
-      : Option[PowerNote] =
+      : Option[LogNote] =
     val source = PowerSourceRef.Card(cardId)
     val count = states.previous.fold(0)(NoteSupport.warbands(_, actor))
     Some(if count > 0 then gained(source, NoteArg.Player(actor),

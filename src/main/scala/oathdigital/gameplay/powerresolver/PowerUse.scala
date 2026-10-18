@@ -2,7 +2,7 @@ package oathdigital.gameplay.powerresolver
 
 import oathdigital.catalog.PrintedPower
 import oathdigital.model.{CardId, OperationReason, PlayerId, PowerId,
-  PowerNote, ReadyGame}
+  LogNote, ReadyGame}
 
 /** One use of a power, as the power-use restrictions judge it (catalog
   * batch 8, slice 10): who uses it, the card it is printed on, whether it
@@ -42,7 +42,7 @@ object PowerUse:
   * `note` the reason shown when nobody may be asked. `reason` is the
   * refusal on the consent path: its waiver, when it has one, names who may
   * lift it and the key a grant is remembered under. */
-final case class PowerUseRefusal(power: PowerId, note: PowerNote,
+final case class PowerUseRefusal(power: PowerId, note: LogNote,
     reason: OperationReason)
 
 /** A rule that forbids some uses of powers (Spell Breaker, Forest Council,

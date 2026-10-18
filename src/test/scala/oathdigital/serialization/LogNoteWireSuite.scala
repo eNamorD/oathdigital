@@ -1,17 +1,17 @@
 package oathdigital.serialization
 
 import oathdigital.model._
-import oathdigital.gameplay.walker.PowerNoted
+import oathdigital.gameplay.walker.LogNoted
 import oathdigital.testkit.Unwrap.accepted
 
 /** Power notes on the wire: every argument kind and source round trips, and a
   * note with a bad source, unit or amount is refused. */
-class PowerNoteWireSuite extends munit.FunSuite:
-  private def noteEvent(source: PowerSourceRef, args: NoteArg*): PowerNoted =
-    PowerNoted(PowerId("test.power"),
-      PowerNote(Some(source), "used", args.toVector), covers = true)
+class LogNoteWireSuite extends munit.FunSuite:
+  private def noteEvent(source: PowerSourceRef, args: NoteArg*): LogNoted =
+    LogNoted(PowerId("test.power"),
+      LogNote(Some(source), "used", args.toVector), covers = true)
 
-  test("a power note round trips with every argument kind"):
+  test("a log note round trips with every argument kind"):
     val event = noteEvent(PowerSourceRef.Card(DenizenId("denizen")),
       NoteArg.Player(PlayerId("p1")), NoteArg.Card(RelicId("r1")),
       NoteArg.Site(SiteId("s1")), NoteArg.Amount(3, NoteUnit.Favor),
@@ -22,14 +22,14 @@ class PowerNoteWireSuite extends munit.FunSuite:
     val encoded = accepted(GameEventWire.encodeEvent("notes", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
 
-  test("a power note's site and banner sources round trip"):
+  test("a log note's site and banner sources round trip"):
     Vector(noteEvent(PowerSourceRef.Site(SiteId("s1"))),
         noteEvent(PowerSourceRef.Banner(Banner.PeoplesFavor))).foreach { event =>
       val encoded = accepted(GameEventWire.encodeEvent("notes", 0, event))
       assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
     }
 
-  test("a power note's card list and banner arguments round trip"):
+  test("a log note's card list and banner arguments round trip"):
     val event = noteEvent(PowerSourceRef.Card(DenizenId("denizen")),
       NoteArg.Cards(Vector(DenizenId("other-denizen"), RelicId("r1"))),
       NoteArg.Cards(Vector.empty), NoteArg.Banner(Banner.PeoplesFavor),
@@ -71,22 +71,22 @@ class PowerNoteWireSuite extends munit.FunSuite:
         "must not be negative"))
 
   test("a note with no source round trips and writes no source field"):
-    val event = PowerNoted(PowerId("procedure.muster"),
-      PowerNote(None, "mustered", Vector(NoteArg.Number(2))), covers = false)
+    val event = LogNoted(PowerId("procedure.muster"),
+      LogNote(None, "mustered", Vector(NoteArg.Number(2))), covers = false)
     val encoded = accepted(GameEventWire.encodeEvent("notes", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
     assert(!ujson.read(encoded)("payload")("note").obj.contains("source"),
       s"a sourceless note writes no source field: $encoded")
 
   test("a payload that carries a source decodes as one"):
-    val sourceless = PowerNoted(PowerId("procedure.muster"),
-      PowerNote(None, "mustered", Vector.empty), covers = false)
+    val sourceless = LogNoted(PowerId("procedure.muster"),
+      LogNote(None, "mustered", Vector.empty), covers = false)
     val encoded = ujson.read(accepted(
       GameEventWire.encodeEvent("notes", 0, sourceless)))
     encoded("payload")("note")("source") =
       ujson.Obj("kind" -> "site", "siteId" -> "s1")
     assertEquals(GameEventWire.decode(encoded).map(_.event).map {
-      case noted: PowerNoted => noted.note.source
+      case noted: LogNoted => noted.note.source
       case other => fail(s"not a note: $other")
     }, Right(Some(PowerSourceRef.Site(SiteId("s1")))))
 

@@ -87,7 +87,7 @@ case object FamilyHeirloom extends WhenPlayedPower:
 
   /** The relic the choice was about: the last one the player held before
     * the step that settled it, as `settle` reads it. */
-  private def note(states: NoteStates, actor: PlayerId): Option[PowerNote] =
+  private def note(states: NoteStates, actor: PlayerId): Option[LogNote] =
     for
       (before, _) <- states.previous
       held <- PlayerFacts.player(before, actor).toOption

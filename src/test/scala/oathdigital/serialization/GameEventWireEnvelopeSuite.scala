@@ -46,7 +46,7 @@ class GameEventWireEnvelopeSuite extends munit.FunSuite:
     assert(types.tail.init.forall(t =>
       t == GameEventWire.WalkerStepRecordedType ||
         t == GameEventWire.WalkerParkedType ||
-        t == GameEventWire.PowerNotedType))
+        t == GameEventWire.LogNotedType))
     assertEquals(
       new EventReplayEngine(new OathRules(catalog)).replay(replayRecords),
       Right(setup.state)

@@ -128,7 +128,7 @@ case object BanditPrince extends WhenPlayedPower:
 
   /** The actor's warbands the replacement put at `site`. */
   private def replacedNote(states: NoteStates, actor: PlayerId,
-      site: SiteId): Option[PowerNote] = for
+      site: SiteId): Option[LogNote] = for
     (before, after) <- states.previous
     kind <- PlayerFacts.forceKind(after, actor).toOption
     count = held(after, site, kind)

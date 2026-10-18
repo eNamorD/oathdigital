@@ -57,14 +57,14 @@ case object BanditPaymaster extends PaidAction(BanditPaymasterCard.power):
           Gain.Warbands(player, kind, Gained)))
 
   private def paidNote(states: NoteStates, player: PlayerId,
-      source: DecisionOptionRef): Option[PowerNote] =
+      source: DecisionOptionRef): Option[LogNote] =
     PowerSourceRef.of(source).zip(PowerAccess.pawnSite(states.now, player))
       .map((card, site) => line(states, card, site, player))
 
   /** The bandits the site lost and the warbands the player gained in the
     * step before the note. */
   private def line(states: NoteStates, card: PowerSourceRef, site: SiteId,
-      player: PlayerId): PowerNote =
+      player: PlayerId): LogNote =
     val removed = states.previous.fold(0)((before, after) =>
       bandits(before, site) - bandits(after, site))
     val gained = states.previous.fold(0)(NoteSupport.warbands(_, player))

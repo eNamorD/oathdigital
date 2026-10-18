@@ -2,29 +2,30 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.powers.OathkeeperGoalChoice
-import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted,
+import oathdigital.gameplay.walker.{ChoicePayload, LogNoted,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
 
-/** The lines powers write about themselves (power log lines design,
-  * section 2): "{source}: {sentence}", from the template the note's power
-  * declares. A note names a card its viewer identified at its action's
-  * start, at the step it restates, or after it.
+/** The lines a power, a printed rule or a procedure writes about its own
+  * effect (power log lines design, section 2): "{source}: {sentence}" for
+  * the first two, the sentence alone for a procedure, from the template the
+  * note's key declares. A note names a card its viewer identified at its
+  * action's start, at the step it restates, or after it.
   *
   * An action whose start line has not posted yet holds its notes, and they
   * post right after it. A note identical to an earlier one in the same action
   * posts nothing. Both rules compare journal facts, never rendered text, so
   * every viewer receives the same entries.
-   *
+  *
   * It also holds the one action line still inferred from the journal: the
   * "Used {card}" fallback for a power that writes no `used` note of its
   * own. `powerSource` is the Game Log's last forward read to
   * `segmentEnd`; the prefix-stability property at
   * `GameLogPropertiesSuite` holds over that one rule now.
   */
-private[gamelog] final class PowerLines(words: LogWords,
+private[gamelog] final class NoteLines(words: LogWords,
     wordings: NoteWordings, kinds: NoteKinds):
 
   /** The notes of `run` before `at`, held for the start line `at` posts. */
@@ -40,7 +41,7 @@ private[gamelog] final class PowerLines(words: LogWords,
 
   private def line(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Option[Posted] = journal.event(at) match
-    case PowerNoted(power, note, _) if posts(journal, run, at, power, note) =>
+    case LogNoted(power, note, _) if posts(journal, run, at, power, note) =>
       for
         after <- journal.readyAfter(at)
         spans <- spoken(power, note, states(journal, run, at) :+ after, viewer)
@@ -51,7 +52,7 @@ private[gamelog] final class PowerLines(words: LogWords,
     * sentence alone when the note has no source, or `None` when `power`
     * declares no template for the note's key.
     */
-  def spoken(power: PowerId, note: PowerNote, seen: Vector[ReadyGame],
+  def spoken(power: PowerId, note: LogNote, seen: Vector[ReadyGame],
       viewer: Option[PlayerId]): Option[Vector[LogSpan]] =
     wordings.template(power, note.key).map(template =>
       prefix(power, note, seen, viewer) ++
@@ -59,7 +60,7 @@ private[gamelog] final class PowerLines(words: LogWords,
 
   /** "{source}: " for a power's or a game rule's line, and nothing for a
     * procedure's, which starts with its sentence. */
-  private def prefix(power: PowerId, note: PowerNote, seen: Vector[ReadyGame],
+  private def prefix(power: PowerId, note: LogNote, seen: Vector[ReadyGame],
       viewer: Option[PlayerId]): Vector[LogSpan] =
     note.source.toVector.flatMap(source =>
       wordings.source(power).fold(words.source(source, seen, viewer))(
@@ -89,7 +90,7 @@ private[gamelog] final class PowerLines(words: LogWords,
     * delete Trade's line, because Mounted Library writes a covering note
     * into the same gain window. */
   private def posts(journal: LogJournal, run: Run, at: Int, power: PowerId,
-      note: PowerNote): Boolean =
+      note: LogNote): Boolean =
     ProcedureNotes.writes(power) || !repeated(journal, run, at, power, note)
 
   /** A procedure's own note is its action's line at the kind its registry
@@ -98,7 +99,7 @@ private[gamelog] final class PowerLines(words: LogWords,
     *
     * The procedure is read from the note's id, never from `run.procedure`: a
     * queued follow-up can run one procedure's note under another's run. */
-  private def kind(run: Run, power: PowerId, note: PowerNote): LogKind =
+  private def kind(run: Run, power: PowerId, note: LogNote): LogKind =
     ProcedureNotes.procedureOf(power) match
       case Some(procedure) => kinds(procedure, note.key)
       case None =>
@@ -107,9 +108,9 @@ private[gamelog] final class PowerLines(words: LogWords,
         else LogKind.Trigger
 
   private def repeated(journal: LogJournal, run: Run, at: Int, power: PowerId,
-      note: PowerNote): Boolean =
+      note: LogNote): Boolean =
     (run.first until at).exists(index => journal.event(index) match
-      case PowerNoted(`power`, `note`, _) => true
+      case LogNoted(`power`, `note`, _) => true
       case _ => false)
 
   private def sentence(template: Vector[NotePart], args: Vector[NoteArg],
