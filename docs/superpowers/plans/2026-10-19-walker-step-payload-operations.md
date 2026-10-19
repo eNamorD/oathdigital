@@ -70,6 +70,35 @@ Four of the 68 test reads are inside aggregating helpers
 95 call sites. Those 95 sites do not change — the four helpers do, and Task 3
 collapses all four onto one shared testkit function.
 
+## Correction found in execution: the encode-failure test
+
+Task 2's Steps 1-3 as written below do not work, and were superseded during
+execution (commit `81c9cf05`). They say to relocate the encode-failure test
+to `GameEventWireEnvelopeSuite` and provoke it with an event the encoder has
+no arm for, "because `OathEvent` stays open". Two things are wrong with that:
+
+- `OathEvent` is **sealed** (`model/GameEventProtocol.scala:5`). Only
+  `WalkerEvent` is open (`:14`).
+- An unregistered event never reaches `encodePayloadSafe`'s catch.
+  `encodeEvent` evaluates `discriminator(event)` as a constructor argument
+  before `encode` runs (`GameEventWire.scala:65`), and `validateEnvelope`
+  resolves it again (`:240`); both are outside the only `try` (`:99`), and
+  `discriminatorDispatch` is a composed `PartialFunction`. So the event
+  escapes as a raw `MatchError`. The test fails exactly as written, which is
+  how this was found. `encodeStream` and `encode` behave the same way.
+
+What was done instead: the test stays in `WalkerOperationWireSuite`, keeps a
+registered event, and makes the unencodable value a stub `DieFace` inside a
+`RollPayload`. `DieFace` is deliberately not sealed (`model/DieFace.scala`)
+and `RollPayload` holds a plain `Vector[DieFace]`, so an unknown face still
+reaches `encodeDieFace`'s throw *inside* the protected encode. It asserts the
+catch's own `"$.payload"` path, and passes both before and after the seal.
+
+Sealing also left `WalkerReplay`'s "unsupported recorded walker payload" arm
+unreachable; `-Werror` does not report it, because the scrutinee is the open
+`WalkerEvent`. Task 2 removes it by hand. Task 3's Step 5 below replaces only
+the three step arms, so it would not have caught this.
+
 ## Global Constraints
 
 - **Build rules.** `-Werror` with
@@ -128,8 +157,7 @@ collapses all four onto one shared testkit function.
 | --- | --- |
 | `testkit/RecordedOps.scala` (new) | The one place a test reads a step's batch |
 | `testkit/PhasePowerHarness.scala`, `gameplay/CampaignProcedureSuite.scala`, `gameplay/CampaignPlanWindowSuite.scala`, `gameplay/powers/campaign/PlanDriver.scala` | Four duplicated aggregators delegate to it |
-| `serialization/WalkerOperationWireSuite.scala` | 24 wire paths, 7 constructions, the deleted open-family test |
-| `serialization/GameEventWireEnvelopeSuite.scala` | Gains the relocated encode-failure test |
+| `serialization/WalkerOperationWireSuite.scala` | 24 wire paths, 7 constructions, the encode-failure test repaired in place (see the execution correction below) |
 | `serialization/CampaignResultCodecSuite.scala`, `serialization/PayCostWireSuite.scala` | 6 wire paths |
 | `serialization/WalkerDecisionWireSuite.scala`, `serialization/WalkerWireEvents.scala` | 9 constructions |
 | ~33 suites under `gameplay/`, `application/`, `testkit/` | Constructions, patterns and `.ops` reads |
@@ -152,7 +180,7 @@ still a `case object` carrying nothing; Task 3 turns it into a case class.
   `case object` extending `WalkerStepPayload`. `object WalkerStepPayload` no
   longer exists.
 
-- [ ] **Step 1: Move the case object out of the companion**
+- [x] **Step 1: Move the case object out of the companion**
 
 In `src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala`, replace
 lines 13-18 (the whole `object WalkerStepPayload:` block) with a top-level
@@ -167,7 +195,7 @@ declaration. The trait at line 11 and its comment are untouched in this task
 case object DeltaPayload extends WalkerStepPayload
 ```
 
-- [ ] **Step 2: Rewrite every reference**
+- [x] **Step 2: Rewrite every reference**
 
 Run this from the repository root. The three expressions are ordered so the
 import form is rewritten first and the later two find nothing left on that
@@ -177,7 +205,7 @@ line.
 grep -rl 'DeltaRecorded' src --include='*.scala' | xargs sed -i '' -e 's/import oathdigital\.gameplay\.walker\.WalkerStepPayload\.DeltaRecorded/import oathdigital.gameplay.walker.DeltaPayload/' -e 's/WalkerStepPayload\.DeltaRecorded/DeltaPayload/g' -e 's/\bDeltaRecorded\b/DeltaPayload/g'
 ```
 
-- [ ] **Step 3: Compile and read the import errors**
+- [x] **Step 3: Compile and read the import errors**
 
 Run: `./sbtw "Test/compile"`
 Expected: FAIL. Two kinds of error, both from the rename:
@@ -187,7 +215,7 @@ Expected: FAIL. Two kinds of error, both from the rename:
 2. *Unused import* (`-Wunused:imports`, fatal under `-Werror`) in files whose
    only use of `WalkerStepPayload` was that prefix.
 
-- [ ] **Step 4: Fix the seven import lists**
+- [x] **Step 4: Fix the seven import lists**
 
 These are every file affected; the compiler names the same seven.
 
@@ -238,12 +266,12 @@ keeping the list alphabetical.
 `WalkerStepPayload` — both use it as a type, at `ForgeProcedureSuite:450`
 (an ascription) and `UndoBarrierSuite:18` (a parameter).
 
-- [ ] **Step 5: Compile clean**
+- [x] **Step 5: Compile clean**
 
 Run: `./sbtw "Test/compile"`
 Expected: success, no warnings.
 
-- [ ] **Step 6: Check nothing survives under the old name**
+- [x] **Step 6: Check nothing survives under the old name**
 
 ```bash
 grep -rn 'DeltaRecorded\|object WalkerStepPayload' src --include='*.scala'
@@ -251,12 +279,12 @@ grep -rn 'DeltaRecorded\|object WalkerStepPayload' src --include='*.scala'
 
 Expected: no output.
 
-- [ ] **Step 7: Run the suites the rename touches**
+- [x] **Step 7: Run the suites the rename touches**
 
 Run: `./sbtw "testOnly oathdigital.serialization.* oathdigital.gameplay.walker.* oathdigital.application.gamelog.*"`
 Expected: PASS, no test count change.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala src/main/scala/oathdigital/serialization/WalkerEventCodec.scala src/main/scala/oathdigital/gameplay/walker/WalkerReplay.scala src/main/scala/oathdigital/gameplay/walker/WalkerSteps.scala src/main/scala/oathdigital/gameplay/walker/AdviserArrivalPass.scala src/main/scala/oathdigital/application/gamelog/NoteLines.scala src/test
@@ -304,7 +332,7 @@ encoder dispatch is a composed `PartialFunction`
 through to the catch. `OathRulesEvolveSuite.scala:13` already declares an
 unregistered walker event for the same reason, so the shape has a precedent.
 
-- [ ] **Step 1: Write the replacement test first**
+- [~] **Step 1: Write the replacement test first** (superseded -- see the execution correction above)
 
 Append to `src/test/scala/oathdigital/serialization/GameEventWireEnvelopeSuite.scala`:
 
@@ -327,14 +355,14 @@ Append to `src/test/scala/oathdigital/serialization/GameEventWireEnvelopeSuite.s
 `WalkerEvent` arrives with the file's existing `import oathdigital.model._`
 at line 7; add no import.
 
-- [ ] **Step 2: Run it against the unsealed family**
+- [~] **Step 2: Run it against the unsealed family** (superseded -- see the execution correction above)
 
 Run: `./sbtw "testOnly oathdigital.serialization.GameEventWireEnvelopeSuite"`
 Expected: PASS. It passes before the seal as well as after — it is a
 relocation of an existing guarantee, not a new one, and it must hold in both
 states or it is not the same guarantee.
 
-- [ ] **Step 3: Delete the old test**
+- [~] **Step 3: Delete the old test** (superseded -- see the execution correction above)
 
 Remove `src/test/scala/oathdigital/serialization/WalkerOperationWireSuite.scala:248-262`
 in full — the test, its four comment lines and the `UnknownStepPayload` stub.
@@ -346,7 +374,7 @@ import oathdigital.gameplay.walker.{DeltaPayload, RollPayload,
   WalkerStepRecorded}
 ```
 
-- [ ] **Step 4: Seal the trait**
+- [x] **Step 4: Seal the trait**
 
 Replace `src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala:5-11`:
 
@@ -360,14 +388,14 @@ Replace `src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala:5-11`:
 sealed trait WalkerStepPayload extends Product with Serializable
 ```
 
-- [ ] **Step 5: Compile and watch the throw become unreachable**
+- [x] **Step 5: Compile and watch the throw become unreachable**
 
 Run: `./sbtw "Test/compile"`
 Expected: FAIL at `WalkerEventCodec.scala:100` —
 `Unreachable case` for `case other => throw new IllegalArgumentException`,
 fatal under `-Werror`.
 
-- [ ] **Step 6: Delete the throw**
+- [x] **Step 6: Delete the throw**
 
 Remove these two lines from `encodeStepPayload`
 (`src/main/scala/oathdigital/serialization/WalkerEventCodec.scala:100-101`):
@@ -377,12 +405,12 @@ Remove these two lines from `encodeStepPayload`
         s"unsupported walker step payload $other")
 ```
 
-- [ ] **Step 7: Compile clean and run the wire suites**
+- [x] **Step 7: Compile clean and run the wire suites**
 
 Run: `./sbtw "Test/compile" "testOnly oathdigital.serialization.*"`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala src/main/scala/oathdigital/serialization/WalkerEventCodec.scala src/test/scala/oathdigital/serialization/WalkerOperationWireSuite.scala src/test/scala/oathdigital/serialization/GameEventWireEnvelopeSuite.scala
