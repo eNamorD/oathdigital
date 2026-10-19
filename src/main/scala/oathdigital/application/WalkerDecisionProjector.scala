@@ -691,35 +691,13 @@ private[application] final class WalkerDecisionProjector(
       WalkerRollOutcomeProjection(
         pool = feedback.pool.value,
         faces = outcome.fold(Vector.empty[DieFace])(_.faces)
-          .flatMap(WalkerDecisionProjector.faceName),
+          .flatMap(RolledFaces.of),
         score = outcome.fold(0)(_.score),
         target = feedback.target,
         detail = feedback.detail)
     }
 
 private[application] object WalkerDecisionProjector:
-  /** The decision wire's face vocabulary. It duplicates
-    * `oathdigital.protocol.projection.DieFace`'s keys, and could read them
-    * instead -- that package is not one this layer is forbidden
-    * (`BackendArchitectureSuite` forbids only `server`, `persistence` and
-    * `serialization`, and this file already imports `projection`). It stays
-    * separate because the decision wire was out of the typed log slice's
-    * scope (2026-09-25-decision-form-tag-separation-decision.md), and a
-    * test in `WalkerDecisionProjectorSuite` holds the two spellings
-    * together per die. `oathdigital.model.DieFace` is open, so a face
-    * family neither pool rolls spells as nothing rather than as a guess.
-    */
-  private[application] def faceName(value: DieFace): Vector[String] =
-    value match
-      case DefenseDieFace.Blank => Vector("blank")
-      case DefenseDieFace.OneShield => Vector("one-shield")
-      case DefenseDieFace.TwoShields => Vector("two-shields")
-      case DefenseDieFace.Doubler => Vector("doubler")
-      case AttackDieFace.HollowSword => Vector("hollow-sword")
-      case AttackDieFace.OneSword => Vector("one-sword")
-      case AttackDieFace.TwoSwordsSkull => Vector("two-swords-skull")
-      case _ => Vector.empty
-
   /** How this projector obtains the tree it resolves a parked position
     * against -- the projection-side twin of `OathRules.WalkerTreeSource`,
     * and injectable for the same reason that one is.

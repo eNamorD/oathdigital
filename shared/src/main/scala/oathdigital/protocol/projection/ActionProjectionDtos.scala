@@ -272,16 +272,18 @@ final case class WalkerDecisionProjection(
   *
   * `pool` names which roll it is (`"recover"`, `"campaign.attack"`), so the
   * client can word the total without guessing from the action. `faces` are
-  * display-ready die-face labels in roll order across every roll of that pool
-  * so far; `score` is the derived total (a `Doubler` on a later roll
-  * multiplies earlier shields, so this is not a per-face sum). `target` is the
-  * number the score must reach where there is one -- a Recover site's
-  * difficulty -- and `None` where there is not, as in a Campaign. `detail`
-  * carries already-worded consequences such as `"1 skull loss"`.
+  * the faces rolled, in roll order across every roll of that pool so far,
+  * each carrying its own word and the die it is printed on, so the client
+  * needs no face table of its own and no guess at the die from the pool;
+  * `score` is the derived total (a `Doubler` on a later roll multiplies
+  * earlier shields, so this is not a per-face sum). `target` is the number
+  * the score must reach where there is one -- a Recover site's difficulty --
+  * and `None` where there is not, as in a Campaign. `detail` carries
+  * already-worded consequences such as `"1 skull loss"`.
   */
 final case class WalkerRollOutcomeProjection(
     pool: String,
-    faces: Vector[String],
+    faces: Vector[DieFace],
     score: Int,
     target: Option[Int] = None,
     detail: Vector[String] = Vector.empty

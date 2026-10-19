@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.protocol.projection.DieFace
+
 import oathdigital.frontend.Dom.all
 import oathdigital.testkit.Unwrap.as
 import ParkedDecision.{RecoverStep, Surface}
@@ -65,7 +67,8 @@ class RecoverPanelSuite extends munit.FunSuite:
 
   test("Recover shows its dice and how close the score is to the target"):
     val outcome = WalkerRollOutcomeState("recover",
-      Vector("one-shield", "two-shields"), 3, Some(4), Vector.empty)
+      Vector(DieFace.OneShield, DieFace.TwoShields), 3, Some(4),
+      Vector.empty)
     val panel = render(choice(rollOutcome = Some(outcome)))
     assertEquals(all(panel, ".walker-roll-totals").map(_.textContent),
       Vector("Shields 3 · need 4"))

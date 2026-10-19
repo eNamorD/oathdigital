@@ -62,7 +62,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
         confirmLabel = Some("Complete Forge"),
         heading = Some("Forge a relic"))),
       rollOutcome = Some(WalkerRollOutcomeProjection("campaign.attack",
-        Vector("two-swords-skull"), 2, None, Vector("1 skull loss"))))),
+        Vector(DieFace.TwoSwordsSkull), 2, None, Vector("1 skull loss"))))),
     walkerWaiting = Some(WalkerWaitingProjection("blue", Some("Choose the Oathkeeper"))),
     supplyMaximum = 7)
 

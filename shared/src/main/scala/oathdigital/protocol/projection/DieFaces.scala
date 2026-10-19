@@ -15,10 +15,16 @@ enum Die(val key: String):
   * server's, which are the internally consistent set -- "sword" is parallel
   * with "two swords and a skull", "shield" with "two shields".
   *
-  * The decision wire (`WalkerDecisionProjector.faceName`) still spells its
-  * faces itself -- not because it may not read this enum, but because that
-  * wire was out of the typed log slice's scope. A per-die set-equality test
-  * in `WalkerDecisionProjectorSuite` holds it to these keys meanwhile.
+  * Both wires that show a roll send these faces: the log's spans and, since
+  * the decision-id vocabulary decision (item 3), the decision wire's roll
+  * outcome. Each reaches them through one table from the engine's own open
+  * face type (`application.RolledFaces`), so neither spells a key itself and
+  * no test is needed to hold two spellings together.
+  *
+  * The journal is the exception, and deliberately: `GameEventJsonSupport`
+  * and `WalkerValueCodec` spell the keys again for the durable event
+  * payloads, so that a rename made for a projection cannot change what a
+  * recorded roll means.
   */
 enum DieFace(val key: String, val word: String, val die: Die):
   case HollowSword extends DieFace("hollow-sword", "hollow sword", Die.Attack)
@@ -29,3 +35,9 @@ enum DieFace(val key: String, val word: String, val die: Die):
   case OneShield extends DieFace("one-shield", "shield", Die.Defense)
   case TwoShields extends DieFace("two-shields", "two shields", Die.Defense)
   case Doubler extends DieFace("doubler", "doubler", Die.Defense)
+
+object DieFace:
+  /** The faces by their wire key. A decoder reads a face per rolled die, so
+    * it looks the key up here rather than scanning `values`, which allocates
+    * the array again on every call. */
+  val byKey: Map[String, DieFace] = values.map(face => face.key -> face).toMap

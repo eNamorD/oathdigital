@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.protocol.projection.DieFace
+
 import oathdigital.frontend.Dom.{one, press}
 import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
   GameIntent => Intent}
@@ -194,7 +196,8 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
 
   test("the sacrifice panel draws dice, then totals, then the prompt"):
     val outcome = WalkerRollOutcomeState("campaign.attack",
-      Vector("two-swords-skull", "one-sword"), 3, None, Vector("1 skull loss"))
+      Vector(DieFace.TwoSwordsSkull, DieFace.OneSword), 3, None,
+      Vector("1 skull loss"))
     val sacrifice = DecisionQueryState.ChooseAmount(minAmount = 0,
       maxAmount = 2, suggested = None, confirmLabel = "Sacrifice",
       heading = Some("Sacrifice up to 2 warbands for one attack each"))
@@ -215,7 +218,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
   test("a choose-many beside a roll draws dice, then totals, then the " +
       "heading"):
     val outcome = WalkerRollOutcomeState("recover",
-      Vector("one-shield", "blank"), 1, Some(3), Vector.empty)
+      Vector(DieFace.OneShield, DieFace.Blank), 1, Some(3), Vector.empty)
     val earlier = DecisionQueryState.ChooseMany(Vector(
       DecisionOptionState("button", "die-0", "Die 1: shield"),
       DecisionOptionState("button", "die-1", "Die 2: blank")),

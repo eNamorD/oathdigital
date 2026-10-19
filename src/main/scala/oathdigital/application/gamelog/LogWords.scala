@@ -1,10 +1,10 @@
 package oathdigital.application.gamelog
 
-import oathdigital.application.GamePresentationProjector
+import oathdigital.application.{GamePresentationProjector, RolledFaces}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.model._
-import oathdigital.protocol.projection.{DieFace => RolledFace, LogSpan}
+import oathdigital.protocol.projection.LogSpan
 
 /** A card as one viewer may read it: by name, or by its back's kind. */
 private[gamelog] enum CardWord:
@@ -129,22 +129,10 @@ private[gamelog] object LogWords:
   /** A roll as a dice span, or nothing for no dice, a mixed pool or a face
     * family neither die prints. */
   def dice(faces: Vector[DieFace]): Option[LogSpan.Dice] =
-    val rolled = faces.flatMap(rolledFace)
+    val rolled = faces.flatMap(RolledFaces.of)
     Option.when(rolled.size == faces.size && rolled.nonEmpty &&
       rolled.forall(_.die == rolled.head.die))(
       LogSpan.Dice(rolled.head, rolled.tail))
-
-  /** `oathdigital.model.DieFace` is open, so a face family neither pool
-    * rolls maps to nothing rather than to a guess. */
-  private def rolledFace(value: DieFace): Option[RolledFace] = value match
-    case AttackDieFace.HollowSword => Some(RolledFace.HollowSword)
-    case AttackDieFace.OneSword => Some(RolledFace.OneSword)
-    case AttackDieFace.TwoSwordsSkull => Some(RolledFace.TwoSwordsSkull)
-    case DefenseDieFace.Blank => Some(RolledFace.Blank)
-    case DefenseDieFace.OneShield => Some(RolledFace.OneShield)
-    case DefenseDieFace.TwoShields => Some(RolledFace.TwoShields)
-    case DefenseDieFace.Doubler => Some(RolledFace.Doubler)
-    case _ => None
 
   /** The most cards a note names inline (catalog batch 2, N5). */
   val Inline: Int = 5

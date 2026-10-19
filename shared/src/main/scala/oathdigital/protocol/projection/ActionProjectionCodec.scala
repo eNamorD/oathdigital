@@ -5,7 +5,8 @@ import WorldProjectionCodec.{decodeCard, encodeCard}
 
 private[projection] object ActionProjectionCodec:
   def encodeRollOutcome(value: WalkerRollOutcomeProjection): ujson.Value = ujson.Obj(
-    "pool" -> value.pool, "faces" -> encoded(value.faces)(ujson.Str(_)),
+    "pool" -> value.pool,
+    "faces" -> encoded(value.faces)(face => ujson.Str(face.key)),
     "score" -> value.score, "target" -> intOption(value.target),
     "detail" -> encoded(value.detail)(ujson.Str(_)))
   def decodeRollOutcome(raw: ujson.Value, path: String)
@@ -13,7 +14,11 @@ private[projection] object ActionProjectionCodec:
     value <- obj(raw, path)
     _ <- exact(value, Set("pool", "faces", "score", "target", "detail"), path)
     pool <- string(value, "pool", path)
-    faces <- strings(value, "faces", path)
+    keys <- strings(value, "faces", path)
+    faces <- traverse(keys, s"$path.faces")((key, child) =>
+      DieFace.byKey.get(key).toRight(oathdigital.protocol
+        .ProtocolDecodeFailure.UnknownVariant(child,
+          s"unknown die face '$key'")))
     score <- int(value, "score", path)
     target <- optionalInt(value, "target", path)
     detail <- stringsOrEmpty(value, "detail", path)

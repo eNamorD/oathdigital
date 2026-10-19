@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.DecisionAnswerWire
-import oathdigital.protocol.projection.Die
+import oathdigital.protocol.projection.DieFace
 import oathdigital.testkit.Unwrap.present
 
 import munit.FunSuite
@@ -14,22 +14,18 @@ class WalkerDecisionDraftSuite extends FunSuite:
   test("the roll outcome summary reads the accumulated dice, the score and " +
       "what it is measured against"):
     assertEquals(WalkerPanelSupport.rollOutcomeSummary(
-      WalkerRollOutcomeState("recover", Vector("blank", "blank"), 0, Some(4))),
+      WalkerRollOutcomeState("recover", Vector(DieFace.Blank, DieFace.Blank),
+        0, Some(4))),
       "Rolled blank, blank -- 0 shields so far (need 4).")
     assertEquals(WalkerPanelSupport.rollOutcomeSummary(
-      WalkerRollOutcomeState("recover", Vector("two-shields", "doubler"), 4,
-        Some(4))),
+      WalkerRollOutcomeState("recover",
+        Vector(DieFace.TwoShields, DieFace.Doubler), 4, Some(4))),
       "Rolled two shields, doubler -- 4 shields so far (need 4).")
     assertEquals(WalkerPanelSupport.rollOutcomeSummary(
       WalkerRollOutcomeState("campaign.attack",
-        Vector("two-swords-skull", "one-sword"), 3, None,
+        Vector(DieFace.TwoSwordsSkull, DieFace.OneSword), 3, None,
         Vector("1 skull loss"))),
       "Rolled two swords and a skull, sword -- Attack 3, 1 skull loss.")
-
-  test("a face the client does not know is said as the key it arrived as"):
-    assertEquals(WalkerPanelSupport.rollOutcomeSummary(
-      WalkerRollOutcomeState("recover", Vector("three-moons"), 0, Some(4))),
-      "Rolled three-moons -- 0 shields so far (need 4).")
 
   private def forgeItem(index: Int): String =
     WalkerPartitionDraft.itemId(ForgeFixture.query.options(index))
@@ -82,10 +78,3 @@ class WalkerDecisionDraftSuite extends FunSuite:
       oathdigital.protocol.GameIntent.ResolveWalker("oathkeeper.recipient",
         DecisionAnswerWire.ChooseOneWire("player", "yellow")))
 
-  test("a pool rolls the die its action rolls"):
-    assertEquals(WalkerPanelSupport.poolDie("campaign.attack"),
-      Some(Die.Attack))
-    assertEquals(WalkerPanelSupport.poolDie("campaign.defense"),
-      Some(Die.Defense))
-    assertEquals(WalkerPanelSupport.poolDie("recover"), Some(Die.Defense))
-    assertEquals(WalkerPanelSupport.poolDie("gambling-hall"), None)
