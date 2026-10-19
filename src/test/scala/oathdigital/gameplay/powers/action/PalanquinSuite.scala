@@ -7,8 +7,8 @@ import oathdigital.gameplay.powers.travel.{BrassArmyMoves, TravelFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureDequeued, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  ParkedNode, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, MenuPlay,
+  Outcomes, ParkedNode, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
@@ -56,7 +56,7 @@ class PalanquinSuite extends munit.FunSuite:
   private def menuReason(ready: ReadyGame): Option[OptionReason] =
     PhaseMenu.offers(PhaseMenu.Menu.Act, catalog, ready, p1,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty)
-      .map(_.option).collectFirst {
+      .map(offer => MenuPlay.withoutBand(offer.option)).collectFirst {
         case DecisionOption.Unavailable(shown, reason)
             if shown.ref == source => reason
       }

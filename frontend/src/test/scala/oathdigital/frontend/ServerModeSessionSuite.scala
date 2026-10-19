@@ -43,7 +43,7 @@ class ServerModeSessionSuite extends FunSuite:
       phase = "act", activePlayer = Some("blue"),
       players = redAndBlueExiles, ready = true).copy(viewerPlayerId = viewer,
       walkerDecision = Some(actMenu(DecisionOptionState("button", "end-act",
-        "End Act and Rest")))))
+        "End Act and Rest", group = Some("ending"))))))
 
   /** The Act menu as the server parks it, over `options`. */
   private def actMenu(options: DecisionOptionState*): WalkerDecisionState =

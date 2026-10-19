@@ -111,6 +111,23 @@ class PhasePowerMenuSuite extends munit.FunSuite:
       Vector[(DecisionOptionRef, Boolean)](
         PhaseMenu.Menu.Rest.endingOption -> true))
 
+  test("a projected Act menu bands every option for the panel"):
+    // The panel groups by the band alone, so every option the menu offers
+    // must carry one (decision-id vocabulary decision, item 1).
+    val parked = Table.start.pawn(p1, at = CatalogNames.site("Ancient City"))
+      .supply(p1, 7).phaseMenuParked
+    val projected = projector.project("project-act-menu",
+      LoadedGame(parked.state, 1L), p1)
+    val options = present(projected.walkerDecision.flatMap(_.query),
+      "the Act menu").offeredOptions
+    assert(options.forall(_.group.nonEmpty), options)
+    def bandOf(id: String): Option[String] =
+      options.find(_.id == id).flatMap(_.group)
+    assertEquals(bandOf("travel"), Some("major"))
+    assertEquals(bandOf("trade.favor"), Some("major"))
+    assertEquals(bandOf("move-warbands"), Some("minor"))
+    assertEquals(bandOf("end-act"), Some("ending"))
+
   test("a League Treaty park shows the ruler the favor banks or decline and " +
       "makes the active player wait"):
     val ParkedServiceFixture.LeagueTreatyPark(treatyGame, active, ruler) =

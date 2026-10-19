@@ -145,6 +145,13 @@ object DecisionQueryProjection:
   * `variant` is the word that tells this option from the others drawn on the
   * same board home, such as an adviser play's facing; the client's toggle
   * shows it.
+  *
+  * `group` is the band the option is read in, for a question whose options
+  * fall into kinds the player thinks of separately: `major`, `minor`,
+  * `power`, `ending` or `other` on a phase menu, and absent on every
+  * question that bands nothing. The engine's `OptionGroup` writes it. How
+  * the bands are ordered and what headings they are given is the client's;
+  * a band a client does not know reads as ungrouped.
   */
 final case class DecisionOptionProjection(kind: String, id: String,
     label: String, card: Option[CardDetailsProjection] = None,
@@ -155,6 +162,7 @@ final case class DecisionOptionProjection(kind: String, id: String,
     replaces: Option[CardDetailsProjection] = None,
     buries: Boolean = false,
     variant: Option[String] = None,
+    group: Option[String] = None,
     consent: Option[ConsentAskProjection] = None):
   /** Whether the viewer may choose it: available, or available with a
     * warning. */

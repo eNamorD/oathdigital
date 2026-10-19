@@ -7,29 +7,29 @@ import ServerUiSupport.{button, element, text}
   * 4, plan-time rulings 6 and 12): any button that is neither an action,
   * a power nor the ending, without a heading; then the major actions, the
   * minor actions and the powers, each under its heading; then the phase's
-  * ending, alone. The groups are read off the option ids the engine
-  * declares; the options and their order are the engine's.
+  * ending, alone. Each option says which band it is in (`OptionGroup`, on
+  * the wire as `group`); the options and their order are the engine's.
   */
 private[frontend] object MenuPanel:
-  /** The menus' decision id (`PhaseMenu.decisionId`). */
+  /** The menus' decision id (`PhaseMenu.decisionId`), which routes a parked
+    * menu to this panel. The engine owns the spelling; this is the only
+    * menu vocabulary left in the client (decision-id vocabulary decision,
+    * item 2). */
   val decisionId: String = "phase.menu"
 
-  private val majors = Set("search", "travel", "campaign", "muster",
-    "trade.favor", "trade.secret", "forge", "recover", "challenge")
-  private val minors = Set("place-banner-resource", "negotiation",
-    "play-facedown-adviser", "peek-site-relics", "reveal-owned-relic",
-    "move-warbands")
-  private val endings = Set("end-wake", "finish-rest", "end-act")
+  /** The bands, in the order they are read, with the heading each is given.
+    * The engine says which band an option is in (`OptionGroup`); the order
+    * and the words are this panel's. An option whose band is absent or
+    * unknown is read in the first, unheaded band, where the engine's own
+    * ungrouped options go. */
+  private val bands: Vector[(String, Option[String])] = Vector(
+    "other" -> None, "major" -> Some("Major actions"),
+    "minor" -> Some("Minor actions"), "power" -> Some("Powers"))
 
-  /** The prefix of a power's own button, listed when its source offers two
-    * powers of one phase (`PhaseMenu.powerButton`). */
-  private val powerPrefix = "use-power:"
+  private val known = bands.map(_._1).toSet + "ending"
 
-  private def isButton(option: DecisionOptionState, ids: Set[String])
-      : Boolean = option.kind == "button" && ids(option.id)
-
-  private def isPower(option: DecisionOptionState): Boolean =
-    option.kind != "button" || option.id.startsWith(powerPrefix)
+  private def band(option: DecisionOptionState): String =
+    option.group.filter(known).getOrElse("other")
 
   def render(surface: ParkedDecision.Surface.Menu, canControl: Boolean,
       panel: dom.Element, controls: TableControls): Unit =
@@ -68,11 +68,8 @@ private[frontend] object MenuPanel:
         panel.appendChild(section)
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(
       surface.query)))
-    val (ending, listed) = options.partition(isButton(_, endings))
-    group("other", None, listed.filter(option => option.kind == "button" &&
-      !majors(option.id) && !minors(option.id) && !isPower(option)))
-    group("major", Some("Major actions"), listed.filter(isButton(_, majors)))
-    group("minor", Some("Minor actions"), listed.filter(isButton(_, minors)))
-    group("power", Some("Powers"), listed.filter(isPower))
+    val (ending, listed) = options.partition(band(_) == "ending")
+    bands.foreach((key, heading) =>
+      group(key, heading, listed.filter(band(_) == key)))
     ending.foreach(option => panel.appendChild(control(option,
       "menu-ending")))

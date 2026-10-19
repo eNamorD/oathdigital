@@ -356,6 +356,10 @@ private[application] final class WalkerDecisionProjector(
       // whichever order a caller wraps price and badge in.
       case DecisionOption.Badged(inner, badge) => optionProjection(ready,
         viewer, index, inner, details).map(_.copy(badge = Some(badge)))
+      // The band is set after the wrapped option is described, for the reason
+      // the badge is: a caller may wrap band and price in either order.
+      case DecisionOption.Grouped(inner, group) => optionProjection(ready,
+        viewer, index, inner, details).map(_.copy(group = Some(group.key)))
       // Unavailable, but its rulers may be asked (consent design,
       // "Projection"): shown as askable, with whom to ask.
       case DecisionOption.Unavailable(inner,
