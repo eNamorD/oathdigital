@@ -186,8 +186,6 @@ private[walker] object WalkerReplay:
 
       // An audit fact for the Game Log; replay has nothing to apply.
       case _: LogNoted => Right(ready)
-      case step: WalkerStepRecorded =>
-        invalid(s"unsupported recorded walker payload ${step.payload.productPrefix}")
       case other =>
         invalid(s"unsupported walker event ${other.productPrefix}")
 

@@ -2,13 +2,15 @@ package oathdigital.gameplay.walker
 
 import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, LogNote, ProcedureRef, QueuedProcedure, WalkerEvent}
 
-/** Payload of one recorded walker step (Task 3).
-  *
-  * Open, not `sealed`: concrete per-node payloads specialize in later tasks
-  * (DecisionStarted/Resolved, RollRecorded, ...) and may be declared wherever
-  * the owning action lives. This slice carries only the minimal placeholder.
+/** What one recorded walker step recorded: the step applied operations, it
+  * recorded an answer, or it recorded dice. Sealed so the set is closed and
+  * enumerable in one place, and so the wire encoder -- the one match over
+  * this family that must be total -- refuses to compile on a fourth rather
+  * than throwing on it at append time. The log and replay readers stay
+  * partial on purpose: each names the payloads it has a line or a rule for.
+  * The three cases live in this file together, which sealing requires.
   */
-trait WalkerStepPayload extends Product with Serializable
+sealed trait WalkerStepPayload extends Product with Serializable
 
 /** Marks a step that executed a batch of operations, as opposed to a
   * resolved choice or a submitted roll. It carries nothing: the step's

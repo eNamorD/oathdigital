@@ -96,8 +96,6 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
           "faces" -> ujson.Arr.from(faces.map(encodeDieFace)))
         if automatic then encoded("automatic") = ujson.True
         encoded
-      case other => throw new IllegalArgumentException(
-        s"unsupported walker step payload $other")
 
   private def decodeStepPayload(value: ujson.Value,
       path: String): Either[WireError, WalkerStepPayload] =

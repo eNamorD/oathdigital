@@ -4,7 +4,7 @@ import oathdigital.gameplay.actions.VisionRules
 import oathdigital.model._
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.walker.{DeltaPayload, RollPayload,
-  WalkerStepPayload, WalkerStepRecorded}
+  WalkerStepRecorded}
 import oathdigital.serialization.WalkerWireEvents.{encodedStream,
   encodedStreamThatRoundTrips, recordedOperation}
 import oathdigital.testkit.{CatalogNames, Table}
@@ -246,20 +246,31 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     assertEquals(ujson.read(encoded).arr.head("payload")("contributions").arr
       .map(_.str).toVector, Vector("power.one", "power.two"))
 
-  test("an unencodable walker step payload returns a typed WireError, " +
+  test("an unencodable die face returns a typed WireError, " +
       "not a thrown exception"):
-    // WalkerStepPayload is intentionally open (WalkerEvents.scala) so a
-    // later action's payload can't be exhaustively matched at compile time.
-    // A shape this codec doesn't know must fail the append path as a
-    // WireError, exactly like an unrecognized value on the decode side.
+    // The append path must report a value it cannot write as a WireError,
+    // exactly like an unrecognized value on the decode side
+    // (`encodePayloadSafe`, GameEventWire.scala). This is the only test
+    // that reaches that catch: the other encode-direction failures are
+    // envelope rejections from `validateEnvelope`, which never enter it.
+    //
+    // The stub is a DieFace rather than a WalkerStepPayload because the
+    // payload family is sealed and a fourth member is a compile error, not a
+    // runtime one. DieFace stays open (DieFace.scala) and RollPayload holds
+    // a plain Vector[DieFace], so an unknown face still reaches
+    // `encodeDieFace`'s throw inside the protected encode. The event itself
+    // must be one the encoder registers -- `encodeEvent` resolves the
+    // discriminator before `encodePayloadSafe`, so an unregistered event
+    // escapes as a raw MatchError and never reaches the catch.
 
-    // Stub of WalkerStepPayload: a payload shape the codec has no case for.
-    case object UnknownStepPayload extends WalkerStepPayload
-    val event = WalkerStepRecorded("0", UnknownStepPayload,
+    // Stub of DieFace: a face neither die family declares.
+    case object UnknownDieFace extends DieFace
+    val event = WalkerStepRecorded("0",
+      RollPayload(PoolKey("recover"), Vector(UnknownDieFace)),
       Vector.empty, Vector.empty)
     GameEventWire.encodeEvent("walker", 0, event) match
-      case Left(_) => ()
-      case Right(value) => fail(s"expected a WireError, got $value")
+      case Left(WireError.InvalidValue("$.payload", _)) => ()
+      case other => fail(s"expected an invalid-payload WireError, got $other")
 
   test("every CoreOperation variant round-trips through the walker codec"):
     // `encodeOperation`/`encodePiece` are total over the sealed hierarchy
