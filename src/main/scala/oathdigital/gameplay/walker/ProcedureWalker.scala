@@ -20,7 +20,7 @@ import oathdigital.model.{Answered, AutomaticUse, Branch, Burn, BuildOps, Consen
   *    `resolve(state, action, pending, answer)`: the parked node's owner and
   *    optional semantic `validate` (Decide.validate) are checked, the answer
   *    is appended to `pending.answered`, ONE [[WalkerStepRecorded]] carrying a
-  *    [[ChoicePayload]] (`ops` empty) is recorded, and the walk continues.
+  *    [[ChoicePayload]] is recorded, and the walk continues.
   *  - Every other leaf validates + executes via `OperationPipeline`
   *    (`OperationPolicy.Permissive`) and records one [[WalkerStepRecorded]]
   *    per executed leaf. [[oathdigital.model.BuildOps]] leaves are executed at walk time:
@@ -101,8 +101,8 @@ object ProcedureWalker:
     * `state.rollPools` for the node's `pool`; on success merge the derived
     * `RollOutcome` into `state.rollOutcomes` (accumulating across repeated
     * rolls of the same pool), append ONE [[WalkerStepRecorded]] carrying
-    * [[RollPayload]] (`ops` empty — the outcome is a state write, not a delta
-    * batch), then continue auto-walking the tree from the node after the Roll
+    * [[RollPayload]] -- the outcome is a state write, and the payload holds
+    * no operation batch -- then continue auto-walking the tree from the node after the Roll
     * exactly like `advance`: further deltas execute until the next
     * Decide/Roll park (`Parked`) or the tree ends (`Finished`).
     *
@@ -129,8 +129,9 @@ object ProcedureWalker:
     * mismatched decision id, or any other position rejects with an
     * `OathViolation`). Semantics: check the answer's submitter against the
     * node's `owner`, validate the submitted answer against its query, append
-    * ONE [[WalkerStepRecorded]] carrying [[ChoicePayload]] (`ops` empty — the
-    * answer is a state write into `pending.answered`, not a delta batch), add
+    * ONE [[WalkerStepRecorded]] carrying [[ChoicePayload]] -- the answer is
+    * a state write into `pending.answered`, and the payload holds no
+    * operation batch -- add
     * `answer` to `answered`, then continue auto-walking from the node after
     * the Decide exactly like `advance` (so `resolve` may park again at the
     * next Roll/Decide or finish the tree).

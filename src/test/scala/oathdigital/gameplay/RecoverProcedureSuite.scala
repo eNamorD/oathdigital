@@ -52,9 +52,10 @@ class RecoverProcedureSuite extends munit.FunSuite
 
   /** Folds a Parked command's recorded events into the caller's state,
     * mirroring journal replay: RollPayload events re-derive and merge the
-    * pool's accumulated roll outcome (state write, no ops), ChoicePayload
-    * events change no state here (answered rides the pending tree the caller
-    * already holds), and every other step re-applies its recorded ops. The
+    * pool's accumulated roll outcome (a state write; the payload carries no
+    * batch), ChoicePayload events change no state here (answered rides the
+    * pending tree the caller already holds), and a DeltaPayload step
+    * re-applies the operations it recorded. The
     * shared reducer lives in `WalkerRecordedOpsReducer`, which
     * `WalkerReplayDriftSuite`'s "live" state track also folds through.
     */

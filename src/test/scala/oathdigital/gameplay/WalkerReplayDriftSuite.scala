@@ -53,7 +53,7 @@ import oathdigital.model._
   *    assertion that would fail — nothing else in the suite makes it.
   *
   * Per Branch/BuildOps design (spec + walker doc), the comparison is over
-  * RECORDED operations (`WalkerStepRecorded.ops`, flattened across the whole
+  * RECORDED operations (`DeltaPayload.ops`, flattened across the whole
   * walk), never over the declared tree: `Branch` composites are resolved at
   * walk time and are statically childless (flattening the declared tree would
   * see empty `Branch`es, not the operations the walker actually selects and

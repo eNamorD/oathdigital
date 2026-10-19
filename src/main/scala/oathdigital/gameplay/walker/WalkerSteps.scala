@@ -81,8 +81,9 @@ private[walker] object WalkerSteps:
     * step: the answer's submitter must be the node's owner, the query must
     * be answerable at all, and that query must accept the submitted answer.
     * On success `answer` is appended to `answered` and ONE
-    * [[WalkerStepRecorded]] carrying a [[ChoicePayload]] (ops empty -- the
-    * answer is a state write into `pending.answered`) is appended.
+    * [[WalkerStepRecorded]] carrying a [[ChoicePayload]] is appended -- the
+    * answer is a state write into `pending.answered`, so there is no
+    * operation batch to carry.
     *
     * Both checks are generic and read no game state (see [[DecisionQueries]]),
     * so the walker learns nothing here about which action parked: a legality

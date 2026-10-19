@@ -36,7 +36,8 @@ class BurnTakesSuite extends munit.FunSuite:
       case WalkerOutcome.Finished(end, events) => (end, events)
       case other => fail(s"the walk did not finish: $other")
 
-  /** Each recorded step's operations. */
+  /** Each recorded delta's operations; a choice or roll step has none to
+    * report, so it contributes no element. */
   private def steps(events: Vector[OathEvent]): Vector[Vector[CoreOperation]] =
     events.collect { case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops }
 
