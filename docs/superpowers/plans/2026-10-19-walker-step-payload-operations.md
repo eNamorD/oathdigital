@@ -110,7 +110,10 @@ the three step arms, so it would not have caught this.
   `case other => throw` unreachable, and `-Werror` is what forces it out.
 - **File size.** Production files cap at 800 lines. The files this plan
   touches are far below it (`WalkerEvents.scala` 115, `WalkerEventCodec.scala`
-  305, `WalkerReplay.scala` 196) and all three shrink.
+  305, `WalkerReplay.scala` 196). `WalkerEventCodec` and `WalkerReplay`
+  shrink; `WalkerEvents` grows by three lines, because the three expanded doc
+  comments outweigh the removed field. Note that `ProcedureWalker.scala` sits
+  at 796 lines, four under the cap, and Task 4 adds one of them.
 - **Vocabulary.** `CONTEXT.md` defines "note", "void marker", "taken-back
   group" and "command batch". A step's operations are a *batch*; the thing
   that carries them is a *payload*.
@@ -473,7 +476,7 @@ edits — and compile only where a step says to.
   - `oathdigital.testkit.RecordedOps.all(events: Vector[OathEvent]): Vector[CoreOperation]`
   - Wire: a step is `{"nodeId": …, "step": {"kind": "delta", "ops": […]}, "contributions": […]}`. There is no top-level `"ops"` key.
 
-- [ ] **Step 1: Write the two failing tests**
+- [x] **Step 1: Write the two failing tests**
 
 The first pins the new wire shape and that the old one stops decoding. The
 second pins the guard that survives, which nothing covers today.
@@ -527,12 +530,12 @@ whose subject is already what replay refuses:
 (`WalkerReplay.scala:49-53`), and `"0"` passes it, so the guard is what
 rejects this step rather than the node-id check.
 
-- [ ] **Step 2: Run both to verify they fail**
+- [x] **Step 2: Run both to verify they fail**
 
 Run: `./sbtw "testOnly oathdigital.serialization.WalkerOperationWireSuite oathdigital.gameplay.walker.WalkerReplayGuardSuite"`
 Expected: FAIL — compilation error, `DeltaPayload` does not take arguments.
 
-- [ ] **Step 3: Change the type**
+- [x] **Step 3: Change the type**
 
 In `src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala`, replace
 the `DeltaPayload` case object (Task 1's Step 1 block) with:
@@ -600,7 +603,7 @@ final case class WalkerStepRecorded(
 ) extends WalkerEvent
 ```
 
-- [ ] **Step 4: Move the wire**
+- [x] **Step 4: Move the wire**
 
 In `src/main/scala/oathdigital/serialization/WalkerEventCodec.scala`, the
 encoder arm at lines 26-31 loses its `"ops"` key:
@@ -646,7 +649,7 @@ than escaping — which is what Step 1's second assertion pins.
     Option(error.getMessage).getOrElse("invalid walker step"))) }
 ```
 
-- [ ] **Step 5: Delete the two guards**
+- [x] **Step 5: Delete the two guards**
 
 In `src/main/scala/oathdigital/gameplay/walker/WalkerReplay.scala`, replace
 the three step arms (lines 71-96). The comment above them about
@@ -683,7 +686,7 @@ The `ops.nonEmpty` check stays. An empty `DeltaPayload` is still
 representable and the wire is untrusted input, so the check belongs where
 decoded facts are applied.
 
-- [ ] **Step 6: The four walker construction sites**
+- [x] **Step 6: The four walker construction sites**
 
 `src/main/scala/oathdigital/gameplay/walker/WalkerSteps.scala:69-73`:
 
@@ -728,7 +731,7 @@ one `_`:
         DecisionAnswer.ChooseOneAnswer(`skip`), _), _) => true
 ```
 
-- [ ] **Step 7: The six production readers**
+- [x] **Step 7: The six production readers**
 
 `src/main/scala/oathdigital/gameplay/walker/WalkerSimulation.scala:305-308`
 (same package, no import needed):
@@ -832,12 +835,12 @@ lose one `_` from a three-underscore pattern; none of them reads operations.
 `DetailLines.scala:32`'s `case _: WalkerStepRecorded` is a type test and does
 not change.
 
-- [ ] **Step 8: Compile production only**
+- [x] **Step 8: Compile production only**
 
 Run: `./sbtw "compile"`
 Expected: success. `src/test` is still broken; that is Steps 9-14.
 
-- [ ] **Step 9: Add the one place a test reads a step's batch**
+- [x] **Step 9: Add the one place a test reads a step's batch**
 
 Create `src/test/scala/oathdigital/testkit/RecordedOps.scala`. Four suites
 had each written this collect themselves; they all delegate to it in Step 10.
@@ -868,7 +871,7 @@ object RecordedOps:
     events.collect { case step: WalkerStepRecorded => of(step) }.flatten
 ```
 
-- [ ] **Step 10: Collapse the four duplicated aggregators onto it**
+- [x] **Step 10: Collapse the four duplicated aggregators onto it**
 
 Each of these is `events.collect { case step: WalkerStepRecorded => step.ops }.flatten`
 written out again. Replace the body of each; its callers (about 95 sites) do
@@ -889,7 +892,7 @@ each become a call to `RecordedOps.all(events)`, keeping their own signature
 and doc comment. Add `import oathdigital.testkit.RecordedOps` to each file
 that does not already import from `oathdigital.testkit`.
 
-- [ ] **Step 11: Sweep the 30 wire-path assertions**
+- [x] **Step 11: Sweep the 30 wire-path assertions**
 
 Three serialization suites read a step's operations at `payload.ops`, as a
 ujson path or as an expected `InvalidValue` path string. They all become
@@ -910,7 +913,7 @@ grep -rnc 'payload")("step")("ops")\|\.payload\.step\.ops\[' src/test/scala/oath
 
 Expected: the first prints nothing; the second prints `24`, `5` and `1`.
 
-- [ ] **Step 12: Sweep the five four-element patterns**
+- [x] **Step 12: Sweep the five four-element patterns**
 
 None of these reads operations; each drops its trailing `, _`.
 
@@ -934,7 +937,7 @@ grep -rn 'WalkerStepRecorded(_, .*, _, _)' src/test --include='*.scala'
 
 Expected: the check prints nothing. Fix by hand anything the patterns missed.
 
-- [ ] **Step 13: Rewrite the 31 test construction sites**
+- [x] **Step 13: Rewrite the 31 test construction sites**
 
 Three shapes, by payload. Everything below is stated in post-Task-1 names.
 
@@ -1001,7 +1004,7 @@ import oathdigital.gameplay.walker.{DeltaPayload, RollPayload,
   WalkerStepRecorded}
 ```
 
-- [ ] **Step 14: Rewrite the 64 remaining `.ops` reads**
+- [x] **Step 14: Rewrite the 64 remaining `.ops` reads**
 
 Four of the 68 were the aggregators Step 10 already handled. The rest are in
 34 files and take one of two forms.
@@ -1082,7 +1085,7 @@ the batch straight out of the pattern rather than through `RecordedOps`:
 
 Its import at line 4 gains `ChoicePayload` and `DeltaPayload`.
 
-- [ ] **Step 15: Delete the five assertions the type now makes**
+- [x] **Step 15: Delete the five assertions the type now makes**
 
 Each of these says a choice or roll step applied no operations. A payload with
 nowhere to put a batch cannot, so after this change the assertion tests
@@ -1111,14 +1114,14 @@ if lines 160 and 169 were the file's last use of it, and update the two
 folding in what line 161 asserted separately. Do the same at line 169 with
 the `Move` from line 170.
 
-- [ ] **Step 16: Compile and resolve what the sweep missed**
+- [x] **Step 16: Compile and resolve what the sweep missed**
 
 Run: `./sbtw "Test/compile"`
 Expected: either clean, or a short list of sites Steps 11-15 did not name.
 Fix each with the matching shape above. Do not reintroduce an `ops` accessor
 on `WalkerStepRecorded` to silence them.
 
-- [ ] **Step 17: Run the whole suite**
+- [x] **Step 17: Run the whole suite**
 
 Run: `./sbtw "test"`
 Expected: PASS, including both new tests from Step 1.
@@ -1137,16 +1140,21 @@ the spec's **Testing** section promised the plan would name:
   end. If the move is incomplete, this is the test that says so; read its
   failure before anything else.
 
-- [ ] **Step 18: Retire the development database**
+- [ ] **Step 18: Retire the development database** (deferred to merge time)
 
 The journal in `var/` was written in the old shape and no longer loads. It is
 not tracked by git; delete it so the next server start writes a fresh one.
+
+**Not done during execution.** That database lives in the main checkout, not
+in the worktree this branch was built in, and `main` still reads the old wire
+shape -- so it is a working database until this branch merges. Run this after
+the merge, in the checkout that holds `var/`.
 
 ```bash
 rm -f var/oathdigital.lobs var/oathdigital.properties var/oathdigital.script
 ```
 
-- [ ] **Step 19: Commit**
+- [x] **Step 19: Commit**
 
 ```bash
 git add -A src
@@ -1196,7 +1204,7 @@ were fixed there; the two remaining sets are in files Task 3 did not touch.
 **Interfaces:**
 - Consumes: everything Task 3 produced. Nothing new.
 
-- [ ] **Step 1: Fix the three `ProcedureWalker` parentheticals**
+- [x] **Step 1: Fix the three `ProcedureWalker` parentheticals**
 
 Each says `(ops empty)` about a choice or a roll, which the type now says.
 
@@ -1223,7 +1231,7 @@ At lines 132-133, the same for `resolve`:
     * operation batch -- add
 ```
 
-- [ ] **Step 2: Point `BuildOps`' doc at the payload**
+- [x] **Step 2: Point `BuildOps`' doc at the payload**
 
 At `src/main/scala/oathdigital/model/Operation.scala:125-126`, the comment
 names a field that no longer exists:
@@ -1233,7 +1241,7 @@ names a field that no longer exists:
   * `DeltaPayload`.
 ```
 
-- [ ] **Step 3: Fix the two `WalkerSteps` doc comments**
+- [x] **Step 3: Fix the two `WalkerSteps` doc comments**
 
 At `src/main/scala/oathdigital/gameplay/walker/WalkerSteps.scala:85-86`,
 `answerDecide`'s doc says `(ops empty -- the answer is a state write into
@@ -1245,32 +1253,40 @@ pending.answered)`. Replace with:
     * operation batch to carry.
 ```
 
-At lines 115-117, `recordRoll`'s doc says `with no ops`. Replace:
+At lines 115-117, `recordRoll`'s doc says `with no ops`. Task 3 already
+replaced this one, alongside the construction site in the same method; check
+it rather than editing it again. It should read:
 
 ```
     * a [[RollPayload]]; the outcome is a state write, so the step carries no
     * operation batch.
 ```
 
-- [ ] **Step 4: Fix the drift suite's doc reference**
+- [x] **Step 4: Fix the drift suite's doc reference**
 
 At `src/test/scala/oathdigital/gameplay/WalkerReplayDriftSuite.scala:57`,
 `WalkerStepRecorded.ops` becomes `DeltaPayload.ops`.
 
-- [ ] **Step 5: Check no comment still names the old shape**
+- [x] **Step 5: Check no comment still names the old shape**
 
 ```bash
 grep -rn '`ops` empty\|ops empty\|WalkerStepRecorded\.ops\|DeltaRecorded' src --include='*.scala'
+grep -rn 'no ops\|records no operation\|ops batch' src --include='*.scala'
 ```
 
-Expected: no output.
+Expected: the first prints nothing. The second is the wider sweep, which
+catches two comments the first misses -- they say "no ops" and "each recorded
+step's operations" without naming the field. It also prints two hits that are
+correct and stay: a delta's batch is still an "ops batch", and
+`CatacombsContributionSuite`'s roll comment is backed by a payload
+assertion.
 
-- [ ] **Step 6: Run the full gate**
+- [x] **Step 6: Run the full gate**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 Expected: exit 0.
 
-- [ ] **Step 7: Check the coverage ratchet**
+- [x] **Step 7: Check the coverage ratchet**
 
 Run: `./sbtw clean coverage test coverageReport`
 Expected: exit 0 — statement coverage at or above 92.0 and branch coverage at
@@ -1283,16 +1299,18 @@ read the report before touching `build.sbt`: a drop means a branch this plan
 created is untested, not that the ratchet is wrong. Do not lower either
 minimum.
 
-- [ ] **Step 8: Check the file sizes**
+- [x] **Step 8: Check the file sizes**
 
 ```bash
 wc -l src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala src/main/scala/oathdigital/serialization/WalkerEventCodec.scala src/main/scala/oathdigital/gameplay/walker/WalkerReplay.scala
 ```
 
-Expected: all three below 800 and all three smaller than at `69402731`
-(115, 305, 196).
+Expected: all three below 800. `WalkerEventCodec` and `WalkerReplay` come
+in under their sizes at `69402731` (305, 196); `WalkerEvents` goes from 115
+to 118, since the expanded doc comments outweigh the field it lost. Do not
+trim the docs to make a number go down.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src
