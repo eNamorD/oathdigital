@@ -2,8 +2,8 @@ package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.powers.OathkeeperGoalChoice
-import oathdigital.gameplay.walker.{ChoicePayload, LogNoted,
-  WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaPayload, LogNoted,
+  WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.protocol.projection.{LogKind, LogSpan}
 import LogSpan.Text
@@ -190,7 +190,7 @@ private[gamelog] final class NoteLines(words: LogWords,
 
   private def effect(journal: LogJournal, run: Run, index: Int): Boolean =
     journal.event(index) match
-      case WalkerStepRecorded(_, WalkerStepPayload.DeltaRecorded, ops, _) =>
+      case WalkerStepRecorded(_, DeltaPayload, ops, _) =>
         !ops.forall {
           case RecordPowerUse(_) => true
           case QueueProcedure(_, _) => true

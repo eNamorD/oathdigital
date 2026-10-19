@@ -10,12 +10,11 @@ import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptio
   */
 trait WalkerStepPayload extends Product with Serializable
 
-object WalkerStepPayload:
-  /** Marks a step that executed a batch of operations, as opposed to a
-    * resolved choice or a submitted roll. It carries nothing: the step's
-    * `ops` are both the replay authority and the only description of what
-    * happened, and every reader works from them. */
-  case object DeltaRecorded extends WalkerStepPayload
+/** Marks a step that executed a batch of operations, as opposed to a
+  * resolved choice or a submitted roll. It carries nothing: the step's
+  * `ops` are both the replay authority and the only description of what
+  * happened, and every reader works from them. */
+case object DeltaPayload extends WalkerStepPayload
 
 /** Records a resolved parked decision (Task 5 ruling 5.3). The step's `ops`
   * stay empty: appending the answer to `pending.answered` is a state write

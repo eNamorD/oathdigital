@@ -1,8 +1,7 @@
 package oathdigital.application
 
-import oathdigital.gameplay.walker.{RollPayload, WalkerStepPayload,
-  WalkerStepRecorded}
-import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
+import oathdigital.gameplay.walker.{DeltaPayload, RollPayload,
+  WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
@@ -21,7 +20,7 @@ class UndoBarrierSuite extends munit.FunSuite:
 
   /** A walker step recording a delta that applies `ops`. */
   private def deltaStep(ops: CoreOperation*): WalkerStepRecorded =
-    step(DeltaRecorded, ops*)
+    step(DeltaPayload, ops*)
   private def blocks(events: OathEvent*): Boolean =
     UndoBarrier.blocks(events.toVector, before, before)
 

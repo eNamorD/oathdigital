@@ -1,6 +1,5 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 import oathdigital.testkit.{Outcomes, Table}
@@ -21,7 +20,7 @@ class WalkerReplayGuardSuite extends munit.FunSuite:
     PositionedLocation(Location.RegionalDiscard(Region.Cradle), position))
 
   private def step(operation: CoreOperation) = WalkerStepRecorded("0",
-    DeltaRecorded, Vector(operation), Vector.empty)
+    DeltaPayload, Vector(operation), Vector.empty)
 
   test("a recorded discard with a stack position replays"):
     val replayed = ProcedureWalker.applyRecorded(OathState.Ready(held),

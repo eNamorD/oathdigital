@@ -68,7 +68,7 @@ private[walker] object WalkerSteps:
       val nodeId = if path.isEmpty then label else path.mkString(".")
       val step = Option.when(updated.executed.nonEmpty)(WalkerStepRecorded(
         nodeId = nodeId,
-        payload = WalkerStepPayload.DeltaRecorded,
+        payload = DeltaPayload,
         ops = updated.executed,
         contributions = contributions))
       val events = ctx.events ++ step ++

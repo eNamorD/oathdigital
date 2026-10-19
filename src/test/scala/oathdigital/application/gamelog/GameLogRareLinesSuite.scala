@@ -3,7 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.application.WalkerDecisionProjector
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerStepPayload,
+import oathdigital.gameplay.walker.{DeltaPayload, WalkerCompleted,
   WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes}
@@ -28,7 +28,7 @@ class GameLogRareLinesSuite extends munit.FunSuite:
   private def posted(procedure: ProcedureRef, ops: CoreOperation*)
       : Vector[String] =
     val tail = Vector[OathEvent](
-      WalkerStepRecorded("batch", WalkerStepPayload.DeltaRecorded,
+      WalkerStepRecorded("batch", DeltaPayload,
         ops.toVector, Vector.empty),
       WalkerCompleted(procedure))
     texts(formatAppended(script, tail).filter(_.sequence >= steps.size))

@@ -3,7 +3,7 @@ package oathdigital.serialization
 import scala.util.control.NonFatal
 
 import oathdigital.gameplay.walker.{ActionBoundaryRan, ChoicePayload,
-  FollowUpSkipped, LogNoted, ProcedureDequeued, RollPayload,
+  DeltaPayload, FollowUpSkipped, LogNoted, ProcedureDequeued, RollPayload,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 
@@ -85,7 +85,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
 
   private def encodeStepPayload(payload: WalkerStepPayload): ujson.Value =
     payload match
-      case WalkerStepPayload.DeltaRecorded => ujson.Obj("kind" -> "delta")
+      case DeltaPayload => ujson.Obj("kind" -> "delta")
       case ChoicePayload(decisionId, answer, by) => ujson.Obj(
         "kind" -> "choice", "decisionId" -> decisionId,
         "payload" -> DecisionAnswerCodec.encode(answer),
@@ -102,7 +102,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
   private def decodeStepPayload(value: ujson.Value,
       path: String): Either[WireError, WalkerStepPayload] =
     value("kind").str match
-      case "delta" => Right(WalkerStepPayload.DeltaRecorded)
+      case "delta" => Right(DeltaPayload)
       case "choice" => DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
         .map(ChoicePayload(value("decisionId").str, _,
           PlayerId(value("byPlayerId").str)))

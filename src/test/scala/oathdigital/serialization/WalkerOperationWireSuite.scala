@@ -3,8 +3,8 @@ package oathdigital.serialization
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.model._
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
-import oathdigital.gameplay.walker.{RollPayload, WalkerStepPayload,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{DeltaPayload, RollPayload,
+  WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.serialization.WalkerWireEvents.{encodedStream,
   encodedStreamThatRoundTrips, recordedOperation}
 import oathdigital.testkit.{CatalogNames, Table}
@@ -34,7 +34,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val run = accepted(OperationPipeline.run(withOneSupply,
       Vector(SpendSupply(Table.p1, 3, required = false)),
       OperationPolicy.Permissive, Vector.empty)(Right(_)))
-    val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded,
+    val event = WalkerStepRecorded("0", DeltaPayload,
       run.executed, Vector.empty)
     val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
@@ -96,11 +96,11 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       PositionedLocation(Location.PlayArea(player)),
       resultingOrientation = Some(Orientation.FaceDown), by = Some(player))
     val events = Vector[OathEvent](
-      WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded,
+      WalkerStepRecorded("0", DeltaPayload,
         Vector(ModifyDicePool(pool, 2)), Vector.empty),
-      WalkerStepRecorded("1.0.1", WalkerStepPayload.DeltaRecorded,
+      WalkerStepRecorded("1.0.1", DeltaPayload,
         Vector(SpendSupply(player, 1)), Vector.empty),
-      WalkerStepRecorded("2.1", WalkerStepPayload.DeltaRecorded,
+      WalkerStepRecorded("2.1", DeltaPayload,
         Vector(move), Vector.empty))
 
     val encoded = encodedStreamThatRoundTrips("walker", events)
@@ -130,7 +130,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val site = SiteId("site")
     val denizen = DenizenId("catacombs")
     val event: OathEvent = WalkerStepRecorded("0",
-      WalkerStepPayload.DeltaRecorded,
+      DeltaPayload,
       Vector(
         Move(Piece.Card(relic),
           PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
@@ -239,7 +239,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
   test("a WalkerStepRecorded carrying two contribution ids round-trips"):
     val pool = PoolKey("recover")
     val event: OathEvent = WalkerStepRecorded("0",
-      WalkerStepPayload.DeltaRecorded, Vector(ModifyDicePool(pool, 2)),
+      DeltaPayload, Vector(ModifyDicePool(pool, 2)),
       Vector(PowerId("power.one"), PowerId("power.two")))
 
     val encoded = encodedStreamThatRoundTrips("walker", Vector(event))

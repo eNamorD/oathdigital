@@ -8,8 +8,7 @@ import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
-import oathdigital.gameplay.walker.{WalkerDice, WalkerPowers,
+import oathdigital.gameplay.walker.{DeltaPayload, WalkerDice, WalkerPowers,
   WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.serialization.GameEventWire
@@ -128,7 +127,7 @@ object SituationDriver:
 
   private def arranging(ops: Vector[CoreOperation])
       : WalkerStepRecorded =
-    WalkerStepRecorded("0", DeltaRecorded, ops, Vector.empty)
+    WalkerStepRecorded("0", DeltaPayload, ops, Vector.empty)
 
   /** Calls `OathRules` directly, accepting exactly the commands
     * `GameApplicationService.applyCommand` accepts and dispatching them the

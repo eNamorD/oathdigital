@@ -88,7 +88,7 @@ private[walker] object WalkerReplay:
           ready.game.current.copy(walkerPending = Some(answered))))
 
       case step @ WalkerStepRecorded(_,
-          WalkerStepPayload.DeltaRecorded, ops, _) =>
+          DeltaPayload, ops, _) =>
         for
           _ <- validateStep(step)
           _ <- Either.cond(ops.nonEmpty, (), OathViolation.InvalidEventOrder(

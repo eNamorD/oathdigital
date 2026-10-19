@@ -1,8 +1,8 @@
 package oathdigital.testkit
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerOutcome,
-  WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{DeltaPayload, WalkerCompleted,
+  WalkerOutcome, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import Outcomes.*
@@ -30,7 +30,7 @@ class OutcomesSuite extends munit.FunSuite:
       .contains("NoPlayableOption"))
 
   test("recorded returns a recorded step and fails naming another event"):
-    val step = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded,
+    val step = WalkerStepRecorded("0", DeltaPayload,
       Vector.empty, Vector.empty)
     assertEquals(recorded(step), step)
     assert(failure(recorded(WalkerCompleted(ActionRef.Recover)))

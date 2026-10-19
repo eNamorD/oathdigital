@@ -1,7 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.engine.RecordedEvent
-import oathdigital.gameplay.walker.{WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{DeltaPayload, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.Unwrap.accepted
 
@@ -10,7 +10,7 @@ import oathdigital.testkit.Unwrap.accepted
 object WalkerWireEvents:
   /** The walker step at path "0" that records `operation` as applied. */
   def recordedOperation(operation: CoreOperation): OathEvent =
-    WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded,
+    WalkerStepRecorded("0", DeltaPayload,
       Vector(operation), Vector.empty)
 
   /** `events` written as one stream of game `label`, numbered from 0. Fails

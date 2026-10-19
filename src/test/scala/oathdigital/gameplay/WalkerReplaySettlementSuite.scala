@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerStepPayload,
+import oathdigital.gameplay.walker.{DeltaPayload, ProcedureWalker,
   WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Table}
@@ -28,7 +28,7 @@ class WalkerReplaySettlementSuite extends munit.FunSuite:
 
   private def replay(pay: PayCost): ReadyGame = ProcedureWalker.applyRecorded(
     Ready(arranged), WalkerStepRecorded("0",
-      WalkerStepPayload.DeltaRecorded, Vector(pay),
+      DeltaPayload, Vector(pay),
       Vector.empty)) match
     case Right(Ready(state)) => state
     case other => fail(s"the recorded payment must replay, got $other")
