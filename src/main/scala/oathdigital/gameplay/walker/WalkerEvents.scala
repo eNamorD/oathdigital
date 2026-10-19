@@ -4,9 +4,9 @@ import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptio
 
 /** What one recorded walker step recorded: the step applied operations, it
   * recorded an answer, or it recorded dice. Sealed so the set is closed and
-  * enumerable in one place, and so the readers that must account for every
-  * member -- the wire encoder, and undo's barrier detection -- refuse to
-  * compile on a fourth rather than meeting it at runtime. The log and replay
+  * enumerable in one place, and so the production readers that must account
+  * for every member -- the wire encoder, and undo's barrier detection --
+  * refuse to compile on a fourth rather than meeting it at runtime. The log and replay
   * readers stay partial on purpose: each names the payloads it has a line or
   * a rule for.
   * The three cases live in this file together, which sealing requires.

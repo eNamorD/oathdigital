@@ -1255,7 +1255,9 @@ pending.answered)`. Replace with:
 
 At lines 115-117, `recordRoll`'s doc says `with no ops`. Task 3 already
 replaced this one, alongside the construction site in the same method; check
-it rather than editing it again. It should read:
+it rather than editing it again. Task 3's wording is the better of the two --
+it attributes the absent batch to the payload rather than to the step, which
+is where the type puts it -- so prefer what is in the file over this block:
 
 ```
     * a [[RollPayload]]; the outcome is a state write, so the step carries no
@@ -1274,12 +1276,17 @@ grep -rn '`ops` empty\|ops empty\|WalkerStepRecorded\.ops\|DeltaRecorded' src --
 grep -rn 'no ops\|records no operation\|ops batch' src --include='*.scala'
 ```
 
-Expected: the first prints nothing. The second is the wider sweep, which
-catches two comments the first misses -- they say "no ops" and "each recorded
-step's operations" without naming the field. It also prints two hits that are
-correct and stay: a delta's batch is still an "ops batch", and
-`CatacombsContributionSuite`'s roll comment is backed by a payload
-assertion.
+Expected: the first prints nothing. The second is a wider sweep, which
+catches one comment the first misses: `RecoverProcedureSuite`'s "state write,
+no ops". It also prints two hits that are correct and stay -- a delta's batch
+is still an "ops batch", and `CatacombsContributionSuite`'s roll comment is
+backed by a payload assertion.
+
+Neither grep is sufficient. Two of the eight comments name no field and use
+none of these words: `BurnTakesSuite`'s "Each recorded step's operations" and
+`WalkerSteps.scala:24`'s "recorded as the node's step ops". Both were found
+by reading the files that Task 3 touched, not by grep. Treat the greps as a
+floor and read the doc comments on every production reader.
 
 - [x] **Step 6: Run the full gate**
 
@@ -1311,6 +1318,9 @@ to 118, since the expanded doc comments outweigh the field it lost. Do not
 trim the docs to make a number go down.
 
 - [x] **Step 9: Commit**
+
+The counts below are the pre-execution estimate. It was eight comments and
+four parentheticals, not six and three -- see the commit that landed.
 
 ```bash
 git add src

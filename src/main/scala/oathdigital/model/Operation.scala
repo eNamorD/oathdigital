@@ -122,7 +122,7 @@ object Decide:
 
 /** A leaf whose concrete deltas are decided AT WALK TIME: the walker calls
   * `build(state, pending)` when it reaches the node and executes whatever
-  * `CoreOperation`s that come back, recording them in the node's step as a
+  * `CoreOperation`s come back, recording them in the node's step as a
   * `DeltaPayload`.
   *
   * The closure lives in the action tree, which is derived per command and

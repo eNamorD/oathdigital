@@ -21,7 +21,8 @@ private[walker] object WalkerSteps:
       requireAll = strict)
 
   /** Executes a [[oathdigital.model.BuildOps]] leaf: `build(state, pending)` returns the delta
-    * batch to run through the pipeline, recorded as the node's step ops. An
+    * batch to run through the pipeline, recorded in the node's step as a
+    * [[DeltaPayload]]. An
     * empty batch runs nothing and records nothing, and a note after it reads
     * that nothing changed. A search stops at a batch that shows hidden
     * information.

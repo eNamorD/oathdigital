@@ -101,10 +101,10 @@ object ProcedureWalker:
     * `state.rollPools` for the node's `pool`; on success merge the derived
     * `RollOutcome` into `state.rollOutcomes` (accumulating across repeated
     * rolls of the same pool), append ONE [[WalkerStepRecorded]] carrying
-    * [[RollPayload]] -- the outcome is a state write, and the payload holds
-    * no operation batch -- then continue auto-walking the tree from the node after the Roll
-    * exactly like `advance`: further deltas execute until the next
-    * Decide/Roll park (`Parked`) or the tree ends (`Finished`).
+    * [[RollPayload]] (the outcome is a state write, so the payload holds no
+    * operation batch), then continue auto-walking the tree from the node
+    * after the Roll exactly like `advance`: further deltas execute until the
+    * next Decide/Roll park (`Parked`) or the tree ends (`Finished`).
     *
     * A face count differing from the pool count, or a face outside the roll's
     * die kind, rejects with `OathViolation.InvalidEventOrder`.
@@ -129,12 +129,11 @@ object ProcedureWalker:
     * mismatched decision id, or any other position rejects with an
     * `OathViolation`). Semantics: check the answer's submitter against the
     * node's `owner`, validate the submitted answer against its query, append
-    * ONE [[WalkerStepRecorded]] carrying [[ChoicePayload]] -- the answer is
-    * a state write into `pending.answered`, and the payload holds no
-    * operation batch -- add
-    * `answer` to `answered`, then continue auto-walking from the node after
-    * the Decide exactly like `advance` (so `resolve` may park again at the
-    * next Roll/Decide or finish the tree).
+    * ONE [[WalkerStepRecorded]] carrying [[ChoicePayload]] (the answer is a
+    * state write into `pending.answered`, so the payload holds no operation
+    * batch), add `answer` to `answered`, then continue auto-walking from
+    * the node after the Decide exactly like `advance` (so `resolve` may park
+    * again at the next Roll/Decide or finish the tree).
     */
   def resolve(state: ReadyGame, action: Operation, pending: PendingTree,
       answer: Answered, powers: WalkerPowers,
