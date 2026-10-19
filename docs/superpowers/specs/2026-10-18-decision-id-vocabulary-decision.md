@@ -59,8 +59,9 @@ whole area had been settled.
 
 One argument that looked load-bearing is not. The ids are durable: the working
 journal holds 1419 events, in which `decisionId` appears 453 times,
-`use-power:` keys 23 times and `two-swords-skull` 14 times (measured
-2026-10-13). It is tempting to conclude that duplication protects the journal.
+`use-power:` keys 23 times and `two-swords-skull` 14 times (counted in the
+working journal while taking this decision). It is tempting to conclude that
+duplication protects the journal.
 It does not. The backend's own declaration is already a single constant, so a
 rename there changes what recorded history means whether or not the frontend
 holds a copy. The frontend copy stands between nobody and the journal. Its only
@@ -121,10 +122,13 @@ reads `word` from it and keeps only glyph composition, which has no server twin.
 - `WalkerDecisionProjector.faceName` restates the wire keys in the application
   layer, which imports the protocol module freely and has a model-to-shared
   mapping next door in `LogWords.rolledFace`. **This one goes.** The decision
-  wire's roll faces become `Vector[DieFace]`, the mapping is written once, and
-  the set-equality test that held the two tables in agreement is replaced by the
-  compiler. The projection is rebuilt per request and has never been persisted,
-  so typing it costs no journal compatibility.
+  wire's roll faces become `Vector[DieFace]`, the mapping is written once as
+  `application.RolledFaces` and read by both wires, and the set-equality test
+  that held the two tables in agreement is replaced by the compiler. The
+  projection is rebuilt per request and has never been persisted, so typing it
+  costs no journal compatibility. Two more tables go with it, both made dead by
+  the typing: the client's pool-to-die guess, since a typed face carries its
+  own die, and the roll row's unknown-key fallback.
 - `GameEventJsonSupport` (four encode and decode tables) and
   `WalkerValueCodec.decodeDieFace` are durable journal codecs in
   `serialization`, which imports the protocol module nowhere. **These stay.**
@@ -172,9 +176,10 @@ reads `word` from it and keeps only glyph composition, which has no server twin.
   file rather than propose removing them. That they are spelled twice is
   recorded here and is not new information.
 - A new Act action needs an `ActionClass`, and no client change.
-- A new die face needs an entry in the shared enum, a glyph vector in
-  `DieFaceChip`, and entries in the two journal codecs. The suite that holds
-  `symbols` to `DieFace.values` will name the first omission.
+- A new die face needs an entry in the shared enum, a mapping in
+  `RolledFaces`, a glyph vector in `DieFaceChip`, and entries in the two
+  journal codecs. The suite that holds `symbols` to `DieFace.values` will name
+  the first omission.
 - Renaming an option id or the decision id remains a journal format change, not
   a refactor. Nothing in this decision makes it easier, and the client copy
   never made it harder.
