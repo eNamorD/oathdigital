@@ -175,7 +175,7 @@ object LogPageCodec:
       _ <- exact(value, DiceFields, path)
       keys <- strings(value, "faces", path)
       faces <- traverse(keys, s"$path.faces")((key, child) =>
-        DieFace.values.find(_.key == key).toRight(UnknownVariant(child,
+        DieFace.byKey.get(key).toRight(UnknownVariant(child,
           s"unknown die face '$key'")))
       first <- faces.headOption.toRight(
         InvalidValue(s"$path.faces", "expected at least one face"))

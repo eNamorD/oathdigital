@@ -208,6 +208,24 @@ object DecisionOptionRef:
         case "facedown" => Some(slot -> false)
         case _ => None)
 
+/** The band a decision's options are read in, for a question whose options
+  * fall into kinds the player thinks of separately: the phase menu's major
+  * and minor actions, its powers, its ending, and whatever belongs to none
+  * of them (Take Wealth in Wake).
+  *
+  * The band is the engine's, because major and minor are printed rules, not
+  * a way of laying out a panel. How the bands are ordered and what headings
+  * they are given stays with the client, which is why only the `key` crosses
+  * the wire. A client that meets a band it does not know reads the option as
+  * ungrouped (decision-id vocabulary decision, item 1).
+  */
+enum OptionGroup(val key: String):
+  case Major extends OptionGroup("major")
+  case Minor extends OptionGroup("minor")
+  case Power extends OptionGroup("power")
+  case Ending extends OptionGroup("ending")
+  case Other extends OptionGroup("other")
+
 /** One selectable option on a decision: its stable reference, plus whatever
   * display detail the action itself authors.
   *
@@ -317,6 +335,17 @@ object DecisionOption:
       extends DecisionOption:
     def ref: DecisionOptionRef = option.ref
     override def available: Boolean = option.available
+
+  /** An option that says which band of its question it belongs to. Wrapping
+    * for the reason `Badged` wraps: `ref` is the wrapped option's, so an
+    * answer names the same thing grouped or not, and the band never affects
+    * legality.
+    */
+  final case class Grouped(option: DecisionOption, group: OptionGroup)
+      extends DecisionOption:
+    def ref: DecisionOptionRef = option.ref
+    override def available: Boolean = option.available
+    override def askable: Boolean = option.askable
 
   /** The option presenting `ref`, for every kind whose name the projector
     * resolves itself. A button has no such name: its label is authored, so

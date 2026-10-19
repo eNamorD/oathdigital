@@ -66,18 +66,25 @@ class DieFaceChipSuite extends munit.FunSuite:
     assertEquals(unknown.getAttribute("aria-label"), "three-moons")
 
   test("a roll is a row of faces, and an empty roll draws nothing"):
-    val row = DieFaceChip.rollKeys(
-      Vector("one-shield", "blank", "doubler"), None)
+    val row = DieFaceChip.roll(
+      Vector(DieFace.OneShield, DieFace.Blank, DieFace.Doubler))
     assertEquals(all(row, ".die-face").size, 3)
     assertEquals(row.getAttribute("aria-label"), "shield, blank, doubler")
-    assertEquals(all(DieFaceChip.rollKeys(Vector.empty, None), ".die-face"),
+    assertEquals(all(DieFaceChip.roll(Vector.empty), ".die-face"),
       Vector.empty)
+
+  test("a roll takes its die from the faces, not from the pool"):
+    assertEquals(all(DieFaceChip.roll(Vector(DieFace.OneShield)),
+      ".die-face-defense").size, 1)
+    assertEquals(all(DieFaceChip.roll(Vector(DieFace.OneSword)),
+      ".die-face-attack").size, 1)
 
   /** The glyph table is the one face table the vocabulary does not
     * generate, so nothing but this holds it to the seven faces. Without it
     * an eighth face would reach the pane as its own key in plain text --
-    * the fallback only the decision wire is still meant to reach. Presence,
-    * not glyphs: the blank and the doubler are legitimately empty.
+    * the fallback a face whose glyphs this client has not learnt yet still
+    * lands in. Presence, not glyphs: the blank and the doubler are
+    * legitimately empty.
     */
   test("every face in the vocabulary has a glyph entry"):
     val missing = DieFace.values.filterNot(face =>

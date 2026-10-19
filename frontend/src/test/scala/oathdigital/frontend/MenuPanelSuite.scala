@@ -8,19 +8,24 @@ import org.scalajs.dom
 /** A phase menu drawn as grouped buttons (walker-driven game loop design,
   * slice 4, plan-time rulings 6 and 12). Runs under jsdom. */
 class MenuPanelSuite extends munit.FunSuite:
-  private def button(id: String, label: String,
+  /** One menu button, in the band the engine says it is read in. */
+  private def button(id: String, label: String, band: String,
       badge: Option[String] = None) =
-    DecisionOptionState("button", id, label, None, Vector.empty, badge)
+    DecisionOptionState("button", id, label, None, Vector.empty, badge,
+      group = Some(band))
 
-  private val search = button("search", "Search", Some("2 Supply"))
-  private val recover = button("recover", "Recover").copy(
+  private val search = button("search", "Search", "major", Some("2 Supply"))
+  private val recover = button("recover", "Recover", "major").copy(
     state = "unavailable", reason = Some("Needs 1 Supply; you have 0"))
-  private val peek = button("peek-site-relics", "Peek at relics at your site")
+  private val peek = button("peek-site-relics",
+    "Peek at relics at your site", "minor")
   private val power = DecisionOptionState("denizen", "97", "Insomnia",
     Some(CardDetails("97", "denizen", "Insomnia",
-      rulesText = Some("**ACT:** Gain [secret]."))))
-  private val flame = button("use-power:flame.move", "Wandering Flame: move")
-  private val ending = button("end-act", "End Act and Rest (+5 Supply)")
+      rulesText = Some("**ACT:** Gain [secret]."))), group = Some("power"))
+  private val flame = button("use-power:flame.move",
+    "Wandering Flame: move", "power")
+  private val ending = button("end-act", "End Act and Rest (+5 Supply)",
+    "ending")
 
   private def draw(options: Vector[DecisionOptionState],
       ui: RecordingControls = new RecordingControls()): dom.Element =
@@ -45,7 +50,7 @@ class MenuPanelSuite extends munit.FunSuite:
       Vector("End Act and Rest (+5 Supply)"))
 
   test("a cost's favor is drawn as glyphs and named in words"):
-    val trade = button("trade.secret", "Trade for secrets",
+    val trade = button("trade.secret", "Trade for secrets", "major",
       Some("1 Supply · 1 [favor] · 1 [favor-burnt]"))
     val shown = all(draw(Vector(trade, ending)), ".menu-option").head
     assertEquals(all(shown, ".menu-option-cost .token-glyph")
@@ -75,10 +80,23 @@ class MenuPanelSuite extends munit.FunSuite:
 
   test("a Wake menu's Take Wealth buttons have no heading"):
     val panel = draw(Vector(button("take-wealth.favor",
-      "Take Wealth: 1 favor"), button("end-wake", "End Wake")))
+      "Take Wealth: 1 favor", "other"), button("end-wake", "End Wake",
+      "ending")))
     assertEquals(all(panel, ".action-group-heading").size, 0)
     assertEquals(all(panel, ".menu-option").map(_.textContent),
       Vector("Take Wealth: 1 favor", "End Wake"))
+
+  test("an option whose band this client does not know is still drawn"):
+    // The engine may grow a band before the client learns to head it. Such
+    // an option reads in the first, unheaded band rather than vanishing.
+    val invented = button("plant-seed", "Plant a seed", "husbandry")
+    val absent = DecisionOptionState("button", "ponder", "Ponder")
+    val panel = draw(Vector(search, invented, absent, ending))
+    assertEquals(all(panel, ".action-group-other .menu-option")
+      .map(_.textContent), Vector("Plant a seed", "Ponder"))
+    assertEquals(all(panel, ".menu-option").map(_.textContent), Vector(
+      "Plant a seed", "Ponder", "Search (2 Supply)",
+      "End Act and Rest (+5 Supply)"))
 
   test("a pick submits the menu's answer"):
     val ui = new RecordingControls()

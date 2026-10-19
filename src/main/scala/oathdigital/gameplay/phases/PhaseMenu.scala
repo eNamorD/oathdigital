@@ -93,26 +93,34 @@ object PhaseMenu:
       actor: PlayerId, phasePowers: PhasePowers, powers: WalkerPowers)
       : Vector[Offered] =
     def offered(procedure: StartableRef, args: Vector[DecisionOptionRef],
-        shown: DecisionOption, judging: PhasePowers = phasePowers,
+        shown: DecisionOption, group: OptionGroup,
+        judging: PhasePowers = phasePowers,
         walking: WalkerPowers = powers): Offered =
       val entry = QueuedProcedure(actor, procedure, args, None, QueueKind.Run)
-      Offered(entry, QueuedStart.priced(catalog, ready, entry, walking,
-          judging) match
-        case Right(cost) =>
-          cost.words.fold(shown)(DecisionOption.Badged(shown, _))
-        case Left(violation) => DecisionOption.Unavailable(shown,
-          OptionReason.Written(QueuedStart.needs(catalog, ready, entry,
-            walking, judging).getOrElse(reason(procedure, violation)))))
+      Offered(entry, DecisionOption.Grouped(
+        QueuedStart.priced(catalog, ready, entry, walking, judging) match
+          case Right(cost) =>
+            cost.words.fold(shown)(DecisionOption.Badged(shown, _))
+          case Left(violation) => DecisionOption.Unavailable(shown,
+            OptionReason.Written(QueuedStart.needs(catalog, ready, entry,
+              walking, judging).getOrElse(reason(procedure, violation)))),
+        group))
     val wealth: Vector[Offered] =
       if menu != Menu.Wake then Vector.empty
       else WakeResource.all.map(resource => offered(ActionRef.TakeWealth,
         TakeWealthProcedure.selection(resource),
         DecisionOption.Button(takeWealth(resource),
-          s"Take Wealth: 1 ${resource.key}")))
+          s"Take Wealth: 1 ${resource.key}"),
+        // Take Wealth is neither a major nor a minor action: it is what Wake
+        // offers, so it belongs to no band of its own.
+        OptionGroup.Other))
     val acting: Vector[Offered] =
       if menu != Menu.Act then Vector.empty
       else ActOffers.all.map(offer => offered(offer.procedure, offer.args,
-        DecisionOption.Button(offer.ref, offer.label)))
+        DecisionOption.Button(offer.ref, offer.label),
+        offer.actionClass match
+          case ActionClass.Major => OptionGroup.Major
+          case ActionClass.Minor => OptionGroup.Minor))
     val sourced = for
       power <- phasePowers.powers
       if !power.forced &&
@@ -130,7 +138,8 @@ object PhaseMenu:
         power, found, phasePowers.useRestrictions)
       shown.toVector.map(option =>
         if refused.isEmpty then
-          offered(ActionRef.UsePower(power.id), Vector(ref), option)
+          offered(ActionRef.UsePower(power.id), Vector(ref), option,
+            OptionGroup.Power)
         else
           // A refusal is shown over a use that could otherwise start: over
           // one that cannot, an ask would gain nothing. The refusing powers
@@ -138,14 +147,16 @@ object PhaseMenu:
           // refuse the use's own cost under the same grant (catalog batch
           // 8, slice 10).
           val unrefused = offered(ActionRef.UsePower(power.id), Vector(ref),
-            option, phasePowers.copy(useRestrictions = Vector.empty),
+            option, OptionGroup.Power,
+            phasePowers.copy(useRestrictions = Vector.empty),
             powers.without(refused.map(_.power).toSet))
           if !unrefused.option.available then unrefused
-          else unrefused.copy(option = DecisionOption.Unavailable(option,
-            PowerUseRules.shown(ready, actor, refused, consent = true)))))
+          else unrefused.copy(option = DecisionOption.Grouped(
+            DecisionOption.Unavailable(option, PowerUseRules.shown(ready,
+              actor, refused, consent = true)), OptionGroup.Power))))
     (wealth ++ acting ++ used).distinctBy(_.option.ref) :+ offered(
       menu.ending, Vector.empty, DecisionOption.Button(menu.endingOption,
-        endingLabel(menu, ready, actor)))
+        endingLabel(menu, ready, actor)), OptionGroup.Ending)
 
   /** "End Act and Rest (+5 Supply)": what Rest would return, as the old
     * button said. Any other ending, or a Rest that cannot price it, is

@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.phases.{ActOffers, PhaseMenu, PhasePowerProcedure}
+import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
@@ -49,8 +50,20 @@ class PhaseMenuSuite extends munit.FunSuite:
     at.update(_.updateCurrent(current => current.copy(
       turn = current.turn.copy(usedPowers = Set(used)))))
 
+  /** The menu's options as the panel receives them: each in the band it is
+    * read in. */
+  private def bandedOptions(state: OathState): Vector[DecisionOption] =
+    MenuPlay.bandedOptions(state, catalog, walkerPowers, phasePowers)
+
+  /** The same options with the band peeled off, for the assertions about what
+    * an option shows rather than where it is read. */
   private def options(state: OathState): Vector[DecisionOption] =
     MenuPlay.options(state, catalog, walkerPowers, phasePowers)
+
+  private def bandOf(option: DecisionOption): Option[OptionGroup] =
+    option match
+      case DecisionOption.Grouped(_, group) => Some(group)
+      case _ => None
 
   private def replayed(from: OathState, events: Vector[OathEvent])
       : OathState =
@@ -154,6 +167,28 @@ class PhaseMenuSuite extends munit.FunSuite:
       "recover", "challenge", "place-banner-resource", "negotiation",
       "play-facedown-adviser", "peek-site-relics", "reveal-owned-relic",
       "move-warbands"))
+
+  test("the Wake menu bands Take Wealth apart from its powers and its " +
+      "ending"):
+    assertEquals(bandedOptions(waking.phaseMenuParked.state).map(bandOf),
+      Vector[Option[OptionGroup]](Some(OptionGroup.Other),
+        Some(OptionGroup.Other), Some(OptionGroup.Power),
+        Some(OptionGroup.Ending)))
+
+  test("the Act menu bands each option as the rules print it"):
+    val banded = bandedOptions(acting().phaseMenuParked.state)
+    def bandAt(ref: DecisionOptionRef): Option[OptionGroup] =
+      banded.find(_.ref == ref).flatMap(bandOf)
+    assert(banded.forall(bandOf(_).isDefined), banded)
+    assertEquals(bandAt(act(ActionRef.Search)), Some(OptionGroup.Major))
+    assertEquals(bandAt(act(ActionRef.Travel)), Some(OptionGroup.Major))
+    assertEquals(bandAt(PhaseMenu.optionFor(ActionRef.Trade,
+      TradeProcedure.selection(TradeResource.Favor))
+      .getOrElse(fail("no menu lists Trade"))), Some(OptionGroup.Major))
+    assertEquals(bandAt(act(ActionRef.Negotiation)), Some(OptionGroup.Minor))
+    assertEquals(bandAt(act(ActionRef.MoveWarbands)), Some(OptionGroup.Minor))
+    assertEquals(bandAt(PhaseMenu.Menu.Act.endingOption),
+      Some(OptionGroup.Ending))
 
   test("an Act option carries its start's price"):
     val state = acting().phaseMenuParked.state

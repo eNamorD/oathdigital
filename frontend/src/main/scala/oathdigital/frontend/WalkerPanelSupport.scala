@@ -1,7 +1,6 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.{GameIntent => GameCommand, _}
-import oathdigital.protocol.projection.Die
 import org.scalajs.dom
 
 /** The client half of the generic walker decision contract, extracted from
@@ -43,15 +42,14 @@ private[frontend] object WalkerPanelSupport:
     * asked for once there are faces: before the first roll the totals line
     * already says the target.
     *
-    * The faces arrive as wire keys, so each one is said as the word
-    * `DieFace` carries -- "two swords and a skull", not
-    * "two-swords-skull". An unknown key stays itself, as it does on a chip.
+    * Each face is said as the word it carries -- "two swords and a skull",
+    * never its wire key.
     */
   private[frontend] def rollOutcomeSummary(outcome: WalkerRollOutcomeState): String =
     val total =
       if outcome.pool == "recover" then s"${outcome.score} shields so far"
       else s"${poolLabel(outcome.pool)} ${outcome.score}"
-    s"Rolled ${outcome.faces.map(DieFaceChip.name).mkString(", ")} -- $total" +
+    s"Rolled ${outcome.faces.map(_.word).mkString(", ")} -- $total" +
       outcome.target.fold("")(target => s" (need $target)") +
       outcome.detail.map(", " + _).mkString + "."
 
@@ -63,14 +61,6 @@ private[frontend] object WalkerPanelSupport:
     case "campaign.attack" => "Attack"
     case "campaign.defense" => "Defense"
     case other => other
-
-  /** The die a pool rolls: a Campaign's attack rolls the attack die, its
-    * defense and Recover the defense die. An unknown pool keeps the neutral
-    * chip rather than a guessed color. */
-  private[frontend] def poolDie(pool: String): Option[Die] = pool match
-    case "campaign.attack" => Some(Die.Attack)
-    case "campaign.defense" | "recover" => Some(Die.Defense)
-    case _ => None
 
   /** Renders the Recover panel for whichever of the parks
     * (`ParkedDecision.route`) the walker is at. Shows the roll so far
@@ -251,8 +241,7 @@ private[frontend] object WalkerPanelSupport:
         // is read as the one sentence the glyphs add up to.
         row.setAttribute("role", "img")
         row.setAttribute("aria-label", rollOutcomeSummary(outcome))
-        row.appendChild(DieFaceChip.rollKeys(outcome.faces,
-          poolDie(outcome.pool)))
+        row.appendChild(DieFaceChip.roll(outcome.faces))
         panel.appendChild(row)
       val parts = Vector(s"${poolLabel(outcome.pool)} ${outcome.score}") ++
         outcome.target.map(target => s"need $target") ++ outcome.detail

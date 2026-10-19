@@ -21,6 +21,7 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
     case DecisionOption.Button(_, label) => Some(label)
     case DecisionOption.Priced(inner, _) => labelOf(inner)
     case DecisionOption.Badged(inner, _) => labelOf(inner)
+    case DecisionOption.Grouped(inner, _) => labelOf(inner)
     case DecisionOption.Warned(inner, _) => labelOf(inner)
     case DecisionOption.Unavailable(inner, _) => labelOf(inner)
     case _ => None

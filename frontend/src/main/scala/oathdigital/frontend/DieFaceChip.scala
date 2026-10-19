@@ -28,7 +28,7 @@ private[frontend] object DieFaceChip:
     "doubler" -> Vector.empty[String])
 
   def name(key: String): String =
-    DieFace.values.find(_.key == key).fold(key)(_.word)
+    DieFace.byKey.get(key).fold(key)(_.word)
 
   def face(key: String, die: Option[Die] = None): dom.Element =
     val classes = Vector("die-face", s"die-face-$key") ++
@@ -41,24 +41,18 @@ private[frontend] object DieFaceChip:
         glyphs.foreach(glyph => node.appendChild(RulesTextRenderer.glyph(glyph)))
         if key == "doubler" then
           node.appendChild(dom.document.createTextNode("×2"))
-      // A face this client does not know is printed as itself rather than
-      // dropped, the same way an unknown rules token stays literal. Only the
-      // decision wire can still send one; the log's faces are typed.
+      // A glyph set this client does not know is printed as the face's own
+      // key rather than dropped, the same way an unknown rules token stays
+      // literal. Both wires send typed faces, so only a face this client's
+      // glyph table has not grown yet can reach it.
       case None => node.appendChild(dom.document.createTextNode(key))
     node
 
-  /** The log's roll: every face typed, so the die comes off the faces. */
+  /** A roll: every face typed, so the die comes off the faces rather than
+    * off the pool the roll was made in. */
   def roll(faces: Vector[DieFace]): dom.Element =
-    row(faces.map(_.key), faces.headOption.map(_.die))
-
-  /** The decision wire's roll. Its faces are still keys
-    * (`WalkerDecisionProjector.faceName`), held to `DieFace` by a test in
-    * `WalkerDecisionProjectorSuite`. */
-  def rollKeys(keys: Vector[String], die: Option[Die]): dom.Element =
-    row(keys, die)
-
-  private def row(keys: Vector[String], die: Option[Die]): dom.Element =
+    val die = faces.headOption.map(_.die)
     val node = ServerUiSupport.element("span", "die-faces")
-    node.setAttribute("aria-label", keys.map(name).mkString(", "))
-    keys.foreach(key => node.appendChild(face(key, die)))
+    node.setAttribute("aria-label", faces.map(_.word).mkString(", "))
+    faces.foreach(value => node.appendChild(face(value.key, die)))
     node

@@ -14,7 +14,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.model._
 import oathdigital.protocol.projection.{CountedConfirmProjection,
   DecisionQueryProjection, DecisionSummaryProjection, DecisionTallyProjection,
-  DecisionTallyValueProjection, Die, DieFace => RolledFace,
+  DecisionTallyValueProjection, DieFace => RolledFace,
   WalkerDecisionProjection, WalkerWaitingProjection}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
@@ -663,7 +663,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     val outcome = projected.flatMap(_.rollOutcome)
     assertEquals(outcome.map(_.pool), Some("campaign.attack"))
     assertEquals(outcome.map(_.faces),
-      Some(Vector("two-swords-skull", "one-sword")))
+      Some(Vector(RolledFace.TwoSwordsSkull, RolledFace.OneSword)))
     assertEquals(outcome.map(_.score), Some(3))
     assertEquals(outcome.flatMap(_.target), None)
     assertEquals(outcome.map(_.detail), Some(Vector("1 skull loss")))
@@ -733,23 +733,3 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       .map(_.offeredOptions.map(_.id)),
       Some(Vector(siteRef("Dunes").wireId)))
 
-  /** The decision wire keeps its own face table
-    * (`WalkerDecisionProjector.faceName`), because widening the typed log
-    * slice to a second wire was not in it
-    * (2026-09-25-decision-form-tag-separation-decision.md). A test holds the
-    * two together instead of a shared constant: a failure names the
-    * divergence and leaves the fix to a human.
-    *
-    * Per die, not one flattened set: a table that spelled a sword as a
-    * shield and a shield as a sword would leave the union unchanged and
-    * draw the wrong chip. A permutation within one die still passes, which
-    * is where a set equality can reach without the shared constant that
-    * decision rules out.
-    */
-  test("the decision wire spells every face exactly as the shared vocabulary"):
-    assertEquals(AttackDieFace.values.flatMap(
-      WalkerDecisionProjector.faceName).toSet,
-      RolledFace.values.filter(_.die == Die.Attack).map(_.key).toSet)
-    assertEquals(DefenseDieFace.values.flatMap(
-      WalkerDecisionProjector.faceName).toSet,
-      RolledFace.values.filter(_.die == Die.Defense).map(_.key).toSet)

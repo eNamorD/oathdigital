@@ -67,6 +67,7 @@ private[gamelog] final class ChoiceWords(words: LogWords,
     case DecisionOption.Button(button, label) if button == ref => Some(label)
     case DecisionOption.Priced(inner, _) => labelled(ref)(inner)
     case DecisionOption.Badged(inner, _) => labelled(ref)(inner)
+    case DecisionOption.Grouped(inner, _) => labelled(ref)(inner)
     case DecisionOption.Warned(inner, _) => labelled(ref)(inner)
     case DecisionOption.Unavailable(inner, _) => labelled(ref)(inner)
     case DecisionOption.Replacing(inner, _) => labelled(ref)(inner)

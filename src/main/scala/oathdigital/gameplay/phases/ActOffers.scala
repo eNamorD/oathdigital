@@ -10,37 +10,45 @@ import oathdigital.model._
   * added by `PhaseMenu`. */
 object ActOffers:
   /** One option: the procedure its pick queues, with the start selection it
-    * carries, its button and its label. */
+    * carries, its button, its label and whether the rules print it as a
+    * major or a minor action. */
   final case class ActOffer(procedure: ActionRef,
       args: Vector[DecisionOptionRef], ref: DecisionOptionRef.Button,
-      label: String)
+      label: String, actionClass: ActionClass)
 
-  private def plain(procedure: ActionRef, label: String): ActOffer =
+  private def major(procedure: ActionRef, label: String): ActOffer =
+    plain(procedure, label, ActionClass.Major)
+
+  private def minor(procedure: ActionRef, label: String): ActOffer =
+    plain(procedure, label, ActionClass.Minor)
+
+  private def plain(procedure: ActionRef, label: String,
+      actionClass: ActionClass): ActOffer =
     ActOffer(procedure, Vector.empty, DecisionOptionRef.Button(procedure.key),
-      label)
+      label, actionClass)
 
   private def trade(resource: TradeResource, key: String, label: String)
       : ActOffer = ActOffer(ActionRef.Trade, TradeProcedure.selection(
     resource), DecisionOptionRef.Button(s"${ActionRef.Trade.key}.$key"),
-    label)
+    label, ActionClass.Major)
 
   val all: Vector[ActOffer] = Vector(
-    plain(ActionRef.Search, "Search"),
-    plain(ActionRef.Travel, "Travel"),
-    plain(ActionRef.Campaign, "Campaign"),
-    plain(ActionRef.Muster, "Muster"),
+    major(ActionRef.Search, "Search"),
+    major(ActionRef.Travel, "Travel"),
+    major(ActionRef.Campaign, "Campaign"),
+    major(ActionRef.Muster, "Muster"),
     trade(TradeResource.Favor, "favor", "Trade for favor"),
     trade(TradeResource.Secret, "secret", "Trade for secrets"),
-    plain(ActionRef.Forge, "Forge"),
-    plain(ActionRef.Recover, "Recover"),
-    plain(ActionRef.Challenge, "Challenge"),
-    plain(ActionRef.PlaceBannerResource,
+    major(ActionRef.Forge, "Forge"),
+    major(ActionRef.Recover, "Recover"),
+    major(ActionRef.Challenge, "Challenge"),
+    minor(ActionRef.PlaceBannerResource,
       "Place favor or secrets on a banner"),
-    plain(ActionRef.Negotiation, "Negotiate"),
-    plain(ActionRef.PlayFacedownAdviser, "Play facedown adviser"),
-    plain(ActionRef.PeekSiteRelics, "Peek at relics at your site"),
-    plain(ActionRef.RevealOwnedRelic, "Reveal a relic"),
-    plain(ActionRef.MoveWarbands, "Move warbands"))
+    minor(ActionRef.Negotiation, "Negotiate"),
+    minor(ActionRef.PlayFacedownAdviser, "Play facedown adviser"),
+    minor(ActionRef.PeekSiteRelics, "Peek at relics at your site"),
+    minor(ActionRef.RevealOwnedRelic, "Reveal a relic"),
+    minor(ActionRef.MoveWarbands, "Move warbands"))
 
   /** Why an Act action cannot start, in the player's words, when its
     * refusal is not about Supply or favor. */

@@ -145,6 +145,13 @@ object DecisionQueryProjection:
   * `variant` is the word that tells this option from the others drawn on the
   * same board home, such as an adviser play's facing; the client's toggle
   * shows it.
+  *
+  * `group` is the band the option is read in, for a question whose options
+  * fall into kinds the player thinks of separately: `major`, `minor`,
+  * `power`, `ending` or `other` on a phase menu, and absent on every
+  * question that bands nothing. The engine's `OptionGroup` writes it. How
+  * the bands are ordered and what headings they are given is the client's;
+  * a band a client does not know reads as ungrouped.
   */
 final case class DecisionOptionProjection(kind: String, id: String,
     label: String, card: Option[CardDetailsProjection] = None,
@@ -155,6 +162,7 @@ final case class DecisionOptionProjection(kind: String, id: String,
     replaces: Option[CardDetailsProjection] = None,
     buries: Boolean = false,
     variant: Option[String] = None,
+    group: Option[String] = None,
     consent: Option[ConsentAskProjection] = None):
   /** Whether the viewer may choose it: available, or available with a
     * warning. */
@@ -264,16 +272,18 @@ final case class WalkerDecisionProjection(
   *
   * `pool` names which roll it is (`"recover"`, `"campaign.attack"`), so the
   * client can word the total without guessing from the action. `faces` are
-  * display-ready die-face labels in roll order across every roll of that pool
-  * so far; `score` is the derived total (a `Doubler` on a later roll
-  * multiplies earlier shields, so this is not a per-face sum). `target` is the
-  * number the score must reach where there is one -- a Recover site's
-  * difficulty -- and `None` where there is not, as in a Campaign. `detail`
-  * carries already-worded consequences such as `"1 skull loss"`.
+  * the faces rolled, in roll order across every roll of that pool so far,
+  * each carrying its own word and the die it is printed on, so the client
+  * needs no face table of its own and no guess at the die from the pool;
+  * `score` is the derived total (a `Doubler` on a later roll multiplies
+  * earlier shields, so this is not a per-face sum). `target` is the number
+  * the score must reach where there is one -- a Recover site's difficulty --
+  * and `None` where there is not, as in a Campaign. `detail` carries
+  * already-worded consequences such as `"1 skull loss"`.
   */
 final case class WalkerRollOutcomeProjection(
     pool: String,
-    faces: Vector[String],
+    faces: Vector[DieFace],
     score: Int,
     target: Option[Int] = None,
     detail: Vector[String] = Vector.empty

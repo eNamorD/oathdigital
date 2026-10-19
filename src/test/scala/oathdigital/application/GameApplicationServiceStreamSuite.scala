@@ -1,5 +1,7 @@
 package oathdigital.application
 
+import scala.concurrent.duration.{Duration, DurationInt}
+
 import oathdigital.testkit.MenuPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.model._
@@ -19,6 +21,11 @@ import ParkedServiceFixture.{firstPlayer, loaded, pickFacedownAdviser,
   * and what it refuses to append or replay.
   */
 class GameApplicationServiceStreamSuite extends munit.FunSuite:
+  // The round-eight replay takes about twenty seconds alone under coverage
+  // instrumentation and crosses munit's default thirty under a parallel
+  // run, as `GameLogPropertiesSuite`'s scripts do.
+  override val munitTimeout: Duration = 3.minutes
+
   test("all-Exile powered game persists and replays through round-eight victory"):
     // Stays on the replayed setup: the full game from Setup to round eight is
     // the end-to-end smoke test.

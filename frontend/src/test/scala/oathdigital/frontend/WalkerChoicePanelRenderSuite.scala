@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.protocol.projection.DieFace
+
 import oathdigital.frontend.Dom.all
 import oathdigital.testkit.Unwrap.as
 import ParkedDecision.Surface
@@ -158,7 +160,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
 
   test("a choose-one asked after a roll draws the roll before the question"):
     val outcome = WalkerRollOutcomeState("campaign.defense",
-      Vector("one-shield", "blank"), 1)
+      Vector(DieFace.OneShield, DieFace.Blank), 1)
     val site = DecisionOptionState("site", "s1", "The Spire")
     val query = DecisionQueryState.ChooseOne(Vector(site),
       heading = Some("Move the defending warbands"))

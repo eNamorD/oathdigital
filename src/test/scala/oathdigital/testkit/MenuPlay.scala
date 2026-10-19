@@ -90,7 +90,7 @@ object MenuPlay:
     Step.Start(player, menu.ending)
 
   /** The parked menu's options, as the walker shows them. */
-  def options(state: OathState, catalog: ExecutableCatalog,
+  def bandedOptions(state: OathState, catalog: ExecutableCatalog,
       walkerPowers: WalkerPowers, phasePowers: PhasePowers)
       : Vector[DecisionOption] =
     ParkedNode.of(state, catalog, walkerPowers, phasePowers).toOption.flatten
@@ -98,10 +98,29 @@ object MenuPlay:
       .collect { case one: DecisionQuery.ChooseOne => one.options }
       .getOrElse(Vector.empty)
 
+  /** The parked menu's options as the panel receives them, each wrapped in
+    * the band it is read in, with the production power catalogs. */
+  def bandedOptions(state: OathState, catalog: ExecutableCatalog)
+      : Vector[DecisionOption] = bandedOptions(state, catalog,
+    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
+
+  /** The parked menu's options with the band peeled off, which is what an
+    * assertion about what one option shows wants. Use `bandedOptions` to
+    * assert the band itself. */
+  def options(state: OathState, catalog: ExecutableCatalog,
+      walkerPowers: WalkerPowers, phasePowers: PhasePowers)
+      : Vector[DecisionOption] =
+    bandedOptions(state, catalog, walkerPowers, phasePowers).map(withoutBand)
+
   /** The parked menu's options with the production power catalogs. */
   def options(state: OathState, catalog: ExecutableCatalog)
       : Vector[DecisionOption] = options(state, catalog,
     WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
+
+  /** `option` without the band `PhaseMenu` wrapped it in. */
+  def withoutBand(option: DecisionOption): DecisionOption = option match
+    case DecisionOption.Grouped(inner, _) => inner
+    case ungrouped => ungrouped
 
   /** The option the phase menu shows for starting `procedure` with `args`,
     * on `ready` with its phase's menu parked for the active player, as the

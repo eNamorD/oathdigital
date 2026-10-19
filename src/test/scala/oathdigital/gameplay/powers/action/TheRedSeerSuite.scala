@@ -6,8 +6,8 @@ import oathdigital.gameplay.powers.{NoteText, OathkeeperGoalChoice,
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, ParkedNode, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, MenuPlay, ParkedNode,
+  PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
@@ -49,7 +49,7 @@ class TheRedSeerSuite extends munit.FunSuite:
   private def menuReason(ready: ReadyGame): Option[OptionReason] =
     PhaseMenu.offers(PhaseMenu.Menu.Act, catalog, ready, p1,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty)
-      .map(_.option).collectFirst {
+      .map(offer => MenuPlay.withoutBand(offer.option)).collectFirst {
         case DecisionOption.Unavailable(shown, reason)
             if shown.ref == source => reason
       }

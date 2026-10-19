@@ -12,8 +12,9 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.protocol.projection.{DecisionOptionProjection,
-  DecisionQueryProjection, DecisionSectionProjection, GameProjectionCodec,
-  WalkerDecisionProjection, WalkerRollOutcomeProjection}
+  DecisionQueryProjection, DecisionSectionProjection, DieFace => RolledFace,
+  GameProjectionCodec, WalkerDecisionProjection,
+  WalkerRollOutcomeProjection}
 import oathdigital.testkit.{CatalogNames, Dice}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.PowerStubs
@@ -146,7 +147,8 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
   /** The choice park's roll feedback: this is exactly what the
     * continue/stop choice needs (I5). */
   private def failedRollOutcome(ready: ReadyGame) =
-    WalkerRollOutcomeProjection("recover", Vector("blank", "blank"), 0,
+    WalkerRollOutcomeProjection("recover",
+      Vector(RolledFace.Blank, RolledFace.Blank), 0,
       Some(expectedDifficulty(ready, p1)))
 
   test("a failed roll parks the continue/stop Decide with its own decision " +
@@ -229,7 +231,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       ActionRef.Recover.key, RecoverProcedure.relicDecisionId, "decide", presentation = "board",
       query = Some(relicQuery),
       rollOutcome = Some(WalkerRollOutcomeProjection("recover",
-        Vector("two-shields", "doubler"), 4,
+        Vector(RolledFace.TwoShields, RolledFace.Doubler), 4,
         Some(expectedDifficulty(ready, p1)))))
 
   test("a successful roll parks the relic Decide and lists the site's " +
@@ -329,7 +331,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       ActionRef.Recover.key, RecoverProcedure.choiceDecisionId, "decide", presentation = "board",
       query = Some(choiceQuery),
       rollOutcome = Some(WalkerRollOutcomeProjection("recover",
-        Vector("blank", "blank"), 0,
+        Vector(RolledFace.Blank, RolledFace.Blank), 0,
         Some(expectedDifficulty(ready, p1)))))))
 
     // The pre-Task-5 hardcoded `WalkerPowers.empty` folds the bare tree --

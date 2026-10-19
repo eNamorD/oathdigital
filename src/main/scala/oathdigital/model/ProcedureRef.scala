@@ -25,6 +25,14 @@ sealed trait StartableRef extends ProcedureRef
   */
 sealed trait ActionRef extends StartableRef { final def family = "action" }
 
+/** Whether an Act action is a major or a minor one. The rules print the two
+  * lists separately, so the split is a rules fact and is named here rather
+  * than left to the order `ActOffers` happens to list its offers in. The Act
+  * menu's bands are read off it (decision-id vocabulary decision, item 1).
+  */
+enum ActionClass:
+  case Major, Minor
+
 /** A player-commanded change of phase. These are procedures because a phase
   * change is a state write, but they are not actions: no action boundary
   * runs after one, whichever phase it lands in.
